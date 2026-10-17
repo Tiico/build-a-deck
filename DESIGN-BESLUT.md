@@ -5547,6 +5547,18 @@ En platshållare som läses som ett ifyllt värde är halva felet: fältet ser b
 Det som står kvar låst bär nu guidens låsta form: fyllningen tas bort, för fyllningen är affordansen, och rummets egen sekundärlinje står kvar så att kontrollen fortfarande är ett piller.
 Mätt efter rättelsen: kant 3,78:1 mot papperet och bläck 5,52:1.
 
+**Tillägg 2026-10-17 (#732): dörren frågar innan den lämnar något, och den låsta formen mäts även mot remsan.**
+Speltestet 2026-10-02 skrev en titel på kort 1 och tryckte «Skapa ett tomt spel i editorn»: spelet skapades utan kort och fält, utan ett ord.
+Dörren ställer nu verktygets enda fråga (`Question`, L9) där den trycktes, men bara när guiden håller kort eller fält som designern har ändrat: «Ett tomt spel får bara namnet och platserna. Korten och fälten du har gjort här följer inte med.»
+Frågan öppnar på «Avbryt», och «Ja, skapa ett tomt spel» står ett tabbsteg bort, i guidens röda.
+En orörd guide frågar ingenting, eftersom ingenting går förlorat; ett namn som saknas sägs fortfarande vid fältet först.
+Ett utkast som återupptas efter en inloggning frågar inte igen, eftersom frågan redan är besvarad.
+
+Den låsta formen tar bort fyllningen, och det syns bara på en grund som fyllningen skiljer sig från.
+Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70 %: samma färg som en knapps fyllning, så den låsta «Föregående» i steg 1 såg ut som en aktiv sekundärknapp.
+Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
+En riktig pekare över den låsta knappen ändrar ingenting den målar.
+
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 
 L39 säger vad body-redigeraren *gör*, inte vem som *får* den.

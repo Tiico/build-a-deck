@@ -120,6 +120,8 @@ export const enAccount = {
   'wizard.blank.body': 'Rather build everything yourself?',
   'wizard.blank.help': 'Without the guided start: “Create an empty game in the editor” makes the game with the name and the seats above, with no cards, fields or template.',
   'wizard.blank.create': 'Create an empty game in the editor',
+  'wizard.blank.ask': 'An empty game gets only the name and the seats. The cards and fields you made here do not come along.',
+  'wizard.blank.ask.confirm': 'Yes, create an empty game',
 
   'wizard.fields': 'Fields',
   'wizard.fields.body': 'The fields on every card.',

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CardPreview } from '../editor/CardPreview.js'
 import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
@@ -19,6 +19,7 @@ import { fieldLabel } from '../editor/fields.js'
 import { ANTAL } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
+import { Question } from '../editor/Question.js'
 import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
 import './wizard.css'
@@ -50,6 +51,9 @@ const withoutImageRefs = (state: WizardState): WizardState => ({
   ...state,
   rows: state.rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, isImageRef(value) ? '' : value]))),
 })
+
+// The cards and the fields, which are what a game made past the guided start does not take along.
+const madeOf = (state: WizardState) => [state.fields, state.rows]
 
 const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].includes(key)
 
@@ -87,6 +91,14 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const [restored, setRestored] = useState(restoring === null)
   const [draftSays, setDraftSays] = useState<DraftSays | null>(null)
   const dirty = JSON.stringify(s) !== pristine
+  // What the door past the guided start leaves behind (#732, L42): the cards and the fields. Only
+  // when the designer has made something of them is there anything to lose by going that way.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- what an untouched guide holds is taken once, as `pristine` is
+  const untouched = useMemo(() => JSON.stringify(madeOf(emptyState(t))), [])
+  const madeHere = JSON.stringify(madeOf(s)) !== untouched
+  // The question the door asks before it leaves them behind (L9): standing, or not.
+  const [askingBlank, setAskingBlank] = useState(false)
+  const blankDoor = useRef<HTMLButtonElement>(null)
   // Set on the way out through one of the page's own doors, so the question below is not asked
   // about a leaving the page itself asked for.
   const leaving = useRef(false)
@@ -363,6 +375,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     return () => window.removeEventListener('beforeunload', hold)
   }, [dirty])
 
+  // A step opens at its top (#732). The three share one scrolling body, and a step left scrolled to
+  // its bottom handed the next one the same distance: its heading above the edge and the card cut
+  // off. Before the paint, and before the focus the step asks for scrolls what it lands on in view.
+  const body = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (body.current) body.current.scrollTop = 0
+  }, [step])
   // A step walked to by the buttons takes the focus with it: the button pressed may lock at the
   // end it has reached, and a locked button cannot keep the focus.
   const walk = (by: number) => {
@@ -403,6 +422,20 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
       reader.readAsDataURL(file)
     })
+  }
+  // The picture goes, and the refusal that kept it goes with it (#732): what was said was about the
+  // picture that stayed, and under «Ingen bild vald» it reads as if the removal had been refused.
+  const removeImage = (key: string) => {
+    updateRow(selectedRow, key, '')
+    setRefused((said) => (said?.field === key ? null : said))
+    setFocusOn({ at: `[data-image-field="${key}"] input[type="file"]` })
+  }
+  // The door past the guided start (L42) asks first when it would leave cards or fields behind
+  // (#732, L9). Without a name it says so at the field, as before, and asks nothing yet.
+  const toBlank = () => {
+    if (busy) return
+    if (named && madeHere) setAskingBlank(true)
+    else void toEditor('blank')
   }
   const addField = (kind: Field['kind']) => {
     // The key is the form's own handle for the field — what the rows are kept under while the
@@ -524,7 +557,27 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <div className="byd-wizard-blank">
         <strong>{t('wizard.blank.title')}</strong>
         <p>{t('wizard.blank.body')}</p>
-        <button type="button" className="byd-secondary" {...working(busy)} onClick={() => void toEditor('blank')}><Held busy={busy && via === 'blank'} idle={t('wizard.blank.create')} working={t('wizard.creating')} /></button>
+        <button ref={blankDoor} type="button" className="byd-secondary" {...working(busy)} onClick={toBlank}><Held busy={busy && via === 'blank'} idle={t('wizard.blank.create')} working={t('wizard.creating')} /></button>
+        {/* The tool's one question (L9), where the door was pressed. It opens on «Avbryt», and
+            either answer hands the focus back to the door. */}
+        {askingBlank && (
+          <Question
+            className="byd-wizard-blank-ask"
+            label={t('wizard.blank.ask')}
+            confirm={t('wizard.blank.ask.confirm')}
+            onCancel={() => {
+              setAskingBlank(false)
+              blankDoor.current?.focus()
+            }}
+            onConfirm={() => {
+              setAskingBlank(false)
+              blankDoor.current?.focus()
+              void toEditor('blank')
+            }}
+          >
+            {t('wizard.blank.ask')}
+          </Question>
+        )}
         {error && via === 'blank' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}
       </div>
     </section>
@@ -619,9 +672,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             onOver: (on) => setOver(on ? field.key : null),
             onFiles: (files) => chooseImage(selectedRow, field.key, files),
           })}
-        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept={assetAccept('image')} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => { updateRow(selectedRow, field.key, ''); setFocusOn({ at: `[data-image-field="${field.key}"] input[type="file"]` }) }}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept={assetAccept('image')} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => removeImage(field.key)}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
-      <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
+      <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => {
+        // A long title is drawn cut short on its tab (#732), and the whole of it is the tab's own.
+        const title = candidate['title'] || t('wizard.card.untitled')
+        return <button type="button" key={index} className="byd-choice" title={title} aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b><span className="byd-wizard-card-tab-title">{title}</span></button>
+      })}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
       <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards} {...working(busy)} onClick={() => void toEditor()}><Held busy={busy && via === 'guided'} idle={t('wizard.create')} working={t('wizard.creating')} /></button>{error && via === 'guided' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}</footer>
     </section>
   )
@@ -686,7 +743,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
               )
             })}
           </div>
-          <div className="byd-wizard-body">
+          <div className="byd-wizard-body" ref={body}>
             {STEPS.map(([key]) => (
               <div key={key} id={`byd-wizard-panel-${key}`} role="tabpanel" aria-labelledby={`byd-wizard-tab-${key}`} tabIndex={0} hidden={step !== key}>
                 {step === key && (

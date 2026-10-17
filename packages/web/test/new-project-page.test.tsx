@@ -287,6 +287,46 @@ describe('a game without the guided start (L42)', () => {
     expect(stored?.template.faces['back']?.base).toEqual([])
   })
 
+  // The door past the guided start leaves the guide's cards and fields behind (#732, L9, L42): with
+  // a title written on card 1 it made a game of no cards and no fields without a word. It asks
+  // first now, with the one question the tool asks before something cannot be looked at again —
+  // and only when the designer has made something there to lose.
+  it('asks before it leaves behind the cards and fields the designer has made', async () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
+    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
+    fireEvent.click(blank)
+
+    const asked = screen.getByRole('alertdialog')
+    expect(asked.textContent).toMatch(/Korten och fälten du har gjort här följer inte med/)
+    // It opens on the answer that loses nothing, and that answer leaves everything where it was.
+    const cancel = within(asked).getByRole('button', { name: 'Avbryt' })
+    expect(document.activeElement).toBe(cancel)
+    fireEvent.click(cancel)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(blank)
+    expect((screen.getByLabelText('kort 1 Titel') as HTMLInputElement).value).toBe('Drake')
+
+    fireEvent.click(blank)
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, skapa ett tomt spel' }))
+    await waitFor(() => expect(gone).toHaveLength(1))
+    expect(gone).toHaveLength(1)
+    const stored = await run.projects.load(new URL(gone[0]!, 'http://x').searchParams.get('project')!)
+    expect(stored?.name).toBe('Kråkkriget')
+    expect(stored?.rows).toEqual([])
+  })
+
+  it('asks nothing when the guide holds only what it opened with', async () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await waitFor(() => expect(gone).toHaveLength(1))
+  })
+
   it('asks for the name the same way the guided door does, instead of standing locked', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
@@ -456,6 +496,41 @@ describe('a file that is not a picture the game can hold (#476)', () => {
     fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [new File([big], 'stor.png', { type: 'image/png' })] } })
     expect((await screen.findByRole('alert')).textContent).toBe('Bilden är större än 8 MB. Välj en mindre bild.')
     expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
+  })
+
+  // The refusal was about the picture that stayed (#732): once that picture is taken away there is
+  // nothing left for it to be about, and «Bilden är större än 8 MB» under «Ingen bild vald» reads
+  // as if the removal had been refused too.
+  it('takes the refusal away with the picture it kept', async () => {
+    open(() => undefined)
+    const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File([PNG], 'drake.png', { type: 'image/png' })] } })
+    await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })
+    const big = new Uint8Array(8 * 1024 * 1024 + 1)
+    big.set(PNG)
+    fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [new File([big], 'stor.png', { type: 'image/png' })] } })
+    expect((await screen.findByRole('alert')).textContent).toMatch(/större än 8 MB/)
+    expect(screen.getByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
+    expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
+    expect(screen.getByText('Ingen bild vald')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})
+
+// A long title on its tab (#732): «Den gamla björnen som vaktade bron över Mörkälven i tusen år»
+// was written out whole, 484 px of tab, and «Ta bort valt kort» went to a row of its own. The tab
+// draws it cut short; the whole of it is on the tab for whoever points at it or reads it.
+describe('a card s tab (#732)', () => {
+  it('keeps the whole of a long title on the tab, and the cut-short drawing to its own box', () => {
+    open(() => undefined)
+    const long = 'Den gamla björnen som vaktade bron över Mörkälven i tusen år'
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: long } })
+    const tab = document.querySelector('.byd-wizard-card-tabs > button[aria-pressed="true"]') as HTMLElement
+    expect(tab.getAttribute('title')).toBe(long)
+    expect(tab.textContent).toBe(`1${long}`)
+    expect(tab.querySelector('.byd-wizard-card-tab-title')?.textContent).toBe(long)
   })
 })
 
