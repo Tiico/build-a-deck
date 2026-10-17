@@ -70,7 +70,10 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, c
   const Heading = surface === 'page' ? 'h1' : 'h2'
   const actions = notice.actions.filter((a) => a.kind === 'retry' || (a.kind === 'switch' ? onSwitch !== undefined : links[a.kind] !== undefined))
   return (
-    <section className="byd-status" data-status-notice={notice.state} data-surface={surface} data-tone={notice.tone} {...(room ? { 'data-room-screen': room } : {})}>
+    // The room's sizes are a page's alone, so only a page says which room it stands in: the sheet
+    // can then ask for `[data-room-screen]` without `[data-surface='page']` at every rule, bytes the
+    // first frame's blocking sheet has no room for (felt-font.spec.ts).
+    <section className="byd-status" data-status-notice={notice.state} data-surface={surface} data-tone={notice.tone} {...(room && surface === 'page' ? { 'data-room-screen': room } : {})}>
       <span className="byd-status-mark">{notice.mark}</span>
       <Heading ref={headingRef} tabIndex={-1}>
         {waiting && <span className="byd-status-spin" aria-hidden="true" />}
