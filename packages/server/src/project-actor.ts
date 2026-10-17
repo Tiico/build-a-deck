@@ -25,7 +25,11 @@ export type EditorMessage =
   // `from` is the editor whose save made the version (#988), so that one takes it for its answer
   // and nobody else does; a version written over HTTP is nobody's line and names none.
   | { v: 'saved'; rev: number; from?: string }
-  | { v: 'refused'; why: string }
+  // `to` is which of the editor's requests the refusal answers (#991), so a refused edit never ends
+  // the wait of a save in the air, nor the other way round. A request that could not be read is
+  // neither and names none; neither does a server from before the field, so an editor reads a
+  // refusal without it the way it always did.
+  | { v: 'refused'; why: string; to?: 'edit' | 'save' }
 export type Presence = { id: string; name: string; role?: Role }
 
 export class ProjectActor {

@@ -6,9 +6,21 @@ import { EditSocket } from './setup.js'
 // was sent — only late. That is the order a busy machine falls into by accident, where the version
 // is made and in the store and the word that says so is still on the line when the next save is
 // asked for; here it is made certain rather than hoped for.
+//
+// The editor's own requests can be held the same way on their way out (#991): an edit that leaves
+// late reaches the actor after a colleague's edit it never heard of, which is how an edit comes to
+// be refused while a save of the same editor's is in the air.
 export class SavedHeldBack {
   private readonly held: { line: WebSocketLike; event: { data: unknown } }[] = []
   private holding = true
+  private readonly asked: { line: WebSocketLike; data: string }[] = []
+  private holdingAsked = false
+  // What the actor has said on this line and the editor has been let hear, by kind, in order.
+  readonly heard: string[] = []
+
+  // `unaddressed`: the line of a server from before #991, whose refusals do not say which request
+  // they answer. The field is taken off on the way in and nothing else is touched.
+  constructor(private readonly opts: { unaddressed?: boolean } = {}) {}
 
   /** How many «saved» are waiting. */
   get waiting(): number {
@@ -18,7 +30,27 @@ export class SavedHeldBack {
   /** Lets every held «saved» through, in the order it came, and holds nothing after. */
   release(): void {
     this.holding = false
-    for (const { line, event } of this.held.splice(0)) line.onmessage?.(event)
+    for (const { line, event } of this.held.splice(0)) this.hear(line, event)
+  }
+
+  private hear(line: WebSocketLike, event: { data: unknown }): void {
+    const frame = JSON.parse(String(event.data)) as { v: string; to?: string }
+    this.heard.push(frame.v)
+    if (this.opts.unaddressed && frame.v === 'refused' && 'to' in frame) {
+      const { to: _to, ...before991 } = frame
+      line.onmessage?.({ data: JSON.stringify(before991) })
+    } else line.onmessage?.(event)
+  }
+
+  /** Holds what the editor sends from now on, until `letOut`. */
+  holdRequests(): void {
+    this.holdingAsked = true
+  }
+
+  /** Sends every held request, in the order it was written, and holds none after. */
+  letOut(): void {
+    this.holdingAsked = false
+    for (const { line, data } of this.asked.splice(0)) line.send(data)
   }
 
   readonly Line: EditSocketCtor = ((gate: SavedHeldBack) =>
@@ -34,15 +66,17 @@ export class SavedHeldBack {
         this.line.onclose = (event) => this.onclose?.(event)
         this.line.onerror = () => this.onerror?.()
         this.line.onmessage = (event) => {
-          if (gate.holding && (JSON.parse(String(event.data)) as { v: string }).v === 'saved') gate.held.push({ line: this, event })
-          else this.onmessage?.(event)
+          const said = (JSON.parse(String(event.data)) as { v: string }).v
+          if (gate.holding && said === 'saved') gate.held.push({ line: this, event })
+          else gate.hear(this, event)
         }
       }
       get readyState(): number {
         return this.line.readyState
       }
       send(data: string): void {
-        this.line.send(data)
+        if (gate.holdingAsked) gate.asked.push({ line: this.line, data })
+        else this.line.send(data)
       }
       close(): void {
         this.line.close()
