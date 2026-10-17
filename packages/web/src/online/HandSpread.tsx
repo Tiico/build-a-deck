@@ -61,10 +61,10 @@ export function HandSpread({ cards, faces, onOpen, onClose, columns }: HandSprea
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="byd-hand-sheet" role="dialog" aria-label={t('online.spread.label', { n })}>
+      <div className="byd-hand-sheet" role="dialog" aria-label={t(n === 1 ? 'online.spread.label.one' : 'online.spread.label.other', { n })}>
         <div className="byd-hand-sheet-head">
           <strong>{t('online.spread.title')}</strong>
-          <span>{t('online.spread.count', { n })}</span>
+          <span>{t(n === 1 ? 'online.spread.count.one' : 'online.spread.count.other', { n })}</span>
           <button type="button" onClick={onClose}>
             {t('online.spread.close')}
           </button>
