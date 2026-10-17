@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
+import { logIn } from '../../support/api.js'
 
 // The felt's face has to be in the document before the first painting (#95).
 //
@@ -227,10 +228,15 @@ test.describe('the editor is not weighed against the felt’s face (#186)', () =
       // And the mark a card is told about with (#802, #808), which the guided start draws too and
       // fetches only once a text does not fit — so it travels in a sheet of its own, shared by both.
       const marks = later.filter((p) => /\.byd-overset-frame(?![a-z0-9-])/.test(read(p)) && !/\.byd-editor-spacer(?![a-z0-9-])/.test(read(p)))
-      expect(later.length - books.length - marks.length).toBe(1)
+      // And since #984 the pieces the editor shares with the designer's other pages — the stepper,
+      // the theme tile, the game menu — which the guide and the home page draw too, and which left
+      // the blocking sheet with them.
+      const shared = later.filter((p) => /\.byd-(stepper|theme-tile|game-menu)(?![a-z0-9-])/.test(read(p)) && !/\.byd-editor-spacer(?![a-z0-9-])/.test(read(p)))
+      expect(shared.filter((p) => books.includes(p) || marks.includes(p))).toEqual([])
+      expect(later.length - books.length - marks.length - shared.length).toBe(1)
       expect(books.length).toBeLessThanOrEqual(1)
       expect(marks.length).toBeLessThanOrEqual(1)
-      const second = read(later.find((p) => !books.includes(p) && !marks.includes(p))!)
+      const second = read(later.find((p) => !books.includes(p) && !marks.includes(p) && !shared.includes(p))!)
       expect(editorsOwnClasses().filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(second)).length).toBeGreaterThan(20)
     }
   })
@@ -418,12 +424,17 @@ const modules = filesUnder(SRC).filter((f) => /\.(tsx?|css)$/.test(f))
 // same, so its sheets ride on the entry (`first-frame-sheets.ts`). A route answered with
 // `Promise.resolve(…)` is drawn by the entry itself. And the editor's wrapper waits behind a
 // `lazy()` with a page of its own — the one route whose sheet is fetched with it (#186).
-type Route = { path: string; component: string; module: string | null; how: 'fetched' | 'entry' | 'lazy' }
+//
+// And a fetched route is one of two kinds since #984. The felt and the phone — the routes that ask
+// for the `play` words — are what L20 and L40 are about, and their sheets ride on the entry. The
+// designer's pages (`/`, `/login`, `/new`, …) wait for their chunk anyway, and their sheets travel
+// with it as the editor's does, rather than blocking every phone's first painting on the guide.
+type Route = { path: string; component: string; module: string | null; how: 'fetched' | 'entry' | 'lazy'; play: boolean }
 const routeTable = (): Route[] => {
   const app = join(SRC, 'App.tsx')
   const text = sourceOf(app)
-  const fetched = [...text.matchAll(/path(?:\.startsWith\(|\s*===\s*)'([^']+)'\)?\)\s*return\s+surface\(import\('([^']+)'\)\.then\(\(m\)\s*=>\s*m\.([A-Z][A-Za-z0-9]*)\)/g)].map(
-    (m): Route => ({ path: m[1]!, component: m[3]!, module: resolveSpec(app, m[2]!), how: 'fetched' }),
+  const fetched = [...text.matchAll(/path(?:\.startsWith\(|\s*===\s*)'([^']+)'\)?\)\s*return\s+surface\(import\('([^']+)'\)\.then\(\(m\)\s*=>\s*m\.([A-Z][A-Za-z0-9]*)\),\s*\[([^\]]*)\]\)/g)].map(
+    (m): Route => ({ path: m[1]!, component: m[3]!, module: resolveSpec(app, m[2]!), how: 'fetched', play: /'play'/.test(m[4]!) }),
   )
   const importedFrom = (name: string): { module: string | null; how: Route['how'] } | null => {
     const asLazy = new RegExp(`\\b${name}\\s*=[^\\n]*\\blazy\\(\\s*\\(\\)\\s*=>\\s*import\\(\\s*['"]([^'"]+)['"]`).exec(text)
@@ -437,7 +448,7 @@ const routeTable = (): Route[] => {
     return inner ? importedFrom(inner[1]!) : null
   }
   const resolved = [...text.matchAll(/path(?:\.startsWith\(|\s*===\s*)'([^']+)'\)?\)\s*return\s+surface\(Promise\.resolve\(([A-Z][A-Za-z0-9]*)\)/g)].map(
-    (m): Route => ({ path: m[1]!, component: m[2]!, ...(importedFrom(m[2]!) ?? { module: null, how: 'entry' }) }),
+    (m): Route => ({ path: m[1]!, component: m[2]!, ...(importedFrom(m[2]!) ?? { module: null, how: 'entry' }), play: false }),
   )
   return [...fetched, ...resolved]
 }
@@ -445,6 +456,10 @@ const routeTable = (): Route[] => {
 // The modules a fetched route is drawn from. Reached with `import()`, but not cuts in the sense
 // below: what they draw first is drawn on the first frame of their own address.
 const fetchedRoutes = new Set(routeTable().filter((r) => r.how === 'fetched').map((r) => r.module!))
+
+// The fetched routes whose first frame is the felt's or the phone's — the ones the entry's sheets
+// are for (#984).
+const playRoutes = new Set(routeTable().filter((r) => r.how === 'fetched' && r.play).map((r) => r.module!))
 
 // Every other module anywhere under `src` that something reaches with `import()`. These are the
 // cuts: what lies beyond one is not on the first frame, whoever else happens to point at it.
@@ -476,7 +491,7 @@ const firstFrame = reachedFrom(join(SRC, 'main.tsx'))
 const drawnFirst = new Set([
   ...staticEdges(join(SRC, 'main.tsx')).filter((f) => f.endsWith('.css')),
   ...reachedFrom(join(SRC, 'App.tsx')),
-  ...[...fetchedRoutes].flatMap((m) => [...reachedFrom(m)]),
+  ...[...playRoutes].flatMap((m) => [...reachedFrom(m)]),
 ])
 
 // The classes a stylesheet is the only one to declare, read off the sources so that a renamed
@@ -499,6 +514,9 @@ test.describe('only what the first frame draws rides in the sheet it blocks on (
     expect(table.filter((r) => r.how === 'lazy').map((r) => r.component)).toEqual(['EditorRoute'])
     // The phone and the felt are fetched surfaces (#760), and the reading found them.
     expect(table.filter((r) => r.how === 'fetched').map((r) => r.path)).toEqual(expect.arrayContaining(['/play', '/join', '/table', '/observe']))
+    // And told apart from the designer's pages by the words they ask for (#984).
+    expect(table.filter((r) => r.play).map((r) => r.path)).toEqual(expect.arrayContaining(['/play', '/join', '/table', '/observe', '/online']))
+    expect(table.filter((r) => r.how === 'fetched' && !r.play).map((r) => r.path)).toEqual(expect.arrayContaining(['/', '/login', '/new']))
     // And every route the entry draws itself is in the set the entry carries.
     expect(table.filter((r) => r.how === 'entry' && !firstFrame.has(r.module!)).map((r) => r.component)).toEqual([])
     // The cuts exist and the editor's is one of them.
@@ -508,17 +526,18 @@ test.describe('only what the first frame draws rides in the sheet it blocks on (
 
   // The half of #760 that keeps L20 whole. A fetched route's script waits for its address, but its
   // sheets may not: what the phone and the felt draw first must be in the document before the
-  // first pixel. So every sheet a fetched route reaches is on the entry — and, the other way round,
-  // the entry carries no sheet that no route draws first.
-  test('carries the sheets of every fetched surface on the entry, and only those', () => {
-    const missing = [...fetchedRoutes].flatMap((route) =>
+  // first pixel. So every sheet a play route reaches is on the entry — and, the other way round,
+  // the entry carries no sheet that neither of them draws first, which since #984 is what keeps the
+  // guide's and the account's sheets with their own pages.
+  test('carries the sheets of every play surface on the entry, and only those', () => {
+    const missing = [...playRoutes].flatMap((route) =>
       [...reachedFrom(route)]
         .filter((f) => f.endsWith('.css') && !firstFrame.has(f))
         .map((f) => `${relative(WEB, f)} is drawn first by ${relative(WEB, route)} but would be fetched with its chunk — import it from first-frame-sheets.ts (#760, L20)`),
     )
     expect(missing).toEqual([])
     const unasked = [...firstFrame].filter((f) => f.endsWith('.css') && !drawnFirst.has(f))
-    expect(unasked.map((f) => `${relative(WEB, f)} rides on the entry, but no route draws it first`)).toEqual([])
+    expect(unasked.map((f) => `${relative(WEB, f)} rides on the entry, but neither the felt nor the phone draws it first — let it travel with its page's chunk (#984, L40)`)).toEqual([])
   })
 
   test('names any surface in the blocking sheet that the first frame does not draw', () => {
@@ -581,4 +600,53 @@ test.describe('only what the first frame draws rides in the sheet it blocks on (
     })
     expect(unwaited.map((f) => `${relative(WEB, f)} waits on a component that is not behind a cut — bind it with lazy(() => import(…)) (#366, L40)`)).toEqual([])
   })
+})
+
+// The designer's pages carry their sheets in their own chunk since #984, and the price of that
+// must not be a page drawn bare. The route's script and its sheet are fetched together, and the
+// `import()` the route waits on does not settle until the sheet has landed — so the first frame
+// that holds the page is already dressed. Said by a browser on a slow wire rather than by a reader
+// of the bundler: every sheet but the blocking one is held back, and the page's own element is
+// read the moment it enters the document, before anything could be painted.
+test.describe('the designer’s pages are never drawn without their own sheet (#984)', () => {
+  for (const { path, page: name, signedIn } of [
+    { path: '/login', page: 'login', signedIn: false },
+    { path: '/new', page: 'new', signedIn: true },
+    { path: '/', page: 'home', signedIn: true },
+  ]) {
+    test(`${path} is dressed in the first frame it is in`, async ({ page }) => {
+      if (signedIn) await logIn(page.request)
+      const blocking = new Set(blockingSheets(index))
+      let held = 0
+      await page.route('**/*.css', async (route) => {
+        if (!blocking.has(new URL(route.request().url()).pathname)) {
+          held++
+          await new Promise((done) => setTimeout(done, 1_500))
+        }
+        await route.continue()
+      })
+      await page.addInitScript((name) => {
+        const read = (el: Element) => {
+          const s = getComputedStyle(el)
+          return [s.display, s.backgroundColor, s.paddingTop, s.maxWidth].join(' | ')
+        }
+        new MutationObserver((_, watch) => {
+          const el = document.querySelector(`[data-page='${name}']`)
+          if (!el) return
+          ;(window as unknown as { firstSeen: string }).firstSeen = read(el)
+          watch.disconnect()
+        }).observe(document, { childList: true, subtree: true })
+      }, name)
+      await page.goto(path)
+      const own = page.locator(`[data-page='${name}']`)
+      await expect(own).toBeVisible({ timeout: 20_000 })
+      // Not vacuous: the page's own sheet was one of those held back.
+      expect(held).toBeGreaterThan(0)
+      const now = await own.evaluate((el) => {
+        const s = getComputedStyle(el)
+        return [s.display, s.backgroundColor, s.paddingTop, s.maxWidth].join(' | ')
+      })
+      expect(await page.evaluate(() => (window as unknown as { firstSeen?: string }).firstSeen)).toBe(now)
+    })
+  }
 })
