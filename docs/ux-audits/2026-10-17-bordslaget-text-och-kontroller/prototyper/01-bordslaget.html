@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Bordsläget utan telefoner (#682)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#682) ──────────────────────────────────────────────────────────────────────
+     Bordsläget (`/table?mode=table`) utan telefoner: ett avvisat drag sägs bara i en 1 × 1 px
+     live-region, och ångra och avsluta finns inte på skärmen. Två frågor:
+       1. Var står en kort rad som säger varför ett drag avvisades och vad som hände, och hur
+          tonar den bort?                                                         → ?v=
+       2. Ångra och avsluta: en diskret väg på skärmen, eller en skärm som säger var det görs?  → ?k=
+     Varje bild är det BYGGDA appen (packages/e2e-stacken med renderaren igång) i Chromium:
+     provleken Sal's Saloon för fyra, ingen som sitter, spelet startat, fyra kort spelade. Raden
+     läser appens egna live-regioner, så meningarna är produktens. Inget är ritat för hand.
+     Skripten ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 120px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  main { flex: 1 1 auto; display: grid; gap: 24px; padding: 16px; background: #15171c; }
+  section.fraga { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-content: start; }
+  @media (max-width: 1100px) { section.fraga { grid-template-columns: minmax(0, 1fr); } }
+  section.fraga > h2 { grid-column: 1 / -1; margin: 0; color: #fff; font-size: 16px; }
+  .bilder { display: grid; gap: 12px; min-width: 0; }
+  .bilder.tre { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 1400px) { .bilder.tre { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; margin: 0; }
+  .bild img { display: block; width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild figcaption { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; line-height: 1.45; }
+  .bild figcaption b { color: #e6ecfa; }
+  .sido { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h3 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; font-size: 13px; }
+  .ruta ul { margin: 0; padding-left: 18px; color: #c9d1e3; font-size: 13px; line-height: 1.5; }
+  .ruta .plus { color: #b7dca0; }
+  .ruta .minus { color: #f0a58a; }
+  table.m { border-collapse: collapse; font-size: 12px; width: 100%; }
+  table.m th, table.m td { border-top: 1px solid #2f333d; padding: 4px 5px; text-align: right; color: #c9d1e3; vertical-align: top; }
+  table.m th:first-child, table.m td:first-child { text-align: left; }
+  table.m th { color: var(--quiet-2); font-weight: 600; }
+  table.m td.lag { color: #ff9fae; font-weight: 700; }
+  table.m tr.vald td { background: #1d2a40; }
+</style>
+</head>
+<body>
+<header class="krona">
+  <h1>Prototyp 01 — Bordsläget utan telefoner (#682) · <span style="color:var(--quiet-2);font-weight:400">PROTOTYP, slängs när beslutet står i D5/K13/K14</span></h1>
+  <div class="rad" id="v"><span>1 · Var raden står</span></div>
+  <div class="rad" id="k"><span>2 · Ångra och avsluta</span></div>
+  <div class="rad" id="w"><span>Skärm</span></div>
+</header>
+<main>
+  <section class="fraga" id="f1">
+    <h2>Fråga 1 — var står raden, och hur tonar den bort?</h2>
+    <div class="bilder tre" id="bilder1"></div>
+    <aside class="sido">
+      <div class="ruta" id="om1"></div>
+      <div class="ruta"><h3>Mätt i Chromium, alla tre skärmarna</h3><table class="m" id="tal1"></table>
+        <p style="margin-top:8px">«Syns efter» är tiden från släppet (eller trycket på «Blanda») till första bildrutan där ett element med meningen står ogenomskinligt, inom fönstret och inte täckt — acceptansens 300 ms. «Täcker» räknar kort, högarnas toppar och bildtexter, namn, brickor och bordets knappar under raden. «Kant» är plattans kant mot marken runt den (fyllning eller kritkant, det som syns mest; WCAG 1.4.11 vill 3:1). Texten mot plattan är 14,4:1 i alla varianter.</p></div>
+    </aside>
+  </section>
+  <section class="fraga" id="f2">
+    <h2>Fråga 2 — ångra och avsluta</h2>
+    <div class="bilder tre" id="bilder2"></div>
+    <aside class="sido">
+      <div class="ruta" id="om2"></div>
+      <div class="ruta"><h3>Mätt</h3><table class="m" id="tal2"></table></div>
+    </aside>
+  </section>
+  <section class="fraga" style="grid-template-columns:minmax(0,1fr)">
+    <div class="ruta" id="main-gor"></div>
+  </section>
+</main>
+<script src="data.js"></script>
+<script src="varianter.js"></script>
+<script>
+  const q = new URLSearchParams(location.search)
+  const st = { v: q.get('v') ?? REK.v, k: q.get('k') ?? REK.k, w: q.get('w') ?? '1280' }
+  const SKARMAR = { 1024: '1024 × 768', 1280: '1280 × 800', 1920: '1920 × 1080' }
+  const SCENER1 = { blandat: '700 ms efter «Blanda»', avvisat: '450 ms efter släppet på C', efterat: '8 s efter släppet' }
+  const SCENER2 = { vila: 'I vila, efter «Blanda»', meny: 'Menyn öppen', fraga: '«Avsluta» frågar' }
+  const knappar = (id, alla, key) => {
+    const rad = document.getElementById(id)
+    for (const [k, d] of Object.entries(alla)) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = typeof d === 'string' ? d : d.namn + (d.rek ? ' ★' : '')
+      if (d.rek) b.classList.add('rek')
+      b.dataset.k = k
+      b.onclick = () => { st[key] = k; rita() }
+      rad.append(b)
+    }
+  }
+  knappar('v', V, 'v'); knappar('k', K, 'k'); knappar('w', SKARMAR, 'w')
+  const ms = (t) => (t === undefined || t === null ? '–' : `${t} ms`)
+  const figur = (file, alt, cap) => {
+    const f = document.createElement('figure')
+    f.className = 'bild'
+    f.innerHTML = `<a href="img/${file}"><img src="img/${file}" alt="${alt}" loading="lazy"></a><figcaption>${cap}</figcaption>`
+    return f
+  }
+  function rita() {
+    for (const [id, key] of [['v', 'v'], ['k', 'k'], ['w', 'w']]) for (const b of document.querySelectorAll(`#${id} button`)) b.setAttribute('aria-pressed', String(b.dataset.k === st[key]))
+    history.replaceState(null, '', `?v=${st.v}&k=${st.k}&w=${st.w}`)
+    // Fråga 1
+    document.getElementById('bilder1').replaceChildren(...Object.entries(SCENER1).map(([s, txt]) => {
+      const m = MATT.find((r) => r.q === 1 && r.v === st.v && String(r.w) === st.w && r.scene === s)
+      if (!m) return figur('', '', 'saknas')
+      const rad = m.items.find((i) => /rad/.test(i.kind))
+      const t = m.timings.at(-1)
+      const cap = `<b>${txt}</b> · ${SKARMAR[st.w]}` + (rad ? ` — ${rad.font} px, ${rad.lines} rad${rad.lines > 1 ? 'er' : ''}, ${rad.rect.w} × ${rad.rect.h} px, täcker ${rad.hits.length ? rad.hits.join(', ') : 'inget'}` : ' — ingen rad på skärmen') + (s !== 'efterat' && t ? `; syns efter ${ms(t.ms)}` : '')
+      return figur(m.file, `${V[st.v].namn}, ${txt}, ${SKARMAR[st.w]}`, cap)
+    }))
+    document.getElementById('om1').innerHTML = `<h3>${V[st.v].namn}</h3>${V[st.v].om}`
+    const t1 = document.getElementById('tal1')
+    t1.innerHTML = '<tr><th>Variant · skärm</th><th>Syns efter (avvisat / blandat)</th><th>Rader</th><th>Täcker</th><th>Kant</th></tr>' + Object.keys(V).flatMap((v) => Object.keys(SKARMAR).map((w) => {
+      const a = MATT.find((r) => r.q === 1 && r.v === v && String(r.w) === w && r.scene === 'avvisat')
+      const b = MATT.find((r) => r.q === 1 && r.v === v && String(r.w) === w && r.scene === 'blandat')
+      if (!a || !b) return ''
+      const ra = a.items.find((i) => /rad/.test(i.kind))
+      const rb = b.items.find((i) => /rad/.test(i.kind))
+      const ta = a.timings.at(-1)?.ms
+      const tb = b.timings.at(-1)?.ms
+      const hits = [...(ra?.hits ?? []), ...(rb?.hits ?? [])]
+      const kant = Math.min(ra?.ground?.min ?? 99, rb?.ground?.min ?? 99)
+      const bad = (x, g) => (x === undefined || x === null ? ' class="lag"' : x > g ? ' class="lag"' : '')
+      return `<tr class="${v === st.v && w === st.w ? 'vald' : ''}"><td>${V[v].kort} · ${w}</td><td${v === 'nu' ? ' class="lag"' : ''}>${v === 'nu' ? 'aldrig' : `<span${bad(ta, 300)}>${ms(ta)}</span> / <span${bad(tb, 300)}>${ms(tb)}</span>`}</td><td>${ra ? `${ra.lines} / ${rb?.lines ?? '–'}` : '–'}</td><td${hits.length ? ' class="lag"' : ''}>${v === 'nu' ? '–' : hits.length ? [...new Set(hits)].join(', ') : '0'}</td><td${kant < 3 ? ' class="lag"' : ''}>${kant === 99 ? '–' : kant.toFixed(1)}</td></tr>`
+    })).join('')
+    // Fråga 2
+    document.getElementById('bilder2').replaceChildren(...Object.entries(SCENER2).flatMap(([s, txt]) => {
+      const m = MATT.find((r) => r.q === 2 && r.k === st.k && String(r.w) === st.w && r.scene === s)
+      if (!m) return []
+      const hits = m.items.flatMap((i) => i.hits)
+      return [figur(m.file, `${K[st.k].namn}, ${txt}, ${SKARMAR[st.w]}`, `<b>${txt}</b> · ${SKARMAR[st.w]} · raden enligt ${V[m.v].kort} — täcker ${hits.length ? [...new Set(hits)].join(', ') : 'inget'}`)]
+    }))
+    document.getElementById('om2').innerHTML = `<h3>${K[st.k].namn}</h3>${K[st.k].om}`
+    const t2 = document.getElementById('tal2')
+    t2.innerHTML = '<tr><th>Variant · skärm</th><th>Scen</th><th>Täcker</th><th>Krockar med raden</th></tr>' + MATT.filter((r) => r.q === 2 && r.k === st.k).map((m) => {
+      const hits = [...new Set(m.items.flatMap((i) => i.hits))]
+      const self = [...new Set(m.items.flatMap((i) => i.self))]
+      return `<tr class="${String(m.w) === st.w ? 'vald' : ''}"><td>${K[m.k].kort} · ${m.w}</td><td>${m.scene}</td><td${hits.length ? ' class="lag"' : ''}>${hits.length ? hits.join(', ') : '0'}</td><td${self.length ? ' class="lag"' : ''}>${self.length ? self.join(', ') : '0'}</td></tr>`
+    }).join('')
+    document.getElementById('main-gor').innerHTML = MAIN_GOR
+  }
+  rita()
+</script>
+</body>
+</html>
