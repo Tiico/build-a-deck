@@ -58,7 +58,25 @@ export const SHELL_STYLE = [
   '#byd-shell button:focus-visible{outline:3px solid #7dd3a0;outline-offset:2px}',
   '@media (prefers-reduced-motion:reduce){#byd-shell .r{animation:none;border-style:dashed;border-top-color:currentcolor;opacity:.75}}',
   '@media (max-width:700px){#byd-shell{padding:20px}#byd-shell h1{font-size:22px}}',
+  // The room's two shared screens, in the same sizes as the page form there (#925, `status.css`):
+  // table mode at the room's floor, and the TV at K26's numbers for the TV.
+  '#byd-shell[data-room-screen]{font-size:24px;gap:18px;padding:48px}',
+  '#byd-shell[data-room-screen] .m{font-size:24px;letter-spacing:.08em}',
+  '#byd-shell[data-room-screen] h1{font-size:36px;gap:.4em}',
+  '#byd-shell[data-room-screen] p{max-width:40ch}',
+  '#byd-shell[data-room-screen] button{font-size:24px;min-height:56px;padding:0 .9em;border-radius:12px}',
+  '#byd-shell[data-room-screen] .r{width:30px;height:30px;border-width:3.75px}',
+  "#byd-shell[data-room-screen='tv']{font-size:32px;gap:22px;padding:64px}",
+  "#byd-shell[data-room-screen='tv'] h1{font-size:48px}",
+  "#byd-shell[data-room-screen='tv'] p{max-width:36ch}",
+  "#byd-shell[data-room-screen='tv'] button{font-size:28px;min-height:64px}",
+  "#byd-shell[data-room-screen='tv'] .r{width:40px;height:40px;border-width:5px}",
 ].join('')
+
+// The address that is the room's shared screen, in either of its modes (`TablePage`): the mode is
+// in the query, `?mode=tv` for the TV and anything else for table mode, so the path alone cannot
+// tell the two apart.
+export const SHELL_ROOM_PATH = '/table'
 
 // The markup, empty of words: `fillShell` writes them in for the address and the language before the
 // first painting. The `<noscript>` lines are the exception, since nothing runs to write them.
@@ -101,9 +119,10 @@ export const shellTimes = (): [number, number] => [DEFAULT_TIMING.slowAfterMs, S
 // Fills the shell's words in for this address and this language, and changes them when the wait
 // grows long. It runs in the page before anything else has arrived, inlined by its source, so it
 // reaches for nothing outside itself: everything it needs is handed to it.
-export function fillShell(d: Document, all: Record<'sv' | 'en', ShellWords>, voices: Record<string, Voice | undefined>, at: [number, number]): void {
+export function fillShell(d: Document, all: Record<'sv' | 'en', ShellWords>, voices: Record<string, Voice | undefined>, at: [number, number], room: string): void {
   const shell = d.getElementById('byd-shell')
   if (!shell) return
+  if (location.pathname === room) shell.setAttribute('data-room-screen', new URLSearchParams(location.search).get('mode') === 'tv' ? 'tv' : 'table')
   const w = all[d.documentElement.lang === 'en' ? 'en' : 'sv']
   const said = w[voices[location.pathname] ?? 'app']
   const put = (k: string, text: string) => {

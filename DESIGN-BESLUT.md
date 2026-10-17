@@ -1255,6 +1255,18 @@ När det redan dröjer är den 0–4,5 %: appens dröjer-besked har sina två v�
 Grind: `packages/e2e/test/surfaces/shell.spec.ts`.
 TV:ns rubrik på 26 px, som skalet ärver från sidformen, är en egen fråga (#925).
 
+Tillägg 2026-10-17 (#925, beställarens beslut efter prototyp, variant B av tre): **sidformen och skalet ritas i rummets storlekar på bordets två skärmar.**
+Sidformen ritade märket i 12 px, rubriken i 26 och texten och knapparna i 14 på varje skärm, så allt på TV:ns statussida låg under K26:s golv och texten på hälften av det.
+På TV:n (`/table?mode=tv`) är märket nu 24 px, rubriken 48, texten 32 och knapparna 28 px med 64 px höjd.
+I bordsläget (`/table` i övrigt) får sidan rummets golv: märket 24, rubriken 36, texten 24 och knapparna 24 med 56 px höjd, eftersom den delade skärmen mitt på bordet läses från andra sidan av det.
+Talen är fasta px som resten av rummets krom, så en TV på 1280 och på 1920 säger samma sak lika stort.
+Sidan säger vilken skärm den står på med `data-room-screen`, som bordets sida sätter; alla andra rutter har kvar sidformens storlekar.
+Skalet tar samma storlekar, så övertagandet fortfarande byter ord och inte bild, och läser därför `?mode=tv` och inte bara sökvägen: `/table` är båda skärmarna.
+Kortformen mitt på filten (rubrik 28, text 17) och «Bordet är slut» på TV:n omfattas inte av beslutet.
+De två avvisade varianterna stod i prototypen: A lade allt på golvet 24 och lät bordsläget stå kvar, och C skalade med fönstrets höjd, så samma TV läste olika beroende på vilken upplösning webbläsaren uppgav.
+Prototypen och mätningen står i `docs/ux-audits/2026-10-08-statussidan-tv/prototyper/`.
+Grind: `packages/e2e/test/surfaces/room-status-page.spec.ts`, som läser varje ords beräknade storlek och blockets rektangel i lägena laddar, dröjer, ansluter, nätfel, saknas och stängt på TV:n vid 1280 × 720 och 1920 × 1080 och i bordsläget vid 1280 × 800.
+
 ---
 
 ## E. Editorn
@@ -3493,6 +3505,11 @@ Med två räknare per plats står två namnlösa tal i platsens remsa; det är p
 Handen sägs kort, «5 kort» och inte «5 kort på hand», med samma ord som spalten använder när den är tät.
 Var skylten står, och brickan som sista utväg i stället för #750:s kapning, står i K19:s revision 2026-10-05.
 Inget nytt går på tråden: skylten och marken visar det TV:n redan fick.
+
+Tillagt 2026-10-17 (#925, beställarens beslut B efter prototyp): **D5:s statussida och skalet följer tabellen på TV:n och golvet i bordsläget.**
+På TV:n ritas sidan med tabellens egna tal: brödtexten 32 px, rubriken 48, märket på golvet 24 och knapparna 28 px med 64 px höjd.
+Bordslägets statussida räknas som rummet och inte som skrivbordet, trots att bordslägets lyft gör det, eftersom den läses av alla runt bordet: märket 24, rubriken 36, texten 24 och knapparna 24 med 56 px höjd.
+Talen är fasta px och skalar inte med fönstret; hur det byggts står i D5:s tillägg samma dag.
 
 ### K27. Kortets tryck hörs i läsvyn, och observatörens platser är listor (prototypat 2026-09-29, beslutat 2026-09-30, #551)
 

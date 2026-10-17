@@ -1,5 +1,5 @@
 import { blocksView } from './notice.js'
-import { StatusNotice, type StatusLinks, type Surface } from './StatusNotice.js'
+import { StatusNotice, type RoomScreen, type StatusLinks, type Surface } from './StatusNotice.js'
 import type { LiveStatus } from './useLiveStatus.js'
 
 export type RouteStatusProps = {
@@ -9,12 +9,14 @@ export type RouteStatusProps = {
   over: Surface
   links: StatusLinks
   onRetry: () => void
+  // The room's screen this route is, which draws its page in the room's sizes (#925).
+  room?: RoomScreen
 }
 
 // The one place a route says which of the nine states it is in. The state and the words come
 // from the model; the route contributes only where the message stands and where its ways out
 // lead.
-export function RouteStatus({ status, over, links, onRetry }: RouteStatusProps) {
+export function RouteStatus({ status, over, links, onRetry, room }: RouteStatusProps) {
   if (!status.notice) return null
   const surface = blocksView(status.notice.state) ? 'page' : over
   return (
@@ -25,6 +27,7 @@ export function RouteStatus({ status, over, links, onRetry }: RouteStatusProps) 
       onRetry={onRetry}
       countdown={status.countdown}
       asOf={surface === 'page' ? null : status.asOf}
+      {...(room ? { room } : {})}
     />
   )
 }

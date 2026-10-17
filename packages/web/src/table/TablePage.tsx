@@ -146,14 +146,14 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const site = location.host
 
   // A link with no room in it is a link to a room that does not exist.
-  if (!sessionId) return <StatusNotice notice={unlinked('table', t)} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={unlinked('table', t)} surface="page" links={links} room={mode} />
   // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
   // A table whose game was taken away (#676) is gone with it: the code that stood here is spent,
   // which is D5's «saknas», said as what happened — never «another account's», which it is not.
-  if (gameDeleted) return <StatusNotice notice={{ ...noticeFor('missing', 'table', t), heading: t('status.deleted.table.heading'), text: t('status.deleted.table.text') }} surface="page" links={links} />
-  if (refused) return <StatusNotice notice={tableShut(account, t)} surface="page" links={links} onSwitch={switchAccount} />
+  if (gameDeleted) return <StatusNotice notice={{ ...noticeFor('missing', 'table', t), heading: t('status.deleted.table.heading'), text: t('status.deleted.table.text') }} surface="page" links={links} room={mode} />
+  if (refused) return <StatusNotice notice={tableShut(account, t)} surface="page" links={links} onSwitch={switchAccount} room={mode} />
   // Nothing behind worth protecting: the message is the whole screen, in the room's own words.
-  if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+  if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} room={mode} />
 
   // A proposed rewind (C): the screen shows the table as it was at the target and who is waited
   // on. It has no buttons — the phones decide, and an ended table has nobody left to decide.
@@ -253,7 +253,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         {felt.panel}
         {ended}
       </div>
-      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} room={mode} />
     </>
   )
 }

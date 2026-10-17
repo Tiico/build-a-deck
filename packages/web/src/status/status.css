@@ -176,6 +176,72 @@
   font-size: 26px;
 }
 
+/* The page on the room's two shared screens (#925, beslut B 2026-10-17, K26, D5): the TV is read
+   from a sofa three metres away, so it takes K26's own numbers for the TV — the floor of 24 for the
+   mark and the text the room reads at 32, under a heading of 48 and over buttons of 28 that stand
+   64 high. Table mode is the shared screen in the middle of the table, read from the other side of
+   it, and takes the room's floor: 24 / 36 / 24 / 24, with buttons 56 high. Fixed px, like the rest
+   of the room's chrome, so a TV at 1280 and at 1920 says the same thing equally large. The shell
+   (`shell.ts`) draws the same numbers, so the handover still changes the words and not the
+   picture. */
+.byd-status[data-surface='page'][data-room-screen] {
+  --room-mark: 24px;
+  --room-h: 36px;
+  --room-text: 24px;
+  --room-btn: 24px;
+  --room-btn-h: 56px;
+  --room-spin: 30px;
+  font-size: var(--room-text);
+  gap: 18px;
+  padding: 48px;
+}
+.byd-status[data-surface='page'][data-room-screen='tv'] {
+  --room-h: 48px;
+  --room-text: 32px;
+  --room-btn: 28px;
+  --room-btn-h: 64px;
+  --room-spin: 40px;
+  gap: 22px;
+  padding: 64px;
+}
+.byd-status[data-surface='page'][data-room-screen] .byd-status-mark {
+  font-size: var(--room-mark);
+  letter-spacing: 0.08em;
+}
+.byd-status[data-surface='page'][data-room-screen] h1 {
+  font-size: var(--room-h);
+  gap: 0.4em;
+}
+.byd-status[data-surface='page'][data-room-screen] p {
+  max-width: 40ch;
+}
+.byd-status[data-surface='page'][data-room-screen='tv'] p {
+  max-width: 36ch;
+}
+.byd-status[data-surface='page'][data-room-screen] .byd-status-acts {
+  gap: 12px;
+  padding-top: 6px;
+}
+.byd-status[data-surface='page'][data-room-screen] .byd-status-act {
+  font-size: var(--room-btn);
+  min-height: var(--room-btn-h);
+  padding: 0 0.9em;
+  border-radius: 12px;
+}
+.byd-status[data-surface='page'][data-room-screen] .byd-status-spin {
+  width: var(--room-spin);
+  height: var(--room-spin);
+  border-width: calc(var(--room-spin) / 8);
+}
+.byd-status[data-surface='page'][data-room-screen] .byd-status-countdown {
+  gap: 0.4em;
+}
+.byd-status[data-surface='page'][data-room-screen] .byd-status-countdown .byd-status-spin {
+  width: 0.9em;
+  height: 0.9em;
+  border-width: 0.12em;
+}
+
 /* card — mid-felt, so that a room three metres from the TV can read it while still seeing the
    table it is about. */
 .byd-status[data-surface='card'] {
