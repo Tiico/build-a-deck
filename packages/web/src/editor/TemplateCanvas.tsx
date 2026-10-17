@@ -10,7 +10,7 @@ import { StepPill } from './StepPill.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
-import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { AssetImage } from './AssetImage.js'
@@ -33,6 +33,8 @@ import { useT, type Key, type T, useLang } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { useSay } from '../status/StatusLive.js'
 import { DragDoor } from './DragDoor.js'
+import { OversetMarks } from './OversetMarks.js'
+import { useCut } from './overset.js'
 import { placeholderOf, PLACEHOLDER_WORDS, THIN_PX, type Placeholder, type PlaceholderCase } from './placeholder.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 
@@ -129,6 +131,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The face the open tab is about (#13): with a group open, the face as it stands, so the group
   // is applied; with no group open, the face without its grouping rule, which is the base.
   const tabFace = useMemo(() => faceOfTab(faceTemplate, group), [faceTemplate, group])
+  // The texts on the card shown that the fitting could not fit even shrunk (#808), as the card's own
+  // fitting measured them: marked on the canvas the way they are on the wall and in the guide.
+  const [cut, onMeasured] = useCut()
   // What the card is compiled from, worked out once per part of the document it is read from. Both
   // build a fresh object every call, and the compiler is memoised on identity — so without this the
   // card is compiled again for every re-render of the canvas, which is every pointer move of a drag
@@ -429,7 +434,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} />}
+            onMeasured={onMeasured}
+            overlay={<><DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} /><OversetMarks found={oversetOf(tabFace, rowData, cut)} scale={zoom.scale} zoomed /></>}
           />
         </section>
           <ZoomBand zoom={zoom} />
@@ -1792,8 +1798,8 @@ function PlaceholderFrame({ id, of, thin }: { id: string; of: Placeholder; thin:
   const field = 'field' in of ? { field: of.field } : undefined
   const sentence = t(words.sentence, field)
   return (
-    <span className="byd-placeholder" data-placeholder={`${of.kind}.${of.why}`} {...(thin ? { 'data-thin': '' } : {})}>
-      <span className="byd-placeholder-tag" id={id} role="img" aria-label={sentence} title={sentence}>
+    <span className="byd-mark byd-placeholder" data-placeholder={`${of.kind}.${of.why}`} {...(thin ? { 'data-thin': '' } : {})}>
+      <span className="byd-mark-tag byd-placeholder-tag" id={id} role="img" aria-label={sentence} title={sentence}>
         <i aria-hidden="true">{TOOLS.find((tool) => tool.id === of.kind)?.glyph}</i>
         <span>{t(thin ? words.short : words.long, field)}</span>
       </span>

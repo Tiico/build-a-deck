@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { contrastRatio, distance, simulate, validateCard, type Issue } from '../src/validate.js'
+import type { FitReport } from '../src/dom-fit.js'
 import type { Element, FaceTemplate } from '../src/model.js'
 
 const face = (base: Element[]): FaceTemplate => ({ base, variants: {} })
@@ -152,5 +153,34 @@ describe('a see-through shape (E5, #317)', () => {
     ]
     expect(codes(check(pair({}))).filter((c) => c.startsWith('colour-only'))).toEqual(['colour-only:warning'])
     expect(codes(check(pair({ opacity: 0 }))).filter((c) => c.startsWith('colour-only'))).toEqual([])
+  })
+})
+
+// Text that does not fit even at the smallest size E6 allows (#808). Whether it fits is a question
+// only the one renderer can answer (E2): the check is handed what the DOM fitting measured, as the
+// fitting is handed a measurer, and says nothing about a card nobody has measured.
+describe('text that does not fit even shrunk (E6, #808)', () => {
+  const fitted = (over: Partial<FitReport> = {}): FitReport => ({ element: 'body', sizePt: 6, minPt: 6, overflow: true, empty: false, hidden: 4, ...over })
+  const measured = (base: Element[], reports: FitReport[], row = {}): Issue[] =>
+    validateCard({ type: CARD_STANDARD_63x88, face: face(base), row, fonts: PINNED, fitted: reports })
+
+  it('says nothing of a card the renderer has not measured', () => {
+    expect(check([bg(), text({ bind: { field: 'Regeltext' } })], { Regeltext: 'Lång text.' })).toEqual([])
+  })
+
+  it('is a warning per field the renderer could not fit, naming the column, the size and the lines lost', () => {
+    const found = measured([bg(), text({ bind: { field: 'Regeltext' } })], [fitted()], { Regeltext: 'Lång text.' })
+    expect(found).toEqual([{ element: 'body', code: 'text-overflow', severity: 'warning', values: { field: 'Regeltext', sizePt: 6, hidden: 4, fit: 'shrink' } }])
+  })
+
+  it('names a text of the template’s own by its layer, and says when it was never allowed to shrink', () => {
+    const found = measured([bg(), text({ name: 'Flavour', fit: 'fixed' })], [fitted({ sizePt: 10, hidden: 1 })])
+    expect(found.map((i) => i.values)).toEqual([{ field: 'Flavour', sizePt: 10, hidden: 1, fit: 'fixed' }])
+  })
+
+  it('counts neither a text that fits nor an empty box, nor a report about an element the card does not show', () => {
+    expect(measured([bg(), text()], [fitted({ overflow: false, hidden: 0 })])).toEqual([])
+    expect(measured([bg(), text()], [fitted({ empty: true })])).toEqual([])
+    expect(measured([bg(), text()], [fitted({ element: 'elsewhere' })])).toEqual([])
   })
 })

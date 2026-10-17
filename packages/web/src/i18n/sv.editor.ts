@@ -251,11 +251,15 @@ export const svEditor = {
   'wall.checks.fix.none': 'Den här är ett val du gör själv, så den kan inte rättas åt dig.',
   'wall.checks.fix.fonts': 'Lägg till typsnittet i Speltema ›',
   'wall.checks.fix.readOnly': 'Den som får ändra spelet kan rätta det här i mallen.',
+  'wall.checks.rows': 'Korten den gäller',
+  'wall.checks.row': '{card}: {sentence} Till raden i Tabell ›',
+  'wall.checks.row.read': '{card}: {sentence}',
   'wall.severity.error': 'fel',
   'wall.severity.warning': 'varning',
 
   // Anmärkningarna vid namn, i tryckeriets ord.
   'wall.issue.text-too-small': 'för liten text',
+  'wall.issue.text-overflow': 'text som inte ryms',
   'wall.issue.low-contrast': 'för svag kontrast',
   'wall.issue.outside-safe-area': 'för nära kanten',
   'wall.issue.short-of-bleed': 'når inte utfallet',
@@ -725,6 +729,18 @@ export const svEditor = {
   'canvas.placeholder.icons.none.sentence': 'Inga ikoner ännu — välj en ikon, eller ett fält där korten skriver {namn}.',
   'canvas.placeholder.icons.empty.short': '«{field}» tom',
   'canvas.placeholder.icons.empty.sentence': '«{field}» är tom på det här kortet — skriv {namn} i kolumnen.',
+  // A text that does not fit even shrunk, said at its box (#808).
+  'overset.tag.plain': 'Ryms inte',
+  'overset.tag.long.one': 'Ryms inte · {n} rad till',
+  'overset.tag.long.other': 'Ryms inte · {n} rader till',
+  'overset.tag.short.one': '+{n} rad',
+  'overset.tag.short.other': '+{n} rader',
+  'overset.sentence.shrink.one': '«{field}» ryms inte ens i {pt} pt: {n} rad syns inte på kortet.',
+  'overset.sentence.shrink.other': '«{field}» ryms inte ens i {pt} pt: {n} rader syns inte på kortet.',
+  'overset.sentence.shrink.plain': '«{field}» ryms inte ens i {pt} pt.',
+  'overset.sentence.fixed.one': '«{field}» ryms inte i {pt} pt: {n} rad syns inte på kortet.',
+  'overset.sentence.fixed.other': '«{field}» ryms inte i {pt} pt: {n} rader syns inte på kortet.',
+  'overset.sentence.fixed.plain': '«{field}» ryms inte i {pt} pt.',
   'canvas.props.keepRatio': 'Behåll proportioner',
   // Passa in det som är ritat i filen i stället för filen (E1): bildernas storlek jämnas ut när
   // källfilerna bär olika mycket tomrum runt motivet.
@@ -1608,6 +1624,7 @@ export const svEditor = {
   // Vad en anmärkning betyder, skriven där läsaren är: kontrollen mäter, orden sätts här.
   'wall.detail.text-too-small.error': '{sizePt} pt är under {floor} pt, som är minsta läsbara storlek för skriften',
   'wall.detail.text-too-small.warning': '{sizePt} pt är nära gränsen {floor} pt; i handen blir det litet',
+  'wall.detail.text-overflow.warning': 'Texten ryms inte i sin ruta ens i minsta graden, och det som inte ryms syns inte på kortet. Korta texten, eller gör rutan större i Mall.',
   'wall.detail.low-contrast.error': 'kontrasten mot bakgrunden är {ratio}:1, under {limit}:1',
   'wall.detail.low-contrast.warning': 'kontrasten mot bakgrunden är {ratio}:1, under {limit}:1',
   'wall.detail.short-of-bleed.error': 'når kanten men inte ut till utfallet {bleedMm} mm; snittet kan lämna en vit kant',

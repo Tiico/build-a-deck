@@ -1,13 +1,14 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { elementsFor } from './compile.js'
 import { detectScript } from './fit.js'
+import type { FitReport } from './dom-fit.js'
 import { paintOf, type Element, type FaceTemplate, type Row } from './model.js'
 
 // Physical validation (E5): the checks that catch what a screen hides. Text that looks fine at
 // arm's length is five points in the hand; two effect colours that differ only in red and green
 // are one colour to eight percent of the men at the table; a background drawn to the trim leaves
 // a white edge when the knife wanders. Warnings belong in the editor, errors block an order.
-export type IssueCode = 'text-too-small' | 'low-contrast' | 'outside-safe-area' | 'short-of-bleed' | 'hairline' | 'colour-only' | 'unpinned-font'
+export type IssueCode = 'text-too-small' | 'text-overflow' | 'low-contrast' | 'outside-safe-area' | 'short-of-bleed' | 'hairline' | 'colour-only' | 'unpinned-font'
 export type Severity = 'warning' | 'error'
 // A fault is what was measured, not a sentence about it: the words belong where the reader is,
 // in the language they are reading in (A4). `values` carries exactly what the sentence needs.
@@ -15,7 +16,11 @@ export type IssueValues = Record<string, string | number>
 export type Issue = { element: string; code: IssueCode; severity: Severity; values: IssueValues }
 // `fonts` is what the version is pinned to (B3): a family without a file of its own renders as
 // whatever the machine happens to have, which is a difference nobody sees until the print.
-export type ValidateInput = { type: ComponentTypeDef; face: FaceTemplate; row: Row; fonts?: Record<string, { stack: string; asset?: string | undefined }> }
+// `fitted` is what the one renderer measured when it fitted this card's texts (E2, E6, #808):
+// whether a text fits its box is a question about a laid-out page, so it is asked of the page that
+// drew the card and handed over here, the way the fitting is handed a measurer. A card nobody has
+// measured is said nothing about.
+export type ValidateInput = { type: ComponentTypeDef; face: FaceTemplate; row: Row; fonts?: Record<string, { stack: string; asset?: string | undefined }>; fitted?: readonly FitReport[] | undefined }
 
 // Text below the type's own minimum for the script cannot be read; a little above it is a risk.
 const SMALL_TEXT_FACTOR = 1.35
@@ -36,7 +41,7 @@ export const BLINDNESS = ['protanopia', 'deuteranopia', 'tritanopia'] as const
 export type Blindness = (typeof BLINDNESS)[number]
 type Box = { id: string; x: number; y: number; w: number; h: number; el: Element }
 
-export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[] {
+export function validateCard({ type, face, row, fonts, fitted }: ValidateInput): Issue[] {
   const issues: Issue[] = []
   const boxes = flatten(elementsFor(face, row), 0, 0, row)
   const { widthMm, heightMm } = type.physical
@@ -90,7 +95,31 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
     })
 
   issues.push(...colourOnly(boxes, row))
+  // A text E6 shrank to its floor and that still does not fit (#808): a warning, because the card
+  // can be printed — it is printed without those lines — and the designer is the one to say
+  // whether the text gets shorter or the box larger.
+  for (const o of oversetOf(face, row, fitted ?? []))
+    issues.push({ element: o.element, code: 'text-overflow', severity: 'warning', values: { field: o.field, sizePt: o.sizePt, hidden: o.hidden, fit: o.fit } })
   return issues
+}
+
+// A text box the renderer could not fit (#808), with what the designer calls it and where it stands
+// on the card. `field` is the column it is bound to — the word the table heads it with — or, for a
+// text of the template's own, its layer's name. `x`, `y`, `w` and `h` are the box in the card's own
+// millimetres, its groups folded in, so a mark can be drawn round it outside the card without
+// asking the card where anything is.
+export type Overset = { element: string; field: string; sizePt: number; hidden: number; fit: 'shrink' | 'fixed'; x: number; y: number; w: number; h: number }
+
+export function oversetOf(face: FaceTemplate, row: Row, fitted: readonly FitReport[]): Overset[] {
+  const cut = fitted.filter((r) => r.overflow && !r.empty)
+  if (cut.length === 0) return []
+  return flatten(elementsFor(face, row), 0, 0, row).flatMap((box) => {
+    const el = box.el
+    const report = el.kind === 'text' ? cut.find((r) => r.element === el.id) : undefined
+    if (el.kind !== 'text' || !report) return []
+    const field = 'field' in el.bind ? el.bind.field : (el.name ?? el.id)
+    return [{ element: el.id, field, sizePt: report.sizePt, hidden: report.hidden, fit: el.fit ?? 'shrink', x: box.x, y: box.y, w: box.w, h: box.h }]
+  })
 }
 
 // Colours that carry a difference to most eyes and none to some: the card is told once per pair.
@@ -295,16 +324,19 @@ export function remedyFor(issue: Issue, input: ValidateInput): Remedy | null {
       // All the way out on every side: a background that reaches the trim has to carry on past it,
       // or the knife — which wanders — leaves a white line along the edge.
       return { element: el.id, patch: { x: -bleedMm - off.x, y: -bleedMm - off.y, w: widthMm + bleedMm * 2, h: heightMm + bleedMm * 2 } }
-    // The three that are nobody's to answer with a number.
+    // The four that are nobody's to answer with a number.
     //
     // `low-contrast` is mended by choosing a colour, and which colour is a design decision: a
     // machine darkening an ink until it passes would be making that decision quietly, on a card
     // whose palette somebody chose. `colour-only` needs something that is *not* colour to carry
-    // the difference — a shape, a word, a mark — which no patch can invent. And `unpinned-font`
+    // the difference — a shape, a word, a mark — which no patch can invent. `unpinned-font`
     // needs a font file (B3), which is not in the template at all and cannot be conjured from it.
+    // And `text-overflow` (#808) is mended by a shorter text or a larger box: the one is the
+    // card's words, the other moves everything round the box, and both are the designer's.
     case 'low-contrast':
     case 'colour-only':
     case 'unpinned-font':
+    case 'text-overflow':
       return null
   }
 }
