@@ -825,7 +825,7 @@
 .byd-setup-said > span:last-child { flex: 1; min-width: 0; }
 /* The word a zone held at the table's edge says (#480, the form #478 gave the card's edge). */
 .byd-setup-kept { position: absolute; left: 50%; top: 100%; transform: translate(-50%, var(--byd-s1)); padding: var(--byd-s1) var(--byd-s2); border-radius: 6px; background: #1b1d23; border: 1px solid #f0b64a; color: #f0b64a; font: 600 12px system-ui; white-space: nowrap; pointer-events: none; z-index: 5; }
-.byd-setup-coords { font: 12px ui-monospace, monospace; color: #c8cfdc; }
+.byd-setup-coords { font: 12px ui-monospace, Menlo, monospace; color: #c8cfdc; }
 /* Where the chosen zone stands, as fields (#579, #554): the numbers where they already stood. */
 .byd-setup-place { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) var(--byd-s2); }
 /* Fyra fält, namnet och enheten ryms på en rad i mittkolumnens 420 px vid 1024 (#710, L50): ett
@@ -947,7 +947,7 @@
 .byd-setup-props label { display: grid; gap: 4px; font-size: 11px; color: #9aa3b8; }
 .byd-setup-props input, .byd-setup-props select { width: 100%; box-sizing: border-box; }
 .byd-setup-props button { justify-self: start; }
-.byd-setup-where { font: 12px ui-monospace, monospace; color: var(--byd-editor-quiet); }
+.byd-setup-where { font: 12px ui-monospace, Menlo, monospace; color: var(--byd-editor-quiet); }
 /* Between the two desk widths the rails give way before the felt does: the felt is what the
    designer drags zones on, and it is the one column whose work cannot be scrolled to. */
 @media (min-width: 1024px) and (max-width: 1279px) {
@@ -1157,7 +1157,15 @@
 .byd-wall-checks li > button small { margin-left: auto; color: var(--byd-editor-quiet); text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
 .byd-wall-check-detail { padding: 0 12px 8px; display: grid; gap: 6px; }
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
-.byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, monospace; }
+.byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, Menlo, monospace; }
+/* A text that does not fit, card by card, each a way to its row in Tabell (#808, E6). Inside a
+   remark and not a remark of its own, so none of the remark's own edge and ground. */
+.byd-wall-checks .byd-wall-check-rows { margin: 0; gap: 4px; }
+.byd-wall-checks .byd-wall-check-rows li { border: 0; border-radius: 0; overflow: visible; background: none; }
+.byd-wall-check-rows button { width: 100%; padding: 8px 12px; font-size: 12px; line-height: 1.5; text-align: left; white-space: normal; }
+/* The frame round a text that does not fit passes under the copies badge in the card's corner
+   (#808), and the badge is cut out of it by a ring in the wall's own ground rather than crossed. */
+.byd-wall-card:has(> .byd-overset) > .byd-wall-copies { box-shadow: 0 0 0 2px var(--byd-editor-stage-bg); }
 
 /* The width a card is drawn at is the density the crown steps through; the wall fills the row with
    as many of them as fit. The padding is only what the selection outline needs to show. */
@@ -1260,40 +1268,33 @@
    never the card's, and a press on it is a press on the element. The card is drawn through a zoom,
    so every measure here is divided by it, and the tag is drawn at the screen's own size: the word
    is as legible at 50 % as at 400 %, and on a layer too thin for two lines it is one, in its short
-   form, cut with an ellipsis rather than spilling over its neighbours. */
-.byd-placeholder {
-  position: absolute;
+   form, cut with an ellipsis rather than spilling over its neighbours.
+   The frame and the tag are the shared mark (`mark.css`, #808): what is here is the placeholder's
+   own — the layer it covers, its hatching, its greys, and a tag of two lines in its middle. */
+.byd-mark.byd-placeholder {
+  --byd-mark-edge: var(--byd-editor-placeholder-edge);
+  --byd-mark-ring: var(--byd-editor-placeholder-ring);
   inset: 0;
-  box-sizing: border-box;
-  border: calc(1.5px / var(--byd-canvas-scale, 1)) dashed var(--byd-editor-placeholder-edge);
-  box-shadow: 0 0 0 calc(1px / var(--byd-canvas-scale, 1)) var(--byd-editor-placeholder-ring);
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--byd-editor-placeholder-edge) 10%, transparent) 0 calc(6px / var(--byd-canvas-scale, 1)), transparent calc(6px / var(--byd-canvas-scale, 1)) calc(12px / var(--byd-canvas-scale, 1)));
-  pointer-events: none;
 }
 /* Centred on the layer, as wide as its words and never wider than the layer less a gap of
    `--byd-s1` on either side. The width is the tag's own and not the layer's, because the layer is
    zoomed and the tag is not: the room it has is the layer's width at the screen's size. */
-.byd-placeholder-tag {
-  position: absolute;
+.byd-mark-tag.byd-placeholder-tag {
   left: 50%;
   top: 50%;
-  display: flex;
   align-items: flex-start;
-  gap: 6px;
-  box-sizing: border-box;
-  width: max-content;
   max-width: calc(100% * var(--byd-canvas-scale, 1) - 2 * var(--byd-s1));
   padding: var(--byd-s1) var(--byd-s2);
   border-radius: 10px;
   background: var(--byd-editor-chrome-bg);
   color: var(--byd-editor-placeholder-ink);
-  font: 600 11px/1.25 system-ui, sans-serif;
+  line-height: 1.25;
+  white-space: normal;
   text-align: left;
   transform: translate(-50%, -50%) scale(calc(1 / var(--byd-canvas-scale, 1)));
-  /* The title is the whole sentence, and a title is read off the pointer. */
-  pointer-events: auto;
 }
-.byd-placeholder-tag > i { flex: none; font-style: normal; color: var(--byd-editor-stage-ink); }
+.byd-mark-tag.byd-placeholder-tag > i { color: var(--byd-editor-stage-ink); }
 .byd-placeholder[data-thin] > .byd-placeholder-tag { align-items: center; padding: 0 var(--byd-s2); border-radius: 999px; line-height: 18px; white-space: nowrap; }
 .byd-placeholder[data-thin] > .byd-placeholder-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* The one way on from a condition's panel, in the panel's own button shape. */
@@ -1861,7 +1862,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-card-row-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border-radius: 6px; color: #e6ecfa; cursor: pointer; }
 .byd-card-row-list li[data-active], .byd-card-row-list li:hover { background: #262a35; }
 .byd-card-row-list li[aria-selected='true'] { font-weight: 700; }
-.byd-card-row-list li small { color: #9aa3b8; font-family: ui-monospace, monospace; }
+.byd-card-row-list li small { color: #9aa3b8; font-family: ui-monospace, Menlo, monospace; }
 .byd-card-row-none { color: #9aa3b8; cursor: default; }
 .byd-canvas-locked {
   margin: 0;
@@ -2381,7 +2382,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 /* The quiet things on a chosen row are read on its lighter ground (#557): the label over an open
    cell and its tools. The id stands on the rail now (#609) and is read in the rail's own ink. */
 .byd-data tr[aria-selected='true'] :is(.byd-data-bodyhead > b, .byd-data-bodytools button:not([aria-pressed='true'])) { color: var(--byd-editor-quiet-chosen); }
-.byd-data-id { padding: 8px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, monospace; font-size: 12px; }
+.byd-data-id { padding: 8px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 4px 8px; }
 .byd-data-add { margin-top: 8px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
@@ -2945,11 +2946,11 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-tables-mini-inner { width: 640px; height: 384px; transform: scale(0.125); transform-origin: top left; }
 .byd-tables-info { display: grid; gap: 2px; align-content: start; min-width: 0; }
 .byd-tables-head { display: flex; align-items: baseline; gap: var(--byd-s2); flex-wrap: wrap; margin: 0; color: var(--byd-tables-quiet); font-size: 12px; }
-.byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, monospace; font-size: 12px; }
+.byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 /* The table's name is its room code, as the band and the TV say it (#706, beslut A); the version
    it runs stands after it, quieter, because two tables of one game usually run the same one. */
 .byd-tables-head .byd-tables-name { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
-.byd-tables-version { font-family: ui-monospace, monospace; }
+.byd-tables-version { font-family: ui-monospace, Menlo, monospace; }
 .byd-tables-state { color: var(--byd-tables-quiet); }
 .byd-table-row[data-state='played'] .byd-tables-state { color: var(--byd-tables-live-ink); font-weight: 700; }
 .byd-tables-stale { flex-basis: 100%; color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
@@ -3739,7 +3740,7 @@ img[data-arriving] { opacity: 0; }
   border-radius: 8px 8px 0 0;
   box-shadow: 0 -4px 12px rgb(0 0 0 / 45%);
   padding: 0;
-  font: 700 13px ui-monospace, monospace;
+  font: 700 13px ui-monospace, Menlo, monospace;
   cursor: pointer;
 }
 /* Against the head the tab hangs under the field's top right corner instead (#693, beställarens
