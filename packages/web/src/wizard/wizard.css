@@ -218,7 +218,7 @@
 /* A title is held to about 24 characters on its tab and ends in an ellipsis (#732): written out
    whole, a long one made a tab of 484 px and sent «Ta bort valt kort» to a row of its own. The
    whole title is the tab's `title`. */
-.byd-wizard-card-tab-title { min-width: 0; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-wizard-card-tab-title { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-wizard-card-tabs b { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 5px; background: #eeece5; font-size: 10px; }
 .byd-wizard-card-tabs .is-add { border-style: dashed; }
 .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); }
