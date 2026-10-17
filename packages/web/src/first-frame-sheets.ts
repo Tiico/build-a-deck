@@ -11,8 +11,13 @@
 // statically — the order a plain `import` walk from `App.tsx` met them in. Nothing about the
 // blocking sheet changed with #760 but its neighbours.
 //
+// Only the felt's and the phone's (#984). The designer's pages — `/`, `/login`, `/new` and the rest —
+// wait for their chunk all the same, and their sheets travel with it as the editor's does, rather
+// than every phone's first painting blocking on the guide's.
+//
 // `felt-font.spec.ts` holds this list to the code: a surface a route reaches by a plain `import`
-// whose sheet is missing here is named there, and so is a sheet here that no first frame draws.
+// whose sheet is missing here is named there, and so is a sheet here that neither the felt nor the
+// phone draws first.
 import './table/table.css'
 import './table/texture.css'
 import './help.css'
@@ -22,8 +27,3 @@ import './status/status.css'
 import './player/player.css'
 import './join/join.css'
 import './online/online.css'
-import './editor/theme-tile.css'
-import './stepper.css'
-import './wizard/wizard.css'
-import './account/game-menu.css'
-import './account/account.css'
