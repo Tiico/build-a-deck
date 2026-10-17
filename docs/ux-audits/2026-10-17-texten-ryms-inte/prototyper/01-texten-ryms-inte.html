@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Texten ryms inte (#808)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#808) ──────────────────────────────────────────────────────────────────────
+     En regeltext som inte ryms ens i 6 pt, minsta graden E6 tillåter, klipps tyst: i guidens
+     förhandsvisning, i Mall och på kortväggen. Kortväggen har i dag bara en bärnstensbricka «1» i
+     kortets hörn — och samtidigt «Fysisk kontroll (0)» och «Inga anmärkningar». Hur ska rutan
+     säga det, och på vilka ytor?
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken) med variantens markering injicerad i
+     den riktiga sidan och mätt på målade pixlar i Chromium. Kortet ritas som vanligt av
+     kompilatorn och fitInDocument; markeringen ligger utanpå kortet och kommer aldrig in i mallen
+     (E2). Inget är ritat för hand. Skripten ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .krona h1 small { color: var(--quiet-2); font-weight: 400; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .rad button:disabled { opacity: 0.45; cursor: default; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; padding: 16px; background: #15171c; align-content: start; }
+  @media (max-width: 1000px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bilder { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; }
+  @media (max-width: 1300px) { .bilder { grid-template-columns: minmax(0, 1fr); } .bild.nara img { max-width: 400px; } }
+  .bild { min-width: 0; }
+  .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild.smal img { max-width: 390px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; line-height: 1.45; }
+  .sido { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .tal { display: grid; grid-template-columns: minmax(0, 9em) minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+  .tal b { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table.m { border-collapse: collapse; font-size: 12px; min-width: 1000px; }
+  table.m th, table.m td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
+  table.m th { color: #fff; background: #1b1f2a; }
+  table.m th.valt, table.m td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  table.m td.ok { background: #16301f; color: #9be3b5; }
+  table.m td.nej { background: #3a1c1c; color: #ffb3a8; }
+  table.m td.mitt { color: #f0d7a0; background: #2e2716; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — en text som inte ryms ens krympt säger det vid rutan (#808) <small>· ← → byter variant · bilderna är det byggda appen med varianten injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Yta</span></div>
+  <div class="rad" id="lagen"><span>Guiden</span></div>
+</div>
+<div class="scen">
+  <div class="bilder">
+    <div class="bild nara"><img id="nara" alt=""><p id="naratext"></p></div>
+    <div class="bild" id="hel"><img id="helimg" alt=""><p id="heltext"></p></div>
+  </div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div class="tal" id="tal"></div><p class="forkl">Kontrasten är läst på målade pixlar: sidan fotograferas med markeringen dold och visad, och varje ändrad pixel jämförs med den som låg under. «Bästa bandet» är den färg i markeringen som bär kanten mot kortet. «Över bokstäver» är ändrade pixlar som var en bokstav i en hel, läsbar rad.</p></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla varianter mot frågan</h2>
+    <p class="forkl">Grönt håller, rött håller inte, gult är ett pris. Kortet är guidens startkort «Skogsvandring» i Krönika med en regeltext på knappt 100 ord: E6 krymper den till 6 pt (8 px), och 4 av 14 rader ryms ändå inte (8 av 14 i ramen Mörk, där rutan är lägre). Guiden mäts vid 1280 och 390, Mall och väggen vid 1280 (L12). Klicka en kolumnrubrik för att visa varianten.</p>
+    <table class="m" id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'Guiden och Mall klipper texten tyst: den sista synliga raden står halvt avskuren mot rutans underkant, och inget säger att fyra rader saknas. På kortväggen står en bärnstensbricka «1» i kortets övre hörn, men inte var på kortet; samtidigt säger väggens Fysisk kontroll (0) och foten «Inga anmärkningar», eftersom den fysiska kontrollen inte mäter krympningen. Skärmläsaren hör bara kortets namn.', pris: 'Det issuet beskriver. Brickan på väggen är det enda tecknet i hela produkten, och den motsägs av rapporten bredvid.' },
+  { id: 'a', namn: 'A · Kanten och brickan', rek: true, regel: 'Rutan ramas in i två band — bärnstensstreck över en mörk ring, 4 px utanför rutan så att ramen aldrig rör en bokstav — och under rutans underkant hänger en mörk bricka: «▲ Ryms inte · 4 rader till». Det är #802:s form för «det här lagret ritar inget på kortet» (streckad ram, ord i en mörk bricka), i varningens bärnsten i stället för platshållarens grå. På kortväggen, där rutan är 126 px bred, säger brickan den korta formen «▲ +4 rader». Hela meningen står i brickans title och i kortets tillgängliga namn.', pris: 'Störst av de fyra (en ram på 208 × 121 px och en bricka på 147 × 18 i guiden). Brickan hänger över kortets egen ram och nedre marginal, och på väggen står den bredvid «×2» — under den, eftersom väggens brickor ritas överst. Det mörka bandet bär kanten på ett ljust kort (14:1) och bärnstensbandet på ett mörkt (7,5:1); bärnsten ensam vore 1,5:1 mot Krönikas papper.' },
+  { id: 'b', namn: 'B · Toningen i nederkant', regel: 'Det som syns av den sista raden tonar ut i bärnsten, rutans underkant blir en dubbel linje (bärnsten över mörkt), och vid linjens vänstra ände hänger «▼ +4 rader». Ingen ram: markeringen säger var texten tar slut, inte var rutan är.', pris: 'Toningen ligger över den sista hela radens radruta (299 px² i guiden, 722 i Mall) och över 4–8 px² av dess bokstäver. Den tonade ytan har ingen kontrast mot ljust papper (1,1–1,5:1) och bärs helt av linjen. Ordet är bara ett tal: «+4 rader» säger inte att det är ett fel.' },
+  { id: 'c', namn: 'C · Raden under kortet', regel: 'Ingenting på kortet. Under kortet står en mening: i guiden «▲ «Regeltext» ryms inte ens i 6 pt, så 4 rader syns inte på kortet. Korta texten, eller gör rutan större i editorn.», i Mall en egen rad under duken där det låsta lagrets besked redan står (L15), och på väggen en rad under kortet som läsvyernas (#512): «▲ «Regeltext» ryms inte».', pris: 'Tydligast i ord och störst i kontrast (7,2:1 i guiden, 8,4:1 i Mall, 8,3:1 på väggen), och den rör aldrig kortet. Men den pekar inte ut rutan — den namnger kolumnen, vilket räcker så länge kortet bara har en text som inte ryms. Den flyttar layouten: guidens kortflikar 70 px nedåt, Mall-kortet 33 px lägre (duken passar in kortet i höjden som blir kvar), och väggens kortplats 24 px högre — och då flyttar hela radens kort.' },
+  { id: 'd', namn: 'D · Porten i hörnet', regel: 'InDesigns tecken för text som inte ryms: en liten mörk ruta med ett bärnstensplus i rutans nedre högra hörn, 14 px (12 på väggen), och inget annat. Hela meningen i dess title och i kortets tillgängliga namn.', pris: 'Minst (242 px² i guiden) och rör ingen bokstav i guiden eller Mall. Men den säger inget i ord: ett plus utan förklaring kräver hover, och en surfplatta har ingen. På väggen ligger hörnet under «×2», så porten får kliva in i rutans hörn och täcker där 21 px² av sista hela radens bokstäver.' },
+]
+const YTOR = [
+  { id: 'guide', namn: 'Guiden' },
+  { id: 'mall', namn: 'Mall' },
+  { id: 'vagg', namn: 'Kortväggen' },
+]
+const LAGEN = [
+  { id: '1280', namn: '1280 · Klassisk' },
+  { id: '390', namn: '390 · Klassisk' },
+  { id: 'mork', namn: '1280 · Mörk' },
+]
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'a', yta = q.get('yta') ?? 'guide', lage = q.get('w') === '390' ? '390' : q.get('ram') === 'mork' ? 'mork' : '1280'
+const nyckel = () => (yta !== 'guide' ? yta : lage === '390' ? 'guide390' : lage === 'mork' ? 'guidemork' : 'guide')
+const cell = (vv, ss) => window.MATT.find((m) => m.v === vv && m.s === ss)
+const knappar = (rot, lista, nu, val, av) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.disabled = !!av
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+const komma = (x) => String(x).replace('.', ',')
+const YTNAMN = { guide: 'guiden 1280', guide390: 'guiden 390', guidemork: 'guiden, Mörk', mall: 'Mall', vagg: 'väggen' }
+function rows() {
+  const r = []
+  const per = (f) => VARIANTER.map((x) => f(x.id))
+  const alla = ['guide', 'guide390', 'guidemork', 'mall', 'vagg']
+  r.push(['Säger det vid rutan, i ord (guiden)', per((id) => {
+    const m = cell(id, 'guide')
+    if (id === 'nu') return { t: 'nej — texten klipps tyst', c: 'nej' }
+    if (id === 'c') return { t: 'i ord under kortet, inte vid rutan', c: 'mitt' }
+    const tag = m.marks.find((k) => k.text)
+    return { t: tag ? `«${esc(tag.text.replace(/^[▲▼]/, ''))}»` : 'bara ett tecken; orden i title', c: id === 'a' ? 'ok' : 'mitt' }
+  })])
+  r.push(['Markeringens storlek (guiden 1280)', per((id) => {
+    const m = cell(id, 'guide')
+    if (!m.marks.length) return { t: '–', c: '' }
+    return { t: m.marks.map((k) => `${k.w} × ${k.h}`).join(' + ') + ' px' + (m.pix ? ` · ${m.pix.area} px² målat` : ''), c: '' }
+  })])
+  r.push(['Kontrast mot kortet, bästa bandet: Krönika ljust / Mörk', per((id) => {
+    if (id === 'nu') return { t: '–', c: '' }
+    if (id === 'c') { const a = cell(id, 'guide').words, b = cell(id, 'mall').words, w = cell(id, 'vagg').words; return { t: `texten ${komma(a.contrast)}:1 (guiden) · ${komma(b.contrast)}:1 (Mall) · ${komma(w.contrast)}:1 (väggen)`, c: 'ok' } }
+    const a = cell(id, 'guide').pix.best, b = cell(id, 'guidemork').pix.best
+    return { t: `${komma(a)}:1 / ${komma(b)}:1`, c: a >= 3 && b >= 3 ? 'ok' : 'nej' }
+  })])
+  r.push(['Brickans text mot brickan', per((id) => { const m = cell(id, 'guide'); return { t: m.tagInk ? `${komma(m.tagInk)}:1` : '–', c: m.tagInk ? 'ok' : '' } })])
+  r.push(['Över bokstäver i hela rader, px²: ' + alla.map((s) => YTNAMN[s]).join(' · '), per((id) => {
+    if (id === 'nu') return { t: '–', c: '' }
+    if (id === 'c') return { t: 'ingenting på kortet', c: 'ok' }
+    const xs = alla.map((s) => cell(id, s).pix.overInk)
+    return { t: xs.join(' · '), c: xs.every((x) => x === 0) ? 'ok' : 'mitt' }
+  })])
+  r.push(['Över hela raders radrutor, px² (samma ytor)', per((id) => {
+    if (id === 'nu' || id === 'c') return { t: '–', c: '' }
+    const xs = alla.map((s) => cell(id, s).pix.covered)
+    return { t: xs.join(' · '), c: xs.every((x) => x === 0) ? 'ok' : 'mitt' }
+  })])
+  r.push(['Flyttar layouten (guiden likadant vid 390 och i Mörk)', per((id) => {
+    const ut = ['guide', 'mall', 'vagg'].flatMap((s) => cell(id, s).shift.filter((x) => x.dy || x.dh).map((x) => `${YTNAMN[s]}: ${x.q} ${x.dy ? `${x.dy > 0 ? '+' : ''}${x.dy} px ned` : ''}${x.dh ? ` ${x.dh > 0 ? '+' : ''}${x.dh} px hög` : ''}`))
+    const unika = [...new Set(ut)]
+    return { t: unika.length ? unika.join('<br>') : 'nej', c: unika.length ? 'mitt' : 'ok' }
+  })])
+  r.push(['Krockar med appens egna märken (väggens brickor, dukens flikar)', per((id) => {
+    const xs = alla.flatMap((s) => cell(id, s).collide.map((c) => `${YTNAMN[s]}: ${c}`))
+    return { t: xs.length ? xs.join('<br>') + (id === 'a' ? ' (ramens hörn under «×2»)' : '') : 'nej', c: xs.length ? 'mitt' : 'ok' }
+  })])
+  r.push(['Ryms i guiden vid 390 (hela markeringen i fönstret)', per((id) => { const m = cell(id, 'guide390'); return { t: id === 'nu' ? '–' : m.marks.every((k) => k.inView) ? 'ja' : 'nej', c: id === 'nu' ? '' : m.marks.every((k) => k.inView) ? 'ok' : 'nej' } })])
+  r.push(['Skärmläsaren hör (guidens kort)', per((id) => ({ t: `«${esc(cell(id, 'guide').named[0])}»`, c: id === 'nu' ? 'nej' : 'ok' }))])
+  return r
+}
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta}${yta === 'guide' && lage === '390' ? '&w=390' : ''}${yta === 'guide' && lage === 'mork' ? '&ram=mork' : ''}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  knappar(document.querySelector('#lagen'), LAGEN, lage, (x) => { lage = x; visa() }, yta !== 'guide')
+  const V = VARIANTER.find((x) => x.id === v)
+  const s = nyckel()
+  const m = cell(v, s)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  const hel = document.querySelector('#hel')
+  hel.classList.toggle('smal', s === 'guide390')
+  document.querySelector('#helimg').src = 'img/' + m.full
+  document.querySelector('#helimg').alt = `${V.namn}, ${YTNAMN[s]}, hela fönstret`
+  document.querySelector('#heltext').textContent = `${V.namn} · ${YTNAMN[s]} · ${m.w} × ${m.h} · hela fönstret`
+  document.querySelector('#nara').src = 'img/' + m.crop
+  document.querySelector('#nara').alt = `${V.namn}, ${YTNAMN[s]}, kortet närmare`
+  document.querySelector('#naratext').textContent = `Närbild: kortet och det som hänger på det, i 1,5×`
+  const c = m.cut[0]
+  const t = [
+    ['Regeltexten', `${komma(c.sizePx)} px (${c.minPt} pt) · ${c.whole} av ${c.lines} rader hela`],
+    ['Rutan', `${Math.round(c.box.w)} × ${Math.round(c.box.h)} px på ett kort ${Math.round(c.card.w)} px brett`],
+  ]
+  if (m.marks.length) t.push(['Markeringen', m.marks.map((k) => `${k.w} × ${k.h}`).join(' + ') + ' px'])
+  if (m.pix) {
+    t.push(['Målad yta', `${m.pix.area} px²`])
+    t.push(['Bästa bandet mot kortet', `${komma(m.pix.best)}:1`])
+    t.push(['Banden', m.pix.bands.map((b) => `${b.fg} ${b.share} % → ${komma(b.contrast)}:1 mot ${b.under}`).join('<br>')])
+    t.push(['Över bokstäver i hela rader', `${m.pix.overInk} px²`])
+    t.push(['Över hela raders radrutor', `${m.pix.covered} px²`])
+  }
+  if (m.words) {
+    t.push(['Meningens kontrast', `${komma(m.words.contrast)}:1 (${m.words.ink} på ${m.words.bg})`])
+    t.push(['Meningen', `${m.words.w} × ${m.words.h} px${m.words.clipped ? ', kapad' : ''}`])
+  }
+  const flytt = m.shift.filter((x) => x.dy || x.dh)
+  if (v !== 'nu') t.push(['Flyttar', flytt.length ? flytt.map((x) => `${x.q}: ${x.dy ? `${x.dy} px ned` : ''}${x.dh ? ` ${x.dh > 0 ? '+' : ''}${x.dh} px hög` : ''}`).join('<br>') : 'ingenting'])
+  if (m.collide.length) t.push(['Krockar med', m.collide.join(', ')])
+  document.querySelector('#tal').innerHTML = t.map(([k, n]) => `<span>${k}</span><b>${n}</b>`).join('')
+  const tab = document.querySelector('#matris')
+  const head = '<thead><tr><th>Fråga</th>' + VARIANTER.map((x) => `<th class="${x.id === v ? 'valt' : ''}"><a href="?v=${x.id}&yta=${yta}" data-v="${x.id}" style="color:inherit">${x.namn}</a></th>`).join('') + '</tr></thead>'
+  tab.innerHTML = head + '<tbody>' + rows().map(([fr, cells]) => `<tr><td>${fr}</td>${cells.map((cc, i) => `<td class="${cc.c}${VARIANTER[i].id === v ? ' valt' : ''}">${cc.t}</td>`).join('')}</tr>`).join('') + '</tbody>'
+  tab.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; visa() }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
