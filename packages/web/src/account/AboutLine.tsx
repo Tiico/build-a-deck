@@ -25,7 +25,7 @@ export function AboutLine({ http }: { http: string }) {
   if (!about || (!about.release && !about.contact)) return null
   const href = about.contact ? (/^https?:\/\//.test(about.contact) ? about.contact : `mailto:${about.contact}`) : null
   return (
-    <p className="byd-about" data-about>
+    <p className="byd-muted byd-about" data-about>
       {href && <a href={href}>{t('about.contact')}</a>}
       {href && about.release && ' · '}
       {about.release && t('about.version', { release: about.release })}
