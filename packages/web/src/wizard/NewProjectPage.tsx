@@ -1,5 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { oversetOf } from '@byd/template'
 import { CardPreview } from '../editor/CardPreview.js'
+import { oversetWords, useCut } from '../editor/overset.js'
 import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
 import { loginUrl, whoAmI, withCredentials } from '../account/api.js'
@@ -17,7 +19,7 @@ import { THEMES } from '../editor/themes.js'
 import { ThemeTile } from '../editor/ThemeTile.js'
 import { fieldLabel } from '../editor/fields.js'
 import { ANTAL } from '@byd/server/doc'
-import { useT, type Key, type T } from '../i18n/index.js'
+import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Question } from '../editor/Question.js'
 import { Stepper } from '../Stepper.js'
@@ -25,6 +27,10 @@ import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
 import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
+
+// The mark round a text that does not fit (#808) is drawn only when one does not, which no first
+// painting of the guide shows, so it and its sheet are fetched when it is first needed (L40).
+const OversetMarks = lazy(() => import('../editor/OversetMarks.js').then((m) => ({ default: m.OversetMarks })))
 
 // The first card is the designer's own content from the moment it appears, so its title is the
 // game's language and not the tool's; the fields around it are the tool's suggestion.
@@ -218,6 +224,11 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const row = s.rows[selectedRow] ?? s.rows[0] ?? blank
   // The card as the game will hold it, under the columns the fields were named (#476).
   const card = useMemo(() => typedFields(row, s.fields), [row, s.fields])
+  // The texts on the live card its fitting could not fit even shrunk (#808): framed on the card and
+  // said in its name, as the editor says them on the wall and in Mall.
+  const { lang } = useLang()
+  const [cut, onMeasured] = useCut()
+  const overset = oversetOf(front, card, cut)
 
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
@@ -644,7 +655,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         {/* The card is the theme's only once its faces are drawing (#687): until then it stands
             greyed, with what would show it — or what is on its way — over it, where the eye is. */}
         <div className="byd-wizard-preview" {...(shown ? {} : { 'data-unseen': '' })}>
-          <div ref={cardRef} role="img" tabIndex={-1} aria-label={t('wizard.preview.card', { n: selectedRow + 1, title: row['title'] || t('wizard.card.untitled') })}><CardPreview id="wizard-live" face={front} row={card} icons={look.icons} fonts={fonts} palette={look.palette} /></div>
+          <div ref={cardRef} role="img" tabIndex={-1} aria-label={[t('wizard.preview.card', { n: selectedRow + 1, title: row['title'] || t('wizard.card.untitled') }), ...overset.map((o) => oversetWords(o, t, lang).sentence)].join('. ').replace(/\.\. /g, '. ')}><CardPreview id="wizard-live" face={front} row={card} icons={look.icons} fonts={fonts} palette={look.palette} onMeasured={onMeasured} overlay={overset.length > 0 && <Suspense fallback={null}><OversetMarks found={overset} scale={1} zoomed /></Suspense>} /></div>
           <span>{t('wizard.preview')}</span>
           <div className="byd-wizard-preview-over">
             <p role="status">{pressed && progress === 'asking' ? t('wizard.preview.fetching', { theme: t(theme.name) }) : pressed && progress === 'silent' ? t('wizard.preview.silent') : ''}</p>

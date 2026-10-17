@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
-import type { Motif, Warning } from '@byd/template'
+import { oversetOf, type FitReport, type Motif, type Warning } from '@byd/template'
+import { titleOfRow } from '@byd/server/doc'
 import { CardPreview } from './CardPreview.js'
+import { OversetMarks } from './OversetMarks.js'
+import { overflowing, oversetWords } from './overset.js'
 import { CARD_PX, cornerPx } from './corner.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { DENSITY, DENSITY_DEFAULT, heldDensity, rememberDensity } from './density.js'
 import { StepPill } from './StepPill.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
-import { deckIssues, fixesFor, groupIssues, issueDetail, issueWords, type Fix } from './checks.js'
+import { deckIssues, fixesFor, groupIssues, issueDetail, issueWords, type Fix, type Found } from './checks.js'
 import { useSay } from '../status/StatusLive.js'
 import { groupColumn } from './groups.js'
 import { bandAtTop, bandPaints, bandsOf, groupableColumns, tileColours } from './bands.js'
@@ -41,6 +44,9 @@ export type DeckWallProps = {
   // Where a font nothing pins is mended (#737): the game's typefaces, which stand in Speltema (L57).
   // A remark that cannot be mended for the reader still says where it is mended.
   onOpenFonts?(): void
+  // A card's row in Tabell (#808): where a remark about one card's own words is mended, which is
+  // the link E6 asks of a text that does not fit.
+  onOpenRow?(cardRef: string): void
   // Where the wall was left (#477): the search, the eye and how far down it stood. The editor
   // holds it for as long as the project is open, so a tab switch does not throw it away.
   view?: WallView | undefined
@@ -81,7 +87,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, view, onView, readOnly = false }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -98,6 +104,10 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // every call, and a fresh object is a fresh compile of the whole wall (E1).
   const icons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
   const [warnings, setWarnings] = useState<Record<string, number>>({})
+  // The texts on each card the fitting could not fit (#808), as its own card measured them: what the
+  // card is marked with, and what the physical check reads, so the badge, the mark and the list are
+  // one measurement. Held for a card a search has taken off the wall, as its badge's count is.
+  const [cut, setCut] = useState<Record<string, FitReport[]>>({})
   // The smallest text each card carries once E6 has fitted it, in pt (#512).
   const [smallest, setSmallest] = useState<Record<string, number>>({})
   const { lang } = useLang()
@@ -164,10 +174,18 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       return Object.fromEntries(Object.entries(m).filter(([row]) => row !== cardRef))
     })
   }, [])
+  const onMeasured = useCallback((cardRef: string, fitted: FitReport[]) => {
+    const over = overflowing(fitted)
+    setCut((m) => {
+      const had = m[cardRef] ?? []
+      if (JSON.stringify(had) === JSON.stringify(over)) return m
+      return { ...m, [cardRef]: over }
+    })
+  }, [])
   const onWarnings = useCallback((cardRef: string, w: Warning[]) => {
     setWarnings((m) => (m[cardRef] === w.length ? m : { ...m, [cardRef]: w.length }))
   }, [])
-  const found = deckIssues(doc)
+  const found = deckIssues(doc, { [face]: cut })
   const groups = groupIssues(found)
   const errors = groups.filter((g) => g.severity === 'error')
   const open = groups.find((g) => g.code === openGroup)
@@ -318,8 +336,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             }}
             onWarnings={(w) => onWarnings(cardRef, w)}
             onFitted={(sizes) => onFitted(cardRef, sizes)}
+            onMeasured={(fitted) => onMeasured(cardRef, fitted)}
           />
         </div>
+        {/* Over the card and outside its paper, which is cut to its corners (#808). */}
+        <OversetMarks found={oversetOf(faceTemplate, row, cut[cardRef] ?? [])} scale={px / CARD_PX} />
         {reading && smallest[cardRef] !== undefined && <ReadOut sizePt={smallest[cardRef]} view={reading.view} lang={lang} t={t} />}
         {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
         {count > 0 && (
@@ -458,6 +479,12 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             onOpenGroup={setOpenGroup}
             readOnly={readOnly}
             onOpenFonts={onOpenFonts}
+            found={found}
+            names={(cardRef) => {
+              const row = doc.rows.find((r) => r.id === cardRef)
+              return row ? titleOfRow(row) || cardRef : cardRef
+            }}
+            onOpenRow={onOpenRow}
             fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
             onFix={(code, what) => {
               onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
@@ -654,6 +681,9 @@ function Checks({
   onFix,
   readOnly,
   onOpenFonts,
+  found,
+  names,
+  onOpenRow,
   t,
 }: {
   groups: ReturnType<typeof groupIssues>
@@ -665,8 +695,12 @@ function Checks({
   onFix(code: string, what: string): void
   readOnly: boolean
   onOpenFonts: (() => void) | undefined
+  found: readonly Found[]
+  names(cardRef: string): string
+  onOpenRow: ((cardRef: string) => void) | undefined
   t: ReturnType<typeof useT>
 }) {
+  const { lang } = useLang()
   return (
     <div className="byd-wall-checks">
       {groups.length === 0 ? (
@@ -693,6 +727,28 @@ function Checks({
                     <span>
                       {g.elements.join(', ')} · {g.faces.map((face) => faceName(face, t)).join(', ')}
                     </span>
+                    {/* A text that does not fit is a card's own words (#808), so the remark says it
+                        per card and leads to that card's row, as E6 asks: it is mended in the cell. */}
+                    {g.code === 'text-overflow' && (
+                      <ul className="byd-wall-check-rows" aria-label={t('wall.checks.rows')}>
+                        {found
+                          .filter((f) => f.code === 'text-overflow')
+                          .map((f) => {
+                            const said = oversetWords({ field: String(f.values['field']), sizePt: Number(f.values['sizePt']), hidden: Number(f.values['hidden']), fit: f.values['fit'] === 'fixed' ? 'fixed' : 'shrink' }, t, lang)
+                            return (
+                              <li key={`${f.cardRef}/${f.face}/${f.element}`}>
+                                {onOpenRow ? (
+                                  <button type="button" className="byd-secondary" onClick={() => onOpenRow(f.cardRef)}>
+                                    {t('wall.checks.row', { card: names(f.cardRef), sentence: said.sentence })}
+                                  </button>
+                                ) : (
+                                  <small>{t('wall.checks.row.read', { card: names(f.cardRef), sentence: said.sentence })}</small>
+                                )}
+                              </li>
+                            )
+                          })}
+                      </ul>
+                    )}
                     {/* The remedy, where the check has one (#233). It is one edit on the template
                         and not one per card — the fault is the template's, which is the whole
                         reason this list is gathered by kind — so a group of forty cards mends in a
