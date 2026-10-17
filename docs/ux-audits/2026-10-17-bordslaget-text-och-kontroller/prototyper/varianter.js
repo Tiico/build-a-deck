@@ -15,13 +15,13 @@ window.V = {
     namn: 'B · Raden i hörnet',
     kort: 'B',
     om: `<p>En rad nere till vänster, spegelbild av «Starta om» och «?» nere till höger, på samma platta i 24 px. Den säger alltid det senaste som hände — «Senast: Bordet blandade Kortlek · 11 s», som /online:s rad (#484) — och står kvar tills något nytt händer. Ett avvisat drag tar raden i bärnsten i 6 s och lämnar den sedan till det senaste som hände. Raden bryter före platsen A:s namnbricka.</p>
-<ul><li class="plus">Går att läsa efteråt, och står på samma ställe varje gång.</li><li class="plus">Ligger på träet och mörkret utanför filten: täcker inget kort vid något mått.</li><li class="minus">Inte vid kontrollen som D5 säger: ögat måste gå från kortet till hörnet.</li><li class="minus">Vid 1024 bryter den långa meningen till två rader, och raden blir då 78 px hög.</li></ul>`,
+<ul><li class="plus">Går att läsa efteråt, och står på samma ställe varje gång.</li><li class="plus">Ligger på träet och mörkret utanför filten: täcker inget kort vid något mått.</li><li class="minus">Inte vid kontrollen som D5 säger: ögat måste gå från kortet till hörnet.</li><li class="minus">Rummet slutar vid platsen A:s namnbricka: vid 1024 är det 465 px, och med «Ångra» i raden (fråga 2, B) bryter den till två rader.</li></ul>`,
   },
   c: {
     namn: 'C · Toppens band',
     kort: 'C',
     om: `<p>Raden står i bandet ovanför träet, till höger om plattan med spelets namn och adress (#675) — samma beteende som B (senaste kvar, avvisat i bärnsten 6 s), men uppe, högerställt, där filten inte är. Allt bordet säger om sig självt står då på en rad överst.</p>
-<ul><li class="plus">Filten och hörnen är orörda; namn, adress och det senaste läses på en rad.</li><li class="minus">Bandet är 50–72 px högt: vid 1024 bryter «Senast: … · 11 s» till två rader och raden går ned över träets kant.</li><li class="minus">Längst bort från spelaren vid A, och upp-och-ned för den som sitter vid B.</li></ul>`,
+<ul><li class="plus">Filten och hörnen är orörda; namn, adress och det senaste läses på en rad.</li><li class="minus">Bandet är 50 px högt vid 1280 och raden 40: en mening längre än dagens (ett långt hög- eller zonnamn) har ingen andra rad att bryta till utan att gå ned över träet.</li><li class="minus">Längst bort från spelaren vid A, och upp-och-ned för den som sitter vid B.</li></ul>`,
   },
   d: {
     namn: 'D · Två håll',
