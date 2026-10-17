@@ -21,7 +21,6 @@ import { fieldLabel } from '../editor/fields.js'
 import { ANTAL } from '@byd/server/doc'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
-import { Question } from '../editor/Question.js'
 import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
 import './wizard.css'
@@ -31,6 +30,9 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 // The mark round a text that does not fit (#808) is drawn only when one does not, which no first
 // painting of the guide shows, so it and its sheet are fetched when it is first needed (L40).
 const OversetMarks = lazy(() => import('../editor/OversetMarks.js').then((m) => ({ default: m.OversetMarks })))
+// The question the door past the guided start asks (#732) is drawn only after a press, so it too is
+// fetched when it is first needed (L40).
+const BlankAsk = lazy(() => import('./BlankAsk.js').then((m) => ({ default: m.BlankAsk })))
 
 // The first card is the designer's own content from the moment it appears, so its title is the
 // game's language and not the tool's; the fields around it are the tool's suggestion.
@@ -572,22 +574,19 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         {/* The tool's one question (L9), where the door was pressed. It opens on «Avbryt», and
             either answer hands the focus back to the door. */}
         {askingBlank && (
-          <Question
-            className="byd-wizard-blank-ask"
-            label={t('wizard.blank.ask')}
-            confirm={t('wizard.blank.ask.confirm')}
-            onCancel={() => {
-              setAskingBlank(false)
-              blankDoor.current?.focus()
-            }}
-            onConfirm={() => {
-              setAskingBlank(false)
-              blankDoor.current?.focus()
-              void toEditor('blank')
-            }}
-          >
-            {t('wizard.blank.ask')}
-          </Question>
+          <Suspense fallback={null}>
+            <BlankAsk
+              onCancel={() => {
+                setAskingBlank(false)
+                blankDoor.current?.focus()
+              }}
+              onConfirm={() => {
+                setAskingBlank(false)
+                blankDoor.current?.focus()
+                void toEditor('blank')
+              }}
+            />
+          </Suspense>
         )}
         {error && via === 'blank' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}
       </div>

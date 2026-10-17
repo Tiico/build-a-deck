@@ -1,0 +1,10 @@
+/* The question the door past the guided start asks before it leaves cards and fields behind
+   (#732, L9): the tool's one question, a strip where the door was pressed, on the paper's white and
+   edged in the red the wizard says a refusal in. The answer that cannot be undone is filled in that
+   red. No first frame draws it, so it travels with the guide's own script and not in the sheet the
+   first painting blocks on (`first-frame-sheets.ts`, #760). */
+.byd-wizard-blank-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border: 1px solid #8d3823; border-radius: 10px; background: var(--byd-wizard-field-bg); }
+.byd-wizard .byd-wizard-blank-ask p { flex-basis: 100%; margin: 0; color: var(--ink); font-size: 13px; font-weight: 600; }
+.byd-wizard .byd-wizard-blank-ask button { font-weight: 700; }
+.byd-wizard .byd-wizard-blank-ask button[data-kind='danger'] { border-color: #8d3823; background: #8d3823; color: #ffffff; }
+.byd-wizard .byd-wizard-blank-ask button[data-kind='danger']:hover { border-color: var(--ink); }

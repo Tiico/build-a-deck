@@ -299,18 +299,19 @@ describe('a game without the guided start (L42)', () => {
     const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
     fireEvent.click(blank)
 
-    const asked = screen.getByRole('alertdialog')
+    // The question travels behind a cut of its own (L40), so it is there once its chunk has come.
+    const asked = await screen.findByRole('alertdialog')
     expect(asked.textContent).toMatch(/Korten och fälten du har gjort här följer inte med/)
     // It opens on the answer that loses nothing, and that answer leaves everything where it was.
     const cancel = within(asked).getByRole('button', { name: 'Avbryt' })
-    expect(document.activeElement).toBe(cancel)
+    await waitFor(() => expect(document.activeElement).toBe(cancel))
     fireEvent.click(cancel)
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(document.activeElement).toBe(blank)
     expect((screen.getByLabelText('kort 1 Titel') as HTMLInputElement).value).toBe('Drake')
 
     fireEvent.click(blank)
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, skapa ett tomt spel' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Ja, skapa ett tomt spel' }))
     await waitFor(() => expect(gone).toHaveLength(1))
     expect(gone).toHaveLength(1)
     const stored = await run.projects.load(new URL(gone[0]!, 'http://x').searchParams.get('project')!)
