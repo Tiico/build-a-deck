@@ -19,7 +19,7 @@
    pressed, so it wears no ring (#555). */
 .byd-profile h2:focus-visible { outline: none; }
 
-.byd-profile-back { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; color: var(--byd-profile-quiet); font-size: 14px; text-decoration: none; }
+.byd-profile-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--byd-profile-quiet); font-size: 14px; text-decoration: none; }
 .byd-profile-back:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 .byd-profile-head { display: grid; gap: 4px; margin-bottom: 8px; }
 .byd-profile-head h1 { margin: 0; font-size: 28px; }
@@ -70,7 +70,9 @@
    key first and holding the focus, the one that cannot be undone in red and in words. */
 .byd-profile-question { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 8px; background: #3b3222; color: #ffeccc; }
 .byd-profile-question > p { flex: 1 1 240px; margin: 0; line-height: 1.45; }
-.byd-profile-question > button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--byd-secondary-line); background: transparent; color: var(--byd-secondary-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+/* The secondary line is 2.92:1 on the strip's amber, so the strip draws its own: #a39a86 is 4.52:1
+   there (L13: a line is held to 3:1 against the ground it lands on). */
+.byd-profile-question > button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #a39a86; background: transparent; color: var(--byd-secondary-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .byd-profile-question > button[data-kind='danger'] { border-color: #7a3243; background: #7a3243; color: #ffe4ea; font-weight: 700; }
 
 .byd-profile-facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; }

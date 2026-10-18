@@ -55,7 +55,9 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    (#728). The address is what gives way, cut short with an ellipsis and whole in its title. */
 .byd-who { color: #9aa3b8; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; }
 .byd-who > span { display: inline-flex; align-items: center; gap: 4px; flex: none; }
-.byd-who > span:first-child { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The address has no padding of its own, as the links after it do, so its margin keeps the dot after
+   it as far from it as from the word that follows (#999). */
+.byd-who > span:first-child { display: block; flex: 0 1 auto; min-width: 0; margin-right: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* A dot leads each part after the first, so it wraps with the part and never ends a line (#555). */
 .byd-who > span + span::before { content: '·' / ''; }
 /* The way out is a word in a sentence, and a word in a sentence is 16 px tall. It keeps the look

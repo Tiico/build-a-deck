@@ -1,10 +1,13 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
+import { createServer, type Server } from 'node:http'
 import { execFile } from 'node:child_process'
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { build } from 'vite'
 import { free } from './ports.js'
+import { fakeAiProvider } from '../../../test-support/fake-ai-provider.js'
 
 const run = promisify(execFile)
 
@@ -72,7 +75,17 @@ export async function start(): Promise<Stack> {
     const db = await database()
     if (db) closers.push(db.stop)
 
-    const server = await listen({ STATIC_DIR: OUT, ...(db ? { DATABASE_URL: db.url } : {}) })
+    // The providers a designer's key is proved against (#999): a fake one beside the stack, never
+    // Anthropic or OpenAI, and a master key made for this run alone.
+    const ai = await fakeProviders()
+    closers.push(ai.stop)
+    const server = await listen({
+      STATIC_DIR: OUT,
+      ...(db ? { DATABASE_URL: db.url } : {}),
+      AI_KEY_SECRET: randomBytes(32).toString('base64'),
+      AI_ANTHROPIC_URL: `${ai.url}/anthropic`,
+      AI_OPENAI_URL: `${ai.url}/openai`,
+    })
     closers.push(server.stop)
     return { origin: server.origin, store: db ? 'postgres' : 'memory', ...(db ? { database: db.url } : {}), webDist: OUT, serverLog: LOG, stop }
   } catch (cause) {
@@ -124,6 +137,32 @@ async function listen(env: Record<string, string>): Promise<{ origin: string; st
     port = await free(port + 1)
   }
   throw new Error('the server could not find a free port in eight tries')
+}
+
+/**
+ * Anthropic and OpenAI as the profile page meets them in this suite (`test-support/fake-ai-provider.ts`):
+ * what the provider answers is decided by the key a journey pastes. On a port out of the band, like
+ * everything else the stack listens on.
+ */
+async function fakeProviders(): Promise<{ url: string; stop: () => Promise<void> }> {
+  const server: Server = createServer(fakeAiProvider().listener)
+  let port = await free()
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const bound = await new Promise<boolean>((resolve) => {
+      server.once('error', () => resolve(false))
+      server.listen(port, '127.0.0.1', () => resolve(true))
+    })
+    if (bound) {
+      const stop = () =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections()
+          server.close(() => resolve())
+        })
+      return { url: `http://127.0.0.1:${port}`, stop }
+    }
+    port = await free(port + 1)
+  }
+  throw new Error('the fake AI provider could not find a free port in eight tries')
 }
 
 /** True once the server answers `/health`; false if it dies or never does. */

@@ -80,7 +80,7 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
     <main className="byd-account byd-account-wide" data-page="profile">
       <div className="byd-profile">
         <a className="byd-profile-back" href={back} onClick={go(back)}>
-          <span aria-hidden="true">← </span>
+          <span aria-hidden="true">←</span>
           {game ? t('profile.back.game', { game: game.name }) : t('profile.back.home')}
         </a>
         <header className="byd-profile-head">
