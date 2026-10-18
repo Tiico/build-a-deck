@@ -61,6 +61,9 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 /* The way out is a word in a sentence, and a word in a sentence is 16 px tall. It keeps the look
    and takes the room every control in the product takes (UX-KONTROLLER: träffytor). */
 .byd-who a { color: #9aa3b8; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
+/* «Profil» (#999, #998 variant A) is where the account's own things are, so it reads a step brighter
+   than the way out beside it. */
+.byd-who a.byd-who-profile { color: #dce3f2; font-weight: 650; }
 /* The sentence a brand new account reads before it presses anything (UX-16). */
 .byd-home-empty { margin: 0; max-width: 72ch; color: #9aa3b8; font-size: 14px; line-height: 1.6; text-wrap: pretty; }
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
@@ -139,8 +142,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-game[data-new] { padding: 16px; }
 .byd-home-notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; }
 
-/* The language switch (A4): on the login card and beside who is signed in, so a reader who
-   cannot read the page can still change what it speaks. */
+/* The language switch (A4): on the login card, so a reader who cannot read the page can still change
+   what it speaks. Signed in, it is on the profile page (#999). */
 .byd-lang { display: inline-flex; gap: 6px; align-items: center; color: #9aa3b8; font-size: 13px; }
 /* The picker the reader who cannot read this page reaches for first, at the size a thumb needs. */
 .byd-lang select { min-height: 44px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; padding: 4px 8px; background: var(--byd-account-field-bg); color: #e6e6e6; font: inherit; cursor: pointer; }

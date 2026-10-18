@@ -18,7 +18,7 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
+import { useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { versionWord } from '../i18n/version.js'
@@ -132,6 +132,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     if (server) q.set('server', server)
     return q.toString()
   }
+  const suffixed = () => {
+    const q = suffix(new URLSearchParams())
+    return q ? `?${q}` : ''
+  }
   // «Tillbaka till bordet» (#690, beslut 2026-10-06): to her own seat and hand, with a token the
   // server hands the account for it, on the screen the picker would have suggested (#675). The
   // picker is where it goes only when there is no seat left to go back to, and the link's own
@@ -186,6 +190,21 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               lead, so a wrapped line never ends on one (#555). */}
           <span className="byd-who">
             <span title={email}>{email}</span>
+            {/* The way to the profile (#999, #998 variant A): a word in the line, where the language
+                picker stood before it moved there. */}
+            <span>
+              <a
+                className="byd-who-profile"
+                href={`/profile${suffixed()}`}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+                  e.preventDefault()
+                  onNavigate(`/profile${suffixed()}`)
+                }}
+              >
+                {t('home.profile')}
+              </a>
+            </span>
             <span>
               <a
                 href="/login"
@@ -196,12 +215,6 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               >
                 {t('home.logout')}
               </a>
-            </span>
-            <span>
-              <label className="byd-lang">
-                {t('account.language')}
-                <LanguagePicker />
-              </label>
             </span>
           </span>
         </header>

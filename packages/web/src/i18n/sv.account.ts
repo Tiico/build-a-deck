@@ -1,7 +1,7 @@
 // Kontot: inloggning, "Mina spel", inbjudningar, att claima en gästsession och guiden som gör
 // ett nytt spel.
 export const svAccount = {
-  // Språkvalet, där det står: på inloggningskortet och över "Mina spel".
+  // Språkvalet på inloggningskortet. Inloggad väljer man språk på profilsidan (#999).
   'account.language': 'Språk',
 
   // Inloggningskortet (G1): ett fält, en knapp och en mening om gäster. Aldrig ett lösenord.
@@ -323,4 +323,72 @@ export const svAccount = {
   'home.import.problem.unplayable': 'Den senaste versionen går inte att spela: {message}',
   'home.import.problem.too-big': 'Filen är större än en import får vara.',
   'home.import.problem.refused': 'Servern tog inte emot filen.',
+
+  // Profilsidan (#999, #998 variant A): en kolumn med AI-nyckeln, språket och kontot. Vägen dit är
+  // ett ord i startsidans rad, «e-post · Profil · logga ut».
+  'home.profile': 'Profil',
+  'profile.title': 'Profil',
+  'profile.back.home': 'Mina spel',
+  // Editorn skickar hit med spelet, och vägen tillbaka säger dess namn, som aldrig översätts.
+  'profile.back.game': 'Tillbaka till {game}',
+  'profile.key.title': 'AI-nyckel',
+  'profile.key.title.change': 'Byt AI-nyckel',
+  'profile.key.lead': 'Editorn kan föreslå mallar, fält och kort med AI. Det drivs av din egen nyckel hos Anthropic eller OpenAI, så du betalar leverantören direkt och vi tar inget för det.',
+  'profile.key.provider': 'Leverantör',
+  'profile.key.field': 'API-nyckel',
+  // Länken till leverantörens egen sida för att skapa en nyckel, i en ny flik (beställarens tillägg 2026-10-18).
+  'profile.key.create.lead': 'Har du ingen nyckel?',
+  'profile.key.create.link': 'Skapa en hos {provider}',
+  'profile.key.newTab': '(öppnas i en ny flik)',
+  // Följden av att spara, alltid synlig och aldrig bakom ett frågetecken (L32, E4:s följdkrav).
+  'profile.key.sent': 'När du ber om hjälp skickas spelets innehåll — namn, fält, kort, mall och regelbok — till {provider}, och det betalas med din nyckel. Nyckeln sparas krypterad hos oss, visas aldrig igen och följer aldrig med när du exporterar ett spel.',
+  'profile.key.save': 'Spara och pröva',
+  'profile.key.saving': 'Prövar nyckeln…',
+  'profile.key.saving.said': 'Prövar nyckeln hos {provider}…',
+  'profile.key.cancel': 'Avbryt',
+  // Den sparade nyckeln: leverantören och de fyra sista tecknen, aldrig nyckeln.
+  'profile.key.saved': '{provider} · nyckeln som slutar på {last4}',
+  'profile.key.proved': 'prövad {when}',
+  'profile.key.when.today': 'i dag {time}',
+  'profile.key.when.yesterday': 'i går {time}',
+  'profile.key.saved.said': 'Nyckeln från {provider} är sparad.',
+  'profile.key.done': 'AI-hjälpen är på i editorn.',
+  'profile.key.model': 'Modell',
+  'profile.key.model.standard': '{model} (standard)',
+  'profile.key.model.said': 'Modellen är nu {model}.',
+  'profile.key.model.failed': 'Modellen kunde inte sparas. Försök igen.',
+  'profile.key.change': 'Byt nyckel',
+  'profile.key.remove': 'Ta bort',
+  'profile.key.remove.ask': 'Ta bort nyckeln? AI-hjälpen i editorn slutar fungera tills du lägger in en ny.',
+  'profile.key.remove.confirm': 'Ja, ta bort',
+  'profile.key.remove.keep': 'Avbryt',
+  'profile.key.removed': 'Nyckeln är borttagen.',
+  'profile.key.remove.failed': 'Nyckeln kunde inte tas bort. Försök igen.',
+  // Varför en nyckel inte sparades: leverantörens slutna mängd ord, och serverns egna skäl.
+  'profile.key.error.empty': 'Klistra in en nyckel först',
+  'profile.key.error.invalid-key': '{provider} godtog inte nyckeln',
+  'profile.key.error.invalid-key.text': 'Kontrollera att du kopierade hela nyckeln och att den är från {provider}. Inget sparades.',
+  'profile.key.error.no-credit': 'Kontot hos {provider} saknar kredit',
+  'profile.key.error.no-credit.text': 'Nyckeln är rätt, men {provider} säger att det inte finns något kvar att betala med. Fyll på hos {provider} och försök igen. Inget sparades.',
+  'profile.key.error.rate-limit': '{provider} ber dig vänta',
+  'profile.key.error.rate-limit.text': 'Nyckeln har gjort för många anrop just nu. Vänta en stund och försök igen. Inget sparades.',
+  'profile.key.error.overloaded': '{provider} är överbelastad just nu',
+  'profile.key.error.overloaded.text': 'Försök igen om en stund. Inget sparades.',
+  'profile.key.error.network': 'Vi nådde inte {provider}',
+  'profile.key.error.network.text': 'Försök igen om en stund. Inget sparades.',
+  'profile.key.error.too-many': 'För många försök',
+  'profile.key.error.too-many.text': 'Vänta en stund innan du prövar en nyckel igen. Inget sparades.',
+  'profile.key.error.unavailable': 'Nycklar kan inte sparas just nu',
+  'profile.key.error.unavailable.text': 'Servern är inte inställd för att spara nycklar. Det är inget fel på nyckeln. Inget sparades.',
+  'profile.key.error.malformed': 'Det där ser inte ut som en nyckel',
+  'profile.key.error.malformed.text': 'En nyckel är en enda rad utan mellanslag, som den står hos {provider}. Inget sparades.',
+  'profile.key.error.offline': 'Vi nådde inte servern',
+  'profile.key.error.offline.text': 'Kontrollera anslutningen och försök igen. Inget sparades.',
+  'profile.lang.title': 'Språk',
+  'profile.lang.field': 'Verktygets språk',
+  'profile.lang.note': 'Det du själv skrivit i dina spel översätts aldrig.',
+  'profile.account.title': 'Konto',
+  'profile.account.email': 'E-post',
+  'profile.account.note': 'Du loggar in med en länk som mejlas till adressen.',
+  'profile.account.logout': 'Logga ut',
 } as const

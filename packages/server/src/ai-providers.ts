@@ -1,3 +1,5 @@
+import { get as httpGet } from 'node:http'
+import { get as httpsGet } from 'node:https'
 import type { AiProvider } from './ai-keys.js'
 
 // The providers behind one face (#999, PRD module 2). Today a key is asked for its models, which is
@@ -61,17 +63,33 @@ function failureOf(status: number, body: unknown): AiFailure {
   return 'network'
 }
 
-async function getJson(url: string, headers: Record<string, string>, timeoutMs: number): Promise<unknown> {
-  let res: Response
-  try {
-    res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) })
-  } catch {
-    throw new AiProviderError('network')
-  }
-  const body: unknown = await res.json().catch(() => null)
-  if (!res.ok) throw new AiProviderError(failureOf(res.status, body), res.status)
-  if (body === null || typeof body !== 'object') throw new AiProviderError('network', res.status)
-  return body
+// A GET through Node's own client rather than `fetch`, so the timeout is a socket's and does not
+// depend on whichever `AbortSignal` the process's globals hold — under jsdom they are jsdom's, and
+// `fetch` refuses them, which made every call look like a line that failed.
+function getJson(url: string, headers: Record<string, string>, timeoutMs: number): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url)
+    const send = target.protocol === 'https:' ? httpsGet : httpGet
+    const req = send(target, { headers: { accept: 'application/json', ...headers }, timeout: timeoutMs }, (res) => {
+      const chunks: Buffer[] = []
+      res.on('data', (c: Buffer) => chunks.push(c))
+      res.on('error', () => reject(new AiProviderError('network')))
+      res.on('end', () => {
+        const status = res.statusCode ?? 0
+        let body: unknown = null
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+        } catch {
+          body = null
+        }
+        if (status < 200 || status >= 300) return reject(new AiProviderError(failureOf(status, body), status))
+        if (body === null || typeof body !== 'object') return reject(new AiProviderError('network', status))
+        resolve(body)
+      })
+    })
+    req.on('timeout', () => req.destroy())
+    req.on('error', () => reject(new AiProviderError('network')))
+  })
 }
 
 type AnthropicPage = { data?: { id?: unknown; display_name?: unknown }[]; has_more?: unknown; last_id?: unknown }

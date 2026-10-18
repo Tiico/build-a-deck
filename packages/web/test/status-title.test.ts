@@ -15,6 +15,7 @@ describe('which route a path is', () => {
     ['/play', 'play'],
     ['/online', 'online'],
     ['/observe', 'observe'],
+    ['/profile', 'profile'],
   ])('reads %s as %s', (path, route) => {
     expect(routeOf(path)).toBe(route)
   })
@@ -45,6 +46,7 @@ describe('the title of a route', () => {
     ['login', {}, 'Logga in · build-your-deck'],
     ['new', {}, 'Nytt spel · build-your-deck'],
     ['claim', {}, 'Spara bordet · build-your-deck'],
+    ['profile', {}, 'Profil · build-your-deck'],
     ['editor', { game: 'Skogens herrar' }, 'Skogens herrar · Editor · build-your-deck'],
     ['table', { room: '4KJ2' }, 'Bordet · Rum 4KJ2 · build-your-deck'],
     ['join', { room: '4KJ2' }, 'Gå med i rum 4KJ2 · build-your-deck'],
