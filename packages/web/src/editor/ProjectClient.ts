@@ -459,7 +459,9 @@ export class ProjectClient {
   // token that is already on top of the stack joins that step instead of making its own, so the
   // way back from a move is one press and not sixty. Everything else leaves it out and is its own
   // step, as it always was.
-  edit(asked: EditIntent, gesture?: string): void {
+  // `what` is the word the step back says, when the edit's own part of the game is not the word a
+  // designer would recognise it by: an accepted AI proposal is «det godtagna förslaget» (#1002).
+  edit(asked: EditIntent, gesture?: string, what?: Key): void {
     // A role that may not change the game changes nothing here either (#489; läsläge, decided in
     // #477): the actor would refuse the save, so an edit is never applied, never sent and never a
     // step back — and «Osparat» can never stand for something this reader cannot keep.
@@ -477,13 +479,19 @@ export class ProjectClient {
     // The gesture that is already open keeps the document it began from: that is the whole of
     // taking a move back in one press, and it is why the token must be new for every new grab.
     if (gesture === undefined || gesture !== this.gesture) {
-      this.past.push({ doc: this.doc, what: whatOf(intent) })
+      this.past.push({ doc: this.doc, what: what ?? whatOf(intent) })
       if (this.past.length > UNDO_STEPS) this.past.shift()
       this.futureBeforeGesture = this.future
     }
     this.gesture = gesture ?? null
     this.future = []
     this.send(intent, next)
+  }
+
+  // Several edits as one (#1002): one line in the log, all or nothing, one step back and one thing
+  // the others see land. An accepted AI proposal is one, and its step back says so.
+  editTogether(edits: readonly EditIntent[], what: Key): void {
+    this.edit({ v: 'compound', edits: [...edits] }, undefined, what)
   }
 
   // The edit itself, without touching the stack: this is the path a step of the stack takes, and

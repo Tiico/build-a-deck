@@ -4278,3 +4278,26 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-row { display: flex; justify-content: flex-end; }
 .byd-ai-send { min-width: 88px; min-height: var(--byd-tap); padding: 0 var(--byd-s4); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
 .byd-ai-send[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
+/* A proposal in the conversation (#1002, #940 A): a dashed box in the panel's mark while it can still
+   be decided, its cards drawn by the one renderer three to a row, and the three things to do with it
+   in a row of their own. */
+.byd-ai-proposal { display: grid; gap: var(--byd-s3); margin-top: var(--byd-s2); padding: var(--byd-s3); border: 1px dashed var(--byd-ai-mark); border-radius: 10px; background: #1b1e27; }
+.byd-ai-proposal[data-verdict] { border-style: solid; border-color: var(--byd-editor-line); background: transparent; }
+.byd-ai-proposal-head { margin: 0; }
+.byd-ai-proposal-head strong { color: var(--byd-ai-mark); }
+.byd-ai-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 84px); gap: var(--byd-s3) var(--byd-s3); }
+.byd-ai-card { display: grid; gap: var(--byd-s1); align-content: start; min-width: 0; }
+.byd-ai-card-face { overflow: hidden; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
+.byd-ai-card-name { overflow: hidden; color: #c3cbdd; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.byd-ai-checks { display: grid; gap: var(--byd-s1); padding-left: var(--byd-s2); border-left: 3px solid #f0b64a; }
+.byd-ai-checks p, .byd-ai-checks ul { margin: 0; }
+.byd-ai-checks ul { padding-left: var(--byd-s4); }
+.byd-ai-decide { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
+.byd-ai-decide button { display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+.byd-ai-verdict { margin: 0; color: #c3cbdd; }
+.byd-ai-proposal[data-verdict='accepted'] .byd-ai-verdict { color: #7dd3a0; }
+/* The same proposal on the wall, among the deck's cards (#1002): a dashed edge in the panel's mark,
+   and «✦ Förslag» on a pill over the card's top edge, where no other badge stands. */
+.byd-wall-card[data-proposed] > .byd-wall-face { outline: 2px dashed #c9a7ff; outline-offset: var(--byd-s1); }
+.byd-wall-proposed { position: absolute; top: -10px; left: var(--byd-s1); z-index: 2; display: inline-flex; align-items: center; gap: var(--byd-s1); padding: 0 var(--byd-s2); border-radius: 999px; background: #c9a7ff; color: #1c1530; font-size: 11px; font-weight: 800; line-height: 20px; white-space: nowrap; pointer-events: none; }
+.byd-wall-proposed .byd-ai-spark { color: inherit; }
