@@ -45,12 +45,28 @@ describe.skipIf(!url)('PostgresLogStore', () => {
     const deck = { template, rows: {}, icons: {} }
     const refreshed = `r-${Date.now()}`
     await store.createSession({ id: refreshed, version: 'rev-1', setup: twoSeatSetup(), deck })
-    expect((await store.loadSession(refreshed))?.decks).toBeUndefined()
+    expect(await store.deckOf(refreshed, 'rev-1')).toEqual(deck)
     await store.addDeck(refreshed, 'rev-2', { ...deck, rows: { a: { title: 'Ett' } } })
     await store.addDeck(refreshed, 'rev-2', { ...deck, rows: { a: { title: 'Två' } } })
-    const loaded = await store.loadSession(refreshed)
-    expect(loaded).toMatchObject({ version: 'rev-1', deck })
-    expect(loaded?.decks).toEqual({ 'rev-2': { ...deck, rows: { a: { title: 'Två' } } } })
+    expect(await store.loadSession(refreshed)).toMatchObject({ version: 'rev-1' })
+    expect(await store.deckOf(refreshed, 'rev-2')).toEqual({ ...deck, rows: { a: { title: 'Två' } } })
+    expect(await store.deckOf(refreshed, 'rev-1')).toEqual(deck)
+  })
+
+  // A deck carries its pictures and typefaces as data URLs (DRIFT §4) — tens of megabytes for a
+  // game with art on every card — and the session is read by every door a table has: each socket
+  // that opens, each code that is looked up, each list of tables. Read with the session, the deck
+  // was parsed once per phone, and ten screens joining a table of 308 illustrated cards took the
+  // app past its heap and Postgres past its limit (#1012). Only the actor deals from the deck.
+  it('reads a session without its decks, which are read only for the version a table plays', async () => {
+    const deck = { template, rows: { a: { title: 'Ett' } }, icons: {} }
+    const heavy = `h-${Date.now()}`
+    await store.createSession({ id: heavy, version: 'rev-1', setup: twoSeatSetup(), deck })
+    await store.addDeck(heavy, 'rev-2', deck)
+    const session = await store.loadSession(heavy)
+    expect(session).toMatchObject({ id: heavy, version: 'rev-1' })
+    expect(session).not.toHaveProperty('deck')
+    expect(session).not.toHaveProperty('decks')
   })
 
   // «Ny kod» (#820): the code and the host key are rotated together, in one write.

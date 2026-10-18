@@ -20,7 +20,7 @@ import {
   type TypeRegistry,
 } from '@byd/engine'
 import type { RenderStore } from '@byd/render/queue'
-import { facesOf, type Deck } from './faces.js'
+import { queueFaces, type Deck } from './faces.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
@@ -78,12 +78,11 @@ export class TableActor {
     let cards: DeckFacts | undefined
     // The deck of the version the log says the table plays (C7, #677): a refreshed table's, not
     // the one it started with, over the cards that version deals — the replayed setup, not the start record's.
-    const deck = record.decks?.[state.version] ?? record.deck
+    const deck = await store.deckOf(id, state.version)
     if (deck) {
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
-      const compiled = facesOf(deck, state.setup, registry, TEXTURE_DPI, Date.now())
+      const compiled = await queueFaces(deck, state.setup, registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job) ?? Promise.resolve())
       cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
-      if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
     }
     return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders)
   }
@@ -91,9 +90,9 @@ export class TableActor {
   // A newer deck (C7): recompute texture hashes and queue what is not rendered yet. Views
   // pick the new hashes up with the next projection.
   async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
-    const compiled = facesOf(deck, setup, this.registry, TEXTURE_DPI, Date.now())
+    const renders = this.renders
+    const compiled = await queueFaces(deck, setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job) ?? Promise.resolve())
     this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
-    if (this.renders) for (const job of compiled.jobs) await this.renders.enqueue(job)
   }
 
   get seq(): number {

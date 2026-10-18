@@ -99,6 +99,7 @@ function bind(store: MemoryLogStore): LogStore {
     createSession: (r) => store.createSession(r),
     loadSession: (id) => store.loadSession(id),
     addDeck: (id, version, deck) => store.addDeck(id, version, deck),
+    deckOf: (id, version) => store.deckOf(id, version),
     append: (id, lines) => store.append(id, lines),
     read: (id) => store.read(id),
     staleSessions: (d) => store.staleSessions(d),

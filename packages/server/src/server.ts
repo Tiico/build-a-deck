@@ -23,7 +23,7 @@ import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
-import { facesOf, printExportOf } from './faces.js'
+import { printExportOf, queueFaces } from './faces.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
@@ -1821,18 +1821,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: session ? 'unknown project' : 'unknown session' })
       return true
     }
-    const compiled = facesOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now())
     // A job that failed for good stays failed here (#10): enqueueing it again would put it back
     // in the queue and the editor would poll a dead render forever, never learning it was dead.
     // `?retry=1` is the one place that says "try it anyway", and it comes from a person asking.
     const retryFailed = url.searchParams.get('retry') === '1'
-    if (opts.renders) {
-      for (const job of compiled.jobs) {
-        if (!retryFailed && (await opts.renders.status(job.hash))?.state === 'failed') continue
-        await opts.renders.enqueue(job)
-      }
-    }
-    json(res, 200, await progress(opts, compiled.jobs.map((j) => j.hash), frontsOf(compiled.faces)))
+    const renders = opts.renders
+    const compiled = await queueFaces(await deckOf(opts, rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now(), async (job) => {
+      if (!renders) return
+      if (!retryFailed && (await renders.status(job.hash))?.state === 'failed') return
+      await renders.enqueue(job)
+    })
+    json(res, 200, await progress(opts, compiled.hashes, frontsOf(compiled.faces)))
     return true
   }
   // "Uppdatera bordet" on a running table (C7, L5): the project's current rev becomes a

@@ -22,6 +22,35 @@ Följdkrav:
 Stacken måste gå att starta om med ett kommando och innehålla allt: aktörsserver, Postgres, renderworker, backupagent, tunnel.
 Hårda minnestak per container, eftersom OOM-killern annars väljer offer själv.
 
+### Taken under last (#1012)
+
+Mätt 2026-10-18 med `pnpm --filter @byd/e2e load:memory` (`packages/e2e/load/`), som startar grundstacken med lådans egna `mem_limit` under ett eget projektnamn och läser varje containers cgroup två gånger i sekunden.
+Talet som hålls mot taket är arbetsmängden — `memory.current` utan den inaktiva filcachen, samma tal som `docker stats` visar — och kärnans `memory.events` säger om containern slog i taket eller dödades; en container som kom inom en tiondel av taket räknas inte som att den ryms.
+Varje scenario börjar från en tom stack, som efter en deploy.
+Scenariot per bord: en designer loggar in med länken ur mejlet, laddar upp bilder och två typsnitt (Liberation, ~400 kB TTF vardera), sparar spelet i 15 versioner och startar ett bord för åtta platser; åtta telefoner, TV:n och en observatör spelar 200 intents på egna WebSockets med blandningar och tillbakaspolningar och hämtar varje textur de visas; samtidigt sparar designern en version som ritar om varje kort och skickar den till bordet.
+Maskinen var Docker Desktops VM på en Mac (8 kärnor, 29,6 GB), inte lådan, och stacken körde utan R2: varje bild och textur gick genom app och Postgres, vilket är tyngre för båda än lådan med R2.
+
+| Scenario | app (tak 512 MB) | render (tak 1 500 MB) | postgres (tak 768 MB) |
+|---|---|---|---|
+| 1 bord, 308 kort på 308 bilder à 250 kB | 512 — i taket 882 gånger, överlevde | 477 | 637 |
+| 1 bord, 308 kort på 77 bilder à 250 kB | 512 — i taket 463 gånger, överlevde | 491 | 653 |
+| 3 bord, 308 kort på 308 bilder | dog vid bordsstarten (V8-heapen) | 231 | 183 |
+| 3 bord, 308 kort på 77 bilder | dog vid bordsstarten | 219 | 111 |
+| 1 bord, 77 bilder, app utan tak | 691 | 481 | 644 |
+| 3 bord, 308 bilder, app utan tak | 1 693 | 569 | 768 — i taket 61 465 gånger |
+
+Talen är toppar i MiB.
+Render ryms med god marginal i alla scenarier: en sida i taget håller, även med tre bord som ritas om samtidigt.
+App och Postgres ryms inte: ett bord i betans densitet pressar appen mot taket, och tre bord samtidigt fäller den vid bordsstarten.
+
+Två fel hittades och rättades i samma ändring.
+Varje anslutning, kodfråga och bordslista läste hela sessionens lek, alla bilder med, så tio skärmar som anslöt läste den tio gånger och tog både appen och Postgres förbi taket; leken läses nu bara av aktören (`deckOf`).
+Och ett bords alla sidor kompilerades innan någon köades, 400 MB sidor på en gång för 308 kort; nu köas varje sida innan nästa kompileras (`queueFaces`).
+
+Det som står kvar är att sessionens lek bär varje bild som data-URL (§4): JSON upprepar en delad bild per rad, så 308 kort är ~100 MB lek oavsett hur många bilder de delar, och varje sida bär sin bild och båda typsnitten igen in i renderkön.
+Att höja taken vore att ge stacken ~4,5 GB på en låda som delas med ett trettiotal containrar och redan swappar.
+Beslutet om vägen ligger hos beställaren i #1028; taken står kvar tills det är fattat, och den här mätningen körs om efter ändringen.
+
 ## 2. Exponering: lådans egen omvänd proxy om den har en, annars Cloudflare Tunnel
 
 Ursprungsbeslutet var `cloudflared` i stacken och inga öppna portar mot bostadsnätet; tunneln löser dynamisk IP, TLS och WebSockets.

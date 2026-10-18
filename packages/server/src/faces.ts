@@ -29,32 +29,49 @@ export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[] }
 // per table, so the word and the picture are taken from the same row of the same compiled deck
 // and cannot drift apart; `project` then filters both against the seat (B6). What the card prints
 // beside its title (#551) is read in the same pass, off the face the texture is drawn from.
-export function facesOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number): { faces: FaceHashes; titles: CardTitles; texts: CardTexts; jobs: RenderRequest[] } {
-  const faces: FaceHashes = {}
-  const titles: CardTitles = {}
-  const texts: CardTexts = {}
-  const jobs = new Map<string, RenderRequest>()
+export type CompiledFaces = { faces: FaceHashes; titles: CardTitles; texts: CardTexts }
+
+// One card at a time, and only as fast as it is asked for (#1012). A page carries the deck's
+// pictures and typefaces as data URLs (DRIFT §4), so 308 illustrated cards in two uploaded
+// typefaces are 400 MB of pages: a pass that compiled them all before handing any on held all of
+// them at once, and took the app past its heap at the start of a table. Each card's new jobs are
+// yielded before the next card is compiled, so a page lives only until it is queued.
+function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, out: CompiledFaces): Generator<RenderRequest> {
+  const seen = new Set<string>()
   for (const spec of setup.components) {
-    if (faces[spec.cardRef]) continue
+    if (out.faces[spec.cardRef]) continue
     const row = deck.rows[spec.cardRef]
     if (!row) continue
     // The designer's title with its capitals and its diacritics (#412). A row that has none says
     // nothing here, and the card keeps being named by its id at the reader, as it always was.
     const title = titleOfFields(row)
-    if (title !== '') titles[spec.cardRef] = title
+    if (title !== '') out.titles[spec.cardRef] = title
     // The words of the face a view that may see the card is shown: its content face (#551, K27).
     const content = deck.template.faces[registry.get(spec.type).contentFace]
-    if (content) texts[spec.cardRef] = printedText({ face: content, row })
+    if (content) out.texts[spec.cardRef] = printedText({ face: content, row })
     const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, ...(deck.palette ? { palette: deck.palette } : {}), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
     const perFace: Record<string, string> = {}
-    for (const [face, out] of Object.entries(compiled)) {
-      const hash = contentHash(out, { kind: 'png', dpi })
+    out.faces[spec.cardRef] = perFace
+    for (const [face, page] of Object.entries(compiled)) {
+      const hash = contentHash(page, { kind: 'png', dpi })
       perFace[face] = hash
-      if (!jobs.has(hash)) jobs.set(hash, { hash, kind: { kind: 'png', dpi }, priority: 'texture', compiled: { html: out.html, css: out.css }, requestedAt: now })
+      if (seen.has(hash)) continue
+      seen.add(hash)
+      yield { hash, kind: { kind: 'png', dpi }, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now }
     }
-    faces[spec.cardRef] = perFace
   }
-  return { faces, titles, texts, jobs: [...jobs.values()] }
+}
+
+// Every card's faces, each new job handed to `queue` — and waited for — before the next card is
+// compiled (#1012). `hashes` is every texture the deck needs, in the order they were queued.
+export async function queueFaces(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, queue: (job: RenderRequest) => Promise<unknown>): Promise<CompiledFaces & { hashes: string[] }> {
+  const out: CompiledFaces = { faces: {}, titles: {}, texts: {} }
+  const hashes: string[] = []
+  for (const job of compiledCards(deck, setup, registry, dpi, now, out)) {
+    hashes.push(job.hash)
+    await queue(job)
+  }
+  return { ...out, hashes }
 }
 
 // The print hand-off is deliberately card-shaped, not two unrelated lists of faces. Each entry
