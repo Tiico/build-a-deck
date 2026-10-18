@@ -72,6 +72,18 @@ describe('the stack hands the app its configuration', () => {
     const env = serviceEnvironment(compose, 'app')
     expect(Object.keys(env)).not.toContain('AUTH_BYPASS')
     expect(Object.keys(env)).not.toContain('WEB_ORIGIN')
+    // The fake providers a test stack talks to (#999): the box always reaches the real ones.
+    expect(Object.keys(env)).not.toContain('AI_ANTHROPIC_URL')
+    expect(Object.keys(env)).not.toContain('AI_OPENAI_URL')
+  })
+
+  it('hands the app the AI keys’ master key, and nothing that makes backups hands it on (#999)', () => {
+    // DRIFT §5: the master key lives in the box's environment and only there. The app needs it;
+    // the database and the agent that archives it to R2 must never see it, or a leaked backup
+    // leaks every designer's key with it.
+    expect(serviceEnvironment(compose, 'app')['AI_KEY_SECRET']).toBe('${AI_KEY_SECRET:-}')
+    for (const service of ['postgres', 'backup', 'render']) expect(serviceLines(compose, service).join('\n')).not.toContain('AI_KEY_SECRET')
+    expect(readFileSync(new URL('../../../.env.example', import.meta.url), 'utf8')).toMatch(/^AI_KEY_SECRET=$/m)
   })
 })
 

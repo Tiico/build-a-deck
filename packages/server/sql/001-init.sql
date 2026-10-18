@@ -168,3 +168,18 @@ create table if not exists session_decks (
   deck        jsonb not null,
   primary key (session_id, version)
 );
+
+-- The designer's own AI key (#999, E4, DRIFT §5): one per account, sealed with AES-256-GCM under the
+-- master key in the box's environment (`AI_KEY_SECRET`), which is never in this database and so never
+-- in its backups. Only what the profile may show is kept beside the seal: the provider, the last four
+-- characters, the chosen model (null is the provider's standard) and when the key was proved.
+create table if not exists ai_keys (
+  account_id   bigint primary key references accounts(id) on delete cascade,
+  provider     text not null check (provider in ('anthropic', 'openai')),
+  ciphertext   bytea not null,
+  nonce        bytea not null,
+  last4        text not null,
+  model        text,
+  verified_at  timestamptz not null,
+  updated_at   timestamptz not null default now()
+);

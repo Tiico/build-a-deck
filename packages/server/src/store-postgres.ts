@@ -8,6 +8,7 @@ import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type Sess
 import { checkedHistory, liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
 import { PostgresAssetStore } from './assets.js'
+import { PostgresAiKeyStore } from './ai-keys.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
@@ -96,6 +97,11 @@ export class PostgresLogStore implements LogStore {
 
   auth(): PostgresAuthStore {
     return new PostgresAuthStore(this.sql)
+  }
+
+  // The designer's own AI key (#999): sealed, one per account.
+  aiKeys(): PostgresAiKeyStore {
+    return new PostgresAiKeyStore(this.sql)
   }
 
   // The project's images (E1): in the object store when there is one, else in this database.

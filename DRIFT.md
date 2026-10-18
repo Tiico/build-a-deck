@@ -124,6 +124,22 @@ Postgres-bilden (`ops/Dockerfile.postgres`) är fortfarande Alpine — lådans d
 `ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tom katalog i backup-bilden, startar Postgres där, räknar, och spelar upp den senaste sessionens logg genom motorn i app-bilden.
 Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är densamma.
 
+### Huvudnyckeln för AI-nycklarna (#999)
+
+Designerns egen API-nyckel hos Anthropic eller OpenAI (E4) ligger i tabellen `ai_keys`, krypterad med AES-256-GCM under en huvudnyckel som heter `AI_KEY_SECRET`.
+Huvudnyckeln är 32 slumpade byte i base64, gjorda en gång med `openssl rand -base64 32`, och den finns i lådans `.env` och i en lösenordshanterare, ingen annanstans.
+Den ligger alltså inte i databasen och därför inte i WAL-arkivet eller basbackuperna i R2: en läckt backup läcker ciffertext, leverantör och fyra tecken per konto, aldrig en nyckel.
+Stacken ger den bara till `app`; `postgres`, `backup` och `render` får den aldrig, vilket `packages/server/test/deploy.test.ts` håller.
+Krypteringen binder varje rad till sitt konto och sin leverantör, så en rad som flyttas öppnas inte för någon.
+
+Att förlora huvudnyckeln, eller att byta den, är ingen dataförlust.
+Varje sparad nyckel läses då som ingen nyckel, profilsidan säger att ingen nyckel finns och designern ombeds ange den igen; inget fel visas och inget annat i tjänsten påverkas.
+Saknas variabeln, eller är den inte 32 byte, går ingen nyckel att spara (servern svarar 503 och säger det i startloggen), och utan Postgres gör processen en egen huvudnyckel som dör med den, som minneslagret gör.
+Servern loggar aldrig en nyckel; startraden `ai-keys` säger bara om nycklar kan sparas.
+
+Återställningstestet visar det: `ops/restore.sh` skriver ut raderna i `ai_keys` ur den återställda databasen, och `packages/server/scripts/ai-keys-check.ts` öppnar dem med en huvudnyckel som görs för körningen och aldrig är lådans.
+Varje nyckel ska läsas som ingen — «ange nyckeln igen» — och testet går rött om en enda öppnas.
+
 ## 6. Renderfarm: Postgres-kö, en worker, cache per innehållshash
 
 Jobbtabell i Postgres med `SELECT … FOR UPDATE SKIP LOCKED`.
@@ -178,6 +194,10 @@ Byggt 2026-10-06 (#757):
 `BYD_CONTACT` är vart en betatestare vänder sig — en e-postadress eller en webbadress — och sätts på lådan, aldrig i koden.
 `/health` bär den som `contact` bredvid `release`, inloggningskortet och Mina spel säger den sist som «Kontakt» (en adress med `http(s)://` länkas som den är, allt annat som `mailto:`), och inloggningsmejlets fot säger den.
 Är variabeln osatt utelämnas «Kontakt» överallt, och utan `BYD_TAG` utelämnas versionen; utan någon av dem står ingen rad alls.
+
+Byggt 2026-10-18 (#999): en API-nyckel når aldrig `docker logs`.
+Nyckelns vägar — spara, pröva, byta modell, ta bort — skriver ingenting till loggen, och ett nej från leverantören är ett ord ur en sluten mängd utan nyckeln i (§5).
+`packages/server/test/ai-key-routes.test.ts` läser den faktiska loggutskriften medan nycklar sparas, avvisas och tas bort.
 
 ## 9. Missbruk: Cloudflare rate limiting, korta koder, värdkontroll
 
