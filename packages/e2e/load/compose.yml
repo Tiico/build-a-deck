@@ -1,0 +1,13 @@
+# The box's stack for the memory load test (#1012, DRIFT §1): the root docker-compose.yml with only
+# what has to differ on a shared development machine changed. The memory limits are not touched —
+# they are what is being measured against.
+#
+# Postgres gets no host port, so a run can never collide with a peer's database on 5432, and the
+# app answers on a port the load script picks. The script runs it under its own project name
+# (`docker compose -p byd-load-…`), so its containers and its volume are its own.
+services:
+  postgres:
+    ports: !reset []
+  app:
+    ports: !override
+      - "127.0.0.1:${BYD_LOAD_PORT:?the load script sets BYD_LOAD_PORT}:8080"
