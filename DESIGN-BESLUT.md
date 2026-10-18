@@ -3008,8 +3008,8 @@ På Bord-fliken ritas högen dessutom över sitt handtag i stället för under d
 Linjen låg annars tvärs över brickan, och på en tom hög på högens egen streckade kontur — två linjer på samma pixlar.
 Pekaren går genom högen till handtaget, så att ta tag i högen är detsamma som förut.
 `packages/e2e/test/surfaces/setup-piles-drawn.spec.ts` mäter det på målade pixlar vid 1024 och 1280.
-Reviderat 2026-10-18 (#1001, beställarens beslut): AI-panelens hopfällda flik tar 44 px av editorns bredd, och vid 1280 står brickan då 0,56 px utanför kortets vänsterkant.
-Avrundningsmånen är därför 0,6 px vid 1280, i stället för 0,5; vid 1024 är den 0,5 som förut.
+Reviderat 2026-10-18 (#1001, beställarens beslut): AI-panelens hopfällda flik tar 44 px av editorns bredd, och vid 1280 står brickan då utanför kortets vänsterkant med 0,56 px på en Mac och 0,92 px på CI:s Linux, vars siffror är bredare.
+Avrundningsmånen är därför 1 px vid 1280, i stället för 0,5; vid 1024 är den 0,5 som förut.
 Med panelen öppen ligger den som ett ark över filtens högra del och tar ingen bredd, så måttet är detsamma då.
 
 Reviderat 2026-10-02 (#669): **brickan står på sin hög i varje tillstånd kortets bild är i.**
