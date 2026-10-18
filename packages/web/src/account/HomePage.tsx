@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
-import { LoginCard } from './LoginCard.js'
-import { CodeRow } from './CodeRow.js'
+import { LandingPage } from './LandingPage.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Question } from '../editor/Question.js'
 import { CardPreview } from '../editor/CardPreview.js'
@@ -32,7 +31,8 @@ const RenameDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ defaul
 const ImportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ImportDialog })))
 
 // /  — "Mina spel" (G1, prototype A): the account's projects as a grid of game cards, and a new
-// one as a dashed card. Not logged in, the login card stands here instead.
+// one as a dashed card. Not logged in, the landing page stands here instead (#1009), and the login
+// card is `/login`'s.
 export type HomePageProps = { onNavigate?(url: string): void }
 
 // What a game's ⋯ offers is asked of the same rules the server keeps (roles.ts, D3, #689), so the
@@ -126,8 +126,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       })
       .catch(() => setOffline(true))
   }, [http, attempt])
-  // Logged out, `/` is the login card and the tab says so rather than promising games (#12).
-  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null, route: email === null ? 'login' : null })
+  // Logged out, `/` is the landing page and the tab says so rather than promising games (#12).
+  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null, route: email === null ? 'landing' : null })
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
@@ -157,15 +157,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   }, [savedLine, say])
   if (offline) return <StatusNotice notice={noticeFor('offline', 'app', t)} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
   if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
-  if (email === null) {
-    return (
-      <main className="byd-account byd-account-door" data-page="home">
-        <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} />
-        {/* Under the card and not in it (#675): the card is the maker's, the row the player's. */}
-        <CodeRow server={server} onNavigate={onNavigate} />
-      </main>
-    )
-  }
+  if (email === null) return <LandingPage http={http} server={server} onNavigate={onNavigate} />
   return (
     <main className="byd-account byd-account-wide" data-page="home">
       <div className="byd-home">

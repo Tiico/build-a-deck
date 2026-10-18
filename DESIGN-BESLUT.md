@@ -1615,7 +1615,7 @@ Nyckeln går bara till bordets egna anslutningar, aldrig till en telefon eller e
 Byggt 2026-09-06 (prototypat, variant "kort i mitten"):
 Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar en engångslänk som gäller i 15 minuter och svarar alltid 200, `GET /auth/verify` löser in den, skapar kontot första gången och sätter en HttpOnly-kaka i 30 dagar.
 Projekt som skapas med konto tillhör kontot: bara ägaren läser, skriver, listar och startar bord; projekt från före konton förblir öppna.
-Startsidan `/` är inloggningskortet tills länken följts, sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401. Ett inskickat wizardutkast och dess mål bevaras under auth-rundan i samma flik och återupptas automatiskt efter login, så att skaparen inte behöver bygga spelet två gånger.
+Startsidan `/` är inloggningskortet tills länken följts — **ändrat 2026-10-18: landningssidan, se nedan; kortet står på `/login`** — sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401. Ett inskickat wizardutkast och dess mål bevaras under auth-rundan i samma flik och återupptas automatiskt efter login, så att skaparen inte behöver bygga spelet två gånger.
 Gäster loggar aldrig in: bord, telefon, distansvy och observatör nås med rumskod; inloggningskortet säger det.
 Passkeys och OAuth återstår.
 
@@ -1642,6 +1642,20 @@ Kodraden 2026-10-06 (#675, beställarens beslut C): under inloggningskortet, och
 Koden tas till rummets egen adress `/KOD` och landar i platsväljaren; ett tomt fält och något som inte kan vara en kod sägs vid fältet utan att sidan lämnas.
 Kortet står orört, så dess rader (#691) och sidfoten under raden (#757) hamnar där de var tänkta.
 Vid 320 × 568 står både kodfältet och e-postfältet på första skärmen.
+
+**Landningssidan (beställarens beslut 2026-10-18, #1009, prototyp A «Bordet» av tre).**
+Den som inte är inloggad möts på `/` av en landningssida i inloggningskortets ställe; inloggad är `/` fortfarande Mina spel, så ingen länk byter adress och den som kommer tillbaka passerar aldrig säljsidan.
+Den andra vägen — landningen på `/` för alla och Mina spel på en egen adress — prövades och valdes bort: den kostar varje inloggat besök ett klick och flyttar varje vidareskickning efter inloggning, claim och borttagning.
+Sidan säger vad produkten är med ett dukat bord: rubriken «Bygg ditt kortspel. Spela det i kväll.» och en mening bredvid ett bord i perspektiv med draghög, två kort i mitten, kort som delas ut och tre telefoner med händer; under det fyra steg (skriv korten, rita ett kort och få alla, duka bordet, spela och lär) och en avslutande uppmaning.
+Byggarens dörrar — «Mina spel» i huvudet, «Börja bygga» och «Till editorn» — är länkar till `/login?next=/`, så inloggningen sker där den alltid skett och landar på Mina spel.
+Spelarens dörr är kodraden (#675), oförändrad: under byggarens dörr på bred skärm, och på en telefon först, direkt under huvudet, så att kodfältet och «Mina spel» båda står på första skärmen även vid 320 × 568 — prototypens telefonlayout hade bordet överst och kodraden långt ned, vilket #675 inte tillåter.
+Korten på sidan är en påhittad lek, «Skogens herrar», skriven som en vanlig mall av former och text i `landingDeck.ts` och ritad av `CardPreview` — ingen andra kodväg ritar ett kort, och ingenting hämtas för att rita dem.
+Bordet ritas i en ram av fast storlek och zoomas till sin kolumn, så bilden behåller sina proportioner; utan rörelse (`prefers-reduced-motion`) delas inga kort ut och telefonerna står still.
+Sidan är ett av kontots rum i knappspråket (#44): grönt fyllt för första handlingen, kontur för den andra, och bara formen — en pille — är sidans egen.
+Ett besök på landningssidan räknas som att säljraden (L36) setts, så inloggningskortet säljer inte produkten en gång till.
+Fliken heter «Bygg ditt kortspel · build-your-deck».
+Grindarna: `packages/web/test/landing.test.tsx` (sidan i kortets ställe, dörrarna, kodraden, korten och säljraden), `button-language.test.tsx` (sidan som vy i knappspråket), `packages/e2e/test/code-address.spec.ts` (båda dörrarna på första skärmen vid 320 × 568) och `packages/e2e/test/surfaces/account-viewport.spec.ts` (44 px och ingen sidledsrullning på sidan och på `/login`).
+Prototypen: `docs/ux-audits/2026-10-18-landningssidan/prototyper/1009/`.
 
 Solfjädern på spelkortet 2026-09-14 (prototypat, variant D av sex) — **ersatt 2026-09-19, se nedan**:
 De fyra korten på spelets kort är spelets egna kort, inte fyra rektanglar färgade ur spelets id.

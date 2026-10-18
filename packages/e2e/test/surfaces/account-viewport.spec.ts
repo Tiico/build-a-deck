@@ -43,10 +43,15 @@ for (const width of WIDTHS) {
   test.describe(`the way in at ${width}px`, () => {
     test.use({ viewport: { width, height: 800 }, locale: LANG })
 
-    test('gives every control on the login card a 44 by 44 pixel hit area, and never scrolls sideways', async ({ page }) => {
+    test('gives every control on the landing page and the login card a 44 by 44 pixel hit area, and never scrolls sideways', async ({ page }) => {
+      // The landing page for whoever is not logged in (#1009), waited for by its own heading so the
+      // measurement never lands on a page that is still deciding what it is; then the login card it
+      // leads to, waited for by its own field.
       await page.goto('/')
-      // The card for whoever is not logged in. Waited for by its own field, so the measurement
-      // never lands on a page that is still deciding what it is.
+      await expect(page.getByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })).toBeVisible()
+      expect(await tooSmall(page)).toEqual([])
+      expect(await sideways(page)).toBe(0)
+      await page.goto('/login')
       await expect(page.getByLabel('E-post')).toBeVisible()
       expect(await tooSmall(page)).toEqual([])
       expect(await sideways(page)).toBe(0)

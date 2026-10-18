@@ -15,6 +15,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.act.observe': 'To the observer view',
 
   'title.home': 'My games',
+  'title.landing': 'Build your card game',
   'title.login': 'Sign in',
   'title.new': 'New game',
   'title.claim': 'Save the table',

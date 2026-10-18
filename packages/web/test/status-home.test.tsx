@@ -39,7 +39,7 @@ describe('the start page when the service cannot be reached', () => {
   })
 })
 
-// `/` has two shapes: the games for whoever is logged in, and the login card for whoever is not.
+// `/` has two shapes: the games for whoever is logged in, and the landing page for whoever is not (#1009).
 // The tab said "Mina spel" over both, which is a promise the second one does not keep — and the
 // name of the tab is how someone finds their way back to it (#12, UX-kontroll 2026-09-10).
 describe('the tab over the way in', () => {
@@ -51,10 +51,10 @@ describe('the tab over the way in', () => {
     await run.stop()
   })
 
-  it('says what the page is showing: the login card, and then the games', async () => {
+  it('says what the page is showing: the landing page, and then the games', async () => {
     open(run.http)
-    await screen.findByLabelText('E-post')
-    await waitFor(() => expect(document.title).toBe('Logga in · build-your-deck'))
+    await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })
+    await waitFor(() => expect(document.title).toBe('Bygg ditt kortspel · build-your-deck'))
 
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')![0]

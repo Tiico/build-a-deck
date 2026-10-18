@@ -1,0 +1,155 @@
+/* The landing page (#1009, variant A «Bordet»): the room the table stands in, a pitch and a laid
+   table side by side, four steps, and one more door at the end. The table's own colours are the
+   felt's and the wood's (table.css), so the picture is the table a visitor will play at. */
+/* A room of the account's (`.byd-account` on the same element, for the button language's roles), but
+   a page rather than a card in the middle of one: the account's centring is the login card's. */
+.byd-account.byd-landing {
+  display: block;
+  /* Chromium honours `place-items` in block layout too, and the account's would centre the header. */
+  place-items: normal;
+  padding: 0;
+  color: var(--byd-landing-ink);
+  background: radial-gradient(120% 80% at 70% 10%, #2f2722 0%, #17120f 55%, #0d0b0a 100%);
+}
+.byd-landing {
+  --byd-landing-ink: #e8eaf0;
+  --byd-landing-muted: #b7c0d6;
+  --byd-landing-quiet: #9aa3b8;
+  --byd-landing-accent: #7dd3a0;
+  --byd-landing-on-accent: #0f1117;
+  --byd-landing-amber: #f0b64a;
+  --byd-landing-chalk: #f3e9d6;
+  --byd-landing-plate: #171a23;
+  --byd-landing-edge: #0d0f14;
+  --byd-landing-line: #4a5268;
+  --byd-landing-seat-1: #f07a6a;
+  --byd-landing-seat-2: #6ab0f0;
+  --byd-landing-seat-3: #c79af0;
+  --byd-landing-gutter: clamp(16px, 4vw, 48px);
+  min-height: 100vh;
+  font: 16px/1.55 system-ui, sans-serif;
+  overflow-x: clip;
+}
+.byd-landing a:focus-visible { outline: 3px solid var(--byd-landing-amber); outline-offset: 3px; }
+
+.byd-landing-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px var(--byd-landing-gutter); max-width: 1320px; margin: 0 auto; box-sizing: border-box; }
+.byd-landing-head nav { display: flex; gap: 12px; align-items: center; }
+.byd-landing-mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; white-space: nowrap; }
+.byd-landing-logo { width: 22px; height: 28px; position: relative; }
+.byd-landing-logo i { position: absolute; inset: 0; border-radius: 4px; background: #f7f1e3; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.byd-landing-logo i:nth-child(1) { transform: rotate(-14deg) translate(-3px, 1px); background: var(--byd-landing-amber); }
+.byd-landing-logo i:nth-child(2) { transform: rotate(-2deg); background: var(--byd-landing-accent); }
+.byd-landing-logo i:nth-child(3) { transform: rotate(11deg) translate(3px, 1px); }
+.byd-landing-quiet { display: inline-flex; align-items: center; min-height: 44px; color: var(--byd-landing-muted); text-decoration: none; font-size: 15px; padding: 0 4px; box-sizing: border-box; }
+.byd-landing-quiet:hover { color: var(--byd-landing-ink); }
+
+/* The page's doors, as pills: the colours are the button language's roles, the shape is the page's,
+   and the floor is the language's 44 px. */
+.byd-landing-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 999px; font-size: 16px; line-height: 1; text-decoration: none; white-space: nowrap; box-sizing: border-box; }
+.byd-landing-btn.byd-primary { box-shadow: 0 8px 24px rgba(125, 211, 160, 0.25); }
+/* The arrow is the pill's drawing and not a word: it is never read out, and never part of the name. */
+.byd-landing-btn.byd-primary::after { content: '→' / ''; transition: translate 0.2s; }
+.byd-landing-btn.byd-primary:hover::after { translate: 3px 0; }
+
+.byd-landing-hero { max-width: 1320px; margin: 0 auto; padding: var(--byd-landing-gutter); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; min-height: min(760px, calc(100vh - 84px)); }
+.byd-landing-eyebrow { color: var(--byd-landing-amber); font-weight: 700; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 16px; }
+.byd-landing-hero h1 { font-size: clamp(40px, 6vw, 76px); line-height: 0.98; letter-spacing: -0.035em; margin: 0 0 22px; font-weight: 800; }
+.byd-landing-hero h1 em { font-style: normal; color: var(--byd-landing-chalk); background: linear-gradient(transparent 62%, rgba(240, 182, 74, 0.38) 62%); }
+.byd-landing-lede { font-size: clamp(17px, 1.6vw, 20px); color: var(--byd-landing-muted); max-width: 34ch; margin: 0 0 32px; }
+.byd-landing-ctas { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 28px; }
+.byd-landing-fine { color: var(--byd-landing-quiet); font-size: 14px; }
+/* The code row (#675) as the login card's door wore it, on the room's ground instead of a card's. */
+.byd-landing-code { padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, 0.08); max-width: 420px; }
+.byd-landing-code .byd-code-row > input { background: #14161c; }
+.byd-landing-code .byd-code-row > input::placeholder { color: #7d869b; }
+
+/* The laid table, drawn at 700 × 540 and zoomed to its column (LandingPage's `Scene`). */
+.byd-landing-scene { position: relative; aspect-ratio: 700 / 540; }
+.byd-landing-table { position: absolute; left: 0; top: 0; width: 700px; height: 540px; zoom: var(--byd-landing-scene-zoom, 1); perspective: 1500px; perspective-origin: 50% 0%; }
+.byd-landing-wood { position: absolute; inset: 11px 56px 140px; border-radius: 34px; background: linear-gradient(135deg, #5a3b22, #3a2414); box-shadow: 0 60px 90px rgba(0, 0, 0, 0.65), inset 0 2px 0 rgba(255, 255, 255, 0.1); transform: rotateX(32deg); transform-origin: 50% 100%; padding: 26px; box-sizing: border-box; }
+.byd-landing-felt { position: relative; width: 100%; height: 100%; border-radius: 22px; background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55); }
+.byd-landing-zone { position: absolute; top: 14%; height: 56%; border: 2px dashed rgba(243, 233, 214, 0.22); border-radius: 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.byd-landing-zone > b { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); z-index: 2; background: var(--byd-landing-plate); color: var(--byd-landing-chalk); font: 700 11px system-ui, sans-serif; padding: 3px 9px; border-radius: 999px; white-space: nowrap; box-shadow: 0 0 0 1px var(--byd-landing-edge); }
+
+.byd-landing-card { display: block; zoom: calc(var(--byd-landing-card-w, 80) / 238.11); rotate: var(--turn, 0deg); border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35); overflow: hidden; flex: none; }
+.byd-landing-card .byd-preview { display: block; }
+
+.byd-landing-deal { position: absolute; left: 9%; top: 24%; }
+.byd-landing-deal .byd-landing-card { position: absolute; left: 0; top: 0; --byd-landing-card-w: 70; }
+.byd-landing-card[data-at='flying'] { opacity: 0; animation: byd-landing-deal 6.4s cubic-bezier(0.3, 0.7, 0.2, 1) infinite; animation-delay: var(--d); }
+@keyframes byd-landing-deal {
+  0% { translate: 0 0; rotate: 0deg; opacity: 0; }
+  4% { opacity: 1; }
+  18%, 78% { translate: var(--x) var(--y); rotate: var(--r); opacity: 1; }
+  92%, 100% { translate: var(--x) var(--y); rotate: var(--r); opacity: 0; }
+}
+.byd-landing-played { position: absolute; left: 46%; top: 20%; display: flex; gap: 10px; }
+.byd-landing-played .byd-landing-card { --byd-landing-card-w: 88; }
+
+.byd-landing-phone { position: absolute; bottom: 0; width: 120px; height: 247px; border-radius: 22px; background: #0b0c10; padding: 7px; box-sizing: border-box; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 1.5px #2c3242; animation: byd-landing-bob 8s ease-in-out infinite; }
+.byd-landing-phone[data-seat='1'] { left: 40px; rotate: -9deg; }
+.byd-landing-phone[data-seat='3'] { left: 290px; bottom: -26px; rotate: -1deg; animation-delay: -4s; }
+.byd-landing-phone[data-seat='2'] { right: 40px; rotate: 9deg; animation-delay: -2s; }
+@keyframes byd-landing-bob { 50% { translate: 0 -10px; } }
+.byd-landing-screen { height: 100%; border-radius: 16px; background: linear-gradient(#171a23, #101218); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+.byd-landing-bar { height: 3px; background: var(--seat); }
+.byd-landing-who { display: flex; align-items: center; gap: 6px; padding: 10px 9px 6px; font: 700 11px/1 system-ui, sans-serif; }
+.byd-landing-who i, .byd-landing-talk i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--seat); box-shadow: 0 0 0 2px rgba(243, 233, 214, 0.8); }
+.byd-landing-front { margin: 4px 8px 0; height: 22%; border-radius: 10px; background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30); box-shadow: inset 0 0 0 1px rgba(243, 233, 214, 0.18); position: relative; }
+.byd-landing-front b { position: absolute; left: 6px; top: 5px; font: 700 8px/1 system-ui, sans-serif; color: var(--byd-landing-chalk); opacity: 0.8; }
+.byd-landing-turn { align-self: flex-start; margin: 8px 8px 0; font: 800 9px/1 system-ui, sans-serif; color: var(--byd-landing-on-accent); background: var(--byd-landing-accent); padding: 4px 7px; border-radius: 999px; }
+.byd-landing-hand { position: absolute; left: 0; right: 0; bottom: 8%; height: 58%; }
+.byd-landing-hand .byd-landing-card { --byd-landing-card-w: 54; position: absolute; left: calc(50% - 27px); bottom: 0; transform-origin: 50% 120%; }
+.byd-landing-hand .byd-landing-card:nth-child(1) { translate: -10px 0; }
+.byd-landing-hand .byd-landing-card:nth-child(2) { translate: 0 -5px; z-index: 1; }
+.byd-landing-hand .byd-landing-card:nth-child(3) { translate: 10px 0; }
+
+.byd-landing-steps { max-width: 1320px; margin: 0 auto; padding: 72px var(--byd-landing-gutter) 32px; box-sizing: border-box; }
+.byd-landing-steps > h2 { font-size: clamp(28px, 3.4vw, 44px); letter-spacing: -0.025em; line-height: 1.05; margin: 0 0 40px; max-width: 18ch; }
+.byd-landing-steps ol { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; counter-reset: byd-landing-step; }
+.byd-landing-steps li { background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 22px 22px 24px; counter-increment: byd-landing-step; display: flex; flex-direction: column; gap: 10px; }
+.byd-landing-steps li::before { content: counter(byd-landing-step, decimal-leading-zero) / ''; font: 800 13px ui-monospace, Menlo, monospace; color: var(--byd-landing-amber); letter-spacing: 0.1em; }
+.byd-landing-steps h3 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+.byd-landing-steps li > p { margin: 0; color: var(--byd-landing-muted); font-size: 15px; }
+.byd-landing-pic { height: 150px; border-radius: 14px; margin-bottom: 8px; position: relative; overflow: hidden; display: grid; place-items: center; box-sizing: border-box; }
+.byd-landing-rows { background: #14161c; box-shadow: inset 0 0 0 1px #2c3242; padding: 14px; place-items: stretch; align-content: start; gap: 6px; font: 12px/1 ui-monospace, Menlo, monospace; color: var(--byd-landing-muted); }
+.byd-landing-rows > div { display: grid; grid-template-columns: minmax(0, 1.6fr) 3.4em minmax(0, 1fr); gap: 8px; padding: 6px 8px; border-radius: 6px; background: #1b1e27; white-space: nowrap; overflow: hidden; }
+.byd-landing-rows > div > span { overflow: hidden; text-overflow: ellipsis; }
+.byd-landing-rows > div:first-child { background: none; color: var(--byd-landing-quiet); font: 700 10px/1 system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; }
+.byd-landing-rows > div[data-hot] { box-shadow: inset 0 0 0 1.5px var(--byd-landing-accent); color: var(--byd-landing-ink); }
+.byd-landing-template { background: radial-gradient(circle at 50% 120%, #253044, #171a23); display: flex; justify-content: center; align-items: center; gap: 0; }
+.byd-landing-template .byd-landing-card + .byd-landing-card { margin-left: -24px; margin-top: 12px; }
+.byd-landing-feltpic { background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); }
+.byd-landing-feltpic .byd-landing-zone { top: 22%; height: 56%; border-color: rgba(243, 233, 214, 0.3); }
+.byd-landing-feltpic .byd-landing-zone > b { left: 8px; transform: none; font-size: 10px; padding: 2px 7px; top: -10px; }
+.byd-landing-talk { background: #14161c; box-shadow: inset 0 0 0 1px #2c3242; padding: 14px; place-items: stretch; align-content: center; gap: 8px; }
+.byd-landing-talk p { margin: 0; border-radius: 12px; padding: 8px 10px; font-size: 13px; line-height: 1.3; background: #1d212b; display: flex; gap: 8px; align-items: flex-start; }
+.byd-landing-talk i { margin-top: 3px; }
+.byd-landing-talk p[data-version] { background: rgba(125, 211, 160, 0.12); box-shadow: inset 0 0 0 1px rgba(125, 211, 160, 0.4); }
+.byd-landing-talk p[data-version] b { color: var(--byd-landing-accent); }
+
+.byd-landing-end { max-width: calc(1320px - 2 * 48px); margin: 40px auto 0; border-radius: 28px; padding: clamp(28px, 5vw, 56px); background: radial-gradient(ellipse at 80% 20%, rgba(46, 107, 70, 0.55), transparent 60%), linear-gradient(135deg, #1b1f29, #12141b); border: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; box-sizing: border-box; width: calc(100% - 2 * var(--byd-landing-gutter)); }
+.byd-landing-end h2 { margin: 0 0 6px; font-size: clamp(26px, 3vw, 38px); letter-spacing: -0.02em; line-height: 1.1; }
+.byd-landing-end p { margin: 0; color: var(--byd-landing-muted); }
+.byd-landing-foot { max-width: 1320px; margin: 0 auto; padding: 40px var(--byd-landing-gutter) 48px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; color: var(--byd-landing-quiet); font-size: 14px; }
+
+@media (max-width: 960px) {
+  .byd-landing-hero { grid-template-columns: minmax(0, 1fr); min-height: 0; padding-top: 8px; }
+  .byd-landing-scene { width: 100%; max-width: 640px; margin: 0 auto; }
+  .byd-landing-steps ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* On a phone the player's door comes first (#675): whoever was told by the TV to type the code here
+   finds the field on the first screen, at 320 × 568 too, and the pitch is read under it. */
+@media (max-width: 560px) {
+  .byd-landing-quiet { display: none; }
+  .byd-landing-head { padding-block: 12px; }
+  .byd-landing-pitch { display: flex; flex-direction: column; }
+  .byd-landing-code { order: -1; max-width: none; border-top: 0; padding: 14px 16px 16px; margin-bottom: 28px; border-radius: 16px; background: rgba(23, 26, 35, 0.85); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+  .byd-landing-eyebrow { margin-bottom: 10px; }
+  .byd-landing-steps ol { grid-template-columns: minmax(0, 1fr); }
+}
+/* The table is a still life for whoever asked for no motion: nothing dealt, nothing bobbing. */
+@media (prefers-reduced-motion: reduce) {
+  .byd-landing-card[data-at='flying'] { display: none; }
+  .byd-landing-phone { animation: none; }
+}

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
+import { LoginCard } from '../src/account/LoginCard.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
@@ -9,8 +10,8 @@ import { projectDoc } from './project-doc.js'
 import { admit, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 
-// Accounts (G1, prototype A): the home page is the login card until the link in the mail has
-// been followed; then it is "Mina spel". The cookie jar in test/setup.ts plays the browser.
+// Accounts (G1, prototype A): the login card at `/login` until the link in the mail has been
+// followed, and then "Mina spel" at `/`, where whoever is logged out finds the landing page (#1009). The cookie jar in test/setup.ts plays the browser.
 let run: Running
 // Den guidade starten hämtar startramens ansikte när spelet skapas (#420), och den trafiken går
 // inte ut på riktigt här: `watchFontNet` svarar på katalogens två adresser och på filen bygget
@@ -32,19 +33,20 @@ async function followMailedLink(): Promise<void> {
   expect(res.status).toBe(302)
 }
 
-describe('HomePage and the login card', () => {
+describe('the login card and HomePage', () => {
   it('continues directly as the logged-in user when the server enables the test bypass', async () => {
     await run.stop()
     run = await startServer({ auth: true, authBypass: true })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const home = location.pathname + location.search
     const gone: string[] = []
-    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    render(<LoginCard http={run.http} next={home} onNavigate={(u) => gone.push(u)} />)
 
     const email = await screen.findByLabelText('E-post')
     fireEvent.change(email, { target: { value: 'ada@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
 
-    await waitFor(() => expect(gone.at(-1)).toBe(location.pathname + location.search))
+    await waitFor(() => expect(gone.at(-1)).toBe(home))
     expect(screen.queryByText(/Kolla mejlen/)).toBeNull()
     expect(run.mail.sent).toHaveLength(0)
 
@@ -57,8 +59,13 @@ describe('HomePage and the login card', () => {
   it('asks for an address, says to check the mail, and after the link shows the account\'s games', async () => {
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
-    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    render(<LoginCard http={run.http} next={location.pathname + location.search} onNavigate={(u) => gone.push(u)} />)
     const email = await screen.findByLabelText('E-post')
+    // Named by a word that stays on the page while one types (#555 A-5, WCAG 3.3.2): the placeholder
+    // goes the moment anything is written, so it cannot be the only thing saying what the field is.
+    const said = screen.getByText('E-post', { selector: 'label span' })
+    expect(said.closest('label')?.contains(email)).toBe(true)
+    expect(email.hasAttribute('aria-label')).toBe(false)
     fireEvent.change(email, { target: { value: 'ada@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
     expect(await screen.findByText(/Kolla mejlen/)).toBeTruthy()
@@ -79,13 +86,10 @@ describe('HomePage and the login card', () => {
     expect(gone.at(-1)).toMatch(new RegExp(`^/editor\\?project=${run.projectId}`))
     fireEvent.click(screen.getByText(/Nytt spel/))
     expect(gone.at(-1)).toMatch(/^\/new\?/)
+    // Logged out, the same page is the landing page again (#1009), with its door back to the login.
     fireEvent.click(screen.getByText('logga ut'))
-    const field = await screen.findByLabelText('E-post')
-    // Named by a word that stays on the page while one types (#555 A-5, WCAG 3.3.2): the placeholder
-    // goes the moment anything is written, so it cannot be the only thing saying what the field is.
-    const said = screen.getByText('E-post', { selector: 'label span' })
-    expect(said.closest('label')?.contains(field)).toBe(true)
-    expect(field.hasAttribute('aria-label')).toBe(false)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Mina spel' }).getAttribute('href')).toMatch(/^\/login\?next=/)
   })
 })
 
