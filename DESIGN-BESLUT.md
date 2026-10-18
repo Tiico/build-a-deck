@@ -1429,6 +1429,17 @@ Det som skickas till leverantören sägs med vanliga ord innan nyckeln sparas.
 Servern loggar aldrig en nyckel, en kontext eller ett svar.
 Hur ytan ser ut prototypas innan den byggs (#940).
 
+Ytan, prototypad 2026-10-07 och vald av beställaren 2026-10-18 (#940): **en samtalspanel bredvid arbetsytan, och nyckeln på en egen profilsida.**
+Tre former prövades i den riktiga editorn med en låtsas-AI: en samtalspanel bredvid ytan (A), riktade handlingar där arbetet redan sker (B), och förslaget lagt som spöken direkt i kortväggen och tabellen (C).
+Valet blev A: ett ställe där designern både frågar om spelet och ber om kort, mallar och ändringar, och där förslaget står i samtalet med «Visa på väggen», «Godta alla», «Välj delar…» och «Kasta», med en rad under för att förfina det.
+Nyckeln sparas, prövas, byts och tas bort på en egen profilsida för den inloggade, inte på «Mina spel»; editorn hänvisar dit när ingen nyckel finns.
+
+Följdkrav:
+Panelen tar bredd från arbetsytan, och vid 1280 px kapade den i prototypen kortväggens verktygsrad; verktygsraden måste ge plats åt panelen utan att något kapas.
+Förslagets kort ritas av den enda renderaren (E2), och den fysiska kontrollen körs på förslaget innan det godtas.
+Svaret strömmar in del för del, så att ett kort syns när det är klart och inte först när hela svaret är det.
+Profilsidan är en ny yta och prototypas innan den byggs.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.
