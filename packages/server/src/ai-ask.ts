@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http'
 import { z } from 'zod'
-import { AI_INSTRUCTIONS, aiContextOf } from './ai-context.js'
+import { AI_INSTRUCTIONS, aiContextOf, aiSelectionOf } from './ai-context.js'
 import type { AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiFailure, type AiProviders } from './ai-providers.js'
 import type { ProjectDoc } from './projects.js'
@@ -37,13 +37,14 @@ export const ASK_MAX_BYTES = 1024 * 1024
 const MAX_TOKENS = 16_000
 // What the model is offered to propose with (#1002): the proposal model's own schema, so what the
 // provider holds the model to is what the editor reads the answer with.
-const PROPOSE = { name: 'propose', description: 'Propose changes to the game for the designer to look at and accept or discard. In this version: new cards.', schema: proposalSchema() }
+const PROPOSE = { name: 'propose', description: 'Propose changes to the game for the designer to look at and accept or discard. In this version: new cards, and changes to cards the game has.', schema: proposalSchema() }
 // A comment line now and then while the provider thinks, so that nothing between here and the
 // browser takes a quiet stream for a dead one (Cloudflare gives up on a response after 100 s).
 const HEARTBEAT_MS = 15_000
 
-// What a question is: the question, the conversation it continues, and the language the asker uses
-// the tool in. Nothing else — the game is the server's to read, never the client's to send.
+// What a question is: the question, the conversation it continues, the language the asker uses the
+// tool in, and which cards she has selected. Nothing else — the game is the server's to read, never
+// the client's to send, and a selection is ids the server looks up in its own copy.
 const Turn = z.strictObject({ role: z.enum(['user', 'assistant']), text: z.string().min(1).max(20_000) })
 export const AskBody = z.strictObject({
   question: z.string().trim().min(1).max(4000),
@@ -54,6 +55,9 @@ export const AskBody = z.strictObject({
     .max(40)
     .refine((turns) => turns.every((t, i) => t.role === (i % 2 === 0 ? 'user' : 'assistant')) && turns.length % 2 === 0, 'turns alternate, begin with the designer and end with an answer'),
   lang: z.enum(['sv', 'en']).optional(),
+  // The cards the designer has selected (#1003), by id: the server reads them out of its own copy of
+  // the game, as it reads the rest of it. As many as a deck can hold, and each id no longer than one.
+  selected: z.array(z.string().min(1).max(200)).max(5000).optional(),
 })
 export type AskBody = z.infer<typeof AskBody>
 
@@ -128,7 +132,10 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
       model: opened.model ?? adapter.defaultModel,
       instructions: `${AI_INSTRUCTIONS}\nThe designer uses the tool in ${ask.lang === 'en' ? 'English' : 'Swedish'}; answer in that language when the language of the question is unclear.`,
       context: aiContextOf(doc),
-      messages: [...ask.turns, { role: 'user' as const, text: ask.question }],
+      // The selected cards stand before the question they are asked about, in the question's own
+      // message and not in the game's context: the context is the large part the providers cache,
+      // and a selection that changes from one question to the next must not move it.
+      messages: [...ask.turns, { role: 'user' as const, text: withSelection(doc, ask) }],
       maxTokens: MAX_TOKENS,
       proposal: PROPOSE,
     }
@@ -149,6 +156,13 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
   if (outcome !== 'ok' && outcome !== 'cancelled') send({ t: 'failed', kind: outcome })
   res.end()
   console.log(JSON.stringify({ msg: 'ai', account, provider: opened.provider, ms: Date.now() - started, outcome }))
+}
+
+// The question as the provider is asked it: the selected cards, whole, and then the question under
+// a heading of its own, so the two are never read as one.
+function withSelection(doc: ProjectDoc, ask: AskBody): string {
+  const selection = aiSelectionOf(doc, ask.selected ?? [])
+  return selection ? `${selection}\n\n## Question\n${ask.question}` : ask.question
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

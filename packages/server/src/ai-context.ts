@@ -25,8 +25,9 @@ export const AI_INSTRUCTIONS = [
   'The designer you talk to is making the game described below. Answer questions about it: its cards, fields, template, rules, icons and colour roles.',
   'Always answer in the language the designer writes in. Names, card text and rules are the designer’s own words: quote them exactly as written and never translate them.',
   'Be concise and concrete, and refer to cards, zones and fields by the names the designer gave them.',
-  'When the designer asks for new cards, propose them — with the propose tool when it is offered, or as the proposal of a structured answer — and say in a sentence or two what you propose. Otherwise answer in words and propose nothing.',
+  'When the designer asks for new cards, or for changes to cards the game has, propose them — with the propose tool when it is offered, or as the proposal of a structured answer — and say in a sentence or two what you propose. Otherwise answer in words and propose nothing.',
   'A proposed card fills every field the template draws on it, and antal: how many copies the deck holds. It uses the game’s own fields, icons and colour roles and nothing else, and differs from the cards the game already has. Never write a picture: the art is the designer’s own, so leave picture fields out.',
+  'A changed card goes in changes: the id of a card the game has, and only the fields that change, each with its new value; antal changes how many copies the deck holds. Write each value as the column reads: a number in a column of numbers. When the designer has selected cards, "these" and "the selected cards" mean them.',
   'Nothing you propose changes the game until the designer accepts it. Anything else you would change, say in words, and never claim to have changed anything.',
   'Write your answer as plain text: paragraphs separated by a blank line, points as lines that start with "- ", and **bold** or *italic* where it helps. No headings, tables, links or code blocks; the editor shows nothing else.',
   'Never write HTML or CSS. Card text uses only the inline syntax described below.',
@@ -135,6 +136,30 @@ export function aiContextOf(doc: ProjectDoc): string {
   return out.join('\n')
 }
 
+// The cards the designer has selected in the editor (#1003) — the card she has chosen and the rows
+// she has ticked — written to stand before her question. Each is written whole, every column of the
+// game with the empty ones said as empty and the count always said, so that a question about these
+// cards is about cards the model reads every field of, whatever a large deck's context leaves out
+// (#1007). In the deck's order, so the same cards are the same bytes however they were selected.
+// Nothing at all when none of them is in the deck: a card removed since it was ticked is not one.
+export function aiSelectionOf(doc: ProjectDoc, ids: readonly string[]): string | null {
+  const chosen = new Set(ids)
+  const rows = doc.rows.filter((row) => chosen.has(row.id))
+  if (rows.length === 0) return null
+  const columns = columnsOf(doc).filter((f) => f !== ANTAL)
+  const out = [
+    '## Selected cards',
+    `The designer has selected ${rows.length === 1 ? 'this card' : `these ${rows.length} cards`} in the editor: when she says "these", "the selected cards" or "this card", she means ${rows.length === 1 ? 'it' : 'them'}. Every field is written, the empty ones too.`,
+  ]
+  for (const row of rows) {
+    const card: Record<string, unknown> = { id: row.id }
+    for (const field of columns) card[field] = row.fields[field] ?? ''
+    card[ANTAL] = countOf(row.fields[ANTAL])
+    out.push(JSON.stringify(card))
+  }
+  return out.join('\n')
+}
+
 // A count as the engine reads it (L4): a whole number of copies, one when nothing is said.
 function countOf(value: unknown): number {
   const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN
@@ -142,8 +167,9 @@ function countOf(value: unknown): number {
 }
 
 // How a column's values read (L4): numbers when every value is one, yes/no when every value is a
-// truth, text otherwise. The same reading the table sorts by.
-function kindOf(doc: ProjectDoc, field: string): 'number' | 'yes/no' | 'text' {
+// truth, text otherwise. The same reading the table sorts by, and the one a proposal's values are
+// held to (#1003).
+export function kindOf(doc: ProjectDoc, field: string): 'number' | 'yes/no' | 'text' {
   const values = doc.rows.map((row) => row.fields[field]).filter((v) => v !== undefined && v !== null && String(v).trim() !== '')
   if (values.length === 0) return 'text'
   if (values.every((v) => typeof v === 'boolean')) return 'yes/no'

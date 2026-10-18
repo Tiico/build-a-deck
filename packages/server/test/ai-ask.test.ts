@@ -179,6 +179,44 @@ describe('a question about the game', () => {
   })
 })
 
+describe('the cards the designer selected (#1003)', () => {
+  it('go with the question, each whole, while the game’s own context stays the same bytes', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    await ask(w, w.ada, 'Vad heter spelet?')
+    const plain = fake.calls.at(-1)!.body as { system: { text: string }[]; messages: { content: string }[] }
+    const asked = await ask(w, w.ada, 'Gör det här billigare', { selected: ['dragon', 'gone'] })
+    expect(asked.events.at(-1)).toEqual({ t: 'done' })
+    const body = fake.calls.at(-1)!.body as { system: { text: string }[]; messages: { content: string }[] }
+    const said = body.messages.at(-1)!.content
+    expect(said).toMatch(/^## Selected cards/)
+    expect(said).toContain('{"id":"dragon","title":"Drake","antal":1}')
+    expect(said).not.toContain('gone')
+    expect(said.endsWith('Gör det här billigare')).toBe(true)
+    // The game is the cached part of the request, and a selection does not move it.
+    expect(body.system[1]!.text).toBe(plain.system[1]!.text)
+    // The answer is about the question, not the cards before it.
+    expect(asked.text).toBe(`Du frågade: «Gör det här billigare». Spelet heter ${GAME}.`)
+  })
+
+  it('are ids and nothing else', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    const calls = fake.calls.length
+    expect((await ask(w, w.ada, 'Hej', { selected: [{ id: 'dragon' }] })).status).toBe(400)
+    expect((await ask(w, w.ada, 'Hej', { selected: 'dragon' })).status).toBe(400)
+    expect(fake.calls.length).toBe(calls)
+  })
+
+  it('are changed in a proposal streamed part by part (the fake’s [ändra:N])', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    const asked = await ask(w, w.ada, 'Ändra [ändra:1]', { selected: ['dragon'] })
+    expect(asked.events.filter((e) => e.t === 'part')).toEqual([{ t: 'part', key: 'changes', part: { card: 'dragon', fields: [{ field: 'title', value: 'Drake II' }] } }])
+    expect(asked.events.at(-1)).toEqual({ t: 'done' })
+  })
+})
+
 describe('a proposal (#1002)', () => {
   for (const [provider, key] of [
     ['anthropic', ADA_KEY],
