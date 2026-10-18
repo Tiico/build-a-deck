@@ -156,6 +156,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     if (!selectedRow) return
     deckRef.current?.querySelector(`[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'nearest' })
   }, [selectedRow])
+  // A proposal laid on the wall is brought into view (#1002): its cards stand at the end of their
+  // bands, and on a deck of seventy cards that is screens away from where the designer is reading —
+  // a press that changes nothing she can see reads as a press that did nothing.
+  const proposedKey = proposed ? [...proposed].join(' ') : ''
+  const ghosts = proposed?.size ?? 0
+  const own = doc.rows.length - ghosts
+  useLayoutEffect(() => {
+    if (!proposedKey) return
+    deckRef.current?.querySelector('[data-proposed]')?.scrollIntoView?.({ block: 'center' })
+  }, [proposedKey])
   const sections = useRef(new Map<string, HTMLElement>())
   // Where a jump from the table of contents will come to rest, for as long as it is on its way.
   // The reader's own hand on the wall — a wheel, a finger, the scrollbar, a key — lets go of it,
@@ -672,8 +682,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* Said as it changes, as the table's count is (#556): a search that narrows the wall
             says how many are left. */}
         <span aria-live="polite">
-          {isFiltering(filter) ? t(doc.rows.length === 1 ? 'wall.foot.found.one' : 'wall.foot.found.other', { shown: shown.length, total: doc.rows.length }) : t(doc.rows.length === 1 ? 'wall.foot.cards.one' : 'wall.foot.cards.other', { n: doc.rows.length })}
+          {isFiltering(filter) ? t(doc.rows.length === 1 ? 'wall.foot.found.one' : 'wall.foot.found.other', { shown: shown.length, total: doc.rows.length }) : t(own === 1 ? 'wall.foot.cards.one' : 'wall.foot.cards.other', { n: own })}
         </span>
+        {/* A proposal on the wall is not the deck's yet, so the deck's count leaves it out and says it
+            apart (#1002). */}
+        {ghosts > 0 && <span>{t(ghosts === 1 ? 'wall.foot.proposed.one' : 'wall.foot.proposed.other', { n: ghosts })}</span>}
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}
         <span>

@@ -4291,7 +4291,7 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-card-name { overflow: hidden; color: #c3cbdd; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .byd-ai-checks { display: grid; gap: var(--byd-s1); padding-left: var(--byd-s2); border-left: 3px solid #f0b64a; }
 .byd-ai-checks p, .byd-ai-checks ul { margin: 0; }
-.byd-ai-checks ul { padding-left: var(--byd-s4); }
+.byd-ai-checks ul { padding-left: var(--byd-s4); list-style: disc; }
 .byd-ai-decide { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
 .byd-ai-decide button { display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
 .byd-ai-verdict { margin: 0; color: #c3cbdd; }

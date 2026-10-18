@@ -120,6 +120,8 @@ describe('a proposal of new cards', () => {
     fireEvent.click(ghost)
     expect(ghost.getAttribute('aria-selected')).toBe('false')
     expect(document.querySelectorAll('.byd-wall-card:not([data-proposed])')).toHaveLength(3)
+    // The deck's count is the deck's, and the proposal is said apart from it.
+    expect(document.querySelector('.byd-wall-view')!.textContent).toMatch(/3 kort.*2 föreslagna/)
     expect(await logged()).toHaveLength(0)
     // Discarded, they leave the wall with it.
     fireEvent.click(within(panel()).getByRole('button', { name: 'Kasta' }))

@@ -271,6 +271,8 @@ export const enEditor = {
   'wall.density.heldByReading': 'The width follows the reading view',
   'wall.foot.cards.one': '{n} card',
   'wall.foot.cards.other': '{n} cards',
+  'wall.foot.proposed.one': '{n} proposed',
+  'wall.foot.proposed.other': '{n} proposed',
   'wall.foot.found.one': '{shown} of {total} card',
   'wall.foot.found.other': '{shown} of {total} cards',
   'wall.foot.checked': 'No remarks',

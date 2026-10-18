@@ -310,6 +310,8 @@ export const svEditor = {
   'wall.density.heldByReading': 'Bredden följer läsvyn',
   'wall.foot.cards.one': '{n} kort',
   'wall.foot.cards.other': '{n} kort',
+  'wall.foot.proposed.one': '{n} föreslaget',
+  'wall.foot.proposed.other': '{n} föreslagna',
   'wall.foot.found.one': '{shown} av {total} kort',
   'wall.foot.found.other': '{shown} av {total} kort',
   'wall.foot.checked': 'Inga anmärkningar',

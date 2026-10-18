@@ -105,7 +105,8 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
       )}
       {done && (
         <div className="byd-ai-decide">
-          <button type="button" className="byd-secondary" aria-pressed={onWall} onClick={onShow}>
+          {/* A switch, drawn as the language draws a thing that is on (L13): the chosen pill. */}
+          <button type="button" className="byd-choice" aria-pressed={onWall} onClick={onShow}>
             {t('ai.proposal.show')}
           </button>
           {/* Outlined and not filled (L13): the header's «Starta/Uppdatera bord» is the view's first

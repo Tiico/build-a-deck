@@ -56,6 +56,7 @@ test('a designer asks for cards, sees them stream in and on the wall, accepts th
   const ghosts = page.locator('.byd-wall-card[data-proposed]')
   await expect(ghosts).toHaveCount(3)
   await expect(wall).toHaveCount(9)
+  await expect(ghosts.first()).toBeInViewport()
   await expect(ghosts.first()).toHaveAccessibleName('Proposal: Förslag 1')
   await expect(ghosts.first()).toContainText('Proposal')
   expect(wire.sent().filter((f) => f.includes('"t":"edit"'))).toEqual([])

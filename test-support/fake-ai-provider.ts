@@ -18,7 +18,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 //
 // A request that lets the model propose (#1002) — a tool on Anthropic's, a JSON schema on OpenAI's —
 // is answered with a proposal when the question asks for one: `[kort:3]` proposes three new cards,
-// each filling every column the context lists with a value of its kind (never a picture), and streamed
+// each filling every column the context lists with a value of its kind (never a picture) — the column
+// a variant is chosen by with the first card's value — and streamed
 // a card at a time; `[sakta]` leaves 400 ms between two cards, so a person can watch them arrive;
 // `[oanvändbart]` proposes two, the second writing a column the game does not have; and `[kapat]`
 // stops half-way through the proposal, as an answer that ran out of tokens does. Without one of
@@ -260,9 +261,17 @@ function cardsFor(context: string, n: number): FakeCard[] {
     .split('\n')
     .map((line) => /^- ([^:]+): (\S+)/.exec(line))
     .flatMap((m) => (m && m[1] !== 'id' && m[1] !== 'antal' && m[2] !== 'image' ? [{ name: m[1] ?? '', kind: m[2] ?? '' }] : []))
+  // The column a variant is chosen by takes the first card's value, so the cards stand in a band the
+  // deck already has rather than each in one of its own.
+  const variantBy = /^Variants chosen by the column: (.+)$/m.exec(context)?.[1]
+  const firstCard = /^## Cards[^\n]*\n[^\n]*\n(\{.*\})$/m.exec(context)?.[1]
+  const first = firstCard ? (JSON.parse(firstCard) as Record<string, string | number | boolean>) : {}
   return Array.from({ length: n }, (_, i) => ({
     fields: [
-      ...columns.map(({ name, kind }) => ({ field: name, value: name === 'title' ? `Förslag ${i + 1}` : kind === 'number' ? i + 1 : kind === 'yes/no' ? true : `Text ${i + 1}.` })),
+      ...columns.map(({ name, kind }) => ({
+        field: name,
+        value: name === 'title' ? `Förslag ${i + 1}` : name === variantBy && first[name] !== undefined ? first[name] : kind === 'number' ? i + 1 : kind === 'yes/no' ? true : `Text ${i + 1}.`,
+      })),
       { field: 'antal', value: 1 },
     ],
   }))
