@@ -14,7 +14,7 @@ export const PROVIDER_NAMES: Record<AiProvider, string> = { anthropic: 'Anthropi
 export const KEY_PAGES: Record<AiProvider, string> = { anthropic: 'https://platform.claude.com/settings/keys', openai: 'https://platform.openai.com/api-keys' }
 
 // Why a key was not saved: the provider's closed set of words, and the server's own reasons.
-export type KeyRefusal = AiFailure | 'too-many' | 'unavailable' | 'malformed' | 'offline'
+export type KeyRefusal = Exclude<AiFailure, 'refused'> | 'too-many' | 'unavailable' | 'malformed' | 'offline'
 
 const json = (body: unknown): RequestInit => ({ headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
 const why = async (res: Response): Promise<string> => ((await res.json().catch(() => ({}))) as { error?: string }).error ?? ''

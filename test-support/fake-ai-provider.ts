@@ -1,18 +1,28 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-// Anthropic and OpenAI as the suites meet them (#999): never the real ones. One listener speaks both
-// formats, Anthropic's under `/anthropic` and OpenAI's under `/openai`, so a server pointed at
+// Anthropic and OpenAI as the suites meet them (#999, #1001): never the real ones. One listener speaks
+// both formats, Anthropic's under `/anthropic` and OpenAI's under `/openai`, so a server pointed at
 // `<fake>/anthropic` and `<fake>/openai` talks to it exactly as it talks to `api.anthropic.com` and
-// `api.openai.com`.
+// `api.openai.com` — the model list, and the streamed answer in each provider's own server-sent events.
 //
 // What the provider answers is decided by the key, so a test says what happens in the key it pastes:
 // a key with `bad` in it is refused, `broke` has no credit left, `busy` is rate limited, `swamped`
 // finds the provider overloaded and `hangup` never gets an answer at all. Every other key is good.
 //
+// What a streamed answer does is decided by the question, the last thing the designer said, since a
+// key has to be good to be saved at all: `[refuse]` is declined by the model, `[fail]` breaks off
+// half-way with the provider overloaded, `[overloaded]` is turned away before a word, `[slow]` keeps
+// talking a word at a time until the caller hangs up, and `[silent]` opens the stream and says
+// nothing. Anything else is answered with what was asked and the game's name, read off the first
+// line of the context the server sent, which is how a test sees that the game travelled.
+//
 // The listener binds nothing itself: each package takes its ports out of its own band
 // (`listen-zero.ts`), so the caller makes the server and listens where its rules say.
 
-export type FakeAiCall = { provider: 'anthropic' | 'openai'; path: string; key: string | null; version: string | null }
+type Provider = 'anthropic' | 'openai'
+export type FakeAiCall = { provider: Provider; path: string; key: string | null; version: string | null; body?: unknown }
+// A streamed answer as the fake saw it: whether it got to the end, and whether the caller hung up.
+export type FakeAiStream = { provider: Provider; question: string; finished: boolean; closed: boolean }
 export type FakeAiProvider = {
   listener(req: IncomingMessage, res: ServerResponse): void
   // Every call it took, with the key it was made with — so a test can see the key travelled to the
@@ -20,6 +30,10 @@ export type FakeAiProvider = {
   calls: FakeAiCall[]
   // How many models Anthropic hands out per page, to make the client walk the pages.
   anthropicPage: number
+  // Every streamed answer it began, in order.
+  streams: FakeAiStream[]
+  // How long it waits between two pieces of an answer, in milliseconds.
+  pace: number
 }
 
 export const FAKE_ANTHROPIC_MODELS = [
@@ -47,36 +61,18 @@ export function fakeAiProvider(): FakeAiProvider {
   const fake: FakeAiProvider = {
     calls: [],
     anthropicPage: 1000,
+    streams: [],
+    pace: 15,
     listener(req, res) {
       const url = new URL(req.url ?? '/', 'http://fake')
       const provider = url.pathname.startsWith('/anthropic/') ? 'anthropic' : url.pathname.startsWith('/openai/') ? 'openai' : null
       const path = provider ? url.pathname.slice(provider.length + 1) : url.pathname
-      if (!provider || req.method !== 'GET' || path !== '/v1/models') return send(res, 404, { error: { type: 'not_found_error', message: 'Not found' } })
-      const key = provider === 'anthropic' ? (req.headers['x-api-key'] as string | undefined) ?? null : (/^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1] ?? null)
+      const streamed = provider === 'anthropic' ? '/v1/messages' : '/v1/responses'
+      if (!provider || !((req.method === 'GET' && path === '/v1/models') || (req.method === 'POST' && path === streamed))) return send(res, 404, { error: { type: 'not_found_error', message: 'Not found' } })
+      if (req.method === 'POST') return void readJson(req).then((body) => answer(fake, provider, path, req, res, body))
+      const key = keyOf(provider, req)
       fake.calls.push({ provider, path, key, version: (req.headers['anthropic-version'] as string | undefined) ?? null })
-      if (provider === 'anthropic' && !req.headers['anthropic-version']) return send(res, 400, { type: 'error', error: { type: 'invalid_request_error', message: 'anthropic-version: header is required' } })
-      const said = key ?? ''
-      if (said.includes('hangup')) return void req.socket.destroy()
-      if (!key || said.includes('bad')) {
-        return provider === 'anthropic'
-          ? send(res, 401, { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } })
-          : send(res, 401, { error: { message: 'Incorrect API key provided.', type: 'invalid_request_error', code: 'invalid_api_key' } })
-      }
-      if (said.includes('broke')) {
-        return provider === 'anthropic'
-          ? send(res, 402, { type: 'error', error: { type: 'billing_error', message: 'Your credit balance is too low.' } })
-          : send(res, 429, { error: { message: 'You exceeded your current quota.', type: 'insufficient_quota', code: 'insufficient_quota' } })
-      }
-      if (said.includes('busy')) {
-        return provider === 'anthropic'
-          ? send(res, 429, { type: 'error', error: { type: 'rate_limit_error', message: 'Number of requests has exceeded your rate limit.' } })
-          : send(res, 429, { error: { message: 'Rate limit reached.', type: 'requests', code: 'rate_limit_exceeded' } })
-      }
-      if (said.includes('swamped')) {
-        return provider === 'anthropic'
-          ? send(res, 529, { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } })
-          : send(res, 503, { error: { message: 'The engine is currently overloaded.', type: 'server_error', code: null } })
-      }
+      if (refused(provider, key, req, res)) return
       if (provider === 'openai') return send(res, 200, { object: 'list', data: FAKE_OPENAI_MODELS.map((m) => ({ ...m, object: 'model', owned_by: 'openai' })) })
       const after = url.searchParams.get('after_id')
       const from = after ? FAKE_ANTHROPIC_MODELS.findIndex((m) => m.id === after) + 1 : 0
@@ -86,4 +82,138 @@ export function fakeAiProvider(): FakeAiProvider {
     },
   }
   return fake
+}
+
+const keyOf = (provider: Provider, req: IncomingMessage): string | null =>
+  provider === 'anthropic' ? ((req.headers['x-api-key'] as string | undefined) ?? null) : (/^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1] ?? null)
+
+function readJson(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = []
+    req.on('data', (c: Buffer) => chunks.push(c))
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))
+      } catch {
+        resolve(null)
+      }
+    })
+  })
+}
+
+// What the key says about the call, in the provider's own words; true when the call was answered.
+function refused(provider: Provider, key: string | null, req: IncomingMessage, res: ServerResponse): boolean {
+  if (provider === 'anthropic' && !req.headers['anthropic-version']) {
+    send(res, 400, { type: 'error', error: { type: 'invalid_request_error', message: 'anthropic-version: header is required' } })
+    return true
+  }
+  const said = key ?? ''
+  if (said.includes('hangup')) {
+    req.socket.destroy()
+    return true
+  }
+  if (!key || said.includes('bad')) {
+    if (provider === 'anthropic') send(res, 401, { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } })
+    else send(res, 401, { error: { message: 'Incorrect API key provided.', type: 'invalid_request_error', code: 'invalid_api_key' } })
+    return true
+  }
+  if (said.includes('broke')) {
+    if (provider === 'anthropic') send(res, 402, { type: 'error', error: { type: 'billing_error', message: 'Your credit balance is too low.' } })
+    else send(res, 429, { error: { message: 'You exceeded your current quota.', type: 'insufficient_quota', code: 'insufficient_quota' } })
+    return true
+  }
+  if (said.includes('busy')) {
+    if (provider === 'anthropic') send(res, 429, { type: 'error', error: { type: 'rate_limit_error', message: 'Number of requests has exceeded your rate limit.' } })
+    else send(res, 429, { error: { message: 'Rate limit reached.', type: 'requests', code: 'rate_limit_exceeded' } })
+    return true
+  }
+  if (said.includes('swamped')) {
+    overloaded(provider, res)
+    return true
+  }
+  return false
+}
+
+const overloaded = (provider: Provider, res: ServerResponse) =>
+  provider === 'anthropic'
+    ? send(res, 529, { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } })
+    : send(res, 503, { error: { message: 'The engine is currently overloaded.', type: 'server_error', code: null } })
+
+type Said = { role?: unknown; content?: unknown }
+// The last thing the designer said, and the game's name off the first line of the context.
+function questionOf(provider: Provider, body: unknown): { question: string; game: string } {
+  const b = (body ?? {}) as { messages?: Said[]; input?: Said[]; system?: { text?: unknown }[]; instructions?: unknown }
+  const turns = (provider === 'anthropic' ? b.messages : b.input) ?? []
+  const last = turns.at(-1)?.content
+  const system = provider === 'anthropic' ? (b.system ?? []).map((s) => String(s.text ?? '')).join('\n') : String(b.instructions ?? '')
+  return { question: typeof last === 'string' ? last : '', game: /^# Game: (.+)$/m.exec(system)?.[1] ?? '?' }
+}
+
+const event = (res: ServerResponse, name: string, data: unknown) => res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`)
+
+// A streamed answer in the provider's own events: Anthropic's Messages API, OpenAI's Responses API.
+async function answer(fake: FakeAiProvider, provider: Provider, path: string, req: IncomingMessage, res: ServerResponse, body: unknown): Promise<void> {
+  const key = keyOf(provider, req)
+  fake.calls.push({ provider, path, key, version: (req.headers['anthropic-version'] as string | undefined) ?? null, body })
+  if (refused(provider, key, req, res)) return
+  const { question, game } = questionOf(provider, body)
+  if (question.includes('[overloaded]')) return overloaded(provider, res)
+  const stream: FakeAiStream = { provider, question, finished: false, closed: false }
+  fake.streams.push(stream)
+  res.on('close', () => {
+    stream.closed = true
+  })
+  res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' })
+  const open = () => !stream.closed && !res.destroyed
+  if (question.includes('[silent]')) return
+  const anthropic = provider === 'anthropic'
+  if (anthropic) {
+    event(res, 'message_start', { type: 'message_start', message: { id: 'msg_fake', type: 'message', role: 'assistant', content: [], model: 'fake', stop_reason: null, usage: { input_tokens: 1, output_tokens: 1 } } })
+    event(res, 'content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
+    event(res, 'ping', { type: 'ping' })
+  } else {
+    event(res, 'response.created', { type: 'response.created', sequence_number: 0, response: { id: 'resp_fake', status: 'in_progress' } })
+  }
+  const say = (text: string) =>
+    anthropic
+      ? event(res, 'content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } })
+      : event(res, 'response.output_text.delta', { type: 'response.output_text.delta', item_id: 'msg_fake', output_index: 0, content_index: 0, delta: text })
+  const end = (reason: 'end_turn' | 'refusal') => {
+    if (anthropic) {
+      event(res, 'content_block_stop', { type: 'content_block_stop', index: 0 })
+      event(res, 'message_delta', { type: 'message_delta', delta: { stop_reason: reason, stop_sequence: null }, usage: { output_tokens: 9 } })
+      event(res, 'message_stop', { type: 'message_stop' })
+    } else {
+      if (reason === 'refusal') {
+        event(res, 'response.refusal.delta', { type: 'response.refusal.delta', delta: 'I can’t help with that.' })
+        event(res, 'response.refusal.done', { type: 'response.refusal.done', refusal: 'I can’t help with that.' })
+      }
+      event(res, 'response.completed', { type: 'response.completed', response: { id: 'resp_fake', status: 'completed' } })
+    }
+    stream.finished = true
+    res.end()
+  }
+  if (question.includes('[refuse]')) return end('refusal')
+  if (question.includes('[slow]')) {
+    // A word at a time until the caller hangs up — or a minute, which no test waits for.
+    for (let i = 0; i < 600 && open(); i++) {
+      say(i === 0 ? 'Ett' : ' ord')
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    if (open()) end('end_turn')
+    return
+  }
+  const words = `Du frågade: «${question}». Spelet heter ${game}.`.split(/(?= )/)
+  const half = Math.ceil(words.length / 2)
+  for (const [i, word] of words.entries()) {
+    if (!open()) return
+    if (question.includes('[fail]') && i === half) {
+      if (anthropic) event(res, 'error', { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } })
+      else event(res, 'response.failed', { type: 'response.failed', response: { id: 'resp_fake', status: 'failed', error: { code: 'server_error', message: 'The server had an error.' } } })
+      return void res.end()
+    }
+    say(word)
+    await new Promise((resolve) => setTimeout(resolve, fake.pace))
+  }
+  if (open()) end('end_turn')
 }
