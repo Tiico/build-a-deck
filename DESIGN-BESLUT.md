@@ -2302,6 +2302,15 @@ Filten hänger nu från radens topp och centreras bara i sidled, så sidan läse
 Formuläret står kvar vid foten, där tummen är och där #42 lämnade «Sätt dig» oavsett filtens storlek; att packa hela sidan uppåt hade flyttat knappen med antalet platser.
 `picker-band.spec.ts` mäter luften mellan huvudets sista rad och det första filten ritar, pillret eller träkanten, i det byggda appen vid 390 × 844 och 320 × 568 med fyra och sex platser: 30 px överallt.
 
+Tillägg 2026-10-17 (#979): filten passas in i sidans bredd, och steget längs kanten följer med.
+Den delade filten är 260 px och öst- och västpillret hänger 30 px utanför den på var sida, alltså 320 px — hela den minsta telefonen.
+Vid 320 × 568 med fem platser eller fler låg västpillret därför mot glaset vid x = 0 och östpillret kant i kant med skärmens högerkant, utan sidans marginal.
+Filten är nu högst sidans bredd innanför marginalen minus de två överhängen (`100cqi` på `.byd-join`, som är en container), vilket vid 320 px är 220 px och vid 390 px lämnar den delade filten på 260 px.
+En smalare filt kortar steget längs kanten, annars räcker paret på en delad nord- eller sydkant förbi filtens hörn: paret spänner två steg minus luften och får inte vara bredare än filten, så steget är hälften av filten plus luften, eller 132 px om det är kortare.
+Vid 320 px blir steget 117 px, taket för ett delat piller 103 px och filten 220 × 205 px; steget ned längs sidan, filtens höjd, hörnens dager och samma luft ned längs sidan som tvärs över änden följer ur det som förut.
+De vanliga förnamnen från #42 stod fortfarande hela i skärmbilderna vid 320 × 568 med åtta platser.
+`picker-margin.spec.ts` mäter varje piller i det byggda appen vid 320 × 568 och 390 × 844 med fyra till åtta platser mot sidans egen marginal och mot träffytans 44 px, och håller långa namn vid 320 px på fem, sex och åtta platser inom marginalen, längs filten och utan att något piller ligger över ett annat.
+
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
 C6 gav principen; det här är hur den blir konkret.
