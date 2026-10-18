@@ -4341,3 +4341,91 @@ label:is(.byd-ai-new, .byd-ai-change) { cursor: pointer; }
 .byd-data td.byd-data-record > span { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
 .byd-data-proposed { display: inline-block; margin-left: var(--byd-s1); padding: 0 var(--byd-s1); border-radius: 999px; background: #c9a7ff; color: #1c1530; font-family: system-ui, sans-serif; font-size: 10px; font-weight: 800; }
 .byd-data tr[data-change='changed'][data-proposed] { --byd-data-tint: rgba(201, 167, 255, 0.08); }
+
+/* «Bord · Resultat» (#1010, beställarens val 2026-10-18): the Bord tab's two views, switched at the
+   head of its first column, where it stands in both views. Over the seats and not over the felt,
+   so it costs the felt no height. */
+.byd-bord-switch { display: flex; gap: var(--byd-s2); }
+.byd-bord-switch .byd-choice { min-height: var(--byd-tap); padding: 0 var(--byd-s4); font-size: 13px; }
+
+/* Resultat: the versions in the first column, everything a version was told beside it. The
+   column is the setup's first column, so the switch does not move when the view does. */
+.byd-results { height: 100%; box-sizing: border-box; display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--byd-s4); padding: var(--byd-gutter); color: var(--byd-tables-ink); }
+.byd-results > * { min-width: 0; min-height: 0; }
+.byd-results-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--byd-s3); align-content: start; overflow: auto; }
+.byd-results-versions { display: grid; gap: var(--byd-s2); }
+.byd-results-versions [role='radiogroup'] { display: grid; gap: var(--byd-s1); }
+.byd-results-h { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-results .byd-results-pick { display: grid; gap: 2px; width: 100%; min-height: var(--byd-tap); padding: var(--byd-s2) var(--byd-s3); text-align: left; font-size: 13px; }
+.byd-results-pick small { color: var(--byd-tables-quiet); font-size: 12px; font-weight: 400; }
+.byd-results-pick[data-none='true'] > span { color: var(--byd-tables-quiet); }
+.byd-results-main { overflow: auto; display: grid; gap: var(--byd-s5); align-content: start; padding: 0 var(--byd-s2) var(--byd-s5) 0; }
+.byd-results-head { display: grid; gap: var(--byd-s1); }
+.byd-results-head h2 { margin: 0; color: #fff; font-size: 18px; }
+.byd-results-quiet, .byd-results-empty { margin: 0; color: var(--byd-tables-quiet); font-size: 12px; line-height: 1.5; }
+.byd-results-empty { font-size: 13px; max-width: 62ch; }
+.byd-results-ink { color: var(--byd-tables-ink); }
+.byd-results-sec { display: grid; gap: var(--byd-s2); max-width: 880px; }
+.byd-results-sec h3 { margin: 0; color: var(--byd-tables-ink); font-size: 14px; }
+.byd-results-sec h4 { margin: var(--byd-s3) 0 0; }
+.byd-results-code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 1px; color: var(--byd-tables-ink); }
+.byd-results-badge { font-style: normal; font-size: 11px; padding: 0 var(--byd-s2); border-radius: 999px; border: 1px solid #4a5268; color: var(--byd-editor-part-many); white-space: nowrap; }
+
+/* How the answers fall: a real table, the bars for the eye and the words in the cell. */
+.byd-results-dist { border-collapse: collapse; font-size: 12px; color: var(--byd-tables-quiet); justify-self: start; }
+.byd-results-dist th, .byd-results-dist td { padding: var(--byd-s1) var(--byd-s2); text-align: center; vertical-align: bottom; font-weight: 400; }
+.byd-results-dist td { min-width: 44px; }
+.byd-results-dist thead th { font-size: 11px; color: var(--byd-tables-quiet); }
+.byd-results-dist th[scope='row'] { text-align: left; color: var(--byd-tables-ink); font-weight: 600; white-space: nowrap; vertical-align: middle; }
+.byd-results-dist th[scope='row'] small { display: block; color: var(--byd-tables-quiet); font-weight: 400; }
+.byd-results-bars { display: grid; grid-template-columns: 14px; gap: 2px; align-items: end; justify-content: center; height: 46px; }
+/* Held against an earlier version, the cell draws that version's outline beside the bar. */
+.byd-results-dist[data-compare='true'] .byd-results-bars { grid-template-columns: 14px 6px; }
+.byd-results-bars i { display: block; border-radius: 2px; height: max(2px, var(--h)); }
+.byd-results-now { background: var(--byd-editor-primary-mark); }
+.byd-results-now[data-n='0'] { background: #3a4152; }
+.byd-results-was { box-sizing: border-box; border: 1px solid var(--byd-editor-placeholder-edge); }
+.byd-results-n { display: block; font-variant-numeric: tabular-nums; color: var(--byd-tables-ink); }
+.byd-results-n small { color: var(--byd-tables-quiet); }
+.byd-results-mean { color: var(--byd-tables-ink); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; vertical-align: middle !important; }
+.byd-results-delta { font-variant-numeric: tabular-nums; vertical-align: middle !important; white-space: nowrap; }
+.byd-results-delta b[data-change='up'] { color: var(--byd-editor-confirm-ink); }
+.byd-results-delta b[data-change='down'] { color: var(--byd-editor-narrow-ink); }
+.byd-results-delta b[data-change='none'] { color: var(--byd-tables-ink); }
+
+/* The tables, and the filter that narrows the answers and flags to one of them. */
+.byd-results-filter { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
+.byd-results-filter .byd-choice { min-height: var(--byd-tap); padding: 0 var(--byd-s3); font-size: 12px; }
+.byd-results-tables, .byd-results-answers, .byd-results-flags { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.byd-results-tables li { display: flex; flex-wrap: wrap; gap: var(--byd-s1) var(--byd-s3); align-items: baseline; padding: var(--byd-s2) var(--byd-s3); border-radius: 10px; background: var(--byd-tables-bg); font-size: 12px; color: var(--byd-tables-quiet); }
+.byd-results-tables li[data-chosen='true'] { outline: 1px solid var(--byd-editor-primary-mark); }
+.byd-results-tables b { color: var(--byd-tables-ink); }
+.byd-results-flagged { color: var(--byd-editor-narrow-ink); font-weight: 600; }
+
+/* An answer: who, where, the three numbers, and what she would change, at reading width. */
+.byd-results-answer { display: grid; gap: var(--byd-s1); padding: var(--byd-s2) 0; border-top: 1px solid var(--byd-editor-line); }
+.byd-results-who, .byd-results-scores { display: flex; flex-wrap: wrap; gap: var(--byd-s1) var(--byd-s3); align-items: baseline; margin: 0; font-size: 12px; color: var(--byd-tables-quiet); }
+.byd-results-who b { color: var(--byd-tables-ink); font-size: 13px; }
+.byd-results-scores b { color: var(--byd-tables-ink); font-variant-numeric: tabular-nums; }
+.byd-results-said { margin: 0; padding-left: var(--byd-s2); border-left: 2px solid #4a5268; max-width: 70ch; color: var(--byd-tables-ink); font-size: 13px; line-height: 1.5; }
+
+/* A flag: when in the game and on the clock, who, and what she wrote. */
+.byd-results-flags li { display: grid; gap: 2px; padding: var(--byd-s2) 0; border-top: 1px solid var(--byd-editor-line); font-size: 13px; line-height: 1.45; }
+.byd-results-flags p { margin: 0; color: var(--byd-tables-ink); }
+.byd-results-when { color: var(--byd-editor-narrow-ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.byd-results-when::before { content: '⚑ '; }
+.byd-results-when span { color: var(--byd-tables-quiet); font-weight: 400; }
+
+/* The first column is as wide as the setup's at each width, so the switch stands still. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-results { grid-template-columns: 260px minmax(0, 1fr); }
+}
+/* Below the desk the editor is one column (L10, L12), and so is the view: the tab scrolls. */
+@media (max-width: 1023px) {
+  .byd-results { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: max-content; overflow: auto; }
+  .byd-results-side, .byd-results-main { overflow: visible; }
+}
+
+/* An ended table's one line in the Bord view (A:s rad): what came of it, and the way to it. */
+.byd-tables-results { justify-self: start; min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-tables-ink); font: inherit; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.byd-tables-results:hover { color: #fff; }

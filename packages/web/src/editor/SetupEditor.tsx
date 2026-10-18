@@ -47,6 +47,9 @@ export type SetupEditorProps = {
   // list of tables the game is being played at. The setup owns the tab's layout — it is the one
   // that knows there are three columns — so the list is handed to it rather than dropped after it.
   beside?: ReactNode
+  // What stands at the head of the first column, over the seats (#1010): the Bord tab's switch to
+  // its Resultat view, which stands in the same place in both views.
+  lead?: ReactNode
 }
 
 // What one CSS millimetre is worth in pixels. A compiled card is laid out in millimetres, the
@@ -66,7 +69,7 @@ function inAField(e: KeyboardEvent): boolean {
   return on.some((el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 }
 
-export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEditorProps) {
+export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: SetupEditorProps) {
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
@@ -266,6 +269,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
       }}
     >
       <div className="byd-setup-side">
+        {lead}
         <SeatsPanel client={client} setup={setup} />
         <ZoneList
           setup={setup}

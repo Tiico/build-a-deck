@@ -20,6 +20,7 @@ import { ProjectHost, type EditorMessage } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, namesOfProject, peekFace, type CardFace } from './names.js'
 import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
+import { playtestOf, type PlaytestSource } from './playtest.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
@@ -1751,6 +1752,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}) })
     }
     json(res, 200, tables)
+    return true
+  }
+  // What the game's playtests said (#1010, G3): every table's answers, flags and people, and every
+  // version's sums, in one answer rather than a survey and a whole log per table. It is the same
+  // playtest data a table's log and surveys are (#524), so it is read by the same people: whoever
+  // may start the game's tables. Read from the store and never from the actors — an ended table
+  // has nothing left to load, and the answer is the log's.
+  const playtest = /^\/projects\/([^/]+)\/playtest$/.exec(url.pathname)
+  if (playtest && req.method === 'GET') {
+    const gate = await allowed(decodeURIComponent(playtest[1] ?? ''), canStartTables)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const sources: PlaytestSource[] = []
+    for (const { id } of await opts.store.sessionsOf(gate.rec.id)) {
+      const session = await opts.store.loadSession(id)
+      if (!session) continue
+      const [log, surveys, admissions] = await Promise.all([opts.store.read(id), opts.surveys ? opts.surveys.list(id) : [], opts.store.guestsAt(id)])
+      sources.push({ id, session, log, surveys, admissions })
+    }
+    json(res, 200, playtestOf(sources))
     return true
   }
   if (start && req.method === 'POST') {
