@@ -100,7 +100,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
   // of news and one slot could only ever hold the later of them (#35).
-  const [notice, setNotice] = useState<string | null>(null)
+  // A notice is a saying of its own and not only its words (#996). A save or a table that goes
+  // through puts away the notice that stood when it was asked for, and never one said while it was
+  // on its way: a refusal that arrived in that moment was cleared by the save's answer a beat
+  // later, and the change it was about vanished without a word. Said again, the same words are a
+  // new notice, so a save cannot put away a word it never stood in front of.
+  const [notice, setNotice] = useState<{ text: string } | null>(null)
+  const say = useCallback((text: string) => setNotice({ text }), [])
+  const putAway = (standing: { text: string } | null) => setNotice((now) => (now === standing ? null : now))
   const confirmation = useConfirmation()
   // How many questions stand right now (#698). While one does, what just happened is not drawn:
   // it stood over «Ja, ta bort» and «Avbryt», and a step taken while the question stands would
@@ -309,9 +316,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const heardRefusals = useRef<{ client: ProjectClient | null; n: number }>({ client: null, n: 0 })
   useEffect(() => {
     const heard = heardRefusals.current
-    if (heard.client === client && refusedEdits > heard.n) setNotice(t('editor.edit.refused'))
+    if (heard.client === client && refusedEdits > heard.n) say(t('editor.edit.refused'))
     heardRefusals.current = { client, n: refusedEdits }
-  }, [client, refusedEdits, t])
+  }, [client, refusedEdits, say, t])
   // What the reading band has just answered a shortcut with; gone after a moment (#489).
   const [readingSaid, setReadingSaid] = useState<string | null>(null)
   useEffect(() => {
@@ -341,11 +348,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the server holds has nothing to save, and a save that is still travelling is not asked twice.
   const save = async (): Promise<boolean> => {
     if (!unsaved || saving) return true
+    const standing = notice
     setSaving(true)
     const result = await client.save()
     setSaving(false)
     // Never the server's own words (#485): a reason is translated, or said as the one it is not.
-    setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : refusalText(result.reason, t))
+    if (result.ok) putAway(standing)
+    else say(result.reason === 'conflict' ? t('editor.conflict') : refusalText(result.reason, t))
     return result.ok
   }
   // Out of the editor and back to the games. Work that differs from the saved project is asked
@@ -368,13 +377,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     setLeaving(false)
     goHome()
   }
+  // A table that starts saves first, and puts away what stood when it was asked for, as a save does.
   const startTable = async () => {
+    const standing = notice
     try {
       const { saved, ...started } = await client.startTable()
       setTable({ ...started, kind: 'new', saved })
-      setNotice(null)
+      putAway(standing)
     } catch {
-      setNotice(t('editor.table.error.start'))
+      say(t('editor.table.error.start'))
     }
   }
   // The header's table was ended — from the Bord tab, from the TV, or from another tab (#705). Its
@@ -417,7 +428,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       // What the server says in its own words is the developer's; the header says it in the
       // designer's language, in a whole sentence (#705, A4).
       if (err instanceof TableEnded) tableEnded()
-      else setNotice(t('editor.table.error.update'))
+      else say(t('editor.table.error.update'))
     } finally {
       setPreparing(null)
       setUpdating(false)
@@ -432,7 +443,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     try {
       await client.prepareTable(table.id, true)
     } catch {
-      setNotice(t('editor.table.error.render'))
+      say(t('editor.table.error.render'))
     }
   }
   // The cards a phone cannot read once they are rendered (#523, beslut C), said after the table is
@@ -519,7 +530,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
-        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(saidOr(err, t('symbols.place.failed', { name: symbolName(symbol, t) }))))}
+        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => say(saidOr(err, t('symbols.place.failed', { name: symbolName(symbol, t) }))))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
         // Locking a layer and naming it are edits to the element (L15), so they go the way every
         // other change to an element goes — through the base, which is where the layer lives even
@@ -601,7 +612,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       setTable((now) => (now ? { ...now, code, ...(now.hostKey !== undefined ? { hostKey } : {}) } : now))
       setCodeSaid(t('editor.table.newCode.said', { code, old }))
     } catch {
-      setNotice(t('editor.table.error.code'))
+      say(t('editor.table.error.code'))
     }
   }
 
@@ -677,7 +688,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             onShare={() => setOver('share')}
             onRename={(name) => client.rename(name)}
             onSaid={confirmation.confirm}
-            onFailed={setNotice}
+            onFailed={say}
             {...(client.mayDelete ? { onRemove: () => setRemoving('asking') } : {})}
           />
         )}
@@ -715,7 +726,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* A save that could not happen is not a passing remark: it is spoken at once, because
             the work it was about is still only in this tab. It stands until it stops being true,
             and nothing routine may push it out of the way. */}
-        {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
+        {notice && <span role="alert" className="byd-editor-notice">{notice.text}</span>}
         <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} onReading={() => sayReading(t('editor.reading.nothing'))} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
@@ -776,7 +787,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             moreRef.current?.focus()
             void removeProject(http, projectId, t).then(goHome, (err: unknown) => {
               setRemoving(null)
-              setNotice(saidOr(err, t('error.removeGame.failed')))
+              say(saidOr(err, t('error.removeGame.failed')))
             })
           }}
         >
@@ -824,7 +835,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
             <button type="button" ref={newCodeRef} aria-expanded={askingCode} onClick={() => setAskingCode(true)}>{t('editor.table.newCode')}</button>
           </span>
-          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} onEnded={tableEnded} lastStop={newCodeRef} onRotate={rotate} />
+          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={say} onEnded={tableEnded} lastStop={newCodeRef} onRotate={rotate} />
           {askingCode && (
             <Question
               className="byd-editor-table-ask"
@@ -1081,7 +1092,7 @@ function homeUrl(server: string | null): string {
 // where the next Tab starts over from the top (#477, fynd 6). So it is handed on: to the seat
 // that took the kicked one's place, the one before it at the end of the row, and «Ny kod» when
 // nobody is left.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop, onRotate }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void; onEnded(): void; lastStop: RefObject<HTMLButtonElement | null>; onRotate(): Promise<void> }) {
+function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop, onRotate }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string): void; onEnded(): void; lastStop: RefObject<HTMLButtonElement | null>; onRotate(): Promise<void> }) {
   const t = useT()
   const labelId = useId()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })

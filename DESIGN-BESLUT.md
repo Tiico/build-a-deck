@@ -1103,6 +1103,7 @@ Fälten är tillägg: en sida som laddades före dem läser förbi dem, och ett 
 En sida som inte skickar något nummer får inget tillbaka, och en server före #993 som inte ger något nummer tillbaka läses som förut: ekot tas för den äldsta redigeringen som väntar.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 En redigering som aktören avvisat läggs aldrig tillbaka (#993): editorn tar bort den, bygger om från aktörens dokument och de redigeringar som fortfarande väntar, och säger att ändringen inte gick igenom.
+En sparning eller ett bord som går igenom tar bara bort den notis som stod när formgivaren tryckte, aldrig en som sades medan de var på väg (#996): beskedet om ett avslag som kom under tiden står kvar efter «Sparat».
 Det som blev sparat är aktörens dokument när versionen gjordes, aldrig editorns när sparningen skickades (#994).
 Editorn håller aktörens dokument så som tråden berättat det: överlämningen och sedan varje redigering den sagt landat, egna som andras, i den ordning den sa dem.
 Ett «saved» sägs efter varje redigering som kom med i versionen och före varje som inte gjorde det, så det dokumentet är versionen, vem som än bad om den.
