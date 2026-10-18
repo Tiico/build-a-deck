@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { ConsoleMailer, ResendMailer, mailerFromEnv } from '../src/auth.js'
+import { corpusFromEnv } from '../src/corpus.js'
 
 // What the box hands the container (DRIFT §7, §11). The stack is the only place the account
 // settings can reach the process, and the only place a development flag could slip into
@@ -45,6 +46,14 @@ describe('the stack hands the app its configuration', () => {
   it('passes the account settings through to the container', () => {
     const env = serviceEnvironment(compose, 'app')
     expect(Object.keys(env)).toEqual(expect.arrayContaining(['DATABASE_URL', 'PUBLIC_ORIGIN', 'RESEND_API_KEY', 'MAIL_FROM']))
+  })
+
+  // The replay corpus's door (#1011, DRIFT §7) is set in the box's .env and nowhere else; a name
+  // the stack does not pass is a door that never opens, however carefully the list was written.
+  it('passes the corpus consent list and the operator through, empty when unset', () => {
+    const env = serviceEnvironment(compose, 'app')
+    expect(env['BYD_CORPUS_ACCOUNTS']).toBe('${BYD_CORPUS_ACCOUNTS:-}')
+    expect(env['BYD_OPERATOR']).toBe('${BYD_OPERATOR:-}')
   })
 
   it('leaves room on a box that is not only ours', () => {
@@ -148,6 +157,23 @@ describe('mailerFromEnv', () => {
   it('never sends from an empty address', () => {
     const mailer = mailerFromEnv({ RESEND_API_KEY: 'key', MAIL_FROM: '' })
     expect((mailer as ResendMailer).from).toMatch(/@/)
+  })
+})
+
+// The consent list is typed by hand into the box's .env (#1011), so it is read the way a person
+// writes it: spaces after the commas, an address in capitals, a trailing comma. An address is the
+// account's as the login stores it — trimmed and in lower case.
+describe('corpusFromEnv', () => {
+  it('opens nothing unless both the operator and at least one account are named', () => {
+    expect(corpusFromEnv({})).toBeUndefined()
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: '', BYD_OPERATOR: '' })).toBeUndefined()
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: 'ada@example.com' })).toBeUndefined()
+    expect(corpusFromEnv({ BYD_OPERATOR: 'op@example.com' })).toBeUndefined()
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: ' , ', BYD_OPERATOR: 'op@example.com' })).toBeUndefined()
+  })
+
+  it('reads the addresses as the login stores them', () => {
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: ' Ada@Example.com, bo@example.com ,', BYD_OPERATOR: ' Op@Example.com ' })).toEqual({ operator: 'op@example.com', accounts: ['ada@example.com', 'bo@example.com'] })
   })
 })
 

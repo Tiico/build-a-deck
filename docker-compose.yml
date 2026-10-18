@@ -67,6 +67,11 @@ services:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # The replay corpus (DRIFT §7, #1011): the accounts whose tables the operator may export,
+      # each one a yes in the invitation mail, and the operator's own address. Both or neither;
+      # unset, no account reads another's tables.
+      BYD_CORPUS_ACCOUNTS: ${BYD_CORPUS_ACCOUNTS:-}
+      BYD_OPERATOR: ${BYD_OPERATOR:-}
       # Assets in R2 (DRIFT §4): with credentials, textures are served as signed links. The
       # endpoint is the account's own unless the box says otherwise, which a bucket in a
       # jurisdiction — or a MinIO in development — requires.

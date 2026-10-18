@@ -5,6 +5,7 @@ import { MemoryLogStore, type LogStore } from './store.js'
 import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { MemorySurveyStore, type SurveyStore } from './surveys.js'
 import { MemoryAuthStore, mailerFromEnv, type AuthStore } from './auth.js'
+import { corpusFromEnv } from './corpus.js'
 import { MemoryAssetStore, type AssetStore } from './assets.js'
 import { PostgresLogStore } from './store-postgres.js'
 import { randomBytes } from 'node:crypto'
@@ -23,6 +24,8 @@ import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore
 //                    web app is served from another port than the API
 //   RESEND_API_KEY, MAIL_FROM — mail through Resend (DRIFT §12); without a key links go to the log
 //   AUTH_BYPASS    — `true` logs in immediately after POST /auth/login; local/test use only
+//   BYD_CORPUS_ACCOUNTS, BYD_OPERATOR — the replay corpus (DRIFT §7, #1011): the accounts that said
+//                    yes in their invitation, and the operator who may read their tables' exports
 //   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ASSETS_BUCKET — rendered textures
 //                    and print files in R2 (DRIFT §4), served through short-lived signed links;
 //                    without them the bytes stay in Postgres and go through this process
@@ -94,7 +97,11 @@ const master = masterKeyFrom(process.env['AI_KEY_SECRET']) ?? (databaseUrl ? nul
 const ai = { vault: new AiKeyVault(aiKeys, master), providers: providersFromEnv(process.env) }
 // Whether keys can be kept, said once at start; never the secret, and never a key (DRIFT §8).
 console.log(JSON.stringify({ msg: 'ai-keys', sealing: master !== null, ...(master === null ? { warning: 'AI_KEY_SECRET is unset or not 32 bytes; AI keys cannot be saved' } : {}) }))
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}) })
+// Read once: an account taken off the list is shut out at the next start (#1011). The log says how
+// many are on it, so the box can be asked whether a change took; never who.
+const corpus = corpusFromEnv(process.env)
+if (corpus) console.log(JSON.stringify({ msg: 'corpus', accounts: corpus.accounts.length }))
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

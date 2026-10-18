@@ -11,6 +11,8 @@ import { TypeRegistry, initialState, project, replay, type SetupDef, STANDARD_TY
 // Over HTTP the export is read as the game's owner: the log carries every hand, so the server hands
 // it only to an account the project lets open its tables (D3, C8), and the corpus takes only the
 // owner's own tables (#540). Pass that account's session cookie as `BYD_COOKIE=byd_session=…`.
+// The one exception is a beta designer who said yes in her invitation (#1011): the operator the box
+// names reads her tables' exports with the operator's own cookie, and the export says `consented`.
 //
 // What goes in is anonymised twice over: the people (`anonymise`) and the game (`anonymiseGame`),
 // since the corpus is in a public repository.
@@ -138,6 +140,28 @@ export function write(entry: CorpusEntry, dir: string): string {
   return file
 }
 
+type Export = { version: string; setup: SetupDef; log: Applied[]; consented?: true }
+
+// A table's export off a running server, if it is one the corpus may take. The corpus is public,
+// and nobody else's play is ours to publish without their yes (#540, beställarens beslut): a table
+// of a game the account owns, or one whose export says its owner said yes in her invitation
+// (#1011) — which the server says only to the operator the box names. A test leader of somebody
+// else's game can read its exports too (#524), and those stay out.
+export async function fetchExport(source: string, cookie: string | undefined, get: typeof fetch = fetch): Promise<Export> {
+  const headers = cookie ? { headers: { cookie } } : {}
+  const at = /^(https?:\/\/[^/]+)\/sessions\/([^/]+)\/export$/.exec(source)
+  if (!at) throw new Error('the URL is not a /sessions/:id/export')
+  const [, base, session] = at
+  const table = (await (await get(`${base}/sessions/${session}`, headers)).json()) as { project?: string }
+  const games = (await (await get(`${base}/projects`, headers)).json()) as { id: string; role?: string }[]
+  const game = table.project ? games.find((g) => g.id === table.project) : undefined
+  const res = await get(source, headers)
+  if (!res.ok) throw new Error(`export failed: ${res.status}`)
+  const exported = (await res.json()) as Export
+  if (game?.role !== 'owner' && exported.consented !== true) throw new Error('the table is not from a game this account owns, nor from one whose owner said yes to the corpus')
+  return exported
+}
+
 const isMain = /(^|\/)corpus\.ts$/.test(process.argv[1] ?? '')
 if (isMain) {
   const [name, source] = process.argv.slice(2)
@@ -147,22 +171,7 @@ if (isMain) {
   }
   const registry = new TypeRegistry(STANDARD_TYPES)
   const load = async (): Promise<{ version: string; setup: SetupDef; log: Applied[] }> => {
-    if (/^https?:/.test(source)) {
-      const cookie = process.env['BYD_COOKIE']
-      const headers = cookie ? { headers: { cookie } } : {}
-      // Only a table of a game the account owns goes into the corpus (#540, beställarens beslut):
-      // the corpus is public, and until the terms say so nobody else's play is ours to publish.
-      const at = /^(https?:\/\/[^/]+)\/sessions\/([^/]+)\/export$/.exec(source)
-      if (!at) throw new Error('the URL is not a /sessions/:id/export')
-      const [, base, session] = at
-      const table = (await (await fetch(`${base}/sessions/${session}`, headers)).json()) as { project?: string }
-      const games = (await (await fetch(`${base}/projects`, headers)).json()) as { id: string; role?: string }[]
-      const game = table.project ? games.find((g) => g.id === table.project) : undefined
-      if (game?.role !== 'owner') throw new Error('the table is not from a game this account owns; only the owner’s own tables go into the corpus')
-      const res = await fetch(source, headers)
-      if (!res.ok) throw new Error(`export failed: ${res.status}`)
-      return (await res.json()) as { version: string; setup: SetupDef; log: Applied[] }
-    }
+    if (/^https?:/.test(source)) return fetchExport(source, process.env['BYD_COOKIE'])
     const { readFileSync } = await import('node:fs')
     return JSON.parse(readFileSync(source, 'utf8')) as { version: string; setup: SetupDef; log: Applied[] }
   }

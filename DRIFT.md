@@ -166,6 +166,13 @@ Händelseschemat migreras aldrig på disk; varje `Applied` bär `schemaVersion` 
 Ingen permanent staging på lådan.
 Grinden är replay-korpusen i CI: anonymiserade riktiga loggar som måste spela upp identiskt.
 
+Riktiga loggar hämtas ur lådan med `pnpm --filter @byd/engine corpus` och tar bara bord ur spel som kontot äger — utom när ägaren har sagt ja (#1011, beställarens beslut 2026-10-18).
+Samtycket ges i inbjudan och inte i produkten: beställaren frågar varje betadesigner när hen bjuds in, och svaret är ett ja i mejlet, som sparas.
+Ett ja skrivs in på lådan som kontots adress i `BYD_CORPUS_ACCOUNTS`, kommaseparerat, och operatörens adress står i `BYD_OPERATOR`.
+Operatörens kaka i `BYD_COOKIE` får då läsa `GET /sessions/:id/export` för ett bord vars spel ägs av ett samtyckt konto, och ingenting annat: inte enkätsvaren, inte spelet, ingen skrivväg och inget bord i ett annat kontos spel.
+Exporten säger då `consented`, och det är det enda skäl utöver ägarskap som skriptet tar ett bord för; anonymiseringen (#540) gäller för deras loggar som för alla andra.
+Båda variablerna läses när appen startar, så ett konto som stryks ur listan är stängt efter nästa omstart; utan båda läser inget konto ett annat kontos bord.
+
 ## 8. Observabilitet: enbart docker logs
 
 Inget utöver containerloggar med rotation.
@@ -342,6 +349,7 @@ Tidsstämplarna står kvar som de loggades.
 Anonymiseringen går igenom hela posten, också en tillbakaspolnings lagrade bord.
 `pnpm --filter @byd/engine corpus <namn> <https://…/sessions/:id/export>` lägger till en riktig logg, med ägarens kaka i `BYD_COOKIE`, och tar bara bord ur spel som kontot äger tills villkoren säger något annat.
 Exporten och enkätsvaren (`GET /sessions/:id/surveys`) lämnas bara till ett konto som projektet låter öppna sina bord som värd, eftersom loggen bär varje hand, gästernas namn och flaggornas text; skriptet tar kontots kaka i `BYD_COOKIE`.
+Undantaget med samtycke, och hur det blir en behörighet på lådan, står i §7 (#1011).
 Händelseschemats `schemaVersion` och upcasters (§7) byggda 2026-09-07: varje ny rad bär `SCHEMA_VERSION`, rader utan fält är version 0, motorn lyfter dem steg för steg vid inläsning (`liftLine`), Postgres skriver versionen i `schema_version` och lämnar gamla rader orörda, och korpusens filer ligger kvar som de spelades in medan grinden lyfter dem.
 Backup (§5) byggd 2026-09-07 med WAL-G, se §5; den nattliga `pg_dump`-dumpen är ersatt.
 Assets i R2 (§4) byggt 2026-09-07, se §4.
