@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -288,6 +288,30 @@ describe('leaving the editor with unsaved work (#8)', () => {
     // Both are true at once, so both are on the screen: what just happened, and what did not.
     expect(await screen.findByText(/Tog tillbaka: en ändring i kortleken/)).toBeTruthy()
     expect(screen.getByRole('alert').textContent).toMatch(/någon annan har sparat/i)
+  })
+})
+
+// A save puts away only what stood when it was pressed (#996), and the news that the last save
+// failed is exactly that: once a save goes through, the work is no longer only in this tab.
+describe('a save that goes through after one that did not (#996)', () => {
+  // The store fails the first write the way a database that drops its connection does, and takes
+  // the second.
+  it('takes the news that a save failed away once a later save goes through', async () => {
+    const user = userEvent.setup()
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+    vi.spyOn(run.projects, 'replace').mockRejectedValueOnce(new Error('connection terminated'))
+
+    await user.click(screen.getByRole('button', { name: 'Spara' }))
+    const failed = await screen.findByRole('alert')
+    expect(failed.textContent).not.toBe('')
+    expect(screen.getByText('Osparat')).toBeDefined()
+
+    await user.click(await screen.findByRole('button', { name: 'Spara' }))
+    await screen.findByText('v2')
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(screen.getByText('Sparat')).toBeDefined()
   })
 })
 

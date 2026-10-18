@@ -76,10 +76,12 @@ test('a save sent behind a refused column says «Sparat» over the version it ma
   await expect.poll(() => heard.filter((v) => v === 'saved').length).toBe(2)
   expect(heard.slice(heard.indexOf('refused'))).toEqual(expect.arrayContaining(['refused', 'project', 'saved']))
 
-  // The notice that says the column was refused is the save's to keep or clear, and is #996.
   await expect(column('Kraft')).toHaveCount(0)
   await expect(column('kraft')).toBeVisible()
   // What Bo holds is the version his save made, so nothing of his is unsaved.
   await expect(status).toHaveText('Sparat')
   await expect(page.locator('.byd-editor-save')).toHaveAttribute('aria-disabled', 'true')
+  // And the column did not go without a word (#996): the save was answered after the refusal, and
+  // a save puts away only what stood when it was pressed.
+  await expect(page.getByRole('alert').filter({ hasText: 'En ändring gick inte igenom och togs bort.' })).toHaveText('En ändring gick inte igenom och togs bort. Spelet visar nu det alla andra ser.')
 })

@@ -198,12 +198,18 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
 describe('a column the actor refuses because a colleague named it first (#993)', () => {
   afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
 
-  it('is taken off the editor again, and the editor says the change did not go through', async () => {
+  const REFUSED = 'En ändring gick inte igenom och togs bort. Spelet visar nu det alla andra ser.'
+
+  // Bo's requests are held on their way out while he makes «Kraft», and presses `pressed` if he
+  // presses something; Ada names «kraft» and saves; and Bo's requests leave after hers. Every
+  // frame the actor sends arrives in the order it was sent. With a press, every «saved» is also
+  // held on the way in until the test lets it through, so the press is certain to be answered
+  // after the refusal has been said rather than merely likely to be.
+  async function behindAda(pressed?: (user: ReturnType<typeof userEvent.setup>) => Promise<void>): Promise<SavedHeldBack> {
     const user = userEvent.setup()
     await run.projects.create(run.projectId, projectDoc())
-    // Bo's requests can be held on their way out; nothing the actor says is held on the way in.
     const line = new SavedHeldBack()
-    line.release()
+    if (!pressed) line.release()
     setEditSocketImplementation(line.Line)
     await openEditor()
     await waitFor(() => expect(line.heard).toContain('project'))
@@ -214,18 +220,55 @@ describe('a column the actor refuses because a colleague named it first (#993)',
       openTab('Tabell')
       line.holdRequests()
       await makeField(user, 'Kraft')
+      await pressed?.(user)
       ada.addField('kraft')
       expect(await ada.save()).toEqual({ ok: true, rev: 2 })
-      await waitFor(() => expect(line.heard).toContain('saved'))
+      await waitFor(() => expect(pressed ? line.waiting : line.heard.filter((v) => v === 'saved').length).toBe(1))
       line.letOut()
-
-      const said = await screen.findByText('En ändring gick inte igenom och togs bort. Spelet visar nu det alla andra ser.')
-      expect(said.closest('[role="alert"]')).not.toBeNull()
-      await waitFor(() => expect(column('Kraft')).toBeNull())
-      expect(column('kraft')).not.toBeNull()
-      expect(screen.getByText('Sparat').closest('[role="status"]')).not.toBeNull()
+      await waitFor(() => expect(line.heard).toContain('refused'))
+      // Bo's own save has been answered as well, and the answer is waiting at the door.
+      if (pressed) await waitFor(() => expect(line.waiting).toBe(2))
     } finally {
       ada.close()
     }
+    return line
+  }
+
+  it('is taken off the editor again, and the editor says the change did not go through', async () => {
+    await behindAda()
+    const said = await screen.findByText(REFUSED)
+    expect(said.closest('[role="alert"]')).not.toBeNull()
+    await waitFor(() => expect(column('Kraft')).toBeNull())
+    expect(column('kraft')).not.toBeNull()
+    expect(screen.getByText('Sparat').closest('[role="status"]')).not.toBeNull()
+  })
+
+  // A save pressed right behind the column is answered after the refusal, and a save that went
+  // through put every notice away: the column vanished without a word, which is what #993 was
+  // there to stop (#996). A save puts away what stood when it was pressed, and nothing said since.
+  it('is still said once a save pressed behind it has gone through', async () => {
+    const line = await behindAda(async (user) => {
+      await user.click(screen.getByRole('button', { name: 'Spara' }))
+    })
+    await screen.findByText(REFUSED)
+    line.release()
+    // The save is over: its button says «Spara» again, and has nothing left to save.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Spara' }).getAttribute('aria-disabled')).toBe('true'))
+    expect(screen.getByText('Sparat').closest('[role="status"]')).not.toBeNull()
+    expect(screen.getByText(REFUSED).closest('[role="alert"]')).not.toBeNull()
+    expect(column('Kraft')).toBeNull()
+  })
+
+  // «Starta bord» saves before it starts, and a table that started put every notice away the same
+  // way (#996).
+  it('is still said once a table started behind it is running', async () => {
+    const line = await behindAda(async (user) => {
+      await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    })
+    await screen.findByText(REFUSED)
+    line.release()
+    await screen.findByText(/startade ett nytt bord|Nytt bord startat/)
+    expect(screen.getByText(REFUSED).closest('[role="alert"]')).not.toBeNull()
+    expect(column('Kraft')).toBeNull()
   })
 })
