@@ -1116,6 +1116,11 @@ En äldre rad utan plats spelas upp efter dagens regel, som förut.
 Redigeringarna är editorns vokabulär och inte bordets slutna intents i `packages/protocol`, så ett tillagt fält i en befintlig redigering är ingen protokollmigrering.
 Platsernas zoner (`addSeatZone`) och receptets uppställning (`setRecipe`) lagrar sitt svar på samma sätt (#895), som `places`: geometrin för varje zon redigeringen flyttade eller lade, filten med (K18), efter id.
 Bara det redigeringen rörde står i svaret, så en rad som landar på ett dokument en medredigerare hunnit ändra tar aldrig tillbaka hennes zoner; en zon raden fann på bordet står kvar där den stod, vad dagens regel än säger om den.
+En sammansatt redigering, `compound`, bär flera redigeringar och tillämpas som en (#1002): en rad i loggen, allt eller inget, ett steg tillbaka och en sak som medredigerarna ser landa.
+Ett godtaget AI-förslag är en sådan (E4).
+Den är editorns vokabulär och inte bordets slutna intents, så den är ingen protokollmigrering.
+Delarna avgörs var för sig mot det dokument delarna före dem lämnade, så två högar som läggs i samma redigering får två platser, och regeln för nya namn (#694) frågas för varje del på samma sätt.
+En sammansatt redigering håller aldrig en annan och är aldrig tom; uppspelning och den levande dörren läser den med samma `applyEdit`.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
 Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
@@ -1473,6 +1478,31 @@ Svaret går som server-sent events på svaret till samma POST och inte över edi
 Taken är två svar åt gången per konto och åtta totalt, och ett svar får ta tre minuter; varje svar håller en anslutning och kontexten i minnet på en låda med ont om det (DRIFT §1).
 Felbeskeden är leverantörens slutna mängd med «avvisat» tillagt, och serverns egna två: att svaret tog för lång tid och att ett svar redan är på väg.
 «Profil» i startsidans rad ritas nu som «logga ut» bredvid den: två vikter i en kort mening hade ingen förklaring läsaren kunde se.
+
+Byggt 2026-10-18 (#1002): nya kort som förslag, strömmade in del för del, visade på väggen och godtagna i ett steg.
+Förslaget är ett zod-schema (`proposal.ts`), och leverantören hålls strikt till JSON-schemat som skrivs ur samma zod-schema, så det modellen hålls till är det svaret läses med.
+Ett förslag är ett objekt av delar, i dag bara `cards`; ändrade kort (#1003), en mallsida med sina fält (#1005) och regelblock (#1006) läggs till bredvid utan att flytta något som finns.
+Ett kort är en lista av fält och värden och inte ett objekt med fälten som nycklar, eftersom ett strikt schema inte kan lämna ett objekts nycklar öppna och fälten är spelets och inte schemats.
+Översättaren gör förslaget till vanliga redigeringar, en `addRow` per kort med nästa lediga id (`nextCardRef`, samma regel som tabellens knapp), och prövar dem på en kopia av spelet med den riktiga `applyEdit`.
+Den avvisar med skäl ett fält spelet inte har, ett bildfält, samma fält två gånger, en ikon eller betydelse spelet inte har, text utanför L2:s fem konstruktioner, ett kort utan `antal`, och ett fält som mallen ritar på just det kortet — i dess variant och under dess villkor — men som lämnats tomt.
+Ett bildfält krävs aldrig och får aldrig skrivas: konsten är designerns egen, och det är den här beslutspunktens förbud.
+Att korten skiljer sig från lekens är modellens sak genom kontexten; översättaren dömer inte om det.
+Förslaget översätts mot spelet som det står varje gång det ritas och igen när det godtas, så att ett kort en medredigerare lägger till under tiden aldrig får sitt id taget.
+Anthropic svarar med ett strikt verktyg vars indata strömmar medan den skrivs (`eager_input_streaming`), och OpenAI med strikt JSON där prosan står i `message` bredvid förslaget eller `null`; modellen väljer själv mellan ord och förslag, och ett svar i ord strömmar som förut.
+Eftersom indatan då inte prövas av leverantören läses varje del med zod-schemat ändå.
+Delarna läses av en egen inkrementell läsare (`json-parts.ts`) som lämnar ett kort när dess klammer stänger och lämnar OpenAI:s prosa medan den växer, i en sida kod där varje del tolkas av `JSON.parse`; de små strömmande läsarna som finns gör det ena eller det andra, inte båda.
+Proxyn skickar `part` för varje del och `done` sist, med `broken` när förslaget kapades innan det var helt, och ett kapat förslag är oanvändbart.
+Taket för ett svar höjdes till 16 000 token så att några dussin kort ryms; ett svar kostar bara det det säger.
+Panelen ritar varje kort med `CardPreview` när det kommer, tre i bredd med sitt namn under, och inget kan godtas förrän förslaget är helt.
+«Visa på väggen» lägger korten bland lekens som spöken med streckad kant och «✦ Förslag» över överkanten; de står i väggens ordning och band men är inte i dokumentet och går inte att välja, och de försvinner när förslaget godtas, kastas eller panelen fälls ihop.
+«Godta alla» är en sammansatt redigering (D3) vars steg tillbaka heter «det godtagna förslaget», och «Kasta» ändrar ingenting.
+Ett förslag som inte går att använda sägs som «Förslaget gick inte att använda», med skälet i en mening som namnger kortet och fältet, att det var AI:ns svar och inte spelet som var fel, och «Försök igen».
+Den fysiska kontrollen körs på förslagets kort med det den enda renderaren mätte, och dess anmärkningar står i förslaget per slag och antal kort; de fäller det aldrig (E5).
+L13: huvudets «Starta/Uppdatera bord» förblir vyns enda fyllda knapp också medan ett förslag väntar, och «Godta alla» är kantad som «Skicka» (#1001).
+Huvudets första handling ska inte byta vikt efter vad som råkar stå i en panel bredvid arbetet, och förslagets tre knappar står i en egen rad där «Godta alla» är den mittersta och inte behöver fyllning för att hittas.
+A2: det finns ännu ingen kvotkod i domänmodellen (abonnemangen står kvar i ROADMAP).
+Godtagna kort är vanliga `addRow` i en sammansatt redigering, så ett tak på kort räknar dem som alla andra den dag det finns.
+«Välj delar…» (#1003) och raden som förfinar ett förslag (#1004) byggs inte här; förslaget hålls som sina delar så att ett urval blir ett filter över samma lista.
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.

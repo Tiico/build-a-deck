@@ -13,7 +13,10 @@ export type AskTurn = { role: 'user' | 'assistant'; text: string }
 // time an answer may take, and how many may run at once — and the editor's own: no key to ask
 // with, and no server to ask.
 export type AskFailure = AiFailure | 'timeout' | 'busy' | 'no-key' | 'offline'
-export type AskEvent = { t: 'text'; text: string } | { t: 'done' } | { t: 'failed'; kind: AskFailure }
+// A `part` is one part of a proposal, whole, as it was written (#1002): read, never trusted — the
+// panel reads it with the proposal model before it draws it. `broken` on `done` says a proposal
+// began and was cut off before it was whole.
+export type AskEvent = { t: 'text'; text: string } | { t: 'part'; key: string; part: unknown } | { t: 'done'; broken?: boolean } | { t: 'failed'; kind: AskFailure }
 export type Asking = { cancel(): void; finished: Promise<void> }
 
 const KINDS: readonly AskFailure[] = ['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'refused', 'network', 'timeout', 'busy', 'no-key', 'offline']
@@ -55,16 +58,17 @@ export function askAi(http: string, project: string, ask: { question: string; tu
       for (const frame of frames) {
         const data = frame.split('\n').find((line) => line.startsWith('data: '))
         if (!data) continue
-        let event: { t?: unknown; text?: unknown; kind?: unknown }
+        let event: { t?: unknown; text?: unknown; kind?: unknown; key?: unknown; part?: unknown; broken?: unknown }
         try {
           event = JSON.parse(data.slice(6)) as typeof event
         } catch {
           continue
         }
         if (event.t === 'text' && typeof event.text === 'string') tell({ t: 'text', text: event.text })
+        else if (event.t === 'part' && typeof event.key === 'string') tell({ t: 'part', key: event.key, part: event.part })
         else if (event.t === 'done') {
           ended = true
-          tell({ t: 'done' })
+          tell(event.broken === true ? { t: 'done', broken: true } : { t: 'done' })
         } else if (event.t === 'failed') {
           ended = true
           tell({ t: 'failed', kind: kindOf(event.kind) })

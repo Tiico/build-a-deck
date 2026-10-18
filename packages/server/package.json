@@ -28,6 +28,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./doc": "./src/doc.ts"
+    "./doc": "./src/doc.ts",
+    "./proposal": "./src/proposal.ts"
   }
 }

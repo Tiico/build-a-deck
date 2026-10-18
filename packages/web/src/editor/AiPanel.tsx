@@ -4,6 +4,9 @@ import { aiContextParts } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
 import { PROVIDER_NAMES, listAiModels, modelNameOf, readAiKey, type AiKey, type AiModel } from '../account/ai-key.js'
 import { askAi, type AskFailure, type AskTurn, type Asking } from './ai-ask.js'
+import type { EditIntent } from '@byd/server/doc'
+import { AiProposal, type ProposalVerdict } from './AiProposal.js'
+import { noParts, proposedRows, translated, withPart, type ProposalParts } from './proposals.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 
 // The AI panel beside the editor's work (#1001, E4, #940 variant A): a conversation about the game,
@@ -61,7 +64,11 @@ function rememberOpen(open: boolean): void {
 }
 
 type TurnState = 'waiting' | 'streaming' | 'done' | 'cancelled' | 'failed'
-type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure }
+// A proposal the answer brought (#1002): its parts as they arrived, whether it was cut off, and what
+// the designer did with it.
+type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: number }
+type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure; proposal?: TurnProposal }
+const freshProposal = (): TurnProposal => ({ parts: noParts(), broken: false, verdict: null, accepted: 0 })
 // The failures worth asking again about as they are: a pause, a busy provider, a broken line.
 const AGAIN: readonly AskFailure[] = ['rate-limit', 'overloaded', 'network', 'timeout', 'busy', 'offline']
 // The conversation the next question carries, in pairs: at most the last twenty (the server's own
@@ -84,9 +91,14 @@ export type AiPanelProps = {
   // 2026-10-18, #1001): in Speltema and Bord, whose surfaces are measured to the pixel (#741, #652,
   // #685), it takes none of their width, and what it covers is there again when it folds.
   over?: boolean
+  // A proposal laid on the wall among the deck's cards, as ghosts that are not in the game, or taken
+  // off it with null (#1002). The panel keeps which proposal it is; the wall only draws it.
+  onShowOnWall?(parts: ProposalParts | null): void
+  // An accepted proposal, as the edits it is: applied as one (#1002).
+  onAccept?(edits: readonly EditIntent[]): void
 }
 
-export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone, over = false }: AiPanelProps) {
+export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone, over = false, onShowOnWall, onAccept }: AiPanelProps) {
   const t = useT()
   const { lang } = useLang()
   // Without a key it always starts folded: the editor is to look as it did (PRD 9), whatever the
@@ -96,6 +108,8 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
   const [draft, setDraft] = useState('')
   const asking = useRef<{ id: number; asking: Asking } | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
+  // Which turn's proposal stands on the wall, if any.
+  const [wallTurn, setWallTurn] = useState<number | null>(null)
   const next = useRef(1)
   const field = useRef<HTMLTextAreaElement>(null)
   const profileLink = useRef<HTMLAnchorElement>(null)
@@ -143,6 +157,11 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
   }, [turns])
 
   const fold = (to: boolean) => {
+    // A proposal on the wall is driven from here; folded away, nothing would take it off again.
+    if (!to && wallTurn !== null) {
+      setWallTurn(null)
+      onShowOnWall?.(null)
+    }
     setOpen(to)
     rememberOpen(to)
     setHandTo(to ? 'inside' : 'rail')
@@ -164,8 +183,13 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     }
     const call = askAi(http, project, { question, turns: history, lang }, (event) => {
       if (event.t === 'text') update(id, (turn) => ({ ...turn, answer: turn.answer + event.text, state: 'streaming' }))
-      else if (event.t === 'done') {
-        update(id, (turn) => ({ ...turn, state: 'done' }))
+      else if (event.t === 'part') {
+        update(id, (turn) => {
+          const had = turn.proposal ?? freshProposal()
+          return { ...turn, state: 'streaming', proposal: { ...had, parts: withPart(had.parts, event.key, event.part) } }
+        })
+      } else if (event.t === 'done') {
+        update(id, (turn) => ({ ...turn, state: 'done', ...(event.broken ? { proposal: { ...(turn.proposal ?? freshProposal()), broken: true } } : {}) }))
         done()
       } else {
         update(id, (turn) => ({ ...turn, state: 'failed', failure: event.kind }))
@@ -190,6 +214,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
 
   const again = (turn: Turn) => {
     if (asking.current) return
+    offWall(turn.id)
     update(turn.id, (had) => ({ id: had.id, question: had.question, answer: '', state: 'waiting' }))
     atEnd.current = true
     run(
@@ -197,6 +222,33 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
       turn.question,
       turns.filter((other) => other.id < turn.id),
     )
+  }
+
+  const setProposal = (id: number, change: (proposal: TurnProposal) => TurnProposal) => update(id, (turn) => (turn.proposal ? { ...turn, proposal: change(turn.proposal) } : turn))
+  const offWall = (id: number) => {
+    if (wallTurn !== id) return
+    setWallTurn(null)
+    onShowOnWall?.(null)
+  }
+  const showOnWall = (turn: Turn) => {
+    if (!turn.proposal) return
+    if (wallTurn === turn.id) return offWall(turn.id)
+    setWallTurn(turn.id)
+    onShowOnWall?.(turn.proposal.parts)
+  }
+  // Accepted against the game as it stands at this moment: what lands is what the game takes now.
+  const accept = (turn: Turn) => {
+    if (!turn.proposal || !onAccept) return
+    const read = translated(doc, turn.proposal.parts)
+    if (!read.ok) return
+    onAccept(read.edits)
+    const accepted = proposedRows(read.edits).length
+    setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'accepted', accepted }))
+    offWall(turn.id)
+  }
+  const discard = (turn: Turn) => {
+    setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'discarded' }))
+    offWall(turn.id)
   }
 
   const cancel = () => {
@@ -311,6 +363,23 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
                   {answerOf(turn.answer)}
                   {turn.state === 'cancelled' && <p className="byd-ai-quiet">{t('ai.cancelled')}</p>}
                 </div>
+                {turn.proposal && turn.state !== 'cancelled' && turn.state !== 'failed' && (
+                  <AiProposal
+                    id={String(turn.id)}
+                    doc={doc}
+                    http={http}
+                    parts={turn.proposal.parts}
+                    done={turn.state === 'done'}
+                    broken={turn.proposal.broken}
+                    verdict={turn.proposal.verdict}
+                    acceptedCards={turn.proposal.accepted}
+                    onWall={wallTurn === turn.id}
+                    onShow={() => showOnWall(turn)}
+                    onAccept={() => accept(turn)}
+                    onDiscard={() => discard(turn)}
+                    onAgain={busy === null ? () => again(turn) : undefined}
+                  />
+                )}
                 {turn.state === 'failed' && turn.failure && turn.failure !== 'no-key' && (
                   <Failure kind={turn.failure} provider={provider} t={t} profileUrl={profileUrl} onProfile={toProfile} {...(AGAIN.includes(turn.failure) ? { onAgain: () => again(turn) } : {})} />
                 )}

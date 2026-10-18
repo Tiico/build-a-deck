@@ -16,6 +16,15 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // nothing. Anything else is answered with what was asked and the game's name, read off the first
 // line of the context the server sent, which is how a test sees that the game travelled.
 //
+// A request that lets the model propose (#1002) — a tool on Anthropic's, a JSON schema on OpenAI's —
+// is answered with a proposal when the question asks for one: `[kort:3]` proposes three new cards,
+// each filling every column the context lists with a value of its kind (never a picture) — the column
+// a variant is chosen by with the first card's value — and streamed
+// a card at a time; `[sakta]` leaves 400 ms between two cards, so a person can watch them arrive;
+// `[oanvändbart]` proposes two, the second writing a column the game does not have; and `[kapat]`
+// stops half-way through the proposal, as an answer that ran out of tokens does. Without one of
+// those the answer is prose, as a model that chooses to answer in words gives it.
+//
 // The listener binds nothing itself: each package takes its ports out of its own band
 // (`listen-zero.ts`), so the caller makes the server and listens where its rules say.
 
@@ -203,7 +212,26 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
     if (open()) end('end_turn')
     return
   }
+  const proposing = anthropic ? Array.isArray((body as { tools?: unknown } | null)?.tools) : (body as { text?: { format?: { type?: unknown } } } | null)?.text?.format?.type === 'json_schema'
+  const asked = /\[kort:(\d+)\]/.exec(question)
+  const unusable = question.includes('[oanvändbart]')
+  if (proposing && (asked || unusable)) {
+    const cards = cardsFor(contextOf(provider, body), unusable ? 2 : Number(asked?.[1] ?? 1))
+    if (unusable) cards[1]?.fields.push({ field: 'trolldom', value: 'Okänd' })
+    return propose(res, stream, anthropic, cards, { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') })
+  }
   const words = `Du frågade: «${question}». Spelet heter ${game}.`.split(/(?= )/)
+  // OpenAI answers inside its JSON when it may propose: the prose is the message, and there is no
+  // proposal. The JSON goes out a few characters at a time, as the real one does.
+  if (proposing && !anthropic) {
+    const json = JSON.stringify({ message: words.join(''), proposal: null })
+    for (let at = 0; at < json.length; at += 6) {
+      if (!open()) return
+      say(json.slice(at, at + 6))
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+    return end('end_turn')
+  }
   const half = Math.ceil(words.length / 2)
   for (const [i, word] of words.entries()) {
     if (!open()) return
@@ -216,4 +244,87 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
     await new Promise((resolve) => setTimeout(resolve, fake.pace))
   }
   if (open()) end('end_turn')
+}
+
+type FakeCard = { fields: { field: string; value: string | number | boolean }[] }
+
+function contextOf(provider: Provider, body: unknown): string {
+  const b = (body ?? {}) as { system?: { text?: unknown }[]; instructions?: unknown }
+  return provider === 'anthropic' ? (b.system ?? []).map((s) => String(s.text ?? '')).join('\n') : String(b.instructions ?? '')
+}
+
+// Cards that fill every column the context lists, each value of the column's kind; a picture is the
+// designer's, and the deck's key and count are the tool's and the card's own.
+function cardsFor(context: string, n: number): FakeCard[] {
+  const section = /## Fields\n([\s\S]*?)(?:\n\n|$)/.exec(context)?.[1] ?? ''
+  const columns = section
+    .split('\n')
+    .map((line) => /^- ([^:]+): (\S+)/.exec(line))
+    .flatMap((m) => (m && m[1] !== 'id' && m[1] !== 'antal' && m[2] !== 'image' ? [{ name: m[1] ?? '', kind: m[2] ?? '' }] : []))
+  // The column a variant is chosen by takes the first card's value, so the cards stand in a band the
+  // deck already has rather than each in one of its own.
+  const variantBy = /^Variants chosen by the column: (.+)$/m.exec(context)?.[1]
+  const firstCard = /^## Cards[^\n]*\n[^\n]*\n(\{.*\})$/m.exec(context)?.[1]
+  const first = firstCard ? (JSON.parse(firstCard) as Record<string, string | number | boolean>) : {}
+  return Array.from({ length: n }, (_, i) => ({
+    fields: [
+      ...columns.map(({ name, kind }) => ({
+        field: name,
+        value: name === 'title' ? `Förslag ${i + 1}` : name === variantBy && first[name] !== undefined ? first[name] : kind === 'number' ? i + 1 : kind === 'yes/no' ? true : `Text ${i + 1}.`,
+      })),
+      { field: 'antal', value: 1 },
+    ],
+  }))
+}
+
+// A proposal in the provider's own events: on Anthropic a sentence and then the tool's input as JSON
+// deltas, on OpenAI one JSON answer with the sentence inside it. Each card's JSON goes out in three
+// pieces, and the gap falls between two cards, so a card is whole a while before the next one is.
+async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boolean, cards: FakeCard[], how: { gap: number; cut: boolean }): Promise<void> {
+  const open = () => !stream.closed && !res.destroyed
+  const sentence = `Här är ${cards.length} kort.`
+  const pieces: string[] = []
+  const cardJson = cards.map((card) => JSON.stringify(card))
+  const pause = () => new Promise((resolve) => setTimeout(resolve, how.gap))
+  if (anthropic) {
+    event(res, 'content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: sentence } })
+    event(res, 'content_block_stop', { type: 'content_block_stop', index: 0 })
+    event(res, 'content_block_start', { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'toolu_fake', name: 'propose', input: {} } })
+    pieces.push('{"cards":[')
+  } else {
+    pieces.push(`{"message":${JSON.stringify(sentence)},"proposal":{"cards":[`)
+  }
+  const send = (text: string) =>
+    anthropic
+      ? event(res, 'content_block_delta', { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: text } })
+      : event(res, 'response.output_text.delta', { type: 'response.output_text.delta', item_id: 'msg_fake', output_index: 0, content_index: 0, delta: text })
+  for (const piece of pieces) send(piece)
+  for (const [i, json] of cardJson.entries()) {
+    if (!open()) return
+    if (how.cut && i === 1) {
+      send(json.slice(0, Math.floor(json.length / 2)))
+      if (anthropic) {
+        event(res, 'message_delta', { type: 'message_delta', delta: { stop_reason: 'max_tokens', stop_sequence: null }, usage: { output_tokens: 9 } })
+        event(res, 'message_stop', { type: 'message_stop' })
+      } else event(res, 'response.incomplete', { type: 'response.incomplete', response: { id: 'resp_fake', status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } } })
+      stream.finished = true
+      return void res.end()
+    }
+    const third = Math.ceil(json.length / 3)
+    const text = (i === 0 ? '' : ',') + json
+    for (let at = 0; at < text.length; at += third) {
+      send(text.slice(at, at + third))
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+    await pause()
+  }
+  if (!open()) return
+  send(anthropic ? ']}' : ']}}')
+  if (anthropic) {
+    event(res, 'content_block_stop', { type: 'content_block_stop', index: 1 })
+    event(res, 'message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { output_tokens: 9 } })
+    event(res, 'message_stop', { type: 'message_stop' })
+  } else event(res, 'response.completed', { type: 'response.completed', response: { id: 'resp_fake', status: 'completed' } })
+  stream.finished = true
+  res.end()
 }

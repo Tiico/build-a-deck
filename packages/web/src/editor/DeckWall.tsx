@@ -54,6 +54,10 @@ export type DeckWallProps = {
   // A role that may read the deck and not change it (D3): the checks are read, and their remedies
   // are said to be someone else's rather than offered (#477).
   readOnly?: boolean | undefined
+  // The cards of an AI proposal laid among the deck's own (#1002): rows the wall is handed in `doc`
+  // that are not in the game. They are drawn as the deck's cards are, by the one renderer, marked
+  // «Förslag», and are nothing to choose — there is no row to open until they are accepted.
+  proposed?: ReadonlySet<string> | undefined
 }
 
 export type WallView = { filter: FilterState; eye: string; scrollTop: number }
@@ -87,7 +91,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -152,6 +156,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     if (!selectedRow) return
     deckRef.current?.querySelector(`[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'nearest' })
   }, [selectedRow])
+  // A proposal laid on the wall is brought into view (#1002): its cards stand at the end of their
+  // bands, and on a deck of seventy cards that is screens away from where the designer is reading —
+  // a press that changes nothing she can see reads as a press that did nothing.
+  const proposedKey = proposed ? [...proposed].join(' ') : ''
+  const ghosts = proposed?.size ?? 0
+  const own = doc.rows.length - ghosts
+  useLayoutEffect(() => {
+    if (!proposedKey) return
+    deckRef.current?.querySelector('[data-proposed]')?.scrollIntoView?.({ block: 'center' })
+  }, [proposedKey])
   const sections = useRef(new Map<string, HTMLElement>())
   // Where a jump from the table of contents will come to rest, for as long as it is on its way.
   // The reader's own hand on the wall — a wheel, a finger, the scrollbar, a key — lets go of it,
@@ -276,6 +290,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     // red badges for one mistake; the report in the crown says it once.
     const count = warnings[cardRef] ?? 0
     const roves = cards.itemProps(cardRef)
+    const ghost = proposed?.has(cardRef) === true
+    // A proposed card is not the game's: choosing it chooses nothing.
+    const choose = (to: string | null) => {
+      if (!ghost) onSelectRow(to)
+    }
     return (
       <div
         key={cardRef}
@@ -288,15 +307,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         // the scroll position, so every card is something focus can be put on; one of them is the
         // wall's tab stop.
         {...roves}
-        aria-selected={selectedRow === cardRef ? 'true' : 'false'}
+        aria-selected={selectedRow === cardRef && !ghost ? 'true' : 'false'}
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
+        {...(ghost ? { 'data-proposed': '', 'aria-label': t('ai.proposal.ghost.label', { name: titleOfRow({ id: cardRef, fields: row }) || cardRef }) } : {})}
         // The gesture that chose a card, made again, lets it go (beslut 2026-09-27, #477 fynd 3 C).
-        onClick={() => onSelectRow(selectedRow === cardRef ? null : cardRef)}
+        onClick={() => choose(selectedRow === cardRef ? null : cardRef)}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            onSelectRow(selectedRow === cardRef ? null : cardRef)
+            choose(selectedRow === cardRef ? null : cardRef)
             return
           }
           // Escape lets go too, but only of something: with nothing chosen it belongs to whatever
@@ -331,6 +351,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             // never ran, and what opened was about whichever card had been selected before — the one
             // wearing the ring. The wall knows which card this preview is of; it says so itself.
             onSelectElement={(id) => {
+              if (ghost) return
               onSelectRow(cardRef)
               onSelectElement(id)
             }}
@@ -342,6 +363,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* Over the card and outside its paper, which is cut to its corners (#808). */}
         <OversetMarks found={oversetOf(faceTemplate, row, cut[cardRef] ?? [])} scale={px / CARD_PX} />
         {reading && smallest[cardRef] !== undefined && <ReadOut sizePt={smallest[cardRef]} view={reading.view} lang={lang} t={t} />}
+        {ghost && (
+          <span className="byd-wall-proposed" aria-hidden="true">
+            <span className="byd-ai-spark">✦</span> {t('ai.proposal.ghost')}
+          </span>
+        )}
         {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
         {count > 0 && (
           <span className="byd-wall-warnings" data-warnings>
@@ -489,7 +515,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               const row = doc.rows.find((r) => r.id === cardRef)
               return row ? titleOfRow(row) || cardRef : cardRef
             }}
-            onOpenRow={onOpenRow}
+            // A proposed card has no row to open until it is accepted.
+            onOpenRow={onOpenRow && ((cardRef: string) => !proposed?.has(cardRef) && onOpenRow(cardRef))}
             fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
             onFix={(code, what) => {
               onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
@@ -655,8 +682,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* Said as it changes, as the table's count is (#556): a search that narrows the wall
             says how many are left. */}
         <span aria-live="polite">
-          {isFiltering(filter) ? t(doc.rows.length === 1 ? 'wall.foot.found.one' : 'wall.foot.found.other', { shown: shown.length, total: doc.rows.length }) : t(doc.rows.length === 1 ? 'wall.foot.cards.one' : 'wall.foot.cards.other', { n: doc.rows.length })}
+          {isFiltering(filter) ? t(doc.rows.length === 1 ? 'wall.foot.found.one' : 'wall.foot.found.other', { shown: shown.length, total: doc.rows.length }) : t(own === 1 ? 'wall.foot.cards.one' : 'wall.foot.cards.other', { n: own })}
         </span>
+        {/* A proposal on the wall is not the deck's yet, so the deck's count leaves it out and says it
+            apart (#1002). */}
+        {ghosts > 0 && <span>{t(ghosts === 1 ? 'wall.foot.proposed.one' : 'wall.foot.proposed.other', { n: ghosts })}</span>}
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}
         <span>

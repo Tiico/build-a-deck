@@ -11,6 +11,7 @@ import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
+import { proposedRows, translated, type ProposalParts } from './proposals.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
 import { revealThemeSection, ThemePanel } from './ThemePanel.js'
@@ -111,6 +112,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Which group the canvas edits (#13), or nothing for the base every card inherits.
   const [group, setGroup] = useState<string | null>(null)
   const [row, setRow] = useState<string | null>(null)
+  // An AI proposal laid on the wall among the deck's cards (#1002): its parts, translated against the
+  // game as it stands every time the wall is drawn, so the ghosts take the ids the game has free now.
+  // Held by what it was worked out from, so a wall drawn again over the same game draws the same cards.
+  const [ghosts, setGhosts] = useState<ProposalParts | null>(null)
+  const ghostWall = useRef<{ doc: ProjectDoc; parts: ProposalParts; wall: ProjectDoc; ids: ReadonlySet<string> } | null>(null)
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
@@ -356,6 +362,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={retry} />
   const doc = client.doc
+  const shownWall = (() => {
+    if (!ghosts) return null
+    const had = ghostWall.current
+    if (had && had.doc === doc && had.parts === ghosts) return had
+    const read = translated(doc, ghosts)
+    if (!read.ok) return null
+    const rows = proposedRows(read.edits)
+    ghostWall.current = { doc, parts: ghosts, wall: { ...doc, rows: [...doc.rows, ...rows] }, ids: new Set(rows.map((r) => r.id)) }
+    return ghostWall.current
+  })()
   // A game this editor has just taken away is not a game that was lost (#738): it is on its way to
   // «Mina spel», and the server's word that it is gone is not said over it.
   const shownFault = removing === 'gone' ? null : fault
@@ -489,7 +505,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     wall: () => (
       <DeckWall
         key={wallMount}
-        doc={doc}
+        doc={shownWall?.wall ?? doc}
+        proposed={shownWall?.ids}
         assetBase={http}
         motifs={deckMotifs}
         face="front"
@@ -975,6 +992,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             onLeave={(url, from) => leave(url, from)}
             onKeyGone={() => setAiKey(null)}
             over={mode === 'theme' || mode === 'tables'}
+            onShowOnWall={(parts) => {
+              setGhosts(parts)
+              if (parts) setStage('wall')
+            }}
+            onAccept={(edits) => client.editTogether(edits, 'undo.what.proposal')}
           />
         )}
       </main>

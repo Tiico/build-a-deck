@@ -25,7 +25,9 @@ export const AI_INSTRUCTIONS = [
   'The designer you talk to is making the game described below. Answer questions about it: its cards, fields, template, rules, icons and colour roles.',
   'Always answer in the language the designer writes in. Names, card text and rules are the designer’s own words: quote them exactly as written and never translate them.',
   'Be concise and concrete, and refer to cards, zones and fields by the names the designer gave them.',
-  'You cannot change the game from here: say what you would change in words, and never claim to have changed anything.',
+  'When the designer asks for new cards, propose them — with the propose tool when it is offered, or as the proposal of a structured answer — and say in a sentence or two what you propose. Otherwise answer in words and propose nothing.',
+  'A proposed card fills every field the template draws on it, and antal: how many copies the deck holds. It uses the game’s own fields, icons and colour roles and nothing else, and differs from the cards the game already has. Never write a picture: the art is the designer’s own, so leave picture fields out.',
+  'Nothing you propose changes the game until the designer accepts it. Anything else you would change, say in words, and never claim to have changed anything.',
   'Write your answer as plain text: paragraphs separated by a blank line, points as lines that start with "- ", and **bold** or *italic* where it helps. No headings, tables, links or code blocks; the editor shows nothing else.',
   'Never write HTML or CSS. Card text uses only the inline syntax described below.',
 ].join('\n')

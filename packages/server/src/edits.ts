@@ -207,6 +207,11 @@ export type EditIntent =
   // Taking an older version back (B4) is an edit like any other: it lands in the log, everyone
   // with the project open sees it, and it becomes the next version when saved.
   | { v: 'restore'; doc: ProjectDoc }
+  // Several edits applied as one (#1002, PRD module 5): one line in the log, all or nothing, one
+  // step back and one thing a co-editor sees land. An accepted AI proposal is one. It holds plain
+  // edits only — a composite inside a composite says nothing a flat one cannot — and never none.
+  // The editor's vocabulary and not the table's closed intents (D3), so it is no protocol migration.
+  | { v: 'compound'; edits: EditIntent[] }
 
 // What an edit decides when it is made, written into it before it is committed (#894, D3). The
 // log stores results and never a question to be asked again: replay applies the line as it was
@@ -214,6 +219,23 @@ export type EditIntent =
 // decides before it applies its own edit, so the place the designer sees is the place it sends;
 // the actor decides as well, for a caller that sent none. Everything else passes through as it is.
 export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
+  // Each part is decided against the document the parts before it left, which is the document it
+  // will be applied to: two piles made in one go are two places and not one place twice.
+  if (intent.v === 'compound') {
+    const edits: EditIntent[] = []
+    let at = doc
+    for (const part of compoundParts(intent)) {
+      const decided = decideEdit(at, part)
+      edits.push(decided)
+      try {
+        at = applyEdit(at, decided)
+      } catch {
+        // A part the document refuses is left for `applyEdit` to say why, as a single edit is.
+        return { v: 'compound', edits: [...edits, ...compoundParts(intent).slice(edits.length)] }
+      }
+    }
+    return { v: 'compound', edits }
+  }
   if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone') && !intent.places) {
     // The answer is what applying the edit by today's rule moved or made. An edit the document
     // refuses has no answer, and passes on as it is for `applyEdit` to say why.
@@ -231,6 +253,19 @@ export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
   if (intent.v !== 'addZone' || intent.geometry || doc.setup.zones.some((z) => z.id === intent.id)) return intent
   const geometry = intent.kind === 'pile' ? newPileSpot(doc.setup) : newAreaSpot(doc.setup)
   return geometry === null ? intent : { ...intent, geometry }
+}
+
+// The parts of a composite edit, refused when there are none or when one of them is a composite
+// itself (#1002). Read off a line in the log as well as off the live door, so neither can hold one.
+export function compoundParts(intent: Extract<EditIntent, { v: 'compound' }>): EditIntent[] {
+  if (!Array.isArray(intent.edits) || intent.edits.length === 0) throw new Error('a composite edit holds at least one edit')
+  if (intent.edits.some((part) => part.v === 'compound')) throw new Error('a composite edit cannot hold a composite edit')
+  return intent.edits
+}
+
+// Every plain edit an edit stands for: itself, or the parts of a composite.
+export function plainEdits(intent: EditIntent): EditIntent[] {
+  return intent.v === 'compound' ? compoundParts(intent) : [intent]
 }
 
 // Where an edit laid the zones it moved or made, by id (#895).
@@ -663,6 +698,10 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return themed(doc, intent)
     case 'restore':
       return intent.doc
+    // All or nothing comes for free: the parts are applied to a document nobody else holds, and a
+    // part that throws throws away every part before it with it.
+    case 'compound':
+      return compoundParts(intent).reduce(applyEdit, doc)
     // The vocabulary is closed, but a stored log and an old browser both outlive it: `setFraming`
     // was retired with each card's own departure (#607). An edit the tool no longer knows is
     // refused rather than applied as nothing, so the log passes over it and says so, and a browser
@@ -772,6 +811,15 @@ function without<T>(record: Record<string, T>, key: string): Record<string, T> {
 // the designer's to make or to take away, in the wizard or in the editor.
 export const ANTAL = 'antal'
 
+// The id a new card is given wherever it is made (#476): the table's button, the empty wall's door
+// and an accepted AI proposal (#1002) ask the same question of the same deck, so they cannot come
+// to different answers.
+export function nextCardRef(doc: Pick<ProjectDoc, 'rows'>): string {
+  let n = doc.rows.length + 1
+  while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
+  return `kort-${n}`
+}
+
 // Whether an edit arriving live may make the column it names (#694). A name that differs from a
 // column, from the card's `id` or from `antal` only in its capitals is one the CSV import folds
 // into that column (#479), so it is no new column. The rule is the live door's and not
@@ -780,6 +828,14 @@ export const ANTAL = 'antal'
 // entry (DRIFT §7). The words the title and `antal` are shown with are the editor's question,
 // asked in the designer's language; the document has only the keys.
 export function checkNewName(doc: ProjectDoc, intent: EditIntent): void {
+  // A composite asks the rule of each part against the document the parts before it left.
+  if (intent.v === 'compound') {
+    compoundParts(intent).reduce((at, part) => {
+      checkNewName(at, part)
+      return applyEdit(at, part)
+    }, doc)
+    return
+  }
   const name = intent.v === 'addField' ? intent.field : intent.v === 'renameField' ? intent.to : null
   if (name === null) return
   const self = intent.v === 'renameField' ? intent.from : null
