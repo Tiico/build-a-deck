@@ -67,6 +67,9 @@ services:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # Where a beta tester turns (#757, DRIFT §8): an address or a web address, said by the
+      # login card, My games, the login mail's foot and /health. Unset, all four leave it out.
+      BYD_CONTACT: ${BYD_CONTACT:-}
       # The replay corpus (DRIFT §7, #1011): the accounts whose tables the operator may export,
       # each one a yes in the invitation mail, and the operator's own address. Both or neither;
       # unset, no account reads another's tables.
