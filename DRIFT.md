@@ -47,9 +47,27 @@ Två fel hittades och rättades i samma ändring.
 Varje anslutning, kodfråga och bordslista läste hela sessionens lek, alla bilder med, så tio skärmar som anslöt läste den tio gånger och tog både appen och Postgres förbi taket; leken läses nu bara av aktören (`deckOf`).
 Och ett bords alla sidor kompilerades innan någon köades, 400 MB sidor på en gång för 308 kort; nu köas varje sida innan nästa kompileras (`queueFaces`).
 
-Det som står kvar är att sessionens lek bär varje bild som data-URL (§4): JSON upprepar en delad bild per rad, så 308 kort är ~100 MB lek oavsett hur många bilder de delar, och varje sida bär sin bild och båda typsnitten igen in i renderkön.
-Att höja taken vore att ge stacken ~4,5 GB på en låda som delas med ett trettiotal containrar och redan swappar.
-Beslutet om vägen ligger hos beställaren i #1028; taken står kvar tills det är fattat, och den här mätningen körs om efter ändringen.
+Det som stod kvar var att sessionens lek bar varje bild som data-URL (§4): JSON upprepade en delad bild per rad, så 308 kort var ~100 MB lek oavsett hur många bilder de delade, och varje sida bar sin bild och båda typsnitten igen in i renderkön.
+Att höja taken hade varit att ge stacken ~4,5 GB på en låda som delas med ett trettiotal containrar och redan swappar.
+
+### Efter #1028: tre bord ryms
+
+Beställaren valde 2026-10-18 att sidorna bär asset-hashar och att renderworkern hämtar bytesen själv (§4).
+Samma lasttest, samma maskin, samma tak och fortfarande utan R2, körd om samma dag efter ändringen:
+
+| Scenario | app (tak 512 MB) | render (tak 1 500 MB) | postgres (tak 768 MB) |
+|---|---|---|---|
+| 1 bord, 308 kort på 308 bilder à 250 kB | 158 | 513 | 173 |
+| 3 bord, 308 kort på 308 bilder | 189 | 602 | 201 |
+
+Talen är toppar i MiB av arbetsmängden; ingen container kom inom en tiondel av sitt tak med sin arbetsmängd, ingen dödades och ingen startades om.
+Appen ligger nära vila (~140 MiB) genom hela speltestet, eftersom ingen bild längre passerar den; den högsta punkten är förberedelsen, när designerna laddar upp bilderna.
+Render är den enda som växer med antalet bord, och det med rendering och inte med lekar: en sida i taget, och Chromiums egen cache.
+Postgres arbetsmängd är ~200 MiB, men med tre bord nådde containern sitt tak 865 gånger med filcache — sidor ur `render_outputs` och `assets` som kärnan släpper när det behövs; den anonyma delen var 34 MiB.
+Det är tryck utan risk, men det säger att Postgres är den som fyller sin ruta först, och i drift går bytesen till R2 och inte genom Postgres.
+Med tre bord ritas de 309 texturerna per bord på 113, 227 och 340 sekunder: en worker tar dem i tur och ordning, så det tredje bordet väntar längst.
+
+Workerns hämtning ur objektbutiken prövades samma dag mot MinIO i stället för R2: bilden låg bara i bucketen, workern läste den därifrån och texturen visade den.
 
 ## 2. Exponering: lådans egen omvänd proxy om den har en, annars Cloudflare Tunnel
 
@@ -134,7 +152,28 @@ Uppladdade bilder (E1) byggt 2026-09-07:
 `POST /assets` tar en bild (png, jpeg, webp, gif, svg; högst 8 MB) från en inloggad skapare och svarar med dess sha256-hash; samma bytes ger samma hash och kostar inget andra gången.
 Bytesen ligger under `assets/<hash>` i R2 och tabellen `assets` håller hash, typ och storlek; utan R2 ligger bytesen i tabellen.
 `GET /assets/<hash>` svarar som `/faces`: 302 till en signerad länk när R2 finns, annars bytesen med oföränderlig cache. Hashen är kapabiliteten, som för ansikten.
-När ett bord eller ett tryck görs av projektet löses radernas `asset:<hash>` till data-URL:er innan kompileringen, så sessionens lek bär sina bilder som förut och renderworkern behöver inget annat än sidan.
+~~När ett bord eller ett tryck görs av projektet löses radernas `asset:<hash>` till data-URL:er innan kompileringen, så sessionens lek bär sina bilder som förut och renderworkern behöver inget annat än sidan.~~
+
+Reviderat 2026-10-18 av beställaren (#1028): **sidan namnger sina bilder och typsnitt med hash, och renderworkern hämtar bytesen själv.**
+När ett bord, ett tryck eller ett regelhäfte görs av projektet står radernas, mallens, symbolernas, bildernas och typsnittens `asset:<hash>` kvar som de är.
+Appen frågar bara vilka av hasharna som finns, i en fråga och utan att läsa en byte; en referens till något som inte finns blir tom, så kortet tappar bilden i stället för att bära en referens ingen kan följa.
+Sessionens lek, dess versioner och varje sida i `render_jobs` bär alltså kilobyte i stället för bilderna.
+Renderworkern läser bytesen ur samma ställe som appen lade dem — `assets` i Postgres utan R2, `assets/<hash>` i R2 med — genom samma funktion (`assetFromPostgres`), och håller de senast använda i en liten cache per hash (32 MB) så att typsnitten och en delad bild läses en gång.
+Workern behöver alltså mer än sidan: den behöver tillgångarna, och den når dem redan för sina utdata.
+En hash som workern inte hittar är ett misslyckat jobb med hashen i felet, inte en textur utan bild som sedan sparas för gott under sidans hash.
+
+Motiveringen är lasttestet (§1).
+Med bilderna som data-URL:er upprepade JSON en delad bild en gång per rad, så 308 kort var ~100 MB lek i appen och i Postgres oavsett hur många bilder de delade, och varje sida bar sin bild och båda typsnitten igen in i renderkön, ~1,4 MB per sida och ~430 MB per lekversion.
+Ett bord i betans densitet höll appen i sitt tak och tre bord fällde den; efter ändringen ryms tre bord (§1).
+Det andra alternativet — att leken pekar med hash och appen bäddar in bilden sida för sida när den köar — hade behållit regeln men låtit appen läsa varje bild en gång per bordsstart och `render_jobs` vara lika stor som förut.
+
+Texturhashen bestäms fortfarande av det som ritas: en asset skrivs aldrig om och raderas aldrig, så hashen på sidan avgör bytesen lika säkert som bytesen själva.
+Varje textur och tryckfil av ett kort med en uppladdad bild, symbol eller ett uppladdat typsnitt fick en ny hash när sidan bytte form, och renderas om en gång efter deployen, vilket beställaren godtog.
+Bord som startades före ändringen har kvar sin lek med data-URL:er och spelar som förut; workern ritar en sida utan hashar precis som den alltid gjort.
+
+En bilds hash går aldrig till en klient.
+Hashen är en kapabilitet (`GET /assets/<hash>`), och på tråden skulle den visa vilket kort som ligger i någon annans hand lika säkert som texturen; projektionen bär texturernas hashar och inget annat.
+Det visas på råa frames i `packages/server/test/assets.test.ts`.
 
 ## 5. Backup: WAL-arkivering till R2 med återställningstest
 
@@ -174,6 +213,7 @@ Varje nyckel ska läsas som ingen — «ange nyckeln igen» — och testet går 
 Jobbtabell i Postgres med `SELECT … FOR UPDATE SKIP LOCKED`.
 Två prioriteter: bordstextur före tryck-PDF.
 En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 GB sedan 2026-09-11.
+Sidan namnger sina bilder och typsnitt med hash, och workern läser bytesen själv ur Postgres eller R2 (§4, #1028).
 Utdata i R2 under hash av mall, rad, typversion och fontset; ett jobb vars hash redan finns är en no-op.
 En reaper återställer jobb vars `started_at` är äldre än en gräns, eftersom Chromium ibland hänger utan att dö.
 
