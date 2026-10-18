@@ -4,7 +4,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, decideEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, decideEdit, plainEdits, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -1037,7 +1037,7 @@ export class ProjectClient {
     this.notify()
   }
   get cropsInFlight(): string[] {
-    return [...new Set(this.pending.flatMap(({ intent }) => (intent.v === 'setCrop' ? [intent.hash] : [])))]
+    return [...new Set(this.pending.flatMap(({ intent }) => plainEdits(intent).flatMap((part) => (part.v === 'setCrop' ? [part.hash] : []))))]
   }
   // A picture out of the game (#318): the record and every picture cell that held it, in one
   // intent — so the way back from it is one step and not a picture followed by its cards.

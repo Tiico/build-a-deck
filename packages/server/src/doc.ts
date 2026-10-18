@@ -14,3 +14,6 @@ export type { AiFailure, AiModel } from './ai-providers.js'
 // What the editor's AI panel says is sent before it is asked (#1001): the same reading of the game
 // the context the model gets is built from, so the chips cannot promise something else.
 export { aiContextParts, type AiContextParts } from './ai-context.js'
+// What the AI may propose and how a proposal becomes edits (#1002): the editor translates as the
+// parts arrive, so the translation is the editor's as much as the server's.
+export * from './proposal.js'

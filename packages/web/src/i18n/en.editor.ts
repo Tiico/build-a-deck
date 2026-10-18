@@ -295,6 +295,8 @@ export const enEditor = {
   'undo.what.font': 'a change among the typefaces',
   'undo.what.theme': 'the change of theme',
   'undo.what.version': 'a version taken back',
+  'undo.what.several': 'several changes',
+  'undo.what.proposal': 'the accepted proposal',
   // The shortcut that was a secret (#33): { in a cell opens the icon picker, and now it shows.
   'table.icon.insert': 'Insert an icon',
   // The tools in the open body cell's head (L39, #324).

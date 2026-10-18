@@ -80,13 +80,8 @@ export const recipeWords = (t: T): RecipeWords => ({
   hand: t('zone.hand'),
 })
 
-// The id a new card is given wherever it is made (#476): the table's button and the empty wall's
-// door ask the same question of the same deck, so the two cannot come to different answers.
-export function nextCardRef(doc: Pick<ProjectDoc, 'rows'>): string {
-  let n = doc.rows.length + 1
-  while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
-  return `kort-${n}`
-}
+// The id a new card is given wherever it is made (#476), the AI's proposals included (#1002).
+export { nextCardRef } from '@byd/server/doc'
 
 // How many copies of a card the deck holds, read from what was typed, pasted or imported (L4,
 // #479): a whole number from nought, or nothing at all. The cell, the bulk row and the import ask

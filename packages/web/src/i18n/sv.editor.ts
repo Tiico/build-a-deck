@@ -336,6 +336,8 @@ export const svEditor = {
   'undo.what.font': 'en ändring bland typsnitten',
   'undo.what.theme': 'temabytet',
   'undo.what.version': 'en tillbakatagen version',
+  'undo.what.several': 'flera ändringar',
+  'undo.what.proposal': 'det godtagna förslaget',
   // Genvägen som var en hemlighet (#33): { i en cell öppnar ikonväljaren, och nu syns det.
   'table.icon.insert': 'Sätt in en ikon',
   // Verktygen i den öppna body-cellens huvud (L39, #324). De står alltid där cellen är öppen och
