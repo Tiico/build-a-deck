@@ -37,6 +37,8 @@ const { values: args } = parseArgs({
     project: { type: 'string', default: `byd-load-${process.pid}` },
     keep: { type: 'boolean', default: false },
     'no-build': { type: 'boolean', default: false },
+    // One more compose file on top, for measuring a proposed limit before it is proposed.
+    'compose-extra': { type: 'string' },
   },
 })
 const scenarios = (args.tables ?? '1,3').split(',').map(Number)
@@ -53,14 +55,15 @@ const say = (line: string) => console.log(`${new Date().toISOString().slice(11, 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const project = args.project ?? 'byd-load'
-const stack = new Compose(project, await free(58000), project)
+const stack = new Compose(project, await free(58000), project, args['compose-extra'])
 mkdirSync(OUT, { recursive: true })
 if (!args['no-build']) {
   say(`building the images as ${stack.tag}`)
   await stack.build()
 }
 
-const results: { tables: number; verdicts: Verdict[]; played: Played[]; renders: { start: number; refresh: number }[] }[] = []
+type Result = { tables: number; verdicts: Verdict[]; played: Played[]; renders: { start: number; refresh: number }[]; failure?: string }
+const results: Result[] = []
 try {
   for (const tables of scenarios) results.push(await scenario(tables))
 } finally {
@@ -73,6 +76,7 @@ const file = join(OUT, `memory-${report.at.replace(/[:.]/g, '-')}.json`)
 writeFileSync(file, JSON.stringify(report, null, 2))
 for (const r of results) {
   console.log(`\n${r.tables} ${r.tables === 1 ? 'bord' : 'bord samtidigt'}: ${r.played.map((p) => `${p.acked} intents (${p.shuffles} blandningar, ${p.rewinds} tillbakaspolningar), ${p.faces} texturhämtningar`).join('; ')}`)
+  if (r.failure) console.log(`  AVBRÖTS: ${r.failure}`)
   console.log(`  rendering: ${r.renders.map((x) => `start ${x.start} s, ny version ${x.refresh} s`).join('; ')}`)
   for (const v of r.verdicts) {
     const phases = Object.entries(v.phases).map(([p, b]) => `${p} ${mib(b)}`).join(', ')
@@ -80,13 +84,18 @@ for (const r of results) {
   }
 }
 console.log(`\n${file}`)
-if (results.some((r) => r.verdicts.some((v) => !v.fits) || r.played.some((p) => p.refused.length > 0))) process.exitCode = 1
+if (results.some((r) => r.failure !== undefined || r.verdicts.some((v) => !v.fits) || r.played.some((p) => p.refused.length > 0))) process.exitCode = 1
 
-async function scenario(tables: number): Promise<(typeof results)[number]> {
+// A scenario that breaks off — a request the app dropped because it died under it — is still a
+// measurement, and the most important kind: the readings up to the break and the kernel's account
+// are kept and reported with the phase it broke in, rather than lost with the exception.
+async function scenario(tables: number): Promise<Result> {
   say(`${tables} table(s): a fresh stack on ${stack.origin}`)
   await stack.fresh()
   let phase = 'vila'
   const sampler = await stack.sample(() => phase)
+  const outcome: { played: Played; refresh: number; start: number }[] = []
+  let failure: string | undefined
   try {
     await pause(20_000)
 
@@ -109,29 +118,39 @@ async function scenario(tables: number): Promise<(typeof results)[number]> {
     say(`tables drawn: ${started.map((s) => `${s.total} textures in ${s.seconds} s`).join(', ')}`)
 
     phase = 'spel'
-    const outcome = await Promise.all(
+    outcome.push(...(await Promise.all(
       designers.map(async (d, i) => {
         const game = games[i]
         const table = addresses[i]
         if (!game || !table) throw new Error('a designer without a table')
-        const playing = playTable(stack.origin, table, { intents, pauseMs })
-        await d.saveVersion(game.project, game.name, game.assets, versions + 1)
-        const refreshed = await d.refreshTable(table.session, RENDER_BUDGET_MS)
-        say(`table ${i + 1}: new version drawn, ${refreshed.total} textures in ${refreshed.seconds} s`)
-        return { played: await playing, refresh: refreshed.seconds, start: started[i]?.seconds ?? 0 }
+        // Side by side and in one `Promise.all`, so that whichever of them breaks first is the one
+        // reported, and the other's failure is not left to take the process down unheard.
+        const [played, refreshed] = await Promise.all([
+          playTable(stack.origin, table, { intents, pauseMs }),
+          (async () => {
+            await d.saveVersion(game.project, game.name, game.assets, versions + 1)
+            const done = await d.refreshTable(table.session, RENDER_BUDGET_MS)
+            say(`table ${i + 1}: new version drawn, ${done.total} textures in ${done.seconds} s`)
+            return done
+          })(),
+        ])
+        return { played, refresh: refreshed.seconds, start: started[i]?.seconds ?? 0 }
       }),
-    )
+    )))
 
     phase = 'efteråt'
     await pause(20_000)
-    await sampler.stop()
-    const kernel: Partial<Record<Container, Kernel>> = {}
-    for (const c of CONTAINERS) kernel[c] = await stack.kernel(c)
-    return { tables, verdicts: verdict(sampler.readings, kernel), played: outcome.map((o) => o.played), renders: outcome.map((o) => ({ start: o.start, refresh: o.refresh })) }
   } catch (cause) {
-    await sampler.stop()
-    throw cause
+    failure = `i fasen «${phase}»: ${cause instanceof Error ? `${cause.message}${cause.cause instanceof Error ? ` (${cause.cause.message})` : ''}` : String(cause)}`
+    say(`broke off ${failure}`)
+    // Long enough for a container the kernel killed to come back, so it can be read at all.
+    await pause(15_000)
   }
+  await sampler.stop()
+  const kernel: Partial<Record<Container, Kernel>> = {}
+  for (const c of CONTAINERS) kernel[c] = await stack.kernel(c)
+  if (failure) writeFileSync(join(OUT, `app-${tables}-${Date.now()}.log`), await stack.logs('app'))
+  return { tables, verdicts: verdict(sampler.readings, kernel), played: outcome.map((o) => o.played), renders: outcome.map((o) => ({ start: o.start, refresh: o.refresh })), ...(failure ? { failure } : {}) }
 }
 
 // Two real typefaces, taken from the render image, which every run of this has built anyway.

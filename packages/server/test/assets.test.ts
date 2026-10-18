@@ -183,8 +183,9 @@ describe('assets over HTTP', () => {
     const started = await fetch(`${run.http}/projects/p1/sessions`, { method: 'POST', headers: { cookie } })
     expect(started.status).toBe(201)
     const { id } = (await started.json()) as { id: string }
-    const session = await run.store.loadSession(id)
-    expect(session?.deck?.rows['dragon']?.['art']).toBe(`data:image/png;base64,${Buffer.from(PNG).toString('base64')}`)
+    const { version } = (await run.store.loadSession(id))!
+    const deck = await run.store.deckOf(id, version)
+    expect(deck?.rows['dragon']?.['art']).toBe(`data:image/png;base64,${Buffer.from(PNG).toString('base64')}`)
   })
 
   it('compiles a card whose template carries a picture of its own with that picture inlined too (#320)', async () => {
@@ -203,8 +204,9 @@ describe('assets over HTTP', () => {
     const started = await fetch(`${run.http}/projects/p2/sessions`, { method: 'POST', headers: { cookie } })
     expect(started.status).toBe(201)
     const { id } = (await started.json()) as { id: string }
-    const session = await run.store.loadSession(id)
-    expect(session?.deck?.template.faces['back']?.base[0]).toMatchObject({ id: 'logo', bind: { literal: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}` } })
+    const { version } = (await run.store.loadSession(id))!
+    const deck = await run.store.deckOf(id, version)
+    expect(deck?.template.faces['back']?.base[0]).toMatchObject({ id: 'logo', bind: { literal: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}` } })
   })
 })
 

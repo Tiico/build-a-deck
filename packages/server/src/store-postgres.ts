@@ -4,7 +4,7 @@ import postgres from 'postgres'
 import type { ObjectStore } from '@byd/render'
 import { PHYSICAL_VERBS, type Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
-import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
+import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import { checkedHistory, liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
 import { PostgresAssetStore } from './assets.js'
@@ -135,19 +135,24 @@ export class PostgresLogStore implements LogStore {
     `
   }
 
-  async loadSession(id: string): Promise<SessionRecord | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null; project: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
-      select id, version, setup, deck, project, code, code_expires_at, host_key_hash from sessions where id = ${id}
+  async deckOf(sessionId: string, version: string): Promise<Deck | null> {
+    const [refreshed] = await this.sql<{ deck: Deck }[]>`select deck from session_decks where session_id = ${sessionId} and version = ${version}`
+    if (refreshed) return refreshed.deck
+    const [start] = await this.sql<{ deck: Deck | null }[]>`select deck from sessions where id = ${sessionId}`
+    return start?.deck ?? null
+  }
+
+  // Never the deck (#1012): see `SessionInfo`. It is `deckOf`'s, for the one reader that deals.
+  async loadSession(id: string): Promise<SessionInfo | null> {
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
+      select id, version, setup, project, code, code_expires_at, host_key_hash from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
-    const refreshed = await this.sql<{ version: string; deck: Deck }[]>`select version, deck from session_decks where session_id = ${id}`
     return {
       id: row.id,
       version: row.version,
       setup: row.setup,
-      ...(row.deck ? { deck: row.deck } : {}),
-      ...(refreshed.length > 0 ? { decks: Object.fromEntries(refreshed.map((r) => [r.version, r.deck])) } : {}),
       ...(row.project ? { project: row.project } : {}),
       ...(row.code ? { code: row.code } : {}),
       ...(row.code_expires_at ? { codeExpiresAt: row.code_expires_at.toISOString() } : {}),

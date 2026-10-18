@@ -20,6 +20,7 @@ export class Compose {
     readonly project: string,
     readonly port: number,
     readonly tag: string,
+    private readonly extra?: string,
   ) {}
 
   get origin(): string {
@@ -27,7 +28,7 @@ export class Compose {
   }
 
   private async compose(...args: string[]): Promise<string> {
-    const { stdout } = await run('docker', ['compose', '-p', this.project, '-f', join(ROOT, 'docker-compose.yml'), '-f', join(import.meta.dirname, 'compose.yml'), ...args], {
+    const { stdout } = await run('docker', ['compose', '-p', this.project, '-f', join(ROOT, 'docker-compose.yml'), '-f', join(import.meta.dirname, 'compose.yml'), ...(this.extra ? ['-f', this.extra] : []), ...args], {
       cwd: ROOT,
       env: { ...process.env, BYD_LOAD_PORT: String(this.port), BYD_TAG: this.tag },
       maxBuffer: 256 * 2 ** 20,
