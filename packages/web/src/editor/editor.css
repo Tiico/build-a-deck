@@ -986,11 +986,13 @@
 /* The crown a tab panel wears (#128, #130, variant B), written once for the three surfaces that
    wear one: the card wall, the symbol library and the card table.
 
-   It is one row and never two — `nowrap`, and what does not fit is either a rail that scrolls
-   inside the row or a box that opens under it. A crown that wraps measured 113 px on the card
-   table at every width, and that tab allows 80. The row keeps the tab's own frame rather than
-   bleeding to the window: #132 gives every panel the same edge, and a band that ignores it would
-   be a second answer to a question already settled.
+   At the desk it is one row — `nowrap`, and what does not fit is a box that opens under it. A
+   crown that wrapped measured 113 px on the card table at every width, and that tab allows 80.
+   Under the desk and under a finger the row breaks instead (L54), and so does the wall's when
+   something beside the wall leaves it too narrow even for its short boxes (#1000).
+   The row keeps the tab's own frame rather than bleeding to the window: #132 gives every panel
+   the same edge, and a band that ignores it would be a second answer to a question already
+   settled.
 
    A drawer is a sibling of the row, not a child of it. Inside, it would make the row two rows. */
 .byd-crown { flex: none; display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: nowrap; min-width: 0; padding: 0 0 var(--byd-s2); border-bottom: 1px solid #2f333d; }
@@ -1026,19 +1028,29 @@
 .byd-rules-ways label[data-over='true'] { outline: 2px dashed var(--byd-drop-mark); outline-offset: 2px; background: var(--byd-drop-wash); }
 .byd-crown-end { margin-left: auto; }
 /* A search is a tool of the row like any other, and is held to the same height as a box so the
-   crown reads as one row rather than as a field with buttons round it. */
-.byd-crown-search { flex: 0 1 240px; min-width: 0; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; font-size: 12px; }
-/* Below the desk the wall's crown carries more than one row can hold, and the field is the only
-   thing in it that can give: measured at 768 px it had been squeezed to 26 px, which is a slit and
-   not a target. The editor may degrade under desk width (L12) but it never loses a control and
-   never drops below a tap target, so the row keeps its height and scrolls sideways inside itself
-   instead — the same answer #130 gave the filter chips, and the page itself still does not move. */
-/* At the desk's narrow end the row holds everything only if the boxes say less (beslut 2026-09-27,
-   #477 fynd 12, variant B): a box with a choice shows only the choice, the fold only its arrow, and
-   the field keeps room to be read. The full sentence stays each box's name and tooltip. */
-@media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-crown-box > .byd-crown-name, .byd-crown-fold > .byd-crown-name { display: none; }
-  .byd-crown-search { min-width: 180px; }
+   crown reads as one row rather than as a field with buttons round it. It never gives up more than
+   down to 180 px (#477 fynd 12): squeezed further it was «Sök i», a slit and not a field. It asks
+   for no more than that when the row is laid out and takes up to 240 px of what is left over, so a
+   row breaks only when the field could not have its 180 — never because it wanted its 240. */
+.byd-crown-search { flex: 1 1 180px; min-width: 180px; max-width: 240px; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; font-size: 12px; }
+/* The wall's crown is laid out for the wall's width and not the window's (#1000, E4): a panel
+   beside the wall — 380 px of AI help — left the desk's row at 900 px, where the field was squeezed
+   to a stub and «Fysisk kontroll» stood under the panel. So the crown is its own container, and the
+   rules below ask how wide the *wall* is.
+   At the desk's narrow end the row holds everything only if the boxes say less (beslut 2026-09-27,
+   #477 fynd 12, variant B): a box with a choice shows only the choice, the fold only its arrow. The
+   full sentence stays each box's name and tooltip. 1248 is the crown at a 1280 window, where the
+   desk's own rule always switched, so a wall with nothing beside it reads exactly as before; the
+   window still has to be a desk (L12), and under it L54 below has the row break with whole words.
+   And where even the short row does not fit, the row breaks rather than cutting anything — the
+   same answer L54 gave the tablet. With nothing beside the wall the desk's crown is one row, as L54
+   says, and `editor-tablet.spec.ts` holds it there. */
+.byd-wall-crown { flex: none; container: byd-wall-crown / inline-size; }
+.byd-wall-crown > .byd-crown { flex-wrap: wrap; row-gap: var(--byd-s2); }
+@media (min-width: 1024px) {
+  @container byd-wall-crown (width < 1248px) {
+    .byd-crown-box > .byd-crown-name, .byd-crown-fold > .byd-crown-name { display: none; }
+  }
 }
 /* Below the desk, and under a finger at any width, the row breaks instead (#567, beslut B): the
    sideways scroll hid «Fäll ihop hoppspalten» and «Fysisk kontroll» on a tablet, where nothing
@@ -1046,7 +1058,6 @@
    room, and the filters break with the row. */
 @media (max-width: 1023px), (pointer: coarse) {
   .byd-crown { flex-wrap: wrap; row-gap: var(--byd-s2); }
-  .byd-crown-search { min-width: 180px; }
 }
 /* What a box opened: a band under the row, on the panel's own ground so it reads as standing over
    the work rather than as a second crown. This one may wrap — it is what the row refused to. */

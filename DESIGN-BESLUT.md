@@ -1410,7 +1410,7 @@ CSV-steget togs bort eftersom det gjorde onboarding beroende av ett externt kalk
 ### E4. Assets: kurerat CC0- och CC-BY-bibliotek för symboler (fråga 23)
 
 Inbyggt sökbart bibliotek med fritt licensierade ikoner och symboler, plus platshållarramar och färgblock för illustrationsytor.
-Ingen inbyggd AI-generering.
+Ingen inbyggd AI-generering av bilder (preciserat 2026-10-07, se nedan: text och struktur får föreslås).
 
 Motivering:
 Prototyper som ser färdiga ut får fel feedback — testare kritiserar konsten och blir artiga om mekaniken.
@@ -1419,6 +1419,31 @@ Fritt licensierat material ger noll rättslig risk vid tryck.
 Följdkrav:
 Licensmetadata per asset måste följa med hela vägen in i tryckunderlaget.
 Kuratering och licensbokföring blir ett löpande arbete.
+
+Preciserat 2026-10-07 av beställaren (#940): **AI får föreslå text och struktur, aldrig bild.**
+Förbudet ovan gällde konsten, och dess motivering gör det fortfarande: en illustration som ser färdig ut drar testarnas blick från mekaniken.
+En mall, ett fält, en kortrad eller ett stycke i regelboken är inte konst utan designerns eget arbetsmaterial, och det är där en designer med en lek på hundratals kort behöver hjälp.
+Hjälpen drivs av användarens egen nyckel hos Anthropic eller OpenAI; tjänsten står aldrig för en token och kör aldrig en modell.
+Nyckeln sparas krypterad på kontot med en huvudnyckel som inte ligger i databasen och därför inte i dess backup (DRIFT §5), visas aldrig igen, och ingår aldrig i en export (G5).
+Servern gör anropet åt användaren och strömmar svaret vidare, så att nyckeln aldrig lämnar servern; den förmedlar men tänker inte.
+Det AI:n svarar är ett förslag i editorns egen elementmodell (L1) och i editorns egna redigeringar, förhandsvisat med den enda renderaren (E2) och skrivet i dokumentet först när designern godtar det — som en redigering, i ett steg, med vanlig historik och ångra (B4, D3).
+
+Följdkrav:
+Modellen skriver aldrig HTML eller CSS, och ett förslag som inte går att tillämpa på dokumentet avvisas innan det når det.
+Det som skickas till leverantören sägs med vanliga ord innan nyckeln sparas.
+Servern loggar aldrig en nyckel, en kontext eller ett svar.
+Hur ytan ser ut prototypas innan den byggs (#940).
+
+Ytan, prototypad 2026-10-07 och vald av beställaren 2026-10-18 (#940): **en samtalspanel bredvid arbetsytan, och nyckeln på en egen profilsida.**
+Tre former prövades i den riktiga editorn med en låtsas-AI: en samtalspanel bredvid ytan (A), riktade handlingar där arbetet redan sker (B), och förslaget lagt som spöken direkt i kortväggen och tabellen (C).
+Valet blev A: ett ställe där designern både frågar om spelet och ber om kort, mallar och ändringar, och där förslaget står i samtalet med «Visa på väggen», «Godta alla», «Välj delar…» och «Kasta», med en rad under för att förfina det.
+Nyckeln sparas, prövas, byts och tas bort på en egen profilsida för den inloggade, inte på «Mina spel»; editorn hänvisar dit när ingen nyckel finns.
+
+Följdkrav:
+Panelen tar bredd från arbetsytan, och vid 1280 px kapade den i prototypen kortväggens verktygsrad; verktygsraden måste ge plats åt panelen utan att något kapas.
+Förslagets kort ritas av den enda renderaren (E2), och den fysiska kontrollen körs på förslaget innan det godtas.
+Svaret strömmar in del för del, så att ett kort syns när det är klart och inte först när hela svaret är det.
+Profilsidan är en ny yta och prototypas innan den byggs.
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
@@ -2302,6 +2327,15 @@ Filtens rad i väljaren tar den höjd telefonen har över, och en filt centrerad
 Filten hänger nu från radens topp och centreras bara i sidled, så sidan läses uppifrån — vem du ansluter till och bordet direkt under — och höjden över hamnar mellan bordet och formuläret.
 Formuläret står kvar vid foten, där tummen är och där #42 lämnade «Sätt dig» oavsett filtens storlek; att packa hela sidan uppåt hade flyttat knappen med antalet platser.
 `picker-band.spec.ts` mäter luften mellan huvudets sista rad och det första filten ritar, pillret eller träkanten, i det byggda appen vid 390 × 844 och 320 × 568 med fyra och sex platser: 30 px överallt.
+
+Tillägg 2026-10-17 (#979): filten passas in i sidans bredd, och steget längs kanten följer med.
+Den delade filten är 260 px och öst- och västpillret hänger 30 px utanför den på var sida, alltså 320 px — hela den minsta telefonen.
+Vid 320 × 568 med fem platser eller fler låg västpillret därför mot glaset vid x = 0 och östpillret kant i kant med skärmens högerkant, utan sidans marginal.
+Filten är nu högst sidans bredd innanför marginalen minus de två överhängen (`100cqi` på `.byd-join`, som är en container), vilket vid 320 px är 220 px och vid 390 px lämnar den delade filten på 260 px.
+En smalare filt kortar steget längs kanten, annars räcker paret på en delad nord- eller sydkant förbi filtens hörn: paret spänner två steg minus luften och får inte vara bredare än filten, så steget är hälften av filten plus luften, eller 132 px om det är kortare.
+Vid 320 px blir steget 117 px, taket för ett delat piller 103 px och filten 220 × 205 px; steget ned längs sidan, filtens höjd, hörnens dager och samma luft ned längs sidan som tvärs över änden följer ur det som förut.
+De vanliga förnamnen från #42 stod fortfarande hela i skärmbilderna vid 320 × 568 med åtta platser.
+`picker-margin.spec.ts` mäter varje piller i det byggda appen vid 320 × 568 och 390 × 844 med fyra till åtta platser mot sidans egen marginal och mot träffytans 44 px, och håller långa namn vid 320 px på fem, sex och åtta platser inom marginalen, längs filten och utan att något piller ligger över ett annat.
 
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
@@ -6058,6 +6092,9 @@ Moms, tull och leveransvillkor för fysiska varor till EU-kunder från amerikans
 Prisnivåernas exakta tak och gratisnivåns gränser.
 GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan konto.
 Betans minsta förtroendeyta, innan villkoren och GDPR för gäster är lösta: **beslutat 2026-10-06 (#757, prototyp A).** En tyst rad sist i inloggningskortet och sist på Mina spel säger «Kontakt» (lådans `BYD_CONTACT`, utelämnad utan) och versionen ur `/health.release`; där en gäst ansluter och där hon sparar sina enkätsvar till ett konto står «Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.»; inloggningsmejlet har en fot med tjänstens namn, sajten och kontakten. «Villkor · Integritet» läggs på samma rad när de finns. `trust-surfaces.test.tsx`, `login-mail.test.ts` och `wire.test.ts` håller raden, meningen, foten och `/health.contact`.
+Vem betan är öppen för: **beslutat 2026-10-18, för alla.** Vem som helst med en e-postadress kan skapa konto, som i dag, utan inbjudningslista och utan kvoter; A2:s tak är inte byggda och beslutas inte för betan.
+Konsekvens att vara medveten om: ingenting begränsar hur många projekt, kort eller renderingar ett konto tar på en låda som delas med ett trettiotal andra containrar, så minnesbudgeten under last (#1012) och lådans egen rate limiting (DRIFT §9) är det enda skyddet tills A2 byggs.
+Hur betans sessioner når replay-korpusen: **beslutat 2026-10-18, samtycke i inbjudan.** Beställaren frågar varje betadesigner när hen bjuds in, och ett ja i mejlet räcker; produkten frågar ingenting. Hur samtycket blir en behörighet på lådan står i DRIFT §7 (#1011).
 Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
@@ -6256,6 +6293,13 @@ A kostade arbetsytan 48 px vid 960 × 490 för en andra rad i remsan, och C göm
 `packages/e2e/test/surfaces/editor-tablet.spec.ts` håller det vid 960 × 490, 1024 × 600, 820 × 1106 och 768 × 1024: ingen kontroll i kromen är kapad, på någon etapp.
 Den fann också att «Hjälp om borden» i Bord var kapad i alla bredder: träffytans luft hängde utanför en rullruta.
 Prototypens bilder står i [`docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/`](docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/).
+
+Tillägg 2026-10-18 (#1000, följdkrav till AI-panelen i #940): **kortväggens krona frågar efter väggens bredd, inte fönstrets.**
+En panel på 380 px bredvid väggen lämnade skrivbordets rad 868 px vid 1280: sökfältet krympte till 26 px och «Fysisk kontroll» stod 93 px in under panelen; vid 1440 fick fältet 93 px.
+Kronan är nu en egen container (`.byd-wall-crown`), och #477:s korta boxar (variant B) gäller när kronan är smalare än vid ett fönster på 1280, så länge fönstret är ett skrivbord.
+Sökfältet ger aldrig upp mer än ned till 180 px, och där inte ens de korta boxarna ryms bryter raden i stället för att kapa något, som på plattan ovan.
+Utan något bredvid väggen är skrivbordets krona en rad som förut, i samma mått.
+`packages/e2e/test/surfaces/wall-crown-beside.spec.ts` håller det med en kolumn på 380 px vid 1024 × 768, 1280 × 800 och 1440 × 900, på svenska och engelska.
 
 ### L55. En öppnad låda ligger över allt annat, och tabellens fasta kolumner står på en list (prototypat och beslutat 2026-09-30, #609, #610, #611)
 
