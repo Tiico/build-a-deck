@@ -73,16 +73,21 @@ test('a designer adds her key from the editor, asks about her game, stops an ans
   await expect(alert).toContainText('Anthropic is overloaded right now')
   await expect(alert.getByRole('button', { name: 'Try again' })).toBeVisible()
 
-  // The server's log: a line per question, and nothing of what was asked or answered.
+  // The server's log: a line per question, and nothing of what was asked or answered. The log is the
+  // whole stack's, and other journeys ask questions of their own at the same time (#1002), so this
+  // designer's lines are the ones with her account on them — the game's owner.
   const log = process.env['BYD_E2E_SERVER_LOG']
   expect(log, 'the stack says where the server writes its log').toBeTruthy()
-  await expect.poll(() => readFileSync(log!, 'utf8').split('\n').filter((l) => l.includes('"msg":"ai"')).length).toBeGreaterThanOrEqual(3)
+  const owner = ((await (await page.request.get(`/projects/${project.id}`)).json()) as { owner: string }).owner
+  const aiLines = () =>
+    readFileSync(log!, 'utf8')
+      .split('\n')
+      .filter((l) => l.includes('"msg":"ai"'))
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+  await expect.poll(() => aiLines().filter((l) => l['account'] === owner).length).toBeGreaterThanOrEqual(3)
   const written = readFileSync(log!, 'utf8')
-  const lines = written
-    .split('\n')
-    .filter((l) => l.includes('"msg":"ai"'))
-    .map((l) => JSON.parse(l) as Record<string, unknown>)
-  expect(lines.slice(-3).map((l) => l['outcome'])).toEqual(['ok', 'cancelled', 'overloaded'])
+  const lines = aiLines()
+  expect(lines.filter((l) => l['account'] === owner).map((l) => l['outcome'])).toEqual(['ok', 'cancelled', 'overloaded'])
   for (const line of lines) expect(Object.keys(line).sort()).toEqual(['account', 'ms', 'msg', 'outcome', 'provider'])
   for (const secret of [KEY.slice(0, 24), 'What is the game called', 'Tell me everything', 'Du frågade']) expect(written).not.toContain(secret)
 })
