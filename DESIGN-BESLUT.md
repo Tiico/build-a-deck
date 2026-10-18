@@ -1449,6 +1449,11 @@ Tre former prövades: en egen sida med AI-nyckel, Språk och Konto under varandr
 Valet blev A: kontot har tre saker, och en kolumn är vad tre saker behöver; en avsnittslista vore struktur för inställningar som inte finns.
 Vägen in är ett ord till i startsidans rad, «e-post · Profil · logga ut», och språkväljaren flyttar till sidan.
 Nyckelrutan länkar till den valda leverantörens egen sida där en nyckel skapas — `https://platform.claude.com/settings/keys` för Anthropic och `https://platform.openai.com/api-keys` för OpenAI — öppnad i en ny flik, så att den som saknar en nyckel aldrig behöver leta (beställarens tillägg 2026-10-18).
+
+Byggt 2026-10-18 (#999, PR #1024): valvet, prövningen, modellvalet och profilsidan.
+Ett konto har **en** nyckel, inte en per leverantör: profilsidan visar en nyckel och ett leverantörsval, så att spara en nyckel hos den andra leverantören ersätter den första i stället för att lägga den utom synhåll.
+Nyckeln prövas genom att leverantören ombeds lista sina modeller; det kostar designern ingenting men upptäcker inte ett konto utan kredit förrän första frågan.
+Kontot och leverantören är inbakade i förseglingen, så en rad som flyttas till ett annat konto öppnas för ingen.
 Editorns hänvisning bär spelet med sig, så att «Tillbaka till» spelet är sidans enda fyllda knapp när nyckeln är sparad.
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
