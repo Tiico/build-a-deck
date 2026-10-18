@@ -65,7 +65,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-who a { color: #9aa3b8; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 /* «Profil» (#999, #998 variant A) is where the account's own things are, so it reads a step brighter
    than the way out beside it. */
-.byd-who a.byd-who-profile { color: #dce3f2; font-weight: 650; }
+/* A short word, so the target is given its 44 px of width as well as of height (UX-KONTROLLER). */
+.byd-who a.byd-who-profile { min-width: 44px; box-sizing: border-box; justify-content: center; color: #dce3f2; font-weight: 650; }
 /* The sentence a brand new account reads before it presses anything (UX-16). */
 .byd-home-empty { margin: 0; max-width: 72ch; color: #9aa3b8; font-size: 14px; line-height: 1.6; text-wrap: pretty; }
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
