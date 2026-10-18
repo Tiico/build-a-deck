@@ -57,7 +57,13 @@ describe.each(ENVIRONMENTS)('a test held to its budget in own time, under %s', (
   it('fails a test that spent more of its own time than its budget, even one that never yielded', () => {
     const { status, failureMessages } = outcome(environment, 'spends its own time past its budget without letting a timer run')
     expect(status).toBe('failed')
-    expect(failureMessages.join('\n')).toMatch(/Test spent (1\.\d|[2-9]\.\d) s of its own time, past its budget of 0\.6 s/)
+    // The case burns a whole second of the process's CPU, but process.cpuUsage counts every
+    // thread, so on a machine with cores to spare that second fits in 0.9 s of wall clock — and
+    // own time is wall clock less holds. What is proven is that the guard saw own time past the
+    // budget, so that is what is read, not a figure the case happened to round to on one machine.
+    const spent = /Test spent (\d+\.\d) s of its own time, past its budget of 0\.6 s/.exec(failureMessages.join('\n'))
+    expect(spent, failureMessages.join('\n')).not.toBeNull()
+    expect(Number(spent?.[1])).toBeGreaterThan(0.6)
   })
 
   it('says at the ceiling that it was the machine and not the test, with both clocks', () => {
