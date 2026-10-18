@@ -43,6 +43,7 @@ describe('which route a path is', () => {
 describe('the title of a route', () => {
   it.each([
     ['home', {}, 'Mina spel · build-your-deck'],
+    ['landing', {}, 'Bygg ditt kortspel · build-your-deck'],
     ['login', {}, 'Logga in · build-your-deck'],
     ['new', {}, 'Nytt spel · build-your-deck'],
     ['claim', {}, 'Spara bordet · build-your-deck'],

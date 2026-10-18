@@ -8,7 +8,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // a place too, and a tab that says nothing is a tab nobody can find their way back to.
 export const APP = 'build-your-deck'
 
-export const ROUTES = ['home', 'login', 'new', 'claim', 'invite', 'profile', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
+export const ROUTES = ['home', 'landing', 'login', 'new', 'claim', 'invite', 'profile', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
 export type Route = (typeof ROUTES)[number]
 
 const PATHS: Record<string, Route> = {
@@ -40,8 +40,8 @@ export function routeOf(pathname: string): Route {
 // Which room a session route is about is not always a code: only the TV is given one (DRIFT §9).
 // Without it the game's name stands in, because that is what a guest knows the table by; the
 // session id did once, and «Tittar på rum a25d7f3b-0c…» is nobody's name for anything (#759). And `route` is what the page is showing rather
-// than where it stands: `/` is the games for whoever is logged in and the login card for whoever
-// is not, and a tab that says "Mina spel" over the second one names a page that is not there.
+// than where it stands: `/` is the games for whoever is logged in and the landing page for whoever
+// is not (#1009), and a tab that says "Mina spel" over the second one names a page that is not there.
 // Only a page with two shapes reports it, and the address decides for every other one.
 // `part` is which part of a page with parts is open — the editor's tab (#477) — in the reader's words.
 export type TitleContext = { state?: StatusKey | null; room?: string | null; game?: string | null; route?: Route | null; part?: string | null }
@@ -53,6 +53,8 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
   switch (route) {
     case 'home':
       return [t('title.home')]
+    case 'landing':
+      return [t('title.landing')]
     case 'login':
       return [t('title.login')]
     case 'new':

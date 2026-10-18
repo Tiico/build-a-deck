@@ -22,6 +22,7 @@ export const svStatus = {
 
   // Flikens namn per rutt (#12). Namnet står först, för en flik klipps från höger.
   'title.home': 'Mina spel',
+  'title.landing': 'Bygg ditt kortspel',
   'title.login': 'Logga in',
   'title.new': 'Nytt spel',
   'title.claim': 'Spara bordet',

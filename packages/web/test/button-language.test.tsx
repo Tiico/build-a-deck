@@ -15,6 +15,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { HomePage } from '../src/account/HomePage.js'
+import { LoginCard } from '../src/account/LoginCard.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
@@ -235,13 +236,20 @@ describe('the seat picker', () => {
   }, 90_000)
 })
 
-// The way in, in both its shapes: the login card for whoever is not signed in, and the games for
-// whoever is. The games are opened by pressing a card, so that view has no filled button at all —
-// which is a statement about the page and not an omission, and is written out as one.
+// The way in, in all its shapes: the landing page at `/` for whoever is not signed in (#1009), the
+// login card at `/login` it leads to, and the games for whoever is. The games are opened by pressing
+// a card, so that view has no filled button at all — which is a statement about the page and not
+// an omission, and is written out as one.
+// The account's sheet and the landing page's, which is the account's room too (#1009).
+const ACCOUNT_CSS = () => `${read('src/account/account.css')}\n${read('src/account/landing.css')}`
 async function accountViews(): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
-  const card = render(<HomePage />)
+  const landing = render(<HomePage />)
+  await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })
+  out['landningssidan'] = landing.container.innerHTML
+  landing.unmount()
+  const card = render(<LoginCard http={run.http} next="/" />)
   await screen.findByLabelText('E-post')
   out['inloggningskortet'] = `<div class="byd-account">${card.container.innerHTML}</div>`
   card.unmount()
@@ -258,8 +266,10 @@ async function accountViews(): Promise<Record<string, string>> {
 
 describe('the way in', () => {
   it('wears the primary fill on nothing but the action that signs you in', async () => {
-    const measured = await inChromium(read('src/account/account.css'), 390, await accountViews(), wearingThePrimary('.byd-account'))
-    expect(measured).toEqual({ inloggningskortet: ['Skicka inloggningslänk'], 'mina spel': [] })
+    const measured = await inChromium(ACCOUNT_CSS(), 390, await accountViews(), wearingThePrimary('.byd-account'))
+    // The landing page's two fills are one action said twice, at the top and at the foot of a page
+    // too long to see both of on one screen: each is the only filled thing where it stands.
+    expect(measured).toEqual({ landningssidan: ['Börja bygga', 'Till editorn'], inloggningskortet: ['Skicka inloggningslänk'], 'mina spel': [] })
   }, 90_000)
 })
 
@@ -1169,7 +1179,7 @@ describe('what the whole tool draws as chosen', () => {
   it('paints none of it in a fill of its own, bar the seats that are a palette', async () => {
     await run.projects.create(run.projectId, worthFiltering())
     const walked = {
-      'inloggningskortet, mina spel': [read('src/account/account.css'), 390, '.byd-account', await accountViews()],
+      'inloggningskortet, mina spel': [ACCOUNT_CSS(), 390, '.byd-account', await accountViews()],
       'sätt dig vid bordet': [read('src/join/join.css'), 390, '.byd-join', await joinViews()],
       'guidad start': [read('src/wizard/wizard.css'), 1280, '.byd-wizard', await wizardViews(1280)],
       'editorn': [read('src/editor/editor.css'), 1280, '.byd-editor', await editorViews(1280)],
@@ -1190,7 +1200,7 @@ ${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
     // back as — so the views are named, and a surface that quietly stops mounting fails rather than
     // agreeing.
     expect(walkedThrough).toEqual({
-      'inloggningskortet, mina spel': ['inloggningskortet', 'mina spel'],
+      'inloggningskortet, mina spel': ['inloggningskortet', 'landningssidan', 'mina spel'],
       'sätt dig vid bordet': ['innan namnet är skrivet', 'platsen är tagen', 'sätt dig vid bordet'],
       'guidad start': ['hela sidan'],
       'editorn': [...EDITOR_VIEWS],

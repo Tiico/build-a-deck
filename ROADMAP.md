@@ -139,6 +139,7 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 - ✅ Flerspråkighet i verktyget: en katalog per språk och yta, en språkväljare, och hela editorn, bordet, telefonen, kontot och guiden på svenska eller engelska; mejlen och regelhäftets enda verktygsrubrik följer med, och ett spel som skapas på engelska får engelska zoner, räknare och kolumnnamn (A4).
 - ✅ "Mina spel" med senast spelat, starta bord direkt från kortet och ta bort spel med hela dess historia (G1).
 - 🔶 AI-stöd i editorn med designerns egen nyckel hos Anthropic eller OpenAI (2026-10-07, #940): förslag på mall, fält, kort och regeltext, aldrig bild; nyckeln krypterad på kontot och anropet förmedlat av servern; ytan är vald — en samtalspanel i editorn och nyckeln på en egen profilsida (E4). Byggt: profilsidan med nyckeln, valvet och leverantörernas prövning och modellista (#999); panelen återstår. Blockerar inte release.
+- ✅ En landningssida på `/` för den som inte är inloggad, som visar konceptet med ett dukat bord och leder vidare till editorns startsida; kodraden står kvar för spelaren (G1, #1009).
 
 ## Fas 3 — Konton, betalning och data
 

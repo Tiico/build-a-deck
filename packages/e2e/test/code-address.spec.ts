@@ -8,7 +8,7 @@ import { expect, test } from '../support/test.js'
 // The television says the box's own name and, on the line under it, `/KOD`. A phone that types
 // what it reads lands in the seat picker: one page load and two presses — «Gå» on the keyboard
 // and «Sätt dig» — from the room to a hand. Everything else here is a door into that same picker:
-// the row under the login card, `/join` without a code, and the one sentence a code that names
+// the code row on the landing page (#1009; under the login card before it), `/join` without a code, and the one sentence a code that names
 // nothing gets, whether it never was or has gone out.
 
 const SMALL_PHONE: Device = { name: 'small phone', viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true }
@@ -86,17 +86,22 @@ test.describe('the code is the address (#675)', () => {
     expect(page).toBe(other)
   })
 
-  test('the start page has a code row under the login card that takes the code to the picker', async ({ table, open }) => {
+  test('the start page has a code row on the landing page that takes the code to the picker', async ({ table, open }) => {
     for (const device of [PHONE, SMALL_PHONE]) {
       const { page } = await open(device, '/?lang=sv')
       const field = page.getByLabel('Ska du spela? Skriv rumskoden')
-      const email = page.locator('.byd-login input[type="email"]')
-      // At 320 both the code field and the e-mail field are on the first screen.
-      for (const f of [field, email]) await expect(f).toBeInViewport({ ratio: 1 })
-      // Under the card, never in it.
-      const card = (await page.locator('[data-login]').boundingBox())!
-      expect((await field.boundingBox())!.y).toBeGreaterThan(card.y + card.height)
+      const go = page.getByRole('button', { name: 'Gå in' })
+      const maker = page.getByRole('link', { name: 'Mina spel' })
+      // At 320 both doors are on the first screen: the player's field and its button, and the
+      // maker's way to the login (#675, #1009).
+      for (const f of [field, go, maker]) await expect(f).toBeInViewport({ ratio: 1 })
       expect(await targetsUnder44(page)).toEqual([])
+      // And in a wide face too: system-ui is DejaVu on CI's Linux, about an eighth wider than this
+      // Mac's, and there the header pushed «Mina spel» past the right edge. Verdana stands in for
+      // it here, DejaVu on Linux, so the check bites on both machines.
+      const face = await page.addStyleTag({ content: `.byd-landing, .byd-landing * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }` })
+      for (const f of [field, go, maker]) await expect(f).toBeInViewport({ ratio: 1 })
+      await face.evaluate((tag) => (tag as Element).remove())
       if (device === PHONE) {
         await field.fill(table.code.toLowerCase())
         await page.getByRole('button', { name: 'Gå in' }).click()
