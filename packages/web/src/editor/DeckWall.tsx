@@ -354,72 +354,77 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   return (
     <div className="byd-wall-view">
       <EyeFilters />
-      {/* The crown (#128, variant B): one row, and every box says what is chosen inside it. The
-          eye the deck is read with is the reason that rule exists — a simulation left on without
-          saying so is worse than no simulation at all (E5). */}
-      <Crown>
-        <input
-          type="search"
-          className="byd-crown-search"
-          aria-label={t('table.search')}
-          placeholder={t('table.search.placeholder')}
-          value={filter.query}
-          onChange={(event) => setFilter({ ...filter, query: event.target.value })}
-        />
-        <CrownBox name={t('wall.eyes')} state={t(eyeNow.name)} open={box === 'eyes'} onToggle={() => toggle('eyes')} boxRef={eyesBox} />
-        <CrownBox
-          name={t('wall.guides')}
-          count={(trim ? 1 : 0) + (arm ? 1 : 0)}
-          open={box === 'guides'}
-          onToggle={() => toggle('guides')}
-          boxRef={guidesBox}
-        />
-        {/* Density is two presses and no box: it is the one control on this surface that is used
-            over and over while looking at something else, and a box would put a door in front of
-            every step. It is the canvas' zoom pill (#619) with the width between the two presses,
-            where the number used to be said in the foot, half a screen from the control. */}
-        <StepPill
-          label={t('wall.density')}
-          value={t('wall.density.px', { px: Math.round(px) })}
-          said={t('wall.density.said', { px: Math.round(px) })}
-          less={t('wall.density.more')}
-          more={t('wall.density.less')}
-          onStep={denser}
-          held={reading ? t('wall.density.heldByReading') : arm ? t('wall.density.heldByGuide') : undefined}
-        />
-        <CrownBox
-          name={t('wall.groupedBy')}
-          state={column ?? t('wall.grouping.off')}
-          open={box === 'grouping'}
-          onToggle={() => toggle('grouping')}
-          boxRef={groupingBox}
-        />
-        {/* The way in and out of the strip is a word in the crown and not a corner that appears
-            under a pointer: a reader who has never folded anything has no way of guessing that the
-            column to the left is foldable, and a hover-only door is the very thing #184 is taking
-            out of the editor elsewhere. */}
-        {/* Read off the deck and not off what a search left standing (#477): a search that finds
-            nothing took the button with it, and every box after it moved. */}
-        {column !== null && doc.rows.length > 0 && (
-          <button
-            type="button"
-            className="byd-crown-fold"
-            // With no column drawn — a search that found nothing — it opens and controls nothing
-            // (#556), so it says neither; it stays in the crown so nothing after it moves (#477).
-            {...(bands.length > 0 ? { 'aria-expanded': jumpOpen, 'aria-controls': jumpId } : {})}
-            aria-label={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
-            title={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
-            onClick={() => {
-              setJumpOpen(!jumpOpen)
-              rememberJumpOpen(!jumpOpen)
-            }}
-          >
-            <span aria-hidden="true">{jumpOpen ? '\u27E8' : '\u27E9'}</span>
-            <span className="byd-crown-name">{jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}</span>
-          </button>
-        )}
-        <CrownBox name={t('wall.checks.title')} count={groups.length} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
-      </Crown>
+      {/* The crown answers the wall's width and not the window's (#1000): something standing
+          beside the wall — the AI panel (E4) — leaves it narrower than the window, and the row
+          is laid out for the room it has. */}
+      <div className="byd-wall-crown">
+        {/* The crown (#128, variant B): one row at the desk, and every box says what is chosen inside it. The
+            eye the deck is read with is the reason that rule exists — a simulation left on without
+            saying so is worse than no simulation at all (E5). */}
+        <Crown>
+          <input
+            type="search"
+            className="byd-crown-search"
+            aria-label={t('table.search')}
+            placeholder={t('table.search.placeholder')}
+            value={filter.query}
+            onChange={(event) => setFilter({ ...filter, query: event.target.value })}
+          />
+          <CrownBox name={t('wall.eyes')} state={t(eyeNow.name)} open={box === 'eyes'} onToggle={() => toggle('eyes')} boxRef={eyesBox} />
+          <CrownBox
+            name={t('wall.guides')}
+            count={(trim ? 1 : 0) + (arm ? 1 : 0)}
+            open={box === 'guides'}
+            onToggle={() => toggle('guides')}
+            boxRef={guidesBox}
+          />
+          {/* Density is two presses and no box: it is the one control on this surface that is used
+              over and over while looking at something else, and a box would put a door in front of
+              every step. It is the canvas' zoom pill (#619) with the width between the two presses,
+              where the number used to be said in the foot, half a screen from the control. */}
+          <StepPill
+            label={t('wall.density')}
+            value={t('wall.density.px', { px: Math.round(px) })}
+            said={t('wall.density.said', { px: Math.round(px) })}
+            less={t('wall.density.more')}
+            more={t('wall.density.less')}
+            onStep={denser}
+            held={reading ? t('wall.density.heldByReading') : arm ? t('wall.density.heldByGuide') : undefined}
+          />
+          <CrownBox
+            name={t('wall.groupedBy')}
+            state={column ?? t('wall.grouping.off')}
+            open={box === 'grouping'}
+            onToggle={() => toggle('grouping')}
+            boxRef={groupingBox}
+          />
+          {/* The way in and out of the strip is a word in the crown and not a corner that appears
+              under a pointer: a reader who has never folded anything has no way of guessing that the
+              column to the left is foldable, and a hover-only door is the very thing #184 is taking
+              out of the editor elsewhere. */}
+          {/* Read off the deck and not off what a search left standing (#477): a search that finds
+              nothing took the button with it, and every box after it moved. */}
+          {column !== null && doc.rows.length > 0 && (
+            <button
+              type="button"
+              className="byd-crown-fold"
+              // With no column drawn — a search that found nothing — it opens and controls nothing
+              // (#556), so it says neither; it stays in the crown so nothing after it moves (#477).
+              {...(bands.length > 0 ? { 'aria-expanded': jumpOpen, 'aria-controls': jumpId } : {})}
+              aria-label={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+              title={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+              onClick={() => {
+                setJumpOpen(!jumpOpen)
+                rememberJumpOpen(!jumpOpen)
+              }}
+            >
+              <span aria-hidden="true">{jumpOpen ? '\u27E8' : '\u27E9'}</span>
+              <span className="byd-crown-name">{jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}</span>
+            </button>
+          )}
+          <CrownBox name={t('wall.checks.title')} count={groups.length} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
+        </Crown>
+      </div>
       {box === 'eyes' && (
         <CrownDrawer label={t('wall.eyes')} opener={eyesBox} onClose={close}>
           {[...EYES, ...READS].map((e) => (
