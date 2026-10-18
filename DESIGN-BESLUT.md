@@ -1103,6 +1103,10 @@ Fälten är tillägg: en sida som laddades före dem läser förbi dem, och ett 
 En sida som inte skickar något nummer får inget tillbaka, och en server före #993 som inte ger något nummer tillbaka läses som förut: ekot tas för den äldsta redigeringen som väntar.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 En redigering som aktören avvisat läggs aldrig tillbaka (#993): editorn tar bort den, bygger om från aktörens dokument och de redigeringar som fortfarande väntar, och säger att ändringen inte gick igenom.
+Det som blev sparat är aktörens dokument när versionen gjordes, aldrig editorns när sparningen skickades (#994).
+Editorn håller aktörens dokument så som tråden berättat det: överlämningen och sedan varje redigering den sagt landat, egna som andras, i den ordning den sa dem.
+Ett «saved» sägs efter varje redigering som kom med i versionen och före varje som inte gjorde det, så det dokumentet är versionen, vem som än bad om den.
+En redigering skriven medan sparningen var på väg är alltså osparad (#380), en som aktören avvisade på vägen finns inte med, och det egna som inte landat när någon annan sparar är osparat.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
 En redigering som avgör något lagrar svaret i loggen, aldrig frågan (2026-10-05, #894), av samma skäl som bordets slump lagras som resultat (D4).
 Var en ny zon föds (`addZone`) är en regel som ändras med en driftsättning (#443, #480, #881), så platsen väljs en gång när redigeringen avgörs och står i raden som `geometry`; uppspelning lägger zonen där och frågar aldrig regeln igen.

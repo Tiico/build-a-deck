@@ -1086,6 +1086,73 @@ describe('an edit the actor refuses (#993)', () => {
     await vi.waitFor(() => expect(bo.rev).toBe(2))
     expect(bo.dirty).toBe(false)
   })
+
+  // What a save behind a refused edit made (#994). The version is the actor's document when the save
+  // reached it, and the refused edit is not in it. The editor took what it held as the save left for
+  // the saved document — the refused edit included — so once the refused edit was taken off again,
+  // the editor held exactly the version and still said «Osparat».
+  describe('a save sent behind an edit the actor refuses (#994)', () => {
+    const title = (doc: { rows: { id: string; fields: Record<string, unknown> }[] }, id: string) => doc.rows.find((r) => r.id === id)?.fields['title']
+
+    it('says saved once the refused edit is gone, because what Bo holds is the version his save made', async () => {
+      const line = new SavedHeldBack()
+      const { id, bo, ada } = await twoEditors(line)
+      line.holdRequests()
+      bo.setCell('knight', 'title', 'Riddarinna')
+      bo.addField('Kraft')
+      const saving = bo.save()
+      ada.addField('kraft')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      await vi.waitFor(() => expect(columnsOf(bo.doc)).toContain('kraft'))
+      line.letOut()
+      expect(await saving).toEqual({ ok: true, rev: 3 })
+      // The version holds Bo's edit that landed and not the one that was refused.
+      const version = await run.projects.at(id, 3)
+      expect(title(version!, 'knight')).toBe('Riddarinna')
+      expect(columnsOf(version!)).not.toContain('Kraft')
+      expect(bo.refusedEdits).toBe(1)
+      expect(bo.doc).toEqual(await actorDoc(id))
+      expect(bo.dirty).toBe(false)
+    })
+
+    // And the save says no more than that: an edit Bo makes while that save travels is not in its
+    // version, and stays unsaved however the handover in between rebuilt his document.
+    it('still says unsaved for an edit made while that save travels', async () => {
+      const line = new SavedHeldBack()
+      const { id, bo, ada } = await twoEditors(line)
+      line.holdRequests()
+      bo.addField('Kraft')
+      const saving = bo.save()
+      bo.setCell('wizard', 'title', 'Häxmästare')
+      ada.addField('kraft')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      await vi.waitFor(() => expect(columnsOf(bo.doc)).toContain('kraft'))
+      line.letOut()
+      // Nothing of Bo's had reached the actor when his save did, so the version it names is Ada's.
+      expect(await saving).toEqual({ ok: true, rev: 2 })
+      expect(title((await run.projects.at(id, 2))!, 'wizard')).not.toBe('Häxmästare')
+      await vi.waitFor(() => expect(title(ada.doc, 'wizard')).toBe('Häxmästare'))
+      expect(bo.doc).toEqual(await actorDoc(id))
+      expect(bo.dirty).toBe(true)
+    })
+
+    // The same holds for a version somebody else makes: an edit of Bo's that has not reached the
+    // actor is not in Ada's version, and taking what Bo holds for it said «Sparat» over that edit.
+    it('says unsaved for an edit of his own that had not landed when somebody else saved', async () => {
+      const line = new SavedHeldBack()
+      const { id, bo, ada } = await twoEditors(line)
+      line.holdRequests()
+      bo.setCell('wizard', 'title', 'Häxmästare')
+      ada.rename('Skogens herrar II')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      await vi.waitFor(() => expect(bo.rev).toBe(2))
+      expect(bo.dirty).toBe(true)
+      line.letOut()
+      await vi.waitFor(() => expect(title(ada.doc, 'wizard')).toBe('Häxmästare'))
+      expect(title((await run.projects.at(id, 2))!, 'wizard')).not.toBe('Häxmästare')
+      expect(bo.dirty).toBe(true)
+    })
+  })
 })
 
 // A click in the symbol library used to wait for the network before anything happened (#310).

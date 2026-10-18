@@ -155,11 +155,14 @@ export class ProjectClient {
   private saving: ((result: SaveResult) => void) | null = null
   // The last save asked for and not yet over, so the next one can wait its turn behind it (#988).
   private inFlight: Promise<SaveResult> | null = null
-  // The document as it was when that save was asked for. The actor makes its version out of the
-  // edits it has when the save reaches it, so an edit written while the save travels is not in
-  // the version that comes back (#380): what became saved is this document and not the one on
-  // the screen a moment later.
-  private asked: string | null = null
+  // The document as the actor holds it, as far as the line has told this editor: its handover,
+  // and every edit it has said landed since, this editor's own included, in the order it said them.
+  // A version is made of what the actor holds when the save reaches it, and its «saved» is said
+  // after every edit that went into it and before every edit that did not, so this is the
+  // document that became saved (#994). It is not what this editor held when the save left: an
+  // edit written while the save travels is not in the version (#380), and neither is one the
+  // actor refused on the way, which this editor takes off again (#993).
+  private held: ProjectDoc
   // Who else has this project open (D3). Empty until the socket says otherwise.
   public here: Presence[] = []
   // This editor's own connection, so a view can leave itself out of the list.
@@ -184,6 +187,7 @@ export class ProjectClient {
     private readonly dropAfterMs: number,
   ) {
     this.saved = stamp(doc)
+    this.held = doc
   }
 
   get dirty(): boolean {
@@ -280,6 +284,7 @@ export class ProjectClient {
         // Whatever this editor did while it was alone is laid on top again; an edit that no
         // longer makes sense against the actor's document is simply gone.
         const held = message.doc
+        this.held = held
         let doc = held
         const kept: Waiting[] = []
         for (const waiting of this.pending) {
@@ -310,6 +315,8 @@ export class ProjectClient {
         for (const echo of mine) this.answered(echo.ask)
         const theirs = message.edits.filter((e) => e.from !== this.me)
         if (theirs.length > 0) this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
+        // The actor's document moves by every edit it tells of, whoever made it.
+        this.held = message.edits.reduce((d, e) => applyEdit(d, e.intent), this.held)
         // Said even when nothing in the document moved: an echo of one's own is the actor
         // confirming it holds the edit, and a status that waits on that (#297, L33) has no other
         // way to hear it.
@@ -322,14 +329,12 @@ export class ProjectClient {
         return
       case 'saved':
         this.rev = message.rev
+        // Whoever asked for it, the version is the document the actor held as it said so (#994).
+        this.saved = stamp(this.held)
         // A version is the answer to the save that made it and to no other (#988). Taken from
         // whichever «saved» came next, an import named somebody else's version, and the book it
-        // replaced lost the name that was its way back (B4). Someone else's version says what is
-        // saved only when no save of this editor's is in the air; one that is will say it itself.
-        if (message.from === this.me) {
-          this.saved = this.asked ?? stamp(this.doc)
-          this.finishSave({ ok: true, rev: message.rev })
-        } else if (!this.saving) this.saved = stamp(this.doc)
+        // replaced lost the name that was its way back (B4).
+        if (message.from === this.me) this.finishSave({ ok: true, rev: message.rev })
         this.notify()
         return
       case 'refused':
@@ -384,9 +389,6 @@ export class ProjectClient {
   private finishSave(result: SaveResult): void {
     const waiting = this.saving
     this.saving = null
-    // Whatever became of it, that save is over: a refused one leaves no document behind to call
-    // saved, and the next one reads its own.
-    this.asked = null
     waiting?.(result)
   }
 
@@ -1267,14 +1269,10 @@ export class ProjectClient {
     return turn
   }
   private async saveNow(): Promise<SaveResult> {
-    // Read before the save leaves, for both ways of saving: it is the document the version will
-    // be made of, whatever is edited while the answer is on its way (#380).
-    const asked = stamp(this.doc)
     if (this.socket) {
       const answered = new Promise<SaveResult>((resolve) => {
         this.saving = resolve
       })
-      this.asked = asked
       this.post(JSON.stringify({ t: 'save' }))
       // The save is over when the actor answers or the line goes (`dropped`). The clock is only the
       // backstop for an actor that never answers: as a race of its own at two seconds it lost to
@@ -1283,17 +1281,20 @@ export class ProjectClient {
       const backstop = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'save failed' }), SAVE_BACKSTOP_MS))
       return Promise.race([answered, backstop])
     }
+    // Over HTTP the version is made of the whole document sent, whatever is edited while the
+    // answer is on its way (#380), so it is read before it leaves.
+    const asked = this.doc
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...this.doc, rev: this.rev }),
+      body: JSON.stringify({ ...asked, rev: this.rev }),
     }))
     if (res.status === 409) return { ok: false, reason: 'conflict' }
     if (res.status === 404) return { ok: false, reason: 'missing' }
     if (!res.ok) return { ok: false, reason: `save failed: ${res.status}` }
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev
-    this.saved = asked
+    this.saved = stamp(asked)
     // The whole document went to the actor (#768), with every edit written in the dark already
     // in it. Sent again when the line is back, they would be laid on top of themselves.
     this.pending = []
