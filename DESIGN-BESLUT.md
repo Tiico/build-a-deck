@@ -1096,8 +1096,13 @@ Varje svar på tråden besvarar bara sin egen fråga, eftersom en redigering och
 Ett «saved» namnger redigeraren vars sparning gjorde versionen (`from`, #988), och ett avslag säger vilken av redigerarens förfrågningar det gäller, `to: 'edit'` eller `to: 'save'` (#991).
 En avvisad redigering avslutar alltså aldrig en sparning som är på väg, och en avvisad sparning aldrig något annat än sparningen.
 En förfrågan som inte går att läsa är ingen av dem, och dess avslag namnger ingen.
+Varje redigering bär ett nummer som redigeraren själv gett den (`ask`, #993), och det som besvarar redigeringen bär samma nummer tillbaka: ekot till den som skickade den, eller avslaget med `to: 'edit'`.
+Flera redigeringar kan vara på väg samtidigt, och ett svar tar bara bort den redigering det gäller ur det som väntar, aldrig den bredvid.
+Numret hör till tråden och inte till loggen; loggen bär redigeringen och vem som gjorde den.
 Fälten är tillägg: en sida som laddades före dem läser förbi dem, och ett avslag utan `to` från en server före #991 läses som förut, som sparningens.
+En sida som inte skickar något nummer får inget tillbaka, och en server före #993 som inte ger något nummer tillbaka läses som förut: ekot tas för den äldsta redigeringen som väntar.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
+En redigering som aktören avvisat läggs aldrig tillbaka (#993): editorn tar bort den, bygger om från aktörens dokument och de redigeringar som fortfarande väntar, och säger att ändringen inte gick igenom.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
 En redigering som avgör något lagrar svaret i loggen, aldrig frågan (2026-10-05, #894), av samma skäl som bordets slump lagras som resultat (D4).
 Var en ny zon föds (`addZone`) är en regel som ändras med en driftsättning (#443, #480, #881), så platsen väljs en gång när redigeringen avgörs och står i raden som `geometry`; uppspelning lägger zonen där och frågar aldrig regeln igen.

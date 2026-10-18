@@ -10,6 +10,9 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { layerPick } from './layers.js'
+import { ProjectClient, setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { EditSocket } from './setup.js'
+import { SavedHeldBack } from './saved-held-back.js'
 
 let run: Running
 beforeEach(async () => {
@@ -185,5 +188,44 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     await openEditor()
     openTab('Tabell')
     await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
+  })
+})
+
+// Bo names a column in the moment Ada names the same one with other capitals (#993). The actor
+// folds such a name into the column it has (#694) and refuses Bo's, and Bo's editor has to let go
+// of it: kept, it stood beside Ada's on his table under an «Osparat» no save could take away, and
+// nothing said that the column he made had not been taken.
+describe('a column the actor refuses because a colleague named it first (#993)', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  it('is taken off the editor again, and the editor says the change did not go through', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    // Bo's requests can be held on their way out; nothing the actor says is held on the way in.
+    const line = new SavedHeldBack()
+    line.release()
+    setEditSocketImplementation(line.Line)
+    await openEditor()
+    await waitFor(() => expect(line.heard).toContain('project'))
+    setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    const ada = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Ada' })
+    try {
+      await waitFor(() => expect(ada.connected).toBe(true))
+      openTab('Tabell')
+      line.holdRequests()
+      await makeField(user, 'Kraft')
+      ada.addField('kraft')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      await waitFor(() => expect(line.heard).toContain('saved'))
+      line.letOut()
+
+      const said = await screen.findByText('En ändring gick inte igenom och togs bort. Spelet visar nu det alla andra ser.')
+      expect(said.closest('[role="alert"]')).not.toBeNull()
+      await waitFor(() => expect(column('Kraft')).toBeNull())
+      expect(column('kraft')).not.toBeNull()
+      expect(screen.getByText('Sparat').closest('[role="status"]')).not.toBeNull()
+    } finally {
+      ada.close()
+    }
   })
 })

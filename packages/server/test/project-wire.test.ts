@@ -125,6 +125,30 @@ describe('two people editing the same project (D3)', () => {
     ada.close()
   })
 
+  // An editor can have several edits on the line, and the one the actor refuses has to come off the
+  // editor again and the others stay (#993). Each edit carries the number its editor gave it, and
+  // whatever answers the edit — the echo or the refusal — carries the same number back.
+  it('answers each edit under the number its editor gave it', async () => {
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+    const ada = await Editing.open(run.base, 'p1', 'Ada')
+    await ada.until('project')
+    ada.raw({ t: 'edit', intent: { v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drakhona' }, ask: 7 })
+    ada.raw({ t: 'edit', intent: { v: 'setCell', cardRef: 'ingen', field: 'title', value: 'x' }, ask: 8 })
+    ada.raw({ t: 'edit', intent: { v: 'setCell', cardRef: 'dragon', field: 'body', value: 'Eld.' }, ask: 9 })
+    expect((await ada.until('edits', (m) => m.edits[0]?.seq === 1)).edits[0]?.ask).toBe(7)
+    expect(await ada.until('refused')).toEqual({ v: 'refused', why: 'no row ingen', to: 'edit', ask: 8 })
+    expect((await ada.until('edits', (m) => m.edits[0]?.seq === 2)).edits[0]?.ask).toBe(9)
+    // The number is the line's and not the log's: what is written down is the edit and who made it.
+    expect((await run.projects.readEdits('p1', 0)).map((e) => 'ask' in e)).toEqual([false, false])
+
+    // A page loaded before the number sends none, and is answered without one, as it always was.
+    ada.send({ v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drake' })
+    expect((await ada.until('edits', (m) => m.edits[0]?.seq === 3)).edits[0]).not.toHaveProperty('ask')
+    ada.send({ v: 'setCell', cardRef: 'ingen', field: 'title', value: 'y' })
+    expect(await ada.until('refused', (m) => m.ask === undefined)).toEqual({ v: 'refused', why: 'no row ingen', to: 'edit' })
+    ada.close()
+  })
+
   it('lets nobody but the owner in', async () => {
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
     await expect(Editing.open(run.base, 'p1', 'Ingen', '')).rejects.toThrow(/closed/)

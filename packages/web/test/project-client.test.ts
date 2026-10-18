@@ -7,6 +7,7 @@ import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
 import { assetTypeDeclaring } from '@byd/protocol'
+import { columnsOf } from '@byd/server/doc'
 import { Said } from '../src/i18n/said.js'
 
 let run: Running
@@ -989,6 +990,101 @@ describe('which wait a refusal ends (#991)', () => {
     const { id, bo } = await twoEditors(line)
     await run.projects.replace(id, 1, { ...projectDoc(), name: 'Skrivet förbi aktören' })
     expect(await bo.save()).toEqual({ ok: false, reason: 'conflict' })
+  })
+})
+
+// A refused edit leaves nothing behind (#993). The editor applies its own edit at once and keeps it
+// until the actor answers; one the actor refuses, but the editor could apply by itself, stayed in
+// that keeping and was laid on top of the actor's document again when the actor handed it over.
+// The editor then showed what nobody else had, under an «Osparat» that saving could not take away.
+describe('an edit the actor refuses (#993)', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  // Bo and Ada with the same game open. Bo's is the line whose requests can be held on the way out.
+  const twoEditors = async (line: SavedHeldBack) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    // Nothing the actor says is held back on the way in: only Bo's requests are late.
+    line.release()
+    setEditSocketImplementation(line.Line)
+    const bo = await openClient(created.id)
+    await vi.waitFor(() => expect(bo.connected).toBe(true))
+    setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    const ada = await openClient(created.id)
+    await vi.waitFor(() => expect(ada.connected).toBe(true))
+    return { id: created.id, bo, ada }
+  }
+  // The actor's document, as an editor that opens the game now is handed it.
+  const actorDoc = async (id: string) => {
+    const fresh = await openClient(id)
+    await vi.waitFor(() => expect(fresh.who).not.toBeNull())
+    return fresh.doc
+  }
+
+  it('takes the column Bo named in the moment Ada named it with other capitals off his editor again', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    line.holdRequests()
+    bo.addField('Kraft')
+    // Ada names the same column and saves it; Bo hears both before his own edit has left.
+    ada.addField('kraft')
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(columnsOf(bo.doc)).toContain('kraft'))
+    await vi.waitFor(() => expect(line.heard).toContain('saved'))
+    line.letOut()
+    // The actor folds a name that differs only in its capitals into the column it has (#694).
+    await vi.waitFor(() => expect(line.heard).toContain('refused'))
+    await vi.waitFor(() => expect(line.heard.slice(line.heard.indexOf('refused'))).toContain('project'))
+    expect(columnsOf(bo.doc)).toEqual(columnsOf(await actorDoc(id)))
+    expect(bo.doc).toEqual(await actorDoc(id))
+    expect(bo.dirty).toBe(false)
+    expect(bo.refusedEdits).toBe(1)
+  })
+
+  // Three of Bo's edits on the line at once, and the actor refuses the one in the middle. The other
+  // two land and the refused one is the only one to go: an answer taken for the wrong edit took
+  // off one that had landed and kept the refused one, laid on top at the next handover.
+  it('takes off only the refused one of several edits on the line, and lets the others land', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    line.holdRequests()
+    bo.setCell('knight', 'title', 'Riddarinna')
+    bo.addField('Kraft')
+    bo.setCell('wizard', 'title', 'Häxmästare')
+    ada.addField('kraft')
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(line.heard).toContain('saved'))
+    line.letOut()
+    await vi.waitFor(() => expect(ada.doc.rows.find((r) => r.id === 'wizard')?.fields['title']).toBe('Häxmästare'))
+    expect(ada.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna')
+    expect(columnsOf(ada.doc)).not.toContain('Kraft')
+    const actor = await actorDoc(id)
+    await vi.waitFor(() => expect(bo.doc).toEqual(actor))
+    expect(bo.refusedEdits).toBe(1)
+    // And what Bo holds is what is saved once Ada saves it: nothing of his is still waiting.
+    expect(await ada.save()).toEqual({ ok: true, rev: 3 })
+    await vi.waitFor(() => expect(bo.rev).toBe(3))
+    expect(bo.dirty).toBe(false)
+  })
+
+  // A server from before the number answers without it, and a page loaded since has to go on
+  // working against it through a deploy: its echoes are taken oldest first, as they always were,
+  // and an edit refused because what it wrote in is gone falls off at the handover, as before.
+  it('goes on working against a server that gives no number back', async () => {
+    const line = new SavedHeldBack({ unnumbered: true })
+    const { id, bo, ada } = await twoEditors(line)
+    line.holdRequests()
+    bo.setCell('dragon', 'title', 'Drakhona')
+    bo.setCell('knight', 'title', 'Riddarinna')
+    ada.removeRow('dragon')
+    await vi.waitFor(() => expect(bo.doc.rows.some((r) => r.id === 'dragon')).toBe(false))
+    line.letOut()
+    await vi.waitFor(() => expect(ada.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna'))
+    const actor = await actorDoc(id)
+    await vi.waitFor(() => expect(bo.doc).toEqual(actor))
+    expect(bo.refusedEdits).toBe(1)
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(bo.rev).toBe(2))
+    expect(bo.dirty).toBe(false)
   })
 })
 

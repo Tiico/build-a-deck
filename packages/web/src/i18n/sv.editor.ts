@@ -88,6 +88,9 @@ export const svEditor = {
   'editor.loggingIn': 'Loggar in…',
   'editor.loading': 'Laddar spelet…',
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
+  // En ändring som aktören avvisade tas bort ur editorn igen (#993), och det sägs: den försvann
+  // annars utan ett ord. Den andra meningen förklarar varför skärmen ändrades under formgivaren.
+  'editor.edit.refused': 'En ändring gick inte igenom och togs bort. Spelet visar nu det alla andra ser.',
   'editor.rev': 'v{n}',
   // Dörren säger «Dela» (#727), och ordet står först i namnet, som det står på knappen.
   'editor.here.name': 'Dela · vilka som har spelet, {n} inne',

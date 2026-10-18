@@ -20,7 +20,9 @@ export type EditorMessage =
   // `saved` is the version `rev` names, sent only when it is not `doc` — when the log has a tail
   // nobody has saved yet (#764). Without it an editor could only take what it is handed for saved.
   | { v: 'project'; doc: ProjectDoc; saved?: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
-  | { v: 'edits'; edits: AppliedEdit[] }
+  // `ask` is the number the editor gave its own edit (#993), on the echo the editor that sent it
+  // hears. It is the line's and not the log's: the log keeps the edit and who made it.
+  | { v: 'edits'; edits: (AppliedEdit & { ask?: number })[] }
   | { v: 'here'; here: Presence[] }
   // `from` is the editor whose save made the version (#988), so that one takes it for its answer
   // and nobody else does; a version written over HTTP is nobody's line and names none.
@@ -28,8 +30,9 @@ export type EditorMessage =
   // `to` is which of the editor's requests the refusal answers (#991), so a refused edit never ends
   // the wait of a save in the air, nor the other way round. A request that could not be read is
   // neither and names none; neither does a server from before the field, so an editor reads a
-  // refusal without it the way it always did.
-  | { v: 'refused'; why: string; to?: 'edit' | 'save' }
+  // refusal without it the way it always did. `ask` is the number of the edit refused (#993), so
+  // the editor takes that edit back and keeps every other one it has on the line.
+  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number }
 export type Presence = { id: string; name: string; role?: Role }
 
 export class ProjectActor {
@@ -105,10 +108,11 @@ export class ProjectActor {
 
   // One edit, in the only order there is: it must apply, then it is committed, then it is applied
   // for real, then everyone is told. An edit that makes no sense moves neither log nor document.
-  async edit(intent: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
-    return this.serial(() => this.commit(intent, by, from))
+  // `ask` is the editor's own number for the edit (#993), told back with the echo and never logged.
+  async edit(intent: EditIntent, by?: string, from?: string, ask?: number): Promise<AppliedEdit> {
+    return this.serial(() => this.commit(intent, by, from, ask))
   }
-  private async commit(asked: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
+  private async commit(asked: EditIntent, by?: string, from?: string, ask?: number): Promise<AppliedEdit> {
     // Decided first, so what is committed is the answer and not the question (#894).
     const intent = decideEdit(this.current, asked)
     // What may be made now is asked here as well as by the verb (#694); the log's replay asks
@@ -119,7 +123,7 @@ export class ProjectActor {
     await this.store.appendEdits(this.id, [entry])
     this.current = next
     this.at = entry.seq
-    this.tell({ v: 'edits', edits: [entry] })
+    this.tell({ v: 'edits', edits: [ask === undefined ? entry : { ...entry, ask }] })
     return entry
   }
 
