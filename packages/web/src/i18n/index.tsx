@@ -198,10 +198,13 @@ export function Language({ lang, children }: LanguageProps) {
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>
 }
 
-export function LanguagePicker() {
+// Its name says «Language» in both languages, for the reader who cannot read the page. Where it
+// stands under a label of its own (the profile page, #999), that label leads the name, so what is
+// read out begins with what is written beside it (WCAG 2.5.3).
+export function LanguagePicker({ id, named }: { id?: string; named?: string } = {}) {
   const { lang, asked, setLang } = useLang()
   return (
-    <select aria-label="Språk / Language" value={asked ?? lang} onChange={(e) => setLang(e.target.value as Lang)}>
+    <select {...(id ? { id } : {})} aria-label={named ? `${named} — Språk / Language` : 'Språk / Language'} value={asked ?? lang} onChange={(e) => setLang(e.target.value as Lang)}>
       {LANGS.map((l) => (
         <option key={l} value={l}>
           {LANG_NAMES[l]}

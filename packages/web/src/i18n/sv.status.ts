@@ -26,6 +26,7 @@ export const svStatus = {
   'title.new': 'Nytt spel',
   'title.claim': 'Spara bordet',
   'title.invite': 'Inbjudan',
+  'title.profile': 'Profil',
   'title.editor': 'Editor',
   'title.table': 'Bordet',
   'title.join': 'Gå med i rum {code}',

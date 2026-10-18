@@ -124,6 +124,22 @@ Postgres-bilden (`ops/Dockerfile.postgres`) är fortfarande Alpine — lådans d
 `ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tom katalog i backup-bilden, startar Postgres där, räknar, och spelar upp den senaste sessionens logg genom motorn i app-bilden.
 Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är densamma.
 
+### Huvudnyckeln för AI-nycklarna (#999)
+
+Designerns egen API-nyckel hos Anthropic eller OpenAI (E4) ligger i tabellen `ai_keys`, krypterad med AES-256-GCM under en huvudnyckel som heter `AI_KEY_SECRET`.
+Huvudnyckeln är 32 slumpade byte i base64, gjorda en gång med `openssl rand -base64 32`, och den finns i lådans `.env` och i en lösenordshanterare, ingen annanstans.
+Den ligger alltså inte i databasen och därför inte i WAL-arkivet eller basbackuperna i R2: en läckt backup läcker ciffertext, leverantör och fyra tecken per konto, aldrig en nyckel.
+Stacken ger den bara till `app`; `postgres`, `backup` och `render` får den aldrig, vilket `packages/server/test/deploy.test.ts` håller.
+Krypteringen binder varje rad till sitt konto och sin leverantör, så en rad som flyttas öppnas inte för någon.
+
+Att förlora huvudnyckeln, eller att byta den, är ingen dataförlust.
+Varje sparad nyckel läses då som ingen nyckel, profilsidan säger att ingen nyckel finns och designern ombeds ange den igen; inget fel visas och inget annat i tjänsten påverkas.
+Saknas variabeln, eller är den inte 32 byte, går ingen nyckel att spara (servern svarar 503 och säger det i startloggen), och utan Postgres gör processen en egen huvudnyckel som dör med den, som minneslagret gör.
+Servern loggar aldrig en nyckel; startraden `ai-keys` säger bara om nycklar kan sparas.
+
+Återställningstestet visar det: `ops/restore.sh` skriver ut raderna i `ai_keys` ur den återställda databasen, och `packages/server/scripts/ai-keys-check.ts` öppnar dem med en huvudnyckel som görs för körningen och aldrig är lådans.
+Varje nyckel ska läsas som ingen — «ange nyckeln igen» — och testet går rött om en enda öppnas.
+
 ## 6. Renderfarm: Postgres-kö, en worker, cache per innehållshash
 
 Jobbtabell i Postgres med `SELECT … FOR UPDATE SKIP LOCKED`.
@@ -149,6 +165,13 @@ Händelseschemat migreras aldrig på disk; varje `Applied` bär `schemaVersion` 
 
 Ingen permanent staging på lådan.
 Grinden är replay-korpusen i CI: anonymiserade riktiga loggar som måste spela upp identiskt.
+
+Riktiga loggar hämtas ur lådan med `pnpm --filter @byd/engine corpus` och tar bara bord ur spel som kontot äger — utom när ägaren har sagt ja (#1011, beställarens beslut 2026-10-18).
+Samtycket ges i inbjudan och inte i produkten: beställaren frågar varje betadesigner när hen bjuds in, och svaret är ett ja i mejlet, som sparas.
+Ett ja skrivs in på lådan som kontots adress i `BYD_CORPUS_ACCOUNTS`, kommaseparerat, och operatörens adress står i `BYD_OPERATOR`.
+Operatörens kaka i `BYD_COOKIE` får då läsa `GET /sessions/:id/export` för ett bord vars spel ägs av ett samtyckt konto, och ingenting annat: inte enkätsvaren, inte spelet, ingen skrivväg och inget bord i ett annat kontos spel.
+Exporten säger då `consented`, och det är det enda skäl utöver ägarskap som skriptet tar ett bord för; anonymiseringen (#540) gäller för deras loggar som för alla andra.
+Båda variablerna läses när appen startar, så ett konto som stryks ur listan är stängt efter nästa omstart; utan båda läser inget konto ett annat kontos bord.
 
 ## 8. Observabilitet: enbart docker logs
 
@@ -178,6 +201,10 @@ Byggt 2026-10-06 (#757):
 `BYD_CONTACT` är vart en betatestare vänder sig — en e-postadress eller en webbadress — och sätts på lådan, aldrig i koden.
 `/health` bär den som `contact` bredvid `release`, inloggningskortet och Mina spel säger den sist som «Kontakt» (en adress med `http(s)://` länkas som den är, allt annat som `mailto:`), och inloggningsmejlets fot säger den.
 Är variabeln osatt utelämnas «Kontakt» överallt, och utan `BYD_TAG` utelämnas versionen; utan någon av dem står ingen rad alls.
+
+Byggt 2026-10-18 (#999): en API-nyckel når aldrig `docker logs`.
+Nyckelns vägar — spara, pröva, byta modell, ta bort — skriver ingenting till loggen, och ett nej från leverantören är ett ord ur en sluten mängd utan nyckeln i (§5).
+`packages/server/test/ai-key-routes.test.ts` läser den faktiska loggutskriften medan nycklar sparas, avvisas och tas bort.
 
 ## 9. Missbruk: Cloudflare rate limiting, korta koder, värdkontroll
 
@@ -322,6 +349,7 @@ Tidsstämplarna står kvar som de loggades.
 Anonymiseringen går igenom hela posten, också en tillbakaspolnings lagrade bord.
 `pnpm --filter @byd/engine corpus <namn> <https://…/sessions/:id/export>` lägger till en riktig logg, med ägarens kaka i `BYD_COOKIE`, och tar bara bord ur spel som kontot äger tills villkoren säger något annat.
 Exporten och enkätsvaren (`GET /sessions/:id/surveys`) lämnas bara till ett konto som projektet låter öppna sina bord som värd, eftersom loggen bär varje hand, gästernas namn och flaggornas text; skriptet tar kontots kaka i `BYD_COOKIE`.
+Undantaget med samtycke, och hur det blir en behörighet på lådan, står i §7 (#1011).
 Händelseschemats `schemaVersion` och upcasters (§7) byggda 2026-09-07: varje ny rad bär `SCHEMA_VERSION`, rader utan fält är version 0, motorn lyfter dem steg för steg vid inläsning (`liftLine`), Postgres skriver versionen i `schema_version` och lämnar gamla rader orörda, och korpusens filer ligger kvar som de spelades in medan grinden lyfter dem.
 Backup (§5) byggd 2026-09-07 med WAL-G, se §5; den nattliga `pg_dump`-dumpen är ersatt.
 Assets i R2 (§4) byggt 2026-09-07, se §4.
