@@ -273,6 +273,8 @@ export type Running = {
   // With `ai`: the vault the profile page keeps its key in, and the fake providers it is proved
   // against (#999) — never the real ones.
   ai?: { vault: AiKeyVault; fake: FakeAiProvider }
+  // With `auth`: the accounts, so a test can name one by its address (#1001).
+  auth?: MemoryAuthStore
 }
 // Enough to tell two fixtures apart within a worker, which is as far as a port ever travels.
 let fixtures = 0
@@ -330,6 +332,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
     otherProjectId: `p2-f${nth}`,
     answering: (door = '/health') => untilAnswering(`http://127.0.0.1:${port}`, door),
     ...(vault && fake ? { ai: { vault, fake } } : {}),
+    ...(auth ? { auth } : {}),
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium. A limit renders only that many, which is a worker
