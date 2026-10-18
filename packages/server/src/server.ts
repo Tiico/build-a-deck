@@ -27,6 +27,8 @@ import { facesOf, printExportOf } from './faces.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
+import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
+import { AiProviderError, type AiProviders } from './ai-providers.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -63,6 +65,10 @@ export type ServerOptions = {
   // /health so the login card and Mina spel can say it, and in the foot of the login mail. Never an
   // address in the code; nothing is said when the box was given none.
   contact?: string
+  // The designer's own key for the editor's AI help (#999, E4): sealed in the vault, proved and
+  // listed through the providers, tried a handful of times an hour per account. Without it the
+  // profile has no key to keep.
+  ai?: { vault: AiKeyVault; providers: AiProviders; limiter?: KeyTryLimiter }
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -198,7 +204,7 @@ const HEADERS_TIMEOUT_MS = KEEP_ALIVE_MS + 1_000
 // HTTP for the few things that are not a table (health, creating a session), and one
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
 export function createServer(given: ServerOptions): Server {
-  const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter() }
+  const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter(), ...(given.ai ? { ai: { limiter: new KeyTryLimiter(), ...given.ai } } : {}) }
   const http = createHttpServer({ keepAliveTimeout: KEEP_ALIVE_MS, headersTimeout: HEADERS_TIMEOUT_MS }, (req, res) => {
     // A closing server lets go of a connection as soon as it goes quiet. Node hangs up the idle
     // ones when `close` is called, but one still answering then becomes idle a moment later and
@@ -376,6 +382,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (claimed === 'other') return json(res, 409, { error: 'another account has this session' })
       return json(res, 200, { session: claimed.sessionId, seat: claimed.seat, name: claimed.name })
     }
+    if (url.pathname === '/me/ai-key' || url.pathname.startsWith('/me/ai-key/')) return await routeAiKey(opts, req, res, url)
     if (req.method === 'GET' && url.pathname === '/me/played') {
       if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
       const account = await accountOf(opts.auth, req)
@@ -1868,6 +1875,71 @@ async function progress(opts: ServerOptions, hashes: readonly string[], fronts: 
 
 const frontsOf = (faces: Record<string, Record<string, string>>): Record<string, string> =>
   Object.fromEntries(Object.entries(faces).flatMap(([row, perFace]) => (perFace['front'] ? [[row, perFace['front']]] : [])))
+
+// The key on the profile page (#999, E4). GET describes it — the provider, the last four, the model
+// and when it was proved, never the key — and says whether this box can keep one at all. PUT asks the
+// provider for the key's models, and only a key the provider accepts is sealed; the answer carries
+// the models, so the page has its picker without asking twice. A refusal is one of the provider's
+// closed set of words (`AiFailure`), and nothing is kept. PUT …/model chooses a model, null being the
+// provider's standard; GET …/models lists them anew; DELETE forgets the key.
+// A body that is not a key is refused without a word of what it held, and nothing here logs.
+const AiKeyBody = z.object({ provider: z.enum(AI_PROVIDERS), key: z.string().trim().min(8).max(512).regex(/^[\x21-\x7e]+$/) })
+const AiModelBody = z.object({ model: z.string().min(1).max(200).regex(/^[A-Za-z0-9._:/-]+$/).nullable() })
+const parsedOrNull = (text: string): unknown => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+async function routeAiKey(opts: ServerOptions, req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const ai = opts.ai
+  if (!ai || !opts.auth) return json(res, 404, { error: 'not found' })
+  const account = await accountOf(opts.auth, req)
+  if (!account) return json(res, 401, { error: 'log in first' })
+  const said = (key: AiKeyDescription | null) => (key ? { ...key, defaultModel: ai.providers[key.provider].defaultModel } : null)
+  const asked = async <T>(attempt: () => Promise<T>): Promise<T | { refused: string }> => {
+    try {
+      return await attempt()
+    } catch (err) {
+      if (err instanceof AiProviderError) return { refused: err.kind }
+      throw err
+    }
+  }
+  if (url.pathname === '/me/ai-key' && req.method === 'GET') return json(res, 200, { key: said(await ai.vault.describe(account.id)), sealing: ai.vault.sealing })
+  if (url.pathname === '/me/ai-key' && req.method === 'DELETE') {
+    await ai.vault.remove(account.id)
+    return json(res, 200, { key: null })
+  }
+  if (url.pathname === '/me/ai-key' && req.method === 'PUT') {
+    const body = AiKeyBody.safeParse(parsedOrNull(await readBody(req)))
+    if (!body.success) return json(res, 400, { error: 'malformed' })
+    if (!ai.vault.sealing) return json(res, 503, { error: 'unavailable' })
+    if (ai.limiter?.allow(account.id, Date.now()) === false) return json(res, 429, { error: 'too-many' })
+    const { provider, key } = body.data
+    const models = await asked(() => ai.providers[provider].models(key))
+    if ('refused' in models) return json(res, 422, { error: models.refused })
+    // A new key from the same provider keeps the model chosen before it, as long as the key can use
+    // it; a key from the other provider starts on its standard model.
+    const before = await ai.vault.describe(account.id)
+    const kept = before?.provider === provider && before.model !== null && models.some((m) => m.id === before.model) ? before.model : null
+    return json(res, 200, { key: said(await ai.vault.save(account.id, provider, key, kept)), models })
+  }
+  if (url.pathname === '/me/ai-key/model' && req.method === 'PUT') {
+    const body = AiModelBody.safeParse(parsedOrNull(await readBody(req)))
+    if (!body.success) return json(res, 400, { error: 'malformed' })
+    const key = await ai.vault.setModel(account.id, body.data.model)
+    return key ? json(res, 200, { key: said(key) }) : json(res, 404, { error: 'no key' })
+  }
+  if (url.pathname === '/me/ai-key/models' && req.method === 'GET') {
+    const opened = await ai.vault.open(account.id)
+    if (!opened) return json(res, 404, { error: 'no key' })
+    const models = await asked(() => ai.providers[opened.provider].models(opened.key))
+    if ('refused' in models) return json(res, 422, { error: models.refused })
+    return json(res, 200, { models, defaultModel: ai.providers[opened.provider].defaultModel })
+  }
+  json(res, 404, { error: 'not found' })
+}
 
 // Magic links (G1, DRIFT §11). POST /auth/login mails a link and always answers 200 — never a
 // word about whether the address is known. GET /auth/verify redeems it once, sets the session

@@ -10,3 +10,5 @@ trap 'rm -f "$out"' EXIT
 docker compose --profile backup run --rm --no-deps -T --user postgres backup /usr/local/bin/restore.sh "${1:-LATEST}" > "$out"
 grep '"msg":"restored"' "$out"
 grep '"msg":"export"' "$out" | docker compose run --rm --no-deps -T app node packages/server/node_modules/tsx/dist/cli.mjs packages/engine/scripts/replay-check.ts
+# The AI keys in the backup open for nobody without the box's master key (#999): «ange nyckeln igen».
+grep '"msg":"ai-keys"' "$out" | docker compose run --rm --no-deps -T -e AI_KEY_SECRET= app node packages/server/node_modules/tsx/dist/cli.mjs packages/server/scripts/ai-keys-check.ts

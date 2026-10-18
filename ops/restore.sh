@@ -22,6 +22,16 @@ trap 'pg_ctl -D "$dir" -m fast -w stop > /dev/null' EXIT
 q() { psql -h /tmp -p 5433 -U "${PGUSER:-byd}" -d "${PGDATABASE:-byd}" -tAX -c "$1"; }
 until [ "$(q 'select pg_is_in_recovery()' 2>/dev/null || echo t)" = "f" ]; do sleep 1; done
 echo "{\"msg\":\"restored\",\"backup\":\"${1:-LATEST}\",\"sessions\":$(q 'select count(*) from sessions'),\"events\":$(q 'select count(*) from events')}"
+# The designers' AI keys (#999), sealed: what the rehearsal opens them with is not the box's master
+# key, which is never in the backup, so every one of them must read as none. A backup from before
+# the table has no keys to say.
+if [ "$(q "select to_regclass('ai_keys') is not null")" = "t" ]; then
+  q "select json_build_object('msg', 'ai-keys', 'keys', coalesce(json_agg(json_build_object(
+       'account', account_id::text, 'provider', provider, 'ciphertext', encode(ciphertext, 'base64'), 'nonce', encode(nonce, 'base64'), 'last4', last4)), '[]'::json))
+     from ai_keys"
+else
+  echo '{"msg":"ai-keys","keys":[]}'
+fi
 q "select json_build_object('msg', 'export', 'session', json_build_object(
      'id', s.id, 'version', s.version, 'setup', s.setup,
      'log', coalesce((select json_agg(json_strip_nulls(json_build_object(
