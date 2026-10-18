@@ -1,11 +1,12 @@
-import { get as httpGet } from 'node:http'
-import { get as httpsGet } from 'node:https'
+import { get as httpGet, request as httpRequest, type IncomingMessage } from 'node:http'
+import { get as httpsGet, request as httpsRequest } from 'node:https'
 import type { AiProvider } from './ai-keys.js'
 
-// The providers behind one face (#999, PRD module 2). Today a key is asked for its models, which is
+// The providers behind one face (#999, #1001, PRD module 2). A key is asked for its models, which is
 // also how a key is proved when it is saved: the list costs the designer nothing, needs a key the
-// provider accepts, and is what the profile's model picker shows. The streaming `complete` the
-// editor's panel needs (#1001) joins this type beside `models`; nothing here is in its way.
+// provider accepts, and is what the profile's model picker shows. And a key is asked to answer
+// (`complete`): the editor's panel sends the instructions, the game and the conversation, and gets
+// the answer back a piece at a time as the provider's server-sent events bring it.
 //
 // Raw HTTP and no SDK, as the mail and the object store already are (DRIFT §4, §11): two calls per
 // provider do not earn a dependency each, and the suites point the base URL at a local fake.
@@ -14,7 +15,9 @@ import type { AiProvider } from './ai-keys.js'
 // language (A4) and the log never needs the provider's own sentence. Nothing thrown from here ever
 // carries the key.
 
-export const AI_FAILURES = ['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'network'] as const
+// `refused` is the model declining to answer (#1001), which only an answer can be; a model list never
+// is.
+export const AI_FAILURES = ['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'refused', 'network'] as const
 export type AiFailure = (typeof AI_FAILURES)[number]
 
 export class AiProviderError extends Error {
@@ -35,16 +38,35 @@ export type AiProviderAdapter = {
   // The model used when the designer has not chosen one (PRD: the latest general model).
   readonly defaultModel: string
   models(key: string): Promise<AiModel[]>
+  // The answer, as events while it comes. Throws an `AiProviderError` when the provider says no —
+  // before the first word or in the middle — and simply ends, without `done`, when `signal` stops
+  // it: a designer who cancelled has not seen anything fail.
+  complete(key: string, request: AiRequest, signal?: AbortSignal): AsyncIterable<AiEvent>
 }
 export type AiProviders = Record<AiProvider, AiProviderAdapter>
 
-type AdapterOptions = { baseUrl?: string; timeoutMs?: number }
+// One request for an answer. `instructions` say what the model is, `context` is the game — the
+// large part, and the same bytes for as long as the game is (`ai-context.ts`), so it is handed to
+// the provider where its prompt cache can keep it. The conversation alternates and ends with the
+// designer's question.
+//
+// Structured proposals (#1002) arrive as a schema on the request and as events of their own beside
+// `text`; the stream already carries events and not strings so that they have somewhere to go.
+export type AiMessage = { role: 'user' | 'assistant'; text: string }
+export type AiRequest = { model: string; instructions: string; context: string; messages: readonly AiMessage[]; maxTokens: number }
+export type AiEvent = { type: 'text'; text: string } | { type: 'done' }
+
+type AdapterOptions = { baseUrl?: string; timeoutMs?: number; idleMs?: number }
 
 // The standard models (#940, «Kontrakt och avgränsningar»). A designer who never picks one gets
 // whatever these say on the day the key is used, so moving them on moves everyone who chose
 // «standard» and nobody who chose a model.
 export const DEFAULT_MODELS: Record<AiProvider, string> = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-5' }
 const TIMEOUT_MS = 10_000
+// How long a streamed answer may go without a byte before the line is taken for dead. Both
+// providers speak at least every few seconds once they have begun — Anthropic pings while it thinks
+// — and a large game can take a while to be read before the first word.
+const IDLE_MS = 60_000
 const ANTHROPIC_VERSION = '2023-06-01'
 
 const trimmed = (url: string): string => url.replace(/\/+$/, '')
@@ -92,11 +114,111 @@ function getJson(url: string, headers: Record<string, string>, timeoutMs: number
   })
 }
 
-type AnthropicPage = { data?: { id?: unknown; display_name?: unknown }[]; has_more?: unknown; last_id?: unknown }
+// Why an answer broke off once it had begun: the provider says it in an event of its own and no
+// longer in a status, so the same words are read off the error's type or code.
+function streamedFailure(error: unknown): AiFailure {
+  const e = (error ?? {}) as { type?: unknown; code?: unknown }
+  const said = `${String(e.type ?? '')} ${String(e.code ?? '')}`
+  if (/authentication|permission|invalid_api_key/i.test(said)) return 'invalid-key'
+  if (/billing|insufficient_quota/i.test(said)) return 'no-credit'
+  if (/rate_limit/i.test(said)) return 'rate-limit'
+  if (/overloaded|server_error|api_error/i.test(said)) return 'overloaded'
+  return 'network'
+}
+
+type Sse = { event: string; data: unknown }
+
+// A POST whose answer is server-sent events, read as they arrive (#1001). Node's own client, for the
+// reason `getJson` gives, and because its socket can be told how long it may stay quiet: a stream
+// that stops talking is a line that failed, however long the whole answer is allowed to take.
+//
+// A stop from `signal` hangs up on the provider at once — which is what stops the designer paying
+// for an answer she no longer wants — and ends the events without an error.
+async function* postEvents(url: string, headers: Record<string, string>, body: unknown, idleMs: number, signal?: AbortSignal): AsyncGenerator<Sse> {
+  const queue: (Sse | AiProviderError | 'end')[] = []
+  let wake: (() => void) | null = null
+  const push = (item: Sse | AiProviderError | 'end') => {
+    queue.push(item)
+    wake?.()
+    wake = null
+  }
+  let stopped = false
+  const target = new URL(url)
+  const send = target.protocol === 'https:' ? httpsRequest : httpRequest
+  const payload = JSON.stringify(body)
+  const req = send(target, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'text/event-stream', 'content-length': String(Buffer.byteLength(payload)), ...headers } }, (res: IncomingMessage) => {
+    const status = res.statusCode ?? 0
+    if (status < 200 || status >= 300) {
+      const chunks: Buffer[] = []
+      res.on('data', (c: Buffer) => chunks.push(c))
+      res.on('end', () => {
+        let said: unknown = null
+        try {
+          said = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+        } catch {
+          said = null
+        }
+        push(new AiProviderError(failureOf(status, said), status))
+      })
+      return
+    }
+    res.setEncoding('utf8')
+    let buffer = ''
+    res.on('data', (chunk: string) => {
+      buffer += chunk
+      const frames = buffer.split(/\r?\n\r?\n/)
+      buffer = frames.pop() ?? ''
+      for (const frame of frames) {
+        let name = 'message'
+        const data: string[] = []
+        for (const line of frame.split(/\r?\n/)) {
+          if (line.startsWith('event:')) name = line.slice(6).trim()
+          else if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''))
+        }
+        if (data.length === 0) continue
+        try {
+          push({ event: name, data: JSON.parse(data.join('\n')) })
+        } catch {
+          // A line that is not JSON is not one either provider sends; it says nothing.
+        }
+      }
+    })
+    res.on('end', () => push('end'))
+    res.on('close', () => {
+      if (!res.complete && !stopped) push(new AiProviderError('network'))
+    })
+  })
+  req.setTimeout(idleMs, () => req.destroy())
+  req.on('error', () => push(stopped ? 'end' : new AiProviderError('network')))
+  const stop = () => {
+    stopped = true
+    req.destroy()
+    push('end')
+  }
+  if (signal?.aborted) stop()
+  else signal?.addEventListener('abort', stop, { once: true })
+  req.end(payload)
+  try {
+    for (;;) {
+      if (queue.length === 0) await new Promise<void>((resolve) => (wake = resolve))
+      const next = queue.shift()
+      if (stopped || next === undefined || next === 'end') return
+      if (next instanceof AiProviderError) throw next
+      yield next
+    }
+  } finally {
+    signal?.removeEventListener('abort', stop)
+    // Whoever reads the events may stop reading them; the provider is let go of then too.
+    req.destroy()
+  }
+}
+
+type AnthropicPage ={ data?: { id?: unknown; display_name?: unknown }[]; has_more?: unknown; last_id?: unknown }
 
 export function anthropicAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
   const baseUrl = trimmed(opts.baseUrl ?? 'https://api.anthropic.com')
   const timeoutMs = opts.timeoutMs ?? TIMEOUT_MS
+  const idleMs = opts.idleMs ?? IDLE_MS
   return {
     provider: 'anthropic',
     baseUrl,
@@ -115,6 +237,31 @@ export function anthropicAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
       }
       return out
     },
+    // The Messages API, streamed. The game is a system block of its own marked for the prompt
+    // cache, after the instructions, so a conversation about an unchanged game is read once.
+    async *complete(key, request, signal) {
+      const body = {
+        model: request.model,
+        max_tokens: request.maxTokens,
+        stream: true,
+        system: [
+          { type: 'text', text: request.instructions },
+          { type: 'text', text: request.context, cache_control: { type: 'ephemeral' } },
+        ],
+        messages: request.messages.map((m) => ({ role: m.role, content: m.text })),
+      }
+      let done = false
+      for await (const { data } of postEvents(`${baseUrl}/v1/messages`, { 'x-api-key': key, 'anthropic-version': ANTHROPIC_VERSION }, body, idleMs, signal)) {
+        const said = data as { type?: unknown; delta?: { type?: unknown; text?: unknown; stop_reason?: unknown }; error?: unknown }
+        if (said.type === 'content_block_delta' && said.delta?.type === 'text_delta' && typeof said.delta.text === 'string' && said.delta.text !== '') yield { type: 'text', text: said.delta.text }
+        else if (said.type === 'message_delta' && said.delta?.stop_reason === 'refusal') throw new AiProviderError('refused')
+        else if (said.type === 'message_stop') done = true
+        else if (said.type === 'error') throw new AiProviderError(streamedFailure(said.error))
+      }
+      if (signal?.aborted) return
+      if (!done) throw new AiProviderError('network')
+      yield { type: 'done' }
+    },
   }
 }
 
@@ -126,6 +273,7 @@ const DOES_NOT = /(embedding|audio|realtime|tts|transcribe|whisper|dall-e|image|
 export function openaiAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
   const baseUrl = trimmed(opts.baseUrl ?? 'https://api.openai.com')
   const timeoutMs = opts.timeoutMs ?? TIMEOUT_MS
+  const idleMs = opts.idleMs ?? IDLE_MS
   return {
     provider: 'openai',
     baseUrl,
@@ -136,6 +284,35 @@ export function openaiAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
         .flatMap((m) => (typeof m.id === 'string' && SPEAKS.test(m.id) && !DOES_NOT.test(m.id) ? [{ id: m.id, created: typeof m.created === 'number' ? m.created : 0 }] : []))
         .sort((a, b) => b.created - a.created || a.id.localeCompare(b.id))
         .map(({ id }) => ({ id, name: id }))
+    },
+    // The Responses API, streamed, and nothing kept at OpenAI (`store: false`): the conversation is
+    // the editor's to hold. Its prompt cache keys on the prefix, so the game follows the
+    // instructions in one block that stays the same for as long as the game does.
+    async *complete(key, request, signal) {
+      const body = {
+        model: request.model,
+        max_output_tokens: request.maxTokens,
+        stream: true,
+        store: false,
+        instructions: `${request.instructions}\n\n${request.context}`,
+        input: request.messages.map((m) => ({ role: m.role, content: m.text })),
+      }
+      let done = false
+      for await (const { data } of postEvents(`${baseUrl}/v1/responses`, { authorization: `Bearer ${key}` }, body, idleMs, signal)) {
+        const said = data as { type?: unknown; delta?: unknown; code?: unknown; response?: { error?: unknown; incomplete_details?: { reason?: unknown } } }
+        if (said.type === 'response.output_text.delta' && typeof said.delta === 'string' && said.delta !== '') yield { type: 'text', text: said.delta }
+        else if (said.type === 'response.refusal.delta' || said.type === 'response.refusal.done') throw new AiProviderError('refused')
+        else if (said.type === 'response.completed') done = true
+        else if (said.type === 'response.incomplete') {
+          // Cut short by its own filter is a refusal; cut short by the length is an answer that ends.
+          if (said.response?.incomplete_details?.reason === 'content_filter') throw new AiProviderError('refused')
+          done = true
+        } else if (said.type === 'response.failed') throw new AiProviderError(streamedFailure(said.response?.error))
+        else if (said.type === 'error') throw new AiProviderError(streamedFailure(said))
+      }
+      if (signal?.aborted) return
+      if (!done) throw new AiProviderError('network')
+      yield { type: 'done' }
     },
   }
 }

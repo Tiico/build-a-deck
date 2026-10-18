@@ -214,13 +214,17 @@ test.describe('ett zonnamn står aldrig i en annan zons ruta (#685)', () => {
 test.describe('Bord-flikens namn står aldrig i en annan zons ruta (#685, #581)', () => {
   test.use({ locale: 'sv-SE' })
 
-  async function bord(page: Page, width: number, height: number, seats: 4 | 8) {
+  async function bord(page: Page, width: number, height: number, seats: 4 | 8, key = false) {
     await page.setViewportSize({ width, height })
     await logIn(page.request)
+    // With a key the AI panel stands open (#1001), and over Bord it is a sheet that takes none of the
+    // felt's width.
+    if (key) expect((await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefZ5n6' } })).status()).toBe(200)
     const project = await makeProjectOf(page.request, spelkortDoc(seats))
     await page.goto(`${project.editorUrl}&lang=sv`)
     await page.locator('#byd-editor-tab-tables').click()
     await expect(page.locator('.byd-setup-felt [data-zone-handle="market"]')).toBeAttached()
+    if (key) await expect(page.locator('.byd-ai[data-open][data-over]')).toBeVisible()
     await page.mouse.move(1, 1)
   }
 
@@ -249,8 +253,9 @@ test.describe('Bord-flikens namn står aldrig i en annan zons ruta (#685, #581)'
         expect({ width, seats, inZone }).toEqual({ width, seats, inZone: [] })
       })
 
-      test(`alla tända, ${width} × ${height}, ${seats} platser`, async ({ page }) => {
-        await bord(page, width, height, seats)
+      for (const open of [false, true])
+      test(`alla tända, ${width} × ${height}, ${seats} platser${open ? ', AI-panelen öppen över filten' : ''}`, async ({ page }) => {
+        await bord(page, width, height, seats, open)
         await lightAll(page)
         const at = await settled(page)
         expect(at.names).toContain("Sal's Saloon")
@@ -261,7 +266,11 @@ test.describe('Bord-flikens namn står aldrig i en annan zons ruta (#685, #581)'
         // taget (#581), på en egen platta som ritas över allt annat, så en sådan platta får stå på
         // ett annat namn eller en plats namnkort — men aldrig i en annan zons ruta, och namnet kapas
         // aldrig. Det som står på ett annat namn här är alltså ett namn appen själv har lagt på sin
-        // platta (`plate-…`), och inget annat; vid 1280 och 1440 finns inget sådant alls.
+        // platta (`plate-…`), och inget annat; vid 1440 finns inget sådant alls.
+        // Reviderat 2026-10-18 (#1001, beställarens beslut): AI-panelens hopfällda flik tar 44 px av
+        // filtens bredd, och vid 1280 med åtta platser står då två räknarnamn på var sin platta på
+        // varandra, «Räknare E» och «Räknare G». Undantaget gäller därför också där, och bara där.
+        const plated = width < 1280 || (width === 1280 && seats === 8)
         const plates = await page.evaluate(() => {
           const shown = [...document.querySelectorAll<HTMLElement>('.byd-setup-felt [data-table] > .byd-zone > span, .byd-setup-felt .byd-seat-name')].filter(
             (el) => getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0,
@@ -284,7 +293,7 @@ test.describe('Bord-flikens namn står aldrig i en annan zons ruta (#685, #581)'
           return { on, unplated, cut }
         })
         expect({ width, seats, cut: plates.cut }).toEqual({ width, seats, cut: [] })
-        expect({ width, seats, on: width >= 1280 ? plates.on : plates.unplated }).toEqual({ width, seats, on: [] })
+        expect({ width, seats, on: plated ? plates.unplated : plates.on }).toEqual({ width, seats, on: [] })
         const wide = await readWide(page)
         expect({ width, seats, wide: wide.inZone }).toEqual({ width, seats, wide: [] })
       })

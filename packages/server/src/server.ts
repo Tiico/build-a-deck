@@ -30,6 +30,7 @@ import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
+import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -68,8 +69,8 @@ export type ServerOptions = {
   contact?: string
   // The designer's own key for the editor's AI help (#999, E4): sealed in the vault, proved and
   // listed through the providers, tried a handful of times an hour per account. Without it the
-  // profile has no key to keep.
-  ai?: { vault: AiKeyVault; providers: AiProviders; limiter?: KeyTryLimiter }
+  // profile has no key to keep. `caps` are the ceilings on the editor's questions (#1001, `AI_CAPS`).
+  ai?: { vault: AiKeyVault; providers: AiProviders; limiter?: KeyTryLimiter; caps?: Partial<AiCaps> }
   // The replay corpus's door (#1011, DRIFT §7): the operator, and the accounts that said yes in
   // their invitation, whose tables' exports the operator may read. Read from the box's settings
   // at start (`corpusFromEnv`); without it no account reads another's tables.
@@ -805,6 +806,16 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   })
 }
 
+// The AI answers in flight on this server (#1001), counted against its ceilings.
+const FLIGHTS = new WeakMap<ServerOptions, AiFlight>()
+function flightOf(opts: ServerOptions, caps: Partial<AiCaps> | undefined): AiFlight {
+  const existing = FLIGHTS.get(opts)
+  if (existing) return existing
+  const flight = new AiFlight({ ...AI_CAPS, ...caps })
+  FLIGHTS.set(opts, flight)
+  return flight
+}
+
 // The editing actors of this server, made on first use so a server without projects has none.
 const HOSTS = new WeakMap<ServerOptions, ProjectHost>()
 function editors(opts: ServerOptions, projects: ProjectStore): ProjectHost {
@@ -1247,6 +1258,37 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     validateSetup(setupFromProject(doc), opts.registry)
     const rec = await projects.create(wanted ?? randomUUID(), doc, account?.id)
     json(res, 201, { id: rec.id, rev: rec.rev })
+    return true
+  }
+  // A question to the AI about the game (#1001, E4): whoever may edit the game asks, with her own
+  // key, about the game as it stands in the editor right now — the live document, unsaved edits and
+  // all, since that is what she is looking at. The answer streams back (`ai-ask.ts`).
+  const asking = /^\/projects\/([^/]+)\/ai\/ask$/.exec(url.pathname)
+  if (asking && req.method === 'POST') {
+    if (!opts.ai || !opts.auth) {
+      json(res, 404, { error: 'not found' })
+      return true
+    }
+    // The key is the account's, so a game from before accounts is asked about by an account too.
+    if (!account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const gate = await allowed(decodeURIComponent(asking[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    // Forty turns of twenty thousand characters is the most a conversation can be; a body past that
+    // is not kept.
+    const bytes = await readBytes(req, ASK_MAX_BYTES)
+    if (!bytes) {
+      json(res, 413, { error: 'too big' })
+      return true
+    }
+    const ask = AskBody.parse(JSON.parse(Buffer.from(bytes).toString('utf8')))
+    const doc = (await editors(opts, projects).live(gate.rec.id)) ?? gate.rec
+    await answerQuestion({ vault: opts.ai.vault, providers: opts.ai.providers, flight: flightOf(opts, opts.ai.caps) }, res, account.id, doc, ask)
     return true
   }
   const one = /^\/projects\/([^/]+)$/.exec(url.pathname)

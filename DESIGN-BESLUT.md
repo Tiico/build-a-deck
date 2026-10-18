@@ -1457,6 +1457,23 @@ Nyckeln prövas genom att leverantören ombeds lista sina modeller; det kostar d
 Kontot och leverantören är inbakade i förseglingen, så en rad som flyttas till ett annat konto öppnas för ingen.
 Editorns hänvisning bär spelet med sig, så att «Tillbaka till» spelet är sidans enda fyllda knapp när nyckeln är sparad.
 
+Byggt 2026-10-18 (#1001): första frågan, hela vägen genom panelen, proxyn och leverantören.
+Panelen står bredvid arbetsytan, 380 px bred, och fälls ihop till en flik på 44 px i kanten, med och utan nyckel; hur den lämnades minns läsaren mellan spel.
+I Speltema och Bord, vars ytor är mätta på pixeln (#741, #652, #685), ligger den öppna panelen i stället som ett ark över ytans högra del: ytan behåller flikens 44 px och inget mer, det arket täcker syns igen när det fälls ihop, och Escape fäller ihop det (beställarens beslut 2026-10-18).
+De tre golven gav efter så mycket fliken kräver och inte mer; talen står i respektive beslut.
+Huvudet namnger modellen som profilsidan gör, «Claude Sonnet 5.5», ur samma lista från leverantören.
+Utan nyckel börjar den alltid hopfälld, oavsett hur den lämnades, och öppnad hänvisar den till profilsidan genom editorns egen väg ut, så att osparat arbete frågas om som när «Mina spel» trycks.
+Den finns bara på skrivbordet: 380 px är vad kortväggens krona ger plats åt (L54), och under skrivbordet finns inget rum för den.
+«Skicka» är kantad och inte fylld, trots prototypens bild: huvudets «Uppdatera bordet» är vyns första handling, och L13 tillåter en fylld knapp per vy.
+Medan svaret kommer blir «Skicka» «Avbryt» på samma ställe, och Escape i frågan avbryter; ett avbrutet svar läggs på hos leverantören också, så att det slutar kosta.
+Svaret står i en artig live-region som är upptagen medan det strömmar, så att en skärmläsare läser det helt och inte ord för ord, och det ritas i kortens egen delmängd (L2) som modellen ombeds svara i.
+Modellen ombeds svara på det språk designern skriver på, med verktygets språk som reserv (A4).
+Servern bygger kontexten ur det levande dokumentet, alltså med ändringar som ännu inte sparats, eftersom det är det designern ser; klienten skickar bara frågan, samtalet och språket.
+Svaret går som server-sent events på svaret till samma POST och inte över editorns WebSocket: ett svar är en persons, går åt ett håll och tar slut, medan WebSocketen är spelets delade linje som varje medredigerare hör (D3), och att frågaren lägger på är då att anslutningen stängs, vilket är signalen som måste nå leverantören.
+Taken är två svar åt gången per konto och åtta totalt, och ett svar får ta tre minuter; varje svar håller en anslutning och kontexten i minnet på en låda med ont om det (DRIFT §1).
+Felbeskeden är leverantörens slutna mängd med «avvisat» tillagt, och serverns egna två: att svaret tog för lång tid och att ett svar redan är på väg.
+«Profil» i startsidans rad ritas nu som «logga ut» bredvid den: två vikter i en kort mening hade ingen förklaring läsaren kunde se.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.
@@ -2996,6 +3013,9 @@ På Bord-fliken ritas högen dessutom över sitt handtag i stället för under d
 Linjen låg annars tvärs över brickan, och på en tom hög på högens egen streckade kontur — två linjer på samma pixlar.
 Pekaren går genom högen till handtaget, så att ta tag i högen är detsamma som förut.
 `packages/e2e/test/surfaces/setup-piles-drawn.spec.ts` mäter det på målade pixlar vid 1024 och 1280.
+Reviderat 2026-10-18 (#1001, beställarens beslut): AI-panelens hopfällda flik tar 44 px av editorns bredd, och vid 1280 står brickan då utanför kortets vänsterkant med 0,56 px på en Mac och 0,92 px på CI:s Linux, vars siffror är bredare.
+Avrundningsmånen är därför 1 px vid 1280, i stället för 0,5; vid 1024 är den 0,5 som förut.
+Med panelen öppen ligger den som ett ark över filtens högra del och tar ingen bredd, så måttet är detsamma då.
 
 Reviderat 2026-10-02 (#669): **brickan står på sin hög i varje tillstånd kortets bild är i.**
 Medan högens översta kort renderades, och för gott om renderingen misslyckades, syntes inget antal alls på TV:n och observatörens filt.
@@ -3141,6 +3161,10 @@ Plattan tar ingen pekare: ett namn som står inuti sin zon står under just den 
 Med Sal's Saloon och fyra platser är det «Räknare B», vars platta står på plats B:s namnkort; ingen annan zons ruta.
 Med alla zoner tända på en gång — vilket fliken aldrig visar, men som grindarna läser — står vid åtta platser två plattor på andra namn.
 `zone-name-own-box.spec.ts` skriver det undantaget uttryckligen: vid 1024 får bara ett namn som appen själv lagt på sin platta stå på ett annat namn, och vid 1280 och 1440 inget alls.
+Reviderat 2026-10-18 (#1001, beställarens beslut): AI-panelens hopfällda flik tar 44 px av editorns bredd, och vid 1280 med åtta platser och allt tänt står då två plattor på varandra, «Räknare E» och «Räknare G».
+Undantaget från 1024 gäller därför också vid 1280 med åtta platser: där får ett namn på sin platta stå på ett annat namn, aldrig i en annan zons ruta och aldrig kapat; vid 1280 med fyra platser och vid 1440 står inget namn på ett annat.
+Fliken visar ett namn i taget (#581), så i det fliken faktiskt visar krockar inget.
+Med panelen öppen ligger den som ett ark över filtens högra del och tar ingen bredd, så måttet är detsamma då.
 
 Mätt på den byggda appen med Sal's Saloon, fem kort i varje hand, tre i saloonen, två i kasthögen och ett framför varje plats, vid fyra och åtta platser: noll namn i en annan zons ruta på TV:n vid 1920, i bordsläget vid 1024, 1280 och 1440, på /online vid 1280, på Bord-fliken vid 1024, 1280 och 1440 (en i taget och alla tända) och hos observatören vid 390 och 768 — också med varje namn ritat 15 % bredare.
 Före var det 37.
@@ -6505,6 +6529,9 @@ Gränsen mot Google står kvar: ingenting hämtas före trycket.
 Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html) mot att ha kvar kortet med en provrad under (B) och ett provark under galleriet (C); B satte samma text två gånger i två storlekar, och C fick Speltema att rulla.
 Galleriet står fyra i bredd så länge varje bricka har sitt rum, och två och två när katalogen eller biblioteket står bredvid, aldrig tre och en.
 `theme-proof.spec.ts` mäter brödtextens storlek gånger zoom (≥ 12 px vid 1280, ≥ 11 vid 1024), att Speltema inte rullar vid 1280 × 800, och att brickorna inte går in i varandra med katalogen öppen vid 1024.
+Reviderat 2026-10-18 (#1001, beställarens beslut): golvet vid 1024 är 10,5 px, i stället för 11.
+AI-panelens hopfällda flik tar 44 px av editorns bredd, och med den ritar provleken brödtexten i 10,52 px vid 1024; vid 1280 når den fortfarande 12.
+Med panelen öppen ligger den som ett ark över Speltemats högra del och tar ingen bredd, så golvet är detsamma då.
 
 Reviderat 2026-10-04 (#830, beställarens val C efter prototyp): **utsnittet skär bort luckan mellan rubrikbandet och prosan, och prosans bit är så hög som prosan har rader.**
 På en mall med brödtexten långt ner var utsnittet mest tomt papper: e2e-mallen, med brödtexten 30 mm ner, visade 78 % tomt.

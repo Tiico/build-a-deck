@@ -235,6 +235,11 @@ Byggt 2026-10-18 (#999): en API-nyckel når aldrig `docker logs`.
 Nyckelns vägar — spara, pröva, byta modell, ta bort — skriver ingenting till loggen, och ett nej från leverantören är ett ord ur en sluten mängd utan nyckeln i (§5).
 `packages/server/test/ai-key-routes.test.ts` läser den faktiska loggutskriften medan nycklar sparas, avvisas och tas bort.
 
+Byggt 2026-10-18 (#1001): editorns frågor till AI:n skriver en rad var i loggen, med fälten `msg: "ai"`, `account`, `provider`, `ms` och `outcome` och inget annat.
+Utfallet är `ok`, `cancelled`, `timeout` eller leverantörens ord för nej; nyckeln, spelet, frågan och svaret skrivs aldrig.
+Varje svar håller en anslutning till leverantören och spelets kontext i appcontainerns minne (§1), så servern tar två svar åt gången per konto och åtta totalt och avbryter ett svar efter tre minuter.
+`packages/server/test/ai-ask.test.ts` läser den faktiska loggutskriften, och `packages/e2e/test/ai-question.spec.ts` läser serverns logg i den byggda stacken.
+
 ## 9. Missbruk: Cloudflare rate limiting, korta koder, värdkontroll
 
 Cloudflares rate limiting stoppar brute force mot join-endpointen innan det når huset.

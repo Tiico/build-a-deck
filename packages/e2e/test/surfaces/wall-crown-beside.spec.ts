@@ -8,10 +8,11 @@ import { expect, test } from '../../support/test.js'
 // field to a stub and cut «Fysisk kontroll» at the panel's edge. The crown answered the *window's*
 // width, and a wall narrower than the window got the desk's row at a width the row does not fit.
 //
-// The panel is not on main yet, so it is stood in for by what it is to the layout: a 380 px column
-// beside the open tab panel, inside the editor's `main`. What is measured is the real wall in the
-// built app — every control of its crown wholly visible, beside the column and not under it, and a
-// search field still wide enough to be written in.
+// The first tests below stand the panel in by what it is to the layout — a 380 px column beside the
+// open tab panel, inside the editor's `main` — so that the crown is held to it for a designer without
+// a key too, and at the desk's narrow end. The last measure the panel itself (#1001). What is
+// measured is the real wall in the built app — every control of its crown wholly visible, beside the
+// column and not under it, and a search field still wide enough to be written in.
 //
 // 180 px is the floor the desk already holds the field to (#477 fynd 12, beslut 2026-09-27, and
 // L54 under the desk): the placeholder «Sök i alla fält…» and a query of a word or two, read whole.
@@ -47,10 +48,10 @@ const standBeside = (page: Page, width: number) =>
 
 // Every control of the crown that is not wholly visible: outside the window, cut by an ancestor
 // that clips sideways, or under the column beside the wall.
-const measure = (page: Page) =>
-  page.evaluate(() => {
+const measure = (page: Page, beside = '[data-beside]') =>
+  page.evaluate((beside) => {
     const crown = document.querySelector('.byd-wall-view .byd-crown') as HTMLElement
-    const aside = document.querySelector('[data-beside]') as HTMLElement
+    const aside = document.querySelector(beside) as HTMLElement
     const wall = document.querySelector('.byd-wall-view') as HTMLElement
     const edge = aside.getBoundingClientRect().left
     const cut: string[] = []
@@ -84,7 +85,7 @@ const measure = (page: Page) =>
       field: Math.round((crown.querySelector('.byd-crown-search') as HTMLElement).getBoundingClientRect().width),
       page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     }
-  })
+  }, beside)
 
 for (const locale of ['sv-SE', 'en-GB']) {
   // 1280 and 1440 are the two desks the issue names. 1024 is the desk's narrow end, where the wall
@@ -110,6 +111,40 @@ for (const locale of ['sv-SE', 'en-GB']) {
         const measured = await measure(page)
         // Non-vacuity: the column stands where the panel will, at its width, and the crown holds
         // its whole set of tools — the field, four boxes, the stepper's two presses and the fold.
+        expect(measured.beside).toBe(PANEL)
+        expect(measured.edge).toBe(viewport.width - PANEL)
+        expect(measured.controls).toBeGreaterThanOrEqual(8)
+        expect(measured.cut, 'every control of the crown is wholly visible, beside the panel and not under it').toEqual([])
+        expect(measured.over, 'the crown does not overflow its own box').toBeLessThanOrEqual(0)
+        expect(measured.field, 'the search field is wide enough to read what is written in it').toBeGreaterThanOrEqual(FIELD)
+        expect(measured.page, 'the page does not scroll sideways').toBeLessThanOrEqual(0)
+      })
+    })
+  }
+}
+
+// And beside the panel itself (#1001), now that it is on main: a designer with a key opens the
+// editor with the AI panel standing open at the wall's side, and the crown holds whole beside it at
+// the two desks the panel was prototyped at.
+const KEY = 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefC4C4'
+for (const locale of ['sv-SE', 'en-GB']) {
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    test.describe(`the wall's crown beside the open AI panel at ${viewport.width} × ${viewport.height} in ${locale}`, () => {
+      test.use({ viewport, locale })
+
+      test('cuts no control and leaves the search field room to be written in', async ({ page }) => {
+        await logIn(page.request)
+        const saved = await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: KEY } })
+        expect(saved.status()).toBe(200)
+        const project = await makeProjectOf(page.request, deck())
+        await page.goto(project.editorUrl)
+        await expect(page.locator('.byd-wall-view .byd-crown-fold')).toBeVisible()
+        await expect(page.locator('.byd-ai[data-open]')).toBeVisible()
+        await expect.poll(async () => (await measure(page, '.byd-ai')).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
+        const measured = await measure(page, '.byd-ai')
         expect(measured.beside).toBe(PANEL)
         expect(measured.edge).toBe(viewport.width - PANEL)
         expect(measured.controls).toBeGreaterThanOrEqual(8)

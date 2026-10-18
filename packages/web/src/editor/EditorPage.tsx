@@ -10,6 +10,7 @@ import { useHeaderStands, useRoom } from '../room.js'
 import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
+import { AiPanel, useAiKey } from './AiPanel.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
 import { revealThemeSection, ThemePanel } from './ThemePanel.js'
@@ -69,6 +70,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
   const { client, fault, slow, retry } = useProjectClient(http, projectId, timing)
+  // Whether the designer has an AI key (#1001), asked beside the project so the panel is decided
+  // before the work is drawn and nothing moves over once it is.
+  const [aiKey, setAiKey] = useAiKey(http, projectId !== null)
   // How much room there is (L10), and where the designer is standing. One state answers both:
   // the desk shows a mode, a smaller screen shows the stage that mode is made of.
   const room = useRoom()
@@ -119,9 +123,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   }, [])
   // The question asked before the editor is left with work that is not saved (#8), and the way
   // back to the link that asked it: a question that takes the focus has to give it back.
-  const [leaving, setLeaving] = useState(false)
+  // Where the designer is on her way to while the question stands, or null when it does not.
+  const [leaving, setLeaving] = useState<string | null>(null)
   const [refocusLeave, setRefocusLeave] = useState(false)
   const leaveRef = useRef<HTMLAnchorElement>(null)
+  // What was pressed to leave, when it was not «Mina spel»: the keys go back to it on «Avbryt».
+  const leaveFrom = useRef<HTMLElement | null>(null)
   // The question asked before the game is taken away from its ⋯ (#738), the ⋯ the keys go back to
   // when it is answered «Behåll», and whether the game is on its way out: the server tells every
   // open editor that a deleted game is gone, and this one is leaving for «Mina spel», not lost.
@@ -250,7 +257,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const unsaved = client?.dirty === true
   useEffect(() => {
     if (!refocusLeave) return
-    leaveRef.current?.focus()
+    ;(leaveFrom.current?.isConnected ? leaveFrom.current : leaveRef.current)?.focus()
     setRefocusLeave(false)
   }, [refocusLeave])
   // Closing or reloading the tab is the one way out the page cannot ask its own question about:
@@ -360,22 +367,31 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Out of the editor and back to the games. Work that differs from the saved project is asked
   // about first (#8); a project as it was loaded is simply left.
   const home = homeUrl(params.get('server'))
-  const goHome = () => {
+  const goTo = (url: string) => {
     answered.current = true
-    onNavigate(home)
+    onNavigate(url)
   }
-  const leave = () => (unsaved ? setLeaving(true) : goHome())
+  const goHome = () => goTo(home)
+  // The way out is asked about wherever it starts: «Mina spel» in the header, or the profile from
+  // the AI panel (#1001). The question stands where it always stands, and staying hands the keys back
+  // to whatever was pressed.
+  const leave = (to: string = home, from: HTMLElement | null = null) => {
+    leaveFrom.current = from
+    if (unsaved) setLeaving(to)
+    else goTo(to)
+  }
   const stay = () => {
-    setLeaving(false)
+    setLeaving(null)
     setRefocusLeave(true)
   }
   // "Spara och lämna" only leaves once the work is actually on the server: a save that collides
   // with someone else keeps the designer here, with the edit and the reason in
   // front of her.
   const saveAndLeave = async () => {
+    const to = leaving ?? home
     if (!(await save())) return stay()
-    setLeaving(false)
-    goHome()
+    setLeaving(null)
+    goTo(to)
   }
   // A table that starts saves first, and puts away what stood when it was asked for, as a save does.
   const startTable = async () => {
@@ -753,15 +769,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       {room === 'phone' && (
         <p className="byd-editor-narrow">{t('editor.narrow')}</p>
       )}
-      {leaving && (
+      {leaving !== null && (
         <Question
           className="byd-editor-leave"
           label={t('editor.leave.title')}
           keep={{ label: t(saving ? 'editor.saving' : 'editor.leave.save'), disabled: saving, onChoose: () => void saveAndLeave() }}
           confirm={t('editor.leave.discard')}
           onConfirm={() => {
-            setLeaving(false)
-            goHome()
+            setLeaving(null)
+            goTo(leaving)
           }}
           onCancel={stay}
         >
@@ -934,6 +950,21 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
+        {/* The AI panel beside the work, in every tab (#1001, #940 A). On the desk only: it takes
+            380 px, which the desk's wall makes room for (L54) and nothing smaller has. A role that
+            may not change the game has nothing to ask about it here. */}
+        {room === 'desk' && client.mayEdit && projectId && aiKey.kind === 'ready' && (
+          <AiPanel
+            http={http}
+            project={projectId}
+            doc={doc}
+            aiKey={aiKey.key}
+            profileUrl={profileUrl(projectId, params.get('server'))}
+            onLeave={(url, from) => leave(url, from)}
+            onKeyGone={() => setAiKey(null)}
+            over={mode === 'theme' || mode === 'tables'}
+          />
+        )}
       </main>
       </Arriving.Provider>
       </SaidProvider>
@@ -1078,6 +1109,13 @@ function StepButtons({ client, onConfirm }: { client: ProjectClient; onConfirm(t
 
 function homeUrl(server: string | null): string {
   return server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
+}
+
+// The profile, carrying this game so its way back names it (#999).
+function profileUrl(project: string, server: string | null): string {
+  const q = new URLSearchParams({ from: project })
+  if (server) q.set('server', server)
+  return `/profile?${q.toString()}`
 }
 
 // The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
