@@ -29,6 +29,7 @@ import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages
 import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiProviders } from './ai-providers.js'
+import type { Corpus } from './corpus.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -69,6 +70,10 @@ export type ServerOptions = {
   // listed through the providers, tried a handful of times an hour per account. Without it the
   // profile has no key to keep.
   ai?: { vault: AiKeyVault; providers: AiProviders; limiter?: KeyTryLimiter }
+  // The replay corpus's door (#1011, DRIFT §7): the operator, and the accounts that said yes in
+  // their invitation, whose tables' exports the operator may read. Read from the box's settings
+  // at start (`corpusFromEnv`); without it no account reads another's tables.
+  corpus?: Corpus
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -171,6 +176,21 @@ async function playtestReader(opts: ServerOptions, req: IncomingMessage, session
   if (!account) return 'login'
   const role = await opts.projects.roleOf(session.project, account.id)
   return role !== null && canStartTables(role) ? 'yes' : 'no'
+}
+// The replay corpus's door (#1011, DRIFT §7): the operator, by login, reading a table in a game
+// whose owner said yes in her invitation. Never with a key, and never a game from before accounts,
+// which has no owner to have said yes. It opens the export and nothing else; the caller is the one
+// route that asks it.
+async function corpusReader(opts: ServerOptions, req: IncomingMessage, session: SessionRecord): Promise<boolean> {
+  const corpus = opts.corpus
+  if (!corpus || !opts.auth || !opts.projects || !session.project) return false
+  if (/^Bearer\s/i.test(req.headers.authorization ?? '')) return false
+  const reader = await accountOf(opts.auth, req)
+  if (reader?.email.toLowerCase() !== corpus.operator) return false
+  const project = await opts.projects.load(session.project)
+  if (project?.owner === undefined) return false
+  const owner = await opts.auth.accountById(project.owner)
+  return owner !== null && corpus.accounts.includes(owner.email.toLowerCase())
 }
 // Answers a refused reader and says whether the caller may go on.
 async function mayReadPlaytest(opts: ServerOptions, req: IncomingMessage, res: ServerResponse, session: SessionRecord): Promise<boolean> {
@@ -1694,8 +1714,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: 'unknown session' })
       return true
     }
-    if (!(await mayReadPlaytest(opts, req, res, session))) return true
-    json(res, 200, { id: sessionId, version: session.version, setup: session.setup, log: await opts.store.read(sessionId) })
+    // Read through the corpus's door (#1011), the export says so: the script takes only the
+    // owner's own tables (#540), and this is the one other kind it may take.
+    const consented = await corpusReader(opts, req, session)
+    if (!consented && !(await mayReadPlaytest(opts, req, res, session))) return true
+    json(res, 200, { id: sessionId, version: session.version, setup: session.setup, log: await opts.store.read(sessionId), ...(consented ? { consented: true } : {}) })
     return true
   }
     // A session as a record (C9): which version runs, whether the log is locked.
