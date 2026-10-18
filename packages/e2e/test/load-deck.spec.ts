@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { STANDARD_TYPES, TypeRegistry } from '@byd/engine'
-import { deckFromProject, facesOf, ProjectDoc, TEXTURE_DPI } from '@byd/server'
+import { deckFromProject, ProjectDoc, queueFaces, TEXTURE_DPI } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
 import { loadGame, picture } from '../load/deck.js'
 
@@ -39,14 +39,14 @@ test('the load game is a project for eight seats with 308 cards, each drawn from
   expect(Object.values(doc.fonts ?? {}).map((f) => f.asset)).toEqual([`asset:${hash(1001)}`, `asset:${hash(1002)}`])
 })
 
-test('a new generation of the load game redraws the front of every card, which is the full re-render a saved version sends to a table', () => {
-  const fronts = (generation: number) => {
+test('a new generation of the load game redraws the front of every card, which is the full re-render a saved version sends to a table', async () => {
+  const fronts = async (generation: number) => {
     const doc = ProjectDoc.parse(loadGame({ name: 'Last 1', generation, assets }))
-    const faces = facesOf(deckFromProject(doc), setupFromProject(doc), new TypeRegistry(STANDARD_TYPES), TEXTURE_DPI, 0).faces
+    const { faces } = await queueFaces(deckFromProject(doc), setupFromProject(doc), new TypeRegistry(STANDARD_TYPES), TEXTURE_DPI, 0, async () => undefined)
     return Object.values(faces).map((f) => f['front'])
   }
-  const before = fronts(1)
-  const after = fronts(2)
+  const before = await fronts(1)
+  const after = await fronts(2)
   expect(before).toHaveLength(308)
   expect(after.filter((h, i) => h !== before[i])).toHaveLength(308)
 })
