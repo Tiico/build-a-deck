@@ -1,4 +1,5 @@
-import { translateProposal, type EditIntent, type ProposalProblem, type Translated } from '@byd/server/doc'
+import type { EditIntent } from '@byd/server/doc'
+import { translateProposal, type ProposalProblem, type Translated } from '@byd/server/proposal'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import type { T } from '../i18n/index.js'
 

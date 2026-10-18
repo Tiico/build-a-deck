@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { FitReport } from '@byd/template'
-import { titleOfRow, type ProposalProblem } from '@byd/server/doc'
+import { titleOfRow } from '@byd/server/doc'
+import type { ProposalProblem } from '@byd/server/proposal'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX } from './corner.js'
