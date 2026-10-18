@@ -1,5 +1,5 @@
 import { STANDARD_TYPES, TypeRegistry } from '@byd/engine'
-import type { EnqueueResult, RenderRequest, RenderStore } from '@byd/render/queue'
+import type { EnqueueResult, RenderStore } from '@byd/render/queue'
 import { deckFromProject, MemoryLogStore, TableActor } from '../../src/index.js'
 import { setupFromProject } from '../../src/doc.js'
 import { openingSetup } from '../../src/recipe.js'
@@ -28,6 +28,6 @@ await store.createSession({ id: 'tungt', version: 'rev-1', setup: setupFromProje
 // The queue keeps what it is handed in Postgres on the box; here it keeps the hashes only, so
 // what is measured is what the app itself holds.
 let queued = 0
-const renders = { enqueue: async (_job: RenderRequest): Promise<EnqueueResult> => (queued++, 'queued') } as unknown as RenderStore
+const renders = { enqueue: async (): Promise<EnqueueResult> => (queued++, 'queued') } as unknown as RenderStore
 const actor = await TableActor.load('tungt', new TypeRegistry(STANDARD_TYPES), store, undefined, renders)
 console.log(JSON.stringify({ loaded: actor !== null, queued, textures: actor?.textureHashes().length }))
