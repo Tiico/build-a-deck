@@ -322,8 +322,12 @@ export class ProjectClient {
         this.notify()
         return
       case 'refused':
-        // The actor sends the document with it, so nothing has to be asked for again.
-        this.finishSave({ ok: false, reason: message.why })
+        // A refusal answers the request it names and no other (#991). A refused edit taken for the
+        // save's answer said a version that was made could not be saved, and left the version's
+        // own «saved» to nobody, or to the next save. A refused edit ends no wait: the actor sends
+        // the document with it, so nothing has to be asked for again. A server from before the
+        // address names none, and its refusal is read the way it always was, as the save's.
+        if (message.to !== 'edit') this.finishSave({ ok: false, reason: message.why })
         return
     }
   }

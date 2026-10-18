@@ -726,22 +726,28 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   ws.on('close', leave)
   ws.on('message', (data) => {
     void (async () => {
+      // Which of the editor's requests a refusal answers (#991): an edit and a save can both be on
+      // the line at once, and the editor ends only the wait the refusal is about. A request that
+      // cannot be read is neither, and its refusal names none.
+      let to: 'edit' | 'save' | undefined
+      const refuse = (why: string) => send({ v: 'refused', why, ...(to ? { to } : {}) })
       try {
         const raw: unknown = JSON.parse(data.toString())
         const msg = EditorRequest.parse(raw)
+        to = msg.t
         // A viewer watches the project change and does not change it (D3).
         if (!canEdit(role)) {
-          send({ v: 'refused', why: `en ${roleWord(role)} kan bara titta` })
+          refuse(`en ${roleWord(role)} kan bara titta`)
           return
         }
         if (msg.t === 'save') {
           const saved = await actor.save(editor.id)
-          if (!saved.ok) send({ v: 'refused', why: saved.reason })
+          if (!saved.ok) refuse(saved.reason)
           return
         }
         await actor.edit(msg.intent as EditIntent, account?.id, editor.id)
       } catch (err) {
-        send({ v: 'refused', why: err instanceof Error ? err.message : String(err) })
+        refuse(err instanceof Error ? err.message : String(err))
         actor.resync(editor)
       }
     })()

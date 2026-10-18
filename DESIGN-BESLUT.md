@@ -1092,6 +1092,11 @@ Sparandet är fortfarande det som gör en version (B4). Loggen bär svansen mell
 Det gäller också `PUT /projects/:id` (#768): ett helt dokument skrivet över HTTP, av ett skript eller av en editor vars linje är nere, blir en `restore` i loggen och en version i samma tur av aktörens kö, så att aktören aldrig håller en annan rev än lagret.
 En editor som öppnas på en svans ingen sparat får den sparade versionen bredvid det aktören håller (#764), så att «Osparat» är en jämförelse den kan göra (L9) och «Starta bord» sparar svansen först (L5).
 `/projects/:id/edit` är tråden: dokumentet vid uppkoppling, varje redigering när den landar, vilka som är inne, och varför en redigering avvisades. En avvisad redigerare får dokumentet med avslaget och kan fortsätta från det som är verkligt.
+Varje svar på tråden besvarar bara sin egen fråga, eftersom en redigering och en sparning kan vara på väg samtidigt.
+Ett «saved» namnger redigeraren vars sparning gjorde versionen (`from`, #988), och ett avslag säger vilken av redigerarens förfrågningar det gäller, `to: 'edit'` eller `to: 'save'` (#991).
+En avvisad redigering avslutar alltså aldrig en sparning som är på väg, och en avvisad sparning aldrig något annat än sparningen.
+En förfrågan som inte går att läsa är ingen av dem, och dess avslag namnger ingen.
+Fälten är tillägg: en sida som laddades före dem läser förbi dem, och ett avslag utan `to` från en server före #991 läses som förut, som sparningens.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
 En redigering som avgör något lagrar svaret i loggen, aldrig frågan (2026-10-05, #894), av samma skäl som bordets slump lagras som resultat (D4).

@@ -901,6 +901,97 @@ describe('which version answers a save (#988)', () => {
   })
 })
 
+// A refusal is the answer to the request it refuses, and to no other (#991). An edit and a save
+// can be on the line at once, and a refused edit used to be taken for the answer to the save: an
+// import whose version was made said it could not be saved, and the version's own «saved» came to
+// nobody — or to the next save in the queue, which then named somebody else's version.
+describe('which wait a refusal ends (#991)', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  const book = (text: string): RuleDoc => ({ title: 'Skogens herrar', blocks: [{ kind: 'text', id: 't1', text }] })
+  const namedFiles = async (id: string): Promise<Record<string, string | undefined>> => {
+    const versions = await run.projects.versions(id)
+    const named = versions.filter((v) => v.label !== undefined)
+    return Object.fromEntries(await Promise.all(named.map(async (v) => [v.label, (await run.projects.at(id, v.rev))?.rules?.source?.file])))
+  }
+  // Bo and Ada with the same game open. Bo's is the line that can be held.
+  const twoEditors = async (line: SavedHeldBack) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    setEditSocketImplementation(line.Line)
+    const bo = await openClient(created.id)
+    await vi.waitFor(() => expect(bo.connected).toBe(true))
+    setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    const ada = await openClient(created.id)
+    await vi.waitFor(() => expect(ada.connected).toBe(true))
+    return { id: created.id, bo, ada }
+  }
+  // Bo types into a card in the moment Ada takes it away. His edit leaves late, reaches the actor
+  // after her removal, and is refused — the one way an edit the editor itself let through comes to
+  // be refused, and nothing about it is invented: it is two people working at once.
+  const typedIntoAsItIsRemoved = async (line: SavedHeldBack, bo: ProjectClient, ada: ProjectClient, alsoAsked: () => void = () => undefined) => {
+    line.holdRequests()
+    bo.setCell('dragon', 'title', 'Drakhona')
+    alsoAsked()
+    ada.removeRow('dragon')
+    await vi.waitFor(() => expect(bo.doc.rows.some((r) => r.id === 'dragon')).toBe(false))
+    line.letOut()
+  }
+  const outcome = (importing: Promise<void>) => importing.then(
+    () => 'saved',
+    (err: unknown) => (err instanceof Error ? err.message : String(err)),
+  )
+
+  it('lets an import whose version is made keep it, when an edit beside it is refused', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    const importing = outcome(bo.importRules(book('Bos bok.'), 'bo.md'))
+    // The version is made, and its answer is on the line.
+    await vi.waitFor(() => expect(line.waiting).toBe(1))
+    await typedIntoAsItIsRemoved(line, bo, ada)
+    await vi.waitFor(() => expect(line.heard).toContain('refused'))
+    line.release()
+    expect(await importing).toBe('saved')
+    expect(await namedFiles(id)).toEqual({ 'Importerad: bo.md': 'bo.md' })
+  })
+
+  it('ends a save with its own refusal, and not with that of an edit sent beside it', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    // The store moves on behind the actor's back, so the version Bo asks for is a conflict.
+    await run.projects.replace(id, 1, { ...projectDoc(), name: 'Skrivet förbi aktören' })
+    let saving: Promise<unknown> = Promise.resolve()
+    await typedIntoAsItIsRemoved(line, bo, ada, () => {
+      saving = bo.save()
+    })
+    expect(await saving).toEqual({ ok: false, reason: 'conflict' })
+  })
+
+  // And the other way: a refused save is the save's, and an edit sent with it is still the edit it
+  // was — it lands, and the others see it.
+  it('ends a refused save and leaves the edit waiting beside it to land', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    await run.projects.replace(id, 1, { ...projectDoc(), name: 'Skrivet förbi aktören' })
+    line.holdRequests()
+    bo.setCell('knight', 'title', 'Riddarinna')
+    const saving = bo.save()
+    line.letOut()
+    expect(await saving).toEqual({ ok: false, reason: 'conflict' })
+    await vi.waitFor(() => expect(ada.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna'))
+    expect(bo.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna')
+    expect(bo.dirty).toBe(true)
+  })
+
+  // A server from before #991 says no address, and a page loaded since has to go on hearing it
+  // through a deploy: an unaddressed refusal is read the way it always was, as the save's.
+  it('reads a refusal without an address as the answer to the save, as before', async () => {
+    const line = new SavedHeldBack({ unaddressed: true })
+    const { id, bo } = await twoEditors(line)
+    await run.projects.replace(id, 1, { ...projectDoc(), name: 'Skrivet förbi aktören' })
+    expect(await bo.save()).toEqual({ ok: false, reason: 'conflict' })
+  })
+})
+
 // A click in the symbol library used to wait for the network before anything happened (#310).
 // An asset is named by the hash of its bytes and by nothing else, so that name is knowable here,
 // before the bytes have travelled — and once it is known, the whole click stops needing the

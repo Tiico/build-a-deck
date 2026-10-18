@@ -49,6 +49,9 @@ class Editing {
   save(): void {
     this.ws.send(JSON.stringify({ t: 'save' }))
   }
+  raw(frame: unknown): void {
+    this.ws.send(JSON.stringify(frame))
+  }
   async until<T extends EditorMessage['v']>(v: T, ok: (m: Extract<EditorMessage, { v: T }>) => boolean = () => true): Promise<Extract<EditorMessage, { v: T }>> {
     for (let i = 0; i < 100; i++) {
       const found = [...this.seen].reverse().find((m): m is Extract<EditorMessage, { v: T }> => m.v === v && ok(m as Extract<EditorMessage, { v: T }>))
@@ -98,6 +101,27 @@ describe('two people editing the same project (D3)', () => {
     ada.send({ v: 'setCell', cardRef: 'ingen', field: 'title', value: 'x' })
     expect((await ada.until('refused')).why).toMatch(/ingen/)
     expect(ada.seen.some((m) => m.v === 'edits')).toBe(false)
+    ada.close()
+  })
+
+  // A refusal says which of the editor's requests it answers (#991). An editor has an edit and a
+  // save on the line at once, and a refused edit taken for the answer to the save called a version
+  // that was made a version that was not — and left its «saved» to nobody, or to the next save.
+  it('says whether a refusal answers an edit or a save', async () => {
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+    const ada = await Editing.open(run.base, 'p1', 'Ada')
+    await ada.until('project')
+    ada.send({ v: 'setCell', cardRef: 'ingen', field: 'title', value: 'x' })
+    expect(await ada.until('refused')).toEqual({ v: 'refused', why: 'no row ingen', to: 'edit' })
+
+    // The store moves on behind the actor's back, so the actor's next version is a conflict.
+    await run.projects.replace('p1', 1, { ...project(), name: 'Skrivet förbi aktören' })
+    ada.save()
+    expect(await ada.until('refused', (m) => m.why === 'conflict')).toEqual({ v: 'refused', why: 'conflict', to: 'save' })
+
+    // A request the door cannot read is no request in particular, and the refusal names none.
+    ada.raw({ t: 'nonsense' })
+    expect(await ada.until('refused', (m) => m.why !== 'conflict' && m.why !== 'no row ingen')).not.toHaveProperty('to')
     ada.close()
   })
 
