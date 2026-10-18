@@ -1701,6 +1701,11 @@ Efter avslut visar telefonen enkäten en fråga i taget: kul, tydlighet, balans 
 Observatören svarar också, märkt `observer: true`.
 Enkäter lagras bredvid loggen (tabellen `surveys`), aldrig i den.
 
+Preciserat 2026-10-18 (#1021):
+- **Svaret kommer från ett inträde.** Telefonen och observatören skickar sin token, och servern prövar den som dörren gör (ej återkallad, ej utgången); namnet och platsen läses ur inträdet, aldrig ur kroppen, och en token för en plats svarar inte för en annan. Utan token är det bara projektets värd, från editorns egna vägar in (`owner=1`), som svarar — med sin inloggning, och för platsen under det namn bordet känner den vid. Bordsskärmens värdnyckel svarar inte.
+- **Ett svar per plats och per observatör och bord, och ett andra svar ersätter det första.** Telefonen minns att den svarat bara i flikens egen lagring, och en telefon som glömt det frågar igen; att ta emot det nya svaret i stället för det gamla är vad den redan uttrycker, medan ett avslag skulle göra «Skicka» till ett fel för någon som inget fel gjort. Observatören känns igen på namnet hennes inträde köptes under, som «Bord du spelat vid» redan gör.
+- Unika nycklar i `surveys` håller det i Postgres; migreringen kortar befintliga dubbletter till det senaste svaret, det som ett ersättande svar hade lämnat kvar.
+
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
 Endast digitala sessioner registreras.

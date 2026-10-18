@@ -286,7 +286,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           {kbd.panel}
         </div>
       )}
-      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} />
+      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} token={token} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} />
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
     </>
   )

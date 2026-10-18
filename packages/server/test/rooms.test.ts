@@ -385,7 +385,7 @@ describe('claiming a guest session to an account (G1)', () => {
     expect(open).toEqual([expect.objectContaining({ session: id, seat: 'A', name: 'Ada', game: null, version: 'v1', ended: false, surveyed: false, flags: 1, code })])
 
     await ada.send('A', { v: 'session.end' })
-    await post(run.http, `/sessions/${id}/survey`, { who: 'Ada', seat: 'A', answers: { fun: 4, clarity: 3, balance: 5, change: '' } })
+    expect((await post(run.http, `/sessions/${id}/survey`, { token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 5, change: '' } })).status).toBe(201)
     const done = (await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()) as Record<string, unknown>[]
     expect(done[0]).toMatchObject({ ended: true, surveyed: true, flags: 1 })
     expect(done[0]).not.toHaveProperty('code')
