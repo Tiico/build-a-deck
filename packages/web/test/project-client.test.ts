@@ -9,6 +9,7 @@ import { startServer, type Running } from './fixture.js'
 import { assetTypeDeclaring } from '@byd/protocol'
 import { columnsOf } from '@byd/server/doc'
 import { Said } from '../src/i18n/said.js'
+import { DEFAULT_TIMING } from '../src/status/connection.js'
 
 let run: Running
 // Every client this file opens, shut when its test ends.
@@ -159,6 +160,52 @@ describe('the end of a save over the line', () => {
     expect(await client.save()).toMatchObject({ ok: false })
     expect(performance.now() - began).toBeLessThan(1_000)
     expect(client.dirty).toBe(true)
+  })
+
+  // An actor that takes the save and never answers is an answer that never came, the same as a
+  // line that goes (#1018): what the editor says of it is that no answer came, never the server's
+  // or the table's words — and the backstop's own «save failed» was both a developer's sentence and
+  // one the table's translation read as a refused move.
+  it('ends a save the actor never answers as one that got no answer', async () => {
+    setEditSocketImplementation(class {
+      readyState = 1
+      onopen: (() => void) | null = null
+      onmessage: ((event: { data: unknown }) => void) | null = null
+      onclose: (() => void) | null = null
+      onerror: (() => void) | null = null
+      constructor() {
+        queueMicrotask(() => this.onopen?.())
+      }
+      send(): void {
+        // Taken, and never answered.
+      }
+      close(): void {
+        this.readyState = 3
+      }
+    } as unknown as EditSocketCtor)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    client.setCell('dragon', 'title', 'Drakhona')
+    vi.useFakeTimers()
+    try {
+      const saving = client.save()
+      await vi.advanceTimersByTimeAsync(DEFAULT_TIMING.connectTimeoutMs)
+      expect(await saving).toEqual({ ok: false, reason: 'offline' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // What the actor refuses a save with is read for the two words it says itself, and anything else
+  // is a fault under it: the store's own message never travels past the client.
+  it('reads a refusal it does not know as a save that failed, and never passes the server’s words on', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    client.setCell('dragon', 'title', 'Drakhona')
+    vi.spyOn(run.projects, 'replace').mockRejectedValueOnce(new Error('connection terminated'))
+    expect(await client.save()).toEqual({ ok: false, reason: 'failed' })
   })
 })
 

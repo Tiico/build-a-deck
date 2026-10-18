@@ -163,6 +163,8 @@ export function asOf(at: Date): string {
 
 // A refusal comes back from the server as a developer's sentence in English. It is a fact about
 // the intent, not a message to a person, so it is translated here and never shown as it stands.
+// These are the table's refusals, of moves: a save the editor asked for is said in the editor's
+// own words, from the client's closed set of reasons (#1018), and never reaches this list.
 const REFUSALS: { match: RegExp; say: Key }[] = [
   { match: /^not connected$/, say: 'refusal.notConnected' },
   { match: /^connection lost$/, say: 'refusal.connectionLost' },
@@ -180,8 +182,6 @@ const REFUSALS: { match: RegExp; say: Key }[] = [
   { match: /is not a pile|is not an area|into itself|needs x and y/, say: 'refusal.place' },
   { match: /cannot peek/, say: 'refusal.peek' },
   { match: /^unknown (component|zone|seat)/, say: 'refusal.unknown' },
-  // A save refused because the game is gone (#485): the editor put the server's words in its head.
-  { match: /^(unknown project|missing)$/, say: 'refusal.projectGone' },
 ]
 
 export function refusalText(reason: string, t: T = swedish): string {

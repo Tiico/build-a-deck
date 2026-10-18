@@ -88,6 +88,14 @@ export const svEditor = {
   'editor.loggingIn': 'Loggar in…',
   'editor.loading': 'Laddar spelet…',
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
+  // En sparning som inte blev en version, i editorns egna ord (#1018). Bordets «Bordet tog inte
+  // emot draget» stod här förut. Varje mening säger att arbetet ligger kvar i fliken, för det är
+  // det formgivaren behöver veta för att våga trycka «Spara» igen.
+  'editor.save.gone': 'Spelet finns inte längre. Det du har ändrat ligger kvar här.',
+  'editor.save.forbidden': 'Du har inte längre rätt att ändra spelet, så sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken.',
+  'editor.save.loggedOut': 'Du är inte inloggad längre, så sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken.',
+  'editor.save.offline': 'Sparningen fick inget svar från servern. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.',
+  'editor.save.failed': 'Sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.',
   // En ändring som aktören avvisade tas bort ur editorn igen (#993), och det sägs: den försvann
   // annars utan ett ord. Den andra meningen förklarar varför skärmen ändrades under formgivaren.
   'editor.edit.refused': 'En ändring gick inte igenom och togs bort. Spelet visar nu det alla andra ser.',

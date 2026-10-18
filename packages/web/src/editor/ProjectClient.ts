@@ -68,7 +68,18 @@ type Undoing = { said: Key; name: string; intents: readonly EditIntent[] }
 // what the designer did to leave it (#35).
 type Step = { doc: ProjectDoc; what: Key }
 
-export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
+// Why a save made no version (#1018), as a closed set of words the editor says in its own voice.
+// The server's sentence about a refused save is a developer's, and the table's translation of it
+// is about a move: read as either, a database that dropped its connection mid-write said «Bordet
+// tog inte emot draget» under «Spara». So the reason is decided here, where it is known how the
+// save travelled and what answered it, and nothing past this point reads the server's words.
+// `offline`: no answer came — the line went, the request never left, or the actor stayed silent.
+// `failed`: an answer came and it was no, for a reason none of the others name.
+export type SaveFailure = 'conflict' | ProjectFault | 'failed'
+export type SaveResult = { ok: true; rev: number } | { ok: false; reason: SaveFailure }
+// The actor's refusal of a save, read as one of those words. Only the two the actor itself says
+// are read for what they are; anything else is a fault under it — the store's own message.
+const refusedSave = (why: string): SaveFailure => (why === 'conflict' ? 'conflict' : why === 'unknown project' ? 'missing' : 'failed')
 export type Cell = string | number | boolean | null
 // `smallest`: what each card's rendered front was fitted to, by row (#523) — a card whose front is
 // not rendered yet, or was rendered before this was kept, is not in it.
@@ -245,7 +256,7 @@ export class ProjectClient {
       this.socket = null
       this.connected = false
       // A save asked for over this line is answered over this line or not at all, so it is over.
-      this.finishSave({ ok: false, reason: 'line down' })
+      this.finishSave({ ok: false, reason: 'offline' })
       if (!this.lineDown && this.falling === null) {
         this.falling = setTimeout(() => {
           this.falling = null
@@ -262,7 +273,8 @@ export class ProjectClient {
         this.socket = null
         this.connected = false
         this.shut = code === 4003 ? 'forbidden' : code === 4401 ? 'loggedOut' : 'missing'
-        this.finishSave({ ok: false, reason: 'line down' })
+        // The door that shut is the save's answer as well: it was not the line.
+        this.finishSave({ ok: false, reason: this.shut })
         this.close()
         this.notify()
         return
@@ -344,7 +356,7 @@ export class ProjectClient {
         // the document with it, so nothing has to be asked for again. A server from before the
         // address names none, and its refusal is read the way it always was, as the save's.
         if (message.to !== 'edit') {
-          this.finishSave({ ok: false, reason: message.why })
+          this.finishSave({ ok: false, reason: refusedSave(message.why) })
           return
         }
         // The refused edit comes off this editor (#993): kept, it was laid on top of the document
@@ -1278,20 +1290,25 @@ export class ProjectClient {
       // backstop for an actor that never answers: as a race of its own at two seconds it lost to
       // answers already on their way whenever the page was held up for longer than that, and a
       // version that was made was reported as one that was not (#708).
-      const backstop = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'save failed' }), SAVE_BACKSTOP_MS))
+      const backstop = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'offline' }), SAVE_BACKSTOP_MS))
       return Promise.race([answered, backstop])
     }
     // Over HTTP the version is made of the whole document sent, whatever is edited while the
     // answer is on its way (#380), so it is read before it leaves.
     const asked = this.doc
+    // A request that never got an answer is the line, not a refusal (#1018): it threw past the
+    // editor's save, which then never came back from «Sparar…».
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...asked, rev: this.rev }),
-    }))
+    })).catch(() => null)
+    if (res === null) return { ok: false, reason: 'offline' }
     if (res.status === 409) return { ok: false, reason: 'conflict' }
     if (res.status === 404) return { ok: false, reason: 'missing' }
-    if (!res.ok) return { ok: false, reason: `save failed: ${res.status}` }
+    if (res.status === 401) return { ok: false, reason: 'loggedOut' }
+    if (res.status === 403) return { ok: false, reason: 'forbidden' }
+    if (!res.ok) return { ok: false, reason: 'failed' }
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev
     this.saved = stamp(asked)

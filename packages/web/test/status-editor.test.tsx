@@ -71,14 +71,8 @@ describe('a project deleted while it is open', () => {
 })
 
 // And a save that the server refuses never shows the server's own words (#485): the editor put
-// «unknown project» straight into its head.
-describe('a refused save', () => {
-  it('says why in the reader’s words', async () => {
-    const { refusalText } = await import('../src/status/notice.js')
-    expect(refusalText('unknown project')).toBe('Spelet finns inte längre. Det du har ändrat ligger kvar här.')
-    expect(refusalText('missing')).toBe('Spelet finns inte längre. Det du har ändrat ligger kvar här.')
-  })
-})
+// «unknown project» straight into its head. It is said in the editor's own words now, and
+// `editor-unsaved.test.tsx` holds every reason a save can fail with (#1018).
 
 describe('a project that belongs to someone else', () => {
   it('says it is shut rather than broken, and offers both a login and a way home', async () => {

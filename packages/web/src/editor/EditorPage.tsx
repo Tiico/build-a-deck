@@ -26,12 +26,12 @@ import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import { Arriving } from './AssetImage.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
-import { TableEnded, type ProjectClient } from './ProjectClient.js'
+import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
 import { loginUrl, removeProject } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor, refusalText, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
+import { noticeFor, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -39,7 +39,7 @@ import type { Motif } from '@byd/template'
 import { statusLinks } from '../status/links.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { useLang, useT, type T } from '../i18n/index.js'
+import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { symbolName } from './symbols.js'
 import { HookGlyph } from '../glyphs.js'
@@ -60,6 +60,17 @@ export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDE
 // the table as a tab. One project, one preview path, and the header's filled action puts the work
 // on a table: "Starta bord" while the game has none, "Uppdatera bordet" once it has one (#417).
 export type EditorPageProps = { onNavigate?(url: string): void; timing?: EditorTiming }
+
+// What a save that made no version says, by why (#1018). A record and not a lookup with a reserve,
+// so a reason the client learns to give is a compile error here until it has a sentence.
+const SAVE_FAILED: Record<SaveFailure, Key> = {
+  conflict: 'editor.conflict',
+  missing: 'editor.save.gone',
+  forbidden: 'editor.save.forbidden',
+  loggedOut: 'editor.save.loggedOut',
+  offline: 'editor.save.offline',
+  failed: 'editor.save.failed',
+}
 
 export function EditorPage({ onNavigate = (url) => location.assign(url), timing = DEFAULT_EDITOR_TIMING }: EditorPageProps = {}) {
   const t = useT()
@@ -352,9 +363,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     setSaving(true)
     const result = await client.save()
     setSaving(false)
-    // Never the server's own words (#485): a reason is translated, or said as the one it is not.
+    // Never the server's own words (#485), and never the table's (#1018): why a save made no
+    // version is one of the client's closed set, and each is said in the editor's voice.
     if (result.ok) putAway(standing)
-    else say(result.reason === 'conflict' ? t('editor.conflict') : refusalText(result.reason, t))
+    else say(t(SAVE_FAILED[result.reason]))
     return result.ok
   }
   // Out of the editor and back to the games. Work that differs from the saved project is asked
