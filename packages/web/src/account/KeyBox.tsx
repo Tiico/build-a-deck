@@ -3,7 +3,7 @@ import { Question } from '../editor/Question.js'
 import { useSay } from '../status/StatusLive.js'
 import { readerLocale, useLang, useT, type Key, type T } from '../i18n/index.js'
 import { marked } from './marked.js'
-import { AI_PROVIDER_LIST, KEY_PAGES, PROVIDER_NAMES, chooseAiModel, listAiModels, removeAiKey, saveAiKey, type AiKey, type AiModel, type AiProvider, type KeyRefusal } from './ai-key.js'
+import { AI_PROVIDER_LIST, KEY_PAGES, PROVIDER_NAMES, chooseAiModel, listAiModels, modelNameOf, removeAiKey, saveAiKey, type AiKey, type AiModel, type AiProvider, type KeyRefusal } from './ai-key.js'
 
 // The key box (#999), built from the prototype the beställare chose (#940's key box on #998's page,
 // variant A): the provider, the key pasted once, «Prövar nyckeln…», why the provider said no, the
@@ -311,7 +311,7 @@ function Refusal({ id, why, provider, t }: { id: string; why: KeyRefusal | 'empt
 // what is chosen.
 function modelChoices(saved: AiKey, models: AiModel[] | null, t: T): { value: string; label: string }[] {
   const list = models ?? []
-  const standard = list.find((m) => m.id === saved.defaultModel)?.name ?? saved.defaultModel
+  const standard = modelNameOf(list, saved.defaultModel)
   const rest = list.filter((m) => m.id !== saved.defaultModel).map((m) => ({ value: m.id, label: m.name }))
   const kept = saved.model && !rest.some((m) => m.value === saved.model) ? [{ value: saved.model, label: saved.model }] : []
   return [{ value: '', label: t('profile.key.model.standard', { model: standard }) }, ...rest, ...kept]

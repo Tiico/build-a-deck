@@ -962,6 +962,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             profileUrl={profileUrl(projectId, params.get('server'))}
             onLeave={(url, from) => leave(url, from)}
             onKeyGone={() => setAiKey(null)}
+            over={mode === 'theme' || mode === 'tables'}
           />
         )}
       </main>

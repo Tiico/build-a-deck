@@ -4234,6 +4234,12 @@ img[data-arriving] { opacity: 0; }
   font-size: 13px;
 }
 .byd-ai[data-open] { flex-basis: 380px; width: 380px; }
+/* Over Speltema and Bord (beställarens beslut 2026-10-18, #1001) the open panel is a sheet over the
+   surface's right part: the work keeps the folded tab's 44 px, which its measured floors already give
+   way to, and the sheet lies over the rest of what it needs. */
+.byd-editor > main:has(> .byd-ai[data-over]) { position: relative; }
+.byd-ai-room { flex: 0 0 var(--byd-tap); }
+.byd-ai[data-open][data-over] { position: absolute; z-index: 25; top: 0; right: 0; bottom: 0; box-shadow: -16px 0 32px rgba(0, 0, 0, 0.45); }
 .byd-ai-spark { color: var(--byd-ai-mark); }
 .byd-ai-quiet { color: var(--byd-editor-quiet); }
 /* The folded tab is a door (L13, tillägg #791): no fill and no line, quiet ink, the editor's dark

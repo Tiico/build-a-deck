@@ -192,6 +192,55 @@ describe('when the provider says no', () => {
   })
 })
 
+describe('the panel’s head', () => {
+  it('names the model by the name the profile gives it, not by its id', async () => {
+    await ownGame()
+    await openEditor()
+    const who = await within(await screen.findByRole('complementary', { name: 'AI-hjälp' })).findByRole('link', { name: /Nyckel och modell/ })
+    await waitFor(() => expect(who.textContent).toBe('Anthropic · Claude Sonnet 5.5'))
+  })
+})
+
+// Speltema and Bord measure their surfaces to the pixel (#741, #652, #685), so there the open panel
+// is a sheet over the surface's right part and takes none of its width (beställarens beslut
+// 2026-10-18, #1001); everywhere else it stands beside the work.
+describe('the open panel over Speltema and Bord', () => {
+  it.each([
+    ['theme', 'Speltema'],
+    ['tables', 'Bord'],
+  ])('lies over %s as a sheet, keeps the work’s width, and folds away on Escape with the keys back on the tab', async (mode) => {
+    await ownGame()
+    await openEditor()
+    await screen.findByRole('complementary', { name: 'AI-hjälp' })
+    expect(panel().hasAttribute('data-over')).toBe(false)
+    fireEvent.click(document.getElementById(`byd-editor-tab-${mode}`)!)
+    await waitFor(() => expect(panel().hasAttribute('data-over')).toBe(true))
+    // What the work keeps is the folded tab's room and no more, so nothing under the sheet moves.
+    expect(document.querySelector('.byd-editor > main > .byd-ai-room')).not.toBeNull()
+    // The sheet comes after the work in the order the keys go, as the panel beside it does.
+    const order = [...document.querySelectorAll('.byd-editor > main > *')].map((el) => el.getAttribute('role') ?? el.className)
+    expect(order.indexOf('tabpanel')).toBeLessThan(order.findIndex((c) => c.includes('byd-ai')))
+    field().focus()
+    fireEvent.keyDown(field(), { key: 'Escape' })
+    const tab = await screen.findByRole('button', { name: 'AI-hjälp' })
+    await waitFor(() => expect(document.activeElement).toBe(tab))
+    fireEvent.click(tab)
+    await waitFor(() => expect(panel().hasAttribute('data-over')).toBe(true))
+  })
+
+  it('stands beside the work in the other tabs, where Escape belongs to the answer', async () => {
+    await ownGame()
+    await openEditor()
+    await screen.findByRole('complementary', { name: 'AI-hjälp' })
+    for (const mode of ['wall', 'table', 'template', 'rules']) {
+      fireEvent.click(document.getElementById(`byd-editor-tab-${mode}`)!)
+      await waitFor(() => expect(panel().hasAttribute('data-over')).toBe(false))
+    }
+    fireEvent.keyDown(field(), { key: 'Escape' })
+    expect(screen.getByRole('complementary', { name: 'AI-hjälp' }).hasAttribute('data-open')).toBe(true)
+  })
+})
+
 describe('the AI panel without a key', () => {
   it('is a narrow tab that opens onto the way to the profile, and the editor is otherwise as it was', async () => {
     await ownGame(null)

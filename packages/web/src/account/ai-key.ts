@@ -13,6 +13,13 @@ export const PROVIDER_NAMES: Record<AiProvider, string> = { anthropic: 'Anthropi
 // Where a designer without a key makes one (#999, the beställare's addition 2026-10-18).
 export const KEY_PAGES: Record<AiProvider, string> = { anthropic: 'https://platform.claude.com/settings/keys', openai: 'https://platform.openai.com/api-keys' }
 
+// What a model is called, wherever it is named (#1001): the name the provider's own list gives it,
+// and its id only while there is no list. The profile's picker and the editor's panel both ask this,
+// so the two never call the same model two things.
+export function modelNameOf(models: readonly AiModel[] | null, id: string): string {
+  return models?.find((m) => m.id === id)?.name ?? id
+}
+
 // Why a key was not saved: the provider's closed set of words, and the server's own reasons.
 export type KeyRefusal = Exclude<AiFailure, 'refused'> | 'too-many' | 'unavailable' | 'malformed' | 'offline'
 

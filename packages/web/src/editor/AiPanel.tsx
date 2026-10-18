@@ -2,7 +2,7 @@ import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type Mou
 import { parseBody, type InlineNode } from '@byd/template'
 import { aiContextParts } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
-import { PROVIDER_NAMES, readAiKey, type AiKey } from '../account/ai-key.js'
+import { PROVIDER_NAMES, listAiModels, modelNameOf, readAiKey, type AiKey, type AiModel } from '../account/ai-key.js'
 import { askAi, type AskFailure, type AskTurn, type Asking } from './ai-ask.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 
@@ -80,9 +80,13 @@ export type AiPanelProps = {
   onLeave(url: string, from: HTMLElement): void
   // The server found no key after all — it was removed in another tab.
   onKeyGone(): void
+  // Whether the open panel lies over the work as a sheet rather than beside it (beställarens beslut
+  // 2026-10-18, #1001): in Speltema and Bord, whose surfaces are measured to the pixel (#741, #652,
+  // #685), it takes none of their width, and what it covers is there again when it folds.
+  over?: boolean
 }
 
-export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone }: AiPanelProps) {
+export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone, over = false }: AiPanelProps) {
   const t = useT()
   const { lang } = useLang()
   // Without a key it always starts folded: the editor is to look as it did (PRD 9), whatever the
@@ -104,6 +108,21 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
   const sentId = useId()
   const leadId = useId()
   const provider = aiKey ? PROVIDER_NAMES[aiKey.provider] : ''
+  // The key's models as the provider names them, the list the profile's picker is drawn from, so the
+  // head says «Claude Sonnet 5.5» where the profile does and not the model's id.
+  const [models, setModels] = useState<AiModel[] | null>(null)
+  const keyed = aiKey?.provider ?? null
+  useEffect(() => {
+    if (!keyed) return
+    let live = true
+    listAiModels(http).then(
+      (list) => live && list && setModels(list.models),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [http, keyed])
 
   // An answer still coming when the editor closes is hung up on, not left running at the provider.
   useEffect(() => () => asking.current?.asking.cancel(), [])
@@ -210,10 +229,28 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
 
   const parts = aiContextParts(doc)
   const chips = [t(parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
-  const model = aiKey ? (aiKey.model ?? aiKey.defaultModel) : ''
+  const model = aiKey ? modelNameOf(models, aiKey.model ?? aiKey.defaultModel) : ''
 
   return (
-    <aside className="byd-ai" id={panelId} data-open="" aria-labelledby={titleId}>
+    <>
+    {/* Over Speltema and Bord the work keeps the folded tab's room and no more, so nothing under the
+        sheet moves when it opens or folds. */}
+    {over && <div className="byd-ai-room" aria-hidden="true" />}
+    <aside
+      className="byd-ai"
+      id={panelId}
+      data-open=""
+      {...(over ? { 'data-over': '' } : {})}
+      aria-labelledby={titleId}
+      onKeyDown={(event) => {
+        // A sheet over the work is put away with Escape, as every sheet in the editor is (L55); an
+        // answer on its way is stopped first, by the question's own Escape.
+        if (!over || event.key !== 'Escape' || event.defaultPrevented) return
+        event.preventDefault()
+        event.stopPropagation()
+        fold(false)
+      }}
+    >
       <header className="byd-ai-head">
         <h2 id={titleId}>
           <span className="byd-ai-spark" aria-hidden="true">
@@ -333,6 +370,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
         </form>
       )}
     </aside>
+    </>
   )
 }
 
