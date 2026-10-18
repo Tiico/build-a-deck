@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Playtestets svar (#1010)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#1010) ──────────────────────────────────────────────────────────────────────
+     Enkätsvaren (kul, tydlighet, balans 1–5 och «Vad skulle du ändra?», observatören märkt) och
+     flaggorna (`flag` med `note`, tidsstämplade i loggen) samlas in, men ingen yta i webben visar
+     dem för designern. Var och i vilken form ska hon läsa dem — per bord och per version?
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken) inloggad som spelets ägare, med
+     variantens markup injicerad i den riktiga sidan med editorns egna tokens och klasser. Svaren
+     och flaggorna läses av sidan själv från servern; inget är skrivet för hand. Skripten ligger i
+     matning/: rig.mts (stacken och render-workern), seed.mts (spelet, borden, telefonerna,
+     flaggorna, avsluten och enkätsvaren), page.js (varianterna), shoot.mjs (Chromium).
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .krona h1 small { color: var(--quiet-2); font-weight: 400; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; padding: 16px; background: #15171c; align-content: start; }
+  @media (max-width: 1000px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bilder { display: grid; gap: 16px; min-width: 0; }
+  .bild { min-width: 0; }
+  .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild.lang img { max-height: 1600px; width: auto; max-width: 100%; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; line-height: 1.45; }
+  .sido { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .ruta ul { margin: 0; padding-left: 18px; color: #c9d1e3; line-height: 1.5; }
+  .tal { display: grid; grid-template-columns: minmax(0, 10em) minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+  .tal b { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  details summary { cursor: pointer; color: #dce3f2; }
+  details pre { max-height: 420px; overflow: auto; font-size: 11px; line-height: 1.45; background: #111318; border: 1px solid #2f333d; border-radius: 6px; padding: 8px; color: #c9d1e3; white-space: pre-wrap; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table.m { border-collapse: collapse; font-size: 12px; min-width: 1000px; }
+  table.m th, table.m td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
+  table.m th { color: #fff; background: #1b1f2a; }
+  table.m th.valt, table.m td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  table.m td.ok { background: #16301f; color: #9be3b5; }
+  table.m td.nej { background: #3a1c1c; color: #ffb3a8; }
+  table.m td.mitt { color: #f0d7a0; background: #2e2716; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — var designern läser playtestets svar (#1010) <small>· ← → byter variant · bilderna är det byggda appen med varianten injicerad, svaren från servern</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="lagen"><span>Läge</span></div>
+  <div class="rad" id="storlek"><span>Fönster</span></div>
+</div>
+<div class="scen">
+  <div class="bilder">
+    <div class="bild"><img id="helimg" alt=""><p id="heltext"></p></div>
+    <div class="bild lang"><img id="langimg" alt=""><p id="langtext"></p></div>
+  </div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2 id="lnamn"></h2><p id="lregel" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt i den här bilden</h2><div class="tal" id="tal"></div><p class="forkl">«Döljs» är hur mycket av varianten som ligger utanför sin rullningsruta i det här fönstret; den långa bilden är samma sida i ett fönster så högt att ingenting i varianten rullar. Flikraden mäts i huvudet: hur många flikar, och vad i huvudet som fått ge plats.</p></div>
+    <div class="ruta"><h2>Skärmläsaren hör</h2><p class="forkl">Tillgänglighetsträdet för variantens yta vid 1280, som Chromium bygger det (Playwrights <code>ariaSnapshot</code>).</p><details><summary>Visa trädet</summary><pre id="trad"></pre></details><p id="hor" class="forkl"></p></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Varianterna mot utfallen och acceptansen i #1010</h2>
+    <p class="forkl">Grönt håller, rött håller inte, gult är ett pris. Spelet «Skogens herrar» har sex versioner; version 3 «Första playtestet» har två avslutade bord (PJDPQ2: fyra spelare och en observatör, tre svarade, tre flaggor; MHUZXS: tre spelare, ingen svarade, en flagga), version 5 «Kortare runda» två (W2KG2B: fyra av fyra svarade, en flagga; EXQQV8: två spelare och en observatör, bara observatören svarade) och ett bord som pågår (JSSGH3). «Fyra årstider» har bara ett bord som pågår. Klicka en kolumnrubrik för att visa varianten.</p>
+    <table class="m" id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'Bord-fliken grupperar avslutade bord under «Avslutade bord · 4» med kod, version, «avslutat», senaste drag och «Öppna TV-vyn» — inget om enkäten eller flaggorna. Historiken säger vad varje version ändrade och inget om att den spelades. Svaren finns bara i databasen; flaggorna syns bara i bordets aktivitetsflöde medan det pågår.', pris: 'Det issuet beskriver. Betan ska mätas med enkäterna (ROADMAP fas 6), och varken designern eller vi kan läsa dem utan databasen.' },
+  { id: 'a', namn: 'A · I bordets rad', regel: 'Ett avslutat bord bär under sina vägar in en rad «3 av 5 svarade · 3 flaggor» och snittet per fråga, och knappen «Svar och flaggor» fäller ut svaren på plats: varje deltagare med sina tre tal och sin fritext, observatören märkt, vilka som inte svarade, och flaggorna i spelets ordning — «drag 8 av 34 · 12:08», vem, kommentaren och vad som hände strax före. Ett bord som pågår säger «Pågår · enkäten kommer när bordet avslutas». Över gruppen står en summa per version: bord, svar av deltagare, flaggor och snitt med en liten fördelning per fråga.', pris: 'Allt bor i Bord-flikens högerspalt, som är 320 px bred vid både 1280 och 1440: ett utfällt bord med tre långa svar och tre flaggor gör spalten 2 564 px hög, och fritexterna bryts var femte–sjätte ord. Versionernas jämförelse är två summarader under varandra, utan skillnad uträknad. Borden står i startordning, inte versionsordning, så summan och borden den räknar kan ligga en skärm isär. Billigast att bygga: raden och utfällningen är TableRows egna.' },
+  { id: 'b', namn: 'B · En egen flik «Resultat»', rek: true, regel: 'En åttonde flik efter Bord. Till vänster versionerna, var och en med «2 bord · 5 svar · 1 flagga» eller «inga bord». Till höger den valda versionen: hur många som svarat av hur många, vad som ändrats sedan förra testade versionen, en tabell med fördelningen 1–5 per fråga, snittet och skillnaden mot förra versionen med svar (konturen och talet efter snedstrecket), borden i versionen med ett filter per bord, all fritext med namn och bord, och alla flaggor i spelets ordning bord för bord.', pris: 'En ny yta och en flik till i ett huvud som redan är fullt: vid 1280 får spelets namn ge plats («Skogens h…», 98 av 117 px) och vid 1440 också (113 av 117) — ett längre namn förlorar mer. Svaren står en flik ifrån borden de kommer från; bordets rad i Bord-fliken säger ingenting om dem om inte A:s rad följer med. Kräver en summa per version, som i dag bara går att räkna fram med två anrop per bord (se Bygget).' },
+  { id: 'c', namn: 'C · I historiken', regel: 'Varje version som spelats bär i historiken en rad «playtest · 2 bord · 5 svar · kul. 4,2 tydl. 3,8 bala. 4,0 ⚑ 1», och samma mening i knappens namn. Att öppna versionen gör panelen bred: till höger «Vad testarna sa om version 5», med vad som ändrats sedan förra testade versionen överst, borden, snitt och fördelning med skillnaden mot förra versionen, fritexterna och flaggorna.', pris: 'Historiken är en panel som hänger över arbetet och är högst 70 % av fönstret: vid 1280 × 800 är den 860 × 560 px, täcker två tredjedelar av fönstret, och 551 px av svaren rullar i en spalt inne i den. Svaren nås bara genom versionsknappen och en version, och den som letar efter «hur gick gårdagens bord» tänker i bord, inte i versioner — bordet nämns bara som en kod i en mening. En version utan bord är de flesta raderna.' },
+]
+const LAGEN = [
+  { id: 'tom', namn: 'Inga avslutade bord', regel: '«Fyra årstider»: ett bord pågår (JRAH7C) och inget har avslutats, så det finns inga svar ännu. Varianten ska säga det och inte se trasig ut.' },
+  { id: 'utan', namn: 'Avslutat utan svar', regel: 'MHUZXS på version 3: tre spelare, bordet avslutades, ingen svarade på enkäten, men Greta flaggade «Draghögen tog slut – vad händer då?». Ska skiljas från «bordet pågår» och från «inga flaggor».' },
+  { id: 'manga', namn: '4 + observatör, 3 svar', regel: 'PJDPQ2 på version 3: Ada, Bertil, Cecilia och David spelade, Elin såg på. Ada, Cecilia och Elin svarade med långa fritexter, Bertil och David svarade inte; tre flaggor, en av dem från observatören.' },
+  { id: 'versioner', namn: 'Två versioner', regel: 'Version 3 «Första playtestet» (3 svar) mot version 5 «Kortare runda» (5 svar, varav en observatör), med Korp, Uggla och uppställningen ändrade emellan. Nu visar här historiken, där en version finns.' },
+]
+const STORLEK = [{ id: '1280', namn: '1280 × 800' }, { id: '1440', namn: '1440 × 900' }]
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'b', s = q.get('s') ?? 'versioner', w = q.get('w') ?? '1280'
+const cell = (vv, ss, ww = w) => window.MATT.find((m) => m.v === vv && m.s === ss && String(m.w) === String(ww))
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const esc = (x) => String(x ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+const YTA = { tables: 'Bord-fliken, «Avslutade bord» utfälld', tab: 'fliken «Resultat»', history: 'historiken, en version öppnad' }
+// What a screen reader hears, in a sentence per variant: read off the trees in data.js.
+const HOR = {
+  nu: 'Raden säger kod, version och «avslutat»; inget om svar eller flaggor.',
+  a: 'Raden läses som «1 av 3 svarade, inga flaggor, kul 4,0 tydlighet 3,0 balans 5,0» och knappen som «Svar och flaggor från EXQQV8», utfälld eller inte. Versionens summa läser fördelningen i ord: «kul 4,2 (4 × 4, 1 × 5)». Fritexten är ett citat som börjar «Vad skulle du ändra?».',
+  b: 'Fliken är en tabpanel «Resultat» med en navigation «Versioner». Fördelningen är en riktig tabell med radrubriker («Kul Hur kul var det?») och kolumnerna 1–5, Snitt och «Mot version 3»; en cell läses «4 / 1», och vad talet efter snedstrecket är står bara i meningen ovanför — det ska in i cellens namn i bygget. Filtret är en grupp tryckknappar med pressed. Versionsknapparna saknar «vald» i trädet (aria-current) — bygget behöver ett riktigt val.',
+  c: 'Versionsknappens namn får en mening till: «… 1 ändrat. Playtest: 2 avslutade bord, 5 svar, kul 4,2, tydlighet 3,8, balans 4,0, 1 flagga.» Svaren är en region «Vad testarna sa om version 5 · Kortare runda» efter listan i historikens dialog — den nås först efter alla versioner, och dialogen är icke-modal över arbetet.',
+}
+function rows() {
+  const r = []
+  const per = (f) => VARIANTER.map((x) => f(x.id))
+  r.push(['Ett avslutat bord visar sina svar: tre tal per deltagare, fritexten, observatören märkt', per((id) => ({ nu: { t: 'nej', c: 'nej' }, a: { t: 'ja, på bordets rad, utfällt', c: 'ok' }, b: { t: 'ja, med bordets kod; filtret visar ett bord i taget', c: 'ok' }, c: { t: 'ja, med bordets kod, inne i versionen', c: 'ok' } })[id])])
+  r.push(['Flaggorna med vem, när och kommentaren, i spelets ordning', per((id) => ({ nu: { t: 'nej (bara i aktivitetsflödet medan bordet pågår)', c: 'nej' }, a: { t: 'ja: «drag 8 av 34 · 12:08», vem, kommentaren, vad som hände strax före', c: 'ok' }, b: { t: 'ja, samma, bord för bord', c: 'ok' }, c: { t: 'ja, samma, bord för bord', c: 'ok' } })[id])])
+  r.push(['En version visar sin summa: hur många som svarat och fördelningen per fråga', per((id) => ({ nu: { t: 'nej', c: 'nej' }, a: { t: 'summarad över gruppen: snitt och en 5-stapels fördelning i 35 px', c: 'mitt' }, b: { t: 'tabell 1–5 per fråga, snitt, «5 av 7 svarade (varav 1 observatör)»', c: 'ok' }, c: { t: 'snitt och 5-stapels fördelning per fråga', c: 'ok' } })[id])])
+  r.push(['Två versioner går att jämföra', per((id) => ({ nu: { t: 'nej', c: 'nej' }, a: { t: 'två summarader under varandra, ingen skillnad räknad', c: 'mitt' }, b: { t: 'konturen och talet för förra versionen i varje cell, «2,3 → 3,8 +1,5», och vad som ändrades emellan', c: 'ok' }, c: { t: '«+1,5 mot version 3» och vad som ändrades emellan, överst', c: 'ok' } })[id])])
+  r.push(['Bord utan svar skiljs från «ingen har svarat» och från «bordet pågår»', per((id) => ({ nu: { t: 'nej', c: 'nej' }, a: { t: '«Ingen svarade · 3 vid bordet · 1 flagga» mot «Pågår · enkäten kommer när bordet avslutas»', c: 'ok' }, b: { t: '«ingen av 3 svarade» och «1 bord pågår och räknas inte än»', c: 'ok' }, c: { t: 'samma, i en mening', c: 'ok' } })[id])])
+  r.push(['Inga avslutade bord', per((id) => ({ nu: { t: 'tom grupp, ingenting sägs', c: 'mitt' }, a: { t: 'en mening under borden: svaren står på raden när ett bord avslutas', c: 'ok' }, b: { t: 'en mening i fliken, med koden till bordet som pågår', c: 'ok' }, c: { t: 'versionen säger «Inget avslutat bord … JRAH7C pågår»', c: 'ok' } })[id])])
+  r.push(['Hur långt bort från editorn (tryck till en fritext)', per((id) => ({ nu: { t: '–', c: '' }, a: { t: '3: Bord, «Avslutade bord», «Svar och flaggor»', c: 'ok' }, b: { t: '1–2: «Resultat», (version)', c: 'ok' }, c: { t: '2: versionsknappen, versionen', c: 'ok' } })[id])])
+  r.push(['Ytan svaren läses på, 1280 × 800', per((id) => {
+    const m = cell(id, 'manga', 1280)
+    if (id === 'nu') return { t: '–', c: '' }
+    return { t: `${Math.round(m.rect.w)} × ${Math.round(m.rect.h)} px; ${m.hidden} px av «4 + observatör» rullar (lång bild ${m.tall} px)`, c: id === 'b' ? 'ok' : 'mitt' }
+  })])
+  r.push(['Huvudet: flikraden och spelets namn (1280 / 1440)', per((id) => {
+    const a = cell(id, 'versioner', 1280).header, b = cell(id, 'versioner', 1440).header
+    const cut = [a, b].map((h) => (h.cut.length ? h.cut.join(', ') : 'inget kapat'))
+    return { t: `${a.tabs} flikar; ${cut[0]} / ${cut[1]}`, c: a.cut.length ? 'mitt' : 'ok' }
+  })])
+  r.push(['Täcker arbetet', per((id) => ({ nu: { t: '–', c: '' }, a: { t: 'nej, i Bord-flikens egen spalt', c: 'ok' }, b: { t: 'nej, en egen flik', c: 'ok' }, c: { t: 'ja: en panel 860 px bred över kortväggen, mallen eller borden', c: 'nej' } })[id])])
+  r.push(['Mörkt och ljust', per(() => ({ t: 'editorn har bara mörkt; inget ljust att visa', c: '' }))])
+  return r
+}
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&s=${s}&w=${w}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#lagen'), LAGEN, s, (x) => { s = x; visa() })
+  knappar(document.querySelector('#storlek'), STORLEK, w, (x) => { w = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  const L = LAGEN.find((x) => x.id === s)
+  const m = cell(v, s)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  document.querySelector('#lnamn').textContent = `Läget: ${L.namn}`
+  document.querySelector('#lregel').textContent = L.regel
+  document.querySelector('#helimg').src = 'img/' + m.full
+  document.querySelector('#helimg').alt = `${V.namn}, ${L.namn}, ${m.w} × ${m.h}, hela fönstret`
+  document.querySelector('#heltext').textContent = `${V.namn} · ${L.namn} · ${m.w} × ${m.h} · ${YTA[m.surface]} · hela fönstret`
+  document.querySelector('#langimg').src = 'img/' + m.crop
+  document.querySelector('#langimg').alt = `${V.namn}, ${L.namn}, hela varianten utan rullning`
+  document.querySelector('#langtext').textContent = `Hela ytan i ett fönster ${m.tall} px högt, där ingenting i den rullar`
+  const h = m.header
+  const t = [
+    ['Ytan', `${YTA[m.surface]}`],
+    ['Storlek i fönstret', `${Math.round(m.rect.w)} × ${Math.round(m.rect.h)} px`],
+    ['Döljs (rullar)', `${m.hidden} px`],
+    ['Fönster utan rullning', `${m.tall} px högt`],
+    ['Flikraden', `${h.tabs} flikar, ${h.rows} rad, ${h.width} px`],
+    ['Kapat i huvudet', h.cut.length ? h.cut.join(', ') : 'inget'],
+  ]
+  document.querySelector('#tal').innerHTML = t.map(([k, n]) => `<span>${k}</span><b>${esc(n)}</b>`).join('')
+  document.querySelector('#trad').textContent = cell(v, s, 1280).tree ?? ''
+  document.querySelector('#hor').textContent = HOR[v]
+  const tab = document.querySelector('#matris')
+  const head = '<thead><tr><th>Utfall / pris</th>' + VARIANTER.map((x) => `<th class="${x.id === v ? 'valt' : ''}"><a href="?v=${x.id}&s=${s}&w=${w}" data-v="${x.id}" style="color:inherit">${x.namn}</a></th>`).join('') + '</tr></thead>'
+  tab.innerHTML = head + '<tbody>' + rows().map(([fr, cells]) => `<tr><td>${fr}</td>${cells.map((cc, i) => `<td class="${cc.c}${VARIANTER[i].id === v ? ' valt' : ''}">${cc.t}</td>`).join('')}</tr>`).join('') + '</tbody>'
+  tab.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; visa() }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
