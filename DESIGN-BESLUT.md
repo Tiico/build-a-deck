@@ -1448,6 +1448,7 @@ Profilsidan, prototypad och vald av beställaren 2026-10-18 (#998): **en egen si
 Tre former prövades: en egen sida med AI-nyckel, Språk och Konto under varandra (A), en kontomeny och en sida med avsnittslista (B), och ett ark över «Mina spel» med egen adress (C).
 Valet blev A: kontot har tre saker, och en kolumn är vad tre saker behöver; en avsnittslista vore struktur för inställningar som inte finns.
 Vägen in är ett ord till i startsidans rad, «e-post · Profil · logga ut», och språkväljaren flyttar till sidan.
+Nyckelrutan länkar till den valda leverantörens egen sida där en nyckel skapas — `https://platform.claude.com/settings/keys` för Anthropic och `https://platform.openai.com/api-keys` för OpenAI — öppnad i en ny flik, så att den som saknar en nyckel aldrig behöver leta (beställarens tillägg 2026-10-18).
 Editorns hänvisning bär spelet med sig, så att «Tillbaka till» spelet är sidans enda fyllda knapp när nyckeln är sparad.
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
