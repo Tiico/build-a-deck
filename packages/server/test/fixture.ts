@@ -172,7 +172,9 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
-  const server = createServer({ host, store, registry, renders, projects, assets: opts.assets ?? new MemoryAssetStore(opts.objects), surveys: opts.surveys ?? new MemorySurveyStore(), auth: opts.auth ?? new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...authBypass })
+  // One store for the app and the worker, as the box has one table and one bucket for both (#1028).
+  const assets = opts.assets ?? new MemoryAssetStore(opts.objects)
+  const server = createServer({ host, store, registry, renders, projects, assets, surveys: opts.surveys ?? new MemorySurveyStore(), auth: opts.auth ?? new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...authBypass })
   // Never hang up an idle connection from this end (#848): the `fetch` in this same process pools
   // it for its next request, and a worker held past Node's five seconds wakes with both due in one
   // turn. The client decides when a connection is done; `stop` closes this end.
@@ -195,6 +197,7 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
         await runWorker({
           store: renders,
           renderer,
+          assets,
           until: 'empty',
           log: (line) => {
             if (line['msg'] === 'render-failed') console.error(`[render-failed] ${String(line['hash'])}: ${String(line['error'])}`)

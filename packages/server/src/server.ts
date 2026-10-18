@@ -926,8 +926,9 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
 
 // Projects (L4, L5): a revisioned document, and "start a table" which expands the rows into a
 // session with its deck so textures start rendering at once.
-// The deck a table or a print is made from: the project's rows with their images inlined (E1),
-// so the compiled page is complete and the render worker needs nothing but the page.
+// The deck a table or a print is made from: the project's rows with their pictures and typefaces
+// named by hash (E1, #1028). The compiled page says which bytes it is drawn from, and the render
+// worker reads them from the store the app put them in (DRIFT §4).
 async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   if (!opts.assets) return deckFromProject(rec)
   const { rows, motifs } = await resolveAssets(rec.rows, opts.assets, rec.pictures ?? {})
@@ -960,8 +961,8 @@ async function bookletJobOf(opts: ServerOptions, rec: ProjectRecord, rules: Rule
   const compiled = bookletOf({
     rules: renderRules(rules, namesOfProject(rec), arrangementOf(rec)),
     icons: opts.assets ? await resolveIcons(rec.icons, opts.assets) : rec.icons,
-    // The pictures the book holds travel with it (#173): the printer is handed the bytes, never
-    // a reference it could not follow.
+    // The pictures the book holds travel with it (#173), named by hash as a card's are (#1028):
+    // the worker reads the bytes from the store, and a picture that is gone is left out.
     images: opts.assets ? await resolveRuleImages(rules, opts.assets) : {},
     pageMm: A5,
     credits: creditsOf(rec),

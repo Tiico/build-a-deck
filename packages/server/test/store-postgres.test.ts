@@ -53,8 +53,8 @@ describe.skipIf(!url)('PostgresLogStore', () => {
     expect(await store.deckOf(refreshed, 'rev-1')).toEqual(deck)
   })
 
-  // A deck carries its pictures and typefaces as data URLs (DRIFT §4) — tens of megabytes for a
-  // game with art on every card — and the session is read by every door a table has: each socket
+  // A deck made before #1028 carries its pictures and typefaces as data URLs (DRIFT §4) — tens of
+  // megabytes for a game with art on every card — and the session is read by every door a table has: each socket
   // that opens, each code that is looked up, each list of tables. Read with the session, the deck
   // was parsed once per phone, and ten screens joining a table of 308 illustrated cards took the
   // app past its heap and Postgres past its limit (#1012). Only the actor deals from the deck.

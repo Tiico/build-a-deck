@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryObjectStore, type ObjectStore } from '@byd/render'
 import { MemoryAssetStore, assetHash, resolveAssets, resolveFonts, resolveIcons, resolveTemplate } from '../src/assets.js'
 import { croppedMotif } from '@byd/template'
-import { start, twoSeatSetup, type Running } from './fixture.js'
+import { registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
@@ -32,21 +32,27 @@ describe('the asset store (E1, DRIFT §4): the project\'s images, once each, by 
     expect(await store.link(hash, 60)).toBeNull()
   })
 
-  it('resolves a row\'s asset references to data URLs for the compiler, and leaves everything else alone', async () => {
-    const store = new MemoryAssetStore()
+  it('keeps a row\'s asset references for the compiler as they are, without reading a byte, and leaves everything else alone (#1028)', async () => {
+    const objects = new MemoryObjectStore()
+    const store = new MemoryAssetStore(objects)
     const hash = await store.put(PNG, 'image/png')
-    const { rows } = await resolveAssets([{ id: 'drake', fields: { title: 'Drake', art: `asset:${hash}`, cost: 5 } }, { id: 'torn', fields: { title: 'Torn', art: 'asset:' + '0'.repeat(64) } }], store)
-    expect(rows[0]?.fields).toEqual({ title: 'Drake', art: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`, cost: 5 })
+    // The bytes are the render worker's to read; the deck only names them.
+    let reads = 0
+    const counted = new MemoryAssetStore({ ...objects, put: objects.put.bind(objects), link: objects.link.bind(objects), check: objects.check.bind(objects), get: (key) => (reads++, objects.get(key)) })
+    await counted.put(PNG, 'image/png')
+    const { rows } = await resolveAssets([{ id: 'drake', fields: { title: 'Drake', art: `asset:${hash}`, cost: 5 } }, { id: 'torn', fields: { title: 'Torn', art: 'asset:' + '0'.repeat(64) } }], counted)
+    expect(rows[0]?.fields).toEqual({ title: 'Drake', art: `asset:${hash}`, cost: 5 })
+    expect(reads).toBe(0)
     // An asset that is gone leaves the field empty rather than a broken reference on the card.
     expect(rows[1]?.fields['art']).toBe('')
   })
 })
 
-// A picture the template carries by itself (#320) is inlined the way a row's is: the compiled
-// page has to carry it, and the render worker is handed a page and nothing else. Its crop comes
-// along under the URL the element now carries, exactly as a cell's does.
+// A picture the template carries by itself (#320) is treated the way a row's is: the page names
+// it and the render worker reads it (#1028). Its crop comes along under the reference the element
+// carries, exactly as a cell's does.
 describe('a template’s own picture is resolved for the compiler (#320)', () => {
-  it('swaps the literal reference for a data URL, keys its motif by that URL, and leaves a column binding alone', async () => {
+  it('keeps the literal reference, keys its motif by it, and leaves a column binding alone', async () => {
     const store = new MemoryAssetStore()
     const hash = await store.put(PNG, 'image/png')
     const file = { w: 200, h: 100, trim: { left: 0, top: 0, right: 0, bottom: 0 } }
@@ -57,7 +63,7 @@ describe('a template’s own picture is resolved for the compiler (#320)', () =>
     }
     const crop = { x: 0, y: 0, w: 0.5, h: 1 }
     const { template: resolved, motifs } = await resolveTemplate({ faces }, store, { [hash]: { crop } })
-    const url = `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`
+    const url = `asset:${hash}`
     expect(resolved.faces['back']?.base[0]).toMatchObject({ id: 'logo', bind: { literal: url } })
     expect(resolved.faces['front']).toBe(faces.front)
     expect(motifs[url]).toEqual(croppedMotif(file, crop))
@@ -167,7 +173,7 @@ describe('assets over HTTP', () => {
     expect((await refused.json()) as { error: string }).toEqual({ error: 'the bytes are not SVG' })
   })
 
-  it('compiles a card whose row points at an asset with the image inlined, so the render worker needs nothing but the page', async () => {
+  it('keeps a row’s picture as its hash in the table’s deck, and the render worker draws it from the store (#1028)', async () => {
     const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
     const { hash } = (await up.json()) as { hash: string }
     const { zones, seats, floor } = twoSeatSetup()
@@ -185,10 +191,134 @@ describe('assets over HTTP', () => {
     const { id } = (await started.json()) as { id: string }
     const { version } = (await run.store.loadSession(id))!
     const deck = await run.store.deckOf(id, version)
-    expect(deck?.rows['dragon']?.['art']).toBe(`data:image/png;base64,${Buffer.from(PNG).toString('base64')}`)
+    // The deck holds the picture once, by name, however many cards are drawn from it: 308 cards
+    // carried it as a data URL each and made a deck of ~100 MB (DRIFT §1).
+    expect(deck?.rows['dragon']?.['art']).toBe(`asset:${hash}`)
+    // What goes on the queue names it too, and the worker reads the bytes behind it itself.
+    const pages: string[] = []
+    for (let job = await run.renders.claim(0); job; job = await run.renders.claim(0)) {
+      pages.push(job.compiled.html)
+      await run.renders.fail(job.hash, 'read, not rendered')
+    }
+    expect(pages.join('')).toContain(`src="asset:${hash}"`)
+    expect(pages.join('')).not.toContain('data:image/png')
   })
 
-  it('compiles a card whose template carries a picture of its own with that picture inlined too (#320)', async () => {
+  it('names a card’s picture and typeface by hash in the print files too, and the worker prints them from the store (#1028)', async () => {
+    const { hash } = (await (await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })).json()) as { hash: string }
+    const { hash: font } = (await (await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'font/woff2', cookie }, body: WOFF2 })).json()) as { hash: string }
+    const { zones, seats, floor } = twoSeatSetup()
+    const front = template.faces['front']!
+    const doc = {
+      name: 'Skogens herrar',
+      template: { faces: { ...template.faces, front: { base: [...front.base.map((el) => (el.kind === 'text' ? { ...el, font: { ...el.font, family: 'Rubrik' } } : el)), { kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } }], variants: {} } } },
+      rows: [{ id: 'dragon', fields: { title: 'Drake', art: `asset:${hash}`, antal: 1 } }],
+      icons: {},
+      fonts: { Rubrik: { stack: '"Rubrik", serif', asset: `asset:${font}` } },
+      setup: { zones, seats, floor, deckZone: 'draw' },
+    }
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p5', ...doc }) })).status).toBe(201)
+    expect((await fetch(`${run.http}/projects/p5/print`, { method: 'POST', headers: { cookie } })).status).toBe(202)
+    const pages: string[] = []
+    for (let job = await run.renders.claim(0); job; job = await run.renders.claim(0)) {
+      expect(job.kind).toEqual({ kind: 'pdf' })
+      pages.push(job.compiled.html + job.compiled.css)
+    }
+    expect(pages.join('')).toContain(`src="asset:${hash}"`)
+    expect(pages.join('')).toContain(`url("asset:${font}")`)
+    expect(pages.join('')).not.toMatch(/data:(image|font)\//)
+  })
+
+  it('draws every face of a table whose cards name their picture, with the worker reading the bytes from the app’s own store (#1028)', async () => {
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="#c00"/></svg>')
+    const { hash } = (await (await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: svg })).json()) as { hash: string }
+    const { zones, seats, floor } = twoSeatSetup()
+    const doc = {
+      name: 'Skogens herrar',
+      template: { faces: { ...template.faces, front: { base: [...template.faces['front']!.base, { kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } }], variants: {} } } },
+      rows: [{ id: 'dragon', fields: { title: 'Drake', art: `asset:${hash}`, antal: 2 } }],
+      icons: {},
+      setup: { zones, seats, floor, deckZone: 'draw' },
+    }
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p4', ...doc }) })).status).toBe(201)
+    const started = await fetch(`${run.http}/projects/p4/sessions`, { method: 'POST', headers: { cookie } })
+    const { id } = (await started.json()) as { id: string }
+    const prepared = (await (await fetch(`${run.http}/sessions/${id}/prepare`, { method: 'POST', headers: { cookie } })).json()) as { total: number; done: number }
+    expect(prepared.total).toBeGreaterThan(0)
+    await run.renderAll()
+    const after = (await (await fetch(`${run.http}/sessions/${id}/prepare`, { method: 'POST', headers: { cookie } })).json()) as { total: number; done: number; failed: string[] }
+    expect(after).toMatchObject({ total: prepared.total, done: prepared.total, failed: [] })
+  }, 60_000)
+
+  // A picture's hash is a capability: whoever knows it may fetch the picture (`GET /assets/<hash>`).
+  // Now that the deck names its pictures by hash (#1028), a hash on the wire would show a player the
+  // card in another's hand as surely as its texture would. Checked on the raw frames, not a view.
+  it('never sends a picture’s hash or bytes to a client, so a hidden card cannot be looked up by its art', async () => {
+    const svg = (fill: string) => new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="${fill}"/></svg>`)
+    const art: Record<string, { hash: string; bytes: Uint8Array }> = {}
+    for (const [card, fill] of [['dragon', '#c00'], ['knight', '#00c']] as const) {
+      const bytes = svg(fill)
+      const { hash } = (await (await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: bytes })).json()) as { hash: string }
+      art[card] = { hash, bytes }
+    }
+    const { zones, seats, floor } = twoSeatSetup()
+    const doc = {
+      name: 'Skogens herrar',
+      template: { faces: { ...template.faces, front: { base: [...template.faces['front']!.base, { kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } }], variants: {} } } },
+      rows: Object.entries(art).map(([id, a]) => ({ id, fields: { title: id, art: `asset:${a.hash}`, antal: 1 } })),
+      icons: {},
+      setup: { zones, seats, floor, deckZone: 'draw' },
+    }
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p6', ...doc }) })).status).toBe(201)
+    const made = (await (await fetch(`${run.http}/projects/p6/sessions`, { method: 'POST', headers: { cookie } })).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const table = await run.connectTable(made.id, made.hostKey)
+    const ada = await run.connect(made.id, 'A')
+    const bo = await run.connect(made.id, 'B')
+    const dealt = await table.send(null, { v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 1 })
+    expect(dealt.t).toBe('ack')
+    const seq = dealt.t === 'ack' ? Math.max(...dealt.seqs) : 0
+    await Promise.all([table.synced(seq), ada.synced(seq), bo.synced(seq)])
+
+    // Non-vacuity: the hashes are in the system to be leaked — the deck and the queued pages name
+    // them — and each player is told which card she holds, and the texture of its front.
+    const { version } = (await run.store.loadSession(made.id))!
+    expect(JSON.stringify(await run.store.deckOf(made.id, version))).toContain(art['dragon']!.hash)
+    const adas = ada.view!.components.find((c) => c.zone === 'hand:A')!
+    const bos = bo.view!.components.find((c) => c.zone === 'hand:B')!
+    expect([adas.cardRef, bos.cardRef].sort()).toEqual(['dragon', 'knight'])
+    expect(ada.frames.join('\n')).toContain(adas.faces!['front']!)
+
+    for (const [who, client] of [['Ada', ada], ['Bo', bo], ['the table', table]] as const) {
+      const wire = client.frames.join('\n')
+      for (const [card, a] of Object.entries(art)) {
+        expect(wire, `${who} was sent the hash of ${card}’s picture`).not.toContain(a.hash)
+        expect(wire, `${who} was sent the bytes of ${card}’s picture`).not.toContain(Buffer.from(a.bytes).toString('base64'))
+      }
+      expect(wire, `${who} was sent a picture`).not.toMatch(/data:image\//)
+    }
+    // And the other hand's front, which would be the same leak by another road.
+    expect(bo.frames.join('\n')).not.toContain(adas.faces?.['front'] ?? 'Ada was not told her own front')
+    await Promise.all([table.close(), ada.close(), bo.close()])
+  })
+
+  it('leaves a picture the store has not got out of the deck, as an empty frame, rather than a reference no worker can follow', async () => {
+    const { zones, seats, floor } = twoSeatSetup()
+    const doc = {
+      name: 'Skogens herrar',
+      template: { faces: { ...template.faces, front: { base: [...template.faces['front']!.base, { kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } }], variants: {} } } },
+      rows: [{ id: 'dragon', fields: { title: 'Drake', art: `asset:${'0'.repeat(64)}`, antal: 1 } }],
+      icons: {},
+      setup: { zones, seats, floor, deckZone: 'draw' },
+    }
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p3', ...doc }) })).status).toBe(201)
+    const started = await fetch(`${run.http}/projects/p3/sessions`, { method: 'POST', headers: { cookie } })
+    const { id } = (await started.json()) as { id: string }
+    const { version } = (await run.store.loadSession(id))!
+    expect((await run.store.deckOf(id, version))?.rows['dragon']?.['art']).toBe('')
+  })
+
+  it('keeps a template’s own picture as its hash in the table’s deck too (#320, #1028)', async () => {
     const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
     const { hash } = (await up.json()) as { hash: string }
     const { zones, seats, floor } = twoSeatSetup()
@@ -206,7 +336,7 @@ describe('assets over HTTP', () => {
     const { id } = (await started.json()) as { id: string }
     const { version } = (await run.store.loadSession(id))!
     const deck = await run.store.deckOf(id, version)
-    expect(deck?.template.faces['back']?.base[0]).toMatchObject({ id: 'logo', bind: { literal: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}` } })
+    expect(deck?.template.faces['back']?.base[0]).toMatchObject({ id: 'logo', bind: { literal: `asset:${hash}` } })
   })
 })
 
@@ -226,11 +356,13 @@ describe('symbols in a project (E4): the icon set is assets too, and the licence
 
   const SVG = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>')
 
-  it('resolves an icon set that points at assets, so a compiled card carries its symbols', async () => {
+  it('resolves an icon set that points at assets, so a compiled card names its symbols for the worker (#1028)', async () => {
     const store = new MemoryAssetStore()
     const hash = await store.put(SVG, 'image/svg+xml')
-    const icons = await resolveIcons({ 'sköld': `asset:${hash}`, 'egen': 'https://example.test/x.svg' }, store)
-    expect(icons['sköld']).toBe(`data:image/svg+xml;base64,${Buffer.from(SVG).toString('base64')}`)
+    const icons = await resolveIcons({ 'sköld': `asset:${hash}`, 'borta': `asset:${'0'.repeat(64)}`, 'egen': 'https://example.test/x.svg' }, store)
+    expect(icons['sköld']).toBe(`asset:${hash}`)
+    // One the store has not got is drawn as no symbol, as it was when it was read for its bytes.
+    expect(icons['borta']).toBe('')
     // Anything that is not an asset reference is left as it stands.
     expect(icons['egen']).toBe('https://example.test/x.svg')
   })
@@ -277,7 +409,7 @@ describe('the fonts a version is pinned to (B3)', () => {
       },
       store,
     )
-    expect(fonts['Rubrik']).toEqual({ stack: '"Rubrik", Georgia, serif', src: `data:font/woff2;base64,${Buffer.from(bytes).toString('base64')}` })
+    expect(fonts['Rubrik']).toEqual({ stack: '"Rubrik", Georgia, serif', src: `asset:${hash}` })
     expect(fonts['Brödtext']).toEqual({ stack: 'Georgia, serif' })
   })
 })
@@ -354,7 +486,7 @@ describe('the motif over HTTP (E1)', () => {
     expect(await (await fetch(`${run.http}/assets/motifs?of=${hash}`, { headers: { cookie } })).json()).toEqual({})
   })
 
-  it('draws a card by the motif when the template asks for it, so the render worker needs nothing but the page', async () => {
+  it('draws a card by the motif when the template asks for it, on the page the render worker is handed', async () => {
     const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
     const { hash } = (await up.json()) as { hash: string }
     await put(hash, MOTIF)

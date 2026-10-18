@@ -237,9 +237,9 @@ describe('ordering the booklet (B7)', () => {
   }, 60_000)
 
   // The picture takes the same road as a card's own image (E1, #173): it is one of the project's
-  // assets, and the booklet is handed the bytes the way it is handed the icons — so the worker
-  // still needs nothing but the page it is given.
-  it('hands the printer the bytes of a picture the book holds, and never an address', async () => {
+  // assets, and the page names it by hash the way a card does (#1028). The worker reads the bytes
+  // from the app's own store; no address a browser or a stranger could point it at is ever on it.
+  it('names the picture the book holds by its hash, and the worker prints it from the store', async () => {
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
     const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: png })
     const { hash: asset } = (await put.json()) as { hash: string }
@@ -247,11 +247,17 @@ describe('ordering the booklet (B7)', () => {
     await send('POST', '/projects', { id: 'p3', ...project(rules) })
     expect((await send('POST', '/projects/p3/rulebook')).status).toBe(202)
 
+    const { hash } = (await (await send('POST', '/projects/p3/rulebook')).json()) as { hash: string }
     const job = await run.renders.claim(Date.now())
-    expect(job?.compiled.html).toContain('data:image/png;base64,')
+    expect(job?.compiled.html).toContain(`src="asset:${asset}"`)
     expect(job?.compiled.html).toContain('alt="Bordet från ovan"')
-    expect(job?.compiled.html).not.toContain(`asset:${asset}`)
-  })
+    expect(job?.compiled.html).not.toContain('data:image/png;base64,')
+    // Back in the queue, and through a real worker: the job is done, not failed for want of bytes.
+    await run.renders.fail(job!.hash, 'read, not rendered')
+    await run.renders.requeue(job!.hash)
+    await run.renderAll()
+    expect(await run.renders.status(hash)).toMatchObject({ state: 'done' })
+  }, 60_000)
 
   // The booklet is a PDF, and was answered as image/png: Chromium opened it as a broken picture
   // of nothing, with no title and no name to save it under (#678). The type is the file's own,
