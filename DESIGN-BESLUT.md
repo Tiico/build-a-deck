@@ -6896,7 +6896,10 @@ Enkäten (G3) samlades in och flaggorna stod i loggen, men ingen yta i editorn l
 Tre platser prototypades i det byggda appen med riktiga bord, svar och flaggor: i bordets rad (A), en egen flik «Resultat» (B) och i historiken (C).
 
 **B, med A:s rad, men som en vy i Bord-fliken och inte som en åttonde flik.**
-En växel «Bord · Resultat» står överst i flikens första spalt, över spelarna, och på samma plats i båda vyerna; den tar ingen höjd från filten, och huvudet behåller sju flikar och spelets hela namn vid 1280.
+En växel «Bord · Resultat» står överst i flikens mittspalt, över filten, och på samma plats i båda vyerna; huvudet behåller sju flikar och spelets hela namn vid 1280.
+Priset är en rad, 52 px, av filtens höjd.
+Den står inte över spelarna: första spaltens fyra vägar att lägga till en zon ska synas utan rullning vid 1024 × 640 (L66, #711), och växeln sköt de två per plats under kanten.
+Den står inte i raden över filten heller, där en vald zons fyra fält fyller mittspaltens 420 px vid 1024 (L50).
 Svaren hör till borden de kom från, och därför till Bord.
 En betraktare, som inte startar bord och inte läser playtestet (#524), har ingen växel.
 

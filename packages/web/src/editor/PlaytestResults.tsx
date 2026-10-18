@@ -24,7 +24,7 @@ export type PlaytestResultsProps = {
   // The table the view was opened for — from an ended table's row — or null for all of them.
   table: string | null
   onTable(id: string | null): void
-  // The «Bord · Resultat» switch, at the head of the first column as it is in the Bord view.
+  // The «Bord · Resultat» switch, at the head of the main column as it is over the Bord view's felt.
   switcher: ReactNode
 }
 
@@ -70,7 +70,6 @@ export function PlaytestResults({ client, table, onTable, switcher }: PlaytestRe
 
   const side = (
     <div className="byd-results-side">
-      {switcher}
       {data && data.versions.length > 0 && (
         <VersionList
           versions={data.versions}
@@ -93,6 +92,7 @@ export function PlaytestResults({ client, table, onTable, switcher }: PlaytestRe
       <div className="byd-results" data-results>
         {side}
         <div className="byd-results-main">
+          {switcher}
           {failed ? <p role="alert">{failed}</p> : <p className="byd-results-quiet">{t('results.loading')}</p>}
         </div>
       </div>
@@ -102,6 +102,7 @@ export function PlaytestResults({ client, table, onTable, switcher }: PlaytestRe
     <div className="byd-results" data-results>
       {side}
       <div className="byd-results-main">
+        {switcher}
         {chosen === null ? (
           <p className="byd-results-empty">
             {t('results.empty')}

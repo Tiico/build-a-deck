@@ -47,8 +47,10 @@ export type SetupEditorProps = {
   // list of tables the game is being played at. The setup owns the tab's layout — it is the one
   // that knows there are three columns — so the list is handed to it rather than dropped after it.
   beside?: ReactNode
-  // What stands at the head of the first column, over the seats (#1010): the Bord tab's switch to
-  // its Resultat view, which stands in the same place in both views.
+  // What stands over the felt, at the head of the middle column (#1010): the Bord tab's switch to
+  // its Resultat view, which stands in the same place in both views. Not over the first column,
+  // whose ways to add a zone must all show at 1024 × 640 (#711), and not in the row over the
+  // felt, which a chosen zone's four fields fill at 1024 (L50).
   lead?: ReactNode
 }
 
@@ -269,7 +271,6 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
       }}
     >
       <div className="byd-setup-side">
-        {lead}
         <SeatsPanel client={client} setup={setup} />
         <ZoneList
           setup={setup}
@@ -304,6 +305,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
         />
       </div>
       <div className="byd-setup-canvas">
+        {lead}
         <div className="byd-setup-said" data-setup-said>
           {undoable && (
             <span className="byd-setup-undo" role="status">

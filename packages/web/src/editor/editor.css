@@ -4343,9 +4343,8 @@ label:is(.byd-ai-new, .byd-ai-change) { cursor: pointer; }
 .byd-data tr[data-change='changed'][data-proposed] { --byd-data-tint: rgba(201, 167, 255, 0.08); }
 
 /* «Bord · Resultat» (#1010, beställarens val 2026-10-18): the Bord tab's two views, switched at the
-   head of its first column, where it stands in both views. Over the seats and not over the felt,
-   so it costs the felt no height. */
-.byd-bord-switch { display: flex; gap: var(--byd-s2); }
+   head of the middle column, where it stands in both views. */
+.byd-bord-switch { flex: none; display: flex; gap: var(--byd-s2); }
 .byd-bord-switch .byd-choice { min-height: var(--byd-tap); padding: 0 var(--byd-s4); font-size: 13px; }
 
 /* Resultat: the versions in the first column, everything a version was told beside it. The

@@ -10,8 +10,8 @@ import { useT } from '../i18n/index.js'
 // The Bord tab (#19, #1010): the game's board and its running tables, and — a press away — what
 // its playtests said. «Resultat» is a view of this tab and not a tab of its own (beställarens val
 // 2026-10-18): the answers belong to the tables they came from, and the header keeps its seven
-// tabs and the game's whole name. The switch stands at the head of the first column in both views,
-// so it is where the hand left it, and it costs the felt no height.
+// tabs and the game's whole name. The switch stands at the head of the middle column in both
+// views, over the felt and over the results, so it is where the hand left it.
 //
 // A viewer runs no tables and reads no playtest (#524), so she has no switch: the tab is the
 // board and its tables, as it always was.
@@ -25,8 +25,10 @@ export function BordTab({ doc, client, assetBase, motifs, server, started = null
   const [table, setTable] = useState<string | null>(null)
   // A switch pressed keeps the focus: it is drawn again in the other view, in the same place.
   const [moved, setMoved] = useState(false)
+  // The switch opens Resultat on every table; only a row's line narrows it to one.
   const show = (next: View) => {
     setMoved(true)
+    setTable(null)
     setView(next)
   }
   const switcher = client.mayStartTables ? <ViewSwitch view={view} onView={show} focus={moved} /> : null
