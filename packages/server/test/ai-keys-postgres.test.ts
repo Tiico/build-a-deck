@@ -96,5 +96,6 @@ describe.skipIf(!url)('the vault in Postgres', () => {
     } finally {
       await run.stop()
     }
-  })
+    // The export renders its print files in Chromium, which is seconds and not vitest's five.
+  }, 90_000)
 })
