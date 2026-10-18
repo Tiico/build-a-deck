@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landningssidan #1009</title>
+<!-- PROTOTYPE — throwaway (#1009). Tre strukturellt olika landningssidor för `/`, växlade med ?v=A|B|C.
+     Fristående: importerar ingenting ur packages/. Kortleken «Skogens herrar» är påhittad. -->
+<style>
+:root {
+  --bg: #0f1117; --panel: #171a23; --panel-2: #1d212b; --line: #2c3242;
+  --ink: #e8eaf0; --muted: #b7c0d6; --quiet: #9aa3b8;
+  --accent: #7dd3a0; --on-accent: #0f1117;
+  --amber: #f0b64a; --chalk: #f3e9d6;
+  --felt-a: #2e6b46; --felt-b: #1f4a30; --felt-c: #173a26;
+  --wood-a: #5a3b22; --wood-b: #3a2414;
+  --room-a: #2b2420; --room-b: #17120f;
+  --card-ink: #1c1c1c; --paper: #f7f1e3;
+  --seat-1: #f07a6a; --seat-2: #6ab0f0; --seat-3: #c79af0; --seat-4: #f0c96a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; }
+.variant { display: none; }
+.variant[data-on] { display: block; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Delade delar: knappar, kodraden, kortet ---------- */
+.btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 999px; font: 600 16px/1 system-ui, sans-serif; text-decoration: none; border: 0; cursor: pointer; white-space: nowrap; }
+.btn-primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px rgba(125, 211, 160, 0.25); }
+.btn-primary:hover { background: #95dfb2; }
+.btn-ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px #4a5268; }
+.btn-ghost:hover { box-shadow: inset 0 0 0 1px var(--muted); }
+.btn:focus-visible, .code input:focus-visible, .fan-card:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+.btn .arrow { transition: transform 0.2s; }
+.btn:hover .arrow { transform: translateX(3px); }
+
+.code { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.code label { color: var(--muted); font-size: 14px; }
+.code .pair { display: flex; gap: 6px; }
+.code input { width: 120px; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #4a5268; background: #14161c; color: var(--ink); font: 600 16px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+.code input::placeholder { color: #7d869b; letter-spacing: 0.04em; text-transform: none; font-weight: 400; font-family: system-ui, sans-serif; }
+.code button { height: 44px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--panel-2); color: var(--ink); font: 600 15px system-ui, sans-serif; box-shadow: inset 0 0 0 1px #4a5268; cursor: pointer; }
+
+.wordmark { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; font-size: 17px; text-decoration: none; }
+.wordmark .mark { width: 22px; height: 28px; position: relative; }
+.wordmark .mark i { position: absolute; inset: 0; border-radius: 4px; background: var(--paper); box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.wordmark .mark i:nth-child(1) { transform: rotate(-14deg) translate(-3px, 1px); background: var(--amber); }
+.wordmark .mark i:nth-child(2) { transform: rotate(-2deg); background: var(--accent); }
+.wordmark .mark i:nth-child(3) { transform: rotate(11deg) translate(3px, 1px); }
+
+/* Kortet: ett spelkort ur «Skogens herrar», ritat i CSS. I produkten ritar CardPreview. */
+.card { --w: 150px; --h: calc(var(--w) * 1.4); width: var(--w); height: var(--h); border-radius: calc(var(--w) * 0.06); background: var(--paper); color: var(--card-ink); padding: calc(var(--w) * 0.05); display: flex; flex-direction: column; gap: calc(var(--w) * 0.035); box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 10px 30px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.35); font-size: calc(var(--w) * 0.075); line-height: 1.25; position: relative; flex: none; }
+.card .top { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.card .title { font-weight: 800; font-size: 1.08em; letter-spacing: -0.01em; line-height: 1.1; }
+.card .cost { flex: none; width: 1.9em; height: 1.9em; border-radius: 50%; background: var(--amber); color: var(--card-ink); display: grid; place-items: center; font-weight: 800; box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.card .art { flex: 1; border-radius: calc(var(--w) * 0.03); background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--hue) 55%, white), var(--hue) 55%, color-mix(in srgb, var(--hue) 60%, black)); display: grid; place-items: center; overflow: hidden; }
+.card .art svg { width: 62%; height: 62%; color: rgba(255,255,255,.9); }
+.card .type { font-size: 0.78em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: color-mix(in srgb, var(--hue) 70%, black); }
+.card .text { font-size: 0.86em; min-height: 3.75em; }
+.card.back { background: repeating-linear-gradient(45deg, #1d3a2b 0 6px, #22463a 6px 12px); box-shadow: inset 0 0 0 calc(var(--w) * 0.04) var(--paper), 0 6px 18px rgba(0,0,0,.45); display: grid; place-items: center; }
+.card.back::after { content: ""; width: 38%; height: 30%; border-radius: 50%; border: calc(var(--w) * 0.025) solid var(--amber); }
+.card.back > * { display: none; }
+
+/* ---------- Variant A — Bordet ---------- */
+#A { background: radial-gradient(120% 80% at 70% 10%, #2f2722 0%, var(--room-b) 55%, #0d0b0a 100%); min-height: 100vh; }
+.a-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px clamp(16px, 4vw, 48px); max-width: 1320px; margin: 0 auto; }
+.a-head nav { display: flex; gap: 12px; align-items: center; }
+.a-head .quietlink { color: var(--muted); text-decoration: none; font-size: 15px; padding: 8px 4px; }
+.a-head .quietlink:hover { color: var(--ink); }
+.a-hero { max-width: 1320px; margin: 0 auto; padding: clamp(16px, 4vw, 48px); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; min-height: min(760px, calc(100vh - 84px)); }
+.eyebrow { color: var(--amber); font-weight: 700; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 16px; }
+.a-hero h1 { font-size: clamp(40px, 6vw, 76px); line-height: 0.98; letter-spacing: -0.035em; margin: 0 0 22px; font-weight: 800; }
+.a-hero h1 em { font-style: normal; color: var(--chalk); background: linear-gradient(transparent 62%, rgba(240,182,74,.38) 62%); }
+.a-hero .lede { font-size: clamp(17px, 1.6vw, 20px); color: var(--muted); max-width: 34ch; margin: 0 0 32px; }
+.a-hero .ctas { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 28px; }
+.a-hero .fine { color: var(--quiet); font-size: 14px; }
+.a-hero .code { padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); }
+
+.scene { position: relative; aspect-ratio: 7 / 5.4; perspective: 1500px; perspective-origin: 50% 0%; }
+.wood { position: absolute; inset: 2% 8% 26% 8%; border-radius: 34px; background: linear-gradient(135deg, var(--wood-a), var(--wood-b)); box-shadow: 0 60px 90px rgba(0,0,0,.65), inset 0 2px 0 rgba(255,255,255,.1); transform: rotateX(32deg); transform-origin: 50% 100%; padding: 4.5%; }
+.felt { position: relative; width: 100%; height: 100%; border-radius: 22px; background: radial-gradient(ellipse at 50% 40%, var(--felt-a), var(--felt-b) 70%, var(--felt-c)); box-shadow: inset 0 0 40px rgba(0,0,0,.55); overflow: visible; }
+.felt .zone { position: absolute; border: 2px dashed rgba(243,233,214,.22); border-radius: 12px; }
+.felt .label { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); background: #171a23; color: var(--chalk); font: 700 11px system-ui, sans-serif; padding: 3px 9px; border-radius: 999px; white-space: nowrap; box-shadow: 0 0 0 1px #0d0f14; }
+.felt .deal { position: absolute; left: 9%; top: 24%; }
+.felt .deal .card { --w: clamp(44px, 5.6vw, 80px); position: absolute; left: 0; top: 0; }
+.felt .stack .card:nth-child(1) { transform: translate(-4px, 4px); }
+.felt .stack .card:nth-child(2) { transform: translate(-2px, 2px); }
+.flying { animation: deal 6.4s cubic-bezier(.3,.7,.2,1) infinite; animation-delay: var(--d); opacity: 0; }
+@keyframes deal {
+  0% { transform: translate(0, 0) rotate(0); opacity: 0; }
+  4% { opacity: 1; }
+  18%, 78% { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 1; }
+  92%, 100% { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; }
+}
+.felt .played { position: absolute; left: 46%; top: 20%; display: flex; gap: 10px; }
+.felt .played .card { --w: clamp(56px, 7vw, 100px); }
+.felt .played .card:nth-child(1) { transform: rotate(-4deg); }
+.felt .played .card:nth-child(2) { transform: rotate(3deg) translateY(4px); }
+
+.phone { container-type: inline-size; position: absolute; width: clamp(84px, 9.5vw, 128px); aspect-ratio: 9 / 18.5; border-radius: 22px; background: #0b0c10; padding: 7px; box-shadow: 0 30px 60px rgba(0,0,0,.6), inset 0 0 0 1.5px #2c3242; }
+.phone .screen { height: 100%; border-radius: 16px; background: linear-gradient(#171a23, #101218); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+.phone .who { display: flex; align-items: center; gap: 6px; padding: 10px 9px 6px; font: 700 clamp(9px, 0.9vw, 12px)/1 system-ui, sans-serif; color: var(--ink); }
+.phone .who i { width: 9px; height: 9px; border-radius: 50%; background: var(--seat); box-shadow: 0 0 0 2px rgba(243,233,214,.8); }
+.phone .bar { height: 3px; background: var(--seat); }
+.phone .front { margin: 4px 8px 0; height: 22%; border-radius: 10px; background: radial-gradient(ellipse at 50% 40%, var(--felt-a), var(--felt-b)); box-shadow: inset 0 0 0 1px rgba(243,233,214,.18); position: relative; }
+.phone .front b { position: absolute; left: 6px; top: 5px; font: 700 clamp(7px, 0.7vw, 9px)/1 system-ui; color: var(--chalk); opacity: .8; }
+.phone .turn { align-self: flex-start; margin: 8px 8px 0; font: 800 clamp(8px, 0.75vw, 10px)/1 system-ui; color: var(--on-accent); background: var(--accent); padding: 4px 7px; border-radius: 999px; }
+.phone .hand { position: absolute; left: 0; right: 0; bottom: 8%; height: 58%; }
+.phone .hand .card { --w: 50cqw; position: absolute; left: 50%; bottom: 0; transform-origin: 50% 120%; }
+.phone .hand .card:nth-child(1) { transform: translateX(-50%) rotate(-16deg) translateX(-18%); }
+.phone .hand .card:nth-child(2) { transform: translateX(-50%) translateY(-6%); z-index: 1; }
+.phone .hand .card:nth-child(3) { transform: translateX(-50%) rotate(16deg) translateX(18%); }
+.phone.p1 { left: 4%; bottom: 0; transform: rotate(-9deg); animation: bob 7s ease-in-out infinite; }
+.phone.p2 { right: 4%; bottom: 0; transform: rotate(9deg); animation: bob 8s ease-in-out -2s infinite; }
+.phone.p3 { left: 50%; bottom: -5%; transform: translateX(-50%) rotate(-1deg); animation: bob 9s ease-in-out -4s infinite; }
+@keyframes bob { 50% { translate: 0 -10px; } }
+
+.a-steps { max-width: 1320px; margin: 0 auto; padding: 72px clamp(16px, 4vw, 48px) 32px; }
+.a-steps > h2 { font-size: clamp(28px, 3.4vw, 44px); letter-spacing: -0.025em; line-height: 1.05; margin: 0 0 40px; max-width: 18ch; }
+.a-steps ol { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; counter-reset: s; }
+.a-steps li { background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015)); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; padding: 22px 22px 24px; counter-increment: s; display: flex; flex-direction: column; gap: 10px; }
+.a-steps li::before { content: counter(s, decimal-leading-zero); font: 800 13px ui-monospace, Menlo, monospace; color: var(--amber); letter-spacing: 0.1em; }
+.a-steps h3 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+.a-steps p { margin: 0; color: var(--muted); font-size: 15px; }
+.a-steps .pic { height: 150px; border-radius: 14px; margin-bottom: 8px; position: relative; overflow: hidden; display: grid; place-items: center; }
+.pic.rows { background: #14161c; box-shadow: inset 0 0 0 1px #2c3242; padding: 14px; place-items: stretch; align-content: start; gap: 6px; font: 12px/1 ui-monospace, Menlo, monospace; color: var(--muted); }
+.pic.rows div { display: grid; grid-template-columns: 1.6fr .5fr 1fr; gap: 8px; padding: 6px 8px; border-radius: 6px; background: #1b1e27; }
+.pic.rows div:first-child { background: none; color: var(--quiet); font-family: system-ui; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; }
+.pic.rows div.hot { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--ink); }
+.pic.template { background: radial-gradient(circle at 50% 120%, #253044, #171a23); }
+.pic.template .card { --w: 86px; }
+.pic.template .card + .card { position: absolute; transform: translate(58px, 8px) rotate(8deg); opacity: .9; }
+.pic.template .card:first-child { transform: translate(-30px, 0) rotate(-6deg); }
+.pic.felty { background: radial-gradient(ellipse at 50% 40%, var(--felt-a), var(--felt-b) 70%, var(--felt-c)); }
+.pic.felty .zone { position: absolute; border: 2px dashed rgba(243,233,214,.3); border-radius: 10px; }
+.pic.felty .mini .card { --w: 46px; }
+.pic.felty .mini .card:first-child { transform: rotate(-5deg); }
+.pic.felty .mini .card:last-child { transform: rotate(4deg); }
+.pic.felty .zone b { z-index: 2; position: absolute; top: -10px; left: 8px; background: #171a23; color: var(--chalk); font: 700 10px system-ui; padding: 2px 7px; border-radius: 999px; }
+.pic.talk { background: #14161c; box-shadow: inset 0 0 0 1px #2c3242; padding: 14px; place-items: stretch; align-content: center; gap: 8px; }
+.bubble { border-radius: 12px; padding: 8px 10px; font-size: 13px; line-height: 1.3; background: #1d212b; color: var(--ink); display: flex; gap: 8px; align-items: flex-start; }
+.bubble i { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 3px; background: var(--seat); box-shadow: 0 0 0 2px rgba(243,233,214,.7); }
+.bubble.v2 { background: rgba(125,211,160,.12); box-shadow: inset 0 0 0 1px rgba(125,211,160,.4); }
+.bubble.v2 b { color: var(--accent); }
+
+.a-end { max-width: 1320px; margin: 40px auto 0; padding: 0 clamp(16px, 4vw, 48px) 120px; }
+.a-end .slab { border-radius: 28px; padding: clamp(28px, 5vw, 56px); background: radial-gradient(ellipse at 80% 20%, rgba(46,107,70,.55), transparent 60%), linear-gradient(135deg, #1b1f29, #12141b); border: 1px solid rgba(255,255,255,.08); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; }
+.a-end h2 { margin: 0 0 6px; font-size: clamp(26px, 3vw, 38px); letter-spacing: -0.02em; line-height: 1.1; }
+.a-end p { margin: 0; color: var(--muted); }
+
+@media (max-width: 960px) {
+  .a-hero { grid-template-columns: 1fr; min-height: 0; }
+  .scene { order: -1; max-width: 640px; width: 100%; margin: 0 auto; }
+  .a-steps ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .a-head .quietlink { display: none; }
+  .a-steps ol { grid-template-columns: 1fr; }
+  .phone.p3 { display: none; }
+}
+
+/* ---------- Variant B — Från rad till kort ---------- */
+#B { background: var(--bg); }
+.b-head { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px clamp(16px, 4vw, 40px); background: rgba(15,17,23,.82); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.06); }
+.b-intro { max-width: 1100px; margin: 0 auto; padding: clamp(56px, 10vw, 120px) clamp(16px, 4vw, 40px) 40px; text-align: center; }
+.b-intro h1 { font-size: clamp(38px, 6.4vw, 84px); line-height: 1; letter-spacing: -0.04em; margin: 0 0 22px; font-weight: 800; }
+.b-intro h1 span { background: linear-gradient(90deg, var(--accent), #b8e986 45%, var(--amber)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.b-intro p { font-size: clamp(17px, 1.8vw, 21px); color: var(--muted); max-width: 46ch; margin: 0 auto 30px; }
+.b-intro .ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.b-intro .scroll { margin-top: 48px; color: var(--quiet); font-size: 14px; display: inline-flex; flex-direction: column; align-items: center; gap: 8px; }
+.b-intro .scroll::after { content: ""; width: 1px; height: 40px; background: linear-gradient(var(--quiet), transparent); }
+
+.b-story { max-width: 1240px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(24px, 5vw, 72px); }
+.b-stage-wrap { position: relative; }
+.b-stage { position: sticky; top: 84px; height: calc(100vh - 120px); max-height: 720px; min-height: 420px; border-radius: 28px; overflow: hidden; background: #14161c; box-shadow: inset 0 0 0 1px #232838; }
+.b-stage .grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(125,211,160,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(125,211,160,.05) 1px, transparent 1px); background-size: 24px 24px; transition: opacity .6s; }
+.b-stage .tablefelt { position: absolute; inset: 9% 7%; border-radius: 28px; background: radial-gradient(ellipse at 50% 40%, var(--felt-a), var(--felt-b) 70%, var(--felt-c)); box-shadow: 0 0 0 14px #4a2f1b, 0 0 0 15px #2a190c, 0 40px 80px rgba(0,0,0,.6), inset 0 0 50px rgba(0,0,0,.5); opacity: 0; transform: scale(.92); transition: opacity .7s, transform .9s cubic-bezier(.2,.8,.2,1); }
+.b-stage[data-step="3"] .tablefelt, .b-stage[data-step="4"] .tablefelt, .b-stage[data-step="5"] .tablefelt { opacity: 1; transform: none; }
+.b-stage[data-step="3"] .grid-bg, .b-stage[data-step="4"] .grid-bg, .b-stage[data-step="5"] .grid-bg { opacity: 0; }
+.sheet { position: absolute; left: 7%; right: 7%; top: 50%; translate: 0 -50%; border-radius: 14px; background: #171a23; box-shadow: 0 0 0 1px #2c3242, 0 30px 60px rgba(0,0,0,.4); overflow: hidden; font-size: clamp(11px, 1.05vw, 14px); transition: opacity .6s, transform .8s cubic-bezier(.2,.8,.2,1); }
+.sheet .r { display: grid; grid-template-columns: 1.5fr .55fr .9fr 2.6fr; gap: 10px; padding: 9px 14px; border-top: 1px solid #232838; align-items: center; }
+.sheet .r.h { border: 0; background: #1d212b; color: var(--quiet); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .8em; }
+.sheet .r span:nth-child(2) { font-variant-numeric: tabular-nums; }
+.sheet .r span:last-child { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet .r.edit span:last-child { color: var(--ink); }
+.sheet .caret { display: inline-block; width: 2px; height: 1em; background: var(--accent); vertical-align: -2px; margin-left: 1px; animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.b-stage[data-step="2"] .sheet { opacity: .0; transform: translateY(-30px) scale(.96); }
+.b-stage[data-step="3"] .sheet, .b-stage[data-step="4"] .sheet, .b-stage[data-step="5"] .sheet { opacity: 0; transform: translateY(-60px) scale(.9); pointer-events: none; }
+.b-stage .card { --w: clamp(72px, 9.5vw, 132px); position: absolute; left: 0; top: 0; transition: transform .9s cubic-bezier(.2,.8,.2,1), opacity .6s, box-shadow .4s; will-change: transform; }
+.b-stage .card.flash { box-shadow: 0 0 0 3px var(--accent), 0 10px 30px rgba(0,0,0,.45); }
+.b-stage .card .text mark { background: rgba(125,211,160,.45); color: inherit; border-radius: 2px; }
+.seat { position: absolute; display: flex; align-items: center; gap: 6px; background: #171a23; color: var(--chalk); font: 700 12px system-ui; padding: 5px 10px 5px 7px; border-radius: 999px; box-shadow: 0 0 0 1px #0d0f14; opacity: 0; transition: opacity .5s .3s; }
+.seat i { width: 10px; height: 10px; border-radius: 50%; background: var(--seat); box-shadow: 0 0 0 2px rgba(243,233,214,.8); }
+.b-stage[data-step="4"] .seat, .b-stage[data-step="5"] .seat { opacity: 1; }
+.flagnote { z-index: 40; position: absolute; right: 5%; top: 6%; width: min(300px, 64%); background: #1d212b; border-radius: 14px; padding: 12px 14px; box-shadow: 0 0 0 1px #2c3242, 0 24px 48px rgba(0,0,0,.5); opacity: 0; transform: translateY(16px); transition: opacity .5s .5s, transform .6s .5s; font-size: 13px; line-height: 1.4; }
+.flagnote .row { display: flex; gap: 8px; align-items: flex-start; }
+.flagnote .row + .row { margin-top: 8px; padding-top: 8px; border-top: 1px solid #2c3242; }
+.flagnote i { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--seat); box-shadow: 0 0 0 2px rgba(243,233,214,.7); }
+.flagnote .ver { display: inline-block; font: 800 11px ui-monospace, Menlo, monospace; color: var(--on-accent); background: var(--accent); border-radius: 6px; padding: 2px 6px; margin-right: 4px; }
+.b-stage[data-step="5"] .flagnote { opacity: 1; transform: none; }
+.b-stage .stepdots { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 6px; z-index: 5; }
+.b-stage .stepdots i { width: 6px; height: 6px; border-radius: 3px; background: #3a4154; transition: width .3s, background .3s; }
+.b-stage .stepdots i.on { width: 22px; background: var(--accent); }
+
+.b-chapters { padding: 10vh 0 20vh; }
+.chapter { min-height: 78vh; display: flex; flex-direction: column; justify-content: center; opacity: .35; transition: opacity .4s; }
+.chapter.on { opacity: 1; }
+.chapter .n { font: 800 13px ui-monospace, Menlo, monospace; color: var(--amber); letter-spacing: .12em; margin-bottom: 14px; }
+.chapter h2 { font-size: clamp(28px, 3.2vw, 42px); line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 16px; }
+.chapter p { color: var(--muted); font-size: 18px; margin: 0 0 12px; max-width: 38ch; }
+.chapter .aside { color: var(--quiet); font-size: 15px; }
+
+.b-final { text-align: center; padding: 40px clamp(16px, 4vw, 40px) 140px; }
+.b-final h2 { font-size: clamp(32px, 4.4vw, 58px); letter-spacing: -0.035em; line-height: 1; margin: 0 0 18px; }
+.b-final p { color: var(--muted); margin: 0 auto 28px; max-width: 40ch; font-size: 18px; }
+.b-final .ctas { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.b-dock { position: fixed; left: 50%; bottom: 84px; transform: translate(-50%, 20px); z-index: 30; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
+.b-dock.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+
+@media (max-width: 860px) {
+  .b-story { grid-template-columns: 1fr; }
+  .b-stage { top: 64px; height: 52vh; min-height: 300px; border-radius: 20px; }
+  .b-chapters { padding: 4vh 0 10vh; }
+  .chapter { min-height: 62vh; justify-content: flex-start; padding-top: 4vh; }
+  .chapter p { font-size: 16px; }
+  .b-story { display: block; }
+  .b-stage-wrap { position: sticky; top: 64px; z-index: 4; background: var(--bg); padding-bottom: 12px; }
+  .b-stage { position: relative; top: 0; height: 44vh; }
+  .chapter { position: relative; z-index: 1; min-height: 46vh; }
+  .b-chapters { margin-top: 0; padding-bottom: 30vh; }
+  .b-dock { display: none; }
+}
+@media (max-width: 560px) {
+  .b-head .code { display: none; }
+  .sheet .r { grid-template-columns: 1.4fr .5fr 2fr; }
+  .sheet .r span:nth-child(3) { display: none; }
+}
+
+/* ---------- Variant C — Solfjädern ---------- */
+#C { min-height: 100vh; background: radial-gradient(90% 70% at 50% 108%, rgba(46,107,70,.55), transparent 70%), radial-gradient(60% 50% at 50% 0%, #1b1f2b, transparent 70%), var(--bg); }
+.c-wrap { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+.c-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; gap: 12px; }
+.c-main { overflow-x: clip; display: grid; grid-template-rows: auto 1fr auto; align-items: center; justify-items: center; text-align: center; padding: 8px 0 12px; }
+.c-main h1 { margin: 0; font-size: clamp(34px, 4.2vw, 56px); line-height: 1; letter-spacing: -0.04em; font-weight: 800; }
+.c-main h1 + p { color: var(--muted); font-size: clamp(16px, 1.6vw, 20px); margin: 16px auto 0; max-width: 44ch; }
+.fan { --cw: clamp(120px, 11.5vw, 168px); --spread: calc(var(--cw) * .74); position: relative; width: min(980px, 100%); height: calc(var(--cw) * 1.4 + 110px); margin-top: 18px; }
+.fan-card { position: absolute; left: 50%; bottom: 0; border: 0; padding: 0; background: none; cursor: pointer; transform-origin: 50% 150%; transition: transform .55s cubic-bezier(.2,.8,.2,1), filter .4s; --i: 0; --rot: calc((var(--i) - 2) * 7deg); --dx: calc((var(--i) - 2) * var(--spread)); --dy: calc(pow(var(--i) - 2, 2) * 7px); transform: translate(calc(-50% + var(--dx)), var(--dy)) rotate(var(--rot)); border-radius: 12px; z-index: var(--i); }
+.fan-card .card { --w: var(--cw); }
+.fan-card:hover { transform: translate(calc(-50% + var(--dx)), calc(var(--dy) - 14px)) rotate(var(--rot)); }
+.fan-card[aria-pressed="true"] { transform: translate(calc(-50% + var(--dx)), calc(var(--dy) - 40px)) rotate(calc(var(--rot) * .4)) scale(1.08); z-index: 10; }
+.fan[data-picked] .fan-card[aria-pressed="false"] { filter: brightness(.62) saturate(.8); }
+.fan-card .card .step { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #171a23; color: var(--chalk); font: 700 11px system-ui, sans-serif; padding: 3px 10px; border-radius: 999px; box-shadow: 0 0 0 1px #0d0f14; white-space: nowrap; }
+.c-explain { min-height: 112px; max-width: 620px; margin: 6px auto 0; }
+.c-explain h2 { margin: 0 0 6px; font-size: clamp(22px, 2.4vw, 28px); letter-spacing: -0.02em; }
+.c-explain p { margin: 0; color: var(--muted); font-size: 17px; }
+.c-explain .hint { color: var(--quiet); font-size: 14px; margin-top: 10px; }
+.c-doors { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; padding: 18px 0 84px; border-top: 1px solid rgba(255,255,255,.07); }
+.c-doors .door { display: flex; flex-direction: column; gap: 10px; }
+.c-doors .door:first-child { align-items: flex-end; text-align: right; }
+.c-doors .door strong { font-size: 15px; }
+.c-doors .door > span { color: var(--quiet); font-size: 14px; }
+.c-doors .or { color: var(--quiet); font-size: 13px; text-transform: uppercase; letter-spacing: .14em; }
+@media (max-width: 760px) {
+  .fan { --cw: 116px; --spread: 62px; }
+  .c-main { align-content: start; grid-template-rows: auto auto auto; }
+  .fan { margin: 40px 0 36px; }
+  .c-doors { grid-template-columns: 1fr; text-align: left; }
+  .c-doors .door:first-child { align-items: flex-start; text-align: left; }
+  .c-doors .or { display: none; }
+}
+@media (max-width: 420px) {
+  .fan { --cw: 92px; --spread: 48px; }
+}
+
+/* ---------- Prototypens växlare ---------- */
+.proto-bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 100; display: flex; align-items: center; gap: 4px; background: #fdfdfd; color: #111; border-radius: 999px; padding: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.5); font: 600 13px system-ui, sans-serif; }
+.proto-bar button { width: 34px; height: 34px; border-radius: 50%; border: 0; background: #ececec; color: #111; font-size: 16px; cursor: pointer; }
+.proto-bar span { padding: 0 12px; min-width: 230px; text-align: center; white-space: nowrap; }
+.proto-bar small { display: block; font-size: 10px; color: #666; font-weight: 500; }
+.toast { position: fixed; left: 50%; top: 18px; transform: translate(-50%, -80px); background: #fdfdfd; color: #111; padding: 10px 16px; border-radius: 12px; font: 500 14px system-ui; z-index: 101; transition: transform .3s; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.toast.on { transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+  .flying { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= A — Bordet ======================= -->
+<div class="variant" id="A" data-name="Bordet">
+  <header class="a-head">
+    <a class="wordmark" href="#" data-go="/"><span class="mark"><i></i><i></i><i></i></span>build-your-deck</a>
+    <nav>
+      <a class="quietlink" href="#hur">Så funkar det</a>
+      <a class="btn btn-ghost" href="#" data-go="editor">Mina spel</a>
+    </nav>
+  </header>
+
+  <section class="a-hero">
+    <div>
+      <p class="eyebrow">Kortspel, från idé till spelbord</p>
+      <h1>Bygg ditt kortspel. <em>Spela det i kväll.</em></h1>
+      <p class="lede">Skriv korten som rader, se dem bli riktiga kort, och duka bordet på TV:n. Vännerna har handen i telefonen — och efter rundan vet du vad som ska ändras.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="#" data-go="editor">Börja bygga <span class="arrow">→</span></a>
+        <span class="fine">Gratis i betan · inget lösenord</span>
+      </div>
+      <form class="code" data-code>
+        <label for="a-code">Ska du spela? Skriv rumskoden</label>
+        <span class="pair"><input id="a-code" placeholder="t.ex. KX4P" maxlength="6" autocomplete="off"><button>Gå in</button></span>
+      </form>
+    </div>
+
+    <div class="scene" aria-hidden="true">
+      <div class="wood"><div class="felt">
+        <div class="zone" style="left:5%;top:14%;width:20%;height:56%"><span class="label">Draghög · 48</span></div>
+        <div class="zone" style="left:32%;top:14%;width:63%;height:56%"><span class="label">Mitten</span></div>
+        <div class="deal">
+          <div class="stack"><div class="card back"></div><div class="card back"></div></div>
+          <div class="card back flying" style="--d:0s;--x:-20%;--y:120%;--r:-14deg"></div>
+          <div class="card back flying" style="--d:.35s;--x:520%;--y:120%;--r:14deg"></div>
+          <div class="card back flying" style="--d:.7s;--x:250%;--y:130%;--r:3deg"></div>
+          <div class="card back flying" style="--d:1.05s;--x:-20%;--y:120%;--r:-8deg"></div>
+          <div class="card back flying" style="--d:1.4s;--x:520%;--y:120%;--r:8deg"></div>
+        </div>
+        <div class="played" data-cards="1,3"></div>
+      </div></div>
+      <div class="phone p1" style="--seat:var(--seat-1)"><div class="screen"><div class="bar"></div><div class="who"><i></i>Ada</div><div class="front"><b>Framför dig</b></div><span class="turn">Din tur</span><div class="hand" data-cards="0,2,4"></div></div></div>
+      <div class="phone p2" style="--seat:var(--seat-2)"><div class="screen"><div class="bar"></div><div class="who"><i></i>Bo</div><div class="front"><b>Framför dig</b></div><div class="hand" data-cards="4,1,0"></div></div></div>
+      <div class="phone p3" style="--seat:var(--seat-3)"><div class="screen"><div class="bar"></div><div class="who"><i></i>Cleo</div><div class="front"><b>Framför dig</b></div><div class="hand" data-cards="2,3,1"></div></div></div>
+    </div>
+  </section>
+
+  <section class="a-steps" id="hur">
+    <h2>Fyra steg, och sedan ett varv till.</h2>
+    <ol>
+      <li><div class="pic rows" aria-hidden="true">
+            <div><span>Titel</span><span>Kost</span><span>Typ</span></div>
+            <div><span>Ugglans råd</span><span>2</span><span>Trolldom</span></div>
+            <div class="hot"><span>Ekens väktare</span><span>4</span><span>Väsen</span></div>
+            <div><span>Dimmans stig</span><span>1</span><span>Plats</span></div>
+          </div>
+          <h3>Skriv korten</h3><p>Varje kort är en rad i en tabell. Hundra kort tar lika lång tid att ändra som ett.</p></li>
+      <li><div class="pic template" aria-hidden="true" data-cards="0,1"></div>
+          <h3>Rita ett kort — få alla</h3><p>Formge en mall en gång. Varje rad blir ett tryckfärdigt kort med sin titel, sin bild och sin text.</p></li>
+      <li><div class="pic felty" aria-hidden="true">
+            <div class="zone" style="left:8%;top:22%;width:24%;height:56%"><b>Draghög</b><div class="card back" style="--w:46px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-2deg)"></div></div>
+            <div class="zone" style="left:40%;top:22%;width:52%;height:56%"><b>Mitten</b><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px" data-cards="2,4" class="mini"></div></div>
+          </div>
+          <h3>Duka bordet</h3><p>Bestäm högar och platser. TV:n blir bordet, telefonerna blir händerna — dold information håller sig dold.</p></li>
+      <li><div class="pic talk" aria-hidden="true">
+            <div class="bubble" style="--seat:var(--seat-1)"><i></i>«Rävens list» — vilken kasthög?</div>
+            <div class="bubble" style="--seat:var(--seat-2)"><i></i>Ekens väktare kändes för stark.</div>
+            <div class="bubble v2"><b>v2</b> Kostnad 4 → 5. Spela igen.</div>
+          </div>
+          <h3>Spela och lär</h3><p>Spelarna flaggar det som var oklart mitt i spelet. Ändra, spara en ny version, och duka om.</p></li>
+    </ol>
+  </section>
+
+  <section class="a-end">
+    <div class="slab">
+      <div><h2>Din lek väntar på sitt första bord.</h2><p>Logga in med e-post — länken i mejlet är allt som behövs.</p></div>
+      <a class="btn btn-primary" href="#" data-go="editor">Till editorn <span class="arrow">→</span></a>
+    </div>
+  </section>
+</div>
+
+<!-- ======================= B — Från rad till kort ======================= -->
+<div class="variant" id="B" data-name="Från rad till kort">
+  <header class="b-head">
+    <a class="wordmark" href="#" data-go="/"><span class="mark"><i></i><i></i><i></i></span>build-your-deck</a>
+    <div style="display:flex;gap:14px;align-items:center">
+      <form class="code" data-code><span class="pair"><label class="visually-hidden" for="b-code">Rumskod</label><input id="b-code" placeholder="Rumskod" maxlength="6" autocomplete="off"><button>Gå in</button></span></form>
+      <a class="btn btn-ghost" href="#" data-go="editor">Mina spel</a>
+    </div>
+  </header>
+
+  <section class="b-intro">
+    <h1>Från en rad text<br>till <span>ett spel på bordet.</span></h1>
+    <p>build-your-deck är verktyget för den som hittar på kortspel: skriv korten, formge dem, och speltesta med vännerna samma kväll — på TV:n och i telefonerna.</p>
+    <div class="ctas"><a class="btn btn-primary" href="#" data-go="editor">Börja bygga <span class="arrow">→</span></a><a class="btn btn-ghost" href="#b-story">Se hur</a></div>
+    <div class="scroll">Rulla</div>
+  </section>
+
+  <section class="b-story" id="b-story">
+    <div class="b-stage-wrap">
+      <div class="b-stage" data-step="1" aria-hidden="true">
+        <div class="grid-bg"></div>
+        <div class="tablefelt"></div>
+        <div class="sheet">
+          <div class="r h"><span>Titel</span><span>Kost</span><span>Typ</span><span>Text</span></div>
+          <div class="r"><span>Ugglans råd</span><span>2</span><span>Trolldom</span><span>Titta på de tre översta korten…</span></div>
+          <div class="r"><span>Ekens väktare</span><span>4</span><span>Väsen</span><span>Kan inte anfallas av kort med kostnad 1.</span></div>
+          <div class="r"><span>Dimmans stig</span><span>1</span><span>Plats</span><span>Alla spelare drar ett kort.</span></div>
+          <div class="r"><span>Rävens list</span><span>3</span><span>Trolldom</span><span>Byt ett kort i handen mot…</span></div>
+          <div class="r edit"><span>Mossans drottning</span><span>5</span><span>Väsen</span><span>Ta upp ett kort från kasthögen<i class="caret"></i></span></div>
+        </div>
+        <div class="seat" style="--seat:var(--seat-1)" data-seat="0"><i></i>Ada</div>
+        <div class="seat" style="--seat:var(--seat-2)" data-seat="1"><i></i>Bo</div>
+        <div class="seat" style="--seat:var(--seat-3)" data-seat="2"><i></i>Cleo</div>
+        <div class="flagnote">
+          <div class="row" style="--seat:var(--seat-2)"><i></i><span><b>Bo flaggade</b> «Rävens list»: vilken kasthög menas?</span></div>
+          <div class="row"><span><span class="ver">v2</span> Texten förtydligad. Bordet dukas om med den nya versionen.</span></div>
+        </div>
+        <div class="stepdots"><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="b-chapters">
+      <article class="chapter" data-step="1"><div class="n">01 — LEKEN</div><h2>Varje kort är en rad.</h2><p>Titel, kostnad, typ, regeltext — i en tabell, som ett kalkylark. Att ändra hundra kort är lika snabbt som att ändra ett.</p><p class="aside">Klistra in från ett kalkylark, eller börja från tomt.</p></article>
+      <article class="chapter" data-step="2"><div class="n">02 — MALLEN</div><h2>Rita ett kort. Få alla.</h2><p>Du formger kortet en gång. Varje rad fyller sin egen kopia — bild, ikoner, typsnitt och färg följer med.</p></article>
+      <article class="chapter" data-step="3"><div class="n">03 — BORDET</div><h2>Lägg leken på bordet.</h2><p>Bestäm var draghögen ligger och vad som är mitten. Öppna bordet på TV:n — det är spelplanen alla ser.</p></article>
+      <article class="chapter" data-step="4"><div class="n">04 — HÄNDERNA</div><h2>Telefonen är din hand.</h2><p>Vännerna skannar QR-koden eller skriver rumskoden. Ingen app, inget konto. Det som är dolt syns bara för den som håller korten.</p></article>
+      <article class="chapter" data-step="5"><div class="n">05 — LÄRDOMEN</div><h2>Spela, flagga, ändra.</h2><p>Mitt i spelet flaggar spelarna det som var oklart. Efter rundan ändrar du raden, sparar version två, och dukar om.</p><p class="aside">Varje version sparas. Inget går förlorat mellan testkvällarna.</p></article>
+    </div>
+  </section>
+
+  <section class="b-final">
+    <h2>Din lek börjar med en rad.</h2>
+    <p>Logga in med e-post och skriv den. Länken i mejlet är allt som behövs.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="#" data-go="editor">Öppna editorn <span class="arrow">→</span></a>
+      <form class="code" data-code><label for="b-code2">Ska du spela? Skriv rumskoden</label><span class="pair"><input id="b-code2" placeholder="t.ex. KX4P" maxlength="6" autocomplete="off"><button>Gå in</button></span></form>
+    </div>
+  </section>
+  <a class="btn btn-primary b-dock" href="#" data-go="editor">Börja bygga <span class="arrow">→</span></a>
+</div>
+
+<!-- ======================= C — Solfjädern ======================= -->
+<div class="variant" id="C" data-name="Solfjädern">
+  <div class="c-wrap">
+    <header class="c-head">
+      <a class="wordmark" href="#" data-go="/"><span class="mark"><i></i><i></i><i></i></span>build-your-deck</a>
+      <a class="btn btn-ghost" href="#" data-go="editor">Mina spel</a>
+    </header>
+    <main class="c-main">
+      <div>
+        <h1>Hela kortspelet,<br>i en hand.</h1>
+        <p>Från första raden till kvällens testrunda. Välj ett kort för att se vad verktyget gör.</p>
+      </div>
+      <div class="fan" data-fan></div>
+      <div class="c-explain" aria-live="polite">
+        <h2 data-explain-title></h2>
+        <p data-explain-body></p>
+        <p class="hint">Fem kort, fem steg — klicka eller använd tabb.</p>
+      </div>
+    </main>
+    <footer class="c-doors">
+      <div class="door">
+        <strong>Hittar du på spel?</strong>
+        <a class="btn btn-primary" href="#" data-go="editor">Börja bygga <span class="arrow">→</span></a>
+        <span>Logga in med e-post — inget lösenord</span>
+      </div>
+      <div class="or">eller</div>
+      <div class="door">
+        <strong>Ska du spela?</strong>
+        <form class="code" data-code><span class="pair"><label class="visually-hidden" for="c-code">Rumskod</label><input id="c-code" placeholder="Rumskoden" maxlength="6" autocomplete="off"><button>Gå in</button></span></form>
+        <span>Ingen app, inget konto</span>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<div class="proto-bar" role="toolbar" aria-label="Prototypens varianter">
+  <button data-step="-1" aria-label="Föregående variant">←</button>
+  <span data-label></span>
+  <button data-step="1" aria-label="Nästa variant">→</button>
+</div>
+<div class="toast" data-toast></div>
+
+<script>
+const ART = {
+  moon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 3a9 9 0 1 0 6 15.7A8 8 0 0 1 15 3z"/><circle cx="8" cy="7" r="1"/><circle cx="18" cy="10" r=".8"/></svg>',
+  tree: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 5 11h3l-4 6h7v5h2v-5h7l-4-6h3z"/></svg>',
+  path: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 8c3-2 6 2 9 0s6-2 9 0M3 13c3-2 6 2 9 0s6-2 9 0M3 18c3-2 6 2 9 0s6-2 9 0"/></svg>',
+  fox: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3l5 5h8l5-5-1 9-8 9-8-9z"/><circle cx="9" cy="12" r="1" fill="#0004"/><circle cx="15" cy="12" r="1" fill="#0004"/></svg>',
+  crown: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5z"/><rect x="5" y="19" width="14" height="2" rx="1"/></svg>',
+}
+const DECK = [
+  { title: 'Ugglans råd', cost: 2, type: 'Trolldom', text: 'Titta på de tre översta korten. Lägg tillbaka dem i valfri ordning.', hue: '#5b7bd5', art: 'moon' },
+  { title: 'Ekens väktare', cost: 4, type: 'Väsen', text: 'Kan inte anfallas av kort med kostnad 1.', hue: '#3f8f5a', art: 'tree' },
+  { title: 'Dimmans stig', cost: 1, type: 'Plats', text: 'Alla spelare drar ett kort.', hue: '#5aa3a8', art: 'path' },
+  { title: 'Rävens list', cost: 3, type: 'Trolldom', text: 'Byt ett kort i handen mot översta i kasthögen.', hue: '#d27a3c', art: 'fox' },
+  { title: 'Mossans drottning', cost: 5, type: 'Väsen', text: 'När hon spelas: ta upp ett kort från kasthögen.', hue: '#9a6ad0', art: 'crown' },
+]
+const cardHTML = (c, extra = '') => `<div class="card" style="--hue:${c.hue}">${extra}<div class="top"><span class="title">${c.title}</span><span class="cost">${c.cost}</span></div><div class="art">${ART[c.art]}</div><div class="type">${c.type}</div><div class="text">${c.text}</div></div>`
+document.querySelectorAll('[data-cards]').forEach((el) => {
+  el.innerHTML = el.dataset.cards.split(',').map((i) => cardHTML(DECK[+i])).join('')
+})
+
+// Länkarna: i produkten leder «Mina spel» och «Börja bygga» till editorns startsida.
+const toast = document.querySelector('[data-toast]')
+let toastTimer
+const say = (msg) => { toast.textContent = msg; toast.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('on'), 2200) }
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]')
+  if (!go) return
+  e.preventDefault()
+  say(go.dataset.go === 'editor' ? 'Prototyp: här öppnas Mina spel (inloggning först om det behövs).' : 'Prototyp: landningssidan.')
+})
+document.querySelectorAll('[data-code]').forEach((f) => f.addEventListener('submit', (e) => {
+  e.preventDefault()
+  const v = f.querySelector('input').value.trim().toUpperCase()
+  say(v ? `Prototyp: här öppnas platsväljaren för /${v}.` : 'Skriv rumskoden först.')
+}))
+
+// ---------- B: scenen följer kapitlen ----------
+const stage = document.querySelector('.b-stage')
+const bCards = DECK.map((c) => { const t = document.createElement('div'); t.innerHTML = cardHTML(c); const el = t.firstChild; stage.appendChild(el); return el })
+const seats = [...stage.querySelectorAll('.seat')]
+function layoutB(step) {
+  stage.dataset.step = step
+  stage.querySelectorAll('.stepdots i').forEach((d, i) => d.classList.toggle('on', i === step - 1))
+  const W = stage.clientWidth, H = stage.clientHeight, cw = bCards[0].offsetWidth, ch = bCards[0].offsetHeight
+  const sheet = stage.querySelector('.sheet'), rows = [...sheet.querySelectorAll('.r:not(.h)')]
+  bCards.forEach((el, i) => {
+    let x, y, r = 0, s = 1, o = 1
+    if (step === 1) { const row = rows[i]; x = sheet.offsetLeft + 10; y = sheet.offsetTop + row.offsetTop + row.offsetHeight / 2 - ch / 2; s = 0.18; o = 0 }
+    else if (step === 2) { const gap = Math.min(16, W * .02), total = 5 * cw + 4 * gap, sc = Math.min(1, (W * .9) / total); s = sc; const start = (W - total * sc) / 2; x = start + i * (cw + gap) * sc - cw * (1 - sc) / 2; y = H / 2 - ch / 2 - 10; r = (i - 2) * 1.5 }
+    else if (step === 3) { x = W * .3 - cw / 2 + i * 2; y = H * .42 - ch / 2 - i * 2; r = -3 + i * 1.6 }
+    else {
+      const spots = [[.24, .72, -12], [.5, .74, 0], [.76, .72, 12]]
+      if (i < 3) { const [px, py, pr] = spots[i]; x = W * px - cw / 2; y = H * py - ch / 2; r = pr; s = .82 }
+      else { x = W * (i === 3 ? .3 : .44) - cw / 2; y = H * .3 - ch / 2; r = i === 3 ? -6 : 5 }
+      if (step === 5 && i === 3) { el.classList.add('flash') } else el.classList.remove('flash')
+    }
+    if (step !== 5) el.classList.remove('flash')
+    el.style.transform = `translate(${x}px, ${y}px) rotate(${r}deg) scale(${s})`
+    el.style.opacity = o
+    el.style.zIndex = step === 3 ? 10 - i : (step === 5 && i === 3 ? 20 : i)
+  })
+  const fox = bCards[3].querySelector('.text')
+  fox.innerHTML = step === 5 ? 'Byt ett kort i handen mot översta i <mark>din egen</mark> kasthög.' : DECK[3].text
+  const spots = [[.24, .5], [.5, .52], [.76, .5]]
+  seats.forEach((el, i) => { el.style.left = `calc(${spots[i][0] * 100}% - 30px)`; el.style.top = `${spots[i][1] * 100 - 4}%` })
+}
+let bStep = 1
+const chapters = [...document.querySelectorAll('.chapter')]
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((en) => { if (en.isIntersecting) { chapters.forEach((c) => c.classList.toggle('on', c === en.target)); bStep = +en.target.dataset.step; layoutB(bStep) } })
+}, { rootMargin: matchMedia('(max-width: 860px)').matches ? '-56% 0px -38% 0px' : '-45% 0px -45% 0px' })
+chapters.forEach((c) => io.observe(c))
+addEventListener('resize', () => layoutB(bStep))
+const dock = document.querySelector('.b-dock'), intro = document.querySelector('.b-intro'), final = document.querySelector('.b-final')
+addEventListener('scroll', () => {
+  if (current !== 'B') return
+  const past = intro.getBoundingClientRect().bottom < 0, atEnd = final.getBoundingClientRect().top < innerHeight
+  dock.classList.toggle('on', past && !atEnd)
+}, { passive: true })
+
+// ---------- C: solfjädern ----------
+const STEPS = [
+  { tag: '1 · Leken', title: 'Skriv korten som rader', body: 'Titel, kostnad, typ och regeltext i en tabell. Hundra kort ändras lika snabbt som ett — klistra in från ett kalkylark eller börja från tomt.' },
+  { tag: '2 · Mallen', title: 'Rita ett kort, få alla', body: 'Formge kortet en gång. Varje rad fyller sin egen kopia med bild, ikoner och typsnitt — tryckfärdigt.' },
+  { tag: '3 · Bordet', title: 'Duka bordet på TV:n', body: 'Lägg ut högar och platser. TV:n blir spelplanen som alla ser, i vardagsrummet eller på distans.' },
+  { tag: '4 · Handen', title: 'Telefonen är handen', body: 'Spelarna skriver rumskoden eller skannar QR — ingen app, inget konto. Dolda kort syns bara för den som håller dem.' },
+  { tag: '5 · Lärdomen', title: 'Spela, flagga, gör om', body: 'Spelarna flaggar det som var oklart mitt i spelet. Ändra, spara en ny version och duka om samma kväll.' },
+]
+const fan = document.querySelector('[data-fan]')
+fan.innerHTML = DECK.map((c, i) => `<button class="fan-card" style="--i:${i}" aria-pressed="false" aria-label="${STEPS[i].title}">${cardHTML(c, `<span class="step">${STEPS[i].tag}</span>`)}</button>`).join('')
+const fanCards = [...fan.querySelectorAll('.fan-card')]
+function pick(i) {
+  fanCards.forEach((b, j) => b.setAttribute('aria-pressed', String(i === j)))
+  fan.dataset.picked = ''
+  document.querySelector('[data-explain-title]').textContent = STEPS[i].title
+  document.querySelector('[data-explain-body]').textContent = STEPS[i].body
+}
+fanCards.forEach((b, i) => { b.addEventListener('click', () => pick(i)); b.addEventListener('focus', () => pick(i)) })
+pick(0)
+
+// ---------- Växlaren ----------
+const KEYS = ['A', 'B', 'C']
+let current = new URLSearchParams(location.search).get('v')?.toUpperCase()
+if (!KEYS.includes(current)) current = 'A'
+function show(k) {
+  current = k
+  document.querySelectorAll('.variant').forEach((v) => v.toggleAttribute('data-on', v.id === k))
+  const v = document.getElementById(k)
+  document.querySelector('[data-label]').innerHTML = `${k} — ${v.dataset.name}<small>Prototyp #1009 · ← → byter</small>`
+  const u = new URL(location.href); u.searchParams.set('v', k); history.replaceState(null, '', u)
+  scrollTo(0, 0)
+  if (k === 'B') requestAnimationFrame(() => layoutB(bStep))
+}
+document.querySelectorAll('.proto-bar [data-step]').forEach((b) => b.addEventListener('click', () => show(KEYS[(KEYS.indexOf(current) + +b.dataset.step + KEYS.length) % KEYS.length])))
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable], [data-fan]')) return
+  if (e.key === 'ArrowRight') show(KEYS[(KEYS.indexOf(current) + 1) % 3])
+  if (e.key === 'ArrowLeft') show(KEYS[(KEYS.indexOf(current) + 2) % 3])
+})
+show(current)
+</script>
+</body>
+</html>
