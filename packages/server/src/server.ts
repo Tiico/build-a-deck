@@ -19,7 +19,7 @@ import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff
 import { ProjectHost, type EditorMessage } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, namesOfProject, peekFace, type CardFace } from './names.js'
-import { SurveyAnswer, type SurveyStore } from './surveys.js'
+import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
@@ -673,6 +673,27 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name } : { refused: 'an observer needs a token' }
   if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
+}
+
+// Who is answering the survey (G3, #1021), or null for nobody this table admitted. A guest is
+// her admission: the token is tried the way the door tries it, and the name and the seat are the
+// admission's. Without a token it is the project's host, from the editor's own ways in, by the
+// same login the door lets her sit down with — never the table screen's key, which sits nowhere.
+async function surveySender(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyBody): Promise<Omit<SurveyAnswer, 'answers'> | null> {
+  const observer = body.observer === true
+  const seat = body.seat ?? null
+  if (body.token !== undefined) {
+    const now = clock(opts)
+    const guest = await opts.store.activateGuest(session.id, hash(body.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
+    if (!guest) return null
+    if (guest.kind === 'observer') return observer && seat === null ? { who: guest.name, seat: null, observer: true } : null
+    return !observer && seat === guest.seat ? { who: guest.name, seat: guest.seat } : null
+  }
+  if (!session.project) return null
+  if (opts.auth && (/^Bearer\s/i.test(req.headers.authorization ?? '') || (await hostOf(opts, req, session)) !== 'host')) return null
+  if (observer) return seat === null && body.who ? { who: body.who, seat: null, observer: true } : null
+  if (seat === null || !session.setup.seats.includes(seat)) return null
+  return { who: actor.seats().find((s) => s.id === seat)?.name ?? seat, seat }
 }
 
 // One editor on one project (D3). Only the account that owns the project may edit it; roles for
@@ -1781,8 +1802,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 409, { error: 'the session has not ended' })
       return true
     }
-    const answer = SurveyAnswer.parse(JSON.parse(await readBody(req)))
-    await opts.surveys.add({ sessionId, version: actor.version, at: new Date().toISOString(), ...answer })
+    const body = SurveyBody.parse(JSON.parse(await readBody(req)))
+    const sender = await surveySender(opts, req, session, actor, body)
+    if (!sender) {
+      json(res, 403, { error: 'an answer needs the admission it was given at this table' })
+      return true
+    }
+    await opts.surveys.put({ sessionId, version: actor.version, at: clock(opts).toISOString(), ...sender, answers: body.answers })
     json(res, 201, { ok: true })
     return true
   }

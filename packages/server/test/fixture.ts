@@ -1,7 +1,7 @@
 import type { Server as SocketServer } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '../src/index.js'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore, type SurveyStore } from '../src/index.js'
 import type { AssetStore } from '../src/assets.js'
 import type { ServerOptions } from '../src/server.js'
 import type { LogStore } from '../src/store.js'
@@ -164,7 +164,7 @@ const rooms = new Map<string, { code: string; hostKey: string }>()
 // same route whether the bytes end up in memory or in Postgres, and a test that only ever sees one
 // of them cannot say so. `store`, `projects` and `auth` are the same for a door that asks who owns a
 // game and what that owner's address is (#1011): the answer comes out of a different query on the box.
-export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; assets?: AssetStore; auth?: AuthStore; corpus?: Corpus; ai?: ServerOptions['ai'] } = {}): Promise<Running> {
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore; corpus?: Corpus; ai?: ServerOptions['ai'] } = {}): Promise<Running> {
   const store = opts.store ?? new MemoryLogStore()
   const renders = new MemoryRenderStore(opts.objects)
   // A store of the test's own, for a test about what the server does while the store is answering.
@@ -172,7 +172,7 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
-  const server = createServer({ host, store, registry, renders, projects, assets: opts.assets ?? new MemoryAssetStore(opts.objects), surveys: new MemorySurveyStore(), auth: opts.auth ?? new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...authBypass })
+  const server = createServer({ host, store, registry, renders, projects, assets: opts.assets ?? new MemoryAssetStore(opts.objects), surveys: opts.surveys ?? new MemorySurveyStore(), auth: opts.auth ?? new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...authBypass })
   // Never hang up an idle connection from this end (#848): the `fetch` in this same process pools
   // it for its next request, and a worker held past Node's five seconds wakes with both due in one
   // turn. The client decides when a connection is done; `stop` closes this end.

@@ -176,16 +176,19 @@ export type SeatSurveyProps = {
   http: string
   sessionId: string
   version: string | null
+  // The admission the seat was taken with (#1021), which is who the answer is from; absent for the
+  // host playing from the editor.
+  token?: string | undefined
   // Where to save the session to an account afterwards (G1); absent without a guest token.
   saveUrl?: string | null | undefined
   // The claim has come back here (#690).
   saved?: boolean | undefined
 }
 
-export function SeatSurvey({ view, seat, name, http, sessionId, version, saveUrl, saved }: SeatSurveyProps) {
+export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved }: SeatSurveyProps) {
   const rulebook = useHasRulebook(http, sessionId, view.ended)
   if (!view.ended) return null
-  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} saved={saved} remember={`${sessionId}:${seat}`} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
+  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} saved={saved} remember={`${sessionId}:${seat}`} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })} />
 }
 
 // The three buttons every seat has, and three is the number (#31): the row is full at 375 px,

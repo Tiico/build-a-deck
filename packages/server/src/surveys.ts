@@ -9,25 +9,47 @@ export const SurveyAnswers = z.object({
   balance: z.number().int().min(1).max(5),
   change: z.string().max(500),
 })
-export const SurveyAnswer = z.object({
-  who: z.string().min(1).max(64),
-  seat: SeatId.nullable(),
+export type SurveyAnswer = {
+  who: string
+  seat: string | null
   // Observers answer too, marked as such (C8).
-  observer: z.boolean().optional(),
-  answers: SurveyAnswers,
-})
-export type SurveyAnswer = z.infer<typeof SurveyAnswer>
+  observer?: boolean
+  answers: z.infer<typeof SurveyAnswers>
+}
 export type SurveyRecord = SurveyAnswer & { sessionId: string; version: string; at: string }
 
+// What a phone sends (G3, #1021): its answers, and the admission it sat or watched under. Who
+// answered is the admission's to say, not the body's — the name and the seat are read from the
+// token the server tries, and `seat`/`observer` only say which of the two the phone believes it
+// is, so a token for one seat cannot answer for another. Without a token the sender is the
+// project's own host, playing or watching from the editor's ways in (`owner=1`), whose login is
+// her admission; she is the one sender who names herself, since she sat down without buying one.
+export const SurveyBody = z.object({
+  token: z.string().min(1).max(256).optional(),
+  seat: SeatId.nullable().optional(),
+  observer: z.boolean().optional(),
+  who: z.string().trim().min(1).max(64).optional(),
+  answers: SurveyAnswers,
+})
+export type SurveyBody = z.infer<typeof SurveyBody>
+
+// One answer per seat and per observer at a table (#1021): a second one replaces the first. The
+// phone remembers that it answered only in the tab's own storage, and a phone that forgot asks
+// again and is answered — so the answer that stands is the latest one, never two that count twice.
+// An observer is known by the name her admission was bought under, which is how «Bord du spelat
+// vid» already tells whether she answered.
 export type SurveyStore = {
-  add(record: SurveyRecord): Promise<void>
+  put(record: SurveyRecord): Promise<void>
   list(sessionId: string): Promise<SurveyRecord[]>
 }
 
+const sameSender = (a: SurveyRecord, b: SurveyRecord): boolean =>
+  a.sessionId === b.sessionId && (a.observer ?? false) === (b.observer ?? false) && (a.observer ? a.who === b.who : a.seat === b.seat)
+
 export class MemorySurveyStore implements SurveyStore {
-  private readonly records: SurveyRecord[] = []
-  async add(record: SurveyRecord): Promise<void> {
-    this.records.push(structuredClone(record))
+  private records: SurveyRecord[] = []
+  async put(record: SurveyRecord): Promise<void> {
+    this.records = [...this.records.filter((r) => !sameSender(r, record)), structuredClone(record)]
   }
   async list(sessionId: string): Promise<SurveyRecord[]> {
     return this.records.filter((r) => r.sessionId === sessionId).map((r) => structuredClone(r))

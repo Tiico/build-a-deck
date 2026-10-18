@@ -54,10 +54,24 @@ import type { SurveyRecord, SurveyStore } from './surveys.js'
 export class PostgresSurveyStore implements SurveyStore {
   constructor(private readonly sql: postgres.Sql) {}
 
-  async add(r: SurveyRecord): Promise<void> {
+  // One answer per seat and per observer (#1021): the unique keys in the schema hold it, and a
+  // second answer takes the place of the first.
+  async put(r: SurveyRecord): Promise<void> {
+    const answers = this.sql.json(r.answers as never)
+    if (r.observer) {
+      await this.sql`
+        insert into surveys (session_id, version, at, who, seat, observer, answers)
+        values (${r.sessionId}, ${r.version}, ${r.at}, ${r.who}, null, true, ${answers})
+        on conflict (session_id, who) where observer
+        do update set version = excluded.version, at = excluded.at, answers = excluded.answers
+      `
+      return
+    }
     await this.sql`
       insert into surveys (session_id, version, at, who, seat, observer, answers)
-      values (${r.sessionId}, ${r.version}, ${r.at}, ${r.who}, ${r.seat}, ${r.observer ?? false}, ${this.sql.json(r.answers as never)})
+      values (${r.sessionId}, ${r.version}, ${r.at}, ${r.who}, ${r.seat}, false, ${answers})
+      on conflict (session_id, seat) where not observer
+      do update set version = excluded.version, at = excluded.at, who = excluded.who, answers = excluded.answers
     `
   }
 

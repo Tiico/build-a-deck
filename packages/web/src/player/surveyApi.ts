@@ -3,7 +3,10 @@
 import type { Key } from '../i18n/index.js'
 
 export type SurveyAnswers = { fun: number; clarity: number; balance: number; change: string }
-export type SurveyRequest = { who: string; seat: string | null; observer?: boolean; answers: SurveyAnswers }
+// `token` is the admission the phone sat or watched under (#1021): the server reads who answered
+// out of it, and a seat or an observer has one answer, the latest. Without one it is the host,
+// from the editor's own ways in, whose login is her admission.
+export type SurveyRequest = { token?: string | undefined; who: string; seat: string | null; observer?: boolean; answers: SurveyAnswers }
 
 // The questions themselves are the tool's words, so they are catalogue keys and the sheet reads
 // them in whichever language the reader is given (A4).
