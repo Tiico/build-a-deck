@@ -28,6 +28,8 @@ import type { ProjectDoc } from './projects.js'
 // short of a line held open for nothing.
 export type AiCaps = { perAccount: number; total: number; timeoutMs: number }
 export const AI_CAPS: AiCaps = { perAccount: 2, total: 8, timeoutMs: 180_000 }
+// The most a question's body can honestly be: forty turns of twenty thousand characters, with room.
+export const ASK_MAX_BYTES = 1024 * 1024
 // What an answer may cost at most, in the provider's tokens. Enough for a long answer about a game.
 const MAX_TOKENS = 4096
 // A comment line now and then while the provider thinks, so that nothing between here and the

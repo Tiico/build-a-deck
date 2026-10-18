@@ -172,6 +172,8 @@ describe('a question about the game', () => {
     expect((await ask(w, w.ada, 'x'.repeat(4001))).status).toBe(400)
     expect((await ask(w, w.ada, 'Hej', { turns: [{ role: 'assistant', text: 'Först?' }] })).status).toBe(400)
     expect((await ask(w, w.ada, 'Hej', { turns: [{ role: 'user', text: 'Hej' }] })).status).toBe(400)
+    // A body far past anything a conversation can be is not kept.
+    expect((await read(await post(w, w.ada, { question: 'Hej', turns: [], padding: 'x'.repeat(2_000_000) }))).status).toBe(413)
     expect(fake.calls.length).toBe(calls)
   })
 })

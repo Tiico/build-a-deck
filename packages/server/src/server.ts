@@ -30,7 +30,7 @@ import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
-import { AI_CAPS, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
+import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -1258,7 +1258,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    const ask = AskBody.parse(JSON.parse(await readBody(req)))
+    // Forty turns of twenty thousand characters is the most a conversation can be; a body past that
+    // is not kept.
+    const bytes = await readBytes(req, ASK_MAX_BYTES)
+    if (!bytes) {
+      json(res, 413, { error: 'too big' })
+      return true
+    }
+    const ask = AskBody.parse(JSON.parse(Buffer.from(bytes).toString('utf8')))
     const doc = (await editors(opts, projects).live(gate.rec.id)) ?? gate.rec
     await answerQuestion({ vault: opts.ai.vault, providers: opts.ai.providers, flight: flightOf(opts, opts.ai.caps) }, res, account.id, doc, ask)
     return true
