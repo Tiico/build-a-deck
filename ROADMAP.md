@@ -1,6 +1,6 @@
 # Roadmap till release
 
-Status: sammanställd 2026-09-06 ur [DESIGN-BESLUT.md](DESIGN-BESLUT.md), [DRIFT.md](DRIFT.md), [TUNN-SKIVA.md](TUNN-SKIVA.md) och git-loggen.
+Status: sammanställd 2026-09-06, betan inlagd 2026-10-18, ur [DESIGN-BESLUT.md](DESIGN-BESLUT.md), [DRIFT.md](DRIFT.md), [TUNN-SKIVA.md](TUNN-SKIVA.md) och git-loggen.
 Det här dokumentet sammanfattar och ordnar besluten; det fattar inga nya.
 Ett beslut ändras i sitt eget dokument, och den här roadmapen följer efter.
 
@@ -165,9 +165,24 @@ Deployen är pull-baserad och timern är på: att tagga är att deploya.
 - ✅ Händelseschemats `schemaVersion` på varje rad och upcasters vid inläsning; korpusens filer lyfts, aldrig skrivs om (DRIFT §7).
 - 🔶 Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7). Svaret och verktyget finns (#540): spelets egna ord och kortens id byts mot pseudonymer, spelet och utfallen står kvar. Beställaren beslutade 2026-09-29 att stänga #540 utan en första riktig session ur lådan; korpusen får riktiga sessioner först med betan (fas 6).
 - 🔶 Rate limiting mot join- och login-endpointerna (DRIFT §9): lådans egen proxy gör det sedan 2026-09-11, 100 i sekunden med burst 50, räknat på riktiga besökar-IP:n eftersom proxyn litar på Cloudflares vidarebefordrade huvuden. Kvar är att flytta den framför huset, vilket §9 ber om — den här stoppar inget innan det når fibern.
-- 🔶 Tailscale för administration är i drift sedan 2026-09-11; UPS för lådan och beslutet om en extern pulskoll står kvar (DRIFT §10, öppna frågor).
+- 🔶 Tailscale för administration är i drift sedan 2026-09-11, och en extern pulskoll mot `/health` beslutades 2026-10-18 inför betan (DRIFT §8); UPS för lådan står kvar (DRIFT §10, öppna frågor).
 - 🔶 Minnesbudgeten reviderad och mätt i vila 2026-09-11: taken är render 1,5 GB, Postgres 768 MB, app 512 MB på en låda som delas med ett trettiotal andra containrar, och stacken tar 605 MB av dem när ingen spelar (DRIFT §1). Under last är den oprövad.
 - 🔶 Dokumenterad återställning från noll: ny låda, `.env`, restore, deploy — skriven som [ops/RUNBOOK.md](ops/RUNBOOK.md); vägen från R2 till den riktiga datavolymen är körd först den dag den behövs.
+
+## Betan — före tryck
+
+Betan kommer före fas 5, inte efter den: startsidan lovar det som finns, «Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.» (L36 reviderad, #743).
+Den kräver varken villkor eller GDPR för gäster, eftersom betans minsta förtroendeyta är beslutad och byggd (I, #757).
+Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samtycke i inbjudan (I, beslutat 2026-10-18).
+
+- ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757).
+- ✅ Säljtexten lovar inte trycket (L36, #743).
+- 🔶 Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade utom två som väntar på beställarens val av prototyp (#695, #699).
+- ⬜ Designern läser playtestets svar — enkätsvar och flaggor per bord och version; utan den ytan går betan inte att mäta (G3, #1010).
+- ⬜ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
+- ⬜ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012).
+- ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).
+- ⬜ En release från main med allt ovan, och tre till fem designers inbjudna med samtyckesfrågan.
 
 ## Fas 5 — Tryck
 
@@ -186,7 +201,7 @@ Byggs sist (H3), och stänger den tunna skivan (H1).
 
 Innan första betalande användaren:
 
-- ⬜ Betabruk med tre till fem designers ur målgruppen (A1), rekryterade med delbar länk (A3), med enkäterna som mått (G3).
+- ⬜ Betabruk med tre till fem designers ur målgruppen (A1), rekryterade med delbar länk (A3), med enkäterna som mått (G3); vad betan kräver står i avsnittet ovan.
 - ⬜ Replay-korpusen innehåller deras sessioner och spelar upp identiskt på varje commit (D4).
 - ⬜ Återställningsprovet har körts mot en riktig backup (DRIFT §5).
 - ✅ Tillgänglighet i verktyget självt på en grundnivå: tangentbord, kontrast, skärmläsarnamn (I). Granskningen 2026-09-29 (#549) fann 84 fynd, och alla är rättade eller beslutade och byggda (#550–#560, #569, #570, #575, #579–#581).
@@ -208,7 +223,7 @@ Från DESIGN-BESLUT I och DRIFT:
 ## Öppna frågor som inte blockerar release
 
 - ~~Anonymisering av replay-korpusen (fas 4).~~ Besvarad 2026-09-28 (#540): se DRIFT §7.
-- UPS och extern pulskoll (fas 4).
+- UPS (fas 4). Den externa pulskollen är besvarad 2026-10-18: ja, inför betan (DRIFT §8).
 - Tillgänglighet utöver grundnivån (fas 6).
 
 ---

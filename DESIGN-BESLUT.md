@@ -6091,6 +6091,9 @@ Moms, tull och leveransvillkor för fysiska varor till EU-kunder från amerikans
 Prisnivåernas exakta tak och gratisnivåns gränser.
 GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan konto.
 Betans minsta förtroendeyta, innan villkoren och GDPR för gäster är lösta: **beslutat 2026-10-06 (#757, prototyp A).** En tyst rad sist i inloggningskortet och sist på Mina spel säger «Kontakt» (lådans `BYD_CONTACT`, utelämnad utan) och versionen ur `/health.release`; där en gäst ansluter och där hon sparar sina enkätsvar till ett konto står «Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.»; inloggningsmejlet har en fot med tjänstens namn, sajten och kontakten. «Villkor · Integritet» läggs på samma rad när de finns. `trust-surfaces.test.tsx`, `login-mail.test.ts` och `wire.test.ts` håller raden, meningen, foten och `/health.contact`.
+Vem betan är öppen för: **beslutat 2026-10-18, för alla.** Vem som helst med en e-postadress kan skapa konto, som i dag, utan inbjudningslista och utan kvoter; A2:s tak är inte byggda och beslutas inte för betan.
+Konsekvens att vara medveten om: ingenting begränsar hur många projekt, kort eller renderingar ett konto tar på en låda som delas med ett trettiotal andra containrar, så minnesbudgeten under last (#1012) och lådans egen rate limiting (DRIFT §9) är det enda skyddet tills A2 byggs.
+Hur betans sessioner når replay-korpusen: **beslutat 2026-10-18, samtycke i inbjudan.** Beställaren frågar varje betadesigner när hen bjuds in, och ett ja i mejlet räcker; produkten frågar ingenting. Hur samtycket blir en behörighet på lådan står i DRIFT §7 (#1011).
 Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:

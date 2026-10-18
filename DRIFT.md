@@ -159,6 +159,12 @@ Lådan kan inte berätta att den är nere; när fibern ligger är varje övervak
 Den enda signalen blir en användare som skriver.
 En gratis extern pulskoll är tio minuters arbete om det behövs senare, och ändrar inget annat.
 
+Reviderat 2026-10-18, inför betan: **en extern pulskoll läggs till.**
+Med riktiga användare är ett avbrott som ingen märker det dyraste läget, och den enda signalen får inte vara en betadesigner som skriver.
+En gratis extern tjänst frågar `https://deck.ockelberg.com/health` med några minuters mellanrum och mejlar beställaren när svaret inte är 200 — `/health` svarar 503 när Postgres eller R2 inte svarar (§2), så samma koll fångar både fibern och stacken.
+Kontot i tjänsten är beställarens och ligger utanför repot; ingenting i stacken ändras.
+Det är fortfarande den enda övervakningen: inga mätvärden och ingen loggaggregering.
+
 Kompensation som redan finns:
 En buggrapport är ett sessions-id och ett seq-nummer; `replay` till den punkten ger exakt det tillstånd användaren såg.
 
@@ -325,4 +331,4 @@ Administration över Tailscale (§10) är lådans sak; Postgres lyssnar bara på
 
 Hur replay-korpusen anonymiseras utan att förlora det som gör den värdefull.
 UPS för lådan — billig, men inte beslutad.
-Om en extern pulskoll ska läggas till trots beslut 8.
+~~Om en extern pulskoll ska läggas till trots beslut 8.~~ Besvarad 2026-10-18: ja, inför betan, se §8.
