@@ -7,8 +7,10 @@ import { useT } from '../i18n/index.js'
 // three fixes, because it is one question:
 // what does a panel own at the top, and what scrolls under it.
 //
-// The row is exactly one row at every width. What does not fit does not wrap and does not vanish:
-// it falls into a named box that opens over the work. A crown that wraps was measured at 113 px on
+// At the desk the row is exactly one row. What does not fit does not wrap and does not vanish: it
+// falls into a named box that opens over the work. (Under the desk and under a finger the row
+// breaks instead of hiding anything sideways — L54 — and the wall's does when a panel beside it
+// leaves it narrower than its short boxes, #1000.) A crown that wraps was measured at 113 px on
 // the card table at every width — thirteen filter chips do not fit on a line even at 1440 — which
 // is over the 80 px that tab's own acceptance asks for. This holds one target plus its air.
 //
@@ -17,8 +19,8 @@ import { useT } from '../i18n/index.js'
 // A colour-blindness filter left on without saying so is worse than no filter at all (E5), and a
 // box whose label does not say what is chosen inside it is the same fault in miniature.
 
-// The row itself. It never becomes two: `nowrap`, and what is too wide either scrolls inside a
-// rail or stands in a box.
+// The row itself. At the desk it never becomes two: `nowrap`, and what is too wide stands in a
+// box.
 export function Crown({ children }: { children: ReactNode }) {
   return <div className="byd-crown">{children}</div>
 }
@@ -51,8 +53,8 @@ export function CrownBox({ name, state, count, open, onToggle, boxRef, end }: Cr
       type="button"
       className={end ? 'byd-crown-box byd-crown-end' : 'byd-crown-box'}
       aria-expanded={open}
-      // The whole sentence is the box's name, whatever the row has room to show of it (#477): below
-      // 1280 a box with a choice in it shows only the choice.
+      // The whole sentence is the box's name, whatever the row has room to show of it (#477): on a
+      // wall narrower than a 1280 window's a box with a choice in it shows only the choice.
       aria-label={said}
       title={said}
       onClick={onToggle}

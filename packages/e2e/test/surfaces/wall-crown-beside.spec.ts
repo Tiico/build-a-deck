@@ -1,0 +1,123 @@
+import type { Page } from '@playwright/test'
+import { logIn, makeProjectOf } from '../../support/api.js'
+import { gameDoc } from '../../support/game.js'
+import { expect, test } from '../../support/test.js'
+
+// The wall's crown with something standing beside the wall (#1000, E4's följdkrav). The AI panel
+// chosen in #940 takes 380 px from the work, and in the prototype at 1280 that squeezed the search
+// field to a stub and cut «Fysisk kontroll» at the panel's edge. The crown answered the *window's*
+// width, and a wall narrower than the window got the desk's row at a width the row does not fit.
+//
+// The panel is not on main yet, so it is stood in for by what it is to the layout: a 380 px column
+// beside the open tab panel, inside the editor's `main`. What is measured is the real wall in the
+// built app — every control of its crown wholly visible, beside the column and not under it, and a
+// search field still wide enough to be written in.
+//
+// 180 px is the floor the desk already holds the field to (#477 fynd 12, beslut 2026-09-27, and
+// L54 under the desk): the placeholder «Sök i alla fält…» and a query of a word or two, read whole.
+// It is a relation to the field's own job and not a font's width, so it holds on CI's Linux too.
+const PANEL = 380
+const FIELD = 180
+
+const TYPES = ['Playcard', 'Location', 'Effect', 'Karaktär', 'Character', 'Shopcard', 'Trap-', 'Trap+']
+// Grouped, as a real deck is: the crown then carries the grouping's value and the jump column's
+// fold, which is the fullest the row gets.
+function deck() {
+  const doc = gameDoc({ name: "Sal's Saloon", cards: 48 })
+  doc.rows = doc.rows.map((row, i) => ({ ...row, fields: { ...row.fields, typ: TYPES[i % TYPES.length]! } }))
+  doc.template.faces['front']!.variantBy = 'typ'
+  return doc
+}
+
+// A column beside the open panel, the way a side panel takes its width: `main` lays the two out in
+// a row and the panel gives way.
+const standBeside = (page: Page, width: number) =>
+  page.evaluate((width) => {
+    const main = document.querySelector('.byd-editor > main') as HTMLElement
+    main.style.display = 'flex'
+    for (const panel of main.querySelectorAll<HTMLElement>(':scope > [role=tabpanel]')) {
+      panel.style.flex = '1 1 auto'
+      panel.style.minWidth = '0'
+    }
+    const aside = document.createElement('aside')
+    aside.setAttribute('data-beside', '')
+    aside.style.flex = `0 0 ${width}px`
+    main.append(aside)
+  }, width)
+
+// Every control of the crown that is not wholly visible: outside the window, cut by an ancestor
+// that clips sideways, or under the column beside the wall.
+const measure = (page: Page) =>
+  page.evaluate(() => {
+    const crown = document.querySelector('.byd-wall-view .byd-crown') as HTMLElement
+    const aside = document.querySelector('[data-beside]') as HTMLElement
+    const wall = document.querySelector('.byd-wall-view') as HTMLElement
+    const edge = aside.getBoundingClientRect().left
+    const cut: string[] = []
+    for (const el of crown.querySelectorAll<HTMLElement>('button, input, select, a[href]')) {
+      const r = el.getBoundingClientRect()
+      let left = Math.max(r.left, 0)
+      let right = Math.min(r.right, innerWidth, edge)
+      let top = Math.max(r.top, 0)
+      let bottom = Math.min(r.bottom, innerHeight)
+      for (let a = el.parentElement; a; a = a.parentElement) {
+        const style = getComputedStyle(a)
+        const b = a.getBoundingClientRect()
+        if (style.overflowX !== 'visible') {
+          left = Math.max(left, b.left)
+          right = Math.min(right, b.right)
+        }
+        if (style.overflowY !== 'visible') {
+          top = Math.max(top, b.top)
+          bottom = Math.min(bottom, b.bottom)
+        }
+      }
+      if (r.width === 0 || right - left < r.width - 1 || bottom - top < r.height - 1) cut.push((el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40))
+    }
+    return {
+      beside: Math.round(aside.getBoundingClientRect().width),
+      wallRight: Math.round(wall.getBoundingClientRect().right),
+      edge: Math.round(edge),
+      controls: crown.querySelectorAll('button, input').length,
+      cut,
+      over: crown.scrollWidth - crown.clientWidth,
+      field: Math.round((crown.querySelector('.byd-crown-search') as HTMLElement).getBoundingClientRect().width),
+      page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }
+  })
+
+for (const locale of ['sv-SE', 'en-GB']) {
+  // 1280 and 1440 are the two desks the issue names. 1024 is the desk's narrow end, where the wall
+  // beside the panel is 644 px and not even the short boxes fit on one row: there the row has to
+  // break, whatever font the machine draws it in.
+  for (const viewport of [
+    { width: 1024, height: 768 },
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    test.describe(`the wall's crown beside a ${PANEL} px panel at ${viewport.width} × ${viewport.height} in ${locale}`, () => {
+      test.use({ viewport, locale })
+
+      test('cuts no control and leaves the search field room to be written in', async ({ page }) => {
+        await logIn(page.request)
+        const project = await makeProjectOf(page.request, deck())
+        await page.goto(project.editorUrl)
+        await expect(page.locator('.byd-wall-view .byd-crown-fold')).toBeVisible()
+        await standBeside(page, PANEL)
+        // The crown answers its own width once the wall has given way; wait for the layout to have
+        // settled on it rather than reading the frame the column was added in.
+        await expect.poll(async () => (await measure(page)).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
+        const measured = await measure(page)
+        // Non-vacuity: the column stands where the panel will, at its width, and the crown holds
+        // its whole set of tools — the field, four boxes, the stepper's two presses and the fold.
+        expect(measured.beside).toBe(PANEL)
+        expect(measured.edge).toBe(viewport.width - PANEL)
+        expect(measured.controls).toBeGreaterThanOrEqual(8)
+        expect(measured.cut, 'every control of the crown is wholly visible, beside the panel and not under it').toEqual([])
+        expect(measured.over, 'the crown does not overflow its own box').toBeLessThanOrEqual(0)
+        expect(measured.field, 'the search field is wide enough to read what is written in it').toBeGreaterThanOrEqual(FIELD)
+        expect(measured.page, 'the page does not scroll sideways').toBeLessThanOrEqual(0)
+      })
+    })
+  }
+}

@@ -6252,6 +6252,13 @@ A kostade arbetsytan 48 px vid 960 × 490 för en andra rad i remsan, och C göm
 Den fann också att «Hjälp om borden» i Bord var kapad i alla bredder: träffytans luft hängde utanför en rullruta.
 Prototypens bilder står i [`docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/`](docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/).
 
+Tillägg 2026-10-18 (#1000, följdkrav till AI-panelen i #940): **kortväggens krona frågar efter väggens bredd, inte fönstrets.**
+En panel på 380 px bredvid väggen lämnade skrivbordets rad 868 px vid 1280: sökfältet krympte till 26 px och «Fysisk kontroll» stod 93 px in under panelen; vid 1440 fick fältet 93 px.
+Kronan är nu en egen container (`.byd-wall-crown`), och #477:s korta boxar (variant B) gäller när kronan är smalare än vid ett fönster på 1280, så länge fönstret är ett skrivbord.
+Sökfältet ger aldrig upp mer än ned till 180 px, och där inte ens de korta boxarna ryms bryter raden i stället för att kapa något, som på plattan ovan.
+Utan något bredvid väggen är skrivbordets krona en rad som förut, i samma mått.
+`packages/e2e/test/surfaces/wall-crown-beside.spec.ts` håller det med en kolumn på 380 px vid 1024 × 768, 1280 × 800 och 1440 × 900, på svenska och engelska.
+
 ### L55. En öppnad låda ligger över allt annat, och tabellens fasta kolumner står på en list (prototypat och beslutat 2026-09-30, #609, #610, #611)
 
 Beställaren hittade tre saker i tabellen.
