@@ -3,7 +3,7 @@ import type { DocDiff, Playtest, PlaytestAnswer, PlaytestQuestion, PlaytestTable
 import type { ProjectClient } from './ProjectClient.js'
 import { Summary } from './HistoryPanel.js'
 import { useRoving } from './roving.js'
-import { chosenVersion, compareWith, decimal, meanOf, signed, silent, tableName, tablesFor, whenEnded } from './playtestReading.js'
+import { chosenVersion, compareWith, decimal, meanOf, signed, silent, tableName, tablesFor, versionSums, whenEnded } from './playtestReading.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { clockWord } from './when.js'
@@ -116,7 +116,7 @@ export function PlaytestResults({ client, table, onTable, switcher }: PlaytestRe
   )
 }
 
-const runningWords = (n: number, t: T) => t(n === 1 ? 'results.running.one' : 'results.running', { n })
+const runningWords = (n: number, t: T) => t(n === 1 ? 'results.running.one' : 'results.running.other', { n })
 const count = (n: number, one: Key, many: Key, t: T) => t(n === 1 ? one : many, { n })
 
 // The versions the game's tables were played on, newest first: one choice, and a real one — a
@@ -134,17 +134,13 @@ function VersionList({ versions, chosen, now, name, onPick }: { versions: readon
       <div role="radiogroup" aria-labelledby={heading}>
         {versions.map((v) => {
           const roving = itemProps(v.version)
-          const sums =
-            v.ended === 0
-              ? runningWords(v.running, t)
-              : `${count(v.ended, 'results.tables.one', 'results.tables', t)} · ${count(v.answered, 'results.answers.one', 'results.answers', t)} · ${count(v.flags, 'results.flags.one', 'results.flags', t)}`
           return (
             <button key={v.version} type="button" role="radio" aria-checked={v.version === chosen} className="byd-choice byd-results-pick" data-none={v.ended === 0} {...roving} onClick={() => onPick(v.version)}>
               <span>
                 {name(v.version)}
                 {v.version === now && <small> · {t('results.version.now')}</small>}
               </span>
-              <small>{sums}</small>
+              <small>{versionSums(v, t)}</small>
             </button>
           )
         })}
@@ -188,11 +184,11 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
   const observers = answers.filter(({ a }) => a.observer)
   const written = players.filter(({ a }) => a.answers.change.trim() !== '').length
   const facts = [
-    count(version.ended, 'results.ended.one', 'results.ended', t),
-    t('results.answered', { n: version.answered, of: version.players }),
-    ...(version.observers > 0 ? [count(version.observers, 'results.observers.one', 'results.observers', t)] : []),
-    count(version.flags, 'results.flags.one', 'results.flags', t),
-    ...(version.running > 0 ? [count(version.running, 'results.stillRunning.one', 'results.stillRunning', t)] : []),
+    count(version.ended, 'results.ended.one', 'results.ended.other', t),
+    t(version.players === 1 ? 'results.answered.one' : 'results.answered.other', { n: version.answered, of: version.players }),
+    ...(version.observers > 0 ? [count(version.observers, 'results.observers.one', 'results.observers.other', t)] : []),
+    count(version.flags, 'results.flags.one', 'results.flags.other', t),
+    ...(version.running > 0 ? [count(version.running, 'results.stillRunning.one', 'results.stillRunning.other', t)] : []),
   ]
   return (
     <>
@@ -200,7 +196,7 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
         <h2 ref={heading} tabIndex={-1}>
           {name(version.version)}
         </h2>
-        {version.ended === 0 ? <p className="byd-results-quiet">{t('results.version.waiting')}</p> : <p className="byd-results-quiet">{facts.join(' · ')}</p>}
+        {version.ended > 0 ? <p className="byd-results-quiet">{facts.join(' · ')}</p> : version.running > 0 && <p className="byd-results-quiet">{t('results.version.waiting')}</p>}
         {before && diff && (
           <p className="byd-results-quiet">
             {t('results.changed', { version: name(before.version, 'word') })} <span className="byd-results-ink"><Summary diff={diff} /></span>
@@ -230,7 +226,7 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
           </section>
           <section className="byd-results-sec" aria-labelledby="byd-results-change">
             <h3 id="byd-results-change">
-              {t('results.change')} <span className="byd-results-quiet">· {t('results.change.count', { n: written })}</span>
+              {t('results.change')} <span className="byd-results-quiet">· {count(written, 'results.change.count.one', 'results.change.count.other', t)}</span>
             </h3>
             {players.length > 0 ? (
               <ul className="byd-results-answers">
@@ -254,9 +250,9 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
               </>
             )}
           </section>
-          <Flags tables={shown} version={version.version} lang={lang} />
         </>
       )}
+      {(version.ended > 0 || version.flags > 0) && <Flags tables={shown} version={version.version} lang={lang} />}
     </>
   )
 }
@@ -275,7 +271,7 @@ function Distribution({ version, before, name, lang }: { version: PlaytestVersio
   const was = before ? name(before.version, 'word') : ''
   return (
     <section className="byd-results-sec" aria-labelledby="byd-results-survey">
-      <h3 id="byd-results-survey">{count(version.answered, 'results.survey.one', 'results.survey', t)}</h3>
+      <h3 id="byd-results-survey">{count(version.answered, 'results.survey.one', 'results.survey.other', t)}</h3>
       <p className="byd-results-quiet">
         {t('results.survey.lead')}
         {before && ` ${t('results.survey.compare', { version: was })}`}
@@ -355,8 +351,8 @@ function TableLine({ table, chosen, lang }: { table: PlaytestTable; chosen: bool
       <span className="byd-results-code">{tableName(table, t)}</span>
       {table.endedAt && <span>{whenEnded(table.endedAt, Date.now(), lang, t)}</span>}
       <b>{answered > 0 ? t('results.table.answered', { n: answered, of: players }) : t('results.table.none', { of: players })}</b>
-      {table.flags.length > 0 ? <span className="byd-results-flagged">{count(table.flags.length, 'results.flags.one', 'results.flags', t)}</span> : <span>{t('results.table.noFlags')}</span>}
-      <span>{count(table.moves, 'results.moves.one', 'results.moves', t)}</span>
+      {table.flags.length > 0 ? <span className="byd-results-flagged">{count(table.flags.length, 'results.flags.one', 'results.flags.other', t)}</span> : <span>{t('results.table.noFlags')}</span>}
+      <span>{count(table.moves, 'results.moves.one', 'results.moves.other', t)}</span>
     </li>
   )
 }

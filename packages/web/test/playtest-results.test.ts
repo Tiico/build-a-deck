@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlaytestTable, PlaytestVersion } from '@byd/server/doc'
-import { chosenVersion, compareWith, decimal, meanOf, rowSummary, silent, tablesFor } from '../src/editor/playtestReading.js'
+import { chosenVersion, compareWith, decimal, meanOf, rowSummary, silent, tablesFor, versionSums } from '../src/editor/playtestReading.js'
 import { translate, type Lang, type T } from '../src/i18n/index.js'
 
 // What the Resultat view and the ended table's row say (#1010, beställarens val 2026-10-18), as
@@ -78,5 +78,17 @@ describe('which tables a version is read from', () => {
     const tables = [table({ id: 'a', version: 'rev-5' }), table({ id: 'b', version: 'rev-5', ended: false }), table({ id: 'c', version: 'rev-5', flags: [flag('rev-4')] }), table({ id: 'd', version: 'rev-3' })]
     expect(tablesFor(tables, 'rev-5').map((x) => x.id)).toEqual(['a', 'c'])
     expect(tablesFor(tables, 'rev-4').map((x) => x.id)).toEqual(['c'])
+  })
+})
+
+// What a version's row in the list says under its name. A version a table was refreshed away from
+// (C7) can have flags and no table that ended on it, and says the flags rather than nothing.
+describe('a version’s line in the list', () => {
+  it('says its tables, answers and flags, or what is still running, or only its flags', () => {
+    expect(versionSums(version({ version: 'rev-5', ended: 2, answered: 4, flags: 1 }), sv)).toBe('2 bord · 4 svar · 1 flagga')
+    expect(versionSums(version({ version: 'rev-5', ended: 1, answered: 1, flags: 0 }), en)).toBe('1 table · 1 answer · 0 flags')
+    expect(versionSums(version({ version: 'rev-6', running: 1 }), sv)).toBe('1 bord pågår')
+    expect(versionSums(version({ version: 'rev-4', flags: 2 }), sv)).toBe('2 flaggor')
+    expect(versionSums(version({ version: 'rev-4', running: 1, flags: 1 }), en)).toBe('1 table running · 1 flag')
   })
 })

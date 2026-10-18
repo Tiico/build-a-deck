@@ -44,9 +44,18 @@ export function signed(x: number, lang: Lang): string {
 export function rowSummary(table: PlaytestTable, t: T): string {
   const answers = table.answers.length
   const flags = table.flags.length
-  const said = answers === 0 ? t('results.row.noAnswers') : t(answers === 1 ? 'results.answers.one' : 'results.answers', { n: answers })
-  const flagged = flags === 0 ? t('results.row.noFlags') : t(flags === 1 ? 'results.flags.one' : 'results.flags', { n: flags })
+  const said = answers === 0 ? t('results.row.noAnswers') : t(answers === 1 ? 'results.answers.one' : 'results.answers.other', { n: answers })
+  const flagged = flags === 0 ? t('results.row.noFlags') : t(flags === 1 ? 'results.flags.one' : 'results.flags.other', { n: flags })
   return `${said} · ${flagged}`
+}
+
+// What a version's row in the list says under its name: its tables, answers and flags once a table
+// has ended on it; otherwise what still runs on it, and the flags a table raised on it before an
+// update moved it on (C7).
+export function versionSums(v: PlaytestVersion, t: T): string {
+  const flags = t(v.flags === 1 ? 'results.flags.one' : 'results.flags.other', { n: v.flags })
+  if (v.ended > 0) return [t(v.ended === 1 ? 'results.tables.one' : 'results.tables.other', { n: v.ended }), t(v.answered === 1 ? 'results.answers.one' : 'results.answers.other', { n: v.answered }), flags].join(' · ')
+  return [...(v.running > 0 ? [t(v.running === 1 ? 'results.running.one' : 'results.running.other', { n: v.running })] : []), ...(v.flags > 0 ? [flags] : [])].join(' · ')
 }
 
 // The people who were at a table and left no answer: a seat that has none, an observer by name.
