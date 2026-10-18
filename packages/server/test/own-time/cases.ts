@@ -18,11 +18,17 @@ export function cases(): void {
   })
 
   it('spends its own time past its budget without letting a timer run', () => {
-    // Counted in CPU rather than in wall clock, so that a busy machine cannot make it spend less.
+    // Own time is the wall clock less the stretches in which the process spent no CPU. Neither
+    // clock alone carries this loop past the mark: on a busy machine the wall clock runs while the
+    // loop is not run, and that is held time; and the process's CPU counts the collector's helper
+    // threads too, which on CI's runners spent a tenth of a second beside it and stopped it at
+    // 0.9 s of its own. Past the mark on both, there is no stretch left that could be held time.
+    const mark = FIXTURE_BUDGET + 400
+    const started = performance.now()
     const from = process.cpuUsage()
     for (;;) {
       const used = process.cpuUsage(from)
-      if ((used.user + used.system) / 1000 > FIXTURE_BUDGET + 400) break
+      if ((used.user + used.system) / 1000 > mark && performance.now() - started > mark) break
     }
   })
 
