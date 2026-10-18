@@ -302,6 +302,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const deckMotifs = useMemo(() => previewMotifs(motifs, http, cropped), [motifs, http, cropped])
 
   const line = useLineState(client?.lineDown ?? false)
+  // An edit of the designer's own that the actor refused (#993) is taken off the screen again, and
+  // that is said: a change that just vanishes reads as the tool having lost it. Counted per client,
+  // so a project opened again starts from nothing refused.
+  const refusedEdits = client?.refusedEdits ?? 0
+  const heardRefusals = useRef<{ client: ProjectClient | null; n: number }>({ client: null, n: 0 })
+  useEffect(() => {
+    const heard = heardRefusals.current
+    if (heard.client === client && refusedEdits > heard.n) setNotice(t('editor.edit.refused'))
+    heardRefusals.current = { client, n: refusedEdits }
+  }, [client, refusedEdits, t])
   // What the reading band has just answered a shortcut with; gone after a moment (#489).
   const [readingSaid, setReadingSaid] = useState<string | null>(null)
   useEffect(() => {

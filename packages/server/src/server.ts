@@ -728,9 +728,11 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
     void (async () => {
       // Which of the editor's requests a refusal answers (#991): an edit and a save can both be on
       // the line at once, and the editor ends only the wait the refusal is about. A request that
-      // cannot be read is neither, and its refusal names none.
+      // cannot be read is neither, and its refusal names none. A refused edit is named by the
+      // number its editor gave it (#993), when it gave one.
       let to: 'edit' | 'save' | undefined
-      const refuse = (why: string) => send({ v: 'refused', why, ...(to ? { to } : {}) })
+      let ask: number | undefined
+      const refuse = (why: string) => send({ v: 'refused', why, ...(to ? { to } : {}), ...(ask === undefined ? {} : { ask }) })
       try {
         const raw: unknown = JSON.parse(data.toString())
         const msg = EditorRequest.parse(raw)
@@ -745,7 +747,8 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
           if (!saved.ok) refuse(saved.reason)
           return
         }
-        await actor.edit(msg.intent as EditIntent, account?.id, editor.id)
+        ask = msg.ask
+        await actor.edit(msg.intent as EditIntent, account?.id, editor.id, ask)
       } catch (err) {
         refuse(err instanceof Error ? err.message : String(err))
         actor.resync(editor)
@@ -764,8 +767,10 @@ function editors(opts: ServerOptions, projects: ProjectStore): ProjectHost {
   return host
 }
 
-// What an editor may send: an edit, or an ask to make a version of what stands now.
-const EditorRequest = z.union([z.object({ t: z.literal('edit'), intent: z.record(z.string(), z.unknown()) }), z.object({ t: z.literal('save') })])
+// What an editor may send: an edit, or an ask to make a version of what stands now. An edit may
+// carry the number its editor gave it (#993), which is how the editor knows what answers it; a
+// page from before the number sends none.
+const EditorRequest = z.union([z.object({ t: z.literal('edit'), intent: z.record(z.string(), z.unknown()), ask: z.number().int().optional() }), z.object({ t: z.literal('save') })])
 
 async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
   const deliver = holdFrames(ws)

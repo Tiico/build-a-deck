@@ -78,6 +78,7 @@ export const enEditor = {
   'editor.loggingIn': 'Signing in…',
   'editor.loading': 'Loading the game…',
   'editor.conflict': 'Someone else has saved since you loaded this. Reload and make the change again.',
+  'editor.edit.refused': 'A change did not go through and was taken back. The game now shows what everyone else sees.',
   'editor.rev': 'v{n}',
   'editor.here.name': 'Share · who has the game, {n} here',
   'editor.here.count': '{n} here',

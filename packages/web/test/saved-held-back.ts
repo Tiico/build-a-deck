@@ -20,7 +20,9 @@ export class SavedHeldBack {
 
   // `unaddressed`: the line of a server from before #991, whose refusals do not say which request
   // they answer. The field is taken off on the way in and nothing else is touched.
-  constructor(private readonly opts: { unaddressed?: boolean } = {}) {}
+  // `unnumbered`: the line of a server from before #993, whose echoes and refusals do not carry the
+  // number the editor gave its edit. The number is taken off on the way in, and nothing else.
+  constructor(private readonly opts: { unaddressed?: boolean; unnumbered?: boolean } = {}) {}
 
   /** How many «saved» are waiting. */
   get waiting(): number {
@@ -34,12 +36,17 @@ export class SavedHeldBack {
   }
 
   private hear(line: WebSocketLike, event: { data: unknown }): void {
-    const frame = JSON.parse(String(event.data)) as { v: string; to?: string }
+    let frame = JSON.parse(String(event.data)) as { v: string; to?: string; ask?: number; edits?: { ask?: number }[] }
     this.heard.push(frame.v)
+    if (this.opts.unnumbered) {
+      const { ask: _ask, ...before993 } = frame
+      frame = { ...before993, ...(frame.edits ? { edits: frame.edits.map(({ ask: _one, ...edit }) => edit) } : {}) }
+    }
     if (this.opts.unaddressed && frame.v === 'refused' && 'to' in frame) {
       const { to: _to, ...before991 } = frame
-      line.onmessage?.({ data: JSON.stringify(before991) })
-    } else line.onmessage?.(event)
+      frame = before991
+    }
+    line.onmessage?.(this.opts.unnumbered || this.opts.unaddressed ? { data: JSON.stringify(frame) } : event)
   }
 
   /** Holds what the editor sends from now on, until `letOut`. */

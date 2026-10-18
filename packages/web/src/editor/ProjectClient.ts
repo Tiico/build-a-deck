@@ -86,6 +86,10 @@ export class TableEnded extends Error {
 
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }
 
+// An edit of this editor's own that the actor has not answered yet, under the number it was sent
+// with (#993).
+type Waiting = { ask: number; intent: EditIntent }
+
 // The project as the editor holds it, and its end of the actor (D3): the document, who else has
 // it open, and one socket the edits go both ways over. An edit is applied here at once and sent;
 // the actor's echo of one's own edit is skipped, and everyone else's is applied as it lands.
@@ -116,8 +120,15 @@ export class ProjectClient {
   private attempt = 0
   private me: string | null = null
   // Edits made before the socket was open, or made and not yet echoed back. They are sent when
-  // the socket opens, and laid on top again whenever the actor hands over its document.
-  private pending: EditIntent[] = []
+  // the socket opens, and laid on top again whenever the actor hands over its document. Each goes
+  // under a number of this editor's own (#993), and whatever answers it — its echo or its refusal —
+  // names that number, so an answer takes off the edit it is about and never the one beside it.
+  private pending: Waiting[] = []
+  private asks = 0
+  // How many of this editor's edits the actor has refused (#993). An edit the actor refuses is
+  // taken off this editor again, and the designer is told that it did not go through: it vanished
+  // from the screen without a word, which reads as the tool having lost it.
+  public refusedEdits = 0
   // The hashes of the bytes this client has put into the document and is still sending (#907).
   // A new set on every change, so a view can tell it changed by its identity.
   private arriving: ReadonlySet<string> = new Set()
@@ -270,11 +281,11 @@ export class ProjectClient {
         // longer makes sense against the actor's document is simply gone.
         const held = message.doc
         let doc = held
-        const kept: EditIntent[] = []
-        for (const intent of this.pending) {
+        const kept: Waiting[] = []
+        for (const waiting of this.pending) {
           try {
-            doc = applyEdit(doc, intent)
-            kept.push(intent)
+            doc = applyEdit(doc, waiting.intent)
+            kept.push(waiting)
           } catch {
             // The actor will refuse it too; there is nothing to keep.
           }
@@ -296,7 +307,7 @@ export class ProjectClient {
       case 'edits': {
         // An edit of one's own was applied when it was made; its echo only says it landed.
         const mine = message.edits.filter((e) => e.from === this.me)
-        if (mine.length > 0) this.pending = this.pending.slice(mine.length)
+        for (const echo of mine) this.answered(echo.ask)
         const theirs = message.edits.filter((e) => e.from !== this.me)
         if (theirs.length > 0) this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
         // Said even when nothing in the document moved: an echo of one's own is the actor
@@ -327,9 +338,26 @@ export class ProjectClient {
         // own «saved» to nobody, or to the next save. A refused edit ends no wait: the actor sends
         // the document with it, so nothing has to be asked for again. A server from before the
         // address names none, and its refusal is read the way it always was, as the save's.
-        if (message.to !== 'edit') this.finishSave({ ok: false, reason: message.why })
+        if (message.to !== 'edit') {
+          this.finishSave({ ok: false, reason: message.why })
+          return
+        }
+        // The refused edit comes off this editor (#993): kept, it was laid on top of the document
+        // the actor hands over next, and the editor showed what the actor had refused. A server
+        // from before the number names no edit, and its handover lays them all on top as before.
+        if (message.ask !== undefined) this.answered(message.ask)
+        this.refusedEdits += 1
+        this.notify()
         return
     }
+  }
+
+  // One of this editor's edits is answered, and is no longer waiting. Named by its number when
+  // the actor gives it. A server from before the number names none, and the oldest is taken for
+  // it, as it always was: a page loaded since is no worse off against it than before.
+  private answered(ask: number | undefined): void {
+    const at = ask === undefined ? 0 : this.pending.findIndex((waiting) => waiting.ask === ask)
+    if (at >= 0) this.pending.splice(at, 1)
   }
 
   // Waiting a little longer each time, so a server that is down is not hammered, and never so
@@ -451,8 +479,9 @@ export class ProjectClient {
   // it gets here, and hands over what came out rather than having it worked out twice.
   private send(intent: EditIntent, next: ProjectDoc = applyEdit(this.doc, intent)): void {
     this.commit(next)
-    this.pending.push(intent)
-    this.post(JSON.stringify({ t: 'edit', intent }))
+    const ask = ++this.asks
+    this.pending.push({ ask, intent })
+    this.post(JSON.stringify({ t: 'edit', intent, ask }))
   }
 
   get canUndo(): boolean {
@@ -994,7 +1023,7 @@ export class ProjectClient {
     this.notify()
   }
   get cropsInFlight(): string[] {
-    return [...new Set(this.pending.flatMap((intent) => (intent.v === 'setCrop' ? [intent.hash] : [])))]
+    return [...new Set(this.pending.flatMap(({ intent }) => (intent.v === 'setCrop' ? [intent.hash] : [])))]
   }
   // A picture out of the game (#318): the record and every picture cell that held it, in one
   // intent — so the way back from it is one step and not a picture followed by its cards.
