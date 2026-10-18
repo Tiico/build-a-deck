@@ -45,6 +45,16 @@ create table if not exists surveys (
   observer    boolean not null default false,
   answers     jsonb not null
 );
+-- One answer per seat and per observer at a table (#1021, G3): a second one replaces the first.
+-- Before the keys anyone could answer any number of times, so the answers that were given twice
+-- are cut down to the latest, the one a replacing answer would have left standing.
+delete from surveys older using surveys newer
+  where older.session_id = newer.session_id
+    and older.observer = newer.observer
+    and (case when older.observer then older.who = newer.who else older.seat = newer.seat end)
+    and (newer.at, newer.id) > (older.at, older.id);
+create unique index if not exists surveys_seat on surveys (session_id, seat) where not observer;
+create unique index if not exists surveys_observer on surveys (session_id, who) where observer;
 
 -- Accounts for creators (G1, DRIFT §11): magic links and session cookies, no passwords.
 create table if not exists accounts (

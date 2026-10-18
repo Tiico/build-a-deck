@@ -244,6 +244,9 @@ describe('a version change is atomic for the players (L5)', () => {
 })
 
 describe('the survey after a session (G3)', () => {
+  // The project's own host answers from the seat she played from the editor (`owner=1`), with
+  // her login and no admission of her own (#1021): the seat is hers to name, and the name is the
+  // one the table knows the seat by — the seat itself, when nobody sat down there by name.
   it('accepts one structured answer per participant once the session has ended, tied to its version, and lists them', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
     const { id: sessionId, version, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; version: string; hostKey: string }
@@ -256,7 +259,22 @@ describe('the survey after a session (G3)', () => {
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(201)
     expect((await json('POST', `/sessions/${sessionId}/survey`, { ...answer, answers: { fun: 9 } })).status).toBe(400)
     const listed = (await (await json('GET', `/sessions/${sessionId}/surveys`)).json()) as unknown[]
-    expect(listed).toEqual([expect.objectContaining({ ...answer, version })])
+    expect(listed).toEqual([expect.objectContaining({ who: 'A', seat: 'A', answers: answer.answers, version })])
+  })
+
+  // The table screen's key opens the table, which sits at no seat; and someone with no login and
+  // no admission is nobody this table let in.
+  it('takes no answer on the table screen’s key, nor from someone the table never admitted', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'session.end' })
+    await table.close()
+    const answer = JSON.stringify({ seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: '' } })
+    const as = (headers: Record<string, string>) => fetch(`${run.http}/sessions/${sessionId}/survey`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: answer })
+    expect((await as({ authorization: `Bearer ${hostKey}` })).status).toBe(403)
+    expect((await as({})).status).toBe(403)
+    expect((await as({ cookie: await login('dan@example.com') })).status).toBe(403)
   })
 })
 

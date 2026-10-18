@@ -25,11 +25,12 @@ const SHEET = (family: string) => `/* latin */
 `
 const WOFF2 = Buffer.from([119, 79, 70, 50, 0, 1, 0, 0])
 
-// The floor per width (#741): K26's 12 px where the tile has the room, and 11 at 1024 where four
-// tiles share the column.
+// The floor per width (#741): K26's 12 px where the tile has the room, and 10.5 at 1024 where four
+// tiles share the column — 11 until the AI panel's folded tab took 44 px of the editor's width
+// (beställarens beslut 2026-10-18, #1001), measured 10.52 px with it.
 const WIDTHS = [
   { width: 1280, height: 800, floorPx: 12 },
-  { width: 1024, height: 768, floorPx: 11 },
+  { width: 1024, height: 768, floorPx: 10.5 },
 ] as const
 
 // The sample deck's own template, and a plain one whose prose box stands somewhere else entirely —
@@ -49,16 +50,20 @@ const DECKS = {
 } as const
 const CUT: Record<keyof typeof DECKS, boolean> = { spelkort: false, plain: true, long: true }
 
-async function openTheme(page: Page, doc: ProjectDoc, lang = 'sv'): Promise<void> {
+async function openTheme(page: Page, doc: ProjectDoc, lang = 'sv', key = false): Promise<void> {
   await page.route(GOOGLE, (route) => {
     const url = route.request().url()
     const family = new URL(url).searchParams.get('family')?.split(':')[0] ?? 'Cinzel'
     return url.includes('googleapis.com') ? route.fulfill({ status: 200, contentType: 'text/css', body: SHEET(family) }) : route.fulfill({ status: 200, contentType: 'font/woff2', body: WOFF2 })
   })
   await logIn(page.request)
+  // With a key the AI panel stands open (#1001), and over Speltema it is a sheet that takes none of
+  // the gallery's width.
+  if (key) expect((await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefT3m4' } })).status()).toBe(200)
   const project = await makeProjectOf(page.request, doc)
   await page.goto(`${project.editorUrl}&lang=${lang}`)
   await page.locator('#byd-editor-tab-theme').click()
+  if (key) await expect(page.locator('.byd-ai[data-open][data-over]')).toBeVisible()
   await expect(page.locator('.byd-theme-tile')).toHaveCount(4)
 }
 
@@ -156,9 +161,10 @@ async function proofs(page: Page) {
 test.describe('the theme proof sets the body text in a size it can be read at (#741)', () => {
   for (const { width, height, floorPx } of WIDTHS) {
     for (const [deck, doc] of Object.entries(DECKS)) {
-      test(`body text reaches ${floorPx} px on every tile at ${width}, centred on the prose box, with the ${deck} template`, async ({ page }) => {
+      for (const open of [false, true])
+      test(`body text reaches ${floorPx} px on every tile at ${width}, centred on the prose box, with the ${deck} template${open ? ', the AI panel open over it' : ''}`, async ({ page }) => {
         await page.setViewportSize({ width, height })
-        await openTheme(page, doc())
+        await openTheme(page, doc(), 'sv', open)
         await showFaces(page)
         const seen = await proofs(page)
         expect(seen).toHaveLength(4)

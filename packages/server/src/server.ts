@@ -19,7 +19,7 @@ import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff
 import { ProjectHost, type EditorMessage } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, namesOfProject, peekFace, type CardFace } from './names.js'
-import { SurveyAnswer, type SurveyStore } from './surveys.js'
+import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
@@ -30,6 +30,7 @@ import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
+import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -68,8 +69,8 @@ export type ServerOptions = {
   contact?: string
   // The designer's own key for the editor's AI help (#999, E4): sealed in the vault, proved and
   // listed through the providers, tried a handful of times an hour per account. Without it the
-  // profile has no key to keep.
-  ai?: { vault: AiKeyVault; providers: AiProviders; limiter?: KeyTryLimiter }
+  // profile has no key to keep. `caps` are the ceilings on the editor's questions (#1001, `AI_CAPS`).
+  ai?: { vault: AiKeyVault; providers: AiProviders; limiter?: KeyTryLimiter; caps?: Partial<AiCaps> }
   // The replay corpus's door (#1011, DRIFT §7): the operator, and the accounts that said yes in
   // their invitation, whose tables' exports the operator may read. Read from the box's settings
   // at start (`corpusFromEnv`); without it no account reads another's tables.
@@ -675,6 +676,27 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   return { refused: 'the table needs the host key' }
 }
 
+// Who is answering the survey (G3, #1021), or null for nobody this table admitted. A guest is
+// her admission: the token is tried the way the door tries it, and the name and the seat are the
+// admission's. Without a token it is the project's host, from the editor's own ways in, by the
+// same login the door lets her sit down with — never the table screen's key, which sits nowhere.
+async function surveySender(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyBody): Promise<Omit<SurveyAnswer, 'answers'> | null> {
+  const observer = body.observer === true
+  const seat = body.seat ?? null
+  if (body.token !== undefined) {
+    const now = clock(opts)
+    const guest = await opts.store.activateGuest(session.id, hash(body.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
+    if (!guest) return null
+    if (guest.kind === 'observer') return observer && seat === null ? { who: guest.name, seat: null, observer: true } : null
+    return !observer && seat === guest.seat ? { who: guest.name, seat: guest.seat } : null
+  }
+  if (!session.project) return null
+  if (opts.auth && (/^Bearer\s/i.test(req.headers.authorization ?? '') || (await hostOf(opts, req, session)) !== 'host')) return null
+  if (observer) return seat === null && body.who ? { who: body.who, seat: null, observer: true } : null
+  if (seat === null || !session.setup.seats.includes(seat)) return null
+  return { who: actor.seats().find((s) => s.id === seat)?.name ?? seat, seat }
+}
+
 // One editor on one project (D3). Only the account that owns the project may edit it; roles for
 // co-editors and testers are a model of their own and come later.
 
@@ -782,6 +804,16 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
       }
     })()
   })
+}
+
+// The AI answers in flight on this server (#1001), counted against its ceilings.
+const FLIGHTS = new WeakMap<ServerOptions, AiFlight>()
+function flightOf(opts: ServerOptions, caps: Partial<AiCaps> | undefined): AiFlight {
+  const existing = FLIGHTS.get(opts)
+  if (existing) return existing
+  const flight = new AiFlight({ ...AI_CAPS, ...caps })
+  FLIGHTS.set(opts, flight)
+  return flight
 }
 
 // The editing actors of this server, made on first use so a server without projects has none.
@@ -1226,6 +1258,37 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     validateSetup(setupFromProject(doc), opts.registry)
     const rec = await projects.create(wanted ?? randomUUID(), doc, account?.id)
     json(res, 201, { id: rec.id, rev: rec.rev })
+    return true
+  }
+  // A question to the AI about the game (#1001, E4): whoever may edit the game asks, with her own
+  // key, about the game as it stands in the editor right now — the live document, unsaved edits and
+  // all, since that is what she is looking at. The answer streams back (`ai-ask.ts`).
+  const asking = /^\/projects\/([^/]+)\/ai\/ask$/.exec(url.pathname)
+  if (asking && req.method === 'POST') {
+    if (!opts.ai || !opts.auth) {
+      json(res, 404, { error: 'not found' })
+      return true
+    }
+    // The key is the account's, so a game from before accounts is asked about by an account too.
+    if (!account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const gate = await allowed(decodeURIComponent(asking[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    // Forty turns of twenty thousand characters is the most a conversation can be; a body past that
+    // is not kept.
+    const bytes = await readBytes(req, ASK_MAX_BYTES)
+    if (!bytes) {
+      json(res, 413, { error: 'too big' })
+      return true
+    }
+    const ask = AskBody.parse(JSON.parse(Buffer.from(bytes).toString('utf8')))
+    const doc = (await editors(opts, projects).live(gate.rec.id)) ?? gate.rec
+    await answerQuestion({ vault: opts.ai.vault, providers: opts.ai.providers, flight: flightOf(opts, opts.ai.caps) }, res, account.id, doc, ask)
     return true
   }
   const one = /^\/projects\/([^/]+)$/.exec(url.pathname)
@@ -1781,8 +1844,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 409, { error: 'the session has not ended' })
       return true
     }
-    const answer = SurveyAnswer.parse(JSON.parse(await readBody(req)))
-    await opts.surveys.add({ sessionId, version: actor.version, at: new Date().toISOString(), ...answer })
+    const body = SurveyBody.parse(JSON.parse(await readBody(req)))
+    const sender = await surveySender(opts, req, session, actor, body)
+    if (!sender) {
+      json(res, 403, { error: 'an answer needs the admission it was given at this table' })
+      return true
+    }
+    await opts.surveys.put({ sessionId, version: actor.version, at: clock(opts).toISOString(), ...sender, answers: body.answers })
     json(res, 201, { ok: true })
     return true
   }

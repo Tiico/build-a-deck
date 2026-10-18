@@ -14,7 +14,17 @@ test('a designer saves her key, sees it described, chooses a model and removes i
   const { page } = desk
   await page.goto('/')
 
-  // The way in is a word in the account's line.
+  // The way in is a word in the account's line, drawn as the other word in it is (#1001): «Profile»
+  // stood bold and bright beside a plain «log out», two weights in one short sentence.
+  const looks = (name: string) =>
+    page
+      .locator('.byd-who')
+      .getByRole('link', { name })
+      .evaluate((a) => {
+        const style = getComputedStyle(a)
+        return { weight: style.fontWeight, colour: style.color, size: style.fontSize }
+      })
+  expect(await looks('Profile')).toEqual(await looks('log out'))
   await page.locator('.byd-who').getByRole('link', { name: 'Profile' }).click()
   await expect(page).toHaveURL(/\/profile$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Profile' })).toBeVisible()

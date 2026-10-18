@@ -11,3 +11,6 @@ export * from './roles.js'
 // What the profile page says about a designer's AI key (#999): the words only, never the vault.
 export type { AiProvider, AiKeyDescription } from './ai-keys.js'
 export type { AiFailure, AiModel } from './ai-providers.js'
+// What the editor's AI panel says is sent before it is asked (#1001): the same reading of the game
+// the context the model gets is built from, so the chips cannot promise something else.
+export { aiContextParts, type AiContextParts } from './ai-context.js'
