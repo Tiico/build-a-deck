@@ -31,11 +31,12 @@ export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[] }
 // beside its title (#551) is read in the same pass, off the face the texture is drawn from.
 export type CompiledFaces = { faces: FaceHashes; titles: CardTitles; texts: CardTexts }
 
-// One card at a time, and only as fast as it is asked for (#1012). A page carries the deck's
-// pictures and typefaces as data URLs (DRIFT §4), so 308 illustrated cards in two uploaded
-// typefaces are 400 MB of pages: a pass that compiled them all before handing any on held all of
-// them at once, and took the app past its heap at the start of a table. Each card's new jobs are
-// yielded before the next card is compiled, so a page lives only until it is queued.
+// One card at a time, and only as fast as it is asked for (#1012). A page names the deck's pictures
+// and typefaces by hash since #1028, and is kilobytes; but a deck made before that carries them as
+// data URLs, and 308 illustrated cards in two uploaded typefaces were 400 MB of pages: a pass that
+// compiled them all before handing any on held all of them at once, and took the app past its heap
+// at the start of a table. Each card's new jobs are yielded before the next card is compiled, so a
+// page lives only until it is queued.
 function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, out: CompiledFaces): Generator<RenderRequest> {
   const seen = new Set<string>()
   for (const spec of setup.components) {

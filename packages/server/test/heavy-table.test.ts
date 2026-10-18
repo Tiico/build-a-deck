@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, it } from 'vitest'
 
-// A table whose pages outweigh the app's heap (#1012). Every card's page carries the deck's
-// typefaces and its picture as data URLs (DRIFT §4); 308 illustrated cards in two uploaded
+// A table whose pages outweigh the app's heap (#1012). In a deck made before #1028 every card's
+// page carries the deck's typefaces and its picture as data URLs (DRIFT §4); 308 illustrated cards in two uploaded
 // typefaces are 400 MB of pages, against a heap of 256 MB in the app's 512 MB container. The load
 // test found the app dying at the start of such a table: every page was compiled first and queued
 // after. A page has to be queued before the next is compiled, so a table never holds its pages

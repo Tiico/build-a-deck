@@ -13,10 +13,11 @@ export type { Deck }
 // Admission (DRIFT §9): `code` is what guests reach the table by, alive until `codeExpiresAt`,
 // and `hostKeyHash` is the hash of the key that opens the table's own view.
 export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
-// A session as it is read back: everything but its decks (#1012). A deck carries its pictures and
-// typefaces as data URLs (DRIFT §4), tens of megabytes for a game with art on every card, and the
-// session is read by every door a table has — each socket that opens, each code looked up, each
-// list of tables. The deck is read by the one reader that deals from it, through `deckOf`.
+// A session as it is read back: everything but its decks (#1012). A deck names its pictures and
+// typefaces by hash since #1028, but one made before that carries them as data URLs, tens of
+// megabytes for a game with art on every card — and the session is read by every door a table has:
+// each socket that opens, each code looked up, each list of tables. The deck is read by the one
+// reader that deals from it, through `deckOf`.
 export type SessionInfo = Omit<SessionRecord, 'deck'>
 
 // A guest's admission (DRIFT §9): the hash of the token a phone or an observer connects with,

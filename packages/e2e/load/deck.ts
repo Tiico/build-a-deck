@@ -62,8 +62,8 @@ const RULES_TEXT = 'När du spelar det här kortet: dra två kort och lägg ett 
  * A picture for the load deck (#1012): a PNG of a real card illustration's dimensions and of a
  * chosen weight on disk.
  *
- * Both numbers matter and for different containers. The weight is what the app and Postgres carry,
- * since a deck travels as data URLs (DRIFT §4); the dimensions are what Chromium decodes into a
+ * Both numbers matter and for different containers. The weight is what is stored, and what the
+ * render worker reads by hash for a page (DRIFT §4, #1028); the dimensions are what Chromium decodes into a
  * bitmap in the render worker, which is four bytes a pixel whatever the file weighed. So the
  * picture is flat colour that compresses to nothing, with a band of noise across the top that
  * compresses not at all and is as tall as the weight asks.

@@ -6,8 +6,8 @@ import { openingSetup } from '../../src/recipe.js'
 import { template } from '../deck.js'
 
 // Run by `heavy-table.test.ts` in a Node of its own with a small heap (#1012): a table of `CARDS`
-// cards set in an uploaded typeface of `FONT_MB`, loaded the way the box loads one. Every card's
-// page carries the typeface as a data URL (DRIFT §4), so the pages together weigh far more than
+// cards set in an uploaded typeface of `FONT_MB`, loaded the way the box loads one. In a deck made
+// before #1028 every card's page carries the typeface as a data URL (DRIFT §4), so the pages together weigh far more than
 // the heap — which is fine as long as they are never all held at once.
 const CARDS = Number(process.env['HEAVY_CARDS'] ?? 200)
 const FONT_MB = Number(process.env['HEAVY_FONT_MB'] ?? 2)

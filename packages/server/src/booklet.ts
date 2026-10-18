@@ -9,12 +9,13 @@ import type { ProjectCredit } from './projects.js'
 // Nothing a designer wrote reaches the renderer as markup: every string is escaped here.
 export type BookletInput = {
   rules: RenderedRules
-  // The project's icon set, already resolved to something a browser can draw.
+  // The project's icon set, resolved to what the page loads: an `asset:<hash>` the render worker
+  // reads the bytes of (#1028), or an address of its own.
   icons: Record<string, string>
-  // The pictures the book holds (#173), keyed by the reference the blocks carry and resolved to
-  // something a browser can draw — the same treatment the icons get, and for the same reason: the
-  // worker is handed a page and nothing else. A reference with nothing behind it is a picture
-  // whose bytes are gone, and the page is printed without it rather than with an empty frame.
+  // The pictures the book holds (#173), keyed by the reference the blocks carry and resolved the
+  // way the icons are: to the `asset:<hash>` the worker reads (#1028). A reference with nothing
+  // behind it is a picture whose bytes are gone, and the page is printed without it rather than
+  // with an empty frame.
   images?: Record<string, string>
   pageMm: { w: number; h: number }
   // What the licences of the game's symbols are (E4), printed at the back.

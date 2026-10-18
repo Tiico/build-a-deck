@@ -4,6 +4,7 @@ import postgres from 'postgres'
 import type { RenderKind } from './hash.js'
 import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type Fit, type JobStatus, type RenderRequest, type RenderStore } from './store.js'
 import type { ObjectStore } from './objects.js'
+import { assetKey, type AssetBytes, type AssetSource } from './assets.js'
 
 type Row = {
   hash: string
@@ -135,6 +136,11 @@ export class PostgresRenderStore implements RenderStore {
     return row && row.bytes === null ? this.objects.link(outputKey(hash), ttlSeconds, disposition) : null
   }
 
+  // The pictures and typefaces a page names by hash (#1028), read from where the app keeps them.
+  assets(): AssetSource {
+    return { get: (hash) => assetFromPostgres(this.sql, this.objects, hash) }
+  }
+
   async reap(olderThanMs: number, now: number): Promise<string[]> {
     const rows = await this.sql<{ hash: string }[]>`
       update render_jobs set state = 'queued', started_at = null
@@ -143,4 +149,15 @@ export class PostgresRenderStore implements RenderStore {
     `
     return rows.map((r) => r.hash)
   }
+}
+
+// One asset out of the app's `assets` table (DRIFT §4): the bytes are in the row without an
+// object store, and under `assets/<hash>` in it with one. The app's store and the render worker
+// both read through this, so the two cannot disagree about where a picture is.
+export async function assetFromPostgres(sql: postgres.Sql, objects: ObjectStore | undefined, hash: string): Promise<AssetBytes | null> {
+  const [row] = await sql<{ content_type: string; bytes: Uint8Array | null }[]>`select content_type, bytes from assets where hash = ${hash}`
+  if (!row) return null
+  if (row.bytes) return { bytes: new Uint8Array(row.bytes), contentType: row.content_type }
+  const bytes = objects ? await objects.get(assetKey(hash)) : null
+  return bytes ? { bytes, contentType: row.content_type } : null
 }
