@@ -100,5 +100,7 @@ describe('the context the model is given', () => {
   it('tells the model to answer in the language the designer writes in, and never to write HTML', () => {
     expect(AI_INSTRUCTIONS).toMatch(/language the designer writes in/i)
     expect(AI_INSTRUCTIONS).toMatch(/HTML/)
+    // The panel draws the card text's own subset (L2), so the answer is asked for in it.
+    expect(AI_INSTRUCTIONS).toMatch(/No headings, tables/)
   })
 })

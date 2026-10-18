@@ -80,6 +80,18 @@ describe('the AI panel with a key', () => {
     expect(call).toMatchObject({ provider: 'anthropic', path: '/v1/messages', key: KEY })
   })
 
+  it('draws the answer in the card text’s own subset, and never as markup', async () => {
+    await ownGame()
+    await openEditor()
+    await screen.findByRole('complementary', { name: 'AI-hjälp' })
+    type('Är **draken** <b>stark</b>?')
+    enter()
+    await waitFor(() => expect(lastAnswer().getAttribute('aria-busy')).toBe('false'))
+    expect(lastAnswer().querySelector('strong')?.textContent).toBe('draken')
+    expect(lastAnswer().querySelector('b')).toBeNull()
+    expect(lastAnswer().textContent).toContain('<b>stark</b>')
+  })
+
   it('carries the conversation so far into the next question', async () => {
     await ownGame()
     await openEditor()

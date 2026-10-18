@@ -1457,6 +1457,20 @@ Nyckeln prövas genom att leverantören ombeds lista sina modeller; det kostar d
 Kontot och leverantören är inbakade i förseglingen, så en rad som flyttas till ett annat konto öppnas för ingen.
 Editorns hänvisning bär spelet med sig, så att «Tillbaka till» spelet är sidans enda fyllda knapp när nyckeln är sparad.
 
+Byggt 2026-10-18 (#1001): första frågan, hela vägen genom panelen, proxyn och leverantören.
+Panelen står bredvid arbetsytan i varje flik, 380 px bred, och fälls ihop till en flik på 44 px i kanten; hur den lämnades minns läsaren mellan spel.
+Utan nyckel börjar den alltid hopfälld, oavsett hur den lämnades, och öppnad hänvisar den till profilsidan genom editorns egen väg ut, så att osparat arbete frågas om som när «Mina spel» trycks.
+Den finns bara på skrivbordet: 380 px är vad kortväggens krona ger plats åt (L54), och under skrivbordet finns inget rum för den.
+«Skicka» är kantad och inte fylld, trots prototypens bild: huvudets «Uppdatera bordet» är vyns första handling, och L13 tillåter en fylld knapp per vy.
+Medan svaret kommer blir «Skicka» «Avbryt» på samma ställe, och Escape i frågan avbryter; ett avbrutet svar läggs på hos leverantören också, så att det slutar kosta.
+Svaret står i en artig live-region som är upptagen medan det strömmar, så att en skärmläsare läser det helt och inte ord för ord, och det ritas i kortens egen delmängd (L2) som modellen ombeds svara i.
+Modellen ombeds svara på det språk designern skriver på, med verktygets språk som reserv (A4).
+Servern bygger kontexten ur det levande dokumentet, alltså med ändringar som ännu inte sparats, eftersom det är det designern ser; klienten skickar bara frågan, samtalet och språket.
+Svaret går som server-sent events på svaret till samma POST och inte över editorns WebSocket: ett svar är en persons, går åt ett håll och tar slut, medan WebSocketen är spelets delade linje som varje medredigerare hör (D3), och att frågaren lägger på är då att anslutningen stängs, vilket är signalen som måste nå leverantören.
+Taken är två svar åt gången per konto och åtta totalt, och ett svar får ta tre minuter; varje svar håller en anslutning och kontexten i minnet på en låda med ont om det (DRIFT §1).
+Felbeskeden är leverantörens slutna mängd med «avvisat» tillagt, och serverns egna två: att svaret tog för lång tid och att ett svar redan är på väg.
+«Profil» i startsidans rad ritas nu som «logga ut» bredvid den: två vikter i en kort mening hade ingen förklaring läsaren kunde se.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.

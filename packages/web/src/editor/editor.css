@@ -4219,6 +4219,10 @@ img[data-arriving] { opacity: 0; }
 .byd-ai {
   --byd-ai-mark: #c9a7ff;
   --byd-ai-ink: #e6ecfa;
+  /* What went wrong, in the editor's own red-brown strip (the lost table's band, #705). */
+  --byd-ai-fail-bg: #3d2632;
+  --byd-ai-fail-ink: #ffe4ea;
+  --byd-ai-fail-line: #a2778a;
   flex: none;
   box-sizing: border-box;
   min-height: 0;
@@ -4234,7 +4238,7 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-quiet { color: var(--byd-editor-quiet); }
 /* The folded tab is a door (L13, tillägg #791): no fill and no line, quiet ink, the editor's dark
    ground under the pointer. */
-.byd-ai-rail { flex: 1 1 auto; width: var(--byd-tap); display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s4) 0; border: 0; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 13px; font-weight: 650; writing-mode: vertical-rl; cursor: pointer; }
+.byd-ai-rail { flex: 1 1 auto; width: var(--byd-tap); display: flex; align-items: center; justify-content: center; gap: var(--byd-s2); padding: var(--byd-s4) 0; border: 0; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 13px; font-weight: 650; writing-mode: vertical-rl; cursor: pointer; }
 .byd-ai-rail:hover { background: #1b1d23; color: #fff; }
 .byd-ai-head { flex: none; display: flex; align-items: center; gap: var(--byd-s1); min-height: 52px; padding: 0 var(--byd-s1) 0 var(--byd-s4); border-bottom: 1px solid var(--byd-editor-line); }
 .byd-ai-head h2 { flex: 1 1 auto; margin: 0; font-size: 14px; font-weight: 750; white-space: nowrap; }
@@ -4256,8 +4260,10 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-answer p, .byd-ai-answer ul { margin: 0 0 var(--byd-s2); }
 .byd-ai-answer > :last-child { margin-bottom: 0; }
 .byd-ai-answer ul { padding-left: var(--byd-s4); }
-.byd-ai-fail { display: grid; gap: var(--byd-s1); padding: var(--byd-s2) var(--byd-s3); border-radius: 8px; background: var(--byd-editor-lost-bg); color: var(--byd-editor-lost-ink); line-height: 1.45; }
-.byd-ai-fail :is(button, a) { justify-self: start; display: inline-flex; align-items: center; min-height: var(--byd-tap); margin-top: var(--byd-s1); padding: 0 var(--byd-s3); border-radius: 8px; border-color: var(--byd-editor-lost-button-line); color: var(--byd-editor-lost-ink); font: inherit; font-size: 13px; text-decoration: none; cursor: pointer; }
+/* The strip binds the second action's two tokens to its own ground (L13): the editor's line is drawn
+   for its dark chrome and not for this red-brown. */
+.byd-ai-fail { --byd-secondary-line: var(--byd-ai-fail-line); --byd-secondary-ink: var(--byd-ai-fail-ink); display: grid; gap: var(--byd-s1); padding: var(--byd-s2) var(--byd-s3); border-radius: 8px; background: var(--byd-ai-fail-bg); color: var(--byd-ai-fail-ink); line-height: 1.45; }
+.byd-ai-fail :is(button, a) { justify-self: start; display: inline-flex; align-items: center; min-height: var(--byd-tap); margin-top: var(--byd-s1); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 13px; text-decoration: none; cursor: pointer; }
 .byd-ai-compose { flex: none; display: grid; gap: var(--byd-s2); padding: var(--byd-s3) var(--byd-s4) var(--byd-s4); border-top: 1px solid var(--byd-editor-line); }
 .byd-ai-sent { display: flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) 6px; margin: 0; font-size: 12px; }
 .byd-ai-chip { display: inline-flex; align-items: center; min-height: 22px; padding: 0 var(--byd-s2); border: 1px solid #3a4152; border-radius: 99px; background: #1b1e27; color: #c3cbdd; white-space: nowrap; }
