@@ -22,7 +22,9 @@ export type Asking = { cancel(): void; finished: Promise<void> }
 const KINDS: readonly AskFailure[] = ['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'refused', 'network', 'timeout', 'busy', 'no-key', 'offline']
 const kindOf = (value: unknown): AskFailure => KINDS.find((k) => k === value) ?? 'network'
 
-export function askAi(http: string, project: string, ask: { question: string; turns: readonly AskTurn[]; lang: 'sv' | 'en' }, onEvent: (event: AskEvent) => void): Asking {
+// `selected` is the cards the designer has selected, by id (#1003): the server reads them out of its
+// own copy of the game and sends them whole with the question.
+export function askAi(http: string, project: string, ask: { question: string; turns: readonly AskTurn[]; lang: 'sv' | 'en'; selected?: readonly string[] }, onEvent: (event: AskEvent) => void): Asking {
   let cancelled = false
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   const tell = (event: AskEvent) => {
