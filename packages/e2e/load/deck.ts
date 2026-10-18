@@ -11,11 +11,12 @@ const SEATS = 8
 const FRAMES = ['#f4ead8', '#e8f0d8', '#d8e4f0', '#f0d8e4', '#ece0c8', '#d8f0ec']
 
 /**
- * The game the memory load test plays (#1012): as many cards as the designer has pictures, each
- * with its own illustration, a title in one uploaded typeface and a rules text in another, for an
- * eight-seat table. It is `generation` that a saved version changes.
+ * The game the memory load test plays (#1012): `cards` cards, each with an illustration, a title in
+ * one uploaded typeface and a rules text in another, for an eight-seat table. With fewer pictures
+ * than cards the pictures are dealt out in turn, as in a deck whose cards share their art. It is
+ * `generation` that a saved version changes.
  */
-export function loadGame(o: { name: string; generation: number; assets: LoadAssets }): ProjectDoc {
+export function loadGame(o: { name: string; generation: number; cards: number; assets: LoadAssets }): ProjectDoc {
   const { assets } = o
   const frame = FRAMES[o.generation % FRAMES.length] ?? '#ffffff'
   return {
@@ -41,9 +42,9 @@ export function loadGame(o: { name: string; generation: number; assets: LoadAsse
         },
       },
     },
-    rows: assets.pictures.map((hash, i) => ({
+    rows: Array.from({ length: o.cards }, (_, i) => ({
       id: `kort-${i + 1}`,
-      fields: { title: `Kort ${i + 1}`, body: RULES_TEXT, art: `asset:${hash}`, antal: 1 },
+      fields: { title: `Kort ${i + 1}`, body: RULES_TEXT, art: `asset:${assets.pictures[i % assets.pictures.length] ?? ''}`, antal: 1 },
     })),
     icons: {},
     fonts: {

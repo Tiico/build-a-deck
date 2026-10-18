@@ -1,6 +1,9 @@
 import { loadGame, picture, type LoadAssets } from './deck.js'
 import type { TableAddress } from './table.js'
 
+/** What a designer's game is, apart from which version of it is being saved. */
+export type Game = { name: string; cards: number; assets: LoadAssets }
+
 /**
  * A designer on the box (#1012), doing over HTTP what the editor does: logging in by the link in
  * the mail, uploading pictures and typefaces, saving a game version after version, starting a
@@ -48,26 +51,26 @@ export class Designer {
   }
 
   /**
-   * Everything the game draws with: one picture per card and one for the back, at a card
+   * Everything the game draws with: `pictures` illustrations and one for the back, at a card
    * illustration's size and the asked weight, and two typefaces. `seed` keeps two designers'
    * pictures apart, as two designers' art is.
    */
-  async uploadAssets(o: { cards: number; pictureBytes: number; seed: number; fonts: { title: Uint8Array; body: Uint8Array } }): Promise<LoadAssets> {
+  async uploadAssets(o: { pictures: number; pictureBytes: number; seed: number; fonts: { title: Uint8Array; body: Uint8Array } }): Promise<LoadAssets> {
     const pictures: string[] = []
-    for (let i = 0; i < o.cards; i++) pictures.push(await this.upload(picture(o.seed * 100_000 + i, { width: 900, height: 675, bytes: o.pictureBytes }), 'image/png'))
+    for (let i = 0; i < o.pictures; i++) pictures.push(await this.upload(picture(o.seed * 100_000 + i, { width: 900, height: 675, bytes: o.pictureBytes }), 'image/png'))
     const back = await this.upload(picture(o.seed * 100_000 + 99_999, { width: 750, height: 1050, bytes: o.pictureBytes }), 'image/png')
     return { pictures, back, fonts: { title: await this.upload(o.fonts.title, 'font/ttf'), body: await this.upload(o.fonts.body, 'font/ttf') } }
   }
 
   /** A game saved `versions` times over, each save one row of history, as an afternoon's editing is. */
-  async saveGame(name: string, assets: LoadAssets, versions: number): Promise<{ id: string; rev: number }> {
-    let saved = (await this.call('POST', '/projects', loadGame({ name, generation: 1, assets }))) as { id: string; rev: number }
-    for (let generation = 2; generation <= versions; generation++) saved = await this.saveVersion(saved, name, assets, generation)
+  async saveGame(game: Game, versions: number): Promise<{ id: string; rev: number }> {
+    let saved = (await this.call('POST', '/projects', loadGame({ ...game, generation: 1 }))) as { id: string; rev: number }
+    for (let generation = 2; generation <= versions; generation++) saved = await this.saveVersion(saved, game, generation)
     return saved
   }
 
-  async saveVersion(project: { id: string; rev: number }, name: string, assets: LoadAssets, generation: number): Promise<{ id: string; rev: number }> {
-    return (await this.call('PUT', `/projects/${encodeURIComponent(project.id)}`, { rev: project.rev, ...loadGame({ name, generation, assets }) })) as { id: string; rev: number }
+  async saveVersion(project: { id: string; rev: number }, game: Game, generation: number): Promise<{ id: string; rev: number }> {
+    return (await this.call('PUT', `/projects/${encodeURIComponent(project.id)}`, { rev: project.rev, ...loadGame({ ...game, generation }) })) as { id: string; rev: number }
   }
 
   async startTable(projectId: string): Promise<TableAddress> {

@@ -32,16 +32,25 @@ const hash = (n: number) => n.toString(16).padStart(64, '0')
 const assets = { pictures: Array.from({ length: 308 }, (_, i) => hash(i + 1)), back: hash(999), fonts: { title: hash(1001), body: hash(1002) } }
 
 test('the load game is a project for eight seats with 308 cards, each drawn from its own picture in two typefaces', () => {
-  const doc = ProjectDoc.parse(loadGame({ name: 'Last 1', generation: 1, assets }))
+  const doc = ProjectDoc.parse(loadGame({ name: 'Last 1', generation: 1, cards: 308, assets }))
   expect(doc.setup.seats).toHaveLength(8)
   expect(doc.rows).toHaveLength(308)
   expect(new Set(doc.rows.map((r) => r.fields['art'])).size).toBe(308)
   expect(Object.values(doc.fonts ?? {}).map((f) => f.asset)).toEqual([`asset:${hash(1001)}`, `asset:${hash(1002)}`])
 })
 
+test('a load game with fewer pictures than cards deals the pictures out in turn, as a deck that shares its art does', () => {
+  const shared = { ...assets, pictures: assets.pictures.slice(0, 77) }
+  const doc = ProjectDoc.parse(loadGame({ name: 'Last 1', generation: 1, cards: 308, assets: shared }))
+  expect(doc.rows).toHaveLength(308)
+  const uses = new Map<unknown, number>()
+  for (const row of doc.rows) uses.set(row.fields['art'], (uses.get(row.fields['art']) ?? 0) + 1)
+  expect([...uses.values()]).toEqual(Array.from({ length: 77 }, () => 4))
+})
+
 test('a new generation of the load game redraws the front of every card, which is the full re-render a saved version sends to a table', async () => {
   const fronts = async (generation: number) => {
-    const doc = ProjectDoc.parse(loadGame({ name: 'Last 1', generation, assets }))
+    const doc = ProjectDoc.parse(loadGame({ name: 'Last 1', generation, cards: 308, assets }))
     const { faces } = await queueFaces(deckFromProject(doc), setupFromProject(doc), new TypeRegistry(STANDARD_TYPES), TEXTURE_DPI, 0, async () => undefined)
     return Object.values(faces).map((f) => f['front'])
   }

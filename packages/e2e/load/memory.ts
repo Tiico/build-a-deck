@@ -46,6 +46,11 @@ export type Verdict = {
   fits: boolean
 }
 
+// How close to its limit a container may come and still be said to fit. At the limit the kernel
+// reclaims the cache under the process to keep it alive, so a run that survived there is the run
+// before the one that does not; a tenth of the limit is the margin a busier playtest gets.
+const HEADROOM = 0.9
+
 /** Each container measured against its limit. */
 export function verdict(readings: readonly Reading[], kernel: Partial<Record<Container, Kernel>>): Verdict[] {
   return CONTAINERS.flatMap((container) => {
@@ -68,7 +73,7 @@ export function verdict(readings: readonly Reading[], kernel: Partial<Record<Con
         oomKills,
         restarts: k.restarts,
         phases,
-        fits: oomKills === 0 && k.restarts === 0 && workingSetPeak < k.limit,
+        fits: oomKills === 0 && k.restarts === 0 && workingSetPeak < HEADROOM * k.limit,
       },
     ]
   })

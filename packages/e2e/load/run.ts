@@ -12,8 +12,9 @@ import { playTable, type Played } from './table.js'
  * The memory load test (#1012, DRIFT §1): the box's stack under the box's limits, played the way a
  * beta playtest plays it, and every container's peak held up against its limit.
  *
- *   pnpm --filter @byd/e2e load:memory [--tables 1,3] [--cards 308] [--versions 15]
- *                                      [--intents 200] [--picture-kb 250] [--keep] [--no-build]
+ *   pnpm --filter @byd/e2e load:memory [--tables 1,3] [--cards 308] [--pictures 308]
+ *                                      [--picture-kb 250] [--versions 15] [--intents 200]
+ *                                      [--project byd-load-…] [--keep] [--no-build]
  *
  * Each scenario starts the stack from nothing (`down -v`, `up`), as a deploy does, so the kernel's
  * peak is that scenario's and no other's. Per table there is a designer with a game of `cards`
@@ -32,6 +33,8 @@ const { values: args } = parseArgs({
     cards: { type: 'string', default: '308' },
     versions: { type: 'string', default: '15' },
     intents: { type: 'string', default: '200' },
+    // How many different illustrations the cards are drawn from; one per card unless fewer.
+    pictures: { type: 'string' },
     'picture-kb': { type: 'string', default: '250' },
     'pause-ms': { type: 'string', default: '150' },
     project: { type: 'string', default: `byd-load-${process.pid}` },
@@ -45,6 +48,7 @@ const scenarios = (args.tables ?? '1,3').split(',').map(Number)
 const cards = Number(args.cards)
 const versions = Number(args.versions)
 const intents = Number(args.intents)
+const pictures = Number(args.pictures ?? args.cards)
 const pictureBytes = Number(args['picture-kb']) * 1000
 const pauseMs = Number(args['pause-ms'])
 const OUT = join(import.meta.dirname, '..', '.load')
@@ -71,7 +75,7 @@ try {
 }
 
 const { stdout: host } = await run('docker', ['info', '--format', '{{.NCPU}} CPU, {{.MemTotal}} B, kernel {{.KernelVersion}}'])
-const report = { at: new Date().toISOString(), host: host.trim(), cards, versions, intents, pictureBytes, results }
+const report = { at: new Date().toISOString(), host: host.trim(), cards, pictures, versions, intents, pictureBytes, results }
 const file = join(OUT, `memory-${report.at.replace(/[:.]/g, '-')}.json`)
 writeFileSync(file, JSON.stringify(report, null, 2))
 for (const r of results) {
@@ -105,10 +109,9 @@ async function scenario(tables: number): Promise<Result> {
     const designers = await Promise.all(Array.from({ length: tables }, (_, i) => Designer.logIn(stack.origin, `designer-${i + 1}-${Date.now()}@load.test`, mailbox)))
     const games = await Promise.all(
       designers.map(async (d, i) => {
-        say(`designer ${i + 1}: ${cards} pictures of ${pictureBytes / 1000} kB, ${versions} versions`)
-        const assets = await d.uploadAssets({ cards, pictureBytes, seed: i + 1, fonts })
-        const name = `Lastspelet ${i + 1}`
-        return { name, assets, project: await d.saveGame(name, assets, versions) }
+        say(`designer ${i + 1}: ${cards} cards on ${pictures} pictures of ${pictureBytes / 1000} kB, ${versions} versions`)
+        const game = { name: `Lastspelet ${i + 1}`, cards, assets: await d.uploadAssets({ pictures, pictureBytes, seed: i + 1, fonts }) }
+        return { game, project: await d.saveGame(game, versions) }
       }),
     )
 
@@ -120,15 +123,15 @@ async function scenario(tables: number): Promise<Result> {
     phase = 'spel'
     outcome.push(...(await Promise.all(
       designers.map(async (d, i) => {
-        const game = games[i]
+        const saved = games[i]
         const table = addresses[i]
-        if (!game || !table) throw new Error('a designer without a table')
+        if (!saved || !table) throw new Error('a designer without a table')
         // Side by side and in one `Promise.all`, so that whichever of them breaks first is the one
         // reported, and the other's failure is not left to take the process down unheard.
         const [played, refreshed] = await Promise.all([
           playTable(stack.origin, table, { intents, pauseMs }),
           (async () => {
-            await d.saveVersion(game.project, game.name, game.assets, versions + 1)
+            await d.saveVersion(saved.project, saved.game, versions + 1)
             const done = await d.refreshTable(table.session, RENDER_BUDGET_MS)
             say(`table ${i + 1}: new version drawn, ${done.total} textures in ${done.seconds} s`)
             return done

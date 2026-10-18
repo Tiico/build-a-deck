@@ -33,6 +33,15 @@ test('a container that restarted did not fit either, since a restart starts the 
   expect(render).toMatchObject({ container: 'render', restarts: 1, fits: false })
 })
 
+test('a container whose working set came within a tenth of its limit did not fit, even though nothing was killed', () => {
+  // At the limit the kernel reclaims the cache under the process to keep it alive: the run that
+  // survived it is the run before the one that does not.
+  const at = (workingSet: number) => [{ container: 'app' as const, phase: 'bordsstart', sample: { current: workingSet, workingSet, anon: workingSet } }]
+  const quiet = { limit: 1000, peak: 1000, events: 'max 882\noom_kill 0\n', restarts: 0 }
+  expect(verdict(at(905), { app: quiet })[0]?.fits).toBe(false)
+  expect(verdict(at(895), { app: quiet })[0]?.fits).toBe(true)
+})
+
 test('each phase of the scenario has its own peak, so a reader can see which part of the playtest cost what', () => {
   const at = (phase: string, workingSet: number) => ({ container: 'postgres' as const, phase, sample: { current: workingSet, workingSet, anon: 0 } })
   const [pg] = verdict([at('vila', 50), at('spel', 300), at('vila', 70), at('spel', 200)], { postgres: { limit: 1000, peak: 400, events: '', restarts: 0 } })
