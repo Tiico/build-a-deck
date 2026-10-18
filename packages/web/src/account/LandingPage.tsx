@@ -35,7 +35,7 @@ export function LandingPage({ http, server, onNavigate }: { http: string; server
             <i />
             <i />
           </span>
-          build-your-deck
+          <span className="byd-landing-name">build-your-deck</span>
         </span>
         <nav aria-label={t('landing.nav')}>
           <a className="byd-landing-quiet" href="#byd-landing-steps">

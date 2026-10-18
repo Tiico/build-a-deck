@@ -96,6 +96,12 @@ test.describe('the code is the address (#675)', () => {
       // maker's way to the login (#675, #1009).
       for (const f of [field, go, maker]) await expect(f).toBeInViewport({ ratio: 1 })
       expect(await targetsUnder44(page)).toEqual([])
+      // And in a wide face too: system-ui is DejaVu on CI's Linux, about an eighth wider than this
+      // Mac's, and there the header pushed «Mina spel» past the right edge. Verdana stands in for
+      // it here, DejaVu on Linux, so the check bites on both machines.
+      const face = await page.addStyleTag({ content: `.byd-landing, .byd-landing * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }` })
+      for (const f of [field, go, maker]) await expect(f).toBeInViewport({ ratio: 1 })
+      await face.evaluate((tag) => (tag as Element).remove())
       if (device === PHONE) {
         await field.fill(table.code.toLowerCase())
         await page.getByRole('button', { name: 'Gå in' }).click()

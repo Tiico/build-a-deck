@@ -33,9 +33,13 @@
 .byd-landing a:focus-visible { outline: 3px solid var(--byd-landing-amber); outline-offset: 3px; }
 
 .byd-landing-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px var(--byd-landing-gutter); max-width: 1320px; margin: 0 auto; box-sizing: border-box; }
-.byd-landing-head nav { display: flex; gap: 12px; align-items: center; }
-.byd-landing-mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; white-space: nowrap; }
-.byd-landing-logo { width: 22px; height: 28px; position: relative; }
+/* The doors never give way: on a narrow phone in a wide face (DejaVu on Linux is an eighth wider
+   than a Mac's system-ui) the name does, down to an ellipsis, rather than «Mina spel» leaving the
+   screen. */
+.byd-landing-head nav { display: flex; gap: 12px; align-items: center; flex: none; }
+.byd-landing-mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; white-space: nowrap; min-width: 0; }
+.byd-landing-name { overflow: hidden; text-overflow: ellipsis; }
+.byd-landing-logo { width: 22px; height: 28px; position: relative; flex: none; }
 .byd-landing-logo i { position: absolute; inset: 0; border-radius: 4px; background: #f7f1e3; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
 .byd-landing-logo i:nth-child(1) { transform: rotate(-14deg) translate(-3px, 1px); background: var(--byd-landing-amber); }
 .byd-landing-logo i:nth-child(2) { transform: rotate(-2deg); background: var(--byd-landing-accent); }
@@ -142,7 +146,9 @@
    finds the field on the first screen, at 320 × 568 too, and the pitch is read under it. */
 @media (max-width: 560px) {
   .byd-landing-quiet { display: none; }
-  .byd-landing-head { padding-block: 12px; }
+  .byd-landing-head { padding-block: 12px; gap: 12px; }
+  .byd-landing-mark { font-size: 15px; gap: 8px; }
+  .byd-landing-head .byd-landing-btn { padding: 0 16px; }
   .byd-landing-pitch { display: flex; flex-direction: column; }
   .byd-landing-code { order: -1; max-width: none; border-top: 0; padding: 14px 16px 16px; margin-bottom: 28px; border-radius: 16px; background: rgba(23, 26, 35, 0.85); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
   .byd-landing-eyebrow { margin-bottom: 10px; }
