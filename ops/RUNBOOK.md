@@ -80,6 +80,7 @@ MAIL_FROM="build-your-deck <login@ditt-värdnamn>"
 Och en kommentar får bara stå först på raden. `PUBLIC_ORIGIN=https://x  # kommentar` blir värdet `https://x  # kommentar` för systemd, som bara känner igen `#` i radens början.
 
 Lägg till `R2_*` och `RESEND_API_KEY` när de finns; `.env.example` beskriver varje rad.
+Före betan: `BYD_CONTACT` är vart en betatestare vänder sig, en e-postadress eller en adress med `https://` (DRIFT §8, #757). Utan den står ingen «Kontakt» på inloggningskortet, på Mina spel, i mejlets fot eller i `/health`.
 Sätt aldrig `AUTH_BYPASS` här — stacken skickar den inte vidare till containern, men raden vilseleder nästa läsare.
 
 Replay-korpusen ur betadesignernas spel (DRIFT §7, #1011) vill ha två rader till, och bara när någon har sagt ja:

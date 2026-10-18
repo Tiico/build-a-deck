@@ -56,6 +56,14 @@ describe('the stack hands the app its configuration', () => {
     expect(env['BYD_OPERATOR']).toBe('${BYD_OPERATOR:-}')
   })
 
+  // Where a beta tester turns (#757, DRIFT §8) is the box's to say. Left out of the stack, the
+  // contact line, the mail's foot and /health.contact stayed empty on the box from the day they
+  // were built, and every test of them passed because none ran the stack.
+  it('passes the contact through, empty when unset', () => {
+    const env = serviceEnvironment(compose, 'app')
+    expect(env['BYD_CONTACT']).toBe('${BYD_CONTACT:-}')
+  })
+
   it('leaves room on a box that is not only ours', () => {
     // DRIFT §1 budgeted the whole 8 GB for this stack; the box it actually runs on was
     // already carrying its own containers and swapping. The three that are always up have
