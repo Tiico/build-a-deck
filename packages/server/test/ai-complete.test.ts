@@ -157,3 +157,97 @@ describe('what each provider is sent', () => {
     })
   })
 })
+
+// A structured answer (#1002): the request carries the proposal's schema, and the model chooses —
+// prose, or a proposal whose parts stream one at a time, each the moment it is whole. Anthropic
+// answers a proposal as a strict tool's input, OpenAI as strict JSON whose prose is inside it.
+const SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object' } } }, required: ['cards'], additionalProperties: false }
+const proposing = (question: string): AiRequest => ({
+  ...request(question),
+  context: "# Game: Sal's Saloon\n\n## Fields\n- id: the card’s key\n- antal: number — copies\n- title: text\n- kostnad: number\n- bild: image\n",
+  proposal: { name: 'propose', description: 'Propose changes to the game.', schema: SCHEMA },
+})
+type Streamed = { texts: string[]; parts: { key: string; value: unknown; finishedYet: boolean }[]; done: boolean; broken: boolean; failure: AiFailure | null }
+async function stream(adapter: AiProviderAdapter, key: string, question: string): Promise<Streamed> {
+  const out: Streamed = { texts: [], parts: [], done: false, broken: false, failure: null }
+  try {
+    for await (const event of adapter.complete(key, proposing(question))) {
+      if (event.type === 'text') out.texts.push(event.text)
+      if (event.type === 'part') out.parts.push({ key: event.key, value: event.value, finishedYet: fake.streams.at(-1)!.finished })
+      if (event.type === 'done') {
+        out.done = true
+        out.broken = event.broken === true
+      }
+    }
+  } catch (err) {
+    if (!(err instanceof AiProviderError)) throw err
+    out.failure = err.kind
+  }
+  return out
+}
+
+for (const [name, make, key] of [
+  ['Anthropic', () => anthropicAdapter({ baseUrl: `${base}/anthropic`, timeoutMs: 2000, idleMs: 2000 }), 'sk-ant-good'],
+  ['OpenAI', () => openaiAdapter({ baseUrl: `${base}/openai`, timeoutMs: 2000, idleMs: 2000 }), 'sk-proj-good'],
+] as const) {
+  describe(`${name}, a structured answer`, () => {
+    it('streams a proposal part by part, each card while the rest is still coming', async () => {
+      const got = await stream(make(), key, 'Tre billiga kort [kort:3]')
+      expect(got.failure).toBeNull()
+      expect(got.done).toBe(true)
+      expect(got.broken).toBe(false)
+      expect(got.texts.join('')).toBe('Här är 3 kort.')
+      expect(got.parts.map((p) => p.key)).toEqual(['cards', 'cards', 'cards'])
+      expect(got.parts[0]!.value).toEqual({
+        fields: [
+          { field: 'title', value: 'Förslag 1' },
+          { field: 'kostnad', value: 1 },
+          { field: 'antal', value: 1 },
+        ],
+      })
+      // The first card was handed on before the provider had finished the answer.
+      expect(got.parts[0]!.finishedYet).toBe(false)
+    })
+
+    it('still answers in prose when the model proposes nothing', async () => {
+      const got = await stream(make(), key, 'Vad heter spelet?')
+      expect(got.parts).toEqual([])
+      expect(got.done).toBe(true)
+      expect(got.texts.join('')).toBe("Du frågade: «Vad heter spelet?». Spelet heter Sal's Saloon.")
+      expect(got.texts.length).toBeGreaterThan(1)
+    })
+
+    it('says a proposal that was cut off before it was whole is broken, and keeps the parts that came', async () => {
+      const got = await stream(make(), key, 'Tio kort [kort:3] [kapat]')
+      expect(got.done).toBe(true)
+      expect(got.broken).toBe(true)
+      expect(got.parts.length).toBeLessThan(3)
+    })
+  })
+}
+
+describe('what each provider is sent for a structured answer', () => {
+  it('Anthropic: the schema as a strict tool whose input streams as it is written, and the model left to choose', async () => {
+    await stream(anthropicAdapter({ baseUrl: `${base}/anthropic` }), 'sk-ant-good', 'Hej')
+    const body = fake.calls.at(-1)!.body as Record<string, unknown>
+    expect(body['tools']).toEqual([{ name: 'propose', description: 'Propose changes to the game.', input_schema: SCHEMA, strict: true, eager_input_streaming: true }])
+    expect(body['tool_choice']).toEqual({ type: 'auto' })
+  })
+
+  it('OpenAI: strict JSON with the prose beside the proposal, and null for no proposal', async () => {
+    await stream(openaiAdapter({ baseUrl: `${base}/openai` }), 'sk-proj-good', 'Hej')
+    const body = fake.calls.at(-1)!.body as { text: { format: Record<string, unknown> } }
+    expect(body.text.format).toEqual({
+      type: 'json_schema',
+      name: 'propose',
+      description: 'Propose changes to the game.',
+      strict: true,
+      schema: {
+        type: 'object',
+        properties: { message: { type: 'string', description: expect.any(String) as string }, proposal: { anyOf: [SCHEMA, { type: 'null' }] } },
+        required: ['message', 'proposal'],
+        additionalProperties: false,
+      },
+    })
+  })
+})

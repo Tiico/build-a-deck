@@ -7,6 +7,7 @@ import { MemoryAuthStore } from '../src/auth.js'
 import { MemoryProjectStore } from '../src/projects.js'
 import type { ProjectDoc } from '../src/projects.js'
 import type { AiCaps } from '../src/ai-ask.js'
+import { proposalSchema } from '../src/proposal.js'
 import { fakeAiProvider, type FakeAiProvider } from '../../../test-support/fake-ai-provider.js'
 import { template } from './deck.js'
 import { listenInBand, start, twoSeatSetup, type Running } from './fixture.js'
@@ -67,7 +68,7 @@ async function login(r: Running, email: string): Promise<string> {
 
 const idOf = async (w: World, email: string) => (await w.auth.ensureAccount(email)).id
 
-type Event = { t: 'text'; text: string } | { t: 'done' } | { t: 'failed'; kind: string }
+type Event = { t: 'text'; text: string } | { t: 'part'; key: string; part: unknown } | { t: 'done'; broken?: true } | { t: 'failed'; kind: string }
 type Asked = { status: number; events: Event[]; text: string; json: Record<string, unknown> | null }
 
 function post(w: World, cookie: string, body: unknown, signal?: AbortSignal, project = 'p1'): Promise<Response> {
@@ -175,6 +176,46 @@ describe('a question about the game', () => {
     // A body far past anything a conversation can be is not kept.
     expect((await read(await post(w, w.ada, { question: 'Hej', turns: [], padding: 'x'.repeat(2_000_000) }))).status).toBe(413)
     expect(fake.calls.length).toBe(calls)
+  })
+})
+
+describe('a proposal (#1002)', () => {
+  for (const [provider, key] of [
+    ['anthropic', ADA_KEY],
+    ['openai', BO_KEY],
+  ] as const) {
+    it(`is passed on part by part and then done, with the schema the editor reads it with (${provider})`, async () => {
+      const w = await world()
+      await w.vault.save(await idOf(w, 'ada@example.com'), provider, key)
+      const asked = await ask(w, w.ada, 'Två kort [kort:2]')
+      expect(asked.text).toBe('Här är 2 kort.')
+      const parts = asked.events.filter((e) => e.t === 'part')
+      expect(parts).toEqual([
+        { t: 'part', key: 'cards', part: { fields: [{ field: 'title', value: 'Förslag 1' }, { field: 'antal', value: 1 }] } },
+        { t: 'part', key: 'cards', part: { fields: [{ field: 'title', value: 'Förslag 2' }, { field: 'antal', value: 1 }] } },
+      ])
+      expect(asked.events.at(-1)).toEqual({ t: 'done' })
+      // The schema is the proposal model's own, so what the provider is held to is what is read.
+      const body = JSON.stringify(fake.calls.at(-1)!.body)
+      expect(body).toContain(JSON.stringify(proposalSchema()))
+    })
+  }
+
+  it('says when a proposal was cut off before it was whole', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    const asked = await ask(w, w.ada, 'Tre kort [kort:3] [kapat]')
+    expect(asked.events.at(-1)).toEqual({ t: 'done', broken: true })
+  })
+
+  it('tells the model when to propose and what a proposed card must hold', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    await ask(w, w.ada, 'Hej')
+    const instructions = (fake.calls.at(-1)!.body as { system: { text: string }[] }).system[0]!.text
+    expect(instructions).toMatch(/new cards/)
+    expect(instructions).toMatch(/antal/)
+    expect(instructions).toMatch(/never write a picture/i)
   })
 })
 

@@ -1,6 +1,7 @@
 import { get as httpGet, request as httpRequest, type IncomingMessage } from 'node:http'
 import { get as httpsGet, request as httpsRequest } from 'node:https'
 import type { AiProvider } from './ai-keys.js'
+import { JsonParts } from './json-parts.js'
 
 // The providers behind one face (#999, #1001, PRD module 2). A key is asked for its models, which is
 // also how a key is proved when it is saved: the list costs the designer nothing, needs a key the
@@ -50,11 +51,15 @@ export type AiProviders = Record<AiProvider, AiProviderAdapter>
 // the provider where its prompt cache can keep it. The conversation alternates and ends with the
 // designer's question.
 //
-// Structured proposals (#1002) arrive as a schema on the request and as events of their own beside
-// `text`; the stream already carries events and not strings so that they have somewhere to go.
+// A structured answer (#1002): `proposal` is the schema of what the model may propose, and the model
+// chooses between prose and a proposal. A proposal comes as `part` events, each a part of it the
+// moment that part is whole — an element of one of its lists, or any other property of it whole —
+// so a card is shown when it is written and not when the answer ends. A proposal that stopped before
+// it was whole ends the answer with `done` marked `broken`: the parts that came are not a proposal.
 export type AiMessage = { role: 'user' | 'assistant'; text: string }
-export type AiRequest = { model: string; instructions: string; context: string; messages: readonly AiMessage[]; maxTokens: number }
-export type AiEvent = { type: 'text'; text: string } | { type: 'done' }
+export type AiProposalSchema = { name: string; description: string; schema: Record<string, unknown> }
+export type AiRequest = { model: string; instructions: string; context: string; messages: readonly AiMessage[]; maxTokens: number; proposal?: AiProposalSchema }
+export type AiEvent = { type: 'text'; text: string } | { type: 'part'; key: string; value: unknown } | { type: 'done'; broken?: true }
 
 type AdapterOptions = { baseUrl?: string; timeoutMs?: number; idleMs?: number }
 
@@ -249,18 +254,39 @@ export function anthropicAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
           { type: 'text', text: request.context, cache_control: { type: 'ephemeral' } },
         ],
         messages: request.messages.map((m) => ({ role: m.role, content: m.text })),
+        // A proposal is the input of a tool the model may call or leave (`auto`; these models refuse a
+        // forced one). Strict, so the input keeps to the schema; streamed as it is written rather
+        // than held back until each parameter is whole, which is what lets a card show the moment its
+        // brace closes — and why the editor reads every part with the zod schema all the same.
+        ...(request.proposal
+          ? {
+              tools: [{ name: request.proposal.name, description: request.proposal.description, input_schema: request.proposal.schema, strict: true, eager_input_streaming: true }],
+              tool_choice: { type: 'auto' },
+            }
+          : {}),
       }
       let done = false
+      let broken = false
+      // The tool's input being read, by the index of its block.
+      let reading: { index: unknown; parts: JsonParts } | null = null
       for await (const { data } of postEvents(`${baseUrl}/v1/messages`, { 'x-api-key': key, 'anthropic-version': ANTHROPIC_VERSION }, body, idleMs, signal)) {
-        const said = data as { type?: unknown; delta?: { type?: unknown; text?: unknown; stop_reason?: unknown }; error?: unknown }
-        if (said.type === 'content_block_delta' && said.delta?.type === 'text_delta' && typeof said.delta.text === 'string' && said.delta.text !== '') yield { type: 'text', text: said.delta.text }
-        else if (said.type === 'message_delta' && said.delta?.stop_reason === 'refusal') throw new AiProviderError('refused')
+        const said = data as { type?: unknown; index?: unknown; content_block?: { type?: unknown }; delta?: { type?: unknown; text?: unknown; partial_json?: unknown; stop_reason?: unknown }; error?: unknown }
+        if (said.type === 'content_block_start' && said.content_block?.type === 'tool_use') reading = { index: said.index, parts: new JsonParts({ partsAt: [] }) }
+        else if (said.type === 'content_block_delta' && said.delta?.type === 'text_delta' && typeof said.delta.text === 'string' && said.delta.text !== '') yield { type: 'text', text: said.delta.text }
+        else if (said.type === 'content_block_delta' && said.delta?.type === 'input_json_delta' && reading && said.index === reading.index && typeof said.delta.partial_json === 'string') {
+          for (const event of reading.parts.push(said.delta.partial_json)) if (event.type === 'part') yield event
+        } else if (said.type === 'content_block_stop' && reading && said.index === reading.index) {
+          if (!reading.parts.end().complete) broken = true
+          reading = null
+        } else if (said.type === 'message_delta' && said.delta?.stop_reason === 'refusal') throw new AiProviderError('refused')
+        else if (said.type === 'message_delta' && said.delta?.stop_reason === 'max_tokens' && reading) broken = true
         else if (said.type === 'message_stop') done = true
         else if (said.type === 'error') throw new AiProviderError(streamedFailure(said.error))
       }
       if (signal?.aborted) return
       if (!done) throw new AiProviderError('network')
-      yield { type: 'done' }
+      // A tool whose block never closed was cut off as surely as one whose input did not parse.
+      yield broken || reading ? { type: 'done', broken: true } : { type: 'done' }
     },
   }
 }
@@ -296,12 +322,18 @@ export function openaiAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
         store: false,
         instructions: `${request.instructions}\n\n${request.context}`,
         input: request.messages.map((m) => ({ role: m.role, content: m.text })),
+        // A proposal is the answer itself as strict JSON: the prose beside it in `message`, so that
+        // the model can still answer in words, and the proposal or null.
+        ...(request.proposal ? { text: { format: { type: 'json_schema', name: request.proposal.name, description: request.proposal.description, strict: true, schema: envelope(request.proposal.schema) } } } : {}),
       }
       let done = false
+      const parts = request.proposal ? new JsonParts({ textAt: ['message'], partsAt: ['proposal'] }) : null
       for await (const { data } of postEvents(`${baseUrl}/v1/responses`, { authorization: `Bearer ${key}` }, body, idleMs, signal)) {
         const said = data as { type?: unknown; delta?: unknown; code?: unknown; response?: { error?: unknown; incomplete_details?: { reason?: unknown } } }
-        if (said.type === 'response.output_text.delta' && typeof said.delta === 'string' && said.delta !== '') yield { type: 'text', text: said.delta }
-        else if (said.type === 'response.refusal.delta' || said.type === 'response.refusal.done') throw new AiProviderError('refused')
+        if (said.type === 'response.output_text.delta' && typeof said.delta === 'string' && said.delta !== '') {
+          if (parts) yield* parts.push(said.delta)
+          else yield { type: 'text', text: said.delta }
+        } else if (said.type === 'response.refusal.delta' || said.type === 'response.refusal.done') throw new AiProviderError('refused')
         else if (said.type === 'response.completed') done = true
         else if (said.type === 'response.incomplete') {
           // Cut short by its own filter is a refusal; cut short by the length is an answer that ends.
@@ -312,8 +344,22 @@ export function openaiAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
       }
       if (signal?.aborted) return
       if (!done) throw new AiProviderError('network')
-      yield { type: 'done' }
+      // Cut short by its length, the JSON is not whole, and neither is what it proposed.
+      yield parts && !parts.end().complete ? { type: 'done', broken: true } : { type: 'done' }
     },
+  }
+}
+
+// What OpenAI is held to when a proposal may be the answer: the prose and the proposal side by side.
+function envelope(proposal: Record<string, unknown>): Record<string, unknown> {
+  return {
+    type: 'object',
+    properties: {
+      message: { type: 'string', description: 'The answer in words, written as the instructions say. With a proposal, a sentence or two about it.' },
+      proposal: { anyOf: [proposal, { type: 'null' }] },
+    },
+    required: ['message', 'proposal'],
+    additionalProperties: false,
   }
 }
 

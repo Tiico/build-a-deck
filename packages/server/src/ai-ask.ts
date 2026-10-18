@@ -4,6 +4,7 @@ import { AI_INSTRUCTIONS, aiContextOf } from './ai-context.js'
 import type { AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiFailure, type AiProviders } from './ai-providers.js'
 import type { ProjectDoc } from './projects.js'
+import { proposalSchema } from './proposal.js'
 
 // The editor's question, made on the designer's behalf (#1001, E4, PRD module 6). The server does
 // not think, it passes on: it builds the game's context out of its own copy of the document, opens
@@ -30,8 +31,13 @@ export type AiCaps = { perAccount: number; total: number; timeoutMs: number }
 export const AI_CAPS: AiCaps = { perAccount: 2, total: 8, timeoutMs: 180_000 }
 // The most a question's body can honestly be: forty turns of twenty thousand characters, with room.
 export const ASK_MAX_BYTES = 1024 * 1024
-// What an answer may cost at most, in the provider's tokens. Enough for a long answer about a game.
-const MAX_TOKENS = 4096
+// What an answer may cost at most, in the provider's tokens: enough for a long answer about a game,
+// and for a proposal of a few dozen cards (#1002), each a handful of fields of card text. An answer is
+// only billed for what it says, so the ceiling is a guard and not a price.
+const MAX_TOKENS = 16_000
+// What the model is offered to propose with (#1002): the proposal model's own schema, so what the
+// provider holds the model to is what the editor reads the answer with.
+const PROPOSE = { name: 'propose', description: 'Propose changes to the game for the designer to look at and accept or discard. In this version: new cards.', schema: proposalSchema() }
 // A comment line now and then while the provider thinks, so that nothing between here and the
 // browser takes a quiet stream for a dead one (Cloudflare gives up on a response after 100 s).
 const HEARTBEAT_MS = 15_000
@@ -54,7 +60,9 @@ export type AskBody = z.infer<typeof AskBody>
 // How an answer went: as the provider said it, or as the server or the asker ended it.
 export type AskOutcome = 'ok' | 'cancelled' | 'timeout' | AiFailure
 // What goes over the wire, one per event.
-export type AskEvent = { t: 'text'; text: string } | { t: 'done' } | { t: 'failed'; kind: AiFailure | 'timeout' }
+// A `part` is one part of a proposal, whole (#1002); `broken` on `done` says a proposal began and was
+// cut off before it was whole.
+export type AskEvent = { t: 'text'; text: string } | { t: 'part'; key: string; part: unknown } | { t: 'done'; broken?: true } | { t: 'failed'; kind: AiFailure | 'timeout' }
 
 // The answers in flight, counted per account and in all.
 export class AiFlight {
@@ -122,8 +130,13 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
       context: aiContextOf(doc),
       messages: [...ask.turns, { role: 'user' as const, text: ask.question }],
       maxTokens: MAX_TOKENS,
+      proposal: PROPOSE,
     }
-    for await (const event of adapter.complete(opened.key, request, stop.signal)) send(event.type === 'text' ? { t: 'text', text: event.text } : { t: 'done' })
+    for await (const event of adapter.complete(opened.key, request, stop.signal)) {
+      if (event.type === 'text') send({ t: 'text', text: event.text })
+      else if (event.type === 'part') send({ t: 'part', key: event.key, part: event.value })
+      else send(event.broken ? { t: 'done', broken: true } : { t: 'done' })
+    }
     if (ended) outcome = ended
   } catch (err) {
     outcome = ended ?? (err instanceof AiProviderError ? err.kind : 'network')
