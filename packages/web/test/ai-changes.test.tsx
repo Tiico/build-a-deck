@@ -118,6 +118,9 @@ describe('a proposal of changed cards', () => {
     expect(changed[0]!.textContent).toContain('kostnad: 3 → 2')
     // The card is drawn by the one renderer with the values it would have.
     expect(changed[0]!.querySelector('.byd-preview')!.textContent).toContain('Drake II')
+    // Each card's style sheet is scoped by its id, so the id must stand as a selector: a part's key
+    // («change:dragon») in it ended the selector, and the card was drawn without its layout.
+    for (const preview of proposal().querySelectorAll('.byd-preview')) expect(preview.id).toMatch(/^[A-Za-z][\w-]*$/)
   })
 
   it('lays the changed cards on the wall in their own place, marked «Ändrat» with old → new under them', async () => {
@@ -128,7 +131,12 @@ describe('a proposal of changed cards', () => {
     const dragon = wallCard('dragon')
     expect(dragon.hasAttribute('data-changed')).toBe(true)
     expect(dragon.textContent).toContain('Ändrat')
-    expect(dragon.textContent).toContain('kostnad: 3 → 2')
+    // Old → new stands under the card and outside it, so the ring that says the card is chosen and
+    // the badge for its copies stay round the card and not round the lines.
+    const lines = dragon.closest('.byd-wall-cell')!.querySelector('.byd-wall-changes')!
+    expect(lines.textContent).toContain('kostnad: 3 → 2')
+    expect(dragon.contains(lines)).toBe(false)
+    expect(dragon.querySelector('[data-copies]')).not.toBeNull()
     expect(dragon.getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake — title: Drake → Drake II, kostnad: 3 → 2')
     expect(dragon.querySelector('.byd-preview')!.textContent).toContain('Drake II')
     // The wall makes room for the marks while a proposal stands on it.
@@ -198,11 +206,12 @@ describe('«Välj delar…»', () => {
     expect(parts.every((box) => (box as HTMLInputElement).checked)).toBe(true)
     // Where the choice is made is where the keys go.
     await waitFor(() => expect(document.activeElement).toBe(parts[0]))
-    const chosen = within(proposal()).getByRole('button', { name: 'Godta valda (4)' })
+    const chosen = within(proposal()).getByRole('button', { name: 'Godta valda' })
     expect(chosen.classList.contains('byd-secondary')).toBe(true)
+    expect(proposal().textContent).toContain('4 av 4 delar valda')
     fireEvent.click(parts[0]!)
     fireEvent.click(parts[3]!)
-    expect(within(proposal()).getByRole('button', { name: 'Godta valda (2)' })).toBe(chosen)
+    expect(proposal().textContent).toContain('2 av 4 delar valda')
     // The wall shows what accepting would do: only the parts still ticked.
     toTab('wall')
     fireEvent.click(within(panel()).getByRole('button', { name: 'Visa på väggen' }))
@@ -230,7 +239,8 @@ describe('«Välj delar…»', () => {
     ask('Två kort [kort:2]')
     fireEvent.click(await within(panel()).findByRole('button', { name: 'Välj delar…' }))
     for (const box of within(proposal()).getAllByRole('checkbox')) fireEvent.click(box)
-    const none = within(proposal()).getByRole('button', { name: 'Godta valda (0)' })
+    expect(proposal().textContent).toContain('0 av 2 delar valda')
+    const none = within(proposal()).getByRole('button', { name: 'Godta valda' })
     expect(none.getAttribute('aria-disabled')).toBe('true')
     fireEvent.click(none)
     expect(await logged()).toHaveLength(0)

@@ -55,7 +55,7 @@ test('a designer selects cards, asks for a change, sees old → new on the wall 
   await expect(page.locator('.byd-wall-card[data-changed]')).toHaveCount(2)
   await expect(page.locator('.byd-wall-card[data-proposed]')).toHaveCount(2)
   await expect(wallCard('kort-2')).toContainText('Changed')
-  await expect(wallCard('kort-2').locator('.byd-wall-changes')).toContainText(`title: ${cardTitle(1)} → ${cardTitle(1)} II`)
+  await expect(page.locator('.byd-wall-cell:has([data-card-ref="kort-2"]) .byd-wall-changes')).toContainText(`title: ${cardTitle(1)} → ${cardTitle(1)} II`)
   await expect(wallCard('kort-2')).toHaveAccessibleName(`Changed in the proposal: ${cardTitle(1)} — title: ${cardTitle(1)} → ${cardTitle(1)} II, kostnad: 3 → 2`)
   expect(wire.sent().filter((f) => f.includes('"t":"edit"'))).toEqual([])
 
@@ -73,7 +73,8 @@ test('a designer selects cards, asks for a change, sees old → new on the wall 
   await expect(wallCard('kort-3')).not.toHaveAttribute('data-changed')
 
   // Accepted: one edit over the editor's line, exactly the chosen parts.
-  await proposal.getByRole('button', { name: 'Accept chosen (2)' }).click()
+  await expect(proposal).toContainText('2 of 4 parts chosen')
+  await proposal.getByRole('button', { name: 'Accept chosen' }).click()
   await expect(panel.getByText('Accepted: 1 new card and 1 changed card.')).toBeVisible()
   const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; cardRef?: string; field?: string; value?: unknown }[]; doc?: { rows: { id: string; fields: Record<string, unknown> }[] } } })
   expect(edits()).toHaveLength(1)

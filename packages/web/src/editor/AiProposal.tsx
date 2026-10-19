@@ -105,7 +105,9 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
             const left = choosing && leave.has(part.key)
             const drawn = (
               <div className="byd-ai-card-face">
-                <CardPreview id={`ai-${id}-${part.key}`} face={face} row={row.fields} icons={icons} fonts={fonts} scale={CARD_WIDTH / CARD_PX} assetBase={http} palette={doc.palette} onMeasured={(fitted) => onMeasured(row.id, fitted)} />
+                {/* The id scopes the card's own style sheet, so it is the part's place and never its
+                    key, whose colon would end the selector. */}
+                <CardPreview id={`ai-${id}-${i}`} face={face} row={row.fields} icons={icons} fonts={fonts} scale={CARD_WIDTH / CARD_PX} assetBase={http} palette={doc.palette} onMeasured={(fitted) => onMeasured(row.id, fitted)} />
               </div>
             )
             const named = (
@@ -122,6 +124,8 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
                     {drawn}
                     <span className="byd-ai-change-text">
                       {named}
+                      {/* Its key too, since a deck has several cards of one name — four «Duel». */}
+                      <span className="byd-ai-card-ref">{part.cardRef}</span>
                       <span className="byd-ai-cells">
                         {part.cells.map((cell) => (
                           <span key={cell.field} className="byd-ai-cell">
@@ -162,6 +166,13 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
           {t('ai.proposal.choose')}
         </button>
       )}
+      {/* While the choice stands, the link's place says how much of the proposal is chosen, so the
+          button that accepts it keeps a name as short as «Godta alla» and the row stays one row. */}
+      {done && choosing && (
+        <p className="byd-ai-chosen" aria-live="polite">
+          {t('ai.proposal.chosen', { n: ticked, total: all.length })}
+        </p>
+      )}
       {done && (
         <div className="byd-ai-decide">
           {/* A switch, drawn as the language draws a thing that is on (L13): the chosen pill. */}
@@ -173,7 +184,7 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
               same place accepts the ones left ticked — and nothing is not a choice it takes. */}
           {choosing ? (
             <button type="button" className="byd-secondary" aria-disabled={ticked === 0} onClick={() => ticked > 0 && onAcceptChosen?.()}>
-              {t('ai.proposal.acceptChosen', { n: ticked })}
+              {t('ai.proposal.acceptChosen')}
             </button>
           ) : (
             <button type="button" className="byd-secondary" onClick={onAccept}>

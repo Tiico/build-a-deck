@@ -302,7 +302,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     const choose = (to: string | null) => {
       if (!ghost) onSelectRow(to)
     }
-    return (
+    const option = (
       <div
         key={cardRef}
         // An option in a listbox (#477): the one role in which being chosen is `aria-selected`, and
@@ -376,21 +376,27 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             <span className="byd-ai-spark">✦</span> {t(ghost ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}
           </span>
         )}
-        {/* What the proposal changes on the card, old → new, under it where the reading line stands
-            (#1003): the card itself shows only the new. */}
-        {cells && (
-          <ul className="byd-wall-changes" aria-hidden="true">
-            {cells.map((cell) => (
-              <li key={cell.field}>{cellLine(cell, t)}</li>
-            ))}
-          </ul>
-        )}
         {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
         {count > 0 && (
           <span className="byd-wall-warnings" data-warnings>
             {count}
           </span>
         )}
+      </div>
+    )
+    if (!cells) return option
+    // What the proposal changes on the card, old → new, under it (#1003): the card itself shows only
+    // the new. Under the card and outside it, so the ring that says the card is chosen and the badge
+    // that says how many copies it has stay the card's — a cell round both, which is nothing to the
+    // listbox (`none`), holds the two in the wall's grid.
+    return (
+      <div key={cardRef} className="byd-wall-cell" role="none">
+        {option}
+        <ul className="byd-wall-changes" aria-hidden="true">
+          {cells.map((cell) => (
+            <li key={cell.field}>{cellLine(cell, t)}</li>
+          ))}
+        </ul>
       </div>
     )
   }
