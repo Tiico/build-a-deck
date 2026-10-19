@@ -176,12 +176,13 @@ Betan kommer före fas 5, inte efter den: startsidan lovar det som finns, «Skap
 Den kräver varken villkor eller GDPR för gäster, eftersom betans minsta förtroendeyta är beslutad och byggd (I, #757).
 Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samtycke i inbjudan (I, beslutat 2026-10-18).
 
-- ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757).
+- ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757); stacken skickar `BYD_CONTACT` till appen sedan 2026-10-18 (#1030), och lådans `.env` behöver raden ifylld.
 - ✅ Säljtexten lovar inte trycket (L36, #743).
 - 🔶 Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade utom två som väntar på beställarens val av prototyp (#695, #699).
 - ✅ Designern läser playtestets svar — enkätsvar och flaggor per bord och version, i Bord-flikens vy «Resultat» (G3, L70, #1010).
-- ⬜ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
-- ⬜ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012).
+- ✅ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
+- ✅ Ett enkätsvar kommer från deltagarens eget inträde, ett per plats, och ett andra svar ersätter det första (G3, #1021).
+- ✅ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012), och tre bord på 308 kort ryms sedan leken bär hashar i stället för bilder (DRIFT §4, #1028). Det tredje av tre bord som startas samtidigt väntar runt sex minuter på sina texturer; beställaren beslutade 2026-10-18 att mäta det i betan i stället för att bygga bort det.
 - ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).
 - ⬜ En release från main med allt ovan, och tre till fem designers inbjudna med samtyckesfrågan.
 
