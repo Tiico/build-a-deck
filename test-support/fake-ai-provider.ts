@@ -34,7 +34,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // `[mall-trasig]` is the same template with its title past the card's right edge. `[regler]` (#1006)
 // proposes rule text: a section after the book's last block — a heading, a paragraph that names the
 // game's first zone as `[[zon:<id>]]`, read off the context's zone list, and a list — and
-// `[regler-trasig]` the same section naming `[[zon:finns-inte]]`, a zone no game has, and `[regler-om]`
+// `[regler-trasig]` the same section naming `[[zon:finns-inte]]`, a zone no game has — either with the
+// cards `[kort:n]` asks for beside it — and `[regler-om]`
 // rewrites the book's last paragraph in its place, naming the same zone. Every proposal
 // writes `template`, null when it has none, and `rules`, empty when it has none, as the strict schema
 // has the model write every part.
@@ -275,7 +276,8 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   const how = { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') }
   if (proposing && refining && question.includes('[förfina]')) return propose(res, stream, anthropic, refined(refining), how)
   if (proposing && (question.includes('[regler]') || question.includes('[regler-trasig]'))) {
-    return propose(res, stream, anthropic, { cards: [], changes: [], rules: [rulesFor(contextOf(provider, body), question.includes('[regler-trasig]'))] }, how)
+    const context = contextOf(provider, body)
+    return propose(res, stream, anthropic, { cards: asked ? cardsFor(context, Number(asked[1])) : [], changes: [], rules: [rulesFor(context, question.includes('[regler-trasig]'))] }, how)
   }
   if (proposing && question.includes('[regler-om]')) return propose(res, stream, anthropic, { cards: [], changes: [], rules: [rewriteFor(contextOf(provider, body))] }, how)
   if (proposing && (question.includes('[mall]') || question.includes('[mall-trasig]'))) {

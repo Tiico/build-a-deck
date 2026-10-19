@@ -116,6 +116,29 @@ describe('rule text shown in the rulebook', () => {
   })
 })
 
+describe('rule text beside new cards', () => {
+  it('shows the cards on the wall, and the rule text in the book from its own link', async () => {
+    await ownGame()
+    await openEditor()
+    ask('Ett kort och regler för det [regler] [kort:1]')
+    await within(panel()).findByRole('button', { name: 'Godta alla' })
+    expect(proposal().getAttribute('aria-label')).toBe('Förslag · 1 nytt kort, 1 tillägg i regelboken')
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Visa på väggen' }))
+    await waitFor(() => expect(document.querySelectorAll('.byd-wall-card[data-proposed]')).toHaveLength(1))
+    const link = within(proposal().querySelector<HTMLElement>('.byd-ai-card[data-rules]')!).getByRole('button', { name: 'Visa i regelboken' })
+    fireEvent.click(link)
+    await waitFor(() => expect(document.getElementById(tabId('rules'))!.getAttribute('aria-selected')).toBe('true'))
+    await waitFor(() => expect(book().querySelectorAll('[data-ai="new"]')).toHaveLength(3))
+    // In the book, the proposal's own button says the book too, and it stays shown there.
+    expect(within(panel()).getByRole('button', { name: 'Visa i regelboken', pressed: true })).toBeTruthy()
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Godta alla' }))
+    await waitFor(async () => expect(await logged()).toHaveLength(1))
+    const [line] = await logged()
+    expect(line!.intent.v === 'compound' && line!.intent.edits.map((e) => e.v)).toEqual(['addRow', 'spliceRules'])
+    await waitFor(() => expect(proposal().textContent).toContain('Godtaget: 1 nytt kort och 1 tillägg i regelboken.'))
+  })
+})
+
 describe('rule text that rewrites the book', () => {
   it('stands where the block it replaces stood, the old struck with its word before the new marked «Ändrat»', async () => {
     await ownGame()
