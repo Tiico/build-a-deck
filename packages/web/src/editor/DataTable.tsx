@@ -1547,7 +1547,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         <tbody>
           {shown.map(({ id: cardRef, fields: row }) =>
             proposal?.changed.has(cardRef) ? (
-              <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} />
+              <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={selected.has(cardRef)} onMark={() => setSelected(toggleRow(selected, cardRef))} />
             ) : (
             <tr
               key={cardRef}
@@ -2254,12 +2254,20 @@ function CompareSummary({ diff }: { diff: DocDiff }) {
 // the value the proposal gives it, and a new card tinted as an added one — with nothing in it to
 // write in, tick or press, since what it shows is not in the deck until the proposal is accepted.
 // The proposal's own word for it stands by its key.
-function ProposedRow({ cardRef, fields, grouping, change, was, now }: { cardRef: string; fields: readonly string[]; grouping: boolean; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell> }) {
+// A changed card is still the game's card, so its tick stays — the marking is a view of the deck
+// (L4) and may well be what the question was about — while a new one has no row to tick.
+function ProposedRow({ cardRef, fields, grouping, change, was, now, marked, onMark }: { cardRef: string; fields: readonly string[]; grouping: boolean; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: boolean; onMark?: () => void }) {
   const t = useT()
   const text = (value: Cell | undefined) => (value === undefined || value === null ? '' : String(value))
   return (
     <tr data-card-ref={cardRef} data-change={change} data-proposed="">
-      <td className="byd-data-check" />
+      <td className="byd-data-check">
+        {onMark && (
+          <label className="byd-data-tick">
+            <input type="checkbox" checked={marked === true} onChange={onMark} aria-label={t('table.mark', { cardRef })} />
+          </label>
+        )}
+      </td>
       <td className="byd-data-id" data-col="id">
         {cardRef} <span className="byd-data-proposed">{t(change === 'added' ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}</span>
       </td>

@@ -161,8 +161,11 @@ describe('a proposal of changed cards', () => {
     expect(dragon.getAttribute('data-change')).toBe('changed')
     expect(dragon.querySelector('td[data-col="kostnad"] .byd-data-was')!.textContent).toBe('3')
     expect(dragon.querySelector('td[data-col="kostnad"]')!.textContent).toContain('2')
-    // A proposed card is a record to look at, with nothing in it to write in.
-    expect(dragon.querySelector('input')).toBeNull()
+    // A proposed card is a record to look at, with nothing in it to write in — but a changed card is
+    // still the game's, and the tick that marked it stays.
+    expect(dragon.querySelector('input:not([type="checkbox"])')).toBeNull()
+    const knightTick = within(document.querySelector<HTMLElement>('tr[data-card-ref="knight"]')!).getByRole('checkbox', { name: 'markera knight' }) as HTMLInputElement
+    expect(knightTick.checked).toBe(true)
     const added = document.querySelector('tr[data-change="added"]')!
     expect(added.textContent).toContain('Förslag 1')
     expect(added.querySelector('input')).toBeNull()
