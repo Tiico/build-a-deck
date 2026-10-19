@@ -308,8 +308,16 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
   }
 
   const parts = aiContextParts(doc)
-  // The selected cards are said first, since they are what the question is about (#1003).
-  const picked = selected.length === 1 && selected[0] ? [t('ai.sent.chosen', { name: titleOfRow(selected[0]) || selected[0].id })] : selected.length > 1 ? [t('ai.sent.marked', { n: selected.length })] : []
+  // The selected cards are said first, since they are what the question is about (#1003) — and said
+  // as the editor shows them (#1037): the chosen card by its name, as its ring on the wall and its
+  // row in the table show it, and the ticked rows as the table's foot counts them. One number for
+  // both said «2 markerade» over a foot that said «1 markerat kort», and both were true.
+  const chosenAlone = chosen !== null && !marked.has(chosen) ? selected.find((row) => row.id === chosen) : undefined
+  const ticked = selected.filter((row) => marked.has(row.id)).length
+  const picked = [
+    ...(chosenAlone ? [t('ai.sent.chosen', { name: titleOfRow(chosenAlone) || chosenAlone.id })] : []),
+    ...(ticked > 0 ? [t(ticked === 1 ? 'ai.sent.marked.one' : 'ai.sent.marked.other', { n: ticked })] : []),
+  ]
   const chips = [...picked, t(parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
   const model = aiKey ? modelNameOf(models, aiKey.model ?? aiKey.defaultModel) : ''
 

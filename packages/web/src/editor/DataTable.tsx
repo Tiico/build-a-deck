@@ -1547,7 +1547,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         <tbody>
           {shown.map(({ id: cardRef, fields: row }) =>
             proposal?.changed.has(cardRef) ? (
-              <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={selected.has(cardRef)} onMark={() => setSelected(toggleRow(selected, cardRef))} />
+              <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={{ ticked: selected.has(cardRef), chosen: selectedRow === cardRef, onTick: () => setSelected(toggleRow(selected, cardRef)), onChoose: () => onSelectRow(cardRef), onFocus: () => setStanding(cardRef), onKeyDown: (event) => rowKey(cardRef, event, (r) => r.querySelector('.byd-data-check input')), ...stop(cardRef) }} />
             ) : (
             <tr
               key={cardRef}
@@ -2255,16 +2255,20 @@ function CompareSummary({ diff }: { diff: DocDiff }) {
 // write in, tick or press, since what it shows is not in the deck until the proposal is accepted.
 // The proposal's own word for it stands by its key.
 // A changed card is still the game's card, so its tick stays — the marking is a view of the deck
-// (L4) and may well be what the question was about — while a new one has no row to tick.
-function ProposedRow({ cardRef, fields, grouping, change, was, now, marked, onMark }: { cardRef: string; fields: readonly string[]; grouping: boolean; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: boolean; onMark?: () => void }) {
+// (L4) and may well be what the question was about — while a new one has no row to tick. It is
+// chosen and ticked as every other row is (#1037), with the row's one stop and the row's arrows
+// (#575), so the panel, the foot and the rows say the same selection; a bulk action works on it
+// with the game's own values, since the table never holds the proposal's.
+type RowMarks = { ticked: boolean; chosen: boolean; onTick: () => void; onChoose: () => void; onFocus: () => void; onKeyDown: (event: KeyboardEvent<HTMLElement>) => void; tabIndex?: number }
+function ProposedRow({ cardRef, fields, grouping, change, was, now, marked }: { cardRef: string; fields: readonly string[]; grouping: boolean; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: RowMarks }) {
   const t = useT()
   const text = (value: Cell | undefined) => (value === undefined || value === null ? '' : String(value))
   return (
-    <tr data-card-ref={cardRef} data-change={change} data-proposed="">
-      <td className="byd-data-check">
-        {onMark && (
+    <tr data-card-ref={cardRef} data-change={change} data-proposed="" {...(marked ? { 'aria-selected': marked.chosen ? 'true' : 'false', onClick: marked.onChoose, onFocus: marked.onFocus } : {})}>
+      <td className="byd-data-check" onClick={(event) => event.stopPropagation()}>
+        {marked && (
           <label className="byd-data-tick">
-            <input type="checkbox" checked={marked === true} onChange={onMark} aria-label={t('table.mark', { cardRef })} />
+            <input type="checkbox" checked={marked.ticked} onChange={marked.onTick} onKeyDown={marked.onKeyDown} {...(marked.tabIndex === undefined ? {} : { tabIndex: marked.tabIndex })} aria-label={t('table.mark', { cardRef })} />
           </label>
         )}
       </td>

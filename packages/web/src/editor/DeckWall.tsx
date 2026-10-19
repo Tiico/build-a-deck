@@ -168,6 +168,24 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const proposedKey = [...(proposed ?? []), ...(changed?.keys() ?? [])].join(' ')
   const ghosts = proposed?.size ?? 0
   const own = doc.rows.length - ghosts
+  // A proposal is not the deck's yet (#1002), so every count on the wall says the deck's cards and
+  // the proposed ones apart, the foot's way — «132 kort · 2 föreslagna» — and the bands add up to
+  // the foot (#1037). A band's tile is its share of the deck, which the proposal is no part of.
+  const isGhost = (row: { id: string }) => proposed?.has(row.id) === true
+  const proposedSaid = (m: number) => t(m === 1 ? 'wall.foot.proposed.one' : 'wall.foot.proposed.other', { n: m })
+  const withProposed = (said: string, m: number) => (m === 0 ? said : t('wall.cards.proposed', { cards: said, proposed: proposedSaid(m) }))
+  const bandCount = (band: { cards: readonly { id: string }[] }) => {
+    const m = band.cards.filter(isGhost).length
+    return { n: band.cards.length - m, m }
+  }
+  const bandHead = (band: { cards: readonly { id: string }[] }) => {
+    const { n, m } = bandCount(band)
+    return withProposed(t(n === 1 ? 'wall.cards.one' : 'wall.cards.other', { n }), m)
+  }
+  const bandName = (band: { name: string; cards: readonly { id: string }[] }) => {
+    const { n, m } = bandCount(band)
+    return withProposed(t(n === 1 ? 'wall.tile.one' : 'wall.tile.other', { group: band.name, n }), m)
+  }
   useLayoutEffect(() => {
     if (!proposedKey) return
     deckRef.current?.querySelector('[data-proposed], [data-changed]')?.scrollIntoView?.({ block: 'center' })
@@ -237,6 +255,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const columns = ['id', ...fieldsOf(doc)]
   const column = grouped ? (byColumn ?? groupColumn(doc)) : null
   const shown = isFiltering(filter) ? filterRows(doc.rows, columns, filter) : doc.rows
+  const shownGhosts = shown.filter(isGhost).length
   // How much of the front there is, which is what the empty wall says is still to be done (#476).
   const frontElements = doc.template.faces['front']?.base.length ?? 0
   const frontless = frontElements === 0
@@ -566,15 +585,15 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                   data-tile={key}
                   {...roving.itemProps(key)}
                   aria-current={here === key}
-                  aria-label={t(band.cards.length === 1 ? 'wall.tile.one' : 'wall.tile.other', { group: band.name, n: band.cards.length })}
-                  title={t(band.cards.length === 1 ? 'wall.tile.one' : 'wall.tile.other', { group: band.name, n: band.cards.length })}
+                  aria-label={bandName(band)}
+                  title={bandName(band)}
                   // The tile's height is the group's share of the deck, so the strip reads as a
                   // cross-section rather than a menu. `--tap` floors it in CSS: the tail is
                   // pressed flat so it stays hittable, and the top of the strip stays true.
-                  style={{ flexGrow: band.cards.length, ...tileStyle(paints.get(key)) }}
+                  style={{ flexGrow: bandCount(band).n, ...tileStyle(paints.get(key)) }}
                   onClick={() => jumpTo(key)}
                 >
-                  {band.cards.length}
+                  {bandCount(band).n}
                 </button>
               )
             })}
@@ -593,11 +612,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                     data-jump={key}
                     {...roving.itemProps(key)}
                     aria-current={here === key}
-                    aria-label={t(band.cards.length === 1 ? 'wall.tile.one' : 'wall.tile.other', { group: band.name, n: band.cards.length })}
+                    aria-label={bandName(band)}
                     onClick={() => jumpTo(key)}
                   >
                     <span>{band.name}</span>
-                    <small>{band.cards.length}</small>
+                    <small>{bandCount(band).n}</small>
                   </button>
                 )
               })}
@@ -691,7 +710,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                     loses its where. */}
                 <div className="byd-wall-band-head" data-band-head>
                   <h3>{band.name}</h3>
-                  <small>{t(band.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: band.cards.length })}</small>
+                  <small>{bandHead(band)}</small>
                   <span className="byd-wall-band-rule" aria-hidden="true" />
                 </div>
                 <div className="byd-wall" role="listbox" aria-label={band.name}>
@@ -708,11 +727,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* Said as it changes, as the table's count is (#556): a search that narrows the wall
             says how many are left. */}
         <span aria-live="polite">
-          {isFiltering(filter) ? t(doc.rows.length === 1 ? 'wall.foot.found.one' : 'wall.foot.found.other', { shown: shown.length, total: doc.rows.length }) : t(own === 1 ? 'wall.foot.cards.one' : 'wall.foot.cards.other', { n: own })}
+          {isFiltering(filter) ? t(own === 1 ? 'wall.foot.found.one' : 'wall.foot.found.other', { shown: shown.length - shownGhosts, total: own }) : t(own === 1 ? 'wall.foot.cards.one' : 'wall.foot.cards.other', { n: own })}
         </span>
         {/* A proposal on the wall is not the deck's yet, so the deck's count leaves it out and says it
-            apart (#1002). */}
-        {ghosts > 0 && <span>{t(ghosts === 1 ? 'wall.foot.proposed.one' : 'wall.foot.proposed.other', { n: ghosts })}</span>}
+            apart (#1002) — the proposed cards the wall shows, as the bands above count them (#1037). */}
+        {shownGhosts > 0 && <span>{proposedSaid(shownGhosts)}</span>}
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}
         <span>

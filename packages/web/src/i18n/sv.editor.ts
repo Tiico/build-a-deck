@@ -203,7 +203,8 @@ export const svEditor = {
   'ai.sent.rules': 'regelboken',
   'ai.sent.table': 'bordet',
   'ai.sent.chosen': 'valt: {name}',
-  'ai.sent.marked': '{n} markerade',
+  'ai.sent.marked.one': '{n} markerat',
+  'ai.sent.marked.other': '{n} markerade',
   'ai.you': 'Du',
   'ai.answer': 'Svar',
   'ai.reading': 'Läser spelet…',
@@ -285,6 +286,7 @@ export const svEditor = {
   // Kortväggen: ögonen att läsa leken med och den fysiska kontrollen bredvid.
   'wall.cards.one': '{n} kort',
   'wall.cards.other': '{n} kort',
+  'wall.cards.proposed': '{cards} · {proposed}',
   // Gruppen för kort utan värde i grupperingskolumnen (#179). Kolumnens namn är formgivarens eget
   // ord och flätas in som det står; `Utan` är verktygets och följer läsaren (A4).
   'wall.group.without': 'Utan {column}',
