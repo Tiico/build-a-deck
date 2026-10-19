@@ -217,6 +217,57 @@ describe('the cards the designer selected (#1003)', () => {
   })
 })
 
+describe('a proposal being refined (#1004)', () => {
+  const pending = {
+    cards: [
+      { fields: [{ field: 'title', value: 'Förslag 1' }, { field: 'antal', value: 1 }] },
+      { fields: [{ field: 'title', value: 'Förslag 2' }, { field: 'antal', value: 2 }] },
+    ],
+    changes: [{ card: 'dragon', fields: [{ field: 'title', value: 'Drake II' }] }],
+  }
+
+  it('goes with the instruction, whole, with the parts the designer left out named, while the game’s own context stays the same bytes', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    await ask(w, w.ada, 'Vad heter spelet?')
+    const plain = fake.calls.at(-1)!.body as { system: { text: string }[] }
+    const asked = await ask(w, w.ada, 'Gör dem dyrare', { refine: { proposal: pending, leave: ['card:2'] }, selected: ['dragon'] })
+    expect(asked.events.at(-1)).toEqual({ t: 'done' })
+    const body = fake.calls.at(-1)!.body as { system: { text: string }[]; messages: { content: string }[] }
+    const said = body.messages.at(-1)!.content
+    expect(said).toMatch(/^## Proposal to refine\n/)
+    expect(said).toContain(JSON.stringify(pending))
+    expect(said).toMatch(/## Left out by the designer\n[^#]*- New card 2 \(Förslag 2\)/)
+    expect(said).not.toMatch(/- New card 1/)
+    expect(said.indexOf('## Proposal to refine')).toBeLessThan(said.indexOf('## Selected cards'))
+    expect(said.endsWith('## Question\nGör dem dyrare')).toBe(true)
+    // The game is the cached part of the request, and a proposal being refined does not move it.
+    expect(body.system[1]!.text).toBe(plain.system[1]!.text)
+    expect(asked.text).toBe(`Du frågade: «Gör dem dyrare». Spelet heter ${GAME}.`)
+  })
+
+  it('is answered with the revised proposal, part by part, without the parts left out (the fake’s [förfina])', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    const asked = await ask(w, w.ada, 'Dyrare [förfina]', { refine: { proposal: pending, leave: ['card:2'] } })
+    expect(asked.events.filter((e) => e.t === 'part')).toEqual([
+      { t: 'part', key: 'cards', part: { fields: [{ field: 'title', value: 'Förslag 1 (förfinat)' }, { field: 'antal', value: 1 }] } },
+      { t: 'part', key: 'changes', part: { card: 'dragon', fields: [{ field: 'title', value: 'Drake II (förfinat)' }] } },
+    ])
+    expect(asked.events.at(-1)).toEqual({ t: 'done' })
+  })
+
+  it('is a proposal and the keys of its parts, and nothing else', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    const calls = fake.calls.length
+    expect((await ask(w, w.ada, 'Hej', { refine: { proposal: { cards: 'tre' }, leave: [] } })).status).toBe(400)
+    expect((await ask(w, w.ada, 'Hej', { refine: { proposal: pending, leave: [2] } })).status).toBe(400)
+    expect((await ask(w, w.ada, 'Hej', { refine: { proposal: { ...pending, html: '<b>' }, leave: [] } })).status).toBe(400)
+    expect(fake.calls.length).toBe(calls)
+  })
+})
+
 describe('a proposal (#1002)', () => {
   for (const [provider, key] of [
     ['anthropic', ADA_KEY],
