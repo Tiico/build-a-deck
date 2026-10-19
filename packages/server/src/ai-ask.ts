@@ -193,6 +193,14 @@ function refining({ proposal, leave }: NonNullable<AskBody['refine']>): string[]
     }
     const change = /^change:(.+)$/.exec(key)
     if (change) return proposal.changes.some((c) => c.card === change[1]) ? [`- The change to card ${change[1]}`] : []
+    // Rule text is one part per entry (#1006), named by its place and its first heading.
+    const rules = /^rules:(\d+)$/.exec(key)
+    if (rules) {
+      const entry = proposal.rules[Number(rules[1]) - 1]
+      if (!entry) return []
+      const heading = entry.blocks.find((b) => b.kind === 'heading')?.text.trim()
+      return [`- Rule text ${rules[1]}${heading ? ` (${heading})` : ''}`]
+    }
     // The template is one part with the fields and values it brings (#1005), named by its face.
     return proposal.template && key === `template:${proposal.template.face}` ? [`- The template for the ${proposal.template.face}, with the fields it brings`] : []
   })

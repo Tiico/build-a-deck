@@ -241,8 +241,9 @@ describe('a proposal being refined (#1004)', () => {
     const body = fake.calls.at(-1)!.body as { system: { text: string }[]; messages: { content: string }[] }
     const said = body.messages.at(-1)!.content
     expect(said).toMatch(/^## Proposal to refine\n/)
-    // As the schema reads it: a proposal without a template says it has none (#1005).
-    expect(said).toContain(JSON.stringify({ ...pending, template: null }))
+    // As the schema reads it: a proposal without a template says it has none (#1005), and one without
+    // rule text that it has none (#1006).
+    expect(said).toContain(JSON.stringify({ ...pending, template: null, rules: [] }))
     expect(said).toMatch(/## Left out by the designer\n[^#]*- New card 2 \(Förslag 2\)/)
     expect(said).not.toMatch(/- New card 1/)
     expect(said.indexOf('## Proposal to refine')).toBeLessThan(said.indexOf('## Selected cards'))
@@ -264,6 +265,19 @@ describe('a proposal being refined (#1004)', () => {
     await ask(w, w.ada, 'Mörkare', { refine: { proposal: { ...pending, template }, leave: ['template:back'] } })
     const said = (fake.calls.at(-1)!.body as { messages: { content: string }[] }).messages.at(-1)!.content
     expect(said).toMatch(/## Left out by the designer\n[^#]*- The template for the back/)
+  })
+
+  // Rule text is one part per entry (#1006), named by its place and its first heading when it is left out.
+  it('names rule text the designer left out by its place and its heading', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    const rules = [
+      { replace: [], after: null, blocks: [{ kind: 'heading', level: 1, text: 'Att dra kort' }] },
+      { replace: [], after: null, blocks: [{ kind: 'text', text: 'Mer.' }] },
+    ]
+    await ask(w, w.ada, 'Kortare', { refine: { proposal: { ...pending, rules }, leave: ['rules:1', 'rules:2'] } })
+    const said = (fake.calls.at(-1)!.body as { messages: { content: string }[] }).messages.at(-1)!.content
+    expect(said).toMatch(/## Left out by the designer\n[^#]*- Rule text 1 \(Att dra kort\)\n- Rule text 2$/m)
   })
 
   it('is answered with the revised proposal, part by part, without the parts left out (the fake’s [förfina])', async () => {
@@ -380,6 +394,35 @@ describe('a proposal (#1002)', () => {
       // And `[mall-trasig]` sets its title past the card's edge.
       const broken = (await ask(w, w.ada, 'En trasig mall [mall-trasig]')).events.find((e) => e.t === 'part')
       expect(translateProposal(doc(), { cards: [], changes: [], template: broken?.t === 'part' ? broken.part : null })).toMatchObject({ ok: false, problem: { kind: 'template', element: 'title', fault: { kind: 'outside-card' } } })
+    })
+  }
+
+  // Rule text (#1006) is one part per entry: the fake's `[regler]` adds a section at the end of the book
+  // that names the game's first zone by its id, and `[regler-trasig]` names a zone the game does not have.
+  for (const [provider, key] of [
+    ['anthropic', ADA_KEY],
+    ['openai', BO_KEY],
+  ] as const) {
+    it(`passes on proposed rule text as a part the game can take (the fake’s [regler], ${provider})`, async () => {
+      const w = await world()
+      await w.vault.save(await idOf(w, 'ada@example.com'), provider, key)
+      const withBook: ProjectDoc = { ...doc(), rules: { title: GAME, blocks: [{ kind: 'heading', id: 'b1', level: 1, text: 'Översikt' }] } }
+      await w.projects.create('p2', withBook, await idOf(w, 'ada@example.com'))
+      const askP2 = async (question: string) => read(await post(w, w.ada, { question, turns: [], lang: 'sv' }, undefined, 'p2'))
+      const asked = await askP2('Regler för att dra [regler]')
+      expect(asked.text).toBe('Här är regeltext till regelboken.')
+      // The template it has none of is said as null, as the strict schema has every part said.
+      expect(asked.events.flatMap((e) => (e.t === 'part' ? [[e.key, e.key === 'template' ? e.part : '…']] : []))).toEqual([
+        ['template', null],
+        ['rules', '…'],
+      ])
+      const parts = asked.events.flatMap((e) => (e.t === 'part' && e.key === 'rules' ? [e] : []))
+      const translated = translateProposal(withBook, { cards: [], changes: [], template: null, rules: parts.map((p) => p.part) })
+      expect(translated).toMatchObject({ ok: true, parts: [{ kind: 'rules', key: 'rules:1', replaced: [] }] })
+      expect(JSON.stringify(translated)).toContain('[[zon:draw]]')
+      expect(translated.ok && translated.edits[0]).toMatchObject({ v: 'spliceRules', after: 'b1' })
+      const broken = (await askP2('Trasiga regler [regler-trasig]')).events.flatMap((e) => (e.t === 'part' && e.key === 'rules' ? [e.part] : []))
+      expect(translateProposal(withBook, { cards: [], changes: [], template: null, rules: broken })).toMatchObject({ ok: false, problem: { kind: 'rules', section: 1, fault: { kind: 'unknown-ref', ref: 'zon:finns-inte' } } })
     })
   }
 

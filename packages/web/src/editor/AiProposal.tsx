@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { elementsFor, type FitReport } from '@byd/template'
-import { titleOfRow } from '@byd/server/doc'
+import { elementsFor, plainOf, renderRules, type FitReport, type RenderedBlock } from '@byd/template'
+import { arrangementOf, namesOfProject, titleOfRow } from '@byd/server/doc'
 import type { ProposalPart, ProposalProblem } from '@byd/server/proposal'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
@@ -8,7 +8,7 @@ import { CARD_PX } from './corner.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { deckIssues, groupIssues, issueWords, type Found } from './checks.js'
-import { cellLine, hasParts, problemWords, proposalView, translated, type ProposalParts } from './proposals.js'
+import { cellLine, hasParts, problemWords, proposalView, rulesWords, translated, type ProposalParts } from './proposals.js'
 import { fieldLabel } from './fields.js'
 import { useT, type T } from '../i18n/index.js'
 
@@ -27,12 +27,18 @@ const CARD_WIDTH = 84
 
 // `replaced` is a proposal a refined one took the place of (#1004).
 export type ProposalVerdict = 'accepted' | 'discarded' | 'replaced'
-// What an accepted proposal added and changed, and the template it laid on a face, with how many new
-// fields it brought (#1005).
-export type Accepted = { cards: number; changed: number; template?: { face: string; fields: number } }
+// What an accepted proposal added and changed, the template it laid on a face, with how many new
+// fields it brought (#1005), and the rule text it added to the book and rewrote in it (#1006).
+export type Accepted = { cards: number; changed: number; template?: { face: string; fields: number }; rules?: { added: number; rewritten: number } }
 export function acceptedOf(parts: readonly ProposalPart[]): Accepted {
   const template = parts.find((p) => p.kind === 'template')
-  return { cards: parts.filter((p) => p.kind === 'card').length, changed: parts.filter((p) => p.kind === 'change').length, ...(template ? { template: { face: template.face, fields: template.fields.length } } : {}) }
+  const rules = parts.flatMap((p) => (p.kind === 'rules' ? [p] : []))
+  return {
+    cards: parts.filter((p) => p.kind === 'card').length,
+    changed: parts.filter((p) => p.kind === 'change').length,
+    ...(template ? { template: { face: template.face, fields: template.fields.length } } : {}),
+    ...(rules.length > 0 ? { rules: { added: rules.filter((p) => p.replaced.length === 0).length, rewritten: rules.filter((p) => p.replaced.length > 0).length } } : {}),
+  }
 }
 export type AiProposalProps = {
   id: string
@@ -46,9 +52,13 @@ export type AiProposalProps = {
   // What an accepted proposal added and changed, said once it was accepted.
   accepted: Accepted
   onWall: boolean
-  // Where showing shows it: on the wall, or in the table's own comparison when Tabell is open.
-  showsIn?: 'wall' | 'table'
+  // Where showing shows it: on the wall, in the table's own comparison when Tabell is open, or in the
+  // book when Regler is (#1006).
+  showsIn?: 'wall' | 'table' | 'rules'
   onShow(): void
+  // Shows the proposal in the book from another tab, for a proposal that also has cards or a template
+  // to show on the wall (#1006): «Visa i regelboken» beside its rule text.
+  onShowRules?: (() => void) | undefined
   onAccept(): void
   onDiscard(): void
   onAgain?: (() => void) | undefined
@@ -63,7 +73,7 @@ export type AiProposalProps = {
 
 const NONE: ReadonlySet<string> = new Set()
 
-export function AiProposal({ id, doc, http, parts, done, broken, verdict, accepted, onWall, showsIn = 'wall', onShow, onAccept, onDiscard, onAgain, choosing = false, leave = NONE, onChoose, onToggle, onAcceptChosen }: AiProposalProps) {
+export function AiProposal({ id, doc, http, parts, done, broken, verdict, accepted, onWall, showsIn = 'wall', onShow, onShowRules, onAccept, onDiscard, onAgain, choosing = false, leave = NONE, onChoose, onToggle, onAcceptChosen }: AiProposalProps) {
   const t = useT()
   const read = useMemo(() => (hasParts(parts) ? translated(doc, parts) : null), [doc, parts])
   const view = useMemo(() => (read?.ok ? proposalView(doc, read) : null), [doc, read])
@@ -127,14 +137,59 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
   const words = issueWords(t)
   const ticked = all.filter((part) => !leave.has(part.key)).length
   const rowOf = (cardRef: string) => view?.doc.rows.find((row) => row.id === cardRef)
+  // Rule text (#1006) is read as the book reads it, what a rule names said by the name it has.
+  const rulesOnly = all.length > 0 && all.every((part) => part.kind === 'rules')
+  const hasRules = all.some((part) => part.kind === 'rules')
+  const names = view ? namesOfProject(view.doc) : null
   return (
     <div className="byd-ai-proposal" role="group" aria-label={label} aria-busy={!done}>
       <p className="byd-ai-proposal-head" aria-hidden="true">
         <strong>{t(done ? 'ai.proposal' : 'ai.proposal.coming')}</strong> · {summary}
       </p>
-      {face && (
+      {(face || hasRules) && (
         <ul className="byd-ai-cards" ref={list}>
           {all.map((part, i) => {
+            if (part.kind === 'rules') {
+              // An entry of rule text, one part (#1006): its first heading or its place for a name,
+              // and its blocks as the book reads them, a little of each.
+              const n = Number(part.key.slice('rules:'.length))
+              const rendered = view && names ? renderRules({ title: '', blocks: part.blocks }, names, arrangementOf(view.doc)).blocks : []
+              const heading = rendered.find((block): block is Extract<RenderedBlock, { kind: 'heading' }> => block.kind === 'heading')
+              const said = heading ? plainOf(heading.children).trim() : ''
+              const name = said !== '' ? said : t('ai.proposal.rules.name', { n })
+              const read = rendered.filter((block) => block !== heading)
+              const left = choosing && leave.has(part.key)
+              const Wrap = choosing ? 'label' : 'div'
+              const replaced = part.replaced.length
+              return (
+                <li key={part.key} className="byd-ai-card" data-rules="" {...(left ? { 'data-left': '' } : {})}>
+                  <Wrap className="byd-ai-rules">
+                    <span className="byd-ai-card-name">
+                      {choosing && <input type="checkbox" checked={!leave.has(part.key)} onChange={() => onToggle?.(part.key)} aria-label={t('ai.proposal.take', { name })} />}
+                      <span>{name}</span>
+                    </span>
+                    {replaced > 0 && (
+                      <span className="byd-ai-cell">{t(part.blocks.length === 0 ? (replaced === 1 ? 'ai.proposal.rules.removes.one' : 'ai.proposal.rules.removes.other') : replaced === 1 ? 'ai.proposal.rules.replaces.one' : 'ai.proposal.rules.replaces.other', { n: replaced })}</span>
+                    )}
+                    <span className="byd-ai-rules-text">
+                      {read.map((block) => (
+                        <span key={block.id} className="byd-ai-rules-line">
+                          {ruleLine(block)}
+                        </span>
+                      ))}
+                    </span>
+                  </Wrap>
+                  {/* From a proposal that also shows on the wall, the way to the book (#1006): a link,
+                      as «Välj delar…» is, and never inside the label a choice makes of the part. */}
+                  {done && !choosing && !rulesOnly && onShowRules && (
+                    <button type="button" className="byd-ai-choose" onClick={onShowRules}>
+                      {t('ai.proposal.showRules')}
+                    </button>
+                  )}
+                </li>
+              )
+            }
+            if (!face) return null
             if (part.kind === 'template') {
               // The template and the fields it brings, one part (#1003): a few of the deck's cards
               // drawn with it, what it is called, and the new fields with how many cards get a value.
@@ -246,7 +301,7 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
               template is shown on the wall from Tabell too (#1005), since the table holds no
               template and none of the columns a proposed one brings. */}
           <button type="button" className="byd-choice" aria-pressed={onWall} onClick={onShow}>
-            {t(showsIn === 'table' && !templatePart ? 'ai.proposal.showTable' : 'ai.proposal.show')}
+            {t(rulesOnly || (showsIn === 'rules' && hasRules) ? 'ai.proposal.showRules' : showsIn === 'table' && !templatePart ? 'ai.proposal.showTable' : 'ai.proposal.show')}
           </button>
           {/* Outlined and not filled (L13): the header's «Starta/Uppdatera bord» is the view's first
               action, and the one filled button a view may have. While parts are being chosen, the
@@ -271,14 +326,31 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
 
 // How big a proposal is, in its own words: «3 nya kort», «2 ändrade kort», or both.
 // A template (#1005) first, «ny mall för framsidan, 1 nytt fält», since it is what every card is drawn by.
+// Rule text (#1006) last, «1 tillägg i regelboken», since it is not on the cards.
 function sizeWords(parts: readonly ProposalPart[], t: T): string {
   const cards = parts.filter((p) => p.kind === 'card').length
   const changed = parts.filter((p) => p.kind === 'change').length
   const template = parts.find((p) => p.kind === 'template')
+  const rules = parts.flatMap((p) => (p.kind === 'rules' ? [p] : []))
   const said: string[] = template ? templateWords({ face: template.face, fields: template.fields.length }, t) : []
-  if (cards > 0 || (changed === 0 && !template)) said.push(t(cards === 1 ? 'ai.proposal.cards.one' : 'ai.proposal.cards.other', { n: cards }))
+  if (cards > 0 || (changed === 0 && !template && rules.length === 0)) said.push(t(cards === 1 ? 'ai.proposal.cards.one' : 'ai.proposal.cards.other', { n: cards }))
   if (changed > 0) said.push(t(changed === 1 ? 'ai.proposal.changed.one' : 'ai.proposal.changed.other', { n: changed }))
+  said.push(...rulesWords(rules.filter((p) => p.replaced.length === 0).length, rules.filter((p) => p.replaced.length > 0).length, t))
   return said.join(', ')
+}
+
+// A rendered block of rule text as one line in the panel: a heading, a paragraph, or a list's points.
+function ruleLine(block: RenderedBlock): string {
+  switch (block.kind) {
+    case 'heading':
+      return plainOf(block.children)
+    case 'text':
+      return block.paragraphs.map((p) => plainOf(p.children)).join(' ')
+    case 'list':
+      return block.items.map((item, i) => `${block.ordered ? `${i + 1}.` : '•'} ${plainOf(item)}`).join(' ')
+    default:
+      return ''
+  }
 }
 
 // A template as the proposal's size says it: the face it is for, and the new fields it brings.
@@ -290,11 +362,12 @@ function templateWords(template: { face: string; fields: number }, t: T): string
 
 // What an accepted proposal did: new cards in the deck, changed cards, or both — and a template with
 // its fields (#1005), said first and the rest after it in one list.
-function acceptedWords({ cards, changed, template }: Accepted, t: T): string {
-  if (template) {
-    const said = templateWords(template, t)
+function acceptedWords({ cards, changed, template, rules }: Accepted, t: T): string {
+  if (template || rules) {
+    const said = template ? templateWords(template, t) : []
     if (cards > 0) said.push(t(cards === 1 ? 'ai.proposal.cards.one' : 'ai.proposal.cards.other', { n: cards }))
     if (changed > 0) said.push(t(changed === 1 ? 'ai.proposal.changed.one' : 'ai.proposal.changed.other', { n: changed }))
+    if (rules) said.push(...rulesWords(rules.added, rules.rewritten, t))
     const last = said.pop() ?? ''
     return t('ai.proposal.accepted.changed', { changed: said.length > 0 ? `${said.join(', ')} ${t('ai.proposal.and')} ${last}` : last })
   }

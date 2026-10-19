@@ -123,12 +123,14 @@ export type AiPanelProps = {
   // A proposal laid on the wall among the deck's cards, as ghosts that are not in the game, or taken
   // off it with null (#1002) — with the parts left out of it, which the wall leaves out too (#1003).
   // The panel keeps which proposal it is; the wall and the table only draw it.
-  onShowOnWall?(shown: ShownProposal | null): void
+  // `'rules'` asks for it in the book (#1006): «Visa i regelboken» beside the rule text of a proposal
+  // that also shows on the wall.
+  onShowOnWall?(shown: ShownProposal | null, where?: 'rules'): void
   // Whether a proposal stands on the wall at all: the table can take it off as well (#1003).
   wallShown?: boolean
   // Where showing a proposal shows it (#1003): the table shows it in its own comparison, and so the
-  // button says the table there.
-  showsIn?: 'wall' | 'table'
+  // button says the table there; the book shows its rule text (#1006).
+  showsIn?: 'wall' | 'table' | 'rules'
   // The card chosen on the wall or in the table (#1003): with the rows ticked in Tabell, the cards
   // the question is about, sent with it.
   chosen?: string | null
@@ -315,6 +317,12 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     setWallTurn(turn.id)
     onShowOnWall?.({ parts: turn.proposal.parts, leave: turn.proposal.leave })
   }
+  // In the book, from wherever the designer is (#1006): shown there, and not taken off if it is.
+  const showInRules = (turn: Turn) => {
+    if (!turn.proposal) return
+    setWallTurn(turn.id)
+    onShowOnWall?.({ parts: turn.proposal.parts, leave: turn.proposal.leave }, 'rules')
+  }
   // A part ticked or left (#1003): the wall, when it shows this proposal, shows the choice with it.
   const choose = (turn: Turn, key: string) => {
     if (!turn.proposal) return
@@ -478,6 +486,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
                     onWall={wallTurn === turn.id}
                     showsIn={showsIn}
                     onShow={() => showOnWall(turn)}
+                    onShowRules={() => showInRules(turn)}
                     onAccept={() => accept(turn, false)}
                     choosing={turn.proposal.choosing}
                     leave={turn.proposal.leave}

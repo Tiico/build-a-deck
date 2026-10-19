@@ -11,7 +11,7 @@ import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
-import { proposalView, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
+import { proposalView, rulesView, showsDeck, showsRules, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
 import { TableMenu } from './TablesTab.js'
 import { BordTab } from './BordTab.js'
 import { revealThemeSection, ThemePanel } from './ThemePanel.js'
@@ -372,6 +372,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     ghostWall.current = { doc, shown: ghosts, view: proposalView(doc, read) }
     return ghostWall.current.view
   })()
+  // The same proposal's rule text in the book (#1006), translated the same way; only the Regler tab
+  // draws it, so it is worked out only while that tab is open.
+  const shownRules = (() => {
+    if (!ghosts || mode !== 'rules') return null
+    const read = translated(doc, ghosts.parts, ghosts.leave)
+    return read.ok ? rulesView(doc, read) : null
+  })()
   // A game this editor has just taken away is not a game that was lost (#738): it is on its way to
   // «Mina spel», and the server's word that it is gone is not said over it.
   const shownFault = removing === 'gone' ? null : fault
@@ -645,7 +652,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
     media: () => <Footed><MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} {...(client.mayEdit ? { onAdd: (file: File) => client.addPicture(file, t), onRemove: (hash: string) => client.removePicture(hash) } : {})} /></Footed>,
-    rules: () => <Footed><RulesPanel doc={doc} client={client} assetBase={http} /></Footed>,
+    rules: () => <Footed><RulesPanel doc={doc} client={client} assetBase={http} aiProposal={shownRules ?? undefined} onHideProposal={() => setGhosts(null)} /></Footed>,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
@@ -1002,12 +1009,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             over={mode === 'theme' || mode === 'tables'}
             // Shown where the designer is when she is in Tabell, through the table's own comparison;
             // anywhere else on the wall (#1003) — and a template on the wall from Tabell too (#1005).
-            onShowOnWall={(shown) => {
+            // Rule text is shown in the book (#1006): a proposal of nothing else takes her to Regler, and one
+            // that also has cards stays in Regler when she is there, and goes to the wall from elsewhere.
+            onShowOnWall={(shown, where) => {
               setGhosts(shown)
-              if (shown && (mode !== 'table' || showsTemplate(shown))) setStage('wall')
+              if (!shown) return
+              const toBook = where === 'rules' || (showsRules(shown) && (mode === 'rules' || !showsDeck(shown)))
+              if (toBook) setStage('rules')
+              else if (mode !== 'table' || showsTemplate(shown)) setStage('wall')
             }}
             wallShown={ghosts !== null}
-            showsIn={mode === 'table' ? 'table' : 'wall'}
+            showsIn={mode === 'table' ? 'table' : mode === 'rules' ? 'rules' : 'wall'}
             chosen={row}
             onAccept={(edits) => client.editTogether(edits, 'undo.what.proposal')}
           />

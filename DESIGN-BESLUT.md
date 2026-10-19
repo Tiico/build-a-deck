@@ -1119,6 +1119,7 @@ Bara det redigeringen rörde står i svaret, så en rad som landar på ett dokum
 En sammansatt redigering, `compound`, bär flera redigeringar och tillämpas som en (#1002): en rad i loggen, allt eller inget, ett steg tillbaka och en sak som medredigerarna ser landa.
 Ett godtaget AI-förslag är en sådan (E4).
 Den är editorns vokabulär och inte bordets slutna intents, så den är ingen protokollmigrering.
+Regeltext i ett förslag är `spliceRules` (#1006): block i stället för de block den namnger, eller efter ett, vid id och aldrig vid index, så att den bara rör det den namnger och avvisas när ett av dem saknas.
 Delarna avgörs var för sig mot det dokument delarna före dem lämnade, så två högar som läggs i samma redigering får två platser, och regeln för nya namn (#694) frågas för varje del på samma sätt.
 En sammansatt redigering håller aldrig en annan och är aldrig tom; uppspelning och den levande dörren läser den med samma `applyEdit`.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
@@ -1615,6 +1616,32 @@ Nu står bokens två nivåer en nivå under avsnittet de står i, `###` och `###
 De enda rader i kontexten som börjar med `#` eller `##` är därmed kontextens egna avsnitt.
 En avgränsning med taggar runt boken valdes bort: den lämnar `##` inuti taggarna som ett avsnitt för den som läser dispositionen, och behöver ändå ett skydd för den avslutande taggen.
 Designerns ord står kvar som de skrevs; bara rubrikens nivå och ett inledande `#` ändras, och kontexten är fortfarande samma byte för samma spel.
+
+Byggt 2026-10-19 (#1006): regeltext som förslag, i regelbokens eget format, förhandsvisad i boken och godtagen i ett steg.
+Förslaget har nu `rules` bredvid `cards`, `changes` och `template`: poster av regelblock i bokens egna slag (B7) — rubrik på nivå 1 eller 2, text, lista — och det strikta schemat skrivs ur samma zod-schema som förut.
+Modellen skriver det en regel nämner som boken lagrar det, `[[zon:id]]`, `[[kort:id]]` och `[[räknare:id]]`, så att en godtagen regel följer med när zonen döps om.
+Kontexten säger därför id:t bredvid varje zon och räknare, «Kortlek [[zon:draw]]», och att ett kort nämns med sitt id ur kortlistan; boken själv står fortfarande med namnen, som spelarna läser den.
+**En post placeras vid block-id, aldrig vid index.**
+Posten står i stället för de block den räknar upp i `replace`, där det första av dem stod, eller — när den inte ersätter något — efter blocket i `after`, `null` först i boken; tomt `replace` och inga block är ingen post, och `replace` utan block tar block ur boken.
+Ett index hade landat på ett annat block så fort en medredigerare lagt till ett ovanför, tyst; ett id landar där det var menat eller inte alls.
+Varje kontextblock står därför under sitt id, `[block b3]`, och den nya redigeringen `spliceRules` gör en post: den rör bara de block den namnger, där `setRules` skriver hela boken, och den avvisas av aktören när ett block den namnger saknas eller ett nytt blocks id redan finns — allt eller inget, som varje sammansatt redigering (D3).
+Förslaget översätts mot boken som den står varje gång det visas och igen när det godtas (#1002), så ett block en medredigerare tagit bort sedan förslaget kom gör det oanvändbart med skälet, och en medredigerares ändring i ett block förslaget ersätter står som det gamla, överstruket, när förslaget visas.
+Regelflikens egna skrivningar är fortfarande `setRules` av hela boken; det är en äldre gräns som förslaget inte flyttar.
+Nya block får bokens egen stavning av ett nytt id, det första lediga `b<n>`, som Regler-flikens ＋ ger.
+Översättaren avvisar med skäl, utan att röra dokumentet, en referens till en zon, ett kort eller en räknare spelet inte har, en referens boken inte kan läsa (`[[Kortlek]]`, `[[hög:x]]`, en klammer som inte stängs), ett block av ett slag boken inte har, ett block posten står vid som inte finns, samma block i två poster, uppställningen eller en bild som skrivs över — de är spelets egna — en ikon eller betydelse spelet inte har, text utanför L2, och ett block utan text.
+Ett stycke med rader som börjar med «- » eller «1. » blir de stycken och listor raderna skrevs som, som när Regler-fliken stänger ett block (L68), så att boken håller det läsaren får.
+**I «Välj delar…» är en post en del, inte ett block.**
+Posten är det modellen placerade tillsammans: ett avsnitt med sin rubrik, sina stycken och sin lista, eller en omskrivning av en följd block.
+Ett block för sig vore en rubrik utan sin text, och en omskrivning av tre block som två har inget block som svarar mot ett annat.
+Delen heter efter postens första rubrik, «Att dra kort», och annars «Regeltext 1»; en post som lämnas tar inga id:n från dem efter den, och två poster efter samma block står i den ordning de skrevs.
+Panelen visar varje post med bokens egen rendering i korthet — namnen och inte id:na — och vad den ersätter, «Ersätter 1 block i boken».
+**Förhandsvisningen är boken själv, i Regler-fliken.**
+«Visa i regelboken» lägger boken som förslaget skulle lämna den i fliken, ritad av bokens egen rendering: det nya med väggens piller, «✦ Förslag», och en streckad list i sidans marginal, det som ersätter med «✦ Ändrat» och en hel list, och det som ersätts överstruket där det står med «Ersätts», eller «Försvinner» när inget tar dess plats.
+Marginalens list är importens form (#131) i väggens två streck, i en violett som syns på bokens papper; pillret sägs en gång där en post börjar, och orden står i sidan, eftersom ett streck inte når en skärmläsare (L12).
+Boken går inte att skriva i medan förslaget ligger där, som när en fil ligger i den, och raden över den säger «AI-hjälpens förslag: 1 tillägg i regelboken» med «Dölj förslaget», som Tabell (#1003).
+Ett förslag med bara regeltext tar designern till Regler från vilken flik som helst; ett som också har kort visas på väggen som förut, och regeltexten har en egen länk, «Visa i regelboken», under sin post.
+Godtagandet är en sammansatt redigering med ett steg tillbaka, och ett spel utan regelbok får en, med spelets namn som titel.
+Den falska leverantörens `[regler]` lägger ett avsnitt efter bokens sista block som nämner spelets första zon med dess id, och `[regler-trasig]` samma avsnitt med `[[zon:finns-inte]]`.
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
