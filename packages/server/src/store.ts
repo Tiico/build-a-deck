@@ -56,6 +56,8 @@ export type LogStore = {
   // Turns a still-valid pending admission into a longer-lived active admission.
   activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null>
   guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null>
+  // Every admission ever given at a table, revoked ones too, oldest first: who came to it (#1010).
+  guestsAt(sessionId: string): Promise<GuestRecord[]>
   // Revokes every token for a seat (or every observer token, for null); returns how many.
   revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number>
   // Claiming (G1): the admission behind a token becomes the account's, once; null when there
@@ -180,6 +182,10 @@ export class MemoryLogStore implements LogStore {
   async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {
     const g = (this.guests.get(sessionId) ?? []).find((x) => x.tokenHash === tokenHash)
     return g ? structuredClone(g) : null
+  }
+
+  async guestsAt(sessionId: string): Promise<GuestRecord[]> {
+    return (this.guests.get(sessionId) ?? []).map((g) => structuredClone(g))
   }
 
   async activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null> {

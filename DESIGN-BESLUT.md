@@ -6904,3 +6904,38 @@ I editorn mäts det kortväggen ritar, alltså den sida väggen visar; ordern p�
 Den förkastade B täckte bokstäver och bars mot ljust papper bara av linjen, C pekade inte ut rutan och flyttade layouten, och D krävde hover för att säga något.
 Prototypen: [`docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html`](docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html) (`?v=a`), med mätskripten i `matning/`.
 `text-overset.spec.ts` mäter ramen och brickan i det byggda appen i guiden vid 1280 och 390, i Mall och på väggen, och att anmärkningen leder till raden; `overset-contrast.test.ts` mäter banden mot varje startkort.
+
+### L70. Playtestets svar läses i Bord-fliken, under «Resultat» (prototypat och beslutat 2026-10-18, #1010)
+
+Enkäten (G3) samlades in och flaggorna stod i loggen, men ingen yta i editorn läste dem: betan gick inte att mäta utan att läsa databasen.
+Tre platser prototypades i det byggda appen med riktiga bord, svar och flaggor: i bordets rad (A), en egen flik «Resultat» (B) och i historiken (C).
+
+**B, med A:s rad, men som en vy i Bord-fliken och inte som en åttonde flik.**
+En växel «Bord · Resultat» står överst i flikens mittspalt, över filten, och på samma plats i båda vyerna; huvudet behåller sju flikar och spelets hela namn vid 1280.
+Priset är en rad, 52 px, av filtens höjd.
+Den står inte över spelarna: första spaltens fyra vägar att lägga till en zon ska synas utan rullning vid 1024 × 640 (L66, #711), och växeln sköt de två per plats under kanten.
+Den står inte i raden över filten heller, där en vald zons fyra fält fyller mittspaltens 420 px vid 1024 (L50).
+Svaren hör till borden de kom från, och därför till Bord.
+En betraktare, som inte startar bord och inte läser playtestet (#524), har ingen växel.
+
+**Resultatvyn är versionen först.**
+Till vänster versionerna som spelets bord spelats på, nyast först, som en radiogrupp med ett riktigt valt läge.
+Till höger den valda versionen: hur många bord som avslutats, hur många av spelarna som svarade, flaggorna, och bord som pågår och inte räknas än.
+Därunder fördelningen 1–5 per fråga som en riktig tabell, hållen mot förra versionen som har svar, med vad som ändrades däremellan i historikens egna ord.
+Varje cell säger i sitt tillgängliga namn vad talen betyder («1 svarade 4, mot 0 i version 1»); staplarna ritas bara för ögat.
+Sedan borden med ett filter per bord, all fritext, och alla flaggor bord för bord i spelets ordning med vem, «drag n av N» och klockslaget.
+
+**Ett avslutat bords rad bär en summarad**, «3 svar · 2 flaggor», som öppnar Resultat på bordets version och filtrerat på bordet.
+
+**Observatörens svar räknas inte in** i fördelning och snitt; de står för sig, under egen rubrik och märkta.
+**En flagga hör till versionen den restes på** (`version.change` i loggen), och enkäten som förut till versionen bordet slutade på (G3).
+Ett bord som uppdaterats mitt i spelet (C7) läses alltså i två versioner: flaggorna före uppdateringen i den tidigare.
+
+**Jämförelsen är mot förra versionen med svar**, inte närmast föregående version: en version som spelades utan att någon svarade har ingen fördelning att hålla mot.
+**Versionslistan visar bara versioner som spelats på.** Varje sparning är en version (B4), och en lista över alla vore mest «inga bord».
+
+Följdkrav:
+Allt räknas på servern i en endpoint per spel, `GET /projects/:id/playtest`, med samma behörighet som bordets logg och enkäter (#524, `canStartTables`): per bord svar, flaggor (namn, kommentar, tid, drag och version), deltagare och kod, och per version antal och fördelning.
+Namnen härleds ur `seat.claim` och inträdena, aldrig i klienten; «drag n av N» räknas med motorns `movesOf`, de rader i spel som är fysiska drag.
+Ett enkätsvar kommer från ett inträde och ett per plats och observatör (#1021), så summorna räknar bara svar som deltagarna gav.
+`playtest-route.test.ts` prövar endpointen mot minne och Postgres, och att betraktaren får 403; `playtest-results.spec.ts` spelar ett bord från två telefoner, flaggar, avslutar och svarar, och läser svaren i Resultat i det byggda appen.

@@ -211,6 +211,17 @@ export class PostgresLogStore implements LogStore {
     return { tokenHash: row.token_hash, kind: row.kind, seat: row.seat, name: row.name, issuedAt: row.issued_at.toISOString(), expiresAt: row.expires_at.toISOString(), ...(row.revoked_at ? { revokedAt: row.revoked_at.toISOString() } : {}) }
   }
 
+  async guestsAt(sessionId: string): Promise<GuestRecord[]> {
+    const rows = await this.sql<GuestRow[]>`
+      select session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
+      from guest_tokens where session_id = ${sessionId} order by issued_at
+    `
+    return rows.map((row) => {
+      const { sessionId: _session, ...guest } = played(row)
+      return guest
+    })
+  }
+
   async activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null> {
     const [row] = await this.sql<{ token_hash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issued_at: Date; expires_at: Date }[]>`
       update guest_tokens set expires_at = greatest(expires_at, ${expiresAt})

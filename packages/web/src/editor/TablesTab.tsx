@@ -14,6 +14,8 @@ import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { lastMoveWords } from './when.js'
 import { versionWord } from '../i18n/version.js'
+import { rowSummary } from './playtestReading.js'
+import type { PlaytestTable } from '@byd/server/doc'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -22,9 +24,12 @@ import { versionWord } from '../i18n/version.js'
 // `started` is the table the header's «Starta bord» last started (#704): the column shows it the
 // way it shows one of its own, its group open, whether the column stood open at the start or is
 // opened afterwards.
-export type TablesTabProps = { client: ProjectClient; server: string | null; started?: string | null }
+//
+// `onResults` opens the tab's Resultat view on a table (#1010): an ended table's row says what came
+// of it in one line, and the line is the way there.
+export type TablesTabProps = { client: ProjectClient; server: string | null; started?: string | null; onResults?: ((id: string) => void) | undefined }
 
-export function TablesTab({ client, server, started = null }: TablesTabProps) {
+export function TablesTab({ client, server, started = null, onResults }: TablesTabProps) {
   const t = useT()
   const [tables, setTables] = useState<TableSummary[] | null>(null)
   const [starting, setStarting] = useState(false)
@@ -60,6 +65,21 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the tables again
   }, [client, asked])
+  // What came of each ended table (#1010), for the one line its row says it in. Asked beside the
+  // list and with it, and only by someone who may read it (#524): a viewer's rows say nothing more.
+  const [results, setResults] = useState<Record<string, PlaytestTable>>({})
+  const reads = onResults !== undefined && client.mayStartTables
+  useEffect(() => {
+    if (!reads) return
+    let live = true
+    client.playtest().then(
+      (read) => live && setResults(Object.fromEntries(read.tables.map((x) => [x.id, x]))),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [client, asked, reads])
   // After the list has come back and the group has opened — a frame later, because the group opens
   // in an effect of its own — the ended table's row takes the focus again.
   useEffect(() => {
@@ -160,6 +180,8 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
             qrFor={qrFor}
             onQr={setQrFor}
             revealed={revealed?.id ?? null}
+            results={results}
+            {...(reads ? { onResults } : {})}
             onEnded={(id) => {
               setRevealed({ id, why: 'ended' })
               setAsked((n) => n + 1)
@@ -191,7 +213,7 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
 // A folded group draws nothing at all, which is the whole point: a row that is not drawn opens no
 // WebSocket and renders no thumbnail, so what the list costs follows what is on the screen rather
 // than what the game has ever started.
-function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, onUpdate }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void; revealed: string | null; onEnded(id: string): void; onUpdate(id: string): Promise<void> }) {
+function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, onUpdate, results, onResults }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void; revealed: string | null; onEnded(id: string): void; onUpdate(id: string): Promise<void>; results: Record<string, PlaytestTable>; onResults?: (id: string) => void }) {
   const [chosen, setChosen] = useState(group.id === 'played')
   // A table this column just started or ended opens the group it is filed under (#480) — in the
   // same render that first draws it, so there is no folded frame for a click to land in, and a
@@ -221,7 +243,7 @@ function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, on
   const rows = (
     <ul id={listId} className="byd-tables-list" aria-labelledby={headingId}>
       {group.tables.map((table) => (
-        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} onUpdate={() => onUpdate(table.id)} {...(watches ? { textures: textures[table.id] ?? null } : {})} />
+        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} onUpdate={() => onUpdate(table.id)} {...(watches ? { textures: textures[table.id] ?? null } : {})} {...(results[table.id] && onResults ? { result: results[table.id], onResults: () => onResults(table.id) } : {})} />
       ))}
     </ul>
   )
@@ -355,7 +377,7 @@ const THUMBNAIL = { w: 640, h: 384 }
 // Live, as before: the same connection the TV makes (seatless, sees only what is public), so what
 // the row says about the table is what the table itself says. A row that is not drawn — a folded
 // group — makes no connection at all, which is what keeps the cost with what is on the screen.
-function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, textures: watched }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void; onUpdate?: () => Promise<void>; textures?: Textures | null }) {
+function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, textures: watched, result, onResults }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void; onUpdate?: () => Promise<void>; textures?: Textures | null; result?: PlaytestTable | undefined; onResults?: () => void }) {
   const t = useT()
   // The day and the clock a last move is said in are the reader's, not `sv-SE`'s (#228).
   const { lang } = useLang()
@@ -470,6 +492,12 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
           {lastMoveWords(table.lastAt, Date.now(), lang, t)}
           {full && ` · ${t('tables.full')}`}
         </p>
+        {/* What came of an ended table, in one line, and the way to all of it (#1010, A:s rad). */}
+        {ended && result && onResults && (
+          <button type="button" className="byd-tables-results" aria-label={t('results.row.aria', { table: name, summary: rowSummary(result, t) })} onClick={onResults}>
+            {rowSummary(result, t)}
+          </button>
+        )}
       </div>
       <div className="byd-tables-go">
         {stale && onUpdate && (

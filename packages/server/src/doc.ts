@@ -17,3 +17,6 @@ export { aiContextParts, type AiContextParts } from './ai-context.js'
 // What the AI may propose and how a proposal becomes edits (#1002) is the editor's as much as the
 // server's, but it is read with zod, and this path reaches the phone: it has a path of its own,
 // `@byd/server/proposal`, so that only the editor's chunk carries the schema (`phone-bundle.spec.ts`).
+
+// What the Resultat view reads (#1010): the shape of the playtest the server counts, types only.
+export type { Distribution, Playtest, PlaytestAnswer, PlaytestFlag, PlaytestPerson, PlaytestQuestion, PlaytestTable, PlaytestVersion } from './playtest.js'

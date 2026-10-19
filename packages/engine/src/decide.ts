@@ -227,6 +227,13 @@ export function effectiveLines(log: readonly Applied[]): Applied[] {
   return out
 }
 
+// The moves of a game as it stands (#1010): the lines still in effect that are play on the table.
+// A version changed under the table, a reset and the ending are lines in effect, but none of them
+// is a move anyone made; this is what «drag n av N» counts.
+export function movesOf(log: readonly Applied[]): Applied[] {
+  return effectiveLines(log).filter((line) => PHYSICAL_VERBS.includes(line.intent.v))
+}
+
 // Where undo.self would take the table: before the seat's last batch still in effect — and
 // whether someone else has acted since, which makes it a matter for a rewind proposal.
 //
