@@ -43,11 +43,14 @@ test('a designer with a deck of 308 cards is told it goes summarised, asks about
   const log = process.env['BYD_E2E_SERVER_LOG']
   expect(log, 'the stack says where the server writes its log').toBeTruthy()
   const owner = ((await (await page.request.get(`/projects/${project.id}`)).json()) as { owner: string }).owner
+  // Read by the line's own account and not by a search for the id in it: an account id in Postgres is
+  // a serial number, so «5» is also in every other account's line that took 5 ms or was account 15.
   const mine = () =>
     readFileSync(log!, 'utf8')
       .split('\n')
-      .filter((l) => l.includes('"msg":"ai"') && l.includes(owner))
+      .filter((l) => l.includes('"msg":"ai"'))
       .map((l) => JSON.parse(l) as Record<string, unknown>)
+      .filter((l) => l['account'] === owner)
   await expect.poll(() => mine().length).toBe(1)
   expect(mine()[0]!['outcome']).toBe('ok')
   expect(readFileSync(log!, 'utf8')).not.toContain('Which cards cost the most')
