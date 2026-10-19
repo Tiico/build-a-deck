@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { logIn, makeProject } from '../support/api.js'
 
 // Whether a game exists is its owner's to know (G1, #754). Logged out, an unknown id said «Vi

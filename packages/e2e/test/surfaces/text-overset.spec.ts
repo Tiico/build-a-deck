@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
 

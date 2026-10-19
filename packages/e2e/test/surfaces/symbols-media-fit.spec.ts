@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { deflateSync } from 'node:zlib'
 import type { ProjectDoc } from '../../../web/src/editor/types.js'
 import { logIn, makeProjectOf } from '../../support/api.js'

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { join, logIn, makeProject, makeTable } from '../../support/api.js'
 
 // The way in, at the widths the audit checks. `/` is the first screen a creator ever sees and the

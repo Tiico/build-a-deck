@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { newElement } from '../../../web/src/editor/canvas.js'
 import type { ProjectDoc } from '../../../web/src/editor/types.js'

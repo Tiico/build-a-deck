@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 
 // The property panel of a plain rectangle (#478, beslut 2026-09-27, variant A): 907 px in a

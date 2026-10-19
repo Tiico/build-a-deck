@@ -1,5 +1,6 @@
 import { test as base, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { join, makeTable, type Admission, type Game, type Table } from './api.js'
+import { CspWatch } from './csp.js'
 import { DESK, type Device } from './devices.js'
 import { watchWire, type Wire } from './frames.js'
 import { Host } from './host.js'
@@ -9,6 +10,12 @@ import { breakableLine, type Line } from './line.js'
 export type Client = { page: Page; wire: Wire; context: BrowserContext; line: Line }
 
 export type Fixtures = {
+  /**
+   * The Content-Security-Policy's refusals in every browser context the test opens (#1008, DRIFT
+   * §14). On for every test without being asked for: a refusal fails the test that caused it, and
+   * a test that means to cause one takes it out with `csp.take` first.
+   */
+  csp: CspWatch
   /** A table of its own for this test, created before the test body runs. */
   table: Table
   /** A different table than the default, for a test that needs a particular one. */
@@ -37,6 +44,33 @@ export type Fixtures = {
 }
 
 export const test = base.extend<Fixtures>({
+  // Every context, however it is made: the default one, the fixtures' below, and the ones a spec
+  // opens itself with `browser.newContext` or `browser.newPage`, which both go through the one
+  // method wrapped here for the length of the test.
+  csp: [
+    async ({ browser }, use) => {
+      const watch = new CspWatch()
+      const original = browser.newContext
+      browser.newContext = async (...args) => {
+        const context = await original.apply(browser, args)
+        await watch.watch(context)
+        return context
+      }
+      try {
+        await use(watch)
+      } finally {
+        browser.newContext = original
+      }
+      watch.verify()
+    },
+    { auto: true },
+  ],
+
+  context: async ({ context, csp }, use) => {
+    await csp.watch(context)
+    await use(context)
+  },
+
   table: async ({ request }, use) => {
     await use(await makeTable(request))
   },

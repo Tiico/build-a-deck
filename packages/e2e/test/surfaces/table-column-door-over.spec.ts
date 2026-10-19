@@ -1,4 +1,5 @@
-import { expect, test, type Locator } from '@playwright/test'
+import type { Locator } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
 

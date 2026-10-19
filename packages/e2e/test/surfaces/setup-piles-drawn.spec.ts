@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { painted, type Spot } from '../../../web/test/painted.js'
 import { logIn, makeProject } from '../../support/api.js'
 

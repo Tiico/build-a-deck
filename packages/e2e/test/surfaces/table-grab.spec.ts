@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { standing } from '../../support/surface.js'
 
 // What the hand may take hold of on the felt (K14), measured in an engine that knows what a

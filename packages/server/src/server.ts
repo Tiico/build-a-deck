@@ -31,6 +31,7 @@ import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } f
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
+import { UPLOAD_POLICY, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -294,11 +295,16 @@ function originOf(value: string | undefined): string | null {
   }
 }
 
+// The scheme the browser reached us by: what the proxy in front says, else what the public origin is.
+function schemeOf(opts: ServerOptions, req: IncomingMessage): string {
+  const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
+  return forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')
+}
+
 function browserOriginAllowed(opts: ServerOptions, req: IncomingMessage): boolean {
   const origin = originOf(req.headers.origin)
   if (!origin) return false
-  const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
-  const own = req.headers.host ? `${forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')}://${req.headers.host}` : null
+  const own = req.headers.host ? `${schemeOf(opts, req)}://${req.headers.host}` : null
   return [opts.publicOrigin, opts.appOrigin, own].some((candidate) => originOf(candidate ?? undefined) === origin)
 }
 
@@ -539,7 +545,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 404, { error: 'unknown face' })
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
-      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res)) return
+      const policy = (scriptHashes: readonly string[]) => pagePolicy({ scriptHashes, socket: socketOrigin(req.headers.host, schemeOf(opts, req) === 'https'), objects: opts.objects?.origin ?? null })
+      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res, policy)) return
     }
     json(res, 404, { error: 'not found' })
   } catch (err) {
@@ -595,7 +602,7 @@ const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '
 // following it asks for HTML and gets the app, which accepts the invitation with a POST to the
 // same path; anything else asking gets the API's answer.
 const PAGE_PATHS = [/^\/invites\/[A-Za-z0-9_-]+$/]
-async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse): Promise<boolean> {
+async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse, policy: (scriptHashes: readonly string[]) => string): Promise<boolean> {
   const page = PAGE_PATHS.some((p) => p.test(pathname)) && (wants ?? '').includes('text/html')
   // The API never falls back to the app, whatever is or is not mounted.
   if (!page && API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
@@ -608,6 +615,9 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
   const hashed = file.includes(`${sep}assets${sep}`)
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
+  // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
+  // hashes of the file being sent.
+  if (type.startsWith('text/html')) head['content-security-policy'] = policy(await scriptHashesOf(file))
   // The box compresses what it serves (DRIFT §13, #372): the blocking stylesheet uncompressed is
   // the single largest item in the first painting's price. `Vary` goes on everything that *could*
   // have been compressed rather than on what was, because a cache between here and the browser
@@ -1112,7 +1122,7 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       json(res, 404, { error: 'unknown asset' })
       return true
     }
-    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable' })
+    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable', 'content-security-policy': UPLOAD_POLICY })
     res.end(Buffer.from(got.bytes))
     return true
   }
@@ -1130,7 +1140,7 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       json(res, 404, { error: 'unknown asset' })
       return true
     }
-    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable' })
+    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable', 'content-security-policy': UPLOAD_POLICY })
     res.end(Buffer.from(got.bytes))
     return true
   }

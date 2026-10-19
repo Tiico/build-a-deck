@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn } from '../../support/api.js'
 
 // The button that makes the game (#476): «Skapar…» shrank it from 315 to 95 px, and the error was

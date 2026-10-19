@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn } from '../../support/api.js'
 
 // The felt's face has to be in the document before the first painting (#95).

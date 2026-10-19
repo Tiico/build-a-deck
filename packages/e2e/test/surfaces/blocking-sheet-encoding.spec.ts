@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { join } from 'node:path'
 import { brotliDecompressSync, gunzipSync } from 'node:zlib'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 
 // The sheet the app's first frame waits for travels compressed, and the box is what compresses it
 // (#372, #366's measurement). Since #749 it stands after `#root` and the shell is painted before it
