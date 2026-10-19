@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http'
 import { z } from 'zod'
-import { AI_INSTRUCTIONS, aiContextOf, aiSelectionOf } from './ai-context.js'
+import { AI_INSTRUCTIONS, aiChangedCardsOf, aiContextOf, aiSelectionOf } from './ai-context.js'
 import type { AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiFailure, type AiProviders } from './ai-providers.js'
 import type { ProjectDoc } from './projects.js'
@@ -162,10 +162,13 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
   console.log(JSON.stringify({ msg: 'ai', account, provider: opened.provider, ms: Date.now() - started, outcome }))
 }
 
-// The question as the provider is asked it: the proposal it refines, the selected cards, whole, and
-// then the question under a heading of its own, so none of them is ever read as another.
+// The question as the provider is asked it: the proposal it refines with the cards it changes, the
+// selected cards, each card whole, and then the question under a heading of its own, so none of them
+// is ever read as another. The cards go whole here and not through the context's budget (#1007): a
+// large deck's context holds a sample, and the cards a question is about must not depend on it.
 function questionOf(doc: ProjectDoc, ask: AskBody): string {
-  const before = [...(ask.refine ? refining(ask.refine) : []), aiSelectionOf(doc, ask.selected ?? [])].filter((s): s is string => s !== null)
+  const changed = ask.refine ? aiChangedCardsOf(doc, ask.refine.proposal.changes.map((c) => c.card)) : null
+  const before = [...(ask.refine ? refining(ask.refine) : []), changed, aiSelectionOf(doc, ask.selected ?? [])].filter((s): s is string => s !== null)
   return before.length > 0 ? `${before.join('\n\n')}\n\n## Question\n${ask.question}` : ask.question
 }
 

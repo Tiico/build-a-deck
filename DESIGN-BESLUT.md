@@ -1592,6 +1592,23 @@ Kortens namn i panelen bryter nu inom kortets bredd i stället för att kapas: �
 Den falska leverantörens `[mall]` svarar med en mall för framsidan — spelets titel och första textkolumn i spelets typsnitt, och ett mynt som visar ett nytt fält, `kraft`, med värden på lekens två första kort i en storlek den fysiska kontrollen varnar för — och `[mall-trasig]` med samma mall med titeln utanför kortets högra kant.
 Varje förslag skriver nu `template`, `null` utan mall, som det strikta schemat får modellen att skriva varje del.
 
+Byggt 2026-10-19 (#1007): kontexten har en budget, och en stor lek skickas sammanfattad.
+**Budgeten är 32 000 token, uppskattade som tre byte UTF-8 per token, ungefär 96 kB.**
+Det finns ingen tokeniserare för någon av leverantörerna i repot, och deras egna tumregler är ungefär 3,5 (Anthropic) och 4 (OpenAI) engelska tecken per token; svenska ord och JSON delas finare än engelsk prosa, och att räkna byte räknar å, ä och ö dubbelt, så uppskattningen lutar mot fler token och aldrig färre.
+Mätt: provleken (77 kort, fem fält) är 27 kB och skickas hel; en lek om 308 kort med femton fält, en hel regelbok och en mall med varianter (`scripts/large-deck.ts`) var 173 kB hel och är nu 96 kB sammanfattad.
+Gränsen ligger där en lek om ett hundrafemtiotal kort med femton fält, eller några hundra med fem, fortfarande går hel.
+Ingen av standardmodellerna sätter gränsen — Claude Sonnet 5.5 läser en miljon token och GPT-5 272 000 — utan budgeten lämnar plats åt svaret (16 000), instruktionerna, förslagets schema, ett långt samtal och ett stort urval, och det den begränsar är vad designerns egen nyckel betalar för en fråga om ett spel som ändrats sedan förra frågan, och hur länge det dröjer till första ordet.
+En sammanfattad lek är fältens värden över hela leken och ett urval kort skrivna hela, som en hel lek skriver dem.
+Per fält: antalets summa och fördelning, en talkolumns spann och hur många kort som har varje värde när de är högst 24, varje etikett i en textkolumn med sitt antal när de är högst 24 och ingen längre än 60 tecken, annars textens längder och hur många olika den har, ja och nej räknade, hur många kort som har en bild, och de tomma cellerna räknade för sig.
+Urvalet fyller det budgeten lämnar, så att en lek strax över gränsen förlorar lite: leken delas efter kolumnen dess varianter väljs av, varje del får sin andel och minst ett kort, och inom en del tas korten med jämna steg i lekens ordning — aldrig slumpvis, så att samma lek är samma urval och samma byte.
+Mallen, regelboken och temat skickas alltid hela, även när de ensamma är över budgeten.
+Kortens bilder skrivs inte längre i kontexten, inte heller i en hel lek: cellen säger bara var bilden ligger, och modellen får aldrig skriva en bild.
+De kort en fråga gäller står alltid hela i frågans eget meddelande och aldrig genom budgeten: de valda korten (#1003), och nu också de kort ett förslag som förfinas ändrar, under «## Cards the proposal changes», så att en ändring av ett kort som urvalet lämnade ute förfinas mot varje fält av det.
+Kontexten är fortfarande samma byte för samma spel, och står i Anthropics begäran som ett eget systemblock märkt för cachen (`cache_control`) efter instruktionerna, med förslagets verktyg före; vad frågan bär — urval, förslag, kort — står i meddelandet efter, så prefixet flyttas inte.
+OpenAI cachar själv varje prefix över 1 024 token utan att något märks ut, och där står kontexten sist i `instructions`, före samtalet.
+Chippen säger det med vanliga ord innan designern frågar: «308 kort (sammanfattade)», «308 cards (summarised)», ur samma beslut som servern bygger kontexten med (`aiContextParts`).
+Vad en fråga kostar lådan i minne och uppströms står i DRIFT §1.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.

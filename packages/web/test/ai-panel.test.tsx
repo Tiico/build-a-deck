@@ -29,9 +29,9 @@ async function signIn(email = 'ada@example.com'): Promise<string> {
   await fetch(`${run.http}${link}`, { redirect: 'manual' })
   return (await run.auth!.ensureAccount(email)).id
 }
-async function ownGame(key: string | null = KEY): Promise<void> {
+async function ownGame(key: string | null = KEY, doc = projectDoc()): Promise<void> {
   const account = await signIn()
-  await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+  await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...doc }) })
   if (key) await run.ai!.vault.save(account, 'anthropic', key)
 }
 async function openEditor(lang: Lang = 'sv', onNavigate: (url: string) => void = () => undefined): Promise<void> {
@@ -63,6 +63,8 @@ describe('the AI panel with a key', () => {
     expect(within(aside).getByRole('heading', { level: 2, name: 'AI-hjälp' })).toBeTruthy()
     const sent = within(aside).getByText(/Skickas till Anthropic/).closest('p')!
     expect(sent.textContent).toMatch(/Skickas till Anthropic:.*3 kort.*mallen.*bordet/)
+    // A deck inside the budget goes whole, and is not said to be summarised (#1007).
+    expect(sent.textContent).not.toMatch(/sammanfattade/)
     // What is sent is said to whoever is about to write the question, too.
     expect(field().getAttribute('aria-describedby')?.split(' ')).toContain(sent.id)
 
@@ -267,6 +269,23 @@ describe('the AI panel without a key', () => {
   })
 })
 
+// A deck over the context's budget (#1007) without being a large one to render: three cards whose
+// texts are long enough that the whole deck is far over what goes whole.
+function heavy(): ReturnType<typeof projectDoc> {
+  const doc = projectDoc()
+  return { ...doc, rows: doc.rows.map((row, i) => ({ ...row, fields: { ...row.fields, body: `Kort ${i + 1}. ${'En lång regeltext som fortsätter. '.repeat(2000)}` } })) }
+}
+
+describe('the deck that is sent (#1007)', () => {
+  it('says «sammanfattade» when the deck is over the budget', async () => {
+    await ownGame(KEY, heavy())
+    await openEditor()
+    const aside = await screen.findByRole('complementary', { name: 'AI-hjälp' })
+    const sent = within(aside).getByText(/Skickas till Anthropic/).closest('p')!
+    expect(sent.textContent).toMatch(/Skickas till Anthropic:.*3 kort \(sammanfattade\).*mallen/)
+  })
+})
+
 describe('in English', () => {
   it('speaks the reader’s language, and passes it on', async () => {
     await ownGame()
@@ -281,6 +300,13 @@ describe('in English', () => {
     type('Elakt [refuse]', 'Ask about the game')
     enter('Ask about the game')
     expect((await within(aside).findByRole('alert')).textContent).toContain('Anthropic would not answer')
+  })
+
+  it('says when the deck is summarised rather than sent whole (#1007)', async () => {
+    await ownGame(KEY, heavy())
+    await openEditor('en')
+    const aside = await screen.findByRole('complementary', { name: 'AI help' })
+    expect(within(aside).getByText(/Sent to Anthropic/).closest('p')!.textContent).toMatch(/Sent to Anthropic:.*3 cards \(summarised\).*the template/)
   })
 
   it('points to the profile in English without a key', async () => {

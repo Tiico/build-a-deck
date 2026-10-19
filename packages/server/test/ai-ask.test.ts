@@ -9,6 +9,8 @@ import type { ProjectDoc } from '../src/projects.js'
 import type { AiCaps } from '../src/ai-ask.js'
 import { proposalSchema, translateProposal } from '../src/proposal.js'
 import { fakeAiProvider, type FakeAiProvider } from '../../../test-support/fake-ai-provider.js'
+import { AI_CONTEXT_BUDGET, aiContextOf, estimatedTokens } from '../src/ai-context.js'
+import { largeDoc } from '../scripts/large-deck.js'
 import { template } from './deck.js'
 import { listenInBand, start, twoSeatSetup, type Running } from './fixture.js'
 
@@ -244,6 +246,10 @@ describe('a proposal being refined (#1004)', () => {
     expect(said).toMatch(/## Left out by the designer\n[^#]*- New card 2 \(Förslag 2\)/)
     expect(said).not.toMatch(/- New card 1/)
     expect(said.indexOf('## Proposal to refine')).toBeLessThan(said.indexOf('## Selected cards'))
+    // The cards it changes go whole beside it (#1007), so a change to a card a large deck's sample
+    // left out is refined against every field of it.
+    expect(said).toMatch(/## Cards the proposal changes\n[^#]*\{"id":"dragon","title":"Drake","antal":1\}/)
+    expect(said.indexOf('## Cards the proposal changes')).toBeLessThan(said.indexOf('## Selected cards'))
     expect(said.endsWith('## Question\nGör dem dyrare')).toBe(true)
     // The game is the cached part of the request, and a proposal being refined does not move it.
     expect(body.system[1]!.text).toBe(plain.system[1]!.text)
@@ -280,6 +286,55 @@ describe('a proposal being refined (#1004)', () => {
     expect((await ask(w, w.ada, 'Hej', { refine: { proposal: pending, leave: [2] } })).status).toBe(400)
     expect((await ask(w, w.ada, 'Hej', { refine: { proposal: { ...pending, html: '<b>' }, leave: [] } })).status).toBe(400)
     expect(fake.calls.length).toBe(calls)
+  })
+})
+
+// A large deck (#1007): the game goes summarised within the budget, as the same bytes for every
+// question about it, in the part of the request the provider caches — whatever is selected or refined.
+describe('a large deck', () => {
+  it('is sent summarised within the budget, as the same cached bytes whatever the question carries (anthropic)', async () => {
+    const w = await world()
+    const ada = await idOf(w, 'ada@example.com')
+    await w.vault.save(ada, 'anthropic', ADA_KEY)
+    const large = largeDoc()
+    await w.projects.create('big', large, ada)
+    const askBig = async (question: string, extra: Record<string, unknown> = {}) => read(await post(w, w.ada, { question, turns: [], lang: 'sv', ...extra }, undefined, 'big'))
+    const bodies: { system: { text: string; cache_control?: unknown }[]; messages: { content: string }[] }[] = []
+    expect((await askBig('Vilka kort är dyrast?')).events.at(-1)).toEqual({ t: 'done' })
+    bodies.push(fake.calls.at(-1)!.body as (typeof bodies)[number])
+    const last = large.rows.at(-1)!
+    expect((await askBig('Gör det här billigare', { selected: [last.id] })).events.at(-1)).toEqual({ t: 'done' })
+    bodies.push(fake.calls.at(-1)!.body as (typeof bodies)[number])
+    const pending = { cards: [], changes: [{ card: last.id, fields: [{ field: 'kostnad', value: 1 }] }] }
+    expect((await askBig('Ännu billigare', { refine: { proposal: pending, leave: [] } })).events.at(-1)).toEqual({ t: 'done' })
+    bodies.push(fake.calls.at(-1)!.body as (typeof bodies)[number])
+
+    const context = aiContextOf(large)
+    expect(estimatedTokens(context)).toBeLessThanOrEqual(AI_CONTEXT_BUDGET)
+    for (const body of bodies) {
+      // The game is its own system block, marked for the cache, after the instructions.
+      expect(body.system[1]).toEqual({ type: 'text', text: context, cache_control: { type: 'ephemeral' } })
+      expect(body.system[0]!.text).toBe(bodies[0]!.system[0]!.text)
+    }
+    expect(context).toMatch(/— summarised\)/)
+    // The card the question is about goes whole with it, every field said.
+    expect(bodies[1]!.messages.at(-1)!.content).toContain(`"id":${JSON.stringify(last.id)}`)
+    expect(bodies[1]!.messages.at(-1)!.content).toContain(JSON.stringify(last.fields['body']))
+    expect(bodies[2]!.messages.at(-1)!.content).toMatch(new RegExp(`## Cards the proposal changes\\n[^#]*"id":${JSON.stringify(last.id)}`))
+  })
+
+  it('is the same prefix of the instructions for every question about it (openai)', async () => {
+    const w = await world()
+    const ada = await idOf(w, 'ada@example.com')
+    await w.vault.save(ada, 'openai', BO_KEY)
+    await w.projects.create('big', largeDoc(), ada)
+    const askBig = async (question: string, extra: Record<string, unknown> = {}) => read(await post(w, w.ada, { question, turns: [], lang: 'sv', ...extra }, undefined, 'big'))
+    await askBig('Vilka kort är dyrast?')
+    const first = fake.calls.at(-1)!.body as { instructions: string }
+    await askBig('Och de billigaste?', { selected: ['juice-em-up'] })
+    const second = fake.calls.at(-1)!.body as { instructions: string }
+    expect(second.instructions).toBe(first.instructions)
+    expect(first.instructions.endsWith(aiContextOf(largeDoc()))).toBe(true)
   })
 })
 
