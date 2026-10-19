@@ -353,6 +353,11 @@ export const svEditor = {
   'wall.eye.read.phone': 'Telefonens läsvy',
   'wall.eye.read.desk': 'Bordets lyft',
   'wall.eye.read.tv': 'TV:ns «Visa för alla»',
+  // Vad lådan säger där kronan är smal (#477, #1047): ytan som håller upp kortet. Hela namnet står
+  // kvar som lådans namn och tooltip.
+  'wall.eye.read.phone.short': 'Telefonen',
+  'wall.eye.read.desk.short': 'Bordet',
+  'wall.eye.read.tv.short': 'TV:n',
   'wall.read': 'Minsta text {px} px',
   'wall.read.under': 'Minsta text {px} px · under golvet {floor} px',
   'wall.trim': 'snitt och skyddsmarginal',

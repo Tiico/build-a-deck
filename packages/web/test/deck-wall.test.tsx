@@ -259,6 +259,29 @@ describe('the reading views among the eyes (K26, #512)', () => {
     expect(readOf('dragon')?.hasAttribute('data-under')).toBe(false)
   })
 
+  // Där kronan är smal visar en låda bara sitt val (#477, variant B), och läsvyerna är ögonens
+  // längsta ord: bredvid AI-panelen vid 1280 bröt «TV:ns «Visa för alla»» raden (#1047). Det korta
+  // ordet är ytan som håller upp kortet; hela meningen står kvar som lådans namn och tooltip.
+  it('gives each reading view the surface’s name as its short word, and keeps the whole one as the box’s name', () => {
+    wall()
+    openBox(/^Ögon/)
+    for (const [name, short] of [
+      ['Telefonens läsvy', 'Telefonen'],
+      ['Bordets lyft', 'Bordet'],
+      ['TV:ns «Visa för alla»', 'TV:n'],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name }))
+      const box = screen.getByRole('button', { name: /^Ögon/ })
+      expect(box.getAttribute('aria-label')).toBe(`Ögon: ${name}`)
+      expect(box.getAttribute('title')).toBe(`Ögon: ${name}`)
+      expect(box.querySelector('.byd-crown-long')?.textContent).toBe(name)
+      expect(box.querySelector('.byd-crown-short')?.textContent).toBe(short)
+    }
+    // An eye whose word already fits has no second one.
+    fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
+    expect(screen.getByRole('button', { name: /^Ögon/ }).querySelector('.byd-crown-short')).toBeNull()
+  })
+
   it('says it in words when a card’s text falls under the floor, and not by colour alone', () => {
     const doc = projectDoc()
     const face = doc.template.faces['front']!

@@ -84,7 +84,14 @@ const EYES: readonly { key: string; name: Key }[] = [
 // The reading views among the eyes (#512, beslut A): the wall drawn at the width a play surface
 // holds a card up at to read it (K26), each card saying the smallest text it carries there. The
 // widths are the surfaces' own, read from the one module their measuring tests check them against.
-const READS: readonly { key: string; name: Key; view: ReadingView }[] = READING_VIEWS.map((view) => ({ key: `read.${view.key}`, name: `wall.eye.read.${view.key}` as Key, view }))
+// Each says, where the crown is narrow, only the surface that holds the card up (#1047): the views
+// are the eyes' longest words, and beside the AI panel «TV:ns «Visa för alla»» broke the row.
+const READS: readonly { key: string; name: Key; short: Key; view: ReadingView }[] = READING_VIEWS.map((view) => ({
+  key: `read.${view.key}`,
+  name: `wall.eye.read.${view.key}` as Key,
+  short: `wall.eye.read.${view.key}.short` as Key,
+  view,
+}))
 const MATRICES: Record<string, string> = {
   protanopia: '0.11238 0.88762 0 0 0  0.11238 0.88762 0 0 0  0.00401 -0.00401 1 0 0  0 0 0 1 0',
   deuteranopia: '0.29275 0.70725 0 0 0  0.29275 0.70725 0 0 0  -0.02234 0.02234 1 0 0  0 0 0 1 0',
@@ -444,7 +451,14 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             value={filter.query}
             onChange={(event) => setFilter({ ...filter, query: event.target.value })}
           />
-          <CrownBox name={t('wall.eyes')} state={t(eyeNow.name)} open={box === 'eyes'} onToggle={() => toggle('eyes')} boxRef={eyesBox} />
+          <CrownBox
+            name={t('wall.eyes')}
+            state={t(eyeNow.name)}
+            short={reading ? t(reading.short) : undefined}
+            open={box === 'eyes'}
+            onToggle={() => toggle('eyes')}
+            boxRef={eyesBox}
+          />
           <CrownBox
             name={t('wall.guides')}
             count={(trim ? 1 : 0) + (arm ? 1 : 0)}

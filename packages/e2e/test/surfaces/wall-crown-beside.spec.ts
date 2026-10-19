@@ -207,3 +207,81 @@ for (const locale of ['sv-SE', 'en-GB']) {
     })
   }
 }
+
+// And in every eye (#1047). The box says the eye the deck is read with, and where the crown is
+// narrow it says only that (#477, variant B) — so the row's width is the eye's word as much as the
+// deck's grouping. #1045 measured the row in «Som du ser det» only; the reading views (#512) are
+// the eye's longest words, «TV:ns «Visa för alla»» and «The phone’s reading view», and a row that
+// stands in the first eye and breaks in the TV's is a row the designer sees jump as they choose.
+// Measured grouped, where the fold stands in the row, and ungrouped, where the grouping box says
+// so: the two fullest rows #1045 found.
+const EYE_WORDS: Record<string, { eyes: string; eyeNames: readonly string[] }> = {
+  'sv-SE': {
+    eyes: 'Ögon',
+    eyeNames: ['Som du ser det', 'Deuteranopi', 'Protanopi', 'Tritanopi', 'Gråskala', 'Telefonens läsvy', 'Bordets lyft', 'TV:ns «Visa för alla»'],
+  },
+  'en-GB': {
+    eyes: 'Eyes',
+    eyeNames: ['As you see it', 'Deuteranopia', 'Protanopia', 'Tritanopia', 'Greyscale', 'The phone’s reading view', 'The table’s lift', 'The TV’s “Show everyone”'],
+  },
+}
+for (const locale of ['sv-SE', 'en-GB']) {
+  const words = EYE_WORDS[locale]!
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    test.describe(`the wall's crown in every eye beside the open AI panel at ${viewport.width} × ${viewport.height} in ${locale}`, () => {
+      test.use({ viewport, locale })
+
+      for (const state of ['grouped', 'ungrouped'] as const) {
+        test(`${state}: stands on one row in every eye, in the machine's face and a wide one`, async ({ page }) => {
+          await logIn(page.request)
+          const saved = await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: KEY } })
+          expect(saved.status()).toBe(200)
+          const project = await makeProjectOf(page.request, state === 'grouped' ? deck() : ungroupedDeck())
+          await page.goto(project.editorUrl)
+          await expect(page.locator('.byd-ai[data-open]')).toBeVisible()
+          await expect(page.locator('.byd-wall-card').first()).toBeVisible()
+          const crown = page.locator('.byd-wall-view .byd-crown')
+          const box = crown.getByRole('button', { name: new RegExp(`^${words.eyes}: `) })
+          // Non-vacuity: the drawer holds every eye the test names, and no other.
+          await box.click()
+          const drawer = page.locator('.byd-crown-drawer')
+          await expect(drawer.getByRole('button')).toHaveText([...words.eyeNames])
+          await box.click()
+          await expect(drawer).toHaveCount(0)
+          const broken: string[] = []
+          for (const name of words.eyeNames) {
+            await box.click()
+            await drawer.getByRole('button', { name, exact: true }).click()
+            await box.click()
+            await expect(drawer).toHaveCount(0)
+            // The box says the eye chosen, whole, as its name — whatever the row shows of it.
+            await expect(box).toHaveAccessibleName(`${words.eyes}: ${name}`)
+            await expect(box).toHaveAttribute('title', `${words.eyes}: ${name}`)
+            await expect(crown.locator('.byd-crown-fold')).toHaveCount(state === 'grouped' ? 1 : 0)
+            await expect.poll(async () => (await measure(page, '.byd-ai')).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
+            for (const face of ['system-ui', 'wide']) {
+              const wide = face === 'wide' ? await page.addStyleTag({ content: ".byd-wall-crown * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" }) : null
+              const measured = await measure(page, '.byd-ai')
+              expect(measured.beside).toBe(PANEL)
+              expect(measured.controls).toBeGreaterThanOrEqual(state === 'grouped' ? 8 : 7)
+              const fault = [
+                measured.rows !== 1 && `${measured.rows} rows`,
+                measured.cut.length > 0 && `cut ${measured.cut.join(', ')}`,
+                measured.over > 0 && `overflows ${measured.over} px`,
+                measured.field < FIELD && `field ${measured.field} px`,
+                measured.page > 0 && 'page scrolls sideways',
+              ].filter(Boolean)
+              if (fault.length > 0) broken.push(`«${name}» in ${face}: ${fault.join('; ')} — ${measured.room} px: ${measured.tools.join(', ')}`)
+              await wide?.evaluate((tag) => (tag as Element).remove())
+            }
+          }
+          // Every eye is measured before the verdict, so a red run names all of them at once.
+          expect(broken, 'in every eye the crown stands on one row, cuts nothing and leaves the field 180 px').toEqual([])
+        })
+      }
+    })
+  }
+}
