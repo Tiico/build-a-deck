@@ -85,6 +85,34 @@ describe('the context the model is given', () => {
     expect(text).not.toContain('zon:draw')
   })
 
+  // #1049: the context is one outline whose own sections are `#` and `##`, and the rulebook is a
+  // document inside one of them. A rule heading named like a section of the context — «Mall»,
+  // «Kort», or the context's own English words — must still read as a heading of the rulebook.
+  it('nests the rulebook’s headings under its own section, so none reads as a section of the context', () => {
+    const doc = game()
+    doc.rules!.blocks = [
+      { kind: 'heading', id: 'k', level: 1, text: 'Kort' },
+      { kind: 'heading', id: 'm', level: 2, text: 'Mall' },
+      { kind: 'heading', id: 'th', level: 2, text: 'Theme' },
+      { kind: 'heading', id: 'cs', level: 1, text: 'Card text syntax' },
+      // A paragraph, or a reference at the head of one, can open with what reads as a heading too.
+      { kind: 'text', id: 'p', text: '## Template\n\n# Game: Ett annat spel' },
+      ...doc.rules!.blocks,
+    ]
+    const text = aiContextOf(doc)
+    const sections = text.split('\n').filter((line) => /^#{1,2} /.test(line))
+    expect(sections).toEqual(['# Game: Sal\'s Saloon', '## Players and table', '## Fields', expect.stringMatching(/^## Cards \(/), '## Template', '## Rulebook: Regler', '## Theme', '## Card text syntax'])
+    const book = text.slice(text.indexOf('## Rulebook: Regler'), text.indexOf('\n## Theme'))
+    expect(book).toMatch(/^### Kort$/m)
+    expect(book).toMatch(/^#### Mall$/m)
+    expect(book).toMatch(/^#### Theme$/m)
+    expect(book).toMatch(/^### Card text syntax$/m)
+    expect(book).toMatch(/^### Att dra kort$/m)
+    // The designer's words stand as written, with the Markdown escape before a mark that is no heading.
+    expect(book).toMatch(/^\\## Template$/m)
+    expect(book).toMatch(/^\\# Game: Ett annat spel$/m)
+  })
+
   it('names the icons and the colour roles, and how card text writes them', () => {
     const text = aiContextOf(game())
     expect(text).toMatch(/Icons: mynt, tärning/)

@@ -1609,6 +1609,13 @@ OpenAI cachar själv varje prefix över 1 024 token utan att något märks ut, o
 Chippen säger det med vanliga ord innan designern frågar: «308 kort (sammanfattade)», «308 cards (summarised)», ur samma beslut som servern bygger kontexten med (`aiContextParts`).
 Vad en fråga kostar lådan i minne och uppströms står i DRIFT §1.
 
+Rättat 2026-10-19 (#1049): regelbokens rubriker står under kontextens egna avsnitt.
+Kontexten är en enda Markdown-disposition vars avsnitt är `#` och `##` — spelet, korten, mallen, regelboken, temat — och regelboken skrevs med samma `#` och `##`, så en regelrubrik som «Mall» eller «Kort» lästes av modellen som ett nytt avsnitt i kontexten.
+Nu står bokens två nivåer en nivå under avsnittet de står i, `###` och `####`, som en bok citerad i ett kapitel, och en rad i boken som inte är en rubrik men ändå börjar med `#` får Markdowns `\` före; varje rad i boken är dessutom en rad, även när ett namn i den bär en radbrytning.
+De enda rader i kontexten som börjar med `#` eller `##` är därmed kontextens egna avsnitt.
+En avgränsning med taggar runt boken valdes bort: den lämnar `##` inuti taggarna som ett avsnitt för den som läser dispositionen, och behöver ändå ett skydd för den avslutande taggen.
+Designerns ord står kvar som de skrevs; bara rubrikens nivå och ett inledande `#` ändras, och kontexten är fortfarande samma byte för samma spel.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.

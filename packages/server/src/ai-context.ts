@@ -186,7 +186,7 @@ function tailOf(doc: ProjectDoc): string {
 
   if (doc.rules && doc.rules.blocks.length > 0) {
     const rendered = renderRules(doc.rules, namesOfProject(doc), arrangementOf(doc))
-    line(`## Rulebook: ${rendered.title}`)
+    line(`## Rulebook: ${oneLine(rendered.title)}`)
     for (const block of rendered.blocks) for (const text of blockText(block)) line(text)
     line()
   }
@@ -408,21 +408,34 @@ function imageFieldsOf(doc: ProjectDoc): string[] {
   return out
 }
 
-// A rendered block as the lines a reader of the book reads.
+// A rendered block as the lines a reader of the book reads, set inside the context's own outline
+// (#1049). The context is one Markdown outline whose sections are `#` and `##` — the game, its
+// cards, its template, the rulebook, the theme — and the rulebook is a document inside one of them,
+// so its two levels of heading are nested below it, `###` and `####`, as a book quoted in a chapter
+// is: a rule heading called «Kort», «Mall» or «Theme» is then a heading of the book and never a
+// section of the context. A line of the book that is no heading and still opens with `#` — a
+// paragraph the designer began with one, or with a reference to something named so — gets
+// Markdown's escape before it, so the only lines that open with a heading mark are headings, at the
+// level they have. Delimiting the book with tags was the other way: it leaves `##` inside the tags
+// reading as a section to whatever reads the outline, and needs an escape for the closing tag anyway.
+const BOOK_LEVEL = 2
+// One line of the book, as one line: a name with a line break in it does not start another.
+const oneLine = (text: string): string => text.replace(/\s*\n\s*/g, ' ')
+const bookLine = (text: string): string => oneLine(text).replace(/^#/, '\\#')
 function blockText(block: RenderedBlock): string[] {
   switch (block.kind) {
     case 'heading':
-      return [`${'#'.repeat(block.level)} ${plainOf(block.children)}`]
+      return [`${'#'.repeat(BOOK_LEVEL + block.level)} ${oneLine(plainOf(block.children))}`]
     case 'text':
-      return block.paragraphs.map((p) => plainOf(p.children))
+      return block.paragraphs.map((p) => bookLine(plainOf(p.children)))
     case 'list':
-      return block.items.map((item, i) => `${block.ordered ? `${i + 1}.` : '-'} ${plainOf(item)}`)
+      return block.items.map((item, i) => `${block.ordered ? `${i + 1}.` : '-'} ${oneLine(plainOf(item))}`)
     case 'setup':
       return [
-        `[Setup${block.caption ? `: ${block.caption}` : ''}] On the table: ${block.common.map((z) => z.name).join(', ') || 'nothing'}`,
-        ...block.seats.map((s) => `[Setup] Seat ${s.id}: ${s.zones.map((z) => z.name).join(', ') || 'nothing'}`),
+        `[Setup${block.caption ? `: ${oneLine(block.caption)}` : ''}] On the table: ${block.common.map((z) => oneLine(z.name)).join(', ') || 'nothing'}`,
+        ...block.seats.map((s) => `[Setup] Seat ${s.id}: ${s.zones.map((z) => oneLine(z.name)).join(', ') || 'nothing'}`),
       ]
     case 'image':
-      return [block.alt || block.caption ? `[Picture: ${[block.alt, block.caption].filter(Boolean).join(' — ')}]` : '[Picture]']
+      return [block.alt || block.caption ? `[Picture: ${oneLine([block.alt, block.caption].filter(Boolean).join(' — '))}]` : '[Picture]']
   }
 }
