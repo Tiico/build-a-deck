@@ -170,7 +170,8 @@ export const enEditor = {
   'ai.sent.rules': 'the rulebook',
   'ai.sent.table': 'the table',
   'ai.sent.chosen': 'selected: {name}',
-  'ai.sent.marked': '{n} marked',
+  'ai.sent.marked.one': '{n} marked',
+  'ai.sent.marked.other': '{n} marked',
   'ai.you': 'You',
   'ai.answer': 'Answer',
   'ai.reading': 'Reading the game…',
@@ -251,6 +252,7 @@ export const enEditor = {
 
   'wall.cards.one': '{n} card',
   'wall.cards.other': '{n} cards',
+  'wall.cards.proposed': '{cards} · {proposed}',
   'wall.group.without': 'Without {column}',
   'wall.deck': 'The deck',
   'wall.search.none': 'No card matches “{query}”.',

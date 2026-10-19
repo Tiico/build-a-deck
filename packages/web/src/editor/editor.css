@@ -4300,9 +4300,11 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-verdict { margin: 0; color: #c3cbdd; }
 .byd-ai-proposal[data-verdict='accepted'] .byd-ai-verdict { color: #7dd3a0; }
 /* The same proposal on the wall, among the deck's cards (#1002): a dashed edge in the panel's mark,
-   and «✦ Förslag» on a pill over the card's top edge, where no other badge stands. */
+   and «✦ Förslag» on a pill over the card's top edge, where no other badge stands. The pill stands on
+   the edge and not across it (#1037): 10 px into the card it covered the title at 90–110 px, and a
+   template is free to draw its title at the very top, so nothing of the pill lies on the card. */
 .byd-wall-card[data-proposed] > .byd-wall-face { outline: 2px dashed #c9a7ff; outline-offset: var(--byd-s1); }
-.byd-wall-proposed { position: absolute; top: -10px; left: var(--byd-s1); z-index: 2; display: inline-flex; align-items: center; gap: var(--byd-s1); padding: 0 var(--byd-s2); border-radius: 999px; background: #c9a7ff; color: #1c1530; font-size: 11px; font-weight: 800; line-height: 20px; white-space: nowrap; pointer-events: none; }
+.byd-wall-proposed { position: absolute; bottom: 100%; left: var(--byd-s1); z-index: 2; display: inline-flex; align-items: center; gap: var(--byd-s1); padding: 0 var(--byd-s2); border-radius: 999px; background: #c9a7ff; color: #1c1530; font-size: 11px; font-weight: 800; line-height: 16px; white-space: nowrap; pointer-events: none; }
 .byd-wall-proposed .byd-ai-spark { color: inherit; }
 /* Changed cards in the conversation (#1003): the card drawn with its new values, and beside it its
    name and each changed cell as old → new — the value is what is judged, so it gets the room. */
@@ -4327,13 +4329,15 @@ label:is(.byd-ai-new, .byd-ai-change) { cursor: pointer; }
    it is the game's card, changed — «✦ Ändrat» on the same pill, and old → new under the card. */
 .byd-wall-card[data-changed] > .byd-wall-face { outline: 2px solid #c9a7ff; outline-offset: var(--byd-s1); }
 .byd-wall-changes { display: grid; gap: var(--byd-s1); max-width: var(--byd-wall-card); margin: var(--byd-s2) 0 0; padding: 0; list-style: none; color: #c9a7ff; font-size: 12px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-/* While a proposal stands on the wall its marks reach past the cards — the pill 10 px over a card's
+/* While a proposal stands on the wall its marks reach past the cards — the pill 16 px over a card's
    top, the edge 6 px round it — and the copies badge of the card above or beside reaches 6 px past
    that card's corner. The wall's gaps grow so that the two never meet, at every width (#1003). */
 /* A changed card's lines make its row taller than its neighbours, and a stretched neighbour would
    carry its copies badge and its contact shadow down to the row's foot, away from its card, so the
    cards stand at the top of their rows. */
-.byd-wall-deck[data-proposing] .byd-wall { gap: var(--byd-s5) var(--byd-s4); align-items: start; }
+/* The first row's pills need the same room under a band's head, whose rule stands 15 px over the cards
+   (#1037): the wall's top grows to the pill's height, so a pill stands under the head and not on it. */
+.byd-wall-deck[data-proposing] .byd-wall { gap: var(--byd-s5) var(--byd-s4); align-items: start; padding-top: var(--byd-s4); }
 /* An AI proposal's card in the table's comparison (#1003): a record, written as text, with the
    proposal's own word by its key. */
 .byd-data td.byd-data-record { height: var(--byd-tap); padding: var(--byd-s1) var(--byd-data-cell-pad); color: #ddd; font-size: 12px; }

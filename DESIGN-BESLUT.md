@@ -1529,6 +1529,21 @@ Inget valt är inget att godta: knappen är avstängd och tar inget tryck.
 Det godtagna är en sammansatt redigering med ett steg tillbaka som förut, och en bekräftelse före behövs inte (L9): ingenting försvinner som inte ångras med ett tryck.
 Medan ett förslag står på väggen växer väggens mellanrum till 24 px mellan raderna och 16 px mellan korten: pillret når 10 px över ett korts överkant och kanten 6 px runt det, och antalsbrickan på kortet ovanför eller bredvid når 6 px utanför sitt hörn, så vid 12 px möttes de (#1002:s skärmbilder), vid alla väggens sex bredder.
 
+Rättat 2026-10-19 (#1037): urvalet sägs som editorn visar det, och förslaget räknas och namnges som resten av editorn gör.
+Chippen säger det valda kortet och de bockade raderna var för sig, «valt: Duel» och «1 markerat», så att panelen, Tabells fot och raderna säger samma tal.
+Ett enda tal för båda sade «2 markerade» över en fot som sade «1 markerat kort», och båda var sanna om olika saker.
+Ett valt kort som också är bockat sägs en gång, bland de markerade.
+En ändrad rad i Tabells jämförelse väljs och bockas som varje annan rad, med radens enda tabbstopp (#575), så att det valda kortet syns valt också där.
+**Massåtgärderna verkar på en bockad rad som förslaget ändrar**, med spelets egna värden.
+Bocken är lekens markering (L4, #222) och raden är spelets kort, och tabellen håller aldrig förslagets värden, så en massåtgärd kan inte råka skriva in förslaget.
+Förslaget översätts mot spelet som det står (#1002), så en massåtgärd under det är som en medredigerares ändring: «Duplicera» och «Sätt fält» lämnar det användbart med det nya som gammalt, och «Ta bort» gör det oanvändbart med skälet att kortet saknas, vilket ett steg tillbaka tar tillbaka.
+Att hoppa över de ändrade raderna hade gjort fotens tal och knappens tal till två igen, och en bock som syns men inte verkar är värre än en som verkar och kan ångras.
+Ett ändrat fält heter i panelen, under kortet på väggen, i kortets namn och i felbeskeden det som tabellhuvudet kallar det, «Titel» och inte nyckeln `title` (A4, `fieldLabel`).
+Pillret står på kortets överkant och inte över den: tio pixlar in i kortet täckte det titeln vid 90–110 px, och en mall får rita sin titel ända uppe vid kanten.
+Det är 16 px högt och når 16 px över kortet, vilket väggens 24 px mellan raderna rymmer med antalsbrickans 6 px; väggens överkant växer till 16 px medan ett förslag står, så att första radens piller står under bandets rubrik och inte på dess linje.
+Bandens rubriker, innehållsförteckningen och dess hopfällda remsa räknar som foten, «23 kort · 3 föreslagna», och en sökning säger lekens funna kort av lekens och de föreslagna för sig.
+En remsas höjd är gruppens andel av leken, som förslaget ännu inte är en del av.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.

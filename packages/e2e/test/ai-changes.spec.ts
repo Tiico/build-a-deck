@@ -34,7 +34,9 @@ test('a designer selects cards, asks for a change, sees old → new on the wall 
   await expect(chips.first()).toHaveText(`selected: ${cardTitle(1)}`)
   await page.getByRole('tab', { name: 'Data' }).click()
   await page.getByRole('checkbox', { name: 'mark kort-3' }).check()
-  await expect(chips.first()).toHaveText('2 marked')
+  await expect(chips.nth(0)).toHaveText(`selected: ${cardTitle(1)}`)
+  await expect(chips.nth(1)).toHaveText('1 marked')
+  await expect(page.locator('.byd-data-chosen')).toHaveText('1 card marked')
   await field.fill('Make these cheaper, and two more [ändra:2] [kort:2]')
   await field.press('Enter')
   const proposal = panel.getByRole('group', { name: 'Proposal · 2 new cards, 2 changed cards' })
@@ -55,8 +57,8 @@ test('a designer selects cards, asks for a change, sees old → new on the wall 
   await expect(page.locator('.byd-wall-card[data-changed]')).toHaveCount(2)
   await expect(page.locator('.byd-wall-card[data-proposed]')).toHaveCount(2)
   await expect(wallCard('kort-2')).toContainText('Changed')
-  await expect(page.locator('.byd-wall-cell:has([data-card-ref="kort-2"]) .byd-wall-changes')).toContainText(`title: ${cardTitle(1)} → ${cardTitle(1)} II`)
-  await expect(wallCard('kort-2')).toHaveAccessibleName(`Changed in the proposal: ${cardTitle(1)} — title: ${cardTitle(1)} → ${cardTitle(1)} II, kostnad: 3 → 2`)
+  await expect(page.locator('.byd-wall-cell:has([data-card-ref="kort-2"]) .byd-wall-changes')).toContainText(`Title: ${cardTitle(1)} → ${cardTitle(1)} II`)
+  await expect(wallCard('kort-2')).toHaveAccessibleName(`Changed in the proposal: ${cardTitle(1)} — Title: ${cardTitle(1)} → ${cardTitle(1)} II, kostnad: 3 → 2`)
   expect(wire.sent().filter((f) => f.includes('"t":"edit"'))).toEqual([])
 
   // «Choose parts…»: the keys land on the first part, and Space leaves it out; the second changed

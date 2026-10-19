@@ -76,7 +76,7 @@ describe('the selected cards as the question’s context', () => {
     await waitFor(() => expect(chips()[0]).toBe('valt: Drake'))
     toTab('table')
     fireEvent.click(await screen.findByRole('checkbox', { name: 'markera wizard' }))
-    await waitFor(() => expect(chips()[0]).toBe('2 markerade'))
+    await waitFor(() => expect(chips().slice(0, 2)).toEqual(['valt: Drake', '1 markerat']))
     ask('Gör de här billigare')
     await waitFor(() => expect(run.ai!.fake.streams).toHaveLength(1))
     const said = lastQuestion()
@@ -103,7 +103,7 @@ describe('a proposal of changed cards', () => {
     fireEvent.click(wallCard('dragon'))
     toTab('table')
     fireEvent.click(await screen.findByRole('checkbox', { name: 'markera knight' }))
-    await waitFor(() => expect(chips()[0]).toBe('2 markerade'))
+    await waitFor(() => expect(chips().slice(0, 2)).toEqual(['valt: Drake', '1 markerat']))
     ask('Sänk kostnaden [ändra:2] [kort:1]')
     await within(panel()).findByRole('button', { name: 'Godta alla' })
   }
@@ -114,7 +114,7 @@ describe('a proposal of changed cards', () => {
     const changed = [...proposal().querySelectorAll('.byd-ai-card[data-changed]')]
     expect(changed).toHaveLength(2)
     expect(changed[0]!.textContent).toContain('Drake')
-    expect(changed[0]!.textContent).toContain('title: Drake → Drake II')
+    expect(changed[0]!.textContent).toContain('Titel: Drake → Drake II')
     expect(changed[0]!.textContent).toContain('kostnad: 3 → 2')
     // The card is drawn by the one renderer with the values it would have.
     expect(changed[0]!.querySelector('.byd-preview')!.textContent).toContain('Drake II')
@@ -137,7 +137,7 @@ describe('a proposal of changed cards', () => {
     expect(lines.textContent).toContain('kostnad: 3 → 2')
     expect(dragon.contains(lines)).toBe(false)
     expect(dragon.querySelector('[data-copies]')).not.toBeNull()
-    expect(dragon.getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake — title: Drake → Drake II, kostnad: 3 → 2')
+    expect(dragon.getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake — Titel: Drake → Drake II, kostnad: 3 → 2')
     expect(dragon.querySelector('.byd-preview')!.textContent).toContain('Drake II')
     // The wall makes room for the marks while a proposal stands on it.
     expect(document.querySelector('.byd-wall-deck')!.hasAttribute('data-proposing')).toBe(true)
@@ -194,6 +194,106 @@ describe('a proposal of changed cards', () => {
   })
 })
 
+// Seen in #1003's screenshots (#1037): the panel said «2 markerade» while the table's foot said «1
+// markerat kort» and offered «Ta bort 1 kort». Both were true about different things — the panel
+// counted the card chosen on the wall with the one ticked in Tabell — so the panel now says the two
+// apart, in the words the foot and the rows use, and the chosen card is chosen in its row too.
+describe('the selection said the same way in the panel, the foot and the rows (#1037)', () => {
+  async function chooseAndTick(): Promise<void> {
+    await ownGame()
+    await openEditor()
+    fireEvent.click(wallCard('dragon'))
+    toTab('table')
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'markera knight' }))
+  }
+  const foot = () => document.querySelector('.byd-data-chosen')?.textContent ?? null
+  const ticked = () => [...document.querySelectorAll<HTMLInputElement>('tbody .byd-data-check input:checked')].map((box) => box.closest('tr')!.getAttribute('data-card-ref'))
+  const chosenRows = () => [...document.querySelectorAll('tbody tr[aria-selected="true"]')].map((row) => row.getAttribute('data-card-ref'))
+
+  it('says the chosen card by its name and the ticked ones as the foot counts them, before and while a proposal is shown', async () => {
+    await chooseAndTick()
+    await waitFor(() => expect(chips().slice(0, 2)).toEqual(['valt: Drake', '1 markerat']))
+    expect(foot()).toBe('1 markerat kort')
+    expect(ticked()).toEqual(['knight'])
+    expect(chosenRows()).toEqual(['dragon'])
+    ask('Sänk kostnaden [ändra:2] [kort:1]')
+    fireEvent.click(await within(panel()).findByRole('button', { name: 'Visa i tabellen' }))
+    await waitFor(() => expect(document.querySelectorAll('tr[data-change="changed"]')).toHaveLength(2))
+    // Both changed, and each still what it was: the one ticked, the other chosen.
+    expect(chips().slice(0, 2)).toEqual(['valt: Drake', '1 markerat'])
+    expect(foot()).toBe('1 markerat kort')
+    expect(ticked()).toEqual(['knight'])
+    expect(chosenRows()).toEqual(['dragon'])
+    // The question still carries both.
+    expect(lastQuestion()).toContain('"id":"dragon"')
+    expect(lastQuestion()).toContain('"id":"knight"')
+  })
+
+  it('says a ticked card that is also the chosen one once, as a marked card', async () => {
+    await chooseAndTick()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'markera dragon' }))
+    await waitFor(() => expect(chips()[0]).toBe('2 markerade'))
+    expect(chips()[1]).toBe('3 kort')
+    expect(foot()).toBe('2 markerade kort')
+  })
+
+  // A changed row is the game's card, so a bulk action works on it as on any ticked row — on the
+  // game's values, never on the proposal's, which the table never writes in.
+  it('lets a bulk action work on a ticked row the proposal changes, with the game’s own values', async () => {
+    await chooseAndTick()
+    ask('Sänk kostnaden [ändra:2] [kort:1]')
+    fireEvent.click(await within(panel()).findByRole('button', { name: 'Visa i tabellen' }))
+    await waitFor(() => expect(document.querySelectorAll('tr[data-change="changed"]')).toHaveLength(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicera 1 kort' }))
+    await waitFor(async () => expect(await logged()).toHaveLength(1))
+    const [line] = await logged()
+    const rows = line!.intent.v === 'replaceRows' ? line!.intent.rows : []
+    expect(rows.map((r) => [r.id, r.fields['title'], r.fields['kostnad']])).toEqual([
+      ['dragon', 'Drake', 3],
+      ['knight', 'Riddare', 2],
+      ['knight-kopia', 'Riddare', 2],
+      ['wizard', 'Trollkarl', 1],
+    ])
+  })
+
+  // The proposal is translated against the game as it stands (#1002), so a ticked changed card taken
+  // out of the deck is the card it changes gone, said with its reason — and a step back gives both back.
+  it('lets a bulk removal take a ticked row the proposal changes, and the proposal says why it no longer applies', async () => {
+    await chooseAndTick()
+    ask('Sänk kostnaden [ändra:2] [kort:1]')
+    fireEvent.click(await within(panel()).findByRole('button', { name: 'Visa i tabellen' }))
+    await waitFor(() => expect(document.querySelectorAll('tr[data-change="changed"]')).toHaveLength(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort 1 kort' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja, ta bort' }))
+    await waitFor(() => expect(panel().textContent).toContain('Förslaget ändrar kortet knight, som spelet inte har.'))
+    expect(within(panel()).queryByRole('button', { name: 'Godta alla' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Ångra / }))
+    await within(proposal()).findByRole('button', { name: 'Godta alla' })
+    expect(panel().textContent).not.toContain('som spelet inte har')
+  })
+})
+
+// A field's name on screen is the table header's (#1037, A4): the panel's lines and the wall's
+// lines under a changed card said the raw key, «title», where the header says «Titel».
+describe('a changed cell named as the table names its column (#1037)', () => {
+  it('says «Titel» in the panel, under the card on the wall and in its name', async () => {
+    await ownGame()
+    await openEditor()
+    fireEvent.click(wallCard('dragon'))
+    ask('Sänk kostnaden [ändra:1]')
+    await within(panel()).findByRole('button', { name: 'Godta alla' })
+    const cells = [...proposal().querySelectorAll('.byd-ai-cell')].map((cell) => cell.textContent)
+    expect(cells).toEqual(['Titel: Drake → Drake II', 'kostnad: 3 → 2'])
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Visa på väggen' }))
+    await waitFor(() => expect(document.querySelectorAll('.byd-wall-card[data-changed]')).toHaveLength(1))
+    const lines = [...wallCard('dragon').closest('.byd-wall-cell')!.querySelectorAll('.byd-wall-changes li')].map((li) => li.textContent)
+    expect(lines).toEqual(['Titel: Drake → Drake II', 'kostnad: 3 → 2'])
+    expect(wallCard('dragon').getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake — Titel: Drake → Drake II, kostnad: 3 → 2')
+    toTab('table')
+    expect(screen.getByRole('columnheader', { name: /^Titel/ })).toBeTruthy()
+  })
+})
+
 describe('«Välj delar…»', () => {
   it('takes exactly the parts left ticked, by keyboard, as one edit and one step back', async () => {
     await ownGame()
@@ -201,7 +301,7 @@ describe('«Välj delar…»', () => {
     fireEvent.click(wallCard('dragon'))
     toTab('table')
     fireEvent.click(await screen.findByRole('checkbox', { name: 'markera knight' }))
-    await waitFor(() => expect(chips()[0]).toBe('2 markerade'))
+    await waitFor(() => expect(chips().slice(0, 2)).toEqual(['valt: Drake', '1 markerat']))
     ask('Ändra två och lägg till två [ändra:2] [kort:2]')
     fireEvent.click(await within(panel()).findByRole('button', { name: 'Välj delar…' }))
     const parts = within(proposal()).getAllByRole('checkbox')

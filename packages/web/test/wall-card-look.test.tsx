@@ -330,7 +330,7 @@ describe('the ring on the chosen card survives the lift (#234, #332)', () => {
 })
 
 // An AI proposal on the wall (#1002, #1003): a ghost wears a dashed edge 6 px round it and a pill
-// 10 px over its top, a changed card a whole edge and the same pill, with old → new under it — and
+// 16 px over its top (#1037), a changed card a whole edge and the same pill, with old → new under it — and
 // the copies badge of the card above or beside hangs 6 px past that card's corner. At the wall's
 // old 12 px gaps the two met (#1002's screenshots); at every one of the wall's widths they must not,
 // and a card in a row made taller by a changed card's lines keeps its badge at its own corner.
@@ -344,16 +344,22 @@ describe('a proposal on the wall leaves the neighbours’ badges alone (#1003)',
   }
   const changed = new Map([['knight', [{ field: 'title', from: 'Riddare', to: 'Riddare II' }, { field: 'body', from: 'Sköld 1.', to: 'Sköld 2.' }]]])
 
+  // The wall with the proposal on it at one of its widths, in a real engine.
+  const proposingAt = async (step: number): Promise<Page> => {
+    localStorage.setItem('byd.wall.density', String(step))
+    const { container, unmount } = render(<DeckWall doc={doc()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} proposed={new Set(['ghost-1', 'ghost-2'])} changed={changed} />)
+    const html = container.innerHTML
+    unmount()
+    localStorage.removeItem('byd.wall.density')
+    // Narrow enough that the wall breaks into several rows at every width.
+    const proposing = await browser.newPage({ viewport: { width: 760, height: 1400 } })
+    await proposing.setContent(document_(html), { waitUntil: 'load' })
+    return proposing
+  }
+
   for (const [step, px] of DENSITY.entries()) {
     it(`keeps every ghost’s edge and pill clear of every badge at ${px} px`, async () => {
-      localStorage.setItem('byd.wall.density', String(step))
-      const { container, unmount } = render(<DeckWall doc={doc()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} proposed={new Set(['ghost-1', 'ghost-2'])} changed={changed} />)
-      const html = container.innerHTML
-      unmount()
-      localStorage.removeItem('byd.wall.density')
-      // Narrow enough that the wall breaks into several rows at every width.
-      const proposing = await browser.newPage({ viewport: { width: 760, height: 1400 } })
-      await proposing.setContent(document_(html), { waitUntil: 'load' })
+      const proposing = await proposingAt(step)
       const found = await proposing.evaluate(() => {
         const box = (el: Element) => el.getBoundingClientRect()
         const meet = (a: { left: number; top: number; right: number; bottom: number }, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
@@ -382,6 +388,32 @@ describe('a proposal on the wall leaves the neighbours’ badges alone (#1003)',
       expect(found.rows).toBeGreaterThan(1)
       expect(found.hits).toBe(0)
       expect(found.astray).toBe(0)
+    }, 60_000)
+
+    // The pill stood 10 px into the card's top and covered the title at 90–110 px (#1037), where a
+    // template's title band starts a few pixels in. Wherever a template draws its title, a pill that
+    // stays off the card it marks covers none of it. Measured on every marked card, the first row's
+    // included.
+    it(`stands the pill off the card it marks at ${px} px`, async () => {
+      const proposing = await proposingAt(step)
+      const found = await proposing.evaluate(() =>
+        [...document.querySelectorAll('.byd-wall-card:is([data-proposed], [data-changed])')].map((card) => {
+          const pill = card.querySelector('.byd-wall-proposed')!.getBoundingClientRect()
+          const face = card.querySelector('.byd-wall-face')!.getBoundingClientRect()
+          const wall = card.closest('.byd-wall')!.getBoundingClientRect()
+          return { into: Math.round((pill.bottom - face.top) * 100) / 100, height: pill.height, above: Math.round((wall.top - pill.top) * 100) / 100 }
+        }),
+      )
+      await proposing.close()
+      expect(found).toHaveLength(3)
+      for (const mark of found) {
+        // Not vacuous: there is a pill, and it has a height.
+        expect(mark.height).toBeGreaterThan(0)
+        expect(mark.into).toBeLessThanOrEqual(0)
+        // And inside the wall's own box: a first row's pill neither reaches up into a band's head
+        // and its rule nor is cut by the top of the scrolling deck.
+        expect(mark.above).toBeLessThanOrEqual(0)
+      }
     }, 60_000)
   }
 })
