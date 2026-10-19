@@ -116,6 +116,35 @@ describe('rule text shown in the rulebook', () => {
   })
 })
 
+describe('rule text that rewrites the book', () => {
+  it('stands where the block it replaces stood, the old struck with its word before the new marked «Ändrat»', async () => {
+    await ownGame()
+    await openEditor()
+    ask('Skriv om översikten [regler-om]')
+    await within(panel()).findByRole('button', { name: 'Godta alla' })
+    expect(proposal().getAttribute('aria-label')).toBe('Förslag · 1 omskrivning i regelboken')
+    expect(proposal().textContent).toContain('Ersätter 1 block i boken')
+    expect(proposal().textContent).toContain('Kortet du drar tar du från Draghög.')
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Visa i regelboken' }))
+    await waitFor(() => expect(book().querySelectorAll('[data-ai]')).toHaveLength(3))
+    const marked = [...book().querySelectorAll<HTMLElement>('[data-ai]')]
+    expect(marked.map((el) => [el.dataset.block, el.dataset.ai])).toEqual([
+      ['b2', 'gone'],
+      ['b3', 'changed'],
+      ['b4', 'changed'],
+    ])
+    expect(marked[0]!.querySelector('.byd-rules-mark')!.textContent).toBe('Ersätts')
+    expect(marked[1]!.querySelector('.byd-rules-ai-mark')!.textContent).toContain('Ändrat')
+    expect(marked[2]!.querySelector('.byd-rules-ai-mark')).toBeNull()
+    expect(screen.getByText(/^AI-hjälpens förslag/).textContent).toContain('1 omskrivning i regelboken')
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Godta alla' }))
+    await waitFor(async () => expect(await logged()).toHaveLength(1))
+    await waitFor(() => expect(book().querySelector('[data-ai]')).toBeNull())
+    expect([...book().querySelectorAll('[data-block]')].map((el) => (el as HTMLElement).dataset.block)).toEqual(['b1', 'b3', 'b4'])
+    expect(proposal().textContent).toContain('Godtaget: 1 omskrivning i regelboken.')
+  })
+})
+
 describe('accepting rule text', () => {
   it('is one composite edit and one step back', async () => {
     await askForRules()

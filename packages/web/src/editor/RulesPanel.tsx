@@ -346,7 +346,8 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
         <h2>{t('rules.title')}</h2>
         {writing && <Modes mode={mode} onMode={setMode} />}
         {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
-        <span>{t(rules ? 'rules.hint' : 'rules.empty')}</span>
+        {/* While an AI proposal lies in the book nothing in it opens, and the band under says why (#1006). */}
+        {!ai && <span>{t(rules ? 'rules.hint' : 'rules.empty')}</span>}
         <Help topic={t('rules.help.topic')}>
           <p>{t('rules.help.reach')}</p>
           <p>{t('rules.help.names')}</p>
@@ -464,6 +465,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
           label={t('rules.toc')}
           {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
           {...(plan ? { marks: [...plan.sections, ...plan.subsections] } : {})}
+          {...(ai ? { marks: aiTocMarks(ai.entries) } : {})}
           {...(writing ? { onAdd: addSection } : proposal || rules || ai ? {} : { proposed: true })}
         />
         {/* The book is read in an area of its own, beside the column's and never inside it (#210).
@@ -888,6 +890,13 @@ function Modes({ mode, onMode }: { mode: Mode; onMode(next: Mode): void }) {
   )
 }
 
+// An AI proposal's marks as the column carries them (#1006), in the import's words: a heading it adds
+// is new, one it writes in place of something is rewritten, and one it replaces is going.
+const AI_TOC: Record<RuleEntry['mark'] & string, RulePlanSection['mark']> = { new: 'added', changed: 'changed', gone: 'going' }
+function aiTocMarks(entries: readonly RuleEntry[]): Pick<RulePlanSection, 'id' | 'mark'>[] {
+  return entries.flatMap((entry) => (entry.block.kind === 'heading' && entry.mark ? [{ id: entry.block.id, mark: AI_TOC[entry.mark] }] : []))
+}
+
 // Where a heading stands, so the column beside the book can point at it. Both ranks carry one:
 // `Block` has written an anchor on every heading since the book was first rendered.
 const anchorOf = (id: string): string => `rule-${id}`
@@ -915,7 +924,7 @@ function Toc({
   label: string
   onAdd?: (() => void) | undefined
   proposed?: boolean | undefined
-  marks?: readonly RulePlanSection[] | undefined
+  marks?: readonly Pick<RulePlanSection, 'id' | 'mark'>[] | undefined
   silent?: readonly string[] | undefined
   onFind?: ((id: string) => void) | undefined
 }) {

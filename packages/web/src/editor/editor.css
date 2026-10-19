@@ -4375,6 +4375,8 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-rulebook [data-ai='gone'] .byd-rules-mark { color: #9a3b3b; }
 .byd-rulebook [data-ai='gone'] :is(h2, h3, p, li) { color: #6f5f5f; text-decoration: line-through; }
 .byd-rules-ai-mark { display: inline-flex; align-items: center; gap: var(--byd-s1); margin-bottom: var(--byd-s1); padding: 0 var(--byd-s2); border-radius: 999px; background: #c9a7ff; color: #1c1530; font: 800 11px/16px system-ui, sans-serif; }
+.byd-rules-ai-mark:has(+ :is(h2, h3)) { margin-top: var(--byd-s4); }
+.byd-rules-ai-mark + :is(h2, h3) { margin-top: var(--byd-s1); }
 .byd-rules-ai { flex: none; margin: 0; color: #cfd5e3; font-size: 12px; }
 .byd-rules-ai button { margin-left: var(--byd-s1); border: 1px solid #3b414e; border-radius: 6px; padding: var(--byd-s1) var(--byd-s2); background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
 

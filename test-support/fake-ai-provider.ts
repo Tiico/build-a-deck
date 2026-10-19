@@ -34,7 +34,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // `[mall-trasig]` is the same template with its title past the card's right edge. `[regler]` (#1006)
 // proposes rule text: a section after the book's last block — a heading, a paragraph that names the
 // game's first zone as `[[zon:<id>]]`, read off the context's zone list, and a list — and
-// `[regler-trasig]` the same section naming `[[zon:finns-inte]]`, a zone no game has. Every proposal
+// `[regler-trasig]` the same section naming `[[zon:finns-inte]]`, a zone no game has, and `[regler-om]`
+// rewrites the book's last paragraph in its place, naming the same zone. Every proposal
 // writes `template`, null when it has none, and `rules`, empty when it has none, as the strict schema
 // has the model write every part.
 // Without one of those the answer is prose,
@@ -276,6 +277,7 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   if (proposing && (question.includes('[regler]') || question.includes('[regler-trasig]'))) {
     return propose(res, stream, anthropic, { cards: [], changes: [], rules: [rulesFor(contextOf(provider, body), question.includes('[regler-trasig]'))] }, how)
   }
+  if (proposing && question.includes('[regler-om]')) return propose(res, stream, anthropic, { cards: [], changes: [], rules: [rewriteFor(contextOf(provider, body))] }, how)
   if (proposing && (question.includes('[mall]') || question.includes('[mall-trasig]'))) {
     const context = contextOf(provider, body)
     return propose(res, stream, anthropic, { cards: asked ? cardsFor(context, Number(asked[1])) : [], changes: [], template: templateFor(context, question.includes('[mall-trasig]')) }, how)
@@ -332,6 +334,26 @@ function rulesFor(context: string, broken: boolean): FakeRules {
       { kind: 'heading', level: 1, text: 'Att dra kort' },
       { kind: 'text', text: `Börja din tur med att dra ett kort från [[zon:${broken ? 'finns-inte' : zone}]]. Har du inget kort kvar att dra, blandar du om kasthögen.` },
       { kind: 'list', ordered: false, items: ['Dra ett kort.', 'Spela **ett** kort eller passa.'] },
+    ],
+  }
+}
+
+// The book's last paragraph rewritten in its place (#1006): the block it stands under in the context,
+// replaced by two shorter paragraphs that name the game's first zone.
+function rewriteFor(context: string): FakeRules {
+  const zone = /^- .+ \[\[zon:([^\]]+)\]\]: /m.exec(context)?.[1] ?? 'draw'
+  const lines = context.split('\n')
+  const paragraph = lines.flatMap((line, i) => {
+    const id = /^\[block ([^\]]+)\]$/.exec(line)?.[1]
+    const next = lines[i + 1] ?? ''
+    return id && next !== '' && !/^(#|- |\d+\. |\[)/.test(next) ? [id] : []
+  })
+  return {
+    replace: paragraph.slice(-1),
+    after: null,
+    blocks: [
+      { kind: 'text', text: `Kortet du drar tar du från [[zon:${zone}]].` },
+      { kind: 'text', text: 'Du får aldrig ha fler än sju kort på handen.' },
     ],
   }
 }
