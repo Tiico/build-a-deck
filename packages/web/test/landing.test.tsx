@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
 import { pitchSeen } from '../src/account/pitch.js'
 import { startServer, type Running } from './fixture.js'
@@ -71,6 +71,8 @@ describe('the landing page at / (#1009)', () => {
     expect(pitchSeen()).toBe(false)
     render(<HomePage onNavigate={() => undefined} />)
     await landed()
-    expect(pitchSeen()).toBe(true)
+    // Marked by an effect after the page is drawn, so the heading being found is no promise the
+    // effect has run: on CI's runners it once had not. The test waits for what it asks about.
+    await waitFor(() => expect(pitchSeen()).toBe(true))
   })
 })
