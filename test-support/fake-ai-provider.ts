@@ -22,8 +22,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // a variant is chosen by with the first card's value — and streamed
 // a card at a time; `[sakta]` leaves 400 ms between two cards, so a person can watch them arrive;
 // `[oanvändbart]` proposes two, the second writing a column the game does not have; and `[kapat]`
-// stops half-way through the proposal, as an answer that ran out of tokens does. Without one of
-// those the answer is prose, as a model that chooses to answer in words gives it.
+// stops half-way through the proposal, as an answer that ran out of tokens does. `[ändra:2]` (#1003)
+// changes two cards — the first two the designer selected, or the deck's first two — giving each
+// title « II» and taking one off its first column of numbers, and streams each change as its own
+// part after the new cards. Without one of those the answer is prose, as a model that chooses to
+// answer in words gives it.
 //
 // The listener binds nothing itself: each package takes its ports out of its own band
 // (`listen-zero.ts`), so the caller makes the server and listens where its rules say.
@@ -150,12 +153,17 @@ const overloaded = (provider: Provider, res: ServerResponse) =>
 
 type Said = { role?: unknown; content?: unknown }
 // The last thing the designer said, and the game's name off the first line of the context.
-function questionOf(provider: Provider, body: unknown): { question: string; game: string } {
+// The cards the designer selected (#1003) stand before the question in the same message, under
+// «## Selected cards», with the question under «## Question»: the question is what follows that.
+function questionOf(provider: Provider, body: unknown): { question: string; game: string; selected: Record<string, unknown>[] } {
   const b = (body ?? {}) as { messages?: Said[]; input?: Said[]; system?: { text?: unknown }[]; instructions?: unknown }
   const turns = (provider === 'anthropic' ? b.messages : b.input) ?? []
   const last = turns.at(-1)?.content
+  const said = typeof last === 'string' ? last : ''
   const system = provider === 'anthropic' ? (b.system ?? []).map((s) => String(s.text ?? '')).join('\n') : String(b.instructions ?? '')
-  return { question: typeof last === 'string' ? last : '', game: /^# Game: (.+)$/m.exec(system)?.[1] ?? '?' }
+  const parts = /^## Selected cards\n([\s\S]*?)\n\n## Question\n([\s\S]*)$/.exec(said)
+  const selected = parts ? (parts[1] ?? '').split('\n').filter((line) => line.startsWith('{')).map((line) => JSON.parse(line) as Record<string, unknown>) : []
+  return { question: parts ? (parts[2] ?? '') : said, game: /^# Game: (.+)$/m.exec(system)?.[1] ?? '?', selected }
 }
 
 const event = (res: ServerResponse, name: string, data: unknown) => res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -165,7 +173,7 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   const key = keyOf(provider, req)
   fake.calls.push({ provider, path, key, version: (req.headers['anthropic-version'] as string | undefined) ?? null, body })
   if (refused(provider, key, req, res)) return
-  const { question, game } = questionOf(provider, body)
+  const { question, game, selected } = questionOf(provider, body)
   if (question.includes('[overloaded]')) return overloaded(provider, res)
   const stream: FakeAiStream = { provider, question, finished: false, closed: false }
   fake.streams.push(stream)
@@ -214,11 +222,14 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   }
   const proposing = anthropic ? Array.isArray((body as { tools?: unknown } | null)?.tools) : (body as { text?: { format?: { type?: unknown } } } | null)?.text?.format?.type === 'json_schema'
   const asked = /\[kort:(\d+)\]/.exec(question)
+  const changing = /\[ändra:(\d+)\]/.exec(question)
   const unusable = question.includes('[oanvändbart]')
-  if (proposing && (asked || unusable)) {
-    const cards = cardsFor(contextOf(provider, body), unusable ? 2 : Number(asked?.[1] ?? 1))
+  if (proposing && (asked || changing || unusable)) {
+    const context = contextOf(provider, body)
+    const cards = asked || unusable ? cardsFor(context, unusable ? 2 : Number(asked?.[1] ?? 1)) : []
     if (unusable) cards[1]?.fields.push({ field: 'trolldom', value: 'Okänd' })
-    return propose(res, stream, anthropic, cards, { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') })
+    const changes = changing ? changesFor(context, selected, Number(changing[1])) : []
+    return propose(res, stream, anthropic, { cards, changes }, { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') })
   }
   const words = `Du frågade: «${question}». Spelet heter ${game}.`.split(/(?= )/)
   // OpenAI answers inside its JSON when it may propose: the prose is the message, and there is no
@@ -247,6 +258,29 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
 }
 
 type FakeCard = { fields: { field: string; value: string | number | boolean }[] }
+type FakeChange = { card: string; fields: { field: string; value: string | number | boolean }[] }
+
+// Changes to the first `n` cards the designer selected, or to the first `n` cards of the deck when she
+// selected none (#1003): the title gets « II» after it, and the first column of numbers goes down by
+// one where the card has a number in it — a change of words and a change of a number, on every card.
+function changesFor(context: string, selected: Record<string, unknown>[], n: number): FakeChange[] {
+  const section = /## Fields\n([\s\S]*?)(?:\n\n|$)/.exec(context)?.[1] ?? ''
+  const number = section
+    .split('\n')
+    .map((line) => /^- ([^:]+): (\S+)/.exec(line))
+    .find((m) => m && m[1] !== 'antal' && m[2] === 'number')?.[1]
+  const deck = (/## Cards[^\n]*\n[^\n]*\n((?:\{.*\}\n?)+)/.exec(context)?.[1] ?? '')
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+  return (selected.length > 0 ? selected : deck).slice(0, n).map((card) => {
+    const fields: FakeChange['fields'] = []
+    if (typeof card['title'] === 'string') fields.push({ field: 'title', value: `${card['title']} II` })
+    const had = number === undefined ? NaN : Number(card[number])
+    if (number !== undefined && card[number] !== '' && card[number] !== undefined && Number.isFinite(had)) fields.push({ field: number, value: Math.max(0, had - 1) })
+    return { card: String(card['id']), fields }
+  })
+}
 
 function contextOf(provider: Provider, body: unknown): string {
   const b = (body ?? {}) as { system?: { text?: unknown }[]; instructions?: unknown }
@@ -278,13 +312,15 @@ function cardsFor(context: string, n: number): FakeCard[] {
 }
 
 // A proposal in the provider's own events: on Anthropic a sentence and then the tool's input as JSON
-// deltas, on OpenAI one JSON answer with the sentence inside it. Each card's JSON goes out in three
-// pieces, and the gap falls between two cards, so a card is whole a while before the next one is.
-async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boolean, cards: FakeCard[], how: { gap: number; cut: boolean }): Promise<void> {
+// deltas, on OpenAI one JSON answer with the sentence inside it. Each part's JSON goes out in three
+// pieces, and the gap falls between two parts, so a card is whole a while before the next one is.
+// The new cards come first and the changed ones after them (#1003), each list written whether it
+// has anything in it or not, as the strict schema has the model write it.
+async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boolean, proposal: { cards: FakeCard[]; changes: FakeChange[] }, how: { gap: number; cut: boolean }): Promise<void> {
   const open = () => !stream.closed && !res.destroyed
-  const sentence = `Här är ${cards.length} kort.`
+  const { cards, changes } = proposal
+  const sentence = changes.length === 0 ? `Här är ${cards.length} kort.` : cards.length === 0 ? `Här är ${changes.length} ändrade kort.` : `Här är ${cards.length} kort och ${changes.length} ändrade.`
   const pieces: string[] = []
-  const cardJson = cards.map((card) => JSON.stringify(card))
   const pause = () => new Promise((resolve) => setTimeout(resolve, how.gap))
   if (anthropic) {
     event(res, 'content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: sentence } })
@@ -299,8 +335,15 @@ async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boo
       ? event(res, 'content_block_delta', { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: text } })
       : event(res, 'response.output_text.delta', { type: 'response.output_text.delta', item_id: 'msg_fake', output_index: 0, content_index: 0, delta: text })
   for (const piece of pieces) send(piece)
-  for (const [i, json] of cardJson.entries()) {
+  // The parts in the order they are written, with what closes one list and opens the next between.
+  const written: { json: string; first: boolean }[] = [...cards.map((card, i) => ({ json: JSON.stringify(card), first: i === 0 })), ...changes.map((change, i) => ({ json: JSON.stringify(change), first: i === 0 }))]
+  let turned = false
+  for (const [i, { json, first }] of written.entries()) {
     if (!open()) return
+    if (i >= cards.length && !turned) {
+      send('],"changes":[')
+      turned = true
+    }
     if (how.cut && i === 1) {
       send(json.slice(0, Math.floor(json.length / 2)))
       if (anthropic) {
@@ -311,7 +354,7 @@ async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boo
       return void res.end()
     }
     const third = Math.ceil(json.length / 3)
-    const text = (i === 0 ? '' : ',') + json
+    const text = (first ? '' : ',') + json
     for (let at = 0; at < text.length; at += third) {
       send(text.slice(at, at + third))
       await new Promise((resolve) => setTimeout(resolve, 1))
@@ -319,6 +362,7 @@ async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boo
     await pause()
   }
   if (!open()) return
+  if (!turned) send('],"changes":[')
   send(anthropic ? ']}' : ']}}')
   if (anthropic) {
     event(res, 'content_block_stop', { type: 'content_block_stop', index: 1 })

@@ -328,3 +328,60 @@ describe('the ring on the chosen card survives the lift (#234, #332)', () => {
     expect(contrastRatio(seen.ring, beside)).toBeGreaterThanOrEqual(3)
   }, 60_000)
 })
+
+// An AI proposal on the wall (#1002, #1003): a ghost wears a dashed edge 6 px round it and a pill
+// 10 px over its top, a changed card a whole edge and the same pill, with old → new under it — and
+// the copies badge of the card above or beside hangs 6 px past that card's corner. At the wall's
+// old 12 px gaps the two met (#1002's screenshots); at every one of the wall's widths they must not,
+// and a card in a row made taller by a changed card's lines keeps its badge at its own corner.
+describe('a proposal on the wall leaves the neighbours’ badges alone (#1003)', () => {
+  // Every card has copies, so every neighbour wears a badge; the proposal changes one card and adds
+  // two after the deck's, which stand below and beside cards with badges.
+  const doc = () => {
+    const base = projectDoc()
+    const rows = [...base.rows, ...base.rows.map((r) => ({ ...r, id: `${r.id}-2` })), ...base.rows.map((r) => ({ ...r, id: `${r.id}-3` }))].map((r) => ({ ...r, fields: { ...r.fields, antal: 3 } }))
+    return { ...base, rows: [...rows, { id: 'ghost-1', fields: { title: 'Varg', body: 'Biter.', antal: 1 } }, { id: 'ghost-2', fields: { title: 'Räv', body: 'Smyger.', antal: 1 } }] }
+  }
+  const changed = new Map([['knight', [{ field: 'title', from: 'Riddare', to: 'Riddare II' }, { field: 'body', from: 'Sköld 1.', to: 'Sköld 2.' }]]])
+
+  for (const [step, px] of DENSITY.entries()) {
+    it(`keeps every ghost’s edge and pill clear of every badge at ${px} px`, async () => {
+      localStorage.setItem('byd.wall.density', String(step))
+      const { container, unmount } = render(<DeckWall doc={doc()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} proposed={new Set(['ghost-1', 'ghost-2'])} changed={changed} />)
+      const html = container.innerHTML
+      unmount()
+      localStorage.removeItem('byd.wall.density')
+      // Narrow enough that the wall breaks into several rows at every width.
+      const proposing = await browser.newPage({ viewport: { width: 760, height: 1400 } })
+      await proposing.setContent(document_(html), { waitUntil: 'load' })
+      const found = await proposing.evaluate(() => {
+        const box = (el: Element) => el.getBoundingClientRect()
+        const meet = (a: { left: number; top: number; right: number; bottom: number }, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+        const marked = [...document.querySelectorAll('.byd-wall-card:is([data-proposed], [data-changed])')]
+        const edges = marked.map((card) => {
+          const face = card.querySelector('.byd-wall-face')!
+          const style = getComputedStyle(face)
+          const reach = parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth)
+          const b = box(face)
+          return { left: b.left - reach, top: b.top - reach, right: b.right + reach, bottom: b.bottom + reach }
+        })
+        const pills = marked.map((card) => box(card.querySelector('.byd-wall-proposed')!))
+        const plain = [...document.querySelectorAll('.byd-wall-card:not([data-proposed]):not([data-changed])')]
+        const badges = plain.map((card) => box(card.querySelector('[data-copies]')!))
+        const astray = [...document.querySelectorAll('.byd-wall-card')].filter((card) => {
+          const badge = card.querySelector('[data-copies]')
+          if (!badge) return false
+          const face = box(card.querySelector('.byd-wall-face')!)
+          return box(badge).top > face.bottom || box(badge).bottom < face.bottom
+        }).length
+        return { marked: marked.length, badges: badges.length, hits: badges.filter((b) => edges.some((e) => meet(e, b)) || pills.some((p) => meet(p, b))).length, astray, rows: new Set(plain.map((c) => Math.round(box(c).top))).size }
+      })
+      await proposing.close()
+      expect(found.marked).toBe(3)
+      expect(found.badges).toBe(8)
+      expect(found.rows).toBeGreaterThan(1)
+      expect(found.hits).toBe(0)
+      expect(found.astray).toBe(0)
+    }, 60_000)
+  }
+})

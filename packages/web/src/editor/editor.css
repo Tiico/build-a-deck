@@ -4288,12 +4288,15 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 84px); gap: var(--byd-s3) var(--byd-s3); }
 .byd-ai-card { display: grid; gap: var(--byd-s1); align-content: start; min-width: 0; }
 .byd-ai-card-face { overflow: hidden; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
-.byd-ai-card-name { overflow: hidden; color: #c3cbdd; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+/* The name clips itself and not the line it stands in, so the focus ring round a tick beside it is
+   drawn whole (#1003). */
+.byd-ai-card-name { display: flex; align-items: center; gap: var(--byd-s1); min-width: 0; color: #c3cbdd; font-size: 12px; white-space: nowrap; }
+.byd-ai-card-name > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .byd-ai-checks { display: grid; gap: var(--byd-s1); padding-left: var(--byd-s2); border-left: 3px solid #f0b64a; }
 .byd-ai-checks p, .byd-ai-checks ul { margin: 0; }
 .byd-ai-checks ul { padding-left: var(--byd-s4); list-style: disc; }
 .byd-ai-decide { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
-.byd-ai-decide button { display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+.byd-ai-decide button { display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s2); border-radius: 8px; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
 .byd-ai-verdict { margin: 0; color: #c3cbdd; }
 .byd-ai-proposal[data-verdict='accepted'] .byd-ai-verdict { color: #7dd3a0; }
 /* The same proposal on the wall, among the deck's cards (#1002): a dashed edge in the panel's mark,
@@ -4301,3 +4304,40 @@ img[data-arriving] { opacity: 0; }
 .byd-wall-card[data-proposed] > .byd-wall-face { outline: 2px dashed #c9a7ff; outline-offset: var(--byd-s1); }
 .byd-wall-proposed { position: absolute; top: -10px; left: var(--byd-s1); z-index: 2; display: inline-flex; align-items: center; gap: var(--byd-s1); padding: 0 var(--byd-s2); border-radius: 999px; background: #c9a7ff; color: #1c1530; font-size: 11px; font-weight: 800; line-height: 20px; white-space: nowrap; pointer-events: none; }
 .byd-wall-proposed .byd-ai-spark { color: inherit; }
+/* Changed cards in the conversation (#1003): the card drawn with its new values, and beside it its
+   name and each changed cell as old → new — the value is what is judged, so it gets the room. */
+.byd-ai-card[data-changed] { grid-column: 1 / -1; }
+.byd-ai-new { display: grid; gap: var(--byd-s1); align-content: start; min-width: 0; }
+.byd-ai-change { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--byd-s3); align-items: start; }
+.byd-ai-change-text { display: grid; gap: var(--byd-s1); min-width: 0; }
+.byd-ai-cells { display: grid; gap: var(--byd-s1); }
+.byd-ai-card-ref { color: var(--byd-editor-quiet); font-size: 11px; overflow-wrap: anywhere; }
+.byd-ai-cell { color: var(--byd-ai-ink); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+/* «Välj delar…» (#1003): a way into the choice, drawn as a link above the three things to do with the
+   proposal; while the choice stands, each part is a label with its tick by its name, and a part left
+   out is drawn faint with its changes struck — its name stays readable, since it is what is ticked. */
+.byd-ai-choose { justify-self: start; min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-ai-mark); font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.byd-ai-choose:hover { color: #fff; }
+.byd-ai-chosen { display: flex; align-items: center; min-height: var(--byd-tap); margin: 0; color: #c3cbdd; font-size: 13px; }
+label:is(.byd-ai-new, .byd-ai-change) { cursor: pointer; }
+.byd-ai-card[data-left] .byd-ai-card-face { opacity: 0.35; }
+.byd-ai-card[data-left] .byd-ai-cell { color: var(--byd-editor-quiet); text-decoration: line-through; }
+.byd-ai-decide button[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
+/* A changed card on the wall (#1003): a whole edge in the panel's mark where a new one's is dashed —
+   it is the game's card, changed — «✦ Ändrat» on the same pill, and old → new under the card. */
+.byd-wall-card[data-changed] > .byd-wall-face { outline: 2px solid #c9a7ff; outline-offset: var(--byd-s1); }
+.byd-wall-changes { display: grid; gap: var(--byd-s1); max-width: var(--byd-wall-card); margin: var(--byd-s2) 0 0; padding: 0; list-style: none; color: #c9a7ff; font-size: 12px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+/* While a proposal stands on the wall its marks reach past the cards — the pill 10 px over a card's
+   top, the edge 6 px round it — and the copies badge of the card above or beside reaches 6 px past
+   that card's corner. The wall's gaps grow so that the two never meet, at every width (#1003). */
+/* A changed card's lines make its row taller than its neighbours, and a stretched neighbour would
+   carry its copies badge and its contact shadow down to the row's foot, away from its card, so the
+   cards stand at the top of their rows. */
+.byd-wall-deck[data-proposing] .byd-wall { gap: var(--byd-s5) var(--byd-s4); align-items: start; }
+/* An AI proposal's card in the table's comparison (#1003): a record, written as text, with the
+   proposal's own word by its key. */
+.byd-data td.byd-data-record { height: var(--byd-tap); padding: var(--byd-s1) var(--byd-data-cell-pad); color: #ddd; font-size: 12px; }
+.byd-data td.byd-data-record > .byd-data-was { padding: 0; }
+.byd-data td.byd-data-record > span { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
+.byd-data-proposed { display: inline-block; margin-left: var(--byd-s1); padding: 0 var(--byd-s1); border-radius: 999px; background: #c9a7ff; color: #1c1530; font-family: system-ui, sans-serif; font-size: 10px; font-weight: 800; }
+.byd-data tr[data-change='changed'][data-proposed] { --byd-data-tint: rgba(201, 167, 255, 0.08); }

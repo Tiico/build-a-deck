@@ -1504,6 +1504,31 @@ A2: det finns ännu ingen kvotkod i domänmodellen (abonnemangen står kvar i RO
 Godtagna kort är vanliga `addRow` i en sammansatt redigering, så ett tak på kort räknar dem som alla andra den dag det finns.
 «Välj delar…» (#1003) och raden som förfinar ett förslag (#1004) byggs inte här; förslaget hålls som sina delar så att ett urval blir ett filter över samma lista.
 
+Byggt 2026-10-19 (#1003): ändrade kort, urvalet som frågans kontext, gammalt → nytt på väggen och i Tabell, och «Välj delar…».
+Urvalet är det som redan finns, inte ett nytt grepp: kortet som är valt på väggen eller i tabellen, och raderna som är bockade i Tabell — samma markering som tabellens fot och Media arbetar på (#222).
+Det sägs först bland chippen, «valt: Duel» eller «2 markerade», och skickas som id:n som servern slår upp i sin egen kopia av spelet.
+De valda korten skrivs hela, varje kolumn med de tomma sagda som tomma och antalet alltid sagt, så att en fråga om dem gäller kort modellen läser varje fält av vad en stor leks kontext än lämnar ute (#1007).
+De står i frågans eget meddelande under «## Selected cards», före frågan under «## Question», och inte i spelets kontext: kontexten är den stora delen som leverantörerna cachar, och ett urval som byter mellan två frågor får inte flytta den.
+Förslaget har nu `changes` bredvid `cards`: ett kort spelet har, med sitt id, och bara fälten som ändras.
+Det strikta schemat kräver båda listorna, men läsaren tar ett svar utan `changes` som ett som inte ändrar något, så #1002:s form står kvar.
+Översättaren gör ändringarna till vanliga `setCell` i samma sammansatta redigering som de nya korten, och avvisar med skäl ett kort spelet inte har, samma kort två gånger, ett okänt fält eller id:t, ett bildfält, text utanför L2, ett antal som inte är ett helt tal från noll, att tömma ett fält mallen ritar på kortet, och ett värde som bryter kolumnen.
+Att bryta kolumnen är att skriva något annat än ett tal i en kolumn som bara har tal, eller annat än ja och nej i en kolumn av sådana: en kolumn bär ingen typ (L4), men den läses som sina värden, och ett ord i en talkolumn slutar sortera som tal; samma regel gäller nu nya kort.
+En cell som skrivs med det värde den redan har är ingen ändring och visas inte.
+En del av ett förslag är ett nytt kort, ett ändrat kort med alla sina ändrade celler, eller en mall tillsammans med de fält och värden den kräver; modellen bär alla tre, och den tredje fylls av #1005.
+Varje del bär sina redigeringar och ett namn som står still mellan två översättningar, ett nytt kort efter sin plats i förslaget, eftersom id:t det får beror på spelet och på vilka kort före det som lämnades.
+Ett urval är en mängd delar som lämnas, och översättningen med den ger exakt de valda delarnas redigeringar: ett nytt kort som lämnas tar inget id från dem efter det, och en lämnad del som inte går att använda fäller ändå hela förslaget, eftersom det är så det redan visades.
+Ett ändrat kort ritas i panelen med sina nya värden av den enda renderaren och med namn, id och varje ändrad cell som «kostnad: 3 → 2» bredvid; en lång text visar bara biten som ändrades med några ord runt.
+På väggen står det på sin egen plats med de nya värdena, en hel kant i panelens lavendel där ett nytt korts är streckad, «✦ Ändrat» på samma piller, och gammalt → nytt under kortet och utanför det, så att ringen för valt kort och brickan för antal förblir kortets.
+I Tabell visas samma förslag genom tabellens egen jämförelse, gammalt värde överstruket över det nya, men med förslagets ord: «AI-hjälpens förslag: …» och «Dölj förslaget», eftersom «Jämför med version 1» och «Sluta jämföra» inte betyder något för ett förslag.
+Ett kort förslaget ändrar eller lägger till står där som en post med «Ändrat» eller «Förslag» vid sin nyckel och inget att skriva i, tills förslaget är godtaget; varje annat kort skrivs i som vanligt, och tabellen håller fortfarande spelets egna rader, så ingen handling där kan råka skriva in förslaget.
+Panelens knapp säger «Visa i tabellen» när Tabell är öppen och lägger förslaget där i stället för att byta till väggen.
+«Välj delar…» är en länk över förslagets tre knappar och inte en fjärde i deras rad, så att «Godta alla» står kvar i mitten (L13).
+Den sätter en bock vid varje dels namn och flyttar tangentbordet till den första; en lämnad del ritas blek med sina ändringar överstrukna, och väggen visar bara det som skulle godtas.
+Medan valet står säger länkens plats «4 av 5 delar valda», och «Godta valda» tar «Godta alla»s plats, kantad som den; med ett räknetal i knappen bröt raden på engelska vid 380 px.
+Inget valt är inget att godta: knappen är avstängd och tar inget tryck.
+Det godtagna är en sammansatt redigering med ett steg tillbaka som förut, och en bekräftelse före behövs inte (L9): ingenting försvinner som inte ångras med ett tryck.
+Medan ett förslag står på väggen växer väggens mellanrum till 24 px mellan raderna och 16 px mellan korten: pillret når 10 px över ett korts överkant och kanten 6 px runt det, och antalsbrickan på kortet ovanför eller bredvid når 6 px utanför sitt hörn, så vid 12 px möttes de (#1002:s skärmbilder), vid alla väggens sex bredder.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.

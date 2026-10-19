@@ -11,7 +11,7 @@ import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
-import { proposedRows, translated, type ProposalParts } from './proposals.js'
+import { proposalView, translated, type ProposalView, type ShownProposal } from './proposals.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
 import { revealThemeSection, ThemePanel } from './ThemePanel.js'
@@ -115,8 +115,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // An AI proposal laid on the wall among the deck's cards (#1002): its parts, translated against the
   // game as it stands every time the wall is drawn, so the ghosts take the ids the game has free now.
   // Held by what it was worked out from, so a wall drawn again over the same game draws the same cards.
-  const [ghosts, setGhosts] = useState<ProposalParts | null>(null)
-  const ghostWall = useRef<{ doc: ProjectDoc; parts: ProposalParts; wall: ProjectDoc; ids: ReadonlySet<string> } | null>(null)
+  // With the parts left out of it (#1003), which the wall and the table leave out as well.
+  const [ghosts, setGhosts] = useState<ShownProposal | null>(null)
+  const ghostWall = useRef<{ doc: ProjectDoc; shown: ShownProposal; view: ProposalView } | null>(null)
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
@@ -365,12 +366,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const shownWall = (() => {
     if (!ghosts) return null
     const had = ghostWall.current
-    if (had && had.doc === doc && had.parts === ghosts) return had
-    const read = translated(doc, ghosts)
+    if (had && had.doc === doc && had.shown === ghosts) return had.view
+    const read = translated(doc, ghosts.parts, ghosts.leave)
     if (!read.ok) return null
-    const rows = proposedRows(read.edits)
-    ghostWall.current = { doc, parts: ghosts, wall: { ...doc, rows: [...doc.rows, ...rows] }, ids: new Set(rows.map((r) => r.id)) }
-    return ghostWall.current
+    ghostWall.current = { doc, shown: ghosts, view: proposalView(doc, read) }
+    return ghostWall.current.view
   })()
   // A game this editor has just taken away is not a game that was lost (#738): it is on its way to
   // «Mina spel», and the server's word that it is gone is not said over it.
@@ -505,8 +505,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     wall: () => (
       <DeckWall
         key={wallMount}
-        doc={shownWall?.wall ?? doc}
-        proposed={shownWall?.ids}
+        doc={shownWall?.doc ?? doc}
+        proposed={shownWall?.added}
+        changed={shownWall?.changed}
         assetBase={http}
         motifs={deckMotifs}
         face="front"
@@ -617,6 +618,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
+        // An AI proposal shown in the table (#1003), through the same comparison in its own words.
+        proposal={shownWall ?? undefined}
+        onHideProposal={() => setGhosts(null)}
         onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
         onSelectRow={setRow}
@@ -992,10 +996,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             onLeave={(url, from) => leave(url, from)}
             onKeyGone={() => setAiKey(null)}
             over={mode === 'theme' || mode === 'tables'}
-            onShowOnWall={(parts) => {
-              setGhosts(parts)
-              if (parts) setStage('wall')
+            // Shown where the designer is when she is in Tabell, through the table's own comparison;
+            // anywhere else on the wall (#1003).
+            onShowOnWall={(shown) => {
+              setGhosts(shown)
+              if (shown && mode !== 'table') setStage('wall')
             }}
+            wallShown={ghosts !== null}
+            showsIn={mode === 'table' ? 'table' : 'wall'}
+            chosen={row}
             onAccept={(edits) => client.editTogether(edits, 'undo.what.proposal')}
           />
         )}

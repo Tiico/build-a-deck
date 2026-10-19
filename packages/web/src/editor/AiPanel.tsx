@@ -6,7 +6,9 @@ import { PROVIDER_NAMES, listAiModels, modelNameOf, readAiKey, type AiKey, type 
 import { askAi, type AskFailure, type AskTurn, type Asking } from './ai-ask.js'
 import type { EditIntent } from '@byd/server/doc'
 import { AiProposal, type ProposalVerdict } from './AiProposal.js'
-import { noParts, proposedRows, translated, withPart, type ProposalParts } from './proposals.js'
+import { noParts, translated, withPart, type ProposalParts, type ShownProposal } from './proposals.js'
+import { useMarked } from './marked.js'
+import { titleOfRow } from '@byd/server/doc'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 
 // The AI panel beside the editor's work (#1001, E4, #940 variant A): a conversation about the game,
@@ -66,9 +68,11 @@ function rememberOpen(open: boolean): void {
 type TurnState = 'waiting' | 'streaming' | 'done' | 'cancelled' | 'failed'
 // A proposal the answer brought (#1002): its parts as they arrived, whether it was cut off, and what
 // the designer did with it.
-type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: number }
+// `leave` is the parts the designer has left out with «Välj delar…» (#1003), and `choosing` whether the
+// choice stands open; `accepted` is what an accepted proposal added and changed.
+type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: { cards: number; changed: number }; leave: ReadonlySet<string>; choosing: boolean }
 type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure; proposal?: TurnProposal }
-const freshProposal = (): TurnProposal => ({ parts: noParts(), broken: false, verdict: null, accepted: 0 })
+const freshProposal = (): TurnProposal => ({ parts: noParts(), broken: false, verdict: null, accepted: { cards: 0, changed: 0 }, leave: new Set(), choosing: false })
 // The failures worth asking again about as they are: a pause, a busy provider, a broken line.
 const AGAIN: readonly AskFailure[] = ['rate-limit', 'overloaded', 'network', 'timeout', 'busy', 'offline']
 // The conversation the next question carries, in pairs: at most the last twenty (the server's own
@@ -92,13 +96,22 @@ export type AiPanelProps = {
   // #685), it takes none of their width, and what it covers is there again when it folds.
   over?: boolean
   // A proposal laid on the wall among the deck's cards, as ghosts that are not in the game, or taken
-  // off it with null (#1002). The panel keeps which proposal it is; the wall only draws it.
-  onShowOnWall?(parts: ProposalParts | null): void
+  // off it with null (#1002) — with the parts left out of it, which the wall leaves out too (#1003).
+  // The panel keeps which proposal it is; the wall and the table only draw it.
+  onShowOnWall?(shown: ShownProposal | null): void
+  // Whether a proposal stands on the wall at all: the table can take it off as well (#1003).
+  wallShown?: boolean
+  // Where showing a proposal shows it (#1003): the table shows it in its own comparison, and so the
+  // button says the table there.
+  showsIn?: 'wall' | 'table'
+  // The card chosen on the wall or in the table (#1003): with the rows ticked in Tabell, the cards
+  // the question is about, sent with it.
+  chosen?: string | null
   // An accepted proposal, as the edits it is: applied as one (#1002).
   onAccept?(edits: readonly EditIntent[]): void
 }
 
-export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone, over = false, onShowOnWall, onAccept }: AiPanelProps) {
+export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone, over = false, onShowOnWall, onAccept, wallShown = true, showsIn = 'wall', chosen = null }: AiPanelProps) {
   const t = useT()
   const { lang } = useLang()
   // Without a key it always starts folded: the editor is to look as it did (PRD 9), whatever the
@@ -108,8 +121,13 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
   const [draft, setDraft] = useState('')
   const asking = useRef<{ id: number; asking: Asking } | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
-  // Which turn's proposal stands on the wall, if any.
-  const [wallTurn, setWallTurn] = useState<number | null>(null)
+  // Which turn's proposal stands on the wall, if any — for as long as the editor still shows it.
+  const [wallTurnHeld, setWallTurn] = useState<number | null>(null)
+  const wallTurn = wallShown ? wallTurnHeld : null
+  // The cards selected in the editor (#1003): the one chosen on the wall or in the table, and the
+  // rows ticked in Tabell — the same marking the bulk editor works on (#222). In the deck's order.
+  const [marked] = useMarked()
+  const selected = doc.rows.filter((row) => row.id === chosen || marked.has(row.id))
   const next = useRef(1)
   const field = useRef<HTMLTextAreaElement>(null)
   const profileLink = useRef<HTMLAnchorElement>(null)
@@ -181,7 +199,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
       if (asking.current?.id === id) asking.current = null
       setBusy((now) => (now === id ? null : now))
     }
-    const call = askAi(http, project, { question, turns: history, lang }, (event) => {
+    const call = askAi(http, project, { question, turns: history, lang, ...(selected.length > 0 ? { selected: selected.map((row) => row.id) } : {}) }, (event) => {
       if (event.t === 'text') update(id, (turn) => ({ ...turn, answer: turn.answer + event.text, state: 'streaming' }))
       else if (event.t === 'part') {
         update(id, (turn) => {
@@ -234,20 +252,30 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     if (!turn.proposal) return
     if (wallTurn === turn.id) return offWall(turn.id)
     setWallTurn(turn.id)
-    onShowOnWall?.(turn.proposal.parts)
+    onShowOnWall?.({ parts: turn.proposal.parts, leave: turn.proposal.leave })
   }
-  // Accepted against the game as it stands at this moment: what lands is what the game takes now.
-  const accept = (turn: Turn) => {
+  // A part ticked or left (#1003): the wall, when it shows this proposal, shows the choice with it.
+  const choose = (turn: Turn, key: string) => {
+    if (!turn.proposal) return
+    const leave = new Set(turn.proposal.leave)
+    if (leave.has(key)) leave.delete(key)
+    else leave.add(key)
+    setProposal(turn.id, (proposal) => ({ ...proposal, leave }))
+    if (wallTurn === turn.id) onShowOnWall?.({ parts: turn.proposal.parts, leave })
+  }
+  // Accepted against the game as it stands at this moment: what lands is what the game takes now —
+  // the whole proposal, or the parts left ticked (#1003), and never nothing.
+  const accept = (turn: Turn, chosenOnly: boolean) => {
     if (!turn.proposal || !onAccept) return
-    const read = translated(doc, turn.proposal.parts)
-    if (!read.ok) return
+    const read = translated(doc, turn.proposal.parts, chosenOnly ? turn.proposal.leave : undefined)
+    if (!read.ok || read.edits.length === 0) return
     onAccept(read.edits)
-    const accepted = proposedRows(read.edits).length
-    setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'accepted', accepted }))
+    const accepted = { cards: read.parts.filter((p) => p.kind === 'card').length, changed: read.parts.filter((p) => p.kind === 'change').length }
+    setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'accepted', accepted, choosing: false }))
     offWall(turn.id)
   }
   const discard = (turn: Turn) => {
-    setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'discarded' }))
+    setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'discarded', choosing: false }))
     offWall(turn.id)
   }
 
@@ -280,7 +308,9 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
   }
 
   const parts = aiContextParts(doc)
-  const chips = [t(parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
+  // The selected cards are said first, since they are what the question is about (#1003).
+  const picked = selected.length === 1 && selected[0] ? [t('ai.sent.chosen', { name: titleOfRow(selected[0]) || selected[0].id })] : selected.length > 1 ? [t('ai.sent.marked', { n: selected.length })] : []
+  const chips = [...picked, t(parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
   const model = aiKey ? modelNameOf(models, aiKey.model ?? aiKey.defaultModel) : ''
 
   return (
@@ -372,10 +402,16 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
                     done={turn.state === 'done'}
                     broken={turn.proposal.broken}
                     verdict={turn.proposal.verdict}
-                    acceptedCards={turn.proposal.accepted}
+                    accepted={turn.proposal.accepted}
                     onWall={wallTurn === turn.id}
+                    showsIn={showsIn}
                     onShow={() => showOnWall(turn)}
-                    onAccept={() => accept(turn)}
+                    onAccept={() => accept(turn, false)}
+                    choosing={turn.proposal.choosing}
+                    leave={turn.proposal.leave}
+                    onChoose={() => setProposal(turn.id, (proposal) => ({ ...proposal, choosing: true }))}
+                    onToggle={(key) => choose(turn, key)}
+                    onAcceptChosen={() => accept(turn, true)}
                     onDiscard={() => discard(turn)}
                     onAgain={busy === null ? () => again(turn) : undefined}
                   />

@@ -1,3 +1,5 @@
+import type { ChangedCell } from '@byd/server/proposal'
+import { cellLine } from './proposals.js'
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import { oversetOf, type FitReport, type Motif, type Warning } from '@byd/template'
@@ -58,6 +60,10 @@ export type DeckWallProps = {
   // that are not in the game. They are drawn as the deck's cards are, by the one renderer, marked
   // «Förslag», and are nothing to choose — there is no row to open until they are accepted.
   proposed?: ReadonlySet<string> | undefined
+  // The cards of the game an AI proposal changes (#1003), with what each changed cell was and
+  // becomes: drawn in their own places with the values they would have, marked «Ändrat», and with
+  // old → new under them. They are still the game's cards, and are chosen as ever.
+  changed?: ReadonlyMap<string, readonly ChangedCell[]> | undefined
 }
 
 export type WallView = { filter: FilterState; eye: string; scrollTop: number }
@@ -91,7 +97,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -159,12 +165,12 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // A proposal laid on the wall is brought into view (#1002): its cards stand at the end of their
   // bands, and on a deck of seventy cards that is screens away from where the designer is reading —
   // a press that changes nothing she can see reads as a press that did nothing.
-  const proposedKey = proposed ? [...proposed].join(' ') : ''
+  const proposedKey = [...(proposed ?? []), ...(changed?.keys() ?? [])].join(' ')
   const ghosts = proposed?.size ?? 0
   const own = doc.rows.length - ghosts
   useLayoutEffect(() => {
     if (!proposedKey) return
-    deckRef.current?.querySelector('[data-proposed]')?.scrollIntoView?.({ block: 'center' })
+    deckRef.current?.querySelector('[data-proposed], [data-changed]')?.scrollIntoView?.({ block: 'center' })
   }, [proposedKey])
   const sections = useRef(new Map<string, HTMLElement>())
   // Where a jump from the table of contents will come to rest, for as long as it is on its way.
@@ -291,11 +297,12 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     const count = warnings[cardRef] ?? 0
     const roves = cards.itemProps(cardRef)
     const ghost = proposed?.has(cardRef) === true
+    const cells = changed?.get(cardRef)
     // A proposed card is not the game's: choosing it chooses nothing.
     const choose = (to: string | null) => {
       if (!ghost) onSelectRow(to)
     }
-    return (
+    const option = (
       <div
         key={cardRef}
         // An option in a listbox (#477): the one role in which being chosen is `aria-selected`, and
@@ -310,6 +317,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         aria-selected={selectedRow === cardRef && !ghost ? 'true' : 'false'}
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
         {...(ghost ? { 'data-proposed': '', 'aria-label': t('ai.proposal.ghost.label', { name: titleOfRow({ id: cardRef, fields: row }) || cardRef }) } : {})}
+        {...(cells ? { 'data-changed': '', 'aria-label': t('ai.proposal.changed.label', { name: titleOfRow({ id: cardRef, fields: { ...row, ...Object.fromEntries(cells.map((c) => [c.field, c.from ?? ''])) } }) || cardRef, cells: cells.map((c) => cellLine(c, t)).join(', ') }) } : {})}
         // The gesture that chose a card, made again, lets it go (beslut 2026-09-27, #477 fynd 3 C).
         onClick={() => choose(selectedRow === cardRef ? null : cardRef)}
         onKeyDown={(event) => {
@@ -363,9 +371,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* Over the card and outside its paper, which is cut to its corners (#808). */}
         <OversetMarks found={oversetOf(faceTemplate, row, cut[cardRef] ?? [])} scale={px / CARD_PX} />
         {reading && smallest[cardRef] !== undefined && <ReadOut sizePt={smallest[cardRef]} view={reading.view} lang={lang} t={t} />}
-        {ghost && (
+        {(ghost || cells) && (
           <span className="byd-wall-proposed" aria-hidden="true">
-            <span className="byd-ai-spark">✦</span> {t('ai.proposal.ghost')}
+            <span className="byd-ai-spark">✦</span> {t(ghost ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}
           </span>
         )}
         {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
@@ -374,6 +382,21 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             {count}
           </span>
         )}
+      </div>
+    )
+    if (!cells) return option
+    // What the proposal changes on the card, old → new, under it (#1003): the card itself shows only
+    // the new. Under the card and outside it, so the ring that says the card is chosen and the badge
+    // that says how many copies it has stay the card's — a cell round both, which is nothing to the
+    // listbox (`none`), holds the two in the wall's grid.
+    return (
+      <div key={cardRef} className="byd-wall-cell" role="none">
+        {option}
+        <ul className="byd-wall-changes" aria-hidden="true">
+          {cells.map((cell) => (
+            <li key={cell.field}>{cellLine(cell, t)}</li>
+          ))}
+        </ul>
       </div>
     )
   }
@@ -603,6 +626,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           style={{ ['--byd-wall-card' as string]: `${px}px`, ['--byd-wall-radius' as string]: `${cornerPx(px)}px` }}
           {...(trim ? { 'data-trim': 'true' } : {})}
           {...(arm ? { 'data-arm': 'true' } : {})}
+          // A proposal on the wall marks its cards over their top edges and says old → new under
+          // them, so the wall leaves room between its cards while one stands on it (#1003).
+          {...(proposedKey ? { 'data-proposing': '' } : {})}
         >
           {/* What an empty game is missing, and the doors to it (#476, beslut 2026-09-27, variant A).
               A deck with no cards says so and offers the first card here and the front in Mall;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Template } from '@byd/template'
 import { applyEdit, type EditIntent } from '../src/edits.js'
-import { Proposal, proposalSchema, translateProposal } from '../src/proposal.js'
+import { Proposal, proposalSchema, translateProposal, type ProposalPart } from '../src/proposal.js'
 import { twoSeatSetup } from './fixture.js'
 import type { ProjectDoc } from '../src/projects.js'
 
@@ -48,7 +48,7 @@ describe('a proposal of new cards becomes the edits that add them', () => {
     const translated = translateProposal(doc(), {
       cards: [card({ title: 'Varg', body: 'Biter. {svärd|kostnad} {2}', typ: 'monster', antal: 3 }), card({ title: 'Marknad', body: '**Köp** ett kort.', typ: 'butik', pris: 2, fraktion: 'Staden', antal: '1' })],
     })
-    expect(translated).toEqual({
+    expect(translated).toMatchObject({
       ok: true,
       edits: [
         { v: 'addRow', cardRef: 'kort-3', fields: { title: 'Varg', body: 'Biter. {svärd|kostnad} {2}', typ: 'monster', antal: 3 } },
@@ -119,11 +119,138 @@ describe('a proposal that cannot be used is refused, and says why', () => {
   })
 })
 
+const change = (cardRef: string, fields: Record<string, string | number | boolean>) => ({ card: cardRef, fields: Object.entries(fields).map(([field, value]) => ({ field, value })) })
+
+describe('a proposal of changed cards becomes the edits that change them (#1003)', () => {
+  it('writes each changed cell with an ordinary setCell, and says what each cell was and becomes', () => {
+    const translated = translateProposal(doc(), { cards: [], changes: [change('kort-2', { pris: 2, body: 'Säljer billigt.' }), change('kort-1', { antal: 3 })] })
+    expect(translated).toMatchObject({
+      ok: true,
+      edits: [
+        { v: 'setCell', cardRef: 'kort-2', field: 'pris', value: 2 },
+        { v: 'setCell', cardRef: 'kort-2', field: 'body', value: 'Säljer billigt.' },
+        { v: 'setCell', cardRef: 'kort-1', field: 'antal', value: 3 },
+      ],
+    })
+    expect(translated.ok && translated.parts).toEqual([
+      { kind: 'change', key: 'change:kort-2', cardRef: 'kort-2', cells: [{ field: 'pris', from: 3, to: 2 }, { field: 'body', from: 'Säljer.', to: 'Säljer billigt.' }], edits: [{ v: 'setCell', cardRef: 'kort-2', field: 'pris', value: 2 }, { v: 'setCell', cardRef: 'kort-2', field: 'body', value: 'Säljer billigt.' }] },
+      { kind: 'change', key: 'change:kort-1', cardRef: 'kort-1', cells: [{ field: 'antal', from: 2, to: 3 }], edits: [{ v: 'setCell', cardRef: 'kort-1', field: 'antal', value: 3 }] },
+    ])
+  })
+
+  it('leaves out a cell that would be written with the value it already has, and a change that changes nothing', () => {
+    const translated = translateProposal(doc(), { cards: [], changes: [change('kort-2', { pris: 3, body: 'Säljer mer.' }), change('kort-1', { title: 'Drake' })] })
+    expect(translated.ok && translated.edits).toEqual([{ v: 'setCell', cardRef: 'kort-2', field: 'body', value: 'Säljer mer.' }])
+    expect(translateProposal(doc(), { cards: [], changes: [change('kort-1', { title: 'Drake' })] })).toEqual({ ok: false, problem: { kind: 'empty' } })
+  })
+
+  it('holds new and changed cards side by side, each a part of its own', () => {
+    const translated = translateProposal(doc(), { cards: [card({ title: 'Varg', body: 'Biter.', antal: 1 })], changes: [change('kort-1', { body: 'Flyger högt.' })] })
+    expect(translated.ok && translated.parts.map((p) => [p.kind, p.key])).toEqual([
+      ['card', 'card:1'],
+      ['change', 'change:kort-1'],
+    ])
+    expect(translated.ok && translated.parts[0]).toMatchObject({ kind: 'card', cardRef: 'kort-3', fields: { title: 'Varg', body: 'Biter.', antal: 1 } })
+  })
+
+  it('still reads a proposal of new cards alone, as #1002 wrote it', () => {
+    expect(translateProposal(doc(), { cards: [card({ title: 'Varg', body: 'Biter.', antal: 1 })] }).ok).toBe(true)
+  })
+})
+
+describe('a chosen part of a proposal is exactly those parts (#1003, «Välj delar…»)', () => {
+  const proposal = () => ({
+    cards: [card({ title: 'Varg', body: 'Biter.', antal: 1 }), card({ title: 'Räv', body: 'Smyger.', antal: 1 }), card({ title: 'Lo', body: 'Väntar.', antal: 2 })],
+    changes: [change('kort-1', { body: 'Flyger högt.' }), change('kort-2', { pris: 2 })],
+  })
+
+  it('leaves out the parts left out, and gives the new cards it keeps the next free ids in order', () => {
+    const translated = translateProposal(doc(), proposal(), new Set(['card:1', 'change:kort-2']))
+    expect(translated.ok && translated.edits).toEqual([
+      { v: 'addRow', cardRef: 'kort-3', fields: { title: 'Räv', body: 'Smyger.', antal: 1 } },
+      { v: 'addRow', cardRef: 'kort-4', fields: { title: 'Lo', body: 'Väntar.', antal: 2 } },
+      { v: 'setCell', cardRef: 'kort-1', field: 'body', value: 'Flyger högt.' },
+    ])
+    expect(translated.ok && translated.parts.map((p) => p.key)).toEqual(['card:2', 'card:3', 'change:kort-1'])
+  })
+
+  it('applied as one composite edit, gives the deck exactly the chosen parts', () => {
+    const translated = translateProposal(doc(), proposal(), new Set(['card:3', 'change:kort-1']))
+    if (!translated.ok) throw new Error('refused')
+    const after = applyEdit(doc(), { v: 'compound', edits: translated.edits })
+    expect(after.rows.map((r) => [r.id, r.fields['title'], r.fields['body'], r.fields['pris']])).toEqual([
+      ['kort-1', 'Drake', 'Flyger. {mynt}', ''],
+      ['kort-2', 'Bod', 'Säljer.', 2],
+      ['kort-3', 'Varg', 'Biter.', undefined],
+      ['kort-4', 'Räv', 'Smyger.', undefined],
+    ])
+  })
+
+  it('still refuses the whole proposal when a part left out could not be used', () => {
+    const bad = { ...proposal(), changes: [change('kort-9', { body: 'Ny.' })] }
+    expect(translateProposal(doc(), bad, new Set(['change:kort-9']))).toMatchObject({ ok: false, problem: { kind: 'unknown-card', changed: 'kort-9' } })
+  })
+})
+
+describe('a changed card that cannot be used is refused, and says why (#1003)', () => {
+  const refused = (changes: ReturnType<typeof change>[]) => {
+    const translated = translateProposal(doc(), { cards: [], changes })
+    if (translated.ok) throw new Error('the proposal was taken')
+    return translated.problem
+  }
+
+  it('refuses a card the game does not have, and the same card changed twice', () => {
+    expect(refused([change('kort-9', { body: 'Ny.' })])).toEqual({ kind: 'unknown-card', changed: 'kort-9' })
+    expect(refused([change('kort-1', { body: 'Ny.' }), change('kort-1', { title: 'Lindorm' })])).toEqual({ kind: 'repeated-card', changed: 'kort-1', title: 'Drake' })
+  })
+
+  it('refuses a field the game does not have, its key, a picture, and a field written twice', () => {
+    expect(refused([change('kort-1', { trolldom: 3 })])).toEqual({ kind: 'unknown-field', changed: 'kort-1', title: 'Drake', field: 'trolldom' })
+    expect(refused([change('kort-1', { id: 'drake' })])).toMatchObject({ kind: 'unknown-field', field: 'id' })
+    expect(refused([change('kort-1', { bild: 'drake.png' })])).toEqual({ kind: 'picture-field', changed: 'kort-1', title: 'Drake', field: 'bild' })
+    expect(refused([{ card: 'kort-1', fields: [{ field: 'body', value: 'A.' }, { field: 'body', value: 'B.' }] }])).toEqual({ kind: 'repeated-field', changed: 'kort-1', title: 'Drake', field: 'body' })
+  })
+
+  it('refuses text outside the card text syntax (L2), and a symbol or meaning the game does not have', () => {
+    expect(refused([change('kort-1', { body: '<b>Flyger</b>' })])).toEqual({ kind: 'bad-syntax', changed: 'kort-1', title: 'Drake', field: 'body' })
+    expect(refused([change('kort-1', { body: 'Kostar {guld}.' })])).toEqual({ kind: 'unknown-icon', changed: 'kort-1', title: 'Drake', field: 'body', icon: 'guld' })
+    expect(refused([change('kort-1', { body: 'Kostar {mynt|vinst}.' })])).toEqual({ kind: 'unknown-role', changed: 'kort-1', title: 'Drake', field: 'body', role: 'vinst' })
+  })
+
+  it('refuses a value that breaks its column: a word in a column of numbers', () => {
+    expect(refused([change('kort-2', { pris: 'billig' })])).toEqual({ kind: 'wrong-kind', changed: 'kort-2', title: 'Bod', field: 'pris', column: 'number' })
+    // A number written as text is still a number.
+    expect(translateProposal(doc(), { cards: [], changes: [change('kort-2', { pris: '4' })] }).ok).toBe(true)
+  })
+
+  it('refuses a count that is not a whole number from nought', () => {
+    for (const antal of ['två', -1, 1.5, '']) expect(refused([change('kort-1', { antal })]), String(antal)).toEqual({ kind: 'bad-count', changed: 'kort-1', title: 'Drake' })
+  })
+
+  it('refuses emptying a field the template draws on that card', () => {
+    expect(refused([change('kort-2', { pris: '' })])).toEqual({ kind: 'empty-field', changed: 'kort-2', title: 'Bod', field: 'pris' })
+    // A monster draws no price, so emptying it is nothing the card shows.
+    expect(translateProposal(doc(), { cards: [], changes: [change('kort-1', { fraktion: 'Bergen' })] }).ok).toBe(true)
+  })
+})
+
+describe('the parts a proposal can hold (#1003, PRD module 4)', () => {
+  it('names three kinds — a new card, a changed card, and a template with the fields and values it needs — though only two are proposed yet', () => {
+    const kinds: ProposalPart['kind'][] = ['card', 'change', 'template']
+    const template: ProposalPart = { kind: 'template', key: 'template:front', face: 'front', fields: ['kostnad'], edits: [] }
+    expect(kinds).toContain(template.kind)
+  })
+})
+
 describe('the schema the provider is held to', () => {
   it('is the same zod schema the answer is read with, written as strict JSON Schema', () => {
     const schema = proposalSchema()
     expect(schema).not.toHaveProperty('$schema')
-    expect(schema).toMatchObject({ type: 'object', additionalProperties: false, required: ['cards'] })
+    expect(schema).toMatchObject({ type: 'object', additionalProperties: false, required: ['cards', 'changes'] })
+    // Strict modes read no defaults; a part the model has nothing for is an empty list it writes.
+    expect(JSON.stringify(schema)).not.toContain('"default"')
+    const changes = (schema as { properties: { changes: { items: { additionalProperties: boolean; required: string[] } } } }).properties.changes
+    expect(changes.items).toMatchObject({ additionalProperties: false, required: ['card', 'fields'] })
     const cards = (schema as { properties: { cards: { items: { additionalProperties: boolean; required: string[] } } } }).properties.cards
     expect(cards.items).toMatchObject({ additionalProperties: false, required: ['fields'] })
     // A value of several types is said as `anyOf`, which both providers' strict modes read, and

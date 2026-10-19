@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aiContextOf, aiContextParts, AI_INSTRUCTIONS } from '../src/ai-context.js'
+import { aiContextOf, aiContextParts, aiSelectionOf, AI_INSTRUCTIONS } from '../src/ai-context.js'
 import type { ProjectDoc } from '../src/projects.js'
 import { spelkortDoc } from '../scripts/spelkort.js'
 
@@ -102,5 +102,43 @@ describe('the context the model is given', () => {
     expect(AI_INSTRUCTIONS).toMatch(/HTML/)
     // The panel draws the card text's own subset (L2), so the answer is asked for in it.
     expect(AI_INSTRUCTIONS).toMatch(/No headings, tables/)
+  })
+})
+
+// The cards the designer has selected (#1003): sent with her question and always whole, so that
+// «sänk kostnaden på de här» is about cards the model can read every field of, however large the
+// deck — the summarising a large deck will get (#1007) never touches them.
+describe('the selected cards', () => {
+  it('are written whole, every field — the empty ones too — and the count, in the deck’s order', () => {
+    const doc = game()
+    doc.rows[1]!.fields['body'] = ''
+    const [a, b] = [doc.rows[0]!, doc.rows[1]!]
+    const text = aiSelectionOf(doc, [b.id, 'gone', a.id])!
+    expect(text).toMatch(/^## Selected cards/)
+    expect(text).toMatch(/these/)
+    const lines = text.split('\n').filter((line) => line.startsWith('{')).map((line) => JSON.parse(line) as Record<string, unknown>)
+    expect(lines.map((card) => card['id'])).toEqual([a.id, b.id])
+    expect(lines[1]).toMatchObject({ id: b.id, body: '' })
+    expect(typeof lines[1]!['antal']).toBe('number')
+    expect(lines[0]).toMatchObject({ antal: 3 })
+    for (const field of Object.keys(b.fields)) expect(lines[1]).toHaveProperty(field)
+  })
+
+  it('are nothing at all when nothing the deck has is selected', () => {
+    expect(aiSelectionOf(game(), [])).toBeNull()
+    expect(aiSelectionOf(game(), ['gone'])).toBeNull()
+  })
+
+  it('are the same bytes for the same game and the same cards, whatever order they were selected in', () => {
+    const doc = game()
+    const ids = doc.rows.slice(0, 3).map((r) => r.id)
+    expect(aiSelectionOf(doc, ids)).toBe(aiSelectionOf(doc, [...ids].reverse()))
+  })
+})
+
+describe('what the model is told about changing cards (#1003)', () => {
+  it('says a change names a card the game has and writes only the fields that change', () => {
+    expect(AI_INSTRUCTIONS).toMatch(/changes/)
+    expect(AI_INSTRUCTIONS).toMatch(/only the fields that change/i)
   })
 })

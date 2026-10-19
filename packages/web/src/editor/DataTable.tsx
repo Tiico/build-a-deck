@@ -25,6 +25,7 @@ import { groundOf } from './palette.js'
 import { pickOptionId, triggerBehind } from './picking.js'
 import { DOC_PARTS, diffProjects, type DocDiff, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
+import type { ProposalView } from './proposals.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState, cellOf } from './sorting.js'
@@ -96,6 +97,13 @@ export type DataTableProps = {
   // cards that came or went are shown as rows.
   compareWith?: { rev: number; label?: string | undefined; doc: ProjectDoc } | undefined
   onStopCompare?: (() => void) | undefined
+  // An AI proposal held against the deck (#1003): the same comparison as a version's, with the deck
+  // as it stands as the old and the proposal as the new, said in the proposal's own words — «Jämför
+  // med version 1» and «Sluta jämföra» mean nothing for a proposal. A card it changes or adds is a
+  // record to look at, with nothing in it to write in, until the proposal is accepted; every other
+  // card is written in as ever. It stands in place of a version's comparison while it is shown.
+  proposal?: ProposalView | undefined
+  onHideProposal?: (() => void) | undefined
   // The way to the template tab, offered when a comparison's whole difference is in the template.
   onOpenTemplate?: (() => void) | undefined
 }
@@ -203,7 +211,9 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare, onOpenTemplate, reading = false }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith: versionCompare, onStopCompare, proposal, onHideProposal, onOpenTemplate, reading = false }: DataTableProps) {
+  // A proposal shown in the table takes the comparison's place (#1003).
+  const compareWith = proposal ? undefined : versionCompare
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -1146,6 +1156,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     if (row) of(row)?.focus()
   }
   const goneShown = isFiltering(asked) ? filterRows(goneRows, columns, asked) : goneRows
+  // The cards a shown proposal adds (#1003), after the deck's, asked the same question as every card.
+  const addedRows = proposal ? proposal.doc.rows.filter((r) => proposal.added.has(r.id)) : []
+  const addedShown = isFiltering(asked) ? filterRows(addedRows, columns, asked) : addedRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
   const chosen = shown.filter((row) => selected.has(row.id))
@@ -1361,6 +1374,16 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           <span className="byd-data-said" role="status">{said ?? ''}</span>
         </div>
       )}
+      {proposal && (
+        <p className="byd-data-compare" role="status" data-proposal="">
+          {t('table.proposal')}: <Summary diff={diffProjects(doc, proposal.doc)} />{' '}
+          {onHideProposal && (
+            <button type="button" onClick={onHideProposal}>
+              {t('table.proposal.hide')}
+            </button>
+          )}
+        </p>
+      )}
       {compareWith && diff && (
         <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
@@ -1522,7 +1545,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           </tr>
         </thead>
         <tbody>
-          {shown.map(({ id: cardRef, fields: row }) => (
+          {shown.map(({ id: cardRef, fields: row }) =>
+            proposal?.changed.has(cardRef) ? (
+              <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={selected.has(cardRef)} onMark={() => setSelected(toggleRow(selected, cardRef))} />
+            ) : (
             <tr
               key={cardRef}
               data-card-ref={cardRef}
@@ -1772,6 +1798,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 </button>
               </td>
             </tr>
+            ),
+          )}
+          {addedShown.map(({ id: cardRef, fields: row }) => (
+            <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="added" was={null} now={row} />
           ))}
                   {/* A card gone since the version compared with is a record of what it was (#479, B4):
               its values as text and struck through, with nothing on it to write in, tick or press
@@ -2217,4 +2247,38 @@ function CompareSummary({ diff }: { diff: DocDiff }) {
   if (!noCardDiffers(diff) || parts.length === 0 || diff.name) return <Summary diff={diff} />
   const where = parts.reduce((said, part, i) => (i === 0 ? part : i === parts.length - 1 ? `${said}${t('table.compare.and')}${part}` : `${said}, ${part}`), '')
   return <>{t('table.compare.noCards', { where })}</>
+}
+
+// A card an AI proposal changes or adds, as the comparison shows it (#1003): a record to look at, in
+// the form a version's comparison already draws — a changed cell's value as it stands struck over
+// the value the proposal gives it, and a new card tinted as an added one — with nothing in it to
+// write in, tick or press, since what it shows is not in the deck until the proposal is accepted.
+// The proposal's own word for it stands by its key.
+// A changed card is still the game's card, so its tick stays — the marking is a view of the deck
+// (L4) and may well be what the question was about — while a new one has no row to tick.
+function ProposedRow({ cardRef, fields, grouping, change, was, now, marked, onMark }: { cardRef: string; fields: readonly string[]; grouping: boolean; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: boolean; onMark?: () => void }) {
+  const t = useT()
+  const text = (value: Cell | undefined) => (value === undefined || value === null ? '' : String(value))
+  return (
+    <tr data-card-ref={cardRef} data-change={change} data-proposed="">
+      <td className="byd-data-check">
+        {onMark && (
+          <label className="byd-data-tick">
+            <input type="checkbox" checked={marked === true} onChange={onMark} aria-label={t('table.mark', { cardRef })} />
+          </label>
+        )}
+      </td>
+      <td className="byd-data-id" data-col="id">
+        {cardRef} <span className="byd-data-proposed">{t(change === 'added' ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}</span>
+      </td>
+      {fields.map((f) => (
+        <td key={f} data-col={f} className="byd-data-record">
+          {was && text(was[f]) !== text(now[f]) && <s className="byd-data-was">{text(was[f])}</s>}
+          <span>{text(now[f] ?? (f === 'antal' ? 1 : ''))}</span>
+        </td>
+      ))}
+      {grouping && <td />}
+      <td className="byd-data-remove" />
+    </tr>
+  )
 }
