@@ -332,6 +332,8 @@ export const svEditor = {
   'wall.fold.out': 'Fäll ut hoppspalten',
   'wall.groupedBy': 'Grupperad efter',
   'wall.grouping.off': 'Ingen gruppering',
+  // Vad lådan säger där kronan är smal (#477 fynd 12, #1045); hela meningen står kvar som namn.
+  'wall.grouping.off.short': 'Ogrupperad',
   'wall.tile.one': '{group}, {n} kort',
   'wall.tile.other': '{group}, {n} kort',
   /* Kronan (#128, #130): en låda säger sitt tillstånd, aldrig bara sitt namn. */
@@ -381,6 +383,7 @@ export const svEditor = {
   'wall.foot.remarks.one': 'En anmärkning',
   'wall.foot.remarks.other': '{n} anmärkningar',
   'wall.checks.title': 'Fysisk kontroll',
+  'wall.checks.short': 'Kontroll',
   'wall.checks.ok': 'Leken klarar kontrollen. Inget stoppar en order.',
   'wall.checks.errors.one': 'Ett slags fel stoppar en order.',
   'wall.checks.errors.other': '{n} slags fel stoppar en order.',

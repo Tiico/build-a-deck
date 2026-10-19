@@ -468,6 +468,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           <CrownBox
             name={t('wall.groupedBy')}
             state={column ?? t('wall.grouping.off')}
+            short={column === null ? t('wall.grouping.off.short') : undefined}
             open={box === 'grouping'}
             onToggle={() => toggle('grouping')}
             boxRef={groupingBox}
@@ -496,7 +497,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               <span className="byd-crown-name">{jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}</span>
             </button>
           )}
-          <CrownBox name={t('wall.checks.title')} count={groups.length} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
+          <CrownBox name={t('wall.checks.title')} count={groups.length} short={t('wall.checks.short')} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
         </Crown>
       </div>
       {box === 'eyes' && (

@@ -1047,9 +1047,14 @@
    says, and `editor-tablet.spec.ts` holds it there. */
 .byd-wall-crown { flex: none; container: byd-wall-crown / inline-size; }
 .byd-wall-crown > .byd-crown { flex-wrap: wrap; row-gap: var(--byd-s2); }
+/* A box with a shorter word draws both, and the row's width picks (#1045): beside the AI panel at
+   1280 the row broke on CI's DejaVu even grouped, by 24 px, and ungrouped by 68, where «Ingen
+   gruppering» had no shorter word and «Fysisk kontroll» kept the one variant B gave it. */
+.byd-crown-box > .byd-crown-short { display: none; }
 @media (min-width: 1024px) {
   @container byd-wall-crown (width < 1248px) {
-    .byd-crown-box > .byd-crown-name, .byd-crown-fold > .byd-crown-name { display: none; }
+    .byd-crown-box > .byd-crown-name, .byd-crown-fold > .byd-crown-name, .byd-crown-box > .byd-crown-long { display: none; }
+    .byd-crown-box > .byd-crown-short { display: inline; }
   }
 }
 /* Below the desk, and under a finger at any width, the row breaks instead (#567, beslut B): the

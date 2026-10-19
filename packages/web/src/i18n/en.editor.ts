@@ -295,6 +295,8 @@ export const enEditor = {
   'wall.fold.out': 'Unfold the jump column',
   'wall.groupedBy': 'Grouped by',
   'wall.grouping.off': 'No grouping',
+  // What the box says where the crown is narrow (#477 fynd 12, #1045); the whole sentence stays its name.
+  'wall.grouping.off.short': 'Ungrouped',
   'wall.tile.one': '{group}, {n} card',
   'wall.tile.other': '{group}, {n} cards',
   /* The crown (#128, #130): a box says its state, never only its name. */
@@ -342,6 +344,7 @@ export const enEditor = {
   'wall.foot.remarks.one': 'One remark',
   'wall.foot.remarks.other': '{n} remarks',
   'wall.checks.title': 'Physical check',
+  'wall.checks.short': 'Check',
   'wall.checks.ok': 'The deck passes the check. Nothing stops an order.',
   'wall.checks.errors.one': 'One kind of error stops an order.',
   'wall.checks.errors.other': '{n} kinds of error stop an order.',

@@ -6491,6 +6491,12 @@ Sökfältet ger aldrig upp mer än ned till 180 px, och där inte ens de korta b
 Utan något bredvid väggen är skrivbordets krona en rad som förut, i samma mått.
 `packages/e2e/test/surfaces/wall-crown-beside.spec.ts` håller det med en kolumn på 380 px vid 1024 × 768, 1280 × 800 och 1440 × 900, på svenska och engelska.
 
+Tillägg 2026-10-19 (#1045): **bredvid AI-panelen vid 1280 och 1440 står kronan på en rad, grupperad eller inte.**
+Mätt i CI:s DejaVu bröt raden vid 1280 i alla lägen: grupperad med 24 px för lite, ogrupperad med 68 px, eftersom «Ingen gruppering» saknade ett kortare ord; på en Mac syntes bara det ogrupperade svenska fallet.
+Två boxar har därför ett kortare ord där kronan är smal, i #477:s mönster (variant B): «Ingen gruppering» blir «Ogrupperad» («No grouping» blir «Ungrouped»), och «Fysisk kontroll (2)» blir «Kontroll (2)», som prototypen redan visade («Physical check (2)» blir «Check (2)»).
+Hela meningen är fortfarande boxens namn och tooltip.
+Testet mäter varje läge — grupperad, ogrupperad, ogrupperad genom ett val, och med ett förslag på väggen — både i maskinens typsnitt och i ett brett (Verdana, DejaVus bredd), så att en Mac inte kan ge grönt för en rad som bryter på Linux.
+
 ### L55. En öppnad låda ligger över allt annat, och tabellens fasta kolumner står på en list (prototypat och beslutat 2026-09-30, #609, #610, #611)
 
 Beställaren hittade tre saker i tabellen.

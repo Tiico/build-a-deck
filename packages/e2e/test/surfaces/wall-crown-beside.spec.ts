@@ -84,6 +84,11 @@ const measure = (page: Page, beside = '[data-beside]') =>
       over: crown.scrollWidth - crown.clientWidth,
       field: Math.round((crown.querySelector('.byd-crown-search') as HTMLElement).getBoundingClientRect().width),
       page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      // The rows the crown stands in: its tools, counted by where each one's top is.
+      rows: new Set([...crown.children].map((el) => Math.round(el.getBoundingClientRect().top))).size,
+      // The room the row has and what each tool takes of it, said when the row breaks.
+      room: Math.round(crown.clientWidth),
+      tools: [...crown.children].map((el) => `${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)} ${Math.round(el.getBoundingClientRect().width)}`),
     }
   }, beside)
 
@@ -125,9 +130,27 @@ for (const locale of ['sv-SE', 'en-GB']) {
 
 // And beside the panel itself (#1001), now that it is on main: a designer with a key opens the
 // editor with the AI panel standing open at the wall's side, and the crown holds whole beside it at
-// the two desks the panel was prototyped at.
+// the two desks the panel was prototyped at — and on one row (#1045): the short boxes fit there, and
+// a row that breaks costs the wall 52 px of its height for nothing.
+//
+// The row is measured in every state it is drawn in. Grouped, the grouping box says the column and
+// the fold stands beside it. Ungrouped, the fold goes and the box says that nothing groups the wall:
+// a deck whose template names no column, as the one a template proposal starts from (#1005), or a
+// grouped deck the designer chose to see whole. A proposal waiting in the panel stands on the wall
+// under the crown.
 const KEY = 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefC4C4'
+const STATES = ['grouped', 'ungrouped', 'ungrouped by choice', 'grouped with a proposal', 'ungrouped with a proposal'] as const
+function ungroupedDeck() {
+  const doc = deck()
+  delete doc.template.faces['front']!.variantBy
+  return doc
+}
+const WORDS: Record<string, { grouping: RegExp; off: string; ask: string; show: string }> = {
+  'sv-SE': { grouping: /^Grupperad efter: /, off: 'Ingen gruppering', ask: 'Fråga om spelet', show: 'Visa på väggen' },
+  'en-GB': { grouping: /^Grouped by: /, off: 'No grouping', ask: 'Ask about the game', show: 'Show on the wall' },
+}
 for (const locale of ['sv-SE', 'en-GB']) {
+  const words = WORDS[locale]!
   for (const viewport of [
     { width: 1280, height: 800 },
     { width: 1440, height: 900 },
@@ -135,24 +158,52 @@ for (const locale of ['sv-SE', 'en-GB']) {
     test.describe(`the wall's crown beside the open AI panel at ${viewport.width} × ${viewport.height} in ${locale}`, () => {
       test.use({ viewport, locale })
 
-      test('cuts no control and leaves the search field room to be written in', async ({ page }) => {
-        await logIn(page.request)
-        const saved = await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: KEY } })
-        expect(saved.status()).toBe(200)
-        const project = await makeProjectOf(page.request, deck())
-        await page.goto(project.editorUrl)
-        await expect(page.locator('.byd-wall-view .byd-crown-fold')).toBeVisible()
-        await expect(page.locator('.byd-ai[data-open]')).toBeVisible()
-        await expect.poll(async () => (await measure(page, '.byd-ai')).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
-        const measured = await measure(page, '.byd-ai')
-        expect(measured.beside).toBe(PANEL)
-        expect(measured.edge).toBe(viewport.width - PANEL)
-        expect(measured.controls).toBeGreaterThanOrEqual(8)
-        expect(measured.cut, 'every control of the crown is wholly visible, beside the panel and not under it').toEqual([])
-        expect(measured.over, 'the crown does not overflow its own box').toBeLessThanOrEqual(0)
-        expect(measured.field, 'the search field is wide enough to read what is written in it').toBeGreaterThanOrEqual(FIELD)
-        expect(measured.page, 'the page does not scroll sideways').toBeLessThanOrEqual(0)
-      })
+      for (const state of STATES) {
+        test(`${state}: stands on one row, cuts no control and leaves the search field room to be written in`, async ({ page }) => {
+          await logIn(page.request)
+          const saved = await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: KEY } })
+          expect(saved.status()).toBe(200)
+          const grouped = state.startsWith('grouped')
+          const project = await makeProjectOf(page.request, state.startsWith('ungrouped') && state !== 'ungrouped by choice' ? ungroupedDeck() : deck())
+          await page.goto(project.editorUrl)
+          await expect(page.locator('.byd-ai[data-open]')).toBeVisible()
+          await expect(page.locator('.byd-wall-card').first()).toBeVisible()
+          const crown = page.locator('.byd-wall-view .byd-crown')
+          if (state === 'ungrouped by choice') {
+            await crown.getByRole('button', { name: words.grouping }).click()
+            await page.locator('.byd-crown-drawer').getByRole('button', { name: words.off }).click()
+            await crown.getByRole('button', { name: words.grouping }).click()
+          }
+          if (state.endsWith('with a proposal')) {
+            const ask = page.locator('.byd-ai').getByRole('textbox', { name: words.ask })
+            await ask.fill('Three cheap cards [kort:3]')
+            await ask.press('Enter')
+            await page.locator('.byd-ai').getByRole('button', { name: words.show }).click()
+            await expect(page.locator('.byd-wall-card[data-proposed]')).toHaveCount(3)
+          }
+          // Non-vacuity: the crown is in the state named, by what it carries.
+          await expect(crown.locator('.byd-crown-fold')).toHaveCount(grouped ? 1 : 0)
+          await expect(crown.getByRole('button', { name: words.grouping })).toHaveAccessibleName(grouped ? /: typ$/ : new RegExp(`: ${words.off}$`))
+          await expect(page.locator('.byd-crown-drawer')).toHaveCount(0)
+          await expect.poll(async () => (await measure(page, '.byd-ai')).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
+          // Measured in the machine's own face, and then in a wide one. The Mac's system-ui fitted
+          // the grouped row with 25 px to spare where CI's DejaVu broke it by 24 (#1045): a row held
+          // only in the narrow face is held on one machine. Verdana is DejaVu's width and is on the
+          // Mac; the runner has DejaVu itself.
+          for (const face of ['system-ui', 'wide']) {
+            if (face === 'wide') await page.addStyleTag({ content: ".byd-wall-crown * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" })
+            const measured = await measure(page, '.byd-ai')
+            expect(measured.beside).toBe(PANEL)
+            expect(measured.edge).toBe(viewport.width - PANEL)
+            expect(measured.controls).toBeGreaterThanOrEqual(grouped ? 8 : 7)
+            expect(measured.cut, `in ${face}, every control of the crown is wholly visible, beside the panel and not under it`).toEqual([])
+            expect(measured.over, `in ${face}, the crown does not overflow its own box`).toBeLessThanOrEqual(0)
+            expect(measured.field, `in ${face}, the search field is wide enough to read what is written in it`).toBeGreaterThanOrEqual(FIELD)
+            expect(measured.page, `in ${face}, the page does not scroll sideways`).toBeLessThanOrEqual(0)
+            expect(measured.rows, `in ${face}, the crown stands on one row in ${measured.room} px: ${measured.tools.join(', ')}`).toBe(1)
+          }
+        })
+      }
     })
   }
 }

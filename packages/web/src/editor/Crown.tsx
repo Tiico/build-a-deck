@@ -36,6 +36,11 @@ export type CrownBoxProps = {
   name: string
   state?: string | undefined
   count?: number | undefined
+  // A shorter word for what the box shows where its row is narrow (#477 fynd 12, variant B): for
+  // a box with a choice, the choice — «Ogrupperad» for «Ingen gruppering» — and for a box that
+  // counts, its name — «Kontroll (2)» for «Fysisk kontroll (2)». The box still says its state
+  // either way; only the words shrink, and the whole sentence stays its name and tooltip.
+  short?: string | undefined
   open: boolean
   onToggle(): void
   boxRef?: RefObject<HTMLButtonElement | null> | undefined
@@ -44,9 +49,16 @@ export type CrownBoxProps = {
   end?: boolean | undefined
 }
 
-export function CrownBox({ name, state, count, open, onToggle, boxRef, end }: CrownBoxProps) {
+export function CrownBox({ name, state, count, short, open, onToggle, boxRef, end }: CrownBoxProps) {
   const t = useT()
   const said = state !== undefined ? t('crown.box.state', { name, state }) : count !== undefined ? t('crown.box.count', { name, n: count }) : name
+  // Both forms are drawn and the row's width picks one, so nothing here has to know how wide it is.
+  const words = (long: string, narrow: string) => (
+    <>
+      <span className="byd-crown-long">{long}</span>
+      <span className="byd-crown-short">{narrow}</span>
+    </>
+  )
   return (
     <button
       ref={boxRef}
@@ -62,8 +74,10 @@ export function CrownBox({ name, state, count, open, onToggle, boxRef, end }: Cr
       {state !== undefined ? (
         <>
           <span className="byd-crown-name">{t('crown.box.lead', { name })}</span>
-          {state}
+          {short !== undefined ? words(state, short) : state}
         </>
+      ) : short !== undefined ? (
+        words(said, count !== undefined ? t('crown.box.count', { name: short, n: count }) : short)
       ) : (
         said
       )}
