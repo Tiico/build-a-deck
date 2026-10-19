@@ -170,7 +170,8 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
           button that accepts it keeps a name as short as «Godta alla» and the row stays one row. */}
       {done && choosing && (
         <p className="byd-ai-chosen" aria-live="polite">
-          {t('ai.proposal.chosen', { n: ticked, total: all.length })}
+          {/* The noun counts the whole: «1 av 5 delar valda». */}
+          {t(all.length === 1 ? 'ai.proposal.chosen.one' : 'ai.proposal.chosen.other', { n: ticked, total: all.length })}
         </p>
       )}
       {done && (
