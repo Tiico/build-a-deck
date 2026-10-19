@@ -22,9 +22,14 @@ export type Asking = { cancel(): void; finished: Promise<void> }
 const KINDS: readonly AskFailure[] = ['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'refused', 'network', 'timeout', 'busy', 'no-key', 'offline']
 const kindOf = (value: unknown): AskFailure => KINDS.find((k) => k === value) ?? 'network'
 
+// The proposal a question refines (#1004): the one still waiting, as the model wrote it, and the
+// keys of the parts the designer left out of it.
+export type AskRefine = { proposal: { cards: readonly unknown[]; changes: readonly unknown[] }; leave: readonly string[] }
+
 // `selected` is the cards the designer has selected, by id (#1003): the server reads them out of its
-// own copy of the game and sends them whole with the question.
-export function askAi(http: string, project: string, ask: { question: string; turns: readonly AskTurn[]; lang: 'sv' | 'en'; selected?: readonly string[] }, onEvent: (event: AskEvent) => void): Asking {
+// own copy of the game and sends them whole with the question. `refine` is the proposal the question
+// refines, if it refines one (#1004).
+export function askAi(http: string, project: string, ask: { question: string; turns: readonly AskTurn[]; lang: 'sv' | 'en'; selected?: readonly string[]; refine?: AskRefine }, onEvent: (event: AskEvent) => void): Asking {
   let cancelled = false
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   const tell = (event: AskEvent) => {

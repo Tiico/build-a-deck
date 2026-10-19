@@ -3,7 +3,7 @@ import { parseBody, type InlineNode } from '@byd/template'
 import { aiContextParts } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
 import { PROVIDER_NAMES, listAiModels, modelNameOf, readAiKey, type AiKey, type AiModel } from '../account/ai-key.js'
-import { askAi, type AskFailure, type AskTurn, type Asking } from './ai-ask.js'
+import { askAi, type AskFailure, type AskRefine, type AskTurn, type Asking } from './ai-ask.js'
 import type { EditIntent } from '@byd/server/doc'
 import { AiProposal, type ProposalVerdict } from './AiProposal.js'
 import { noParts, translated, withPart, type ProposalParts, type ShownProposal } from './proposals.js'
@@ -22,6 +22,12 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 //
 // Without a key the panel is the way to the profile page where a key is added (#999), and the
 // editor is otherwise as it was (PRD 9): the tab at the edge is all it adds.
+//
+// While a proposal waits, the question's line refines it (#1004): what is said there goes with the
+// proposal and the parts left out of it, and a refined proposal that arrives whole and usable takes
+// its place in the conversation and on the wall. A refine that is stopped, cut off, unusable or
+// answered in words leaves the proposal it refined waiting, and nothing is written until one is
+// accepted.
 //
 // What is sent is said before it is sent — «Skickas till Anthropic: 77 kort · mallen · …» — read
 // off the same reading of the game the server's context is built from (`aiContextParts`).
@@ -69,10 +75,29 @@ type TurnState = 'waiting' | 'streaming' | 'done' | 'cancelled' | 'failed'
 // A proposal the answer brought (#1002): its parts as they arrived, whether it was cut off, and what
 // the designer did with it.
 // `leave` is the parts the designer has left out with «Välj delar…» (#1003), and `choosing` whether the
-// choice stands open; `accepted` is what an accepted proposal added and changed.
-type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: { cards: number; changed: number }; leave: ReadonlySet<string>; choosing: boolean }
-type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure; proposal?: TurnProposal }
+// choice stands open; `accepted` is what an accepted proposal added and changed; `replacedBy` is the
+// turn whose refined proposal took this one's place (#1004).
+type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: { cards: number; changed: number }; leave: ReadonlySet<string>; choosing: boolean; replacedBy?: number }
+// `refining` is the turn whose proposal a question refines, and what was sent of it (#1004).
+type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure; proposal?: TurnProposal; refining?: { of: number; ask: AskRefine } }
 const freshProposal = (): TurnProposal => ({ parts: noParts(), broken: false, verdict: null, accepted: { cards: 0, changed: 0 }, leave: new Set(), choosing: false })
+// Whether a turn's proposal waits for the designer: whole, usable against the game as it stands, and
+// neither accepted, discarded nor replaced.
+const waits = (turn: Turn, doc: ProjectDoc): turn is Turn & { proposal: TurnProposal } =>
+  turn.state === 'done' && turn.proposal !== undefined && turn.proposal.verdict === null && !turn.proposal.broken && translated(doc, turn.proposal.parts).ok
+// What is sent of a waiting proposal when it is refined: the parts as the model wrote them, and the
+// keys of the ones the designer left out.
+const refineOf = (turn: Turn & { proposal: TurnProposal }): { of: number; ask: AskRefine } => ({ of: turn.id, ask: { proposal: turn.proposal.parts, leave: [...turn.proposal.leave] } })
+// A turn's answer ended (#1004): when it refined a proposal still waiting and brought one that can be
+// used, the new one takes the old one's place. A refine that is stopped, cut off, unusable or answered
+// in words leaves the old one waiting.
+function settled(all: readonly Turn[], id: number, broken: boolean, doc: ProjectDoc): Turn[] {
+  const ended = all.map((turn) => (turn.id === id ? { ...turn, state: 'done' as const, ...(broken ? { proposal: { ...(turn.proposal ?? freshProposal()), broken: true } } : {}) } : turn))
+  const turn = ended.find((t) => t.id === id)
+  const old = turn?.refining ? ended.find((t) => t.id === turn.refining?.of) : undefined
+  if (!turn || !old || !waits(old, doc) || !waits(turn, doc)) return ended
+  return ended.map((t) => (t.id === old.id && t.proposal ? { ...t, proposal: { ...t.proposal, verdict: 'replaced' as const, choosing: false, replacedBy: id } } : t))
+}
 // The failures worth asking again about as they are: a pause, a busy provider, a broken line.
 const AGAIN: readonly AskFailure[] = ['rate-limit', 'overloaded', 'network', 'timeout', 'busy', 'offline']
 // The conversation the next question carries, in pairs: at most the last twenty (the server's own
@@ -187,7 +212,28 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
 
   const update = (id: number, change: (turn: Turn) => Turn) => setTurns((all) => all.map((turn) => (turn.id === id ? change(turn) : turn)))
 
-  const run = (id: number, question: string, before: readonly Turn[]) => {
+  // The game as it stands, for deciding when an answer ends whether its refined proposal can take
+  // the old one's place: the answer's events arrive outside any render.
+  const docNow = useRef(doc)
+  useLayoutEffect(() => {
+    docNow.current = doc
+  }, [doc])
+  // The proposal waiting for the designer, if any: the newest one still to be decided. While it
+  // waits, the line under it refines it (#1004).
+  const waiting = [...turns].reverse().find((turn) => waits(turn, doc)) ?? null
+
+  // A proposal on the wall that a refined one replaced is replaced on the wall too, by the refined
+  // one, whole and with every part chosen (#1004).
+  const replacing = wallTurn === null ? undefined : turns.find((turn) => turn.id === wallTurn)?.proposal?.replacedBy
+  useEffect(() => {
+    if (replacing === undefined) return
+    const now = turns.find((turn) => turn.id === replacing)
+    if (!now?.proposal) return
+    setWallTurn(replacing)
+    onShowOnWall?.({ parts: now.proposal.parts, leave: now.proposal.leave })
+  }, [replacing, turns, onShowOnWall])
+
+  const run = (id: number, question: string, before: readonly Turn[], refining?: Turn['refining']) => {
     const history: AskTurn[] = before
       .filter((turn) => turn.state === 'done' && turn.answer.trim() !== '')
       .flatMap((turn): AskTurn[] => [
@@ -199,7 +245,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
       if (asking.current?.id === id) asking.current = null
       setBusy((now) => (now === id ? null : now))
     }
-    const call = askAi(http, project, { question, turns: history, lang, ...(selected.length > 0 ? { selected: selected.map((row) => row.id) } : {}) }, (event) => {
+    const call = askAi(http, project, { question, turns: history, lang, ...(selected.length > 0 ? { selected: selected.map((row) => row.id) } : {}), ...(refining ? { refine: refining.ask } : {}) }, (event) => {
       if (event.t === 'text') update(id, (turn) => ({ ...turn, answer: turn.answer + event.text, state: 'streaming' }))
       else if (event.t === 'part') {
         update(id, (turn) => {
@@ -207,7 +253,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
           return { ...turn, state: 'streaming', proposal: { ...had, parts: withPart(had.parts, event.key, event.part) } }
         })
       } else if (event.t === 'done') {
-        update(id, (turn) => ({ ...turn, state: 'done', ...(event.broken ? { proposal: { ...(turn.proposal ?? freshProposal()), broken: true } } : {}) }))
+        setTurns((all) => settled(all, id, event.broken === true, docNow.current))
         done()
       } else {
         update(id, (turn) => ({ ...turn, state: 'failed', failure: event.kind }))
@@ -224,22 +270,33 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     if (!question || asking.current) return
     const id = next.current++
     const before = turns
-    setTurns([...before, { id, question, answer: '', state: 'waiting' }])
+    // Said while a proposal waits, it refines that proposal (#1004).
+    const refining = waiting ? refineOf(waiting) : undefined
+    setTurns([...before, { id, question, answer: '', state: 'waiting', ...(refining ? { refining } : {}) }])
     setDraft('')
     atEnd.current = true
-    run(id, question, before)
+    run(id, question, before, refining)
   }
 
   const again = (turn: Turn) => {
     if (asking.current) return
     offWall(turn.id)
-    update(turn.id, (had) => ({ id: had.id, question: had.question, answer: '', state: 'waiting' }))
+    // A refine asked again refines the proposal as it waits now, if it still does.
+    const old = turn.refining ? turns.find((other) => other.id === turn.refining?.of) : undefined
+    const refining = old && waits(old, doc) ? refineOf(old) : undefined
+    update(turn.id, (had) => ({ id: had.id, question: had.question, answer: '', state: 'waiting', ...(refining ? { refining } : {}) }))
     atEnd.current = true
     run(
       turn.id,
       turn.question,
       turns.filter((other) => other.id < turn.id),
+      refining,
     )
+  }
+  // A proposal decided while a refine of it is still coming: the refine is no longer wanted.
+  const settle = (turn: Turn) => {
+    const now = asking.current
+    if (now && turns.find((other) => other.id === now.id)?.refining?.of === turn.id) cancel()
   }
 
   const setProposal = (id: number, change: (proposal: TurnProposal) => TurnProposal) => update(id, (turn) => (turn.proposal ? { ...turn, proposal: change(turn.proposal) } : turn))
@@ -269,12 +326,14 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     if (!turn.proposal || !onAccept) return
     const read = translated(doc, turn.proposal.parts, chosenOnly ? turn.proposal.leave : undefined)
     if (!read.ok || read.edits.length === 0) return
+    settle(turn)
     onAccept(read.edits)
     const accepted = { cards: read.parts.filter((p) => p.kind === 'card').length, changed: read.parts.filter((p) => p.kind === 'change').length }
     setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'accepted', accepted, choosing: false }))
     offWall(turn.id)
   }
   const discard = (turn: Turn) => {
+    settle(turn)
     setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'discarded', choosing: false }))
     offWall(turn.id)
   }
@@ -318,7 +377,8 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     ...(chosenAlone ? [t('ai.sent.chosen', { name: titleOfRow(chosenAlone) || chosenAlone.id })] : []),
     ...(ticked > 0 ? [t(ticked === 1 ? 'ai.sent.marked.one' : 'ai.sent.marked.other', { n: ticked })] : []),
   ]
-  const chips = [...picked, t(parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
+  // A waiting proposal goes with whatever is said next, and is said first of all (#1004).
+  const chips = [...(waiting ? [t('ai.sent.proposal')] : []), ...picked, t(parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
   const model = aiKey ? modelNameOf(models, aiKey.model ?? aiKey.defaultModel) : ''
 
   return (
@@ -456,9 +516,11 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
             className="byd-ai-field"
             rows={3}
             maxLength={4000}
-            aria-label={t('ai.field')}
+            // While a proposal waits, the line under it refines it — or asks something new, which the
+            // model answers in words and the proposal stands (#1004).
+            aria-label={t(waiting ? 'ai.refine.field' : 'ai.field')}
             aria-describedby={turns.length === 0 ? `${leadId} ${sentId}` : sentId}
-            placeholder={t('ai.field.placeholder')}
+            placeholder={t(waiting ? 'ai.refine.placeholder' : 'ai.field.placeholder')}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -477,7 +539,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
             {/* One button that sends and, while an answer comes, stops it: the same element in the
                 same place, so the keys that pressed it stay on it. */}
             <button type="submit" className="byd-secondary byd-ai-send" aria-disabled={busy === null && draft.trim() === ''}>
-              {t(busy !== null ? 'ai.cancel' : 'ai.send')}
+              {t(busy !== null ? 'ai.cancel' : waiting ? 'ai.refine' : 'ai.send')}
             </button>
           </div>
         </form>
