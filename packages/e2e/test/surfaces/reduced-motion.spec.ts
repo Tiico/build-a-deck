@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { standing } from '../../support/surface.js'
 
 // Non-essential motion has to stop when the reader asks for it, and the only honest place to

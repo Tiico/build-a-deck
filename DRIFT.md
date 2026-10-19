@@ -380,6 +380,66 @@ Grinden läser `Content-Encoding` på det blockerande arket mot en riktigt serve
 Bortfallet går rött, inte tyst grönt — varje väg till att inte mäta något (inget ark i dokumentet, ingen instans som svarar, ingen rubrik) är skriven som ett fel med en mening om vilken det var.
 En proxy framför lådan måste respektera `Vary: Accept-Encoding`, som svaren bär.
 
+## 14. Innehållspolicyn (CSP) sätts av appen
+
+Byggt 2026-10-19 (#1008).
+
+`app` skickar själv en verkställd `Content-Security-Policy` med varje HTML-svar från den byggda webben.
+Policyn reser därmed med bygget, som komprimeringen i §13: den gäller på lådan bakom sin proxy, i E2E-stacken och på en port som öppnats direkt, och vilar inte på att något framför lådan minns den.
+Den skrivs i `packages/server/src/csp.ts`.
+
+Skälet är kontots kaka och designernas opublicerade spel.
+AI-nyckeln når aldrig webbläsaren (§5), men ett inskjutet skript på sidan kan ändå göra allt den inloggade designern kan, och editorn visar alltmer text som någon annan — en medspelare, en modell — har skrivit.
+Policyn är ett lager under React, inte i stället för det: ett `<img onerror=…>` i ett korts text eller ett skript från en främmande adress körs inte även om något annat har släppt in det.
+
+Policyn, direktiv för direktiv:
+
+- `default-src 'self'` — det som inte nämns nedan (manifestet, ramar, workers, media) får bara komma från appens eget origin.
+- `script-src 'self' 'sha256-…'` — appens egna chunkar och de tre inline-skripten i `index.html` (skalets språk och dess ifyllning från #749, förladdningen från #760), godkända med sina hashar.
+  Inget `'unsafe-inline'`, inget `'unsafe-eval'`.
+- `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` — `'unsafe-inline'` eftersom React skriver `style=`-attribut, kortförhandsvisningen sätter det kompilerade kortets ark som `<style>` i sin skuggrot och kortets markup bär egna `style=`; inget av det finns vid bygget, så det finns inget att hasha.
+  En stil kan inte köra kod.
+  Googles `css2`-ark är typsnittsväljarens prover (§12).
+- `font-src 'self' data: https://fonts.gstatic.com` — filtens typsnitt reser i arket som data-URL (#95), projektets typsnitt kommer från `/assets/<hash>/bytes` (§4), och katalogens filer från Google när väljaren är öppen (§12).
+- `img-src 'self' data: <objektlagret>` — bilder och texturer omdirigeras till R2 (§4); data: är QR-koden, symbolerna, temarutorna och en bild som visas innan den laddats upp.
+- `connect-src 'self' ws(s)://<värden> https://fonts.googleapis.com https://fonts.gstatic.com <objektlagret>` — API:t och bordets WebSocket på eget origin, katalogens ark och fil när en familj väljs, och objektlagret för det som hämtas genom en omdirigering dit.
+  WebSocket-adressen står utskriven eftersom äldre Safari inte räknar `ws:` som `'self'`; den byggs av förfrågans `Host` och schemat proxyn anger (`X-Forwarded-Proto`), och ett `Host` som inte är ett värdnamn lämnas utanför i stället för att skrivas in i rubriken.
+- `object-src 'none'`, `base-uri 'none'`, `form-action 'self'` — inga insticksprogram, ingen `<base>` som flyttar relativa adresser, inga formulär som postar någon annanstans.
+- `frame-ancestors 'none'` — ingenting i produkten bäddas in i en annan sida, och ingen annan sida får rama in appen.
+
+Objektlagrets origin läses ur samma konfiguration som omdirigeringarna (`R2_ENDPOINT`, annars kontots R2-adress), aldrig hårdkodat; utan R2 nämns det inte alls.
+
+Inline-skripten godkänns med hash och inte med nonce.
+Servern läser hasharna ur exakt den fil den skickar, en gång per ändring på disken, så de kan inte glida isär från sidan vad bygget än lägger i den härnäst.
+En nonce per svar hade krävt att sidan skrevs om vid varje förfrågan, och då hade den förkomprimerade kopian i §13 inte längre varit samma bytes som svaret.
+
+zod provar en gång om den får kompilera en snabbväg med `new Function`.
+Den fångar felet och går vidare, men webbläsaren har redan rapporterat försöket som ett brott mot policyn, på varje sida; webben sätter därför `jitless` innan något tolkas (`packages/web/src/no-eval.ts`).
+I webbläsaren är svaret nej oavsett, så inget blir långsammare.
+
+En uppladdad bild som serveras från appens eget origin — utan R2 (§4) — får en egen policy, `default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox`.
+En SVG som öppnas på sin egen adress är annars ett dokument på appens origin, och sidans policy släpper in `'self'`.
+
+`?server=<api>` är utvecklingsläget med Vite på en port och API:t på en annan, och där skickar Vite sidan utan policy.
+I produktion stoppar `connect-src` en sådan länk som pekar ut appen mot en annan server, vilket är avsikten.
+
+Det sviten hittade när policyn slogs på, och vad som gjordes:
+
+- zod:s `new Function`-prov på varje sida, ovan.
+- Skalets omladdningsknapp (#749) bar `onclick="location.reload()"` i markupen och var död under policyn; lyssnaren sätts nu av skalets eget skript, som är godkänt med sin hash.
+- «Öppna häftet» (#678) frågade om häftet var klart genom att följa omdirigeringen till R2, som svarar utan CORS, så länken kom aldrig på lådan.
+  Det var inget policyfel utan ett produktionsfel som syntes först när stacken fick ett objektlager; nu räcker omdirigeringen själv som svar.
+- Två specar hämtade sina egna data-URL:er eller spelade R2 med en påhittad adress; de läser nu sina bytes utan att ansluta, och använder stackens objektlager.
+
+Följdkrav:
+**Lådans egna middleware får inte skicka en andra CSP.**
+Två policyer gäller båda samtidigt, så en till kan bara strama åt, och en som inte känner till hasharna stänger av skalet.
+`chain-no-auth@file` ligger utanför repot och ska hållas fri från `Content-Security-Policy`.
+E2E-sviten kör den byggda appen med policyn påslagen och med ett objektlager på ett eget origin bredvid stacken (`packages/e2e/support/objects.ts`), som svarar utan CORS precis som R2, så att produktionsvägen med 302 till R2 är den som testas; `packages/e2e/test/csp-bucket.spec.ts` visar att en bild verkligen hämtas därifrån.
+Varje spec körs genom svitens egen `test` (`packages/e2e/support/test.ts`), som fäller den spec där policyn vägrade något, och lint förbjuder Playwrights bara `test` i specarna.
+`packages/e2e/test/csp.spec.ts` visar att ett inskjutet externt skript och ett inline-attribut vägras, och `packages/server/test/csp.test.ts` kräver varje direktiv i rubriken.
+En ny källa — ett nytt CDN, en inbäddning, en tredje part — är en ändring här och i `csp.ts`, med motivering.
+
 ---
 
 ## Compose-stacken i ett stycke

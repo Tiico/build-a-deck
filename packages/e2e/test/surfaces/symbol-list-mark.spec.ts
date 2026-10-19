@@ -25,7 +25,7 @@
 // `/editor` opens (#186), so it is now reached by opening that route — and waited for by a token
 // only that sheet declares, because markup measured before it lands is measured against the
 // entry's sheet and reads as a rule that is missing.
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { standing } from '../../support/surface.js'
 
 const MARKUP = `

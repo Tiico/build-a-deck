@@ -1431,9 +1431,14 @@ export class ProjectClient {
   // Whether a rendering is finished, so a link is offered only when there is a file behind it.
   // A 200 and nothing else: the queue's 202 is `ok` too, and read as done it put the link in
   // front of a file that was not there yet (#678).
+  //
+  // Or a redirect, which is how a finished file answers on the box (DRIFT §4): the bytes are in
+  // R2, and R2 answers without CORS, so a fetch that followed the redirect failed there and the
+  // link never came (#1008) — green everywhere without an object store, broken on the one machine
+  // that has one. The redirect is the answer; the file behind it is not fetched to learn it.
   async rendered(hash: string): Promise<boolean> {
-    const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'follow' })
-    return res.status === 200
+    const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'manual' })
+    return res.status === 200 || res.type === 'opaqueredirect'
   }
 
   // The booklet under the name it is opened and saved by (#678).

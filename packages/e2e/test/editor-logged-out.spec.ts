@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { logIn, makeProject } from '../support/api.js'
 
 // Logged out in another tab while the editor is open (#485, fynd 7). The next connection is let in

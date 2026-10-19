@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn } from '../../support/api.js'
 
 // The wizard's preview in the theme's own faces (#476, beslut 2026-09-27; «Utseende», L57, #633):

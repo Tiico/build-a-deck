@@ -22,7 +22,9 @@ test('puts the survey over an open rulebook when the table ends', async ({ reque
   const ground = await survey.evaluate((el) => getComputedStyle(el).backgroundColor)
   const shot = (await ada.page.screenshot()).toString('base64')
   const painted = await ada.page.evaluate(async (png) => {
-    const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob())
+    // Decoded in the page and not fetched: the page's policy lets nothing connect to a data: URL
+    // (DRIFT §14), and the screenshot is the test's own bytes, not something the product fetches.
+    const bitmap = await createImageBitmap(new Blob([Uint8Array.from(atob(png), (c) => c.charCodeAt(0))], { type: 'image/png' }))
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
     const ctx = canvas.getContext('2d')!
     ctx.drawImage(bitmap, 0, 0)

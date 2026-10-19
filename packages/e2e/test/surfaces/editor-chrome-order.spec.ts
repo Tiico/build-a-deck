@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { inject, standing } from '../../support/surface.js'
 
 // The chrome the editor says things in: the header, then one strip per thing that wants saying,

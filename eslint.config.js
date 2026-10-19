@@ -32,6 +32,27 @@ export default tseslint.config(
     },
   },
   {
+    // Every E2E spec runs under the suite's own `test` (#1008): it is what fails a spec when the
+    // page's Content-Security-Policy refuses something (DRIFT §14). A spec on Playwright's bare
+    // `test` would be one the policy could break in silence.
+    files: ['packages/e2e/test/**'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@playwright/test',
+              importNames: ['test', 'expect'],
+              allowTypeImports: true,
+              message: "Import `test` and `expect` from the suite's support/test.ts, which watches the page's Content-Security-Policy (#1008).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Tests build fixtures whose shape they control; `!` is the honest way to say so.
     files: ['**/test/**'],
     rules: {

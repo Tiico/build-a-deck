@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { askedForAnyPort } from '../../../test-support/listen-zero.js'
 
 // What the rest of the suite stands on, checked before it is trusted.

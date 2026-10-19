@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { join, makeTable } from '../../support/api.js'
 
 // The felt view's own furniture, measured in a real engine: jsdom lays nothing out, and the fault

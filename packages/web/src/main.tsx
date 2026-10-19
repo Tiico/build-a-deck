@@ -1,3 +1,4 @@
+import './no-eval.js'
 import { createRoot } from 'react-dom/client'
 import './first-frame-sheets.js'
 import { App, loadPage } from './App.js'

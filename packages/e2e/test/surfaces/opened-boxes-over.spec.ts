@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import type { ProjectDoc } from '../../../web/src/editor/types.js'
 import { logIn, makeProject, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'

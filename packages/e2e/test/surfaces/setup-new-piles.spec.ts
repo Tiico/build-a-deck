@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 
 // Two new piles side by side (#480 fynd 12, K19). `newPileSpot` found each a free card back, but a

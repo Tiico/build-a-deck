@@ -12,6 +12,9 @@ export type ObjectStore = {
   // have to come through the server instead. With `disposition` the store answers with that
   // Content-Disposition, so a file opened from the link is called what it is (#678).
   link(key: string, ttlSeconds: number, disposition?: string): Promise<string | null>
+  // The origin those links are on, for the page's policy to let a picture be fetched from
+  // (#1008, DRIFT §14); absent for a store that links to nothing.
+  readonly origin?: string
   // Throws when the store cannot be reached: what /health asks (DRIFT §2).
   check(): Promise<void>
 }
@@ -46,6 +49,10 @@ export type S3Options = {
 // Path-style addressing: <endpoint>/<bucket>/<key>, which R2 and MinIO both speak.
 export class S3ObjectStore implements ObjectStore {
   constructor(private readonly o: S3Options) {}
+
+  get origin(): string {
+    return new URL(this.o.endpoint).origin
+  }
 
   private url(key: string): URL {
     return new URL(`${this.o.endpoint.replace(/\/$/, '')}/${this.o.bucket}/${key}`)

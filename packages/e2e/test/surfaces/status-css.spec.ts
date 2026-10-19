@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { standing } from '../../support/surface.js'
 
 // The family of states (#12, #7) as it ships, measured in an engine that knows the media query

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject, startTable } from '../../support/api.js'
 
 // The Bord tab on one screen (#126). It was the one tab in the editor that did not fit: the setup

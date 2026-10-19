@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { STANDARD_TYPES, TypeRegistry } from '@byd/engine'
 import { deckFromProject, ProjectDoc, queueFaces, TEXTURE_DPI } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'

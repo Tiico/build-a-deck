@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { readSample, verdict } from '../load/memory.js'
 
 // The arithmetic behind the memory load test (#1012, DRIFT §1). The test itself stands the box's

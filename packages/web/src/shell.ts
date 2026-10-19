@@ -82,7 +82,7 @@ export const SHELL_ROOM_PATH = '/table'
 // first painting. The `<noscript>` lines are the exception, since nothing runs to write them.
 export const shellMarkup = (noscript: { sv: string; en: string }): string => {
   const text = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  return `<div id="byd-shell" role="status"><span class="m" data-k="m"></span><h1><span class="r"></span><span data-k="h"></span></h1><p data-k="t"></p><button type="button" hidden onclick="location.reload()"></button><noscript><p>${text(noscript.sv)}</p><p lang="en">${text(noscript.en)}</p></noscript></div>`
+  return `<div id="byd-shell" role="status"><span class="m" data-k="m"></span><h1><span class="r"></span><span data-k="h"></span></h1><p data-k="t"></p><button type="button" hidden></button><noscript><p>${text(noscript.sv)}</p><p lang="en">${text(noscript.en)}</p></noscript></div>`
 }
 
 // One language's words: the mark while loading and while slow, the reload button, and per voice
@@ -134,7 +134,12 @@ export function fillShell(d: Document, all: Record<'sv' | 'en', ShellWords>, voi
   put('m', w.m)
   put('h', said[0])
   put('t', said[1])
-  if (button) button.textContent = w.r
+  // The reload is listened for here and not written as `onclick=` in the markup: the page's policy
+  // runs no inline handler (#1008, DRIFT §14), and this script is let in by its hash.
+  if (button) {
+    button.textContent = w.r
+    button.addEventListener('click', () => location.reload())
+  }
   after(at[0], () => {
     put('m', w.n)
     put('h', said[2])

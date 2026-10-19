@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
 
@@ -13,13 +13,15 @@ import { gameDoc } from '../../support/game.js'
 // until the browser gave up and set it in the fallback. Without an object store the server serves
 // the bytes itself, so every test and every development machine was green.
 //
-// The stack here has no object store either, so the redirect is played by the page: what the
-// server would answer with R2 behind it, and what R2 then answers with — the file, and no CORS.
+// The stack runs with an object store of its own beside it (`support/objects.ts`, #1008), which
+// answers as R2 does — the file, on its own origin, and no CORS — so the redirect here is the
+// server's own. Until then the page played it with two routes, which the page's policy (DRIFT §14)
+// rightly refused to connect to: an origin the box has never heard of.
 const FAMILY = 'Kortets typsnitt'
 const WOFF2 = readFileSync(new URL('../../../web/src/fonts/roboto-condensed-latin-wght-normal.woff2', import.meta.url))
-const R2 = 'https://objects.example'
 
 test('the wall sets its cards in the game’s own typeface when the file lives in an object store (#472)', async ({ page }) => {
+  test.skip(process.env['BYD_E2E_STORE'] !== 'postgres', 'the object store holds files only beside Postgres; a memory run keeps them in the process')
   await logIn(page.request)
   const upload = await page.request.post('/assets', { headers: { 'content-type': 'font/woff2' }, data: WOFF2 })
   expect(upload.status()).toBe(201)
@@ -29,13 +31,6 @@ test('the wall sets its cards in the game’s own typeface when the file lives i
   for (const el of doc.template.faces['front']!.base) if (el.kind === 'text') el.font.family = FAMILY
   doc.fonts = { [FAMILY]: { stack: `"${FAMILY}", serif`, asset: `asset:${hash}` } }
   const project = await makeProjectOf(page.request, doc)
-
-  // What production answers: our own redirect carries CORS, the object store's file does not.
-  await page.route(
-    (url) => url.pathname === `/assets/${hash}`,
-    (route) => route.fulfill({ status: 302, headers: { location: `${R2}/byd-assets/assets/${hash}?signed`, 'access-control-allow-origin': new URL(route.request().url()).origin } }),
-  )
-  await page.route(`${R2}/**`, (route) => route.fulfill({ status: 200, contentType: 'font/woff2', body: WOFF2 }))
 
   await page.goto(project.editorUrl)
   await expect(page.locator('.byd-preview').first()).toBeVisible()

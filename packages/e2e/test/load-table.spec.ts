@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/test.js'
 import { makeTable } from '../support/api.js'
 import { playTable } from '../load/table.js'
 

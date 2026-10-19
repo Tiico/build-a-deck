@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 
 // The Bord tab's left column (#480 fynd 3, 5, 15). At 1024 its content was 298 px wide in a 260 px

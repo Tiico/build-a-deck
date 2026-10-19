@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { CARD_STANDARD_63x88, type SetupDef } from '@byd/engine'
 import { join, tableOf } from '../../support/api.js'
 import { Host } from '../../support/host.js'

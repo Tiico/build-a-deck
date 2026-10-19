@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { standing } from '../../support/surface.js'
 
 // The verbs under a card held up from in front of the seat (#483, fynd 11). The held card is a

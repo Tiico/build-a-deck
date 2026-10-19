@@ -21,6 +21,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     process.env['BYD_E2E_STORE'] = stack.store
     process.env['BYD_E2E_WEB_DIST'] = stack.webDist
     process.env['BYD_E2E_SERVER_LOG'] = stack.serverLog
+    // The worker processes are born with these, and so is a render worker one of them starts.
+    Object.assign(process.env, stack.objects)
     if (stack.database) process.env['BYD_E2E_DATABASE_URL'] = stack.database
     return async () => {
       await stack.stop()

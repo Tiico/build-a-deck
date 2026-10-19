@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn } from '../../support/api.js'
 
 // Temats förval i den guidade starten (#687, beställarens beslut 2026-10-06, variant D).
