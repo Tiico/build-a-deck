@@ -1,7 +1,7 @@
 import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
-import type { DocDiff, VersionChange } from '@byd/server/doc'
+import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, decideEdit, plainEdits, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
@@ -779,9 +779,12 @@ export class ProjectClient {
   // What a version changed against the one before it, spelled out card by card; null for the
   // first version of all. This is the opened row — the whole difference — where `changes` is the
   // one line every row carries.
-  async diff(rev: number): Promise<DocDiff | null> {
+  // `from` holds it against another version than the one just before it: the Resultat view holds
+  // a version against the previous one that was answered (#1010).
+  async diff(rev: number, from?: number): Promise<DocDiff | null> {
     if (rev <= 1) return null
-    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}/diff`, withCredentials())
+    const against = from === undefined ? '' : `?from=${from}`
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}/diff${against}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
     if (!res.ok) throw new Error(`could not read what version ${rev} changed: ${res.status}`)
     return (await res.json()) as DocDiff
@@ -1334,6 +1337,15 @@ export class ProjectClient {
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials())
     if (!res.ok) throw new Error(`could not list the tables: ${res.status}`)
     return (await res.json()) as TableSummary[]
+  }
+
+  // What the game's playtests said (#1010, G3): every table's answers, flags and people, and every
+  // version's sums, counted by the server. Read by whoever may start the game's tables (#524).
+  async playtest(): Promise<Playtest> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/playtest`, withCredentials())
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not read the playtest: ${res.status}`)
+    return (await res.json()) as Playtest
   }
 
   // "Starta bord" (L5, #417): a table from the saved project, with the room code guests join by

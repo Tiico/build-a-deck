@@ -179,7 +179,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 - ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757).
 - ✅ Säljtexten lovar inte trycket (L36, #743).
 - 🔶 Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade utom två som väntar på beställarens val av prototyp (#695, #699).
-- ⬜ Designern läser playtestets svar — enkätsvar och flaggor per bord och version; utan den ytan går betan inte att mäta (G3, #1010).
+- ✅ Designern läser playtestets svar — enkätsvar och flaggor per bord och version, i Bord-flikens vy «Resultat» (G3, L70, #1010).
 - ⬜ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
 - ⬜ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012).
 - ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).

@@ -110,6 +110,7 @@ function bind(store: MemoryLogStore): LogStore {
     issueGuest: (id, g) => store.issueGuest(id, g),
     activateGuest: (id, token, now, expires) => store.activateGuest(id, token, now, expires),
     guestByToken: (id, h) => store.guestByToken(id, h),
+    guestsAt: (id) => store.guestsAt(id),
     revokeGuests: (id, seat, at) => store.revokeGuests(id, seat, at),
     claimGuest: (h, a) => store.claimGuest(h, a),
     guestsOf: (a) => store.guestsOf(a),
