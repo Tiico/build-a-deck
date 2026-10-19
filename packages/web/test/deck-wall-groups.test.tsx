@@ -485,3 +485,47 @@ describe('the wall’s foot in English', () => {
     expect(foot.querySelector('[aria-live]')?.textContent).toBe('1 card')
   })
 })
+
+// An AI proposal on a grouped wall (#1037): the foot counts the deck and the proposal apart, «77
+// kort · 3 föreslagna» (#1002), while the bands' heads and the table of contents counted the ghosts
+// in with the deck. Every count on the wall now says it the foot's way, and the bands add up to it.
+describe('a proposal on a grouped wall is counted the way the foot counts it (#1037)', () => {
+  const proposing = () => {
+    const doc = bigDeck()
+    const ghost = (id: string, typ: string) => ({ id, fields: { typ, title: id, body: '', antal: 1 } })
+    doc.rows.push(ghost('kort-1', 'Playcard'), ghost('kort-2', 'Playcard'), ghost('kort-3', 'Trap-'))
+    return doc
+  }
+  const proposed = new Set(['kort-1', 'kort-2', 'kort-3'])
+  const head = (typ: string) => document.querySelector(`[data-band="${typ}"] [data-band-head] small`)!.textContent
+  const proposal = () => render(<DeckWall doc={proposing()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} proposed={proposed} />)
+
+  it('says the deck’s cards and the proposed ones apart in a band’s head, its entry in the contents and its tile', () => {
+    proposal()
+    const foot = document.querySelector('.byd-crown-foot')!
+    expect(foot.querySelector('[aria-live]')!.textContent).toBe('308 kort')
+    expect(foot.textContent).toContain('3 föreslagna')
+    expect(head('Playcard')).toBe('132 kort · 2 föreslagna')
+    expect(head('Trap-')).toBe('8 kort · 1 föreslaget')
+    expect(head('Character')).toBe('44 kort')
+    const entry = (typ: string) => document.querySelector(`[data-jump="${typ}"]`)!
+    expect(entry('Playcard').querySelector('small')!.textContent).toBe('132')
+    expect(entry('Playcard').getAttribute('aria-label')).toBe('Playcard, 132 kort · 2 föreslagna')
+    expect(entry('Character').getAttribute('aria-label')).toBe('Character, 44 kort')
+    fireEvent.click(document.querySelector('.byd-crown-fold')!)
+    const tile = document.querySelector<HTMLElement>('[data-tile="Trap-"]')!
+    expect(tile.textContent).toBe('8')
+    expect(tile.getAttribute('aria-label')).toBe('Trap-, 8 kort · 1 föreslaget')
+    // A tile's height is its group's share of the deck, and a proposal is not the deck's yet.
+    expect(tile.style.flexGrow).toBe('8')
+  })
+
+  it('counts a search the same way: the deck’s cards found of the deck’s, and the proposed ones apart', () => {
+    proposal()
+    fireEvent.change(document.querySelector('input[type="search"]')!, { target: { value: 'Trap-' } })
+    const foot = document.querySelector('.byd-crown-foot')!
+    expect(foot.querySelector('[aria-live]')!.textContent).toBe('8 av 308 kort')
+    expect(foot.textContent).toContain('1 föreslaget')
+    expect(head('Trap-')).toBe('8 kort · 1 föreslaget')
+  })
+})

@@ -1,5 +1,6 @@
 import type { EditIntent } from '@byd/server/doc'
 import { translateProposal, type ChangedCell, type ProposalProblem, type Translated } from '@byd/server/proposal'
+import { fieldLabel } from './fields.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import type { T } from '../i18n/index.js'
 
@@ -83,10 +84,11 @@ export function cellWords(from: ChangedCell['from'], to: ChangedCell['to']): [st
 }
 const clip = (text: string) => (text.length > 24 ? `${text.slice(0, 23)}…` : text)
 
-// One changed cell as a line: «kostnad: 3 → 2».
+// One changed cell as a line: «kostnad: 3 → 2», with the column named as the table's header names it
+// (#1037, A4) — «Titel» and not the key «title» — wherever the line is said.
 export function cellLine(cell: ChangedCell, t: T): string {
   const [from, to] = cellWords(cell.from, cell.to)
-  return t('ai.proposal.cell', { field: cell.field, from, to })
+  return t('ai.proposal.cell', { field: fieldLabel(cell.field, t), from, to })
 }
 
 // Why a proposal could not be used, in the reader's words (A4): a whole sentence naming the card —
@@ -120,8 +122,8 @@ export function problemWords(problem: ProposalProblem | { kind: 'broken' }, t: T
     case 'unknown-role':
       return t('ai.unusable.unknown-role', { card, role: problem.role })
     case 'wrong-kind':
-      return t(problem.column === 'number' ? 'ai.unusable.wrong-kind.number' : 'ai.unusable.wrong-kind.truth', { card, field: problem.field })
+      return t(problem.column === 'number' ? 'ai.unusable.wrong-kind.number' : 'ai.unusable.wrong-kind.truth', { card, field: fieldLabel(problem.field, t) })
     default:
-      return t(`ai.unusable.${problem.kind}`, { card, field: problem.field })
+      return t(`ai.unusable.${problem.kind}`, { card, field: fieldLabel(problem.field, t) })
   }
 }
