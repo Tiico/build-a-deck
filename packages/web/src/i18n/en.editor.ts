@@ -170,6 +170,9 @@ export const enEditor = {
   'ai.sent.proposal': 'the proposal',
   'ai.sent.cards.one': '{n} card',
   'ai.sent.cards.other': '{n} cards',
+  // A deck over the context's budget goes as a summary and a sample, not card by card (#1007).
+  'ai.sent.cards.summarised.one': '{n} card (summarised)',
+  'ai.sent.cards.summarised.other': '{n} cards (summarised)',
   'ai.sent.template': 'the template',
   'ai.sent.rules': 'the rulebook',
   'ai.sent.table': 'the table',

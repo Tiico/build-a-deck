@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { parseBody, type InlineNode } from '@byd/template'
 import { aiContextParts } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
@@ -153,6 +153,10 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
   // rows ticked in Tabell — the same marking the bulk editor works on (#222). In the deck's order.
   const [marked] = useMarked()
   const selected = doc.rows.filter((row) => row.id === chosen || marked.has(row.id))
+  // What is sent, read off the same decision the server builds the context with — whole, or
+  // summarised when the deck is over the budget (#1007). Deciding weighs the whole deck, so it is
+  // done once per version of the game while the panel is open, not on every key in the question.
+  const sentParts = useMemo(() => (open ? aiContextParts(doc) : null), [open, doc])
   const next = useRef(1)
   const field = useRef<HTMLTextAreaElement>(null)
   const profileLink = useRef<HTMLAnchorElement>(null)
@@ -366,7 +370,6 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     )
   }
 
-  const parts = aiContextParts(doc)
   // The selected cards are said first, since they are what the question is about (#1003) — and said
   // as the editor shows them (#1037): the chosen card by its name, as its ring on the wall and its
   // row in the table show it, and the ticked rows as the table's foot counts them. One number for
@@ -378,7 +381,8 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     ...(ticked > 0 ? [t(ticked === 1 ? 'ai.sent.marked.one' : 'ai.sent.marked.other', { n: ticked })] : []),
   ]
   // A waiting proposal goes with whatever is said next, and is said first of all (#1004).
-  const chips = [...(waiting ? [t('ai.sent.proposal')] : []), ...picked, t(parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
+  const parts = sentParts ?? aiContextParts(doc)
+  const chips = [...(waiting ? [t('ai.sent.proposal')] : []), ...picked, t(parts.summarised ? (parts.cards === 1 ? 'ai.sent.cards.summarised.one' : 'ai.sent.cards.summarised.other') : parts.cards === 1 ? 'ai.sent.cards.one' : 'ai.sent.cards.other', { n: parts.cards }), ...(parts.template ? [t('ai.sent.template')] : []), ...(parts.rules ? [t('ai.sent.rules')] : []), ...(parts.table ? [t('ai.sent.table')] : [])]
   const model = aiKey ? modelNameOf(models, aiKey.model ?? aiKey.defaultModel) : ''
 
   return (

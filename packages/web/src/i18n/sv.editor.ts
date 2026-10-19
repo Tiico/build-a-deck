@@ -203,6 +203,9 @@ export const svEditor = {
   'ai.sent.proposal': 'förslaget',
   'ai.sent.cards.one': '{n} kort',
   'ai.sent.cards.other': '{n} kort',
+  // En lek över kontextens budget skickas som en sammanfattning och ett urval, inte kort för kort (#1007).
+  'ai.sent.cards.summarised.one': '{n} kort (sammanfattat)',
+  'ai.sent.cards.summarised.other': '{n} kort (sammanfattade)',
   'ai.sent.template': 'mallen',
   'ai.sent.rules': 'regelboken',
   'ai.sent.table': 'bordet',

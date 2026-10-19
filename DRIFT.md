@@ -69,6 +69,27 @@ Med tre bord ritas de 309 texturerna per bord på 113, 227 och 340 sekunder: en 
 
 Workerns hämtning ur objektbutiken prövades samma dag mot MinIO i stället för R2: bilden låg bara i bucketen, workern läste den därifrån och texturen visade den.
 
+### AI-frågornas kostnad för lådan (#1007)
+
+Mätt 2026-10-19 med `pnpm --filter @byd/e2e load:ai` (`packages/e2e/load/ai.ts`), som startar appen ur källkoden som containern startar den, mot Postgres, och låter den falska leverantören svara ett ord var 1,5 sekund så att varje svar håller sin anslutning i femton sekunder, som ett riktigt svar gör.
+Varje designer har eget konto, egen nyckel och eget spel om 308 kort med femton fält, en hel regelbok och en mall med varianter (`packages/server/scripts/large-deck.ts`); ett scenarios frågor ställs i samma ögonblick.
+Maskinen var en Mac och appen en process på den, inte containern på lådan, så vilominnet är högre än lådans (~140 MiB, ovan); det som mäts är vad frågorna lägger till.
+
+| Scenario | appens minne, ökning över vila | uppströms per fråga | uppströms totalt |
+|---|---|---|---|
+| 1 fråga | +0,1 MiB | 129 KiB | 129 KiB |
+| 8 samtidigt (taket) | +0,0 MiB | 129 KiB | 1,0 MiB |
+| 8 samtidigt, alla 308 kort valda | +17 MiB | 285 KiB | 2,2 MiB |
+
+En fråga är spelets kontext (96 kB, sammanfattad inom budgeten), förslagets schema (22 kB) och instruktionerna (3 kB); innan kontexten fick en budget skickades leken hel, 173 kB, och samma fråga var ~205 KiB.
+Det tyngsta en fråga kan bära är ett urval av hela leken, eftersom valda kort alltid skickas hela och utanför budgeten; det är den tredje raden.
+Appens minne rör sig knappt: en fråga håller kontexten och sin begäran, några hundra kilobyte, och resten är en öppen anslutning.
+Även det tyngsta fallet, åtta frågor med hela leken vald, är 17 MiB på en container med 512 MB tak, och dess 2,2 MiB uppströms tar under en sekund vid 20 Mbit/s.
+
+Taken står kvar: två svar åt gången per konto, åtta totalt, tre minuter och 1 MiB för en frågas kropp (§8).
+Inget av talen säger att åtta hotar minnestaket, så det totala taket sänks inte; det är fortfarande rätt storlek för en handfull designers samtidigt, och det håller uppströms under ett par megabyte även i det tyngsta fallet.
+Kroppens tak gäller det klienten skickar, som är frågan, samtalet och urvalets id:n, aldrig kontexten: urvalet av hela den stora leken är 5 kB id:n, och det som ryms upp till taket är samtalets fyrtio turer.
+
 ## 2. Exponering: lådans egen omvänd proxy om den har en, annars Cloudflare Tunnel
 
 Ursprungsbeslutet var `cloudflared` i stacken och inga öppna portar mot bostadsnätet; tunneln löser dynamisk IP, TLS och WebSockets.
