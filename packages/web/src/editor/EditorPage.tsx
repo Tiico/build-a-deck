@@ -11,7 +11,7 @@ import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
-import { proposalView, translated, type ProposalView, type ShownProposal } from './proposals.js'
+import { proposalView, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
 import { TableMenu } from './TablesTab.js'
 import { BordTab } from './BordTab.js'
 import { revealThemeSection, ThemePanel } from './ThemePanel.js'
@@ -508,9 +508,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         doc={shownWall?.doc ?? doc}
         proposed={shownWall?.added}
         changed={shownWall?.changed}
+        redrawn={shownWall?.redrawn}
         assetBase={http}
         motifs={deckMotifs}
-        face="front"
+        // A proposed template for the back is shown on the backs (#1005): the wall shows the proposal.
+        face={shownWall?.face ?? 'front'}
         selectedRow={row}
         onSelectRow={setRow}
         view={wallView.current}
@@ -618,8 +620,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
-        // An AI proposal shown in the table (#1003), through the same comparison in its own words.
-        proposal={shownWall ?? undefined}
+        // An AI proposal shown in the table (#1003), through the same comparison in its own words —
+        // but never one with a template, which is shown on the wall (#1005).
+        proposal={shownWall && !shownWall.templated ? shownWall : undefined}
         onHideProposal={() => setGhosts(null)}
         onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
@@ -998,10 +1001,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             onKeyGone={() => setAiKey(null)}
             over={mode === 'theme' || mode === 'tables'}
             // Shown where the designer is when she is in Tabell, through the table's own comparison;
-            // anywhere else on the wall (#1003).
+            // anywhere else on the wall (#1003) — and a template on the wall from Tabell too (#1005).
             onShowOnWall={(shown) => {
               setGhosts(shown)
-              if (shown && mode !== 'table') setStage('wall')
+              if (shown && (mode !== 'table' || showsTemplate(shown))) setStage('wall')
             }}
             wallShown={ghosts !== null}
             showsIn={mode === 'table' ? 'table' : 'wall'}

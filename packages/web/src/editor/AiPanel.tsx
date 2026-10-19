@@ -5,7 +5,7 @@ import type { ProjectDoc } from './types.js'
 import { PROVIDER_NAMES, listAiModels, modelNameOf, readAiKey, type AiKey, type AiModel } from '../account/ai-key.js'
 import { askAi, type AskFailure, type AskRefine, type AskTurn, type Asking } from './ai-ask.js'
 import type { EditIntent } from '@byd/server/doc'
-import { AiProposal, type ProposalVerdict } from './AiProposal.js'
+import { AiProposal, acceptedOf, type Accepted, type ProposalVerdict } from './AiProposal.js'
 import { noParts, translated, withPart, type ProposalParts, type ShownProposal } from './proposals.js'
 import { useMarked } from './marked.js'
 import { titleOfRow } from '@byd/server/doc'
@@ -77,7 +77,7 @@ type TurnState = 'waiting' | 'streaming' | 'done' | 'cancelled' | 'failed'
 // `leave` is the parts the designer has left out with «Välj delar…» (#1003), and `choosing` whether the
 // choice stands open; `accepted` is what an accepted proposal added and changed; `replacedBy` is the
 // turn whose refined proposal took this one's place (#1004).
-type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: { cards: number; changed: number }; leave: ReadonlySet<string>; choosing: boolean; replacedBy?: number }
+type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: Accepted; leave: ReadonlySet<string>; choosing: boolean; replacedBy?: number }
 // `refining` is the turn whose proposal a question refines, and what was sent of it (#1004).
 type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure; proposal?: TurnProposal; refining?: { of: number; ask: AskRefine } }
 const freshProposal = (): TurnProposal => ({ parts: noParts(), broken: false, verdict: null, accepted: { cards: 0, changed: 0 }, leave: new Set(), choosing: false })
@@ -328,7 +328,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     if (!read.ok || read.edits.length === 0) return
     settle(turn)
     onAccept(read.edits)
-    const accepted = { cards: read.parts.filter((p) => p.kind === 'card').length, changed: read.parts.filter((p) => p.kind === 'change').length }
+    const accepted = acceptedOf(read.parts)
     setProposal(turn.id, (proposal) => ({ ...proposal, verdict: 'accepted', accepted, choosing: false }))
     offWall(turn.id)
   }

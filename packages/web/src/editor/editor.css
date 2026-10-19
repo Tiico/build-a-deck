@@ -4288,10 +4288,11 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 84px); gap: var(--byd-s3) var(--byd-s3); }
 .byd-ai-card { display: grid; gap: var(--byd-s1); align-content: start; min-width: 0; }
 .byd-ai-card-face { overflow: hidden; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
-/* The name clips itself and not the line it stands in, so the focus ring round a tick beside it is
-   drawn whole (#1003). */
-.byd-ai-card-name { display: flex; align-items: center; gap: var(--byd-s1); min-width: 0; color: #c3cbdd; font-size: 12px; white-space: nowrap; }
-.byd-ai-card-name > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The name is said whole and wraps within its card's width (#1005): clipped, «Förslag 1 (förfinat)»
+   read «Förslag 1 (fö…», and the name is how a card is told apart and what a tick takes. The tick
+   stands by the first line, and its focus ring is drawn whole (#1003). */
+.byd-ai-card-name { display: flex; align-items: flex-start; gap: var(--byd-s1); min-width: 0; color: #c3cbdd; font-size: 12px; line-height: 1.4; }
+.byd-ai-card-name > span { min-width: 0; overflow-wrap: anywhere; }
 .byd-ai-checks { display: grid; gap: var(--byd-s1); padding-left: var(--byd-s2); border-left: 3px solid #f0b64a; }
 .byd-ai-checks p, .byd-ai-checks ul { margin: 0; }
 .byd-ai-checks ul { padding-left: var(--byd-s4); list-style: disc; }
@@ -4321,7 +4322,12 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-choose { justify-self: start; min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-ai-mark); font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .byd-ai-choose:hover { color: #fff; }
 .byd-ai-chosen { display: flex; align-items: center; min-height: var(--byd-tap); margin: 0; color: #c3cbdd; font-size: 13px; }
-label:is(.byd-ai-new, .byd-ai-change) { cursor: pointer; }
+label:is(.byd-ai-new, .byd-ai-change, .byd-ai-template) { cursor: pointer; }
+/* A proposed template in the conversation (#1005): a row of the deck's cards drawn with it, across
+   the panel as the three new cards would stand, then its name and the fields it brings. */
+.byd-ai-card[data-template] { grid-column: 1 / -1; }
+.byd-ai-template { display: grid; gap: var(--byd-s1); min-width: 0; }
+.byd-ai-samples { display: grid; grid-template-columns: repeat(3, 84px); gap: var(--byd-s3); }
 .byd-ai-card[data-left] .byd-ai-card-face { opacity: 0.35; }
 .byd-ai-card[data-left] .byd-ai-cell { color: var(--byd-editor-quiet); text-decoration: line-through; }
 .byd-ai-decide button[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }

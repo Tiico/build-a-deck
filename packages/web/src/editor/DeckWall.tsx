@@ -64,6 +64,10 @@ export type DeckWallProps = {
   // becomes: drawn in their own places with the values they would have, marked «Ändrat», and with
   // old → new under them. They are still the game's cards, and are chosen as ever.
   changed?: ReadonlyMap<string, readonly ChangedCell[]> | undefined
+  // The cards of the game a proposed template draws differently (#1005): the wall is handed the
+  // game with that template, so each is drawn as the proposal would draw it, and marked «Ändrat» as a
+  // changed card is — with old → new under it only where a cell changes too.
+  redrawn?: ReadonlySet<string> | undefined
 }
 
 export type WallView = { filter: FilterState; eye: string; scrollTop: number }
@@ -97,7 +101,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -165,7 +169,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // A proposal laid on the wall is brought into view (#1002): its cards stand at the end of their
   // bands, and on a deck of seventy cards that is screens away from where the designer is reading —
   // a press that changes nothing she can see reads as a press that did nothing.
-  const proposedKey = [...(proposed ?? []), ...(changed?.keys() ?? [])].join(' ')
+  const proposedKey = [...(proposed ?? []), ...(changed?.keys() ?? []), ...(redrawn ?? [])].join(' ')
   const ghosts = proposed?.size ?? 0
   const own = doc.rows.length - ghosts
   // A proposal is not the deck's yet (#1002), so every count on the wall says the deck's cards and
@@ -317,6 +321,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     const roves = cards.itemProps(cardRef)
     const ghost = proposed?.has(cardRef) === true
     const cells = changed?.get(cardRef)
+    const redrawnOnly = !cells && redrawn?.has(cardRef) === true
     // A proposed card is not the game's: choosing it chooses nothing.
     const choose = (to: string | null) => {
       if (!ghost) onSelectRow(to)
@@ -337,6 +342,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
         {...(ghost ? { 'data-proposed': '', 'aria-label': t('ai.proposal.ghost.label', { name: titleOfRow({ id: cardRef, fields: row }) || cardRef }) } : {})}
         {...(cells ? { 'data-changed': '', 'aria-label': t('ai.proposal.changed.label', { name: titleOfRow({ id: cardRef, fields: { ...row, ...Object.fromEntries(cells.map((c) => [c.field, c.from ?? ''])) } }) || cardRef, cells: cells.map((c) => cellLine(c, t)).join(', ') }) } : {})}
+        {...(redrawnOnly ? { 'data-changed': '', 'aria-label': t('ai.proposal.redrawn.label', { name: titleOfRow({ id: cardRef, fields: row }) || cardRef }) } : {})}
         // The gesture that chose a card, made again, lets it go (beslut 2026-09-27, #477 fynd 3 C).
         onClick={() => choose(selectedRow === cardRef ? null : cardRef)}
         onKeyDown={(event) => {
@@ -390,7 +396,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* Over the card and outside its paper, which is cut to its corners (#808). */}
         <OversetMarks found={oversetOf(faceTemplate, row, cut[cardRef] ?? [])} scale={px / CARD_PX} />
         {reading && smallest[cardRef] !== undefined && <ReadOut sizePt={smallest[cardRef]} view={reading.view} lang={lang} t={t} />}
-        {(ghost || cells) && (
+        {(ghost || cells || redrawnOnly) && (
           <span className="byd-wall-proposed" aria-hidden="true">
             <span className="byd-ai-spark">✦</span> {t(ghost ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}
           </span>

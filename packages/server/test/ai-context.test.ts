@@ -69,6 +69,8 @@ describe('the context the model is given', () => {
     expect(text).toMatch(/Variants chosen by the column: typ/)
     expect(text).toContain(JSON.stringify(doc.template.faces['front']!.base))
     expect(text).toContain('"Shopcard"')
+    // Where on the card a proposed template may draw (#1005): the card, and the bleed past its edge.
+    expect(text).toContain('Cards are 63 × 88 mm, from (0, 0) at the top left. A background reaches 3 mm past each edge')
   })
 
   it('reads the rulebook as rendered text, with what a rule names said by its name and never its id', () => {

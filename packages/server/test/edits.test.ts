@@ -360,6 +360,20 @@ describe('a whole face at once (L17)', () => {
     expect(doc.template.faces['back']?.base.map((e) => e.id)).not.toEqual(['botten', 'kant'])
   })
 
+  // A proposed template (#1005) is a whole face, groups and all: the groups of the face it replaces
+  // go with it, since an old group's override of an id the new base no longer has would draw that
+  // element on its cards as an addition nobody asked for.
+  it('replaces the groups too when it brings them, and only then', () => {
+    const doc = base()
+    const front: Element[] = [{ kind: 'text', id: 'namn', x: 5, y: 5, w: 53, h: 10, bind: { field: 'title' }, font: { family: 'sans-serif', sizePt: 12 }, color: '#111' }]
+    const grouped = applyEdit(doc, { v: 'addElement', face: 'front', group: 'gammal', element: { kind: 'shape', id: 'märke', x: 1, y: 1, w: 4, h: 4, shape: 'circle' } })
+    const variants = { butik: { override: [{ ...front[0]!, x: 20 } as Element], remove: [] } }
+    const next = applyEdit(grouped, { v: 'replaceFace', face: 'front', base: front, variants })
+    expect(next.template.faces['front']?.base).toEqual(front)
+    expect(next.template.faces['front']?.variants).toEqual(variants)
+    expect(applyEdit(grouped, { v: 'replaceFace', face: 'front', base: front }).template.faces['front']?.variants).toEqual(grouped.template.faces['front']?.variants)
+  })
+
   it('makes the face when the template has none: an empty back is a back that can be started', () => {
     const doc = base()
     const bare: ProjectDoc = { ...doc, template: { faces: { front: doc.template.faces['front']! } } }
