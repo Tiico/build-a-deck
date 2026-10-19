@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { tabId } from '../src/editor/EditorTabs.js'
 import { Language, type Lang } from '../src/i18n/index.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
@@ -106,6 +107,23 @@ describe('a template proposal on the wall', () => {
     fireEvent.click(within(panel()).getByRole('button', { name: 'Visa på väggen' }))
     await waitFor(() => expect(document.querySelectorAll('.byd-wall-card[data-changed]')).toHaveLength(0))
     expect(wallCard('dragon').querySelector('[data-element="coin"]')).toBeNull()
+  })
+})
+
+describe('a template proposal from Tabell', () => {
+  // A template is previewed on the wall (#1005, #940): the table holds the game's columns and no
+  // template, so its comparison would count every card as changed and show no new column at all.
+  it('is shown on the wall even when Tabell is open, and never through the table’s comparison', async () => {
+    await askForTemplate()
+    fireEvent.click(document.getElementById(tabId('table'))!)
+    await screen.findByRole('checkbox', { name: 'markera dragon' })
+    const show = within(panel()).getByRole('button', { name: 'Visa på väggen' })
+    fireEvent.click(show)
+    await waitFor(() => expect(document.querySelectorAll('.byd-wall-card[data-changed]')).toHaveLength(3))
+    fireEvent.click(document.getElementById(tabId('table'))!)
+    await screen.findByRole('checkbox', { name: 'markera dragon' })
+    expect(document.querySelector('.byd-data-compare')).toBeNull()
+    expect(within(panel()).getByRole('button', { name: 'Visa på väggen' }).getAttribute('aria-pressed')).toBe('true')
   })
 })
 

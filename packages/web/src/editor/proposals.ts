@@ -30,6 +30,12 @@ export const hasParts = (parts: ProposalParts): boolean => parts.cards.length > 
 // A proposal as the editor shows it on the wall and in the table: its parts, and the ones the
 // designer has left out with «Välj delar…» (#1003), which the wall and the table leave out too.
 export type ShownProposal = { parts: ProposalParts; leave: ReadonlySet<string> }
+// Whether a shown proposal brings a template the designer has not left out (#1005): what is shown
+// on the wall from Tabell too, since the table holds no template.
+export function showsTemplate({ parts, leave }: ShownProposal): boolean {
+  const face = (parts.template as { face?: unknown } | null | undefined)?.face
+  return typeof face === 'string' && !leave.has(`template:${face}`)
+}
 
 // Translated against the game as it stands; `leave` takes out the parts left out (#1003).
 export function translated(doc: ProjectDoc, parts: ProposalParts, leave?: ReadonlySet<string>): Translated {
@@ -46,8 +52,10 @@ export function proposedRows(edits: readonly EditIntent[]): ProjectRow[] {
 // with which cards are new and what each changed card's cells were and become. A template (#1005) is
 // the game's template in it, so every card is drawn as the proposal would draw it; its new fields'
 // values are changed cells like any other, and `redrawn` is every card of the game the proposed
-// template draws differently — on `face`, the face the wall shows the proposal on.
-export type ProposalView = { doc: ProjectDoc; added: ReadonlySet<string>; changed: ReadonlyMap<string, readonly ChangedCell[]>; redrawn: ReadonlySet<string>; face: string }
+// template draws differently — on `face`, the face the wall shows the proposal on. `templated` says
+// the view carries a template, which only the wall shows: the table holds the game's own columns and
+// no template, so its comparison would say every card changed and show no new column at all.
+export type ProposalView = { doc: ProjectDoc; added: ReadonlySet<string>; changed: ReadonlyMap<string, readonly ChangedCell[]>; redrawn: ReadonlySet<string>; face: string; templated: boolean }
 export function proposalView(doc: ProjectDoc, read: Extract<Translated, { ok: true }>): ProposalView {
   const changed = new Map<string, ChangedCell[]>()
   const added = new Set<string>()
@@ -73,13 +81,14 @@ export function proposalView(doc: ProjectDoc, read: Extract<Translated, { ok: tr
   const redrawn = new Set<string>()
   const before = doc.template.faces[face]
   const now = after.template.faces[face]
-  if (read.parts.some((part) => part.kind === 'template') && now) {
+  const templated = read.parts.some((part) => part.kind === 'template')
+  if (templated && now) {
     for (const row of after.rows) {
       const had = doc.rows.find((r) => r.id === row.id)
       if (had && (!before || JSON.stringify(elementsFor(before, had.fields)) !== JSON.stringify(elementsFor(now, row.fields)))) redrawn.add(row.id)
     }
   }
-  return { doc: after, added, changed, redrawn, face }
+  return { doc: after, added, changed, redrawn, face, templated }
 }
 
 // A cell's value as the old → new of a change says it: nothing as a dash, and a long text as the

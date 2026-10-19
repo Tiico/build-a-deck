@@ -1580,6 +1580,8 @@ Felbeskedet säger lagret med sitt id, «Mallens lager «title» står utanför 
 Ett kort mallen bara ritar om heter för skärmläsaren «Ändrat i förslaget: Drake — ritat med den föreslagna mallen».
 Det är prototypens form (`A-mall-1440x900.png`): ett läge med en egen rad över väggen hade varit en ny yta och en ny sak att stänga, och en mall är en ändring av varje kort den ritar annorlunda, vilket väggen redan har ett sätt att säga.
 En mall för baksidan visas på baksidorna, eftersom väggen visar förslaget.
+Också från Tabell säger panelens knapp «Visa på väggen» för ett förslag med mall, och lägger det där: tabellen håller spelets egna kolumner och ingen mall, så dess jämförelse hade sagt att varje kort ändrats — `addField` skriver det nya fältet tomt på varje kort — och inte visat den nya kolumnen alls.
+Lämnas mallen ute med «Välj delar…» visas resten i Tabell som förut.
 Väggens egen fysiska kontroll läser leken som förslaget ritar den medan det står där.
 I panelen ritas tre av lekens kort med mallen, ett av varje utseende den ger dem först, så att en grupp bara några kort hamnar i syns där och inte bara på väggen; under dem mallens namn, «Mall för framsidan», de nya fälten och hur många kort som får ett värde.
 Den fysiska kontrollen körs på varje kort förslaget rör, med den föreslagna mallen, och dess anmärkningar står innan något godtas och fäller aldrig förslaget (E5); för ett kort mallen bara ritar om säger den bara det som står på den sida mallen ritar, eftersom kortets andra sida är spelets och det som sägs om den sades redan innan förslaget kom.

@@ -67,11 +67,12 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
   const t = useT()
   const read = useMemo(() => (hasParts(parts) ? translated(doc, parts) : null), [doc, parts])
   const view = useMemo(() => (read?.ok ? proposalView(doc, read) : null), [doc, read])
-  // The proposal's cards are drawn with the template it would leave the game with (#1005).
-  const face = (view?.doc ?? doc).template.faces['front']
   // A template (#1005) is drawn on a few of the deck's cards, one of each look it gives them first, so
   // a group of the template that only some cards fall in is seen in the panel and not only on the wall.
   const templatePart = read?.ok ? read.parts.find((part) => part.kind === 'template') : undefined
+  // The proposal's cards are drawn with the template it would leave the game with: its own, unless
+  // the designer is leaving it out, when they would land in the game's (#1005).
+  const face = (view && !(templatePart && choosing && leave.has(templatePart.key)) ? view.doc : doc).template.faces['front']
   const samples = useMemo(() => {
     if (!view || !templatePart) return []
     const proposedFace = view.doc.template.faces[templatePart.face]
@@ -241,9 +242,11 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
       )}
       {done && (
         <div className="byd-ai-decide">
-          {/* A switch, drawn as the language draws a thing that is on (L13): the chosen pill. */}
+          {/* A switch, drawn as the language draws a thing that is on (L13): the chosen pill. A
+              template is shown on the wall from Tabell too (#1005), since the table holds no
+              template and none of the columns a proposed one brings. */}
           <button type="button" className="byd-choice" aria-pressed={onWall} onClick={onShow}>
-            {t(showsIn === 'table' ? 'ai.proposal.showTable' : 'ai.proposal.show')}
+            {t(showsIn === 'table' && !templatePart ? 'ai.proposal.showTable' : 'ai.proposal.show')}
           </button>
           {/* Outlined and not filled (L13): the header's «Starta/Uppdatera bord» is the view's first
               action, and the one filled button a view may have. While parts are being chosen, the
