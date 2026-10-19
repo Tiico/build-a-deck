@@ -4356,6 +4356,27 @@ label:is(.byd-ai-new, .byd-ai-change, .byd-ai-template) { cursor: pointer; }
 .byd-data td.byd-data-record > span { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
 .byd-data-proposed { display: inline-block; margin-left: var(--byd-s1); padding: 0 var(--byd-s1); border-radius: 999px; background: #c9a7ff; color: #1c1530; font-family: system-ui, sans-serif; font-size: 10px; font-weight: 800; }
 .byd-data tr[data-change='changed'][data-proposed] { --byd-data-tint: rgba(201, 167, 255, 0.08); }
+/* Rule text in the conversation (#1006): its name, what it replaces, and its blocks as the book reads
+   them, a line or two of each — the book itself is where it is read whole. */
+.byd-ai-card[data-rules] { grid-column: 1 / -1; }
+.byd-ai-rules { display: grid; gap: var(--byd-s1); min-width: 0; }
+.byd-ai-rules .byd-ai-card-name { color: var(--byd-ai-ink); font-weight: 600; }
+.byd-ai-rules-text { display: grid; gap: var(--byd-s1); padding-left: var(--byd-s2); border-left: 2px dashed var(--byd-ai-mark); }
+.byd-ai-rules-line { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: #c3cbdd; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.byd-ai-card[data-left] .byd-ai-rules-line { color: var(--byd-editor-quiet); text-decoration: line-through; }
+label.byd-ai-rules { cursor: pointer; }
+/* The same proposal laid in the book (#1006), on the book's own paper: a rail in the page's margin as
+   a file's proposal has (#131), dashed for what is added and whole for what replaces, as the wall's
+   edges are, in a violet deep enough to read on the paper; the wall's pill where an entry begins; and
+   what is replaced struck where it stands, with its word. The band above says it as Tabell does. */
+.byd-rulebook [data-ai] { margin-left: calc(-1 * (var(--byd-s3) + 3px)); padding-left: var(--byd-s3); border-left: 3px dashed #6f4fb8; /* undantag: 3px är linjens egen bredd och inte ett avstånd — den dras av så att måttet förblir 68 tecken */ }
+.byd-rulebook [data-ai='changed'] { border-left-style: solid; }
+.byd-rulebook [data-ai='gone'] { border-left: 3px solid #9a3b3b; /* undantag: linjens egen bredd */ }
+.byd-rulebook [data-ai='gone'] .byd-rules-mark { color: #9a3b3b; }
+.byd-rulebook [data-ai='gone'] :is(h2, h3, p, li) { color: #6f5f5f; text-decoration: line-through; }
+.byd-rules-ai-mark { display: inline-flex; align-items: center; gap: var(--byd-s1); margin-bottom: var(--byd-s1); padding: 0 var(--byd-s2); border-radius: 999px; background: #c9a7ff; color: #1c1530; font: 800 11px/16px system-ui, sans-serif; }
+.byd-rules-ai { flex: none; margin: 0; color: #cfd5e3; font-size: 12px; }
+.byd-rules-ai button { margin-left: var(--byd-s1); border: 1px solid #3b414e; border-radius: 6px; padding: var(--byd-s1) var(--byd-s2); background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
 
 /* «Bord · Resultat» (#1010, beställarens val 2026-10-18): the Bord tab's two views, switched at the
    head of the middle column, where it stands in both views. */

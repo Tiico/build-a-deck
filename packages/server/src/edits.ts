@@ -1,5 +1,5 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
-import { isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
+import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
@@ -160,6 +160,13 @@ export type EditIntent =
   | { v: 'renameIcon'; from: string; to: string }
   | { v: 'removeIcon'; name: string }
   | { v: 'setRules'; rules: RuleDoc }
+  // Rule text placed where it stands (#1006): `blocks` in place of the blocks `replace` names, where
+  // the first of them stood, or — when nothing is replaced — after the block `after` names, `null`
+  // first in the book. By id and never by position, so the edit lands where it was meant on a book a
+  // co-editor has written in since, or nowhere: a block it names that is gone refuses it. It touches
+  // the blocks it names and no others, where `setRules` writes the whole book. `title` names the book
+  // for a game that has none yet. An accepted AI proposal's rule text is one per place (E4).
+  | { v: 'spliceRules'; replace: string[]; after: string | null; blocks: RuleDoc['blocks']; title?: string }
   // The game's meanings and what they are painted in (E4). The cards write the meaning and never
   // the colour, so repainting a deck is one edit here and renaming one rewrites every card that
   // says it — which is exactly what `renameIcon` already does for a symbol's name.
@@ -627,6 +634,23 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, icons: without(doc.icons, intent.name), credits: without(doc.credits ?? {}, intent.name) }
     case 'setRules':
       return { ...doc, rules: intent.rules }
+    case 'spliceRules': {
+      const rules = doc.rules ?? { title: intent.title ?? doc.name, blocks: [] }
+      const had = new Set(rules.blocks.map((b) => b.id))
+      for (const id of intent.replace) if (!had.has(id)) throw new Error(`the rulebook has no block ${id}`)
+      if (intent.replace.length === 0 && intent.after !== null && !had.has(intent.after)) throw new Error(`the rulebook has no block ${intent.after}`)
+      const blocks = intent.blocks.map((block) => RuleBlock.parse(block))
+      const gone = new Set(intent.replace)
+      const at = intent.replace.length > 0 ? rules.blocks.findIndex((b) => gone.has(b.id)) : intent.after === null ? 0 : rules.blocks.findIndex((b) => b.id === intent.after) + 1
+      const kept = (part: readonly RuleBlock[]) => part.filter((b) => !gone.has(b.id))
+      const next = [...kept(rules.blocks.slice(0, at)), ...blocks, ...kept(rules.blocks.slice(at))]
+      const seen = new Set<string>()
+      for (const block of next) {
+        if (seen.has(block.id)) throw new Error(`the rulebook already has a block ${block.id}`)
+        seen.add(block.id)
+      }
+      return { ...doc, rules: { ...rules, blocks: next } }
+    }
     case 'setRole': {
       if (!intent.role.trim() || !intent.colour.trim()) throw new Error('a meaning needs a name and a colour')
       if (!isSymbolName(intent.role)) throw new Error(unwritable(intent.role))

@@ -238,13 +238,17 @@ describe('the schema the provider is held to', () => {
   it('is the same zod schema the answer is read with, written as strict JSON Schema', () => {
     const schema = proposalSchema()
     expect(schema).not.toHaveProperty('$schema')
-    expect(schema).toMatchObject({ type: 'object', additionalProperties: false, required: ['cards', 'changes', 'template'] })
+    expect(schema).toMatchObject({ type: 'object', additionalProperties: false, required: ['cards', 'changes', 'template', 'rules'] })
     // Strict modes read no defaults; a part the model has nothing for is an empty list it writes.
     expect(JSON.stringify(schema)).not.toContain('"default"')
     const changes = (schema as { properties: { changes: { items: { additionalProperties: boolean; required: string[] } } } }).properties.changes
     expect(changes.items).toMatchObject({ additionalProperties: false, required: ['card', 'fields'] })
     const cards = (schema as { properties: { cards: { items: { additionalProperties: boolean; required: string[] } } } }).properties.cards
     expect(cards.items).toMatchObject({ additionalProperties: false, required: ['fields'] })
+    // Rule text (#1006): an entry says where it stands and the blocks it brings, every property said.
+    const rules = (schema as { properties: { rules: { items: { additionalProperties: boolean; required: string[] } } } }).properties.rules
+    expect(rules.items).toMatchObject({ additionalProperties: false, required: ['replace', 'after', 'blocks'] })
+    for (const kind of ['heading', 'text', 'list']) expect(JSON.stringify(rules)).toContain(`"kind":{"type":"string","const":"${kind}"}`)
     // A value of several types is said as `anyOf`, which both providers' strict modes read, and
     // never as a list of types, which only some of them do.
     expect(JSON.stringify(schema)).not.toMatch(/"type":\[/)

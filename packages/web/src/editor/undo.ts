@@ -63,6 +63,7 @@ export function whatOf(intent: EditIntent): Key {
     case 'removePicture':
       return 'undo.what.picture'
     case 'setRules':
+    case 'spliceRules':
       return 'undo.what.rules'
     case 'setFont':
     case 'removeFont':

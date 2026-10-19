@@ -81,8 +81,24 @@ describe('the context the model is given', () => {
     expect(text).toContain(`Dra ett kort från Kortlek och lägg det i Kasthög. Den som har ${title} får två {mynt}.`)
     expect(text).toContain('# Att dra kort')
     expect(text).toContain('- Räkna Guld vid rundans slut.')
-    expect(text).not.toContain('[[')
-    expect(text).not.toContain('zon:draw')
+    const book = text.slice(text.indexOf('## Rulebook'), text.indexOf('\n## Theme'))
+    expect(book).not.toContain('[[')
+    expect(book).not.toContain('zon:draw')
+  })
+
+  // Rule text as a proposal (#1006): a rule stores what it names by id, so the model is told the id
+  // each zone, card and counter is written with, and the id of every block of the book, which is
+  // where a proposal places its rule text.
+  it('says how a rule names each zone and counter, and the id every block of the book stands under', () => {
+    const doc = game()
+    const text = aiContextOf(doc)
+    expect(text).toMatch(/^- Kortlek \[\[zon:draw\]\]: /m)
+    expect(text).toMatch(/Guld \[\[räknare:Guld\]\] \(starts at/)
+    expect(text).toContain('[[kort:<id>]]')
+    const book = text.slice(text.indexOf('## Rulebook'), text.indexOf('\n## Theme')).split('\n')
+    expect(book.slice(2, -1)).toEqual(['[block h1]', '### Att dra kort', '[block t1]', expect.stringMatching(/^Dra ett kort från Kortlek/), '[block l1]', '- Räkna Guld vid rundans slut.', '- Blanda alltid först.'])
+    expect(AI_INSTRUCTIONS).toMatch(/rulebook/)
+    expect(AI_INSTRUCTIONS).toContain('[[zon:id]]')
   })
 
   // #1049: the context is one outline whose own sections are `#` and `##`, and the rulebook is a

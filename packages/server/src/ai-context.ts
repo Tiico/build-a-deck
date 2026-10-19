@@ -55,6 +55,7 @@ export const AI_INSTRUCTIONS = [
   'A proposed card fills every field the template draws on it, and antal: how many copies the deck holds. It uses the game’s own fields, icons and colour roles and nothing else, and differs from the cards the game already has. Never write a picture: the art is the designer’s own, so leave picture fields out.',
   'A changed card goes in changes: the id of a card the game has, and only the fields that change, each with its new value; antal changes how many copies the deck holds. Write each value as the column reads: a number in a column of numbers. When the designer has selected cards, "these" and "the selected cards" mean them.',
   'When the designer describes a card type, or asks for a change to the template, propose a template: the whole face, every element of it in drawing order — the ones you keep as well as the ones you change — in millimetres, each element wholly inside the card or its bleed. Write the elements as one flat list, and put an element in a group or an if by naming that element’s id as its parent. Use the game’s fields, fonts, colour roles and icons; write a colour as #rrggbb or as a colour role’s name. A field the template needs and the game does not have goes in fields, with its value for each card the game has that needs one; never a picture. Groups (variants) are chosen by a column, as the game’s are.',
+  'When the designer asks for help with the rulebook — a new section, a rewrite, rules for a mechanic the cards use — propose rules. Each entry is blocks that stand together in one place of the book: in place of the blocks whose ids it lists in replace, or, with replace empty, after the block named in after (null for the start of the book). A block is a heading (level 1 for a section, 2 for a heading under one), a text of paragraphs, or a list of items. Rule text uses the card text syntax, and names a zone, a card or a counter as [[zon:id]], [[kort:id]] or [[räknare:id]] with the id the lists above give it, never by its name. Never replace the setup or a picture: they are the game’s own.',
   'Nothing you propose changes the game until the designer accepts it. Anything else you would change, say in words, and never claim to have changed anything.',
   'Write your answer as plain text: paragraphs separated by a blank line, points as lines that start with "- ", and **bold** or *italic* where it helps. No headings, tables, links or code blocks; the editor shows nothing else.',
   'Never write HTML or CSS. Card text uses only the inline syntax described below.',
@@ -144,24 +145,24 @@ function headOf(doc: ProjectDoc): string {
   const zoneName = (id: string) => names.zones[id] ?? id
   line(`Cards start in: ${zoneName(doc.setup.deckZone)}`)
   line(`Cards played without a place land on: ${zoneName(doc.setup.floor)}`)
-  line('Zones:')
+  line('Zones, each with how a rule names it:')
   for (const zone of doc.setup.zones) {
     const parts = [`${zone.kind}`, VISIBILITY[zone.visibility]]
     if (zone.owner !== undefined) parts.push(`belongs to seat ${zone.owner}`)
     if (zone.fill) parts.push(`starts with the cards where ${zone.fill.map((c) => `${c.field} is ${c.is.join(' or ')}`).join(' and ')}`)
     if (zone.bottom) parts.push(`the card ${names.cards[zone.bottom.cardRef] ?? zone.bottom.cardRef} always lies last`)
     if (zone.actions?.length) parts.push(`actions: ${zone.actions.map((a) => a.label).join(', ')}`)
-    line(`- ${zone.name}: ${parts.join('; ')}`)
+    line(`- ${zone.name} [[zon:${zone.id}]]: ${parts.join('; ')}`)
   }
   const counters = doc.setup.counters ?? []
-  if (counters.length > 0) line(`Every seat counts: ${counters.map((c) => `${names.counters[counterId(c)] ?? c.name} (starts at ${c.start})`).join(', ')}`)
+  if (counters.length > 0) line(`Every seat counts: ${counters.map((c) => `${names.counters[counterId(c)] ?? c.name} [[räknare:${counterId(c)}]] (starts at ${c.start})`).join(', ')}`)
   line()
 
   const columns = columnsOf(doc).filter((f) => f !== ANTAL)
   const images = imageFieldsOf(doc)
   line('## Fields')
   line('Every card is a row with these columns. A column has no declared type; this is how its values read.')
-  line('- id: the card’s key, unique in the deck')
+  line('- id: the card’s key, unique in the deck; a rule names the card as [[kort:<id>]]')
   line(`- ${ANTAL}: number — how many copies of the card the deck holds (1 when empty)`)
   for (const field of columns) line(`- ${field}: ${images.includes(field) ? 'image' : kindOf(doc, field)}`)
   line()
@@ -187,7 +188,12 @@ function tailOf(doc: ProjectDoc): string {
   if (doc.rules && doc.rules.blocks.length > 0) {
     const rendered = renderRules(doc.rules, namesOfProject(doc), arrangementOf(doc))
     line(`## Rulebook: ${oneLine(rendered.title)}`)
-    for (const block of rendered.blocks) for (const text of blockText(block)) line(text)
+    // Every block under the id a proposal places rule text by (#1006).
+    line('Each block of the book stands under its id, as [block <id>]; a reference in it is written here by the name it stands for.')
+    for (const block of rendered.blocks) {
+      line(`[block ${block.id}]`)
+      for (const text of blockText(block)) line(text)
+    }
     line()
   }
 
@@ -421,7 +427,7 @@ function imageFieldsOf(doc: ProjectDoc): string[] {
 const BOOK_LEVEL = 2
 // One line of the book, as one line: a name with a line break in it does not start another.
 const oneLine = (text: string): string => text.replace(/\s*\n\s*/g, ' ')
-const bookLine = (text: string): string => oneLine(text).replace(/^#/, '\\#')
+const bookLine = (text: string): string => oneLine(text).replace(/^[#[]/, '\\$&')
 function blockText(block: RenderedBlock): string[] {
   switch (block.kind) {
     case 'heading':

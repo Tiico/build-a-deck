@@ -3,6 +3,7 @@ import { translateProposal, type ChangedCell, type ProposalProblem, type Transla
 import { elementsFor } from '@byd/template'
 import { fieldLabel } from './fields.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
+import type { RuleBlock } from '@byd/template'
 import type { T } from '../i18n/index.js'
 
 // An AI proposal as the editor holds it (#1002): the parts the answer brought, as they were written,
@@ -14,18 +15,19 @@ import type { T } from '../i18n/index.js'
 
 // The parts that arrived, in the shape the proposal model reads: new cards, changed cards (#1003), and
 // a template face with its fields (#1005), which arrives whole as one part — or null, which is how a
-// strict schema has the model say it proposes none. The parts later slices add (#1006) are gathered
-// under their own keys beside them.
-export type ProposalParts = { cards: unknown[]; changes: unknown[]; template?: unknown }
-export const noParts = (): ProposalParts => ({ cards: [], changes: [] })
+// strict schema has the model say it proposes none — and rule text for the rulebook (#1006), an entry
+// at a time.
+export type ProposalParts = { cards: unknown[]; changes: unknown[]; template?: unknown; rules?: unknown[] }
+export const noParts = (): ProposalParts => ({ cards: [], changes: [], rules: [] })
 export function withPart(parts: ProposalParts, key: string, part: unknown): ProposalParts {
   if (key === 'cards') return { ...parts, cards: [...parts.cards, part] }
   if (key === 'changes') return { ...parts, changes: [...parts.changes, part] }
   if (key === 'template') return { ...parts, template: part }
+  if (key === 'rules') return { ...parts, rules: [...(parts.rules ?? []), part] }
   return parts
 }
 // Whether anything has been proposed yet: a template written as null is no proposal.
-export const hasParts = (parts: ProposalParts): boolean => parts.cards.length > 0 || parts.changes.length > 0 || (parts.template !== undefined && parts.template !== null)
+export const hasParts = (parts: ProposalParts): boolean => parts.cards.length > 0 || parts.changes.length > 0 || (parts.template !== undefined && parts.template !== null) || (parts.rules?.length ?? 0) > 0
 
 // A proposal as the editor shows it on the wall and in the table: its parts, and the ones the
 // designer has left out with «Välj delar…» (#1003), which the wall and the table leave out too.
@@ -35,6 +37,17 @@ export type ShownProposal = { parts: ProposalParts; leave: ReadonlySet<string> }
 export function showsTemplate({ parts, leave }: ShownProposal): boolean {
   const face = (parts.template as { face?: unknown } | null | undefined)?.face
   return typeof face === 'string' && !leave.has(`template:${face}`)
+}
+
+// Where a shown proposal is shown (#1006): rule text in the Regler tab, and the deck — new and changed
+// cards and a template — on the wall or in the table. A proposal of rule text and nothing else is shown
+// in the book alone; one with both is shown in each, since the two never stand on the same surface.
+const kept = ({ leave }: ShownProposal, key: string) => !leave.has(key)
+export function showsRules(shown: ShownProposal): boolean {
+  return (shown.parts.rules ?? []).some((_, i) => kept(shown, `rules:${i + 1}`))
+}
+export function showsDeck(shown: ShownProposal): boolean {
+  return shown.parts.cards.some((_, i) => kept(shown, `card:${i + 1}`)) || shown.parts.changes.some((change) => kept(shown, `change:${String((change as { card?: unknown } | null)?.card)}`)) || showsTemplate(shown)
 }
 
 // Translated against the game as it stands; `leave` takes out the parts left out (#1003).
@@ -70,7 +83,7 @@ export function proposalView(doc: ProjectDoc, read: Extract<Translated, { ok: tr
   for (const part of read.parts) {
     if (part.kind === 'change') cellsOf(part.cardRef).push(...part.cells)
     else if (part.kind === 'card') added.add(part.cardRef)
-    else {
+    else if (part.kind === 'template') {
       face = part.face
       for (const edit of part.edits) if (edit.v === 'setCell') cellsOf(edit.cardRef).push({ field: edit.field, from: doc.rows.find((r) => r.id === edit.cardRef)?.fields[edit.field], to: edit.value })
     }
@@ -89,6 +102,54 @@ export function proposalView(doc: ProjectDoc, read: Extract<Translated, { ok: tr
     }
   }
   return { doc: after, added, changed, redrawn, face, templated }
+}
+
+// The rulebook as a proposal would leave it, for the Regler tab to draw (#1006): every block of the
+// book in its place, the blocks an entry takes the place of still standing where they stood and
+// marked `gone`, and after them — or after the block an entry is placed after — the entry's own
+// blocks, marked `new` when they are added and `changed` when they replace. `first` marks the block
+// a run of one entry's marks opens with, where the mark is said in words. Null when the proposal
+// brings no rule text.
+export type RuleMark = 'new' | 'changed' | 'gone'
+export type RuleEntry = { block: RuleBlock; mark: RuleMark | null; part?: string; first?: boolean }
+export type RulesView = { title: string; entries: RuleEntry[]; added: number; rewritten: number }
+export function rulesView(doc: ProjectDoc, read: Extract<Translated, { ok: true }>): RulesView | null {
+  const parts = read.parts.flatMap((part) => (part.kind === 'rules' ? [part] : []))
+  if (parts.length === 0) return null
+  const entries: RuleEntry[] = (doc.rules?.blocks ?? []).map((block) => ({ block, mark: null }))
+  for (const part of parts) {
+    const edit = part.edits[0]
+    if (edit?.v !== 'spliceRules') continue
+    const gone = new Set(edit.replace)
+    let at: number
+    if (gone.size > 0) {
+      const first = entries.findIndex((entry) => gone.has(entry.block.id))
+      entries.forEach((entry, i) => {
+        if (gone.has(entry.block.id)) entries[i] = { ...entry, mark: 'gone', part: part.key, first: i === first }
+      })
+      // The new blocks stand after the run of replaced blocks they begin at, so the old is read
+      // before the new.
+      at = first
+      while (at < entries.length && entries[at]?.mark === 'gone' && entries[at]?.part === part.key) at++
+    } else at = edit.after === null ? 0 : entries.findIndex((entry) => entry.block.id === edit.after) + 1
+    const mark: RuleMark = gone.size > 0 ? 'changed' : 'new'
+    entries.splice(at, 0, ...edit.blocks.map((block, i) => ({ block, mark, part: part.key, first: i === 0 })))
+  }
+  return {
+    title: doc.rules?.title ?? doc.name,
+    entries,
+    added: parts.filter((part) => part.replaced.length === 0).length,
+    rewritten: parts.filter((part) => part.replaced.length > 0).length,
+  }
+}
+
+// How much rule text a proposal brings, in its own words: «1 tillägg i regelboken», «2 omskrivningar
+// i regelboken» — the panel's summary, the book's band and what an accepted proposal says.
+export function rulesWords(added: number, rewritten: number, t: T): string[] {
+  const out: string[] = []
+  if (added > 0) out.push(t(added === 1 ? 'ai.proposal.rules.added.one' : 'ai.proposal.rules.added.other', { n: added }))
+  if (rewritten > 0) out.push(t(rewritten === 1 ? 'ai.proposal.rules.rewritten.one' : 'ai.proposal.rules.rewritten.other', { n: rewritten }))
+  return out
 }
 
 // A cell's value as the old → new of a change says it: nothing as a dash, and a long text as the
@@ -137,6 +198,32 @@ export function problemWords(problem: ProposalProblem | { kind: 'broken' }, t: T
           : t('ai.unusable.changed', { id: problem.changed })
         : ''
   switch (problem.kind) {
+    case 'rules': {
+      // Rule text's fault at the entry it is in, by its place and its heading (#1006).
+      const part = problem.title !== undefined ? t('ai.unusable.rules.named', { n: problem.section, title: problem.title }) : t('ai.unusable.rules.part', { n: problem.section })
+      const fault = problem.fault
+      switch (fault.kind) {
+        case 'unknown-ref': {
+          // `zon:finns-inte` as «zonen «finns-inte»»: the kind in the reader's words, the id as written.
+          const colon = fault.ref.indexOf(':')
+          const word = fault.ref.slice(0, colon)
+          const kind = word === 'zon' ? 'zone' : word === 'kort' ? 'card' : 'counter'
+          return t(`ai.unusable.rules.unknown-ref.${kind}`, { part, id: fault.ref.slice(colon + 1) })
+        }
+        case 'keeps':
+          return t(`ai.unusable.rules.keeps.${fault.what}`, { part })
+        case 'unknown-kind':
+          return t('ai.unusable.rules.unknown-kind', { part, type: fault.type })
+        case 'bad-ref':
+          return t('ai.unusable.rules.bad-ref', { part, written: fault.written })
+        case 'unknown-icon':
+          return t('ai.unusable.rules.unknown-icon', { part, icon: `{${fault.icon}}` })
+        case 'unknown-role':
+          return t('ai.unusable.rules.unknown-role', { part, role: fault.role })
+        default:
+          return t(`ai.unusable.rules.${fault.kind}`, { part })
+      }
+    }
     case 'template': {
       // The template's fault at the layer it is in, by the word the layer list uses (#1005).
       const where = problem.element !== undefined ? t('ai.unusable.template.layer', { element: problem.element }) : t('ai.unusable.template.whole')

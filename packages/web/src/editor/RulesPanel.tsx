@@ -44,6 +44,7 @@ import { SetupOverview } from '../rules/SetupOverview.js'
 // once (#481). The editor is a chunk of its own, so this costs the table's first frame nothing.
 import '../rules/rules.css'
 import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
+import { rulesWords, type RuleEntry, type RulesView } from './proposals.js'
 import { PickList, pickKey, pickOptionId, triggerBehind, writeTrigger } from './picking.js'
 import { caretInSource, readOffsetAt } from './caret.js'
 
@@ -51,9 +52,11 @@ import { caretInSource, readOffsetAt } from './caret.js'
 // stands and closes when it is left, so what is being written is always what the reader will
 // meet — which is the whole point of rules that must work without the designer in the room.
 // References are ids: what a rule calls a thing follows what the thing is called.
-export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined }
+// `aiProposal` is an AI proposal's rule text laid in the book (#1006), and `onHideProposal` takes it
+// off again.
+export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined; aiProposal?: RulesView | undefined; onHideProposal?: (() => void) | undefined }
 
-export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
+export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal }: RulesPanelProps) {
   const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
   // Vilket block ＋:et står vid (#216). Ett enda ＋ följer det block som har pekaren eller fokus,
@@ -101,19 +104,25 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // once, here, and everything below is a rendering of it: the band counts it, the book is drawn
   // with its marks, and the column beside the book carries the same marks the book does.
   const plan = rules && proposal ? planImport(rules, proposal.doc) : null
+  // An AI proposal's rule text (#1006), shown while no file is lying in the book: the book as the
+  // proposal would leave it, read and never written in, as a file's proposal is — what is about to
+  // change is read before it is decided, and a page that could be typed into while it says so would
+  // be two things at once.
+  const ai = proposal === null ? (aiProposal ?? null) : null
+  const aiMarks = new Map<string, RuleEntry>((ai?.entries ?? []).map((entry) => [entry.block.id, entry]))
   // A book is being written in only when nothing is lying in it: a proposal is a reading of what
   // the book would become, and a page that can be typed into while it says what it is about to
   // lose would be two things at once.
   // A role that may not change the game reads the book and writes nothing (#489): no block opens,
   // no ＋ is drawn, and the ways in are not offered.
-  const writing = rules !== undefined && proposal === null && client.mayEdit
+  const writing = rules !== undefined && proposal === null && ai === null && client.mayEdit
   // There is no table to show a book that has not been written, and a proposal is a reading of
   // what the book would become rather than a book anybody is handed. Both fall back to the
   // editable mode rather than offering a preview of something that is not there.
   const mode: Mode = writing ? chosen : 'edit'
   // Everything the reader is shown, which over a book includes what is about to leave it. The book
   // that would be written is `plan.doc` and is a subset of this.
-  const shown = plan ? { title: plan.doc.title, blocks: plan.blocks.map((planned) => planned.block) } : (rules ?? proposal?.doc ?? templateRules(doc.name, t))
+  const shown = plan ? { title: plan.doc.title, blocks: plan.blocks.map((planned) => planned.block) } : ai ? { title: ai.title, blocks: ai.entries.map((entry) => entry.block) } : (rules ?? proposal?.doc ?? templateRules(doc.name, t))
   const marks = new Map((plan?.blocks ?? []).map((planned) => [planned.block.id, planned]))
   // The book is rendered against this very document, setup and all (#270): what the designer
   // reads is what a table locked to this version would hand its players.
@@ -356,7 +365,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             {t(out.warnings.length === 1 ? 'rules.warnings.one' : 'rules.warnings.other', { n: out.warnings.length })}
           </span>
         )}
-        {client.mayEdit && !rules && !proposal && (
+        {client.mayEdit && !rules && !proposal && !ai && (
           <div className="byd-rules-ways">
             {/* Three ways in, and each of them does what it says: a control that does nothing yet
                 would be a promise nobody kept. */}
@@ -394,7 +403,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             divider at the far end of the header. Import and booklet only, because a control that is
             not a tool of the book — the switch, the hint — would make the group the header with a
             name on it, not a group. */}
-        {rules && !proposal && (
+        {rules && !proposal && !ai && (
           <div className="byd-rules-ways byd-rules-tools" role="group" aria-label={t('rules.tools')}>
             {client.mayEdit && (
               <PickFile
@@ -431,6 +440,18 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
           }}
         />
       )}
+      {/* The AI proposal laid in the book (#1006), said as Tabell says one (#1003): what it is, in its
+          own words, and the way to take it off again. */}
+      {ai && (
+        <p className="byd-rules-ai" role="status" data-proposal="">
+          {t('rules.proposal')}: {rulesWords(ai.added, ai.rewritten, t).join(', ')}{' '}
+          {onHideProposal && (
+            <button type="button" onClick={onHideProposal}>
+              {t('rules.proposal.hide')}
+            </button>
+          )}
+        </p>
+      )}
       <div className="byd-rules-spread">
         {/* `proposed` is the mark that says a section has nothing written in it yet. A section
             read out of a file has, so only the template's own disposition carries it. The column
@@ -443,7 +464,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
           label={t('rules.toc')}
           {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
           {...(plan ? { marks: [...plan.sections, ...plan.subsections] } : {})}
-          {...(writing ? { onAdd: addSection } : proposal || rules ? {} : { proposed: true })}
+          {...(writing ? { onAdd: addSection } : proposal || rules || ai ? {} : { proposed: true })}
         />
         {/* The book is read in an area of its own, beside the column's and never inside it (#210).
             Before this the pair shared the tab's single scrolling area and the column hung in it,
@@ -503,6 +524,10 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
               {out.blocks.map((b, i) => {
                 const source = shown.blocks.find((x) => x.id === b.id)
                 const planned = marks.get(b.id)
+                // What the AI proposal does to this block (#1006): the wall's two marks, «✦ Förslag» on
+                // what it adds and «✦ Ändrat» on what it writes in place of something, said once where
+                // an entry's run begins; and what it replaces struck where it stands, with the word.
+                const proposed = aiMarks.get(b.id)
                 // What is happening to this block, as words in the page and in the order they are read.
                 // A strike-through is a decoration and a colour is a colour; neither of them reaches a
                 // screen reader, and this is a report that has to be read carefully (L12).
@@ -524,6 +549,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                     className="byd-rules-block"
                     data-block={b.id}
                     data-mark={planned?.mark}
+                    data-ai={proposed?.mark ?? undefined}
                     data-open={editing === b.id ? 'true' : undefined}
                     data-at={where === b.id ? 'true' : undefined}
                     {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
@@ -532,6 +558,14 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                         a ring drawn round it: a decoration is not an answer (L12). It is not a
                         `figcaption`, because a caption is the designer's line and this is not. */}
                     {found === b.id && <span className="byd-rules-found">{t('rules.image.found')}</span>}
+                    {proposed?.first && proposed.mark !== 'gone' && (
+                      <span className="byd-rules-ai-mark">
+                        <span aria-hidden="true">✦</span> {t(proposed.mark === 'new' ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}
+                      </span>
+                    )}
+                    {proposed?.first && proposed.mark === 'gone' && (
+                      <span className="byd-rules-mark">{t(ai?.entries.some((entry) => entry.part === proposed.part && entry.mark === 'changed') ? 'rules.mark.replaced' : 'rules.mark.going')}</span>
+                    )}
                     {planned && saysMark && (
                       <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
                     )}

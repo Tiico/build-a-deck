@@ -1,9 +1,10 @@
 import { z } from 'zod'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { FaceTemplate, SHAPES, parseBody, placedElements, type BodyBlock, type Element, type InlineNode, type Paint } from '@byd/template'
+import { FaceTemplate, REF_WORD, SHAPES, nameOf, parseBody, parseInline, placedElements, runsOf, type BodyBlock, type Element, type InlineNode, type Names, type Paint, type RuleBlock } from '@byd/template'
 import { ANTAL, applyEdit, columnsOf, nextCardRef, type EditIntent } from './edits.js'
 import type { Cell, ProjectDoc } from './projects.js'
 import { kindOf } from './ai-context.js'
+import { namesOfProject } from './names.js'
 
 // What the AI may answer, and how an answer becomes the editor's own edits (#1002, E4, PRD module 4).
 //
@@ -137,15 +138,41 @@ export const ProposedTemplate = z.strictObject({
 })
 export type ProposedTemplate = z.infer<typeof ProposedTemplate>
 
+// Rule text for the rulebook (#1006, B7): blocks in the book's own kinds, written where they stand.
+// A rule names a zone, a card or a counter by its id, `[[zon:id]]`, as the book stores it, so a rule
+// the designer accepts follows the thing when it is renamed — and the translator refuses a reference
+// to something the game does not have, before it reaches the book.
+//
+// An entry is blocks placed together in one place, and it says the place by the ids of the blocks it
+// touches and never by their position: in place of the blocks it names in `replace`, or after the
+// block it names in `after` (null at the start of the book). An index would land on another block
+// the moment a co-editor added one above it; an id lands where it was meant or nowhere — a block the
+// entry names that is gone since makes the proposal unusable, with the reason, as a card a change
+// names that is gone does (#1003).
+const RuleText = z.string()
+const ProposedRuleHeading = z.strictObject({ kind: z.literal('heading'), level: z.union([z.literal(1), z.literal(2)]).describe('1 for a section, 2 for a heading under one.'), text: RuleText.describe('One line.') })
+const ProposedRuleText = z.strictObject({ kind: z.literal('text'), text: RuleText.describe('Paragraphs, separated by a blank line.') })
+const ProposedRuleList = z.strictObject({ kind: z.literal('list'), ordered: z.boolean().describe('true for a numbered list.'), items: z.array(RuleText).describe('One item each.') })
+export const ProposedRuleBlock = z.discriminatedUnion('kind', [ProposedRuleHeading, ProposedRuleText, ProposedRuleList])
+export type ProposedRuleBlock = z.infer<typeof ProposedRuleBlock>
+const RULE_KINDS: readonly string[] = ['heading', 'text', 'list']
+export const ProposedRules = z.strictObject({
+  replace: z.array(z.string()).describe('The ids of the rulebook’s blocks these blocks take the place of, as the Rulebook writes them; empty to add blocks without replacing any.'),
+  after: z.string().nullable().describe('When nothing is replaced: the id of the block the new blocks follow, or null to put them first in the book.'),
+  blocks: z.array(ProposedRuleBlock).describe('The blocks, in reading order; empty with replace to take blocks out of the book.'),
+})
+export type ProposedRules = z.infer<typeof ProposedRules>
+
 // `changes` came after `cards` (#1003), and an answer written before it — or by a model that left it
 // out — reads as one that changes nothing; `template` came after both (#1005) and reads as no
-// template the same way. The schema the provider is held to still requires them, since a strict
+// template the same way, and `rules` after that (#1006) as no rule text. The schema the provider is held to still requires them, since a strict
 // schema requires every property; the defaults are for reading only, and are never written into that
 // schema (see `proposalSchema`).
 export const Proposal = z.strictObject({
   cards: z.array(ProposedCard).describe('New cards to add to the deck, one per row; empty when the answer proposes none.'),
   changes: z.array(ProposedChange).default([]).describe('Changes to cards the game already has, one per card; empty when the answer changes none.'),
   template: ProposedTemplate.nullable().default(null).describe('A template face with the new fields it needs, or null when the answer proposes none.'),
+  rules: z.array(ProposedRules).default([]).describe('Rule text for the rulebook, one entry per place in the book; empty when the answer proposes none.'),
 })
 export type Proposal = z.infer<typeof Proposal>
 
@@ -195,6 +222,24 @@ export type ProposalProblem =
   // What is wrong with a proposed template (#1005), on its face, at the element it is wrong in when
   // it is one element's fault.
   | { kind: 'template'; face: string; element?: string; fault: TemplateFault }
+  // What is wrong with an entry of rule text (#1006), named by its place in the proposal and by its
+  // first heading when it has one.
+  | { kind: 'rules'; section: number; title?: string; fault: RulesFault }
+
+// Why rule text could not be used: a block of a kind the book does not have, a place in the book that
+// is not there, a block two entries both claim, the setup or a picture replaced — they are the game's
+// own — a reference to something the game does not have or one the book cannot read, a symbol or
+// meaning the game does not have, text past the inline syntax, and a block with nothing in it.
+export type RulesFault =
+  | { kind: 'unknown-kind'; type: string }
+  | { kind: 'unknown-block' | 'repeated-block'; block: string }
+  | { kind: 'keeps'; block: string; what: 'setup' | 'image' }
+  | { kind: 'unknown-ref'; ref: string }
+  | { kind: 'bad-ref'; written: string }
+  | { kind: 'unknown-icon'; icon: string }
+  | { kind: 'unknown-role'; role: string }
+  | { kind: 'bad-syntax' }
+  | { kind: 'empty' }
 
 // Why a proposed template could not be used: an element kind the model does not have, a field that
 // is neither the game's nor one the proposal brings, an element outside the card, a typeface, a
@@ -228,6 +273,11 @@ export type ProposalPart =
   | { kind: 'change'; key: string; cardRef: string; cells: ChangedCell[]; edits: EditIntent[] }
   // `fields` are the new columns, and `filled` how many of the game's cards they write values on.
   | { kind: 'template'; key: string; face: string; fields: string[]; filled: number; edits: EditIntent[] }
+  // An entry of rule text (#1006): the blocks it brings, and the blocks of the book it takes the
+  // place of. One entry is one part: the blocks the model placed together, a section with its heading,
+  // paragraphs and list, or a rewrite of a run of blocks — a block on its own is a heading without its
+  // text, and a rewrite of three blocks as two has no block that answers to another.
+  | { kind: 'rules'; key: string; replaced: string[]; blocks: RuleBlock[]; edits: EditIntent[] }
 
 export type Translated = { ok: true; edits: EditIntent[]; parts: ProposalPart[] } | { ok: false; problem: ProposalProblem }
 
@@ -238,7 +288,7 @@ export type Translated = { ok: true; edits: EditIntent[]; parts: ProposalPart[] 
 export function translateProposal(doc: ProjectDoc, answer: unknown, leave: ReadonlySet<string> = new Set()): Translated {
   // An element of a kind the model does not have is said by its kind, which is the one thing the
   // schema's own refusal would not name.
-  const stranger = strangeElement(answer)
+  const stranger = strangeElement(answer) ?? strangeRuleBlock(answer)
   if (stranger) return refused(stranger)
   const read = Proposal.safeParse(answer)
   if (!read.success) return { ok: false, problem: { kind: 'shape' } }
@@ -337,6 +387,13 @@ export function translateProposal(doc: ProjectDoc, answer: unknown, leave: Reado
     if (!tried(edits)) return refused({ kind: 'refused' })
     parts.push({ kind: 'change', key, cardRef: row.id, cells, edits })
   }
+  const ruled = rulesParts(judged, read.data.rules, leave)
+  if (!ruled.ok) return ruled
+  for (const part of ruled.parts) {
+    if (!tried(part.edits)) return refused({ kind: 'refused' })
+    parts.push(part)
+  }
+  if (ruled.left) left = true
   // Nothing to propose is an answer that proposed nothing; nothing chosen is the designer's choice.
   if (parts.length === 0 && !left) return { ok: false, problem: { kind: 'empty' } }
   return { ok: true, edits: parts.flatMap((p) => p.edits), parts }
@@ -751,4 +808,163 @@ function knownPicture(doc: ProjectDoc, ref: string): boolean {
   if (hash !== undefined && doc.pictures?.[hash]) return true
   const shows = (els: readonly Element[]): boolean => els.some((el) => (el.kind === 'image' && 'literal' in el.bind && el.bind.literal === ref) || ((el.kind === 'group' || el.kind === 'if') && shows(el.children)))
   return Object.values(doc.template.faces).some((face) => shows(face.base) || Object.values(face.variants).some((v) => shows(v.override ?? [])))
+}
+
+// Rule text as the parts it is (#1006): each entry judged against the book as it stands, whether the
+// designer keeps it or not — a proposal that cannot be used is refused whole, as it was shown — and
+// made into one `spliceRules` per entry kept. The new blocks get the ids the book has free, in the
+// editor's own spelling, and an entry left out takes none of them, so the ids of the ones after it
+// do not move with the choice. Two entries after the same block stand in the order they were
+// written: the second follows the first one's last block.
+type RulesPart = Extract<ProposalPart, { kind: 'rules' }>
+type Ruled = { ok: true; parts: RulesPart[]; left: boolean } | { ok: false; problem: ProposalProblem }
+type Written = Extract<RuleBlock, { kind: 'heading' | 'text' | 'list' }>
+type Unplaced = Written extends infer B ? (B extends { id: string } ? Omit<B, 'id'> : never) : never
+function rulesParts(doc: ProjectDoc, entries: readonly ProposedRules[], leave: ReadonlySet<string>): Ruled {
+  const book = doc.rules?.blocks ?? []
+  const known = new Map(book.map((block) => [block.id, block]))
+  const names = namesOfProject(doc)
+  const fail = (i: number, fault: RulesFault): Ruled => ({ ok: false, problem: { kind: 'rules', section: i + 1, ...titleOf(entries[i]), fault } })
+  // The blocks each entry takes the place of, claimed once.
+  const claimed = new Set<string>()
+  for (const [i, entry] of entries.entries()) {
+    for (const id of entry.replace) {
+      const block = known.get(id)
+      if (!block) return fail(i, { kind: 'unknown-block', block: id })
+      if (claimed.has(id)) return fail(i, { kind: 'repeated-block', block: id })
+      if (block.kind === 'setup' || block.kind === 'image') return fail(i, { kind: 'keeps', block: id, what: block.kind })
+      claimed.add(id)
+    }
+  }
+  const made: Unplaced[][] = []
+  for (const [i, entry] of entries.entries()) {
+    if (entry.replace.length === 0 && entry.after !== null) {
+      if (!known.has(entry.after)) return fail(i, { kind: 'unknown-block', block: entry.after })
+      if (claimed.has(entry.after)) return fail(i, { kind: 'repeated-block', block: entry.after })
+    }
+    if (entry.replace.length === 0 && entry.blocks.length === 0) return fail(i, { kind: 'empty' })
+    const blocks: Unplaced[] = []
+    for (const proposed of entry.blocks) {
+      const read = ruleBlocksOf(doc, names, proposed)
+      if ('fault' in read) return fail(i, read.fault)
+      blocks.push(...read.blocks)
+    }
+    made.push(blocks)
+  }
+  const taken = new Set(book.map((block) => block.id))
+  const lastAt = new Map<string | null, string>()
+  const parts: RulesPart[] = []
+  let left = false
+  for (const [i, entry] of entries.entries()) {
+    const key = `rules:${i + 1}`
+    if (leave.has(key)) {
+      left = true
+      continue
+    }
+    const blocks = (made[i] ?? []).map((block) => ({ ...block, id: freeBlockId(taken) }) as RuleBlock)
+    const inserting = entry.replace.length === 0
+    const after = inserting ? (lastAt.get(entry.after) ?? entry.after) : null
+    const last = blocks.at(-1)
+    if (inserting && last) lastAt.set(entry.after, last.id)
+    const edit: EditIntent = { v: 'spliceRules', replace: [...entry.replace], after, blocks, ...(doc.rules === undefined ? { title: doc.name } : {}) }
+    parts.push({ kind: 'rules', key, replaced: [...entry.replace], blocks, edits: [edit] })
+  }
+  return { ok: true, parts, left }
+}
+
+// An entry named as the editor names it: by its first heading, when it has one.
+function titleOf(entry: { blocks?: readonly unknown[] } | undefined): { title?: string } {
+  for (const block of entry?.blocks ?? []) {
+    const b = block as { kind?: unknown; text?: unknown } | null
+    if (b?.kind === 'heading' && typeof b.text === 'string' && b.text.trim() !== '') return { title: b.text.trim() }
+  }
+  return {}
+}
+
+// The editor's own spelling of a new block's id (`freeId` in the Regler tab): the first `b<n>` the
+// book does not have.
+function freeBlockId(taken: Set<string>): string {
+  for (let n = 1; ; n++) {
+    if (taken.has(`b${n}`)) continue
+    taken.add(`b${n}`)
+    return `b${n}`
+  }
+}
+
+// A proposed block as the book's blocks: a heading as one, a list with its items, and a paragraph as
+// the paragraphs and lists its lines were written as — what the Regler tab makes of a paragraph when
+// it is closed (L68), so a list written with «- » in a paragraph is a list in the book and never a
+// paragraph that reads «- Dra.» at the table.
+function ruleBlocksOf(doc: ProjectDoc, names: Names, proposed: ProposedRuleBlock): { blocks: Unplaced[] } | { fault: RulesFault } {
+  const check = (text: string): RulesFault | null => (text.trim() === '' ? { kind: 'empty' } : ruleTextFault(doc, names, text))
+  if (proposed.kind === 'heading') {
+    const fault = check(proposed.text)
+    return fault ? { fault } : { blocks: [{ kind: 'heading', level: proposed.level, text: proposed.text.trim() }] }
+  }
+  const listOf = (ordered: boolean, written: readonly string[]): { blocks: Unplaced[] } | { fault: RulesFault } => {
+    const items = written.map((item) => item.trim()).filter((item) => item !== '')
+    if (items.length === 0) return { fault: { kind: 'empty' } }
+    for (const item of items) {
+      const fault = check(item)
+      if (fault) return { fault }
+    }
+    return { blocks: [{ kind: 'list', ordered, items }] }
+  }
+  if (proposed.kind === 'list') return listOf(proposed.ordered, proposed.items)
+  if (proposed.text.trim() === '') return { fault: { kind: 'empty' } }
+  const blocks: Unplaced[] = []
+  for (const run of runsOf(proposed.text.trim())) {
+    if (run.kind === 'list') {
+      const read = listOf(run.ordered, run.items)
+      if ('fault' in read) return read
+      blocks.push(...read.blocks)
+      continue
+    }
+    const fault = check(run.text)
+    if (fault) return { fault }
+    blocks.push({ kind: 'text', text: run.text })
+  }
+  return { blocks }
+}
+
+// What is wrong with a line of rule text, if anything: what the card text syntax refuses (L2), and —
+// since the book reads one construction more (B7) — a reference that does not read as one, or names
+// what the game does not have. The parser reads a bracket it does not understand as text, which is
+// right for a designer typing and wrong for an answer that was told the syntax.
+function ruleTextFault(doc: ProjectDoc, names: Names, text: string): RulesFault | null {
+  if (OUTSIDE_L2.some((pattern) => pattern.test(text.replace(/\[\[[^\]]*\]\]/g, '')))) return { kind: 'bad-syntax' }
+  let fault: RulesFault | null = null
+  const walk = (nodes: readonly InlineNode[]) => {
+    for (const node of nodes) {
+      if (fault) return
+      if (node.type === 'text') {
+        const ref = /\[\[[^\]]*\]{0,2}|\]\]/.exec(node.text)
+        if (ref) fault = { kind: 'bad-ref', written: ref[0] }
+        else if (/[{}*]/.test(node.text)) fault = { kind: 'bad-syntax' }
+      } else if (node.type === 'ref') {
+        if (nameOf(node, names) === null) fault = { kind: 'unknown-ref', ref: `${REF_WORD[node.of]}:${node.id}` }
+      } else if (node.type === 'icon') {
+        if (!(node.name in doc.icons) && !/^\d+$/.test(node.name)) fault = { kind: 'unknown-icon', icon: node.name }
+        else if (node.role !== undefined && !(node.role in (doc.palette ?? {}))) fault = { kind: 'unknown-role', role: node.role }
+      } else walk(node.children)
+    }
+  }
+  for (const paragraph of parseInline(text, { refs: true })) walk(paragraph.children)
+  return fault
+}
+
+// A block of a kind the book does not have, anywhere in the proposed rule text, as the problem that
+// names it — read off the answer before the schema reads it, as a template's strange element is.
+function strangeRuleBlock(answer: unknown): ProposalProblem | null {
+  const entries = (answer as { rules?: unknown } | null)?.rules
+  if (!Array.isArray(entries)) return null
+  for (const [i, entry] of entries.entries()) {
+    const blocks = (entry as { blocks?: unknown } | null)?.blocks
+    if (!Array.isArray(blocks)) continue
+    for (const block of blocks) {
+      const kind = (block as { kind?: unknown } | null)?.kind
+      if (typeof kind === 'string' && !RULE_KINDS.includes(kind)) return { kind: 'rules', section: i + 1, ...titleOf(entry as { blocks: unknown[] }), fault: { kind: 'unknown-kind', type: kind } }
+    }
+  }
+  return null
 }

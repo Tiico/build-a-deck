@@ -31,8 +31,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // the front, in the schema's flat form: the game's title and first text column set in its own
 // typeface, and a coin showing a new field, `kraft`, with a value on the deck's first two cards, in
 // a size the physical check warns about;
-// `[mall-trasig]` is the same template with its title past the card's right edge. Every proposal
-// writes `template`, null when it has none, as the strict schema has the model write every part.
+// `[mall-trasig]` is the same template with its title past the card's right edge. `[regler]` (#1006)
+// proposes rule text: a section after the book's last block — a heading, a paragraph that names the
+// game's first zone as `[[zon:<id>]]`, read off the context's zone list, and a list — and
+// `[regler-trasig]` the same section naming `[[zon:finns-inte]]`, a zone no game has. Every proposal
+// writes `template`, null when it has none, and `rules`, empty when it has none, as the strict schema
+// has the model write every part.
 // Without one of those the answer is prose,
 // as a model that chooses to answer in words gives it — a refining instruction included, which
 // leaves the proposal it refines standing.
@@ -186,7 +190,8 @@ function questionOf(provider: Provider, body: unknown): { question: string; game
         const card = /^- New card (\d+)/.exec(line)
         const change = /^- The change to card (\S+)/.exec(line)
         const template = /^- The template for the (front|back)/.exec(line)
-        return card ? [`card:${card[1]}`] : change ? [`change:${change[1]}`] : template ? [`template:${template[1]}`] : []
+        const rules = /^- Rule text (\d+)/.exec(line)
+        return card ? [`card:${card[1]}`] : change ? [`change:${change[1]}`] : template ? [`template:${template[1]}`] : rules ? [`rules:${rules[1]}`] : []
       }),
   )
   const refining = proposal ? { proposal: JSON.parse(proposal) as Refining['proposal'], leave } : null
@@ -203,6 +208,8 @@ function refined({ proposal, leave }: Refining): FakeProposal {
     changes: (proposal.changes ?? []).flatMap((change) => (leave.has(`change:${change.card}`) ? [] : [{ card: change.card, fields: revise(change.fields) }])),
     // A template the designer kept comes back as it was (#1005); one she left out does not.
     template: template && !leave.has(`template:${template.face}`) ? template : null,
+    // Rule text she kept comes back as it was (#1006); an entry she left out does not.
+    rules: (proposal.rules ?? []).filter((_, i) => !leave.has(`rules:${i + 1}`)),
   }
 }
 
@@ -266,6 +273,9 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   const unusable = question.includes('[oanvändbart]')
   const how = { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') }
   if (proposing && refining && question.includes('[förfina]')) return propose(res, stream, anthropic, refined(refining), how)
+  if (proposing && (question.includes('[regler]') || question.includes('[regler-trasig]'))) {
+    return propose(res, stream, anthropic, { cards: [], changes: [], rules: [rulesFor(contextOf(provider, body), question.includes('[regler-trasig]'))] }, how)
+  }
   if (proposing && (question.includes('[mall]') || question.includes('[mall-trasig]'))) {
     const context = contextOf(provider, body)
     return propose(res, stream, anthropic, { cards: asked ? cardsFor(context, Number(asked[1])) : [], changes: [], template: templateFor(context, question.includes('[mall-trasig]')) }, how)
@@ -306,7 +316,25 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
 type FakeCard = { fields: { field: string; value: string | number | boolean }[] }
 type FakeChange = { card: string; fields: { field: string; value: string | number | boolean }[] }
 type FakeTemplate = { face: 'front' | 'back'; variantBy: string | null; elements: Record<string, unknown>[]; variants: { name: string; elements: Record<string, unknown>[]; remove: string[] }[]; fields: { field: string; values: { card: string; value: string | number | boolean }[] }[] }
-type FakeProposal = { cards: FakeCard[]; changes: FakeChange[]; template?: FakeTemplate | null }
+type FakeRules = { replace: string[]; after: string | null; blocks: Record<string, unknown>[] }
+type FakeProposal = { cards: FakeCard[]; changes: FakeChange[]; template?: FakeTemplate | null; rules?: FakeRules[] }
+
+// A section of rule text after the book's last block (#1006), as a model holding to the strict schema
+// writes one: a heading, a paragraph naming the game's first zone by the id the context's zone list
+// gives it, and a list. `broken` names a zone no game has instead.
+function rulesFor(context: string, broken: boolean): FakeRules {
+  const zone = /^- .+ \[\[zon:([^\]]+)\]\]: /m.exec(context)?.[1] ?? 'draw'
+  const blocks = [...context.matchAll(/^\[block ([^\]]+)\]$/gm)].map((m) => m[1] ?? '')
+  return {
+    replace: [],
+    after: blocks.at(-1) ?? null,
+    blocks: [
+      { kind: 'heading', level: 1, text: 'Att dra kort' },
+      { kind: 'text', text: `Börja din tur med att dra ett kort från [[zon:${broken ? 'finns-inte' : zone}]]. Har du inget kort kvar att dra, blandar du om kasthögen.` },
+      { kind: 'list', ordered: false, items: ['Dra ett kort.', 'Spela **ett** kort eller passa.'] },
+    ],
+  }
+}
 
 // A template for the front (#1005), as a model holding to the strict schema writes one: a paper to
 // the bleed, a frame, the title and the deck's first other text column, and — under a condition on
@@ -428,7 +456,9 @@ function cardsFor(context: string, n: number): FakeCard[] {
 async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boolean, proposal: FakeProposal, how: { gap: number; cut: boolean }): Promise<void> {
   const open = () => !stream.closed && !res.destroyed
   const { cards, changes } = proposal
-  const sentence = proposal.template
+  const sentence = (proposal.rules ?? []).length > 0
+    ? 'Här är regeltext till regelboken.'
+    : proposal.template
     ? `Här är en mall för ${proposal.template.face === 'back' ? 'baksidan' : 'framsidan'}${proposal.template.fields.length > 0 ? ` med fältet ${proposal.template.fields.map((f) => f.field).join(', ')}` : ''}.`
     : changes.length === 0
       ? `Här är ${cards.length} kort.`
@@ -487,7 +517,19 @@ async function propose(res: ServerResponse, stream: FakeAiStream, anthropic: boo
     send(template.slice(at, at + third))
     await new Promise((resolve) => setTimeout(resolve, 1))
   }
-  send(anthropic ? '}' : '}}')
+  // Rule text after the template (#1006), an entry at a time, each a part of its own.
+  send(',"rules":[')
+  for (const [i, entry] of (proposal.rules ?? []).entries()) {
+    if (!open()) return
+    const json = (i === 0 ? '' : ',') + JSON.stringify(entry)
+    const third = Math.ceil(json.length / 3)
+    for (let at = 0; at < json.length; at += third) {
+      send(json.slice(at, at + third))
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+    await pause()
+  }
+  send(anthropic ? ']}' : ']}}')
   if (anthropic) {
     event(res, 'content_block_stop', { type: 'content_block_stop', index: 1 })
     event(res, 'message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { output_tokens: 9 } })
