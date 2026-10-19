@@ -219,8 +219,9 @@ describe('the selection said the same way in the panel, the foot and the rows (#
     ask('Sänk kostnaden [ändra:2] [kort:1]')
     fireEvent.click(await within(panel()).findByRole('button', { name: 'Visa i tabellen' }))
     await waitFor(() => expect(document.querySelectorAll('tr[data-change="changed"]')).toHaveLength(2))
-    // Both changed, and each still what it was: the one ticked, the other chosen.
-    expect(chips().slice(0, 2)).toEqual(['valt: Drake', '1 markerat'])
+    // Both changed, and each still what it was: the one ticked, the other chosen — said after the
+    // waiting proposal, which goes with whatever is said next (#1004).
+    expect(chips().slice(0, 3)).toEqual(['förslaget', 'valt: Drake', '1 markerat'])
     expect(foot()).toBe('1 markerat kort')
     expect(ticked()).toEqual(['knight'])
     expect(chosenRows()).toEqual(['dragon'])

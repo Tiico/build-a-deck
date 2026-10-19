@@ -18,12 +18,14 @@ import { useT, type T } from '../i18n/index.js'
 // the wall among the deck's cards, accept all of it in one step, choose the parts she wants
 // («Välj delar…»), or discard it.
 //
-// The refining line (#1004) comes after this slice.
+// The line under it refines it (#1004, in the panel): a refined proposal that arrives whole and
+// usable takes its place, and this one then only says that it was replaced.
 
 // How wide a proposed card is drawn in the panel: three to a row in its 380 px, with their names.
 const CARD_WIDTH = 84
 
-export type ProposalVerdict = 'accepted' | 'discarded'
+// `replaced` is a proposal a refined one took the place of (#1004).
+export type ProposalVerdict = 'accepted' | 'discarded' | 'replaced'
 export type AiProposalProps = {
   id: string
   doc: ProjectDoc
@@ -77,7 +79,7 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
     return (
       <div className="byd-ai-proposal" data-verdict={verdict} role="group" aria-label={t('ai.proposal')}>
         <p className="byd-ai-verdict" role="status">
-          {verdict === 'accepted' ? acceptedWords(accepted, t) : t('ai.proposal.discarded')}
+          {verdict === 'accepted' ? acceptedWords(accepted, t) : verdict === 'replaced' ? t('ai.proposal.replaced') : t('ai.proposal.discarded')}
         </p>
       </div>
     )

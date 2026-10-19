@@ -4,7 +4,7 @@ import { AI_INSTRUCTIONS, aiContextOf, aiSelectionOf } from './ai-context.js'
 import type { AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiFailure, type AiProviders } from './ai-providers.js'
 import type { ProjectDoc } from './projects.js'
-import { proposalSchema } from './proposal.js'
+import { Proposal, proposalSchema } from './proposal.js'
 
 // The editor's question, made on the designer's behalf (#1001, E4, PRD module 6). The server does
 // not think, it passes on: it builds the game's context out of its own copy of the document, opens
@@ -58,6 +58,10 @@ export const AskBody = z.strictObject({
   // The cards the designer has selected (#1003), by id: the server reads them out of its own copy of
   // the game, as it reads the rest of it. As many as a deck can hold, and each id no longer than one.
   selected: z.array(z.string().min(1).max(200)).max(5000).optional(),
+  // The proposal the question refines (#1004): the one still waiting in the panel, as the model
+  // wrote it and read with the same schema, and the parts the designer left out of it with «Välj
+  // delar…», by the keys the editor names them with — `card:2`, `change:<id>`.
+  refine: z.strictObject({ proposal: Proposal, leave: z.array(z.string().min(1).max(210)).max(5000) }).optional(),
 })
 export type AskBody = z.infer<typeof AskBody>
 
@@ -135,7 +139,7 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
       // The selected cards stand before the question they are asked about, in the question's own
       // message and not in the game's context: the context is the large part the providers cache,
       // and a selection that changes from one question to the next must not move it.
-      messages: [...ask.turns, { role: 'user' as const, text: withSelection(doc, ask) }],
+      messages: [...ask.turns, { role: 'user' as const, text: questionOf(doc, ask) }],
       maxTokens: MAX_TOKENS,
       proposal: PROPOSE,
     }
@@ -158,11 +162,37 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
   console.log(JSON.stringify({ msg: 'ai', account, provider: opened.provider, ms: Date.now() - started, outcome }))
 }
 
-// The question as the provider is asked it: the selected cards, whole, and then the question under
-// a heading of its own, so the two are never read as one.
-function withSelection(doc: ProjectDoc, ask: AskBody): string {
-  const selection = aiSelectionOf(doc, ask.selected ?? [])
-  return selection ? `${selection}\n\n## Question\n${ask.question}` : ask.question
+// The question as the provider is asked it: the proposal it refines, the selected cards, whole, and
+// then the question under a heading of its own, so none of them is ever read as another.
+function questionOf(doc: ProjectDoc, ask: AskBody): string {
+  const before = [...(ask.refine ? refining(ask.refine) : []), aiSelectionOf(doc, ask.selected ?? [])].filter((s): s is string => s !== null)
+  return before.length > 0 ? `${before.join('\n\n')}\n\n## Question\n${ask.question}` : ask.question
+}
+
+// The proposal still waiting for the designer (#1004), as the model wrote it, and what she left out
+// of it. Her message refines it: the model answers with the whole proposal again, revised, which
+// takes its place — or, when she asks something else, in words, and the proposal stands.
+function refining({ proposal, leave }: NonNullable<AskBody['refine']>): string[] {
+  const out = [
+    [
+      '## Proposal to refine',
+      'You proposed this, and the designer has not accepted it; nothing in it is in the game. Her message below refines it: propose the whole proposal again, revised as she asks — every part she still wants, not only the ones that change — and it takes the place of this one. When her message asks something else, answer in words and propose nothing, and this proposal stands.',
+      JSON.stringify(proposal),
+    ].join('\n'),
+  ]
+  const left = leave.flatMap((key) => {
+    const card = /^card:(\d+)$/.exec(key)
+    if (card) {
+      const proposed = proposal.cards[Number(card[1]) - 1]
+      if (!proposed) return []
+      const title = proposed.fields.find((c) => c.field === 'title')?.value
+      return [`- New card ${card[1]}${typeof title === 'string' && title.trim() !== '' ? ` (${title})` : ''}`]
+    }
+    const change = /^change:(.+)$/.exec(key)
+    return change && proposal.changes.some((c) => c.card === change[1]) ? [`- The change to card ${change[1]}`] : []
+  })
+  if (left.length > 0) out.push(['## Left out by the designer', 'She left these parts out of the proposal: leave them out of the revised one unless her message asks for them again.', ...left].join('\n'))
+  return out
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

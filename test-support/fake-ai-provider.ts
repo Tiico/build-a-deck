@@ -25,8 +25,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // stops half-way through the proposal, as an answer that ran out of tokens does. `[ändra:2]` (#1003)
 // changes two cards — the first two the designer selected, or the deck's first two — giving each
 // title « II» and taking one off its first column of numbers, and streams each change as its own
-// part after the new cards. Without one of those the answer is prose, as a model that chooses to
-// answer in words gives it.
+// part after the new cards. `[förfina]` (#1004), asked with a proposal to refine, answers with that
+// proposal revised: the parts the designer left out gone, and « (förfinat)» after every title left,
+// streamed as any proposal is (so `[sakta]` paces it too). Without one of those the answer is prose,
+// as a model that chooses to answer in words gives it — a refining instruction included, which
+// leaves the proposal it refines standing.
 //
 // The listener binds nothing itself: each package takes its ports out of its own band
 // (`listen-zero.ts`), so the caller makes the server and listens where its rules say.
@@ -152,18 +155,45 @@ const overloaded = (provider: Provider, res: ServerResponse) =>
     : send(res, 503, { error: { message: 'The engine is currently overloaded.', type: 'server_error', code: null } })
 
 type Said = { role?: unknown; content?: unknown }
+// What a proposal being refined (#1004) brought: the proposal, and the parts the designer left out.
+type Refining = { proposal: { cards: FakeCard[]; changes: FakeChange[] }; leave: Set<string> }
 // The last thing the designer said, and the game's name off the first line of the context.
-// The cards the designer selected (#1003) stand before the question in the same message, under
-// «## Selected cards», with the question under «## Question»: the question is what follows that.
-function questionOf(provider: Provider, body: unknown): { question: string; game: string; selected: Record<string, unknown>[] } {
+// What goes with the question stands before it in the same message, each under its own heading — a
+// proposal being refined (#1004) under «## Proposal to refine» and what she left out of it, the cards
+// she selected (#1003) under «## Selected cards» — with the question under «## Question»: the
+// question is what follows that.
+function questionOf(provider: Provider, body: unknown): { question: string; game: string; selected: Record<string, unknown>[]; refining: Refining | null } {
   const b = (body ?? {}) as { messages?: Said[]; input?: Said[]; system?: { text?: unknown }[]; instructions?: unknown }
   const turns = (provider === 'anthropic' ? b.messages : b.input) ?? []
   const last = turns.at(-1)?.content
   const said = typeof last === 'string' ? last : ''
   const system = provider === 'anthropic' ? (b.system ?? []).map((s) => String(s.text ?? '')).join('\n') : String(b.instructions ?? '')
-  const parts = /^## Selected cards\n([\s\S]*?)\n\n## Question\n([\s\S]*)$/.exec(said)
-  const selected = parts ? (parts[1] ?? '').split('\n').filter((line) => line.startsWith('{')).map((line) => JSON.parse(line) as Record<string, unknown>) : []
-  return { question: parts ? (parts[2] ?? '') : said, game: /^# Game: (.+)$/m.exec(system)?.[1] ?? '?', selected }
+  const parts = /^(## [\s\S]*?)\n\n## Question\n([\s\S]*)$/.exec(said)
+  const before = parts?.[1] ?? ''
+  const section = (name: string) => before.split('\n\n## ').map((s) => s.replace(/^## /, '')).find((s) => s.startsWith(`${name}\n`)) ?? ''
+  const selected = section('Selected cards').split('\n').filter((line) => line.startsWith('{')).map((line) => JSON.parse(line) as Record<string, unknown>)
+  const proposal = section('Proposal to refine').split('\n').find((line) => line.startsWith('{'))
+  const leave = new Set(
+    section('Left out by the designer')
+      .split('\n')
+      .flatMap((line) => {
+        const card = /^- New card (\d+)/.exec(line)
+        const change = /^- The change to card (\S+)/.exec(line)
+        return card ? [`card:${card[1]}`] : change ? [`change:${change[1]}`] : []
+      }),
+  )
+  const refining = proposal ? { proposal: JSON.parse(proposal) as Refining['proposal'], leave } : null
+  return { question: parts ? (parts[2] ?? '') : said, game: /^# Game: (.+)$/m.exec(system)?.[1] ?? '?', selected, refining }
+}
+
+// The proposal being refined, revised (#1004): the parts the designer left out are gone, and every
+// title left gets « (förfinat)» after it — a change a test can see on the wall and in the panel.
+function refined({ proposal, leave }: Refining): { cards: FakeCard[]; changes: FakeChange[] } {
+  const revise = (fields: FakeCard['fields']) => fields.map((cell) => (cell.field === 'title' && typeof cell.value === 'string' ? { ...cell, value: `${cell.value} (förfinat)` } : cell))
+  return {
+    cards: proposal.cards.flatMap((card, i) => (leave.has(`card:${i + 1}`) ? [] : [{ fields: revise(card.fields) }])),
+    changes: (proposal.changes ?? []).flatMap((change) => (leave.has(`change:${change.card}`) ? [] : [{ card: change.card, fields: revise(change.fields) }])),
+  }
 }
 
 const event = (res: ServerResponse, name: string, data: unknown) => res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -173,7 +203,7 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   const key = keyOf(provider, req)
   fake.calls.push({ provider, path, key, version: (req.headers['anthropic-version'] as string | undefined) ?? null, body })
   if (refused(provider, key, req, res)) return
-  const { question, game, selected } = questionOf(provider, body)
+  const { question, game, selected, refining } = questionOf(provider, body)
   if (question.includes('[overloaded]')) return overloaded(provider, res)
   const stream: FakeAiStream = { provider, question, finished: false, closed: false }
   fake.streams.push(stream)
@@ -224,12 +254,14 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   const asked = /\[kort:(\d+)\]/.exec(question)
   const changing = /\[ändra:(\d+)\]/.exec(question)
   const unusable = question.includes('[oanvändbart]')
+  const how = { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') }
+  if (proposing && refining && question.includes('[förfina]')) return propose(res, stream, anthropic, refined(refining), how)
   if (proposing && (asked || changing || unusable)) {
     const context = contextOf(provider, body)
     const cards = asked || unusable ? cardsFor(context, unusable ? 2 : Number(asked?.[1] ?? 1)) : []
     if (unusable) cards[1]?.fields.push({ field: 'trolldom', value: 'Okänd' })
     const changes = changing ? changesFor(context, selected, Number(changing[1])) : []
-    return propose(res, stream, anthropic, { cards, changes }, { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') })
+    return propose(res, stream, anthropic, { cards, changes }, how)
   }
   const words = `Du frågade: «${question}». Spelet heter ${game}.`.split(/(?= )/)
   // OpenAI answers inside its JSON when it may propose: the prose is the message, and there is no

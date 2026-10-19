@@ -1544,6 +1544,22 @@ Det är 16 px högt och når 16 px över kortet, vilket väggens 24 px mellan ra
 Bandens rubriker, innehållsförteckningen och dess hopfällda remsa räknar som foten, «23 kort · 3 föreslagna», och en sökning säger lekens funna kort av lekens och de föreslagna för sig.
 En remsas höjd är gruppens andel av leken, som förslaget ännu inte är en del av.
 
+Byggt 2026-10-19 (#1004): ett väntande förslag förfinas från raden under det.
+Raden är frågans egen och ingen andra: medan ett förslag väntar heter den «Förfina förslaget eller fråga något nytt», står med «Förfina förslaget — «gör dem mildare», «färre kort»…» och knappen heter «Förfina», kantad som «Skicka» (L13), och «förslaget» står först bland chippen för det som skickas.
+Ett förslag väntar när det kommit helt, går att använda mot spelet som det står och varken är godtaget, kastat eller ersatt; det är alltid det senaste sådana.
+Det som skrivs medan ett förslag väntar skickas med förslaget som modellen skrev det och med delarna designern lämnat med «Välj delar…», i frågans eget meddelande under «## Proposal to refine» och «## Left out by the designer», före urvalet och frågan, så att spelets kontext står kvar byte för byte och leverantörernas cache träffar.
+Modellen ombeds svara med hela förslaget igen, förfinat, och inte bara det som ändras, eftersom det förfinade tar det gamlas plats; och att svara i ord när designern frågar något annat.
+Ett svar i ord lämnar därför förslaget väntande, och raden behöver inte gissa om det som skrevs var en förfining eller en fråga: modellen avgör det, som den avgör mellan ord och förslag (#1002).
+Det förfinade förslaget strömmar in del för del i en egen tur under det gamla, som varje förslag, och tar det gamlas plats först när det kommit helt och går att använda: det gamla säger då bara «Ersatt av det förfinade förslaget nedan.», och stod det på väggen eller i Tabell står det förfinade där i stället.
+Fram till dess väntar det gamla som förut, på väggen och med sina knappar, så att ett förfinande som avbryts, kapas, inte går att använda eller besvaras i ord lämnar det gamla förslaget som det var.
+Att godta eller kasta det gamla medan ett förfinande av det kommer lägger på förfinandet, eftersom det då förfinar ett förslag som inte längre väntar.
+**«Välj delar…» följer inte med till det förfinade förslaget.**
+Valet skickas till modellen som de delar designern lämnat, och modellen ombeds lämna dem ute om inte följdinstruktionen ber om dem igen; det förfinade förslaget kommer sedan helt, med alla delar valda och valet stängt.
+Ett nytt kort heter efter sin plats i förslaget (#1003), och det förfinade förslagets andra kort är inte det gamlas andra kort, så en bock som flyttades efter plats skulle hamna på ett annat kort än det designern lämnade; ett ändrat kort har sitt id, men två regler för två slags delar vore ett val som beter sig olika beroende på vad som valdes.
+Det designern valde bort är redan sagt till modellen, och det förfinade förslaget är modellens svar på det.
+Inget skrivs i dokumentet förrän ett förslag godtas: att förfina och sedan kasta lämnar spelet orört, och att godta det förfinade är en sammansatt redigering med ett steg tillbaka som förut.
+Den falska leverantörens `[förfina]` svarar med förslaget förfinat — de lämnade delarna borta och « (förfinat)» efter varje titel — så att ett förfinande syns i panelen, på väggen och i det som godtas.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.
