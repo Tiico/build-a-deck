@@ -6497,6 +6497,13 @@ Två boxar har därför ett kortare ord där kronan är smal, i #477:s mönster 
 Hela meningen är fortfarande boxens namn och tooltip.
 Testet mäter varje läge — grupperad, ogrupperad, ogrupperad genom ett val, och med ett förslag på väggen — både i maskinens typsnitt och i ett brett (Verdana, DejaVus bredd), så att en Mac inte kan ge grönt för en rad som bryter på Linux.
 
+Tillägg 2026-10-19 (#1047): **raden står också i varje öga.**
+#1045 mätte bara «Som du ser det», men läsvyerna (E5, #512) är ögonens längsta ord.
+Vid 1280 bredvid panelen bröt de raden: i det breda typsnittet «TV:ns «Visa för alla»» med 28 px grupperad och 35 px ogrupperad, «Telefonens läsvy» med 5 px ogrupperad, och på engelska telefonens och TV:ns med 46–54 px; i Macens typsnitt bröt de engelska med 1–8 px.
+Läsvyerna har därför ett kortare ord där kronan är smal, i samma mönster: ytan som håller upp kortet, «Telefonen», «Bordet» och «TV:n» («The phone», «The table», «The TV»).
+Hela namnet är fortfarande boxens namn och tooltip, och färgblindhetens ord är oförändrade eftersom de ryms.
+Testet går igenom alla åtta ögon, grupperad och ogrupperad, i båda typsnitten.
+
 ### L55. En öppnad låda ligger över allt annat, och tabellens fasta kolumner står på en list (prototypat och beslutat 2026-09-30, #609, #610, #611)
 
 Beställaren hittade tre saker i tabellen.
