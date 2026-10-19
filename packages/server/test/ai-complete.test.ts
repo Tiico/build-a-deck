@@ -197,7 +197,9 @@ for (const [name, make, key] of [
       expect(got.done).toBe(true)
       expect(got.broken).toBe(false)
       expect(got.texts.join('')).toBe('Här är 3 kort.')
-      expect(got.parts.map((p) => p.key)).toEqual(['cards', 'cards', 'cards'])
+      // And the template it has nothing for, written as null, as a strict schema has it (#1005).
+      expect(got.parts.map((p) => p.key)).toEqual(['cards', 'cards', 'cards', 'template'])
+      expect(got.parts[3]!.value).toBeNull()
       expect(got.parts[0]!.value).toEqual({
         fields: [
           { field: 'title', value: 'Förslag 1' },

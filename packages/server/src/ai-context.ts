@@ -1,3 +1,4 @@
+import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { plainOf, renderRules, type Element, type RenderedBlock } from '@byd/template'
 import type { ProjectDoc } from './projects.js'
 import { ANTAL, columnsOf } from './edits.js'
@@ -28,6 +29,7 @@ export const AI_INSTRUCTIONS = [
   'When the designer asks for new cards, or for changes to cards the game has, propose them — with the propose tool when it is offered, or as the proposal of a structured answer — and say in a sentence or two what you propose. Otherwise answer in words and propose nothing.',
   'A proposed card fills every field the template draws on it, and antal: how many copies the deck holds. It uses the game’s own fields, icons and colour roles and nothing else, and differs from the cards the game already has. Never write a picture: the art is the designer’s own, so leave picture fields out.',
   'A changed card goes in changes: the id of a card the game has, and only the fields that change, each with its new value; antal changes how many copies the deck holds. Write each value as the column reads: a number in a column of numbers. When the designer has selected cards, "these" and "the selected cards" mean them.',
+  'When the designer describes a card type, or asks for a change to the template, propose a template: the whole face, every element of it in drawing order — the ones you keep as well as the ones you change — in millimetres, each element wholly inside the card or its bleed. Write the elements as one flat list, and put an element in a group or an if by naming that element’s id as its parent. Use the game’s fields, fonts, colour roles and icons; write a colour as #rrggbb or as a colour role’s name. A field the template needs and the game does not have goes in fields, with its value for each card the game has that needs one; never a picture. Groups (variants) are chosen by a column, as the game’s are.',
   'Nothing you propose changes the game until the designer accepts it. Anything else you would change, say in words, and never claim to have changed anything.',
   'Write your answer as plain text: paragraphs separated by a blank line, points as lines that start with "- ", and **bold** or *italic* where it helps. No headings, tables, links or code blocks; the editor shows nothing else.',
   'Never write HTML or CSS. Card text uses only the inline syntax described below.',
@@ -101,7 +103,10 @@ export function aiContextOf(doc: ProjectDoc): string {
   line()
 
   line('## Template')
-  line('Cards are 63 × 88 mm. Each face is drawn from elements in millimetres (text, image, icons, shape, group, if); a text or image element is bound to a column or to a literal.')
+  const { widthMm, heightMm } = CARD_STANDARD_63x88.physical
+  const { bleedMm, safeMm } = CARD_STANDARD_63x88.print
+  line(`Cards are ${widthMm} × ${heightMm} mm, from (0, 0) at the top left. A background reaches ${bleedMm} mm past each edge, the bleed, so the knife leaves no white line; text and symbols stay ${safeMm} mm inside it.`)
+  line('Each face is drawn from elements in millimetres (text, image, icons, shape, group, if); a text or image element is bound to a column or to a literal.')
   for (const [id, face] of Object.entries(doc.template.faces)) {
     line(`### Face: ${id}`)
     line(`Base elements: ${JSON.stringify(face.base)}`)

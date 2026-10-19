@@ -1560,6 +1560,36 @@ Det designern valde bort är redan sagt till modellen, och det förfinade försl
 Inget skrivs i dokumentet förrän ett förslag godtas: att förfina och sedan kasta lämnar spelet orört, och att godta det förfinade är en sammansatt redigering med ett steg tillbaka som förut.
 Den falska leverantörens `[förfina]` svarar med förslaget förfinat — de lämnade delarna borta och « (förfinat)» efter varje titel — så att ett förfinande syns i panelen, på väggen och i det som godtas.
 
+Byggt 2026-10-19 (#1005): mallförslag, en mallsida i elementmodellen med sina fält, förhandsvisad på väggen.
+Förslaget har nu `template` bredvid `cards` och `changes`: en sida (`front` eller `back`), hela sidans element i ritordning, dess grupper valda av en kolumn (L3), och de nya fält mallen behöver med ett värde för de kort i spelet som behöver ett.
+Modellen skriver elementmodellen (L1) och aldrig HTML eller CSS, och översättaren gör förslaget till editorns egna redigeringar: `addField` per nytt fält, `replaceFace` med sidans grupper, `setGroupColumn` när kolumnen byts, och `setCell` per värde.
+`replaceFace` fick därför bära grupperna: en föreslagen mall är en hel sida, och en gammal grupps ersättning av ett id som den nya basen saknar hade ritat det elementet på gruppens kort som ett tillägg ingen bett om.
+Utan grupper står de som förut, så ett galleri som byter baksida rör inga grupper.
+**Trädet skrivs platt.** En mall är ett träd — en grupp och ett villkor bär element — och Anthropics strikta läge kan inte säga ett rekursivt schema, så varje element i en lista står i samma lista och säger med `parent` vilken grupp eller vilket villkor i listan som bär det, eller `null` överst.
+Översättaren reser trädet ur listan i listans ordning, och avvisar en förälder som inte är en grupp eller ett villkor i listan och ett element som bär sig självt.
+Samma kodning för båda leverantörerna, fast OpenAI:s strikta läge kan rekursion: modellen tillfrågas på ett sätt och svaret läses på ett sätt, vilken leverantör det än kom ifrån.
+Schemat skrivs fortfarande ur samma zod-schema, med `anyOf` där zod skriver `oneOf` för elementets slag, och utan gränser — en längd, ett minsta, ett största — som inget av de strikta lägena läser; mallmodellen dömer gränserna när sidan är rest.
+Varje egenskap är krävd, och en som elementet inte har är `null`, vilket är vad mallmodellens frånvaro betyder; det förslaget inte kan säga om ett element det behåller — en egen kontur (L26), en bilds trim och ram, ett lås (L15) — behålls från elementet med samma id.
+En färg skrivs som `#rrggbb` eller som en av spelets betydelsers namn, och betydelsen skrivs som sin färg: mallen håller färger, och inget annat når kortets stilmall.
+Översättaren avvisar med skäl, utan att röra dokumentet, ett element av ett slag mallen inte har, ett fält som varken spelet har eller förslaget tar med — i en bindning, ett villkor, en fyllning eller som gruppernas kolumn — ett element utanför kortet, ett typsnitt, en betydelse eller en ikon spelet inte har, text utanför L2, ett nytt fält spelet redan har i någon stavning, grupper utan kolumn, och allt annat mallmodellen inte tar, vid det element det gäller.
+Utanför kortet är bortom utfallet, med gruppernas förskjutning räknad: en bakgrund som når utfallet är där varje bakgrund hör hemma, och inget bortom det trycks på något kort.
+Typsnitten är spelets egna (L57) och de familjer mallen redan sätter text i, så att ett spel gjort innan typsnitten följde med fortfarande kan få en mall.
+Felbeskedet säger lagret med sitt id, «Mallens lager «title» står utanför kortet.», i samma form som kortens.
+**Väggen visar mallen på riktiga kort, som förslagets ändrade kort och inte i ett eget förhandsläge.**
+«Visa på väggen» lägger spelet som förslaget skulle lämna det på väggen: varje kort ritas med den föreslagna mallen av den enda renderaren (E2), varje kort mallen ritar annorlunda står med hel lavendelkant och «✦ Ändrat» som ett ändrat kort (#1003), och de nya fältens värden står som gammalt → nytt under korten de skrivs på, «kraft: — → 1».
+Ett kort mallen bara ritar om heter för skärmläsaren «Ändrat i förslaget: Drake — ritat med den föreslagna mallen».
+Det är prototypens form (`A-mall-1440x900.png`): ett läge med en egen rad över väggen hade varit en ny yta och en ny sak att stänga, och en mall är en ändring av varje kort den ritar annorlunda, vilket väggen redan har ett sätt att säga.
+En mall för baksidan visas på baksidorna, eftersom väggen visar förslaget.
+Väggens egen fysiska kontroll läser leken som förslaget ritar den medan det står där.
+I panelen ritas tre av lekens kort med mallen, ett av varje utseende den ger dem först, så att en grupp bara några kort hamnar i syns där och inte bara på väggen; under dem mallens namn, «Mall för framsidan», de nya fälten och hur många kort som får ett värde.
+Den fysiska kontrollen körs på varje kort förslaget rör, med den föreslagna mallen, och dess anmärkningar står innan något godtas och fäller aldrig förslaget (E5); för ett kort mallen bara ritar om säger den bara det som står på den sida mallen ritar, eftersom kortets andra sida är spelets och det som sägs om den sades redan innan förslaget kom.
+Mallen med sina fält och värden är en del i «Välj delar…» (#1003), `template:front`, och kort och ändringar bredvid den döms mot spelet som mallen ritar det: de får skriva dess nya fält och måste fylla det den ritar.
+Lämnas mallen ute står ett sådant kort kvar med den cell det skrev, eftersom en kolumn finns när korten bär nyckeln, och ingenting av mallen skrivs.
+Godtagandet är en sammansatt redigering med ett steg tillbaka, som förut.
+Kortens namn i panelen bryter nu inom kortets bredd i stället för att kapas: «Förslag 1 (fö…» sade inte vilket kort en bock tog.
+Den falska leverantörens `[mall]` svarar med en mall för framsidan — spelets titel och första textkolumn i spelets typsnitt, och ett mynt som visar ett nytt fält, `kraft`, med värden på lekens två första kort i en storlek den fysiska kontrollen varnar för — och `[mall-trasig]` med samma mall med titeln utanför kortets högra kant.
+Varje förslag skriver nu `template`, `null` utan mall, som det strikta schemat får modellen att skriva varje del.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.

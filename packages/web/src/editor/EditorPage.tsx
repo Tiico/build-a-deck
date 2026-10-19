@@ -508,9 +508,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         doc={shownWall?.doc ?? doc}
         proposed={shownWall?.added}
         changed={shownWall?.changed}
+        redrawn={shownWall?.redrawn}
         assetBase={http}
         motifs={deckMotifs}
-        face="front"
+        // A proposed template for the back is shown on the backs (#1005): the wall shows the proposal.
+        face={shownWall?.face ?? 'front'}
         selectedRow={row}
         onSelectRow={setRow}
         view={wallView.current}

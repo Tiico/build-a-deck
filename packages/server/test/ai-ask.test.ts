@@ -7,7 +7,7 @@ import { MemoryAuthStore } from '../src/auth.js'
 import { MemoryProjectStore } from '../src/projects.js'
 import type { ProjectDoc } from '../src/projects.js'
 import type { AiCaps } from '../src/ai-ask.js'
-import { proposalSchema } from '../src/proposal.js'
+import { proposalSchema, translateProposal } from '../src/proposal.js'
 import { fakeAiProvider, type FakeAiProvider } from '../../../test-support/fake-ai-provider.js'
 import { template } from './deck.js'
 import { listenInBand, start, twoSeatSetup, type Running } from './fixture.js'
@@ -212,7 +212,10 @@ describe('the cards the designer selected (#1003)', () => {
     const w = await world()
     await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
     const asked = await ask(w, w.ada, 'Ändra [ändra:1]', { selected: ['dragon'] })
-    expect(asked.events.filter((e) => e.t === 'part')).toEqual([{ t: 'part', key: 'changes', part: { card: 'dragon', fields: [{ field: 'title', value: 'Drake II' }] } }])
+    expect(asked.events.filter((e) => e.t === 'part')).toEqual([
+      { t: 'part', key: 'changes', part: { card: 'dragon', fields: [{ field: 'title', value: 'Drake II' }] } },
+      { t: 'part', key: 'template', part: null },
+    ])
     expect(asked.events.at(-1)).toEqual({ t: 'done' })
   })
 })
@@ -236,7 +239,8 @@ describe('a proposal being refined (#1004)', () => {
     const body = fake.calls.at(-1)!.body as { system: { text: string }[]; messages: { content: string }[] }
     const said = body.messages.at(-1)!.content
     expect(said).toMatch(/^## Proposal to refine\n/)
-    expect(said).toContain(JSON.stringify(pending))
+    // As the schema reads it: a proposal without a template says it has none (#1005).
+    expect(said).toContain(JSON.stringify({ ...pending, template: null }))
     expect(said).toMatch(/## Left out by the designer\n[^#]*- New card 2 \(Förslag 2\)/)
     expect(said).not.toMatch(/- New card 1/)
     expect(said.indexOf('## Proposal to refine')).toBeLessThan(said.indexOf('## Selected cards'))
@@ -246,6 +250,16 @@ describe('a proposal being refined (#1004)', () => {
     expect(asked.text).toBe(`Du frågade: «Gör dem dyrare». Spelet heter ${GAME}.`)
   })
 
+  // A template is one part (#1005), named by its face when it is left out.
+  it('names a template the designer left out by its face', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    const template = { face: 'back', variantBy: null, elements: [], variants: [], fields: [] }
+    await ask(w, w.ada, 'Mörkare', { refine: { proposal: { ...pending, template }, leave: ['template:back'] } })
+    const said = (fake.calls.at(-1)!.body as { messages: { content: string }[] }).messages.at(-1)!.content
+    expect(said).toMatch(/## Left out by the designer\n[^#]*- The template for the back/)
+  })
+
   it('is answered with the revised proposal, part by part, without the parts left out (the fake’s [förfina])', async () => {
     const w = await world()
     await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
@@ -253,6 +267,7 @@ describe('a proposal being refined (#1004)', () => {
     expect(asked.events.filter((e) => e.t === 'part')).toEqual([
       { t: 'part', key: 'cards', part: { fields: [{ field: 'title', value: 'Förslag 1 (förfinat)' }, { field: 'antal', value: 1 }] } },
       { t: 'part', key: 'changes', part: { card: 'dragon', fields: [{ field: 'title', value: 'Drake II (förfinat)' }] } },
+      { t: 'part', key: 'template', part: null },
     ])
     expect(asked.events.at(-1)).toEqual({ t: 'done' })
   })
@@ -282,11 +297,34 @@ describe('a proposal (#1002)', () => {
       expect(parts).toEqual([
         { t: 'part', key: 'cards', part: { fields: [{ field: 'title', value: 'Förslag 1' }, { field: 'antal', value: 1 }] } },
         { t: 'part', key: 'cards', part: { fields: [{ field: 'title', value: 'Förslag 2' }, { field: 'antal', value: 1 }] } },
+        // A strict schema has every part written, and a template the model has nothing for is null.
+        { t: 'part', key: 'template', part: null },
       ])
       expect(asked.events.at(-1)).toEqual({ t: 'done' })
       // The schema is the proposal model's own, so what the provider is held to is what is read.
       const body = JSON.stringify(fake.calls.at(-1)!.body)
       expect(body).toContain(JSON.stringify(proposalSchema()))
+    })
+  }
+
+  // A template (#1005) is one part, whole, written in the schema's flat form — and one the game takes.
+  for (const [provider, key] of [
+    ['anthropic', ADA_KEY],
+    ['openai', BO_KEY],
+  ] as const) {
+    it(`passes on a proposed template as one part the game can take (the fake’s [mall], ${provider})`, async () => {
+      const w = await world()
+      await w.vault.save(await idOf(w, 'ada@example.com'), provider, key)
+      const asked = await ask(w, w.ada, 'En mall med kraft [mall]')
+      expect(asked.text).toBe('Här är en mall för framsidan med fältet kraft.')
+      const parts = asked.events.filter((e) => e.t === 'part')
+      expect(parts.map((p) => (p.t === 'part' ? p.key : ''))).toEqual(['template'])
+      const template = parts[0]!.t === 'part' ? parts[0]!.part : null
+      const translated = translateProposal(doc(), { cards: [], changes: [], template })
+      expect(translated).toMatchObject({ ok: true, parts: [{ kind: 'template', key: 'template:front', fields: ['kraft'], filled: 1 }] })
+      // And `[mall-trasig]` sets its title past the card's edge.
+      const broken = (await ask(w, w.ada, 'En trasig mall [mall-trasig]')).events.find((e) => e.t === 'part')
+      expect(translateProposal(doc(), { cards: [], changes: [], template: broken?.t === 'part' ? broken.part : null })).toMatchObject({ ok: false, problem: { kind: 'template', element: 'title', fault: { kind: 'outside-card' } } })
     })
   }
 
@@ -305,6 +343,10 @@ describe('a proposal (#1002)', () => {
     expect(instructions).toMatch(/new cards/)
     expect(instructions).toMatch(/antal/)
     expect(instructions).toMatch(/never write a picture/i)
+    // And what a proposed template is (#1005): the face's elements, flat, and the fields it brings.
+    expect(instructions).toMatch(/template/)
+    expect(instructions).toMatch(/parent/)
+    expect(instructions).toMatch(/inside the card/)
   })
 })
 

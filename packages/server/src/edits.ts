@@ -118,7 +118,9 @@ export type EditIntent =
   // did, so it is one edit — the same reason `replaceRows` exists rather than a removal and an
   // addition per card. Sent as a removal and an addition per layer it would be a dozen versions
   // and a dozen steps back (B4), with a half-built back standing at every one of them.
-  | { v: 'replaceFace'; face: string; base: Element[] }
+  // `variants` is a whole face with its groups (#1005): a proposed template brings its own, and the
+  // groups of the face it replaces go with it. Without them the groups stand, as they always have.
+  | { v: 'replaceFace'; face: string; base: Element[]; variants?: FaceTemplate['variants'] }
   | { v: 'resetElement'; face: string; id: string; group: string }
   | { v: 'setGroupColumn'; column: string | null }
   // The table (B5, K2)
@@ -469,7 +471,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // A face the template does not have yet is made rather than refused: an empty back is
       // exactly the back a gallery is for.
       const face = doc.template.faces[intent.face] ?? { base: [], variants: {} }
-      return writeFace(doc, intent.face, { ...face, base: intent.base })
+      return writeFace(doc, intent.face, { ...face, base: intent.base, ...(intent.variants ? { variants: intent.variants } : {}) })
     }
     case 'moveElement': {
       const face = faceOf(doc, intent.face)

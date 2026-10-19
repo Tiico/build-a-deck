@@ -37,7 +37,7 @@ export const ASK_MAX_BYTES = 1024 * 1024
 const MAX_TOKENS = 16_000
 // What the model is offered to propose with (#1002): the proposal model's own schema, so what the
 // provider holds the model to is what the editor reads the answer with.
-const PROPOSE = { name: 'propose', description: 'Propose changes to the game for the designer to look at and accept or discard. In this version: new cards, and changes to cards the game has.', schema: proposalSchema() }
+const PROPOSE = { name: 'propose', description: 'Propose changes to the game for the designer to look at and accept or discard: new cards, changes to cards the game has, and a template face with the new fields it needs.', schema: proposalSchema() }
 // A comment line now and then while the provider thinks, so that nothing between here and the
 // browser takes a quiet stream for a dead one (Cloudflare gives up on a response after 100 s).
 const HEARTBEAT_MS = 15_000
@@ -189,7 +189,9 @@ function refining({ proposal, leave }: NonNullable<AskBody['refine']>): string[]
       return [`- New card ${card[1]}${typeof title === 'string' && title.trim() !== '' ? ` (${title})` : ''}`]
     }
     const change = /^change:(.+)$/.exec(key)
-    return change && proposal.changes.some((c) => c.card === change[1]) ? [`- The change to card ${change[1]}`] : []
+    if (change) return proposal.changes.some((c) => c.card === change[1]) ? [`- The change to card ${change[1]}`] : []
+    // The template is one part with the fields and values it brings (#1005), named by its face.
+    return proposal.template && key === `template:${proposal.template.face}` ? [`- The template for the ${proposal.template.face}, with the fields it brings`] : []
   })
   if (left.length > 0) out.push(['## Left out by the designer', 'She left these parts out of the proposal: leave them out of the revised one unless her message asks for them again.', ...left].join('\n'))
   return out

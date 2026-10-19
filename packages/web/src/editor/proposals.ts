@@ -1,5 +1,6 @@
-import type { EditIntent } from '@byd/server/doc'
+import { applyEdit, type EditIntent } from '@byd/server/doc'
 import { translateProposal, type ChangedCell, type ProposalProblem, type Translated } from '@byd/server/proposal'
+import { elementsFor } from '@byd/template'
 import { fieldLabel } from './fields.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import type { T } from '../i18n/index.js'
@@ -11,15 +12,20 @@ import type { T } from '../i18n/index.js'
 //
 // Framework-free, so the panel, the wall and the table read a proposal the same way.
 
-// The parts that arrived, in the shape the proposal model reads: new cards, and changed cards
-// (#1003). The parts later slices add (#1005, #1006) are gathered under their own keys beside them.
-export type ProposalParts = { cards: unknown[]; changes: unknown[] }
+// The parts that arrived, in the shape the proposal model reads: new cards, changed cards (#1003), and
+// a template face with its fields (#1005), which arrives whole as one part — or null, which is how a
+// strict schema has the model say it proposes none. The parts later slices add (#1006) are gathered
+// under their own keys beside them.
+export type ProposalParts = { cards: unknown[]; changes: unknown[]; template?: unknown }
 export const noParts = (): ProposalParts => ({ cards: [], changes: [] })
 export function withPart(parts: ProposalParts, key: string, part: unknown): ProposalParts {
   if (key === 'cards') return { ...parts, cards: [...parts.cards, part] }
   if (key === 'changes') return { ...parts, changes: [...parts.changes, part] }
+  if (key === 'template') return { ...parts, template: part }
   return parts
 }
+// Whether anything has been proposed yet: a template written as null is no proposal.
+export const hasParts = (parts: ProposalParts): boolean => parts.cards.length > 0 || parts.changes.length > 0 || (parts.template !== undefined && parts.template !== null)
 
 // A proposal as the editor shows it on the wall and in the table: its parts, and the ones the
 // designer has left out with «Välj delar…» (#1003), which the wall and the table leave out too.
@@ -37,27 +43,43 @@ export function proposedRows(edits: readonly EditIntent[]): ProjectRow[] {
 
 // The game as it would be with the proposal accepted, for the wall and the table to draw (#1003):
 // the changed cards in their own places with their new values, and the new cards after the deck's,
-// with which cards are new and what each changed card's cells were and become.
-export type ProposalView = { doc: ProjectDoc; added: ReadonlySet<string>; changed: ReadonlyMap<string, readonly ChangedCell[]> }
+// with which cards are new and what each changed card's cells were and become. A template (#1005) is
+// the game's template in it, so every card is drawn as the proposal would draw it; its new fields'
+// values are changed cells like any other, and `redrawn` is every card of the game the proposed
+// template draws differently — on `face`, the face the wall shows the proposal on.
+export type ProposalView = { doc: ProjectDoc; added: ReadonlySet<string>; changed: ReadonlyMap<string, readonly ChangedCell[]>; redrawn: ReadonlySet<string>; face: string }
 export function proposalView(doc: ProjectDoc, read: Extract<Translated, { ok: true }>): ProposalView {
-  const changed = new Map<string, readonly ChangedCell[]>()
+  const changed = new Map<string, ChangedCell[]>()
   const added = new Set<string>()
-  const fresh: ProjectRow[] = []
+  const cellsOf = (cardRef: string): ChangedCell[] => {
+    const had = changed.get(cardRef)
+    if (had) return had
+    const fresh: ChangedCell[] = []
+    changed.set(cardRef, fresh)
+    return fresh
+  }
+  let face = 'front'
   for (const part of read.parts) {
-    if (part.kind === 'change') changed.set(part.cardRef, part.cells)
-    else if (part.kind === 'card') {
-      added.add(part.cardRef)
-      fresh.push({ id: part.cardRef, fields: part.fields })
+    if (part.kind === 'change') cellsOf(part.cardRef).push(...part.cells)
+    else if (part.kind === 'card') added.add(part.cardRef)
+    else {
+      face = part.face
+      for (const edit of part.edits) if (edit.v === 'setCell') cellsOf(edit.cardRef).push({ field: edit.field, from: doc.rows.find((r) => r.id === edit.cardRef)?.fields[edit.field], to: edit.value })
     }
   }
-  const rows = doc.rows.map((row) => {
-    const cells = changed.get(row.id)
-    if (!cells) return row
-    const fields = { ...row.fields }
-    for (const cell of cells) fields[cell.field] = cell.to
-    return { ...row, fields }
-  })
-  return { doc: { ...doc, rows: [...rows, ...fresh] }, added, changed }
+  // The edits the game takes on accepting, applied to a copy: the cards in their places, the new
+  // after the deck's, and the template the proposal brings.
+  const after = read.edits.reduce(applyEdit, doc)
+  const redrawn = new Set<string>()
+  const before = doc.template.faces[face]
+  const now = after.template.faces[face]
+  if (read.parts.some((part) => part.kind === 'template') && now) {
+    for (const row of after.rows) {
+      const had = doc.rows.find((r) => r.id === row.id)
+      if (had && (!before || JSON.stringify(elementsFor(before, had.fields)) !== JSON.stringify(elementsFor(now, row.fields)))) redrawn.add(row.id)
+    }
+  }
+  return { doc: after, added, changed, redrawn, face }
 }
 
 // A cell's value as the old → new of a change says it: nothing as a dash, and a long text as the
@@ -106,6 +128,26 @@ export function problemWords(problem: ProposalProblem | { kind: 'broken' }, t: T
           : t('ai.unusable.changed', { id: problem.changed })
         : ''
   switch (problem.kind) {
+    case 'template': {
+      // The template's fault at the layer it is in, by the word the layer list uses (#1005).
+      const where = problem.element !== undefined ? t('ai.unusable.template.layer', { element: problem.element }) : t('ai.unusable.template.whole')
+      const fault = problem.fault
+      switch (fault.kind) {
+        case 'unknown-element':
+          return t('ai.unusable.template.unknown-element', { where, type: fault.type })
+        case 'unknown-field':
+        case 'field-exists':
+          return t(`ai.unusable.template.${fault.kind}`, { where, field: fieldLabel(fault.field, t) })
+        case 'unknown-font':
+          return t('ai.unusable.template.unknown-font', { where, font: fault.font })
+        case 'unknown-role':
+          return t('ai.unusable.template.unknown-role', { where, role: fault.role })
+        case 'unknown-icon':
+          return t('ai.unusable.template.unknown-icon', { where, icon: `{${fault.icon}}` })
+        default:
+          return t(`ai.unusable.template.${fault.kind}`, { where })
+      }
+    }
     case 'shape':
     case 'empty':
     case 'refused':

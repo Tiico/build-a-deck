@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Template } from '@byd/template'
 import { applyEdit, type EditIntent } from '../src/edits.js'
-import { Proposal, proposalSchema, translateProposal, type ProposalPart } from '../src/proposal.js'
+import { Proposal, proposalSchema, translateProposal } from '../src/proposal.js'
 import { twoSeatSetup } from './fixture.js'
 import type { ProjectDoc } from '../src/projects.js'
 
@@ -234,19 +234,11 @@ describe('a changed card that cannot be used is refused, and says why (#1003)', 
   })
 })
 
-describe('the parts a proposal can hold (#1003, PRD module 4)', () => {
-  it('names three kinds — a new card, a changed card, and a template with the fields and values it needs — though only two are proposed yet', () => {
-    const kinds: ProposalPart['kind'][] = ['card', 'change', 'template']
-    const template: ProposalPart = { kind: 'template', key: 'template:front', face: 'front', fields: ['kostnad'], edits: [] }
-    expect(kinds).toContain(template.kind)
-  })
-})
-
 describe('the schema the provider is held to', () => {
   it('is the same zod schema the answer is read with, written as strict JSON Schema', () => {
     const schema = proposalSchema()
     expect(schema).not.toHaveProperty('$schema')
-    expect(schema).toMatchObject({ type: 'object', additionalProperties: false, required: ['cards', 'changes'] })
+    expect(schema).toMatchObject({ type: 'object', additionalProperties: false, required: ['cards', 'changes', 'template'] })
     // Strict modes read no defaults; a part the model has nothing for is an empty list it writes.
     expect(JSON.stringify(schema)).not.toContain('"default"')
     const changes = (schema as { properties: { changes: { items: { additionalProperties: boolean; required: string[] } } } }).properties.changes
@@ -259,5 +251,37 @@ describe('the schema the provider is held to', () => {
     expect(JSON.stringify(schema)).toContain('"anyOf":[{"type":"string"},{"type":"number"},{"type":"boolean"}]')
     // Whatever the schema lets through is what the zod schema reads.
     expect(Proposal.safeParse({ cards: [card({ title: 'Varg', antal: 1, kraftig: true })] }).success).toBe(true)
+  })
+
+  // A template is a tree (#1005), and Anthropic's strict mode reads no recursive schema; written flat,
+  // with `parent`, it needs no reference at all. And neither strict mode reads `oneOf` or a bound —
+  // a length, a least or a most — so the schema says none, and the template model judges the bounds.
+  it('says a template without recursion, references, `oneOf` or bounds, every object strict', () => {
+    const schema = proposalSchema()
+    const said = JSON.stringify(schema)
+    expect(said).not.toMatch(/"\$ref"|"\$defs"|"oneOf"|"allOf"/)
+    const objects: Record<string, unknown>[] = []
+    // The keywords the schema says, which a property's own name — `pattern`, say — is not.
+    const keywords = new Set<string>()
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) return node.forEach(walk)
+      if (node === null || typeof node !== 'object') return
+      const o = node as Record<string, unknown>
+      if (o['type'] === 'object') objects.push(o)
+      for (const [key, value] of Object.entries(o)) {
+        keywords.add(key)
+        walk(key === 'properties' ? Object.values(value as object) : value)
+      }
+    }
+    walk(schema)
+    for (const bound of ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength', 'maxLength', 'minItems', 'maxItems', 'pattern', 'format']) expect(keywords).not.toContain(bound)
+    expect(objects.length).toBeGreaterThan(10)
+    for (const o of objects) {
+      expect(o['additionalProperties']).toBe(false)
+      expect([...(o['required'] as string[])].sort()).toEqual(Object.keys(o['properties'] as object).sort())
+    }
+    // The element kinds are the template's own six, and a template part is in the schema as an object or null.
+    expect(said).toContain('"anyOf":[{"type":"object","properties":{"face"')
+    for (const kind of ['text', 'image', 'icons', 'shape', 'group', 'if']) expect(said).toContain(`"kind":{"type":"string","const":"${kind}"}`)
   })
 })

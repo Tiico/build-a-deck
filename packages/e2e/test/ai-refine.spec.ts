@@ -50,6 +50,12 @@ test('a designer refines a proposal, sees the refined one replace it on the wall
   await expect(panel.getByText('Replaced by the refined proposal below.')).toBeVisible()
   const refined = panel.getByRole('group', { name: 'Proposal · 2 new cards' })
   await expect(refined.locator('.byd-ai-card-name')).toHaveText(['Förslag 1 (förfinat)', 'Förslag 3 (förfinat)'])
+  // Each name is said whole, wrapping within its card's width (#1005): clipped, it read «Förslag 1 (fö…».
+  for (const name of await refined.locator('.byd-ai-card-name > span').all()) {
+    expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth && getComputedStyle(el).textOverflow !== 'ellipsis')).toBe(true)
+    const [box, card] = [await name.boundingBox(), await name.locator('xpath=ancestor::li[1]').boundingBox()]
+    expect(box!.x + box!.width).toBeLessThanOrEqual(card!.x + card!.width + 0.5)
+  }
   // On the wall the refined proposal stands where the old one stood, whole.
   await expect(ghosts).toHaveCount(2)
   await expect(ghosts.nth(0)).toHaveAccessibleName('Proposal: Förslag 1 (förfinat)')
