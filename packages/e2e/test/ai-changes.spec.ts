@@ -93,7 +93,8 @@ test('a designer selects cards, asks for a change, sees old → new on the wall 
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(page.locator('.byd-wall-card')).toHaveCount(6)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
   expect(edits()[1]!.intent.doc!.rows.map((r) => [r.id, r.fields['title'], r.fields['kostnad']])).toEqual(doc.rows.map((r) => [r.id, r.fields['title'], r.fields['kostnad']]))
   await expect(wallCard('kort-2').locator('.byd-preview')).not.toContainText(`${cardTitle(1)} II`)
 })

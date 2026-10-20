@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
+import { applyEdit } from '@byd/server/doc'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { tabId } from '../src/editor/EditorTabs.js'
 import { Language, type Lang } from '../src/i18n/index.js'
@@ -55,6 +56,15 @@ const ask = (question: string) => {
 const wallCard = (cardRef: string) => document.querySelector<HTMLElement>(`.byd-wall-card[data-card-ref="${cardRef}"]`)!
 const proposal = () => within(panel()).getByRole('group', { name: /^Förslag/ })
 const logged = async () => run.projects.readEdits(run.projectId, 0)
+
+// The game as the actor holds it after the log: the version it was opened on and every line since.
+// A step back writes back only what the step changed (#1056), so it is read off the result and not
+// off the line.
+const held = async (): Promise<ProjectDoc> => {
+  const rec = await run.projects.load(run.projectId)
+  if (!rec) throw new Error('no project')
+  return (await logged()).reduce((doc: ProjectDoc, e) => applyEdit(doc, e.intent), rec)
+}
 async function askForTemplate(): Promise<void> {
   await ownGame()
   await openEditor()
@@ -139,8 +149,10 @@ describe('accepting a template proposal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ångra det godtagna förslaget' }))
     await waitFor(async () => expect(await logged()).toHaveLength(2))
     const restored = (await logged())[1]!.intent
-    expect(restored.v === 'restore' && restored.doc.template).toEqual(projectDoc().template)
-    expect(restored.v === 'restore' && restored.doc.rows.every((r) => !('kraft' in r.fields))).toBe(true)
+    expect(restored.v).toBe('revert')
+    const after = await held()
+    expect(after.template).toEqual(projectDoc().template)
+    expect(after.rows.every((r) => !('kraft' in r.fields))).toBe(true)
   })
 
   it('is one part among the others in «Välj delar…», named for its face', async () => {

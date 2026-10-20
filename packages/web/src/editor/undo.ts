@@ -75,6 +75,10 @@ export function whatOf(intent: EditIntent): Key {
     // Taking a version back is an edit like any other (B4), so it can be taken back too.
     case 'restore':
       return 'undo.what.version'
+    // A step back or forward (#1056) is never a step of its own: it carries the word of the step
+    // it took. Read off a log it is only known to be several parts written back.
+    case 'revert':
+      return 'undo.what.several'
     // Several edits as one (#1002): named for the part of the game they touched when they all
     // touched the same one, and as several changes when they did not.
     case 'compound': {

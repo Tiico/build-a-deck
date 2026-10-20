@@ -76,7 +76,8 @@ test('a designer asks for cards, sees them stream in and on the wall, accepts th
   await undo.click()
   await expect(wall).toHaveCount(6)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
   expect(edits()[1]!.intent.doc!.rows).toHaveLength(6)
 
   // A second proposal, discarded: nothing is sent, and the deck is as it was.

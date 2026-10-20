@@ -3,6 +3,7 @@ import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant 
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { applyRevert, type Revert } from './undo.js'
 import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
@@ -225,6 +226,11 @@ export type EditIntent =
   // edits only — a composite inside a composite says nothing a flat one cannot — and never none.
   // The editor's vocabulary and not the table's closed intents (D3), so it is no protocol migration.
   | { v: 'compound'; edits: EditIntent[] }
+  // Ett steg tillbaka eller framåt i en editors egen stack (#1056, L14): just de delar en egen
+  // redigering ändrade, skrivna tillbaka, och bara om de fortfarande är det redigeringen lämnade dem
+  // som. Räknas fram av `revertOf` i `undo.ts` och prövas där. Editorns vokabulär och inte bordets
+  // slutna intents (D3), så den är ingen protokollmigrering.
+  | Revert
 
 // What an edit decides when it is made, written into it before it is committed (#894, D3). The
 // log stores results and never a question to be asked again: replay applies the line as it was
@@ -728,6 +734,8 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return themed(doc, intent)
     case 'restore':
       return intent.doc
+    case 'revert':
+      return applyRevert(doc, intent)
     // All or nothing comes for free: the parts are applied to a document nobody else holds, and a
     // part that throws throws away every part before it with it.
     case 'compound':

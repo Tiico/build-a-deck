@@ -88,6 +88,7 @@ test('a designer refines a proposal, sees the refined one replace it on the wall
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(wall).toHaveCount(6)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
   expect(edits()[1]!.intent.doc!.rows).toHaveLength(6)
 })

@@ -449,6 +449,9 @@ export const svEditor = {
   'redo.button.none': 'Gör om: inget att göra om',
   'undo.took': 'Tog tillbaka: {what}',
   'undo.redid': 'Gjorde om: {what}',
+  // Personlig ångra (#1056): det någon annan har ändrat sedan skrivs aldrig över, och det sägs.
+  'undo.refused': 'Det gick inte att ångra {what}: någon annan har ändrat samma sak sedan dess. Inget skrevs över.',
+  'redo.refused': 'Det gick inte att göra om {what}: någon annan har ändrat samma sak sedan dess. Inget skrevs över.',
   'undo.what.name': 'namnet på spelet',
   'undo.what.deck': 'en ändring i kortleken',
   'undo.what.field': 'ett fält i kortleken',

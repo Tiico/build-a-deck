@@ -344,6 +344,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     if (heard.client === client && refusedEdits > heard.n) say(t('editor.edit.refused'))
     heardRefusals.current = { client, n: refusedEdits }
   }, [client, refusedEdits, say, t])
+  // A step back or forward that a co-editor's change stood in the way of (#1056): nothing was
+  // written over, and the designer is told what could not be taken and why, in the same place.
+  const refusedSteps = client?.refusedSteps ?? 0
+  const heardSteps = useRef<{ client: ProjectClient | null; n: number }>({ client: null, n: 0 })
+  useEffect(() => {
+    const heard = heardSteps.current
+    const step = client?.refusedStep
+    if (heard.client === client && refusedSteps > heard.n && step) say(t(step.dir === 'undo' ? 'undo.refused' : 'redo.refused', { what: t(step.what) }))
+    heardSteps.current = { client, n: refusedSteps }
+  }, [client, refusedSteps, say, t])
   // What the reading band has just answered a shortcut with; gone after a moment (#489).
   const [readingSaid, setReadingSaid] = useState<string | null>(null)
   useEffect(() => {

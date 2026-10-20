@@ -80,7 +80,8 @@ test('a designer asks for a template, sees it on the wall with its warnings, acc
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(wallCard('kort-1').locator('[data-element="coin"]')).toHaveCount(0)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
   expect(edits()[1]!.intent.doc!.template).toEqual(doc.template)
   expect(edits()[1]!.intent.doc!.rows.every((r) => !('kraft' in r.fields))).toBe(true)
 

@@ -1,8 +1,7 @@
-import type { APIRequestContext, Browser, Page } from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 import type { RuleDoc } from '@byd/server'
-import { logIn, mailTo, makeProjectOf } from '../support/api.js'
 import { DESK } from '../support/devices.js'
-import { gameDoc } from '../support/game.js'
+import { twoEditors } from '../support/editors.js'
 import { expect, test } from '../support/test.js'
 
 // Two editors in the same rulebook (#1053, D3, B7). Ada owns the game and Bo edits it with her, each
@@ -17,75 +16,8 @@ import { expect, test } from '../support/test.js'
 // gives a co-editor in earnest.
 test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 
-const RULES: RuleDoc = {
-  title: 'Skogens herrar',
-  blocks: [
-    { kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' },
-    { kind: 'text', id: 't1', text: 'Första stycket.' },
-    { kind: 'text', id: 't2', text: 'Andra stycket.' },
-  ],
-}
 const ADA = 'Ada skrev det här.'
 const BO = 'Bo skrev det här.'
-
-// Bo's line to the project's actor, with a hand on it: what the actor says to him can be held back
-// (a slow line), and the line can be cut the way a lost network cuts it, with no close frame, and
-// kept down until it is let back up.
-type Line = { hold(): void; release(): void; held(): string[]; cut(): Promise<void>; restore(): void }
-async function lineOf(page: Page): Promise<Line> {
-  let holding = false
-  let down = false
-  const waiting: { frame: string; send(): void }[] = []
-  const open: { close(): Promise<void> }[] = []
-  await page.routeWebSocket('**/projects/**/edit**', (ws) => {
-    if (down) return void ws.close({ code: 1006 })
-    const server = ws.connectToServer()
-    ws.onMessage((message) => server.send(message))
-    server.onMessage((message) => {
-      if (holding) waiting.push({ frame: String(message), send: () => ws.send(message) })
-      else ws.send(message)
-    })
-    open.push({ close: () => ws.close({ code: 1006 }) })
-  })
-  return {
-    hold: () => {
-      holding = true
-    },
-    release: () => {
-      holding = false
-      for (const frame of waiting.splice(0)) frame.send()
-    },
-    held: () => waiting.map((w) => w.frame),
-    cut: async () => {
-      down = true
-      for (const ws of open.splice(0)) await ws.close()
-    },
-    restore: () => {
-      down = false
-    },
-  }
-}
-
-// The game, with Bo let in as a co-editor through the invitation the product mails him (D3).
-async function twoEditors(browser: Browser, baseURL: string | undefined, page: Page): Promise<{ id: string; editorUrl: string; bo: Page; line: Line; close(): Promise<void> }> {
-  await logIn(page.request)
-  const doc = gameDoc({ name: 'Skogens herrar', players: 2 })
-  doc.rules = RULES
-  const project = await makeProjectOf(page.request, doc)
-  const email = `e2e-${crypto.randomUUID()}@example.com`
-  const invited = await page.request.post(`/projects/${encodeURIComponent(project.id)}/invites`, { data: { email, role: 'editor' } })
-  expect(invited.status()).toBe(201)
-  const token = /\/invites\/([A-Za-z0-9_-]+)/.exec((await mailTo(email)).text)?.[1]
-  expect(token, 'the mail carries the invitation').toBeTruthy()
-
-  const context = await browser.newContext({ viewport: DESK.viewport, locale: 'sv-SE', ...(baseURL ? { baseURL } : {}) })
-  const bo = await context.newPage()
-  await logIn(bo.request, email)
-  const accepted = await bo.request.post(`/invites/${token}`)
-  expect(accepted.ok()).toBe(true)
-  const line = await lineOf(bo)
-  return { ...project, bo, line, close: () => context.close() }
-}
 
 async function openBook(page: Page, url: string): Promise<void> {
   await page.goto(url)

@@ -59,7 +59,8 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(book).not.toContainText('Börja din tur')
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
   expect(edits()[1]!.intent.doc!.rules).toEqual(doc.rules)
 
   // 5. Rule text naming a zone the game does not have is refused, with the reason, and writes nothing.
