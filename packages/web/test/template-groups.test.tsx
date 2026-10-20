@@ -42,6 +42,9 @@ async function openTemplate(doc: ProjectDoc = typed()) {
 // cell that is the layer.
 const layers = () => layerRows()
 const pick = (at: number) => layers()[at]!.querySelector('.byd-layer-pick') as HTMLElement
+// What each layer's row shows, and what a screen reader hears on it.
+const shown = () => layers().map((_, at) => pick(at).textContent)
+const said = () => layers().map((_, at) => pick(at).getAttribute('aria-label'))
 // Nudging an element is the card's keyboard, not the panel's: inside the panel the arrows walk
 // the grid (L15), exactly as they do in any other layer panel. Since #144 the card's own element
 // is the stop the move is made from — Enter goes into the move mode, the arrows nudge, and Enter
@@ -167,11 +170,16 @@ describe('grouping the deck by a column (#13)', () => {
 
     await chooseGroup(user, 2)
     expect(screen.getByText('2 kort med typ = fälla')).toBeTruthy()
-    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· bas', 'title· bas', 'frame· bas'])
+    // A base layer carries no mark in a group (#699): «· bas» on every row said nothing the rows
+    // did not all share, and broke each of them in two. The screen reader still hears it.
+    expect(shown()).toEqual(['body', 'title', 'frame'])
+    expect(said()).toEqual(['body, från basen', 'title, från basen', 'frame, från basen'])
 
     await user.click(pick(1))
     await nudge(user, '{ArrowRight}')
-    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· bas', 'title· typ = fälla', 'frame· bas'])
+    // What the group changes carries the group's badge, and the rule is in its name.
+    expect(shown()).toEqual(['body', 'titlegruppens', 'frame'])
+    expect(said()).toEqual(['body, från basen', 'title, gruppens: typ = fälla', 'frame, från basen'])
   })
 
   it('lets a layer fall back to the base, and only offers that where there is an override', async () => {
@@ -196,9 +204,31 @@ describe('grouping the deck by a column (#13)', () => {
     await nudge(user, '{ArrowRight}')
 
     const rules = within(screen.getByRole('list', { name: /grupper/i })).getAllByRole('listitem')
+    // In words (#699): the group's value, since the crown already says which column groups the
+    // deck, and what each face changes said as a sentence rather than as a list of ids.
     expect(rules.map((r) => r.textContent)).toEqual([
-      'typ = varelse · 1 kort · ärver basen helt',
-      'typ = fälla · 2 kort · framsida: title',
+      'varelse · 1 kort · ärver basen helt',
+      'fälla · 2 kort · framsidan ändrar title',
+    ])
+  })
+
+  // The layers are said by their one name (#699), and the conditions a group changes are counted
+  // rather than listed: «if-karaktar, if-silver, if-koppar …» was the longest line in the column.
+  it('says what a group changes by the layers’ names, counting its conditions', async () => {
+    const doc = typed()
+    const front = doc.template.faces['front']!
+    front.variantBy = 'typ'
+    const title = front.base.find((el) => el.id === 'title')!
+    const body = front.base.find((el) => el.id === 'body')!
+    const condition = (id: string, equals: string) => ({ kind: 'if' as const, id, when: { field: 'title', equals }, children: [] })
+    front.variants = { fälla: { override: [{ ...title, name: 'Rubriken' }, body, condition('if-1', 'Snara'), condition('if-2', 'Fallgrop')] } }
+    doc.template.faces['back']!.variantBy = 'typ'
+    doc.template.faces['back']!.variants = { fälla: { remove: ['bg'] } }
+    await openTemplate(doc)
+    const rules = within(screen.getByRole('list', { name: /grupper/i })).getAllByRole('listitem')
+    expect(rules.map((r) => r.textContent)).toEqual([
+      'varelse · 1 kort · ärver basen helt',
+      'fälla · 2 kort · framsidan ändrar Rubriken, body och 2 villkor · baksidan ändrar bg',
     ])
   })
 
@@ -265,14 +295,15 @@ describe('a layer a group takes away (#13)', () => {
     expect(screen.getByRole('alertdialog').textContent).toMatch(/2 kort/)
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
 
-    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· borttaget i typ = fälla', 'title· bas', 'frame· bas'])
+    expect(shown()).toEqual(['body· borttaget i typ = fälla', 'title', 'frame'])
+    expect(said()[0]).toBe('body, borttaget i typ = fälla')
     expect(layers().map((l) => l.hasAttribute('data-removed'))).toEqual([true, false, false])
     // The card of the group no longer draws it, while the base still does.
     expect(screen.queryByText('Spelas dolt.')).toBeNull()
 
     await user.click(pick(0))
     await user.click(screen.getByRole('button', { name: /återgå till basen/i }))
-    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· bas', 'title· bas', 'frame· bas'])
+    expect(shown()).toEqual(['body', 'title', 'frame'])
     expect(screen.getByText('Spelas dolt.')).toBeTruthy()
   })
 })

@@ -1,5 +1,5 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
-import { cardsWhere, conditionWords, holds } from './conditions.js'
+import { cardsWhere, conditionWords, holds, layerTitle } from './conditions.js'
 import { CardRow } from './CardRow.js'
 import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
@@ -19,7 +19,7 @@ import { fieldLabel, fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, valuesIn, type Layer } from './groups.js'
-import { LayerList, layerName } from './LayerList.js'
+import { LayerList, layerName, type LayerMark } from './LayerList.js'
 import { foldedProps, rememberFoldedProps } from './panes.js'
 import { Question } from './Question.js'
 import type { CanvasStage } from './EditorStages.js'
@@ -342,11 +342,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
                   },
                   onRename,
                 })}
-            markOf={(id) => markOf(panel, column, group, id, t)}
+            markOf={(id) => markOf(panel, column, group, id)}
             conditionOf={(one) => {
               if (one.kind !== 'if') return null
               const n = shownCards.filter((r) => holds(one.when, r.fields)).length
-              return t(n === 1 ? 'canvas.if.row.one' : 'canvas.if.row.other', { condition: conditionWords(one.when, t), n })
+              return { words: conditionWords(one.when, t), field: fieldLabel(one.when.field, t), value: 'equals' in one.when ? one.when.equals : null, cards: cardsLabel(n, t) }
             }}
             pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
@@ -380,7 +380,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
             {t('canvas.grid')}
           </label>
-          {column && <GroupRules doc={doc} column={column} groups={groups} />}
+          {column && <GroupRules doc={doc} groups={groups} />}
         </div>
         {/* Dragging and keyboard instructions behind the question mark (L32). The
             whole sentence was six lines in this 220 px column — a third of the list's height,
@@ -462,7 +462,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             stands (#478): at the stage's foot it was cut by the stage it stood in. */}
         {refusedLayer && (
           <p className="byd-canvas-locked" role="alert">
-            {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
+            {t('canvas.layer.isLocked', { name: layerTitle(refusedLayer, t) })}
           </p>
         )}
         {stage === null && catalog}
@@ -489,7 +489,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
               onRemove(goes.id)
               // Said only once it has happened, and in the polite region: the layer is gone from
               // under a keyboard that may be nowhere near the panel it was listed in.
-              say?.('polite', t('canvas.layer.removed', { name: layerName(goes), face: faceName(face, t).toLowerCase() }))
+              say?.('polite', t('canvas.layer.removed', { name: layerTitle(goes, t), face: faceName(face, t).toLowerCase() }))
               handBack()
             }}
             onCancel={handBack}
@@ -503,7 +503,17 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       <Reading.Provider value={reading}>
       <SectionsOpen.Provider value={sections}>
       <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')}>
-        <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
+        {/* The layer's one name (#699), as the designer wrote it and not set in capitals the way the
+            word «Egenskaper» before it is: an id in capitals was a third name for the same layer. */}
+        <h2>
+          {t('canvas.props')}
+          {layer && (
+            <>
+              {' · '}
+              <span className="byd-canvas-props-name">{layerTitle(layer.element, t)}</span>
+            </>
+          )}
+        </h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
@@ -1349,10 +1359,12 @@ function FoldProps({ folded, onFold }: { folded: boolean; onFold(away: boolean):
   )
 }
 
-// Variant B's rule list, kept as the summary beside the canvas: every group as its rule, how many
-// cards it is about, and what it changes against the base on each face. Reading, not editing —
-// the editing is the crown's menu and the card.
-function GroupRules({ doc, column, groups }: { doc: ProjectDoc; column: string; groups: string[] }) {
+// Variant B's rule list, kept as the summary beside the canvas: every group, how many cards it is
+// about, and what it changes against the base on each face. Reading, not editing — the editing is
+// the crown's menu and the card. In words since #699: the group is said by its value, because the
+// crown above already says which column groups the deck, and «typ = » on every line was the same
+// four characters six times in a column of 220 px.
+function GroupRules({ doc, groups }: { doc: ProjectDoc; groups: string[] }) {
   const t = useT()
   return (
     <>
@@ -1360,7 +1372,7 @@ function GroupRules({ doc, column, groups }: { doc: ProjectDoc; column: string; 
       <ul className="byd-canvas-rules" aria-labelledby="groups-heading">
         {groups.map((g) => (
           <li key={g}>
-            {ruleLabel(column, g)} · {cardsLabel(cardsInGroup(doc, g).length, t)} · {changesLabel(doc, g, t)}
+            {g} · {cardsLabel(cardsInGroup(doc, g).length, t)} · {changesLabel(doc, g, t)}
           </li>
         ))}
       </ul>
@@ -1368,24 +1380,40 @@ function GroupRules({ doc, column, groups }: { doc: ProjectDoc; column: string; 
   )
 }
 
-// What a group changes against the base, face by face. A group that changes nothing yet is not
-// an error — it is a group waiting to be designed — so it says so instead of showing an empty line.
+// What a group changes against the base, face by face, as a sentence (#699): «baksidan ändrar
+// band, raritet och 6 villkor». A layer is said by its one name, and the conditions nobody has
+// named are counted rather than listed — each is a whole condition long, and six of them in a row
+// were the longest line in the column. A group that changes nothing yet is not an error — it is a
+// group waiting to be designed — so it says so instead of showing an empty line.
 function changesLabel(doc: ProjectDoc, group: string, t: T): string {
   const parts: string[] = []
   for (const [id, face] of Object.entries(doc.template.faces)) {
     const ids = [...overriddenIds(face, group)]
-    if (ids.length > 0) parts.push(`${faceName(id, t).toLowerCase()}: ${ids.join(', ')}`)
+    if (ids.length === 0) continue
+    const own = face.variants[group]?.override ?? []
+    const named: string[] = []
+    let conditions = 0
+    for (const changed of ids) {
+      const el = own.find((e) => e.id === changed) ?? face.base.find((e) => e.id === changed)
+      if (el?.kind === 'if' && !el.name) conditions++
+      else named.push(el ? layerTitle(el, t) : changed)
+    }
+    if (conditions > 0) named.push(t(conditions === 1 ? 'canvas.rule.conditions.one' : 'canvas.rule.conditions.other', { n: conditions }))
+    const what = named.length < 2 ? (named[0] ?? '') : t('canvas.rule.and', { rest: named.slice(0, -1).join(', '), last: named.at(-1) ?? '' })
+    const key = FACE_CHANGES[id]
+    parts.push(key ? t(key, { what }) : t('canvas.rule.face', { face: faceName(id, t).toLowerCase(), what }))
   }
   return parts.length > 0 ? parts.join(' · ') : t('canvas.group.inherits')
 }
+const FACE_CHANGES: Record<string, Key> = { front: 'canvas.rule.front', back: 'canvas.rule.back' }
 
-// What a layer belongs to, said on the layer itself: the base every card inherits, the open
-// group, or — for a base layer the group has taken away — that it is gone for this group's cards.
-function markOf(panel: Layer[], column: string | null, group: string | null, id: string, t: T): string | null {
+// What a layer belongs to: the base every card inherits, the open group, or — for a base layer
+// the group has taken away — that it is gone for this group's cards.
+function markOf(panel: Layer[], column: string | null, group: string | null, id: string): LayerMark | null {
   if (!group) return null
   const source = panel.find((l) => l.element.id === id)?.source
-  if (source === 'removed') return t('canvas.mark.removedIn', { rule: ruleLabel(column ?? '', group) })
-  return source === 'group' ? ruleLabel(column ?? '', group) : t('canvas.mark.base')
+  const rule = ruleLabel(column ?? '', group)
+  return { of: source === 'removed' ? 'removed' : source === 'group' ? 'group' : 'base', rule }
 }
 
 // Which cards the open tab is about: the whole deck for the base, the cards the rule matches for
@@ -1406,7 +1434,7 @@ function cardsLabel(count: number, t: T): string {
 // an element. It is the question's own name as well as its words, so hearing it and reading it
 // are the same sentence twice.
 function removeLayerLabel(el: Element, face: string, cards: number, t: T): string {
-  return t(cards === 1 ? 'canvas.layer.remove.one' : 'canvas.layer.remove.other', { name: layerName(el), face: faceName(face, t).toLowerCase(), n: cards })
+  return t(cards === 1 ? 'canvas.layer.remove.one' : 'canvas.layer.remove.other', { name: layerTitle(el, t), face: faceName(face, t).toLowerCase(), n: cards })
 }
 
 // A face the template does not have: the canvas says so instead, and this is what it says it of.
@@ -1820,7 +1848,7 @@ function conditionFrames(shown: readonly Element[], row: Row, t: T): ConditionFr
     const y = Math.min(...placed.map((b) => b.y))
     const right = Math.max(...placed.map((b) => b.x + b.w))
     const bottom = Math.max(...placed.map((b) => b.y + b.h))
-    return [{ id: el.id, x, y, w: right - x, h: bottom - y, words: conditionWords(el.when, t), holds: holds(el.when, row) }]
+    return [{ id: el.id, x, y, w: right - x, h: bottom - y, words: layerTitle(el, t), holds: holds(el.when, row) }]
   })
 }
 
@@ -1873,7 +1901,7 @@ function ConditionProps({ el, fields, valuesIn, cards, onPatch, onShow }: { el: 
         )}
       </Section>
       <Section id="shape" name={t('canvas.if.children')}>
-        <ul className="byd-props-wide byd-layer-inside" aria-label={t('canvas.if.inside', { name: layerName(el) })}>
+        <ul className="byd-props-wide byd-layer-inside" aria-label={t('canvas.if.inside', { name: layerTitle(el, t) })}>
           {el.children.map((child) => (
             <li key={child.id}>{layerName(child)}</li>
           ))}

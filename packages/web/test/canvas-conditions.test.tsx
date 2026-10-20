@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
+import { layerGrid } from './layers.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
 
 // A layer drawn on some cards only (#478, beslut 2026-09-27, variant A: the condition as a folder).
@@ -54,13 +55,17 @@ function open(selected: string | null = 'if-drake', row = 'knight') {
 }
 
 describe('a layer drawn on some cards only (#478)', () => {
-  it('says its condition and on how many cards it holds in the layer list, and lists what is in it', async () => {
-    const user = userEvent.setup()
+  it('says its condition and on how many cards it holds in the layer list, and lists what is in it once chosen', () => {
     open(null)
     const row = document.querySelector('[data-layer="if-drake"]') as HTMLElement
     expect(row.textContent).toContain('om Titel = Drake · 1 kort')
-    await user.click(within(row).getByRole('button', { name: 'Visa vad som ingår i if-drake' }))
-    expect(screen.getByRole('list', { name: 'I if-drake' }).textContent).toContain('badge')
+    // Choosing the layer is what opens it (#699, variant D): the folder's own button is gone from
+    // the row, and its 44 px went to the name.
+    expect(within(row).getAllByRole('button').map((b) => b.className)).toEqual(['byd-layer-lock', 'byd-layer-pick'])
+    expect(screen.queryByRole('list', { name: 'I om Titel = Drake' })).toBeNull()
+    cleanup()
+    open('if-drake')
+    expect(within(layerGrid()).getByRole('list', { name: 'I om Titel = Drake' }).textContent).toContain('badge')
   })
 
   it('edits its condition in the panel, and shows a card it holds on', async () => {
@@ -101,5 +106,46 @@ describe('a layer drawn on some cards only (#478)', () => {
     row.focus()
     await user.keyboard('{Delete}')
     expect(screen.getByRole('alertdialog').textContent).toMatch(/1 kort/)
+    // By the layer's one name (#699), not its id.
+    expect(screen.getByRole('alertdialog').textContent).toMatch(/^Ta bort om Titel = Drake från framsida\?/)
+  })
+})
+
+// Variant D (#699, beställarens val 2026-10-20): a condition layer has one name, written the same
+// in the layer list, on the canvas tab and in the properties heading — «om Titel = Drake». Before,
+// the same layer was «…e · 1 kort» in the list, «om Titel = Drake» on the card and «IF-DRAKE» over
+// its properties.
+describe('one name for a condition layer (#699)', () => {
+  it('is said the same in the list, on the canvas tab and in the properties heading', () => {
+    open('if-drake')
+    const row = document.querySelector('[data-layer="if-drake"] .byd-layer-name') as HTMLElement
+    const tab = document.querySelector('[data-condition="if-drake"] .byd-condition-tab') as HTMLElement
+    expect(row.textContent).toBe('om Titel = Drake · 1 kort')
+    expect(tab.textContent).toBe('om Titel = Drake')
+    expect(screen.getByRole('heading', { name: 'Egenskaper · om Titel = Drake' })).toBeTruthy()
+  })
+
+  // The grid is untouched (L15): the arrow walks from one condition to the next, and what is heard
+  // there is the condition and its count, with a pause where the eye sees a dot.
+  it('is heard by its condition and its count, and the arrow walks to the next condition', async () => {
+    const user = userEvent.setup()
+    const doc: ProjectDoc = projectDoc()
+    const knight: Element = { kind: 'if', id: 'if-riddare', when: { field: 'title', equals: 'Riddare' }, children: [{ kind: 'shape', id: 'shield', shape: 'rect', x: 5, y: 5, w: 8, h: 8, fill: '#335577' }] }
+    doc.template.faces['front']!.base.push(knight, BADGE)
+    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="if-drake" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onReplaceFace={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />)
+    const drake = document.querySelector('[data-layer="if-drake"] .byd-layer-pick') as HTMLElement
+    expect(drake.getAttribute('aria-label')).toBe('om Titel = Drake, 1 kort')
+    drake.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(document.activeElement).toBe(document.querySelector('[data-layer="if-riddare"] .byd-layer-pick'))
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('om Titel = Riddare, 1 kort')
+  })
+
+  it('heads the properties of a named layer with its name, not its id', () => {
+    const doc: ProjectDoc = projectDoc()
+    const title = doc.template.faces['front']!.base.find((el) => el.id === 'title')!
+    title.name = 'Rubriken'
+    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onReplaceFace={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Egenskaper · Rubriken' })).toBeTruthy()
   })
 })

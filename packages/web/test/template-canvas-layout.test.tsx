@@ -10,6 +10,8 @@ import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
+import { Language, type Lang } from '../src/i18n/index.js'
+import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -322,61 +324,116 @@ async function cardListOpen(cards: number) {
   }
 }
 
-// Lagerlistans villkorslager kapas i början (#569, beställarens beslut B): alla sex i Sal's Saloon
-// hette «om rarite…» vid 1024 och gick inte att skilja åt. Slutet syns nu — värdets sista tecken och
-// antalet kort — och det är det enda som skiljer dem åt i en kolumn på 220 px. Mätt på Sal's Saloon
-// själv, därför att beslutet är fattat mot den och dess antal: två villkor med samma antal skiljs åt
-// högst av värdets sista bokstav, och med ett bredare typsnitt inte alls, vilket är beslutets kända
-// begränsning.
-describe('the condition layers in the layer list (#569)', () => {
-  it('cuts a condition’s name at its start, so that each of Sal’s Saloon’s six can be told apart at 1024', async () => {
-    // Sal's Saloon's six conditions as `spelkortDoc` makes them, one per rarity on `raritet`, over
-    // the same number of cards each (the script itself reads its sheet through `import.meta.url`,
-    // which jsdom's own URL cannot resolve).
-    const SALS = { Karaktär: 10, Silver: 14, Koppar: 12, Special: 11, Guld: 18, Diamant: 12 }
-    const doc = projectDoc()
-    doc.template.faces.front!.base = [
-      ...Object.keys(SALS).map((rarity) => ({ kind: 'if' as const, id: `if-${rarity}`, when: { field: 'raritet', equals: rarity }, children: [{ kind: 'shape' as const, id: `pill-${rarity}`, x: 5, y: 80, w: 26, h: 6, shape: 'rect' as const, fill: '#888888' }] })),
-      ...doc.template.faces.front!.base,
-    ]
-    doc.rows = Object.entries(SALS).flatMap(([rarity, n]) => Array.from({ length: n }, (_, i) => ({ id: `${rarity}-${i}`, fields: { title: `${rarity} ${i}`, raritet: rarity, antal: 1 } })))
-    const { container, unmount } = render(
-      <TemplateCanvas doc={doc} face="front" row={doc.rows[0]!.id} onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
-    )
-    const html = container.innerHTML
-    unmount()
-    const page = await browser.newPage({ viewport: { width: 1024, height: 768 } })
-    try {
-      const shell = read('index.html')
-        .replace('<script type="module" src="/src/main.tsx"></script>', '')
-        .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
-        .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${html}</div></main></div></div>`)
-      await page.setContent(shell, { waitUntil: 'load' })
-      const seen = (await page.evaluate(`(() => {
-        const ctx = document.createElement('canvas').getContext('2d')
-        return [...document.querySelectorAll('.byd-layer-name')].filter((el) => el.textContent.includes(' kort')).map((el) => {
-          const cs = getComputedStyle(el); ctx.font = cs.font
-          const text = el.textContent
-          if (el.scrollWidth <= el.clientWidth + 1) return { text, seen: text }
-          const room = el.clientWidth - ctx.measureText('…').width
-          const fromEnd = cs.direction === 'rtl'
-          let n = text.length
-          while (n > 0 && ctx.measureText(fromEnd ? text.slice(-n) : text.slice(0, n)).width > room) n--
-          return { text, seen: fromEnd ? '…' + text.slice(-n) : text.slice(0, n) + '…' }
-        })
-      })()`)) as { text: string; seen: string }[]
-      // Not vacuous: the six are there, and they really are cut.
-      expect(seen).toHaveLength(6)
-      expect(seen.every((s) => s.seen !== s.text)).toBe(true)
-      // The end of each is what shows, and the end holds the count whole. How much of the value
-      // shows before it is the font's to say: one letter with the Mac's, none with the wider one CI
-      // has — so conditions with different counts are always told apart, and equal counts are the
-      // decision's known limitation rather than something this test can promise.
-      expect(seen.every((s) => s.seen.startsWith('…') && s.text.endsWith(s.seen.slice(1)))).toBe(true)
-      expect(seen.every((s) => /· \d+ kort$/.test(s.seen) && s.seen.includes(s.text.slice(s.text.lastIndexOf('·'))))).toBe(true)
-      expect(new Set(seen.map((s) => s.seen)).size).toBeGreaterThanOrEqual(new Set(Object.values(SALS)).size)
-    } finally {
-      await page.close()
+// Lagerlistans villkorslager står hela och bryts över raderna de behöver (#699, beställarens val
+// variant D 2026-10-20, som reviderar #569:s kapning i början). Med kapningen hette alla sex i
+// Sal's Saloon «…r · 10 kort», «…r · 14 kort» …: värdet syntes aldrig, och Koppar och Diamant (12
+// kort var) skildes av en bokstav på Macen och inte alls på Linux. Nu ska varje värde stå helt —
+// vid 1024 och 1280, på svenska och engelska, i Sal's Saloon och i prototypens lekar med långa
+// värden som bara skiljer sig i början eller i slutet — och det ska hålla också med ett bredare
+// typsnitt än Macens: Verdana är lika brett som DejaVu, som CI:s Linux ritar med.
+type Deck = { name: string; lang: Lang; doc: () => ProjectDoc; values: string[] }
+function conditionDeck(field: string, filled: string, cards: Record<string, number>): ProjectDoc {
+  const doc = projectDoc()
+  doc.template.faces.front!.base = [
+    ...Object.keys(cards).map((value, i) => ({ kind: 'if' as const, id: `if-${i + 1}`, when: { field, equals: value }, children: [{ kind: 'shape' as const, id: `pill-${i + 1}`, x: 5, y: 80, w: 26, h: 6, shape: 'rect' as const, fill: '#888888' }] })),
+    { kind: 'if' as const, id: 'if-filled', when: { field: filled, nonEmpty: true as const }, children: [{ kind: 'shape' as const, id: 'pill-filled', x: 5, y: 70, w: 26, h: 6, shape: 'rect' as const, fill: '#888888' }] },
+    ...doc.template.faces.front!.base,
+  ]
+  doc.rows = Object.entries(cards).flatMap(([value, n]) => Array.from({ length: n }, (_, i) => ({ id: `${value}-${i}`, fields: { title: `${value} ${i}`, [field]: value, [filled]: i === 0 ? 'x' : '', antal: 1 } })))
+  return doc
+}
+// Sal's Saloon's six conditions as `spelkortDoc` makes them, one per rarity on `raritet`, over the
+// same number of cards each (the script itself reads its sheet through `import.meta.url`, which
+// jsdom's own URL cannot resolve).
+function salsSaloon(): ProjectDoc {
+  const SALS = { Karaktär: 10, Silver: 14, Koppar: 12, Special: 11, Guld: 18, Diamant: 12 }
+  const doc = projectDoc()
+  doc.template.faces.front!.base = [
+    ...Object.keys(SALS).map((rarity) => ({ kind: 'if' as const, id: `if-${rarity.toLowerCase()}`, when: { field: 'raritet', equals: rarity }, children: [{ kind: 'shape' as const, id: `pill-${rarity}`, x: 5, y: 80, w: 26, h: 6, shape: 'rect' as const, fill: '#888888' }] })),
+    ...doc.template.faces.front!.base,
+  ]
+  doc.rows = Object.entries(SALS).flatMap(([rarity, n]) => Array.from({ length: n }, (_, i) => ({ id: `${rarity}-${i}`, fields: { title: `${rarity} ${i}`, raritet: rarity, antal: 1 } })))
+  return doc
+}
+const LONG_SV = ['Förbannad legendarisk artefakt', 'Välsignad legendarisk artefakt', 'Legendarisk artefakt (förbannad)', 'Legendarisk artefakt (välsignad)', 'Vanlig']
+const LONG_EN = ['Cursed legendary artifact', 'Blessed legendary artifact', 'Legendary artifact (cursed)', 'Legendary artifact (blessed)', 'Common']
+const DECKS: Deck[] = [
+  { name: "Sal's Saloon", lang: 'sv', doc: salsSaloon, values: ['Karaktär', 'Silver', 'Koppar', 'Special', 'Guld', 'Diamant'] },
+  { name: 'Långa villkor', lang: 'sv', doc: () => conditionDeck('Utrustningskategori', 'Bildtext', Object.fromEntries(LONG_SV.map((v) => [v, 3]))), values: [...LONG_SV, 'Bildtext finns'] },
+  { name: 'Long conditions', lang: 'en', doc: () => conditionDeck('equipment category', 'caption', Object.fromEntries(LONG_EN.map((v) => [v, 3]))), values: [...LONG_EN, 'caption is filled'] },
+]
+const WIDE = ".byd-canvas, .byd-canvas * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }"
+
+async function conditionRows(deck: Deck, width: number, wide: boolean) {
+  const doc = deck.doc()
+  const { container, unmount } = render(
+    <Language lang={deck.lang}>
+      <TemplateCanvas doc={doc} face="front" row={doc.rows[0]!.id} onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />
+    </Language>,
+  )
+  const html = container.innerHTML
+  unmount()
+  const page = await browser.newPage({ viewport: { width, height: 800 } })
+  try {
+    const shell = read('index.html')
+      .replace('<html lang="sv">', `<html lang="${deck.lang}">`)
+      .replace('<script type="module" src="/src/main.tsx"></script>', '')
+      .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+      .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${html}</div></main></div></div>`)
+    await page.setContent(shell, { waitUntil: 'load' })
+    if (wide) await page.addStyleTag({ content: WIDE })
+    // What of each condition's row the eye gets: its words, and whether every line of them lies
+    // inside the row's own cell — a line that runs past the cell's edge, or is clipped by it, is a
+    // line nobody reads.
+    return (await page.evaluate(`(() => [...document.querySelectorAll('.byd-layers [role="row"]')].flatMap((row) => {
+      const name = row.querySelector('.byd-layer-name')
+      if (!row.dataset.layer.startsWith('if-') || !name) return []
+      const cell = row.querySelector('.byd-layer-pick').getBoundingClientRect()
+      const range = document.createRange()
+      range.selectNodeContents(name)
+      const lines = [...range.getClientRects()]
+      const inside = lines.every((r) => r.left >= cell.left - 0.5 && r.right <= cell.right + 0.5 && r.top >= cell.top - 0.5 && r.bottom <= cell.bottom + 0.5)
+      const cs = getComputedStyle(name)
+      // Where the value begins: at the start of a line of its own, under the column's name.
+      const value = name.querySelector('.byd-layer-value')
+      const head = name.querySelector('.byd-layer-field')
+      const first = value && value.getClientRects()[0]
+      const ownLine = first && head ? Math.abs(first.left - name.getBoundingClientRect().left) < 1 && first.top >= head.getBoundingClientRect().bottom - 1 : null
+      return [{ text: name.textContent, inside, clipped: name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > name.clientHeight + 1, cut: cs.textOverflow === 'ellipsis' && cs.whiteSpace === 'nowrap', h: row.getBoundingClientRect().height, ownLine }]
+    }))()`)) as { text: string; inside: boolean; clipped: boolean; cut: boolean; h: number; ownLine: boolean | null }[]
+  } finally {
+    await page.close()
+  }
+}
+
+describe('the condition layers in the layer list (#699)', () => {
+  for (const deck of DECKS)
+    for (const width of [1024, 1280])
+      for (const wide of [false, true])
+        it(`shows every value of ${deck.name} whole at ${width}${wide ? ', in a font as wide as Linux’s' : ''}`, async () => {
+          const rows = await conditionRows(deck, width, wide)
+          // Not vacuous: the six are there.
+          expect(rows).toHaveLength(6)
+          // Each row is its whole condition and its count, nothing cut and nothing outside its cell.
+          for (const value of deck.values) expect(rows.filter((row) => row.text.includes(value)), value).toHaveLength(1)
+          for (const row of rows) {
+            expect(row.text).toMatch(/· \d+ (kort|cards?)$/)
+            expect(row, row.text).toMatchObject({ inside: true, clipped: false, cut: false })
+          }
+          // And so the six read as six.
+          expect(new Set(rows.map((r) => r.text)).size).toBe(6)
+        }, 60_000)
+
+  // The row breaks on purpose, after the condition's column: «om raritet = / Karaktär · 10 kort».
+  // Left to the line, «om raritet = Silver / · 14 kort» and «om raritet = / Koppar · 12 kort» stood
+  // next to each other, and the six values never lined up. And a short condition stays as tall as
+  // every other layer: two lines fit in the 44 px a row has anyway.
+  it('writes each of Sal’s Saloon’s values first on a line of its own, in the 44 px every layer has', async () => {
+    const rows = await conditionRows(DECKS[0]!, 1280, false)
+    expect(rows).toHaveLength(6)
+    for (const row of rows) {
+      expect(row.ownLine, row.text).toBe(true)
+      expect(row.h, row.text).toBeLessThanOrEqual(44)
     }
   }, 60_000)
 })

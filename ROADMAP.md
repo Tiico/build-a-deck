@@ -178,7 +178,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 
 - ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757); stacken skickar `BYD_CONTACT` till appen sedan 2026-10-18 (#1030), och lådans `.env` behöver raden ifylld.
 - ✅ Säljtexten lovar inte trycket (L36, #743).
-- 🔶 Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade utom två som väntar på beställarens val av prototyp (#695, #699).
+- 🔶 Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade utom två som väntade på beställarens val av prototyp (#695, #699); båda valdes 2026-10-20, och lagerraden som bryter är byggd (L3, #699).
 - ✅ Designern läser playtestets svar — enkätsvar och flaggor per bord och version, i Bord-flikens vy «Resultat» (G3, L70, #1010).
 - ✅ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
 - ✅ Ett enkätsvar kommer från deltagarens eget inträde, ett per plats, och ett andra svar ersätter det första (G3, #1021).
