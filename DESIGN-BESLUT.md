@@ -578,6 +578,20 @@ Boken skrivs block för block. Fliken ändrar bara de block den rör, med `splic
 Bara importen skriver hela boken (`setRules`), eftersom det filen gör av boken är boken; den lägger en namngiven version som förut.
 Två i samma block samtidigt: den som landar sist får blocket. Varför står i D3.
 
+Flikens rad står still, prototypat och beslutat 2026-10-20 (#1054, variant AE):
+Med AI-panelen öppen hoppade boken när fliken bytte läge.
+Ett förslag som visades i boken stod som en egen rad under flikens rad, medan raden tappade växeln och verktygen, så att boken flyttades 32 px ned när förslaget kom och upp igen när det dolts.
+I en bok gjord ur en fil stod raden om filen i flikens rad och bröt den på två rader vid 1280 i CI:s typsnitt, så att boken stod 58 px lägre.
+**Förslagets rad står i flikens rad, på verktygens plats och bakom deras hårlinje**, eftersom verktygen inte erbjuds medan ett förslag ligger i boken.
+**Raden om filen boken kom ur står i innehållskolumnens fot.**
+Raden har en knapps höjd i varje läge och står på en rad vid 1280 och 1440 bredvid panelen, på svenska och engelska och i ett brett typsnitt.
+Boken står därmed på samma höjd, 131 px från fönstrets överkant, i en skriven bok, med ett förslag visat och i en bok ur en fil.
+Importens rapport trycker fortfarande ned boken, nu till 330 px i stället för 306, eftersom raden behåller sin höjd medan importen pågår.
+Rapporten är ett band över den bok filen skulle bli och läses mot den (prototyp 8, variant B ovan), så boken under den är en annan än den designern läste.
+Variant B, en fast statusrad under flikens rad, höll också boken still men kostade 58 px av bokens höjd i varje läge, också när raden var tom.
+Prototypen låg på grenen `proto/1054-regler-raden`, och bilderna med måtten står i [`docs/ux-audits/2026-10-20-regler-raden/prototyper/1054/`](docs/ux-audits/2026-10-20-regler-raden/prototyper/1054/).
+`packages/e2e/test/surfaces/rules-bar-still.spec.ts` håller det.
+
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
 Blindtest kräver att testare kan läsa reglerna utan designern.

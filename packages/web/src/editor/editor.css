@@ -3610,7 +3610,13 @@ img[data-arriving] { opacity: 0; }
 /* The count in the contents' foot (#173): the same button language the column's own control
    speaks, so a way into the book is never a different kind of thing from the way to add to it. */
 .byd-rules-silent { margin-top: var(--byd-s2); }
-.byd-rules-bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+/* The file the book came out of, at the column's foot (#1054). */
+.byd-rules-source { margin: var(--byd-s3) 0 0; padding: 0 var(--byd-s3); color: #9aa3b8; font-size: 12px; }
+/* The tab's row is one height in every state (#1054, variant AE): a pill's height — the tap floor
+   and its hairline — whether it holds the switch and the tools, the proposal's line, or neither,
+   as during an import. Beside the AI panel at 1280 and 1440 it stands on one row in each state; a
+   row that changed height or broke moved the book under it, and the reader lost her place. */
+.byd-rules-bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; min-height: calc(var(--byd-tap) + 2px); }
 .byd-rules-bar h2, .byd-rules-toc b, .byd-rules-report b { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-bar span, .byd-rules-report > span { color: #9aa3b8; font-size: 12px; }
 /* The file the third way in asks for. The label is what is drawn, because a native file control
@@ -4447,8 +4453,10 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-rules-ai-mark { display: inline-flex; align-items: center; gap: var(--byd-s1); margin-bottom: var(--byd-s1); padding: 0 var(--byd-s2); border-radius: 999px; background: #c9a7ff; color: #1c1530; font: 800 11px/16px system-ui, sans-serif; }
 .byd-rules-ai-mark:has(+ :is(h2, h3)) { margin-top: var(--byd-s4); }
 .byd-rules-ai-mark + :is(h2, h3) { margin-top: var(--byd-s1); }
-.byd-rules-ai { flex: none; margin: 0; color: #cfd5e3; font-size: 12px; }
-.byd-rules-ai button { margin-left: var(--byd-s1); border: 1px solid #3b414e; border-radius: 6px; padding: var(--byd-s1) var(--byd-s2); background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+/* The proposal's line, in the tools' place behind their divider (#1054): its words in the band's
+   own lighter ink, and its one press drawn as a tool, since that is the place it stands in. */
+.byd-rules-ai { align-items: center; }
+.byd-rules-bar .byd-rules-ai > span { color: #cfd5e3; }
 
 /* «Bord · Resultat» (#1010, beställarens val 2026-10-18): the Bord tab's two views, switched at the
    head of the middle column, where it stands in both views. */

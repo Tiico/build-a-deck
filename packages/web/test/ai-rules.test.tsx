@@ -105,7 +105,11 @@ describe('rule text shown in the rulebook', () => {
     expect(book().querySelector('[data-block="b2"]')!.hasAttribute('data-ai')).toBe(false)
     expect(book().querySelector('.byd-rules-add')).toBeNull()
     expect(book().querySelector('[role="button"]')).toBeNull()
-    const band = screen.getByText(/^AI-hjälpens förslag/).closest('p')!
+    // The proposal's line stands in the tab's own row, in the tools' place (#1054): a row of its own
+    // under it moved the book when it came and went.
+    const band = screen.getByText(/^AI-hjälpens förslag/).closest<HTMLElement>('[data-proposal]')!
+    expect(band.closest('.byd-rules-bar')).not.toBeNull()
+    expect(within(band.closest<HTMLElement>('.byd-rules-bar')!).queryByRole('group', { name: 'Verktyg' })).toBeNull()
     expect(band.textContent).toContain('1 tillägg i regelboken')
     expect(within(panel()).getByRole('button', { name: 'Visa i regelboken' }).getAttribute('aria-pressed')).toBe('true')
     expect(await logged()).toHaveLength(0)
