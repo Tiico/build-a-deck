@@ -15,6 +15,7 @@
 // still in the block direction, with an edge under `id` that says there is more to the left. The
 // chip that used to say `← 3 kolumner till vänster` goes with it — the edge says the same thing
 // without costing the place the reader was standing in, and two cues for one fact is one too many.
+// (#695 brought the sentence back, in the foot, where it costs no place either; see the end.)
 //
 // jsdom lays nothing out and scrolls nothing, so every question here is put to a real engine
 // against the stylesheet the editor ships.

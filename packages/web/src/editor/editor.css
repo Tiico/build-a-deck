@@ -2417,6 +2417,11 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-crown-foot .byd-data-outside:focus-visible { outline-offset: -4px; }
 .byd-crown-foot .byd-data-outside[data-side='left'] > :first-child { margin-right: var(--byd-s1); }
 .byd-crown-foot .byd-data-outside[data-side='right'] > :last-child { margin-left: var(--byd-s1); }
+/* Below the desk the row breaks rather than the page scrolling sideways for it, as the crown's
+   does (#567): at 400 % the number alone was 13 px wider than the room. */
+@media (max-width: 1023px), (pointer: coarse) {
+  .byd-crown-foot:has(> .byd-data-outside) { flex-wrap: wrap; row-gap: var(--byd-s1); }
+}
 /* The names are cut by their own box, and the underline hangs under the line: the box reaches a
    rung further down than it is laid out, so the cut is to the side and never under the words. */
 .byd-data-outside-names { overflow: hidden; text-overflow: ellipsis; padding-block: var(--byd-s1); margin-block: calc(-1 * var(--byd-s1)); }

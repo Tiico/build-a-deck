@@ -4167,7 +4167,8 @@ I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vi
 - **`antal` står på listen, efter `id`.**
   Listen blir tre kolumner (L55), och `antal` nås med ett Tab-tryck från radens bock, syns vid 1024 och 1280 utan rullning i sidled — också med text 15 % bredare, som på Linux — och står kvar när man skriver långt ut i body.
   Kolumnen som styr hur många kopior som går i leken är den första en ny formgivare ser efter kortets namn.
-  Priset är taget: body syns 89 px smalare (571 → 482 vid 1280, 315 → 226 vid 1024 i provleken).
+  Priset är taget: body syns 89 px smalare i prototypens mätning (571 → 482 vid 1280, 315 → 226 vid 1024 i provleken).
+  Mätt i det byggda appen när det byggdes, med AI-hjälpens list som tillkommit sedan prototypen, syns body 427 px vid 1280 och 171 vid 1024 i provleken, 413 och 157 i den täta leken, och 368 och 112 i provleken med text 15 % bredare.
   Var `antal` börjar är `id`:s mätta bredd efter bocken, som bara mätningen vet; `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<kolumn>` på tabellen.
 - **Grupp går upp i typ.**
   Kolumnen «grupp» (#13) var alltid typ en gång till: `groupOfRow` läser mallens `variantBy`-kolumn, så cellen sa «typ = Playcard» där typ redan sa Playcard.
@@ -4179,6 +4180,8 @@ I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vi
   Det som står utanför räknas mellan listen och pinnen, så listens egna kolumner står aldrig utanför; åt vänster sägs det också, eftersom kanten under listen säger att något finns där men inte vad.
   När raden tar slut kortas namnen bakifrån och talet står kvar.
   Meningen viker för markeringens verktyg och för frågorna som tar deras plats, kolumndörrens inräknad (#858), så att den tysta raden inte bryts vid 1024; L67:s bekräftelse står kvar hel och meningens namn kortas för den.
+  Meningen tar bara det rum raden har över, så ingenting annat i raden ger vika förrän namnen är borta; mätt med två markerade kort var den tysta raden till höger om verktygen annars den som bröts.
+  Under skrivbordets bredd bryts foten hellre på två rader än att sidan rullar i sidled för den, som krönet gör (#567).
 - Grupp-cellernas 13 px mot fältens 12 px försvann med kolumnen.
 
 `table-antal-rail.spec.ts` mäter i det byggda appen, i provleken och i en lek skalad genom API:t till 308 kort och elva fält, vid 1280 och 1024 med och utan text 15 % bredare, att `antal` står helt i bild bredvid `id` och ovanpå det som rullar, att foten säger vilka kolumner som står utanför och att den håller en rad med två markerade kort, med kolumndörrens fråga och med en bekräftelse.
