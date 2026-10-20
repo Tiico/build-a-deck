@@ -60,6 +60,30 @@ describe('the focus held inside a modal window (#296)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Sök'))
   })
 
+  // The column door's list is inert while a column is asked about (#1061), and the browser will not
+  // put the focus in it: a ring that ended on a stop in there ended where no Tab can land.
+  it('leaves what is inert out of the ring', () => {
+    function Asking() {
+      const box = useRef<HTMLDivElement>(null)
+      useFocusTrap(box, { onEscape: () => undefined })
+      return (
+        <div ref={box} role="dialog" aria-label="Fönstret">
+          <button type="button">Första</button>
+          <button type="button">Sista</button>
+          <ul inert>
+            <li>
+              <button type="button">Bakom</button>
+            </li>
+          </ul>
+        </div>
+      )
+    }
+    render(<Asking />)
+    named('Sista').focus()
+    fireEvent.keyDown(named('Sista'), { key: 'Tab' })
+    expect(document.activeElement).toBe(named('Första'))
+  })
+
   it('pulls the focus back in when it lands outside, as a click beside the window would put it', () => {
     render(<Page />)
     named('Utanför').focus()

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { NewField } from './NewField.js'
 import { Help } from './HelpDrawer.js'
 import { ProseSwitch, ProseReset } from './ProseSwitch.js'
@@ -23,11 +23,13 @@ export type ColumnDoorProps = {
   onRemove(field: string): void
   // The × of each column, so the question one of them asks can hand the focus back to it (#8).
   removeRef(field: string, el: HTMLButtonElement | null): void
-  // Whether a column is being asked about right now (#8). The question is asked from inside the
-  // door and the × that asked has to stay, to take the focus back when the answer is no — but
-  // the form for making a column is not what the designer is being asked about, and two
-  // “Avbryt” in one place is two answers to one question.
-  asking: boolean
+  // Which column is being asked about right now (#8), and the question itself (#1061). It stands
+  // in the door, where the × that asked it is, in the form's place at the door's foot: the form
+  // for making a column is not what the designer is being asked about, and two «Avbryt» in one
+  // place is two answers to one question. The × that asked stays, to take the focus back when the
+  // answer is no.
+  asked: string | null
+  question?: ReactNode
   // The widths the designer set herself (#46), by column, and the way to give one back. The door
   // is the only place that fact can be read at all — a column drawn narrow looks the same whether
   // the deck asked for it or a hand did — and the only way back to the measurement without a
@@ -80,7 +82,7 @@ const REFUSED = 'byd-column-refused'
 // where the column is the designer's own, and the width only where a hand set one.
 type Cell = 'name' | 'width' | 'prose' | 'plain' | 'remove' | 'follow'
 
-export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asking, widths, onWidth, onRename, proseOf, onProse, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
+export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asked, question, widths, onWidth, onRename, proseOf, onProse, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
   // A column's switch, where there is one: the door has to have somewhere to write the answer.
   const proseHere = (field: string) => (onProse ? (proseOf?.(field) ?? null) : null)
@@ -143,15 +145,22 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   // one this door did not make, which way to open at all — is `placement.ts` now, asked by every
   // box in the editor that opens under something (#229).
   const place = usePlacement(true, panel, { least: DOOR_FLOOR, gap: DOOR_AIR })
+  // How tall the list stood when a × was pressed (#1061). The question takes the form's place, and
+  // the form is taller than a short question: a list free to take the difference grew, its scroll
+  // was clamped, and the row whose × had just been pressed slid 53–76 px under the pointer — with
+  // a different × under it. So the list keeps the height it had while the question stands. Held
+  // as state and set in the press itself, because the question takes the focus in the commit that
+  // draws it, and a focus is a layout: a height set one effect later is a clamp already made.
+  const list = useRef<HTMLUListElement>(null)
+  const [held, setHeld] = useState<number | null>(null)
   // The keyboard is held inside the door for as long as it stands (#388, L45). It is the same trap the
   // library and the font sheet have; what it holds is the head's last cell, so the ＋ that opened
   // the door is the ring's first stop and not the way out of it. Escape is deliberately not the
   // trap's: the door has two of them since #384 — the name box answers its own without closing the
   // door, and the panel answers the door's — and a trap that swallowed the press would answer for
-  // both. It lets go while a column is being asked about, because that question stands outside the
-  // door and has to be able to take the focus.
+  // both. The question about a column stands in the door (#1061), so the trap holds while it is
+  // asked too: the ring is then the handle, the help and the two answers, since the list is inert.
   useFocusTrap(cell, {
-    active: !asking,
     // The door opens on the form, as it always did (#388 chose D precisely because it does not
     // move the hand): whatever the door itself has already focused is where the trap leaves it.
     initial: () => (document.activeElement instanceof HTMLElement && cell.current?.contains(document.activeElement) ? document.activeElement : null),
@@ -229,12 +238,15 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
           <p>{t('table.columns.help.manage')}</p>
         </Help>
       </div>
-      <ul className="byd-columns-list">
+      {/* While a column is asked about, the list is inert and the other rows are drawn dimmed
+          (#1061, L58): nothing behind the question can be pressed by mistake, and one question
+          stands at a time. The row it is about is marked in the question's colours. */}
+      <ul ref={list} className="byd-columns-list" inert={asked !== null} {...(asked !== null && held !== null ? { style: { '--byd-columns-held': `${held}px` } as CSSProperties } : {})}>
         {columns.map((field) => {
           const keys = keysOf(field)
           const prose = proseHere(field)
           return (
-            <li key={field} data-col={field} {...(renaming === field ? { 'data-renaming': '' } : {})}>
+            <li key={field} data-col={field} {...(renaming === field ? { 'data-renaming': '' } : {})} {...(asked === field ? { 'data-asked': '' } : {})}>
               {renaming === field ? (
                 // The row is the box while the name is being written in it: the × and the measured
                 // width belong to a column that is standing still, and a second control beside a
@@ -298,7 +310,10 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                       {...keys('remove', (el) => removeRef(field, el instanceof HTMLButtonElement ? el : null))}
                       className="byd-data-dropfield"
                       aria-label={t('table.field.remove', { field })}
-                      onClick={() => onRemove(field)}
+                      onClick={() => {
+                        setHeld(list.current?.getBoundingClientRect().height ?? null)
+                        onRemove(field)
+                      }}
                     >
                       ×
                     </button>
@@ -324,7 +339,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
           )
         })}
       </ul>
-      {!asking && <NewField taken={taken} keeps={keeps} onCreate={onCreate} onCancel={onCancel} />}
+      {asked === null ? <NewField taken={taken} keeps={keeps} onCreate={onCreate} onCancel={onCancel} /> : question}
     </div>
   )
 }

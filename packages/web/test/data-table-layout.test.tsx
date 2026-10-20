@@ -834,11 +834,13 @@ describe('the column door ends every row in one column (#674)', () => {
   }, 60_000)
 })
 
-// The column door's own question (#858): «Ta bort fältet body» asked in the same band over the
-// head that the row's × used to (#739), so the table — and the door hanging from its head — moved
-// down under the hand that had just pressed the ×. It asks in the foot, as the row's × and the
-// marking do (L58), and the door, which stands over the rows, must leave the question in sight.
-describe('the rows stand still when the column door asks (#858)', () => {
+// The column door's own question (#858, #1061): «Ta bort fältet body» asked in the same band over
+// the head that the row's × used to (#739), so the table — and the door hanging from its head —
+// moved down under the hand that had just pressed the ×. It moved to the foot, where the door that
+// reaches the window's foot (L55) lay over its answers, and since #1061 it stands in the door
+// itself, in the form's place: the table, the door and the foot stand still, and nothing lies over
+// the answers.
+describe('the rows stand still when the column door asks (#858, #1061)', () => {
   async function door(asking: boolean): Promise<Table> {
     const user = userEvent.setup()
     const { container, unmount } = render(<Table />)
@@ -849,26 +851,25 @@ describe('the rows stand still when the column door asks (#858)', () => {
     return { html, deck: deckValues(projectDoc()) }
   }
 
-  it('keeps the first row and the door where they were, and asks in the foot, one row tall and in sight', async () => {
+  it('keeps the first row, the door and the foot where they were, and asks in the door, in sight', async () => {
     const shut = await door(false)
     const open = await door(true)
-    const [quiet, asking, foot] = await Promise.all([measure(shut), measure(open), measureFoot(open)])
+    const [quiet, asking, footBefore, foot] = await Promise.all([measure(shut), measure(open), measureFoot(shut), measureFoot(open)])
     expect(asking.scroll.y).toBe(quiet.scroll.y)
     expect(asking.firstRow.y).toBe(quiet.firstRow.y)
     expect(asking.door).not.toBeNull()
     expect(asking.door!.y).toBe(quiet.door!.y)
-    expect(foot.toolbar).not.toBeNull()
-    expect(foot.height).toBeLessThanOrEqual(foot.tap + 2 * foot.air)
-    // The question is what the page shows where it stands: neither the door nor anything else lies
-    // over its buttons.
+    expect(foot.height).toBe(footBefore.height)
+    // The question is what the page shows where it stands: nothing lies over its buttons.
     const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
     try {
       const { html, deck } = open
       await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
       const covered = await page.evaluate(({ deck, fit }) => {
         new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
-        const ask = document.querySelector('.byd-crown-foot [role="alertdialog"]')
-        if (!ask) return ['no question in the foot']
+        if (document.querySelector('.byd-crown-foot [role="alertdialog"]')) return ['a question in the foot']
+        const ask = document.querySelector('.byd-columns [role="alertdialog"]')
+        if (!ask) return ['no question in the door']
         return [...ask.querySelectorAll('button')]
           .filter((b) => {
             const r = b.getBoundingClientRect()

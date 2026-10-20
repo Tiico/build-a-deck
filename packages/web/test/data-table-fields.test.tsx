@@ -324,6 +324,66 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Kolumner' }))
   })
 
+  // The question stands in the door, in the form's place (#1061, beställarens val B): the foot
+  // under a door that reaches the window's foot left its answers under the door. While it stands
+  // the list is inert — nothing behind the question can be pressed, and the keyboard's ring is the
+  // handle, the help and the two answers — and the row it is about is marked.
+  it('asks in the door, in the form’s place, with the list inert and the row asked about marked (#1061)', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const door = screen.getByRole('group', { name: 'Kolumner' })
+    await user.click(within(door).getByRole('button', { name: 'Ta bort fältet body' }))
+
+    const ask = within(door).getByRole('alertdialog', { name: 'Ta bort body? Värdet försvinner på 3 kort. Elementet som visar den tas bort ur mallen.' })
+    expect(door.lastElementChild).toBe(ask)
+    expect(within(door).queryByLabelText('Namn')).toBeNull()
+    const list = door.querySelector('.byd-columns-list')!
+    expect(list.hasAttribute('inert')).toBe(true)
+    expect([...list.querySelectorAll('li[data-asked]')].map((li) => li.getAttribute('data-col'))).toEqual(['body'])
+
+    // The ring: from the last answer back to the handle, and from the handle back to the answer.
+    const handle = screen.getByRole('button', { name: 'Kolumner' })
+    const cancel = within(ask).getByRole('button', { name: 'Avbryt' })
+    expect(document.activeElement).toBe(cancel)
+    fireEvent.keyDown(cancel, { key: 'Tab' })
+    expect(document.activeElement).toBe(handle)
+    fireEvent.keyDown(handle, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(cancel)
+
+    // Escape answers the question and not the door, as the name box answers its own (#384): the
+    // door stays, with its form, and the focus is on the × that asked.
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(within(door).getByLabelText('Namn')).toBeTruthy()
+    expect(list.hasAttribute('inert')).toBe(false)
+    expect(document.activeElement).toBe(within(door).getByRole('button', { name: 'Ta bort fältet body' }))
+
+    // Shutting the door while it asks takes the question with it: there is nowhere left for it to
+    // stand, and the door opens again on its form.
+    await user.click(within(door).getByRole('button', { name: 'Ta bort fältet body' }))
+    await user.click(handle)
+    expect(screen.queryByRole('group', { name: 'Kolumner' })).toBeNull()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await user.click(handle)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(within(screen.getByRole('group', { name: 'Kolumner' })).getByLabelText('Namn')).toBeTruthy()
+    expect(column('body')).toBeTruthy()
+  })
+
+  // The door's question and the foot's are in two places now, and still one question at a time: a
+  // row's × pressed past the door takes the column's question back, and the other way round.
+  it('lets one question stand at a time, the door’s or the foot’s (#1061)', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ta bort dragon' }))
+    expect(screen.getAllByRole('alertdialog').map((q) => q.getAttribute('aria-label'))).toEqual(['Ta bort kortet dragon'])
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    expect(screen.getAllByRole('alertdialog').map((q) => q.getAttribute('aria-label'))).toEqual(['Ta bort body? Värdet försvinner på 3 kort. Elementet som visar den tas bort ur mallen.'])
+  })
+
   it('is the same door a column is made at: the form stands under the list', async () => {
     const user = userEvent.setup()
     render(<Editing />)

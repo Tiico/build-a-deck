@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test'
 import type { ProjectDoc } from '@byd/server'
 import { expect, test } from '../../support/test.js'
-import { spelkortDoc } from '../../../server/scripts/spelkort.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
+import { prov, tät } from '../../support/spelkort.js'
 
 // antal på listen, grupp i typ och foten som säger vad som står utanför (#695, beställarens val
 // D + A 2026-10-20), mätt i det byggda appen på de lekar prototypen mättes på.
@@ -11,27 +11,6 @@ import { logIn, makeProjectOf } from '../../support/api.js'
 // body kunde inte börja i bild vid någon bredd — antal började bakom × också vid 1440. I en tät lek
 // stod dessutom sju kolumner till utanför vid varje bredd, och ingenting sa det.
 test.use({ locale: 'sv-SE' })
-
-// Provleken som den är, och samma lek skalad genom API:t till 308 kort och sju kolumner till,
-// eftersom provleken döljer täthet: två tal, fyra korta ord och en mening, så att mätningen har
-// både smala och breda kolumner att dela rummet med.
-const prov = (): ProjectDoc => spelkortDoc(4)
-function tät(): ProjectDoc {
-  const doc = spelkortDoc(4)
-  const SERIE = ['Grundlek', 'Guldrush', 'Ökenvinden', 'Saloonkriget']
-  const KONST = ['A. Lind', 'Moa Berg', 'J. Öst', 'Sixten Ek', 'Lo Holm']
-  const STÄM = ['Dammet lägger sig över gatan.', 'Någon spelar fel på pianot igen.', 'Sheriffen tittar åt andra hållet.', 'Whiskyn är urvattnad, men billig.', 'Hästarna är oroliga i natt.']
-  const rows = [0, 1, 2, 3].flatMap((lap) =>
-    doc.rows.map((row, i) => {
-      const n = lap * doc.rows.length + i
-      return {
-        id: lap === 0 ? row.id : `${row.id}-${lap + 1}`,
-        fields: { ...row.fields, kostnad: String((n * 7) % 9), kraft: String((n * 5) % 12), serie: SERIE[lap]!, konstnär: KONST[n % 5]!, stämning: STÄM[n % 5]!, version: `1.${n % 4}`, sida: n % 2 === 0 ? 'framsida' : 'båda' },
-      }
-    }),
-  )
-  return { ...doc, name: "Sal's Saloon, tät", rows }
-}
 
 // Text 15 % bredare, som DejaVu på CI:s Linux mot Macens typsnitt (#325): satt innan tabellen mäter
 // sig, så att mätningen räknar med den.
@@ -173,8 +152,8 @@ for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
   })
 }
 
-// Meningen viker för markeringens verktyg och för kolumndörrens fråga (#858), så att fotens tysta
-// rad inte bryts vid 1024 — och ingenting i foten krockar.
+// Meningen viker för markeringens verktyg och för kolumndörrens fråga (#858, i dörren sedan #1061),
+// så att fotens tysta rad inte bryts vid 1024 — och ingenting i foten krockar.
 test('foten håller en rad vid 1024 med två markerade kort och med kolumndörrens fråga, i den täta leken', async ({ page }) => {
   await openTable(page, tät(), { width: 1024, height: 768 })
   // Premissen: meningen står där innan något markeras.
@@ -194,7 +173,7 @@ test('foten håller en rad vid 1024 med två markerade kort och med kolumndörre
 
   await page.getByRole('button', { name: 'Kolumner', exact: true }).click()
   await page.getByRole('group', { name: 'Kolumner', exact: true }).getByRole('button', { name: 'Ta bort fältet stämning' }).click()
-  await expect(page.getByRole('alertdialog')).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Kolumner', exact: true }).getByRole('alertdialog')).toBeVisible()
   const frågan = await fot(page)
   expect(frågan.mening).toBe(0)
   expect(frågan.rader).toBe(1)
@@ -202,12 +181,8 @@ test('foten håller en rad vid 1024 med två markerade kort och med kolumndörre
   expect(frågan.krockar).toEqual([])
   expect(frågan.utanför).toBe(0)
   expect(frågan.högerkant).toBeLessThanOrEqual(0.5)
-  // Besvarad från tangentbordet: med Linux bredare text ligger den öppna dörren, som hänger ned
-  // till fönstrets fot i toppskiktet (L55), över frågans «Avbryt» vid 1024. Det är #858:s
-  // placering och inte fotens mening (#1061).
-  const avbryt = page.getByRole('alertdialog').getByRole('button', { name: 'Avbryt' })
-  await avbryt.focus()
-  await avbryt.press('Enter')
+  // Besvarad med pekaren: frågan står i dörren (#1061), och ingenting ligger över den.
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Avbryt' }).click()
   await expect(page.getByRole('alertdialog')).toBeHidden()
   // Och dörren stängd, dit fokus gick tillbaka, så att den inte ligger över någon cell nedan.
   await page.keyboard.press('Escape')
