@@ -2127,6 +2127,9 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    half and there is nothing to say the deck ended there. It is room to scroll into and not a row,
    so the table still holds every row it draws to the height of one target. */
 .byd-data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 56px; /* undantag: svansen är en kortrad plus luft, inte ett avstånd på stegen (#130) */ }
+/* What scrolls a cell into view stops short of the pinned × (#695), which is a tap wide at every
+   width; the rail on the left is measured, and `fitColumns` says it on the box. */
+.byd-data-scroll { scroll-padding-right: var(--byd-tap); }
 .byd-data-tools { margin: 0; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
 /* The import is a label with a file input in the corner behind it (#193), and the tap rule

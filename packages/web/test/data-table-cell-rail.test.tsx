@@ -116,10 +116,10 @@ function markup(open: string | null, { card = 'card-0', length = 8, library = fa
   }
 }
 
-const shellOf = (html: string) =>
+const shellOf = (html: string, extra = '') =>
   read('index.html')
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
-    .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+    .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}${extra}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel">${html}</div></main></div></div>`)
 
 // The editor's own decisions about width, run on the page in the order it makes them — and then
@@ -137,14 +137,26 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
-async function measure<T_>(html: string, width: number, read_: (page: import('playwright').Page) => Promise<T_>, length = 8): Promise<T_> {
+async function measure<T_>(html: string, width: number, read_: (page: import('playwright').Page) => Promise<T_>, length = 8, extra = ''): Promise<T_> {
   const page = await browser.newPage({ viewport: { width, height: 800 } })
   try {
-    await page.setContent(shellOf(html), { waitUntil: 'load' })
+    await page.setContent(shellOf(html, extra), { waitUntil: 'load' })
     await page.evaluate(({ deck, fit }) => new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck), {
       deck: deckValues(saloonDoc(length)),
       fit: FIT,
     })
+    // The cell being worked in has the caret, and the browser brings a focused field into view —
+    // which a column after `body` needs: L46's ceiling makes `body` as wide as the room that shows,
+    // so with `antal` on the rail (#695) and CI's wider text, `raritet` begins outside the box.
+    // Then the box reads itself again, as a scroll makes it.
+    await page.evaluate((pin) => {
+      const box = document.querySelector('.byd-data-scroll') as HTMLElement
+      const open = box.querySelector('.byd-data-icon')?.closest('td') ?? box.querySelector('.byd-data-bodycell[data-open]')?.closest('td')
+      const field = open?.querySelector<HTMLElement>('input:not([type=checkbox]), [role="textbox"]')
+      if (!field) return
+      field.focus()
+      new Function('box', `(${pin})(box)`)(box)
+    }, PIN)
     return await read_(page)
   } finally {
     await page.close()
@@ -154,6 +166,70 @@ async function measure<T_>(html: string, width: number, read_: (page: import('pl
 // The two desks the editor is held to, and the narrowest it is reviewed at. The fault got worse
 // the narrower the column, so the narrow desk is the one that matters most here.
 const DESKS = [1024, 1280, 1440] as const
+
+// What a press on each open cell lands on, and the tab in the first row, asked of a page.
+async function pressesLand(width: number, extra = ''): Promise<Record<string, string>> {
+  const found: Record<string, string> = {}
+  for (const field of RAILED) {
+    found[field] = await measure(markup(field), width, (page) =>
+      page.evaluate(({ f, FIELD }) => {
+        const td = document.querySelector<HTMLElement>(`.byd-data tbody tr td[data-col="${f}"]`)!
+        const input = td.querySelector<HTMLElement>(FIELD)!
+        const at = input.getBoundingClientRect()
+        // The middle of the field's right-hand half, which is the press the issue names: where
+        // the caret belongs after a short value, and the very press that wrote a `{` into the
+        // card. Not the last pixel before the edge — the old control left a 5 px gap there, so
+        // a probe aimed at the edge would have agreed with a cell it was covering.
+        const hit = document.elementFromPoint(at.left + at.width * 0.75, at.top + at.height / 2)
+        // A writing area has the sentence's own elements inside it, so the press lands on a
+        // paragraph rather than on the box around it — and that is the caret arriving where it
+        // belongs, which is what is being asked. A field has nothing inside it to land on, so
+        // for one of those this is the same question it always was.
+        return hit !== null && (hit === input || input.contains(hit)) ? 'the field' : `${hit?.tagName.toLowerCase()}.${hit instanceof Element ? [...hit.classList].join('.') : '—'}`
+      }, { f: field, FIELD }),
+      8,
+      extra,
+    )
+  }
+  return found
+}
+
+async function firstRowTabs(width: number, extra = ''): Promise<Record<string, string>> {
+  // The head is sticky and painted over the rows; a tab that went under it would be a control
+  // that is there and cannot be seen or reached, in the row a new table starts in.
+  const found: Record<string, string> = {}
+  for (const field of FIELDS) {
+    found[field] = await measure(markup(field), width, (page) =>
+      page.evaluate((f) => {
+        const control = document.querySelector<HTMLElement>(`.byd-data tbody tr:first-child td[data-col="${f}"] .byd-data-icon`)
+        if (!control) return `no control in ${f}`
+        const c = control.getBoundingClientRect()
+        const hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2)
+        return hit === control || control.contains(hit) ? 'the control' : `${hit?.tagName.toLowerCase()}`
+      }, field),
+      8,
+      extra,
+    )
+  }
+  return found
+}
+
+// The same two presses with text as wide as CI's Linux draws it (#695): DejaVu there is ~13 %
+// wider than the Mac's faces, and Verdana here is as wide. With `antal` on the rail and L46's
+// ceiling on `body`, the column after `body` begins outside the box, and a cell the hand goes into
+// has to be brought into the room that can be read — not to the box's edge, where the pinned ×
+// stands (`scroll-padding`, said by `fitColumns`).
+const WIDE = 'body, body * { font-family: Verdana, sans-serif !important; }'
+
+describe('a cell with the icon path, at 1024px with text as wide as on Linux (#695)', () => {
+  it('answers a press where the caret belongs with the field, and not with the control', async () => {
+    expect(await pressesLand(1024, WIDE)).toEqual(Object.fromEntries(RAILED.map((f) => [f, 'the field'])))
+  }, 120_000)
+
+  it('can be seen and pressed in the first row, where what is above it is the table’s head', async () => {
+    expect(await firstRowTabs(1024, WIDE)).toEqual(Object.fromEntries(FIELDS.map((f) => [f, 'the control'])))
+  }, 120_000)
+})
 
 describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
   it('never lets the control lie over the field, in any column', async () => {
@@ -185,27 +261,7 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
   }, 120_000)
 
   it('answers a press where the caret belongs with the field, and not with the control', async () => {
-    const found: Record<string, string> = {}
-    for (const field of RAILED) {
-      found[field] = await measure(markup(field), width, (page) =>
-        page.evaluate(({ f, FIELD }) => {
-          const td = document.querySelector<HTMLElement>(`.byd-data tbody tr td[data-col="${f}"]`)!
-          const input = td.querySelector<HTMLElement>(FIELD)!
-          const at = input.getBoundingClientRect()
-          // The middle of the field's right-hand half, which is the press the issue names: where
-          // the caret belongs after a short value, and the very press that wrote a `{` into the
-          // card. Not the last pixel before the edge — the old control left a 5 px gap there, so
-          // a probe aimed at the edge would have agreed with a cell it was covering.
-          const hit = document.elementFromPoint(at.left + at.width * 0.75, at.top + at.height / 2)
-          // A writing area has the sentence's own elements inside it, so the press lands on a
-          // paragraph rather than on the box around it — and that is the caret arriving where it
-          // belongs, which is what is being asked. A field has nothing inside it to land on, so
-          // for one of those this is the same question it always was.
-          return hit !== null && (hit === input || input.contains(hit)) ? 'the field' : `${hit?.tagName.toLowerCase()}.${hit instanceof Element ? [...hit.classList].join('.') : '—'}`
-        }, { f: field, FIELD }),
-      )
-    }
-    expect(found).toEqual(Object.fromEntries(RAILED.map((f) => [f, 'the field'])))
+    expect(await pressesLand(width)).toEqual(Object.fromEntries(RAILED.map((f) => [f, 'the field'])))
   }, 120_000)
 
   it('leaves every field where it was whether the control is drawn or not, so none moves under the caret', async () => {
@@ -262,19 +318,7 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
   it('can be seen and pressed in the first row, where what is above it is the table’s head', async () => {
     // The head is sticky and painted over the rows; a tab that went under it would be a control
     // that is there and cannot be seen or reached, in the row a new table starts in.
-    const found: Record<string, string> = {}
-    for (const field of FIELDS) {
-      found[field] = await measure(markup(field), width, (page) =>
-        page.evaluate((f) => {
-          const control = document.querySelector<HTMLElement>(`.byd-data tbody tr:first-child td[data-col="${f}"] .byd-data-icon`)
-          if (!control) return `no control in ${f}`
-          const c = control.getBoundingClientRect()
-          const hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2)
-          return hit === control || control.contains(hit) ? 'the control' : `${hit?.tagName.toLowerCase()}`
-        }, field),
-      )
-    }
-    expect(found).toEqual(Object.fromEntries(FIELDS.map((f) => [f, 'the control'])))
+    expect(await firstRowTabs(width)).toEqual(Object.fromEntries(FIELDS.map((f) => [f, 'the control'])))
   }, 120_000)
 })
 
