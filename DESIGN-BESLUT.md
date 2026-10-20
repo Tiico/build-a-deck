@@ -573,6 +573,11 @@ Räknare är den tredje sorten en regel kan namnge, `[[räknare:id]]`, och refer
 En räknare fick därför ett `id` i dokumentet: en räknare skriven före #708 har inget och är känd under sitt namn, och behåller det som id första gången den döps om, så att en regel som namnger den står kvar.
 En tabell blir fortfarande text med en rad per rad, men cellerna skiljs med `·` och inte med filens lodstreck, som är ritning; raden ovanför linjalraden är tabellens huvud och blir fet.
 
+Samredigering, byggt 2026-10-20 (#1053):
+Boken skrivs block för block. Fliken ändrar bara de block den rör, med `spliceRules`, så två medredigerare som skriver i var sitt stycke behåller båda sin text, också när den enas linje var långsam eller nere.
+Bara importen skriver hela boken (`setRules`), eftersom det filen gör av boken är boken; den lägger en namngiven version som förut.
+Två i samma block samtidigt: den som landar sist får blocket. Varför står i D3.
+
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
 Blindtest kräver att testare kan läsa reglerna utan designern.
@@ -1120,6 +1125,16 @@ En sammansatt redigering, `compound`, bär flera redigeringar och tillämpas som
 Ett godtaget AI-förslag är en sådan (E4).
 Den är editorns vokabulär och inte bordets slutna intents, så den är ingen protokollmigrering.
 Regeltext i ett förslag är `spliceRules` (#1006): block i stället för de block den namnger, eller efter ett, vid id och aldrig vid index, så att den bara rör det den namnger och avvisas när ett av dem saknas.
+Regelboken samredigeras block för block (#1053, 2026-10-20).
+Varje redigering i fliken Regler är en `spliceRules` som namnger de block den ändrar och inga andra: ett stycke som skrivs i, ett block som byter slag eller blir flera när det stängs (L68), ett block som läggs till, ett block eller ett avsnitt som tas bort, ett eget avsnitt sist i boken och en bok som påbörjas där det inte fanns någon.
+Förut skrev fliken hela boken med `setRules` vid varje tangenttryck, så den redigering som landade sist bar med sig boken som den såg ut hos sin skribent och skrev tyst över det en medredigerare hunnit skriva i ett annat stycke — på båda skärmarna och i den sparade versionen, och lika mycket när skribentens linje var långsam eller nere och redigeringen skickades när den kom tillbaka.
+`setRules` står kvar bara där hela boken verkligen byts ut: importen, som gör en namngiven version (B7).
+Ett steg tillbaka och en äldre version som tas tillbaka är `restore`, och loggens äldre rader med `setRules` spelas upp som de skrevs.
+Två som skriver i samma block samtidigt får inget avslag: den redigering som landar sist är blocket.
+Skälet är att ett block skrivs helt vid varje tangenttryck. Ett avslag med omsynk skulle avvisa vart och ett av den andras tangenttryck medan den första skriver och ta bort det hon just skrev från skärmen, vilket är värre än att se den andras text ersätta sin; ett stycke skrivs i praktiken av en hand åt gången, och varje redigering står i loggen med vem som gjorde den.
+Ett block som någon tagit bort förs aldrig tillbaka av den andras skrivande: `spliceRules` avvisas när ett block den namnger saknas, och den som skrev får dokumentet med avslaget.
+Ett nytt block får ett id draget slumpvis i stället för det första lediga `b<n>`, så att två som lägger till ett block i samma ögonblick aldrig får samma id och den ena aldrig fortsätter skriva i den andras block.
+Två som påbörjar en bok samtidigt börjar med samma id:n, så den andra avvisas i stället för att skriva över den första.
 Delarna avgörs var för sig mot det dokument delarna före dem lämnade, så två högar som läggs i samma redigering får två platser, och regeln för nya namn (#694) frågas för varje del på samma sätt.
 En sammansatt redigering håller aldrig en annan och är aldrig tom; uppspelning och den levande dörren läser den med samma `applyEdit`.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.

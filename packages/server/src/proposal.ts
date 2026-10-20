@@ -813,9 +813,9 @@ function knownPicture(doc: ProjectDoc, ref: string): boolean {
 // Rule text as the parts it is (#1006): each entry judged against the book as it stands, whether the
 // designer keeps it or not — a proposal that cannot be used is refused whole, as it was shown — and
 // made into one `spliceRules` per entry kept. The new blocks get the ids the book has free, in the
-// editor's own spelling, and an entry left out takes none of them, so the ids of the ones after it
-// do not move with the choice. Two entries after the same block stand in the order they were
-// written: the second follows the first one's last block.
+// spelling a template's book begins with, and an entry left out takes none of them, so the ids of
+// the ones after it do not move with the choice. Two entries after the same block stand in the
+// order they were written: the second follows the first one's last block.
 type RulesPart = Extract<ProposalPart, { kind: 'rules' }>
 type Ruled = { ok: true; parts: RulesPart[]; left: boolean } | { ok: false; problem: ProposalProblem }
 type Written = Extract<RuleBlock, { kind: 'heading' | 'text' | 'list' }>
@@ -881,8 +881,9 @@ function titleOf(entry: { blocks?: readonly unknown[] } | undefined): { title?: 
   return {}
 }
 
-// The editor's own spelling of a new block's id (`freeId` in the Regler tab): the first `b<n>` the
-// book does not have.
+// The spelling a template's book begins with (`templateRules` in the Regler tab): the first `b<n>`
+// the book does not have. The tab itself draws a new block's id at random since #1053, so a block a
+// co-editor adds in the same moment never takes the same one.
 function freeBlockId(taken: Set<string>): string {
   for (let n = 1; ; n++) {
     if (taken.has(`b${n}`)) continue

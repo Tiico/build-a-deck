@@ -720,10 +720,17 @@ export class ProjectClient {
   }
 
   // The rulebook (B7): part of the document, so it is saved and versioned with the cards.
-  // The whole rulebook is written out on every keystroke, so a sentence typed into a paragraph
-  // carries the token of that visit to it (L14).
-  setRules(rules: RuleDoc, gesture?: string): void {
-    this.edit({ v: 'setRules', rules }, gesture)
+  // It is written a block at a time (#1053, D3): every edit the Regler tab makes names the blocks it
+  // changes and no others, so two people writing in two paragraphs each keep what they wrote,
+  // whichever of them landed last and whatever book either of them had on the screen. A block is
+  // written whole on every keystroke, so a sentence typed into a paragraph carries the token of that
+  // visit to it (L14).
+  //
+  // `setRules`, which writes the whole book, is left to where the whole book truly is replaced: an
+  // import (`importRules`, below), and the log's own older rows, which replay as they were written.
+  // A version taken back, or a step back, is `restore` and writes the whole document.
+  spliceRules(splice: Omit<Extract<EditIntent, { v: 'spliceRules' }>, 'v'>, gesture?: string): void {
+    this.edit({ v: 'spliceRules', ...splice }, gesture)
   }
 
   // An import is never an overwrite (#131, B4). It lays a version named for the file, the way
@@ -737,6 +744,7 @@ export class ProjectClient {
   // language she was working in and then stays put.
   async importRules(rules: RuleDoc, file: string, t: T = swedish): Promise<void> {
     this.mustBeAbleToEdit(t)
+    // The one edit from the editor that writes the whole book: what the file makes of it is the book.
     this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
     const saved = await this.save()
     // `conflict` is the protocol's word for a collision and nobody can act on it, so what is said
