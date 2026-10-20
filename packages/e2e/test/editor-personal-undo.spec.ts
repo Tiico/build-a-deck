@@ -191,6 +191,74 @@ test('ångra i Mall vägrar när Bo har flyttat samma lager sedan dess (#1056)',
   }
 })
 
+// Ett nytt kort, och en ny kolumn från Bo (#1069). Kolumnen skriver en tom cell i varje kort, Adas
+// också, och den räknades som att Bo hade ändrat hennes kort: ångra vägrades. Den tomma cellen är
+// ingenting Bo skrev, så kortet går, och Bos kolumn står kvar på de andra korten.
+const NEW_CARD = 'kort-13'
+async function addCard(page: Page): Promise<void> {
+  await tab(page, 'Tabell')
+  await page.getByRole('button', { name: '+ Nytt kort' }).click()
+  await expect(page.locator(`tr[data-card-ref="${NEW_CARD}"]`)).toBeVisible()
+}
+async function addColumn(page: Page, name: string): Promise<void> {
+  await tab(page, 'Tabell')
+  await page.getByRole('button', { name: 'Kolumner' }).click()
+  const form = page.getByRole('form', { name: 'Nytt fält' })
+  await form.getByLabel('Namn').fill(name)
+  await form.getByRole('button', { name: 'Lägg till' }).click()
+  await page.keyboard.press('Escape')
+}
+const card = (page: Page, id: string) => page.locator(`tr[data-card-ref="${id}"]`)
+
+test('ångra tar bort Adas nya kort fast Bo har lagt till en kolumn sedan, och Bos kolumn står kvar (#1069)', async ({ browser, baseURL, page }) => {
+  const game = await twoEditors(browser, baseURL, page)
+  try {
+    await page.goto(game.editorUrl)
+    await game.bo.goto(game.editorUrl)
+
+    await addCard(page)
+    await tab(game.bo, 'Tabell')
+    await expect(card(game.bo, NEW_CARD)).toBeVisible()
+    await addColumn(game.bo, 'Kraft')
+    await expect(cell(page, `${NEW_CARD} Kraft`)).toHaveValue('')
+
+    await undo(page).click()
+    await expect(page.locator('.byd-editor-confirm')).toHaveText('Tog tillbaka: en ändring i kortleken')
+    await expect(notice(page)).toHaveCount(0)
+    for (const editor of [page, game.bo]) {
+      await expect(card(editor, NEW_CARD)).toHaveCount(0)
+      await expect(cell(editor, 'kort-1 Kraft')).toHaveValue('')
+    }
+    const doc = await stored(page, page.request, game.id)
+    expect(doc.rows.map((r) => r.id)).not.toContain(NEW_CARD)
+    expect(doc.rows.every((r) => r.fields['Kraft'] === '')).toBe(true)
+  } finally {
+    await game.close()
+  }
+})
+
+test('ångra vägrar ta bort Adas nya kort när Bo har skrivit i det, i sin nya kolumn (#1069)', async ({ browser, baseURL, page }) => {
+  const game = await twoEditors(browser, baseURL, page)
+  try {
+    await page.goto(game.editorUrl)
+    await game.bo.goto(game.editorUrl)
+
+    await addCard(page)
+    await tab(game.bo, 'Tabell')
+    await expect(card(game.bo, NEW_CARD)).toBeVisible()
+    await addColumn(game.bo, 'Kraft')
+    await writeCell(game.bo, `${NEW_CARD} Kraft`, '3')
+    await expect(cell(page, `${NEW_CARD} Kraft`)).toHaveValue('3')
+
+    await undo(page).click()
+    await expect(notice(page)).toHaveText('Det gick inte att ångra en ändring i kortleken: någon annan har ändrat samma sak sedan dess. Inget skrevs över.')
+    await expect(cell(page, `${NEW_CARD} Kraft`)).toHaveValue('3')
+    await expect(cell(game.bo, `${NEW_CARD} Kraft`)).toHaveValue('3')
+  } finally {
+    await game.close()
+  }
+})
+
 test('gör om vägrar när Bo har skrivit i cellen efter att Ada ångrat (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {

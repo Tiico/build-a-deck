@@ -1155,7 +1155,7 @@ En sammansatt redigering håller aldrig en annan och är aldrig tom; uppspelning
 Ett steg tillbaka eller framåt i en editor tar bara tillbaka det den editorns egna redigeringar ändrade, och det en medredigerare ändrat står kvar.
 Förut var steget `restore` med hela dokumentet som det såg ut före ändringen, så det en medredigerare hunnit skriva i en annan del av spelet försvann tyst.
 Steget är redigeringen `revert`: de delar av dokumentet steget skriver, var och en som den är nu (`was`) och som den ska bli (`to`), och var en post som tas tillbaka ska stå (`places`).
-Aktören avvisar steget när en del inte längre är det `was` säger, eller när en post steget tar bort bär något steget inte nämner, så ett steg aldrig skriver över den som hann före; editorn säger avslaget som ett steg som inte gick att ta, inte som en ändring som gick förlorad.
+Aktören avvisar steget när en del inte längre är det `was` säger, när en post steget tar bort bär något steget inte nämner (en tom cell i en kolumn som står kvar utan posten undantagen, #1069), eller när en post steget flyttar tillbaka har flyttats av någon annan sedan steget räknades fram (`orders`, #1070), så ett steg aldrig skriver över den som hann före; editorn säger avslaget som ett steg som inte gick att ta, inte som en ändring som gick förlorad.
 Vad en del är och när två ändringar rör samma sak står i L14.
 `revert` är editorns vokabulär och inte bordets slutna intents, så den är ingen protokollmigrering, och den spelas upp ur loggen med samma `applyEdit` som allt annat: prövningen ger samma svar vid uppspelning som när den gjordes, eftersom loggen spelas i samma ordning.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
@@ -4722,6 +4722,15 @@ Steget tas av stacken: det kan aldrig tas tillbaka nu, och kvar överst hade var
 Nästa tryck tar nästa steg, som prövas för sig.
 En del som någon annan redan har skrivit tillbaka dit den var är ingen konflikt, utan redan gjord, och ett steg där allt redan är tillbaka skickar ingenting.
 Ett kort, ett lager eller en zon som steget skapade tas bara bort om ingen annan har lagt något i det sedan; annars vägras steget, eftersom det någon annan skrev i posten annars försvann med den.
+En tom cell är inte något (2026-10-21, #1069).
+En ny kolumn skriver en tom cell i varje kort, också i ett kort Ada just lade till, och det räknades som att Bo hade ändrat hennes kort, så hennes ångra vägrades fast Bo aldrig skrivit i det.
+Gränsen går nu så här: en cell som någon annan lagt i kortet och som är tom (tom text eller inget värde) hindrar inte att kortet tas bort, så länge kolumnen står kvar på något annat kort.
+Bos kolumn står då kvar, och det kortet tar med sig är bara en tom ruta Bo aldrig skrev i.
+Har Bo skrivit ett värde i Adas kort vägras steget som förut, och likaså när Adas kort är det enda som bär hans kolumn, eftersom kolumnen då hade gått med kortet.
+Åt andra hållet tar ett kort som läggs tillbaka inte med sig en tom cell i en kolumn som inget annat kort har längre, så en kolumn någon annan tagit bort inte kommer tillbaka tom med kortet.
+Undantaget gäller celler och inget annat, eftersom det är där mönstret finns: ingen redigering skriver ett tomt standardvärde i varje lager eller varje zon.
+Det som rör alla lager eller zoner på en gång skriver över ett värde posten redan hade — temat byter typsnitt i varje text, kortleken som flyttas byter vart varje hand lämnar sina kort, platserna lägger ut stolarnas zoner igen — och det är en ändring av samma del, som vägrar steget som vilken annan.
+En grupps egen formgivning av ett lager står i gruppen och inte i lagret, så den har aldrig hindrat att lagret tas bort.
 En samling som steget påbörjade — regelboken, prosavalen, en grupps egen formgivning — står kvar med det andra har lagt i den, och tas bort bara när den är tom.
 En post som steget flyttade flyttas bara tillbaka om det som stod närmast före den, bland det som fanns både då och nu, står där fortfarande; annars har någon annan flyttat den, och steget vägras.
 En post som steget tog bort läggs tillbaka efter den närmaste post som stod före den och står kvar, så ett kort som tas tillbaka hamnar där det stod också när någon lagt till eller tagit bort kort runt det.
@@ -4729,6 +4738,11 @@ En post som steget tog bort läggs tillbaka efter den närmaste post som stod f�
 Steget prövas två gånger.
 Editorn prövar mot det den har, som är aktörens dokument med varje redigering tråden har sagt landat, och vägrar med besked direkt.
 Aktören prövar mot sanningen: `revert` bär varje del som den var när steget räknades fram (`was`), och en del som någon hann ändra innan steget nådde aktören avvisar hela steget i stället för att skriva över den som hann före.
+Detsamma gäller en post steget flyttar tillbaka (2026-10-21, #1070).
+Förut prövade aktören bara att posten den skulle läggas efter fanns kvar, så en flytt som hann fram mellan editorns prövning och steget flyttades tillbaka och gick förlorad.
+`revert` bär nu också ordningen i varje samling där steget flyttar en post som står kvar, som den var när steget räknades fram (`orders`), och aktören gör samma prövning som editorn: det som stod närmast före posten, bland det som finns både i den ordningen och i dokumentet, ska stå där fortfarande.
+Det gäller kort, lager och zoner; kolumnernas ordning är en enda del med sitt eget `was`, och prövades redan.
+Ett steg i loggen från före prövningen bär ingen ordning och spelas upp som det skrevs.
 Editorn säger det avslaget med samma mening som sitt eget, och tar bort det steg det hade lagt på den andra stacken.
 
 Ett grepp (L14) är fortfarande ett steg: varje redigering i greppet lägger sina delar på samma steg, där den första säger var en del var och den sista var den hamnade.
@@ -4740,6 +4754,7 @@ En handskriven invers per verb, sammansatt av de verb som finns, prövades i tan
 
 Byggt 2026-10-20 (#1056, ingen prototyp: ingenting nytt ritas, och avslaget sägs där editorn redan säger att en ändring inte gick igenom).
 Grindar: `packages/server/test/personal-undo.test.ts`, `packages/web/test/personal-undo.test.ts` och `packages/e2e/test/editor-personal-undo.spec.ts`, där två editorer i var sin webbläsare ångrar i Tabell, Regler och Mall, gör om, och får nej när den andra har ändrat samma cell eller samma lager.
+Följderna byggda 2026-10-21 (#1069, #1070, ingen prototyp: ingenting nytt ritas): samma E2E-spec ångrar ett nytt kort efter den andras nya kolumn och får nej när den andra skrivit i kortet, och kapplöpningen spelas mot aktören för kort, lager, zoner och kolumnordningen i serverns test och för ett lager med två editorer mot en riktig aktör i webbens.
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
 

@@ -30,13 +30,15 @@ type Path = string[]
 // till i dokumentet i morgon tas tillbaka som helhet i stället för att glömmas. `list` är poster med
 // `id` i ordning, och `map` är en post vars nycklar är namn, också i ordning.
 type Node =
-  | { k: 'leaf' }
+  | { k: 'leaf'; blank?: true }
   | { k: 'props' }
   | { k: 'record'; of: Record<string, Node>; required: readonly string[] }
   | { k: 'list'; item: Node }
   | { k: 'map'; item: Node }
 
 const leaf: Node = { k: 'leaf' }
+// En cell, där tomt (tom text eller `null`) är ingenting någon har skrivit (#1069).
+const cell: Node = { k: 'leaf', blank: true }
 const props: Node = { k: 'props' }
 const record = (of: Record<string, Node>, required: readonly string[] = []): Node => ({ k: 'record', of, required })
 const list = (item: Node): Node => ({ k: 'list', item })
@@ -53,7 +55,7 @@ const DOC = record(
   {
     name: leaf,
     template: record({ faces: map(FACE) }, ['faces']),
-    rows: list(record({ fields: map(leaf) }, ['fields'])),
+    rows: list(record({ fields: map(cell) }, ['fields'])),
     columns: leaf,
     icons: map(leaf),
     credits: map(leaf),
@@ -77,10 +79,12 @@ export type Change = { parts: Map<string, Part>; orders: Map<string, Order> }
 // Ett steg tillbaka på tråden (D3): delarna som de är nu (`was`) och som de ska bli (`to`), en
 // saknad nyckel för en del som inte finns. För ett lager, ett kort eller en zon är värdet `true`:
 // att posten finns. `places` lägger en post som tagits tillbaka efter den post den stod efter,
-// `null` först.
+// `null` först. `orders` är ordningen i varje samling där steget flyttar en post som står kvar,
+// som den var när steget räknades fram (#1070): så prövar aktören att ingen annan har flyttat den.
 export type RevertPart = { at: string[]; was?: unknown; to?: unknown }
 export type RevertPlace = { at: string[]; after: string | null }
-export type Revert = { v: 'revert'; parts: RevertPart[]; places?: RevertPlace[] }
+export type RevertOrder = { at: string[]; was: string[] }
+export type Revert = { v: 'revert'; parts: RevertPart[]; places?: RevertPlace[]; orders?: RevertOrder[] }
 
 const keyOf = (at: Path): string => JSON.stringify(at)
 
@@ -115,13 +119,21 @@ export function joined(earlier: Change, later: Change): Change {
 // tillbaka. `conflicts` är de delar någon annan har ändrat sedan, och då skrivs ingenting.
 export type Reverted = { ok: true; edit: Revert | null } | { ok: false; conflicts: Path[] }
 export function revertOf(change: Change, now: ProjectDoc): Reverted {
-  const parts: RevertPart[] = []
+  const found: RevertPart[] = []
   const conflicts: Path[] = []
   for (const part of change.parts.values()) {
     const here = valueAt(now, part.at)
-    if (same(here, part.to)) parts.push({ at: part.at, ...(part.to === undefined ? {} : { was: part.to }), ...(part.from === undefined ? {} : { to: part.from }) })
+    if (same(here, part.to)) found.push({ at: part.at, ...(part.to === undefined ? {} : { was: part.to }), ...(part.from === undefined ? {} : { to: part.from }) })
     else if (!same(here, part.from)) conflicts.push(part.at)
   }
+  // En post som läggs tillbaka tar inte med sig en tom cell i en kolumn som inget annat kort har
+  // längre (#1069): kolumnen har någon annan tagit bort, och tom kom den annars tillbaka med kortet.
+  const returning = new Set(found.filter((p) => p.was === undefined && p.to === true).map((p) => keyOf(p.at)))
+  const parts = found.filter((p) => {
+    if (p.was !== undefined || !isBlankAt(p.at, p.to)) return true
+    const owner = ownerOf(p.at)
+    return owner === null || !returning.has(keyOf(owner)) || elsewhere(now, owner, p.at)
+  })
   // En post redigeringen skapade tas bara bort om ingen annan har lagt något i den sedan.
   const named = new Set(parts.map((p) => keyOf(p.at)))
   for (const part of parts) if (removesItem(part) && foreign(now, part.at, named)) conflicts.push(part.at)
@@ -137,8 +149,12 @@ export function revertOf(change: Change, now: ProjectDoc): Reverted {
 
   const written = writeParts(now, parts)
   const places: RevertPlace[] = []
+  const orders: RevertOrder[] = []
   const readded = new Set(parts.filter((p) => p.was === undefined && p.to !== undefined).map((p) => keyOf(p.at)))
   for (const order of change.orders.values()) {
+    const was = keysAt(now, order.at)
+    const stood = new Set(was)
+    let moves = false
     let keys = keysAt(written, order.at)
     const present = new Set(keys)
     const placing = new Set(order.from.filter((k) => (order.moved.has(k) && present.has(k)) || readded.has(keyOf([...order.at, k]))))
@@ -157,20 +173,42 @@ export function revertOf(change: Change, now: ProjectDoc): Reverted {
       if (next.join('\u0000') === keys.join('\u0000')) return
       keys = next
       places.push({ at: [...order.at, key], after })
+      if (stood.has(key)) moves = true
     })
+    if (moves) orders.push({ at: order.at, was })
   }
   if (parts.length === 0 && places.length === 0) return { ok: true, edit: null }
-  return { ok: true, edit: { v: 'revert', parts, ...(places.length > 0 ? { places } : {}) } }
+  return { ok: true, edit: { v: 'revert', parts, ...(places.length > 0 ? { places } : {}), ...(orders.length > 0 ? { orders } : {}) } }
 }
 
 // Ett steg tillbaka tillämpat (`applyEdit`). Varje del måste vara det den var när steget räknades
 // fram; en del någon hunnit ändra innan steget nådde aktören vägrar hela steget, så det aldrig
-// skriver över den som hann före.
+// skriver över den som hann före. Och en post steget flyttar tillbaka måste stå där den stod när
+// steget räknades fram, med samma post närmast före sig bland dem som fanns både då och nu, samma
+// prövning editorn gör (#1070); ett steg utan `orders` skrevs innan aktören prövade det, och spelas
+// upp som det skrevs.
 export function applyRevert(doc: ProjectDoc, edit: Revert): ProjectDoc {
   if (!Array.isArray(edit.parts)) throw new Error('a revert names the parts it writes')
   for (const part of edit.parts) {
     checkPath(part.at)
     if (!same(valueAt(doc, part.at), part.was)) throw new Error(`${part.at.join('/')} has changed since; the undo would write over it`)
+  }
+  const seen = new Map<string, string[]>()
+  for (const order of edit.orders ?? []) {
+    checkPath(order.at)
+    if (!Array.isArray(order.was) || order.was.some((k) => typeof k !== 'string')) throw new Error(`${order.at.join('/')} is an order of names`)
+    seen.set(keyOf(order.at), order.was)
+  }
+  for (const place of edit.places ?? []) {
+    checkPath(place.at)
+    const at = place.at.slice(0, -1)
+    const key = place.at.at(-1)
+    const was = seen.get(keyOf(at))
+    if (key === undefined || !was?.includes(key)) continue
+    const here = keysAt(doc, at)
+    const there = new Set(here)
+    const common = new Set(was.filter((k) => there.has(k)))
+    if (commonBefore(was, key, common) !== commonBefore(here, key, common)) throw new Error(`${place.at.join('/')} has been moved since; the undo would move it back over that`)
   }
   const named = new Set(edit.parts.map((p) => keyOf(p.at)))
   for (const part of edit.parts) if (removesItem(part) && foreign(doc, part.at, named)) throw new Error(`${part.at.join('/')} holds what someone else wrote since; the undo would take it away`)
@@ -285,8 +323,11 @@ function nodeAt(at: Path): Found {
 // En del som den står i dokumentet: lövets värde, `true` för en post som finns, `undefined` för en
 // som inte gör det.
 function valueAt(doc: ProjectDoc, at: Path): unknown {
-  let node: Node = DOC
-  let cur: unknown = doc
+  return valueIn(DOC, doc, at)
+}
+function valueIn(from: Node, value: unknown, at: Path): unknown {
+  let node: Node = from
+  let cur: unknown = value
   for (const key of at) {
     if (cur === undefined) return undefined
     if (node.k === 'leaf') throw new Error(`${at.join('/')} is no part of a game`)
@@ -322,11 +363,39 @@ function keysAt(doc: ProjectDoc, at: Path): string[] {
 // En post som steget tar bort helt: ett kort, ett lager, en zon som redigeringen skapade.
 const removesItem = (part: RevertPart): boolean => part.to === undefined && part.was === true && nodeAt(part.at).item && nodeAt(part.at).node.k !== 'leaf'
 
-// Om posten bär något steget inte nämner: något någon annan har lagt dit sedan.
+// Om posten bär något steget inte nämner: något någon annan har lagt dit sedan. En tom cell i en
+// kolumn som står kvar utan posten är inte något (#1069): en ny kolumn skriver den i varje kort, och
+// kortet tar ingenting med sig av kolumnen när det går.
 function foreign(doc: ProjectDoc, at: Path, named: ReadonlySet<string>): boolean {
   const out: Change = { parts: new Map(), orders: new Map() }
   walk(nodeAt(at).node, undefined, itemAt(doc, at), at, false, out)
-  return [...out.parts.keys()].some((key) => !named.has(key))
+  return [...out.parts].some(([key, part]) => !named.has(key) && !(isBlankAt(part.at, part.to) && elsewhere(doc, at, part.at)))
+}
+
+// Den post en del står i: kortet en cell står på. `null` för en del som inte står i någon.
+function ownerOf(at: Path): Path | null {
+  for (let i = at.length - 1; i > 0; i--) {
+    const { node, item } = nodeAt(at.slice(0, i))
+    if (item && node.k !== 'leaf') return at.slice(0, i)
+  }
+  return null
+}
+
+// Ett tomt värde där tomt är ingenting: i en cell.
+function isBlankAt(at: Path, value: unknown): boolean {
+  const { node } = nodeAt(at)
+  return node.k === 'leaf' && node.blank === true && (value === '' || value === null)
+}
+
+// Om en annan post i samma samling som `item` har något på samma ställe som `at`: ett annat kort
+// som bär samma kolumn.
+function elsewhere(doc: ProjectDoc, item: Path, at: Path): boolean {
+  const collection = item.slice(0, -1)
+  const own = item.at(-1)
+  const node = nodeAt(collection).node
+  const rest = at.slice(item.length)
+  if (node.k !== 'list' && node.k !== 'map') return false
+  return entriesOf(node, itemAt(doc, collection)).some(([key, value]) => key !== own && valueIn(node.item, value, rest) !== undefined)
 }
 function itemAt(doc: ProjectDoc, at: Path): unknown {
   let node: Node = DOC
