@@ -261,7 +261,7 @@ describe('the pictures without alt text, counted in the contents (#173)', () => 
 
 // The book sits under the tab's own heading (#558 F-19): its title was an h1 after the tab's h2,
 // and its sections h2 beside it. The book keeps its look and is read one level under the tab, and
-// the line above it says how to write without naming a mouse.
+// its help says how to write without naming a mouse.
 describe('the book under its tab, to a screen reader (#558)', () => {
   it('reads the title under the tab, the sections under the title, and says how to write without a mouse', async () => {
     await openRules()
@@ -273,7 +273,10 @@ describe('the book under its tab, to a screen reader (#558)', () => {
     // has none of its own.
     expect(within(document.querySelector('.byd-rules') as HTMLElement).queryByRole('heading', { level: 1 })).toBeNull()
     expect(screen.getByRole('heading', { level: 1 }).closest('header')).toBeTruthy()
-    expect(screen.getByText('Välj ett block på sidan för att skriva i det.')).toBeTruthy()
+    expect(screen.queryByText('Välj ett block på sidan för att skriva i det.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om reglerna' }))
+    const help = await screen.findByRole('dialog', { name: 'Hjälp om reglerna' })
+    expect(help.textContent).toContain('Välj ett block på sidan för att skriva i det.')
   })
 })
 

@@ -172,9 +172,6 @@ export const svAccount = {
   // Ett ledord per stycke, så att hjälpen inte blandar de två dörrarna i ett (#731).
   'wizard.handoff.body': 'Guidad start: skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',
-  // Exemplet står som exempel och inte i fältet (#416). En platshållare som lyder «Skogens
-  // herrar» läses som ett ifyllt värde, och då blir en väg framåt som inte svarar obegriplig.
-  'wizard.name.example': 'Till exempel «Skogens herrar».',
   // Villkoret sägs en gång per skärm, vid fältet, och först när någon trycker (variant B).
   'wizard.name.says': 'Spelet behöver ett namn först.',
   'wizard.players': 'Spelare',
@@ -194,7 +191,6 @@ export const svAccount = {
   // Fälten: vad varje kort har, och om det syns på kortet. Med ord nybörjaren redan har: ramen
   // presenteras först under Utseende, längre ner (#731).
   'wizard.fields': 'Fält',
-  'wizard.fields.body': 'Fälten på varje kort.',
   'wizard.fields.help': 'Varje fält blir direkt en kontroll på varje exempelkort.',
   'wizard.kind.text': 'Text',
   'wizard.kind.number': 'Tal',
@@ -218,8 +214,8 @@ export const svAccount = {
   'wizard.field.default.body': 'Regeltext',
   'wizard.field.default.art': 'Illustration',
   'wizard.look': 'Utseende',
-  'wizard.look.frame': 'Ram — var saker står',
-  'wizard.look.theme': 'Tema — hur det känns',
+  'wizard.look.frame': 'Ram',
+  'wizard.look.theme': 'Tema',
   'wizard.look.later': 'Allt går att ändra i Speltema.',
   // Temat spelet får om inget annat trycks (#687): märkt, inte nedtryckt.
   'wizard.look.preselected': 'Förval',

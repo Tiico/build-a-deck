@@ -25,15 +25,15 @@ import type { ProjectDoc } from './types.js'
 // Måttet är elementets egna: rutans höjd i millimeter mot två rader av dess egen grad. `shrink`
 // (E6) kan krympa texten tills fler rader ryms, men det är en nödutgång och inte vad rutan är
 // ritad för, så det är den skrivna graden som svarar.
-export const BODY_LINES = 2
+const BODY_LINES = 2
 
 // Rutan en kolumn mäts mot: dess höjd i millimeter och höjden på en rad av dess egen grad. En
 // kolumn kan ritas av flera element — fram och bak, i ett villkor, i en grupp — och då är det
 // den generösaste rutan som svarar, eftersom det är den som kan visa ett stycke. En kolumn
 // mallen inte ritar alls har ingen ruta, vilket är något annat än en ruta som inte räcker.
-export type FieldBox = { h: number; line: number }
+type FieldBox = { h: number; line: number }
 
-export function boxesOf(doc: ProjectDoc): Record<string, FieldBox> {
+function boxesOf(doc: ProjectDoc): Record<string, FieldBox> {
   const out: Record<string, FieldBox> = {}
   const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {
     for (const el of els) {
