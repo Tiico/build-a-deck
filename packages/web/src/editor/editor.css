@@ -2455,7 +2455,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    ticked; since #618 it stands in the foot, after the count, where nothing above the rows moves.
    The delete is the only destructive button in the editor and is the only one drawn in red; the
    question it asks first takes the toolbar's place, so nothing can be pressed by mistake behind it. */
-.byd-data-bulk {
+.byd-data-bulk, .byd-columns {
   --byd-editor-bulk-bg: #1f2937;
   --byd-editor-bulk-ink: #e6ecfa;
   --byd-editor-bulk-quiet: #a9b3c9;
@@ -2463,6 +2463,8 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
   --byd-editor-bulk-danger-ink: #ffe4ea;
   --byd-editor-bulk-ask-bg: #3d2632;
   --byd-editor-bulk-ask-ink: #ffe4ea;
+}
+.byd-data-bulk {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2868,6 +2870,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    anything: a row of a list is not a column of the table. */
 .byd-columns .byd-data-dropfield { flex: 0 0 auto; display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-editor-quiet); font-size: 13px; line-height: 1; cursor: pointer; }
 .byd-columns .byd-data-dropfield:hover, .byd-columns .byd-data-dropfield:focus-visible { color: #e05c5c; }
+/* Ringen inne i ×:et, som brickans (L61): ×:et står mot listans högra kant, och listan rullar och
+   klipper det som sticker ut — ringen ritades utan sin högra sida (#1061). */
+.byd-columns .byd-data-dropfield:focus-visible { outline-offset: -3px; }
 /* Växeln i dörren (L43, #615): två knappar med hela träffytan, och vilken som är tryckt bär
    upphovet i form — streckad när höjden föreslog, ifylld när designern valde. Orden står i
    gruppens namn för den som inte ser kanten (L12). */
@@ -2884,6 +2889,19 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-columns .byd-prose-follow { display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; cursor: pointer; }
 .byd-columns .byd-prose-follow .byd-glyph { width: 16px; height: 16px; }
 .byd-columns .byd-prose-follow:hover, .byd-columns .byd-prose-follow:focus-visible { color: #fff; }
+/* Kolumnens fråga står i dörren, i formulärets ställe längst ned (#1061, beställarens val B): där
+   ×:et trycktes, i toppskiktet, så att ingenting kan ligga över den. Listan behåller höjden den
+   hade när ×:et trycktes och kan inte ta formulärets plats, så raden står still under pekaren.
+   Raden som frågas om bär frågans färger; övriga rader är inerta och dämpade. */
+.byd-columns-list[inert] { flex: 0 1 var(--byd-columns-held, auto); max-height: var(--byd-columns-held, none); }
+.byd-columns-list[inert] > li:not([data-asked]) { opacity: 0.38; }
+.byd-columns-list > li[data-asked] { padding-left: var(--byd-s2); border-radius: 8px; background: var(--byd-editor-bulk-ask-bg); box-shadow: inset 0 0 0 1px var(--byd-editor-bulk-danger-bg); }
+.byd-columns-list > li[data-asked] .byd-data-dropfield { color: var(--byd-editor-bulk-danger-ink); }
+.byd-columns .byd-columns-ask { flex: 0 0 auto; margin: 0; }
+.byd-columns-ask p { flex: 1 0 100%; font-size: 12px; line-height: 1.4; }
+/* Huvudets `.byd-data th button` skalar knappar till text; svaren är svar, som i foten. */
+.byd-data th .byd-columns-ask button { padding: var(--byd-s1) var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; color: var(--byd-editor-bulk-ink); font-weight: 700; white-space: nowrap; }
+.byd-data th .byd-columns-ask button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
 .byd-columns-system { flex: 0 0 var(--byd-tap); display: flex; align-items: center; justify-content: center; color: var(--byd-editor-quiet); }
 .byd-columns-system svg { flex: 0 0 auto; }
 .byd-newfield {

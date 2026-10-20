@@ -745,6 +745,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [csvOver, setCsvOver] = useState(false)
   const importBox = useRef<HTMLButtonElement>(null)
   const [dropping, setDropping] = useState<string | null>(null)
+  // The door shuts with its question: a question about a column has nowhere to stand once the
+  // door it stands in is gone, and shutting the door is an answer that loses nothing.
+  const shutDoor = () => {
+    setAdding(false)
+    setDropping(null)
+  }
   // Which column is being carried along the head, and which heading it would land in front of
   // (#46). The carried one is a ref and the heading under the pointer is state, for the reason
   // the layer list has the same pair: what is being dragged is read inside an event and never
@@ -1573,7 +1579,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             <th ref={doorCell} className="byd-data-remove" aria-label={t('table.remove.column')}>
               {/* The handle says how the door shuts (#610): the × that closes it while it stands.
                   Its name is the door's either way, and `aria-expanded` says which it is. */}
-              <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
+              <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => (adding ? shutDoor() : setAdding(true))}>
                 {adding ? '×' : '+'}
               </button>
               {adding && (
@@ -1581,12 +1587,45 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   cell={doorCell}
                   columns={['id', ...fields]}
                   canRemove={(field) => field !== 'id' && field !== ANTAL}
-                  onRemove={(field) => setDropping(field)}
+                  onRemove={(field) => {
+                    // One question at a time: a column asked about takes back whatever the foot
+                    // was asking.
+                    setRemoving(null)
+                    setConfirming(false)
+                    setDropping(field)
+                  }}
                   removeRef={(field, el) => {
                     if (el) dropRefs.current.set(field, el)
                     else dropRefs.current.delete(field)
                   }}
-                  asking={dropping !== null}
+                  asked={dropping}
+                  // The column's question stands in the door, in the form's place (#1061): the
+                  // foot under a door that reaches the window's foot (L55) left its answers under
+                  // the door. «Avbryt» hands the focus back to the × that asked, «Ja, ta bort» to
+                  // the handle, which is still there when the column is not.
+                  question={
+                    dropping !== null && (
+                      <Question
+                        className="byd-data-bulk byd-columns-ask"
+                        label={dropLabel(doc, dropping, t)}
+                        confirm={t('table.remove.yes')}
+                        cancel={t('editor.cancel')}
+                        onConfirm={() => {
+                          onRemoveField(dropping)
+                          forgetWidth(dropping)
+                          setDropping(null)
+                          setRefocus('addField')
+                        }}
+                        onCancel={() => {
+                          const field = dropping
+                          setDropping(null)
+                          setRefocus({ field })
+                        }}
+                      >
+                        {dropLabel(doc, dropping, t)}
+                      </Question>
+                    )
+                  }
                   widths={widths}
                   onWidth={setWidth}
                   {...(onRenameField ? { onRename: renameColumn } : {})}
@@ -1603,11 +1642,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   // the designer's finger and the focus falls to `<body>`.
                   onCreate={(field) => {
                     onAddField(field)
-                    setAdding(false)
+                    shutDoor()
                     setRefocus('addField')
                   }}
                   onCancel={() => {
-                    setAdding(false)
+                    shutDoor()
                     setRefocus('addField')
                   }}
                 />
@@ -1858,6 +1897,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     // Asking about a card is not looking at it: the click stops here, so the
                     // canvas keeps showing whatever card was being worked on.
                     event.stopPropagation()
+                    setDropping(null)
                     setRemoving(cardRef)
                   }}
                   onKeyDown={(event) => rowKey(cardRef, event, (row) => row.querySelector('.byd-data-remove button'))}
@@ -1929,7 +1969,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             variant C; back in the foot with #695). When room runs out the names shorten from the
             end and the number stays. It yields to the marking's tools and to the questions that
             take their place: the hand is then busy with something else, and at 1024 the quiet line
-            to its right broke over two lines for it. */}
+            to its right broke over two lines for it. It yields to the column's question in the door
+            too (#1061): the door stands over the foot's right half, and the quiet line it pushed
+            there lay under the door. */}
         {dropping === null &&
           removing === null &&
           chosen.length === 0 &&
@@ -1950,29 +1992,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {/* One row's × asks the same kind of question the marking does, and in the same place
           (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
           that had just pressed it. In the foot it takes the toolbar's place while it stands. The
-          column door's × asks there too (#858): its question moved the table and the door hanging
-          from the head with it. */}
-      {dropping !== null ? (
-        <Question
-          className="byd-data-bulk"
-          label={dropLabel(doc, dropping, t)}
-          confirm={t('table.remove.yes')}
-          cancel={t('editor.cancel')}
-          onConfirm={() => {
-            onRemoveField(dropping)
-            forgetWidth(dropping)
-            setDropping(null)
-            setRefocus('addField')
-          }}
-          onCancel={() => {
-            const field = dropping
-            setDropping(null)
-            setRefocus({ field })
-          }}
-        >
-          {dropLabel(doc, dropping, t)}
-        </Question>
-      ) : removing !== null ? (
+          column door's × asks in the door itself (#1061). */}
+      {removing !== null ? (
         <Question
           className="byd-data-bulk"
           label={t('table.remove.card', { cardRef: removing })}
@@ -2089,7 +2110,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
               {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
             </button>
-            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
+            <button type="button" data-kind="danger" ref={removeRef} onClick={() => {
+              setDropping(null)
+              setConfirming(true)
+            }}>
               {removeLabel(chosen.length, t)}
             </button>
             <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>

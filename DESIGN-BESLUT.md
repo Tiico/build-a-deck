@@ -4194,7 +4194,8 @@ I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vi
 - **Foten säger vilka kolumner som står utanför**, som variant C ovan beslutade, efter räkningen: «7 kolumner till höger: sida, kraft, …», och meningen är en knapp som tar ett steg på fyra femtedelar av lådan.
   Det som står utanför räknas mellan listen och pinnen, så listens egna kolumner står aldrig utanför; åt vänster sägs det också, eftersom kanten under listen säger att något finns där men inte vad.
   När raden tar slut kortas namnen bakifrån och talet står kvar.
-  Meningen viker för markeringens verktyg och för frågorna som tar deras plats, kolumndörrens inräknad (#858), så att den tysta raden inte bryts vid 1024; L67:s bekräftelse står kvar hel och meningens namn kortas för den.
+  Meningen viker för markeringens verktyg och för frågorna som tar deras plats, så att den tysta raden inte bryts vid 1024; L67:s bekräftelse står kvar hel och meningens namn kortas för den.
+  Den viker också medan kolumndörren frågar om en kolumn (#858, frågan i dörren sedan #1061): dörren står då över fotens högra halva, och den tysta raden som meningen sköt dit låg under dörren.
   Meningen tar bara det rum raden har över, så ingenting annat i raden ger vika förrän namnen är borta; mätt med två markerade kort var den tysta raden till höger om verktygen annars den som bröts.
   Under skrivbordets bredd bryts foten hellre på två rader än att sidan rullar i sidled för den, som krönet gör (#567).
 - Grupp-cellernas 13 px mot fältens 12 px försvann med kolumnen.
@@ -6191,7 +6192,9 @@ Fällan är den `useFocusTrap` biblioteket (L33) och fontarket (L27) redan har, 
 
 Två saker fällan avsiktligt inte gör.
 Den svarar inte Escape: dörren har två lager av den sedan L44 — namnrutan svarar sitt eget utan att stänga dörren, panelen svarar dörrens — och en fälla som svalde trycket skulle svara för båda.
-Och den släpper taget medan en kolumn frågas om, eftersom den frågan står utanför dörren och måste kunna ta fokus; den tar det igen när frågan är besvarad.
+Den släppte förut taget medan en kolumn frågades om, eftersom frågan stod utanför dörren och måste kunna ta fokus.
+*Ändrat 2026-10-20 (#1061):* frågan står i dörren, så fällan håller också medan den står.
+Listan är då inert, och fällan räknar inte det inerta, så ringen är handtaget, frågetecknet och frågans två svar.
 
 ### L46. Ingen mätt kolumn är bredare än det rum som syns, och den öppna cellen är smalare än sin kolumn (prototypat och beslutat 2026-09-21, #397, #398, #401)
 
@@ -6862,8 +6865,19 @@ Ingenting ovanför raderna flyttar sig; det som växer växer under tabellen.
 Frågan före en borttagning tar verktygsradens plats i foten, som förut tog hela bandet, så inget kan tryckas av misstag bakom den.
 *Tillagt 2026-10-04 (#739):* radens × frågar på samma plats.
 Dess fråga stod kvar i bandet över huvudet, 62 px, och flyttade huvudet 70 px under handen som just tryckt; nu tar den fotens rad medan den står, och `data-table-layout.test.tsx` mäter att första raden står kvar.
-*Tillagt 2026-10-17 (#858):* kolumndörrens × frågar också där.
-Dess fråga stod i samma band och flyttade tabellen 70 px, och dörren som hänger ur huvudet lika långt; nu står båda kvar medan den står, och testet mäter också att dörren inte ligger över frågans knappar.
+*Tillagt 2026-10-17 (#858), omskrivet 2026-10-20 (#1061):* kolumndörrens × frågar inte i foten utan i dörren.
+Dess fråga stod i samma band som radens och flyttade tabellen 70 px, och dörren som hänger ur huvudet lika långt; #858 flyttade den till foten, där båda stod kvar.
+Men dörren hänger ned till fönstrets fot i toppskiktet (L55), och i en lek med många kolumner låg «Avbryt», vid 1024 också «Ja, ta bort», under dörren: 10 av 36 mätta ytor hade ett svar under dörren, 4 av dem båda, på Macen som i ett bredare typsnitt.
+Beställarens val efter prototypen (variant B av fyra): **frågan står i dörren, längst ned, i formulärets («Ny kolumn») ställe** medan den står.
+Formuläret gömdes redan medan en kolumn frågades om, eftersom två «Avbryt» är två svar på en fråga, så frågan har en plats som inte flyttar något; den står där ×:et trycktes, och ingenting kan ligga över den.
+Raden som frågas om bär frågans färger, och listan är inert och övriga rader dämpade medan frågan står, så inget kan tryckas av misstag bakom den och en fråga står i taget.
+Listan behåller den höjd den hade när ×:et trycktes: fri att ta formulärets plats växte den, dess rullning kläms, och raden vars × just tryckts gled 53–76 px under pekaren, med ett annat × under den.
+Fokus står på «Avbryt» när frågan öppnas, som i alla editorns frågor; «Avbryt» och Escape lämnar det på radens × med dörren kvar, som namnrutan svarar sin egen Escape, och «Ja, ta bort» på dörrens handtag.
+Foten rörs inte och växer inte; dess mening om kolumnerna utanför viker medan frågan står, så att den tysta raden inte hamnar under dörren.
+Kolumnens fråga står därmed på ett annat ställe än radens och markeringens, vilket är priset.
+Bortvalda: A, att dörren slutar ovanför foten, som kostade dörren en rad och lät raden glida; C, att dörren går undan medan frågan står i foten, som tar bort det man just pekade på; D, att foten håller sig undan dörren, som gjorde foten högre och bröt frågan på tre rader.
+`table-column-question-in-door.spec.ts` mäter i det byggda appen vid 1024, 1280 och 1440, på svenska och engelska, i Macens typsnitt och ett brett, i den täta leken med frågan om stämning och om body och i provleken: att svaren nås med pekaren, att ingenting i dörren eller foten är täckt eller klippt, att raden står still på pixeln och att övriga rader är inerta.
+Prototypen: `docs/ux-audits/2026-10-20-dorren-och-fragan/prototyper/1061-dorren-och-fragan.html`.
 
 **Kolumnen och värdet står bakom «Sätt fält ▾».**
 Foten är en rad, och en väljare och ett fält hade gjort den till två.
