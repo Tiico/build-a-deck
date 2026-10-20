@@ -76,7 +76,7 @@
 <script src="data.js"></script>
 <script>
 const VARIANTER = [
-  { id: 'nu', namn: 'Nu', regel: 'Under 1248 px krona göms ordet och bara «⟨» / «⟩» står kvar: 12 px, i editorns blå märkfärg (#3c8ce7), vänsterställt i en 44 px-ruta med kronans kant #3b414e. Det är den enda kontrollen i kronan som inte behåller ett ord — boxarna säger «typ», «Kontroll (1)», ögat sitt läge.', pris: 'Det issuet beskriver. Tecknet når 4,7–4,9:1 mot rutan, så det är inte kontrasttalet som brister utan vad tecknet är: ett tunt, blått, förskjutet skiljetecken som läses som en trasig glyf och inte säger vad det fäller.' },
+  { id: 'nu', namn: 'Nu', regel: 'Under 1248 px krona göms ordet och bara «⟨» / «⟩» står kvar: 12 px, i editorns blå märkfärg (#3c8ce7), vänsterställt i en 44 px-ruta med kronans kant #3b414e. Det är den enda kontrollen i kronan som inte behåller ett ord — boxarna säger «typ», «Kontroll (1)», ögat sitt läge.', pris: 'Det issuet beskriver. Målat når tecknet 4,7–4,9:1 mot rutan på en Mac-skärm (2×) men bara 2,2–2,4:1 på en vanlig skärm (1×), under 3:1 för grafik: ett tunt, blått, vänsterställt skiljetecken som läses som en trasig glyf och inte säger vad det fäller.' },
   { id: 'a', namn: 'A · Ett kort ord', regel: 'Knappen gör som grannarna och behåller ett ord i den smala kronan: «⟨ Fäll ihop» / «⟩ Fäll ut» («Fold» / «Unfold»), fet som boxarna, tecknet i boxens bläck. Hela meningen «Fäll ihop hoppspalten» är fortfarande namn och tooltip.', pris: 'Ordet kostar 24–48 px, och raden har inte den bredden: bredvid AI-panelen vid 1280 i det breda typsnittet har kronan 12 px kvar i dag, och med ordet bryter den på två rader — precis det #1045 tog bort. Ett ord som säger vad men inte vad som fälls, för ett pris kronan inte har.' },
   { id: 'b', namn: 'B · En ikon i appens ikonspråk', regel: 'Tecknet byts mot en ikon ritad som ångra och gör om (glyphs.tsx: 16-rutan, 1,6 px linje, runda ändar, 20 px, boxens bläck #dce3f2): en panel med sin spalt tonad, och en vinkel som pekar åt det håll spalten går. Centrerad i 44 × 44 som de andra boxarna. I den långa kronan står ikonen före «Fäll ihop hoppspalten».', pris: 'Ingen bredd: rutan är 44 px som i dag. Ikonen säger «panel som fälls» för den som känner konventionen (ett sidofält med vinkel), men den är kronans enda bild bland ord, och vad den fäller står fortfarande bara i tooltipen.' },
   { id: 'c', namn: 'C · Spalten fäller sig själv', rek: true, regel: 'Kontrollen lämnar kronan och står på det den fäller: i spaltens eget huvud bredvid «LEKEN», och överst i den hopfällda remsan — ritad exakt som AI-panelens egen «⟩» (.byd-ai-close: 44 px, tyst bläck, 18 px, ingen kant), spegelvänd på väggens andra sida. Alltid synlig, aldrig bara under pekaren (#184). Samma namn, aria-expanded och aria-controls som i dag.', pris: 'Kronan får ett verktyg färre och 52 px mer marginal (12 → 64 px vid 1280 + AI i brett typsnitt). Spaltens huvud blir 15 px högre och remsan lämnar 48 px av sin höjd till knappen. Ordet «Fäll ihop hoppspalten» syns inte längre i den långa kronan vid 1280 och 1440 — L21 sa att kontrollen bor i krönet, så det beslutet ändras.' },
@@ -139,12 +139,17 @@ function rows() {
     const xs = cells(id, (m) => x2(m) && SMAL(m.s))
     const w = Math.min(...xs.map((m) => m.foldW)), h = Math.min(...xs.map((m) => m.foldH))
     const W = Math.max(...xs.map((m) => m.foldW))
-    return { t: `${w}–${W} × ${h} px`, c: w >= 44 && h >= 44 ? 'ok' : 'nej' }
+    return { t: `${w === W ? w : `${w}–${W}`} × ${h} px`, c: w >= 44 && h >= 44 ? 'ok' : 'nej' }
   })])
   r.push(['Vad som syns i den smala kronan (sv · en)', per((id) => {
     const s = cell(id, '1280-ai-sv-mac-oppen'), e = cell(id, '1280-ai-en-mac-ihop')
-    const show = (m) => (m.foldText ? `«${m.foldText}»` : 'ikonen')
+    const show = (m) => (id === 'c' ? `«${m.foldText}» i spalten, inget i kronan` : m.foldText ? `«${m.foldText}»` : 'ikonen')
     return { t: `${show(s)} · ${show(e)}`, c: id === 'nu' || id === 'd' ? 'nej' : id === 'b' ? 'mitt' : 'ok' }
+  })])
+  r.push(['Vad den långa kronan säger (1440, sv · en)', per((id) => {
+    const s = cell(id, '1440-sv-mac-oppen'), e = cell(id, '1440-en-mac-oppen')
+    if (id === 'c') return { t: 'inget — kontrollen står i spalten vid alla bredder (L21 ändras)', c: 'mitt' }
+    return { t: `«${s.foldText}»${id === 'b' ? ' efter ikonen' : ''} · «${e.foldText}»`, c: 'ok' }
   })])
   r.push(['Tecknets kontrast mot rutan, smal krona (2× · 1×)', per((id) => {
     const a = cells(id, (m) => x2(m) && SMAL(m.s) && m.s.includes('-mac-')).map((m) => m.inkRatio)
