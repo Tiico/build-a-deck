@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 1061 — dörren och frågan (#1061)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#1061) ─────────────────────────────────────────────────────────────────────
+     Sedan #858 frågar Tabell «Ta bort <kolumn>? Värdet försvinner på N kort.» i flikens fot medan
+     kolumndörren står öppen. Dörren hänger i toppskiktet (L55) från huvudets sista ruta ned till
+     fönstrets fot, 340 px bred längst till höger — och foten går under den. Var ska frågan stå,
+     eller var ska dörren sluta, så att svaren går att nå med pekaren?
+
+     Varje bild är den BYGGDA editorn (packages/e2e-stacken, ett origin som på lådan), fliken Tabell
+     med dörren öppnad och en kolumns × tryckt med pekaren, med varianten lagd ovanpå den riktiga
+     dörren och den riktiga foten av matning/page.js. Svaren i B och C är de riktiga knapparna,
+     tryckta genom ombud, så det som händer efteråt — vart fokus går — är appens eget. «Brett
+     typsnitt» ritar editorn i Verdana, DejaVus bredd, som på CI:s Linux. Inget är ritat för hand.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root { --panel: #1b1d23; --line: #2f333d; --quiet-2: #9aa3b8; --primary-mark: #6ea8ff; }
+  body { display: flex; flex-direction: column; min-height: 100vh; padding: 0; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; padding: 16px; align-content: start; }
+  @media (max-width: 1000px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; }
+  .bild img { border: 1px solid #2f333d; border-radius: 6px; outline: 0; height: auto; width: 100%; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .ruta img { width: 100%; height: auto; border-radius: 6px; outline: 0; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  #matris { border-collapse: collapse; font-size: 12px; min-width: 1000px; }
+  #matris th, #matris td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
+  #matris th { color: #fff; background: #1b1f2a; }
+  #matris .valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  #matris td.ok { background: #16301f; color: #9be3b5; }
+  #matris td.nej { background: #3a1c1c; color: #ffb3a8; }
+  #matris td.mitt { color: #f0d7a0; background: #2e2716; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 1061 — dörren och frågan (#1061) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är den byggda editorn med varianten injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="bredder"><span>Fönster</span></div>
+  <div class="rad" id="sprak"><span>Språk</span></div>
+  <div class="rad" id="typsnitt"><span>Typsnitt</span></div>
+  <div class="rad" id="lekar"><span>Lek · kolumn</span></div>
+</div>
+<div class="scen">
+  <div class="bild"><a id="bildlank" target="_blank" title="Öppna bilden i full storlek"><img id="bild" alt=""></a><p id="bildtext"></p></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Lupp</h2><img id="lupp" alt=""><p id="lupptext" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här ytan</h2><div class="tal" id="tal"></div></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla varianter mot issuets fråga</h2>
+    <p class="forkl" id="matrisforkl"></p>
+    <table id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script src="varianter.js"></script>
+</body>
+</html>
