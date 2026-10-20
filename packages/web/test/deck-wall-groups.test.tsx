@@ -203,25 +203,57 @@ describe('the grouping is the crown’s to change (#179)', () => {
 })
 
 describe('the jump column folds to a strip (#179)', () => {
-  const fold = () => document.querySelector('.byd-crown-fold') as HTMLButtonElement
+  // The column folds itself (#1019, variant C): the control stands on the column it folds — in the
+  // open column's head beside «Leken», and at the top of the strip — and not in the crown.
+  const fold = () => document.querySelector('.byd-wall-fold') as HTMLButtonElement
   const open = () => document.querySelector('nav[aria-label="Grupper i leken"]')
   const rail = () => document.querySelector('nav[aria-label="Grupper i leken, hopfälld"]') as HTMLElement
 
-  it('is a real disclosure in the crown, and the deck meets it unfolded', () => {
+  it('is a real disclosure on the column it folds, and the deck meets it unfolded', () => {
     wall(bigDeck())
+    expect(document.querySelectorAll('.byd-wall-fold')).toHaveLength(1)
     expect(fold().tagName).toBe('BUTTON')
     expect(fold().getAttribute('aria-expanded')).toBe('true')
-    expect(fold().textContent).toContain('Fäll ihop hoppspalten')
+    expect(fold().getAttribute('aria-label')).toBe('Fäll ihop hoppspalten')
+    expect(fold().getAttribute('title')).toBe('Fäll ihop hoppspalten')
     expect(open()).not.toBeNull()
     expect(rail()).toBeNull()
+    // In the column's own head, beside its name, and nowhere in the crown.
+    expect(open()!.querySelector('.byd-wall-jump-head')!.contains(fold())).toBe(true)
+    expect(open()!.querySelector('.byd-wall-jump-head h2')!.textContent).toBe('Leken')
+    expect(document.querySelector('.byd-wall-crown')!.textContent).not.toContain('hoppspalten')
+    expect(document.querySelector('.byd-wall-crown [aria-controls]')).toBeNull()
     // It says what it controls, so a reader who arrives at it on a keyboard is told what moved.
     expect(fold().getAttribute('aria-controls')).toBe(open()!.id)
 
     fireEvent.click(fold())
+    expect(document.querySelectorAll('.byd-wall-fold')).toHaveLength(1)
     expect(fold().getAttribute('aria-expanded')).toBe('false')
-    expect(fold().textContent).toContain('Fäll ut hoppspalten')
+    expect(fold().getAttribute('aria-label')).toBe('Fäll ut hoppspalten')
     expect(open()).toBeNull()
     expect(rail()).not.toBeNull()
+    // At the top of the strip, over the tiles, and not one of them.
+    expect(rail().firstElementChild).toBe(fold())
+    expect(fold().getAttribute('aria-controls')).toBe(rail().id)
+    expect(fold().hasAttribute('data-tile')).toBe(false)
+  })
+
+  it('draws the AI panel’s own sign, mirrored: ⟨ folds the open column and ⟩ unfolds the strip', () => {
+    wall(bigDeck())
+    expect(fold().textContent).toBe('⟨')
+    fireEvent.click(fold())
+    expect(fold().textContent).toBe('⟩')
+  })
+
+  it('hands the focus from the head to the strip and back, so a keyboard never loses it', () => {
+    wall(bigDeck())
+    fold().focus()
+    fireEvent.click(fold())
+    expect(rail().contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).toBe(fold())
+    fireEvent.click(fold())
+    expect(open()!.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).toBe(fold())
   })
 
   it('keeps every group, its count and the answer to where — in tiles that are real buttons', () => {
@@ -285,7 +317,7 @@ describe('the strip is a cross-section of the deck (#179)', () => {
 
   it('wears the cards’ own head colours, and two groups that share one still say where the reader is', () => {
     wall(paintedDeck())
-    fireEvent.click(document.querySelector('.byd-crown-fold')!)
+    fireEvent.click(document.querySelector('.byd-wall-fold')!)
     for (const tile of tiles()) {
       expect(tile.style.getPropertyValue('--byd-band-paint')).toBe(HEADS[tile.getAttribute('data-tile')!])
     }
@@ -300,7 +332,7 @@ describe('the strip is a cross-section of the deck (#179)', () => {
 
   it('gives a tile the share of the strip its group has of the deck, in the deck’s own order', () => {
     wall(paintedDeck())
-    fireEvent.click(document.querySelector('.byd-crown-fold')!)
+    fireEvent.click(document.querySelector('.byd-wall-fold')!)
     const shares = tiles().map((tile) => Number(tile.style.flexGrow))
     // Larger groups read as larger, and the tail keeps a share of its own: `--tap` floors the
     // height in CSS, so nothing here may be zero.
@@ -325,13 +357,13 @@ describe('the jump column under a keyboard (L12)', () => {
 
   it('is the same one tab stop folded, and the fold keeps the reader’s place in it', () => {
     wall(bigDeck())
-    fireEvent.click(document.querySelector('.byd-crown-fold')!)
+    fireEvent.click(document.querySelector('.byd-wall-fold')!)
     expect(entries('[data-tile]').map((e) => e.tabIndex)).toEqual([0, -1, -1, -1, -1, -1, -1, -1])
     entries('[data-tile]')[0]!.focus()
     fireEvent.keyDown(entries('[data-tile]')[0]!, { key: 'ArrowDown' })
     expect(document.activeElement).toBe(entries('[data-tile]')[1]!)
     // Unfolding is the same list in another shape: the keyboard does not start over from the top.
-    fireEvent.click(document.querySelector('.byd-crown-fold')!)
+    fireEvent.click(document.querySelector('.byd-wall-fold')!)
     expect(entries('[data-jump]').map((e) => e.tabIndex)).toEqual([-1, 0, -1, -1, -1, -1, -1, -1])
   })
 })
@@ -434,38 +466,44 @@ describe('the mark follows the deck as it rolls past (#179)', () => {
       fireEvent.scroll(deck)
       expect(current()).toBe('Trap-')
       // Folding keeps the answer, in a tile instead of a row.
-      fireEvent.click(document.querySelector('.byd-crown-fold')!)
+      fireEvent.click(document.querySelector('.byd-wall-fold')!)
       expect(document.querySelector('[data-tile][aria-current="true"]')!.getAttribute('data-tile')).toBe('Trap-')
     })
   })
 })
 
 // A search that finds nothing says so, and the crown stays as it stood (#477): the wall went
-// blank without a word, and the fold button left the crown so everything after it jumped.
+// blank without a word, and the fold button left the crown so everything after it jumped. The fold
+// has since left the crown for the column it folds (#1019), so it goes with the column — and the
+// crown, which no longer carries anything a search can take away, does not move at all.
 describe('a search that finds nothing (#477)', () => {
   it('says what was looked for, offers the way back, and keeps the crown still', () => {
-    // Grouped, which is what puts the fold in the crown; small, because the wall is drawn three
+    // Grouped, which is what draws the column and its fold; small, because the wall is drawn three
     // times here and 308 compiled cards three times over outran CI's budget.
     const doc = bigDeck()
     doc.rows = doc.rows.filter((_, i) => i % 26 === 0)
     wall(doc)
-    expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
+    const crown = () => [...document.querySelector('.byd-wall-crown .byd-crown')!.children].map((el) => el.className)
+    const before = crown()
+    expect(document.querySelector('.byd-wall-fold')).not.toBeNull()
     // Found by selector, as everything in this file is: a role query computes every accessible name
     // in the document, and on CI that alone outran the budget.
     fireEvent.change(document.querySelector('.byd-crown-search')!, { target: { value: 'zzzzqx' } })
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
     const empty = document.querySelector('.byd-wall-empty[role="status"]')!
     expect(empty.querySelector('h2')!.textContent).toBe('Inga kort matchar «zzzzqx».')
-    // The fold stays, but with no column drawn it controls nothing and opens nothing (#556).
-    const fold = document.querySelector('.byd-crown-fold')!
-    expect(fold.hasAttribute('aria-controls')).toBe(false)
-    expect(fold.hasAttribute('aria-expanded')).toBe(false)
+    expect(crown()).toEqual(before)
+    // With no column drawn there is nothing to fold, and nothing says it controls what is not there (#556).
+    expect(document.querySelector('.byd-wall-fold')).toBeNull()
+    for (const el of document.querySelectorAll('[aria-controls]')) expect(document.getElementById(el.getAttribute('aria-controls')!)).not.toBeNull()
     const clear = empty.querySelector('button')!
     expect(clear.textContent).toBe('Rensa sökningen')
     fireEvent.click(clear)
     expect(document.querySelectorAll('[data-card-ref]').length).toBeGreaterThan(0)
+    expect(crown()).toEqual(before)
+    const fold = document.querySelector('.byd-wall-fold')!
     const id = fold.getAttribute('aria-controls')
-    expect(fold.getAttribute('aria-expanded')).not.toBeNull()
+    expect(fold.getAttribute('aria-expanded')).toBe('true')
     expect(id && document.getElementById(id)).toBeTruthy()
   })
 })
@@ -512,7 +550,7 @@ describe('a proposal on a grouped wall is counted the way the foot counts it (#1
     expect(entry('Playcard').querySelector('small')!.textContent).toBe('132')
     expect(entry('Playcard').getAttribute('aria-label')).toBe('Playcard, 132 kort · 2 föreslagna')
     expect(entry('Character').getAttribute('aria-label')).toBe('Character, 44 kort')
-    fireEvent.click(document.querySelector('.byd-crown-fold')!)
+    fireEvent.click(document.querySelector('.byd-wall-fold')!)
     const tile = document.querySelector<HTMLElement>('[data-tile="Trap-"]')!
     expect(tile.textContent).toBe('8')
     expect(tile.getAttribute('aria-label')).toBe('Trap-, 8 kort · 1 föreslaget')

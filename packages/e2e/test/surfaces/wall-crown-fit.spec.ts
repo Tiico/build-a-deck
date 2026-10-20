@@ -13,8 +13,9 @@ for (const locale of ['sv-SE', 'en-GB']) {
       test('leaves the search field room to be written in, on one row', async ({ page }) => {
         await logIn(page.request)
         const project = await makeProject(page.request, { name: 'Kronan', players: 4, cards: 12 })
-        // Grouped, as a real deck is: the crown then carries the grouping's own value and the
-        // jump column's fold, which is the row the field was squeezed out of.
+        // Grouped, as a real deck is: the crown then carries the grouping's own value, which is
+        // the row the field was squeezed out of. (The jump column's fold stood in it then; it
+        // stands on the column itself since #1019.)
         const doc = (await (await page.request.get(`/projects/${project.id}`)).json()) as { template: { faces: Record<string, { variantBy?: string }> }; rows: { fields: Record<string, unknown> }[] }
         doc.template.faces['front']!.variantBy = 'kategori'
         doc.rows.forEach((row, i) => (row.fields['kategori'] = ['Varelse', 'Förtrollning', 'Artefakt'][i % 3]))
@@ -25,7 +26,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
         const measured = await page.evaluate(() => {
           const crown = document.querySelector('.byd-wall-view .byd-crown') as HTMLElement
           const field = document.querySelector('.byd-crown-search') as HTMLElement
-          const boxes = [...crown.querySelectorAll<HTMLElement>('.byd-crown-box, .byd-crown-fold')]
+          const boxes = [...crown.querySelectorAll<HTMLElement>('.byd-crown-box')]
           return {
             field: Math.round(field.getBoundingClientRect().width),
             over: crown.scrollWidth - crown.clientWidth,

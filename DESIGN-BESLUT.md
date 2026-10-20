@@ -5046,8 +5046,22 @@ Ingen grupp är hopfälld som förval, och en sökning smalnar av väggen utan a
 Det stod inte i issuet och kom ur mätningen: spaltens 172 px räckte för att tappa en kortspalt hela vägen upp till 1 920.
 Det hopfällda läget är en 66 px remsa och inte en kant — samma grupper i samma ordning, i kortens egna huvudfärger från väggen bredvid, med namnet borta och antalet kvar, och brickans höjd proportionell mot gruppens storlek så att remsan läses som ett tvärsnitt av leken.
 Mätt i det byggda bygget ger det tillbaka kortspalten vid båda skrivbordsbredderna: 6 → 7 spalter vid 1 280 och 7 → 8 vid 1 440, till en längd på 11 752 respektive 10 198 px.
-Kontrollen heter `Fäll ihop hoppspalten` / `Fäll ut hoppspalten`, bor i krönet, är en riktig `aria-expanded`-knapp på 44 px och har ingen hover-only-väg in.
+Kontrollen heter `Fäll ihop hoppspalten` / `Fäll ut hoppspalten`, står på spalten den fäller — i dess huvud bredvid «Leken» och överst i remsan — är en riktig `aria-expanded`-knapp på 44 px och har ingen hover-only-väg in (reviderat 2026-10-20, #1019, se nedan; den bodde först i krönet).
 Förvalet är öppet: innehållsförteckningen ska vara det man möter, inte något man letar upp.
+
+Reviderat 2026-10-20 (#1019, beställarens val, variant C): **spalten fäller sig själv.**
+Kontrollen bodde i krönet, med motiveringen att en läsare som aldrig fällt något inte kan gissa att spalten går att fälla.
+Men där kronan är smal — vid 1100, och bredvid AI-panelen vid 1280 och 1440 — var den ett ensamt «⟨» utan ord: 2,2:1 mot rutan på en vanlig skärm (1×), vänsterställt i sin 44 px-ruta, och kronan hade 12 px kvar i CI:s bredare typsnitt och ingen bredd att ge ett ord.
+Nu står kontrollen på spalten den fäller: i den öppna spaltens huvud bredvid «Leken» och överst i den hopfällda remsan, ritad med AI-panelens egen regel (`.byd-ai-close`) — samma «⟩», spegelvänd på väggens andra sida, så att de två sidopanelerna fälls på ett sätt.
+Platsen säger vad den fäller, vilket ett ordlöst tecken i krönet aldrig kunde; den syns alltid och aldrig bara under pekaren (#184), och den är en dörr och ingen roll (L13, tillägg #791): ingen fyllning och ingen kant.
+Namnet, `aria-expanded` och `aria-controls` är desamma; trycket tar bort knappen som trycktes, och fokus går till den som tog dess plats, aldrig till dokumentet (#477, fynd 6).
+Utan någon spalt ritad — en sökning som inte hittar något — finns inget att fälla och ingen kontroll (#556); #477:s skäl att låta den stå kvar i krönet, att inget efter den skulle flytta, gäller inte längre, eftersom kronan inte bär något en sökning kan ta bort.
+Kronan bär kontrollen vid ingen bredd, inte heller orden i den långa kronan vid 1280 och 1440: kontrollen finns på ett ställe.
+Mätt i den byggda appen vid 1100, vid 1280 bredvid den öppna AI-panelen och vid 1440, på svenska och engelska, i Macens typsnitt och i ett brett (Verdana, DejaVus bredd): tecknet målas 10,6:1 mot spalten i både 1× och 2×, kontrollen är 44 × 44 med tecknet i mitten, och kronan står på en rad med 64 px kvar i det sämsta fallet (1280 bredvid panelen, svenska, brett), mot 12 px förut.
+Priset: spaltens huvud blir 19 px högre (första gruppen 34 → 53 px under spaltens topp) och remsan ger 52 px till knappen; prototypen mätte 15 och 48, och de fyra pixlarna till är fokusringens rum, eftersom spalten klipper vid sin rundade kant.
+Brickorna rullar i en egen ruta under knappen, så en lek med många grupper (Stora leken skalad till 24 och 30 grupper) rullar en bricka tidigare men har alltid vägen ut i sikte, och varje bricka håller 44 px i båda leder.
+`deck-wall-groups.test.tsx` håller platsen, namnet och fokuset; `packages/e2e/test/surfaces/wall-fold.spec.ts` mäter målade bildpunkter, målytan, fokusringen och kronans rad vid de tre bredderna, och remsan med trettio grupper.
+Prototypen och mätningen står i [`docs/ux-audits/2026-10-20-hoppspaltens-knapp/prototyper/`](docs/ux-audits/2026-10-20-hoppspaltens-knapp/prototyper/).
 
 **«Var är jag» hänger aldrig på färgen ensam.**
 Två grupper kan dela huvudfärg på väggen — `Trap+` och `Trap-` gör det — så den hopfällda remsan märker gruppen på tre kanaler: samma blå märke som den öppna spalten sätter framför gruppen, en ljusare bricka, och antalet som står fram på den.

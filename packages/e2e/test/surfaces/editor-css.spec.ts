@@ -54,12 +54,11 @@ const SHELL = `
           <button class="byd-crown-box" aria-expanded="false" data-stop="the guides box">Guider (0) ▾</button>
           <div class="byd-pill" role="group"><button class="byd-pill-step" data-stop="packing the wall closer">−</button><output class="byd-pill-value">150 px</output><button class="byd-pill-step" data-stop="larger cards">+</button></div>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the grouping box">Grupperad efter: typ ▾</button>
-          <button class="byd-crown-fold" aria-expanded="true" data-stop="folding the jump column"><span>⟨</span>Fäll ihop hoppspalten</button>
           <button class="byd-crown-box byd-crown-end" aria-expanded="false" data-stop="the checks box">Fysisk kontroll (1) ▾</button>
         </div>
         <div class="byd-wall-work" data-fold="open">
           <nav class="byd-wall-jump" aria-label="Grupper i leken">
-            <h2>Leken</h2>
+            <div class="byd-wall-jump-head"><h2>Leken</h2><button class="byd-wall-fold" aria-expanded="true" aria-label="Fäll ihop hoppspalten" data-stop="folding the jump column"><span aria-hidden="true">&#x27E8;</span></button></div>
             <div class="byd-wall-jump-scroll">
               <button data-jump="varelse" aria-current="true" data-stop="the band the wall is standing in"><span>varelse</span><small>132</small></button>
               <button data-jump="fälla" aria-current="false" tabindex="-1"><span>fälla</span><small>8</small></button>
@@ -243,8 +242,8 @@ test.describe('the editor under a keyboard', () => {
       'packing the wall closer',
       'larger cards',
       'the grouping box',
-      'folding the jump column',
       'the checks box',
+      'folding the jump column',
       'the band the wall is standing in',
       'the template panel',
       'a tool',
@@ -477,13 +476,14 @@ const STRIP = `
   <main>
     <div role="tabpanel">
       <div class="byd-wall-view">
-        <div class="byd-crown"><button class="byd-crown-fold" aria-expanded="false"><span>&#x27E9;</span>Fäll ut hoppspalten</button></div>
+        <div class="byd-crown"></div>
         <div class="byd-wall-work" data-fold="folded">
           <nav class="byd-wall-rail" aria-label="Grupper i leken, hopfälld">
-            ${TILES.map(
+            <button type="button" class="byd-wall-fold" aria-expanded="false" aria-label="Fäll ut hoppspalten"><span aria-hidden="true">&#x27E9;</span></button>
+            <div class="byd-wall-rail-scroll">${TILES.map(
               ([name, n], i) =>
                 `<button type="button" data-tile="${name}" aria-current="${i === 0}" aria-label="${name}, ${n} kort" style="flex-grow:${n}">${n}</button>`,
-            ).join('')}
+            ).join('')}</div>
           </nav>
           <div class="byd-wall-deck"><div class="byd-wall"></div></div>
         </div>
@@ -499,6 +499,10 @@ test.describe('the folded jump column (#179)', () => {
       await standing(page, STRIP, { at: '/editor', needs: EDITOR })
       const measured = await page.evaluate(() => ({
         strip: Math.round(document.querySelector('.byd-wall-rail')!.getBoundingClientRect().width),
+        fold: (() => {
+          const box = document.querySelector('.byd-wall-rail > .byd-wall-fold')!.getBoundingClientRect()
+          return { w: Math.round(box.width), h: Math.round(box.height), bottom: box.bottom, firstTile: document.querySelector('[data-tile]')!.getBoundingClientRect().top }
+        })(),
         tiles: [...document.querySelectorAll('[data-tile]')].map((el) => {
           const box = el.getBoundingClientRect()
           return { name: el.getAttribute('data-tile'), w: Math.round(box.width), h: Math.round(box.height) }
@@ -506,6 +510,10 @@ test.describe('the folded jump column (#179)', () => {
       }))
       expect(measured.strip).toBe(66)
       expect(measured.tiles.filter((tile) => tile.w < 44 || tile.h < 44)).toEqual([])
+      // The column folds itself (#1019): its way back out stands at the top of the strip, a tap
+      // target like the tiles and over them, not one of them.
+      expect([measured.fold.w, measured.fold.h]).toEqual([44, 44])
+      expect(measured.fold.bottom).toBeLessThanOrEqual(measured.fold.firstTile)
       // The strip is a cross-section and not a menu: a larger group is a taller tile, down to the
       // floor where the tail is pressed flat.
       const heights = measured.tiles.map((tile) => tile.h)
