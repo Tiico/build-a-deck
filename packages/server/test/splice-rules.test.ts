@@ -62,4 +62,22 @@ describe('rule blocks placed by the ids they stand at (#1006)', () => {
     const next = applyEdit(none, { ...splice([], null, [{ id: 'b1', text: 'Början.' }]), title: 'Skogens herrar' } as EditIntent)
     expect(next.rules).toEqual({ title: 'Skogens herrar', blocks: [{ kind: 'text', id: 'b1', text: 'Början.' }] })
   })
+
+  // Two people in the same block at once (#1053, D3): a block is written whole, so the last edit to
+  // land is the block — and a block one of them took away is not brought back by the other's typing.
+  it('gives a block to the last writer to land in it, and never writes a block back that is gone', () => {
+    const ada = splice(['b4'], null, [{ id: 'b4', text: 'Ada skrev.' }])
+    const bo = splice(['b4'], null, [{ id: 'b4', text: 'Bo skrev.' }])
+    expect(applyEdit(applyEdit(doc(), ada), bo).rules!.blocks.at(-1)).toEqual({ kind: 'text', id: 'b4', text: 'Bo skrev.' })
+    const gone = applyEdit(doc(), splice(['b3', 'b4'], null, []))
+    expect(() => applyEdit(gone, bo)).toThrow(/b4/)
+  })
+
+  it('keeps what a co-editor wrote in the next block, whichever lands last', () => {
+    const ada = splice(['b2'], null, [{ id: 'b2', text: 'Ada skrev.' }])
+    const bo = splice(['b4'], null, [{ id: 'b4', text: 'Bo skrev.' }])
+    const texts = (d: ProjectDoc) => d.rules!.blocks.map((b) => (b.kind === 'text' ? b.text : null)).filter((x) => x !== null)
+    expect(texts(applyEdit(applyEdit(doc(), ada), bo))).toEqual(['Ada skrev.', 'Bo skrev.'])
+    expect(texts(applyEdit(applyEdit(doc(), bo), ada))).toEqual(['Ada skrev.', 'Bo skrev.'])
+  })
 })

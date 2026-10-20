@@ -155,8 +155,14 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     const area = mode === 'table' ? shelf.current : page.current
     if (area) readTo(area, place.current)
   }, [mode])
-  const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
-    rules && client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
+  // Every edit below names the blocks it changes and no others (#1053, D3): the book a co-editor has
+  // written in since this tab last heard is hers, and an edit that carried the whole book as it stood
+  // here wrote back over it. A block is written whole, so two people in the same block at once is the
+  // last one to land — decided in D3, and the reason is given there.
+  const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) => {
+    const was = rules?.blocks.find((b) => b.id === id)
+    if (was) client.spliceRules({ replace: [id], after: null, blocks: [{ ...was, ...next } as RuleBlock] }, gesture)
+  }
   // A block written as something else (#707): a paragraph made a list, or cut into the paragraphs
   // and lists its lines were written as. The first of them keeps the block's id, so the block that
   // was open is the block the focus goes back to; the rest are handed ids of their own.
@@ -173,7 +179,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
       // A template section keeps its question for as long as it stays a paragraph (#131).
       return { kind: 'text', id: own, text: run.text, ...(i === 0 && was.kind === 'text' && was.ask ? { ask: was.ask } : {}) }
     })
-    client.setRules({ ...rules, blocks: [...rules.blocks.slice(0, at), ...made, ...rules.blocks.slice(at + 1)] })
+    client.spliceRules({ replace: [id], after: null, blocks: made })
   }
   // Ett tomt block i en skarv, öppnat där det landar. Skarven räknas i block och inte i knappar:
   // en bok med n block har n + 1 skarvar, och den före block ett är en av dem (#216).
@@ -184,7 +190,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     // ＋:et stilla för alltid i tron att den ligger kvar i det.
     held.current = false
     const fresh: RuleBlock = { kind: 'text', id: freeId(rules), text: t('rules.newText') }
-    client.setRules({ ...rules, blocks: [...rules.blocks.slice(0, index), fresh, ...rules.blocks.slice(index)] })
+    client.spliceRules({ replace: [], after: rules.blocks[index - 1]?.id ?? null, blocks: [fresh] })
     setEditing(fresh.id)
     setAtBlock(fresh.id)
   }
@@ -203,7 +209,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
       }
     }
     const left = rules.blocks.filter((b) => !gone.has(b.id))
-    client.setRules({ ...rules, blocks: left })
+    client.spliceRules({ replace: [...gone], after: null, blocks: [] })
     // The press that took it away came from the block's own foot, which went with it.
     const next = left[Math.min(at, left.length - 1)]
     close(next?.id ?? '', true)
@@ -215,9 +221,13 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     if (!rules) return
     const head = freeId(rules)
     const body = freeId(rules, [head])
-    client.setRules({
-      ...rules,
-      blocks: [...rules.blocks, { kind: 'heading', id: head, level: 1, text: t('rules.newSection') }, { kind: 'text', id: body, text: '', ask: t('rules.ask.own') }],
+    client.spliceRules({
+      replace: [],
+      after: rules.blocks.at(-1)?.id ?? null,
+      blocks: [
+        { kind: 'heading', id: head, level: 1, text: t('rules.newSection') },
+        { kind: 'text', id: body, text: '', ask: t('rules.ask.own') },
+      ],
     })
     setEditing(head)
   }
@@ -374,7 +384,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
               type="button"
               className="byd-secondary"
               onClick={() => {
-                client.setRules(startingRules(doc.name, t))
+                client.spliceRules(begun(startingRules(doc.name, t)))
                 setLand('book')
               }}
             >
@@ -384,7 +394,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
               type="button"
               className="byd-secondary"
               onClick={() => {
-                client.setRules(templateRules(doc.name, t))
+                client.spliceRules(begun(templateRules(doc.name, t)))
                 setLand('book')
               }}
             >
@@ -1600,12 +1610,25 @@ export function narrowRefs(refs: readonly Referable[], query: string): Referable
   return refs.filter((r) => r.name.toLowerCase().includes(word)).slice(0, REF_ROWS)
 }
 
-// An id the book has not used. A section is two blocks, so what is being handed out in the same
-// breath is named too — nothing is in the document yet to say it is spoken for.
+// An id the book has not used, and that a co-editor adding a block in the same moment will not
+// hand out either (#1053): `b<n>`, the first number free here, was the same number in both tabs, and
+// the second block to land was refused — leaving its writer typing into the other one's block. So
+// the id is drawn at random; the book's own `b<n>` ids, from a template or an AI proposal, stay as
+// they are. A section is two blocks, so what is being handed out in the same breath is named too —
+// nothing is in the document yet to say it is spoken for. `getRandomValues` and not `randomUUID`,
+// which a page served over plain http is not given.
 const freeId = (rules: RuleDoc, alsoTaken: readonly string[] = []): string => {
   const taken = new Set([...rules.blocks.map((b) => b.id), ...alsoTaken])
-  for (let n = 1; ; n++) if (!taken.has(`b${n}`)) return `b${n}`
+  for (;;) {
+    const id = `b-${[...crypto.getRandomValues(new Uint8Array(4))].map((n) => n.toString(16).padStart(2, '0')).join('')}`
+    if (!taken.has(id)) return id
+  }
 }
+
+// A book begun where there was none (#1053): its blocks laid into an empty book under its title. It
+// is a splice and not a whole book written out, so a co-editor who began one in the same moment keeps
+// hers — the two begin with the same ids, and the second is refused rather than written over the first.
+const begun = (book: RuleDoc) => ({ replace: [], after: null, blocks: book.blocks, title: book.title })
 
 // What each way in leaves behind (#131). Neither leaves an empty page: both write a book with at
 // least one section, so the column beside it has something to carry from the first second and the
