@@ -243,15 +243,29 @@ test.describe('the page says what it is fetching before the app has arrived (#74
       ['editor', DESK, '/editor?project=nothing-yet', 'editor'],
       ['start', DESK, '/', 'app'],
     ]
-    const seen: Record<string, { paint: number; heading: string | null | undefined }> = {}
+    const seen: Record<string, { paint: number; said: number; heading: string | null | undefined }> = {}
     for (const [name, device, url, voice] of routes) {
       const { context, page } = await screen(browser, baseURL, device)
       try {
         await slowLine(page)
+        // When the shell's words are in, on the document's own clock. The words are written by the
+        // script that follows the shell's markup, and on a throttled line the two can arrive in
+        // different chunks: a page read at its first painting was then sometimes read between them,
+        // with the markup in and the words not yet, on a busy machine (#1054's gate). What the
+        // test holds is that both come within the second and a half, each measured when it happens.
+        await page.addInitScript(() => {
+          new MutationObserver((_, watch) => {
+            if (!document.querySelector('#byd-shell [data-k="h"]')?.textContent) return
+            ;(window as unknown as { saidAt: number }).saidAt = performance.now()
+            watch.disconnect()
+          }).observe(document, { subtree: true, childList: true, characterData: true })
+        })
         await page.goto(url, { waitUntil: 'commit' })
         await page.waitForFunction(() => performance.getEntriesByType('paint').some((e) => e.name === 'first-paint'), undefined, { timeout: 20_000 })
+        await page.waitForFunction(() => (window as unknown as { saidAt?: number }).saidAt !== undefined, undefined, { timeout: 20_000 })
         const paint = await page.evaluate(() => performance.getEntriesByType('paint').find((e) => e.name === 'first-paint')!.startTime)
-        seen[name] = { paint: Math.round(paint), heading: (await shellSays(page))?.heading }
+        const said = await page.evaluate(() => (window as unknown as { saidAt: number }).saidAt)
+        seen[name] = { paint: Math.round(paint), said: Math.round(said), heading: (await shellSays(page))?.heading }
         expect.soft(seen[name]!.heading, name).toBe(words('sv', voice).heading)
       } finally {
         await context.close()
@@ -260,7 +274,7 @@ test.describe('the page says what it is fetching before the app has arrived (#74
     // The document is down in about half a second on this line (one round trip plus a few
     // kilobytes); the first painting follows it rather than the sheet and the entry.
     test.info().annotations.push({ type: 'first-paint ms', description: JSON.stringify(seen) })
-    expect(Object.entries(seen).filter(([, s]) => s.paint > 1_500), JSON.stringify(seen)).toEqual([])
+    expect(Object.entries(seen).filter(([, s]) => s.paint > 1_500 || s.said > 1_500), JSON.stringify(seen)).toEqual([])
   })
 
   test('says it in the route’s own words, in the reader’s language, at a contrast of 7:1', async ({ browser, baseURL }) => {
