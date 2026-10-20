@@ -19,9 +19,6 @@ import { DataTable } from '../src/editor/DataTable.js'
 import PlaytestWorkspace from '../src/editor/prototype/PlaytestWorkspace.js'
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const spy = vi.hoisted(() => ({ fonts: 0, icons: 0 }))
 vi.mock('../src/editor/fonts.js', async (importOriginal) => {

@@ -58,9 +58,11 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   // gives about the address: a card still inside a hidden pile has no id on the wire to flip, so
   // only the verb that takes it out can say which way up it comes out. Left unsaid, the cards
   // keep the side they already lay on, which is what every line written before this said.
-  // Without `to`, the top `at` components become a new pile at (x, y) in the source pile's area.
   // Without `to`, the top `at` components become a new pile at (x, y) in table coordinates,
   // like movePile and zone geometry; a component's own x/y are relative to its zone.
+  // With `to` an area and a point, they lie at (x, y) in that area's own coordinates, as a `move`
+  // names them, on top of what it holds (#680). With `to` and no point — every line written
+  // before that — they go to the bottom of `to` and keep the x/y they had.
   z.object({
     v: z.literal('split'),
     pile: ZoneId,
@@ -89,6 +91,9 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   }),
 ])
 export type PhysicalIntent = z.infer<typeof PhysicalIntent>
+// The physical verbs by name, read off the union so that the set cannot drift from it: a move on
+// the table is one of these, and a seat taken, a version changed or a table ended is not (#706).
+export const PHYSICAL_VERBS: readonly string[] = PhysicalIntent.options.map((o) => o.shape.v.value)
 
 // Session verbs are not physical and are kept apart so the physical set stays honest.
 export const SessionIntent = z.discriminatedUnion('v', [

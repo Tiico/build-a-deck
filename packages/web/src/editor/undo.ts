@@ -63,6 +63,7 @@ export function whatOf(intent: EditIntent): Key {
     case 'removePicture':
       return 'undo.what.picture'
     case 'setRules':
+    case 'spliceRules':
       return 'undo.what.rules'
     case 'setFont':
     case 'removeFont':
@@ -74,5 +75,12 @@ export function whatOf(intent: EditIntent): Key {
     // Taking a version back is an edit like any other (B4), so it can be taken back too.
     case 'restore':
       return 'undo.what.version'
+    // Several edits as one (#1002): named for the part of the game they touched when they all
+    // touched the same one, and as several changes when they did not.
+    case 'compound': {
+      const words = new Set(intent.edits.map(whatOf))
+      const [only] = words
+      return words.size === 1 && only !== undefined ? only : 'undo.what.several'
+    }
   }
 }

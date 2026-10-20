@@ -80,7 +80,19 @@ MAIL_FROM="build-your-deck <login@ditt-värdnamn>"
 Och en kommentar får bara stå först på raden. `PUBLIC_ORIGIN=https://x  # kommentar` blir värdet `https://x  # kommentar` för systemd, som bara känner igen `#` i radens början.
 
 Lägg till `R2_*` och `RESEND_API_KEY` när de finns; `.env.example` beskriver varje rad.
+Före betan: `BYD_CONTACT` är vart en betatestare vänder sig, en e-postadress eller en adress med `https://` (DRIFT §8, #757). Utan den står ingen «Kontakt» på inloggningskortet, på Mina spel, i mejlets fot eller i `/health`.
 Sätt aldrig `AUTH_BYPASS` här — stacken skickar den inte vidare till containern, men raden vilseleder nästa läsare.
+
+Replay-korpusen ur betadesignernas spel (DRIFT §7, #1011) vill ha två rader till, och bara när någon har sagt ja:
+
+```sh
+BYD_CORPUS_ACCOUNTS=ada@example.com,bo@example.com
+BYD_OPERATOR=<operatörens adress>
+```
+
+Samtycket ges i inbjudningsmejlet; skriv in en adress först när ja:et finns där, och stryk den när någon ångrar sig.
+Operatörens inloggning får då läsa exporten av bord i de kontonas spel (`pnpm --filter @byd/engine corpus` med operatörens kaka i `BYD_COOKIE`), och inget annat av deras.
+Appen läser raderna när den startar, så en ändring gäller efter `docker compose up -d app` eller nästa deploy.
 
 Koppla in deployen och kör den första gången:
 
@@ -226,6 +238,7 @@ Det som är provat varje gång `ops/restore-test.sh` körs är att bytesen i R2 
 | `{"msg":"no-release"}` | Ingen `v*`-tagg nås från `origin/main`. Tagga. |
 | `/health` ger 503 med `assets` | R2-nycklarna är fel, bucketen finns inte, eller — vanligast — den ligger i en jurisdiktion och svarar bara på sin egen endpoint. Sätt `R2_ENDPOINT=https://<konto>.eu.r2.cloudflarestorage.com` för den europeiska. Texturer slutar visas; spelet i övrigt lever. |
 | Inloggningsmejlet kommer inte | Ingen `RESEND_API_KEY`, eller avsändardomänen är inte verifierad. Länken finns i `docker compose logs app`. |
+| `corpus` får 403 på en betadesigners bord | Kontots adress står inte i `BYD_CORPUS_ACCOUNTS`, kakan i `BYD_COOKIE` hör till en annan adress än `BYD_OPERATOR`, eller appen har inte startats om sedan raden skrevs. Det är bara exporten som öppnas; enkätsvaren och spelet ger 403 också med rätt rader. |
 | Inloggning loopar tillbaka till inloggningskortet | `PUBLIC_ORIGIN` matchar inte värdnamnet i webbläsaren, så kakan sätts på fel origin. |
 | Allt är nere och ingen vet | Lådan kan inte berätta att den är nere (DRIFT §8). Signalen är en användare som hör av sig. |
 

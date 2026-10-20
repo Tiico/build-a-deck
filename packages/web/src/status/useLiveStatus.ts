@@ -3,6 +3,7 @@ import type { TableConnection } from '../table/useTableClient.js'
 import { connectionState, countdownFrom, DEFAULT_TIMING, isStale, type StatusTiming } from './connection.js'
 import { asOf, noticeFor, type Notice, type StatusKey, type Voice } from './notice.js'
 import { useT } from '../i18n/index.js'
+import { waitBegan } from './waitClock.js'
 import type { Countdown } from './StatusNotice.js'
 
 // How long "uppkopplad igen" stays on the screen. Long enough to be read across a room, short
@@ -27,15 +28,18 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
   const hasView = view !== null
 
   // The wait is counted from the first attempt of this connection, and starts over when a
-  // person asks for another one.
-  const [since, setSince] = useState(() => Date.now())
+  // person asks for another one. The first attempt's wait began when the page was asked for, if
+  // the shell has been saying «laddar» since then (#749, `waitClock.ts`).
+  const [since, setSince] = useState(waitBegan)
   const [, tick] = useState(0)
   useEffect(() => {
     if (hasView || trouble !== null) return
     const timer = setTimeout(() => tick((n) => n + 1), Math.max(0, timing.slowAfterMs - (Date.now() - since) + 50))
     return () => clearTimeout(timer)
   }, [hasView, trouble, since, timing.slowAfterMs])
-  const wasTrying = useRef(false)
+  // A connection is born trying, and that first attempt is the wait counted above; only a return
+  // to trying after something else starts the clock again.
+  const wasTrying = useRef(status === 'connecting')
   useEffect(() => {
     if (status === 'connecting' && !wasTrying.current) setSince(Date.now())
     wasTrying.current = status === 'connecting'

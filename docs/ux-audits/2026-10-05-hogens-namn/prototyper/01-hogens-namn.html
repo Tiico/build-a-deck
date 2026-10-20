@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Högens namn i bordsläget (#789)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#789) ──────────────────────────────────────────────────────────────────────
+     I bordsläget står namnet på en hög vars översta kort saknar bild i 8 px på kortet.
+     Beställaren valde 2026-10-05 att prototypa C (#771:s bildtext på en egen platta under
+     högens handtag) mot D (namnet kvar på kortet i 12 px, avkortat med ellips).
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken, Sal's Saloon) med variantens CSS
+     injicerad och mätt i Chromium. Kortlek och Kasthög står där receptet lägger dem (±140, 0);
+     Belöningar och Fynd är två högar till, lagda där verktyget själv lägger en ny hög
+     (newPileSpot i recipe.ts). Överst: «Faster Than Your Own Shadow» (lekens längsta namn) på
+     Kasthög, «Duel» (kortaste) på Belöningar, «Snake in the boot» på Fynd. /faces svarar 202
+     (kortet renderas), 500 (bilden förlorad) eller en PNG (bilden har kommit). Inget är ritat
+     för hand; skripten ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .krona { position: sticky; top: 0; z-index: 2; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .krona h1 small { color: var(--quiet-2); font-weight: 400; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px; background: #15171c; }
+  @media (max-width: 1000px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .nara { overflow: auto; border: 1px solid #2f333d; border-radius: 6px; background: #0d0f14; }
+  .nara img { display: block; image-rendering: pixelated; }
+  .hel img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 4px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; font-size: 13px; }
+  .forkl { color: var(--quiet-2) !important; font-size: 12px !important; }
+  .hog { border-top: 1px solid var(--line); padding: 8px 0 4px; font-size: 12px; color: #c9d1e3; display: grid; gap: 2px; }
+  .hog b { color: #fff; }
+  .ok { color: var(--good); } .fel { color: #ff8a7a; }
+  .kontrast { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; align-items: center; font-size: 12px; }
+  .prov { display: inline-block; padding: 1px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; line-height: 14px; white-space: nowrap; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 12px; min-width: 980px; }
+  th, td { border: 1px solid #2f333d; padding: 4px 6px; text-align: left; vertical-align: top; }
+  th { color: #fff; background: #1b1f2a; }
+  td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  td a { color: inherit; text-decoration: none; display: block; }
+  td.alla { background: #16301f; color: #9be3b5; }
+  td.nagot { background: #2e2a18; color: #f3dc9b; }
+  td.inga { background: #3a1c1c; color: #ffb3a8; }
+  td small { display: block; color: inherit; opacity: 0.85; white-space: nowrap; }
+  .slut { grid-column: 1 / -1; }
+  .slut li { margin: 4px 0; line-height: 1.5; color: #c9d1e3; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — kortets namn på en hög utan bild, i bordsläget (#789) <small>· ← → byter variant · bilderna är det byggda appen med variantens CSS injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Yta</span></div>
+  <div class="rad" id="platser"><span>Platser</span></div>
+  <div class="rad" id="lagen"><span>Kortets bild</span></div>
+</div>
+<div class="scen">
+  <div class="bild">
+    <div class="nara"><img id="nara" alt=""></div>
+    <p id="naratext"></p>
+    <div class="hel"><img id="hel" alt=""></div>
+    <p id="heltext"></p>
+  </div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Kontrast (WCAG, deklarerade färger)</h2><div class="kontrast" id="kontrast"></div>
+      <p class="forkl" style="margin-top:8px">Uppmätt på målade pixlar per namn står under varje hög nedan (98:e mot 10:e percentilens luminans i namnets låda). Kravet är 4,5:1 mot det namnet står på.</p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div id="hogar"></div></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla ytor × alla varianter, kortet renderas</h2>
+    <p class="forkl">Per hög med namn: det som syns av namnet, och ✗ följt av det namnet krockar med. Grönt = varje namn helt (eller kapat först efter 10 em), minst 12 px, ≥ 4,5:1 målat och fritt från allt. Gult = Kasthög (receptets hög, den varje spel har) klarar allt men någon av de extra högarna inte. Rött = inte ens Kasthög. Klicka en cell för att se den.</p>
+    <table id="matris"></table>
+  </div>
+  <div class="slut ruta" id="slutsats">
+    <h2>Slutsats — rekommendationen är C</h2>
+    <ul>
+      <li><b>Båda klarar tre av fyra krav.</b> 12 px överallt; kontrasten är god (C: 14,4:1 deklarerat och 13–14:1 målat, 9,5:1 i förlorad bild; D: 12–13:1 målat på kortets grund); och namnet är borta när bilden har kommit — noll namn kvar på filten i alla tio mätningar per variant, eftersom båda formerna hänger på tillståndets eget namn.</li>
+      <li><b>D klarar golvet men inte syftet.</b> Kortet ritas 44–65 px brett vid fyra platser och 26–40 px vid åtta. I 12 px syns «Faste…», «Snak…» och vid åtta platser en enda bokstav («F…», «D…», «S…»). Bara «Duel» står helt, och bara vid fyra platser. Ett namn man inte kan läsa är inget namn, bara större.</li>
+      <li><b>C säger namnet.</b> Helt upp till 10 em («Faster Than Your O…», lekens längsta, är det enda som kapas), i 12 px på varje yta och vid varje platsantal, oberoende av hur litet kortet ritas. Kasthög — receptets hög, den varje spel har — är fri på alla fyra rakvända ytor vid fyra platser (15–49 px marginal) och vid 1920 med åtta platser (2,6–6,3 px).</li>
+      <li><b>Där C krockar krockar högarna redan i dag.</b> De två extra högarna är lagda där verktyget självt lägger en ny hög (<code>newPileSpot</code>), och i bordsläget står de så tätt att handtagen redan ligger på grannarnas kort i «Nu» och i D: Fynd över Framför A:s namn och kort vid fyra platser, Belöningar över Kortleks och Kasthögs handtag vid åtta. <code>newPileSpot</code> räknar en högs namnband som 30 mm, måttat för TV:ns namn, medan bordslägets handtag hänger 52 px under kortet. Det är ett eget fynd, och C gör det 16 px värre.</li>
+      <li><b>Vänd filt.</b> Sett från plats B står handtaget ovanför sitt kort på skärmen, så «under handtaget» vore på kortet. C behöver därför regeln «på den sida av handtaget som vetter bort från kortet» (renderaren känner vridningen); med den nuddar Kasthögs bildtext Räknare C:s namn och Belöningars en mark vid fyra platser. Den som bygger C behöver mäta den vända filten också.</li>
+    </ul>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'Som i dag: väntande och misslyckat tillstånd skriver namnet mitt på kortet i clamp(8px, 14cqw, 19px), vilket blir 8 px på varje kort bordsläget ritar.', pris: 'Under K26:s golv på 12 px överallt. Kontrasten är god (ljust på kortets mörka grund), men det spelar ingen roll i 8 px.' },
+  { id: 'c', namn: 'C · Bildtext på platta', rek: true, regel: '#771:s bildtext, i bordsläget på en egen platta: 12 px, filtens krita (#f3e9d6) på filtens platta (--byd-felt-plate, #171a23, ogenomskinlig) med filtkantens hårlinje, 2 px under högens handtag och högst 10 em bred. Kortet bär bara sin grund. Står på den sida av handtaget som vetter bort från kortet, så att den på en vänd filt (plats B) inte hamnar på kortet. Ritas bara medan kortets tillstånd har ett namn i sig, precis som på TV:n.', pris: 'Namnet står helt upp till 10 em («Faster Than Your O…» är lekens enda som kapas) och alltid i 12 px, oberoende av hur litet kortet ritas. Priset är 16 px mer filt under handtaget: där högar redan står tätt (de extra högarna vid åtta platser, och Fynd som verktyget lagt i Framför A:s ruta) krockar bildtexten med grannens kort eller handtag. Kasthög är fri vid fyra platser på alla ytor.' },
+  { id: 'd', namn: 'D · 12 px på kortet', regel: 'Namnet står kvar på kortet men i 12 px (K26:s golv) i stället för 8, med tillståndets egen ellips. Sidmarginalen är 3 px i stället för 6 %, så att så mycket som möjligt ryms. Ingenting nytt på filten.', pris: 'Ingen ny yta och inga nya krockar — men kortet är 44–65 px brett vid fyra platser och 26–40 px vid åtta, så det som syns är «Faste…», «Snak…» och vid åtta platser en enda bokstav: «F…», «D…», «S…». Bara «Duel» står helt, och bara vid fyra platser.' },
+]
+const YTOR = [
+  { id: 'online-1280', namn: '/online 1280 × 800' }, { id: 'online-1920', namn: '/online 1920 × 1080' },
+  { id: 'bord-1280', namn: 'Bordets skärm 1280 × 800' }, { id: 'bord-1920', namn: 'Bordets skärm 1920 × 1080' },
+  { id: 'vriden-1280', namn: '/online 1280, plats B (vänd filt)' },
+]
+const LAGEN = [{ id: 'pending', namn: 'Renderas' }, { id: 'failed', namn: 'Förlorad' }, { id: 'ready', namn: 'Bilden har kommit' }]
+const ZONNAMN = { discard: 'Kasthög', p1: 'Belöningar', p2: 'Fynd', draw: 'Kortlek' }
+
+// WCAG 2.x
+const lum = (hex) => { const n = parseInt(hex.slice(1), 16); const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }; return 0.2126 * f(n >> 16) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255) }
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+const FILT = ['#2e6b46', '#1f4a30', '#173a26']
+const KONTRAST = {
+  nu: [['#eef2fb', '#232a3a', 'namnet på kortets grund (renderas)'], ['#eef2fb', '#2e3750', 'namnet på svepets ljusaste'], ['#ffe4ea', '#3d2632', 'namnet på förlorat kort']],
+  c: [['#f3e9d6', '#171a23', 'bildtexten på plattan (renderas)'], ['#f4b9c7', '#171a23', 'bildtexten på plattan (förlorad)'], ...FILT.map((f) => ['#171a23', f, `upplysning: plattan mot filten ${f} — inget krav, plattan bär ingen mening själv (texten mäts mot plattan)`]), ...FILT.map((f) => ['#f3e9d6', f, `jämförelse: krita direkt på filten ${f}`]), ['#c9cfdc', '#2e6b46', 'jämförelse: TV:ns bildtextfärg på filten (form B, #771)']],
+  d: [['#eef2fb', '#232a3a', 'namnet på kortets grund (renderas)'], ['#eef2fb', '#2e3750', 'namnet på svepets ljusaste'], ['#ffe4ea', '#3d2632', 'namnet på förlorat kort']],
+}
+
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'c', yta = q.get('yta') ?? 'online-1280', pl = q.get('platser') ?? '4', st = q.get('lage') ?? 'pending'
+const cell = (vv, yy, pp, ss = 'pending') => window.MATT.find((m) => m.v === vv && m.y === yy && m.p === pp && m.st === ss)
+const knappar = (rot, lista, nu, val, av = () => false) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.disabled = av(x.id)
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const helt = (p) => p.whole || (p.at === 'bildtext' && p.shown.length >= 18)
+const bra = (p) => helt(p) && p.px >= 12 && p.meets.length === 0 && (p.painted ?? 0) >= 4.5
+const fmt = (n) => String(Math.round(n * 100) / 100).replace('.', ',')
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+
+const visa = () => {
+  // Bilderna av förlorad och kommen bild finns för /online 1280 med fyra platser; resten är mätt.
+  if (!cell(v, yta, pl, st)?.f && st !== 'pending') { yta = 'online-1280'; pl = '4' }
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&platser=${pl}&lage=${st}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() }, (y) => !cell(v, y, pl, st)?.f)
+  knappar(document.querySelector('#platser'), [{ id: '4', namn: 'Fyra' }, { id: '8', namn: 'Åtta' }], pl, (x) => { pl = x; visa() }, (p) => !cell(v, yta, p, st)?.f)
+  knappar(document.querySelector('#lagen'), LAGEN, st, (x) => { st = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  const m = cell(v, yta, pl, st)
+  const Y = YTOR.find((y) => y.id === yta).namn
+  const L = LAGEN.find((x) => x.id === st).namn.toLowerCase()
+  document.querySelector('#nara').src = `img/${m.f}-nara.png`
+  document.querySelector('#nara').alt = `${V.namn}, högarna förstorade, ${Y}, ${pl} platser, ${L}`
+  const nimg = document.querySelector('#nara')
+  nimg.onload = () => { nimg.style.width = nimg.naturalWidth * 2 + 'px' }
+  document.querySelector('#naratext').textContent = `Högarna, förstorade 2× pixel för pixel (inga nya pixlar). ${Y} · ${pl} platser · ${L}.`
+  document.querySelector('#hel').src = `img/${m.f}.jpg`
+  document.querySelector('#hel').alt = `${V.namn}, hela skärmen, ${Y}, ${pl} platser, ${L}`
+  document.querySelector('#heltext').textContent = 'Hela skärmen i verklig storlek (skalad till kolumnen).'
+  document.querySelector('#kontrast').innerHTML = KONTRAST[v].map(([ink, bg, vad]) => {
+    const r = ratio(ink, bg)
+    const klass = vad.startsWith('upplysning') ? '' : r >= 4.5 ? 'ok' : 'fel'
+    return `<span class="prov" style="color:${ink};background:${bg};box-shadow:0 0 0 1px #0d0f14">Aa</span><span>${vad}</span><b class="${klass}">${fmt(r)}:1</b>`
+  }).join('')
+  document.querySelector('#hogar').innerHTML = (m.piles.length === 0 ? `<p class="ok" style="font-size:13px">Inget namn ritas någonstans — ${m.left} namn kvar på filten. Bilden bär kortet, och namnet är borta i båda formerna.</p>` : '') +
+    m.piles.map((p) => `<div class="hog"><b>${ZONNAMN[p.z]} — «${esc(p.shown)}»</b>
+      <span>${p.at === 'kort' ? 'på kortet' : 'bildtext under handtaget'} · <span class="${p.px >= 12 ? 'ok' : 'fel'}">${p.px} px</span> · ${helt(p) ? '<span class="ok">helt</span>' : `<span class="fel">${p.shown.replace('…', '').length} av ${p.word.length} tecken</span>`} · kortet ${p.card} px brett</span>
+      <span>målad kontrast <b class="${p.painted >= 4.5 ? 'ok' : 'fel'}">${fmt(p.painted)}:1</b> · ${p.meets.length ? `<span class="fel">krockar med ${esc(p.meets.join(', '))}</span>` : `<span class="ok">fritt</span>, närmast ${esc(p.near?.what ?? '–')} ${fmt(p.near?.px ?? 0)} px bort`}</span></div>`).join('')
+  const t = document.querySelector('#matris')
+  let html = '<thead><tr><th>Yta</th><th>Platser</th>' + VARIANTER.map((x) => `<th>${x.namn}</th>`).join('') + '</tr></thead><tbody>'
+  for (const r of YTOR) for (const p of ['4', '8']) {
+    html += `<tr><td>${r.namn}</td><td>${p}</td>`
+    for (const x of VARIANTER) {
+      const c = cell(x.id, r.id, p)
+      if (!c) { html += '<td>–</td>'; continue }
+      const kast = c.piles.find((h) => h.z === 'discard')
+      const klass = c.piles.every(bra) ? 'alla' : kast && bra(kast) ? 'nagot' : 'inga'
+      const valt = x.id === v && r.id === yta && p === pl && st === 'pending'
+      html += `<td class="${klass}${valt ? ' valt' : ''}"><a href="?v=${x.id}&yta=${r.id}&platser=${p}&lage=pending" data-v="${x.id}" data-y="${r.id}" data-p="${p}">` +
+        c.piles.map((h) => `<small>${ZONNAMN[h.z]}: «${esc(h.shown)}» ${h.px} px${h.meets.length ? ' ✗ ' + esc(h.meets.map((w) => w.replace(/, kort i .*$/, '')).join(', ')) : ''}</small>`).join('') + '</a></td>'
+    }
+    html += '</tr>'
+  }
+  t.innerHTML = html + '</tbody>'
+  t.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; yta = a.dataset.y; pl = a.dataset.p; st = 'pending'; visa(); scrollTo(0, 0) }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>

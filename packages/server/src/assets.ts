@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { croppedMotif, type Element, type Motif, type RuleDoc, type Template } from '@byd/template'
-import { MemoryObjectStore, type ObjectStore } from '@byd/render'
+import { ASSET_PREFIX, MemoryObjectStore, assetFromPostgres, assetKey, type ObjectStore } from '@byd/render'
 import type { Sql } from 'postgres'
 import type { Picture } from '@byd/protocol'
 import type { ProjectRow } from './projects.js'
@@ -22,13 +22,14 @@ export type AssetStore = {
   // False when there is no such asset, or when it has been measured already.
   setMotif(hash: string, motif: Motif): Promise<boolean>
   motifs(hashes: readonly string[]): Promise<Record<string, Motif>>
+  // Which of these the store has, without reading a byte of any of them (#1028).
+  known(hashes: readonly string[]): Promise<Set<string>>
   // A URL a browser may fetch the asset from directly for `ttlSeconds`; null when the bytes
   // have to come through the server.
   link(hash: string, ttlSeconds: number): Promise<string | null>
 }
 
-export const ASSET_PREFIX = 'asset:'
-export const assetKey = (hash: string): string => `assets/${hash}`
+export { ASSET_PREFIX, assetKey }
 export const assetHash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 // A measurement as it arrives from outside (E1). Nothing here can check it against the bytes
 // without decoding them, so what is checked is that it could be of a picture at all: whole
@@ -58,6 +59,9 @@ export class MemoryAssetStore implements AssetStore {
       if (motif) out[hash] = motif
     }
     return out
+  }
+  async known(hashes: readonly string[]): Promise<Set<string>> {
+    return new Set(hashes.filter((hash) => this.types.has(hash)))
   }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {
@@ -98,6 +102,11 @@ export class PostgresAssetStore implements AssetStore {
     const rows = await this.sql<{ hash: string; motif: Motif }[]>`select hash, motif from assets where hash in ${this.sql(hashes as string[])} and motif is not null`
     return Object.fromEntries(rows.map((r) => [r.hash, r.motif]))
   }
+  async known(hashes: readonly string[]): Promise<Set<string>> {
+    if (hashes.length === 0) return new Set()
+    const rows = await this.sql<{ hash: string }[]>`select hash from assets where hash in ${this.sql(hashes as string[])}`
+    return new Set(rows.map((r) => r.hash))
+  }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {
     const hash = assetHash(bytes)
@@ -108,12 +117,9 @@ export class PostgresAssetStore implements AssetStore {
     await this.sql`insert into assets (hash, content_type, size, bytes) values (${hash}, ${contentType}, ${bytes.byteLength}, ${stored}) on conflict (hash) do nothing`
     return hash
   }
-  async get(hash: string): Promise<{ bytes: Uint8Array; contentType: string } | null> {
-    const [row] = await this.sql<{ content_type: string; bytes: Uint8Array | null }[]>`select content_type, bytes from assets where hash = ${hash}`
-    if (!row) return null
-    if (row.bytes) return { bytes: new Uint8Array(row.bytes), contentType: row.content_type }
-    const bytes = this.objects ? await this.objects.get(assetKey(hash)) : null
-    return bytes ? { bytes, contentType: row.content_type } : null
+  // The render worker reads through the same function (#1028), so the two agree on where it is.
+  get(hash: string): Promise<{ bytes: Uint8Array; contentType: string } | null> {
+    return assetFromPostgres(this.sql, this.objects, hash)
   }
   async link(hash: string, ttlSeconds: number): Promise<string | null> {
     if (!this.objects) return null
@@ -122,95 +128,104 @@ export class PostgresAssetStore implements AssetStore {
   }
 }
 
+// Every resolver below hands the compiler `asset:<hash>` as it found it (#1028, DRIFT §4): the
+// page names the picture or the typeface, and the render worker reads the bytes behind the name.
+// A deck of 308 illustrated cards carried them as data URLs, once per card, and was ~100 MB in the
+// app, in Postgres and again in every page on the queue (DRIFT §1). What is asked of the store
+// here is only which of the names it has, in one question and without a byte: a reference to an
+// asset that is gone becomes nothing, so a card loses a picture rather than carrying a reference
+// no worker can follow, exactly as it did when the bytes were read here.
+async function knownRefs(refs: Iterable<unknown>, assets: AssetStore): Promise<Set<string>> {
+  const hashes = new Set<string>()
+  for (const ref of refs) if (isAssetRef(ref)) hashes.add(ref.slice(ASSET_PREFIX.length))
+  const known = await assets.known([...hashes])
+  return new Set([...known].map((hash) => `${ASSET_PREFIX}${hash}`))
+}
+
 // The icon set as the compiler needs it (E4): a symbol taken from the library is one of the
 // project's assets, so `{namn}` resolves the same way a card's image does. A URL that is not an
 // asset reference is left as it stands.
 export async function resolveIcons(icons: Record<string, string>, assets: AssetStore): Promise<Record<string, string>> {
+  const known = await knownRefs(Object.values(icons), assets)
   const out: Record<string, string> = {}
-  for (const [name, url] of Object.entries(icons)) out[name] = isAssetRef(url) ? await dataUrlOf(url.slice(ASSET_PREFIX.length), assets) : url
+  for (const [name, url] of Object.entries(icons)) out[name] = !isAssetRef(url) || known.has(url) ? url : ''
   return out
 }
 
 // The pictures a rulebook holds, as the booklet needs them (#173, B7): every `asset:<hash>` a
-// picture block points at, resolved to the bytes behind it, keyed by the reference the block
-// carries. It is the icon set's treatment for the same reason — the render worker is handed a page
-// and nothing else — and a picture whose bytes are gone is left out of the map, so the booklet is
-// printed without it rather than with an empty frame.
+// picture block points at, keyed by the reference the block carries. It is the icon set's
+// treatment for the same reason, and a picture that is gone is left out of the map, so the
+// booklet is printed without it rather than with an empty frame.
 export async function resolveRuleImages(rules: RuleDoc, assets: AssetStore): Promise<Record<string, string>> {
-  const out: Record<string, string> = {}
-  for (const block of rules.blocks) {
-    if (block.kind !== 'image' || out[block.asset] !== undefined) continue
-    const url = await dataUrlOf(block.asset.slice(ASSET_PREFIX.length), assets)
-    if (url) out[block.asset] = url
-  }
-  return out
+  const known = await knownRefs(rules.blocks.map((b) => (b.kind === 'image' ? b.asset : undefined)), assets)
+  return Object.fromEntries([...known].map((ref) => [ref, ref]))
 }
 
 // The template as the compiler needs it (#320): a picture an image element carries by itself is
-// `asset:<hash>` written into the element, and it is swapped for its bytes exactly as a row's is,
-// with its crop keyed by the URL the element now carries. A face with no such element is handed
-// back as the very object it was. A picture that is gone leaves the frame empty, as a cell would.
+// `asset:<hash>` written into the element, and it is treated exactly as a row's is, with its crop
+// keyed by the reference. A face with no such element is handed back as the very object it was.
+// A picture that is gone leaves the frame empty, as a cell would.
 export async function resolveTemplate(template: Template, assets: AssetStore, pictures: Record<string, Picture> = {}): Promise<{ template: Template; motifs: Record<string, Motif> }> {
-  const urls = new Map<string, string>()
-  let changed = false
-  const walk = async (els: readonly Element[]): Promise<Element[]> => {
-    const out: Element[] = []
+  const refs: string[] = []
+  const gather = (els: readonly Element[]): void => {
     for (const el of els) {
-      if (el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal)) {
-        const hash = el.bind.literal.slice(ASSET_PREFIX.length)
-        if (!urls.has(hash)) urls.set(hash, await dataUrlOf(hash, assets))
-        changed = true
-        out.push({ ...el, bind: { literal: urls.get(hash) ?? '' } })
-      } else if (el.kind === 'if' || el.kind === 'group') out.push({ ...el, children: await walk(el.children) })
-      else out.push(el)
+      if (el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal)) refs.push(el.bind.literal)
+      else if (el.kind === 'if' || el.kind === 'group') gather(el.children)
     }
-    return out
   }
+  for (const face of Object.values(template.faces)) {
+    gather(face.base)
+    for (const v of Object.values(face.variants)) if (v.override) gather(v.override)
+  }
+  const known = await knownRefs(refs, assets)
+  let changed = false
+  const walk = (els: readonly Element[]): Element[] =>
+    els.map((el) => {
+      if (el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal) && !known.has(el.bind.literal)) {
+        changed = true
+        return { ...el, bind: { literal: '' } }
+      }
+      return el.kind === 'if' || el.kind === 'group' ? { ...el, children: walk(el.children) } : el
+    })
   const faces: Template['faces'] = {}
   for (const [id, face] of Object.entries(template.faces)) {
     changed = false
-    const base = await walk(face.base)
+    const base = walk(face.base)
     const variants: typeof face.variants = {}
-    for (const [name, v] of Object.entries(face.variants)) variants[name] = v.override ? { ...v, override: await walk(v.override) } : v
+    for (const [name, v] of Object.entries(face.variants)) variants[name] = v.override ? { ...v, override: walk(v.override) } : v
     faces[id] = changed ? { ...face, base, variants } : face
   }
-  const motifs: Record<string, Motif> = {}
-  for (const [hash, motif] of Object.entries(await assets.motifs([...urls.keys()]))) {
-    const url = urls.get(hash)
-    const crop = pictures[hash]?.crop
-    if (url) motifs[url] = crop ? croppedMotif(motif, crop) : motif
-  }
-  return { template: { ...template, faces }, motifs }
+  return { template: { ...template, faces }, motifs: await motifsOf(known, assets, pictures) }
 }
 
-// The bytes of an asset as a data URL; empty when the asset is gone, so a card loses a picture
-// rather than carrying a broken reference.
-async function dataUrlOf(hash: string, assets: AssetStore): Promise<string> {
-  const got = await assets.get(hash)
-  return got ? `data:${got.contentType};base64,${Buffer.from(got.bytes).toString('base64')}` : ''
+// What is drawn inside each picture (E1), keyed by the reference the page carries, with the
+// designer's own crop where she made one.
+async function motifsOf(refs: ReadonlySet<string>, assets: AssetStore, pictures: Record<string, Picture>): Promise<Record<string, Motif>> {
+  const motifs: Record<string, Motif> = {}
+  for (const [hash, motif] of Object.entries(await assets.motifs([...refs].map((ref) => ref.slice(ASSET_PREFIX.length))))) {
+    // The crop is the designer's own answer to what the measurement was guessing at, so where
+    // there is one it is what the compiler is handed. A picture nothing has measured has no size
+    // to turn shares into pixels against, and is drawn as a file, exactly as it was before.
+    const crop = pictures[hash]?.crop
+    motifs[`${ASSET_PREFIX}${hash}`] = crop ? croppedMotif(motif, crop) : motif
+  }
+  return motifs
 }
 
 // The fonts as the compiler needs them (B3): a project font that carries a file is handed over
-// with the file inlined, so the compiled page renders from what the version pinned rather than
-// from whatever the machine happens to have. A font that is only a stack is passed as it is.
+// with the file named, so the compiled page renders from what the version pinned rather than from
+// whatever the machine happens to have. A font that is only a stack is passed as it is.
 export async function resolveFonts(fonts: Record<string, { stack: string; asset?: string | undefined }>, assets: AssetStore): Promise<Record<string, { stack: string; src?: string }>> {
+  const known = await knownRefs(Object.values(fonts).map((f) => f.asset), assets)
   const out: Record<string, { stack: string; src?: string }> = {}
-  for (const [name, font] of Object.entries(fonts)) {
-    if (!isAssetRef(font.asset)) {
-      out[name] = { stack: font.stack }
-      continue
-    }
-    const src = await dataUrlOf(font.asset.slice(ASSET_PREFIX.length), assets)
-    out[name] = src ? { stack: font.stack, src } : { stack: font.stack }
-  }
+  for (const [name, font] of Object.entries(fonts)) out[name] = font.asset !== undefined && known.has(font.asset) ? { stack: font.stack, src: font.asset } : { stack: font.stack }
   return out
 }
 
-// The rows as the compiler needs them: every asset reference swapped for a data URL, so the
-// compiled page carries its images and the render worker needs nothing but the page. An asset
-// that is gone leaves the field empty rather than a broken reference on the card.
+// The rows as the compiler needs them: every asset reference the store has kept as it is, and
+// one it has not got emptied, so the field is blank rather than a broken reference on the card.
 //
-// The motifs come back beside the rows rather than on their own, keyed by the URL the rows now
+// The motifs come back beside the rows rather than on their own, keyed by the reference the rows
 // carry (E1). One walk and one keying: nothing downstream can disagree about which measurement
 // belongs to which picture.
 export async function resolveAssets(
@@ -223,29 +238,15 @@ export async function resolveAssets(
   // that one crop reaches every card drawn from the picture without anything visiting a card.
   pictures: Record<string, Picture> = {},
 ): Promise<{ rows: ProjectRow[]; motifs: Record<string, Motif> }> {
-  const urls = new Map<string, string>()
-  const out: ProjectRow[] = []
-  for (const row of rows) {
+  const known = await knownRefs(
+    rows.flatMap((row) => Object.values(row.fields)),
+    assets,
+  )
+  const out = rows.map((row) => {
+    if (!Object.values(row.fields).some((v) => isAssetRef(v) && !known.has(v))) return row
     const fields: ProjectRow['fields'] = {}
-    for (const [k, v] of Object.entries(row.fields)) {
-      if (!isAssetRef(v)) {
-        fields[k] = v
-        continue
-      }
-      const hash = v.slice(ASSET_PREFIX.length)
-      if (!urls.has(hash)) urls.set(hash, await dataUrlOf(hash, assets))
-      fields[k] = urls.get(hash) ?? ''
-    }
-    out.push({ id: row.id, fields })
-  }
-  const motifs: Record<string, Motif> = {}
-  for (const [hash, motif] of Object.entries(await assets.motifs([...urls.keys()]))) {
-    const url = urls.get(hash)
-    // The crop is the designer's own answer to what the measurement was guessing at, so where
-    // there is one it is what the compiler is handed. A picture nothing has measured has no size
-    // to turn shares into pixels against, and is drawn as a file, exactly as it was before.
-    const crop = pictures[hash]?.crop
-    if (url) motifs[url] = crop ? croppedMotif(motif, crop) : motif
-  }
-  return { rows: out, motifs }
+    for (const [k, v] of Object.entries(row.fields)) fields[k] = isAssetRef(v) && !known.has(v) ? '' : v
+    return { id: row.id, fields }
+  })
+  return { rows: out, motifs: await motifsOf(known, assets, pictures) }
 }

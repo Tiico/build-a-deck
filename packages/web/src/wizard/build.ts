@@ -9,9 +9,13 @@ import { recipeWords } from '../editor/fields.js'
 
 // `counters` (C4): what every seat keeps count of, from the start value; one score by default.
 // `frame` and `theme` are «Utseende» (L57, #633): where things stand, and how the card feels.
-export type WizardState = { name: string; players: number; fields: Field[]; frame: string; theme: string; rows: Record<string, string>[]; counters?: { name: string; start: number }[] }
+// `themePressed` is whether the designer has pressed the theme — its tile, or «Visa kortet i …» on
+// the card (#687) — and not only kept the preselection: the press is the act that lets the
+// catalogue be asked (L27), so a draft that carries it asks again when it comes back.
+export type WizardState = { name: string; players: number; fields: Field[]; frame: string; theme: string; themePressed?: boolean; rows: Record<string, string>[]; counters?: { name: string; start: number }[] }
 
-// The theme a guided start begins from until another is pressed: the first in the gallery.
+// The theme a guided start begins from until another is pressed: the first in the gallery, the
+// preselection (#687) — the game's theme whether or not anyone presses it.
 export const DEFAULT_THEME: Theme = THEMES[0] as Theme
 export const themeOfState = (state: Pick<WizardState, 'theme'>): Theme => THEMES.find((th) => th.id === state.theme) ?? DEFAULT_THEME
 
@@ -56,8 +60,11 @@ export function buildProject(state: WizardState, t: T = swedish, files: ThemeFil
   })
   const framed: ProjectDoc = {
     name: state.name.trim(),
-    template: { faces: { front: frame.front(state.fields), back: frame.back } },
+    template: { faces: { front: frame.front(state.fields, t), back: frame.back(t) } },
     rows,
+    // The table shows the columns in the order the fields were listed (#732, L4, L44), and not the
+    // order the frame happens to draw them in, face by face — the picture first and the cost last.
+    columns: state.fields.map(columnOf),
     icons: {},
     setup: tableOf(state, t),
   }

@@ -136,6 +136,21 @@ describe('the pointer decides where a drop lands (K2, K14)', () => {
     expect(landedIn(dropIntents(v, grabbedAtItsCorner(v, loose, at), 'table'))).toEqual(['hand:A'])
   })
 
+  // The top of a pile let go inside an area is a card in that area (K2, #680), and not a card on
+  // the floor that only happens to lie over it: it went as a `split` with no `to`, so the label,
+  // the keyboard's count and the phone's «Ytorna» all said the floor. It lies where a loose card
+  // held by its middle and let go at the same point lies, and on top of the area, as that one does.
+  it('the top of a pile let go inside an area goes into that area, where a loose card let go there lies', () => {
+    const draw = geometryOf(v, 'draw')
+    const area = geometryOf(v, 'mine:A')
+    const at = middleOf(area)
+    const [split] = dropIntents(v, { target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: draw.x, y: draw.y }, at, origin: {} }, 'table')
+    const [move] = dropIntents(v, grabbedAtItsMiddle(v, loose, at), 'table')
+    expect(move).toMatchObject({ v: 'move', to: 'mine:A' })
+    const { x, y } = move as { x: number; y: number }
+    expect(split).toEqual({ v: 'split', pile: 'draw', at: 1, to: 'mine:A', x, y })
+  })
+
   it('the top of a pile is decided by the same point and answers the same at all four rims', () => {
     const draw = geometryOf(v, 'draw')
     const fromDraw = (at: Point): Drag => ({ target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: draw.x, y: draw.y }, at, origin: {} })
@@ -271,7 +286,7 @@ describe.each<TableMode>(['table', 'tv'])('the fan you see is the hand you drop 
       expect(inside(strip, at)).toBe(true)
       expect(inside(fan, at)).toBe(false)
       expect(looseLandsIn(at)).toEqual([v.floor])
-      expect(topLandsIn(at)).toEqual(['the floor'])
+      expect(topLandsIn(at)).toEqual([v.floor])
     }
   })
 
@@ -383,8 +398,8 @@ describe.each<TableMode>(['table', 'tv'])('the frame is not a place for a card, 
     // answers are the loose card's, said on the table rather than in the floor (#223). Cornered at
     // the pointer, as this was, the top of a pile came to rest half a card off from a loose one
     // let go of at the very same point.
-    expect(topAt(outLeft)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x + edge.left, y: felt.y + centred.y }])
-    expect(topAt(farBottomRight)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x + edge.right, y: felt.y + edge.bottom }])
+    expect(topAt(outLeft)).toEqual([{ v: 'split', pile: 'draw', at: 1, to: v.floor, x: edge.left, y: centred.y }])
+    expect(topAt(farBottomRight)).toEqual([{ v: 'split', pile: 'draw', at: 1, to: v.floor, x: edge.right, y: edge.bottom }])
   })
 
   it('a whole pile let go over the frame comes to rest whole on the felt', () => {
@@ -433,13 +448,16 @@ describe('a card keeps the point it was picked up by (#223, K14)', () => {
     const grab = { x: corner.x + CARD_MM.w / 3, y: corner.y + CARD_MM.h / 3 }
     const at = { x: -100, y: -150 }
     const [intent] = dropIntents(v, { target: { kind: 'pileTop', pile: 'discard' }, ids: [], grab, at, origin: {} }, 'table')
-    expect(intent).toMatchObject({ v: 'split', pile: 'discard', at: 1 })
+    expect(intent).toMatchObject({ v: 'split', pile: 'discard', at: 1, to: v.floor })
+    // In the floor's own coordinates, as a `move` names a place (#680).
+    const floor = geometryOf(v, v.floor)
     const landed = intent as Extract<Intent, { v: 'split' }>
-    expect({ x: landed.x, y: landed.y }).toEqual({ x: corner.x + (at.x - grab.x), y: corner.y + (at.y - grab.y) })
+    const on = { x: floor.x + landed.x!, y: floor.y + landed.y! }
+    expect(on).toEqual({ x: corner.x + (at.x - grab.x), y: corner.y + (at.y - grab.y) })
     // Said the other way round, which is the sentence the beställare wrote: the pointer stands the
     // same distance into the card after the drop as it did before it.
-    expect(at.x - landed.x!).toBeCloseTo(CARD_MM.w / 3, 9)
-    expect(at.y - landed.y!).toBeCloseTo(CARD_MM.h / 3, 9)
+    expect(at.x - on.x).toBeCloseTo(CARD_MM.w / 3, 9)
+    expect(at.y - on.y).toBeCloseTo(CARD_MM.h / 3, 9)
   })
 
   it('still corners the card at the pointer when the pointer is all the grip there was', () => {
@@ -448,7 +466,8 @@ describe('a card keeps the point it was picked up by (#223, K14)', () => {
     const grab = topCorner(v, 'discard')
     const at = { x: -100, y: -150 }
     const [intent] = dropIntents(v, { target: { kind: 'pileTop', pile: 'discard' }, ids: [], grab, at, origin: {} }, 'table')
-    expect(intent).toMatchObject({ v: 'split', pile: 'discard', at: 1, x: at.x, y: at.y })
+    const floor = geometryOf(v, v.floor)
+    expect(intent).toMatchObject({ v: 'split', pile: 'discard', at: 1, to: v.floor, x: at.x - floor.x, y: at.y - floor.y })
   })
 
   it('answers a pile’s top exactly as it answers a loose card given the same grip', () => {
@@ -463,10 +482,8 @@ describe('a card keeps the point it was picked up by (#223, K14)', () => {
     const [move] = dropIntents(v, { target: { kind: 'card', id: faceUp }, ids: [faceUp], grab: { x: loose.x + grip.x, y: loose.y + grip.y }, at, origin: { [faceUp]: loose } }, 'table')
     const s = split as Extract<Intent, { v: 'split' }>
     const m = move as Extract<Intent, { v: 'move' }>
-    // `move` names a place in its zone and `split` one on the table, so the floor's own corner is
-    // what makes the two readings comparable at all.
-    const floor = v.zones.find((z) => z.id === v.floor)!.geometry
-    expect({ x: s.x, y: s.y }).toEqual({ x: floor.x + m.x!, y: floor.y + m.y! })
+    // Both name the zone and a place in it (#680), so the two answers are the same words.
+    expect({ to: s.to, x: s.x, y: s.y }).toEqual({ to: m.to, x: m.x, y: m.y })
   })
 })
 

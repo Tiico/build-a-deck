@@ -260,25 +260,64 @@ describe('en ny hög föds på ledig filt (#443, K2)', () => {
   })
   const withPile = (setup: Setup, id: string, at: Geometry): Setup => ({ ...setup, zones: [...setup.zones, { id, kind: 'pile', name: id, visibility: 'all', geometry: at }] })
 
-  it('lägger den där panelen alltid har lagt den, så länge den kortryggen är ledig', () => {
-    expect(newPileSpot(fullTable(2))).toEqual({ x: 0, y: 150, w: 0, h: 0, rot: 0 })
-  })
+  // Högens handtag hänger under kortet i bordsläget (K14), och med #789 även högens namn under
+  // handtaget. Vid 1280 × 800 med fyra platser — det vanligaste spelfallet — är det 52 px handtag
+  // och 16 px bildtext, omkring 97 mm i filtens skala där (#881). Det bandet ska vara den nya
+  // högens eget: inte grannens kort, inte grannens namn och inte ytan framför en spelare.
+  //
+  // #443 lovade att den första högen hamnar på `(0, 150)`. Det löftet och ett handtag som är fritt
+  // går inte att hålla samtidigt — mellan den punktens kortkant och ytan framför den södra platsen
+  // är det 36 mm — och beställaren valde handtaget (#881, A med 97 mm).
+  const BAND_MM = 97
+  const room = (g: Geometry): Geometry => ({ ...cardBack(g), h: CARD.h + BAND_MM })
+  const roomOf = (z: Setup['zones'][number]): Geometry => (z.kind === 'pile' ? room(z.geometry) : z.geometry)
+  const bandClears = (setup: Setup, at: Geometry) =>
+    setup.zones.filter((z) => z.id !== setup.floor && sharesArea(roomOf(z), room(at))).map((z) => z.id)
 
-  it('lägger den första på sin gamla punkt och den andra fri från den, vid varje platsantal bordet rymmer', () => {
+  it('lägger den första och den andra med handtagets band fritt, vid varje platsantal bordet rymmer', () => {
     for (let players = 2; players <= MAX_PLAYERS; players++) {
       const setup = fullTable(players)
       const first = newPileSpot(setup)
-      // Den första högen krockar med ingenting vid något platsantal, så inget recepbord ritas om.
-      expect({ players, at: first }).toEqual({ players, at: { x: 0, y: 150, w: 0, h: 0, rot: 0 } })
-      const second = newPileSpot(withPile(setup, 'hog-1', first!))
       // Icke-vakuitet: det finns ett svar att pröva. `null` här vore «ingen ledig filt», och
       // raderna nedan skulle då bli gröna av att ingenting mättes.
+      expect({ players, found: first !== null }).toEqual({ players, found: true })
+      expect({ players, over: bandClears(setup, first!) }).toEqual({ players, over: [] })
+      const one = withPile(setup, 'hog-1', first!)
+      const second = newPileSpot(one)
       expect({ players, found: second !== null }).toEqual({ players, found: true })
-      expect({ players, ...holdsAndClears(withPile(setup, 'hog-1', first!), second!) }).toEqual({ players, inside: true, over: [] })
+      expect({ players, ...holdsAndClears(one, second!), band: bandClears(one, second!) }).toEqual({ players, inside: true, over: [], band: [] })
       // Och punkten är hela millimetrar, som allt annat bordet bär. Kortryggen är 63 bred kring
       // en mittpunkt, så en ruta ur en sökning i hela millimetrar skulle ge en halv — och att
       // avrunda den hade skjutit kortryggen ut ur den ruta regeln just friade.
-      expect({ players, whole: [Number.isInteger(second!.x), Number.isInteger(second!.y)] }).toEqual({ players, whole: [true, true] })
+      for (const at of [first!, second!]) expect({ players, whole: [Number.isInteger(at.x), Number.isInteger(at.y)] }).toEqual({ players, whole: [true, true] })
+    }
+  })
+
+  // Var de två första hamnar på receptets bord, de punkter beslutet togs på (#881): ute vid sidan
+  // vid fyra platser, och vid åtta — där ytan framför den södra platsen ligger längre ut — under
+  // den gamla punkten.
+  const recipeTable = (players: number): Setup => openingSetup({ players, counters: [{ name: 'Poäng', start: 0 }] })
+  const firstTwo = (players: number) => {
+    const setup = recipeTable(players)
+    const first = newPileSpot(setup)!
+    const second = newPileSpot(withPile(setup, 'hog-1', first))!
+    return [first, second].map((g) => [g.x, g.y])
+  }
+  it('lägger de två första vid sidan vid fyra platser och under den gamla punkten vid åtta', () => {
+    expect(firstTwo(4)).toEqual([[-304, 89], [304, 89]])
+    expect(firstTwo(8)).toEqual([[0, 185], [-164, 185]])
+  })
+
+  // Bandet får inte göra filten full i praktiken: åtta tryck på ＋ Hög i rad ska alla få plats på
+  // receptets bord vid varje platsantal, som de fick med det smala bandet.
+  it('rymmer åtta nya högar i rad på receptets bord, vid varje platsantal', () => {
+    for (let players = 2; players <= MAX_PLAYERS; players++) {
+      let setup = recipeTable(players)
+      for (let n = 1; n <= 8; n++) {
+        const at = newPileSpot(setup)
+        expect({ players, n, found: at !== null }).toEqual({ players, n, found: true })
+        setup = withPile(setup, `hog-${n}`, at!)
+      }
     }
   })
 

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn } from '../../support/api.js'
 
 // The wizard's preview in the theme's own faces (#476, beslut 2026-09-27; «Utseende», L57, #633):
@@ -20,13 +20,14 @@ test('loads the pressed theme s faces into the page, and asks for none before', 
   })
   await logIn(page.request)
   await page.goto('/new', { waitUntil: 'load' })
-  await expect(page.getByText('Temats typsnitt hämtas när du väljer tema.')).toBeVisible()
+  // The preselection is not a press (#687): the card offers to show it, and nothing is asked yet.
+  await expect(page.getByRole('button', { name: 'Visa kortet i Skogssaga' })).toBeVisible()
   await page.getByRole('button', { name: 'Minimal' }).click()
   expect(asked).toEqual([])
 
   await page.getByRole('button', { name: 'Välj temat Retro' }).click()
-  const loaded = (family: string) => page.evaluate((name) => [...document.fonts].some((f) => f.family.replace(/"/g, '') === name), family)
-  await expect.poll(() => loaded('Oswald')).toBe(true)
-  await expect.poll(() => loaded('Roboto Condensed')).toBe(true)
-  await expect(page.getByText('Temats typsnitt hämtas när du väljer tema.')).toHaveCount(0)
+  const declared = (family: string) => page.evaluate((name) => [...document.fonts].some((f) => f.family.replace(/"/g, '') === name), family)
+  await expect.poll(() => declared('Oswald')).toBe(true)
+  await expect.poll(() => declared('Roboto Condensed')).toBe(true)
+  await expect(page.getByRole('button', { name: 'Visa kortet i Skogssaga' })).toHaveCount(0)
 })

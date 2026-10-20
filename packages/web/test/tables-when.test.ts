@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { lastMoveWords } from '../src/editor/when.js'
 import { translate, type Lang, type T } from '../src/i18n/index.js'
 
@@ -25,6 +25,10 @@ afterAll(() => {
   else process.env['TZ'] = zoneWas
 })
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 const t = (lang: Lang): T => (key, params) => translate(lang, key, params)
 const sv = t('sv')
 const en = t('en')
@@ -34,15 +38,15 @@ const at = (when: string): string => new Date(`${when}+02:00`).toISOString()
 
 describe('when a table last moved (#228)', () => {
   it('says the day beside the clock', () => {
-    expect(lastMoveWords(at('2026-09-17T09:41:00'), NOW, 'sv', sv)).toBe('senaste drag I dag 09:41')
+    expect(lastMoveWords(at('2026-09-17T09:41:00'), NOW, 'sv', sv)).toBe('senaste drag i dag 09:41')
   })
 
   it('says yesterday for last night, whatever o’clock it is now', () => {
     // The whole point of the reading: ten past midnight yesterday is yesterday, and five minutes
     // either side of a midnight must not be told apart by hours-ago arithmetic.
-    expect(lastMoveWords(at('2026-09-16T00:10:00'), NOW, 'sv', sv)).toBe('senaste drag I går 00:10')
+    expect(lastMoveWords(at('2026-09-16T00:10:00'), NOW, 'sv', sv)).toBe('senaste drag i går 00:10')
     const justAfterMidnight = Date.parse('2026-09-17T00:05:00+02:00')
-    expect(lastMoveWords(at('2026-09-16T23:55:00'), justAfterMidnight, 'sv', sv)).toBe('senaste drag I går 23:55')
+    expect(lastMoveWords(at('2026-09-16T23:55:00'), justAfterMidnight, 'sv', sv)).toBe('senaste drag i går 23:55')
   })
 
   it('names the date once the day has no word of its own', () => {
@@ -50,11 +54,27 @@ describe('when a table last moved (#228)', () => {
   })
 
   it('speaks the reader’s language and not sv-SE', () => {
+    vi.stubGlobal('navigator', { language: 'en-US', languages: ['en-US'] })
     // Which is more than a translated word: the English reader gets the English order of a date
     // and the twelve-hour clock she reads by, from the same instant the Swedish reading above
     // calls `4 september 14:02`.
     expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'en', en)).toBe('last move September 4 02:02 PM')
-    expect(lastMoveWords(at('2026-09-16T00:10:00'), NOW, 'en', en)).toBe('last move Yesterday 12:10 AM')
+    expect(lastMoveWords(at('2026-09-16T00:10:00'), NOW, 'en', en)).toBe('last move yesterday 12:10 AM')
+  })
+
+  // English is one catalogue and many clocks (#755). `en` on its own is the American reading, so
+  // every English reader was told the twelve-hour clock; the browser says which English it is.
+  it('reads the clock and the date the way the reader’s own English does', () => {
+    vi.stubGlobal('navigator', { language: 'en-GB', languages: ['en-GB', 'en'] })
+    expect(lastMoveWords(at('2026-09-17T10:53:00'), NOW, 'en', en)).toBe('last move today 10:53')
+    expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'en', en)).toBe('last move 4 September 14:02')
+  })
+
+  it('keeps to the catalogue’s language when the browser speaks another', () => {
+    vi.stubGlobal('navigator', { language: 'sv-SE', languages: ['sv-SE'] })
+    expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'en', en)).toBe('last move September 4 02:02 PM')
+    vi.stubGlobal('navigator', { language: 'en-GB', languages: ['en-GB'] })
+    expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'sv', sv)).toBe('senaste drag 4 september 14:02')
   })
 
   it('says a table has not moved at all rather than inventing a moment', () => {

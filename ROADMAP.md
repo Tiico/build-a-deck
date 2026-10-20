@@ -1,6 +1,6 @@
 # Roadmap till release
 
-Status: sammanställd 2026-09-06 ur [DESIGN-BESLUT.md](DESIGN-BESLUT.md), [DRIFT.md](DRIFT.md), [TUNN-SKIVA.md](TUNN-SKIVA.md) och git-loggen.
+Status: sammanställd 2026-09-06, betan inlagd 2026-10-18, ur [DESIGN-BESLUT.md](DESIGN-BESLUT.md), [DRIFT.md](DRIFT.md), [TUNN-SKIVA.md](TUNN-SKIVA.md) och git-loggen.
 Det här dokumentet sammanfattar och ordnar besluten; det fattar inga nya.
 Ett beslut ändras i sitt eget dokument, och den här roadmapen följer efter.
 
@@ -80,6 +80,8 @@ Editorn:
 - ✅ Handsolfjädrarna i bordets eget mått: fläkten skalar med filten, inpassningen räknar in händerna och ett kvartsvridet bord passas in i den form det ritas i, mätt i Chromium vid 390, 768 och 1280 i alla fyra konsumenter (K9, C5, #23).
 - ✅ Distansvyns nedre band: bågen kapad vid 30°, kortet kvar i läsbar storlek, steget bottnat på 44 px och en hand bredare än bandet som rullar i sidled; hörnen uppe i en topplist och hela handen som rutnät bakom `Visa alla` (K17, C4, #24, #25).
 - ✅ Observatörens filt möter fönstret hon håller: ett landskapsbord i ett porträttfönster vänds ett kvartsvarv så att dess långsida löper nedför skärmen, luften mellan filt och ram är två tal för två skäl i stället för ett, och namnen går fria från högarnas antalsbrickor — noll namnpar på varandra vid 320 och 390, kortets kortsida 12 → 20 px och 15 → 27 px (C8, L12, K19, #76).
+- ✅ Ett zonnamn står aldrig i en annan zons ruta: #76:s undantag för den smala filten är borta, namnet står bredvid sin zon på varje filt och prövar sedan en rad längre ut, motsatt sida, zonens ändar och sist inuti, och sidan avgörs en gång i filtens inpassade skala — 37 namn i grannens ruta före, noll efter, på varje yta vid fyra och åtta platser (K19, #685).
+- ✅ Platsens skylt på rummets TV utan räknare, på en fri plats: skylten säger bokstav, namn och hand, räknarens tal står på platsens mark, skylten placeras i #685:s ordning och blir hellre en bricka med platsens mark än kapas — ren vid 1280 och 1920 med fyra och åtta platser, också 15 % bredare, med kortet orört (K19, K26, #683).
 - ✅ Distansvyns filt får fönstret den står i: en sidoplats vänds inte i ett fönster som redan ligger rätt, luften kring träet är 12 px i stället för 44, handen står som en lodrät lista i en kolumn vid fönstrets inline-slut i ett liggande fönster, och den egna fläkten på filten viks ihop till sin bricka — kortets kortsida 31 → 46 px vid 1280 × 800 och 49 → 62 vid 1920 × 1080, vid varje plats och varje handstorlek, med det stående fönstrets band orört (K9, K17, C5, C8, #77).
 - ✅ Filten mot ramens yta i stället för mot dess kortare sida: två femtedelar av ramen, minst 44 px luft, en enda regel för `/online`, `/table`, TV:n och Bord-flikens miniatyrer (K9, K17, #24).
 - ✅ Ett grepp är ett steg tillbaka: en dragning och ett ord skrivet i en cell är ett Ctrl+Z var, och trafiken på tråden är oförändrad (L14, #35).
@@ -102,6 +104,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Kamera i TV-läge: bordet ramar in det som är i spel och glider med, tillfällig zoom kring pekaren med återgång (C5).
 - ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
 - ✅ Fel-, tom- och anslutningslägen som en familj: nio lägen med gemensam modell och en form per route, initial timeout på anslutningen, tappad och återansluten ovanpå vyn, avvisade drag vid kontrollen, och en egen dokumenttitel per huvudroute (D5).
+- ✅ Sidan säger vad den hämtar innan appen har kommit fram: ruttens eget laddar-besked står i `index.html` och målas efter en halv sekund på ett långsamt mobilnät i stället för efter fem till sju, byter till ruttens dröjer-ord efter fyra sekunder och erbjuder en omladdning efter tjugo; arket står efter `#root` och håller fortfarande appens första bild, och ingen navigering ritar en vit ram (D5, L20, #749).
 - ✅ Räknare och privata zoner på telefonen: en räknartyp `token.counter`, en yta "Framför mig" och en räknarzon per plats från wizarden; telefonen visar räknarna som piller och korten framför sig som en remsa med vänd, ta upp och spela; bordet ritar räknare som brickor (C4).
 - ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ✅ En hög kvadrerar sina kort, och zoner får överlappa med minsta zonen som vinnare, lika stora efter setupens ordning (K1, K2).
@@ -129,12 +132,14 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 - ✅ Bildens källa ramas mot ett mått: bildelementet bär hur stor andel av ramen motivet fyller — filen skrivs aldrig om (E1). Kortväggens «Bildernas mått» och kortets egen avvikelse avvecklades när bilden fick bära sin beskärning (#607).
 - ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).
 - ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).
-- ✅ Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler", läst vid bordet och på telefonen, och tryckt som häfte i A5 genom samma renderare som korten (B7).
+- ✅ Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler", läst vid bordet, på telefonen, hos observatören och i distansläget (#709), och tryckt som häfte i A5 genom samma renderare som korten (B7).
 - ✅ Samredigering: en aktör per projekt med en redigeringslogg, live över `/projects/:id/edit`, med närvaro, roller, inbjudningar och återuppkoppling (D3).
 - ✅ Typsnitt: familjen väljs i mallens egenskapspanel, filen laddas upp som projektets asset och pinnas av versionen, licensen anges bredvid familjen och följer med till trycket, och en familj utan fil är ett varsel i den fysiska kontrollen (B3, E5) — licensfrågan i (I) står kvar, verktyget levererar inga egna fontfiler.
 - ✅ Typsnittskatalogen: hela Google Fonts söks från Template-sidan i ett ark under kortet, där varje träff sätter kortets egen rubrik och dess regeltext i kortets egen grad; den valda familjen kopieras in som projektets egen asset med licensen ifylld, och Google nås bara av designerns webbläsare och bara när väljaren öppnas (L27, #329).
 - ✅ Flerspråkighet i verktyget: en katalog per språk och yta, en språkväljare, och hela editorn, bordet, telefonen, kontot och guiden på svenska eller engelska; mejlen och regelhäftets enda verktygsrubrik följer med, och ett spel som skapas på engelska får engelska zoner, räknare och kolumnnamn (A4).
 - ✅ "Mina spel" med senast spelat, starta bord direkt från kortet och ta bort spel med hela dess historia (G1).
+- ✅ AI-stöd i editorn med designerns egen nyckel hos Anthropic eller OpenAI (2026-10-07, #940): förslag på mall, fält, kort och regeltext, aldrig bild; nyckeln krypterad på kontot och anropet förmedlat av servern; ytan är vald — en samtalspanel i editorn och nyckeln på en egen profilsida (E4). Byggt: profilsidan med nyckeln, valvet och leverantörernas prövning och modellista (#999); panelen med frågor om spelet och strömmade svar genom serverns proxy (#1001); nya kort som förslag, strömmade del för del, på väggen och godtagna som en sammansatt redigering (#1002); ändrade kort med urvalet som kontext, gammalt → nytt på väggen och i Tabell, och «Välj delar…» (#1003); att förfina ett väntande förslag med en följdinstruktion (#1004); mallförslag, en mallsida i elementmodellen med sina nya fält, förhandsvisad på väggen (#1005); kontextens budget, så att en stor lek skickas sammanfattad med fältens värden och ett urval kort (#1007); regeltext som förslag, block i regelbokens eget format placerade vid id och förhandsvisade i Regler-fliken (#1006). Blockerar inte release.
+- ✅ En landningssida på `/` för den som inte är inloggad, som visar konceptet med ett dukat bord och leder vidare till editorns startsida; kodraden står kvar för spelaren (G1, #1009).
 
 ## Fas 3 — Konton, betalning och data
 
@@ -161,9 +166,25 @@ Deployen är pull-baserad och timern är på: att tagga är att deploya.
 - ✅ Händelseschemats `schemaVersion` på varje rad och upcasters vid inläsning; korpusens filer lyfts, aldrig skrivs om (DRIFT §7).
 - 🔶 Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7). Svaret och verktyget finns (#540): spelets egna ord och kortens id byts mot pseudonymer, spelet och utfallen står kvar. Beställaren beslutade 2026-09-29 att stänga #540 utan en första riktig session ur lådan; korpusen får riktiga sessioner först med betan (fas 6).
 - 🔶 Rate limiting mot join- och login-endpointerna (DRIFT §9): lådans egen proxy gör det sedan 2026-09-11, 100 i sekunden med burst 50, räknat på riktiga besökar-IP:n eftersom proxyn litar på Cloudflares vidarebefordrade huvuden. Kvar är att flytta den framför huset, vilket §9 ber om — den här stoppar inget innan det når fibern.
-- 🔶 Tailscale för administration är i drift sedan 2026-09-11; UPS för lådan och beslutet om en extern pulskoll står kvar (DRIFT §10, öppna frågor).
-- 🔶 Minnesbudgeten reviderad och mätt i vila 2026-09-11: taken är render 1,5 GB, Postgres 768 MB, app 512 MB på en låda som delas med ett trettiotal andra containrar, och stacken tar 605 MB av dem när ingen spelar (DRIFT §1). Under last är den oprövad.
+- 🔶 Tailscale för administration är i drift sedan 2026-09-11, och en extern pulskoll mot `/health` beslutades 2026-10-18 inför betan (DRIFT §8); UPS för lådan står kvar (DRIFT §10, öppna frågor).
+- ✅ Minnesbudgeten reviderad och mätt i vila 2026-09-11: taken är render 1,5 GB, Postgres 768 MB, app 512 MB på en låda som delas med ett trettiotal andra containrar, och stacken tar 605 MB av dem när ingen spelar (DRIFT §1). Mätt under last 2026-10-18 med ett upprepbart lasttest (#1012): ett bord med 308 illustrerade kort pressade appen mot sitt tak och tre samtidigt fällde den. Två läsningar av hela leken rättades, och sedan #1028 namnger leken och sidorna sina bilder med hash och renderworkern läser bytesen själv (DRIFT §4): tre bord samtidigt toppar på app 189, render 602 och Postgres 201 MiB, inom dagens tak.
 - 🔶 Dokumenterad återställning från noll: ny låda, `.env`, restore, deploy — skriven som [ops/RUNBOOK.md](ops/RUNBOOK.md); vägen från R2 till den riktiga datavolymen är körd först den dag den behövs.
+
+## Betan — före tryck
+
+Betan kommer före fas 5, inte efter den: startsidan lovar det som finns, «Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.» (L36 reviderad, #743).
+Den kräver varken villkor eller GDPR för gäster, eftersom betans minsta förtroendeyta är beslutad och byggd (I, #757).
+Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samtycke i inbjudan (I, beslutat 2026-10-18).
+
+- ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757); stacken skickar `BYD_CONTACT` till appen sedan 2026-10-18 (#1030), och lådans `.env` behöver raden ifylld.
+- ✅ Säljtexten lovar inte trycket (L36, #743).
+- 🔶 Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade utom två som väntar på beställarens val av prototyp (#695, #699).
+- ✅ Designern läser playtestets svar — enkätsvar och flaggor per bord och version, i Bord-flikens vy «Resultat» (G3, L70, #1010).
+- ✅ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
+- ✅ Ett enkätsvar kommer från deltagarens eget inträde, ett per plats, och ett andra svar ersätter det första (G3, #1021).
+- ✅ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012), och tre bord på 308 kort ryms sedan leken bär hashar i stället för bilder (DRIFT §4, #1028). Det tredje av tre bord som startas samtidigt väntar runt sex minuter på sina texturer; beställaren beslutade 2026-10-18 att mäta det i betan i stället för att bygga bort det.
+- ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).
+- ⬜ En release från main med allt ovan, och tre till fem designers inbjudna med samtyckesfrågan.
 
 ## Fas 5 — Tryck
 
@@ -182,7 +203,7 @@ Byggs sist (H3), och stänger den tunna skivan (H1).
 
 Innan första betalande användaren:
 
-- ⬜ Betabruk med tre till fem designers ur målgruppen (A1), rekryterade med delbar länk (A3), med enkäterna som mått (G3).
+- ⬜ Betabruk med tre till fem designers ur målgruppen (A1), rekryterade med delbar länk (A3), med enkäterna som mått (G3); vad betan kräver står i avsnittet ovan.
 - ⬜ Replay-korpusen innehåller deras sessioner och spelar upp identiskt på varje commit (D4).
 - ⬜ Återställningsprovet har körts mot en riktig backup (DRIFT §5).
 - ✅ Tillgänglighet i verktyget självt på en grundnivå: tangentbord, kontrast, skärmläsarnamn (I). Granskningen 2026-09-29 (#549) fann 84 fynd, och alla är rättade eller beslutade och byggda (#550–#560, #569, #570, #575, #579–#581).
@@ -204,7 +225,7 @@ Från DESIGN-BESLUT I och DRIFT:
 ## Öppna frågor som inte blockerar release
 
 - ~~Anonymisering av replay-korpusen (fas 4).~~ Besvarad 2026-09-28 (#540): se DRIFT §7.
-- UPS och extern pulskoll (fas 4).
+- UPS (fas 4). Den externa pulskollen är besvarad 2026-10-18: ja, inför betan (DRIFT §8).
 - Tillgänglighet utöver grundnivån (fas 6).
 
 ---

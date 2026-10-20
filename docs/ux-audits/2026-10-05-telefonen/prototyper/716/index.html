@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 716 — Telefonen liggande och huvudet vid 320</title>
+<!-- PROTOTYP, #716. Kastas när en variant är vald.
+     Två frågor: (1) hur telefonen visar handen i liggande läge, (2) hur huvudet håller en rad vid 320.
+     Varje bild är den byggda appen (/play, fyra platser, «Di» vid plats A), tagen med Playwright mot
+     servern ur grenen proto/716-telefonen-liggande. Varianterna är appens egen player.css plus
+     några rader CSS ovanpå (packages/e2e/test/zz-proto-716.spec.ts på grenen); ⋯-knappen i H2 är
+     instoppad i bilden och har ingen meny bakom sig. Korten saknar textur — renderaren körs inte i
+     den här stacken — så de säger «Kortet renderas…»; det är måtten som är frågan.
+     ?fraga=liggande|huvud&v=<variant>&w=<storlek> -->
+<style>
+  :root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1100px; margin: 0 0 12px; color: var(--amber); font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; }
+  .rubrik p { margin: 0 0 4px; }
+  .anteckning { max-width: 1100px; margin: 8px 0 12px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12.5px; line-height: 1.55; }
+  .anteckning b { color: #ffe9b8; } .anteckning .plus { color: #b7dca0; } .anteckning .minus { color: #f0a58a; }
+  .matt { color: var(--quiet); font-size: 12px; margin: 0 0 8px; }
+  .matt b { color: var(--ink); }
+  .bild { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .bild figure { margin: 0; }
+  .bild figcaption { color: var(--quiet); font-size: 12px; margin-bottom: 4px; }
+  .bild img { display: block; outline: 1px dashed #4a4230; }
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+  .vaxlare button[aria-pressed='true'] { background: #fff4d6; color: #1f1b12; box-shadow: inset 0 0 0 2px #1f1b12; }
+  .vaxlare .namn { padding: 0 10px; min-width: 260px; text-align: center; font-size: 12.5px; }
+  .vaxlare .skilj { width: 1px; height: 24px; background: rgba(31,27,18,.3); margin: 0 4px; }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #716 · telefonen.</b> Liggande (844 × 390) är i dag porträttlayouten utsträckt: inget kort i handen syns helt utan rullning, och foten täcker kortens överkant. Vid 320 bryter huvudet till två rader så att «Ut…» står ensamt.</p>
+  <p>Bilderna är den byggda appen. Växla fråga och variant nere i bandet, eller ← → för variant och F för fråga. Båda storlekarna i en fråga visas sida vid sida.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<p class="matt" id="matt"></p>
+<div class="bild" id="bild"></div>
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" data-fraga="liggande">Liggande</button>
+  <button type="button" data-fraga="huvud">Huvudet 320</button>
+  <span class="skilj"></span>
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+</div>
+<script>
+const FRAGOR = {
+  liggande: {
+    storlekar: [['liggande', '844 × 390'], ['liggande-liten', '740 × 360']],
+    varianter: {
+      idag: ['I dag', '<b>I dag.</b> Porträttspalten (580 px) mitt i, räknaren, «Dina kort», högarna och sedan handen — som börjar under foten. Sidan rullar 1 033 px i ett 390 px högt fönster.'],
+      A: ['A — Två spalter', '<b>A — två spalter.</b> Huvudet över båda; räknare och högar i en smal spalt till vänster, handen och dess verb till höger, korten skalade efter höjden. <span class="plus">+ Allt som telefonen visar i stående syns på en skärm, och handen har sin fulla bredd i sin egen spalt.</span> <span class="minus">− Två läsordningar på en telefon; högarna står staplade och smala.</span>'],
+      B: ['B — Handen överst', '<b>B — handen överst.</b> En spalt som i dag men handen direkt under räknaren och högarna under vecket, korten skalade efter höjden. <span class="plus">+ Flest hela kort (5) och närmast dagens telefon; samma ordning som i stående, bara med handen före.</span> <span class="minus">− Högarna (och «Dra 1») kräver rullning — dra ett kort är ett av de vanligaste dragen.</span>'],
+      C: ['C — Verben bredvid', '<b>C — verben bredvid.</b> Foten blir en spalt till höger (Framför mig, Spela…, Regler staplade där tummen är i liggande grepp), högarna en tunn rad, handen tar resten. <span class="plus">+ Dra 1, handen och verben på en skärm; verben där höger tumme är.</span> <span class="minus">− Störst omdisposition: foten har en annan form liggande än stående; korten är något mindre än i A.</span>'],
+    },
+  },
+  huvud: {
+    storlekar: [['huvud-320', '320 × 568, 5 kort'], ['huvud-320-25', '320 × 568, 25 kort']],
+    varianter: {
+      idag: ['I dag', '<b>I dag.</b> «?», «Ångra», «Flagga» och «Ut…» får inte plats bredvid namnet; «Ut…» faller ned på en egen rad och huvudet blir 107 px.'],
+      H1: ['H1 — Ikoner', '<b>H1 — Ångra och Flagga som ikoner</b> under 380 px; namnet står kvar i knappens tillgängliga namn och som title. <span class="plus">+ Alla fyra kontroller kvar, en tryckning bort, en rad (57 px).</span> <span class="minus">− Två ikoner utan ord; flaggan är tydlig, ångra-pilen kräver att man vet.</span>'],
+      H2: ['H2 — ⋯-meny', '<b>H2 — Flagga och Ut… i en ⋯-meny</b> under 380 px; «Ångra» behåller sitt ord. <span class="plus">+ Ångra, det man gör oftast, står kvar med text; en rad (57 px).</span> <span class="minus">− Flagga och Ut… ett tryck längre bort; en meny till att bygga och tangentbordsstyra.</span>'],
+    },
+  },
+}
+const MATT = {"liggande-idag": {"header": 57, "whole": 0, "card": [200, 279], "page": 1033}, "liggande-A": {"header": 49, "whole": 4, "card": [170, 238], "page": 760}, "liggande-B": {"header": 49, "whole": 0, "card": [170, 238], "page": 904}, "liggande-C": {"header": 49, "whole": 4, "card": [139, 194], "page": 804}, "liggande-liten-idag": {"header": 57, "whole": 0, "card": [200, 279], "page": 1033}, "liggande-liten-A": {"header": 49, "whole": 4, "card": [149, 208], "page": 730}, "liggande-liten-B": {"header": 49, "whole": 0, "card": [149, 208], "page": 874}, "liggande-liten-C": {"header": 49, "whole": 4, "card": [117, 164], "page": 780}, "huvud-320-idag": {"header": 107, "whole": 2, "card": [112, 156], "page": 960}, "huvud-320-H1": {"header": 57, "whole": 2, "card": [112, 156], "page": 910}, "huvud-320-H2": {"header": 57, "whole": 2, "card": [112, 156], "page": 910}, "huvud-320-25-idag": {"header": 107, "whole": 2, "card": [112, 156], "page": 960}, "huvud-320-25-H1": {"header": 57, "whole": 2, "card": [112, 156], "page": 910}, "huvud-320-25-H2": {"header": 57, "whole": 2, "card": [112, 156], "page": 910}}
+const q = new URLSearchParams(location.search)
+let fraga = FRAGOR[q.get('fraga')] ? q.get('fraga') : 'liggande'
+let v = q.get('v') ?? (fraga === 'liggande' ? 'A' : 'H1')
+function rita() {
+  const F = FRAGOR[fraga]
+  if (!F.varianter[v]) v = Object.keys(F.varianter)[0]
+  const [namn, text] = F.varianter[v]
+  document.getElementById('namn').textContent = `${Object.keys(F.varianter).indexOf(v) + 1}/${Object.keys(F.varianter).length} · ${namn}`
+  document.getElementById('anteckning').innerHTML = text
+  document.getElementById('matt').innerHTML = F.storlekar.map(([k, s]) => { const m = MATT[`${k}-${v}`]; return m ? `${s}: <b>${m.whole}</b> hela kort i handen utan rullning, kort ${m.card[0]} × ${m.card[1]} px, huvudet <b>${m.header} px</b>, sidan ${m.page} px` : '' }).join(' · ')
+  document.getElementById('bild').innerHTML = F.storlekar.map(([k, s]) => `<figure><figcaption>${s}</figcaption><img src="bilder/${k}-${v}.png" alt="${namn}, ${s}"></figure>`).join('')
+  document.querySelectorAll('[data-fraga]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.fraga === fraga)))
+  history.replaceState(null, '', `?fraga=${fraga}&v=${v}`)
+}
+const steg = (d) => { const k = Object.keys(FRAGOR[fraga].varianter); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+document.querySelectorAll('[data-fraga]').forEach((b) => (b.onclick = () => { fraga = b.dataset.fraga; v = fraga === 'liggande' ? 'A' : 'H1'; rita() }))
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1); if (e.key.toLowerCase() === 'f') { fraga = fraga === 'liggande' ? 'huvud' : 'liggande'; rita() } })
+rita()
+</script>
+</body>
+</html>

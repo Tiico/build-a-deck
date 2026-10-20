@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
-import { ROW, helpAnchor, helpPlacement, type HelpPlacement } from './help-place.js'
+import { ROW, explainsOf, helpAnchor, helpPlacement, type HelpPlacement } from './help-place.js'
 import '../help-box.css'
 
 // The inside of the help pattern: the box itself, and the stylesheet that draws it (L32, #303).
@@ -92,7 +92,7 @@ function useFixedPlacement(ask: RefObject<HTMLButtonElement | null>, box: RefObj
       const anchor = helpAnchor({ x: r.left, y: r.top, w: r.width, h: r.height }, row && { x: row.left, y: row.top, w: row.width, h: row.height })
       // `scrollHeight` and not the drawn height: the drawn one is whatever the last placement left
       // it at, and measuring that would let the box ratchet itself smaller on every scroll.
-      setPlace(helpPlacement(anchor, { w: b.offsetWidth, h: b.scrollHeight }, { w: window.innerWidth, h: window.innerHeight }))
+      setPlace(helpPlacement(anchor, { w: b.offsetWidth, h: b.scrollHeight }, { w: window.innerWidth, h: window.innerHeight }, explainsOf(a.closest(ROW))))
     }
     measure()
     window.addEventListener('resize', measure)

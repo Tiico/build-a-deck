@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { suggestFieldKey, type FieldKind } from './fields.js'
+import { clashOf, suggestFieldKey, type FieldKind } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useT } from '../i18n/index.js'
 
 export type NewFieldProps = {
   // Every name the table already answers to: the fields, `antal`, and the card's own `id`. A
-  // name that is one of them is not a new column but a collision, and is said so.
+  // name that is one of them, in any capitals, is not a new column but a collision, and is said so.
   taken: readonly string[]
   // Whether a column made here would have anywhere to be kept (#32). The head's door asks the
   // deck, because a column is a key on every card and a deck with no cards keeps nothing; the
@@ -36,7 +36,8 @@ export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewF
     // still a version and still a step to take back, and that is the silence #32 forbids.
     if (!keeps) return setRefused(t('table.field.needsCards'))
     if (field === '') return setRefused(t('table.field.needsName'))
-    if (taken.includes(field)) return setRefused(t('table.field.taken', { field }))
+    const clash = clashOf(field, taken, t)
+    if (clash !== null) return setRefused(t('table.field.taken', { field: clash }))
     onCreate(field)
   }
   // The form hangs under the table's head and is the way to make a column, so a form off the foot

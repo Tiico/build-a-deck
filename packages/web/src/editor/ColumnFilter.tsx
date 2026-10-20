@@ -51,7 +51,7 @@ export function ColumnFilter({ label, values, chosen, onToggle, open, onOpen }: 
             <label key={value} className="byd-column-filter-tick">
               <input type="checkbox" aria-label={value} checked={chosen.includes(value)} onChange={() => onToggle(value)} />
               <span>{value}</span>
-              <small>{t('table.filter.cards', { n: count })}</small>
+              <small>{t(count === 1 ? 'table.filter.cards.one' : 'table.filter.cards.other', { n: count })}</small>
             </label>
           ))}
         </Lifted>

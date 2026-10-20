@@ -1213,6 +1213,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -1230,6 +1231,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -1256,7 +1258,8 @@
         "contested": true
       },
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "B": {
       "seq": 26,
@@ -1322,6 +1325,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -1339,6 +1343,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -1362,7 +1367,8 @@
       "rewind": null,
       "undo": null,
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "table": {
       "seq": 26,
@@ -1428,6 +1434,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -1445,6 +1452,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -1466,9 +1474,13 @@
       ],
       "components": [],
       "rewind": null,
-      "undo": null,
+      "undo": {
+        "toSeq": 24,
+        "contested": true
+      },
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "observer": {
       "seq": 26,
@@ -1545,6 +1557,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -1562,6 +1575,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -1716,7 +1730,8 @@
       "rewind": null,
       "undo": null,
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     }
   }
 }

@@ -30,7 +30,7 @@ jobs:
           POSTGRES_PASSWORD: byd
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U byd -d byd"
+          --health-cmd "pg_isready -h 127.0.0.1 -U byd -d byd"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10

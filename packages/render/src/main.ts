@@ -7,7 +7,8 @@ import { runWorker } from './worker.js'
 //   DATABASE_URL    — required
 //   REAP_AFTER_MS   — a job running longer than this goes back to the queue; default 3 min
 //   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ASSETS_BUCKET — outputs go to R2
-//                     (DRIFT §4), the same variables as the app; without them, to Postgres
+//                     (DRIFT §4), the same variables as the app; without them, to Postgres.
+//                     The pictures and typefaces a page names are read from the same place.
 
 const url = process.env['DATABASE_URL']
 if (!url) {
@@ -42,4 +43,5 @@ const stop = async (signal: string) => {
 process.on('SIGTERM', () => void stop('SIGTERM'))
 process.on('SIGINT', () => void stop('SIGINT'))
 
-await runWorker({ store, renderer, until: 'forever', log })
+// The pictures and typefaces a page names by hash are read from where the app put them (#1028).
+await runWorker({ store, renderer, assets: store.assets(), until: 'forever', log })

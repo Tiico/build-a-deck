@@ -10,15 +10,12 @@
 // som saknas efteråt» — och den ställer ett krav kriteriet inte ställde på A: beskedet finns inte
 // på skärmen förrän man tryckt, så det måste *nå* en skärmläsare när det kommer. Därför läses det
 // här som en levande region med fältet pekande på den, och aldrig som en rad som råkar synas.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { createSession, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { atWidth } from './viewport.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

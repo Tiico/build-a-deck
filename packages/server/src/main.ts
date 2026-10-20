@@ -5,8 +5,12 @@ import { MemoryLogStore, type LogStore } from './store.js'
 import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { MemorySurveyStore, type SurveyStore } from './surveys.js'
 import { MemoryAuthStore, mailerFromEnv, type AuthStore } from './auth.js'
+import { corpusFromEnv } from './corpus.js'
 import { MemoryAssetStore, type AssetStore } from './assets.js'
 import { PostgresLogStore } from './store-postgres.js'
+import { randomBytes } from 'node:crypto'
+import { AiKeyVault, MemoryAiKeyStore, masterKeyFrom, type AiKeyStore } from './ai-keys.js'
+import { providersFromEnv } from './ai-providers.js'
 import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore } from '@byd/render/queue'
 
 // Entry point for the container. Configuration is environment only.
@@ -20,9 +24,17 @@ import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore
 //                    web app is served from another port than the API
 //   RESEND_API_KEY, MAIL_FROM — mail through Resend (DRIFT §12); without a key links go to the log
 //   AUTH_BYPASS    — `true` logs in immediately after POST /auth/login; local/test use only
+//   BYD_CORPUS_ACCOUNTS, BYD_OPERATOR — the replay corpus (DRIFT §7, #1011): the accounts that said
+//                    yes in their invitation, and the operator who may read their tables' exports
 //   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ASSETS_BUCKET — rendered textures
 //                    and print files in R2 (DRIFT §4), served through short-lived signed links;
 //                    without them the bytes stay in Postgres and go through this process
+//   AI_KEY_SECRET  — the master key the designers' own AI keys are sealed with (#999, DRIFT §5):
+//                    32 random bytes in base64 (`openssl rand -base64 32`). Kept in the box's
+//                    environment only, never in the database or its backups. Without it, keys in
+//                    Postgres cannot be saved or opened and read as no key; in memory a key for
+//                    this process alone is made, since the keys die with the process anyway
+//   AI_ANTHROPIC_URL, AI_OPENAI_URL — where the providers are; only a test stack sets them
 
 const port = Number(process.env['PORT'] ?? 8080)
 const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
@@ -38,6 +50,7 @@ let projects: ProjectStore
 let surveys: SurveyStore
 let auth: AuthStore
 let assets: AssetStore
+let aiKeys: AiKeyStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -51,6 +64,7 @@ if (databaseUrl) {
   surveys = pg.surveys()
   auth = pg.auth()
   assets = pg.assets(objects)
+  aiKeys = pg.aiKeys()
   closeStore = async () => {
     await pg.close()
     await rq.close()
@@ -63,6 +77,7 @@ if (databaseUrl) {
   surveys = new MemorySurveyStore()
   auth = new MemoryAuthStore()
   assets = new MemoryAssetStore()
+  aiKeys = new MemoryAiKeyStore()
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
@@ -74,8 +89,19 @@ const authBypass = process.env['AUTH_BYPASS'] === 'true'
 // What deploy.sh rolled to (DRIFT §7). Unset outside the box, and then /health says nothing
 // about a release rather than inventing one.
 const release = process.env['BYD_TAG']
+// Where a beta tester turns (#757): set on the box, said in the footers and the login mail, and
+// left out wherever it is unset.
+const contact = process.env['BYD_CONTACT']
 const mailer = mailerFromEnv(process.env)
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}) })
+const master = masterKeyFrom(process.env['AI_KEY_SECRET']) ?? (databaseUrl ? null : randomBytes(32))
+const ai = { vault: new AiKeyVault(aiKeys, master), providers: providersFromEnv(process.env) }
+// Whether keys can be kept, said once at start; never the secret, and never a key (DRIFT §8).
+console.log(JSON.stringify({ msg: 'ai-keys', sealing: master !== null, ...(master === null ? { warning: 'AI_KEY_SECRET is unset or not 32 bytes; AI keys cannot be saved' } : {}) }))
+// Read once: an account taken off the list is shut out at the next start (#1011). The log says how
+// many are on it, so the box can be asked whether a change took; never who.
+const corpus = corpusFromEnv(process.env)
+if (corpus) console.log(JSON.stringify({ msg: 'corpus', accounts: corpus.accounts.length }))
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

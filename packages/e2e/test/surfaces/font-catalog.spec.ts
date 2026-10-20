@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 
 // The suite's editor is read in English (`support/*` logs in with no language of its own), so

@@ -103,3 +103,33 @@ describe('the shape gallery at the floor of 44 (#570)', () => {
     expect(seen.sideways).toBe(0)
   }, 60_000)
 })
+
+// A measure is a half millimetre more often than not — every new element is placed on one — and
+// in Swedish it is written with a comma (#737). «11,5» was clipped to «11,!» in a 54 px field.
+// What is asked is that the digits fit the field, read off the engine on whatever font the
+// machine has, never a width written down from this one.
+describe('a measure fits its field (#737)', () => {
+  it('shows a whole «-11,5» in every number field of the layout section', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
+    try {
+      const shell = read('index.html')
+        .replace('<script type="module" src="/src/main.tsx"></script>', '')
+        .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+        .replace(
+          '<div id="root"></div>',
+          `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${markup()}</div></main></div></div>`,
+        )
+      await page.setContent(shell, { waitUntil: 'load' })
+      const fields = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLInputElement>('.byd-props-f input[type="number"]')].map((input) => {
+          input.value = '-11.5'
+          return { name: input.getAttribute('aria-label'), over: input.scrollWidth - input.clientWidth }
+        }),
+      )
+      expect(fields.length).toBeGreaterThanOrEqual(4)
+      expect(fields.filter((f) => f.over > 0)).toEqual([])
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})

@@ -11,14 +11,12 @@
 // sig till en punkt på handens fläkt, och det som prövas är vad filten då har ritat. Läget är
 // TV:ns och skalan är given, så `flatToTable` avbildar en klientpixel på en bordsmillimeter och
 // jsdoms utelämnade layout inte kan flytta punkten.
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import type { Intent, Snapshot } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { buildScene } from './scene.js'
 
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 afterEach(cleanup)
 
 const FRAME = { w: 1200, h: 900 }

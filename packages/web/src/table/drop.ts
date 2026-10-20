@@ -160,10 +160,14 @@ function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
     // where in that zone it comes to rest is the grip's.
     const was = { x: pile.geometry.x - CARD_MM.w / 2, y: pile.geometry.y - CARD_MM.h / 2 }
     const corner = { x: was.x + d.at.x - d.grab.x, y: was.y + d.at.y - d.grab.y }
-    // On the felt and not past its edge (#66), asked in the zone's own coordinates — which is
-    // where the pointer's own place in it stands, shifted by the grip.
-    const s = keptOnFelt(view, dest.zone, { x: dest.x + corner.x - d.at.x, y: dest.y + corner.y - d.at.y, ...CARD_MM })
-    return [{ v: 'split', pile: pile.id, at: 1, x: corner.x + s.x, y: corner.y + s.y }]
+    // In the zone the pointer is in, as a loose card let go there would be (K2, #680): named by
+    // `to` and placed in that zone's own coordinates — the pointer's own place in it, shifted by
+    // the grip. Sent without a `to`, as this was, the card became a card on the floor that only
+    // lay over the area, and everything that reads a card's zone said the floor. On the felt and
+    // not past its edge (#66).
+    const rel = { x: dest.x + corner.x - d.at.x, y: dest.y + corner.y - d.at.y }
+    const s = keptOnFelt(view, dest.zone, { ...rel, ...CARD_MM })
+    return [{ v: 'split', pile: pile.id, at: 1, to: dest.zone, x: rel.x + s.x, y: rel.y + s.y }]
   }
   const moving = new Set(d.ids)
   const hit = hitAt(view, d.at, moving, null)

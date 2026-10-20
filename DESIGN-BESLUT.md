@@ -166,6 +166,14 @@ En ram är dessutom det enda sättet att säga *vems* ordet är utan att böja n
 
 ---
 
+Reviderat 2026-10-06 (#756, beställarens beslut): **bordets skärm är värdens och talar värdens språk.**
+
+TV:n öppnades från editorn utan språk och följde den webbläsare som visade den; `?lang=` gällde en sidvisning och glömdes vid nästa.
+Editorns länkar till bordet — TV:n, bordsläget, «Spela härifrån», «Titta på» och startsidans «Öppna bordet» — bär nu värdens språk som `?lang=`, och bordets skärm minns ett språk den öppnats med (`rememberTableLang`), så att en omladdning eller nästa bord på samma skärm talar det.
+Det finns ingen språkväljare på filten: språket väljs där värden arbetar och följer med länken.
+Telefonernas väg in, koden och QR:en, bär inget språk; en spelare följer sin egen webbläsare.
+`table-lang.test.tsx` håller länkarna och minnet, och `table-lang.spec.ts` visar en TV som öppnats på svenska tala svenska också utan `?lang=` i en engelsk webbläsare.
+
 ## B. Domänmodellen
 
 ### B1. Full typad komponentmodell (fråga 2)
@@ -247,6 +255,14 @@ Vägen vidare, den dag en riktig historik passerar hundra versioner, är att skr
 Att ta tillbaka en äldre version är en redigering som vilken annan: den blir nästa version när den sparas, och den den kom från står kvar orörd.
 "Jämför med den här i tabellen" öppnar Tabell-fliken hållen mot den versionen: det gamla värdet överstruket i cellen, tillagda och borttagna rader tonade, och de borttagna korten kvar sist så att de går att se alls.
 Revisionsknappen blev editorns första tabbstopp, före fliklistan. Det är avsiktligt: den står där versionen står, och tangentbordstesterna dokumenterar ordningen.
+
+Reviderat 2026-10-06 (#703, beställarens beslut): **en version heter «Version 3» / «version 3» överallt där människor läser, och «v3» där det är trångt.**
+
+Speltestet 2026-10-02 fann tre stavningar av samma begrepp: «rev 3» i huvudet, «Version 3» i historiken och «rev-5» på TV:n, bandet, telefonen och enkäten.
+«rev» är verktygets ord; versionens id (`rev-5`) står kvar i protokollet och loggen men visas aldrig.
+`versionWord` i `i18n/version.ts` är enda vägen från id eller nummer till ord, i tre former: `word` («version 3») inne i en mening, `name` («Version 3») först i en rad, och `short` («v3») i huvudets knapp, bordsradens versionsfält, startsidans kort och exportens filnamn («Skogens herrar v3.zip»; importen känner igen både «v3» och det gamla «rev-3»).
+Slutskärmen talar spelets språk: «Bordet stannade på version 1. Enkäten finns hos varje spelare.», drag räknas som fysiska drag och inte loggrader, och de som satt kallas «vid bordet».
+`version-word.test.ts` håller formerna och läser båda katalogerna efter «rev» med platshållarnas namn bortskalade.
 
 ### B5. Logikgräns: affordances plus deklarativ setup (fråga 5)
 
@@ -341,7 +357,9 @@ Renderaren returnerar block, inte HTML, eftersom samma rendering ska till tre st
 Ytan prototypades i tre former: block bredvid boken, ett fält i stenografi, och sidan själv som redigerare. Valet blev sidan själv: ett stycke öppnas där det står och stängs när det lämnas, så det man skriver alltid är det läsaren möter.
 Fliken "Regler" i editorn är boken. Referenser sätts in ur en lista över vad spelet har. Uppställningsbilden är spelets egna zoner (B5), inte en teckning bredvid dem.
 Reglerna vid bordet, byggt 2026-09-08:
-`GET /sessions/:id/rules` renderar regelboken mot just den version sessionen låstes till vid start, så ett pågående spel aldrig skrivs om under spelarna.
+`GET /sessions/:id/rules` renderar regelboken mot just den version bordet spelar, så ett pågående spel aldrig skrivs om under spelarna av en ändring i editorn.
+Det är startversionen tills «Uppdatera» flyttar låsningen med en `version.change`-rad (C7); då följer boken med, och versionen läses ur loggen och inte ur sessionens startrad, som står kvar som uppspelningens början (#677).
+Versionen bordet spelar står i projektionen, så TV:ns rubrik och varje skärms regelbok byter i samma patch som skriver raden.
 Ytan prototypades i tre former: en lucka från kanten, boken som föremål på bordet, och en fråga som ger de stycken som svarar. Valet blev luckan med frågan överst.
 Luckan finns på både bordets skärm och telefonen, ett tryck bort. Är frågerutan tom står hela boken där, för den som aldrig spelat; skrivs något i den svarar den med de stycken som nämner ordet, under den rubrik de står. En lista är ett stycke: dess steg går inte att dela.
 Sökningen läser den renderade texten, alltså de namn läsaren ser, aldrig id:n bakom dem. Ett spel utan regelbok erbjuder ingenting alls.
@@ -400,6 +418,7 @@ Kartan från fil till block är ett produktbeslut och står därför skriven som
 Ett stycke blir text med **fet** och *kursiv* kvar, `-` och `*` blir lista, `1.` blir numrerad lista.
 Ett citat blir text med markören struken, en tabell blir text med en rad per rad, ett kodblock blir text ordagrant, en länk blir sina egna ord utan adressen, och en avdelare stryks.
 `[[zon:x]]` och `[[kort:y]]` blir referenser, precis som i en bok man skrivit själv.
+*Utökat 2026-10-04 (#708):* `[[Namn]]` blir också en referens, och en tabells celler skiljs med `·` i stället för lodstreck; se «Referenser vid namn och räknare» nedan.
 Regeln bakom kartan är att ingenting försvinner tyst: det som inte kan bli ett block blir vanlig text, och det som ändrar form eller inte kommer med räknas upp i en rapport före importen.
 Rapporten är inte en dialog utan ett band, med boken filen skulle bli under sig i bokens egen läsbredd och `Avbryt` bredvid `Gör boken` (prototyp 8, variant B).
 Adressen stryks därför att boken läses vid bordet, på telefonen och i det tryckta häftet, där ingen adress går att följa.
@@ -542,6 +561,17 @@ Att fälla ut bilden i editorn öppnar alltså inget fält: det är att läsa oc
 `GET /sessions/:id/rules` renderar mot den revision sessionen låstes till vid start, och uppställningen följer med den: ett pågående bord får aldrig en senare utkasts zoner.
 Det som färdas är zonens id och namn, ingenting annat. Var den ligger, vem som ser in i den och vad den fylls med är bordets sak (B6, K15), och regelboken delas ut till varje plats och till den som bara tittar — allt i den är alltså publikt för alla.
 Zonlistan står utanför bokens egen `text` och därmed utanför sökningen: `plainOf` är vad frågerutan läser, och en lista av zonnamn i den hade svarat på varje fråga som råkade nämna en hög.
+
+Referenser vid namn och räknare, byggt 2026-10-04 (#708):
+En fil skriven utanför appen namnger saker som en människa gör, med vad de heter: `[[Kortlek]]`.
+Id:n syns inte i editorn, så `[[zon:draw]]` är en form ingen skriver i en fil, och i speltestet 2026-10-02 kom `[[Kortlek]]` in som text med klamrarna kvar — i boken, vid bordet och på telefonen — utan ett ord i rapporten.
+Importen läser därför `[[Namn]]` mot spelets zon-, kort- och räknarnamn, utan hänsyn till versaler och mellanrum, och skriver referensen med id:t, så regeln fortfarande aldrig håller namnet.
+Zoner går före kort och kort före räknare när samma namn finns hos flera, och av två kort med samma titel namnges det som står först i leken.
+Ett namn spelet inte har blir sina egna ord utan klamrar, eftersom klamrar vid bordet bara är klamrar, och rapporten säger hur många som hittades och hur många som blev text.
+I ett kodblock rörs klamrarna inte, eftersom det som skrevs där är allt det betyder.
+Räknare är den tredje sorten en regel kan namnge, `[[räknare:id]]`, och referenslistan i editorn visar dem med ordet «räknare».
+En räknare fick därför ett `id` i dokumentet: en räknare skriven före #708 har inget och är känd under sitt namn, och behåller det som id första gången den döps om, så att en regel som namnger den står kvar.
+En tabell blir fortfarande text med en rad per rad, men cellerna skiljs med `·` och inte med filens lodstreck, som är ritning; raden ovanför linjalraden är tabellens huvud och blir fet.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
@@ -880,6 +910,15 @@ Varje mätning ovan, och varje grind i `online-felt.test.tsx`, läses därför a
 **13°-lutningen rördes inte.**
 Prissatt för sig kostar den omkring en pixel skala, och `feltScale` är redan lutningsmedveten och nära optimal; att spendera K9:s bord för att köpa pixlar köper inga.
 
+Reviderat 2026-10-06 (#720, beställarens beslut): **bordsläget har samma lins som `/online`, och ett nyp över filten är linsens och aldrig sidans.**
+
+Speltestet 2026-10-02 rullade hjulet över filten på `/table?mode=table` och ingenting hände — ett kort är 48 × 65 px vid 1024, och linsen fanns redan på samma renderare sedan #502.
+Två fingrar isär över filten på en pekskärm förstorade i stället hela sidan tre gånger, och hjälpen och hörnknapparna hamnade utanför bilden.
+Bordsskärmen får därför linsen: hjulet, dubbeltrycket på den tomma filten, en dragning som flyttar ett förstorat bord och hörnets knappar, som på `/online`.
+«Det lutade bordsläget har ingen kamera» står kvar: linsen är ingen kamera, den förstorar bordet om en punkt och följer ingenting.
+Ett nyp över en filt med lins förstorar filten om punkten mellan fingrarna, på båda ytorna, och filten tar gesten (`touch-action: none`), så sidan står kvar; ett nyp någon annanstans zoomar sidan som förut, och sidzoomen spärras inte.
+`table-lens.spec.ts` mäter hjulet i bordsläget och nypet med CDP-touch i bordsläget och på `/online`: linsen går över 150 % och `visualViewport.scale` står på 1 (1,15 utan `touch-action`).
+
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 
 Din egen senaste handling ångras direkt och tyst om ingen hunnit röra samma objekt.
@@ -997,6 +1036,7 @@ Byggt 2026-09-06 (prototypat, variant "knappar i huvudet"):
 Bordsskärmen visar "Sessionen är avslutad", versionen loggen låstes på, en summering och att enkäten finns på telefonerna; bordet kan inte spelas.
 Servern avslutar bord som ingen rört på ett dygn (`IDLE_END_MS`), som bordet, en gång i timmen.
 `GET /sessions/:id` säger version och om sessionen avslutats.
+Ett spel som tas bort tar sina bord med sig (#676): `DELETE /projects/:id` avslutar varje bord som bordet självt gör, så koden slutar släppa in, telefonerna får beskedet och bordsskärmen säger att spelet är borttaget.
 
 ---
 
@@ -1049,15 +1089,47 @@ Byggt 2026-09-08:
 Redigeringarna är en sluten vokabulär av intents som en enda ren funktion applicerar. Editorn kör den på det den håller, aktören på sanningen, och båda får samma dokument.
 En aktör per projekt, med samma ordning som bordets: den måste gå att applicera, den committas i loggen, den appliceras, och alla får veta. En aktör byggs om från den sparade versionen plus de redigeringar som skett sedan; inget i minnet är sanningen.
 Sparandet är fortfarande det som gör en version (B4). Loggen bär svansen mellan sparningar och varje version noterar hur långt den kommit, så två redigerare ser varandras arbete utan att någon behöver spara. Sparkonflikten är därmed borta: aktören är den enda som skriver.
+Det gäller också `PUT /projects/:id` (#768): ett helt dokument skrivet över HTTP, av ett skript eller av en editor vars linje är nere, blir en `restore` i loggen och en version i samma tur av aktörens kö, så att aktören aldrig håller en annan rev än lagret.
+En editor som öppnas på en svans ingen sparat får den sparade versionen bredvid det aktören håller (#764), så att «Osparat» är en jämförelse den kan göra (L9) och «Starta bord» sparar svansen först (L5).
 `/projects/:id/edit` är tråden: dokumentet vid uppkoppling, varje redigering när den landar, vilka som är inne, och varför en redigering avvisades. En avvisad redigerare får dokumentet med avslaget och kan fortsätta från det som är verkligt.
+Varje svar på tråden besvarar bara sin egen fråga, eftersom en redigering och en sparning kan vara på väg samtidigt.
+Ett «saved» namnger redigeraren vars sparning gjorde versionen (`from`, #988), och ett avslag säger vilken av redigerarens förfrågningar det gäller, `to: 'edit'` eller `to: 'save'` (#991).
+En avvisad redigering avslutar alltså aldrig en sparning som är på väg, och en avvisad sparning aldrig något annat än sparningen.
+En förfrågan som inte går att läsa är ingen av dem, och dess avslag namnger ingen.
+Varje redigering bär ett nummer som redigeraren själv gett den (`ask`, #993), och det som besvarar redigeringen bär samma nummer tillbaka: ekot till den som skickade den, eller avslaget med `to: 'edit'`.
+Flera redigeringar kan vara på väg samtidigt, och ett svar tar bara bort den redigering det gäller ur det som väntar, aldrig den bredvid.
+Numret hör till tråden och inte till loggen; loggen bär redigeringen och vem som gjorde den.
+Fälten är tillägg: en sida som laddades före dem läser förbi dem, och ett avslag utan `to` från en server före #991 läses som förut, som sparningens.
+En sida som inte skickar något nummer får inget tillbaka, och en server före #993 som inte ger något nummer tillbaka läses som förut: ekot tas för den äldsta redigeringen som väntar.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
+En redigering som aktören avvisat läggs aldrig tillbaka (#993): editorn tar bort den, bygger om från aktörens dokument och de redigeringar som fortfarande väntar, och säger att ändringen inte gick igenom.
+En sparning eller ett bord som går igenom tar bara bort den notis som stod när formgivaren tryckte, aldrig en som sades medan de var på väg (#996): beskedet om ett avslag som kom under tiden står kvar efter «Sparat».
+Det som blev sparat är aktörens dokument när versionen gjordes, aldrig editorns när sparningen skickades (#994).
+Editorn håller aktörens dokument så som tråden berättat det: överlämningen och sedan varje redigering den sagt landat, egna som andras, i den ordning den sa dem.
+Ett «saved» sägs efter varje redigering som kom med i versionen och före varje som inte gjorde det, så det dokumentet är versionen, vem som än bad om den.
+En redigering skriven medan sparningen var på väg är alltså osparad (#380), en som aktören avvisade på vägen finns inte med, och det egna som inte landat när någon annan sparar är osparat.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
+En redigering som avgör något lagrar svaret i loggen, aldrig frågan (2026-10-05, #894), av samma skäl som bordets slump lagras som resultat (D4).
+Var en ny zon föds (`addZone`) är en regel som ändras med en driftsättning (#443, #480, #881), så platsen väljs en gång när redigeringen avgörs och står i raden som `geometry`; uppspelning lägger zonen där och frågar aldrig regeln igen.
+Editorn avgör mot det formgivaren ser och skickar svaret, och aktören avgör för en avsändare som inte skickade något, innan raden committas.
+En äldre rad utan plats spelas upp efter dagens regel, som förut.
+Redigeringarna är editorns vokabulär och inte bordets slutna intents i `packages/protocol`, så ett tillagt fält i en befintlig redigering är ingen protokollmigrering.
+Platsernas zoner (`addSeatZone`) och receptets uppställning (`setRecipe`) lagrar sitt svar på samma sätt (#895), som `places`: geometrin för varje zon redigeringen flyttade eller lade, filten med (K18), efter id.
+Bara det redigeringen rörde står i svaret, så en rad som landar på ett dokument en medredigerare hunnit ändra tar aldrig tillbaka hennes zoner; en zon raden fann på bordet står kvar där den stod, vad dagens regel än säger om den.
+En sammansatt redigering, `compound`, bär flera redigeringar och tillämpas som en (#1002): en rad i loggen, allt eller inget, ett steg tillbaka och en sak som medredigerarna ser landa.
+Ett godtaget AI-förslag är en sådan (E4).
+Den är editorns vokabulär och inte bordets slutna intents, så den är ingen protokollmigrering.
+Regeltext i ett förslag är `spliceRules` (#1006): block i stället för de block den namnger, eller efter ett, vid id och aldrig vid index, så att den bara rör det den namnger och avvisas när ett av dem saknas.
+Delarna avgörs var för sig mot det dokument delarna före dem lämnade, så två högar som läggs i samma redigering får två platser, och regeln för nya namn (#694) frågas för varje del på samma sätt.
+En sammansatt redigering håller aldrig en annan och är aldrig tom; uppspelning och den levande dörren läser den med samma `applyEdit`.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
 Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
 Ägaren delar spelet och tar bort det. En medredigerare ändrar det. En testledare startar bord och kör speltest utan att röra leken. En betraktare ser projektet ändras på tråden utan att kunna ändra det, och får veta det i huvudet i stället för att varje ändring avvisas.
 Speltestens data — ett bords hela logg (`GET /sessions/:id/export`) och dess enkätsvar — läses av den som får öppna projektets bord som värd, alltså ägare, medredigerare och testledare, och av ingen annan (2026-09-28): loggen bär varje hand, gästernas namn och flaggornas text, och ett bords id står i varje spelares länk. Bordsskärmens värdnyckel räcker inte, eftersom bordet bara ser det publika.
-En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den säger ingenting om spelet förrän den använts, så en vilsen länk berättar inget för en främling. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
+En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
+Reviderat 2026-10-06 (#691, beställarens beslut): medan länken kan följas säger den spelets namn, och inget mer, till inloggningskortet den landar på — «Logga in för att öppna spelet du bjudits in till: …».
+Namnet stod redan i mejlet, och den som har en levande länk kan logga in och öppna hela spelet med den; det som skyddas är att en använd, återkallad eller påhittad länk fortfarande inte berättar något alls.
 Ytan prototypades i tre former: en panel från editorns huvud, ett ark på spelets kort, och de som är inne som dörren. Valet blev det sista: vilka som är inne nu och vilka som får vara med är samma fråga, så en lista svarar på den, med de närvarande överst.
 Ett projekt från före konton tillhör fortfarande ingen och är öppet för alla, som det alltid varit.
 Läsläget, prototypat och beslutat 2026-09-28 (#489, beslut C efter prototyp 35):
@@ -1147,6 +1219,13 @@ Dokumenttiteln sätts på ett ställe, av routen, med lägets överskrivning: `B
 Namnet ligger först eftersom en flik klipps från höger, och titeln är inte ett meddelande: den som behöver ordet "fel" får det i vyn och i live-regionen, inte i fliken.
 En okänd sökväg är en egen route som säger att sidan inte finns; förut föll den igenom till startsidan, så en felstavad länk visade tyst någon annans spel.
 
+Tillägg 2026-10-06 (#675, beslut C): telefonens 404 på `/join` och på rummets adress `/KOD` är inte längre en sida för sig utan formuläret för koden, med koden kvar i fältet och markören i det.
+Meningen är en och densamma för en kod som aldrig funnits och en som gått ut eller roterats, «Koden finns inte eller har gått ut — fråga värden efter den nya.», så att inget avslöjar om en kod en gång funnits.
+Sedan 2026-10-07 (#938) gäller samma mening för ett avslutat bords kod.
+Resten av modellen gäller: fliken säger «Bordet finns inte», och meningen sägs assertivt i appens egen region och inte en andra gång i en egen `alert`; den står vid fältet och fältet pekar på den.
+`/join` utan kod är samma formulär utan besked.
+Sex tecken som kan vara en kod läses som en; en sökväg som inte kan det är fortfarande sidan som inte finns.
+
 Motivering:
 Ett bord på en TV och en telefon i en hand är inte samma yta.
 En enda helsidesmall river ner bordet för att sätta upp det igen när fyra personer tappar nätet i två sekunder; en enda statusremsa går inte att läsa från en soffa, och lämnar vid ett 404 kvar en kuliss av ett rum som inte finns.
@@ -1159,7 +1238,71 @@ Priset är fler formuleringar att hålla i sär: rutterna kan glida isär i ton 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant C — #12 och #7).
 Planen 2, 4, 8 sekunder fick ett snabbt första försök på 500 ms före sig, så att en blink läker innan någon hinner läsa ett besked om den.
 Fristen som gör det där till mer än en avsikt byggdes 2026-09-15: den ligger i `connectionState` för de fem live-rutterna och i `ProjectClient` för editorns egen lina, med samma tal från `DEFAULT_TIMING`.
+Editorns öppning fick tidsgränsen 2026-10-05 (#876): en server som tog emot anropet och aldrig svarade lämnade «Öppnar spelet…» stående för alltid; nu blir den `laddar länge` efter `slowAfterMs` och `nät-/serverfel` efter `connectTimeoutMs`, i editorns befintliga ord.
 Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt I.
+Orden ska stämma med adressen (#753): «saknas» skiljs från «avslutat», så ett bord servern aldrig hört talas om säger «Vi hittar inte bordet» och «Bordet är slut» står bara för ett bord som avslutats med `session.end`.
+Reviderat 2026-10-07 (#938): rumskoden till ett avslutat bord säger ingenting om bordet, utan sägs som en kod som aldrig funnits; att bordet är slut får bara den veta som redan sitter vid det eller tittar på det, i bordets egna ord («Bordet är avslutat»).
+«Bordet är slut» stod bara på `/join` och är därmed borta.
+En adress utan något i sig — `/editor` utan projekt, `/table` utan bord — säger att länken inte pekar på något, i stället för att gissa på ett felskrivet tecken.
+En tittarlänk öppnad på telefonens sida är varken saknad eller stängd: den säger «Du tittar bara» och leder till observatören med samma länk.
+Reviderat 2026-10-05 (#722): **en skärm som ingen rör ger inte upp.**
+TV:n och bordsläget slutade försöka efter planen som alla andra, och ett wifi-hack på en kvarts minut i ett vardagsrum frös det delade bordet tills någon reste sig och tryckte «Försök nu».
+Efter planen försöker de två skärmarna igen var 30:e sekund, utan slut, och direkt när webbläsaren säger att nätet är tillbaka (`online`).
+Beskedet räknar ned till nästa försök utan «av», och «Försök nu» står kvar som genväg.
+Telefoner och editorn behåller planen och överlämnar beslutet till den som håller dem.
+`TableClient` tar det som `keepTryingMs`, och bordets sida sätter det; `reconnect.spec.ts` klipper TV:ns lina förbi planen och ser den komma tillbaka på `online`.
+
+Tillägg 2026-10-06 (#749, beställarens beslut efter prototyp, variant B av fem): **laddar-läget står i sidan innan appen har kommit fram.**
+Speltestet 2026-10-02 öppnade varje rutt på ett långsamt mobilnät och fick en vit sida i fem till sju sekunder, i ljust systemläge, och i mörkt en tom duk som ändå blinkade vit precis innan appen ritade.
+Ingen kunde skilja en långsam sida från en död.
+Nu står D5:s laddar-läge i sidformen i det `index.html` som skeppas, inuti `#root`, som statisk markup och CSS som React ersätter vid sin första ritning: skalet.
+Bygget skriver in det (`src/shell.ts`, `vite.config.ts`); källans `index.html` behåller ett tomt `#root`, som webbsvitens mätningar klistrar in sin egen markup i.
+Det säger ruttens egna ord ur katalogen — «Dukar bordet…» på `/table` i båda lägena och på skärmarna som tittar på bordet, «Hämtar din hand…» på `/play`, «Öppnar spelet…» i editorn och «Hämtar…» överallt annars, också på `/join`, där det ännu inte finns någon hand att hämta, och på en rumskod skriven som adress (#675).
+Efter `slowAfterMs` byter det till ruttens dröjer-rubrik, med en mening som är skalets egen: katalogens ber läsaren trycka «försök igen», och skalet har inget att trycka på.
+Efter 20 sekunder står «Ladda om sidan» under raden.
+Det är en omladdning och avsiktligt så, av samma skäl som för en chunk som inte nådde fram: ingenting står ännu på sidan som en omladdning kan kasta bort.
+Språket väljs med appens egen `detectLang` — adressens `?lang=`, sedan det valda `byd.lang`, sedan webbläsaren — inlinad i dokumentet, och orden skrivs in ur katalogens `status`-del när appen byggs, så skalet och appen kan inte säga samma läge med två formuleringar.
+Utan JavaScript döljs laddar-orden, som annars vore ett löfte ingen håller, och en `<noscript>`-rad på båda språken säger att sidan behöver JavaScript.
+Skalet är mörkt i båda systemlägena, som appens besked.
+
+Övertagandet byter ord och inte bild, eftersom appens första ram på en väntande rutt har samma form: editorns Suspense-reserv är samma besked, och bordet och telefonen visar «Ansluter».
+Förloppet läses som D5:s egen följd — laddar, ansluter, vyn — och inte som tre olika skärmar.
+Därför räknar appens långsamhetsklocka från navigeringens start och inte från monteringen (`status/waitClock.ts`): annars sa ett långsamt nät «det tar längre tid» i skalet, «ansluter» när appen tog över och «det tar längre tid» igen fyra sekunder senare.
+Det gäller ytans första väntan; ett nytt försök som en människa bett om är en ny väntan och räknar från då.
+
+Bordsläget fick samtidigt sin mark under filten: `/table?mode=table` ritade efter «Ansluter» en helvit sida med bara rubrikraden, ungefär 0,7 sekunder på strypt nät, medan filten mätte sin ram.
+Ramen är dold tills den vet sin storlek, och den döljer sin egen mark med sig; samma mark ligger nu också under den.
+
+Uppmätt på den byggda appen med speltestets nät (400 ms latens, 400 kbit/s): första målning 0,5 sekunder på varje rutt mot 5,1–7,3 förut; inga vita ramar från startsidan till editorn, från `/join` till `/play` eller in i bordsläget, där det förut var en per byte; textens kontrast minst 7:1; skalet kostar `index.html` cirka 1,7 kB gzip.
+Bildändringen vid övertagandet är 0–1,1 % i mörkt läge när appen tar över medan beskedet ännu är laddar.
+När det redan dröjer är den 0–4,5 %: appens dröjer-besked har sina två vägar ut, «Försök igen» och hemvägen, där skalet bara har orden — rubriken står kvar och blocket flyttar sig så mycket som knapparna tar.
+Grind: `packages/e2e/test/surfaces/shell.spec.ts`.
+TV:ns rubrik på 26 px, som skalet ärver från sidformen, är en egen fråga (#925).
+
+Tillägg 2026-10-17 (#925, beställarens beslut efter prototyp, variant B av tre): **sidformen och skalet ritas i rummets storlekar på bordets två skärmar.**
+Sidformen ritade märket i 12 px, rubriken i 26 och texten och knapparna i 14 på varje skärm, så allt på TV:ns statussida låg under K26:s golv och texten på hälften av det.
+På TV:n (`/table?mode=tv`) är märket nu 24 px, rubriken 48, texten 32 och knapparna 28 px med 64 px höjd.
+I bordsläget (`/table` i övrigt) får sidan rummets golv: märket 24, rubriken 36, texten 24 och knapparna 24 med 56 px höjd, eftersom den delade skärmen mitt på bordet läses från andra sidan av det.
+Talen är fasta px som resten av rummets krom, så en TV på 1280 och på 1920 säger samma sak lika stort.
+Sidan säger vilken skärm den står på med `data-room-screen`, som bordets sida sätter; alla andra rutter har kvar sidformens storlekar.
+Skalet tar samma storlekar, så övertagandet fortfarande byter ord och inte bild, och läser därför `?mode=tv` och inte bara sökvägen: `/table` är båda skärmarna.
+Kortformen mitt på filten (rubrik 28, text 17) och «Bordet är slut» på TV:n omfattas inte av beslutet.
+De två avvisade varianterna stod i prototypen: A lade allt på golvet 24 och lät bordsläget stå kvar, och C skalade med fönstrets höjd, så samma TV läste olika beroende på vilken upplösning webbläsaren uppgav.
+Prototypen och mätningen står i `docs/ux-audits/2026-10-08-statussidan-tv/prototyper/`.
+Grind: `packages/e2e/test/surfaces/room-status-page.spec.ts`, som läser varje ords beräknade storlek och blockets rektangel i lägena laddar, dröjer, ansluter, nätfel, saknas och stängt på TV:n vid 1280 × 720 och 1920 × 1080 och i bordsläget vid 1280 × 800.
+
+Tillägg 2026-10-17 (#682, beställarens beslut efter prototyp, raden E av sex): **på filten står ett avvisat drag vid släppet.**
+På filten finns ingen knapp att hänga svaret på: kontrollen som avvisades är platsen där handen släppte.
+Där sägs avvisningen nu, i en mörk platta med kant i filtens bärnsten, i 24 px på bordets egna skärmar och 16 px på /online, och plattan tonar bort efter fyra sekunder.
+Den viker undan för allt en spelare läser — kort, högarnas toppar och namn, platsernas namn och antal, brickor, zonernas namn och hörnets knappar — och bryter hellre till två rader än täcker något (`besideDrop`).
+Den mörka fyllningen når bara 2:1 mot den gröna filten, så kanten i filtens bärnsten bär 3:1, som K24:s band: uppmätt 3,1–3,5:1 mot marken och texten 14,4:1, synlig 13–15 ms efter släppet i prototypen.
+Meningen är densamma som live-regionen säger, och plattan är dold för den som redan hört den.
+Avvisningen sägs assertive, som modellen ovan säger; den sades förut polite.
+Ett drag som servern avvisar sägs på samma sätt: filten kastade svaret från `client.send`, på bordet och på /online som delar renderaren, så kortet hoppade tillbaka efter fyra sekunder och bordet sa sedan att det inte hade svarat, vilket inte heller var sant.
+Nu läses svaret, översätts med `refusalText` och sägs vid släppet, och kortet ges tillbaka direkt; ett kort spelat ur handen på /online sägs vid sin punkt.
+Ett drag bordet inte svarat på inom `slowAfterMs` sägs i samma platta, polite som förut.
+Prototypen: `docs/ux-audits/2026-10-17-bordslaget-text-och-kontroller/prototyper/01-bordslaget.html?v=e&k=c`.
+Grindar: `packages/web/test/table-renderer.test.tsx`, `packages/web/test/beside-drop.test.ts` och `packages/e2e/test/table-without-phones.spec.ts`, som mäter att plattan syns inom 300 ms och inte ligger över något en spelare läser.
 
 ---
 
@@ -1273,7 +1416,7 @@ CSV-steget togs bort eftersom det gjorde onboarding beroende av ett externt kalk
 ### E4. Assets: kurerat CC0- och CC-BY-bibliotek för symboler (fråga 23)
 
 Inbyggt sökbart bibliotek med fritt licensierade ikoner och symboler, plus platshållarramar och färgblock för illustrationsytor.
-Ingen inbyggd AI-generering.
+Ingen inbyggd AI-generering av bilder (preciserat 2026-10-07, se nedan: text och struktur får föreslås).
 
 Motivering:
 Prototyper som ser färdiga ut får fel feedback — testare kritiserar konsten och blir artiga om mekaniken.
@@ -1282,6 +1425,223 @@ Fritt licensierat material ger noll rättslig risk vid tryck.
 Följdkrav:
 Licensmetadata per asset måste följa med hela vägen in i tryckunderlaget.
 Kuratering och licensbokföring blir ett löpande arbete.
+
+Preciserat 2026-10-07 av beställaren (#940): **AI får föreslå text och struktur, aldrig bild.**
+Förbudet ovan gällde konsten, och dess motivering gör det fortfarande: en illustration som ser färdig ut drar testarnas blick från mekaniken.
+En mall, ett fält, en kortrad eller ett stycke i regelboken är inte konst utan designerns eget arbetsmaterial, och det är där en designer med en lek på hundratals kort behöver hjälp.
+Hjälpen drivs av användarens egen nyckel hos Anthropic eller OpenAI; tjänsten står aldrig för en token och kör aldrig en modell.
+Nyckeln sparas krypterad på kontot med en huvudnyckel som inte ligger i databasen och därför inte i dess backup (DRIFT §5), visas aldrig igen, och ingår aldrig i en export (G5).
+Servern gör anropet åt användaren och strömmar svaret vidare, så att nyckeln aldrig lämnar servern; den förmedlar men tänker inte.
+Det AI:n svarar är ett förslag i editorns egen elementmodell (L1) och i editorns egna redigeringar, förhandsvisat med den enda renderaren (E2) och skrivet i dokumentet först när designern godtar det — som en redigering, i ett steg, med vanlig historik och ångra (B4, D3).
+
+Följdkrav:
+Modellen skriver aldrig HTML eller CSS, och ett förslag som inte går att tillämpa på dokumentet avvisas innan det når det.
+Det som skickas till leverantören sägs med vanliga ord innan nyckeln sparas.
+Servern loggar aldrig en nyckel, en kontext eller ett svar.
+Hur ytan ser ut prototypas innan den byggs (#940).
+
+Ytan, prototypad 2026-10-07 och vald av beställaren 2026-10-18 (#940): **en samtalspanel bredvid arbetsytan, och nyckeln på en egen profilsida.**
+Tre former prövades i den riktiga editorn med en låtsas-AI: en samtalspanel bredvid ytan (A), riktade handlingar där arbetet redan sker (B), och förslaget lagt som spöken direkt i kortväggen och tabellen (C).
+Valet blev A: ett ställe där designern både frågar om spelet och ber om kort, mallar och ändringar, och där förslaget står i samtalet med «Visa på väggen», «Godta alla», «Välj delar…» och «Kasta», med en rad under för att förfina det.
+Nyckeln sparas, prövas, byts och tas bort på en egen profilsida för den inloggade, inte på «Mina spel»; editorn hänvisar dit när ingen nyckel finns.
+
+Följdkrav:
+Panelen tar bredd från arbetsytan, och vid 1280 px kapade den i prototypen kortväggens verktygsrad; verktygsraden måste ge plats åt panelen utan att något kapas.
+Förslagets kort ritas av den enda renderaren (E2), och den fysiska kontrollen körs på förslaget innan det godtas.
+Svaret strömmar in del för del, så att ett kort syns när det är klart och inte först när hela svaret är det.
+Profilsidan är en ny yta och prototypas innan den byggs.
+
+Profilsidan, prototypad och vald av beställaren 2026-10-18 (#998): **en egen sida i en kolumn.**
+Tre former prövades: en egen sida med AI-nyckel, Språk och Konto under varandra (A), en kontomeny och en sida med avsnittslista (B), och ett ark över «Mina spel» med egen adress (C).
+Valet blev A: kontot har tre saker, och en kolumn är vad tre saker behöver; en avsnittslista vore struktur för inställningar som inte finns.
+Vägen in är ett ord till i startsidans rad, «e-post · Profil · logga ut», och språkväljaren flyttar till sidan.
+Nyckelrutan länkar till den valda leverantörens egen sida där en nyckel skapas — `https://platform.claude.com/settings/keys` för Anthropic och `https://platform.openai.com/api-keys` för OpenAI — öppnad i en ny flik, så att den som saknar en nyckel aldrig behöver leta (beställarens tillägg 2026-10-18).
+
+Byggt 2026-10-18 (#999, PR #1024): valvet, prövningen, modellvalet och profilsidan.
+Ett konto har **en** nyckel, inte en per leverantör: profilsidan visar en nyckel och ett leverantörsval, så att spara en nyckel hos den andra leverantören ersätter den första i stället för att lägga den utom synhåll.
+Nyckeln prövas genom att leverantören ombeds lista sina modeller; det kostar designern ingenting men upptäcker inte ett konto utan kredit förrän första frågan.
+Kontot och leverantören är inbakade i förseglingen, så en rad som flyttas till ett annat konto öppnas för ingen.
+Editorns hänvisning bär spelet med sig, så att «Tillbaka till» spelet är sidans enda fyllda knapp när nyckeln är sparad.
+
+Byggt 2026-10-18 (#1001): första frågan, hela vägen genom panelen, proxyn och leverantören.
+Panelen står bredvid arbetsytan, 380 px bred, och fälls ihop till en flik på 44 px i kanten, med och utan nyckel; hur den lämnades minns läsaren mellan spel.
+I Speltema och Bord, vars ytor är mätta på pixeln (#741, #652, #685), ligger den öppna panelen i stället som ett ark över ytans högra del: ytan behåller flikens 44 px och inget mer, det arket täcker syns igen när det fälls ihop, och Escape fäller ihop det (beställarens beslut 2026-10-18).
+De tre golven gav efter så mycket fliken kräver och inte mer; talen står i respektive beslut.
+Huvudet namnger modellen som profilsidan gör, «Claude Sonnet 5.5», ur samma lista från leverantören.
+Utan nyckel börjar den alltid hopfälld, oavsett hur den lämnades, och öppnad hänvisar den till profilsidan genom editorns egen väg ut, så att osparat arbete frågas om som när «Mina spel» trycks.
+Den finns bara på skrivbordet: 380 px är vad kortväggens krona ger plats åt (L54), och under skrivbordet finns inget rum för den.
+«Skicka» är kantad och inte fylld, trots prototypens bild: huvudets «Uppdatera bordet» är vyns första handling, och L13 tillåter en fylld knapp per vy.
+Medan svaret kommer blir «Skicka» «Avbryt» på samma ställe, och Escape i frågan avbryter; ett avbrutet svar läggs på hos leverantören också, så att det slutar kosta.
+Svaret står i en artig live-region som är upptagen medan det strömmar, så att en skärmläsare läser det helt och inte ord för ord, och det ritas i kortens egen delmängd (L2) som modellen ombeds svara i.
+Modellen ombeds svara på det språk designern skriver på, med verktygets språk som reserv (A4).
+Servern bygger kontexten ur det levande dokumentet, alltså med ändringar som ännu inte sparats, eftersom det är det designern ser; klienten skickar bara frågan, samtalet och språket.
+Svaret går som server-sent events på svaret till samma POST och inte över editorns WebSocket: ett svar är en persons, går åt ett håll och tar slut, medan WebSocketen är spelets delade linje som varje medredigerare hör (D3), och att frågaren lägger på är då att anslutningen stängs, vilket är signalen som måste nå leverantören.
+Taken är två svar åt gången per konto och åtta totalt, och ett svar får ta tre minuter; varje svar håller en anslutning och kontexten i minnet på en låda med ont om det (DRIFT §1).
+Felbeskeden är leverantörens slutna mängd med «avvisat» tillagt, och serverns egna två: att svaret tog för lång tid och att ett svar redan är på väg.
+«Profil» i startsidans rad ritas nu som «logga ut» bredvid den: två vikter i en kort mening hade ingen förklaring läsaren kunde se.
+
+Byggt 2026-10-18 (#1002): nya kort som förslag, strömmade in del för del, visade på väggen och godtagna i ett steg.
+Förslaget är ett zod-schema (`proposal.ts`), och leverantören hålls strikt till JSON-schemat som skrivs ur samma zod-schema, så det modellen hålls till är det svaret läses med.
+Ett förslag är ett objekt av delar, i dag bara `cards`; ändrade kort (#1003), en mallsida med sina fält (#1005) och regelblock (#1006) läggs till bredvid utan att flytta något som finns.
+Ett kort är en lista av fält och värden och inte ett objekt med fälten som nycklar, eftersom ett strikt schema inte kan lämna ett objekts nycklar öppna och fälten är spelets och inte schemats.
+Översättaren gör förslaget till vanliga redigeringar, en `addRow` per kort med nästa lediga id (`nextCardRef`, samma regel som tabellens knapp), och prövar dem på en kopia av spelet med den riktiga `applyEdit`.
+Den avvisar med skäl ett fält spelet inte har, ett bildfält, samma fält två gånger, en ikon eller betydelse spelet inte har, text utanför L2:s fem konstruktioner, ett kort utan `antal`, och ett fält som mallen ritar på just det kortet — i dess variant och under dess villkor — men som lämnats tomt.
+Ett bildfält krävs aldrig och får aldrig skrivas: konsten är designerns egen, och det är den här beslutspunktens förbud.
+Att korten skiljer sig från lekens är modellens sak genom kontexten; översättaren dömer inte om det.
+Förslaget översätts mot spelet som det står varje gång det ritas och igen när det godtas, så att ett kort en medredigerare lägger till under tiden aldrig får sitt id taget.
+Anthropic svarar med ett strikt verktyg vars indata strömmar medan den skrivs (`eager_input_streaming`), och OpenAI med strikt JSON där prosan står i `message` bredvid förslaget eller `null`; modellen väljer själv mellan ord och förslag, och ett svar i ord strömmar som förut.
+Eftersom indatan då inte prövas av leverantören läses varje del med zod-schemat ändå.
+Delarna läses av en egen inkrementell läsare (`json-parts.ts`) som lämnar ett kort när dess klammer stänger och lämnar OpenAI:s prosa medan den växer, i en sida kod där varje del tolkas av `JSON.parse`; de små strömmande läsarna som finns gör det ena eller det andra, inte båda.
+Proxyn skickar `part` för varje del och `done` sist, med `broken` när förslaget kapades innan det var helt, och ett kapat förslag är oanvändbart.
+Taket för ett svar höjdes till 16 000 token så att några dussin kort ryms; ett svar kostar bara det det säger.
+Panelen ritar varje kort med `CardPreview` när det kommer, tre i bredd med sitt namn under, och inget kan godtas förrän förslaget är helt.
+«Visa på väggen» lägger korten bland lekens som spöken med streckad kant och «✦ Förslag» över överkanten; de står i väggens ordning och band men är inte i dokumentet och går inte att välja, och de försvinner när förslaget godtas, kastas eller panelen fälls ihop.
+«Godta alla» är en sammansatt redigering (D3) vars steg tillbaka heter «det godtagna förslaget», och «Kasta» ändrar ingenting.
+Ett förslag som inte går att använda sägs som «Förslaget gick inte att använda», med skälet i en mening som namnger kortet och fältet, att det var AI:ns svar och inte spelet som var fel, och «Försök igen».
+Den fysiska kontrollen körs på förslagets kort med det den enda renderaren mätte, och dess anmärkningar står i förslaget per slag och antal kort; de fäller det aldrig (E5).
+L13: huvudets «Starta/Uppdatera bord» förblir vyns enda fyllda knapp också medan ett förslag väntar, och «Godta alla» är kantad som «Skicka» (#1001).
+Huvudets första handling ska inte byta vikt efter vad som råkar stå i en panel bredvid arbetet, och förslagets tre knappar står i en egen rad där «Godta alla» är den mittersta och inte behöver fyllning för att hittas.
+A2: det finns ännu ingen kvotkod i domänmodellen (abonnemangen står kvar i ROADMAP).
+Godtagna kort är vanliga `addRow` i en sammansatt redigering, så ett tak på kort räknar dem som alla andra den dag det finns.
+«Välj delar…» (#1003) och raden som förfinar ett förslag (#1004) byggs inte här; förslaget hålls som sina delar så att ett urval blir ett filter över samma lista.
+
+Byggt 2026-10-19 (#1003): ändrade kort, urvalet som frågans kontext, gammalt → nytt på väggen och i Tabell, och «Välj delar…».
+Urvalet är det som redan finns, inte ett nytt grepp: kortet som är valt på väggen eller i tabellen, och raderna som är bockade i Tabell — samma markering som tabellens fot och Media arbetar på (#222).
+Det sägs först bland chippen, «valt: Duel» eller «2 markerade», och skickas som id:n som servern slår upp i sin egen kopia av spelet.
+De valda korten skrivs hela, varje kolumn med de tomma sagda som tomma och antalet alltid sagt, så att en fråga om dem gäller kort modellen läser varje fält av vad en stor leks kontext än lämnar ute (#1007).
+De står i frågans eget meddelande under «## Selected cards», före frågan under «## Question», och inte i spelets kontext: kontexten är den stora delen som leverantörerna cachar, och ett urval som byter mellan två frågor får inte flytta den.
+Förslaget har nu `changes` bredvid `cards`: ett kort spelet har, med sitt id, och bara fälten som ändras.
+Det strikta schemat kräver båda listorna, men läsaren tar ett svar utan `changes` som ett som inte ändrar något, så #1002:s form står kvar.
+Översättaren gör ändringarna till vanliga `setCell` i samma sammansatta redigering som de nya korten, och avvisar med skäl ett kort spelet inte har, samma kort två gånger, ett okänt fält eller id:t, ett bildfält, text utanför L2, ett antal som inte är ett helt tal från noll, att tömma ett fält mallen ritar på kortet, och ett värde som bryter kolumnen.
+Att bryta kolumnen är att skriva något annat än ett tal i en kolumn som bara har tal, eller annat än ja och nej i en kolumn av sådana: en kolumn bär ingen typ (L4), men den läses som sina värden, och ett ord i en talkolumn slutar sortera som tal; samma regel gäller nu nya kort.
+En cell som skrivs med det värde den redan har är ingen ändring och visas inte.
+En del av ett förslag är ett nytt kort, ett ändrat kort med alla sina ändrade celler, eller en mall tillsammans med de fält och värden den kräver; modellen bär alla tre, och den tredje fylls av #1005.
+Varje del bär sina redigeringar och ett namn som står still mellan två översättningar, ett nytt kort efter sin plats i förslaget, eftersom id:t det får beror på spelet och på vilka kort före det som lämnades.
+Ett urval är en mängd delar som lämnas, och översättningen med den ger exakt de valda delarnas redigeringar: ett nytt kort som lämnas tar inget id från dem efter det, och en lämnad del som inte går att använda fäller ändå hela förslaget, eftersom det är så det redan visades.
+Ett ändrat kort ritas i panelen med sina nya värden av den enda renderaren och med namn, id och varje ändrad cell som «kostnad: 3 → 2» bredvid; en lång text visar bara biten som ändrades med några ord runt.
+På väggen står det på sin egen plats med de nya värdena, en hel kant i panelens lavendel där ett nytt korts är streckad, «✦ Ändrat» på samma piller, och gammalt → nytt under kortet och utanför det, så att ringen för valt kort och brickan för antal förblir kortets.
+I Tabell visas samma förslag genom tabellens egen jämförelse, gammalt värde överstruket över det nya, men med förslagets ord: «AI-hjälpens förslag: …» och «Dölj förslaget», eftersom «Jämför med version 1» och «Sluta jämföra» inte betyder något för ett förslag.
+Ett kort förslaget ändrar eller lägger till står där som en post med «Ändrat» eller «Förslag» vid sin nyckel och inget att skriva i, tills förslaget är godtaget; varje annat kort skrivs i som vanligt, och tabellen håller fortfarande spelets egna rader, så ingen handling där kan råka skriva in förslaget.
+Panelens knapp säger «Visa i tabellen» när Tabell är öppen och lägger förslaget där i stället för att byta till väggen.
+«Välj delar…» är en länk över förslagets tre knappar och inte en fjärde i deras rad, så att «Godta alla» står kvar i mitten (L13).
+Den sätter en bock vid varje dels namn och flyttar tangentbordet till den första; en lämnad del ritas blek med sina ändringar överstrukna, och väggen visar bara det som skulle godtas.
+Medan valet står säger länkens plats «4 av 5 delar valda», och «Godta valda» tar «Godta alla»s plats, kantad som den; med ett räknetal i knappen bröt raden på engelska vid 380 px.
+Inget valt är inget att godta: knappen är avstängd och tar inget tryck.
+Det godtagna är en sammansatt redigering med ett steg tillbaka som förut, och en bekräftelse före behövs inte (L9): ingenting försvinner som inte ångras med ett tryck.
+Medan ett förslag står på väggen växer väggens mellanrum till 24 px mellan raderna och 16 px mellan korten: pillret når 10 px över ett korts överkant och kanten 6 px runt det, och antalsbrickan på kortet ovanför eller bredvid når 6 px utanför sitt hörn, så vid 12 px möttes de (#1002:s skärmbilder), vid alla väggens sex bredder.
+
+Rättat 2026-10-19 (#1037): urvalet sägs som editorn visar det, och förslaget räknas och namnges som resten av editorn gör.
+Chippen säger det valda kortet och de bockade raderna var för sig, «valt: Duel» och «1 markerat», så att panelen, Tabells fot och raderna säger samma tal.
+Ett enda tal för båda sade «2 markerade» över en fot som sade «1 markerat kort», och båda var sanna om olika saker.
+Ett valt kort som också är bockat sägs en gång, bland de markerade.
+En ändrad rad i Tabells jämförelse väljs och bockas som varje annan rad, med radens enda tabbstopp (#575), så att det valda kortet syns valt också där.
+**Massåtgärderna verkar på en bockad rad som förslaget ändrar**, med spelets egna värden.
+Bocken är lekens markering (L4, #222) och raden är spelets kort, och tabellen håller aldrig förslagets värden, så en massåtgärd kan inte råka skriva in förslaget.
+Förslaget översätts mot spelet som det står (#1002), så en massåtgärd under det är som en medredigerares ändring: «Duplicera» och «Sätt fält» lämnar det användbart med det nya som gammalt, och «Ta bort» gör det oanvändbart med skälet att kortet saknas, vilket ett steg tillbaka tar tillbaka.
+Att hoppa över de ändrade raderna hade gjort fotens tal och knappens tal till två igen, och en bock som syns men inte verkar är värre än en som verkar och kan ångras.
+Ett ändrat fält heter i panelen, under kortet på väggen, i kortets namn och i felbeskeden det som tabellhuvudet kallar det, «Titel» och inte nyckeln `title` (A4, `fieldLabel`).
+Pillret står på kortets överkant och inte över den: tio pixlar in i kortet täckte det titeln vid 90–110 px, och en mall får rita sin titel ända uppe vid kanten.
+Det är 16 px högt och når 16 px över kortet, vilket väggens 24 px mellan raderna rymmer med antalsbrickans 6 px; väggens överkant växer till 16 px medan ett förslag står, så att första radens piller står under bandets rubrik och inte på dess linje.
+Bandens rubriker, innehållsförteckningen och dess hopfällda remsa räknar som foten, «23 kort · 3 föreslagna», och en sökning säger lekens funna kort av lekens och de föreslagna för sig.
+En remsas höjd är gruppens andel av leken, som förslaget ännu inte är en del av.
+
+Byggt 2026-10-19 (#1004): ett väntande förslag förfinas från raden under det.
+Raden är frågans egen och ingen andra: medan ett förslag väntar heter den «Förfina förslaget eller fråga något nytt», står med «Förfina förslaget — «gör dem mildare», «färre kort»…» och knappen heter «Förfina», kantad som «Skicka» (L13), och «förslaget» står först bland chippen för det som skickas.
+Ett förslag väntar när det kommit helt, går att använda mot spelet som det står och varken är godtaget, kastat eller ersatt; det är alltid det senaste sådana.
+Det som skrivs medan ett förslag väntar skickas med förslaget som modellen skrev det och med delarna designern lämnat med «Välj delar…», i frågans eget meddelande under «## Proposal to refine» och «## Left out by the designer», före urvalet och frågan, så att spelets kontext står kvar byte för byte och leverantörernas cache träffar.
+Modellen ombeds svara med hela förslaget igen, förfinat, och inte bara det som ändras, eftersom det förfinade tar det gamlas plats; och att svara i ord när designern frågar något annat.
+Ett svar i ord lämnar därför förslaget väntande, och raden behöver inte gissa om det som skrevs var en förfining eller en fråga: modellen avgör det, som den avgör mellan ord och förslag (#1002).
+Det förfinade förslaget strömmar in del för del i en egen tur under det gamla, som varje förslag, och tar det gamlas plats först när det kommit helt och går att använda: det gamla säger då bara «Ersatt av det förfinade förslaget nedan.», och stod det på väggen eller i Tabell står det förfinade där i stället.
+Fram till dess väntar det gamla som förut, på väggen och med sina knappar, så att ett förfinande som avbryts, kapas, inte går att använda eller besvaras i ord lämnar det gamla förslaget som det var.
+Att godta eller kasta det gamla medan ett förfinande av det kommer lägger på förfinandet, eftersom det då förfinar ett förslag som inte längre väntar.
+**«Välj delar…» följer inte med till det förfinade förslaget.**
+Valet skickas till modellen som de delar designern lämnat, och modellen ombeds lämna dem ute om inte följdinstruktionen ber om dem igen; det förfinade förslaget kommer sedan helt, med alla delar valda och valet stängt.
+Ett nytt kort heter efter sin plats i förslaget (#1003), och det förfinade förslagets andra kort är inte det gamlas andra kort, så en bock som flyttades efter plats skulle hamna på ett annat kort än det designern lämnade; ett ändrat kort har sitt id, men två regler för två slags delar vore ett val som beter sig olika beroende på vad som valdes.
+Det designern valde bort är redan sagt till modellen, och det förfinade förslaget är modellens svar på det.
+Inget skrivs i dokumentet förrän ett förslag godtas: att förfina och sedan kasta lämnar spelet orört, och att godta det förfinade är en sammansatt redigering med ett steg tillbaka som förut.
+Den falska leverantörens `[förfina]` svarar med förslaget förfinat — de lämnade delarna borta och « (förfinat)» efter varje titel — så att ett förfinande syns i panelen, på väggen och i det som godtas.
+
+Byggt 2026-10-19 (#1005): mallförslag, en mallsida i elementmodellen med sina fält, förhandsvisad på väggen.
+Förslaget har nu `template` bredvid `cards` och `changes`: en sida (`front` eller `back`), hela sidans element i ritordning, dess grupper valda av en kolumn (L3), och de nya fält mallen behöver med ett värde för de kort i spelet som behöver ett.
+Modellen skriver elementmodellen (L1) och aldrig HTML eller CSS, och översättaren gör förslaget till editorns egna redigeringar: `addField` per nytt fält, `replaceFace` med sidans grupper, `setGroupColumn` när kolumnen byts, och `setCell` per värde.
+`replaceFace` fick därför bära grupperna: en föreslagen mall är en hel sida, och en gammal grupps ersättning av ett id som den nya basen saknar hade ritat det elementet på gruppens kort som ett tillägg ingen bett om.
+Utan grupper står de som förut, så ett galleri som byter baksida rör inga grupper.
+**Trädet skrivs platt.** En mall är ett träd — en grupp och ett villkor bär element — och Anthropics strikta läge kan inte säga ett rekursivt schema, så varje element i en lista står i samma lista och säger med `parent` vilken grupp eller vilket villkor i listan som bär det, eller `null` överst.
+Översättaren reser trädet ur listan i listans ordning, och avvisar en förälder som inte är en grupp eller ett villkor i listan och ett element som bär sig självt.
+Samma kodning för båda leverantörerna, fast OpenAI:s strikta läge kan rekursion: modellen tillfrågas på ett sätt och svaret läses på ett sätt, vilken leverantör det än kom ifrån.
+Schemat skrivs fortfarande ur samma zod-schema, med `anyOf` där zod skriver `oneOf` för elementets slag, och utan gränser — en längd, ett minsta, ett största — som inget av de strikta lägena läser; mallmodellen dömer gränserna när sidan är rest.
+Varje egenskap är krävd, och en som elementet inte har är `null`, vilket är vad mallmodellens frånvaro betyder; det förslaget inte kan säga om ett element det behåller — en egen kontur (L26), en bilds trim och ram, ett lås (L15) — behålls från elementet med samma id.
+En färg skrivs som `#rrggbb` eller som en av spelets betydelsers namn, och betydelsen skrivs som sin färg: mallen håller färger, och inget annat når kortets stilmall.
+Översättaren avvisar med skäl, utan att röra dokumentet, ett element av ett slag mallen inte har, ett fält som varken spelet har eller förslaget tar med — i en bindning, ett villkor, en fyllning eller som gruppernas kolumn — ett element utanför kortet, ett typsnitt, en betydelse eller en ikon spelet inte har, text utanför L2, ett nytt fält spelet redan har i någon stavning, grupper utan kolumn, och allt annat mallmodellen inte tar, vid det element det gäller.
+Utanför kortet är bortom utfallet, med gruppernas förskjutning räknad: en bakgrund som når utfallet är där varje bakgrund hör hemma, och inget bortom det trycks på något kort.
+Typsnitten är spelets egna (L57) och de familjer mallen redan sätter text i, så att ett spel gjort innan typsnitten följde med fortfarande kan få en mall.
+Felbeskedet säger lagret med sitt id, «Mallens lager «title» står utanför kortet.», i samma form som kortens.
+**Väggen visar mallen på riktiga kort, som förslagets ändrade kort och inte i ett eget förhandsläge.**
+«Visa på väggen» lägger spelet som förslaget skulle lämna det på väggen: varje kort ritas med den föreslagna mallen av den enda renderaren (E2), varje kort mallen ritar annorlunda står med hel lavendelkant och «✦ Ändrat» som ett ändrat kort (#1003), och de nya fältens värden står som gammalt → nytt under korten de skrivs på, «kraft: — → 1».
+Ett kort mallen bara ritar om heter för skärmläsaren «Ändrat i förslaget: Drake — ritat med den föreslagna mallen».
+Det är prototypens form (`A-mall-1440x900.png`): ett läge med en egen rad över väggen hade varit en ny yta och en ny sak att stänga, och en mall är en ändring av varje kort den ritar annorlunda, vilket väggen redan har ett sätt att säga.
+En mall för baksidan visas på baksidorna, eftersom väggen visar förslaget.
+Också från Tabell säger panelens knapp «Visa på väggen» för ett förslag med mall, och lägger det där: tabellen håller spelets egna kolumner och ingen mall, så dess jämförelse hade sagt att varje kort ändrats — `addField` skriver det nya fältet tomt på varje kort — och inte visat den nya kolumnen alls.
+Lämnas mallen ute med «Välj delar…» visas resten i Tabell som förut.
+Väggens egen fysiska kontroll läser leken som förslaget ritar den medan det står där.
+I panelen ritas tre av lekens kort med mallen, ett av varje utseende den ger dem först, så att en grupp bara några kort hamnar i syns där och inte bara på väggen; under dem mallens namn, «Mall för framsidan», de nya fälten och hur många kort som får ett värde.
+Den fysiska kontrollen körs på varje kort förslaget rör, med den föreslagna mallen, och dess anmärkningar står innan något godtas och fäller aldrig förslaget (E5); för ett kort mallen bara ritar om säger den bara det som står på den sida mallen ritar, eftersom kortets andra sida är spelets och det som sägs om den sades redan innan förslaget kom.
+Mallen med sina fält och värden är en del i «Välj delar…» (#1003), `template:front`, och kort och ändringar bredvid den döms mot spelet som mallen ritar det: de får skriva dess nya fält och måste fylla det den ritar.
+Lämnas mallen ute står ett sådant kort kvar med den cell det skrev, eftersom en kolumn finns när korten bär nyckeln, och ingenting av mallen skrivs.
+Godtagandet är en sammansatt redigering med ett steg tillbaka, som förut.
+Kortens namn i panelen bryter nu inom kortets bredd i stället för att kapas: «Förslag 1 (fö…» sade inte vilket kort en bock tog.
+Den falska leverantörens `[mall]` svarar med en mall för framsidan — spelets titel och första textkolumn i spelets typsnitt, och ett mynt som visar ett nytt fält, `kraft`, med värden på lekens två första kort i en storlek den fysiska kontrollen varnar för — och `[mall-trasig]` med samma mall med titeln utanför kortets högra kant.
+Varje förslag skriver nu `template`, `null` utan mall, som det strikta schemat får modellen att skriva varje del.
+
+Byggt 2026-10-19 (#1007): kontexten har en budget, och en stor lek skickas sammanfattad.
+**Budgeten är 32 000 token, uppskattade som tre byte UTF-8 per token, ungefär 96 kB.**
+Det finns ingen tokeniserare för någon av leverantörerna i repot, och deras egna tumregler är ungefär 3,5 (Anthropic) och 4 (OpenAI) engelska tecken per token; svenska ord och JSON delas finare än engelsk prosa, och att räkna byte räknar å, ä och ö dubbelt, så uppskattningen lutar mot fler token och aldrig färre.
+Mätt: provleken (77 kort, fem fält) är 27 kB och skickas hel; en lek om 308 kort med femton fält, en hel regelbok och en mall med varianter (`scripts/large-deck.ts`) var 173 kB hel och är nu 96 kB sammanfattad.
+Gränsen ligger där en lek om ett hundrafemtiotal kort med femton fält, eller några hundra med fem, fortfarande går hel.
+Ingen av standardmodellerna sätter gränsen — Claude Sonnet 5.5 läser en miljon token och GPT-5 272 000 — utan budgeten lämnar plats åt svaret (16 000), instruktionerna, förslagets schema, ett långt samtal och ett stort urval, och det den begränsar är vad designerns egen nyckel betalar för en fråga om ett spel som ändrats sedan förra frågan, och hur länge det dröjer till första ordet.
+En sammanfattad lek är fältens värden över hela leken och ett urval kort skrivna hela, som en hel lek skriver dem.
+Per fält: antalets summa och fördelning, en talkolumns spann och hur många kort som har varje värde när de är högst 24, varje etikett i en textkolumn med sitt antal när de är högst 24 och ingen längre än 60 tecken, annars textens längder och hur många olika den har, ja och nej räknade, hur många kort som har en bild, och de tomma cellerna räknade för sig.
+Urvalet fyller det budgeten lämnar, så att en lek strax över gränsen förlorar lite: leken delas efter kolumnen dess varianter väljs av, varje del får sin andel och minst ett kort, och inom en del tas korten med jämna steg i lekens ordning — aldrig slumpvis, så att samma lek är samma urval och samma byte.
+Mallen, regelboken och temat skickas alltid hela, även när de ensamma är över budgeten.
+Kortens bilder skrivs inte längre i kontexten, inte heller i en hel lek: cellen säger bara var bilden ligger, och modellen får aldrig skriva en bild.
+De kort en fråga gäller står alltid hela i frågans eget meddelande och aldrig genom budgeten: de valda korten (#1003), och nu också de kort ett förslag som förfinas ändrar, under «## Cards the proposal changes», så att en ändring av ett kort som urvalet lämnade ute förfinas mot varje fält av det.
+Kontexten är fortfarande samma byte för samma spel, och står i Anthropics begäran som ett eget systemblock märkt för cachen (`cache_control`) efter instruktionerna, med förslagets verktyg före; vad frågan bär — urval, förslag, kort — står i meddelandet efter, så prefixet flyttas inte.
+OpenAI cachar själv varje prefix över 1 024 token utan att något märks ut, och där står kontexten sist i `instructions`, före samtalet.
+Chippen säger det med vanliga ord innan designern frågar: «308 kort (sammanfattade)», «308 cards (summarised)», ur samma beslut som servern bygger kontexten med (`aiContextParts`).
+Vad en fråga kostar lådan i minne och uppströms står i DRIFT §1.
+
+Rättat 2026-10-19 (#1049): regelbokens rubriker står under kontextens egna avsnitt.
+Kontexten är en enda Markdown-disposition vars avsnitt är `#` och `##` — spelet, korten, mallen, regelboken, temat — och regelboken skrevs med samma `#` och `##`, så en regelrubrik som «Mall» eller «Kort» lästes av modellen som ett nytt avsnitt i kontexten.
+Nu står bokens två nivåer en nivå under avsnittet de står i, `###` och `####`, som en bok citerad i ett kapitel, och en rad i boken som inte är en rubrik men ändå börjar med `#` får Markdowns `\` före; varje rad i boken är dessutom en rad, även när ett namn i den bär en radbrytning.
+De enda rader i kontexten som börjar med `#` eller `##` är därmed kontextens egna avsnitt.
+En avgränsning med taggar runt boken valdes bort: den lämnar `##` inuti taggarna som ett avsnitt för den som läser dispositionen, och behöver ändå ett skydd för den avslutande taggen.
+Designerns ord står kvar som de skrevs; bara rubrikens nivå och ett inledande `#` ändras, och kontexten är fortfarande samma byte för samma spel.
+
+Byggt 2026-10-19 (#1006): regeltext som förslag, i regelbokens eget format, förhandsvisad i boken och godtagen i ett steg.
+Förslaget har nu `rules` bredvid `cards`, `changes` och `template`: poster av regelblock i bokens egna slag (B7) — rubrik på nivå 1 eller 2, text, lista — och det strikta schemat skrivs ur samma zod-schema som förut.
+Modellen skriver det en regel nämner som boken lagrar det, `[[zon:id]]`, `[[kort:id]]` och `[[räknare:id]]`, så att en godtagen regel följer med när zonen döps om.
+Kontexten säger därför id:t bredvid varje zon och räknare, «Kortlek [[zon:draw]]», och att ett kort nämns med sitt id ur kortlistan; boken själv står fortfarande med namnen, som spelarna läser den.
+**En post placeras vid block-id, aldrig vid index.**
+Posten står i stället för de block den räknar upp i `replace`, där det första av dem stod, eller — när den inte ersätter något — efter blocket i `after`, `null` först i boken; tomt `replace` och inga block är ingen post, och `replace` utan block tar block ur boken.
+Ett index hade landat på ett annat block så fort en medredigerare lagt till ett ovanför, tyst; ett id landar där det var menat eller inte alls.
+Varje kontextblock står därför under sitt id, `[block b3]`, och den nya redigeringen `spliceRules` gör en post: den rör bara de block den namnger, där `setRules` skriver hela boken, och den avvisas av aktören när ett block den namnger saknas eller ett nytt blocks id redan finns — allt eller inget, som varje sammansatt redigering (D3).
+Förslaget översätts mot boken som den står varje gång det visas och igen när det godtas (#1002), så ett block en medredigerare tagit bort sedan förslaget kom gör det oanvändbart med skälet, och en medredigerares ändring i ett block förslaget ersätter står som det gamla, överstruket, när förslaget visas.
+Regelflikens egna skrivningar är fortfarande `setRules` av hela boken; det är en äldre gräns som förslaget inte flyttar.
+Nya block får bokens egen stavning av ett nytt id, det första lediga `b<n>`, som Regler-flikens ＋ ger.
+Översättaren avvisar med skäl, utan att röra dokumentet, en referens till en zon, ett kort eller en räknare spelet inte har, en referens boken inte kan läsa (`[[Kortlek]]`, `[[hög:x]]`, en klammer som inte stängs), ett block av ett slag boken inte har, ett block posten står vid som inte finns, samma block i två poster, uppställningen eller en bild som skrivs över — de är spelets egna — en ikon eller betydelse spelet inte har, text utanför L2, och ett block utan text.
+Ett stycke med rader som börjar med «- » eller «1. » blir de stycken och listor raderna skrevs som, som när Regler-fliken stänger ett block (L68), så att boken håller det läsaren får.
+**I «Välj delar…» är en post en del, inte ett block.**
+Posten är det modellen placerade tillsammans: ett avsnitt med sin rubrik, sina stycken och sin lista, eller en omskrivning av en följd block.
+Ett block för sig vore en rubrik utan sin text, och en omskrivning av tre block som två har inget block som svarar mot ett annat.
+Delen heter efter postens första rubrik, «Att dra kort», och annars «Regeltext 1»; en post som lämnas tar inga id:n från dem efter den, och två poster efter samma block står i den ordning de skrevs.
+Panelen visar varje post med bokens egen rendering i korthet — namnen och inte id:na — och vad den ersätter, «Ersätter 1 block i boken».
+**Förhandsvisningen är boken själv, i Regler-fliken.**
+«Visa i regelboken» lägger boken som förslaget skulle lämna den i fliken, ritad av bokens egen rendering: det nya med väggens piller, «✦ Förslag», och en streckad list i sidans marginal, det som ersätter med «✦ Ändrat» och en hel list, och det som ersätts överstruket där det står med «Ersätts», eller «Försvinner» när inget tar dess plats.
+Marginalens list är importens form (#131) i väggens två streck, i en violett som syns på bokens papper; pillret sägs en gång där en post börjar, och orden står i sidan, eftersom ett streck inte når en skärmläsare (L12).
+Boken går inte att skriva i medan förslaget ligger där, som när en fil ligger i den, och raden över den säger «AI-hjälpens förslag: 1 tillägg i regelboken» med «Dölj förslaget», som Tabell (#1003).
+Ett förslag med bara regeltext tar designern till Regler från vilken flik som helst; ett som också har kort visas på väggen som förut, och regeltexten har en egen länk, «Visa i regelboken», under sin post.
+Godtagandet är en sammansatt redigering med ett steg tillbaka, och ett spel utan regelbok får en, med spelets namn som titel.
+Den falska leverantörens `[regler]` lägger ett avsnitt efter bokens sista block som nämner spelets första zon med dess id, och `[regler-trasig]` samma avsnitt med `[[zon:finns-inte]]`.
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
@@ -1365,6 +1725,8 @@ Följdkrav:
 Varningen måste länka direkt till raden i tabellen.
 Textstorleken varierar mellan kort, vilket är estetiskt ojämnt jämfört med hur förlag gör.
 
+Byggt 2026-10-17 (L69, #808): en text som inte ryms ens i minsta graden ramas in vid rutan i guiden, i Mall och på väggen, och Fysisk kontroll ger en varning per fält som leder till kortets rad i Tabell.
+
 ---
 
 ## F. Tryck
@@ -1431,17 +1793,30 @@ Följdkrav:
 QR-knappen i `table`-vyn är produktens viktigaste knapp.
 Feedback från gäster är svagt attribuerad.
 Missbruk av öppna rumskoder hanteras i DRIFT §9 (byggt 2026-09-07): koden köper en token, går ut och kan roteras, och värden kan sparka.
+«Ny kod» byter också värdnyckeln (beställarens beslut 2026-10-05, #820): den som har delat skärmen trycker «Ny kod», och då stängs både den gamla koden och den gamla nyckeln.
+Ingen egen knapp för nyckeln.
+En TV som redan är öppen får den nya nyckeln i `room`-meddelandet över sin anslutning och behåller bordet; editorn byter till den nya i sin länk till bordet och i sina sparkar.
+Nyckeln går bara till bordets egna anslutningar, aldrig till en telefon eller en observatör (DRIFT §9).
+`room` är ett servermeddelande och inget intent, så intent-vokabuläret är orört.
 
 Byggt 2026-09-06 (prototypat, variant "kort i mitten"):
 Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar en engångslänk som gäller i 15 minuter och svarar alltid 200, `GET /auth/verify` löser in den, skapar kontot första gången och sätter en HttpOnly-kaka i 30 dagar.
 Projekt som skapas med konto tillhör kontot: bara ägaren läser, skriver, listar och startar bord; projekt från före konton förblir öppna.
-Startsidan `/` är inloggningskortet tills länken följts, sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401. Ett inskickat wizardutkast och dess mål bevaras under auth-rundan i samma flik och återupptas automatiskt efter login, så att skaparen inte behöver bygga spelet två gånger.
+Startsidan `/` är inloggningskortet tills länken följts — **ändrat 2026-10-18: landningssidan, se nedan; kortet står på `/login`** — sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401. Ett inskickat wizardutkast och dess mål bevaras under auth-rundan i samma flik och återupptas automatiskt efter login, så att skaparen inte behöver bygga spelet två gånger.
 Gäster loggar aldrig in: bord, telefon, distansvy och observatör nås med rumskod; inloggningskortet säger det.
 Passkeys och OAuth återstår.
 
 Claimat (prototypat och byggt 2026-09-07):
 Gästens admission, den token telefonen spelade under (DRIFT §9), är det som claimas: `POST /guests/claim` med kontots kaka knyter den till kontot, en gång, och 409 om ett annat konto redan har den.
-Telefonen erbjuder "Spara till ditt konto" i enkäten när sessionen är slut; länken går via inloggningskortet till `/claim`, som sedan landar på startsidan med ett besked.
+Telefonen erbjuder "Spara till ditt konto" i enkäten när sessionen är slut; länken går via inloggningskortet till `/claim`, som sedan landar på startsidan med ett besked — **ändrat 2026-10-06, se nedan**.
+
+Vägen efter sparandet (beställarens beslut 2026-10-06, #690):
+"Spara till ditt konto" erbjuds först när enkätens svar är skickade, under tacket.
+Länken bär telefonens egen adress som `next=`, och efter claimen kommer gästen tillbaka dit, till tacket som nu säger «Sparat till ditt konto.»; en länk utan `next` landar på startsidan som förut.
+Claim-sidan och dess vidareskickningar ersätter historiken i stället för att lägga till i den, så Bakåt landar på sidan före claimen och gör aldrig om den.
+"Tillbaka till bordet" tar gästen till sin egen plats och hand, på den skärm platsväljaren hade föreslagit: `POST /me/played/:session/return` ger kontots levande admission en ny token i den gamlas ställe, med samma plats, namn och historik.
+Den gamla token slutar gälla, som en bärartoken ska när den flyttar till en annan skärm.
+Finns ingen plats kvar att gå tillbaka till — den är lämnad eller sparkad — går länken till platsväljaren.
 Tre varianter prövades för startsidan; valet blev två rutnät: egna spel först som förut, sedan "Bord du spelat vid" med platsens färg, spelet, namnet man spelade under, enkät och flaggor, och "Tillbaka till bordet" medan det pågår och koden lever. En ren gäst utan egna spel ser "Nytt spel" som inbjudan ovanför sina bord.
 
 Startsidan färdig 2026-09-08:
@@ -1449,6 +1824,25 @@ Varje spel säger hur många bord det har och när ett av dem senast spelades vi
 Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rumskoden på plats med en väg till bordets skärm, eller tar bort spelet efter en fråga; hela historien följer med och det går inte att ångra.
 Ett fel i en åtgärd tar aldrig spelen från skärmen; bara en sida som inte gick att läsa alls ersätter dem.
 CORS-svaret tillät inte DELETE, så borttagningen stoppades i webbläsaren utan att servern märkte något. Ett test på preflight-svaret täcker nu varje metod API:et faktiskt betjänar.
+
+Kodraden 2026-10-06 (#675, beställarens beslut C): under inloggningskortet, och aldrig i det, står en rad för den som kom för att spela — «Ska du spela? Skriv rumskoden», ett fält och «Gå in».
+Koden tas till rummets egen adress `/KOD` och landar i platsväljaren; ett tomt fält och något som inte kan vara en kod sägs vid fältet utan att sidan lämnas.
+Kortet står orört, så dess rader (#691) och sidfoten under raden (#757) hamnar där de var tänkta.
+Vid 320 × 568 står både kodfältet och e-postfältet på första skärmen.
+
+**Landningssidan (beställarens beslut 2026-10-18, #1009, prototyp A «Bordet» av tre).**
+Den som inte är inloggad möts på `/` av en landningssida i inloggningskortets ställe; inloggad är `/` fortfarande Mina spel, så ingen länk byter adress och den som kommer tillbaka passerar aldrig säljsidan.
+Den andra vägen — landningen på `/` för alla och Mina spel på en egen adress — prövades och valdes bort: den kostar varje inloggat besök ett klick och flyttar varje vidareskickning efter inloggning, claim och borttagning.
+Sidan säger vad produkten är med ett dukat bord: rubriken «Bygg ditt kortspel. Spela det i kväll.» och en mening bredvid ett bord i perspektiv med draghög, två kort i mitten, kort som delas ut och tre telefoner med händer; under det fyra steg (skriv korten, rita ett kort och få alla, duka bordet, spela och lär) och en avslutande uppmaning.
+Byggarens dörrar — «Mina spel» i huvudet, «Börja bygga» och «Till editorn» — är länkar till `/login?next=/`, så inloggningen sker där den alltid skett och landar på Mina spel.
+Spelarens dörr är kodraden (#675), oförändrad: under byggarens dörr på bred skärm, och på en telefon först, direkt under huvudet, så att kodfältet och «Mina spel» båda står på första skärmen även vid 320 × 568 — prototypens telefonlayout hade bordet överst och kodraden långt ned, vilket #675 inte tillåter.
+Korten på sidan är en påhittad lek, «Skogens herrar», skriven som en vanlig mall av former och text i `landingDeck.ts` och ritad av `CardPreview` — ingen andra kodväg ritar ett kort, och ingenting hämtas för att rita dem.
+Bordet ritas i en ram av fast storlek och zoomas till sin kolumn, så bilden behåller sina proportioner; utan rörelse (`prefers-reduced-motion`) delas inga kort ut och telefonerna står still.
+Sidan är ett av kontots rum i knappspråket (#44): grönt fyllt för första handlingen, kontur för den andra, och bara formen — en pille — är sidans egen.
+Ett besök på landningssidan räknas som att säljraden (L36) setts, så inloggningskortet säljer inte produkten en gång till.
+Fliken heter «Bygg ditt kortspel · build-your-deck».
+Grindarna: `packages/web/test/landing.test.tsx` (sidan i kortets ställe, dörrarna, kodraden, korten och säljraden), `button-language.test.tsx` (sidan som vy i knappspråket), `packages/e2e/test/code-address.spec.ts` (båda dörrarna på första skärmen vid 320 × 568) och `packages/e2e/test/surfaces/account-viewport.spec.ts` (44 px och ingen sidledsrullning på sidan och på `/login`).
+Prototypen: `docs/ux-audits/2026-10-18-landningssidan/prototyper/1009/`.
 
 Solfjädern på spelkortet 2026-09-14 (prototypat, variant D av sex) — **ersatt 2026-09-19, se nedan**:
 De fyra korten på spelets kort är spelets egna kort, inte fyra rektanglar färgade ur spelets id.
@@ -1492,6 +1886,11 @@ Byggt 2026-09-06 (prototypat, variant "knappar i huvudet · enkät steg för ste
 Efter avslut visar telefonen enkäten en fråga i taget: kul, tydlighet, balans (1–5) och "Vad skulle du ändra?", och skickar till `POST /sessions/:id/survey`, som bara tar emot när loggen är låst och knyter svaret till versionen.
 Observatören svarar också, märkt `observer: true`.
 Enkäter lagras bredvid loggen (tabellen `surveys`), aldrig i den.
+
+Preciserat 2026-10-18 (#1021):
+- **Svaret kommer från ett inträde.** Telefonen och observatören skickar sin token, och servern prövar den som dörren gör (ej återkallad, ej utgången); namnet och platsen läses ur inträdet, aldrig ur kroppen, och en token för en plats svarar inte för en annan. Utan token är det bara projektets värd, från editorns egna vägar in (`owner=1`), som svarar — med sin inloggning, och för platsen under det namn bordet känner den vid. Bordsskärmens värdnyckel svarar inte.
+- **Ett svar per plats och per observatör och bord, och ett andra svar ersätter det första.** Telefonen minns att den svarat bara i flikens egen lagring, och en telefon som glömt det frågar igen; att ta emot det nya svaret i stället för det gamla är vad den redan uttrycker, medan ett avslag skulle göra «Skicka» till ett fel för någon som inget fel gjort. Observatören känns igen på namnet hennes inträde köptes under, som «Bord du spelat vid» redan gör.
+- Unika nycklar i `surveys` håller det i Postgres; migreringen kortar befintliga dubbletter till det senaste svaret, det som ett ersättande svar hade lämnat kvar.
 
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
@@ -1547,6 +1946,14 @@ Tillägg 2026-09-28 (#542, uppföljning av #529):
 - **Det som går fel sägs i ord och aldrig som en statuskod** (A4): 401 säger logga in igen, 403 att bara ägare och medredigerare får exportera, och 503 att tryckfilerna inte kan ritas just nu.
 - **En server som inte går att nå sägs, och ingenting fryser.** En import som lyckats står som lyckad även om listan inte går att läsa om direkt efteråt.
 - Grindarna är `packages/web/test/game-dialogs.test.tsx` och `packages/web/test/editor-export.test.tsx`.
+
+Tillägg 2026-10-06 (#909, beställarens beslut C, efter #738):
+- **Startsidans ⋯ bär samma val som editorns**: «Byt namn…», «Dubblera», «Exportera…» och «Ta bort spelet», styrda av rollen som i #689. De tre första är ägarens och medredigerarnas, att ta bort spelet bara ägarens.
+- **Ett namnbyte från Mina spel är en vanlig redigering i projektaktören**, samma `rename` som editorn skickar (`PUT /projects/:id/name`). Det hamnar i loggen, syns direkt i varje öppen editor och går att ångra där.
+- **Inget sparas åt någon annan.** Namnbytet gör ingen ny version, så andras osparade ändringar förblir osparade och spelets rev står still.
+- **Mina spel läser namnet ur det levande dokumentet** (D3: loggen är sanningen): aktörens dokument om spelet är öppet, annars den sparade versionen med loggens svans efter den uppspelad. Listan stämmer alltså direkt, och även efter en omstart av servern.
+- **«Dubblera» kopierar samma levande dokument** genom `POST /projects/:id/duplicate`, och listan läses om med korten så att kopians ruta ritas direkt.
+- Grindarna är `packages/server/test/rename-from-home.test.ts` och `packages/web/test/account-page.test.tsx`.
 
 ---
 
@@ -1650,6 +2057,17 @@ Och kortryggen är 63 millimeter bred — ett udda tal kring en mittpunkt — s�
 Att filten är full är dessutom två olika påståenden för de två zonerna, eftersom en ruta på 300 × 120 mm och en kortrygg på 63 × 88 mm slutar få plats vid olika tillfällen, så högen säger det med egna ord på samma rad.
 Grinden är `recipe-geometry.test.ts` och `edits.test.ts` för regeln, och `setup-new-pile.test.tsx`, som läser zonernas rutor ur den byggda fliken vid varje platsantal 2–`MAX_PLAYERS`.
 
+Reviderat 2026-10-05 (#881, beställarens beslut A med 97 mm): en ny hög har plats för sitt handtag, och den första hamnar inte längre på `(0, 150)`.
+I bordsläget hänger högens handtag 8–52 px under kortet (K14), och #789 lägger högens namn 16 px under handtaget.
+Det smala namnbandet på 30 mm under kortet var måttat för TV-lägets namn, så en ny hög föddes med handtaget på grannens kort eller på ytan framför en spelare.
+Bandet under kortet räknas därför för bordsläget i 1280 × 800 med fyra platser, det vanligaste spelfallet: 68 px vid 0,70 px/mm, alltså 97 mm.
+Det gäller rummet den nya högen söks i och rummet varje befintlig hög räknas som när en ny hög placeras; en ny delad yta mäter fortfarande högarna med namnbandet på 30 mm (#440, #480).
+#443:s löfte om den gamla punkten och ett fritt handtag gick inte att hålla samtidigt, eftersom det bara är 36 mm mellan den punktens kortkant och ytan framför den södra platsen.
+Den första nya högen på receptets bord hamnar nu på `(−304, 89)` vid 2–6 platser och på `(0, 185)` vid 7–8, och åtta högar i rad får fortfarande plats vid varje platsantal.
+Vid sju och åtta platser ritas filten mindre, och handtaget når fortfarande omkring 9 px in på grannen under; det är accepterat, eftersom ett band som räcker även där (118 mm) gör en filt med fyra platser full efter sex nya högar.
+Bara högar som skapas efteråt påverkas: en hög som redan ligger har sin punkt i dokumentet.
+Grinden är densamma som ovan, och `setup-new-pile.test.tsx` mäter bandet under de två nya högarna i den byggda fliken med bordets egna högar som linjal.
+
 ### K3. Flera kort på en gång: atomisk batch i kuvertet
 
 `Envelope` bär `intents: Intent[]`.
@@ -1677,6 +2095,16 @@ Med tangentbordet flyttar Alt och en pil kortet ett steg, som Alt och en pil fly
 
 *Reviderat 2026-09-28 (#507, beslut A):* ett tryck håller upp kortet i K26:s läsbredd och väljer det i samma handling; «Läs valt kort» är borta och läsvyn går igenom handen med ‹ › och svep (C4).
 Remsan är liten i vila och följer skärmen, `clamp(112px, 34vw, 200px)`.
+
+Reviderat 2026-10-17 (#767, beställarens beslut A + B efter prototyp): **en hand som är större än remsan har en överblick och säger var man står i den.**
+
+Speltestet 2026-10-02 hade 25 kort på telefonen: remsan var 3 615 px i en ruta på 358 px, tre kort syntes åt gången och inget sade var i handen tummen var.
+Så länge remsan håller fler kort än den visar står «Visa alla · 25» bredvid «Dina kort», och den öppnar hela handen i det rutnät `/online` har (K17), fyra i bredd och i remsans ordning; ett kort som väljs där är det valda kortet och förs in i remsans synfält.
+Under remsan står vilka kort som syns av hur många, «23–25 av 25», med en tunn list som visar var i handen de ligger.
+En hand som ryms i remsan har ingetdera.
+Knappen och listen ritas utan egna regler i arket, som första ritningen blockerar på och som inte har några byte över (`felt-font.spec.ts`).
+`phone-big-hand.spec.ts` håller överblicken, valet och markören med 25 kort, och att en hand på två kort inte får dem.
+Prototypen: `docs/ux-audits/2026-10-17-handen/prototyper/767/`.
 
 ### K5. Inga objekt utanför spelets setup
 
@@ -1978,7 +2406,7 @@ Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
-QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9).
+QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9; från 2026-10-06 rummets egen adress `/KOD`, se revideringen nedan).
 Telefonen ser platserna live genom lobbyrollen — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
 Namn plus "Sätt dig" köper en token för platsen och leder till `/play`, som claimar platsen.
 
@@ -2088,6 +2516,44 @@ Det är dessutom rätt väg: ordet på ett ledigt piller är "ledig" och är utf
 `join-layout.test.tsx` läser bokstaven ur det som verkligen ritas inuti pillret på två-, fyra-, sex- och åttaplatsbord, och mäter att bokstavens rad ligger över ordets och på samma höjd oavsett om platsen är ledig eller tagen.
 Samma fil mäter blandningen varje rad verkligen ritas i — färgen lagd över pillret med sin egen genomskinlighet — mot pillrets botten, och håller båda raderna vid AA på både en ledig och en tagen plats.
 
+**Reviderat 2026-10-06 (#675, beställarens beslut C): koden är adressen.**
+Den som satt i soffan hade ingen väg in utan kameran: TV:n sa koden men inte var den skulle skrivas, och startsidan hade inget fält för den.
+Fyra varianter prototypades och mättes i det byggda appen (`docs/ux-audits/2026-10-06-vagen-in/`, borttagen när den hade svarat; mätningarna står i #675).
+Valet blev **C**.
+TV:n säger appens egen värd på en rad, 24 px, och `/KOD` på raden under, 40 px, med snedstrecket ritat av stilmallen så att det som läses av som koden är koden.
+Värden är skärmens eget origin (`location.host`): på lådan `PUBLIC_ORIGIN`:s värd, `deck.ockelberg.com`, och i en utvecklingsstack dess egen, så att ingen domän är inskriven i koden.
+`/<KOD>` är en ny toppnivåväg, på servern och i appens router, och den landar direkt i platsväljaren: från det TV:n säger till en plats är det en sidladdning och två tryck — «Gå» på tangentbordet och «Sätt dig».
+QR-rutan bär samma adress som orden bredvid den.
+Bordsläget säger `värd/KOD` på sin skylt, 20 px, och ritar ingen QR-ruta: ett bord alla sitter runt behöver bara adressen.
+Spelets namn står överst på väljaren när bordet startades ur ett spel, och rummets kod på raden under; `GET /rooms/:kod` säger namnet, som `GET /sessions/:id` redan sa till den som har id:t.
+Från 1024 px är «Spela på den här skärmen» förslaget — den första knappen och den Enter tar — och «Sätt dig» står kvar som andra knapp; under 1024 är det telefonens sida som förut.
+Från 700 px är sidan ett kort på 520 px på kontosidornas mörkare botten; kortets egen botten är väljarens `--byd-join-bg`, så varje kontrast som mätts på telefonen gäller oförändrad.
+
+Följdkrav:
+En kod får aldrig vara ett av appens egna vägord, eftersom adressen då vore två saker; kodens alfabet saknar I, L och O, så bara `ASSETS` och `GUESTS` kunde krocka.
+Vägorden står som `ROUTE_WORDS` i `packages/protocol` bredvid kodens alfabet, och de hålls inte för hand: `code-address.test.ts` i servern läser serverns rutter ur källan och `code-address-routes.test.ts` i webben läser appens router och filerna bygget lägger på roten, och båda faller den dag ett ord saknas.
+Generatorn drar om en kod som stavar ett vägord, i vilken bokstavsstorlek ordet än står.
+Routern läser `/KOD` sist, efter alla appens egna vägar, och bygget ber om väljarens bit bredvid ingången även där, så att adressen TV:n säger inte kostar en rundresa till (#760).
+En okänd, en utgången och en roterad kod sägs likadant, «Koden finns inte eller har gått ut — fråga värden efter den nya.», med koden kvar i fältet; servern svarar samma 404 med samma kropp för alla tre (DRIFT §9).
+Tillägg 2026-10-07 (#938, beställarens beslut): ett avslutat bords kod sägs likadant som de tre, på telefonen och på tråden; «Bordet är slut» på `/join` är borta, och dörren lämnar fortfarande ingen token (C9, #485).
+
+Tillägg 2026-10-17 (#937): koden ritas i ett riktigt fastbreddstypsnitt, och filten hänger under huvudet.
+Stacken `ui-monospace, monospace` blev Courier i Chrome på Mac, som inte känner `ui-monospace` och ritar `monospace` i Courier; Menlo står nu mellan dem överallt där stacken fanns, och bordslägets skylt ritar koden i samma stack som TV:n.
+`room-code-face.spec.ts` frågar Chromium vilket typsnitt som faktiskt ritades (`CSS.getPlatformFontsForNode`) och håller att det inte är Courier eller Times och att det har fast bredd, utan att låsa en familj, eftersom den är Menlo på Mac och DejaVu Sans Mono eller Liberation Mono på CI:s Linux.
+Filtens rad i väljaren tar den höjd telefonen har över, och en filt centrerad i den stod mitt i ett tomt band: 83 px under huvudet vid 390 × 844 med fyra platser.
+Filten hänger nu från radens topp och centreras bara i sidled, så sidan läses uppifrån — vem du ansluter till och bordet direkt under — och höjden över hamnar mellan bordet och formuläret.
+Formuläret står kvar vid foten, där tummen är och där #42 lämnade «Sätt dig» oavsett filtens storlek; att packa hela sidan uppåt hade flyttat knappen med antalet platser.
+`picker-band.spec.ts` mäter luften mellan huvudets sista rad och det första filten ritar, pillret eller träkanten, i det byggda appen vid 390 × 844 och 320 × 568 med fyra och sex platser: 30 px överallt.
+
+Tillägg 2026-10-17 (#979): filten passas in i sidans bredd, och steget längs kanten följer med.
+Den delade filten är 260 px och öst- och västpillret hänger 30 px utanför den på var sida, alltså 320 px — hela den minsta telefonen.
+Vid 320 × 568 med fem platser eller fler låg västpillret därför mot glaset vid x = 0 och östpillret kant i kant med skärmens högerkant, utan sidans marginal.
+Filten är nu högst sidans bredd innanför marginalen minus de två överhängen (`100cqi` på `.byd-join`, som är en container), vilket vid 320 px är 220 px och vid 390 px lämnar den delade filten på 260 px.
+En smalare filt kortar steget längs kanten, annars räcker paret på en delad nord- eller sydkant förbi filtens hörn: paret spänner två steg minus luften och får inte vara bredare än filten, så steget är hälften av filten plus luften, eller 132 px om det är kortare.
+Vid 320 px blir steget 117 px, taket för ett delat piller 103 px och filten 220 × 205 px; steget ned längs sidan, filtens höjd, hörnens dager och samma luft ned längs sidan som tvärs över änden följer ur det som förut.
+De vanliga förnamnen från #42 stod fortfarande hela i skärmbilderna vid 320 × 568 med åtta platser.
+`picker-margin.spec.ts` mäter varje piller i det byggda appen vid 320 × 568 och 390 × 844 med fyra till åtta platser mot sidans egen marginal och mot träffytans 44 px, och håller långa namn vid 320 px på fem, sex och åtta platser inom marginalen, längs filten och utan att något piller ligger över ett annat.
+
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
 C6 gav principen; det här är hur den blir konkret.
@@ -2110,6 +2576,31 @@ Ett nytt sessionsverb, `rewind.reject`, för att avvisa eller dra tillbaka ett f
 Kuvert-id blir loggens batch och måste vara unikt per session, inte per anslutning; motorn avvisar ett återanvänt id.
 Aktören håller sin logg i minnet för att kunna se bakåt.
 Utan andra sittande kan ett kontesterat förslag bara dras tillbaka; bordsskärmen får aldrig bekräfta.
+
+Reviderat 2026-10-05 (#747, beställarens beslut A efter prototyp 02): **ett förslag föregås av en fråga.**
+Har någon annan spelat sedan platsens senaste drag skickades förslaget på trycket, utan ett ord, och de andra fick avgöra en tillbakaspolning den som tryckte kanske aldrig menade.
+Nu öppnar trycket ett ark, «Senaste draget är inte ditt», som säger var bordet skulle hamna (före vilket drag) och vem som avgör, och som öppnar på «Avbryt».
+Först «Föreslå att spola tillbaka» skickar `rewind.propose`; ett eget drag ångras fortfarande på ett tryck.
+När ett förslag står stängs distansvyns «Visa alla», som annars täckte just det bord förslaget visar, och förslagsställarens rad namnger draget.
+Bortvalda varianter: B, en knapp som byter namn men inte frågar, och C, där Ångra bara ångrar egna drag och tillbakaspolningen flyttar till ⋯-menyn.
+Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/02-angra.html`.
+
+Tillägg 2026-10-17 (#682, beställarens beslut C efter prototyp, ångra/avsluta-varianten C av fyra): **bordets egen skärm ångrar bordets egna drag.**
+En grupp som spelar direkt på filten utan telefoner (K14) kunde varken ta tillbaka ett feldrag eller avsluta när den var klar utan att någon bytte till editorn, och ett bord som ingen avslutar står kvar öppet (C9).
+Bordslägets hörn bär nu en rund «⋯» mellan «Starta om» och «?», och den öppnar en meny med två rader: «Ångra bordets senaste drag», med draget utskrivet under, och «Avsluta bordet…».
+Bordet ångrar bara sina egna drag, plats null, och aldrig en telefons; har en telefon spelat sedan dess är raden nedtonad och säger «Senaste draget gjordes på en telefon — ångra det där.»
+Bordet föreslår aldrig en tillbakaspolning, så det som står ovan om förslag och telefonernas beslut står kvar.
+Det är samma `undo.self` som telefonen skickar, från bordets anslutning, och inget nytt verb.
+Projektionen säger vad det betyder för plats null som för en plats (`undo`), så menyn räknar inget ur loggen; en observatör är också platslös men får aldrig något `undo`.
+Bordets egna drag är de fysiska verb det har skrivit.
+«Uppdatera» och en återställd uppställning skrivs också utan plats men är inga drag filten gjort: de ångras aldrig härifrån, och en sådan rad efter bordets senaste drag gör det draget kontesterat (`undoTarget`).
+«Avsluta bordet…» frågar först, med telefonens egna ord («Avsluta bordet?», «Avsluta för alla», «Inte än»), och frågan öppnar på «Inte än».
+Den står över filtens mitt, som «Starta om spelet?» (#452).
+Vid 1024 ligger den öppna menyn över Räknare A:s bricka; «Starta om», «?» och linsens «+» med sin ram står fria.
+Under ett förslag och på ett avslutat bord finns ingen «⋯», och TV:n har ingen alls: den har ingen fjärr.
+Bortvalda varianter: A, en mening om att ångra och avsluta görs på en telefon eller i editorn, och B, «Ångra» i hörnets rad och «Avsluta…» som egen knapp, där raden bröt till två rader vid 1024.
+Prototypen: `docs/ux-audits/2026-10-17-bordslaget-text-och-kontroller/prototyper/01-bordslaget.html?v=e&k=c`.
+Grindar: `packages/engine/test/rewind.test.ts`, `packages/web/test/table-page.test.tsx` och `packages/e2e/test/table-without-phones.spec.ts`.
 
 ### K14. Bordet spelas direkt: dra, släpp, klicka för en ring med verb (prototypat 2026-09-06, utvidgad 2026-09-12)
 
@@ -2169,6 +2660,22 @@ Det som stänger ringen är allt som inte är ett verb: ryggen täcker skärmen,
 Escape är samma väg för en hand på ett tangentbord, vilket den inte hade medan knappen var det enda uttalade sättet att ångra sig.
 Fyra verb i stället för fem lägger dem dessutom i väderstrecken kring fingret.
 En ring utan verb öppnas inte alls: ett kort som hunnit lämna bordet medan fingret var på väg till det hade annars gett en tom cirkel.
+
+Reviderat 2026-10-06 (#719, beställarens beslut): **en skiva som aldrig kan gå på ytan ritas inte, filtens hjälp börjar med gesterna, och ringen heter ringen.**
+
+Speltestet 2026-10-02 fann två döda skivor av fem: «Titta» på en dold hög, där ingen topp syns, och «Avslöja» på ett uppvänt kort, där det inte finns något att avslöja.
+De utelämnas nu; en skiva som bara inte går just nu — «Blanda» på en hög med ett kort — står kvar, nedtonad, där handen väntar sig den.
+Hjälpen («?») listade snabbkommandona men inte filtens egen regel; nu börjar den med tre rader: en dragning flyttar, ett klick läser och ett klick till frågar, och Tabb, pilarna och Enter når samma saker (K16).
+Esc-raden sa «Stäng hjulet»; ringen har ett namn, och det är ringen.
+Kontrastgrinden i `button-language.test.tsx` mätte den otillgängliga skivan på ett uppvänt korts «Avslöja»; den mäter nu den tomma kasthögens ring, lagd över samma kort.
+
+Tillägg 2026-10-17 (#682, beställarens beslut: raden E och ångra/avsluta C): **den som handlar för gruppen får se vad som hände och kan ta tillbaka det.**
+Bordsläget hade ingen statusrad och inget flöde, så ett kort som studsade tillbaka gjorde det utan ett ord, och det som hände gick inte att läsa efteråt.
+Ett avvisat drag sägs nu i en platta vid släppet (D5), och det som senast hände står kvar i hörnet nere till vänster, spegelbilden av «Starta om» och «?»: «Senast: Bordet blandade Kortlek · 11 s».
+Raden säger samma mening som live-regionen, ur `describeActivity`, och åldern räknas från när skärmen hörde raden; en avvisning tar aldrig hörnets rad.
+Den står på träet och mörkret, så bred som fram till den plats vars namn står vid nederkanten, och täcker ingenting vid 1024, 1280 eller 1920; kanten mot marken är minst 7,4:1 och texten 14,4:1, i rummets golv på 24 px.
+Bordets «⋯» med ångra och avsluta står i K13.
+Grind: `packages/e2e/test/table-without-phones.spec.ts`.
 
 ### K15. Högens topp som adress: `stack` och `flip` tar `{ top: hög }` (2026-09-06)
 
@@ -2503,6 +3010,14 @@ Det är en etikettkrock och inte en zonkrock, och var etiketterna ska ta vägen 
 Grinden är ett test och inte ett tal: `packages/server/test/recipe-geometry.test.ts` mäter varje zonpar vid varje platsantal från två till `MAX_PLAYERS`, räknar paren så att en tom lista inte kan gå igenom, och håller dessutom fast att handen är 500 mm överallt och att ett fyraplatsbord ligger på exakt de millimetrar det låg på förut.
 Den gamla täckningen slutade vid fyra platser, och det är därför felet gick att skeppa.
 
+Reviderat 2026-10-17 (#766, beställarens beslut A efter prototyp): **en solfjäder av baksidor vrids högst ±22°, hur många kort handen än har.**
+
+Speltestet 2026-10-02 hade 25 kort på A:s hand vid åtta platser på TV:n: tolv baksidor vreds ±49,5° och hängde 38 px ut över filtens kant.
+Handen står kvar där #84 ställde den, mot kanten — en rak remsa hänger också ut, 15 px — men solfjädern växer inte längre med antalet: förbi taket sluter sig baksidorna i stället (`BACK_TURN_MAX`), och överhänget blir 24 px.
+En hand med få kort ser ut som förut, och en läsbar solfjäder (en sittande spelares egna kort) rörs inte.
+`hand-fan-cap.test.ts` håller taket och `tv-big-hand.spec.ts` mäter överhänget på TV:n (38 px utan taket).
+Prototypen: `docs/ux-audits/2026-10-17-solfjadern/prototyper/766/`.
+
 ### K19. Ett namn på ett ställe: var en zons namn ligger (prototypat och byggt 2026-09-13, #43, #71)
 
 Regeln, i en mening:
@@ -2645,6 +3160,7 @@ Talet är `table.css`:s eget, det som redan döljer den spelade filtens namn, me
 Därför är det renderaren som svarar och inte arket.
 Typen sätts i filtens tätaste: 12 px och ingen spärr, i stället för 13 px och 1,5.
 Spärren ensam är en sjättedel av namnets bredd — samma femtedel K19 tog ur bordsläget ovan — och utan den är `Räknare A` 62 px i stället för 76, vilket är vad som gör att två platser mitt emot varandra på en telefon båda får säga sina namn.
+*Ersatt 2026-10-04 (#685): stycket nedan om att stå ovanför zonen gäller inte längre; ett namn står bredvid sin zon på varje filt, och sedan på en fri sida — se revisionen längst ner i K19.*
 Och vid öst- och västkanten står namnet **ovanför sin egen zon i stället för bredvid den**, förankrat i den ände som vetter mot kanten och växande inåt, så att det stannar i sin egen halva av filten.
 Bredvid zonen växer det från zonens inre kant mot mitten, där de delade högarna står; på en filt så här liten når den räckvidden förbi mitten och möter både brickan och namnet från platsen mitt emot, som kommer andra vägen.
 Ovanför sin egen zon når det bara halva den sträckan, och de två platserna mitt emot varandra delar inte längre rad alls.
@@ -2666,6 +3182,57 @@ På Bord-fliken ritas högen dessutom över sitt handtag i stället för under d
 Linjen låg annars tvärs över brickan, och på en tom hög på högens egen streckade kontur — två linjer på samma pixlar.
 Pekaren går genom högen till handtaget, så att ta tag i högen är detsamma som förut.
 `packages/e2e/test/surfaces/setup-piles-drawn.spec.ts` mäter det på målade pixlar vid 1024 och 1280.
+Reviderat 2026-10-18 (#1001, beställarens beslut): AI-panelens hopfällda flik tar 44 px av editorns bredd, och vid 1280 står brickan då utanför kortets vänsterkant med 0,56 px på en Mac och 0,92 px på CI:s Linux, vars siffror är bredare.
+Avrundningsmånen är därför 1 px vid 1280, i stället för 0,5; vid 1024 är den 0,5 som förut.
+Med panelen öppen ligger den som ett ark över filtens högra del och tar ingen bredd, så måttet är detsamma då.
+
+Reviderat 2026-10-02 (#669): **brickan står på sin hög i varje tillstånd kortets bild är i.**
+Medan högens översta kort renderades, och för gott om renderingen misslyckades, syntes inget antal alls på TV:n och observatörens filt.
+Kortets väntande och misslyckade tillstånd (#10) ritades med `z-index: 1`, och en hög är vriden och alltså en egen staplingskontext: där inne lämnade tillståndet sitt kort och lade sig över brickan, som inget z-index har.
+Tillståndet har nu inget z-index och målas där bilden målas, strax efter den, så det som ligger på ett kort ligger på det vare sig bilden kommit, väntar eller är förlorad.
+Tillståndets egna ord, «Kortet renderas…» och «Bilden kunde inte laddas», står mitt på kortet och bara där kortet är minst 72 px brett inuti; brickan står vid överkanten, och de två delar inga pixlar — mätt på en 4K-TV, där kortet bär orden.
+`packages/e2e/test/surfaces/pile-count-over-texture.spec.ts` träffprovar brickans mitt i alla tre tillstånden på TV:n vid 1920 × 1080, 1280 × 800 och 3840 × 2160 och på observatörens filt vid 390.
+
+Reviderat 2026-10-03 (#771, beställarens beslut C efter prototyp): **medan en högs översta kort saknar bild står kortets namn under högen och inte på kortet.**
+På filtarna i TV-läge är en högs kort litet: 28 × 39 px hos observatören vid 390, 22 × 31 vid 320 × 568 och 47 × 65 på rummets TV vid 1280.
+Tillståndets namn sattes i 8 px, eftersom `clamp(8px, 14cqw, 19px)` når golvet, och brickan täcker kortets övre halva.
+Två av tio tecken i «Grävling 1» gick att läsa vid 390 och inga vid 320, och på TV:n vid 1280 stod kasthögens namn helt under rummets bricka på 40 px.
+Kortet bär nu bara sin grund, alltså svepet eller den röda tonen, och brickan.
+Namnet står som en bildtext en rad under högens eget namn, 2 px låda mot låda, i tillståndets egen färg och högst 10 em brett.
+Hos observatören är det 12 px, filtens minsta etikett, och i rummet 24 px, K26:s golv för TV:n.
+Bildtexten står där bara medan tillståndet är framme, och det är tillståndet självt som säger det: arket ritar bildtexten när högens översta kort bär ett tillstånd med ett namn i, och kortet säger då inte namnet en gång till.
+Bildtexten är `cardWord`, samma ord som tillståndet skrev och ur samma komponent, så den namnger bara det vyn redan får veta.
+Observatören ser allt (C8) och får namnet också på draghögen; rummets TV får inget namn på den nedvända draghögen, varken på sidan eller i trådens ramar.
+
+**Varje filt i TV-läge, och därför ingen tröskel.**
+Prototypen föreslog att bildtexten bara skulle stå där namnet inte ryms på kortet, och mätningen avgjorde det.
+Namnet på kortet når 12 px först när kortet är 86 px brett, och rummets golv på 24 px når det aldrig, eftersom taket är 19 px.
+Ingen filt i TV-läge ritar en hög så stor: observatören ritar kortet 22–63 px brett från 320 till 3840 px fönster, och rummets TV 47 px vid 1280 och 79 px vid 1920.
+Bara en TV på 3840 CSS-px når 159 px, och där står namnet i 19 px, under rummets golv.
+En tröskel skulle alltså aldrig ha slagit till på ett riktigt bord, och ett namn på ett ställe är den här regelns rubrik.
+
+**Bordsläget fick samma bildtext på en egen platta.**
+*Reviderat 2026-10-05 (#789, beställarens beslut C efter prototypen i #879).*
+Där är högen ett handtag på den gröna filten, och bildtextens färg ger 4,06:1 mot filtens mitt, under AA:s 4,5.
+Revisionen ovan sa därför att en platta under texten vore en ny form som först skulle prototypas och beslutas, och att bordslägets namn i 8 px på ett 49 px kort stod kvar som ett eget fynd.
+Nu har den båda.
+Prototypen ställde C, bildtexten på en egen platta, mot D, namnet kvar på kortet i 12 px med ellips, i det byggda appen vid 1280 × 800 och 1920 × 1080, med fyra och åtta platser och sett från plats B.
+D klarade golvet men inte syftet: bordsläget ritar kortet 44–65 px brett vid fyra platser och 26–40 px vid åtta, så i 12 px rymdes fyra eller fem tecken, och vid åtta platser ett.
+C säger namnet i 12 px oberoende av hur litet kortet ritas.
+Bildtexten är densamma som i TV-läget, `cardWord` i samma `.byd-pile-caption`, och står bara medan tillståndet är framme.
+Den står på filtens egen platta (`--byd-felt-plate`, ringens och åtgärdsarkets), ogenomskinlig, i kritan som handtaget redan skriver i: 14:1, och tillståndets rosa för en förlorad bild 10:1, var plattan än hamnar.
+Den hänger i handtaget, 2 px från det, 12 px och högst 10 em bred, på den sida av handtaget som vetter bort från kortet.
+Handtaget vrids tillbaka upprätt på en vriden filt, så på en filt vriden ett halvt varv — plats B som ser bordet från andra sidan — pekar handtagets eget «under» mot kortet, och bildtexten står ovanför handtaget i stället; vid ett kvartsvarv står kortet bredvid handtaget, och under är fritt.
+Under 460 px döljer bordsläget högarnas namn (ovan), och där finns inte heller plats för en platta mellan två högar: där står namnet kvar på kortet som förut.
+Under bygget visade det sig att handtaget självt stod en hel handtagsbredd bredvid sin hög på en filt vriden ett halvt varv, eftersom dess halva bredds förskjutning låg i `transform` och vreds med av `rotate`; det centreras nu med `translate`.
+Krocken mellan bildtexten och de tätt lagda extra högarna (`newPileSpot` räknade namnbandet för TV:ns namn) är densamma som handtagen redan har utan bildtext, och den är #881: en ny hög räknar sedan dess ett band på 97 mm under kortet, för handtaget och bildtexten tillsammans (K2).
+
+**Kvar att veta för grannarna.**
+#683 gäller fortfarande: vid 1280 täcker sidoplatsernas skyltar Kasthög och dess namn, men bildtexten står under skylten och är fri, 13 px från plats A:s skylt.
+#685:s förslag G lägger Saloonens namn under Saloonen, mellan Kortlek och Kasthög vid fyra platser, i samma remsa som bildtexten; den som bygger G behöver mäta mot bildtexten också.
+Mätt i den byggda appen: «Skogens väktare» är 79 px och «Grävling 1» 48 px i 12 px, hela vid 390 och 320, och närmaste andra namn är «Räknare C» 9,7 px bort vid 320 × 568; på TV:n är «Skogens väktare» 159 px i 24 px.
+`packages/e2e/test/surfaces/pile-name-caption.spec.ts` läser bildtexten hos observatören vid 390 × 844 och 320 × 568 och på rummets TV vid 1280 × 800 och 1920 × 1080, i båda tillstånden: hel, överst längs hela sin längd, fri från varje annan etikett, bricka och kort, på skärmen och minst skärmens golv, utan namnet på kortet, borta när bilden har kommit, och på TV:n frånvarande vid den nedvända draghögen och ur både sidan och ramarna.
+I bordsläget läser den bildtexten på samma sätt hos en spelare på `/online` vid 1280 × 800 och 1920 × 1080, från plats B med filten vriden ett halvt varv, och på bordets skärm vid 1280 × 800, och dessutom: på en ogenomskinlig platta med minst 4,5:1, i kritan eller den förlorade bildens rosa, på handtagets sida bort från kortet, och med handtaget i linje med sitt kort; på en filt under 460 px står namnet kvar på kortet.
 
 **En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
 Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
@@ -2720,6 +3287,103 @@ Namnen ritas fortfarande och döljs bara, så ett tänt namn står där regeln o
 Det gäller Bord-fliken och ingen annan filt; spelets filter säger sina namn som förut.
 De två avvisade varianterna — namnet inne i zonen, som vid 1024 kortades till «Rä…», och en filt som vändes ett kvarts varv och ändå krockade — står med mätningar och skärmbilder i #581 och i `docs/ux-audits/2026-09-29/prototyper/581/`.
 Samma beslut: under 1280 är huvudets väg hem en pil (←) med namnet «Mina spel», så att «Sparat» får luft mellan revisionen och flikarna.
+
+Reviderat 2026-10-04 (#685, beställarens beslut G 2026-10-03 efter prototyp): **ett zonnamn står aldrig i en annan zons ruta, och regeln är densamma på varje filt.**
+
+K19 säger vilken sida av sin egen zon ett namn står på, men ingenting om vad som finns där.
+Zonerna är formgivarens (K2, B5) och får ligga var som helst, så den sidan kan vara grannens.
+Med fyra platser ligger Sal's Saloon 30 mm under «Framför B», och saloonens namn stod i Framför B och Framför B:s i saloonen — på TV:n, i bordsläget, på /online, på Bord-fliken och hos observatören.
+Med åtta platser hos observatören vid 390 stod fyra räknarnamn i sina grannzoner.
+Prototypen mätte nio varianter på den byggda appen; bara E och G nådde noll namn i en annan zons ruta, och G var ensam om att också vara ren hos observatören vid 390 med åtta platser.
+
+**#76:s undantag för den smala filten är borta.**
+Ett namn vid öst- eller västkanten står bredvid sin zon på varje filt, som K19 säger, och inte längre ovanför den under `TIGHT_FELT_PX`.
+Det som står kvar av #76 är typen: under 460 px sätts namnen i 12 px utan spärr.
+Tröskeln mäts numera på filten som den passats in och inte på den bild en kamera zoomat, så att ett namn inte byter storlek när kameran rör sig.
+
+**Och en följdregel: landar namnet i en annan zons ruta, på ett annat namn eller utanför filten, prövas i tur och ordning:**
+1. en rad längre ut på samma sida — så långt som behövs för att gå fri från rutan, aldrig mer än en rad, eftersom ett namn som lyfts förbi en annan ruta läses som grannens;
+2. motsatt sida, och en rad längre ut där;
+3. för ett namn bredvid sin zon, zonens två ändar — ovanför och under, förankrat i änden mot kanten och växande inåt, som #76 placerade det; för ett namn längs en kant, kantens andra ände;
+4. sist inuti zonen, längs den kant det stod vid, kapat om det måste.
+
+Det första stället som är fritt vinner.
+Fritt betyder fritt från andra zoners rutor, andra namn, filtens övriga ord (högarnas namn, antal och bildtext, händernas och ytornas antal, platsernas namnkort och skyltar) och filtens kant.
+En hög, en bricka eller en hands kort undviks också, men ett namn får hellre stå på en sådan än kapas.
+
+**Ett namn inuti sin zon ritas över det zonen håller, på en platta (#874).**
+Zonens kort och brickor ritas efter zonen, så ett namn som hamnat inuti låg under dem: «Räknare B» försvann under sin egen räknare på ett kvartsvridet bord med sex platser.
+Namnet står därför på samma platta som högens bildtext i bordsläget (#789) — filtens egen, ogenomskinlig, med kritfärgad text — och ovanpå zonens innehåll; `placeNames` mäter namnet med plattan på när det avgör om det får plats.
+`felt-names.test.tsx` läser varje namn som står inuti sin zon vid fem och sex platser, vid alla fyra vridningar, och kräver att varje punkt av det är namnets egen.
+På TV:n med Sal's Saloon vid 1280 och 1920 och fyra och åtta platser står inget namn inuti efter #683, så där finns inget att täcka.
+
+**Sidan avgörs en gång, i filtens inpassade skala, och står sedan still (#43).**
+Mätt live bytte saloonens namn sida från under till över när TV:ns kamera zoomade till 3,3 px/mm.
+Därför hängs ett flyttat namn upp i ett hörn av sin egen zon — som filten skalar — och stegas därifrån i skärmens pixlar, som den inte skalar.
+Renderaren ritar filten en gång i dess inpassade skala när något som avgör placeringen har ändrats (bordet, fönstret, vad som är tänt på Bord-fliken, ett namn som bytt storlek), lägger ut namnen och ritar sedan kamerans bild igen, innan något målats.
+Regeln är en exporterad funktion, `placeNames` i `freeSide.ts`, av samma skäl som `stepAside` (#424): filtens grindar lägger renderarens markup på en sida där ingen effekt körs, och kör funktionen som en sträng där.
+
+**Bord-fliken visar ett namn i taget (#581), och där får den tända plattan täcka.**
+Vid 1024 är filten 382 px bred.
+Där kapas ett namn aldrig: får det inte plats inuti sin zon står plattan där den första platsen är fri från andra zoners rutor, också om det är över en plats namnkort, och i sista hand över grannen.
+Plattan tar ingen pekare: ett namn som står inuti sin zon står under just den pekare som tände det, och som mål tog det hovringen från handtaget, så att zonen släcktes och namnet flimrade.
+Med Sal's Saloon och fyra platser är det «Räknare B», vars platta står på plats B:s namnkort; ingen annan zons ruta.
+Med alla zoner tända på en gång — vilket fliken aldrig visar, men som grindarna läser — står vid åtta platser två plattor på andra namn.
+`zone-name-own-box.spec.ts` skriver det undantaget uttryckligen: vid 1024 får bara ett namn som appen själv lagt på sin platta stå på ett annat namn, och vid 1280 och 1440 inget alls.
+Reviderat 2026-10-18 (#1001, beställarens beslut): AI-panelens hopfällda flik tar 44 px av editorns bredd, och vid 1280 med åtta platser och allt tänt står då två plattor på varandra, «Räknare E» och «Räknare G».
+Undantaget från 1024 gäller därför också vid 1280 med åtta platser: där får ett namn på sin platta stå på ett annat namn, aldrig i en annan zons ruta och aldrig kapat; vid 1280 med fyra platser och vid 1440 står inget namn på ett annat.
+Fliken visar ett namn i taget (#581), så i det fliken faktiskt visar krockar inget.
+Med panelen öppen ligger den som ett ark över filtens högra del och tar ingen bredd, så måttet är detsamma då.
+
+Mätt på den byggda appen med Sal's Saloon, fem kort i varje hand, tre i saloonen, två i kasthögen och ett framför varje plats, vid fyra och åtta platser: noll namn i en annan zons ruta på TV:n vid 1920, i bordsläget vid 1024, 1280 och 1440, på /online vid 1280, på Bord-fliken vid 1024, 1280 och 1440 (en i taget och alla tända) och hos observatören vid 390 och 768 — också med varje namn ritat 15 % bredare.
+Före var det 37.
+De krockar G lämnade kvar i prototypen — 2 namn på namn, 5 på bricka eller hög och 5 kapade, alla på Bord-fliken vid 1024 med allt tänt — är nu 3 plattor på namn eller namnkort, 0 på bricka eller hög och 0 kapade.
+I `felt-names.test.tsx`, vars syntetiska bord har marknaden där `feltOf` lägger den, finns sex scener där regeln inte hittar en fri plats, och de är inpinnade en och en i `felt-labels.ts`: «Räknare B» kapad inuti sin zon på ett kvartsvridet bord med fem och sex platser, «Räknare A» på sitt namnkort på Bord-fliken vid 1280 × 800 med fem och sex platser när namnen ritas 15 % bredare, och «Räknare A» kapad hos observatören vid 320 när namnen ritas 15 % bredare.
+I alla sex stod namnet tidigare i en grannes ruta, vilket ingen mätning där läste.
+
+Reviderat 2026-10-05 (#683, beställarens beslut E efter prototyp): **platsens skylt på rummets TV följer samma ordning som zonnamnen, och blir hellre en bricka än kapas.**
+
+K26 ställde skylten intill platsens egna zoner, på den sida som vetter mot bordets mitt, och #750 gav den sedan ett tak: den växte till första hinder och kapade resten.
+Den sidan kan vara grannens, precis som för ett namn.
+Med fyra platser stod B:s skylt i Sal's Saloons ruta vid både 1280 och 1920, vid 1280 kapades C och D till «5 kor…» och «Guld…», och med åtta platser vid 1280 bröts fyra skyltar till två rader och låg på grannens skylt.
+Prototypen mätte nio varianter på den byggda appen ([`01-skyltarna.html`](https://github.com/Tiico/build-a-deck/blob/f85869cc5ec3e42a1d32f86d2e0f5508e550ccf6/docs/ux-audits/2026-10-05-skyltarna/prototyper/01-skyltarna.html), mätriggen i `matning/` bredvid); bara E var ren i alla fyra cellerna — TV:n vid 1280 och 1920 med fyra och åtta platser, också med texten 15 % bredare — utan att något kapades och utan att kortet krympte.
+
+**Skylten placeras i #685:s ordning, och det första stället som är fritt vinner:**
+1. sin egen plats, som K26 säger;
+2. zonernas andra ände, en rad ut, och den andra änden en rad ut;
+3. motsatt sida av zonerna;
+4. ändarna av platsens rad, i höjd med raden: vid kanten, mitt för och mot mitten.
+
+En plats vid sidan prövar i stället zonernas övre och nedre ände, en rad ut, motsatt sida, och ovanför och under zonerna.
+Skylten får alltså lämna sin egen plats: det är skillnaden mot K26:s «intill platsens egna zoner, mot mitten».
+Fritt betyder fritt från högarna och deras namn, antal och bildtext (#771), varje zons ruta (också platsens egen), zonnamnen, händerna, markerna och deras tal, TV:ns krom över filten och de skyltar som redan står.
+Sidoplatserna placeras först, eftersom de har minst plats.
+Skyltarna placeras före zonnamnen, som räknar skyltarna som ord att undvika: namnen läggs först ut mot skyltarna på deras egna platser, sedan skyltarna mot namnen, och sist namnen en gång till.
+
+**Ryms skylten ingenstans blir den en bricka med platsens mark, (B), och placeras i samma ordning.**
+Den kapas aldrig; namnet och handen står kvar i sidan för den som läser upp den.
+#750:s tak och kapning är därmed borta från skylten; #750:s andra halva, taket på väljarens namnpiller i `join.css`, gäller telefonen och står kvar.
+Bordsläget och /online har inga skyltar, och deras namnkort (K9) är orörda.
+
+**Sidan avgörs i filtens inpassade skala och står still när kameran zoomar (#43)**, som för namnen: skylten hängs upp i ett hörn, en kants mitt eller mitten av platsens zoner, och stegas därifrån i skärmens pixlar.
+En skylt vid östkanten hänger i sin högra kant, som K26 hängde den.
+Regeln är `placePlates` i `freeSide.ts`, exporterad och fristående av samma skäl som `placeNames`.
+Skylten mäts som maskinen ritar den och läggs ut igen när dess ord byter storlek (ett namn, en hand, ett bredare typsnitt); K20:s 15 % är vad grindarna ritar den bredare med och låter appen lägga ut på nytt, inte en marginal kring varje skylt — samma sätt som #685 läser namnen.
+
+Mätt på den byggda appen med Sal's Saloon, fem kort i varje hand, tre i saloonen, två i kasthögen och ett framför varje plats, Ada på plats A och bildtexten synlig: noll skyltar över hög, bricka, högnamn eller bildtext, i en zons ruta, på en annan skylt, på ett zonnamn eller på en hand, och ingen kapad, vid 1280 och 1920 med fyra och åtta platser, också med skylttexten 15 % bredare.
+Ingen skylt är en bricka i maskinens eget typsnitt, varken på en Mac eller på CI:s Linux; med texten dessutom 15 % bredare blir B en bricka vid 1280 med fyra platser på Linux, vars systemtypsnitt redan är bredare, och står då fritt.
+*Ändrat 2026-10-05 (#887): skylten skriver sedan dess i filtens skeppade typsnitt (K20), och ingen skylt är en bricka heller i 15 %-passet, på någon av maskinerna — se tillägget i K20.*
+Före var det, i samma celler, en skylt i en annan zons ruta vid 1280 och vid 1920 med fyra platser, två kapade vid 1280 med fyra, och fyra skyltar på skylt och två kapade vid 1280 med åtta.
+Minsta skylttext är 24 px (K26), och kortets kortsida är 46, 31, 77 och 45 px som förut.
+Vid 1280 med fyra platser står B vid änden av sin rad, och A gör det också när kasthögens bildtext är så lång att den når A:s egen plats; vid 1920 står B på kantsidan av sina zoner; med åtta platser står varje skylt på sin egen plats.
+Grind: `packages/e2e/test/surfaces/tv-seat-plate-free-place.spec.ts` (de fyra cellerna, också 15 % bredare; markens tal; sidan när kameran zoomar; brickan när filten saknar plats) och `packages/web/test/tv-plate-names.test.tsx` (sextio bokstäver: sidoplatserna blir brickor, ingenting kapas).
+
+Tillagt 2026-10-05 (#886): **namnen och skyltarna läggs ut igen när en högs bildtext byter storlek, dyker upp eller försvinner.**
+Bildtexten (#771) är ett av de ord namn och skyltar går fria från, men renderaren lade bara ut dem igen när ett namn eller en skylt bytte storlek.
+Ett kort med längre namn överst på kasthögen gjorde bildtexten bredare, och ett namn som stått fritt bredvid den korta stod då under den långa; likaså stod ett namn kvar där bildtexten trängt undan det, när kortets bild kom och bildtexten gick.
+Nu bevakas bildtexten som namnen och skyltarna: elementet finns alltid och är tomt när högen inget har att säga, så det finns något att bevaka också innan den första bildtexten.
+Bildtexten byter inte storlek när kameran zoomar, så bevakningen avgör aldrig om en sida kameran flyttat (#43).
+Grind: `packages/e2e/test/surfaces/pile-caption-replaces.spec.ts` (rummets TV vid 1280 och observatören vid 390 med fyra platser, en egen yta intill kasthögen; att ingenting byter sida eller läggs ut gång på gång när kameran zoomar; och att namnet går tillbaka när bilden kommer).
 
 ---
 
@@ -2797,6 +3461,19 @@ K19:s regel om var ett namn ligger är orörd; det här beslutet rör vad namnet
 `table.css` läser variabeln på ett ställe — `[data-table]`, som allt filten ritar ärver från — plus de två som sätter en egen `font:`-kortform, platskortet och räknarbrickan.
 Grinden är `packages/web/test/felt-names.test.tsx` (marginalen, det skeppade ansiktet, och att ansiktet finns före målningen) och `packages/web/test/felt-font.test.ts` (bygget: arket blockerar, bytesen ligger i det, ingen fontfil att hämta, licensen kvar).
 
+Tillagt 2026-10-05 (#887): **platsernas skyltar på rummets TV skriver också i Roboto Condensed.**
+Skylten (#573, #683) är filtens ord men satte en egen `font:`-kortform med `system-ui`, och ärvde därför inte ansiktet från `[data-table]`.
+Den ritades i SF Pro på en Mac och i DejaVu på CI:s Linux, och det var precis K20:s fel en gång till: i 15 %-passet blev B en bricka på Linux där en Mac fick plats (#880).
+Nu säger skylten samma sak som platskortet och räknarbrickan, `var(--byd-felt-font, system-ui, sans-serif)`, i 24 px som förut (K26).
+Skylten blev ungefär 6 % smalare: 171, 181 och 123 px mot 182, 193 och 128.
+Mätt på den byggda appen i #683:s fyra celler — rummets TV vid 1280 och 1920 med fyra och åtta platser, också med skylttexten 15 % bredare — är varje skylt fri och hel, ingen är en bricka, och kortets kortsida är 46, 31, 77 och 45 px som förut.
+Grind: `packages/e2e/test/surfaces/tv-seat-plate-free-place.spec.ts`, som frågar Chromium vilket typsnitt det ritade skyltens glyfer med och jämför med högnamnen på samma filt, och som åter kräver att ingen skylt är en bricka i 15 %-passet.
+
+Tillägg 2026-10-06 (#749): **«innan något målas» betyder nu innan appens första bild.**
+Arket med ansiktet står efter `#root` (L20, tillägg samma dag), så sidans laddar-besked målas innan arket är framme.
+Beskedet ritar ingenting i filtens typsnitt; entrén körs först när arket gäller, och därför finns ansiktet i dokumentet innan filten lägger ut ett enda namn.
+`shell.spec.ts` håller arket på tråden och mäter det.
+
 ### K21. En hög kan ha egna åtgärder, och en zon kan säga vilka kort som börjar i den (prototypat och byggt 2026-09-15)
 
 Två saker som ser ut som två frågor och är en: **vad som är designerns att bestämma om en zon, utöver var den ligger och vad den heter.**
@@ -2864,6 +3541,15 @@ Ett framletat kortknippe placeras efter en högs regel och inte ett ensamt korts
 Arkets CSS-budget är höjd till 139 kB med skälet skrivet i `felt-font.test.ts`.
 `version.change` bär kolumnindexet bredvid komponenterna (C7): en fråga som ställs efter ett versionsbyte måste ställas till den lek som spelas, och inte till den som spelades — utan det svarar den fel utan att säga något.
 Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `shortcuts.test.ts` (sidan i projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet, kolumnerna och sidan som följer med), `zone-fill-and-actions.test.ts` (greppet), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `drop.test.ts` (var sidan landar), `table-renderer.test.tsx` (ringens verb), `pile-actions-at-the-table.test.tsx` (arket), `setup-actions.test.tsx` (meningarna) och `setup-sentence-matrix.test.tsx` (varje steg gånger varje platsform, på båda språken).
+
+Reviderat 2026-10-06 (#719, beställarens beslut): **arket utelämnar en startåtgärd som bara gör det ringen redan gör, och ett kort som dras vid den delade skärmen landar uppvänt.**
+
+Receptets «Blanda» (`when: both`) stod i arket under ringen bredvid ringens eget «Blanda» — två knappar för samma handling.
+En åtgärd med `when: both` vars enda steg är `shuffle`, eller `flipTop` med `toggle`, står därför inte i arket; den finns kvar som start, och ringen bär verbet.
+En åtgärd som bara gäller på begäran står kvar, eftersom designern då bett om den i egna ord.
+«Dra 1» och D på en skärm utan egen hand — bordets skärm — lade kortet nedvänt bredvid högen, och det enda sättet att se det var ett klick till och «Vänd».
+Där landar kortet nu uppvänt (`face: 'front'` på `split`): ingen enskild spelare ska läsa det i hemlighet där, så bordet läser det, och en dragning är en handling.
+`felt-shortcuts.test.tsx` och `table-renderer.test.tsx` håller båda.
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
 
@@ -3048,6 +3734,32 @@ Ratten pekar på raden med `aria-describedby`, eftersom den som tabbar till ratt
 
 Grindarna för tillägget: `packages/web/test/setup-actions.test.tsx` (rattens lägen, rutans rad och att ratten pekar på texten), `packages/web/test/setup-sentence-matrix.test.tsx` (raden ordagrant i båda språken, och att den uteblir när de två inte möts), `packages/web/test/slot-badge-contrast.test.ts` (att både den avstängda raden och raden under ratten går att läsa på sin egen botten) samt `packages/web/test/game-start.test.ts` och `packages/web/test/table-renderer.test.tsx` för bordshalvan.
 
+**Tillägg 2026-10-06 (#765): starten väntar på korten.**
+Ett nystartat bord med 323 kort behövde i speltestet en halv minut innan texturerna var klara, och under den tiden stod brickan tänd.
+En värd som tryckte delade ut kort utan ansikte — namnet på färg i varje hand — och TV:n sade ingenting om varför.
+Tre former prototypades i den byggda appen (#911, `docs/ux-audits/2026-10-06-renderkon/prototyper/765/`). **A** — en rad i TV:ns spalt som bara säger det. **B** — A:s rad, och brickan väntar. **C** — en skylt mitt på filten.
+
+**Valet blev B, av beställaren 2026-10-06.**
+A informerar men stänger inte risken: en värd som inte tittar åt höger delar ut ändå.
+C täcker filtens mitt, draghögen och brickan i upp till en halv minut, och D5 reserverar mittkortet för det som har slutat vara sant, inte för väntan.
+B stoppar själva utdelningen med en form bordet redan har — den avstängda brickan med skälet i ord — och är samma princip som att editorns länk väntar på texturerna (L5).
+
+Brickan står släckt i sin befintliga form med «korten ritas · 70/323» under ordet, och `title` bär `start.blocked` med skälet «korten ritas fortfarande».
+TV:ns spalt har under vägen in raden «Korten ritas · 70 av 323» i 24 px (K26) med en tunn stapel, polite som D5:s «laddar», och den är borta när sista kortet är klart.
+Spalten är gratis på en höjdbunden TV, så raden kostar inte en bildpunkt kort.
+Samma väntan gäller på varje yta som ritar brickan på ett levande bord — bordsläget och distansvyn delar ut samma ansiktslösa kort — men bara TV:n har en spalt att säga det i.
+Ett kort som slutligt misslyckats väntas inte på: det sägs av `TextureFailures` (#10), och brickan tänds när resten är klart.
+
+Bord-flikens grupp «Startade, aldrig spelade» fälls ut av sig själv medan ett bord i den renderar kort, så att radens «renderar kort n/m» syns utan klick, och ihop igen när korten är klara — utom om designern själv fällt ut den (beställaren 2026-10-07, #939; grind `packages/web/test/editor-tables-groups.test.tsx`).
+
+**En kö som står still håller inte bordet stängt.**
+När räkningen inte rört sig på #88:s tid (30 s) blir brickan «Starta ändå» med «korten står stilla · 70/323» under, och går att trycka på; spaltens rad säger «Korten står stilla».
+Före det finns ingen väg förbi: en väg förbi från början hade varit A igen.
+Priset är erkänt: brickans text är filtskalad och ligger under 24 px på TV:n, och det är därför raden i spalten bär talet i golvets storlek.
+
+Grindarna: `packages/web/test/start-waits-for-textures.test.tsx` (spaltens rad, den släckta brickan, att den tänds när sista kortet landar, «Starta ändå» vid stillastående kö och distansvyns bricka) och `packages/e2e/test/tv-chrome-floor.spec.ts` (raden vid golvet i den byggda produkten, där sviten inte kör någon renderare).
+Sviter vars fråga är starten och inte renderingen öppnar TV:n med `facesReady`, som svarar att korten är klara.
+
 ### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
 
 E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
@@ -3112,6 +3824,8 @@ Tabellens kolumn heter «golv för all text», och det är så den ska läsas: z
 Granskningen 2026-09-29 mätte kromet till 13–16 px.
 Eftersom TV:ns filt är höjdbunden och varje etikett i 24 px kostar plats prototypas kromet i #573 innan det byggs.
 
+*Ändrat 2026-10-05 (#683): skylten bär inte längre räknarna, och räknarbrickans siffra ritas igen — se tillägget efter grindarna nedan. Var skylten står avgörs av K19:s revision 2026-10-05.*
+
 Beslutat 2026-09-29 efter prototyp (#573, beslut C): **varje plats ord står på en skylt på filten, intill platsens egna zoner, och spalten släpper PLATSER.**
 Skylten bär platsens bokstav och namn i platsens färg, antalet kort på hand och platsens räknare med namn och värde, i 24 px.
 Den står på den sida av zonerna som vetter mot bordets mitt; en plats vid sidan staplar sina ord, eftersom en bred skylt där nådde högarna vid fyra platser.
@@ -3126,6 +3840,19 @@ De två avvisade varianterna och mätningen vid 2, 4 och 8 platser står i #573,
 A lade varje ord där det står, i 24 px: etiketterna trängdes vid hörnen vid åtta platser, och INSPEKTION krympte till ungefär 80 px.
 B flyttade platsernas ord till spalten: filten blev lugnast, men vid åtta platser trycktes INSPEKTION ihop till nästan ingenting.
 Grindar: `packages/e2e/test/tv-text-floor.spec.ts` (ingen text på TV:n under 24 px vid 2, 4 och 8 platser; skyltarna täcker varken högarna eller varandra; K9:s kort håller) och `packages/web/test/tv-seat-plates.test.tsx`.
+
+Ändrat 2026-10-05 (#683, beställarens beslut E efter prototyp): **skylten säger platsens bokstav, namn och hand — «(B) ledig 5 kort» — och inte längre räknarna.**
+Raden ovan om att räknarbrickans siffra inte ritas en gång till är vänd: räknarens tal står på platsens egen mark igen, i rummets 24 px-piller som en mark utan ägare redan bar på TV:n.
+Räknarens namn («Guld») skrivs inte längre på TV:ns filt.
+Med två räknare per plats står två namnlösa tal i platsens remsa; det är priset för en skylt som ryms.
+Handen sägs kort, «5 kort» och inte «5 kort på hand», med samma ord som spalten använder när den är tät.
+Var skylten står, och brickan som sista utväg i stället för #750:s kapning, står i K19:s revision 2026-10-05.
+Inget nytt går på tråden: skylten och marken visar det TV:n redan fick.
+
+Tillagt 2026-10-17 (#925, beställarens beslut B efter prototyp): **D5:s statussida och skalet följer tabellen på TV:n och golvet i bordsläget.**
+På TV:n ritas sidan med tabellens egna tal: brödtexten 32 px, rubriken 48, märket på golvet 24 och knapparna 28 px med 64 px höjd.
+Bordslägets statussida räknas som rummet och inte som skrivbordet, trots att bordslägets lyft gör det, eftersom den läses av alla runt bordet: märket 24, rubriken 36, texten 24 och knapparna 24 med 56 px höjd.
+Talen är fasta px och skalar inte med fönstret; hur det byggts står i D5:s tillägg samma dag.
 
 ### K27. Kortets tryck hörs i läsvyn, och observatörens platser är listor (prototypat 2026-09-29, beslutat 2026-09-30, #551)
 
@@ -3246,6 +3973,12 @@ Rutnätet från variant C finns som ett valfritt lager, av som standard, och är
 Duken renderar fortfarande genom `CardPreview` och kompilatorn (E2): lagret som tar pekaren ligger ovanpå kortet i kortets egna millimeter och ritar inget kortinnehåll.
 Lagerordningen ändras genom att dra en rad i panelen och, eftersom en lista som bara kan dras är en lista tangentbordet har förlorat, med Alt och piltangent.
 Prototypen `packages/web/src/prototype/canvas` togs bort när den hade svarat.
+*Tillagt 2026-10-03 (#700):* lekens första fält gäller bara text.
+En ny bild binds till den första kolumn mallen redan ritar som bild, och en ny ikonrad till den första kolumn en ikonrad redan läser namn ur.
+Finns ingen sådan kolumn läser elementet ingen kolumn alls: bilden blir en fast bild utan vald bild och spelets bilder öppnas direkt, och ikonraden står tom.
+Skälet är speltestet 2026-10-02: en bild bunden till «typ» ritade en trasig bild med src «Playcard», och en ikonrad bunden till den skrev «{Playcard}» i varningsrött — en gissning som passar en textruta och inget annat.
+Varningen för ett okänt ikonnamn (L2) står kvar; det som ändrats är att verktyget inte längre skapar den själv.
+*Tillagt 2026-10-04 (#802, beställarens beslut variant A, [prototypen](https://github.com/Tiico/build-a-deck/blob/594ef3f0d30e47d1118517fbb504e3432b1718ac/docs/ux-audits/2026-10-04-platshallare/prototyper/802/index.html)):* ett lager som inte ritar något på kortet som visas — en fast bild utan vald bild, en ikonrad utan namn, en kolumn som är tom på kortet eller en bild bunden till en kolumn med ord — får på mallduken en streckad ram med ett kort ord i en mörk bricka, alltid synlig, och hela meningen i brickans `title` och tillgängliga namn; platshållaren kommer aldrig in i kompilatorns utdata, men kompilatorn ritar en cell som inte är en bild som en tom cell i stället för `<img src="Playcard">`, i tryck och på bordet också.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
 En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.
@@ -3424,6 +4157,7 @@ Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bo
 Meningen citerar numera det namn knappen bär.
 Bytet är atomiskt för spelarna: knappen köar först den nya revisionens texturer (`POST /sessions/:id/prepare`), visar "renderar kort n/m", och skickar bytet först när alla är renderade (byggt 2026-09-06).
 Ett nystartat bord får sin länk först när dess texturer är klara (`GET /sessions/:id/textures`).
+Startbrickan vid bordet väntar på samma texturer, och Bord-flikens rad säger «renderar kort n/m» i bandets egna ord medan de ritas (#765, se K25:s tillägg 2026-10-06).
 Telefonens hand och inspektion visar samma texturer som bordet; saknas en texturs hash visas namnet på färg.
 Bordet visar att en nyare version finns.
 
@@ -3696,6 +4430,25 @@ Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som 
 Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
 Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
 
+**Reviderat 2026-10-06: bekräftelserna står i den öppna flikens fot, inte längst ner på skärmen (L67, #698).**
+
+**Reviderat 2026-10-03: under 1440 är «Osparat» en amber prick i bockens ruta (#668, A1).**
+Meningen ovan om att «Osparat» står kvar i ord och färg gäller inte längre under 1440 px; där står det nu i färg och märke.
+Ordet tog 35–50 px som raden aldrig hade: de togs från spelets namn, som klipptes till «Sal's Sal…» (91–97 av 102 px med DejaVu), och flikraden hoppade 29–44 px i sidled varje gång arbetet växlade mellan sparat och osparat.
+Statusen är nu en fast ruta på 14 × 14 px i båda lägena: den grå bocken när arbetet är sparat, en fylld amber prick på 9 px när det inte är det.
+14 px och inte `--byd-tick`:s 18, eftersom bocken mäter 13 px i DejaVu och 13,5 px i SF Pro, och 18 hade tagit 4–5 px av raden.
+Ordet «Osparat» eller «Sparat» ligger visuellt dolt i `role="status"`, så en skärmläsare hör exakt det den hörde förut, och märket är `aria-hidden`.
+Pricken är ett märke och ingen kontroll (L13): ingen fyllning runt den, ingen kant, inget mål.
+Amber `#f0b64a` mot huvudets `#23262e` ger 8.28:1.
+Vid 1440 och bredare står ordet kvar i båda lägena, i det bredare ordets rum (#670).
+Det som blir över i raden går till flikarnas luft, upp till 1440:s 12 px per sida: flikraden växer in i radens rest innan mellanrummet får något, och aldrig in i det spelets namn behöver.
+Det är ren CSS — varje flik har två tomma kolumner bredvid sitt ord som är noll vid flikens minsta bredd och högst 8 px (1024) eller 4 px (1280) vid dess största — så det håller i vilket typsnitt och språk som helst.
+Mätt i den byggda appen med ett bord igång: flikarna flyttar 0 px mellan sparat och osparat vid 1024 och 1280 på svenska och engelska, namnet läses helt i båda lägena, och luften per sida vid 1024 gick från 4 px till 9 px (sv) och 10 px (en) med SF Pro; vid 1280 når den taket på 12 px.
+Två andra märken prototypades och valdes bort.
+En amber penna (A2) syntes tydligare än pricken, men bredvid ångra och gör om lästes den som en tredje knapp, för att redigera.
+Pricken med ordet en gång i en bubbla (A3) lärde ut tecknet, men bubblan kom tillbaka vid varje första ändring efter en sparning och täckte då bordsremsan.
+Prototypen står i `docs/ux-audits/2026-10-03-osparat/prototyper/01-osparat-markets.html`; grinden är `packages/e2e/test/surfaces/editor-header-fit.spec.ts`.
+
 **Tillägg 2026-09-30: en fin pekare är skrivbord, oavsett bredd (#550).**
 Gränsen ovan går vid vem som håller ytan, men rummet i L10 avgjordes av bredden ensam.
 Ett skrivbord zoomat till 200 % är 640 px brett och vid 400 % 320 px, och bredden kallade det en telefon: `Mall` försvann ur editorn för precis den formgivare som hade zoomat in för att kunna arbeta.
@@ -3738,6 +4491,13 @@ Det som såg ut som en var, mätt, en knapp utan kant: editorns `#3b414e` mot kr
 Ett rum plus en roll är två klasser och vinner; ett rum, en roll och ett tillstånd är tre och vinner över ytans `:hover` och ytans `:disabled`.
 Det gäller inte bara i vila: wizardens `button:hover` är (0,2,1) och tog tillbaka linjen så fort primärknappen pekades på, och `/join`:s `form button:disabled` är (0,2,2) och tog fyllningen men inte linjen, vilket gav en grå knapp i en grön ring i det tillstånd sidan öppnar i.
 Båda mäts numera på beräknad stil, inte på att en regel finns.
+
+Tillägg 2026-10-03 (#791): **en dörr är ingen roll.**
+Editorns huvud har tre kontroller som öppnar en panel — spelets ⋯, revisionen som öppnar historiken och ansiktena som öppnar vilka som har spelet.
+Ingen av dem är en första eller andra handling, och `aria-expanded` säger att en panel hänger från dem, inte att något är valt, så de får ingen av rollernas former: ingen fyllning och ingen kant, i vila som när panelen är öppen.
+De ritas som ⋯ redan ritades: tyst bläck, editorns mörka grund under pekaren och när panelen är öppen, och fokusringen som allt annat.
+Samma läcka som ovan hade tagit två av dem: huvudets ruta `.byd-editor > header > button` (0,1,2) vann över `.byd-editor-rev` och `.byd-editor-here` (0,1,0) i varje läge.
+Rutan väljer nu bara huvudets två handlingar, med `:where()` så att rollerna väger som förut, och `button-language.test.tsx` mäter dörrarna mot ⋯ i samma läge vid 1024, 1280 och 1440.
 
 **Rummen är sju, inte fem.**
 Issuet räknade fem ytor — kontot, platsväljaren, wizarden, editorn och telefonen — men telefonens egna ark, enkäten och tillbakaspolningsfrågan öppnas också på `/online` och på `/observe`, under egna klassnamn.
@@ -3950,6 +4710,14 @@ Baksidan erbjuder färdiga ryggar.
 Var och en är en vanlig elementlista — botten med mönster, en inre kant, ibland en medaljong — så den går att ta isär och ändra efteråt; det är en utgångspunkt och inte en låst bild.
 Galleriet står framme i lagerpanelen så snart baksidan är öppen, inte bakom en knapp: den som landar på en tom baksida ska se vägen vidare utan att leta efter den.
 
+Reviderat 2026-10-06 (#736, beslut A av beställaren efter prototyp i #917): **galleriet ligger hopfällt under baksidans lager, och är öppet bara när baksidan saknar egna lager.**
+Öppet ovanför lagren tog det 506 px av lagerkolumnens 483–515, så inget av en baksidas lager syntes utan rullning, och rullisten ritades inte.
+Huvudet «Färdiga baksidor (7)» är en knapp med fällningens chevron och står direkt efter lagerraderna; ett tryck öppnar galleriet på plats.
+Skälet till galleriets plats står kvar: en tom baksida visar det öppet, och när en rygg läggs på en tom baksida fälls det med fokus på huvudet.
+Läget följer baksidan och inte designern: det sätts om varje gång baksidan går från tom till lagd eller tillbaka, och står däremellan som designern lämnade det.
+Två varianter avvisades: galleriet öppet under lagren (B), som tryckte «Rutnät 1 mm» och Grupper ~500 px ner, och en dörr i kolumnens krona som öppnar galleriet som en lyft box (C), som tog bort galleriet från den tomma baksidan.
+Grinden är `packages/e2e/test/surfaces/template-text-and-back-fit.spec.ts`, vid 1280 × 800 och 1024 × 768 med ett bord som kör.
+
 Bordet i fliken "Bord" visar lekens egen rygg (reviderat 2026-09-15).
 Filten ritade varje kort som låg med baksidan upp som en och samma blå väv ur `table.css`, vilken rygg leken än hade: den enda yta där designern ser leken som en lek visade en rygg som inte hörde till något spel, och en vald rygg nådde bordet först när spelet hade publicerats.
 Ryggen kompileras i webbläsaren av `compile` — samma renderare som duken och kortväggen, alltså ingen andra kodväg (K9) — eftersom den här ytan varken har en renderfarm bakom sig eller en sparad version att rendera.
@@ -4124,6 +4892,80 @@ Det som måste vara kvar i det blockerande arket är allt en spelare eller ett b
 `packages/web/src/App.tsx` håller den dynamiska importen och Suspense-gränsen.
 `packages/web/test/felt-font.test.ts` är grinden: den bygger appen, läser det blockerande arket, öppnar `/editor` i Chromium och kontrollerar att editorns ark hämtas och verkligen gäller.
 
+**Tillägg 2026-10-04 (#760): varje yta har sitt eget skript, men arken blockerar som förut.**
+Speltestet 2026-10-02 mätte att `/play` laddade samma entré som alla andra ytor: 822 kB avkodat, 259 kB gzip, med guiden, kontosidorna, filtens renderare och observatören i en remsa kort.
+Nu hämtas varje rutts skript när dess adress öppnas: `fetchPage` i `App.tsx` svarar med en dynamisk import per yta, och Rollup delar det de har gemensamt i egna chunkar.
+Mätt i det byggda bygget: entrén går från 847 kB till 421 kB (259 → 124 kB gzip), `/play` hämtar 197 kB gzip och `/join` 161 kB, och ingen av dem hämtar filtens, observatörens, guidens eller editorns chunk.
+
+Det är skriptet som delas, inte arken.
+Det här tillägget ändrar inte gränsen ovan: allt en spelare eller ett bord möter vid första målningen ligger kvar i entréns blockerande ark, importerat från `first-frame-sheets.ts` i den ordning kaskaden hade, och arket är byte för byte detsamma som före delningen.
+Meningen «en rutt som delas av får aldrig vara en av dem» gäller arket: editorn är fortfarande den enda rutt vars ark hämtas med rutten.
+
+Ingen ny väntan och inget nytt utseende.
+Till skillnad från editorns väntar `main.tsx` på ytans skript *innan* React ritar något, så det första på skärmen är ytan själv — ingen reservyta och inget skal som blinkar bort, bara samma vita sida som före delningen, kortare.
+Delningen kostar heller ingen extra rundtur: det byggda `index.html` läser adressen och ber om ruttens chunkar bredvid entrén (`vite.config.ts`), i stället för att entrén först ska komma fram och köras.
+Når en ytas chunk inte fram visas läget `offline` i ytans egen röst, och «Försök igen» är här en omladdning — den enda platsen där det är så, eftersom sidan aldrig ritats och Chromium minns en modul som inte gick att ladda.
+
+Riktmärket i #760 — telefonens första målning under 100 kB gzip — nås inte av ruttdelningen ensam, och det sägs rakt ut.
+Det som återstår är inte ruttkod utan tre saker alla ytor delar: Reacts DOM (~57 kB, golvet), språkkatalogerna — båda språken och varje ytas ord, editorns och kontosidornas medräknade (~42 kB av telefonens last) — och zod, som validerar varje ram servern skickar (~30 kB).
+De två sista är beslut om i18n-arkitekturen och om validering på tråden, och tas för sig.
+De avgjordes samma dag, och vad som byggdes av dem står i tillägget 2026-10-17 nedan.
+
+Grindarna: `packages/e2e/test/surfaces/phone-bundle.spec.ts` öppnar `/play` och `/join` som en telefon, väger varje skript sidan ber om och nekar filtens och observatörens chunkar; den håller också inne entrén på tråden och ser att handens chunk efterfrågas ändå.
+`felt-font.spec.ts` läser nu tre slags rutter ur `App.tsx` — hämtade, ritade av entrén och editorns lata — och kräver att varje ark en hämtad yta når statiskt ligger på entrén, och att entrén inte bär något ark som ingen yta ritar först.
+
+**Tillägg 2026-10-06 (#749): arket står efter `#root`, och garantin mäts i stället för att antas.**
+Så länge entréns ark stod i `<head>` blockerade det varje målning, också av något som inte behöver ett enda ord ur det.
+Det är 105 kB brotli med filtens ansikte i, och på speltestets mobilnät var det fem till sju sekunder av vit sida på varje rutt, fast dokumentet var framme efter en halv.
+Beslutet (beställaren 2026-10-06) flyttar arket till slutet av `<body>`, efter `#root`, och ställer D5:s laddar-besked i `#root` som skal (D5, tillägg samma dag).
+
+Vad arket innehåller ändras inte, och inte heller gränsen ovan: allt filten och telefonen ritar vid sin första bild ligger kvar i entréns ark.
+Det som ändras är vad arket håller.
+Ett ark efter `#root` håller inte målningen av det som står före det, så skalet målas när dokumentet är framme: 0,5 sekunder på varje rutt.
+Entrén är ett modulskript, och ett modulskript körs inte medan ett ark som parsern redan mött fortfarande laddas.
+Appens första bild ritas därför fortfarande med arket på plats och filtens två ansikten i dokumentet, och K20:s krav håller.
+
+Det är mätt och inte antaget: `packages/e2e/test/surfaces/shell.spec.ts` håller arket en och en halv sekund på tråden medan entrén går fritt, och kräver att skalet målas innan arket kommit, att appens första bild ritas först efter det, och att arket då gäller och ansiktena är deklarerade.
+Flytten görs av bygget (`vite.config.ts`), så den källa som `index.html` är förblir läsbar och utvecklingsservern, som inte länkar något ark alls, är orörd.
+Den har en följd för kaskaden: varje ark som hämtas senare — editorns, regelbokens låda, hjälprutan — länkas av Vites förladdning sist i `<head>`, alltså före entréns ark i `<body>`, och en regel som skrivits för att vinna på ordningen förlorade då mot entréns.
+Editorns flikar och Bord-flikens namn lades ut av fel regler, vilket `editor-header-fit.spec.ts` och `zone-name-own-box.spec.ts` fällde.
+Bygget låter därför förladdningen länka ett ark sist i `<body>`, efter entréns, så att ordningen åter är den ordning arken kommer i; raden i Vites hjälpare matchas exakt, så en Vite som skriver den annorlunda fäller bygget i stället för att tyst kasta om kaskaden.
+Meningen i tillägget 2026-10-04 om att det första på skärmen är ytan själv, «samma vita sida som före delningen, bara kortare», gäller inte längre: det första på skärmen är skalet, och det som ersätter det är ytan.
+
+**Tillägg 2026-10-17 (#760): orden reser som skriptet, och riktmärket är det som nåddes (beställarens beslut 2026-10-04).**
+Ruttdelningen ovan lämnade hela katalogen i entrén: båda språken och varje ytas ord, editorns sexhundra meddelanden medräknade, också på en telefon som visar en remsa kort.
+Beställaren beslutade 2026-10-04 att katalogen delas per yta och språk, och att zod som validerar serverns ramar står kvar på klienten.
+
+Katalogen reser i fyra delar: `status` är skalets och hämtas alltid, `play` är telefonens och filtens, `account` kontosidornas och `editor` editorns.
+En sida hämtar bara sin ytas delar och bara på läsarens språk — `/play`, `/join` och rummets adress `/KOD` hämtar `status` och `play`, aldrig editorns meddelanden och aldrig det andra språkets version av sina egna.
+`fetchPage` i `App.tsx` säger vilka delar varje rutt talar, med `surface(sida, delar)`, och `scripts/route-table.ts` läser det därifrån åt både bygget och grindarna.
+Det byggda `index.html` ber om ruttens delar bredvid entrén på det språk skalet redan satt på dokumentet med appens egen `detectLang` (tillägget 2026-10-06 ovan), så orden kostar ingen extra rundtur och skalet och orden kan inte välja olika språk.
+Ett ord som flera ytor säger och som inte är en ytas eget ligger i `status`: rumskodens fält, som står både i platsväljaren och på startsidan, och vad en sparad version heter (#703), som bordet, telefonen, startsidan och editorn alla säger.
+`sv.ts` och `en.ts` slår fortfarande ihop hela katalogen, men bara för nyckelns typ och för löftet att båda språken har samma nycklar; ingenting vid körning importerar dem.
+
+Ett språkbyte hämtar det andra språkets delar för det sidan redan håller innan något ändras: sidan står kvar hel på det gamla språket tills orden är framme och byter sedan i en enda rendering, utan vit ram och utan nycklar.
+Ett ord som ingen hämtad del har ritas som sin nyckel och sägs på konsolen, och det är en bugg som grindarna nedan finns för att fälla.
+Når en ytas chunk inte fram väntar läget `offline` på skalets ord innan det ritas, eftersom de reser för sig och kan komma efter felet.
+Kommer inte heller orden fram står skalet kvar: det säger redan att sidan väntar, och erbjuder själv omladdningen efter en stund.
+
+**Riktmärket är det som nåddes, inte 100 kB.**
+Issuet satte telefonens första målning under 100 kB gzip; det nås inte, och skälet är beslutat och inte ett förbiseende.
+Mätt i det byggda bygget, gzip av varje skript sidan ber om innan ytan är ritad, som `phone-bundle.spec.ts` väger dem:
+
+| | före #760 | ruttdelning (2026-10-04) | main 2026-10-17 | + katalog per yta och språk |
+|---|---:|---:|---:|---:|
+| `/play` | 259 kB | 197 kB | 209,0 kB | **156,7 kB** |
+| `/join` | 259 kB | 161 kB | 167,8 kB | **115,4 kB** |
+| entrén | 259 kB | 124 kB | 159,0 kB | **98,2 kB** |
+
+Mellan ruttdelningen och katalogdelningen växte telefonen med tolv kilobyte av nya ytor och nya ord, och det mesta av det låg i entrén; delningen tog bort 52 kB från `/play`.
+Det som står kvar på telefonen är Reacts DOM (~57 kB, golvet) och zod (~30 kB), som validerar varje ram servern skickar och som står kvar på klienten enligt beslutet.
+Telefonens riktmärke är alltså 157 kB för `/play` och 115 kB för `/join`, och grinden larmar omkring fem procent ovanför: 165 respektive 122 kB, marginal för att telefonen ska kunna växa en funktion men inte för att ta tillbaka det som togs bort.
+
+Grindarna: `phone-bundle.spec.ts` öppnar telefonen på båda språken och kräver att den hämtar exakt `play` och `status` på läsarens språk, även medan entrén hålls inne på tråden.
+Den öppnar varje adress på båda språken utan att ett enda ord saknas, byter språk på `/login` med orden fördröjda på tråden utan att någon bildruta är tom eller halv, och kräver att en telefon som varken fick handens chunk eller skalets ord står kvar i skalet i stället för att rita nycklar.
+`packages/web/test/language-parts.test.ts` läser varje rutts moduler och kräver att varje nyckel de når finns i en del rutten hämtar — skalets nycklar i `status` — och att båda språken har samma nycklar del för del.
+
 ### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
 
 Beslutet, i en mening:
@@ -4220,6 +5062,10 @@ En bild är sina byte och har aldrig haft ett namn; hashen är entydig och oläs
 Namnet är det första en designer känner igen en bild på, så det sparas när filen kommer in — i samma post `pictures[hash]` som bär beskärningen, vilket är precis vad den posten byggdes för att kunna ta emot.
 Bilder som redan finns har inget namn och faller tillbaka på korten som använder dem: en post utan `name` läses tillbaka som det dokument den alltid var, så ingen migrering behövs för den här halvan.
 *Tillagt 2026-09-27 (#481):* samma byte valda igen under ett annat filnamn är bilden biblioteket redan har, och den behåller sitt namn; biblioteket säger «{fil} finns redan i biblioteket som {namn}» i stället för «är tillagd», och ingenting skrivs i dokumentet.
+*Tillagt 2026-10-04 (#742):* namnet sparas oavsett väg in.
+En bild som laddas upp från ett korts bildcell i Data läggs in i `pictures[hash]` med sitt filnamn och skrivs i cellen i samma redigering, så ett steg tillbaka tar båda.
+Namnet står också skrivet på brickan i Media, på en rad under bilden, och inte bara i bildens `alt`.
+Filväljarna erbjuder bara de fyra format grinden tar, och vikt och format prövas i webbläsaren med protokollets egen fråga innan en enda byte reser; servern ställer samma fråga igen.
 
 **«Hela bilden» räcker; prototypens «Kortets ruta» och «Fritt» byggs inte.**
 En lek kan ha flera bildkolumner med olika ramar, så «kortets ruta» har inget entydigt svar — den skulle först behöva fråga *vilken* ruta, och det är en fråga beskärningen inte kan ställa, eftersom beskärningen hör till bilden och inte till användningen.
@@ -4417,6 +5263,15 @@ Greppen bredvid talen är 44 × 44 px med samma ritning.
 «Sätt in en ikon» i Tabell lyftes ut till #593, eftersom dess kolumn reserveras i varje textcell (#140) och 44 px där kostar varje cell 18 px hela tiden.
 Mätningarna och skärmbilderna står i #570 och i `docs/ux-audits/2026-09-29/prototyper/570/`; grindarna är `packages/web/test/editor-props-density.test.tsx` och svepet i `packages/web/test/editor-viewport.test.tsx`, som inte längre undantar galleriet.
 
+Reviderat 2026-10-06 (#736, beslut C av beställaren efter prototyp i #917): **textlagrets panel ryms utan rullning vid 1024 × 768 och 1280 × 800, även med bandet «Bordet kör».**
+Med Layout, Innehåll och Text öppna var den 751 px i en spalt om 589–621, och «Anpassning» och «Finjustering» stod under kanten.
+Placeringens nio rutor står i en egen kolumn, exakt så bred som rutorna, med «Anpassning» och «Finjustering» staplade bredvid; golvet om 44 px står kvar.
+Fältet lagret visar står på en rad direkt under panelens rubrik, «Visar fältet [Titel ▾]», där lagret namnges, och textlagret har ingen sektion Innehåll längre — bild och ikon har kvar sin, eftersom de har fler val där.
+«Anpassning»-väljaren är ungefär 110 px bred bredvid rutorna och klippte «krymp till gräns»; valen heter nu ett ord var, «krymp» och «fast» («shrink» och «fixed»).
+Två varianter avvisades: rutorna bredvid utan att flytta fältet (A), som fortfarande rullade 16–48 px, och panelen oförändrad med en fast ledtråd om det som står under kanten (B), som inte uppfyller kravet att panelen ryms.
+Formlagret rullar fortfarande; det är inte en del av beslutet.
+Grinden är `packages/e2e/test/surfaces/template-text-and-back-fit.spec.ts`, som mäter rektanglar i båda språken.
+
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 
 Formgalleriet är parametriskt: en form är ett hörnantal och en vridning (L42, L17).
@@ -4463,6 +5318,8 @@ Katalogposten vet svaret och fyller i det, för tryckets skull.
 
 Katalogen nås aldrig utan handling från designern: ingen förhämtning vid sidladdning.
 Att katalogen inte svarar sägs i panelen, inte tyst.
+Tillägg 2026-10-06 (#687): en handling räknas också när den gjordes vid ett tidigare besök och står i ett utkast designern kommer tillbaka till.
+Den guidade startens tema som tryckts före en omladdning hämtas därför när sidan öppnas igen; ett förval som ingen tryckt hämtas inte (L57).
 
 **Byggt 2026-09-21 (#329). Ett led i beslutet behövde en form det inte hade fått.**
 
@@ -4744,6 +5601,16 @@ En hög på TV:n är så stor som kameran gör den, så en rörelse i bildpunkte
 `prefers-reduced-motion` stänger av rörelsen helt, inte dämpar den.
 Kvar blir en kort bärnstensfärgad puls på högen i 420 ms: något hände, utan att något rörde sig.
 
+Reviderat 2026-10-06 (#718, beställarens beslut C efter prototyp): **på rummets TV fläktas högen längre och längre tid, och högen säger att den blandades.**
+
+Speltestet 2026-10-02 tryckte «Starta spelet» på en start som bara blandar, och från soffan hände ingenting: vid 1920 var fläkten några pixlar kortkant bakom en hög på 80 px i en halv sekund, och en ny värd tryckte igen.
+På TV:n når fläktens kort därför 2,6 gånger så långt och vrids dubbelt så mycket, på 1,2 s; samma fyra baksidor, samma form på rörelsen, i kortets eget mått.
+Under högen står «Draghög blandad» i tre sekunder, på badgens ljusa platta, under högens namn och under det översta kortets namn när det står där; ordet står kvar också under `prefers-reduced-motion`, eftersom ord inte är rörelse.
+Andra skärmar behåller fläkten på 560 ms; de står på armlängds avstånd.
+Fläktens kort ritade dessutom webbläsarens trasiga bild så länge baksidan inte var renderad, eftersom täcket över en bild som väntar var dolt på dem; nu döljs bara orden på täcket.
+`game-start.spec.ts` mäter i den byggda appen att raden står inom en sekund, att fläkten når mer än en halv kortbredd utanför högen, att ingen fläktbild ligger otäckt och att raden går efter tre sekunder.
+Prototypen: `docs/ux-audits/2026-10-06-starten/prototyper/718/`.
+
 ### L36. Start-, konto- och guideflödena kortas bakom L32:s frågetecken, och säljtexten står bara första gången (prototypat 2026-09-20, #304)
 
 Inventeringen av `sv.account.ts`: 128 nycklar, 92 av dem under 25 tecken.
@@ -4764,7 +5631,20 @@ Inloggningssidan är det första någon ser, och ett e-postfält utan sammanhang
 Det kräver ett tillstånd på en sida som i dag inte har något, och tillståndet är en vy och inte ett faktum om någon (L4): det ligger i webbläsaren, per skärm, aldrig i ett konto — sidan får inte veta vem som tittar innan hon loggat in.
 **Går lagringen inte att läsa visas säljtexten.**
 Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den som kanske aldrig varit här sammanhanget, inte ta bort det: felet åt det hållet kostar en mening, felet åt andra hållet kostar en förklaring till den som behövde den.
+
+*Reviderat 2026-10-06 (#743, beställarens beslut):* under betan säger säljtexten «Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.» (engelska: «Build your own card game and playtest it on screen — print is coming.»).
+«Beställ hem det» lovade något som är fas 5, och en betatestare som kom för att beställa hittade ingenting; ingen beställning utlovas som något som finns i dag.
 Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
+
+**Raden under säljtexten följer vägen in** (beställarens beslut 2026-10-06, #691).
+Den enda mening L36 lämnade kvar — «Logga in för att komma till dina spel» — talade bara till den som redan har konto.
+Första besöket säger «Logga in eller skapa konto med din e-post — länken i mejlet räcker», en inbjudan «Logga in för att öppna spelet du bjudits in till» med spelets namn (D3), och guidens utkast «Ditt spel skapas när du loggat in»; claim har sin egen sedan tidigare.
+Utloggad säger guiden tidigt, i rutan som säger att den är startpunkten, att spelet sparas på ett konto.
+Det är samma rad på samma plats, inte en ny form.
+Reviderat 2026-10-06 (#687, beställarens beslut efter prototyp): rutan bär nu bara den meningen — «**Spelet sparas på ett konto.** Du loggar in med e-post när du skapar det, och det du skrivit här följer med.» — och finns inte alls för den som är inloggad.
+Etiketten «Wizarden är startpunkten» är borta, och med den ordet «wizard» från ytan: den heter «guidad start» överallt.
+Meningen står här och bara här; inloggningskortets leads är #691:s.
+Vid 1280 × 800 är rutan 445 × 70 px, mot 445 × 52 när den bara bar etiketten.
 
 
 ### L37. En uppladdning som misslyckas för sent rättas i dokumentet och i historikens bilder, aldrig som ett eget steg (2026-09-20, #344; reviderat 2026-09-21, #358)
@@ -4947,6 +5827,21 @@ Att behålla 83,5 kB och bara ändra vad ett överskridande *betyder* lämnar li
 Att dela ut designerytorna (guide, konto, hjälpring — 14 073 B rått men bara 2 750 B gzip) kostar en riktig Suspense-yta för `/` och `/login` och ger 2,7 kB luft åt nästa yta; sju åttondelar av de −96 ms experimentet gav var dessutom JavaScript och inte CSS.
 Att budgetera brotli i stället för råa byte avvisas som *ersättning* — det säger ingenting om vems CSS det är — men frågan om det som faktiskt reser lever vidare i #372, tillsammans med att ingenting i repot konfigurerar komprimering och att arket okomprimerat kostar +2 692 ms.
 
+Tillägg 2026-10-17 (#682): taket band, och svaret blev frågan och inte en höjning.
+Bordslägets platta vid ett avvisat drag, hörnets rad och ⋯-menyn låg 2,3 kB över larmet i `table.css`.
+Ingen av dem ritas på första bilden, och inte heller «Starta om spelet?», som låg där sedan #452: de reser nu i `table/felt-after.css`, som `after.ts` hämtar med `import()` när en spelbar filt monteras.
+Hörnets rad väntar på arket innan den ritas; plattan och frågorna kan inte visas förrän någon har släppt eller tryckt, och då är arket framme.
+Bara «⋯» själv, som står i hörnet från första bilden, ligger kvar i det blockerande arket.
+
+**Tillägg 2026-10-17 (#984, beslutat av beställaren): designerns sidor bär sina ark själva.**
+Taket band igen, 2 byte under larmet, och svaret är det regeln ovan säger: vad i arket första bilden inte ritar.
+Sedan #760 hämtas varje rutts skript när dess adress öppnas, och varje rutts ark låg i det blockerande arket — också gästbokens, kontots och guidens, så att varje telefon väntade på guiden innan den ritade sin hand.
+Det blockerande arket är nu bordets och telefonens: bara rutter som ber om `play`-orden (`/table`, `/play`, `/join`, `/observe`, `/online`) får sina ark i `first-frame-sheets.ts`.
+`/`, `/login`, `/claim`, `/invites/…` och `/new` bär sina i sin egen chunk, som editorn gör sedan #186: `wizard.css`, `account.css`, `stepper.css`, `account/game-menu.css` och `editor/theme-tile.css`, ~22 kB.
+Det tredje bortvalet ovan avvisade samma flytt för att den kostade en riktig Suspense-yta för `/` och `/login`.
+Den ytan finns sedan #760, och Vite låter inte rutten lösas förrän chunkens ark har landat, så sidan ritas aldrig oklädd — `felt-font.spec.ts` håller arken tillbaka 1,5 s och läser sidans element i samma stund det kommer in i dokumentet.
+Mätt i bygget efter #682: det blockerande arket är 211 358 byte mot larmets 233 840, och larmet står kvar på 120 kB med 22 482 byte marginal.
+
 ### L41. Textens placering är en niopunktsplatta, och avstånden ligger bakom «Finjustering» (prototypat 2026-09-18, beslutat 2026-09-21, #219)
 
 Mallsidans egenskapskolumn kunde inte centrera en text i sitt block.
@@ -5037,6 +5932,18 @@ En platshållare som läses som ett ifyllt värde är halva felet: fältet ser b
 Det som står kvar låst bär nu guidens låsta form: fyllningen tas bort, för fyllningen är affordansen, och rummets egen sekundärlinje står kvar så att kontrollen fortfarande är ett piller.
 Mätt efter rättelsen: kant 3,78:1 mot papperet och bläck 5,52:1.
 
+**Tillägg 2026-10-17 (#732): dörren frågar innan den lämnar något, och den låsta formen mäts även mot remsan.**
+Speltestet 2026-10-02 skrev en titel på kort 1 och tryckte «Skapa ett tomt spel i editorn»: spelet skapades utan kort och fält, utan ett ord.
+Dörren ställer nu verktygets enda fråga (`Question`, L9) där den trycktes, men bara när guiden håller kort eller fält som designern har ändrat: «Ett tomt spel får bara namnet och platserna. Korten och fälten du har gjort här följer inte med.»
+Frågan öppnar på «Avbryt», och «Ja, skapa ett tomt spel» står ett tabbsteg bort, i guidens röda.
+En orörd guide frågar ingenting, eftersom ingenting går förlorat; ett namn som saknas sägs fortfarande vid fältet först.
+Ett utkast som återupptas efter en inloggning frågar inte igen, eftersom frågan redan är besvarad.
+
+Den låsta formen tar bort fyllningen, och det syns bara på en grund som fyllningen skiljer sig från.
+Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70 %: samma färg som en knapps fyllning, så den låsta «Föregående» i steg 1 såg ut som en aktiv sekundärknapp.
+Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
+En riktig pekare över den låsta knappen ändrar ingenting den målar.
+
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 
 L39 säger vad body-redigeraren *gör*, inte vem som *får* den.
@@ -5126,6 +6033,8 @@ Alternativet — en etikett vid sidan av nyckeln — hade gjort namnbytet gratis
 `title` är vad ett kort heter överallt där det nämns — regelbokens referenser, bordets upplysningar, startsidans kort — så nyckeln står kvar som `title`, visas som «Titel» i designerns språk i både den guidade starten och editorns tabell, och döps inte om: `renameField` vägrar den.
 Alla andra fält blir exakt det namn som skrivs, också i den guidade starten, där namnen i steg 2 förut stannade i formuläret och spelet fick `cost`, `fält1` och `värde1`; startramarna binder fälten efter deras plats på kortet, så «Pris» hamnar i hörnet ändå.
 Tomma namn, två fält med samma namn och verktygets egna namn stoppas vid fältet.
+Samma namn betyder samma namn utan hänsyn till versaler, och verktygets egna namn är också orden de visas med (#694): importen parar redan en rubrik som bara skiljer i versaler med kolumnen (L4), så «TYP» bredvid «typ» eller en andra «Titel» bredvid titeln var kolumner som en export och import slog ihop.
+Regeln gäller det som skapas — dörrarna, importen och aktörens levande dörr — och inte `applyEdit`, så en lek som fick sådana kolumner innan regeln behåller båda och dess logg spelas upp rad för rad som förut.
 
 **Priset är taget medvetet: CSV-rubrikerna byter namn med kolumnen.**
 En lek som exporterats tidigare får en annan rubrikrad, så ett kalkylark eller en import som designern håller utanför verktyget slutar matcha tills hon byter namnet där också.
@@ -5238,6 +6147,17 @@ Fliken står över raden ovanför, som formgivaren redan har lämnat, och ritas 
 Kolumnen är borta, så en textkolumn mäts efter sitt innehåll och inget annat, och de 26 px går tillbaka till tabellen.
 Två alternativ prototypades och avvisades: knappen i tabellens krona, som står långt från markören och bryter ordningen fält → knapp, och en ram som går 44 px ut åt höger, som täcker texten bredvid den man skriver i.
 Tabbordningen ovan står kvar: knappen nås framåt från fältet.
+
+*Tillagt 2026-10-04 (#693, beställarens beslut A efter [prototypen](https://github.com/Tiico/build-a-deck/blob/efc45c7ad641c77e737048b61fd2d6b62dbd94db/docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/index.html), som också ligger i `docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/`):* när raden ovanför cellen är tabellens huvud hänger fliken under fältets högra hörn i stället, över raden under.
+Över huvudet låg den på kolumnens filterhandtag ▾ i en kolumn så smal som `typ`, och någon placering som höll både fliken över huvudet och handtaget nåbart fanns inte utan att huvudet eller fliken ändrade form.
+Det är samma hörn och samma ram, speglad i höjd och i inget annat, så ögat hittar fliken vid samma kant som i övriga rader.
+Vilken rad det gäller mäts och räknas inte: radens överkant minus flikens höjd ovanför huvudets nederkant.
+Det är alltså den första raden, och i en rullad tabell den rad som står närmast det fastnålade huvudet.
+Mätningen görs av lådans egen läsning av sig själv (`markCut`), när cellen man står i byter och när lådan rullas.
+Biblioteket som öppnas från en sådan cell börjar 4 px under fliken.
+Cellen med biblioteket öppet lyfts inte längre till en egen nivå: biblioteket står i sidans översta lager, och lyftet drog med sig fliken in under huvudet.
+Priset är känt och taget: fliken byter sida i höjdled när man går ned från raden mot huvudet, och den täcker slutet av värdet i raden under.
+Två alternativ prototypades och avvisades: fliken under fältets vänstra hörn med biblioteket hängande i den (B), som byter både höjd och sida och krockar med den fastnålade rälsen, och fliken under fältet i alla rader (C), som täcker raden man är på väg till i varje rad och ger upp skälet bakom #593.
 
 ### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449; ordningen utvidgad till dragvägen 2026-09-24, #461)
 
@@ -5406,6 +6326,10 @@ Ekonomi och juridik:
 Moms, tull och leveransvillkor för fysiska varor till EU-kunder från amerikansk eller asiatisk partner — DDP eller DDU, vem står för tullavgiften, IOSS-registrering.
 Prisnivåernas exakta tak och gratisnivåns gränser.
 GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan konto.
+Betans minsta förtroendeyta, innan villkoren och GDPR för gäster är lösta: **beslutat 2026-10-06 (#757, prototyp A).** En tyst rad sist i inloggningskortet och sist på Mina spel säger «Kontakt» (lådans `BYD_CONTACT`, utelämnad utan) och versionen ur `/health.release`; där en gäst ansluter och där hon sparar sina enkätsvar till ett konto står «Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.»; inloggningsmejlet har en fot med tjänstens namn, sajten och kontakten. «Villkor · Integritet» läggs på samma rad när de finns. `trust-surfaces.test.tsx`, `login-mail.test.ts` och `wire.test.ts` håller raden, meningen, foten och `/health.contact`.
+Vem betan är öppen för: **beslutat 2026-10-18, för alla.** Vem som helst med en e-postadress kan skapa konto, som i dag, utan inbjudningslista och utan kvoter; A2:s tak är inte byggda och beslutas inte för betan.
+Konsekvens att vara medveten om: ingenting begränsar hur många projekt, kort eller renderingar ett konto tar på en låda som delas med ett trettiotal andra containrar, så minnesbudgeten under last (#1012) och lådans egen rate limiting (DRIFT §9) är det enda skyddet tills A2 byggs.
+Hur betans sessioner når replay-korpusen: **beslutat 2026-10-18, samtycke i inbjudan.** Beställaren frågar varje betadesigner när hen bjuds in, och ett ja i mejlet räcker; produkten frågar ingenting. Hur samtycket blir en behörighet på lådan står i DRIFT §7 (#1011).
 Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
@@ -5540,6 +6464,8 @@ Beställaren valde den sista.
 
 Mätt i prototypen: fem rubriker hittas i stället för en, med lika många tabbstopp och lika många tryck in till ett block.
 
+En lista skapas sedan #707 i redigeringsläget och inte bara genom import: det öppna blocket väljer slag, och rader som börjar med «- » eller «1. » blir en lista (L68).
+
 ### L52. Fälten har knappspråkets kant, och en zon ritas i två band (prototypat och beslutat 2026-09-30, #553)
 
 Textfältens kanter mätte 1,41–1,48:1 mot sin grund och zonernas kontur på den gröna filten 1,5:1, mot WCAG:s 3:1 för annat än text (1.4.11).
@@ -5602,6 +6528,26 @@ A kostade arbetsytan 48 px vid 960 × 490 för en andra rad i remsan, och C göm
 `packages/e2e/test/surfaces/editor-tablet.spec.ts` håller det vid 960 × 490, 1024 × 600, 820 × 1106 och 768 × 1024: ingen kontroll i kromen är kapad, på någon etapp.
 Den fann också att «Hjälp om borden» i Bord var kapad i alla bredder: träffytans luft hängde utanför en rullruta.
 Prototypens bilder står i [`docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/`](docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/).
+
+Tillägg 2026-10-18 (#1000, följdkrav till AI-panelen i #940): **kortväggens krona frågar efter väggens bredd, inte fönstrets.**
+En panel på 380 px bredvid väggen lämnade skrivbordets rad 868 px vid 1280: sökfältet krympte till 26 px och «Fysisk kontroll» stod 93 px in under panelen; vid 1440 fick fältet 93 px.
+Kronan är nu en egen container (`.byd-wall-crown`), och #477:s korta boxar (variant B) gäller när kronan är smalare än vid ett fönster på 1280, så länge fönstret är ett skrivbord.
+Sökfältet ger aldrig upp mer än ned till 180 px, och där inte ens de korta boxarna ryms bryter raden i stället för att kapa något, som på plattan ovan.
+Utan något bredvid väggen är skrivbordets krona en rad som förut, i samma mått.
+`packages/e2e/test/surfaces/wall-crown-beside.spec.ts` håller det med en kolumn på 380 px vid 1024 × 768, 1280 × 800 och 1440 × 900, på svenska och engelska.
+
+Tillägg 2026-10-19 (#1045): **bredvid AI-panelen vid 1280 och 1440 står kronan på en rad, grupperad eller inte.**
+Mätt i CI:s DejaVu bröt raden vid 1280 i alla lägen: grupperad med 24 px för lite, ogrupperad med 68 px, eftersom «Ingen gruppering» saknade ett kortare ord; på en Mac syntes bara det ogrupperade svenska fallet.
+Två boxar har därför ett kortare ord där kronan är smal, i #477:s mönster (variant B): «Ingen gruppering» blir «Ogrupperad» («No grouping» blir «Ungrouped»), och «Fysisk kontroll (2)» blir «Kontroll (2)», som prototypen redan visade («Physical check (2)» blir «Check (2)»).
+Hela meningen är fortfarande boxens namn och tooltip.
+Testet mäter varje läge — grupperad, ogrupperad, ogrupperad genom ett val, och med ett förslag på väggen — både i maskinens typsnitt och i ett brett (Verdana, DejaVus bredd), så att en Mac inte kan ge grönt för en rad som bryter på Linux.
+
+Tillägg 2026-10-19 (#1047): **raden står också i varje öga.**
+#1045 mätte bara «Som du ser det», men läsvyerna (E5, #512) är ögonens längsta ord.
+Vid 1280 bredvid panelen bröt de raden: i det breda typsnittet «TV:ns «Visa för alla»» med 28 px grupperad och 35 px ogrupperad, «Telefonens läsvy» med 5 px ogrupperad, och på engelska telefonens och TV:ns med 46–54 px; i Macens typsnitt bröt de engelska med 1–8 px.
+Läsvyerna har därför ett kortare ord där kronan är smal, i samma mönster: ytan som håller upp kortet, «Telefonen», «Bordet» och «TV:n» («The phone», «The table», «The TV»).
+Hela namnet är fortfarande boxens namn och tooltip, och färgblindhetens ord är oförändrade eftersom de ryms.
+Testet går igenom alla åtta ögon, grupperad och ogrupperad, i båda typsnitten.
 
 ### L55. En öppnad låda ligger över allt annat, och tabellens fasta kolumner står på en list (prototypat och beslutat 2026-09-30, #609, #610, #611)
 
@@ -5666,6 +6612,7 @@ Varje valt värde står som en bricka i fältet, «typ: varelse ×», före det 
 Brickans × tar bort valet och lämnar handen i fältet; Backspace i ett tomt fält tar den sista.
 Det valda syns alltså på två ställen utan att något öppnas — i fältet och i huvudet — vilket är det #128 kräver av krönet.
 Krönet är därmed sökfältet och Importera, och fältet håller minst 400 px vid 1024, 1280 och 1440 (`editor-crown.test.tsx`).
+*Tillagt 2026-10-04 (#739):* boxen heter «CSV ▾», efter båda vägarna genom den; som «Importera» gömde den nedladdningen bakom den andra vägen.
 
 **Ett tecken öppnar en lista** (variant B:s väg, som tangentbordets väg in i samma fält, L23).
 Att skriva «typ:» i fältet listar kolumnens värden under det, listan smalnar med det som skrivs, pilarna går i den och Enter tar värdet som en bricka.
@@ -5765,6 +6712,53 @@ Temats färger når kortet genom betydelserna, eftersom papperet inte ingår i t
 `wizard-frame-fonts.test.tsx` skapar spelet i varje ram med varje tema och läser noll anmärkningar i den fysiska kontrollen.
 I samma veva drogs wizardens styckeregel bort från kortets text: förhandsvisningen sätter varje text i ett `<p>`, och wizardens grå och marginal hade gjort Mörks vita rubrik grå.
 
+Reviderat 2026-10-04 (#741, beställarens val A efter prototyp): **temaprovet visar ett utsnitt av kortet, inte hela kortet.**
+Hela kortet i fyra brickor ritade brödtexten i 7,9 px, så brödtextens familj — halva temat — gick inte att bedöma.
+Efter «Visa temana i sina typsnitt» ritar varje bricka kortets överdel: titelbandet och prosans tre första rader, den fjärde tonad.
+Skalan räknas ur mallens egen brödtextgrad, så som E6 passade in den, med K26:s `readingWidth`: brödtexten till 12 px, och mindre bara när prosans låda med 8 px luft per sida inte ryms i brickan.
+Utsnittet centreras på prosans låda (L43) och inte på fasta millimeter, så en mall med texten någon annanstans skärs på sin egen text.
+Kortet är fortfarande den enda renderarens hela kort (E2); utsnittet bara klipper det.
+Gränsen mot Google står kvar: ingenting hämtas före trycket.
+Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html) mot att ha kvar kortet med en provrad under (B) och ett provark under galleriet (C); B satte samma text två gånger i två storlekar, och C fick Speltema att rulla.
+Galleriet står fyra i bredd så länge varje bricka har sitt rum, och två och två när katalogen eller biblioteket står bredvid, aldrig tre och en.
+`theme-proof.spec.ts` mäter brödtextens storlek gånger zoom (≥ 12 px vid 1280, ≥ 11 vid 1024), att Speltema inte rullar vid 1280 × 800, och att brickorna inte går in i varandra med katalogen öppen vid 1024.
+Reviderat 2026-10-18 (#1001, beställarens beslut): golvet vid 1024 är 10,5 px, i stället för 11.
+AI-panelens hopfällda flik tar 44 px av editorns bredd, och med den ritar provleken brödtexten i 10,52 px vid 1024; vid 1280 når den fortfarande 12.
+Med panelen öppen ligger den som ett ark över Speltemats högra del och tar ingen bredd, så golvet är detsamma då.
+
+Reviderat 2026-10-04 (#830, beställarens val C efter prototyp): **utsnittet skär bort luckan mellan rubrikbandet och prosan, och prosans bit är så hög som prosan har rader.**
+På en mall med brödtexten långt ner var utsnittet mest tomt papper: e2e-mallen, med brödtexten 30 mm ner, visade 78 % tomt.
+Rubrikbandet slutar nu under det nedersta som kortet ritar ovanför prosan, en text i sin första rad och allt annat i sin höjd, plus 1,5 mm luft; det som ligger bakom prosans låda, som en ram, är papper och inte band.
+Prosans bit börjar 1,5 mm ovanför prosans låda.
+När luckan mellan dem är minst 3 mm skärs den bort: ett papper, och där luckan togs bort en tunn streckad linje i prosans bläck med 47 % opacitet.
+En lucka under 3 mm skärs inte, så provleken, där prosan står direkt under bandet, är ett stycke som förut.
+Prosans bit är så hög som prosan har rader, högst tre, med 3 mm luft under den sista, och en fjärde rad tonas bara när det finns fler än tre.
+Raderna räknas ur den renderade texten efter E6:s anpassning, inte ur en uppskattning.
+Båda bitarna är samma `CardPreview`-kort, ritat av den enda renderaren och visat från var sin höjd (E2); ingen annan väg ritar dem.
+Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html) mot rivet papper (A) och två remsor med redigerarens grund emellan (B); A var den mest dekorativa formen i fliken, och B lästes som två saker på en bricka som är ett val.
+Vid 1280 × 800 är provet 80 px högt på e2e-mallen och 118 px på provleken, mot 173 och 136 px när det var ett stycke med tre rader och en tonad.
+`theme-proof.spec.ts` mäter att e2e-mallen skärs och provleken inte, att rubrikens rad och prosans första står mindre än en och en halv rad isär, att utsnittet är under 65 % tomt, att prosans bit är så hög som raderna och tonas bara när de är fler än tre, och att Speltema inte rullar vid 1280 × 800 med någon av mallarna.
+
+Reviderat 2026-10-06 (#687, beställarens val D efter prototyp): **förvalet i den guidade starten är märkt, inte nedtryckt, och kortet visas i det på begäran.**
+«Skogssaga gäller tills ett annat trycks» stod kvar, men brickan stod nedtryckt från början medan katalogen ännu inte frågats, så kortet bredvid en bricka som såg vald ut stod i ett reservtypsnitt — och den som behöll förvalet såg aldrig spelets utseende.
+Skogssaga står nu som **«Förval»**: streckad kant i accenten och märket under namnet, `aria-pressed="false"`, och märket är brickans beskrivning så att det hörs med namnet.
+Kortet står gråat och bär knappen **«Visa kortet i Skogssaga»**; trycket är handlingen i L27:s mening, hämtar temats ark och filer och trycker ned brickan.
+«Skapa» utan något tryck ger fortfarande Skogssaga, som märket sa.
+Formen är Speltemas «Visa temana i sina typsnitt» (val C ovan), på kortet där ögat redan är: ett tryck till rätt kort vid 1280, 1024 och 768, där galleriet vid de två första står under vecket och vid 768 i ett annat steg.
+Tre vägar till valdes bort.
+Att låta öppnandet räknas som handlingen (A) gav noll tryck men 73 kB från Google vid varje öppning av `/new`, också för den som aldrig rör temat — det L27 och väg B ovan säger nej till.
+Inget förval alls (B) lade ett tryck på alla och ett villkor på «Skapa».
+Att hämta när pekaren når kortet (C) behöll den tryckta brickan bredvid reservtypsnittet tills dess, och en surfplatta har ingen hovring.
+**Ett återupptaget utkast**: ett tryck på temat vid ett tidigare besök räknas som handlingen, så temat står nedtryckt och hämtas vid omladdningen och kortet stämmer direkt.
+Ett utkast där inget tema tryckts står kvar på förvalet och frågar Google om ingenting; ett utkast från före beslutet, som inte säger om temat trycktes, räknas som tryckt bara när temat är ett annat än förvalet.
+**Beskedet om hämtningen står tills filerna laddats, inte tills arket svarat.**
+Kortets typsnitt deklareras med `font-display: block`, och texten under kortet försvann när katalogens ark svarat, så medan filen reste stod kortet tomt i upp till tre sekunder och sedan i reservtypsnitt utan ett ord.
+Nu står kortet gråat med «Hämtar typsnitten för Skogssaga …» över sig tills `document.fonts` säger att temats filer laddats; svarar katalogen inte står det på kortet, med samma knapp för att fråga igen.
+Ordet och knappen ligger över kortets överdel och aldrig under det, så att ingenting bredvid eller nedanför flyttar sig när de kommer och går.
+Därmed står aldrig en nedtryckt bricka bredvid ett kort som ser ut att vara temat men står i reservtypsnittet.
+`wizard-theme-preselection.spec.ts` läser på det byggda `/new` vilket ansikte som ritar kortet (`CSS.getPlatformFontsForNode`, som i #887), att inget går till Google före en handling, att beskedet står kvar medan filen hålls inne längre än blockperioden, och utkastet efter omladdning.
+Prototypen står i [`docs/ux-audits/2026-10-06-temats-forval/prototyper/`](https://github.com/Tiico/build-a-deck/tree/97d14dc9f3ce75c7b26b3333c0782388ea897073/docs/ux-audits/2026-10-06-temats-forval/prototyper) i merge `97d14dc9` och togs bort när beslutet byggdes.
+
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
 Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.
@@ -5774,6 +6768,10 @@ Samtidigt sa foten redan «1 markerat kort».
 Foten är den rad #130 gav antalet och sorteringen, och den växer till en verktygsrad — Duplicera, Ta bort, Avmarkera alla — efter antalet när något är markerat.
 Ingenting ovanför raderna flyttar sig; det som växer växer under tabellen.
 Frågan före en borttagning tar verktygsradens plats i foten, som förut tog hela bandet, så inget kan tryckas av misstag bakom den.
+*Tillagt 2026-10-04 (#739):* radens × frågar på samma plats.
+Dess fråga stod kvar i bandet över huvudet, 62 px, och flyttade huvudet 70 px under handen som just tryckt; nu tar den fotens rad medan den står, och `data-table-layout.test.tsx` mäter att första raden står kvar.
+*Tillagt 2026-10-17 (#858):* kolumndörrens × frågar också där.
+Dess fråga stod i samma band och flyttade tabellen 70 px, och dörren som hänger ur huvudet lika långt; nu står båda kvar medan den står, och testet mäter också att dörren inte ligger över frågans knappar.
 
 **Kolumnen och värdet står bakom «Sätt fält ▾».**
 Foten är en rad, och en väljare och ett fält hade gjort den till två.
@@ -5831,6 +6829,18 @@ Variant B, en box «Bordet kör (8) ▾» i huvudet, valdes bort: huvudet är re
 Variant C, en statusrad på 32 px med sparkarna flyttade till Bord-flikens kort, är en större flytt som kan göras senare om bandet ändå stör.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/05-bordsbandet.html`.
 
+Tillagt 2026-10-05 (#679, beställarens beslut C efter prototyp 01): **× och «Ny kod» frågar först.**
+Ett tryck på × sparkade direkt, och brickorna står 8 px isär, så en felträff kostade en annan spelares hand mitt i spelet.
+«Ny kod» bytte koden på TV:n och i det värden just skickat utan ett ord.
+Båda går nu genom editorns fråga (`Question`), i en egen rad under bandets första rad, och frågan öppnar på «Avbryt».
+Frågan om sparken har två röda svar: «Sparka Bo» och «Sparka och byt kod».
+Det andra stänger dörren i samma andetag, eftersom en sparkad telefon annars satt vid bordet igen två tryck senare med koden den redan hade.
+När koden har bytts säger bandet det: «Ny rumskod SAFYX3. UF6H2W gäller inte längre.»
+Den sparkades telefon heter «Du är inte längre vid bordet», och dess primära väg är «Till startsidan».
+«Välj plats igen» står kvar som en andra väg bara så länge koden fortfarande öppnar rummet.
+Bortvalda varianter: A, frågan utan kodbytet, som lämnade det åt värden att komma på; och B, en ångra-stund på fem sekunder, som kräver att en felträff ses i tid.
+Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/01-sparka.html`.
+
 ### L61. En bricka: pillret på 44 px, i sökfältet och i bordsbandet (prototypat och beslutat 2026-10-01, #648)
 
 Granskningen av #641 fann två former för samma tecken: tabellens filterbricka «typ: Playcard ×» (#617) var en rundad ruta på 34 px i sökfältet, bordsbandets platsbricka «Ada ×» (#621) ett piller på 44 px.
@@ -5846,3 +6856,209 @@ Rummet säger bara sina färger som tokens: fältet markeringens blå som fyllni
 
 `editor-crown.test.tsx` mäter fältets bricka vid 1024, 1280 och 1440: 44 hög, × 44 × 44, ett piller, och krönet en rad; `editor-seat-chips.spec.ts` mäter bandets och att det är samma klass.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/06-brickan.html`.
+
+### L62. Telefonen på sidan står i två spalter, och huvudet vid 320 håller en rad med ikoner (prototypat och beslutat 2026-10-05, #716)
+
+Speltestet 2026-10-02 fann att en telefon som läggs på sidan (844 × 390) ritade porträttspalten utsträckt: räknaren 1 100 px bred, högarna över hela skärmen och handen under den fasta foten, så att inget kort i handen syntes helt utan rullning.
+`/online` på samma telefon ritar samma yta och hade samma fel.
+Vid 320 fick «?», «Ångra», «Flagga» och «Ut…» inte plats bredvid namnet, och «Ut…» föll ned på en egen rad; huvudet blev 107 px.
+
+**Liggande: två spalter** (variant A av tre: två spalter, handen överst, verben i en spalt till höger).
+I ett lågt och brett fönster (`orientation: landscape` och högst 500 px högt) löper huvudet över båda spalterna.
+Räknaren och högarna står i en smal spalt till vänster, och handen med sina verb har resten.
+Korten storleksätts efter fönstrets höjd, så att ett helt kort står ovanför foten.
+Prototypen mätte fyra hela kort vid 844 × 390, med kort på 170 × 238 px.
+Handen överst gav fem, men lade högarna och «Dra 1» under vecket.
+Verben i en spalt gav samma antal, men gav foten en annan form liggande än stående.
+
+**Huvudet vid 320: ikoner** (variant H1 av två: ikoner, eller Flagga och Ut… i en ⋯-meny).
+Under 375 px ritas «Ångra» och «Flagga» som sina ikoner, var och en fortfarande en hel tummyta på 44 × 44.
+Ordet står kvar som knappens namn och som `title`, så huvudet håller en rad (57 px) och alla fyra kontroller är kvar ett tryck bort.
+Vid 375 ryms orden och står kvar (`player-viewport.test.tsx`); vid 360 gjorde de det inte, med ett långt namn blev huvudet 107 px där också. Prototypen satte gränsen vid 380.
+
+`phone-landscape.spec.ts` mäter `/play` och `/online` vid 844 × 390 och 740 × 360: minst ett helt kort ovanför foten, ingen rullning och ingen sidledsrullning.
+Den mäter också huvudet vid 360 och 320 med 25 kort och ett långt namn: högst 60 px, och båda ikonknapparna 44 × 44.
+Prototypen: `docs/ux-audits/2026-10-05-telefonen/prototyper/716/`.
+
+### L63. Delningen säger «Dela», i huvudet och i spelets ⋯ (prototypat och beslutat 2026-10-05, #727)
+
+Speltestet 2026-10-02 fann att den enda vägen till «Vilka som har spelet» var en rund bricka med ägarens initial i huvudet.
+Den hade ett namn för skärmläsaren men inget synligt ord, inget plus och ingenting i någon ⋯-meny, så den som ville bjuda in någon fick gissa att trycka på sin egen initial.
+
+**A och C tillsammans** (av fyra: ordet «Dela» i knappen, en «+»-bricka, «Dela spelet…» i ⋯, eller båda de första och sista).
+Knappen med ansiktena säger «Dela» bredvid dem.
+Prototypen ritade den med en tunn kant; den står utan, eftersom huvudets dörrar — versionen, ansiktena och ⋯ — ritas likadant i varje läge (`button-language.test.tsx`), och det är ordet och inte kanten som gör dörren synlig.
+Ordet står först i knappens namn, «Dela · vilka som har spelet», som det står på knappen (WCAG 2.5.3).
+Spelets ⋯-meny i editorn har «Dela spelet…» före «Exportera…» och öppnar samma panel; menyn har därmed två val och inte ett.
+
+Bredden får inte växa med antalet som är inne: vid 1280 och bredare står högst tre ansikten, antalet och ordet.
+Mellan 1024 och 1279 är dörren ett ansikte, en tummyta bred, som förut, och «Dela spelet…» i ⋯ är vägen i ord där.
+Prototypen mätte en rad vid 1024 med Macens typsnitt, men med CI:s bredare klipptes spelets namn (`editor-header-fit.spec.ts`), och huvudet har ingen luft vid 1024 (#668).
+`share-panel.test.tsx` öppnar panelen från både knappen och menyn.
+Prototypen: `docs/ux-audits/2026-10-05-delningen/prototyper/727/`.
+
+### L64. Startsidan visar bord som pågår, och menyn öppnar dem före ett nytt (prototypat och beslutat 2026-10-05, #724)
+
+Speltestet 2026-10-02 fann att den enda vägen från startsidan till ett pågående bord var bannern som sade rumskoden direkt efter starten.
+Efter en omladdning var den borta.
+Och ett andra tryck på «Starta bord» för att se koden igen startade ett andra bord.
+
+**C och B tillsammans** (av tre: en rad på brickan, en uppdelad ⋯-meny, och en egen sektion överst).
+Överst på «Mina spel» står **«Pågår nu»**, med ett band per bord som pågår: spelets namn, rumskoden i kodens egen typ och «Öppna bordet».
+Länken öppnar bordets skärm som ägare (`owner=1`) i en ny flik, så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
+Bandet ersätter bannern, och tillkännagivandet «Bordet är igång. Rumskoden är …» står kvar i sidans levande region.
+Spelets **⋯-meny** listar «Öppna bordet KOD» för varje bord som pågår, före en linje, och «Starta bord» blir då «Starta nytt bord».
+Menyn öppnar på sitt första val, länk eller knapp.
+
+Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
+`account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
+Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.
+
+### L65. Bord-flikens rad heter rumskoden och uppdateras där den står (prototypat och beslutat 2026-10-05, #706)
+
+Speltestet 2026-10-02 fann att en rad som «ligger efter» inte kunde uppdateras: «Uppdatera» i huvudet flyttade bara huvudets bord, och ett bord startat från kolumnen stod kvar på den gamla versionen.
+Statusraden och menyn namngav bordet med ett uuid-prefix som inte stod på raden, så med två bord gick menyn inte att para med rätt rad.
+
+**A** (av tre: koden först och uppdateringen bredvid vägen in, vem som sitter och en remsa under raden, koden som etikett och uppdateringen i menyn).
+Raden heter bordets **rumskod**, samma namn som bandet och TV:n ger det, och versionen står efter, tystare.
+Koden kommer ur listan för den som får starta bord, och ur bordets egen anslutning, också när bordet är avslutat; till dess heter raden sin version.
+En rad som ligger efter säger «rev-1, spelet är på rev-2» och får en konturknapp, «Uppdatera till rev-2», bredvid den väg som står redo.
+Statusraden säger «Nytt bord startat: KOD.», och inget uuid-prefix står kvar i det som visas eller läses upp.
+
+Tre följdändringar som inte var visuella:
+«senaste drag» räknar bara fysiska drag (`PHYSICAL_VERBS` i protokollet) — att sätta sig, uppdatera eller avsluta är att sköta bordet, inte att spela på det; dagen skrivs gement inne i meningen.
+«Uppdatera» till den version bordet redan kör skriver ingen rad, och huvudet säger «Bordet kör redan rev-1».
+Ett avslutat bord erbjuder ingen QR, eftersom koden leder till ett låst bord.
+
+`editor-tables.test.tsx` uppdaterar en rad från raden och läser namnet; `projects.test.ts` och `store-postgres.test.ts` håller «senaste drag» och den tomma uppdateringen.
+Prototypen: `docs/ux-audits/2026-10-05-bordsraden/prototyper/706/`.
+
+### L66. Bord-flikens knappar för nya zoner står under sin grupps rubrik (prototypat och beslutat 2026-10-06, #711)
+
+Speltestet 2026-10-02 fann att «＋ Yta», «＋ Hög», «＋ Yta per plats» och «＋ Räknarzon per plats» stod sist i vänsterkolumnen.
+Vid 1024 × 640 syns ingen av dem utan att kolumnen rullas, och inget säger att den rullar.
+
+**B** (av tre: fast i kolumnens fot, under sin grupps rubrik, en knapp med en meny).
+«＋ Yta» och «＋ Hög» står under «På bordet», och platsernas två under «Vid platserna» — knappen står där det den skapar hamnar, och kostar ingen höjd.
+Under «Vid platserna» säger rubriken redan «per plats», så de två heter «＋ Yta» och «＋ Räknarzon» på skärmen och ryms på en rad med 44 px höga knappar; namnet som läses upp säger det hela.
+En grupp ritas för sina knappar också när den inte har någon zon.
+
+Priset är valt: ett spel med fler räknare eller fler zoner på bordet skjuter platsgruppens knappar längre ned.
+`setup-side-fit.spec.ts` mäter i den byggda appen att alla fyra syns orullade vid 1024 × 640 i spelet där fyndet gjordes, fyra platser och en räknare, på svenska och engelska, och att varje grupps knappar står mellan rubriken och raderna.
+Prototypen: `docs/ux-audits/2026-10-06-kolumnknappar/prototyper/711/`.
+
+### L67. Det som hänt sägs i flikens fot, i stället för fotens tysta rad (prototypat och beslutat 2026-10-06, #698)
+
+Speltestet 2026-10-02 fann att bekräftelsen «Tog tillbaka: …», som sedan #566 låg som en remsa längst ner på skärmen, låg över kontroller i sex sekunder.
+I Mall täckte den kortradens «Nästa kort» och kortnamnet, i Tabell fotens «Ta bort 1 kort» och «Avmarkera alla», och en gång «Ja, ta bort» i frågan om ett lager.
+
+**B** (av tre: ovanför foten, i fotens statusplats, en statusrad om 28 px).
+Bekräftelsen står i den öppna flikens fot och ersätter fotens tysta rad medan den står: kortradens värden i Mall, sorteringen i Tabell, och efter antalet och anmärkningarna i Kortvägg.
+Speltema, Media och Regler hade ingen fot och får en: en rad under arbetet, med samma linje och textstorlek som Kortväggens, som håller en rads höjd också när den inte säger något, så att det som sägs i den inte flyttar något.
+Bord säger det i raden ovanför filten, efter hjälptexten och dess «?»: där säger fliken redan sitt tysta läge, och en fot hade tagit den höjd från vänsterkolumnen som L66 mäter att knapparna för nya zoner behöver vid 1024 × 640.
+Den är grön med en bock, eftersom inget är fel; det amberfärgade i huvudet är fortfarande det som inte kunde hända.
+Den sägs till skärmläsaren som förut genom appens artiga kanal, och ritas utan att läsas upp en gång till; en tyst rad som är en levande region döljs medan bekräftelsen står och tas inte bort.
+Medan en fråga står ritas den inte (#916).
+
+Priset är valt: vid 1024 är kortradens plats i Mall ungefär 160 px, så en lång bekräftelse kortas med «…» där; hela meningen har redan sagts.
+A, samma remsa ovanför foten, låg fortfarande över arbetet vid 1024 och var den flytande remsa L58 valde bort.
+C, en statusrad, kostade 28 px korthöjd på varje flik för en sällsynt händelse.
+Meningen i #566-beslutet om att bekräftelserna står som en rad längst ner på skärmen gäller inte längre.
+`editor-confirm-strip.spec.ts` mäter i den byggda appen vid 1024 × 768 och 1280 × 800, på varje flik, att bekräftelsen står i flikens panel, helt på skärmen, inte överlappar någon synlig kontroll, och att ingen kontroll i fliken flyttar när den försvinner.
+Prototypen: `docs/ux-audits/2026-10-06-editorns-remsor/prototyper/698-remsan.html`.
+
+### L68. Det öppna blocket väljer slag, och en rad som börjar med «- » eller «1. » blir en lista (prototypat och beslutat 2026-10-06, #707)
+
+Speltestet 2026-10-02 fann att en lista inte gick att skapa i regelbokens redigeringsläge.
+＋ gav bara ett stycke, och «- Dra ett kort.⏎- Spela ett kort.» skrivet i det stängdes till en enda rad, «- Dra ett kort. - Spela ett kort.», utan att något sade varför.
+Enda vägen till en lista var import från fil, och hjälpen sade ingenting om listor.
+
+Tre varianter prövades i en prototyp: inga nya knappar där raderna läses (A), två ＋ i marginalen (B) och det öppna blocket som väljer sitt slag (C).
+Beställaren valde **C med A:s genväg**.
+
+- **Det öppna blocket väljer slag: Stycke · Punktlista · Numrerad lista.**
+  Raden står överst i blocket, bara på stycket och listan och bara medan de skrivs i, så boken får inga nya knappar i marginalen och ＋ ger ett stycke som förut.
+  Det är `.byd-choice` med `aria-pressed`, som bokens växel mellan lägena (L13), i verktygets typsnitt och inte bokens.
+  Ett stycke som blir en lista behåller sina rader som punkter, och en lista som blir ett stycke behåller sina punkter som rader, så inget skrivet går förlorat av att pröva det andra slaget.
+  Ett block som just lagts till säger «Ny text.», som är verktygets ord och inte designerns, så en lista av det börjar med en tom punkt.
+- **En rad som börjar med «- » eller «1. » blir en lista när blocket stängs.**
+  Det är importens tecken, utom `*`, som en rad i ett stycke kan börja med som kursiv.
+  Rader av samma slag i följd är en lista, och det som står före och efter blir egna stycken, i den ordning det skrevs; det första blocket behåller blockets id.
+  Det görs när blocket skrivs och aldrig när det ritas: ett stycke blir inte tyst en lista på bordet, det blir en när designern stänger det, så boken håller det läsaren får.
+- **Fältet säger det, i ord, medan det gäller** (A:s «fältet säger det»).
+  Under ett stycke med sådana rader står att de blir en lista när blocket stängs.
+  En ensam radbrytning läses fortfarande som ett mellanslag, som i korttexten och i importen, men inte längre utan ord: under ett stycke med en sådan står att den läses som ett mellanslag och att en tom rad börjar ett nytt stycke.
+  Raden är fältets beskrivning för en skärmläsare och står i editorns tysta färg, 4,6:1 mot blocket.
+- **Hjälpen («?») nämner listor** och båda vägarna till en.
+
+Att i stället behålla radbrytningen i stycket vägdes bort: en importerad bok lagrar en Markdown-fils mjuka radbrytningar som radbrytningar, så alla redan importerade böcker hade fått hårda brytningar där källfilen råkade radbrytas.
+
+Följdkrav:
+`rule-runs.test.ts` håller hur ett styckes rader läses som stycken och listor.
+`rules-lists.test.tsx` håller genvägen, valet av slag och vad fältet och hjälpen säger.
+`rules-list-written.spec.ts` skriver en punktlista med genvägen och en numrerad lista med valet i den byggda editorn, startar ett bord och läser dem som två listor på telefonen.
+Prototypen och dess bilder låg på grenen `proto/707-regellistor` och finns i issuet.
+
+### L69. En text som inte ryms ens krympt sägs vid rutan och i Fysisk kontroll (prototypat och beslutat 2026-10-17, #808)
+
+E6 krymper en text till minsta graden och klippte den sedan tyst: guiden och Mall visade en halv sista rad, väggen bara en bärnstensbricka «1», och Fysisk kontroll stod på (0) och «Inga anmärkningar» för samma kort.
+Fyra former prototypades i det byggda appen: kanten och brickan (A), en toning i nederkant (B), en rad under kortet (C) och InDesigns port i hörnet (D).
+
+**A, Kanten och brickan, i guiden, i Mall och på väggen.**
+Rutan ramas in med en streckad bärnstensram över en mörk ring, 4 px utanför rutan så att ramen aldrig rör en bokstav.
+Under ramen hänger en mörk bricka: «▲ Ryms inte · 4 rader till», och under en ruta smalare än 160 px på skärmen den korta formen «▲ +4 rader», vilket är vad väggens små kort får.
+Det är #802:s form, den streckade ramen och ordet i en mörk bricka, i varningens bärnsten, och de två delar stilmall (`mark.css`) i stället för att kopiera den.
+Det mörka bandet bär ramen mot ljust papper och det bärnstensfärgade mot Mörk; ensam ger bärnsten 1,5:1 mot Krönikas papper.
+Kortets tillgängliga namn bär hela meningen: «Förhandsvisning av kort 1: Skogsvandring. «Regeltext» ryms inte ens i 6 pt: 4 rader syns inte på kortet.»
+På väggen ligger ramens hörn under «×2», och brickan skärs ut ur ramen med en ring i väggens egen botten i stället för att korsas av den.
+
+**Markeringen ligger utanpå kortet och aldrig i det** (E2).
+Kompilatorn tillfrågas inte; ramen ritas i kortets egna millimetrar från mallens ruta, och det enda som mäts är vad `fitInDocument` redan mäter.
+På väggen står den i kortets ruta utanför kortets papper, som är skuret efter hörnen och annars skulle klippa en ram nära kanten.
+
+**Fysisk kontroll räknar det.**
+`fitInDocument` säger nu också hur många rader rutan skär bort, och `validateCard` tar emot vad renderaren mätte (`fitted`) och ger en varning, `text-overflow`, per fält som inte ryms ens i minsta graden.
+Varningen är kortets och inte mallens, så anmärkningen räknar upp korten och leder var för sig till kortets rad i Tabell, som E6 kräver.
+Väggens bricka, markeringen och listan är samma mätning, så de kan inte säga olika saker.
+
+Följdkrav:
+Om en text ryms är en fråga om en utlagd sida, så kontrollen säger ingenting om ett kort ingen har mätt.
+I editorn mäts det kortväggen ritar, alltså den sida väggen visar; ordern på servern mäter inte ännu, och eftersom anmärkningen är en varning stoppar den ingen order.
+Den förkastade B täckte bokstäver och bars mot ljust papper bara av linjen, C pekade inte ut rutan och flyttade layouten, och D krävde hover för att säga något.
+Prototypen: [`docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html`](docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html) (`?v=a`), med mätskripten i `matning/`.
+`text-overset.spec.ts` mäter ramen och brickan i det byggda appen i guiden vid 1280 och 390, i Mall och på väggen, och att anmärkningen leder till raden; `overset-contrast.test.ts` mäter banden mot varje startkort.
+
+### L70. Playtestets svar läses i Bord-fliken, under «Resultat» (prototypat och beslutat 2026-10-18, #1010)
+
+Enkäten (G3) samlades in och flaggorna stod i loggen, men ingen yta i editorn läste dem: betan gick inte att mäta utan att läsa databasen.
+Tre platser prototypades i det byggda appen med riktiga bord, svar och flaggor: i bordets rad (A), en egen flik «Resultat» (B) och i historiken (C).
+
+**B, med A:s rad, men som en vy i Bord-fliken och inte som en åttonde flik.**
+En växel «Bord · Resultat» står överst i flikens mittspalt, över filten, och på samma plats i båda vyerna; huvudet behåller sju flikar och spelets hela namn vid 1280.
+Priset är en rad, 52 px, av filtens höjd.
+Den står inte över spelarna: första spaltens fyra vägar att lägga till en zon ska synas utan rullning vid 1024 × 640 (L66, #711), och växeln sköt de två per plats under kanten.
+Den står inte i raden över filten heller, där en vald zons fyra fält fyller mittspaltens 420 px vid 1024 (L50).
+Svaren hör till borden de kom från, och därför till Bord.
+En betraktare, som inte startar bord och inte läser playtestet (#524), har ingen växel.
+
+**Resultatvyn är versionen först.**
+Till vänster versionerna som spelets bord spelats på, nyast först, som en radiogrupp med ett riktigt valt läge.
+Till höger den valda versionen: hur många bord som avslutats, hur många av spelarna som svarade, flaggorna, och bord som pågår och inte räknas än.
+Därunder fördelningen 1–5 per fråga som en riktig tabell, hållen mot förra versionen som har svar, med vad som ändrades däremellan i historikens egna ord.
+Varje cell säger i sitt tillgängliga namn vad talen betyder («1 svarade 4, mot 0 i version 1»); staplarna ritas bara för ögat.
+Sedan borden med ett filter per bord, all fritext, och alla flaggor bord för bord i spelets ordning med vem, «drag n av N» och klockslaget.
+
+**Ett avslutat bords rad bär en summarad**, «3 svar · 2 flaggor», som öppnar Resultat på bordets version och filtrerat på bordet.
+
+**Observatörens svar räknas inte in** i fördelning och snitt; de står för sig, under egen rubrik och märkta.
+**En flagga hör till versionen den restes på** (`version.change` i loggen), och enkäten som förut till versionen bordet slutade på (G3).
+Ett bord som uppdaterats mitt i spelet (C7) läses alltså i två versioner: flaggorna före uppdateringen i den tidigare.
+
+**Jämförelsen är mot förra versionen med svar**, inte närmast föregående version: en version som spelades utan att någon svarade har ingen fördelning att hålla mot.
+**Versionslistan visar bara versioner som spelats på.** Varje sparning är en version (B4), och en lista över alla vore mest «inga bord».
+
+Följdkrav:
+Allt räknas på servern i en endpoint per spel, `GET /projects/:id/playtest`, med samma behörighet som bordets logg och enkäter (#524, `canStartTables`): per bord svar, flaggor (namn, kommentar, tid, drag och version), deltagare och kod, och per version antal och fördelning.
+Namnen härleds ur `seat.claim` och inträdena, aldrig i klienten; «drag n av N» räknas med motorns `movesOf`, de rader i spel som är fysiska drag.
+Ett enkätsvar kommer från ett inträde och ett per plats och observatör (#1021), så summorna räknar bara svar som deltagarna gav.
+`playtest-route.test.ts` prövar endpointen mot minne och Postgres, och att betraktaren får 403; `playtest-results.spec.ts` spelar ett bord från två telefoner, flaggar, avslutar och svarar, och läser svaren i Resultat i det byggda appen.

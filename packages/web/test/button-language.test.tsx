@@ -15,6 +15,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { HomePage } from '../src/account/HomePage.js'
+import { LoginCard } from '../src/account/LoginCard.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
@@ -235,13 +236,20 @@ describe('the seat picker', () => {
   }, 90_000)
 })
 
-// The way in, in both its shapes: the login card for whoever is not signed in, and the games for
-// whoever is. The games are opened by pressing a card, so that view has no filled button at all —
-// which is a statement about the page and not an omission, and is written out as one.
+// The way in, in all its shapes: the landing page at `/` for whoever is not signed in (#1009), the
+// login card at `/login` it leads to, and the games for whoever is. The games are opened by pressing
+// a card, so that view has no filled button at all — which is a statement about the page and not
+// an omission, and is written out as one.
+// The account's sheet and the landing page's, which is the account's room too (#1009).
+const ACCOUNT_CSS = () => `${read('src/account/account.css')}\n${read('src/account/landing.css')}`
 async function accountViews(): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
-  const card = render(<HomePage />)
+  const landing = render(<HomePage />)
+  await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })
+  out['landningssidan'] = landing.container.innerHTML
+  landing.unmount()
+  const card = render(<LoginCard http={run.http} next="/" />)
   await screen.findByLabelText('E-post')
   out['inloggningskortet'] = `<div class="byd-account">${card.container.innerHTML}</div>`
   card.unmount()
@@ -258,8 +266,10 @@ async function accountViews(): Promise<Record<string, string>> {
 
 describe('the way in', () => {
   it('wears the primary fill on nothing but the action that signs you in', async () => {
-    const measured = await inChromium(read('src/account/account.css'), 390, await accountViews(), wearingThePrimary('.byd-account'))
-    expect(measured).toEqual({ inloggningskortet: ['Skicka inloggningslänk'], 'mina spel': [] })
+    const measured = await inChromium(ACCOUNT_CSS(), 390, await accountViews(), wearingThePrimary('.byd-account'))
+    // The landing page's two fills are one action said twice, at the top and at the foot of a page
+    // too long to see both of on one screen: each is the only filled thing where it stands.
+    expect(measured).toEqual({ landningssidan: ['Börja bygga', 'Till editorn'], inloggningskortet: ['Skicka inloggningslänk'], 'mina spel': [] })
   }, 90_000)
 })
 
@@ -625,8 +635,8 @@ const theRingsDiscs = (mode: 'table' | 'tv') => async (page: Page): Promise<stri
 const openTheRingOnACard = (page: Page) =>
   page.evaluate(() => {
     const ring = document.querySelector<HTMLElement>('.byd-radial')
-    const id = ring?.getAttribute('data-radial')
-    const card = id ? document.querySelector<HTMLElement>(`.byd-card[data-component="${id}"]`) : null
+    // The ring is a pile's, and is laid over the second face-up card, the one well inside the green.
+    const card = document.querySelectorAll<HTMLElement>(".byd-card[data-face='front']")[1] ?? null
     if (!ring || !card) throw new Error('no ring on a card in this view, so nothing here measures one')
     card.setAttribute('data-ringed', '')
     const box = card.getBoundingClientRect()
@@ -654,8 +664,9 @@ const openTheRingOnACard = (page: Page) =>
     return { bredd: Math.round(w), höjd: Math.round(h) }
   })
 
-// The two things only a card's ring has: a verb that is not available — `Avslöja`, on a card that
-// is already face up — and a centre with no hub under it, lying on the card the ring is about.
+// The two things only a ring over a card has: a verb that is not available — the empty discard
+// pile's own verbs, laid over the card (#719 took the dead `Avslöja` off a face-up card's ring) —
+// and a centre with no hub under it, lying on the card the ring stands over.
 const theCardsRing = (mode: 'table' | 'tv') => async (page: Page): Promise<string[]> => {
   const patch = await openTheRingOnACard(page)
   const CENTRE = 'kortet under ringens mitt'
@@ -752,11 +763,10 @@ async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<stri
   }
 }
 
-// The felt with a ring open on a card, in the mode named. This is the ring's normal case — a
-// card's ring opens *on a card* — and it is the only view that has the two things a chip's ring
-// hides: a verb that is not available (`Avslöja`, on a card that is already face up, the one
-// entry of the four whose `run` is null) and a centre with no hub in it, lying on the card the
-// player is choosing a verb for.
+// The felt with a ring open and laid over a card, in the mode named — the two things a chip's ring
+// hides: a verb that is not available and a centre with no hub in it, lying on a card. A card's own
+// ring has no unavailable verb since #719 left out the ones that can never go, so the ring is the
+// empty discard pile's, whose every verb waits for a card; it is the same ring, drawn the same way.
 async function feltCardView(mode: 'table' | 'tv', width = 1280): Promise<Record<string, string>> {
   atWidth(width)
   const id = await createSession(run, `felt-card-${mode}-${width}`, undefined, feltSetup(2))
@@ -768,17 +778,15 @@ async function feltCardView(mode: 'table' | 'tv', width = 1280): Promise<Record<
       if (found.length < 2) throw new Error(`${found.length} face-up cards on the felt, so the ring has no card of its own`)
       return found
     })
-    const card = cards[1]!
-    // On the table screen the first press reads the card and the second asks (K26, #509); the TV
-    // asks on the first.
-    for (let press = 0; press < (mode === 'table' ? 2 : 1); press++) {
-      fireEvent.pointerDown(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
-      fireEvent.pointerUp(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
-    }
-    const reveal = await screen.findByRole('button', { name: 'Avslöja' })
+    if (cards.length < 2) throw new Error('no card of its own for the ring to lie over')
+    const pile = container.querySelector<HTMLElement>('[data-zone="discard"] .byd-pile-count')
+    if (!pile) throw new Error('no discard pile on this felt to open a ring on')
+    fireEvent.pointerDown(pile, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerUp(pile, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    const shuffle = await screen.findByRole('button', { name: 'Blanda' })
     // The disabled disc is the subject, so a view that came back with it live would be measuring
     // the wrong button and passing.
-    if (!(reveal as HTMLButtonElement).disabled) throw new Error('`Avslöja` is live on a card that is already face up, so this view has no unavailable disc')
+    if (!(shuffle as HTMLButtonElement).disabled) throw new Error('`Blanda` is live on the empty discard pile, so this view has no unavailable disc')
     return { [mode === 'table' ? 'bordsläge' : 'tv-läge']: container.innerHTML }
   } finally {
     unmount()
@@ -1025,6 +1033,117 @@ describe('the editor', () => {
   }, 120_000)
 })
 
+// The header holds three doors beside its two actions: the game's ⋯, the revision that opens the
+// history (B4), and the faces that open who has the game (D3). A door is neither a first nor a
+// second action, and nothing it opens is *chosen*: `aria-expanded` says a panel hangs from it, not
+// that it is on. So it has no role in L13 and takes none of a role's shapes — no fill, no edge —
+// and the three are drawn alike, the way the ⋯ already was.
+//
+// The revision and the faces declared exactly that and lost (#791): `.byd-editor > header > button`
+// is (0,1,2) and `.byd-editor-rev` and `.byd-editor-here` are (0,1,0), so both came out in the
+// header's own box — an edge, a fill and a bold white word — in every state, the very leak L13
+// names. Each state is a rule of its own that can lose on its own, so each is read: at rest, under a
+// real pointer, with the ring a real keypress draws, and with its panel open. Nothing is written as
+// a colour: the ⋯ is the measure, read off the same page in the same state.
+async function headerDoors(): Promise<Record<string, string>> {
+  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com', next: '/' }) })
+  atWidth(1280)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    const header = () => document.querySelector('.byd-editor')!.outerHTML
+    const out: Record<string, string> = { stängda: header() }
+    for (const [name, door] of [['⋯', '.byd-editor-more > button'], ['rev', '.byd-editor-rev'], ['ansiktena', '.byd-editor-here']] as const) {
+      const el = document.querySelector<HTMLElement>(door)
+      if (!el) throw new Error(`no ${door} in the header`)
+      fireEvent.click(el)
+      if (el.getAttribute('aria-expanded') !== 'true') throw new Error(`${door} opened nothing`)
+      out[`${name} öppen`] = header()
+      fireEvent.click(el)
+    }
+    return out
+  } finally {
+    unmount()
+  }
+}
+
+const DOORS = { '⋯': '.byd-editor-more > button', rev: '.byd-editor-rev', ansiktena: '.byd-editor-here' } as const
+type Drawn = { kant: string; grund: string; bläck: string; vikt: string; ring: string }
+
+const drawnDoor = (page: Page, selector: string): Promise<Drawn> =>
+  page.$eval(selector, (el) => {
+    const s = getComputedStyle(el)
+    return {
+      kant: `${s.borderTopWidth} ${s.borderTopStyle} ${s.borderRightWidth} ${s.borderBottomWidth} ${s.borderLeftWidth}`,
+      grund: s.backgroundColor,
+      bläck: s.color,
+      vikt: s.fontWeight,
+      // An outline that is not drawn still has a colour (its element's ink), which says nothing.
+      ring: s.outlineStyle === 'none' ? 'none' : `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor} ${s.outlineOffset}`,
+    }
+  })
+
+describe('the doors in the editor’s header', () => {
+  it('draws the revision and the faces as the ⋯ is drawn, in every state, at every desk width', async () => {
+    await run.projects.create(run.projectId, worthFiltering())
+    const views = await headerDoors()
+    expect(Object.keys(views).sort()).toEqual(['ansiktena öppen', 'rev öppen', 'stängda', '⋯ öppen'])
+    const measured: Record<string, Drawn> = {}
+    for (const width of [1024, 1280, 1440]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } })
+      try {
+        await page.setContent(document_(read('src/editor/editor.css'), views['stängda']!), { waitUntil: 'load' })
+        for (const [name, selector] of Object.entries(DOORS)) {
+          await page.mouse.move(width - 1, 899)
+          measured[`${width} ${name} i vila`] = await drawnDoor(page, selector)
+          await page.hover(selector)
+          measured[`${width} ${name} under pekaren`] = await drawnDoor(page, selector)
+          await page.mouse.move(width - 1, 899)
+          // A ring is only drawn after a real keypress (focus-visible); `focus()` would draw none.
+          await page.mouse.click(width - 1, 899)
+          let reached = false
+          for (let i = 0; i < 30 && !reached; i++) {
+            await page.keyboard.press('Tab')
+            reached = await page.$eval(selector, (el) => el === document.activeElement)
+          }
+          if (!reached) throw new Error(`Tab never reached ${selector}`)
+          measured[`${width} ${name} i fokus`] = await drawnDoor(page, selector)
+        }
+        for (const [name, selector] of Object.entries(DOORS)) {
+          await page.setContent(document_(read('src/editor/editor.css'), views[`${name} öppen`]!), { waitUntil: 'load' })
+          await page.mouse.move(width - 1, 899)
+          measured[`${width} ${name} öppen`] = await drawnDoor(page, selector)
+        }
+      } finally {
+        await page.close()
+      }
+    }
+    // The control case: the ⋯ is itself what L13 asks of a door, so the measure is not vacuous.
+    for (const width of [1024, 1280, 1440]) {
+      const rest = measured[`${width} ⋯ i vila`]!
+      expect(rest.kant).toBe('0px none 0px 0px 0px')
+      expect(rest.grund).toBe('rgba(0, 0, 0, 0)')
+      expect(measured[`${width} ⋯ under pekaren`]!.grund).not.toBe(rest.grund)
+      expect(measured[`${width} ⋯ i fokus`]!.ring).not.toMatch(/^none/)
+    }
+    // Each door, in each state, against the ⋯ in the same state. The faces carry no words of their
+    // own beyond a count, so only the revision is held to the ⋯'s ink and weight.
+    const differ: string[] = []
+    for (const width of [1024, 1280, 1440]) {
+      for (const state of ['i vila', 'under pekaren', 'i fokus', 'öppen']) {
+        const measure = measured[`${width} ⋯ ${state}`]!
+        for (const door of ['rev', 'ansiktena'] as const) {
+          const drawn = measured[`${width} ${door} ${state}`]!
+          const keys = door === 'rev' ? (['kant', 'grund', 'bläck', 'vikt', 'ring'] as const) : (['kant', 'grund', 'ring'] as const)
+          for (const key of keys) if (drawn[key] !== measure[key]) differ.push(`${width} ${door} ${state}: ${key} ${drawn[key]} där ⋯ har ${measure[key]}`)
+        }
+      }
+    }
+    expect(differ).toEqual([])
+  }, 180_000)
+})
+
 // The second finding the audit wrote down (UX-13): beside the card in the editor's template stood
 // two buttons filled at the weight of a first action, where neither was the page's. One of them
 // has since moved to the wizard and been dealt with; this is the other. What a second action looks
@@ -1060,7 +1179,7 @@ describe('what the whole tool draws as chosen', () => {
   it('paints none of it in a fill of its own, bar the seats that are a palette', async () => {
     await run.projects.create(run.projectId, worthFiltering())
     const walked = {
-      'inloggningskortet, mina spel': [read('src/account/account.css'), 390, '.byd-account', await accountViews()],
+      'inloggningskortet, mina spel': [ACCOUNT_CSS(), 390, '.byd-account', await accountViews()],
       'sätt dig vid bordet': [read('src/join/join.css'), 390, '.byd-join', await joinViews()],
       'guidad start': [read('src/wizard/wizard.css'), 1280, '.byd-wizard', await wizardViews(1280)],
       'editorn': [read('src/editor/editor.css'), 1280, '.byd-editor', await editorViews(1280)],
@@ -1081,7 +1200,7 @@ ${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
     // back as — so the views are named, and a surface that quietly stops mounting fails rather than
     // agreeing.
     expect(walkedThrough).toEqual({
-      'inloggningskortet, mina spel': ['inloggningskortet', 'mina spel'],
+      'inloggningskortet, mina spel': ['inloggningskortet', 'landningssidan', 'mina spel'],
       'sätt dig vid bordet': ['innan namnet är skrivet', 'platsen är tagen', 'sätt dig vid bordet'],
       'guidad start': ['hela sidan'],
       'editorn': [...EDITOR_VIEWS],
@@ -1317,6 +1436,7 @@ describe('every suite that measures a surface', () => {
       'template-crown.test.tsx',
       'text-placement.test.tsx',
       'texture-layout.test.tsx',
+      'tv-plate-names.test.tsx',
       'tv-show.test.tsx',
       'wall-card-look.test.tsx',
       'wizard-viewport.test.tsx',

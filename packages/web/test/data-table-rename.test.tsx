@@ -4,16 +4,13 @@
 // kolumnhuvudet — den dörr #46 redan flyttade × till — så rubriken rörs inte alls och huvudet
 // kostar inte ett enda tabbstopp till.
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit, type EditIntent } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Tabellen gör sitt eget arbete: varje namnbyte den ber om läggs på med samma rena funktion som
 // aktören lägger på det med, och svaret går rakt tillbaka in i dokumentet tabellen ritas ur.
@@ -134,6 +131,43 @@ describe('vad ytan svarar innan verbet hinner kasta (#384)', () => {
     await user.keyboard('{Enter}')
     expect(asked).toEqual([{ v: 'renameField', from: 'body', to: 'rubrik' }])
     expect(column('rubrik')).toBeTruthy()
+  })
+
+  // Importen parar redan en rubrik som bara skiljer i versaler med kolumnen (L4, #479), så dörren
+  // får inte släppa in det som importen sedan slår ihop (#694): «TYP» bredvid «typ», eller en
+  // andra «Titel» bredvid titeln, som visas med just det ordet. Guiden har ställt samma fråga
+  // utan hänsyn till versaler sedan #476.
+  it('avvisar ett namn som bara skiljer i versaler från en kolumn eller från «Titel» (#694)', async () => {
+    const user = userEvent.setup()
+    const asked: EditIntent[] = []
+    const doc = projectDoc()
+    const typed: ProjectDoc = { ...doc, rows: doc.rows.map((r) => ({ ...r, fields: { ...r.fields, typ: 'varelse' } })) }
+    render(<Editing doc={typed} asked={asked} />)
+
+    await reachByKeyboard(user, 'body')
+    const name = screen.getByLabelText('Namn på kolumnen body')
+    await user.clear(name)
+    await user.type(name, 'TYP')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter typ.')
+    await user.keyboard('{Enter}')
+    expect(asked).toEqual([])
+
+    await user.clear(name)
+    await user.type(name, 'Titel')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter Titel.')
+    await user.clear(name)
+    await user.type(name, 'ANTAL')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter antal.')
+    await user.clear(name)
+    await user.type(name, 'Id')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter id.')
+
+    // Kolumnens eget namn med andra versaler är ingen kollision: det är samma kolumn.
+    await user.clear(name)
+    await user.type(name, 'Body')
+    expect(door().queryByRole('status')).toBeNull()
+    await user.keyboard('{Enter}')
+    expect(asked).toEqual([{ v: 'renameField', from: 'body', to: 'Body' }])
   })
 })
 
@@ -341,7 +375,7 @@ describe('det som läses upp är namnet (#384, A4)', () => {
     expect(door().queryByRole('button', { name: 'Byt namn på kolumnen id' })).toBeNull()
     expect(door().queryByRole('button', { name: 'Byt namn på kolumnen antal' })).toBeNull()
     // De står kvar som ord, med hänglåsets mening bredvid sig, precis som #46 lämnade dem.
-    expect(door().getByRole('img', { name: 'antal är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
+    expect(door().getByRole('img', { name: 'Antal är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
     expect(door().queryByRole('button', { name: 'Byt namn på kolumnen title' })).toBeNull()
     expect(door().getAllByRole('button', { name: /^Byt namn på kolumnen/ }).map((b) => b.textContent)).toEqual(['body'])
   })

@@ -1,10 +1,14 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { createHash, randomBytes } from 'node:crypto'
+import { createServer, type Server } from 'node:http'
 import { execFile } from 'node:child_process'
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { build } from 'vite'
 import { free } from './ports.js'
+import { objectStore } from './objects.js'
+import { fakeAiProvider } from '../../../test-support/fake-ai-provider.js'
 
 const run = promisify(execFile)
 
@@ -43,6 +47,12 @@ export type Stack = {
    * invitation the way its recipient would (#475) — the box sends the same text through Resend.
    */
   serverLog: string
+  /**
+   * The object store's settings (`support/objects.ts`), as the box's `.env` holds them: what the
+   * server was started with, and what a render worker a journey starts must be given too, or it
+   * would write its files where the app never looks.
+   */
+  objects: Record<string, string>
   stop: () => Promise<void>
 }
 
@@ -72,9 +82,29 @@ export async function start(): Promise<Stack> {
     const db = await database()
     if (db) closers.push(db.stop)
 
-    const server = await listen({ STATIC_DIR: OUT, ...(db ? { DATABASE_URL: db.url } : {}) })
+    // The providers a designer's key is proved against (#999): a fake one beside the stack, never
+    // Anthropic or OpenAI, and a master key made for this run alone.
+    const ai = await fakeProviders()
+    closers.push(ai.stop)
+    // R2 on an origin of its own, as on the box (DRIFT §4): every picture, texture and print file
+    // the page asks the app for is answered with a redirect there, under the page's policy (§14).
+    // Kept beside the database it belongs with (`objectStore`): a container made for this run
+    // takes its bucket with it, and a `DATABASE_URL` that outlives the run keeps its own.
+    const shelf = join(HERE, '..', '.stack', 'bucket', createHash('sha256').update(db?.url ?? 'memory').digest('hex').slice(0, 16))
+    if (!db?.kept) rmSync(shelf, { recursive: true, force: true })
+    const bucket = await objectStore(shelf)
+    closers.push(bucket.stop)
+    if (!db?.kept) closers.push(async () => rmSync(shelf, { recursive: true, force: true }))
+    const server = await listen({
+      STATIC_DIR: OUT,
+      ...(db ? { DATABASE_URL: db.url } : {}),
+      ...bucket.env,
+      AI_KEY_SECRET: randomBytes(32).toString('base64'),
+      AI_ANTHROPIC_URL: `${ai.url}/anthropic`,
+      AI_OPENAI_URL: `${ai.url}/openai`,
+    })
     closers.push(server.stop)
-    return { origin: server.origin, store: db ? 'postgres' : 'memory', ...(db ? { database: db.url } : {}), webDist: OUT, serverLog: LOG, stop }
+    return { origin: server.origin, store: db ? 'postgres' : 'memory', ...(db ? { database: db.url } : {}), webDist: OUT, serverLog: LOG, objects: bucket.env, stop }
   } catch (cause) {
     await stop()
     throw cause
@@ -126,6 +156,32 @@ async function listen(env: Record<string, string>): Promise<{ origin: string; st
   throw new Error('the server could not find a free port in eight tries')
 }
 
+/**
+ * Anthropic and OpenAI as the profile page meets them in this suite (`test-support/fake-ai-provider.ts`):
+ * what the provider answers is decided by the key a journey pastes. On a port out of the band, like
+ * everything else the stack listens on.
+ */
+async function fakeProviders(): Promise<{ url: string; stop: () => Promise<void> }> {
+  const server: Server = createServer(fakeAiProvider().listener)
+  let port = await free()
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const bound = await new Promise<boolean>((resolve) => {
+      server.once('error', () => resolve(false))
+      server.listen(port, '127.0.0.1', () => resolve(true))
+    })
+    if (bound) {
+      const stop = () =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections()
+          server.close(() => resolve())
+        })
+      return { url: `http://127.0.0.1:${port}`, stop }
+    }
+    port = await free(port + 1)
+  }
+  throw new Error('the fake AI provider could not find a free port in eight tries')
+}
+
 /** True once the server answers `/health`; false if it dies or never does. */
 async function healthy(origin: string, child: ChildProcess): Promise<boolean> {
   const deadline = Date.now() + 30_000
@@ -173,9 +229,9 @@ function drain(child: ChildProcess): Promise<void> {
  * A suite that quietly proves less than it says is the failure mode this repo has already been
  * bitten by once (`pnpm test` dropping fifteen Postgres tests and still reporting green).
  */
-async function database(): Promise<{ url: string; stop: () => Promise<void> } | null> {
+async function database(): Promise<{ url: string; kept?: boolean; stop: () => Promise<void> } | null> {
   const given = process.env['DATABASE_URL']
-  if (given) return { url: given, stop: async () => undefined }
+  if (given) return { url: given, kept: true, stop: async () => undefined }
   try {
     await run('docker', ['info'])
   } catch {
@@ -189,9 +245,14 @@ async function database(): Promise<{ url: string; stop: () => Promise<void> } | 
   }
   try {
     const deadline = Date.now() + 60_000
+    // Asked over TCP and not the socket (#831). The image's first start runs a temporary server
+    // for its init scripts that listens on the socket alone, stops it, and starts the real one; a
+    // `pg_isready` over the socket says yes to the temporary one, and the server that connects over
+    // the port then meets «the database system is starting up». Measured on fresh containers: five
+    // in six over the socket, none in six over TCP. Only the real server listens on the port.
     for (;;) {
       try {
-        await run('docker', ['exec', name, 'pg_isready', '-U', 'byd', '-d', 'byd'])
+        await run('docker', ['exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'byd', '-d', 'byd'])
         break
       } catch (cause) {
         if (Date.now() > deadline) throw cause

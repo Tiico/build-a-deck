@@ -1,14 +1,27 @@
 // Kontot: inloggning, "Mina spel", inbjudningar, att claima en gästsession och guiden som gör
 // ett nytt spel.
 export const svAccount = {
-  // Språkvalet, där det står: på inloggningskortet och över "Mina spel".
+  // Språkvalet på inloggningskortet. Inloggad väljer man språk på profilsidan (#999).
   'account.language': 'Språk',
 
   // Inloggningskortet (G1): ett fält, en knapp och en mening om gäster. Aldrig ett lösenord.
   // Säljtexten står bara första gången (L36): den säger vad produkten är, inte hur verktyget
   // fungerar, och den som redan har konto ska slippa läsa den varje gång.
-  'login.pitch': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det.',
+  // Det produkten gör under betan, och att trycket är på väg (#743): beställningen är fas 5.
+  'login.pitch': 'Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.',
+  // Den tysta raden sist i inloggningskortet och på Mina spel (#757).
+  'about.contact': 'Kontakt',
+  'about.version': 'build-your-deck {release}',
   'login.lead': 'Logga in för att komma till dina spel.',
+  // En lead per väg in (#691, beslut 2026-10-06), som claim har sin: första besöket säger att samma
+  // länk både loggar in och skapar kontot, inbjudan säger vilket spel den leder till, och guidens
+  // utkast att spelet skapas på andra sidan inloggningen.
+  // «e‑post» i en mening skrivs med hårt bindestreck (U+2011, #920): ett vanligt bindestreck är en plats
+  // där raden får brytas, och på en telefon slutade raden på «e-» och fortsatte med «post».
+  'login.lead.first': 'Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.',
+  'login.lead.invite': 'Logga in för att öppna spelet du bjudits in till.',
+  'login.lead.invite.named': 'Logga in för att öppna spelet du bjudits in till: {game}.',
+  'login.lead.resume': 'Ditt spel skapas när du loggat in.',
   'login.help.topic': 'inloggningen',
   'login.sent.title': 'Kolla mejlen.',
   'login.sent.body': 'Vi skickade en länk till {email}. Den fungerar i 15 minuter och bara en gång. Inget lösenord att komma ihåg.',
@@ -16,20 +29,66 @@ export const svAccount = {
   'login.email.placeholder': 'din@epost.se',
   'login.submit': 'Skicka inloggningslänk',
   'login.error.too-many': 'Vi har redan skickat flera länkar till den adressen. Kolla mejlen, eller vänta en stund.',
-  'login.error.empty': 'Skriv in din e-postadress först.',
+  'login.error.empty': 'Skriv in din e\u2011postadress först.',
   'login.error.at': 'Adressen behöver ett @.',
-  'login.error.invalid': 'Det där ser inte ut som en e-postadress.',
+  'login.error.invalid': 'Det där ser inte ut som en e\u2011postadress.',
   'login.error.failed': 'Det gick inte att skicka. Försök igen.',
   'login.no-password': 'Inget lösenord. Länken i mejlet loggar in dig; första gången skapar den ditt konto.',
   'login.guest': 'Ska du bara spela? Skanna QR-koden på bordet — inget konto behövs.',
+
+  // Landningssidan (#1009, beställarens beslut A «Bordet»): `/` för den som inte är inloggad. Vad
+  // produkten är, sagt med ett dukat bord, och två dörrar: «Börja bygga» och «Mina spel» till
+  // editorns startsida via inloggningen, och kodraden för den som kom för att spela.
+  'landing.nav': 'Sidan',
+  'landing.how': 'Så funkar det',
+  'landing.games': 'Mina spel',
+  'landing.eyebrow': 'Kortspel, från idé till spelbord',
+  'landing.title.build': 'Bygg ditt kortspel.',
+  'landing.title.play': 'Spela det i kväll.',
+  'landing.lede': 'Skriv korten som rader, se dem bli riktiga kort, och duka bordet på TV:n. Vännerna har handen i telefonen — och efter rundan vet du vad som ska ändras.',
+  'landing.build': 'Börja bygga',
+  'landing.fine': 'Gratis i betan · inget lösenord',
+  'landing.scene': 'Ett dukat bord: en draghög och två kort på filten, och tre spelare med sina händer i telefonen.',
+  'landing.zone.draw': 'Draghög',
+  'landing.zone.draw.count': 'Draghög · {count}',
+  'landing.zone.middle': 'Mitten',
+  'landing.phone.front': 'Framför dig',
+  'landing.phone.turn': 'Din tur',
+  'landing.steps.title': 'Fyra steg, och sedan ett varv till.',
+  'landing.rows.title': 'Titel',
+  'landing.rows.cost': 'Kost',
+  'landing.rows.type': 'Typ',
+  'landing.step.rows': 'Skriv korten',
+  'landing.step.rows.body': 'Varje kort är en rad i en tabell. Hundra kort tar lika lång tid att ändra som ett.',
+  'landing.step.template': 'Rita ett kort — få alla',
+  'landing.step.template.body': 'Formge en mall en gång. Varje rad blir ett kort med sin titel, sin bild och sin text.',
+  'landing.step.table': 'Duka bordet',
+  'landing.step.table.body': 'Bestäm högar och platser. TV:n blir bordet, telefonerna blir händerna — det som är dolt förblir dolt.',
+  'landing.step.learn': 'Spela och lär',
+  'landing.step.learn.body': 'Spelarna flaggar det som var oklart mitt i spelet. Ändra, spara en ny version och duka om.',
+  'landing.talk.unclear': '«{card}» — vilken kasthög?',
+  'landing.talk.strong': '{card} kändes för stark.',
+  'landing.talk.v2': 'Kostnad 4 → 5. Spela igen.',
+  'landing.end.title': 'Din lek väntar på sitt första bord.',
+  'landing.end.body': 'Logga in med e\u2011post — länken i mejlet är allt som behövs.',
+  'landing.end.go': 'Till editorn',
 
   // "Mina spel" (G1): kontots spel som ett rutnät, och bordet som just startades.
   'home.loading': 'Hämtar dina spel…',
   'home.title': 'Mina spel',
   'home.logout': 'logga ut',
+  // Raden under inloggningskortet för den som kom för att spela (#675, beslut C).
+  'home.code.ask': 'Ska du spela? Skriv rumskoden',
+  'home.code.go': 'Gå in',
   'home.claimed': 'Sparat: du spelade {game} som {name}. Enkäten och flaggorna hör nu till ditt konto.',
   'home.claimed.some-table': 'ett bord',
   'home.started': 'Bordet är igång. Rumskoden är {code}.',
+  // Pågående bord på startsidan (#724): spel, rumskod och vägen till bordets skärm.
+  'home.running.title': 'Pågår nu',
+  'home.running.open': 'Öppna bordet',
+  'home.running.open.aria': 'Öppna bordet {code} i {name} (öppnas i ny flik)',
+  'home.menu.open': 'Öppna bordet {code}',
+  'home.menu.start.new': 'Starta nytt bord',
   'home.started.open': 'Öppna bordet',
   'home.started.open.aria': 'Öppna bordet (öppnas i ny flik)',
   'home.remove.title': 'Ta bort spelet',
@@ -49,7 +108,7 @@ export const svAccount = {
   'home.help.new': '«+ Nytt spel» frågar efter namn och antal spelare och gör resten åt dig.',
 
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
-  'home.card.line': 'rev {rev} · {played}',
+  'home.card.line': 'v{rev} · {played}',
   'home.card.never': 'aldrig spelat',
   'home.card.nocards': 'inga kort än',
   'home.card.first': 'Första kortet: {title}',
@@ -64,6 +123,7 @@ export const svAccount = {
   // Borden kontot suttit vid (G1): det andra rutnätet.
   'home.played.title': 'Bord du spelat vid',
   'home.played.some-table': 'Ett bord',
+  'home.played.deleted': 'Borttaget spel',
   'home.played.you': '{version} · du var {name}',
   'home.played.surveyed': 'enkät besvarad',
   'home.played.unsurveyed': 'enkät obesvarad',
@@ -81,7 +141,7 @@ export const svAccount = {
   'claim.failed.heading': 'Bordet kunde inte sparas',
   'claim.taken.heading': 'Bordet är redan sparat',
   'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
-  'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på "Spara till ditt konto" igen.',
+  'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på «Spara till ditt konto» igen.',
 
   // Att följa en inbjudan till ett spel (D3).
   'invite.title': 'Inbjudan',
@@ -106,8 +166,11 @@ export const svAccount = {
   'wizard.stepnav': 'Stegnavigering',
   'wizard.prev': '← Föregående',
   'wizard.next': 'Nästa →',
-  'wizard.handoff.title': 'Wizarden är startpunkten',
-  'wizard.handoff.body': 'Skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
+  // Rutan överst i guidad start, bara utloggad (#687, #691): ledet i fetstil och resten efter det.
+  'wizard.handoff.account.lead': 'Spelet sparas på ett konto.',
+  'wizard.handoff.account': 'Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.',
+  // Ett ledord per stycke, så att hjälpen inte blandar de två dörrarna i ett (#731).
+  'wizard.handoff.body': 'Guidad start: skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',
   // Villkoret sägs en gång per skärm, vid fältet, och först när någon trycker (variant B).
   'wizard.name.says': 'Spelet behöver ett namn först.',
@@ -119,18 +182,22 @@ export const svAccount = {
   // Vägen förbi den guidade starten (L42): namnet och platserna räcker, resten görs i editorn.
   'wizard.blank.title': 'Utan guidad start',
   'wizard.blank.body': 'Bygg hellre allt själv?',
-  'wizard.blank.help': 'Spelet skapas med namnet och platserna ovanför, utan kort, fält eller mall.',
+  'wizard.blank.help': 'Utan guidad start: «Skapa ett tomt spel i editorn» skapar spelet med namnet och platserna ovanför, utan kort, fält eller mall.',
   'wizard.blank.create': 'Skapa ett tomt spel i editorn',
+  // Frågan dörren ställer när guiden håller kort eller fält som designern gjort (#732, L9).
+  'wizard.blank.ask': 'Ett tomt spel får bara namnet och platserna. Korten och fälten du har gjort här följer inte med.',
+  'wizard.blank.ask.confirm': 'Ja, skapa ett tomt spel',
 
-  // Fälten: vad varje kort har, och vad startramen redan visar.
+  // Fälten: vad varje kort har, och om det syns på kortet. Med ord nybörjaren redan har: ramen
+  // presenteras först under Utseende, längre ner (#731).
   'wizard.fields': 'Fält',
   'wizard.fields.help': 'Varje fält blir direkt en kontroll på varje exempelkort.',
   'wizard.kind.text': 'Text',
   'wizard.kind.number': 'Tal',
   'wizard.kind.image': 'Bild',
   'wizard.field.name': '{label} namn',
-  'wizard.field.in-frame': 'Visas i startramen',
-  'wizard.field.in-editor': 'Placeras på mallen i editorn',
+  'wizard.field.in-frame': 'Visas på kortet',
+  'wizard.field.in-editor': 'Placeras i editorn',
   'wizard.field.place': 'placera i editorn',
   'wizard.field.remove': 'Ta bort {label}',
   'wizard.field.new.text': 'Nytt textfält',
@@ -143,22 +210,41 @@ export const svAccount = {
   // De fält varje nytt spel börjar med, och de ramar det kan börja i.
   'wizard.field.default.title': 'Titel',
   'wizard.field.default.cost': 'Kostnad',
-  'wizard.field.default.body': 'Text',
+  // Inte «Text», som är typen bredvid den: raden lästes «Text · Text» (#731).
+  'wizard.field.default.body': 'Regeltext',
   'wizard.field.default.art': 'Illustration',
   'wizard.look': 'Utseende',
   'wizard.look.frame': 'Ram',
   'wizard.look.theme': 'Tema',
   'wizard.look.later': 'Allt går att ändra i Speltema.',
+  // Temat spelet får om inget annat trycks (#687): märkt, inte nedtryckt.
+  'wizard.look.preselected': 'Förval',
   'wizard.frame.classic': 'Klassisk',
   'wizard.frame.minimal': 'Minimal',
   'wizard.frame.dark': 'Mörk',
+  // Startramarnas lager, som designern får med sig in i Mall (#730): på spelets språk, inte ramens id:n.
+  'wizard.layer.paper': 'Papper',
+  'wizard.layer.frame': 'Ram',
+  'wizard.layer.art': 'Illustration',
+  'wizard.layer.artbg': 'Bildplats',
+  'wizard.layer.title': 'Titel',
+  'wizard.layer.body': 'Brödtext',
+  'wizard.layer.cost': 'Kostnad',
+  'wizard.layer.costbg': 'Kostnadsbricka',
+  'wizard.layer.rule': 'Linje',
+  'wizard.layer.plate': 'Textplatta',
+  'wizard.layer.background': 'Bakgrund',
+  'wizard.layer.inner': 'Inre fält',
 
   // Exempelkorten och den levande förhandsvisningen bredvid dem.
   'wizard.cards.title': 'Gör några exempelkort',
   'wizard.cards.body': 'Exempelkorten hjälper editorn att visa hur fälten faktiskt används.',
   'wizard.cards.count.one': '{n} kort',
   'wizard.cards.count.other': '{n} kort',
-  'wizard.preview.font': 'Temats typsnitt hämtas när du väljer tema.',
+  // Kortet i temats typsnitt på begäran, och vad som händer medan filerna reser (#687).
+  'wizard.preview.show': 'Visa kortet i {theme}',
+  'wizard.preview.fetching': 'Hämtar typsnitten för {theme} …',
+  'wizard.preview.silent': 'Katalogen svarade inte, så kortet står inte i temats typsnitt.',
   'wizard.preview.card': 'Förhandsvisning av kort {n}: {title}',
   'wizard.preview': 'Levande förhandsvisning',
   'wizard.image.field': 'Bild för {label}',
@@ -185,25 +271,48 @@ export const svAccount = {
   'wizard.error.upload': 'En fil kunde inte laddas upp. Försök igen om en stund.',
   'wizard.error.too-big': 'En bild är för stor för att laddas upp. Välj en mindre bild.',
   'wizard.error.offline': 'Vi når inte tjänsten; kontrollera anslutningen och försök igen.',
+  'wizard.draft.unsaved': 'Utkastet sparas inte längre i den här fliken — webbläsaren har inte plats för det. Laddar du om sidan eller stänger fliken försvinner det som står här.',
+  'wizard.draft.lost-image': 'Utkastet kom tillbaka utan en eller flera bilder. Välj dem igen.',
 
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
 
   // Vad som gick fel, sagt till den som läser — inte till den som skrev koden.
-  'error.members.failed': 'kunde inte läsa vilka som har spelet: {status}',
-  'error.invite.notOwner': 'bara ägaren kan dela spelet',
-  'error.invite.failed': 'kunde inte bjuda in: {status}',
-  'error.invite.address': 'Det där är ingen e-postadress.',
+  'error.members.failed': 'Listan över vilka som har spelet kunde inte läsas. Försök igen om en stund.',
+  'error.invite.notOwner': 'Bara ägaren kan dela spelet.',
+  'error.invite.failed': 'Inbjudan kunde inte skickas. Försök igen om en stund.',
+  'error.invite.address': 'Det där är ingen e\u2011postadress.',
   'error.invite.member': '{email} har redan spelet.',
   'error.invite.pending': '{email} har redan en inbjudan som väntar.',
-  'error.unshare.failed': 'kunde inte ta bort: {status}',
-  'error.invites.failed': 'kunde inte läsa inbjudningarna som väntar: {status}',
+  'error.unshare.failed': '{email} kunde inte tas bort från spelet. Försök igen om en stund.',
+  'error.unshare.notOwner': 'Bara ägaren kan ta bort någon från spelet.',
+  'error.invites.failed': 'Inbjudningarna som väntar kunde inte läsas. Försök igen om en stund.',
   'error.withdraw.failed': 'Inbjudan till {email} kunde inte dras tillbaka.',
-  'error.join.failed': 'kunde inte gå med: {status}',
-  'error.startTable.failed': 'kunde inte starta ett bord: {status}',
-  'error.removeGame.failed': 'kunde inte ta bort spelet: {status}',
+  'error.join.failed': 'kunde inte gå med; försök igen om en stund',
+  'error.startTable.failed': 'kunde inte starta ett bord; försök igen om en stund',
+  'error.startTable.viewer': 'en betraktare kan inte starta bord',
+  'error.game.gone': 'spelet finns inte längre',
+  'error.removeGame.failed': 'kunde inte ta bort spelet; försök igen om en stund',
+  'error.removeGame.notOwner': 'bara ägaren kan ta bort spelet',
   'wizard.card.n': 'Kort {n}',
+  // Exempelkorten guiden öppnar med (#733): spelets egna ord, och betydelserna med startikonernas namn.
+  'wizard.example.1.title': 'Skogsvandring',
+  'wizard.example.1.body': 'Dra ett kort.',
+  'wizard.example.2.title': 'Guldfynd',
+  'wizard.example.2.body': 'Få 2 {mynt|vinst}.',
+  'wizard.example.3.title': 'Björnen',
+  'wizard.example.3.body': 'Gör 3 {svärd|anfall}.',
 
   // Att ta med sig ett spel och ta tillbaka det (G5, #529): export och import i Mina spel.
+  'error.duplicateGame.failed': 'kunde inte dubblera spelet; försök igen om en stund',
+  'error.renameGame.failed': 'kunde inte byta namn på spelet; försök igen om en stund',
+  // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
+  'home.menu.rename': 'Byt namn…',
+  'home.menu.duplicate': 'Dubblera',
+  'home.rename.title': 'Byt namn på «{name}»',
+  'home.rename.field': 'Spelets namn',
+  'home.rename.confirm': 'Byt namn',
+  'home.rename.cancel': 'Avbryt',
+  'home.duplicated': '«{name}» ligger nu i Mina spel.',
   'home.menu.export': 'Exportera…',
   'home.dialog.close': 'Stäng',
   'home.export.title': 'Exportera «{name}»',
@@ -246,5 +355,73 @@ export const svAccount = {
   'home.import.problem.asset-unknown': 'Spelet använder en bild eller ett typsnitt som varken finns i zippen eller här ({hash}).',
   'home.import.problem.unplayable': 'Den senaste versionen går inte att spela: {message}',
   'home.import.problem.too-big': 'Filen är större än en import får vara.',
-  'home.import.problem.refused': 'Servern tog inte emot filen ({status}).',
+  'home.import.problem.refused': 'Servern tog inte emot filen.',
+
+  // Profilsidan (#999, #998 variant A): en kolumn med AI-nyckeln, språket och kontot. Vägen dit är
+  // ett ord i startsidans rad, «e-post · Profil · logga ut».
+  'home.profile': 'Profil',
+  'profile.title': 'Profil',
+  'profile.back.home': 'Mina spel',
+  // Editorn skickar hit med spelet, och vägen tillbaka säger dess namn, som aldrig översätts.
+  'profile.back.game': 'Tillbaka till {game}',
+  'profile.key.title': 'AI-nyckel',
+  'profile.key.title.change': 'Byt AI-nyckel',
+  'profile.key.lead': 'Editorn kan föreslå mallar, fält och kort med AI. Det drivs av din egen nyckel hos Anthropic eller OpenAI, så du betalar leverantören direkt och vi tar inget för det.',
+  'profile.key.provider': 'Leverantör',
+  'profile.key.field': 'API-nyckel',
+  // Länken till leverantörens egen sida för att skapa en nyckel, i en ny flik (beställarens tillägg 2026-10-18).
+  'profile.key.create.lead': 'Har du ingen nyckel?',
+  'profile.key.create.link': 'Skapa en hos {provider}',
+  'profile.key.newTab': '(öppnas i en ny flik)',
+  // Följden av att spara, alltid synlig och aldrig bakom ett frågetecken (L32, E4:s följdkrav).
+  'profile.key.sent': 'När du ber om hjälp skickas spelets innehåll — namn, fält, kort, mall och regelbok — till {provider}, och det betalas med din nyckel. Nyckeln sparas krypterad hos oss, visas aldrig igen och följer aldrig med när du exporterar ett spel.',
+  'profile.key.save': 'Spara och pröva',
+  'profile.key.saving': 'Prövar nyckeln…',
+  'profile.key.saving.said': 'Prövar nyckeln hos {provider}…',
+  'profile.key.cancel': 'Avbryt',
+  // Den sparade nyckeln: leverantören och de fyra sista tecknen, aldrig nyckeln.
+  'profile.key.saved': '{provider} · nyckeln som slutar på {last4}',
+  'profile.key.proved': 'prövad {when}',
+  'profile.key.when.today': 'i dag {time}',
+  'profile.key.when.yesterday': 'i går {time}',
+  'profile.key.saved.said': 'Nyckeln från {provider} är sparad.',
+  'profile.key.done': 'AI-hjälpen är på i editorn.',
+  'profile.key.model': 'Modell',
+  'profile.key.model.standard': '{model} (standard)',
+  'profile.key.model.said': 'Modellen är nu {model}.',
+  'profile.key.model.failed': 'Modellen kunde inte sparas. Försök igen.',
+  'profile.key.change': 'Byt nyckel',
+  'profile.key.remove': 'Ta bort',
+  'profile.key.remove.ask': 'Ta bort nyckeln? AI-hjälpen i editorn slutar fungera tills du lägger in en ny.',
+  'profile.key.remove.confirm': 'Ja, ta bort',
+  'profile.key.remove.keep': 'Avbryt',
+  'profile.key.removed': 'Nyckeln är borttagen.',
+  'profile.key.remove.failed': 'Nyckeln kunde inte tas bort. Försök igen.',
+  // Varför en nyckel inte sparades: leverantörens slutna mängd ord, och serverns egna skäl.
+  'profile.key.error.empty': 'Klistra in en nyckel först',
+  'profile.key.error.invalid-key': '{provider} godtog inte nyckeln',
+  'profile.key.error.invalid-key.text': 'Kontrollera att du kopierade hela nyckeln och att den är från {provider}. Inget sparades.',
+  'profile.key.error.no-credit': 'Kontot hos {provider} saknar kredit',
+  'profile.key.error.no-credit.text': 'Nyckeln är rätt, men {provider} säger att det inte finns något kvar att betala med. Fyll på hos {provider} och försök igen. Inget sparades.',
+  'profile.key.error.rate-limit': '{provider} ber dig vänta',
+  'profile.key.error.rate-limit.text': 'Nyckeln har gjort för många anrop just nu. Vänta en stund och försök igen. Inget sparades.',
+  'profile.key.error.overloaded': '{provider} är överbelastad just nu',
+  'profile.key.error.overloaded.text': 'Försök igen om en stund. Inget sparades.',
+  'profile.key.error.network': 'Vi nådde inte {provider}',
+  'profile.key.error.network.text': 'Försök igen om en stund. Inget sparades.',
+  'profile.key.error.too-many': 'För många försök',
+  'profile.key.error.too-many.text': 'Vänta en stund innan du prövar en nyckel igen. Inget sparades.',
+  'profile.key.error.unavailable': 'Nycklar kan inte sparas just nu',
+  'profile.key.error.unavailable.text': 'Servern är inte inställd för att spara nycklar. Det är inget fel på nyckeln. Inget sparades.',
+  'profile.key.error.malformed': 'Det där ser inte ut som en nyckel',
+  'profile.key.error.malformed.text': 'En nyckel är en enda rad utan mellanslag, som den står hos {provider}. Inget sparades.',
+  'profile.key.error.offline': 'Vi nådde inte servern',
+  'profile.key.error.offline.text': 'Kontrollera anslutningen och försök igen. Inget sparades.',
+  'profile.lang.title': 'Språk',
+  'profile.lang.field': 'Verktygets språk',
+  'profile.lang.note': 'Det du själv skrivit i dina spel översätts aldrig.',
+  'profile.account.title': 'Konto',
+  'profile.account.email': 'E-post',
+  'profile.account.note': 'Du loggar in med en länk som mejlas till adressen.',
+  'profile.account.logout': 'Logga ut',
 } as const

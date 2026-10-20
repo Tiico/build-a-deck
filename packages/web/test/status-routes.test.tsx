@@ -10,11 +10,9 @@ import { PlayerPage } from '../src/player/PlayerPage.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { admit, asTable, createSession, deafServer, roomOf, startServer, type Running } from './fixture.js'
+import { admit, asTable, createNamedSession, createSession, deafServer, roomOf, startServer, type Running } from './fixture.js'
 import type { Route } from '../src/status/title.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { holdWorker } from '../../../test-support/own-time.js'
 
 let run: Running
 beforeEach(async () => {
@@ -45,7 +43,7 @@ const LIVE: Live[] = [
 // Admission (DRIFT §9) is part of opening a route now: the table with the host key, a seat or an
 // observer with a token bought from the code, and /join with the code itself. `real` says whether
 // there is a room to be admitted to — a room that does not exist has no key to hand out.
-async function open(live: Live, opts: { session: string; url?: string; timing?: StatusTiming; real?: boolean }) {
+async function open(live: Live, opts: { session: string; url?: string; timing?: StatusTiming; real?: boolean; code?: boolean }) {
   const q = new URLSearchParams({ server: opts.url ?? run.url })
   const room = opts.real ? roomOf(opts.session) : null
   if (live.route === 'join') {
@@ -59,7 +57,7 @@ async function open(live: Live, opts: { session: string; url?: string; timing?: 
     if (live.route === 'observe') q.set('name', 'Eva')
     if (room) {
       // The code travels with everyone the join page lets in, and is what names the room.
-      q.set('code', room.code)
+      if (opts.code !== false) q.set('code', room.code)
       if (live.route === 'table') q.set('host', room.hostKey)
       else q.set('token', await admit(run, opts.session, live.seated ? 'A' : null, live.seated ? 'Ada' : 'Eva'))
     }
@@ -75,7 +73,8 @@ async function open(live: Live, opts: { session: string; url?: string; timing?: 
 const notice = () => document.querySelector('[data-status-notice]')
 const noticeState = () => notice()?.getAttribute('data-status-notice') ?? null
 
-describe.each(LIVE)('$path when the room does not exist', (live) => {
+// `/join` asks for the code again instead (#675), and is held to the same three things below.
+describe.each(LIVE.filter((live) => live.route !== 'join'))('$path when the room does not exist', (live) => {
   it('says so in Swedish, never in the server s own words', async () => {
     await open(live, { session: 'no-such-room' })
     await waitFor(() => expect(noticeState()).toBe('missing'))
@@ -103,6 +102,33 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
     await waitFor(() => expect(noticeState()).toBe('missing'))
     const text = notice()!.querySelector('p')!.textContent!
     await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe(text))
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
+  })
+})
+
+// A code that names nothing is not a page of its own on `/join` (#675, beslut C): it is the form
+// for the code, with the code left in the field and one sentence for a code that never was and one
+// that has gone out. What D5 asks of a 404 still holds — the reader's words and never the
+// server's, the tab, and an assertive answer.
+describe('/join when the room does not exist (#675)', () => {
+  const join = LIVE.find((live) => live.route === 'join')!
+  it('asks for the code again, with the code kept and said in the reader’s words', async () => {
+    await open(join, { session: 'no-such-room' })
+    const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
+    expect(field.value).toBe('NOSUCH')
+    const said = (await waitFor(() => document.getElementById(field.getAttribute('aria-describedby') ?? '')))?.textContent ?? ''
+    expect(said).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    expect(said).not.toMatch(/unknown|expired|Error/)
+  })
+
+  it('says it in the tab as well', async () => {
+    await open(join, { session: 'no-such-room' })
+    await waitFor(() => expect(document.title).toBe('Bordet finns inte · build-your-deck'))
+  })
+
+  it('announces it assertively, because it is an answer to something someone asked for', async () => {
+    await open(join, { session: 'no-such-room' })
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.'))
     expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
   })
 })
@@ -244,9 +270,10 @@ describe.each(GUESTS)('$path for a guest who cannot get in', (live) => {
 })
 
 describe('the wait for the next automatic attempt', () => {
+  // A phone stops when its plan is spent: there is a person holding it to press «Försök nu».
   it('is counted down in seconds, and stops counting once the plan is spent', async () => {
     const id = await createSession(run)
-    await open(LIVE[0]!, { session: id, timing: { ...FAST, retryPlanMs: [1_500] }, real: true })
+    await open(LIVE[2]!, { session: id, timing: { ...FAST, retryPlanMs: [1_500] }, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.stop()
 
@@ -259,6 +286,23 @@ describe('the wait for the next automatic attempt', () => {
   })
 })
 
+// The table's own screen is not held by anybody (#722, D5 reviderat 2026-10-05): past the plan it
+// goes on counting down to its next try, says nothing about having stopped, and comes back by itself.
+describe('the table screen once its plan is spent', () => {
+  it('goes on counting down without an «of», and comes back when the line does', async () => {
+    const id = await createSession(run)
+    await open(LIVE[0]!, { session: id, timing: { ...FAST, retryPlanMs: [200], keepTryingMs: 1_500 }, real: true })
+    await waitFor(() => expect(noticeState()).toBeNull())
+    await run.stop()
+    await waitFor(() => expect(noticeState()).toBe('dropped'))
+    await waitFor(() => expect(notice()!.textContent).toMatch(/Nytt försök om \d s(?! · försök)/), { timeout: 4000 })
+    expect(notice()!.textContent).not.toMatch(/slutat försöka/)
+    expect(within(notice() as HTMLElement).getByRole('button', { name: /försök nu/i })).toBeTruthy()
+    await run.restart()
+    await waitFor(() => expect(noticeState()).not.toBe('dropped'), { timeout: 5000 })
+  })
+})
+
 // The commonest thing that happens to a live line is that it breaks and is picked up again on
 // the first attempt. Said at once, that is a message on the screen for half a second — a card
 // mid-felt on the table, a bar in the editor's chrome that moves the whole page down and back up
@@ -266,7 +310,12 @@ describe('the wait for the next automatic attempt', () => {
 // all, and that includes the good news: a reader who was never told the line went does not need
 // telling it came back.
 describe.each(LIVE)('$path when the line comes straight back', (live) => {
-  const QUICK: StatusTiming = { ...FAST, dropAfterMs: 2_000, retryPlanMs: [30, 30, 30, 30, 30, 30] }
+  // The grace is two seconds, and so is the patience a wait is given before it is called slow —
+  // the same pair `DEFAULT_TIMING` keeps at four and four. Left at FAST's 80 ms, the second asked
+  // the line to come back inside 80 ms of wall clock, which is not what this is about and is what
+  // a worker held for a moment cannot do: the seated screens said «slow» about a break that healed
+  // in time (#848).
+  const QUICK: StatusTiming = { ...FAST, slowAfterMs: 2_000, dropAfterMs: 2_000, retryPlanMs: [30, 30, 30, 30, 30, 30] }
 
   it('says nothing at all about a break that was over before anyone could read about it', async () => {
     const id = await createSession(run)
@@ -277,6 +326,9 @@ describe.each(LIVE)('$path when the line comes straight back', (live) => {
     const watch = setInterval(() => said.push(noticeState()), 10)
     try {
       await run.restart()
+      // And the worker is held a moment while the line comes back, the way a loaded machine holds
+      // it (#848): the break is no longer, only the wall clock that measures it.
+      holdWorker(300)
       // The picture is whole again: the client has been round the loop and is serving a snapshot.
       await waitFor(() => expect(document.querySelector('[data-page]')).toBeTruthy())
       await new Promise((r) => setTimeout(r, 300))
@@ -323,6 +375,19 @@ describe('a room that is up says which room it is in the tab', () => {
     // The room code is what a room is called out loud (DRIFT §9), so it is what the tab says.
     await waitFor(() => expect(document.title).toContain(roomOf(id).code))
     expect(document.title.endsWith('· build-your-deck')).toBe(true)
+  })
+})
+
+// A guest is never given the code (DRIFT §9), and the session's id stood in for it: the tab said
+// «Tittar på rum a25d7f3b-0c…» (#759). An id is nobody's name for a room; the game's name is.
+describe('a guest who was not given the code is told the game, never the session id', () => {
+  it.each(LIVE.filter((l) => l.route !== 'table' && l.route !== 'join'))('$path', async (live) => {
+    const id = await createNamedSession(run, "Sal's Saloon")
+    await open(live, { session: id, real: true, code: false })
+    await waitFor(() => expect(noticeState()).toBeNull())
+    await waitFor(() => expect(document.title).toContain("Sal's Saloon"))
+    expect(document.title).not.toContain(id)
+    expect(document.title).not.toMatch(/\brum\b/i)
   })
 })
 

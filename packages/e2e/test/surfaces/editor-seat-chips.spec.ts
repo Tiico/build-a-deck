@@ -84,13 +84,107 @@ for (const locale of ['sv-SE', 'en-GB']) {
   }
 }
 
+// The × inside its chip, as painted (#849). The strip's own rule for its buttons — an outlined
+// box with an 8 px corner — matched the × as well, so it drew a square with its own line inside
+// the chip's: a stroke between the name and the ×, and corners that stood out past the chip's
+// round end. The boxes' rectangles said nothing was wrong, since the square's box is the chip's
+// end; only the paint shows it.
+//
+// So this reads the pixels: around each chip, everything outside its pill is the strip's ground,
+// and inside it, above and below the name and the ×, nothing is drawn in the chip's line. The
+// colours are read off the page, not written here, and the glyphs are left out, so the machine's
+// font moves nothing.
+test.describe('the × of a seat, as painted (#849)', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
+
+  test('lies wholly inside its chip, with no line of its own', async ({ page, host }) => {
+    await eightAtTheTable(page, host)
+    const strip = page.locator('.byd-editor-table-link')
+    await expect(strip.getByRole('button', { name: 'Sparka Hal', exact: true })).toBeVisible()
+    await page.mouse.move(0, 0)
+    const chips = strip.locator('[data-host-seat]')
+    const colours = await chips.first().evaluate((chip) => ({
+      ground: getComputedStyle(chip.closest('.byd-editor-table-link')!).backgroundColor,
+      line: getComputedStyle(chip).outlineColor,
+    }))
+    const rgb = (c: string) => (c.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    for (let i = 0; i < (await chips.count()); i++) {
+      const chip = chips.nth(i)
+      const box = (await chip.boundingBox())!
+      const pad = 6
+      const clip = { x: box.x - pad, y: box.y - pad, width: box.width + 2 * pad, height: box.height + 2 * pad }
+      const shot = await page.screenshot({ clip })
+      // What else the strip draws within `pad` of this chip — the next chip, «Ny kod», the words
+      // «vid bordet:» — is somebody else's paint and not this ×'s. Where the strip wraps
+      // depends on the machine's font, so which neighbour lies that close is the machine's too:
+      // on CI's Linux, «Eva» came to stand under the row above and was charged for its pixels.
+      const others = await chip.evaluate((me) => {
+        const strip = me.closest('.byd-editor-table-link')!
+        const rects = [...strip.querySelectorAll('*')].filter((el) => !el.contains(me) && !me.contains(el)).map((el) => el.getBoundingClientRect())
+        for (const node of [...strip.querySelectorAll('*')].flatMap((el) => [...el.childNodes])) {
+          if (node.nodeType !== Node.TEXT_NODE || me.contains(node)) continue
+          const range = document.createRange()
+          range.selectNodeContents(node)
+          rects.push(...range.getClientRects())
+        }
+        return rects.filter((r) => r.width > 0 && r.height > 0).map((r) => ({ x: r.left, y: r.top, w: r.width, h: r.height }))
+      })
+      const drawn = await page.evaluate(
+        async ({ data, clip, box, pad, ground, line, others }) => {
+          const img = new Image()
+          img.src = `data:image/png;base64,${data}`
+          await img.decode()
+          const canvas = new OffscreenCanvas(img.width, img.height)
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0)
+          const px = img.width / clip.width
+          const all = ctx.getImageData(0, 0, img.width, img.height).data
+          const near = (at: number, c: number[], by: number) => Math.abs(all[at]! - c[0]!) + Math.abs(all[at + 1]! - c[1]!) + Math.abs(all[at + 2]! - c[2]!) <= by
+          // How far a point lies outside the chip's pill (negative inside), in CSS px.
+          const r = box.height / 2
+          const outside = (x: number, y: number) => {
+            const dx = Math.max(Math.abs(x - box.width / 2) - (box.width / 2 - r), 0)
+            const dy = Math.abs(y - r)
+            return dx > 0 ? Math.hypot(dx, dy) - r : dy - r
+          }
+          // Within a pixel of somebody else's box, at the page's own coordinates.
+          const theirs = (x: number, y: number) => others.some((o) => x + box.x >= o.x - 1 && x + box.x <= o.x + o.w + 1 && y + box.y >= o.y - 1 && y + box.y <= o.y + o.h + 1)
+          let past = 0
+          let stroke = 0
+          let edge = 0
+          for (let py = 0; py < img.height; py++) {
+            for (let qx = 0; qx < img.width; qx++) {
+              const x = (qx + 0.5) / px - pad
+              const y = (py + 0.5) / px - pad
+              const at = (py * img.width + qx) * 4
+              const d = outside(x, y)
+              // Outside the pill, past the edge's own anti-aliasing: the strip's ground only.
+              if (d > 1.5 && !near(at, ground, 6) && !theirs(x, y)) past++
+              // The chip's own line on its edge: the guard that the colours read are the ones drawn.
+              if (Math.abs(d + 0.5) <= 0.5 && near(at, line, 24)) edge++
+              // Inside, clear of the edge and of the row the name and the × are written on.
+              const written = y > box.height * 0.25 && y < box.height * 0.75
+              if (d < -2.5 && !written && near(at, line, 24)) stroke++
+            }
+          }
+          return { past, stroke, edge }
+        },
+        { data: shot.toString('base64'), clip, box, pad, ground: rgb(colours.ground), line: rgb(colours.line), others },
+      )
+      const name = await chip.evaluate((el) => el.firstChild?.textContent ?? '')
+      expect(drawn.edge, name).toBeGreaterThan(20)
+      expect({ past: drawn.past, stroke: drawn.stroke }, name).toEqual({ past: 0, stroke: 0 })
+    }
+  })
+})
+
 test.describe('a seat kicked from the keyboard (#621)', () => {
   test.use({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
 
   test('is reached by Tab, shows the ring, and hands the focus to the next seat when it goes', async ({ page, host }) => {
     await eightAtTheTable(page, host)
     const strip = page.locator('.byd-editor-table-link')
-    const ada = strip.getByRole('button', { name: 'Sparka Ada', exact: true })
+    const ada = strip.locator('[data-host-seat]').getByRole('button', { name: 'Sparka Ada', exact: true })
     await expect(ada).toBeVisible()
     // From «Ny kod» the next stop is the first seat's ×: nothing between them takes a Tab.
     await strip.getByRole('button', { name: 'Ny kod' }).focus()
@@ -105,6 +199,18 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     expect(ring.style).not.toBe('none')
     expect(ring.width).toBeGreaterThanOrEqual(2)
 
+    // The × asks first (#679, beställarens beslut C), and the question opens on «Avbryt»: the
+    // reflex that answers without reading keeps the player at the table.
+    await page.keyboard.press('Enter')
+    const ask = page.getByRole('alertdialog', { name: 'Sparka Ada?' })
+    await expect(ask).toBeVisible()
+    await expect(ask.getByRole('button', { name: 'Avbryt' })).toBeFocused()
+    await expect(ada).toHaveCount(1)
+    // One Tab back is the kick that also changes the code, two is the kick alone.
+    await page.keyboard.press('Shift+Tab')
+    await expect(ask.getByRole('button', { name: 'Sparka och byt kod' })).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(ask.getByRole('button', { name: 'Sparka Ada' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(ada).toHaveCount(0)
     // The pressed × went with its seat. The focus does not fall to the page, where the next Tab
@@ -121,11 +227,15 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     await dealer.send([{ v: 'seat.claim', seat: doc.setup.seats[0]!, name: 'Ada' } as never])
     await page.goto(project.editorUrl)
     const strip = page.locator('.byd-editor-table-link')
-    const ada = strip.getByRole('button', { name: 'Sparka Ada', exact: true })
+    const ada = strip.locator('[data-host-seat]').getByRole('button', { name: 'Sparka Ada', exact: true })
+    // Ada's chip first: the seat arrives on the line after the page, and a Tab pressed before it
+    // stood went past where it was about to be (a flake under load).
+    await expect(ada).toBeVisible()
     await strip.getByRole('button', { name: 'Ny kod' }).focus()
     await page.keyboard.press('Tab')
     await expect(ada).toBeFocused()
     await page.keyboard.press('Enter')
+    await strip.getByRole('alertdialog', { name: 'Sparka Ada?' }).getByRole('button', { name: 'Sparka Ada' }).click()
     await expect(ada).toHaveCount(0)
     await expect(strip.getByRole('button', { name: 'Ny kod' })).toBeFocused()
   })

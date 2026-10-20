@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 
 // The table's own strips (#479): the bulk row under a marking and the question before cards go

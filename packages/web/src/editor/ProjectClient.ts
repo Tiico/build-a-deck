@@ -1,10 +1,10 @@
-import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
+import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
-import type { DocDiff, VersionChange } from '@byd/server/doc'
+import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, decideEdit, plainEdits, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -14,9 +14,11 @@ import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type Theme } from './themes.js'
 import type { EditorMessage, Presence } from '@byd/server'
-import { canEdit, canStartTables, type Role } from '@byd/server/doc'
+import { canDelete, canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
+import { Said, saidOr } from '../i18n/said.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
+import { readTextures, type Textures } from '../table/textures.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
@@ -41,6 +43,9 @@ let editSocket: EditSocketCtor | null = null
 export function setEditSocketImplementation(ctor: EditSocketCtor | null): void {
   editSocket = ctor
 }
+// How long a save over a live line may go unanswered before it is called failed (#708): the same
+// wait a connection is given before it is called down, and never a race against the answer.
+const SAVE_BACKSTOP_MS = DEFAULT_TIMING.connectTimeoutMs
 const makeEditSocket = (url: string): WebSocketLike => new (editSocket ?? (globalThis.WebSocket as unknown as EditSocketCtor))(url)
 
 export type ProjectListener = (client: ProjectClient) => void
@@ -63,15 +68,38 @@ type Undoing = { said: Key; name: string; intents: readonly EditIntent[] }
 // what the designer did to leave it (#35).
 type Step = { doc: ProjectDoc; what: Key }
 
-export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
+// Why a save made no version (#1018), as a closed set of words the editor says in its own voice.
+// The server's sentence about a refused save is a developer's, and the table's translation of it
+// is about a move: read as either, a database that dropped its connection mid-write said «Bordet
+// tog inte emot draget» under «Spara». So the reason is decided here, where it is known how the
+// save travelled and what answered it, and nothing past this point reads the server's words.
+// `offline`: no answer came — the line went, the request never left, or the actor stayed silent.
+// `failed`: an answer came and it was no, for a reason none of the others name.
+export type SaveFailure = 'conflict' | ProjectFault | 'failed'
+export type SaveResult = { ok: true; rev: number } | { ok: false; reason: SaveFailure }
+// The actor's refusal of a save, read as one of those words. Only the two the actor itself says
+// are read for what they are; anything else is a fault under it — the store's own message.
+const refusedSave = (why: string): SaveFailure => (why === 'conflict' ? 'conflict' : why === 'unknown project' ? 'missing' : 'failed')
 export type Cell = string | number | boolean | null
 // `smallest`: what each card's rendered front was fitted to, by row (#523) — a card whose front is
 // not rendered yet, or was rendered before this was kept, is not in it.
-export type Textures = { total: number; done: number; failed: string[]; smallest?: Record<string, number> }
+export type { Textures }
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
 // `code` is the room code of a running table, given only to a role that may start one (#477).
+// A table that was ended under the editor (#705): its log is locked, so it can never take a new
+// version. The header treats it as the table going away, not as an update that failed.
+export class TableEnded extends Error {
+  constructor(readonly sessionId: string) {
+    super(`the table ${sessionId} has ended`)
+  }
+}
+
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }
+
+// An edit of this editor's own that the actor has not answered yet, under the number it was sent
+// with (#993).
+type Waiting = { ask: number; intent: EditIntent }
 
 // The project as the editor holds it, and its end of the actor (D3): the document, who else has
 // it open, and one socket the edits go both ways over. An edit is applied here at once and sent;
@@ -103,8 +131,18 @@ export class ProjectClient {
   private attempt = 0
   private me: string | null = null
   // Edits made before the socket was open, or made and not yet echoed back. They are sent when
-  // the socket opens, and laid on top again whenever the actor hands over its document.
-  private pending: EditIntent[] = []
+  // the socket opens, and laid on top again whenever the actor hands over its document. Each goes
+  // under a number of this editor's own (#993), and whatever answers it — its echo or its refusal —
+  // names that number, so an answer takes off the edit it is about and never the one beside it.
+  private pending: Waiting[] = []
+  private asks = 0
+  // How many of this editor's edits the actor has refused (#993). An edit the actor refuses is
+  // taken off this editor again, and the designer is told that it did not go through: it vanished
+  // from the screen without a word, which reads as the tool having lost it.
+  public refusedEdits = 0
+  // The hashes of the bytes this client has put into the document and is still sending (#907).
+  // A new set on every change, so a view can tell it changed by its identity.
+  private arriving: ReadonlySet<string> = new Set()
   // The steps the designer took in this tab, each kept as the document it was taken from, and the
   // ones taken back and waiting to come forward again (#35).
   private past: Step[] = []
@@ -126,11 +164,16 @@ export class ProjectClient {
   private outbox: string[] = []
   // A save asked for over the socket, waiting for the actor to say what became of it.
   private saving: ((result: SaveResult) => void) | null = null
-  // The document as it was when that save was asked for. The actor makes its version out of the
-  // edits it has when the save reaches it, so an edit written while the save travels is not in
-  // the version that comes back (#380): what became saved is this document and not the one on
-  // the screen a moment later.
-  private asked: string | null = null
+  // The last save asked for and not yet over, so the next one can wait its turn behind it (#988).
+  private inFlight: Promise<SaveResult> | null = null
+  // The document as the actor holds it, as far as the line has told this editor: its handover,
+  // and every edit it has said landed since, this editor's own included, in the order it said them.
+  // A version is made of what the actor holds when the save reaches it, and its «saved» is said
+  // after every edit that went into it and before every edit that did not, so this is the
+  // document that became saved (#994). It is not what this editor held when the save left: an
+  // edit written while the save travels is not in the version (#380), and neither is one the
+  // actor refused on the way, which this editor takes off again (#993).
+  private held: ProjectDoc
   // Who else has this project open (D3). Empty until the socket says otherwise.
   public here: Presence[] = []
   // This editor's own connection, so a view can leave itself out of the list.
@@ -155,6 +198,7 @@ export class ProjectClient {
     private readonly dropAfterMs: number,
   ) {
     this.saved = stamp(doc)
+    this.held = doc
   }
 
   get dirty(): boolean {
@@ -211,6 +255,8 @@ export class ProjectClient {
       if (this.socket !== socket) return
       this.socket = null
       this.connected = false
+      // A save asked for over this line is answered over this line or not at all, so it is over.
+      this.finishSave({ ok: false, reason: 'offline' })
       if (!this.lineDown && this.falling === null) {
         this.falling = setTimeout(() => {
           this.falling = null
@@ -227,6 +273,8 @@ export class ProjectClient {
         this.socket = null
         this.connected = false
         this.shut = code === 4003 ? 'forbidden' : code === 4401 ? 'loggedOut' : 'missing'
+        // The door that shut is the save's answer as well: it was not the line.
+        this.finishSave({ ok: false, reason: this.shut })
         this.close()
         this.notify()
         return
@@ -248,12 +296,13 @@ export class ProjectClient {
         // Whatever this editor did while it was alone is laid on top again; an edit that no
         // longer makes sense against the actor's document is simply gone.
         const held = message.doc
+        this.held = held
         let doc = held
-        const kept: EditIntent[] = []
-        for (const intent of this.pending) {
+        const kept: Waiting[] = []
+        for (const waiting of this.pending) {
           try {
-            doc = applyEdit(doc, intent)
-            kept.push(intent)
+            doc = applyEdit(doc, waiting.intent)
+            kept.push(waiting)
           } catch {
             // The actor will refuse it too; there is nothing to keep.
           }
@@ -264,16 +313,22 @@ export class ProjectClient {
         // rebuilds every card on the screen — under the pointer, and under whoever is reading it.
         const fresh = stamp(doc)
         if (fresh !== stamp(this.doc)) this.doc = doc
-        this.saved = stamp(held)
+        // What is saved is the version `rev` names, which is not what the actor holds while its
+        // log has a tail nobody saved — a tab closed over unsaved work leaves one (#764). Taking
+        // the held document for saved said «Sparat» over that work, and «Starta bord» then
+        // started the table from the version without it.
+        this.saved = stamp(message.saved ?? held)
         this.notify()
         return
       }
       case 'edits': {
         // An edit of one's own was applied when it was made; its echo only says it landed.
         const mine = message.edits.filter((e) => e.from === this.me)
-        if (mine.length > 0) this.pending = this.pending.slice(mine.length)
+        for (const echo of mine) this.answered(echo.ask)
         const theirs = message.edits.filter((e) => e.from !== this.me)
         if (theirs.length > 0) this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
+        // The actor's document moves by every edit it tells of, whoever made it.
+        this.held = message.edits.reduce((d, e) => applyEdit(d, e.intent), this.held)
         // Said even when nothing in the document moved: an echo of one's own is the actor
         // confirming it holds the edit, and a status that waits on that (#297, L33) has no other
         // way to hear it.
@@ -286,15 +341,40 @@ export class ProjectClient {
         return
       case 'saved':
         this.rev = message.rev
-        this.saved = this.asked ?? stamp(this.doc)
-        this.finishSave({ ok: true, rev: message.rev })
+        // Whoever asked for it, the version is the document the actor held as it said so (#994).
+        this.saved = stamp(this.held)
+        // A version is the answer to the save that made it and to no other (#988). Taken from
+        // whichever «saved» came next, an import named somebody else's version, and the book it
+        // replaced lost the name that was its way back (B4).
+        if (message.from === this.me) this.finishSave({ ok: true, rev: message.rev })
         this.notify()
         return
       case 'refused':
-        // The actor sends the document with it, so nothing has to be asked for again.
-        this.finishSave({ ok: false, reason: message.why })
+        // A refusal answers the request it names and no other (#991). A refused edit taken for the
+        // save's answer said a version that was made could not be saved, and left the version's
+        // own «saved» to nobody, or to the next save. A refused edit ends no wait: the actor sends
+        // the document with it, so nothing has to be asked for again. A server from before the
+        // address names none, and its refusal is read the way it always was, as the save's.
+        if (message.to !== 'edit') {
+          this.finishSave({ ok: false, reason: refusedSave(message.why) })
+          return
+        }
+        // The refused edit comes off this editor (#993): kept, it was laid on top of the document
+        // the actor hands over next, and the editor showed what the actor had refused. A server
+        // from before the number names no edit, and its handover lays them all on top as before.
+        if (message.ask !== undefined) this.answered(message.ask)
+        this.refusedEdits += 1
+        this.notify()
         return
     }
+  }
+
+  // One of this editor's edits is answered, and is no longer waiting. Named by its number when
+  // the actor gives it. A server from before the number names none, and the oldest is taken for
+  // it, as it always was: a page loaded since is no worse off against it than before.
+  private answered(ask: number | undefined): void {
+    const at = ask === undefined ? 0 : this.pending.findIndex((waiting) => waiting.ask === ask)
+    if (at >= 0) this.pending.splice(at, 1)
   }
 
   // Waiting a little longer each time, so a server that is down is not hammered, and never so
@@ -321,9 +401,6 @@ export class ProjectClient {
   private finishSave(result: SaveResult): void {
     const waiting = this.saving
     this.saving = null
-    // Whatever became of it, that save is over: a refused one leaves no document behind to call
-    // saved, and the next one reads its own.
-    this.asked = null
     waiting?.(result)
   }
 
@@ -360,6 +437,11 @@ export class ProjectClient {
     return this.role === null || canEdit(this.role)
   }
 
+  // Whether this account may take the game away (D3, #738): the owner alone.
+  get mayDelete(): boolean {
+    return this.role === null || canDelete(this.role)
+  }
+
   // Whether this account may start and run tables (D3): a tester may, a viewer may not (#489).
   get mayStartTables(): boolean {
     return this.role === null || canStartTables(this.role)
@@ -369,7 +451,7 @@ export class ProjectClient {
   // may not change the game is never uploaded, because the edit after it would be refused with
   // the bytes already stored.
   private mustBeAbleToEdit(t: T): void {
-    if (!this.mayEdit) throw new Error(t('editor.readonly.refused'))
+    if (!this.mayEdit) throw new Said(t('editor.readonly.refused'))
   }
 
   // `gesture` names the one thing the designer is doing, when what she is doing arrives in
@@ -377,11 +459,16 @@ export class ProjectClient {
   // token that is already on top of the stack joins that step instead of making its own, so the
   // way back from a move is one press and not sixty. Everything else leaves it out and is its own
   // step, as it always was.
-  edit(intent: EditIntent, gesture?: string): void {
+  // `what` is the word the step back says, when the edit's own part of the game is not the word a
+  // designer would recognise it by: an accepted AI proposal is «det godtagna förslaget» (#1002).
+  edit(asked: EditIntent, gesture?: string, what?: Key): void {
     // A role that may not change the game changes nothing here either (#489; läsläge, decided in
     // #477): the actor would refuse the save, so an edit is never applied, never sent and never a
     // step back — and «Osparat» can never stand for something this reader cannot keep.
     if (!this.mayEdit) return
+    // What the edit decides is decided here, against what the designer sees, and sent as the
+    // answer (#894): where a new zone lies is then the place she saw, in the log and on replay.
+    const intent = decideEdit(this.doc, asked)
     // It applies before anything is recorded, and that order is the whole of it: an edit the
     // document refuses never happened, so it must cost neither a version nor a step back (#41,
     // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.
@@ -392,13 +479,19 @@ export class ProjectClient {
     // The gesture that is already open keeps the document it began from: that is the whole of
     // taking a move back in one press, and it is why the token must be new for every new grab.
     if (gesture === undefined || gesture !== this.gesture) {
-      this.past.push({ doc: this.doc, what: whatOf(intent) })
+      this.past.push({ doc: this.doc, what: what ?? whatOf(intent) })
       if (this.past.length > UNDO_STEPS) this.past.shift()
       this.futureBeforeGesture = this.future
     }
     this.gesture = gesture ?? null
     this.future = []
     this.send(intent, next)
+  }
+
+  // Several edits as one (#1002): one line in the log, all or nothing, one step back and one thing
+  // the others see land. An accepted AI proposal is one, and its step back says so.
+  editTogether(edits: readonly EditIntent[], what: Key): void {
+    this.edit({ v: 'compound', edits: [...edits] }, undefined, what)
   }
 
   // The edit itself, without touching the stack: this is the path a step of the stack takes, and
@@ -408,8 +501,9 @@ export class ProjectClient {
   // it gets here, and hands over what came out rather than having it worked out twice.
   private send(intent: EditIntent, next: ProjectDoc = applyEdit(this.doc, intent)): void {
     this.commit(next)
-    this.pending.push(intent)
-    this.post(JSON.stringify({ t: 'edit', intent }))
+    const ask = ++this.asks
+    this.pending.push({ ask, intent })
+    this.post(JSON.stringify({ t: 'edit', intent, ask }))
   }
 
   get canUndo(): boolean {
@@ -645,7 +739,10 @@ export class ProjectClient {
     this.mustBeAbleToEdit(t)
     this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
     const saved = await this.save()
-    if (!saved.ok) throw new Error(saved.reason)
+    // `conflict` is the protocol's word for a collision and nobody can act on it, so what is said
+    // is the state the designer is in and the one way out of it (#131); any other refusal is said
+    // as the import not being saved, never in the server's words (#812).
+    if (!saved.ok) throw new Said(t(saved.reason === 'conflict' ? 'rules.import.conflict' : 'rules.import.failed'))
     await this.nameVersion(saved.rev, t('rules.import.version', { file }))
   }
 
@@ -682,9 +779,12 @@ export class ProjectClient {
   // What a version changed against the one before it, spelled out card by card; null for the
   // first version of all. This is the opened row — the whole difference — where `changes` is the
   // one line every row carries.
-  async diff(rev: number): Promise<DocDiff | null> {
+  // `from` holds it against another version than the one just before it: the Resultat view holds
+  // a version against the previous one that was answered (#1010).
+  async diff(rev: number, from?: number): Promise<DocDiff | null> {
     if (rev <= 1) return null
-    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}/diff`, withCredentials())
+    const against = from === undefined ? '' : `?from=${from}`
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}/diff${against}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
     if (!res.ok) throw new Error(`could not read what version ${rev} changed: ${res.status}`)
     return (await res.json()) as DocDiff
@@ -721,6 +821,7 @@ export class ProjectClient {
     // theirs from here on, and card text writes it between braces (L2, A4).
     const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
     const taking = this.newGesture('symbol')
+    this.onTheirWay(ref)
     this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }, taking)
     await this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t)
     return name
@@ -755,6 +856,7 @@ export class ProjectClient {
     const name = already ?? freeIconName(symbolName(symbol, t), this.doc.icons)
     const element = iconElement(name, { taken: idsOnFace(faceTemplate), card: CARD_STANDARD_63x88.physical })
     const placing = this.newGesture('symbol')
+    if (!already) this.onTheirWay(ref)
     this.edit(
       {
         v: 'addElement',
@@ -809,10 +911,15 @@ export class ProjectClient {
   // A hash that comes back different from the one worked out here is the same fault as no
   // upload at all — the document would be pointing somewhere the bytes are not — so it is
   // handled as one rather than papered over.
+  //
+  // The caller has said the bytes are on their way (`onTheirWay`) before the edit that placed them,
+  // and they stop being so here, whichever way the sending ends.
   private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, undoing: Undoing, t: T): Promise<void> {
-    const landed = await this.uploadAsset(file, kind, t).catch((err: unknown) => {
-      throw this.takeBack(gesture, ref, undoing, err, t)
-    })
+    const landed = await this.uploadAsset(file, kind, t)
+      .catch((err: unknown) => {
+        throw this.takeBack(gesture, ref, undoing, err, t)
+      })
+      .finally(() => this.landed(ref))
     if (assetRef(landed) === ref) {
       // Arrived, so there is nothing left to take back: the placement stops being callable off
       // rather than staying open for the rest of the session. Only if it is still the open one —
@@ -821,7 +928,7 @@ export class ProjectClient {
       if (this.gesture === gesture) this.gesture = null
       return
     }
-    throw this.takeBack(gesture, ref, undoing, new Error(t('upload.wrongName')), t)
+    throw this.takeBack(gesture, ref, undoing, new Said(t('upload.wrongName')), t)
   }
 
   // What never arrived, taken back out of the document (#344, L37).
@@ -863,7 +970,7 @@ export class ProjectClient {
       this.future = rebased(this.future)
       this.futureBeforeGesture = rebased(this.futureBeforeGesture)
     }
-    return new Error(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: why instanceof Error ? why.message : String(why) }))
+    return new Said(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: saidOr(why, t('upload.failed')) }))
   }
 
   // One step with the correction laid on it (#358). Only the document changes: what the step is
@@ -922,8 +1029,26 @@ export class ProjectClient {
   // The pictures whose crop the actor has not yet confirmed (#297, L33): sent, or waiting for the
   // line, and not echoed back. The status under the window may say «sparad» only once a picture
   // has left this list.
+  // The assets whose bytes are on their way to the service, by hash (#907). They are in the document
+  // already (#310, #339), and a surface that asks the service for them now gets a 404 and keeps it:
+  // a picture opened in Media while it was still being sent from its card cell stood there as one
+  // that could not be fetched after it had arrived. A surface waits for a hash to leave this set
+  // before it asks, so it asks once and gets the bytes. Said from the very edit that placed them,
+  // never a notice later, so no render ever sees such a reference without knowing it is early.
+  get assetsArriving(): ReadonlySet<string> {
+    return this.arriving
+  }
+  private onTheirWay(ref: string): void {
+    this.arriving = new Set(this.arriving).add(ref.slice(ASSET_PREFIX.length))
+  }
+  private landed(ref: string): void {
+    const hash = ref.slice(ASSET_PREFIX.length)
+    if (!this.arriving.has(hash)) return
+    this.arriving = new Set([...this.arriving].filter((one) => one !== hash))
+    this.notify()
+  }
   get cropsInFlight(): string[] {
-    return [...new Set(this.pending.flatMap((intent) => (intent.v === 'setCrop' ? [intent.hash] : [])))]
+    return [...new Set(this.pending.flatMap(({ intent }) => plainEdits(intent).flatMap((part) => (part.v === 'setCrop' ? [part.hash] : []))))]
   }
   // A picture out of the game (#318): the record and every picture cell that held it, in one
   // intent — so the way back from it is one step and not a picture followed by its cards.
@@ -946,6 +1071,7 @@ export class ProjectClient {
     if (already) return already[0]
     const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
     const taking = this.newGesture('font')
+    this.onTheirWay(ref)
     this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } }, taking)
     await this.storeAsset(file, 'font', ref, taking, { said: 'upload.undone.font', name: family, intents: [{ v: 'removeFont', family }] }, t)
     return family
@@ -972,6 +1098,7 @@ export class ProjectClient {
     // The licence is written in the same edit as the family, because it is the same fact: the
     // catalog knows the answer, and a family that arrived knowing it must never stand in the
     // list with two empty boxes (L27).
+    this.onTheirWay(ref)
     this.edit({ v: 'setFont', family: name, font: catalogFont(family, ref, name) }, taking)
     await this.storeAsset(blob, 'font', ref, taking, { said: 'upload.undone.font', name, intents: [{ v: 'removeFont', family: name }] }, t)
     return name
@@ -1006,7 +1133,7 @@ export class ProjectClient {
     ]
     const landed = await Promise.allSettled(
       uploads.map(async (u) => {
-        if (assetRef(await this.uploadAsset(u.file, u.kind, t)) !== u.ref) throw new Error(t('upload.wrongName'))
+        if (assetRef(await this.uploadAsset(u.file, u.kind, t)) !== u.ref) throw new Said(t('upload.wrongName'))
       }),
     )
     const failed = uploads.flatMap((u, i) => {
@@ -1049,8 +1176,19 @@ export class ProjectClient {
   // and answer to a hash; what the file was called lives on the designer's disk and nowhere else,
   // so a name not taken here is a name gone for good. It is untrusted input and is made into a
   // name by `pictureNameOf`, which is where the schema that bounds it lives.
-  async addPicture(file: File, t: T = swedish): Promise<string> {
+  //
+  // `onto` is a card's image cell the picture was uploaded from (#742). It is written in the same
+  // edit as the picture, so the cell's upload is one step back like any other, and the picture
+  // comes into the library under its file name instead of as a hash nobody named.
+  async addPicture(file: File, t: T = swedish, onto?: { cardRef: string; field: string }): Promise<string> {
     this.mustBeAbleToEdit(t)
+    // Before the bytes are even hashed: a file the gate is certain to refuse touches neither the
+    // document nor the wire (#742). The refusal names the picture as a taken-back one does (L37),
+    // because in a batch it is one line among several and has to say which file it is about —
+    // but it says nothing was removed, since nothing was ever added.
+    await this.mustBeTakeable(file, 'image', t).catch((err: unknown) => {
+      throw new Said(t('upload.refused', { what: t('upload.undone.picture', { name: pictureNameOf(file.name) ?? file.name }), why: saidOr(err, t('upload.failed')) }))
+    })
     // The hash first, off the bytes themselves (#339, as #310 did for the symbol): it is the name
     // the service will give them, so whether the game already has the picture is known here.
     const ref = await assetRefOfFile(file)
@@ -1061,10 +1199,18 @@ export class ProjectClient {
     // A picture the game already has is bytes the service already holds, under the name the library
     // already calls it: nothing is edited and the wire is never touched. The second file's name
     // used to be written over the first without a word (#481, L22 beslut 6).
-    if (this.doc.pictures?.[hash] !== undefined) return hash
+    const placing: EditIntent | null = onto ? { v: 'setCell', cardRef: onto.cardRef, field: onto.field, value: ref } : null
+    if (this.doc.pictures?.[hash] !== undefined) {
+      if (placing) this.edit(placing)
+      return hash
+    }
     const name = pictureNameOf(file.name)
     const adding = this.newGesture('picture')
+    this.onTheirWay(ref)
     this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
+    // Under the same gesture, so the step back takes both; and taking the picture back if its
+    // bytes never arrive empties the cell with it (#318), so the correction needs nothing more.
+    if (placing) this.edit(placing, adding)
     await this.storeAsset(file, 'image', ref, adding, { said: 'upload.undone.picture', name: name ?? file.name, intents: [{ v: 'removePicture', hash }] }, t)
     return hash
   }
@@ -1083,12 +1229,24 @@ export class ProjectClient {
   // leaves only the second, so the refusal names the formats that kind may be in.
   async uploadAsset(file: Blob, kind: AssetKind, t: T = swedish): Promise<string> {
     this.mustBeAbleToEdit(t)
+    await this.mustBeTakeable(file, kind, t)
     const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 415) throw new Error(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
-    if (res.status === 413) throw new Error(t('upload.tooBig'))
-    if (!res.ok) throw new Error(t('upload.failed', { status: res.status }))
+    if (res.status === 415) throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
+    if (res.status === 413) throw new Said(t('upload.tooBig'))
+    if (!res.ok) throw new Said(t('upload.failed'))
     return ((await res.json()) as { hash: string }).hash
+  }
+
+  // The gate's refusal, said before a byte travels (#742). The answer is the one the service would
+  // give — the same question out of `@byd/protocol`, in the same words — only without sending up to
+  // twenty megabytes over a home line to hear it, and without a 413 or 415 left in the console for
+  // a refusal the tool knew it would get. The service still asks it of every byte that arrives.
+  private async mustBeTakeable(file: Blob, kind: AssetKind, t: T): Promise<void> {
+    const head = new Uint8Array(await file.slice(0, ASSET_HEAD_BYTES).arrayBuffer())
+    const refused = assetRefusal(file.size, head, kind)
+    if (refused === 'tooBig') throw new Said(t('upload.tooBig'))
+    if (refused === 'notThisKind') throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
   }
 
   // What is drawn inside each of the deck's pictures (E1): the file's own size and the uniform
@@ -1117,30 +1275,58 @@ export class ProjectClient {
 
   // Saving makes a version (B4). With a socket the actor makes it, so everyone with the project
   // open is told which version it became; without one the document is written the old way.
-  async save(): Promise<SaveResult> {
-    // Read before the save leaves, for both ways of saving: it is the document the version will
-    // be made of, whatever is edited while the answer is on its way (#380).
-    const asked = stamp(this.doc)
+  //
+  // One save at a time (#988). A save asked while another is in the air leaves when that one has
+  // been answered: an import pressed twice, or pressed and then saved by hand, is two saves, and
+  // each is owed the version it made. Two in the air at once had one answer between them over the
+  // line, and over HTTP the same rev twice, which the second one heard as a conflict.
+  save(): Promise<SaveResult> {
+    const ahead = this.inFlight
+    const go = () => this.saveNow()
+    const turn = ahead ? ahead.then(go, go) : go()
+    this.inFlight = turn
+    const over = () => {
+      if (this.inFlight === turn) this.inFlight = null
+    }
+    turn.then(over, over)
+    return turn
+  }
+  private async saveNow(): Promise<SaveResult> {
     if (this.socket) {
       const answered = new Promise<SaveResult>((resolve) => {
         this.saving = resolve
       })
-      this.asked = asked
       this.post(JSON.stringify({ t: 'save' }))
-      const timeout = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'save failed' }), 2000))
-      return Promise.race([answered, timeout])
+      // The save is over when the actor answers or the line goes (`dropped`). The clock is only the
+      // backstop for an actor that never answers: as a race of its own at two seconds it lost to
+      // answers already on their way whenever the page was held up for longer than that, and a
+      // version that was made was reported as one that was not (#708).
+      const backstop = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'offline' }), SAVE_BACKSTOP_MS))
+      return Promise.race([answered, backstop])
     }
+    // Over HTTP the version is made of the whole document sent, whatever is edited while the
+    // answer is on its way (#380), so it is read before it leaves.
+    const asked = this.doc
+    // A request that never got an answer is the line, not a refusal (#1018): it threw past the
+    // editor's save, which then never came back from «Sparar…».
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...this.doc, rev: this.rev }),
-    }))
+      body: JSON.stringify({ ...asked, rev: this.rev }),
+    })).catch(() => null)
+    if (res === null) return { ok: false, reason: 'offline' }
     if (res.status === 409) return { ok: false, reason: 'conflict' }
     if (res.status === 404) return { ok: false, reason: 'missing' }
-    if (!res.ok) return { ok: false, reason: `save failed: ${res.status}` }
+    if (res.status === 401) return { ok: false, reason: 'loggedOut' }
+    if (res.status === 403) return { ok: false, reason: 'forbidden' }
+    if (!res.ok) return { ok: false, reason: 'failed' }
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev
-    this.saved = asked
+    this.saved = stamp(asked)
+    // The whole document went to the actor (#768), with every edit written in the dark already
+    // in it. Sent again when the line is back, they would be laid on top of themselves.
+    this.pending = []
+    this.outbox = []
     this.notify()
     return { ok: true, rev }
   }
@@ -1153,26 +1339,39 @@ export class ProjectClient {
     return (await res.json()) as TableSummary[]
   }
 
+  // What the game's playtests said (#1010, G3): every table's answers, flags and people, and every
+  // version's sums, counted by the server. Read by whoever may start the game's tables (#524).
+  async playtest(): Promise<Playtest> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/playtest`, withCredentials())
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not read the playtest: ${res.status}`)
+    return (await res.json()) as Playtest
+  }
+
   // "Starta bord" (L5, #417): a table from the saved project, with the room code guests join by
   // and the host key that opens its screen (DRIFT §9). Unsaved edits are saved first.
-  async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string }> {
-    if (this.dirty) {
+  // Unsaved work is saved first, and the table starts on the version that wrote (L5, #764).
+  // `saved` says whether a version was written on the way, so the editor can say so (#737).
+  async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string; saved: boolean }> {
+    const saving = this.dirty
+    if (saving) {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before starting a table: ${saved.reason}`)
     }
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
-    return (await res.json()) as { id: string; version: string; code: string; hostKey: string }
+    return { ...((await res.json()) as { id: string; version: string; code: string; hostKey: string }), saved: saving }
   }
 
   // The host's controls (DRIFT §9): a new code, so those who have the old one can no longer
   // come in; and a kick, which frees the seat and ends its connections. The host key the table
   // was started with is the authority, with or without an account; a table picked up again after
   // a reload has no key in the page, and the account that may start tables is the authority then.
-  async rotateCode(sessionId: string, hostKey?: string): Promise<{ code: string; expiresAt: string }> {
+  // The new code comes with a new host key (#820), and the old key opens nothing after it.
+  async rotateCode(sessionId: string, hostKey?: string): Promise<{ code: string; expiresAt: string; hostKey: string }> {
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/code`, hostAuthority(hostKey, { method: 'POST' }))
     if (!res.ok) throw new Error(`could not rotate the code: ${res.status}`)
-    return (await res.json()) as { code: string; expiresAt: string }
+    return (await res.json()) as { code: string; expiresAt: string; hostKey: string }
   }
   async kick(sessionId: string, hostKey: string | undefined, seat: string): Promise<void> {
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/kick`, hostAuthority(hostKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seat }) }))
@@ -1187,6 +1386,8 @@ export class ProjectClient {
       if (!saved.ok) throw new Error(`could not save before refreshing the table: ${saved.reason}`)
     }
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/refresh`, withCredentials({ method: 'POST' }))
+    // The log refuses the version change once the table is over (C9): not a fault, a fact (#705).
+    if (res.status === 409) throw new TableEnded(sessionId)
     if (!res.ok) throw new Error(`could not refresh the table: ${res.status}`)
     return (await res.json()) as { version: string; seqs: number[] }
   }
@@ -1216,31 +1417,37 @@ export class ProjectClient {
     // way every table path does — rather than printed as the book it used to be (#481).
     if (this.dirty) {
       const saved = await this.save()
-      if (!saved.ok) throw new Error(t('rules.booklet.notSaved'))
+      if (!saved.ok) throw new Said(t('rules.booklet.notSaved'))
     }
     const lang = typeof document === 'undefined' ? '' : document.documentElement.lang
     const where = `${this.http}/projects/${encodeURIComponent(this.id)}/rulebook${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`
     const res = await fetch(where, withCredentials({ method: 'POST' }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 404) throw new Error(t('rules.booklet.noRules'))
-    if (!res.ok) throw new Error(t('rules.booklet.orderFailed', { status: res.status }))
+    if (res.status === 404) throw new Said(t('rules.booklet.noRules'))
+    if (!res.ok) throw new Said(t('rules.booklet.orderFailed'))
     return ((await res.json()) as { hash: string }).hash
   }
 
   // Whether a rendering is finished, so a link is offered only when there is a file behind it.
+  // A 200 and nothing else: the queue's 202 is `ok` too, and read as done it put the link in
+  // front of a file that was not there yet (#678).
+  //
+  // Or a redirect, which is how a finished file answers on the box (DRIFT §4): the bytes are in
+  // R2, and R2 answers without CORS, so a fetch that followed the redirect failed there and the
+  // link never came (#1008) — green everywhere without an object store, broken on the one machine
+  // that has one. The redirect is the answer; the file behind it is not fetched to learn it.
   async rendered(hash: string): Promise<boolean> {
-    const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'follow' })
-    return res.ok
+    const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'manual' })
+    return res.status === 200 || res.type === 'opaqueredirect'
   }
 
-  bookletUrl(hash: string): string {
-    return `${this.http}/faces/${hash}`
+  // The booklet under the name it is opened and saved by (#678).
+  bookletUrl(hash: string, name: string): string {
+    return `${this.http}/faces/${hash}?name=${encodeURIComponent(name)}`
   }
 
-  async textures(sessionId: string): Promise<Textures> {
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/textures`, withCredentials())
-    if (!res.ok) throw new Error(`could not read texture status: ${res.status}`)
-    return (await res.json()) as Textures
+  textures(sessionId: string): Promise<Textures> {
+    return readTextures(this.http, sessionId)
   }
 
   private commit(doc: ProjectDoc): void {
@@ -1265,9 +1472,9 @@ const assetRefOfFile = async (file: Blob): Promise<string> => assetRefOf(new Uin
 // Only the designer's browser ever asks, and only when she has chosen the family (DRIFT §12).
 async function catalogFile(family: CatalogFamily, t: T): Promise<File> {
   const sheet = await fetch(fileSheetHref(family)).catch(() => null)
-  if (!sheet?.ok) throw new Error(t('fonts.catalog.silent'))
+  if (!sheet?.ok) throw new Said(t('fonts.catalog.silent'))
   const file = await fetch(fileInSheet(await sheet.text())).catch(() => null)
-  if (!file?.ok) throw new Error(t('fonts.catalog.silent'))
+  if (!file?.ok) throw new Said(t('fonts.catalog.silent'))
   return new File([new Uint8Array(await file.arrayBuffer())], `${family.family}.woff2`, { type: 'font/woff2' })
 }
 

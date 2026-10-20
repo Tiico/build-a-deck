@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Intent, VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
 import './online.css'
 import { TableRenderer, type TableHandle } from '../table/TableRenderer.js'
+import { useCardsPending } from '../table/textures.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { usePresence, useRecent } from '../table/usePresence.js'
 import { useShuffles } from '../table/shuffle.js'
@@ -13,7 +14,7 @@ import { playIntents } from '../player/play.js'
 import { SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
 import { PlayerSurface, useHandMarks } from '../player/PlayerSurface.js'
 import { useSitDown } from '../player/useSitDown.js'
-import { claimUrl } from '../account/api.js'
+import { claimUrl } from '../account/session.js'
 import { SeatLine } from './SeatLine.js'
 import { LastMove } from './LastMove.js'
 import { HandFan } from './HandFan.js'
@@ -28,9 +29,12 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { guestNotice, towardSeat } from '../status/notice.js'
+import { guestNotice, kickedNotice, towardSeat } from '../status/notice.js'
+import { useRoomOpen } from '../status/useRoomOpen.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
+import { useSessionName } from '../status/sessionName.js'
 import { useT } from '../i18n/index.js'
+import { RuleDrawer } from '../rules/RuleDrawer.js'
 
 // /online?session=…&seat=A&name=Ada&server=ws://…
 // Fully online (C2): both roles in one window. The table, the way round the window and the seat
@@ -42,7 +46,7 @@ import { useT } from '../i18n/index.js'
 // hand drawn twice in one window is not a picture, it is a second thing for the fit to make room
 // for on the axis that binds it (K9, K17, #77).
 // `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
-export type OnlinePageProps = { timing?: StatusTiming; onLeave?(url: string): void }
+export type OnlinePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: number }; onLeave?(url: string): void }
 
 // The shortest side a window must have before a board is drawn in it at all (C2's revision of
 // 2026-09-16, #99).
@@ -80,9 +84,11 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
+  const roomOpen = useRoomOpen(http, params.get('code'), refused === 'kicked')
   // A seat whose line is gone is offered the room's seat picker before the way home (#484 fynd 14).
   const said = links.rescan && live.notice ? { ...live, notice: towardSeat(live.notice, t) } : live
-  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  const game = useSessionName(http, sessionId, !params.get('code'))
+  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game })
   // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
   const room = useRoom()
   const presence = usePresence(client, view)
@@ -115,12 +121,22 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     faces: http,
   })
   useActivityLive(activity, view, seat)
+  // The start waits for the cards here too (#765, beslut B): a seat at a distance deals the same
+  // faceless cards a TV would.
+  const startWait = useCardsPending(http, sessionId, view, timing.renderStalledAfterMs)
+  // A proposed rewind shows the table as it was (C, K13), and «Visa alla» stood over exactly that
+  // table (#747): the grid closes the moment a proposal stands, whoever made it.
+  const proposing = view?.rewind != null
+  useEffect(() => {
+    if (proposing) setSpread(false)
+  }, [proposing])
 
   // Distance mode has a seat like any other screen with one, and sits down the same way.
   useSitDown(client, view, seat, name)
 
   if (!sessionId || !seat) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
+  if (refused === 'kicked') return <StatusNotice notice={kickedNotice(roomOpen === true, t)} surface="page" links={links} />
   if (refused) return <StatusNotice notice={{ ...guestNotice('forbidden', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
 
@@ -134,7 +150,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const shown = withoutHand(previewOf(view), seat)
   const playable = !view.rewind && !view.ended
   const up = spread && hand.length > 0
-  const onAct = (intents: Intent[]) => void client.send(...intents)
+  // The answer goes back to the felt, which says a refusal beside the drop (#682).
+  const onAct = (intents: Intent[]) => client.send(...intents)
   // A card out of the fan lands where it is dropped, centred on the pointer, in what the felt
   // shows there (K2, K11, #65). Let go anywhere but over the table's picture — back over the hand,
   // over the top bar, in the dark around the table — it was not played at all, and goes back into
@@ -150,7 +167,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     if (!playable) return
     const dest = landing(clientX, clientY)
     if (!dest) return
-    void client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
+    // A card the table refuses is said beside where it was let go, as a drop on the felt is (#682).
+    const sent = client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
+    table.current?.answer(sent, clientX, clientY)
   }
   // While it is carried the felt says where it will land (beslut C, prototyp 23): the zone or hand
   // under it is marked, the ghost is the card it will become, and off the table the hand says the
@@ -170,7 +189,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           at 390 the band is 358 px, which holds eight forty-four pixel targets and no more, so
           the hand and the tools cannot both live there. C4's thumb pays for it; see C4's own
           revision of 2026-09-08. */}
-      <div className="byd-online-top">
+      <header className="byd-online-top">
+        {/* The page's heading, for a screen reader (#560 P-20): the seat's line says who, the felt says
+            what, and neither is a heading. It opens the banner, so the landmarks hold everything (#762). */}
+        <h1 className="byd-offscreen">{t('play.table')}</h1>
         <SeatLine name={me?.name ?? seat} hand={hand.length} observers={observers.map((o) => o.name)} t={t} />
         {hand.length > 0 && (
           <button type="button" className="byd-online-showall" ref={showAll} aria-expanded={spread ? 'true' : 'false'} onClick={() => setSpread(!spread)}>
@@ -179,12 +201,13 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
         <LastMove view={view} activity={activity} seat={seat} />
         <div className="byd-online-tools">
+          {/* Regelboken bland sätets verktyg (B7, #709), som på telefonen där den rider i raden vid
+              handen: en distansspelare vid en laptop har varken TV eller telefon att läsa den på.
+              Raden lägger ut knappen och ger den sina grannars form; boken hänger i fönstrets kant. */}
+          {!view.ended && !view.rewind && <RuleDrawer http={http} sessionId={sessionId} placement="tv" live={view} />}
           <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
-      </div>
-      {/* The page's heading, for a screen reader (#560 P-20): the seat's line says who, the felt says
-          what, and neither is a heading. */}
-      <h1 className="byd-offscreen">{t('play.table')}</h1>
+      </header>
       <main className="byd-online-play" data-hand={column ? 'column' : 'band'}>
         <div className="byd-online-felt">
           <TableRenderer
@@ -205,6 +228,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             recent={recent}
             shuffles={shuffles}
             onPresence={(p) => client.sendPresence(p)}
+            startWait={startWait}
           />
         </div>
         {/* One hand, one copy of it. While the grid stands the band is still drawn — dimmed,
@@ -262,7 +286,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           {kbd.panel}
         </div>
       )}
-      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
+      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} token={token} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} />
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
     </>
   )

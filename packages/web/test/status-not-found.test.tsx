@@ -1,11 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { NotFoundPage } from '../src/status/NotFoundPage.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The way out of a page that does not exist leads to `/`, which is the reader's games when signed in
 // and the login card otherwise (#475). "Till mina spel" over the second is a
@@ -24,6 +21,9 @@ describe('the way out of a page that does not exist (#475)', () => {
     render(<NotFoundPage />)
     expect(await screen.findByRole('link', { name: 'Till startsidan' })).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Till mina spel' })).toBeNull()
+    // The sentence over the button says the same place the button goes (#728).
+    expect(document.body.textContent).not.toMatch(/dina spel/)
+    expect(document.body.textContent).toMatch(/gå till startsidan/)
   })
 
   it('leads to the reader s games once the reader is known to be signed in', async () => {

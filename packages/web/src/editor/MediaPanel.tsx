@@ -1,9 +1,10 @@
-import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
-import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
+import { useContext, useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
+import { WHOLE_PICTURE, assetAccept, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
 import { titleOfRow } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
 import { assetUrl, mediaInGame, previewIcons } from './assets.js'
+import { Arriving, AssetImage } from './AssetImage.js'
 import { DropSays, dropSurface } from './dropping.js'
 import { Crop } from './Crop.js'
 import { Question } from './Question.js'
@@ -14,6 +15,7 @@ import { facesDrawing, faceOrder } from './media-faces.js'
 import { useFocusTrap } from './focusTrap.js'
 import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 
 // The media library (#222, L22, prototype A · egen flik). Every picture the game holds, in one
 // place, so that finding one and tidying one are the same errand. The card table shows the
@@ -172,6 +174,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   const [missing, setMissing] = useState<ReadonlySet<string>>(new Set())
   const [tries, setTries] = useState<Readonly<Record<string, number>>>({})
   const [uploading, setUploading] = useState(false)
+  const arriving = useContext(Arriving)
   const lost = useRef(missing)
   lost.current = missing
   const came = (hash: string) => {
@@ -226,7 +229,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
         // said rather than thrown: an upload can fail on a dropped line or a file the gate
         // refuses, and an unhandled rejection is not a way to tell a designer that her picture
         // is too big.
-        landed.push({ ...said, why: err instanceof Error ? err.message : String(err) })
+        landed.push({ ...said, why: saidOr(err, t('media.add.failed', { name: said.name })) })
       }
     }
     setUploading(false)
@@ -273,7 +276,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
           {onAdd && (
             <label className="byd-secondary byd-media-add">
               {t('media.add')}
-              <input ref={addRef} className="byd-offscreen" type="file" accept="image/*" multiple aria-label={t('media.add')} onChange={(event) => void take([...(event.target.files ?? [])], event.target)} />
+              <input ref={addRef} className="byd-offscreen" type="file" accept={assetAccept('image')} multiple aria-label={t('media.add')} onChange={(event) => void take([...(event.target.files ?? [])], event.target)} />
             </label>
           )}
         </div>
@@ -380,17 +383,20 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                       opens is three hundred requests in one breath. The ones below the fold
                       wait until they are to be seen. */}
                   <span className="byd-media-tile-shot">
-                    <img
+                    <AssetImage
                       key={tries[hash] ?? 0}
                       loading="lazy"
-                      src={assetUrl(assetBase, hash)}
+                      base={assetBase}
+                      hash={hash}
                       alt={nameOf(hash, cards)}
                       {...(missing.has(hash) ? { 'data-missing': 'true' } : {})}
                       onError={() => setMissing((had) => (had.has(hash) ? had : new Set(had).add(hash)))}
                     />
                     {/* In words and never only as the browser's broken-picture glyph (L13): early
                         while a file is still on its way, gone once none is. */}
-                    {missing.has(hash) && <span className="byd-media-tile-missing">{t(uploading ? 'media.tile.uploading' : 'media.missing')}</span>}
+                    {/* Its bytes on their way from anywhere — this panel, a card cell — are early
+                        too (#907), and the tile waits for them rather than asking. */}
+                    {(arriving.has(hash) || missing.has(hash)) && <span className="byd-media-tile-missing">{t(uploading || arriving.has(hash) ? 'media.tile.uploading' : 'media.missing')}</span>}
                     {/* A cropped picture says so where it is looked over, rather than only where
                         it is opened: what has been done to a picture is half of what a library
                         is for. An uncropped one wears nothing, so the mark means something. */}
@@ -399,6 +405,15 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                     )}
                   </span>
                 </button>
+                {/* The name the file came with, written on the tile (#742): it is what a
+                    designer recognises a picture by, and it lived only in `alt`. It is already
+                    the button's name, so it is not read a second time. A picture from before
+                    names writes nothing here; the line below says which cards it is on. */}
+                {doc.pictures?.[hash]?.name !== undefined && (
+                  <span className="byd-media-name" aria-hidden="true" title={doc.pictures[hash].name}>
+                    {doc.pictures[hash].name}
+                  </span>
+                )}
                 {/* The mark (L33): a cropped picture says so on the tile, in words and not only
                     in the lit window, because the tile is all there is of the picture once the
                     sheet is closed — and it says «sparas» rather than «beskuren» while the actor
@@ -468,9 +483,9 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
 
 // Which question is asked when a picture goes (#318, #320): the cards that lose it, the template
 // that loses it, or both — each said as a sentence rather than as a count of things.
-function removeQuestion(asked: { cards: readonly string[]; template: boolean }): 'media.remove.question' | 'media.remove.question.one' | 'media.remove.question.template' | 'media.remove.question.template.one' | 'media.remove.question.template.cards' {
-  if (asked.template) return asked.cards.length === 0 ? 'media.remove.question.template' : asked.cards.length === 1 ? 'media.remove.question.template.one' : 'media.remove.question.template.cards'
-  return asked.cards.length === 1 ? 'media.remove.question.one' : 'media.remove.question'
+function removeQuestion(asked: { cards: readonly string[]; template: boolean }): 'media.remove.question.other' | 'media.remove.question.one' | 'media.remove.question.template' | 'media.remove.question.template.one' | 'media.remove.question.template.other' {
+  if (asked.template) return asked.cards.length === 0 ? 'media.remove.question.template' : asked.cards.length === 1 ? 'media.remove.question.template.one' : 'media.remove.question.template.other'
+  return asked.cards.length === 1 ? 'media.remove.question.one' : 'media.remove.question.other'
 }
 
 // The cards a question names: the first few by name, and the rest counted. A game of real size

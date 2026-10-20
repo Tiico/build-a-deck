@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
@@ -8,9 +8,6 @@ import { Language } from '../src/i18n/index.js'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc, ProjectRow } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The table doing its own work: every edit it asks for is applied by the one pure function the
 // actor applies it with, and the answer goes straight back into the document the table is drawn
@@ -54,6 +51,29 @@ describe('a field arrives in the editor (#32)', () => {
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
 
     expect(column('fält1')).toBeTruthy()
+  })
+
+  // The import pairs a header that differs only in its capitals with the column (#479), so the form
+  // must not make the column the import would fold into it (#694); and the title is the tool's own
+  // in the word it is shown with, as the guided start has said since #476.
+  it('refuses a name that differs from a column, or from «Titel», only in its capitals (#694)', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const name = screen.getByLabelText('Namn')
+
+    await user.clear(name)
+    await user.type(name, 'BODY')
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(screen.getByRole('alert').textContent).toBe('Det finns redan ett fält som heter body.')
+
+    await user.clear(name)
+    await user.type(name, 'Titel')
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(screen.getByRole('alert').textContent).toBe('Det finns redan ett fält som heter Titel.')
+    // Nothing reached the deck: one «Titel», and no `BODY` beside `body`.
+    expect(screen.getAllByRole('columnheader').filter((h) => /^Titel/.test(h.textContent ?? ''))).toHaveLength(1)
+    expect(column('BODY')).toBeNull()
   })
 
   it('refuses a name the table already answers to, and says which one it is', async () => {
@@ -132,7 +152,7 @@ describe('a field arrives in the editor (#32)', () => {
     // the card's id. Both are columns; neither has an ×.
     expect(screen.queryByRole('button', { name: 'Ta bort fältet antal' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Ta bort fältet id' })).toBeNull()
-    expect(column('antal')).toBeTruthy()
+    expect(column('Antal')).toBeTruthy()
   })
 
   it('counts an empty column as what it is: nothing to lose', async () => {
@@ -247,7 +267,7 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
     expect(within(panel).getByRole('button', { name: 'Ta bort fältet body' })).toBeTruthy()
     expect(within(panel).queryByRole('button', { name: 'Ta bort fältet antal' })).toBeNull()
     expect(within(panel).queryByRole('button', { name: 'Ta bort fältet id' })).toBeNull()
-    expect(within(panel).getByRole('img', { name: 'antal är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
+    expect(within(panel).getByRole('img', { name: 'Antal är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
     expect(within(panel).getByRole('img', { name: 'id är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
   })
 

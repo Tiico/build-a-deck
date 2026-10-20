@@ -17,7 +17,7 @@
 // this file reads: what the table declares. What comes out of it at real widths in a real engine
 // is in `data-table-widths.test.tsx`, because jsdom lays nothing out and measures nothing.
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
@@ -26,9 +26,6 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { heldWidths } from '../src/editor/widths.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function Editing({ project }: { project?: string | undefined }) {
   const [doc, setDoc] = useState<ProjectDoc>(projectDoc)

@@ -1,9 +1,13 @@
 import type { Renderer } from './renderer.js'
 import type { RenderStore } from './store.js'
+import { AssetCache, inlineAssets, type AssetSource } from './assets.js'
 
 export type WorkerOptions = {
   store: RenderStore
   renderer: Renderer
+  // Where the pictures and typefaces a page names by hash are read from (#1028): Postgres or the
+  // object store, as the app keeps them. Without it a page that names one fails.
+  assets?: AssetSource
   // 'empty': stop when the queue is empty (tests, one-shot). 'forever': keep polling.
   until: 'empty' | 'forever'
   pollMs?: number
@@ -17,6 +21,7 @@ export type WorkerOptions = {
 export async function runWorker(opts: WorkerOptions): Promise<string[]> {
   const now = opts.now ?? Date.now
   const done: string[] = []
+  const cache = opts.assets ? new AssetCache(opts.assets) : undefined
   for (;;) {
     const job = await opts.store.claim(now())
     if (!job) {
@@ -25,11 +30,12 @@ export async function runWorker(opts: WorkerOptions): Promise<string[]> {
       continue
     }
     try {
+      const page = await inlineAssets(job.compiled, cache)
       // A texture keeps what its smallest text was fitted to (#523); a print has no reader to size for.
       const { output, fit } =
         job.kind.kind === 'png'
-          ? await opts.renderer.renderTexture(job.compiled, { dpi: job.kind.dpi }).then(({ png, smallestPt }) => ({ output: png, fit: { smallestPt } }))
-          : { output: job.kind.kind === 'booklet' ? await opts.renderer.renderBooklet(job.compiled) : await opts.renderer.renderPdf(job.compiled), fit: undefined }
+          ? await opts.renderer.renderTexture(page, { dpi: job.kind.dpi }).then(({ png, smallestPt }) => ({ output: png, fit: { smallestPt } }))
+          : { output: job.kind.kind === 'booklet' ? await opts.renderer.renderBooklet(page) : await opts.renderer.renderPdf(page), fit: undefined }
       await opts.store.complete(job.hash, output, fit)
       done.push(job.hash)
       opts.log?.({ msg: 'rendered', hash: job.hash, kind: job.kind.kind, bytes: output.byteLength })

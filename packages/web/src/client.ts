@@ -27,6 +27,10 @@ export type ConnectOptions = {
   retryPlanMs?: readonly number[]
   // The first wait, when no whole plan is given: the rest of the plan doubles from it.
   reconnectDelayMs?: number
+  // A screen nobody touches — the TV, the felt's own screen — does not hand the decision to a person
+  // when the plan is spent, because there is nobody at it (#722, D5 reviderat 2026-10-05): it goes on
+  // trying this often, and at once when the browser says the network is back.
+  keepTryingMs?: number
 }
 export type SendResult = { ok: true; seqs: number[] } | { ok: false; reason: string }
 export type Listener = (view: Snapshot | null, status: ClientStatus) => void
@@ -74,6 +78,10 @@ export class TableClient {
   observers: { id: string; name: string }[] = []
   // The room code (DRIFT §9), told to the host's screens only; null for everyone else.
   room: { code: string; expiresAt: string } | null = null
+  // The host key a rotation handed this screen (#820), or null while it has been handed none.
+  // «Ny kod» changes the key along with the code; the screen that is open reconnects with this
+  // one from then on, since the key it was opened with no longer opens anything.
+  hostKey: string | null = null
   // Why the server would not have this connection (DRIFT §9): no reconnecting after that.
   refused: string | null = null
   private ws: WebSocketLike
@@ -96,6 +104,8 @@ export class TableClient {
   private envelopes = 0
   private readonly nonce = Math.random().toString(36).slice(2, 10)
   private made = 0
+  // Past the plan, trying every `keepTryingMs`: the count then has no «of».
+  private beyond = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private connectTimer: ReturnType<typeof setTimeout> | null = null
   // Whether a snapshot has ever arrived. The first connection is the one with a deadline; after
@@ -109,11 +119,23 @@ export class TableClient {
     this.readyPromise = new Promise((resolve) => (this.resolveReady = resolve))
     this.armConnectTimeout()
     this.ws = this.open()
+    if (opts.keepTryingMs !== undefined && typeof window !== 'undefined') window.addEventListener('online', this.backOnline)
+  }
+
+  // The browser says the network is back: a screen that is waiting to try again tries now.
+  private readonly backOnline = (): void => {
+    if (this.status !== 'reconnecting' || this.trouble !== null || this.refused !== null || this.reconnectTimer === null) return
+    clearTimeout(this.reconnectTimer)
+    this.reconnectTimer = null
+    this.nextRetryAt = null
+    this.ws = this.open()
+    this.armConnectTimeout()
+    this.notify()
   }
 
   // How many automatic attempts have been made, and how many the plan allows.
-  get attempts(): { made: number; of: number } {
-    return { made: this.made, of: this.plan.length }
+  get attempts(): { made: number; of: number | null } {
+    return { made: this.made, of: this.beyond ? null : this.plan.length }
   }
 
   private get plan(): readonly number[] {
@@ -191,6 +213,7 @@ export class TableClient {
   }
 
   close(): void {
+    if (typeof window !== 'undefined') window.removeEventListener('online', this.backOnline)
     this.setStatus('closed')
     this.clearTimers()
     if (this.cursorTimer) clearTimeout(this.cursorTimer)
@@ -206,6 +229,7 @@ export class TableClient {
     this.trouble = null
     this.nextRetryAt = null
     this.made = 0
+    this.beyond = false
     this.setStatus(this.view ? 'reconnecting' : 'connecting')
     this.ws.close()
     this.ws = this.open()
@@ -256,7 +280,8 @@ export class TableClient {
       q.set('name', observer)
     } else if (seat !== null) q.set('seat', seat)
     if (token !== undefined) q.set('token', token)
-    if (host !== undefined) q.set('host', host)
+    const key = this.hostKey ?? host
+    if (key !== undefined) q.set('host', key)
     if (owner) q.set('owner', '1')
     const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`)
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
@@ -273,13 +298,17 @@ export class TableClient {
     this.pending.clear()
     this.sentAt.clear()
     this.setStatus('reconnecting')
-    const delay = this.plan[this.made]
-    // The plan is spent: trying again on our own would only be a page blinking at nobody.
+    let delay = this.plan[this.made]
+    // The plan is spent: trying again on our own would only be a page blinking at nobody — unless
+    // nobody is ever at it, and then it goes on trying (#722).
     if (delay === undefined) {
-      this.giveUp('exhausted')
-      return
-    }
-    this.made++
+      if (this.opts.keepTryingMs === undefined) {
+        this.giveUp('exhausted')
+        return
+      }
+      delay = this.opts.keepTryingMs
+      this.beyond = true
+    } else this.made++
     this.nextRetryAt = Date.now() + delay
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
@@ -300,6 +329,7 @@ export class TableClient {
         // reconnecting client already had beyond the server's window.
         this.remember(msg.activity)
         this.made = 0
+        this.beyond = false
         this.nextRetryAt = null
         this.everOpen = true
         if (this.connectTimer) {
@@ -342,6 +372,7 @@ export class TableClient {
         break
       case 'room':
         this.room = { code: msg.code, expiresAt: msg.expiresAt }
+        if (msg.hostKey !== undefined) this.hostKey = msg.hostKey
         this.notify()
         break
       case 'presence':

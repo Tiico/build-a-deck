@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
+import { capture } from '@byd/render'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
@@ -71,7 +72,7 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
 
 // The table's markup as it stands after `act`ing on it: closed, and with the form open and half a
 // name typed into it — which is the moment the prototype's head grew.
-async function markup(open: boolean, marked = false): Promise<Table> {
+async function markup(open: boolean, marked = false, removing = false): Promise<Table> {
   const user = userEvent.setup()
   const { container, unmount } = render(<Table />)
   if (open) {
@@ -80,6 +81,8 @@ async function markup(open: boolean, marked = false): Promise<Table> {
   }
   // A marking, for the foot that carries its actions (#618).
   if (marked) await user.click(screen.getAllByRole('checkbox')[1]!)
+  // One row's own ×, for the question it asks (#739).
+  if (removing) await user.click(screen.getAllByRole('button', { name: /^ta bort / })[0]!)
   const html = container.innerHTML
   unmount()
   return { html, deck: deckValues(projectDoc(), sv) }
@@ -156,7 +159,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.door).not.toBeNull()
     expect(open.door!.h).toBeGreaterThan(open.row.h)
     expect(shut.door).toBeNull()
-    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'Ta bort'])
+    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
     // The condition itself: the head is exactly as tall as it was, every heading cell stands
@@ -218,7 +221,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     // And that is exactly the fault the prototype had: every heading beside it is pushed down,
     // and so is the first card.
     const pushed = inFlow.headings.filter((h, i) => h.ink.y > held.headings[i]!.ink.y)
-    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕'])
+    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕'])
     expect(inFlow.firstRow.y).toBeGreaterThan(held.firstRow.y)
   }, 60_000)
 })
@@ -239,7 +242,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // The head is the shape it is meant to be, named rather than counted, so this is not a guard
     // over a table without the cells in question.
-    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'remove'])
+    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕', 'remove'])
 
     // Nothing in the head stands over nothing.
     expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
@@ -265,11 +268,11 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // Every column from the missing cell on has drifted, and the head still has all of its own.
     const drift = short.columns.filter((c) => c.bodyBox === null || c.bodyBox.x !== c.headBox.x || c.bodyBox.w !== c.headBox.w)
-    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'remove'])
+    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕', 'remove'])
 
     // And the drift is the one that shipped: the × has slid a whole heading to the left, onto
     // `antal`, and taken that heading's width instead of a tap target's.
-    const antal = short.columns.find((c) => c.head === 'antal ↕')!
+    const antal = short.columns.find((c) => c.head === 'Antal ↕')!
     const remove = short.columns.find((c) => c.head === 'remove')!
     expect(remove.body).toBe('remove')
     expect(remove.bodyBox!.x).toBe(antal.headBox.x)
@@ -423,9 +426,9 @@ async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, 
       const { clip, headClip, bodyClip, ...rest } = facts
       out[where] = {
         ...rest,
-        strip: await page.screenshot({ clip }),
-        headStrip: await page.screenshot({ clip: headClip }),
-        bodyStrip: await page.screenshot({ clip: bodyClip }),
+        strip: await capture(page, { clip }),
+        headStrip: await capture(page, { clip: headClip }),
+        bodyStrip: await capture(page, { clip: bodyClip }),
       }
     }
     return out
@@ -714,6 +717,21 @@ describe('the rows stand still when a card is marked (#618)', () => {
   }, 60_000)
 })
 
+// The question one row's × asks (#739) is the same question the marking asks, and it stood where
+// the marking's actions used to: in a band over the head, 62 px of it, which moved the head from
+// y 128 to 198 under the hand that had just pressed the ×. It takes the foot's place as the marking's
+// question does (L58).
+describe("the rows stand still when one row's × asks (#739)", () => {
+  it('keeps the first row where it was, and asks in the foot, one row tall', async () => {
+    const [quiet, asking] = await Promise.all([measure(await markup(false)), measure(await markup(false, false, true))])
+    expect(asking.scroll.y).toBe(quiet.scroll.y)
+    expect(asking.firstRow.y).toBe(quiet.firstRow.y)
+    const foot = await measureFoot(await markup(false, false, true))
+    expect(foot.toolbar).not.toBeNull()
+    expect(foot.height).toBeLessThanOrEqual(foot.tap + 2 * foot.air)
+  }, 60_000)
+})
+
 async function measureFoot({ html, deck }: Table): Promise<{ height: number; toolbar: Box | null; tap: number; air: number }> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
@@ -735,3 +753,115 @@ async function measureFoot({ html, deck }: Table): Promise<{ height: number; too
     await page.close()
   }
 }
+
+// «Följ höjden igen» in the column door (#739): a 44 px target whose words were 10 px, underlined,
+// 6 px over the next column's name, in a door whose other small text — the prose switch beside
+// it — is 11. The words are read at least at the door's small size, and the next row starts a step
+// of the ladder further down.
+describe('the way back to the height in the column door (#739)', () => {
+  it("is written at least as large as the door's other small text, with air before the next column", async () => {
+    const user = userEvent.setup()
+    const doc = projectDoc()
+    doc.prose = { title: true }
+    const { container, unmount } = render(<Table doc={doc} />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const html = container.innerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+      const read = await page.evaluate(() => {
+        const follow = document.querySelector<HTMLElement>('.byd-columns .byd-prose-follow')!
+        const next = follow.closest('li')!.nextElementSibling!.querySelector('.byd-columns-name')!
+        return {
+          named: follow.getAttribute('aria-label'),
+          size: parseFloat(getComputedStyle(follow).fontSize),
+          small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-prose-switch > button')!).fontSize),
+          air: next.getBoundingClientRect().top - follow.getBoundingClientRect().bottom,
+          step: parseFloat(getComputedStyle(document.querySelector('.byd-columns')!).getPropertyValue('--byd-s2')),
+        }
+      })
+      expect(read.named).toBe('Följ höjden igen, Titel')
+      expect(read.small).toBeGreaterThan(0)
+      expect(read.size).toBeGreaterThanOrEqual(read.small)
+      expect(read.step).toBeGreaterThan(0)
+      expect(read.air).toBeGreaterThanOrEqual(read.step)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The column door's own question (#858): «Ta bort fältet body» asked in the same band over the
+// head that the row's × used to (#739), so the table — and the door hanging from its head — moved
+// down under the hand that had just pressed the ×. It asks in the foot, as the row's × and the
+// marking do (L58), and the door, which stands over the rows, must leave the question in sight.
+describe('the rows stand still when the column door asks (#858)', () => {
+  async function door(asking: boolean): Promise<Table> {
+    const user = userEvent.setup()
+    const { container, unmount } = render(<Table />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    if (asking) await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    const html = container.innerHTML
+    unmount()
+    return { html, deck: deckValues(projectDoc(), sv) }
+  }
+
+  it('keeps the first row and the door where they were, and asks in the foot, one row tall and in sight', async () => {
+    const shut = await door(false)
+    const open = await door(true)
+    const [quiet, asking, foot] = await Promise.all([measure(shut), measure(open), measureFoot(open)])
+    expect(asking.scroll.y).toBe(quiet.scroll.y)
+    expect(asking.firstRow.y).toBe(quiet.firstRow.y)
+    expect(asking.door).not.toBeNull()
+    expect(asking.door!.y).toBe(quiet.door!.y)
+    expect(foot.toolbar).not.toBeNull()
+    expect(foot.height).toBeLessThanOrEqual(foot.tap + 2 * foot.air)
+    // The question is what the page shows where it stands: neither the door nor anything else lies
+    // over its buttons.
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      const { html, deck } = open
+      await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+      const covered = await page.evaluate(({ deck, fit }) => {
+        new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
+        const ask = document.querySelector('.byd-crown-foot [role="alertdialog"]')
+        if (!ask) return ['no question in the foot']
+        return [...ask.querySelectorAll('button')]
+          .filter((b) => {
+            const r = b.getBoundingClientRect()
+            return !b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
+          })
+          .map((b) => b.textContent)
+      }, { deck, fit: FIT })
+      expect(covered).toEqual([])
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The door's note on the tool's own columns (#858) was 10 px in a door whose small text is 11.
+describe("the column door's note on the tool's own columns (#858)", () => {
+  it("is written at least as large as the door's other small text", async () => {
+    const user = userEvent.setup()
+    const { container, unmount } = render(<Table />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const html = container.innerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+      const read = await page.evaluate(() => ({
+        notes: document.querySelectorAll('.byd-columns-system').length,
+        size: parseFloat(getComputedStyle(document.querySelector('.byd-columns-system')!).fontSize),
+        small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-prose-switch > button')!).fontSize),
+      }))
+      expect(read.notes).toBeGreaterThan(0)
+      expect(read.small).toBeGreaterThan(0)
+      expect(read.size).toBeGreaterThanOrEqual(read.small)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})

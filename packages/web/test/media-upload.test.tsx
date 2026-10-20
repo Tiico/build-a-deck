@@ -14,7 +14,7 @@
 // every one of them sent the thirteen bytes of the string "[object Blob]" and watched a 201 come
 // back (see `test/setup.ts`). So what is asked here is what the *server* now holds — the address
 // is the hash of the bytes that left the browser, and those bytes are read back off the wire.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -23,9 +23,6 @@ import { Language } from '../src/i18n/index.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const SKOG = '1'.repeat(64)
 // Whole PNG signatures, because the gate reads the file and never its name (#204). Two of them,

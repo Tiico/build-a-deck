@@ -1,9 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { MemoryLogStore, PostgresLogStore, type GuestRecord, type LogStore } from '../src/index.js'
 import { twoSeatSetup } from './fixture.js'
-import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
-
-vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 const guest = (
   tokenHash: string,
@@ -105,7 +102,31 @@ describe('guest seat reservation', () => {
       '2026-09-08T12:00:11.000Z',
     )).toBeNull()
   })
+
+  it('hands a claimed live admission a new token, and nothing to another account or a dead one', async () => {
+    await returnsClaimedAdmission(new MemoryLogStore(), 'back')
+  })
 })
+
+// «Tillbaka till bordet» (#690): the account's live admission at a table gets a new token in place
+// of the old one, and keeps its seat, name and account. Shared by both stores.
+async function returnsClaimedAdmission(store: LogStore, id: string): Promise<void> {
+  await store.createSession({ id, version: 'v1', setup: twoSeatSetup() })
+  const now = '2026-09-07T12:00:10.000Z'
+  await store.issueGuest(id, guest(`${id}-ada`, 'A'))
+  await store.activateGuest(id, `${id}-ada`, now, '2026-09-08T12:00:10.000Z')
+  expect(await store.returnGuest(id, 'acct', `${id}-new`, now)).toBeNull()
+  await store.claimGuest(`${id}-ada`, 'acct')
+  expect(await store.returnGuest(id, 'other', `${id}-new`, now)).toBeNull()
+
+  expect(await store.returnGuest(id, 'acct', `${id}-new`, now)).toMatchObject({ tokenHash: `${id}-new`, seat: 'A', name: `${id}-ada`, kind: 'seat' })
+  expect(await store.guestByToken(id, `${id}-ada`)).toBeNull()
+  expect(await store.activateGuest(id, `${id}-new`, now, '2026-09-08T12:00:10.000Z')).toMatchObject({ seat: 'A' })
+  expect(await store.guestsOf('acct')).toEqual([expect.objectContaining({ sessionId: id, tokenHash: `${id}-new`, seat: 'A' })])
+
+  await store.revokeGuests(id, 'A', '2026-09-07T12:00:20.000Z')
+  expect(await store.returnGuest(id, 'acct', `${id}-newer`, '2026-09-07T12:00:21.000Z')).toBeNull()
+}
 
 const url = process.env['DATABASE_URL']
 const schema = `test_guest_reservation_${process.pid}_${Date.now()}`
@@ -182,5 +203,9 @@ describe.skipIf(!url)('Postgres guest seat reservation', () => {
       store.issueGuest('observers', guest('grace', null)),
       store.issueGuest('observers', guest('heidi', null)),
     ])).toEqual([true, true])
+  })
+
+  it('hands a claimed live admission a new token, and nothing to another account or a dead one', async () => {
+    await returnsClaimedAdmission(store, 'back')
   })
 })

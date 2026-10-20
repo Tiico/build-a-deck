@@ -94,8 +94,10 @@ test.describe('joining a table from the television', () => {
   test('says so when the code is not a room', async ({ open }) => {
     const phone = await open(PHONE, '/join?code=ZZZZZZ')
     // The phone's own wording for a room that is not there, on the phone's own surface — not a
-    // stack trace and not a blank (UX-07, D5).
-    await expect(phone.page.locator('#root')).not.toBeEmpty()
-    await expect(phone.page.locator('[data-page="join"]')).toHaveCount(0)
+    // stack trace and not a blank (UX-07, D5) — and the code asked for again with the one typed
+    // left in the field (#675).
+    await expect(phone.page.locator('form input')).toHaveValue('ZZZZZZ')
+    await expect(phone.page.locator('form input')).toHaveAttribute('aria-invalid', 'true')
+    await expect(phone.page.locator('button[data-seat]')).toHaveCount(0)
   })
 })

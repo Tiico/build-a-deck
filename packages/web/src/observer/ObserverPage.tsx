@@ -15,16 +15,19 @@ import { FlagSheet } from '../player/SessionSheets.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
-import { claimUrl } from '../account/api.js'
+import { claimUrl } from '../account/session.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
 import { asObserver, guestNotice, observerNotice } from '../status/notice.js'
+import { useSessionName } from '../status/sessionName.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
+import { RuleDrawer } from '../rules/RuleDrawer.js'
+import { useHasRulebook } from '../rules/sessionRules.js'
 import { useT } from '../i18n/index.js'
 
 // /observe?session=…&name=Eva&server=ws://…
@@ -48,7 +51,9 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   // hers were silent the whole session. She sits at no seat, so nothing is said as «du».
   useActivityLive(conn.activity, conn.view, null)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
-  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  const code = params.get('code')
+  const game = useSessionName(http, sessionId, !code)
+  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: code, game })
   // The shuffle, fanned for the observer as for the room (L35).
   const shuffles = useShuffles(activity, view !== null)
   const [sheet, setSheet] = useState(false)
@@ -98,6 +103,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   // The window she is holding, watched rather than read once (K9, #75): `useRoom`.
   const room = useRoom()
   const [version, setVersion] = useState<string | null>(null)
+  // Whether the table had a rulebook, which is what the survey's second question asks about (#744).
+  const rulebook = useHasRulebook(http, sessionId ?? '', !!sessionId && !!view?.ended)
   useEffect(() => {
     if (!toast) return
     const timer = setTimeout(() => setToast(null), 2000)
@@ -137,6 +144,10 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
         onRead={read}
+        // Regelboken där TV:n har den, bredvid spelets namn i kolumnens huvud (B7, #709): hjälpen
+        // lovar den åt observatören, och hon läser bordet som TV:n gör. Under skrivbordet står
+        // huvudet i den kolumn «Senast och platser» kallar fram.
+        rules={<RuleDrawer http={http} sessionId={sessionId} placement="tv" live={view} />}
       >
         {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
             in the same frame and with the same words. */}
@@ -200,7 +211,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         />
       )}
       </div>
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} />}
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: asObserver(guestNotice('missing', t), t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

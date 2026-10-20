@@ -11,6 +11,8 @@ export type TableConnection = {
   observers: readonly { id: string; name: string }[]
   // The room code (DRIFT §9), told to the host's screens only.
   room: { code: string; expiresAt: string } | null
+  // The host key a rotation handed the host's screen (#820), for it to keep instead of the old.
+  hostKey: string | null
   // Why the server would not have this connection (DRIFT §9): not admitted, or kicked.
   refused: string | null
   // Why the client has stopped trying, and when it will try next (#7). A status alone cannot
@@ -32,6 +34,7 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   const [activity, setActivity] = useState<readonly Activity[]>([])
   const [observers, setObservers] = useState<readonly { id: string; name: string }[]>([])
   const [room, setRoom] = useState<{ code: string; expiresAt: string } | null>(null)
+  const [hostKey, setHostKey] = useState<string | null>(null)
   const [refused, setRefused] = useState<string | null>(null)
   const [trouble, setTrouble] = useState<ClientTrouble | null>(null)
   const [schedule, setSchedule] = useState<RetrySchedule>(NO_RETRY)
@@ -50,6 +53,7 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
       setActivity(c.activity)
       setObservers(c.observers)
       setRoom(c.room)
+      setHostKey(c.hostKey)
       setRefused(c.refused)
       setTrouble(c.trouble)
       setUnansweredSince(c.unansweredSince)
@@ -75,5 +79,5 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   }, [key])
 
   const retry = useCallback(() => client?.retry(), [client])
-  return { client, view, status, activity, observers, room, refused, trouble, unansweredSince, schedule, retry }
+  return { client, view, status, activity, observers, room, hostKey, refused, trouble, unansweredSince, schedule, retry }
 }

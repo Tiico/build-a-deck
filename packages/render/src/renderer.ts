@@ -1,6 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
 import { fitInDocument, type FitReport } from '@byd/template'
 import type { CompiledLike } from './hash.js'
+import { capture } from './capture.js'
 
 // The one renderer (E2): compiled HTML/CSS in, pixels or a PDF out. Nothing else may draw a card.
 // CSS millimetres are 96 dpi to Chromium; the device scale factor takes them to the DPI asked for.
@@ -72,7 +73,7 @@ export class Renderer {
       const box = await cardBox(page)
       if (!box) throw new Error('compiled output has no [data-card]')
       const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
-      const png = await page.screenshot({ type: 'png', clip, animations: 'disabled', caret: 'hide' })
+      const png = await capture(page, { type: 'png', clip, animations: 'disabled', caret: 'hide' })
       return { png, smallestPt: fitted.length > 0 ? Math.min(...fitted.map((f) => f.sizePt)) : null }
     } finally {
       await context.close()

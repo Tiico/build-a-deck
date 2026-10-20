@@ -12,7 +12,8 @@ export function GameMenu({ label, more, onClose, children }: { label: string; mo
   const close = useRef(onClose)
   close.current = onClose
   useEffect(() => {
-    box.current?.querySelector('button')?.focus()
+    // Its first choice, a link to a running table (#724) as much as a button.
+    box.current?.querySelector<HTMLElement>('button, a[href]')?.focus()
     const away = (event: PointerEvent) => {
       const target = event.target as Node | null
       if (target && (box.current?.contains(target) || more?.contains(target))) return

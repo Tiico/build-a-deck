@@ -1,26 +1,45 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { CardFace } from '@byd/server/doc'
-import { LoginCard } from './LoginCard.js'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
+import { LandingPage } from './LandingPage.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Question } from '../editor/Question.js'
 import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { logout, myCards, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
-import { ExportDialog, ImportDialog } from './GameDialogs.js'
+import { duplicateProject, logout, myCards, myPlayed, myProjects, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { tvUrl } from '../editor/tableLinks.js'
 import { GameMenu } from './GameMenu.js'
+import { useWide } from '../join/wide.js'
+import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
+import { useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
+import { AboutLine } from './AboutLine.js'
+import { versionWord } from '../i18n/version.js'
+
+// The three dialogs a game's ⋯ and «Importera» open are drawn on a press and never on the first
+// frame, so they are fetched when one is opened, with their own sheet, and not carried in the sheet
+// every first painting blocks on (#366, L40). That sheet's alarm in `felt-font.spec.ts` bound when
+// the start page grew its code row (#675); this is the answer the alarm asks for.
+const ExportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ExportDialog })))
+const RenameDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.RenameDialog })))
+const ImportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ImportDialog })))
 
 // /  — "Mina spel" (G1, prototype A): the account's projects as a grid of game cards, and a new
-// one as a dashed card. Not logged in, the login card stands here instead.
+// one as a dashed card. Not logged in, the landing page stands here instead (#1009), and the login
+// card is `/login`'s.
 export type HomePageProps = { onNavigate?(url: string): void }
+
+// What a game's ⋯ offers is asked of the same rules the server keeps (roles.ts, D3, #689), so the
+// menu cannot offer what the server would refuse. A list that names no role is from a server that
+// listed only the account's own games.
+const roleOf = (p: ProjectSummary): Role => p.role ?? 'owner'
+const mayDoAny = (role: Role): boolean => canStartTables(role) || canEdit(role) || canDelete(role)
 
 export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePageProps) {
   const t = useT()
@@ -33,6 +52,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // The game being exported, and whether a game is being brought in (G5, #529).
   const [exporting, setExporting] = useState<ProjectSummary | null>(null)
   const [importing, setImporting] = useState(false)
+  // The game being renamed (#909): its name is changed in its log, as the editor changes it.
+  const [renaming, setRenaming] = useState<ProjectSummary | null>(null)
   const listed = useRef<ProjectSummary[] | null>(null)
   listed.current = projects
   const [played, setPlayed] = useState<Played[] | null>(null)
@@ -42,6 +63,23 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [cards, setCards] = useState<Record<string, CardFace | null> | null>(null)
   // The cards could not be had (#475): the places stop promising one rather than shimmer for ever.
   const [cardsLost, setCardsLost] = useState(false)
+  // The tables that are running, game by game (#724, beslut C + B): asked for every game that has
+  // tables and whose role may start one, and asked again whenever a game's count of tables changes,
+  // so a table started from here is in the list the moment the server has it.
+  const [running, setRunning] = useState<Record<string, RunningTable[]>>({})
+  const askedAbout = (projects ?? []).filter((p) => (p.tables ?? 0) > 0 && canStartTables(roleOf(p))).map((p) => `${p.id}:${p.tables}`).join(',')
+  useEffect(() => {
+    if (!askedAbout) return
+    let live = true
+    const ids = askedAbout.split(',').map((one) => one.slice(0, one.lastIndexOf(':')))
+    void Promise.all(ids.map(async (id) => [id, await runningTables(http, id).catch(() => [])] as const)).then((all) => {
+      if (live) setRunning(Object.fromEntries(all))
+    })
+    return () => {
+      live = false
+    }
+  }, [askedAbout, http])
+  const runningList = (projects ?? []).flatMap((p) => (running[p.id] ?? []).map((table) => ({ ...table, name: p.name })))
   // Landing here from the claim page (G1): which session was just saved. Said once (#475): the
   // address stops carrying it as soon as it has been read, so a reload does not say it again.
   const claimed = params.get('claimed')
@@ -63,7 +101,6 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // last table started from here was, so the code can be read off.
   const [menu, setMenu] = useState<string | null>(null)
   const [asking, setAsking] = useState<ProjectSummary | null>(null)
-  const [started, setStarted] = useState<{ project: string; code: string; id: string; hostKey: string } | null>(null)
   // Where the focus goes once whatever had it has gone away (#475): back to a game's ⋯ when its
   // menu or its question closes, or to the heading once the game itself is gone — never to
   // <body>, which is where a keyboard is left with no idea where it is.
@@ -89,11 +126,28 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       })
       .catch(() => setOffline(true))
   }, [http, attempt])
-  // Logged out, `/` is the login card and the tab says so rather than promising games (#12).
-  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null, route: email === null ? 'login' : null })
+  // Logged out, `/` is the landing page and the tab says so rather than promising games (#12).
+  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null, route: email === null ? 'landing' : null })
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
+  }
+  const suffixed = () => {
+    const q = suffix(new URLSearchParams())
+    return q ? `?${q}` : ''
+  }
+  // «Tillbaka till bordet» (#690, beslut 2026-10-06): to her own seat and hand, with a token the
+  // server hands the account for it, on the screen the picker would have suggested (#675). The
+  // picker is where it goes only when there is no seat left to go back to, and the link's own
+  // address stays the picker's for a press that never runs this.
+  const wide = useWide()
+  const backTo = async (p: Played) => {
+    const picker = `/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`
+    const seat = await returnToTable(http, p.session).catch(() => null)
+    if (!seat) return onNavigate(picker)
+    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }), name: seat.name, token: seat.token })
+    if (server) q.set('server', server.replace(/^http/, 'ws'))
+    onNavigate(`${seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play'}?${q.toString()}`)
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
   // The banner is drawn with its text, so it is said once in the page's live region (4.1.3, #555).
@@ -103,15 +157,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   }, [savedLine, say])
   if (offline) return <StatusNotice notice={noticeFor('offline', 'app', t)} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
   if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
-  if (email === null) {
-    return (
-      <div className="byd-account" data-page="home">
-        <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} />
-      </div>
-    )
-  }
+  if (email === null) return <LandingPage http={http} server={server} onNavigate={onNavigate} />
   return (
-    <div className="byd-account byd-account-wide" data-page="home">
+    <main className="byd-account byd-account-wide" data-page="home">
       <div className="byd-home">
         {justSaved && (
           <div className="byd-home-claimed">
@@ -133,7 +181,22 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           {/* The dots between the parts are drawn by the stylesheet at the start of the part they
               lead, so a wrapped line never ends on one (#555). */}
           <span className="byd-who">
-            <span>{email}</span>
+            <span title={email}>{email}</span>
+            {/* The way to the profile (#999, #998 variant A): a word in the line, where the language
+                picker stood before it moved there. */}
+            <span>
+              <a
+                className="byd-who-profile"
+                href={`/profile${suffixed()}`}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+                  e.preventDefault()
+                  onNavigate(`/profile${suffixed()}`)
+                }}
+              >
+                {t('home.profile')}
+              </a>
+            </span>
             <span>
               <a
                 href="/login"
@@ -145,12 +208,6 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 {t('home.logout')}
               </a>
             </span>
-            <span>
-              <label className="byd-lang">
-                {t('account.language')}
-                <LanguagePicker />
-              </label>
-            </span>
           </span>
         </header>
         {notice && (
@@ -158,14 +215,22 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             {notice}
           </p>
         )}
-        {started && (
-          <div className="byd-home-started">
-            {/* One flex item, so the gap between the banner's parts never opens inside the sentence. */}
-            <span>{marked(t('home.started'), { code: <strong>{started.code}</strong> })}</span>
-            <a href={tableUrl(started.id, started.hostKey, server)} target="_blank" rel="noreferrer" aria-label={t('home.started.open.aria')}>
-              {t('home.started.open')}
-            </a>
-          </div>
+        {/* «Pågår nu» (#724, beslut C): every table that is running, by its game and its room code,
+            with the way to its screen as the game's own — and still there after a reload, which the
+            banner that said a table had started was not. */}
+        {runningList.length > 0 && (
+          <section className="byd-home-running" aria-labelledby="byd-home-running">
+            <h2 id="byd-home-running" className="byd-home-h2">{t('home.running.title')}</h2>
+            {runningList.map((table) => (
+              <div key={table.id} className="byd-home-running-row" data-running={table.id}>
+                <b>{table.name}</b>
+                <strong>{table.code}</strong>
+                <a href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                  {t('home.running.open')}
+                </a>
+              </div>
+            ))}
+          </section>
         )}
         {asking && (
           <Question
@@ -201,7 +266,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             in the catalogue. It waits until the games are actually known, so it never flashes
             past a slow answer. */}
         {projects !== null && projects.length === 0 && (
-          <div className="byd-home-empty byd-help-row">
+          // «＋ Nytt spel» stands under this line, and the box never lands on it (#726).
+          <div className="byd-home-empty byd-help-row" data-help-explains="[data-new]">
             <span>{t('home.empty')}</span>
             <Help topic={t('home.help.topic')}>
               <p>{t('home.help.game')}</p>
@@ -238,19 +304,23 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     {t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}
                   </span>
                 </a>
-                <button
-                  ref={(el) => {
-                    if (el) mores.current.set(p.id, el)
-                    else mores.current.delete(p.id)
-                  }}
-                  type="button"
-                  className="byd-home-more"
-                  aria-label={t('home.menu.more', { name: p.name })}
-                  aria-expanded={menu === p.id}
-                  onClick={() => setMenu(menu === p.id ? null : p.id)}
-                >
-                  ⋯
-                </button>
+                {/* What the ⋯ offers is what the role may do (D3, #689), and a role that may do
+                    none of it has no ⋯ to open. */}
+                {mayDoAny(roleOf(p)) && (
+                  <button
+                    ref={(el) => {
+                      if (el) mores.current.set(p.id, el)
+                      else mores.current.delete(p.id)
+                    }}
+                    type="button"
+                    className="byd-home-more"
+                    aria-label={t('home.menu.more', { name: p.name })}
+                    aria-expanded={menu === p.id}
+                    onClick={() => setMenu(menu === p.id ? null : p.id)}
+                  >
+                    ⋯
+                  </button>
+                )}
                 {menu === p.id && (
                   <GameMenu
                     label={t('home.menu.label', { name: p.name })}
@@ -260,45 +330,87 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       if (back) setRefocus({ to: p.id })
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenu(null)
-                        setRefocus({ to: p.id })
-                        void startTable(http, p.id, t).then(
-                          (table) => {
-                            setStarted({ project: p.id, ...table })
-                            say?.('polite', t('home.started', { code: table.code }))
-                            setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
-                          },
-                          (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
-                        )
-                      }}
-                    >
-                      {t('home.menu.start')}
-                    </button>
-                    {/* A game is the owner's and the co-editors' to take away with them (G5, #527);
-                        the others see no control the server would refuse them. */}
-                    {(p.role === undefined || p.role === 'owner' || p.role === 'editor') && (
+                    {/* The tables already running come first (#724, beslut B), so a second press to see the
+                        code again opens the table it was for rather than starting another. */}
+                    {(running[p.id] ?? []).map((table) => (
+                      <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
+                        {t('home.menu.open', { code: table.code })}
+                      </a>
+                    ))}
+                    {canStartTables(roleOf(p)) && (
                       <button
                         type="button"
                         onClick={() => {
                           setMenu(null)
-                          setExporting(p)
+                          setRefocus({ to: p.id })
+                          void startTable(http, p.id, t).then(
+                            (table) => {
+                              say?.('polite', t('home.started', { code: table.code }))
+                              setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
+                            },
+                            (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+                          )
                         }}
                       >
-                        {t('home.menu.export')}
+                        {t((running[p.id] ?? []).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenu(null)
-                        setAsking(p)
-                      }}
-                    >
-                      {t('home.menu.remove')}
-                    </button>
+                    {/* The editor's own choices for the whole game (#738, #909): its name, a copy of
+                        it and taking it with you are the owner's and the co-editors' (G5, #527);
+                        the others see no control the server would refuse them. */}
+                    {canEdit(roleOf(p)) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenu(null)
+                            setRenaming(p)
+                          }}
+                        >
+                          {t('home.menu.rename')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenu(null)
+                            setRefocus({ to: p.id })
+                            void duplicateProject(http, p.id, t).then(
+                              async (copy) => {
+                                // The cards with the list, as after an import (#725), so the copy's
+                                // tile is drawn whole and not left waiting for its card.
+                                const [projects, cards] = await Promise.all([myProjects(http), myCards(http)])
+                                setProjects(projects)
+                                setCards(cards)
+                                say?.('polite', t('home.duplicated', { name: copy.name }))
+                              },
+                              (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+                            )
+                          }}
+                        >
+                          {t('home.menu.duplicate')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenu(null)
+                            setExporting(p)
+                          }}
+                        >
+                          {t('home.menu.export')}
+                        </button>
+                      </>
+                    )}
+                    {canDelete(roleOf(p)) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenu(null)
+                          setAsking(p)
+                        }}
+                      >
+                        {t('home.menu.remove')}
+                      </button>
+                    )}
                   </GameMenu>
                 )}
               </div>
@@ -318,14 +430,14 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <i className="byd-home-seat" role="img" aria-label={p.seat === null ? t('home.played.watched') : t('home.played.seat', { seat: p.seat })} style={{ ['--seat' as string]: p.seat === null ? '#7d8597' : seatColor(seatIndexOf(p.seat)) }}><span aria-hidden="true">{p.seat ?? '👁'}</span></i>
                     <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
-                  <strong>{p.game ?? t('home.played.some-table')}</strong>
-                  <span className="byd-muted">{t('home.played.you', { version: p.version, name: p.name })}</span>
+                  <strong>{p.deleted ? t('home.played.deleted') : (p.game ?? t('home.played.some-table'))}</strong>
+                  <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: p.name })}</span>
                   <span className="byd-home-facts">
                     {p.ended ? (p.surveyed ? t('home.played.surveyed') : t('home.played.unsurveyed')) : t('home.played.running')}
                     {p.flags > 0 && ` · ${t('home.played.flags', { n: p.flags })}`}
                   </span>
                   {p.code && (
-                    <a className="byd-home-action" href={`/join?${suffix(new URLSearchParams({ code: p.code }))}`} onClick={(e) => { e.preventDefault(); onNavigate(`/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`) }}>
+                    <a className="byd-home-action" href={`/join?${suffix(new URLSearchParams({ code: p.code }))}`} onClick={(e) => { e.preventDefault(); void backTo(p) }}>
                       {t('home.played.back')}
                     </a>
                   )}
@@ -334,7 +446,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </div>
           </>
         )}
+        <AboutLine http={http} />
       </div>
+      <Suspense fallback={null}>
       {exporting && (
         <ExportDialog
           http={http}
@@ -345,16 +459,42 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           }}
         />
       )}
+      {renaming && (
+        <RenameDialog
+          game={renaming}
+          onRename={(name) => {
+            const game = renaming
+            setRenaming(null)
+            setRefocus({ to: game.id })
+            void renameProject(http, game.id, name, t).then(
+              () => setProjects((list) => (list ?? []).map((x) => (x.id === game.id ? { ...x, name } : x))),
+              (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+            )
+          }}
+          onClose={() => {
+            setRefocus({ to: renaming.id })
+            setRenaming(null)
+          }}
+        />
+      )}
       {importing && (
         <ImportDialog
           http={http}
           onClose={() => setImporting(false)}
-          onImported={async () => setProjects(await myProjects(http))}
+          // The cards with the list (#725): read alone, the list put the new game's card place up and
+          // nothing ever came to fill it, so it shimmered until the page was reloaded.
+          onImported={async () => {
+            const [projects, cards] = await Promise.all([myProjects(http), myCards(http)])
+            setProjects(projects)
+            setCards(cards)
+            setCardsLost(false)
+          }}
           nameOf={(id) => listed.current?.find((p) => p.id === id)?.name}
           onOpen={(id) => onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)}
         />
       )}
-    </div>
+      </Suspense>
+    </main>
   )
 }
 
@@ -367,15 +507,6 @@ const HEADING = '#heading'
 export const HOME_CARD_H = 132
 export const HOME_CARD_W = (HOME_CARD_H * 63) / 88
 
-// A sentence stays one sentence in the catalogue even when part of it is the reader's own — a
-// game, a person, a room code. The catalogue holds the whole message; only the parts it names
-// are handed over as nodes, so no language has to be glued together from halves.
-function marked(message: string, parts: Record<string, ReactNode>): ReactNode[] {
-  return message.split(/(\{\w+\})/).map((piece, i) => {
-    const name = /^\{(\w+)\}$/.exec(piece)?.[1]
-    return name && name in parts ? <Fragment key={i}>{parts[name]}</Fragment> : piece
-  })
-}
 
 // The card on a game's tile (G1, #231, variant B): the game's own first card, over the name and
 // drawn by the one `CardPreview` that draws a card anywhere in the tool — so what the shelf shows
@@ -419,13 +550,6 @@ function playedLine(t: T, lang: Lang, p: ProjectSummary): string {
   if (tables === 0) return t('home.card.never')
   const at = p.lastPlayed ? t('home.card.last', { when: when(t, lang, p.lastPlayed) }) : t('home.card.nothing')
   return t(tables === 1 ? 'home.card.tables.one' : 'home.card.tables.other', { n: tables, at })
-}
-
-// The table's own screen, opened with the host key it was just handed (DRIFT §9).
-function tableUrl(session: string, hostKey: string, server: string | null): string {
-  const q = new URLSearchParams({ session, mode: 'tv', host: hostKey })
-  if (server) q.set('server', server.replace(/^http/, 'ws'))
-  return `/table?${q.toString()}`
 }
 
 // Seats are lettered from A; the colour follows the letter, as it does on the table.

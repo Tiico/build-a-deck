@@ -2,16 +2,13 @@
 // The table folded up small (C4), and since #79 the one place on the phone that can put a card
 // into the hand. The verb is the felt's own (K14) and it is offered on exactly the felt's terms:
 // any pile that has a card, and only to a reader who holds a seat.
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { Snapshot } from '@byd/protocol'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { overviewOf } from '../src/player/PlaySheet.js'
 import { seatSetup } from './fixture.js'
 import { tableOf } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const noop = (): undefined => undefined
 const drawable = () => screen.queryAllByRole('button').map((b) => b.getAttribute('data-zone-draw'))
@@ -63,6 +60,26 @@ describe('the overview offers the draw per pile (C4, K14, #79)', () => {
     expect(drawable()).toEqual(['draw'])
     // The pile is still there to be read; it is only the verb that is gone.
     expect(document.querySelector('[data-zone-summary="discard"]')?.tagName).toBe('DIV')
+  })
+
+  // An empty Kasthög stood as «KASTHÖG · 0 kort» in spaced capitals beside «Kortlek · 146 kort» in
+  // the tile's own bold (#715): the section heading's rule reached into the tile. A pile is one form
+  // whether or not it can be drawn from; the emptiness is said in its words.
+  it('draws a pile that cannot be drawn from in the same type as one that can', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = document.createElement('style')
+    css.textContent = readFileSync('src/player/player.css', 'utf8')
+    document.head.append(css)
+    try {
+      const table = wizardTable()
+      render(<div className="byd-player"><TableSummary view={emptied(table.view('A'), 'discard')} activity={[]} onDraw={noop} /></div>)
+      const look = (el: Element) => { const s = getComputedStyle(el); return [s.textTransform, s.letterSpacing, s.fontWeight].join(' ') }
+      const name = document.querySelector('[data-zone-summary="discard"] h2')!
+      const drawn = document.querySelector('[data-zone-summary="draw"] strong')!
+      expect(look(name)).toBe(look(drawn))
+    } finally {
+      css.remove()
+    }
   })
 
   it('offers it to nobody without a seat to draw into', () => {

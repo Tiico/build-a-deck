@@ -71,7 +71,12 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     }
     case 'split': {
       const taken = reached(state, it.pile, it.which, it.at)
-      if (it.to !== undefined) {
+      if (it.to !== undefined && it.x !== undefined && it.y !== undefined && zoneOf(state, it.to).kind === 'area') {
+        // Into an area at a point (#680): the cards lie there, in the area's own coordinates as a
+        // `move` names them, and on top of what the area already holds. A `to` without a point is
+        // every line written before this, and keeps the answer below.
+        for (const id of [...taken].reverse()) relocate(state, id, it.to, zoneOf(state, it.to).order.length, { x: it.x, y: it.y })
+      } else if (it.to !== undefined) {
         take(state, taken, it.to)
       } else {
         const source = zoneOf(state, it.pile)

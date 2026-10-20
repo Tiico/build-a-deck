@@ -45,6 +45,8 @@
 .byd-wizard > header { padding: 18px 24px; display: flex; align-items: center; justify-content: flex-start; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 60%); }
 .byd-wizard > header > div > span { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
 .byd-wizard > header > span { margin-left: auto; color: var(--muted); font-weight: 650; }
+/* Said at the head when the draft would not survive a reload (#686): a line of its own under the title. */
+.byd-wizard > header > .byd-wizard-draft-says { order: 3; flex-basis: 100%; margin: 0; color: #8d3823; font-weight: 650; }
 /* The way back to the games, as the editor has it at its top left (#476). */
 .byd-wizard-home { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); font-weight: 600; text-decoration: none; white-space: nowrap; }
 .byd-wizard-home:hover { text-decoration: underline; }
@@ -57,6 +59,8 @@
   /* The way back and the promise share the first line, and the title takes the second, so the
      way back costs no height of its own (#476). */
   .byd-wizard > header > div { order: 2; flex-basis: 100%; }
+  /* The header has no row gap here, so the notice about the draft (#686) keeps its own air. */
+  .byd-wizard > header > .byd-wizard-draft-says { margin-top: 8px; }
 }
 
 /* Steps (L10, prototype C): the same APG tablist the editor's modes are, with one panel under it
@@ -71,7 +75,11 @@
 /* A `display` of its own would beat the `hidden` attribute, and a closed step would still take
    its room — a gap above the step that is open, and a tab stop where nothing is drawn. */
 .byd-wizard-body > [role='tabpanel'][hidden] { display: none; }
-.byd-wizard-steps { flex: 0 0 auto; display: flex; gap: 10px; padding: 8px 20px; border-top: 1px solid var(--line); background: rgb(255 255 255 / 70%); }
+/* The strip the two moves stand on has the step strip's ground (#732). It was white at 70 %, the
+   colour a button's fill is, so the locked «Föregående» — its fill taken away, its line kept
+   (#416) — looked exactly like an active one there. On this ground the fill shows, as it does on
+   the paper the locked form was decided against, and its absence says the button is locked. */
+.byd-wizard-steps { flex: 0 0 auto; display: flex; gap: 10px; padding: 8px 20px; border-top: 1px solid var(--line); background: var(--byd-wizard-panel-bg); }
 .byd-wizard-steps button { flex: 1; font-weight: 700; }
 
 /* A low window (#550, L10 undantag 2026-09-30), as the editor has it: a desk at 400 % left the step
@@ -89,8 +97,8 @@
   .byd-wizard[data-room='steps'] { height: auto; min-height: 100vh; display: block; }
   .byd-wizard[data-room='steps'] .byd-wizard-flow { display: block; }
   .byd-wizard[data-room='steps'] .byd-wizard-body { overflow: visible; min-height: calc(100dvh - var(--byd-wizard-moves-h)); }
-  /* Opaque here, the same white-on-paper it is drawn as elsewhere: the step now passes under it. */
-  .byd-wizard[data-room='steps'] .byd-wizard-steps { position: sticky; bottom: 0; z-index: 5; background: color-mix(in srgb, #fff 70%, var(--paper)); }
+  /* Opaque here, as it is everywhere: the step now passes under it. */
+  .byd-wizard[data-room='steps'] .byd-wizard-steps { position: sticky; bottom: 0; z-index: 5; }
 }
 
 /* The desk: what the wizard has always looked like, with the card given room enough to be whole. */
@@ -104,9 +112,11 @@
 .byd-wizard-grid > .byd-wizard-side, .byd-wizard-grid > .byd-wizard-main { min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .byd-wizard-grid > .byd-wizard-side { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); }
 .byd-wizard-grid > .byd-wizard-main { min-width: 0; padding: 28px 36px 100px; display: grid; align-content: start; gap: 22px; }
+/* Logged out, the box says the game is kept on an account (#687, #691): one sentence, its lead in
+   bold, and no label over it. */
 .byd-wizard-handoff { padding: 15px 17px; border: 1px solid #ecd9a8; border-radius: 12px; background: #fff3d5; }
-.byd-wizard-handoff strong { color: #7f5111; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-.byd-wizard-handoff p { color: #6c5530; }
+.byd-wizard-handoff p { margin: 0; color: #5a4622; font-size: 13px; line-height: 1.45; }
+.byd-wizard-handoff strong { color: #3d2a0a; }
 
 .byd-wizard-block { display: grid; gap: 10px; align-content: start; min-width: 0; }
 /* The way past the guided start (L42): a quiet block under the name and the seats, with the
@@ -148,6 +158,11 @@
 .byd-wizard .byd-theme-tile { width: 100%; height: 100%; padding: 12px; border-color: #cbcabe; border-radius: 12px; background: transparent; color: var(--ink); }
 .byd-wizard .byd-theme-tile:hover { border-color: #8d918a; }
 .byd-wizard .byd-theme-tile[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+/* The preselection (#687, variant D): the theme the game gets unless another is pressed is marked
+   and not pressed — a dashed edge in the accent, never the pressed one's filled ring, and «Förval»
+   under its name. */
+.byd-wizard .byd-theme-tile[data-marked] { border-style: dashed; border-color: var(--accent); }
+.byd-wizard .byd-theme-tile-mark { margin-top: 2px; border-radius: 999px; padding: 2px 8px; background: #f3e3d6; color: #7a3410; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
 .byd-wizard .byd-theme-tile small { color: var(--muted); }
 .byd-wizard .byd-theme-tile .byd-theme-tile-families { color: #454c44; }
 /* The theme's paper is a ground on the wizard's own paper, so it is edged to be seen as one. */
@@ -158,10 +173,19 @@
 /* Below the desk the card owns the top of its own step, at full width — the whole point of the
    step is that what is being made can be seen while it is being typed. */
 .byd-wizard-card-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
-.byd-wizard-preview { padding: 12px; display: grid; place-items: center; gap: 8px; border-radius: 18px; background: #dfe6dc; }
+.byd-wizard-preview { position: relative; padding: 12px; display: grid; place-items: center; gap: 8px; border-radius: 18px; background: #dfe6dc; }
 .byd-wizard-preview > span { color: #4f5a4d; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
-/* Why the card is not yet in its frame's face (#476): a sentence, not a caption. */
-.byd-wizard-preview > .byd-wizard-preview-font { max-width: 26ch; font-size: 12px; letter-spacing: 0; text-transform: none; text-align: center; }
+/* A card not yet in its theme's faces is not shown as the theme (#687): greyed, with the way to see
+   it — or the word that it is on its way — over its top, where the eye already is. Over the card
+   and never under it, so nothing beside or below it moves when the word comes and goes. */
+.byd-wizard-preview[data-unseen] > div[role='img'] { filter: grayscale(1); opacity: .38; }
+/* The word is a live region, so it stays in the page when it has nothing to say — empty, it is no
+   size at all — and is heard when it says something. */
+.byd-wizard-preview-over { position: absolute; left: 50%; top: 24%; z-index: 2; width: max-content; max-width: calc(100% - 24px); transform: translate(-50%, -50%); display: grid; justify-items: center; }
+.byd-wizard .byd-wizard-preview-over > p { margin: 0; color: var(--ink); font-size: 13px; font-weight: 600; text-align: center; }
+.byd-wizard .byd-wizard-preview-over > p:not(:empty) { padding: 8px 14px; border-radius: 10px; background: rgb(255 255 255 / 85%); }
+.byd-wizard .byd-wizard-preview-over > p:not(:empty) + button { margin-top: 8px; }
+.byd-wizard .byd-wizard-preview-show { padding: 8px 14px; border-color: var(--ink); border-radius: 10px; font-size: 13px; font-weight: 700; white-space: nowrap; box-shadow: 0 6px 18px rgb(0 0 0 / 18%); }
 .byd-wizard-card-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
 .byd-wizard-card-form > label, .byd-wizard-image-field { display: grid; align-content: start; gap: 5px; }
 .byd-wizard-card-form label > span, .byd-wizard-image-field > span { display: flex; justify-content: space-between; gap: 8px; color: #454c44; font-size: 12px; font-weight: 700; }
@@ -191,6 +215,10 @@
 .byd-wizard-image-field button { margin-left: auto; border: 0; background: transparent; color: #8d3823; font-size: 12px; }
 .byd-wizard-card-tabs { padding-top: 14px; display: flex; gap: 7px; flex-wrap: wrap; border-top: 1px solid var(--line); }
 .byd-wizard-card-tabs button { display: flex; align-items: center; gap: 7px; }
+/* A title is held to about 24 characters on its tab and ends in an ellipsis (#732): written out
+   whole, a long one made a tab of 484 px and sent «Ta bort valt kort» to a row of its own. The
+   whole title is the tab's `title`. */
+.byd-wizard-card-tab-title { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-wizard-card-tabs b { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 5px; background: #eeece5; font-size: 10px; }
 .byd-wizard-card-tabs .is-add { border-style: dashed; }
 .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); }

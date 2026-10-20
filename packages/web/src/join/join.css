@@ -1,9 +1,13 @@
-/* Join — the table as a seat picker. */
+/* Join — the table as a seat picker.
+
+   This sheet is in the one the first painting blocks on, and that one is held under an alarm in
+   `felt-font.spec.ts`. The minifier copies a custom property's value and the spaces in a `calc()`
+   as they are written, so they are written here without the spaces nothing needs (#979). */
 .byd-join {
   /* The ink a seat colour carries (#22): the same dark the table lays on a seat, because the
      palette (#20) is one palette and a seat button here is the same object as a name tag there.
      White on it measured 3.44:1 on the blue seat and down to 2.44:1 on the yellow one. */
-  --byd-seat-ink: #0d0f14;
+  --byd-seat-ink:#0d0f14;
   /* The pill's own size, named so that everything the felt is built out of can read it. The
      height is the letter's line over the word's (#80) and comfortably past the 44 px a thumb is
      owed (UX-KONTROLLER: träffytor). The width is the least a pill takes, and it is a number here
@@ -14,11 +18,11 @@
      on the other. 76 px clears the word with room to spare in any face this is likely to meet, so
      a free pill is exactly this wide everywhere. A name wider than it grows the pill, and is
      capped and cut by the rules further down. */
-  --byd-seat-h: 52px;
-  --byd-seat-w: 76px;
+  --byd-seat-h:52px;
+  --byd-seat-w:76px;
   /* The daylight wanted in each corner of the felt, where the outermost seat of one edge passes
      the outermost seat of the next. */
-  --byd-seat-corner: 4px;
+  --byd-seat-corner:4px;
   /* The step from one seat to the next along a side of the felt, and the least air between two
      pills that share one (#42). A pill is wider than it is tall, so the two pitches differ: they
      are set to leave the same air down a side as across an end, because the same step both ways
@@ -45,23 +49,23 @@
      reaches 26 px back instead of 18, which eats 8 px in each corner, and the daylight became an
      overlap of exactly that — `A×H 20×8`, `B×D 20×8`, `C×F 20×8`, `E×G 20×8` on an eight-seat
      table. The felt is written from the pill now, so the pill may grow again and the corners
-     cannot fall in behind its back. */
-  --byd-seat-pitch-x: 132px;
-  --byd-seat-pitch-y: calc(var(--byd-seat-pitch-x) - (var(--byd-seat-w) - var(--byd-seat-h)));
-  --byd-seat-gap: 14px;
+     cannot fall in behind its back.
+
+     132 px is the step on a felt with room for it. The steps themselves are declared on the
+     felt, further down, because a felt too narrow for them shortens them (#979). */
+  --byd-seat-gap:14px;
   /* How far a pill hangs off the edge it belongs to. The offsets below are written from these
      and nothing else, and so is the room a pill on that edge has to grow in (#52) — the two may
      not be allowed to drift apart, because a pill that hangs further out than its cap was
      reckoned for is a pill that reaches across the felt again. */
-  --byd-seat-hang-x: 30px;
-  --byd-seat-hang-y: 26px;
-  /* "Nothing bounds the pill on this axis", said as a length so the two bounds below can always
-     be compared. No name reaches it; a pill this wide would be off the phone long before. */
-  --byd-seat-unbounded: 9999px;
+  --byd-seat-hang-x:30px;
+  --byd-seat-hang-y:26px;
   /* The felt's own dark. A hex in a rule until the button language (#44) had to be measured
      against it; a ground without a name is a ground no contrast test can ask about. */
-  --byd-join-bg: #14161c;
+  --byd-join-bg:#14161c;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
+  /* The width the felt is fitted to (#979) is the page's own, inside its margin. */
+  container-type: inline-size;
   background: var(--byd-join-bg); color: #eee; font-family: system-ui, sans-serif;
   display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
 }
@@ -73,7 +77,23 @@
 .byd-join-table {
   /* The felt's own width is a number the pills have to know as well as the felt does (#52), so it
      is kept where both can read it rather than written twice. */
-  --byd-felt-w: 220px;
+  --byd-felt-w:min(220px,100cqi - 2*var(--byd-seat-hang-x));
+  /* That `min()` is the most a felt can be and still keep its east and west seats inside the
+     page's margin (#979). They hang off the felt by `--byd-seat-hang-x` on either side, so the
+     felt may be the page's width (`cqi`, on `.byd-join`) less the two of those. At 320 px that is 220 px, which is the small felt to the
+     pixel and 40 px short of the wide one: a table whose edges are shared drew its west seat at
+     x = 0, against the glass, and its east seat flush with the right edge. A felt fitted to the
+     page is narrower only where the page is; on 390 px it is the felt it always was.
+
+     A narrower felt has to shorten the step along it, or the pair on a shared north or south
+     edge reaches past its corners. Two seats of a pair stand a step apart and each is capped at a
+     step less the gap, so the pair spans twice the step less the gap, and that may be no more
+     than the felt: the step is half of the felt plus the gap, or 132 px if that is shorter. On the 260 px felt that is 137 px against 132, so the ideal stands; on the 220 px
+     one it is 117. The step down a side follows from it as it always did, and the felt's height
+     from that, so the corners keep their daylight and the air down a side stays the air across an
+     end. */
+  --byd-seat-pitch-x:min(132px,(var(--byd-felt-w) + var(--byd-seat-gap))/2);
+  --byd-seat-pitch-y:calc(var(--byd-seat-pitch-x) - (var(--byd-seat-w) - var(--byd-seat-h)));
   /* How much of the felt's height goes on spreading a shared edge: nothing, while every edge
      carries one seat. The felt below is written from this and from the pill, which is what makes
      the small felt and the big one the same piece of arithmetic asked twice.
@@ -86,20 +106,26 @@
      once an edge carries a pair. The 150 px the felt has always been for a table of four or fewer
      is well clear of the first of those, and stays, because what that number is for is how a
      table looks and not whether its corners hold. */
-  --byd-seat-spread-y: 0px;
+  --byd-seat-spread-y:0px;
   /* The pills hang off the north and south edges and the wood rim is drawn round the felt, and
      neither is part of the box the page lays out: at 320 × 568 the north seat stood over the line
      above and the south one over «Ditt namn» (#483). The margin is what they reach out by, so the
      row the felt stands in makes room for all of it. */
   margin-block: calc(var(--byd-seat-hang-y) + 10px);
-  position: relative; place-self: center; width: var(--byd-felt-w);
-  height: max(150px, calc(var(--byd-seat-spread-y) + 3 * var(--byd-seat-h) - 2 * var(--byd-seat-hang-y) + 2 * var(--byd-seat-corner)));
+  /* The felt hangs from the head of its row and is centred only across it (#937). The row takes
+     whatever height the phone has to spare, and a felt centred down it stood in the middle of a
+     band of nothing — 83 px of it under the head at 390 × 844 — so the page read as a head, a
+     gap, and then the table it was naming. Up against the head it reads top down, and the spare
+     height goes between the table and the form, which stays at the foot where the thumb is and
+     where #42 left «Sätt dig» whatever the felt's size. */
+  position: relative; place-self: start center; width: var(--byd-felt-w);
+  height: max(150px, var(--byd-seat-spread-y) + 3*var(--byd-seat-h) - 2*var(--byd-seat-hang-y) + 2*var(--byd-seat-corner));
   border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 0 0 10px #4a2f1c;
   /* Seats at an edge are hung off that edge and take no part in this; the row is for the seats
      the table gives no edge, which stand on the felt side by side. */
-  display: flex; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 6px;
+  display: flex; flex-wrap: wrap; place-content: center; align-items: center; gap: 6px;
 }
 /* A table that seats more people than it has sides needs a bigger table (#42). The step between
    two seats on one edge is bounded by the felt they hang off, and on a 220 × 150 felt it came out
@@ -112,7 +138,7 @@
    200 px behind a 44 px pill and comes out 220 px behind the 52 px one. The phone pays nothing
    either way: the felt stands in a grid row of its own with room to spare, so the page is the
    same height, scrolls no more sideways, and leaves "Sätt dig" where it was. */
-.byd-join-table[data-shares] { --byd-felt-w: 260px; --byd-seat-spread-y: var(--byd-seat-pitch-y); }
+.byd-join-table[data-shares] { --byd-felt-w:min(260px,100cqi - 2*var(--byd-seat-hang-x)); --byd-seat-spread-y:var(--byd-seat-pitch-y); }
 /* The picker is met with a thumb and nothing else, so a seat is held to at least the 44 px every
    control in the product is held to (UX-KONTROLLER: träffytor). The pill grows around its word
    rather than the word growing: the label is a seat's name, not a button's size.
@@ -185,12 +211,19 @@
    `overflow` does the clipping — at both ends again, and in silence again, which is the very
    fault the paragraph above is written against. `Bartholomew Longbottom` came back as a different
    name with nothing on it to say so. Held to the pill's own width, the span is too narrow for its
-   text once more and the ellipsis fires where it should. */
-.byd-join-table button { max-width: min(var(--seat-room-along, var(--byd-seat-unbounded)), var(--seat-room-across, var(--byd-seat-unbounded))); overflow: hidden; }
+   text once more and the ellipsis fires where it should.
+
+   Since #750 every pill takes the cap across, below, so that is the width a pill has, and a pill
+   with a neighbour takes the smaller of it and the cap along. */
+.byd-join-table button { max-width: var(--seat-room-across); overflow: hidden; }
 .byd-join-table button > span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.byd-join-table button[data-shares] { --seat-room-along: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); }
-.byd-join-table button[data-edge='E'],
-.byd-join-table button[data-edge='W'] { --seat-room-across: calc((var(--byd-felt-w) + 2 * var(--byd-seat-hang-x) - var(--byd-seat-gap)) / 2); }
+.byd-join-table button[data-shares] { max-width: min(var(--seat-room-across),var(--byd-seat-pitch-x) - var(--byd-seat-gap)); }
+/* North and south are not bounded across, and #42 left them unbounded along when alone — but
+   empty felt beside a pill is not endless felt. A 59-letter name grew the north pill to 398 px on
+   a 390 px phone, off the screen at both ends, while east and west beside it were cut at 133
+   (#750). So every pill takes the east-west cap: one name tag, cut at one width on every edge,
+   and on the smallest felt that still leaves a north pill well inside the felt's own width. */
+.byd-join-table button { --seat-room-across:calc((var(--byd-felt-w) + 2*var(--byd-seat-hang-x) - var(--byd-seat-gap))/2); }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
    it no hand says nothing about which side it is on — keeps its place in the row above, because
    a picker that guesses a side is how every seat once ended up on the same one (#39).
@@ -202,16 +235,16 @@
    counted by the page from the edges the seat list already carries. `--seat-step` is how many
    pitches from the middle of the edge that puts the seat: with one seat on an edge it works out
    to exactly zero, so a table of four or fewer is drawn where it was drawn before. */
-.byd-join-table button[data-edge] { position: absolute; --seat-at: 0; --seat-of: 1; --seat-step: calc((var(--seat-at) * 2 - var(--seat-of) + 1) / 2); }
+.byd-join-table button[data-edge] { position: absolute; --seat-at:0; --seat-of:1; --seat-step:calc((var(--seat-at)*2 - var(--seat-of) + 1)/2); }
 .byd-join-table button[aria-disabled='true'] { background: #2a2e3a; color: #9aa3b8; }
 .byd-join-table button[aria-pressed='true'] { border-color: #fff; }
 /* The focus ring stands outside the white ring that says a seat is chosen, so a seat that is both
    shows both (#555). The ring the button language draws, a step away from the edge. */
 .byd-join-table button:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 3px; }
-.byd-join-table button[data-edge='N'] { top: calc(var(--byd-seat-hang-y) * -1); left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
-.byd-join-table button[data-edge='S'] { bottom: calc(var(--byd-seat-hang-y) * -1); left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
-.byd-join-table button[data-edge='E'] { right: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
-.byd-join-table button[data-edge='W'] { left: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
+.byd-join-table button[data-edge='N'] { top: calc(var(--byd-seat-hang-y)*-1); left: calc(50% + var(--seat-step)*var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+.byd-join-table button[data-edge='S'] { bottom: calc(var(--byd-seat-hang-y)*-1); left: calc(50% + var(--seat-step)*var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+.byd-join-table button[data-edge='E'] { right: calc(var(--byd-seat-hang-x)*-1); top: calc(50% + var(--seat-step)*var(--byd-seat-pitch-y)); transform: translateY(-50%); }
+.byd-join-table button[data-edge='W'] { left: calc(var(--byd-seat-hang-x)*-1); top: calc(50% + var(--seat-step)*var(--byd-seat-pitch-y)); transform: translateY(-50%); }
 .byd-join form { display: grid; gap: 10px; }
 .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid var(--byd-secondary-line); background: #1b1e27; color: #fff; font-size: 18px; }
 /* The name is written over the field instead of inside it (#416). A placeholder reading "Ditt
@@ -222,8 +255,10 @@
 /* What the page answers with, said at the field and in a tone of its own: a refusal written in the
    ink the prose around it uses is a caption, and the eye sorts it away. The wizard already says
    this of every `[role='alert']` on paper; this is the same sentence in the phone's own colour. */
-.byd-join [role='alert'] { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
-.byd-join input[aria-invalid='true'] { border-color: #e05a4f; }
+/* What a code field says (#675), on `/join` and on the start page's row alike, whether it came
+   with the page or from a press. */
+.byd-join [role='alert'], .byd-code-says { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
+.byd-join input[aria-invalid='true'], .byd-code-row > input[aria-invalid='true'] { border-color: #e05a4f; }
 .byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
 /* Refused is a state of a role and not a role of its own. The page no longer opens in it — a way
    on that waits for a name stands open and answers when it is pressed (#416, variant B) — but a
@@ -254,3 +289,29 @@
    line and one ink for the whole tool. */
 .byd-join .byd-join-online,
 .byd-join .byd-join-observe { font-size: 14px; }
+
+/* The code is the address (#675, beslut C 2026-10-06). `/join` without a code, and with one that
+   names nothing, is a form for the code: the same page and the same field as the name on the
+   picker, with the code read as a code — wide-set, upper case, monospaced. */
+.byd-join-code { grid-template-rows: auto auto; align-content: start; }
+.byd-join-lead { margin: 0; color: #9aa3b8; font-size: 15px; line-height: 1.5; }
+.byd-join-code input { text-align: center; }
+
+/* A laptop opening the address sees a card and not a phone stretched across the screen (#675): the
+   page as one column of 520 px, in the login card's form, on the account's darker ground. The card
+   is the seat picker's own ground, so every contrast measured on the phone holds on it unchanged.
+   From 700 px, where the column stops filling the window. */
+@media (min-width: 700px) {
+  .byd-join-page { min-height: 100vh; box-sizing: border-box; display: grid; place-items: center; padding: 32px 20px; background: #0f1117; }
+  .byd-join-page > main {
+    width: min(520px, 100%); min-height: 0;
+    padding: 28px 32px; border: 1px solid #262a35; border-radius: 20px;
+  }
+  .byd-join-page > :not(.byd-join-code) > header { text-align: center; }
+}
+/* On a laptop the suggestion is to play on this screen (#675, beslut 3): the sentence is the first
+   action, so it is read larger than the sentences under it, and «Sätt dig» beside it at the same
+   size, so the two ways to play read as a pair and «Bara titta» as the third. */
+.byd-join .byd-join-online.byd-primary,
+.byd-join .byd-join-sit { font-size: 16px; }
+

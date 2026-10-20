@@ -53,5 +53,7 @@ export type Applied = z.infer<typeof Applied>
 
 // What every view may know about a log line: the same line without its outcome.
 // A shuffle's outcome carries the re-keying, which says exactly where each card went.
-export const Activity = Applied.omit({ outcome: true })
+// `name` is who made it, by the name they sat under when it was written (#714): a seat's name changes
+// when it is left and taken again, and a history told in today's names changes under a round.
+export const Activity = Applied.omit({ outcome: true }).extend({ name: z.string().optional() })
 export type Activity = z.infer<typeof Activity>

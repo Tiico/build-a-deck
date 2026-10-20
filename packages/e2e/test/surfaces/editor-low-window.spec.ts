@@ -163,6 +163,101 @@ for (const { zoom, width, height } of LOW) {
   })
 }
 
+// The stage strip's own edges at 400 % (#763). The strip scrolls sideways there, and the label it
+// cut stopped mid-word right against «Spara» — «Verktyg» read as lying under the button. The tool's
+// one gesture for cut text is a fade to nothing at the edge, never a hard stop (#46, #53), so a
+// label the strip cuts now fades out before the edge, at whichever end it is cut, and a label the
+// strip does not cut is painted at full strength.
+//
+// Measured on what is painted, so no typeface decides it: the strip is scrolled until the edge runs
+// through the middle of a label's words, and the last few pixels inside that edge must be the
+// strip's own ground. Before the fix they held the label's ink.
+test.describe('the stage strip at 400 % (320 × 256, a mouse)', () => {
+  test.use({ viewport: { width: 320, height: 256 }, locale: 'sv-SE' })
+
+  type Edge = 'start' | 'end'
+  const BAND = 3
+
+  // Scrolls the strip so that `edge` cuts through the middle of an unselected label, and says
+  // where that label's words stand vertically.
+  async function cutALabel(page: Page, edge: Edge | 'none') {
+    return page.evaluate(async (edge) => {
+      const list = document.querySelector<HTMLElement>('.byd-editor-stagebar [role="tablist"]')!
+      const max = list.scrollWidth - list.clientWidth
+      const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      if (edge === 'none') {
+        list.scrollLeft = 0
+        await frame()
+        const tab = list.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')!
+        const range = document.createRange()
+        range.selectNodeContents(tab)
+        const r = range.getBoundingClientRect()
+        return { max, top: r.top, bottom: r.bottom, left: r.left, right: r.right, label: tab.textContent }
+      }
+      for (const tab of list.querySelectorAll<HTMLElement>('[role="tab"]:not([aria-selected="true"])')) {
+        list.scrollLeft = 0
+        const range = document.createRange()
+        range.selectNodeContents(tab)
+        const text = range.getBoundingClientRect()
+        const box = list.getBoundingClientRect()
+        const mid = text.left - box.left + text.width / 2
+        const want = Math.round(edge === 'end' ? mid - list.clientWidth : mid)
+        if (want <= 0 || want >= max) continue
+        list.scrollLeft = want
+        await frame()
+        const r = range.getBoundingClientRect()
+        return { max, top: r.top, bottom: r.bottom, left: r.left, right: r.right, label: tab.textContent }
+      }
+      return null
+    }, edge)
+  }
+
+  // The strongest difference from the strip's own ground, over a band of `BAND` CSS px just inside
+  // the strip's `edge` (or a label's left, for `edge: none`) and across the label's words.
+  async function inkAt(page: Page, x: number, top: number, bottom: number) {
+    const bar = (await page.locator('.byd-editor-stagebar').boundingBox())!
+    const shot = await page.screenshot({ clip: { x: bar.x, y: bar.y, width: bar.width, height: bar.height } })
+    return page.evaluate(
+      async ({ data, scale, x, top, bottom, band }) => {
+        const img = new Image()
+        img.src = `data:image/png;base64,${data}`
+        await img.decode()
+        const canvas = new OffscreenCanvas(img.width, img.height)
+        const g = canvas.getContext('2d')!
+        g.drawImage(img, 0, 0)
+        const px = img.width / scale
+        // The ground is read off the strip's own padding, above everything it holds.
+        const ground = g.getImageData(1, 1, 1, 1).data
+        const pixels = g.getImageData(Math.round(x * px), Math.round(top * px), Math.max(1, Math.round(band * px)), Math.max(1, Math.round((bottom - top) * px))).data
+        let most = 0
+        for (let i = 0; i < pixels.length; i += 4)
+          most = Math.max(most, Math.abs(pixels[i]! - ground[0]!), Math.abs(pixels[i + 1]! - ground[1]!), Math.abs(pixels[i + 2]! - ground[2]!))
+        return most
+      },
+      { data: shot.toString('base64'), scale: bar.width, x: x - bar.x, top: top - bar.y, bottom: bottom - bar.y, band: BAND },
+    )
+  }
+
+  test('fades a label it cuts out before the edge, at either end, and leaves a whole one whole', async ({ page }) => {
+    await openEditor(page)
+    await page.mouse.move(0, 0)
+    const list = page.locator('.byd-editor-stagebar [role="tablist"]')
+    const box = (await list.boundingBox())!
+
+    // A label the strip does not cut is painted at full strength: the selected one, at the start.
+    const whole = (await cutALabel(page, 'none'))!
+    expect(whole.max, 'the stages do not fit, so the strip scrolls').toBeGreaterThan(0)
+    expect(await inkAt(page, whole.left, whole.top, whole.bottom), `«${whole.label}» is painted`).toBeGreaterThan(80)
+
+    for (const edge of ['end', 'start'] as const) {
+      const cut = await cutALabel(page, edge)
+      expect(cut, `a label can be cut at the ${edge}`).not.toBeNull()
+      const x = edge === 'end' ? box.x + box.width - BAND : box.x
+      expect(await inkAt(page, x, cut!.top, cut!.bottom), `«${cut!.label}» cut at the strip's ${edge}`).toBeLessThan(32)
+    }
+  })
+})
+
 // The phone is the one narrow window the rule leaves where it was (L12, L10): a finger and no
 // hover is the phone's, and it keeps the honest room — no canvas, and a sentence saying why —
 // standing still in a window tall enough for it.

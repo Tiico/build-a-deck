@@ -1,5 +1,17 @@
 import { afterEach } from 'vitest'
-import { cleanup, configure } from '@testing-library/react'
+import { cleanup, configure, getConfig } from '@testing-library/react'
+import { holdWords } from '../src/i18n/index.js'
+import { en } from '../src/i18n/en.js'
+import { sv } from '../src/i18n/sv.js'
+import { watchHolds } from '../../../test-support/own-time.js'
+import { holdTestsToOwnTime } from '../../../test-support/own-time-guard.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+// The app fetches its words per surface and language before it draws (#760). A test mounts a
+// surface on its own, without the route that would have fetched them, so every test holds the
+// whole catalogue in both languages — what the app said before the split, from the first line.
+holdWords('sv', sv)
+holdWords('en', en)
 
 // Testing Library only cleans up on its own with vitest globals; do it explicitly.
 afterEach(cleanup)
@@ -17,6 +29,11 @@ afterEach(() => {
 // One macrotask per test costs a millisecond and lets every answer through between them.
 afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 
+// Every test in the package is held to its budget in the worker's own time (#848): twenty
+// seconds of the time the worker actually ran, under a ceiling vitest is given in `vite.config.ts`.
+// `budget.ts` says why twenty, and `test-support/own-time.ts` why own time.
+holdTestsToOwnTime(JSDOM_TEST_BUDGET)
+
 // How long a `waitFor` or a `findBy` waits before it calls the thing it is waiting for a failure.
 // Testing Library's own default is one second, and this suite does not run in one second's worth
 // of quiet: a file starts a real server, opens real sockets, and half a dozen of them drive
@@ -24,8 +41,49 @@ afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 // race on a busy one, and then a passing test reports a wrong value — which is how eleven waits
 // in this suite came to carry a longer timeout written out one at a time. The patience belongs in
 // one place. Nothing is weakened by it: a wait that resolves still resolves at once, and a thing
-// that never happens still fails, four seconds later and inside vitest's own five.
+// that never happens still fails, four seconds later and well inside the test's own twenty.
 configure({ asyncUtilTimeout: 4000 })
+
+// Those four seconds are the worker's own, not the wall clock's (#867).
+//
+// On a loaded machine the operating system can leave a worker unrun for longer than a wait's
+// patience. When it runs it again, Node takes the timers that fell due before it reads the
+// sockets — and a wait's deadline is such a timer, while the server's answer, in this very
+// process, sits written and unread on a socket. So the deadline won by the order of a loop's
+// phases: `setup-new-pile` read «Öppnar spelet…» where an editor that opens in 15 ms was waiting
+// to be read. No number fixes that, since any deadline is shorter than some stall.
+//
+// So a wait that gave up is asked again when time it was counting was time the worker did not
+// run, measured the way the test's own budget is (`watchHolds`, `test-support/own-time.ts`).
+// Ordinary slowness — a render that took a second of its own work — is the worker's own time and
+// counts as it always did, and so does a wait for something that never comes, which fails once its
+// four seconds of running time are spent. `test/waits-outlast-a-held-worker.test.tsx` holds the
+// worker with SIGSTOP to show both halves.
+//
+// The wrapper is Testing Library's own seam around every wait. user-event goes through it too;
+// an action is asked again only if it rejected *and* the worker was held while it ran, and an
+// action that rejects is a failing test either way.
+const inner = getConfig().asyncWrapper
+configure({
+  asyncWrapper: (cb) =>
+    inner(async () => {
+      let own = 0
+      for (;;) {
+        const watch = watchHolds()
+        let result: Awaited<ReturnType<typeof cb>>
+        try {
+          result = await cb()
+        } catch (err) {
+          const { took, held } = watch.stop()
+          own += took - held
+          if (held === 0 || own >= getConfig().asyncUtilTimeout) throw err
+          continue
+        }
+        watch.stop()
+        return result
+      }
+    }),
+})
 
 // jsdom 30 keeps the style sheet of a <style> that leaves the document along with an ancestor
 // (#538): removing the element itself lets its sheet go, removing the element round it does not.

@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { namesOfProject, type ProjectDoc, type RuleDoc } from '@byd/server'
 import { referables } from '../src/editor/RulesPanel.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -104,8 +101,8 @@ describe('the way a reference is put into a rule (#215)', () => {
     const names = within(blockOf('t1'))
       .getAllByRole('button')
       .map((b) => b.getAttribute('aria-label') ?? b.textContent)
-    // What is left is the block's own two controls: take it away, and add one after it.
-    expect(names).toEqual(['Ta bort blocket', 'Lägg till efter texten 1 under Så spelar ni'])
+    // What is left is the block's own controls: its kind (#707), take it away, and add one after it.
+    expect(names).toEqual(['Stycke', 'Punktlista', 'Numrerad lista', 'Ta bort blocket', 'Lägg till efter texten 1 under Så spelar ni'])
   })
 
   it('opens a list of what the game has when [[ is written, and adds no stop to the tab order', async () => {
@@ -144,6 +141,28 @@ describe('the way a reference is put into a rule (#215)', () => {
     typeInto(field, 'Dra ett kort ur [[xyzzy')
     expect(await within(book()).findByText('Inget med det namnet')).toBeTruthy()
     expect(within(list()!).queryAllByRole('option')).toHaveLength(0)
+  })
+
+  // A game about gold says «guld» on every other line (#708). The list found zones and cards and
+  // answered «Inget med det namnet» for the counter, so the book could only say it as text that
+  // did not follow the counter when it was renamed.
+  it('finds a counter too, says it is one, and puts in a reference that follows it when it is renamed (#708)', async () => {
+    const game = bigGame()
+    await run.projects.create(run.projectId, { ...game, setup: { ...game.setup, counters: [{ id: 'guld', name: 'Guld', start: 0 }] }, rules })
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
+    field.focus()
+    typeInto(field, 'Ta ett [[Gul')
+    await waitFor(() => expect(optionNames()).toEqual(['Guld']))
+    expect(within(list()!).getByRole('option').querySelector('small')!.textContent).toBe('räknare')
+    fireEvent.keyDown(field, { key: 'Enter' })
+    const written = () => within(book()).getByLabelText('Text 1 under Så spelar ni') as HTMLTextAreaElement
+    await waitFor(() => expect(written().value).toBe('Ta ett [[räknare:guld]]'))
+    fireEvent.blur(written())
+    await waitFor(() => expect(within(book()).getByText('Guld')).toBeTruthy())
   })
 
   it('puts the reference where the designer is writing, not at the end of the field, and keeps the focus', async () => {

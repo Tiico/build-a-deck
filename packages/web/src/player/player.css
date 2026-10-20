@@ -68,7 +68,7 @@ html:has(.byd-player) { background: #14161c; }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
   background: var(--byd-control); color: var(--byd-ink-strong); font-size: 13px; font-weight: 700;
 }
-.byd-player > header button:disabled { opacity: 0.35; }
+.byd-player > header button:disabled, .byd-player > header button[aria-disabled='true'] { opacity: 0.35; }
 .byd-player > header .byd-glyph { width: 16px; height: 16px; flex: none; }
 
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
@@ -107,9 +107,13 @@ html:has(.byd-player) { background: #14161c; }
 .byd-summary { padding: 14px 18px; overflow: auto; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-summary-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
 .byd-summary-zones > * { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
-.byd-summary-zones strong { color: var(--byd-ink-strong); }
+.byd-summary-zones strong { color: var(--byd-ink-strong); font-weight: 700; }
 /* A zone's name as the heading of what it holds (#560 P-20), drawn as the name always was. */
 .byd-summary-zones h2 { margin: 0; font: inherit; font-weight: 700; color: var(--byd-ink-strong); }
+/* A tile's heading is the tile's name and not a section's: the summary's own heading rule below
+   reached into it, and a pile nobody could draw from stood in spaced capitals beside one that
+   could (#715). One form for a pile, whatever it holds. */
+.byd-summary .byd-summary-zones h2 { font-size: inherit; text-transform: none; letter-spacing: normal; margin: 0; font-weight: 700; }
 /* A pile that has a card in it is a control, and the whole tile is that control (#79): the verb
    is read inside it at the tile's own width, so nothing sits inside it that a finger has to find
    (UX-37, #82). It is drawn as the sheet's targets are — the phone's pressable surface with a
@@ -178,7 +182,9 @@ html:has(.byd-player) { background: #14161c; }
   --byd-read-w: max(clamp(294px, calc(100vw - 26px), 336px), min(var(--byd-read-need, 0px), calc(100vw - 16px)));
   position: fixed; inset: 0; z-index: 10; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; padding: 12px 12px 16px; background: rgba(0, 0, 0, 0.7);
+  /* Dense enough that the hand behind is not read through it (#715): its buttons showed through
+     at 0.7 and read into the card's own row. */
+  gap: 12px; padding: 12px 12px 16px; background: rgba(0, 0, 0, 0.88);
 }
 .byd-player .byd-inspect > [data-inspect] {
   position: relative; overflow: hidden;
@@ -232,6 +238,7 @@ html:has(.byd-player) { background: #14161c; }
 /* Flagging, the way out, ending, the survey (G3, C9, #31, prototype A). The way out is a plain
    control like the other two: the row holds no red one any more, because the difference between
    leaving your seat and ending everyone's table is a decision and not a colour (#31, variant C). */
+.byd-phone-said { margin: 0 0 12px; padding: 8px 14px; border-radius: 10px; background: var(--byd-warn); color: var(--byd-warn-bg); font-size: 13px; font-weight: 700; }
 .byd-toast { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40; background: var(--byd-warn); color: var(--byd-warn-bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
 .byd-sheet-title { font-size: 16px; color: var(--byd-ink-strong); margin: 0 0 10px; }
 .byd-session-sheet textarea { width: 100%; box-sizing: border-box; min-height: 70px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-bg); color: var(--byd-ink-strong); padding: 10px; font: 14px system-ui; }
@@ -351,3 +358,32 @@ html:has(.byd-phone-foot:not(:empty)) { scroll-padding-bottom: 73px; }
 @media (max-width: 359px) {
   .byd-phone-foot:has(.byd-foot-more) .byd-rules-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+
+/* The head at 320 keeps one row (#716, L62, beslut H1): «Ångra» and «Flagga» are drawn as their
+   icons, each still a whole thumb target and still named by its word (the button's text and its
+   title), so «Ut…» no longer falls to a row of its own. Below 375, where the words stop fitting: at
+   375 the row holds them (`player-viewport.test.tsx`), at 360 it already did not. */
+@media (max-width: 374px) {
+  .byd-player > header .byd-undo, .byd-player > header .byd-flag { font-size: 0; gap: 0; padding: 0; width: 44px; }
+  .byd-player > header .byd-undo .byd-glyph, .byd-player > header .byd-flag .byd-glyph { width: 18px; height: 18px; }
+}
+
+/* A phone on its side (#716, L62, beslut A, prototyp 716): the portrait column stretched out showed
+   no whole card of the hand without scrolling. In a low, wide window the head runs over two
+   columns; the counters and the piles stand in a narrow one on the left and the hand with its verbs
+   has the rest, its cards sized by the window's height so that a whole one stands above the foot. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .byd-player { max-width: none; display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 12px; row-gap: 8px; align-items: start; }
+  .byd-player > * { grid-column: 1 / -1; }
+  .byd-player > header { min-height: 48px; padding: 2px 16px; }
+  .byd-player > .byd-behind { grid-column: 1; grid-row: 2; }
+  .byd-player > .byd-phone-main { display: contents; }
+  .byd-phone-main > h1 { display: none; }
+  .byd-phone-main > * { grid-column: 2; }
+  .byd-phone-main > .byd-summary { grid-column: 1; grid-row: 3; padding: 0 0 0 16px; }
+  .byd-phone-main .byd-summary-zones { grid-template-columns: minmax(0, 1fr); }
+  .byd-phone-main > .byd-strip { grid-row: 2 / span 2; }
+  .byd-player .byd-strip-card { flex-basis: calc((100svh - 48px - 64px - 40px) * 63 / 88); }
+}
+
+

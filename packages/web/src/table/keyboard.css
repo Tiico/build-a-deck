@@ -90,6 +90,12 @@
   text-transform: uppercase;
   color: var(--byd-kbd-ink-muted);
 }
+/* What a panel with nothing to offer says instead of a list of switched-off rows (#761). */
+.byd-kbd-empty {
+  margin: 14px 0 0;
+  font-size: 15px;
+  color: var(--byd-kbd-ink-muted);
+}
 .byd-kbd-list {
   display: grid;
   gap: 6px;

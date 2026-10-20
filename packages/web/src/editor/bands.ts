@@ -29,16 +29,45 @@ export type Band = { value: string | null; name: string; cards: ProjectRow[] }
 // 44 px tile in a strip whose whole reading is that height means size. It is also the one rule
 // that survives a search: under a term that no `Location` answers, the `Location` band is gone,
 // and it would be strange for the same band to stand empty when the deck itself has emptied it.
+//
+// A column of numbers stands in the order numbers have (#737): `antal` read 1, 2, 4, 3 — the order
+// the deck happened to meet its values in, which is an order no reader looks for.
 export function bandsOf(doc: ProjectDoc, rows: readonly ProjectRow[], column: string | null, looseName: string): Band[] {
   if (column === null) return []
   const out: Band[] = []
-  for (const value of valuesIn(doc, column)) {
+  for (const value of inReadingOrder(valuesIn(doc, column))) {
     const cards = rows.filter((row) => cellOf(row, column) === value)
     if (cards.length > 0) out.push({ value, name: value, cards })
   }
   const loose = rows.filter((row) => cellOf(row, column) === '')
   if (loose.length > 0) out.push({ value: null, name: looseName, cards: loose })
   return out
+}
+
+function inReadingOrder(values: readonly string[]): string[] {
+  const numbered = values.map((value) => ({ value, n: value.trim() === '' ? NaN : Number(value) }))
+  if (!numbered.every(({ n }) => Number.isFinite(n))) return [...values]
+  return numbered.sort((a, b) => a.n - b.n).map(({ value }) => value)
+}
+
+// The most bands a grouping may make and still be one (#737). Grouped by a column the cards each
+// write for themselves — `title`, `body` — 77 cards were 76 bands of one card each, and a table of
+// contents of the same rule text 76 times; that is a list of the deck, and the wall already is one.
+// A dozen is about what a table of contents is read at a glance, and every deck the tool has been
+// measured on groups its types well inside it (eight in Stora leken).
+export const MOST_BANDS = 12
+
+// The columns the wall offers to group by: those whose answers the cards share — at least one
+// answer carried by two cards, and no more answers than a table of contents can hold. The
+// template's own grouping column is always among them (L3, L21), whatever it holds: the deck has
+// already said that is its grouping, and the wall reads that answer rather than second-guessing it.
+export function groupableColumns(doc: ProjectDoc, fields: readonly string[], own: string | null): string[] {
+  return fields.filter((field) => {
+    if (field === own) return true
+    const values = valuesIn(doc, field)
+    const carried = doc.rows.filter((row) => cellOf(row, field) !== '').length
+    return values.length > 0 && values.length <= MOST_BANDS && values.length < carried
+  })
 }
 
 function cellOf(row: ProjectRow, column: string): string {

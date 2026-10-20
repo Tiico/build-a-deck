@@ -3,48 +3,13 @@
 // in development it is another port, so credentials are sent explicitly.
 import type { CardFace, CardPeek, Role } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
+import { Said } from '../i18n/said.js'
+import { Unauthorized, pageLang, withCredentials } from './session.js'
+export { Unauthorized, claimGuest, claimUrl, loginUrl, logout, requestLink, whoAmI, withCredentials } from './session.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
 // test, a surface mounted on its own — gets Swedish, the catalogue's own language.
 const swedish: T = (key, params) => translate('sv', key, params)
-
-export class Unauthorized extends Error {
-  constructor() {
-    super('not logged in')
-    this.name = 'Unauthorized'
-  }
-}
-
-export const withCredentials = (init: RequestInit = {}): RequestInit => ({ ...init, credentials: 'include' })
-
-// What the tool writes back — a sign-in link, an invitation — should reach the reader in the
-// language they are reading in (A4). The page already says which language it is in, because
-// assistive technology needs that; asking the page is one source rather than a second one
-// threaded through every call.
-const pageLang = (): { lang?: string } => {
-  const lang = typeof document === 'undefined' ? '' : document.documentElement.lang
-  return lang ? { lang } : {}
-}
-
-export async function requestLink(http: string, email: string, next: string): Promise<'sent' | 'logged-in' | 'too-many' | 'invalid'> {
-  const res = await fetch(`${http}/auth/login`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, next, ...pageLang() }) }))
-  if (res.status === 429) return 'too-many'
-  if (res.status === 400) return 'invalid'
-  if (!res.ok) throw new Error(`could not ask for a link: ${res.status}`)
-  const body = (await res.json()) as { loggedIn?: boolean }
-  return body.loggedIn ? 'logged-in' : 'sent'
-}
-
-export async function whoAmI(http: string): Promise<string | null> {
-  const res = await fetch(`${http}/auth/me`, withCredentials())
-  if (res.status === 401) return null
-  if (!res.ok) throw new Error(`could not read the account: ${res.status}`)
-  return ((await res.json()) as { email: string }).email
-}
-
-export async function logout(http: string): Promise<void> {
-  await fetch(`${http}/auth/logout`, withCredentials({ method: 'POST' }))
-}
 
 // A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, when one
 // of them was last played at, and which of its own cards stands on it (#231) — `null` for a game
@@ -72,21 +37,21 @@ export type Member = { email: string; role: Role }
 export async function projectMembers(http: string, project: string, t: T = swedish): Promise<Member[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.members.failed', { status: res.status }))
+  if (!res.ok) throw new Said(t('error.members.failed'))
   return (await res.json()) as Member[]
 }
 
 export async function inviteToProject(http: string, project: string, email: string, role: Role, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, role, ...pageLang() }) }))
   if (res.status === 401) throw new Unauthorized()
-  if (res.status === 403) throw new Error(t('error.invite.notOwner'))
+  if (res.status === 403) throw new Said(t('error.invite.notOwner'))
   // What the service could not do, said as the reason and not as its number (#477).
-  if (res.status === 400) throw new Error(t('error.invite.address'))
+  if (res.status === 400) throw new Said(t('error.invite.address'))
   if (res.status === 409) {
     const { why } = (await res.json().catch(() => ({}))) as { why?: string }
-    throw new Error(t(why === 'invited' ? 'error.invite.pending' : 'error.invite.member', { email }))
+    throw new Said(t(why === 'invited' ? 'error.invite.pending' : 'error.invite.member', { email }))
   }
-  if (!res.ok) throw new Error(t('error.invite.failed', { status: res.status }))
+  if (!res.ok) throw new Said(t('error.invite.failed'))
 }
 
 // The invitations nobody has followed yet (#477), for whoever may share; and taking one back.
@@ -96,7 +61,7 @@ export async function waitingInvites(http: string, project: string, t: T = swedi
   if (res.status === 401) throw new Unauthorized()
   // A role that may not share has nothing waiting to see; that is an answer, not a fault.
   if (res.status === 403) return []
-  if (!res.ok) throw new Error(t('error.invites.failed', { status: res.status }))
+  if (!res.ok) throw new Said(t('error.invites.failed'))
   return (await res.json()) as WaitingInvite[]
 }
 
@@ -104,13 +69,26 @@ export async function withdrawInvite(http: string, project: string, email: strin
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites/${encodeURIComponent(email)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
   // Already followed or already gone: what the owner wanted is true either way.
-  if (!res.ok && res.status !== 404) throw new Error(t('error.withdraw.failed', { email }))
+  if (!res.ok && res.status !== 404) throw new Said(t('error.withdraw.failed', { email }))
 }
 
 export async function unshareProject(http: string, project: string, email: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members/${encodeURIComponent(email)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.unshare.failed', { status: res.status }))
+  if (res.status === 403) throw new Said(t('error.unshare.notOwner'))
+  if (!res.ok) throw new Said(t('error.unshare.failed', { email }))
+}
+
+// The name of the game an invitation leads to, for the login card it lands on (#691): null when the
+// link cannot be followed any more, or the service could not say — the card then says it is an
+// invitation without naming one.
+export async function invitedTo(http: string, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${http}/invites/${encodeURIComponent(token)}`, withCredentials())
+    return res.ok ? ((await res.json()) as { name: string }).name : null
+  } catch {
+    return null
+  }
 }
 
 // Following an invitation: 'not-logged-in' asks for a login first, 'spent' means it is gone.
@@ -118,7 +96,7 @@ export async function acceptInvite(http: string, token: string, t: T = swedish):
   const res = await fetch(`${http}/invites/${encodeURIComponent(token)}`, withCredentials({ method: 'POST' }))
   if (res.status === 401) return 'not-logged-in'
   if (res.status === 404) return 'spent'
-  if (!res.ok) throw new Error(t('error.join.failed', { status: res.status }))
+  if (!res.ok) throw new Said(t('error.join.failed'))
   return (await res.json()) as { project: string; role: Role }
 }
 
@@ -127,27 +105,55 @@ export async function acceptInvite(http: string, token: string, t: T = swedish):
 export async function startTable(http: string, project: string, t: T = swedish): Promise<{ id: string; code: string; hostKey: string }> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST' }))
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.startTable.failed', { status: res.status }))
+  // Every role but a viewer may start one (D3); the page does not offer it to a viewer (#689),
+  // so a refusal is an answer that changed under the page, said as what it means.
+  if (res.status === 403) throw new Said(t('error.startTable.viewer'))
+  if (res.status === 404) throw new Said(t('error.game.gone'))
+  if (!res.ok) throw new Said(t('error.startTable.failed'))
   return (await res.json()) as { id: string; code: string; hostKey: string }
+}
+
+// The tables of a game that are running and can still be joined (#724): the ones with a room code.
+// Only a role that may start tables is told the code, so only such a role is asked.
+export type RunningTable = { id: string; code: string; lastAt: string | null }
+export async function runningTables(http: string, project: string): Promise<RunningTable[]> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials())
+  if (!res.ok) return []
+  const tables = (await res.json()) as { id: string; ended: boolean; lastAt: string | null; code?: string }[]
+  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, lastAt: x.lastAt }] : []))
 }
 
 // Taking a game away (G1): its whole history goes with it, so the page asks first.
 export async function removeProject(http: string, project: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.removeGame.failed', { status: res.status }))
+  if (res.status === 403) throw new Said(t('error.removeGame.notOwner'))
+  if (res.status === 404) throw new Said(t('error.game.gone'))
+  if (!res.ok) throw new Said(t('error.removeGame.failed'))
+}
+
+// A second game made of the first (#738), the account's own, named as a copy in the reader's
+// language. The server names it, so the name said back is the one the list will show.
+export async function duplicateProject(http: string, project: string, t: T = swedish): Promise<{ id: string; name: string }> {
+  const q = new URLSearchParams(pageLang())
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/duplicate?${q.toString()}`, withCredentials({ method: 'POST' }))
+  if (res.status === 401) throw new Unauthorized()
+  if (res.status === 404) throw new Said(t('error.game.gone'))
+  if (!res.ok) throw new Said(t('error.duplicateGame.failed'))
+  return (await res.json()) as { id: string; name: string }
+}
+
+// A game renamed from «Mina spel» (#909, beslut C): the same `rename` edit the editor sends, into
+// the game's log through its actor. No version is made of it; the list reads the live name.
+export async function renameProject(http: string, project: string, name: string, t: T = swedish): Promise<void> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/name`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }))
+  if (res.status === 401) throw new Unauthorized()
+  if (res.status === 404) throw new Said(t('error.game.gone'))
+  if (!res.ok) throw new Said(t('error.renameGame.failed'))
 }
 
 // A guest session claimed to the account afterwards (G1), and the tables the account sat at.
-export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string }
-export async function claimGuest(http: string, token: string): Promise<{ ok: true; session: string; seat: string | null; name: string } | { ok: false; reason: 'not-logged-in' | 'unknown' | 'other' }> {
-  const res = await fetch(`${http}/guests/claim`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) }))
-  if (res.status === 401) return { ok: false, reason: 'not-logged-in' }
-  if (res.status === 404) return { ok: false, reason: 'unknown' }
-  if (res.status === 409) return { ok: false, reason: 'other' }
-  if (!res.ok) throw new Error(`could not claim: ${res.status}`)
-  return { ok: true, ...((await res.json()) as { session: string; seat: string | null; name: string }) }
-}
+export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string; deleted?: true }
 export async function myPlayed(http: string): Promise<Played[]> {
   const res = await fetch(`${http}/me/played`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
@@ -155,19 +161,13 @@ export async function myPlayed(http: string): Promise<Played[]> {
   return (await res.json()) as Played[]
 }
 
-// The phone's way to save a session (G1): the claim page, which asks for a login first when
-// there is none. The phone names its server as a WebSocket origin; the account pages speak HTTP.
-export function claimUrl(token: string, server: string | null): string {
-  const claim = new URLSearchParams({ token })
-  if (server) claim.set('server', server.replace(/^ws/, 'http'))
-  return `/claim?${claim.toString()}`
-}
-
-// Where to log in from a page, and come back to it after.
-export function loginUrl(next: string, server: string | null): string {
-  const q = new URLSearchParams({ next })
-  if (server) q.set('server', server)
-  return `/login?${q.toString()}`
+// «Tillbaka till bordet» (#690): a fresh token for the account's own seat at a running table, or
+// null when there is none to go back to — the seat was left or kicked, or the table has ended.
+export async function returnToTable(http: string, session: string): Promise<{ token: string; kind: 'seat' | 'observer'; seat: string | null; name: string } | null> {
+  const res = await fetch(`${http}/me/played/${encodeURIComponent(session)}/return`, withCredentials({ method: 'POST' }))
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) return null
+  return (await res.json()) as { token: string; kind: 'seat' | 'observer'; seat: string | null; name: string }
 }
 
 // A whole game to keep (G5, #527, #529). Asking starts the print files; reading says how far they
@@ -209,5 +209,5 @@ export async function importGame(http: string, file: Blob): Promise<{ ok: true; 
   if (res.status === 201) return { ok: true, id: ((await res.json()) as { id: string }).id }
   if (res.status === 413) return { ok: false, problems: [{ code: 'too-big' }] }
   const body = (await res.json().catch(() => ({}))) as { problems?: ImportProblem[] }
-  return { ok: false, problems: body.problems ?? [{ code: 'refused', values: { status: res.status } }] }
+  return { ok: false, problems: body.problems ?? [{ code: 'refused' }] }
 }

@@ -1,15 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { RULE_IMAGE_FRAME, imageBoxMm, ruleEm } from '@byd/template'
 import { RuleDrawer } from '../src/rules/RuleDrawer.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import type { RuleDoc } from '@byd/server'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -39,6 +36,30 @@ const open = async (id: string) => {
   fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
   return screen.findByRole('dialog', { name: 'Regler' })
 }
+
+// The knob stood while the book was asked for and went again when the table said it had none, so
+// every table without a rulebook flashed «Regler» on the TV, the phone and the observer's column —
+// and a test that counted the buttons passed or failed on the timing (#709). It comes with the book.
+describe('the knob before the table has answered', () => {
+  it('is not drawn while the table is being asked, and comes with the book', async () => {
+    render(<RuleDrawer http={run.http} sessionId={await table()} placement="tv" />)
+    expect(screen.queryByRole('button', { name: 'Regler' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Regler' })).toBeTruthy()
+  })
+
+  it('is never drawn for a table without a book', async () => {
+    const asked = vi.spyOn(globalThis, 'fetch')
+    render(<RuleDrawer http={run.http} sessionId={await table(false)} placement="tv" />)
+    expect(screen.queryByRole('button', { name: 'Regler' })).toBeNull()
+    // Not vacuous: the table has answered, and still there is nothing.
+    await waitFor(() => expect(asked).toHaveBeenCalled())
+    await act(async () => {
+      await Promise.all(asked.mock.results.map((r) => r.value))
+    })
+    expect(screen.queryByRole('button', { name: 'Regler' })).toBeNull()
+    asked.mockRestore()
+  })
+})
 
 // The drawer's own × takes the panel away with the focus in it (#481, fynd 12). The knob that opens
 // the drawer is still standing, so that is where the hand goes.
@@ -209,6 +230,38 @@ describe('the rules at the table (B7)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Regler' }))
       await screen.findByRole('dialog', { name: 'Regler' })
       expect(asked).toHaveLength(1)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})
+
+// «Uppdatera» moves a running table to the project's current rev (C7), and a rulebook written
+// for that rev has to reach the table without anyone reloading (#677). The drawer reads the book
+// again when the view it is handed says the table now plays another version.
+describe('a table updated to a version with rules (#677)', () => {
+  it('offers «Regler» once the table it reads has moved to the version that has them', async () => {
+    const id = await table(false)
+    const asked: Promise<Response>[] = []
+    const real = globalThis.fetch
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = real(input, init)
+      if (String(input).endsWith('/rules')) asked.push(answer)
+      return answer
+    }) as typeof fetch
+    try {
+      const { rerender } = render(<RuleDrawer http={run.http} sessionId={id} placement="table" live={{ zones: [], version: 'rev-1' }} />)
+      // The table at rev-1 has answered that it has no book, and there is no knob.
+      await waitFor(() => expect(asked).toHaveLength(1))
+      await act(async () => {
+        await Promise.all(asked)
+      })
+      expect(screen.queryByRole('button', { name: 'Regler' })).toBeNull()
+
+      expect(await run.projects.replace(run.projectId, 1, { ...projectDoc(), rules })).not.toBe('conflict')
+      expect((await real(`${run.http}/sessions/${id}/refresh`, { method: 'POST' })).status).toBe(200)
+      rerender(<RuleDrawer http={run.http} sessionId={id} placement="table" live={{ zones: [], version: 'rev-2' }} />)
+      expect(await screen.findByRole('button', { name: 'Regler' })).toBeTruthy()
     } finally {
       globalThis.fetch = real
     }

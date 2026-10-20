@@ -74,7 +74,7 @@
 [data-table] {
   /* The felt is the measure for what fits on it: a label under a pile has only the room
      between one pile and the next, and that shrinks with the screen, not with the window. */
-  container-type: inline-size;
+  container: byd-felt / inline-size;
   border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
@@ -82,8 +82,9 @@
   /* The felt writes in the face that ships with it and not in whatever the machine calls
      `system-ui` (K19, #95). Everything drawn on the felt inherits from here — zone names, a pile's
      name and its count, a hand's count — so there is one declaration to read and one to change.
-     The two that set a `font:` of their own say the same thing in their own shorthand, and all
-     three carry the same fallback: `fonts/felt-font.css` is what defines the variable, and a felt
+     Those that set a `font:` of their own — a seat's name card, a chip, and on the room's
+     television a seat's plate (#887) — say the same thing in their own shorthand, and all of them
+     carry the same fallback: `fonts/felt-font.css` is what defines the variable, and a felt
      drawn without it should go back to what it drew before rather than lose its size as well. */
   font: 600 11px/1.2 var(--byd-felt-font, system-ui, sans-serif);
   user-select: none;
@@ -191,6 +192,16 @@
 .byd-zone[data-rim='E'] > span { --name-side: calc(-100% - var(--name-off)); }
 .byd-zone[data-rim='W'] > span { --name-side: var(--name-off); }
 
+/* The last place #685 has for a name is inside its own zone, along the edge it stood off — and
+   there the zone's own cards and tokens, drawn after it, lay over it (#874: «Räknare B» under its
+   own counter at six seats turned a quarter). So a name inside its zone is drawn over what the
+   zone holds, on the plate #789 gave the pile's caption: the felt's own, opaque, in chalk, which
+   reads at 14:1 whatever lies under it. `placeNames` measures the name with the plate on. */
+.byd-zone > span[data-name-at='inside'] {
+  z-index: 2; box-sizing: border-box; padding: 0 6px; border-radius: 6px;
+  background: var(--byd-felt-plate); color: var(--byd-felt-chalk); box-shadow: 0 0 0 1px var(--byd-felt-edge);
+}
+
 /* Cards, loose or on a pile: a coloured face or a striped back. The two were written out twice
    over, down to the same stripes; they are one card drawn in two places and are said once.
    The padding and the border are screen pixels inside millimetres, which is a card's own floor:
@@ -241,9 +252,21 @@
   34% { transform: translateX(var(--fan-out)) rotate(var(--fan-turn)); }
   100% { transform: none; }
 }
+/* On a television the fan is the start's one answer from the couch, and at 560 ms and a quarter
+   of a card it was a few pixels of card edge behind the pile (#718, beställarens beslut C): there
+   it reaches 2.6 times as far, turns twice as much, and takes 1.2 s (`SHUFFLE_TV_MS`). The same
+   four backs and the same keyframes' shape, in the same measure — only further and slower. */
+.byd-table-frame[data-mode='tv'] .byd-pile .byd-pile-fan-card { animation: byd-pile-fan-tv 1200ms cubic-bezier(0.32, 0.72, 0.3, 1) both; }
+@keyframes byd-pile-fan-tv {
+  0% { transform: none; }
+  35% { transform: translateX(calc(var(--fan-out) * 2.6)) rotate(calc(var(--fan-turn) * 2)); }
+  100% { transform: none; }
+}
 /* A back still on its way from the render farm says so once, on the pile's top; four more copies
-   of «väntar» over the fan would say nothing new. */
-.byd-pile-fan-card .byd-texture-state { display: none; }
+   of «väntar» over the fan would say nothing new. The ground the state is drawn on stays, though:
+   it is what covers the picture that has not come, and without it the fan drew the browser's
+   broken-image mark on every card (#718). */
+.byd-pile-fan-card .byd-texture-state > * { display: none; }
 /* Under `prefers-reduced-motion` the motion is off and not damped (L35): no fan plays, and the
    pile pulses amber for 420 ms instead — something happened, without anything moving. The pulse
    is a wash over the top card in the felt's own amber, fading in and out by opacity alone.
@@ -261,9 +284,13 @@
   0%, 100% { opacity: 0; }
   50% { opacity: 0.55; }
 }
-/* On the felt (B) the name and the count are one pill under the pile. */
+/* On the felt (B) the name and the count are one pill under the pile. It is centred with
+   `translate` and not `transform`, because a turned felt turns the pill back upright with
+   `rotate` (C5, below), and `rotate` turns what `transform` has moved but not what `translate`
+   has: a half-width shift written in `transform` was turned with the pill, and on a felt turned
+   half a turn the handle stood a whole pill's width beside its pile (#789). */
 .byd-pile-count {
-  position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: -22px; translate: -50% 0;
   background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   border-radius: 999px; padding: 2px 8px; font-size: 12px; white-space: nowrap;
 }
@@ -302,21 +329,16 @@
    that gets there: the played felt above has hidden its names, and the table's own screen is a
    television. `data-tight` is the renderer's answer, because the felt's own box keeps the floor's
    shape and is then turned — a container query on it measures the other side of the picture.
-   Two things give, and both are the felt's own measure rather than the screen's.
 
    The type is set at the felt's tightest: a name at 13 px with 1.5 px of tracking is 76 px of a
    331 px felt, and its tracking alone is a sixth of that — the same fifth K19 took out of table
    mode. At 12 px and no tracking it is 62, which is what lets two seats facing each other across
    a phone both say their names.
 
-   And a name at a side rim stands above its own zone rather than beside it, anchored at the end
-   nearest the rim and growing inward, so that it stays in its own half of the felt. Beside its
-   zone it grows from the zone's inner edge toward the middle, where the shared piles and their
-   count badges stand (K19, extended); on a felt this small that reach crosses the middle and
-   meets both the badge and the name of the seat opposite. Above its own zone it reaches only
-   half as far in, and the two seats facing each other no longer share a line at all. That half
-   of it is drawn through the same two variables the rim rules above use — the renderer says how
-   far, because it is the only one that knows how large the zone came out. */
+   Where a name stands is no longer this felt's own (#685, which replaced #76's exception): it is
+   K19 on every felt, beside its zone at a side rim, and then a free side when that is another
+   zone's — `placeNames` in `freeSide.ts`, which hangs the name from a corner of its zone with
+   inline `left`, `top` and `transform` and marks it `data-name-at`. */
 .byd-table-frame[data-tight] .byd-zone > span { font-size: 12px; letter-spacing: 0; }
 /* The pile's badge is set at the same tightest, 12 px, the size the hands' counts are (#652). At
    15 px on a 30 px plate it was larger than the card: on the Bord tab's felt at 1024 a card is
@@ -328,7 +350,7 @@
 
 /* On the TV (C) the count is a badge on the pile and the name stands in caps beneath it. */
 .byd-table-frame[data-mode='tv'] .byd-pile-count {
-  inset: 0; transform: none;
+  inset: 0; translate: none;
   background: none; padding: 0; pointer-events: none;
 }
 .byd-table-frame[data-mode='tv'] .byd-pile-name {
@@ -343,6 +365,76 @@
   background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font-size: 15px; font-weight: 800;
 }
 
+/* The top card's name, under the pile's own name, while the card has no picture (#771, K19).
+   A TV-mode felt draws a pile's card too small to carry its name: 28 × 39 px on the observer's
+   phone, 47 × 65 on the room's television at 1280, and nowhere large enough for the waiting or
+   failed state's name to reach its screen's floor (12 px, and 24 in the room; K26). There the
+   name was set at 8 px under the count badge, and two letters of «Grävling 1» could be read.
+   So the card keeps only its ground and its badge, and the name stands one line under the pile's
+   name, in the state's own colours, for exactly as long as the state is on show — which the
+   state itself says, by being on the card with a name in it. The card says it once and not
+   twice. Table mode has the same caption on a plate of its own; see below (#789). */
+.byd-pile-caption { display: none; }
+.byd-table-frame[data-mode='tv'] .byd-pile-top > .byd-texture-state > b { display: none; }
+.byd-table-frame[data-mode='tv'] .byd-pile-caption {
+  position: absolute; left: 50%; top: calc(100% + 26px); translate: -50% 0;
+  max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+  font-size: 12px; line-height: 14px; font-weight: 600; color: #c9cfdc;
+}
+.byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { display: block; }
+.byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
+
+/* That the pile was just shuffled, under it, on the television (#718, beslut C): «Draghög blandad»
+   for three seconds, on the badge's own light plate so it reads from the couch, below the pile's
+   name and below the top card's name when that is on show. It fades in and out by opacity; under
+   `prefers-reduced-motion` it simply stands there for its three seconds. */
+.byd-pile-said { display: none; }
+.byd-table-frame[data-mode='tv'] .byd-pile-said {
+  display: block; position: absolute; left: 50%; top: calc(100% + 28px); translate: -50% 0; z-index: 3;
+  white-space: nowrap; pointer-events: none; padding: 2px 10px; border-radius: 999px;
+  background: #e8eaf0; color: #0d0f14; font-size: 12px; line-height: 16px; font-weight: 800;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  animation: byd-pile-said 3000ms ease both;
+}
+.byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-said { top: calc(100% + 44px); }
+@keyframes byd-pile-said {
+  0% { opacity: 0; }
+  6%, 85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Table mode has the same caption, on a plate of its own (#789, K19, beställarens beslut C after
+   the prototype in #879). The pile is a handle on the green felt there, and the card is 44–65 px
+   wide at four seats, so the state's name stood on it in 8 px; the TV's ink above reads 4.06:1
+   against the green. On the plate — the felt's own, the ring's and the action sheet's, opaque —
+   in the chalk the handle already writes in, the ink's contrast is the plate's (14:1, the failed
+   state's rose 10:1) wherever the caption lands. It hangs from the handle, 2 px from it, so it
+   turns with the handle and stands wherever the handle stands; and on the side away from the
+   card. The handle is turned back upright on a turned felt (`--unrotate`), so on a felt turned
+   half a turn — seat B looking from the far side — its own «under» points at the card, and the
+   caption goes over it instead. A quarter turn puts the card beside the handle, and under is
+   still clear of it as long as the caption reaches no further toward the card than the handle
+   does: a caption wider than its handle, centred, reached past the handle's near end and over
+   the card. So it is set flush with the handle's far end, and grows away from the card (#899).
+
+   On a felt of 460 px or less the piles' own names are gone (K19, below), and so is this: there
+   is no room between two piles for a plate, and the name stays on the card as it was. The query
+   names the felt, because the state's name is itself inside a container — the card's. */
+@container byd-felt not (max-width: 460px) {
+  .byd-table-frame[data-mode='table'] .byd-pile-top > .byd-texture-state > b { display: none; }
+  .byd-table-frame[data-mode='table'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption {
+    display: block; position: absolute; left: 50%; top: calc(100% + 2px); translate: -50% 0;
+    max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+    box-sizing: border-box; padding: 1px 8px; border-radius: 6px;
+    background: var(--byd-felt-plate); color: var(--byd-felt-chalk); box-shadow: 0 0 0 1px var(--byd-felt-edge);
+    font-size: 12px; line-height: 14px; font-weight: 600; letter-spacing: 0;
+  }
+  .byd-table-frame[data-mode='table'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='180'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { top: auto; bottom: calc(100% + 2px); }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='90'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { left: auto; right: 0; translate: none; }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='270'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { left: 0; translate: none; }
+}
+
 /* Hands: a fan of backs and a count, oriented toward the seat's edge. */
 .byd-hand { position: absolute; width: 0; height: 0; }
 .byd-hand-fan { position: absolute; left: 0; top: 0; }
@@ -355,9 +447,12 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 /* An area only its owner may look into still says how much lies in it (#414, B6): the same pill
-   a pile carries, in the middle of a box that is drawn empty to everyone who sees this. */
+   a pile carries, in the middle of a box that is drawn empty to everyone who sees this. Centred
+   with `translate` and not `transform`, as the pile's pill is and for its reason: a turned felt
+   turns the pill back upright with `rotate` (C5), which turns a centring written in `transform`
+   with it, and half a turn stood the count a whole pill's width and height off the middle (#885). */
 .byd-area-count {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  position: absolute; left: 50%; top: 50%; translate: -50% -50%;
   padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   font-size: 12px; font-weight: 600; white-space: nowrap;
 }
@@ -421,9 +516,12 @@
    above keeps C5's exception where its reason still holds — a screen lying on a table with
    people round it, where the name is a place card — and everywhere else the name is upright,
    like the zone names beside it. The turn of the felt itself is undone in the `--unrotate` row
-   above; these take away the name's own turn along its edge. */
-.byd-seat-name[data-read][data-edge='N'] { transform: translateX(-50%); }
-.byd-seat-name[data-read][data-edge='E'], .byd-seat-name[data-read][data-edge='W'] { transform: translateY(-50%); }
+   above; these take away the name's own turn along its edge. And they centre it with `translate`
+   rather than `transform`, as the pile's pill is (#789): the `--unrotate` turn turns a centring
+   written in `transform` with it, and on a felt turned half a turn every name stood a whole
+   name's width along its edge from its own hand (#885). */
+.byd-seat-name[data-read][data-edge='N'], .byd-seat-name[data-read][data-edge='S'] { transform: none; translate: -50% 0; }
+.byd-seat-name[data-read][data-edge='E'], .byd-seat-name[data-read][data-edge='W'] { transform: none; translate: 0 -50%; }
 .byd-seat-name[data-edge='S'] { transform: translateX(-50%); }
 .byd-seat-name[data-edge='N'] { transform: translateX(-50%) rotate(180deg); }
 /* A place card at a side edge is turned onto its side, and a box turned about its own middle
@@ -452,39 +550,26 @@
    något designern ska kunna se skälet till, inte något som ska gömma sig. */
 /* «Starta om» once the game is under way (#482 fynd 3 C): off the felt, in the corner beside «?»,
    in the felt's quiet chrome — a restart is a deliberate act and not the table's next step. */
+/* The corner holds it and the help's disc on one row (#684): the gap is what put the tile 64 px in
+   when both were placed on their own, and a disc that says its name pushes the tile aside. */
+.byd-felt-corner { position: absolute; right: 16px; bottom: 16px; z-index: 30; display: flex; align-items: flex-end; gap: 14px; pointer-events: none; }
+.byd-felt-corner > * { pointer-events: auto; }
 .byd-table-restart {
-  position: absolute; right: 64px; bottom: 16px; z-index: 30; min-height: 44px; padding: 0 14px;
+  min-height: 44px; padding: 0 14px;
   border: 1px solid var(--byd-felt-chalk-off); border-radius: 999px; background: var(--byd-felt-plate);
   color: var(--byd-felt-chalk); font: 700 14px/1 var(--byd-felt-font, system-ui, sans-serif); cursor: pointer;
 }
 .byd-table-restart:hover, .byd-table-restart:focus-visible { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
 .byd-table-restart:disabled { color: var(--byd-felt-chalk-off); cursor: not-allowed; }
 .byd-table-start:disabled { background: #46506b; color: #d3d8e6; cursor: not-allowed; box-shadow: none; }
+/* Brickan som väntar på korten (#765, beslut B): samma form, och skälet under ordet i stället för
+   bara i `title`. Talet står guld på den avstängda brickan och i brickans eget vita när kön står
+   still och brickan går att trycka på som «Starta ändå» — guld på blått når inte 4.5:1. */
+.byd-table-start:has(> small) { flex-direction: column; gap: 0.1em; line-height: 1.05; }
+.byd-table-start > small { font-size: 0.72em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.byd-table-start:disabled > small { color: #ffd98a; }
 
-/* Frågan före ett omtryck (#452). Den står utanför filten och inte på den: en vriden filt får
-   inte vrida en mening. Formen är produktens enda fråga — `Question` — på bordets egen yta, med
-   samma röda svar som editorns; den tar fokus, öppnar på svaret som ingenting kostar, och
-   svarar Escape. Måtten är spacing-stegen, inte egna tal. */
-.byd-table-start-ask {
-  position: absolute; z-index: 11; left: 50%; top: 50%;
-  /* Ovanför filtens mitt, med underkanten 12 px över den. Brickan ligger alltid *under* mitten
-     (`START_MM.below`), så frågan kan aldrig täcka knappen den handlar om — vilken skala filten
-     än ritas i. Den låg först 56 px under mitten och gjorde precis det, sett i den byggda
-     produkten: «Ja, starta om» stod ovanpå «Starta spelet». */
-  transform: translate(-50%, calc(-100% - 12px));
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
-  max-width: min(420px, 90%); padding: 12px 16px; border-radius: 12px;
-  background: #3d2632; color: #ffe4ea; border: 1px solid #7a3243;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
-  font: 400 14px/1.45 system-ui, sans-serif;
-}
-.byd-table-start-ask p { margin: 0; flex: 1 0 100%; text-align: center; }
-.byd-table-start-ask button {
-  min-height: 44px; padding: 0 16px; border-radius: 10px; cursor: pointer;
-  border: 1px solid #7a3243; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700;
-}
-.byd-table-start-ask button[data-kind='danger'] { background: #7a3243; }
-.byd-table-start-ask button:hover { border-color: #ffe4ea; }
+/* Frågan före ett omtryck (#452) ritas först efter ett tryck och reser i `felt-after.css` (#682, L40). */
 
 .byd-seat-name[data-edge='E'] { transform: translateX(calc(50% - var(--card-half))) translateY(-50%) rotate(-90deg); }
 .byd-seat-name[data-edge='W'] { transform: translateX(calc(var(--card-half) - 50%)) translateY(-50%) rotate(90deg); }
@@ -492,8 +577,32 @@
 /* The felt has no chrome (B): the game, its version and the room code, quietly along the top. */
 .byd-table-plate {
   position: fixed; top: 14px; left: 18px; z-index: 3; margin: 0;
-  font-size: 13px; font-weight: 400; color: #f3e9d6; opacity: 0.7;
+  display: flex; gap: 18px; align-items: baseline; color: #f3e9d6;
 }
+.byd-table-plate > h1 { margin: 0; font-size: 13px; font-weight: 400; opacity: 0.7; }
+/* The room's address (#675, beslut C): read from across the table, so larger than the game's name
+   and at full ink, with the code in the face it has on the television (#937). Chrome on a Mac knows
+   no `ui-monospace` and draws `monospace` in Courier, so Menlo is named between them. */
+.byd-table-plate > p { margin: 0; font-size: 20px; }
+.byd-table-plate b { font-family: ui-monospace, Menlo, monospace; }
+/* An enlarged felt runs under the plate (#720), and the words would then lie on the wood: while the
+   lens is in, they stand on the felt's own plate, as the corner's buttons do. */
+[data-page='table']:has(.byd-table-frame[data-lens]:not([data-lens='100'])) .byd-table-plate {
+  padding: 4px 8px; margin: -4px -8px; border-radius: 8px; background: var(--byd-felt-plate); opacity: 0.9;
+}
+
+/* «⋯» mellan «Starta om» och «?» (#682, beställarens beslut 2026-10-17: C). Den ritas på första
+   bildrutan och står därför här; menyn den öppnar, plattan vid ett avvisat drag och hörnets rad
+   ritas först efter att något hänt, och reser i `felt-after.css`. Åtta px mer luft mot «?» än
+   hörnets mellanrum: linsens ram står ovanför «?» och är bredare än skivan, och menyn som växer
+   ur «⋯» ska gå fri från den, som i prototypen. */
+.byd-table-more { position: relative; margin-right: 8px; }
+.byd-table-more-open {
+  width: 44px; height: 44px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate);
+  color: var(--byd-felt-chalk); font: 700 20px/1 var(--byd-felt-font, system-ui, sans-serif);
+}
+.byd-table-more-open:hover, .byd-table-more-open:focus-visible, .byd-table-more-open[aria-expanded='true'] { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
 
 /* Hold to inspect: private, large, flat. */
 .byd-inspect {
@@ -526,16 +635,33 @@
 /* The game's own name, and the rulebook beside it rather than over the felt (#30). */
 [data-tv] .byd-tv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 [data-tv] .byd-tv-head h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
-[data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
+[data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; white-space: nowrap; }
 /* The way in: the label above, the code and the QR on one line under it. A 360 px column is not
    a 1920 px header, and a label that wraps between two words reads as a mistake. */
-[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+/* «Starta om» and the help's disc in the room's column (#875): under the code, on a row of their
+   own, where nothing on the felt lies under them. */
+[data-tv] .byd-tv-corner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+[data-tv] .byd-tv-corner:empty { display: none; }
+/* Korten som fortfarande ritas (#765, beslut B): en rad under vägen in, med talet till höger och en
+   tunn stapel under, borta när sista kortet är klart. */
+[data-tv] .byd-tv-render { display: grid; grid-template-columns: 1fr auto; align-items: baseline; row-gap: 8px; color: #c9cfdd; }
+[data-tv] .byd-tv-render b { color: #ffd98a; font-variant-numeric: tabular-nums; }
+[data-tv] .byd-tv-render i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ffd98a var(--byd-render-done, 0%), #232733 0); }
+[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; }
 [data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
 [data-tv] .byd-tv-join strong {
-  font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
+  font-family: ui-monospace, Menlo, monospace; font-size: 26px; letter-spacing: 6px;
   background: #1a1e29; padding: 4px 14px; border-radius: 8px;
 }
+/* The code is the address (#675, beslut C): the host on a line of its own, and the code under it
+   as the address's last step — the slash in front of it is the stylesheet's, so what is read off
+   the screen as the code is the code. A host has nowhere to break, and the box's name is measured
+   against the column at both TV sizes. The row's
+   lines stand 8 px apart rather than 18: the address is a line taller than the code was, and every
+   pixel the row grows moves «Starta om» and its help down beside the felt's east hand (#875). */
+[data-tv] .byd-tv-address { flex: 1 0 100%; margin: 0; font-size: 24px; font-weight: 700; }
+[data-tv] .byd-tv-address + strong::before { content: '/'; color: #7d8597; margin-right: 4px; letter-spacing: 0; }
 [data-tv] > main { display: grid; place-items: center; padding: 16px; min-width: 0; min-height: 0; overflow: hidden; }
 [data-tv] > aside {
   border-left: 1px solid #232733; min-height: 0; overflow: hidden;
@@ -553,13 +679,26 @@
    at 1 it took its share of every shortfall beside the card and scrolled while the card still
    had room to give). The feed takes whatever is left and scrolls
    inside it, because it is the one thing here that is endless by nature. */
-[data-tv] .byd-tv-inspect { min-height: 0; flex: 0 20 auto; display: flex; flex-direction: column; }
+/* It gives down to its floor and no further (#745): its heading and a card of 110 px. With a floor
+   of nothing the section shrank to 0 px while the card in it kept its own 110, and the waiting card
+   «peka på ett kort» was drawn over the seats' heading and the first seat. The heading's line is
+   pinned, so the floor is a sum of lengths and not of whatever the machine's font measures. */
+[data-tv] .byd-tv-inspect {
+  --byd-inspect-head: 20px; --byd-inspect-gap: 10px;
+  min-height: calc(var(--byd-inspect-head) + var(--byd-inspect-gap) + 110px); flex: 0 20 auto; display: flex; flex-direction: column;
+}
+[data-tv] .byd-tv-inspect > h2 { line-height: var(--byd-inspect-head); }
 [data-tv] .byd-tv-seats { min-height: 0; overflow: auto; flex: 0 0.01 auto; }
 /* The observer's desk with a hand or a zone open (#551): the list is as long as the hand, and a
    column that shared the shortfall squeezed the card under its own floor and drew it over the list.
    Her screen is read at a desk and not from a sofa, so the column scrolls as a whole instead, and
    nothing in it gives up its size. */
 .byd-observer [data-tv] > aside:has(.byd-tv-seats [aria-expanded='true']) { overflow: auto; }
+/* In rest too (#745): her column holds the table's zones as well as its seats (#551), and at a desk
+   it is longer than the window. What the card cannot give scrolls with the column rather than being
+   cut off at its foot or squeezed out of sight. The seats stay whole: they are what she came for. */
+.byd-observer [data-tv] > aside { overflow: auto; }
+.byd-observer [data-tv] .byd-tv-seats { flex-shrink: 0; overflow: visible; }
 .byd-observer [data-tv] > aside:has(.byd-tv-seats [aria-expanded='true']) > * { flex-shrink: 0; }
 .byd-observer [data-tv] > aside:has(.byd-tv-seats [aria-expanded='true']) .byd-tv-seats { overflow: visible; }
 /* Its heading and its three lines, always (#482 fynd 6 B): a feed cut to nothing is a feed that
@@ -632,16 +771,19 @@
 /* Two levels, read from the sofa (#482 fynd 6, beslut B, prototyp 21): what the room looks up for —
    who sits where, how much each holds, the line that just happened — at 20–24 px; the headings and
    the history under it at 15–16. At 1920 × 1080 on a 55-inch set a pixel is about 0.63 mm. */
-[data-tv] h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
-[data-tv] ol { list-style: none; margin: 0; padding: 0; }
-[data-tv] ol li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 16px; }
-[data-tv] ol li:first-child { font-size: 20px; }
+/* Kolumnens egna rubriker och listor, inte bokens: luckan hänger i kolumnens huvud och skulle annars
+   få versaler på sin titel och tappa siffrorna i sina listor (#709). `:where` lägger ingen vikt på
+   reglerna, så allt som redan slog dem gör det fortfarande. */
+[data-tv] h2:where(:not(.byd-rules-panel *)) { font-size: 15px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) { list-style: none; margin: 0; padding: 0; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 16px; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li:first-child { font-size: 20px; }
 /* A line that does not fit whole is not drawn (#482); the list says which with `hidden`. */
 [data-tv] ol li[hidden] { display: none; }
 /* The row's number is the chrome's quiet grey, as the zone names are: quieter than the names beside
    it and still text that reads, 5.18:1 on the chrome where #4c5468 was 2.53 (#560 P-14). */
-[data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #7d8597; }
-[data-tv] ol li span { color: var(--seat, #9aa3b8); }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li b { flex: 0 0 30px; font-family: ui-monospace, Menlo, monospace; font-weight: 400; color: #7d8597; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li span { color: var(--seat, #9aa3b8); }
 /* The seats, stacked down the column rather than laid along the bottom of the screen. A seat is
    still a card of its own with the seat's colour down its left edge, so what a reader learned to
    find in the dock is where it was; it is the axis that turned. */
@@ -705,6 +847,10 @@
   [data-tv] .byd-tv-seats li [data-avatar] { width: 30px; height: 30px; font-size: 15px; }
   [data-tv] .byd-tv-seats li span { font-size: 15px; }
   [data-tv] .byd-tv-seats li span + span { font-size: 12px; }
+  /* Not on her screen (#745): her rows are buttons with an arrow to open them, and two abreast left
+     «4 kort på hand» some 70 px, which broke it over two lines and cut the second off. Her column
+     scrolls as a whole, so the reason for two abreast — a dock that never scrolls — is not hers. */
+  .byd-observer [data-tv] .byd-tv-seats ul { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Textures: the image fills the card; the name stays underneath for cards without one. */
@@ -854,7 +1000,9 @@
 .byd-peer-cursor { position: absolute; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--peer); box-shadow: 0 0 0 4px color-mix(in srgb, var(--peer) 30%, transparent), 0 2px 6px rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 70; transition: left 0.08s linear, top 0.08s linear; }
 .byd-peer-cursor span { position: absolute; left: 22px; top: -2px; font-size: 12px; font-weight: 700; color: var(--peer); white-space: nowrap; text-shadow: 0 1px 2px #000; }
 .byd-peer-ghost { z-index: 65; pointer-events: none; box-shadow: 0 18px 30px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--peer); scale: 1.06; opacity: 0.95; transition: left 0.08s linear, top 0.08s linear; }
-.byd-peer-tag { position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; background: var(--peer); white-space: nowrap; }
+/* Centred with `translate`, not `transform`: the tag is turned upright on a turned felt (C5), and
+   a centring in `transform` is turned with it — a whole tag's width off its card (#885). */
+.byd-peer-tag { position: absolute; left: 50%; bottom: -22px; translate: -50% 0; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; background: var(--peer); white-space: nowrap; }
 .byd-card[data-carried] { opacity: 0.35; }
 .byd-card[data-by] { box-shadow: 0 0 0 3px var(--peer), 0 0 18px var(--peer); animation: byd-by-fade 1.6s ease-out forwards; }
 @keyframes byd-by-fade { from { opacity: 1; } 70% { opacity: 1; } to { opacity: 1; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45); } }
@@ -874,7 +1022,8 @@
 .byd-ended { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(5, 7, 12, 0.8); color: #eee; text-align: center; }
 .byd-ended h1 { margin: 0; font-size: clamp(28px, 4vw, 56px); }
 .byd-ended p { margin: 8px 0 0; font-size: clamp(15px, 1.8vw, 26px); color: #9aa3b8; }
-.byd-ended-summary { margin-top: 28px; display: flex; gap: 28px; justify-content: center; font-size: clamp(13px, 1.5vw, 22px); color: #ddd; }
+/* The words under the figures reach 24 px at 1920, which is K26's floor on a television (#684). */
+.byd-ended-summary { margin-top: 28px; display: flex; gap: 28px; justify-content: center; font-size: clamp(13px, 1.5vw, 24px); color: #ddd; }
 .byd-ended-summary b { display: block; font-size: clamp(24px, 3vw, 40px); color: #ffd98a; }
 
 /* The observer's own view (C8, #6, prototype B). She watches rather than works: the table takes
@@ -909,6 +1058,9 @@
 }
 .byd-observer-handle .byd-observer-flag { margin-left: auto; background: #ffd98a; border-color: #ffd98a; color: #2a2417; }
 .byd-observer-handle button:disabled { opacity: 0.35; cursor: default; }
+/* Regelboken i kolumnens huvud är TV:ns knapp (#709), men TV:n pekas inte på och hennes skärm gör
+   det: på skrivbordet och telefonen är den en tumme stor som allt annat hon trycker på (L12). */
+.byd-observer .byd-rules-open { min-height: var(--byd-tap); min-width: var(--byd-tap); }
 /* Which way the drawer goes, said on the button rather than only in its colour. */
 .byd-observer-more::after { content: ' ▲'; }
 [data-drawer='open'] .byd-observer-more::after { content: ' ▼'; }
@@ -977,6 +1129,18 @@
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
 [data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-seat-name[data-read], [data-table] .byd-token, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
+/* The pile's pill and the carried card's tag hang under what they label by their top edge, and
+   the turn back upright is about their own middle. Half a turn leaves that middle where it was.
+   A quarter turn lays the label's width along the felt's «down»: hung by its middle, a pill a
+   hundred pixels wide reached half of that back over its own card (#899). So on a quarter turn the
+   middle is moved further down by half the width less half the height, and the label's near edge
+   keeps the gap its top edge keeps on an unturned felt. The height half is in `translate`, which
+   is the felt's own axes; the width half has to be measured along the label's width, so it is in
+   `transform`, which the turn turns onto the felt's «down». */
+.byd-table-frame[data-mode='table'] [data-table][data-rotate='90'] .byd-pile-count,
+[data-table][data-rotate='90'] .byd-peer-tag { translate: -50% -50%; transform: translateX(-50%); }
+.byd-table-frame[data-mode='table'] [data-table][data-rotate='270'] .byd-pile-count,
+[data-table][data-rotate='270'] .byd-peer-tag { translate: -50% -50%; transform: translateX(50%); }
 /* A seat's own name and its hand count are not interface but furniture: they lie on the table
    turned toward that seat (B), so they turn with it rather than against it. */
 
@@ -1040,7 +1204,7 @@
    den öppnar. Den tar ingen plats från bordet och ligger aldrig över något som spelas. Färgerna
    är filtens egna (L13): den dämpade krita som en avstängd skiva i ringen redan bär, och full
    krita så fort den pekas på eller står öppen. */
-.byd-shortcut-help { position: absolute; right: 16px; bottom: 16px; z-index: 30; }
+.byd-shortcut-help { position: relative; }
 /* Skivan är 34 px och träffytan 44 (C4, #25): den negativa marginalen låter knappen växa utåt
    runt skivan, så att `/online` — som hålls i en hand — har en fingertopp att sikta på utan att
    skivan flyttar sig från hörnet eller ritas större än beslutet säger. */
@@ -1069,7 +1233,7 @@
 .byd-shortcut-panel kbd {
   display: inline-block; min-width: 18px; padding: 2px 6px; border-radius: 5px; white-space: nowrap;
   border: 1px solid var(--byd-felt-chalk-off); border-bottom-width: 2px;
-  background: var(--byd-felt-edge); color: var(--byd-felt-chalk); font: 600 11px/1.3 ui-monospace, monospace; text-align: center;
+  background: var(--byd-felt-edge); color: var(--byd-felt-chalk); font: 600 11px/1.3 ui-monospace, Menlo, monospace; text-align: center;
 }
 
 /* A card read on the felt (K26, #509): lifted up beside itself, in the room the window has. The
@@ -1084,43 +1248,86 @@
 .byd-lift[data-face='back'] { background: #33405a; color: #ddd; text-align: center; }
 .byd-lift img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
 
-/* The felt as the table screen's main content (#560 P-20), as large as the page it fills. */
-.byd-table-main { width: 100%; height: 100%; }
+/* The felt as the table screen's main content (#560 P-20), as large as the page it fills.
+   And it keeps the felt's ground while the felt is still being measured (#749). The frame
+   is `visibility: hidden` until it knows its size, and that hides its ground with it: for a moment
+   after «Ansluter» the screen was a white page with only the plate along its top, about 0.7 s on
+   the speltest's line. The ground the frame paints, painted once more under it, is what the
+   screen shows until then — and the frame then lands on exactly the same colours. */
+.byd-table-main { width: 100%; height: 100%; background: radial-gradient(ellipse at center, #2b2420 0%, #17120f 100%); }
+/* The lens in table mode (#720), as on /online (#502, #504): an enlarged wood is clipped by the page
+   rather than growing it, and is centred in its frame so a step in lands where it was asked. */
+.byd-table-main:has(> .byd-table-frame[data-lens]) { overflow: hidden; }
+.byd-table-main > .byd-table-frame[data-lens] { place-content: center; }
+/* Two fingers over a lens felt are the lens's (#720): the frame takes the gesture, and the page is
+   never zoomed by a pinch that began on the table. A pinch anywhere else zooms the page as ever. */
+.byd-table-frame[data-lens] { touch-action: none; }
 
 /* The room's own television at K26's floor (#573, beslut C efter prototyp; K26 förtydligad
    2026-09-29): every word is at least 24 px, since the room reads it from three metres. The
    observer's screen shares this chrome and is read at a desk, so all of it hangs on `data-room`,
    which only the table screen sets. */
-[data-tv][data-room] aside h2 { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
+[data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
 [data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
+/* The room's code at the size beslut C set (#675): 40 px, under the host at K26's 24. */
+[data-tv][data-room] .byd-tv-join strong { font-size: 40px; line-height: 1.1; }
+[data-tv][data-room] .byd-tv-render { font-size: 24px; }
+[data-tv][data-room] .byd-tv-inspect { --byd-inspect-head: 30px; --byd-inspect-gap: 8px; }
 [data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }
-[data-tv][data-room] ol li, [data-tv][data-room] ol li:first-child { font-size: 24px; }
-[data-tv][data-room] ol li b { flex-basis: 36px; }
+[data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li { font-size: 24px; }
+[data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li b { flex-basis: 36px; }
 [data-tv][data-room] .byd-tv-feed > p[data-empty] { font-size: 24px; }
 [data-tv][data-room] .byd-tv-observers { font-size: 24px; }
 [data-tv][data-room] .byd-table-restart { font-size: 24px; min-height: 56px; padding: 0 20px; }
 [data-tv][data-room] .byd-shortcut-open { width: 56px; height: 56px; }
 [data-tv][data-room] .byd-shortcut-open > span { width: 40px; height: 40px; font-size: 24px; }
+/* The room's television has a second «?», under the room code, so this one says its name (#684). */
+[data-tv][data-room] .byd-shortcut-open { width: auto; grid-auto-flow: column; gap: 12px; padding: 0 16px 0 8px; }
+/* In the column (#875) the disc stands on the column's edge like the help's above it (#921): the
+   button reaches out by its own left padding, not by the felt corner's 5 px. */
+[data-tv][data-room] .byd-tv-corner .byd-shortcut-open { margin-left: -8px; }
+[data-tv][data-room] .byd-shortcut-open > b { color: var(--byd-felt-chalk-off); font: 700 24px/1 var(--byd-felt-font, system-ui, sans-serif); }
+[data-tv][data-room] .byd-shortcut-open:hover > b, [data-tv][data-room] .byd-shortcut-open:focus-visible > b, [data-tv][data-room] .byd-shortcut-open[aria-expanded='true'] > b { color: var(--byd-felt-chalk); }
+/* The shortcuts behind it, at the floor too (#684). The keys get two fifths of the row and wrap
+   inside it, and the sentence the rest: an `auto` column handed the widest row of keys 334 px and
+   the sentences 14. The panel is as tall as the felt allows, so the last row is not scrolled away. */
+[data-tv][data-room] .byd-shortcut-panel { bottom: 56px; width: 880px; max-width: calc(100vw - 480px); max-height: calc(100vh - 120px); padding: 16px 24px 24px; }
+/* In the room's column (#875) the help no longer stands in the felt's bottom corner, and opened
+   upward from the column's top it ran off the screen. The column also clips what it holds, so the
+   panel stands outside it: beside the column, over the felt as before, from the screen's top. */
+[data-tv] .byd-tv-corner .byd-shortcut-panel { position: fixed; top: 16px; bottom: auto; right: calc(360px + 16px); max-height: calc(100vh - 32px); }
+[data-tv][data-room] .byd-shortcut-panel h2, [data-tv][data-room] .byd-shortcut-panel p, [data-tv][data-room] .byd-shortcut-panel dd { font-size: 24px; line-height: 1.3; }
+[data-tv][data-room] .byd-shortcut-panel p { margin-bottom: 16px; }
+[data-tv][data-room] .byd-shortcut-panel dl { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px 24px; }
+[data-tv][data-room] .byd-shortcut-panel dt { gap: 8px; }
+[data-tv][data-room] .byd-shortcut-panel kbd { padding: 2px 8px; font-size: 24px; }
 /* The felt's own words: a zone nobody owns keeps its name, now in the room's size, and the piles
    say their names and counts as large. A seat's zones are named on its plate instead. */
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-zone > span { font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-name { bottom: -38px; font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-n { min-width: 40px; height: 40px; font-size: 24px; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-caption { top: calc(100% + 40px); font-size: 24px; line-height: 28px; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-said { top: calc(100% + 46px); padding: 6px 14px; font-size: 18px; line-height: 22px; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-said { top: calc(100% + 74px); }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-area-count { font-size: 24px; }
-/* A chip no seat owns keeps its figure, on a badge the figure's own size rather than inside a disc
-   a third of it. */
+/* A chip says its figure on a badge the figure's own size rather than inside a disc a third of it:
+   one no seat owns, and since #683 (beslut E) a seat's own too. */
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-token { display: grid; place-items: center; overflow: visible; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-token b { padding: 0 8px; border-radius: 999px; background: #0d0f14; color: #fff; font-size: 24px !important; line-height: 32px; }
 
-/* A seat's plate (#573): its letter and name in its colour, its hand and its counters. */
+/* A seat's plate (#573, #683 beslut E): its letter and name in its colour, and its hand. It is as
+   wide as its words and never cut: `placePlates` finds it a free place on the felt, and one that
+   fits nowhere is drawn as a badge, the seat's mark alone, with its words kept for a reader. */
 .byd-seat-plate {
-  position: absolute; z-index: 1; display: flex; align-items: center; gap: 4px 12px; box-sizing: border-box;
-  padding: 6px 14px 6px 6px; border-left: 4px solid var(--seat); border-radius: 12px;
-  background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 system-ui, sans-serif; white-space: nowrap; pointer-events: none;
+  position: absolute; z-index: 1; display: flex; align-items: center; gap: 0 10px; box-sizing: border-box; width: max-content;
+  padding: 6px 12px 6px 6px; border-left: 4px solid var(--seat); border-radius: 12px;
+  background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 var(--byd-felt-font, system-ui, sans-serif); white-space: nowrap; pointer-events: none;
 }
 .byd-seat-plate > b { display: inline-flex; align-items: center; gap: 10px; color: #fff; }
-.byd-seat-plate > b > i { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
+.byd-seat-plate > b > i { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
 /* A seat at the side stands its words one under the other: a wide plate there reached the piles. */
-.byd-seat-plate[data-edge='E'], .byd-seat-plate[data-edge='W'] { flex-direction: column; align-items: flex-start; gap: 2px; padding-bottom: 8px; }
+.byd-seat-plate[data-edge='E'], .byd-seat-plate[data-edge='W'] { flex-direction: column; align-items: flex-start; gap: 0; }
 .byd-seat-plate[data-edge='E'] > span, .byd-seat-plate[data-edge='W'] > span { padding-left: 46px; }
+.byd-seat-plate[data-form] { padding: 4px; }
+.byd-seat-plate[data-form] > span, .byd-seat-plate[data-form] > b > span { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }

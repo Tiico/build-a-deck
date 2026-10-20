@@ -6,7 +6,7 @@
 // prose; what stays is a short line the surface still reads by, and everything that was excluded.
 // Every tab below asks the same two things: the moved text is gone from the surface and present in
 // the box once it is opened, and what was kept is still where it was.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { translate } from '../src/i18n/index.js'
@@ -15,9 +15,6 @@ import type { ProjectDoc } from '../src/editor/types.js'
 import type { Element } from '@byd/template'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -84,7 +81,7 @@ describe('Bord: the list and the setup', () => {
     await openEditor('Bord')
     await waitFor(() => expect(document.querySelector('.byd-tables > .byd-tables-lead')).not.toBeNull())
     const lead = document.querySelector('.byd-tables > .byd-tables-lead')!
-    expect(lead.textContent).toContain('rev 1')
+    expect(lead.textContent).toContain('version 1')
     absent(/överlever att alla kopplar ner/)
     const box = await opened('borden')
     expect(box.textContent).toMatch(/överlever att alla kopplar ner/)
@@ -143,7 +140,7 @@ describe('Speltema', () => {
 describe('Historik and Delning', () => {
   it('keeps what bringing a version back does, and moves the rest', async () => {
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 1/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v1$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     expect(within(panel).getByText('Den du tar tillbaka blir nästa version.')).toBeTruthy()
     absent(/Varje sparning är en version/)
@@ -152,7 +149,7 @@ describe('Historik and Delning', () => {
 
   it('moves the sharing lead behind the question mark', async () => {
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dela · vilka som har spelet' }))
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     absent(/De som är inne nu står överst/)
     expect((await opened('delningen')).textContent).toMatch(/Samma lista säger vem som får vara med/)

@@ -26,7 +26,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { fireEvent } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
-import { DataTable } from '../src/editor/DataTable.js'
+import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { translate, type T } from '../src/i18n/index.js'
@@ -41,12 +41,12 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 // a sentence and are where there is room enough to hide the fault.
 const TYPES = ['Playcard', 'Location', 'Effect', 'Shopcard'] as const
 const RARITIES = ['Diamant', 'Guld', 'Koppar', 'Silver'] as const
-function saloonDoc(): ProjectDoc {
+function saloonDoc(length = 8): ProjectDoc {
   const { zones, seats, floor } = twoSeatSetup()
   return {
     name: "Sal's Saloon",
     template: template(),
-    rows: Array.from({ length: 8 }, (_, i) => ({
+    rows: Array.from({ length }, (_, i) => ({
       id: `card-${i}`,
       fields: {
         title: ['Juice em Up', "Sal's Saloon", 'Duel', 'Stolen Goods'][i % 4]!,
@@ -79,8 +79,8 @@ const FIELD = 'input, [role="textbox"]'
 // writing area with a toolbar of its own (#324), and the questions below are about this control.
 const FIELDS = ['typ', 'title', 'raritet'] as const
 
-function Table() {
-  const [doc, setDoc] = useState(saloonDoc)
+function Table({ length = 8 }: { length?: number }) {
+  const [doc, setDoc] = useState(() => saloonDoc(length))
   return (
     <DataTable
       doc={doc}
@@ -104,10 +104,14 @@ function Table() {
 
 // The table's markup with one field's first cell being the one worked in, which is the only
 // moment the control is drawn — and `null` for the markup with no cell open at all.
-function markup(open: string | null): string {
-  const { container, unmount } = render(<Table />)
+// `card` and `length` are for the rows further down a longer deck, which is where a rolled table
+// brings some other row than the first up against the head (#693). `library` opens the symbol
+// library from the tab, the way a press on it does.
+function markup(open: string | null, { card = 'card-0', length = 8, library = false }: { card?: string; length?: number; library?: boolean } = {}): string {
+  const { container, unmount } = render(<Table length={length} />)
   try {
-    if (open !== null) fireEvent.focus(screen.getByLabelText(`card-0 ${open}`))
+    if (open !== null) fireEvent.focus(screen.getByLabelText(`${card} ${open}`))
+    if (library) fireEvent.click(container.querySelector('.byd-data-icon')!)
     return container.innerHTML
   } finally {
     unmount()
@@ -120,8 +124,12 @@ const shellOf = (html: string) =>
     .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel">${html}</div></main></div></div>`)
 
-// The editor's own two decisions about width, run on the page in the order it makes them.
-const FIT = `(box, deck) => { (${String(fitColumns)})(box, deck); (${String(markValues)})(box) }`
+// The editor's own decisions about width, run on the page in the order it makes them — and then
+// the box's reading of itself, which is also where it asks whether the row being worked in stands
+// against the head (#693).
+const FIT = `(box, deck) => { (${String(fitColumns)})(box, deck); (${String(markValues)})(box); (${String(markCut)})(box) }`
+// The same reading again, the way a scroll of the box asks it.
+const PIN = `(box) => (${String(markCut)})(box)`
 
 let browser: Browser
 beforeAll(async () => {
@@ -131,12 +139,12 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
-async function measure<T_>(html: string, width: number, read_: (page: import('playwright').Page) => Promise<T_>): Promise<T_> {
+async function measure<T_>(html: string, width: number, read_: (page: import('playwright').Page) => Promise<T_>, length = 8): Promise<T_> {
   const page = await browser.newPage({ viewport: { width, height: 800 } })
   try {
     await page.setContent(shellOf(html), { waitUntil: 'load' })
     await page.evaluate(({ deck, fit }) => new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck), {
-      deck: deckValues(saloonDoc(), sv),
+      deck: deckValues(saloonDoc(length), sv),
       fit: FIT,
     })
     return await read_(page)
@@ -222,12 +230,14 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
     expect(open).toEqual(closed)
   }, 120_000)
 
-  it('draws the control a whole target, 44 × 44 px, standing on the field’s top right corner', async () => {
+  it('draws the control a whole target, 44 × 44 px, standing on the field’s top right corner, below the first row', async () => {
     const found: Record<string, string> = {}
     for (const field of FIELDS) {
-      found[field] = await measure(markup(field), width, (page) =>
+      // The second row, which has a row above it; the first has the head, and what the tab does
+      // there is asked below (#693).
+      found[field] = await measure(markup(field, { card: 'card-1' }), width, (page) =>
         page.evaluate((f) => {
-          const td = document.querySelector<HTMLElement>(`.byd-data tbody tr td[data-col="${f}"]`)!
+          const td = document.querySelector<HTMLElement>(`.byd-data tbody tr[data-card-ref="card-1"] td[data-col="${f}"]`)!
           const control = td.querySelector<HTMLElement>('.byd-data-icon')
           if (!control) return `no control in ${f}`
           const c = control.getBoundingClientRect()
@@ -285,5 +295,99 @@ describe('a word-wide column is wide enough for its widest word (#130)', () => {
       ),
     )
     expect(cut).toEqual([])
+  }, 120_000)
+})
+
+// The first row, where what is above the field is the table's head (#693, beställarens beslut A).
+// The tab cannot stand over the row above there, because there is none: over the head it lay on
+// the column's filter handle ▾ in a column as narrow as `typ`, and with the library open it went
+// under the head altogether. So against the head the tab hangs under the field's top right corner
+// instead, over the row below, and the library starts under it. Whether the row stands against the
+// head is measured, not counted, so it is the same in a rolled table, where the row against the
+// head is some other row than the first.
+describe.each(DESKS)('the tab against the head, at %ipx', (width) => {
+  // Where a press on the column's ▾ lands, and where a press on the tab lands.
+  const presses = (page: import('playwright').Page, card: string) =>
+    page.evaluate(({ card }) => {
+      const name = (hit: Element | null) => (hit === null ? 'nothing' : `${hit.tagName.toLowerCase()}${[...hit.classList].map((c) => `.${c}`).join('')}`)
+      const handle = document.querySelector<HTMLElement>('.byd-data thead th[data-col="typ"] .byd-column-filter')
+      const tab = document.querySelector<HTMLElement>(`.byd-data tbody tr[data-card-ref="${card}"] td[data-col="typ"] .byd-data-icon`)
+      if (!handle || !tab) return { handle: handle ? 'there' : 'no handle', tab: tab ? 'there' : 'no tab' }
+      const at = (el: HTMLElement) => {
+        const r = el.getBoundingClientRect()
+        return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      }
+      const h = at(handle)
+      const t = at(tab)
+      return { handle: h === handle || handle.contains(h) ? 'the handle' : name(h), tab: t === tab || tab.contains(t) ? 'the tab' : name(t) }
+    }, { card })
+  const both = { handle: 'the handle', tab: 'the tab' }
+
+  it('leaves the column’s ▾ to be pressed, and the tab too, in the first row', async () => {
+    expect(await measure(markup('typ'), width, (page) => presses(page, 'card-0'))).toEqual(both)
+  }, 120_000)
+
+  it('does the same with the library open from the tab', async () => {
+    expect(await measure(markup('typ', { library: true }), width, (page) => presses(page, 'card-0'))).toEqual(both)
+  }, 120_000)
+
+  // Where the tab and the library stand against the field, in the row given.
+  const where = (page: import('playwright').Page, card: string) =>
+    page.evaluate((card) => {
+      const td = document.querySelector<HTMLElement>(`.byd-data tbody tr[data-card-ref="${card}"] td[data-col="typ"]`)!
+      const tab = td.querySelector<HTMLElement>('.byd-data-icon')
+      if (!tab) return 'no tab'
+      const c = tab.getBoundingClientRect()
+      const at = td.querySelector('input')!.getBoundingClientRect()
+      const said = `${Math.round(c.width)}×${Math.round(c.height)}, ${Math.round(at.right - c.right)} px in from the field's right, ${c.top >= at.bottom - 0.5 ? `${Math.round(c.top - at.bottom)} px below it` : `${Math.round(at.top - c.bottom)} px above it`}`
+      const library = td.querySelector<HTMLElement>('.byd-data-symbols')
+      return library ? `${said}; the library ${Math.round(library.getBoundingClientRect().top - c.bottom)} px under the tab` : said
+    }, card)
+
+  it('hangs the tab under the field’s top right corner in the first row, and over it in the second', async () => {
+    expect({
+      first: await measure(markup('typ'), width, (page) => where(page, 'card-0')),
+      second: await measure(markup('typ', { card: 'card-1' }), width, (page) => where(page, 'card-1')),
+    }).toEqual({
+      first: "44×44, 0 px in from the field's right, 0 px below it",
+      second: "44×44, 0 px in from the field's right, 0 px above it",
+    })
+  }, 120_000)
+
+  it('starts the library 4 px under the tab', async () => {
+    expect(await measure(markup('typ', { library: true }), width, (page) => where(page, 'card-0'))).toBe("44×44, 0 px in from the field's right, 0 px below it; the library 4 px under the tab")
+  }, 120_000)
+
+  // A rolled table: the box scrolled so that a row far down the deck stands right against the
+  // head, and then read again the way a scroll reads it.
+  const rolled = async (page: import('playwright').Page, card: string) => {
+    const was = await page.evaluate(({ card, pin }) => {
+      const box = document.querySelector<HTMLElement>('.byd-data-scroll')!
+      const row = box.querySelector(`tbody tr[data-card-ref="${card}"]`)!
+      box.scrollTop += row.getBoundingClientRect().top - box.querySelector('thead')!.getBoundingClientRect().bottom
+      new Function('box', `(${pin})(box)`)(box)
+      return box.scrollTop
+    }, { card, pin: PIN })
+    // Or this would be the first row's question asked again.
+    expect(was).toBeGreaterThan(0)
+  }
+  const LONG = 40
+
+  it('leaves the ▾ and the tab to be pressed in a rolled table, in the row against the head', async () => {
+    expect(
+      await measure(markup('typ', { card: 'card-12', length: LONG }), width, async (page) => {
+        await rolled(page, 'card-12')
+        return { ...(await presses(page, 'card-12')), where: await where(page, 'card-12') }
+      }, LONG),
+    ).toEqual({ ...both, where: "44×44, 0 px in from the field's right, 0 px below it" })
+  }, 120_000)
+
+  it('does the same with the library open, in a rolled table', async () => {
+    expect(
+      await measure(markup('typ', { card: 'card-12', length: LONG, library: true }), width, async (page) => {
+        await rolled(page, 'card-12')
+        return presses(page, 'card-12')
+      }, LONG),
+    ).toEqual(both)
   }, 120_000)
 })

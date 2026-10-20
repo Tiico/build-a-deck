@@ -9,16 +9,13 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-li
 import { project, projectActivity } from '@byd/engine'
 import type { Activity } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
-import { SHUFFLE_MS, SHUFFLE_PULSE_MS, STILL, useShuffles } from '../src/table/shuffle.js'
+import { SAID_MS, SHUFFLE_MS, SHUFFLE_PULSE_MS, SHUFFLE_TV_MS, STILL, useShuffles } from '../src/table/shuffle.js'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { buildScene, registry, tableOf } from './scene.js'
 import { admit, asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const tableCss = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'), 'utf8')
 
@@ -132,6 +129,50 @@ describe('useShuffles: which piles are being shuffled right now', () => {
   })
 })
 
+// On the television the fan is held for 1.2 s and the words under the pile for three seconds, the
+// latter also under `prefers-reduced-motion`, since words are not motion (#718).
+describe('how long a shuffle is held on the television (#718)', () => {
+  it('holds the fan as long as it is asked to', () => {
+    vi.useFakeTimers()
+    const { before, after } = shuffled()
+    const { result, rerender } = renderHook(({ activity }) => useShuffles(activity, true, SHUFFLE_TV_MS), { initialProps: { activity: before } })
+    rerender({ activity: after })
+    act(() => {
+      vi.advanceTimersByTime(SHUFFLE_TV_MS - 1)
+    })
+    expect(result.current).toHaveLength(1)
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(result.current).toEqual([])
+  })
+
+  it('holds the words for three seconds also for a reader who asked for no motion', () => {
+    vi.useFakeTimers()
+    askedForStillness(true)
+    const { before, after } = shuffled()
+    const { result, rerender } = renderHook(({ activity }) => useShuffles(activity, true, SAID_MS, SAID_MS), { initialProps: { activity: before } })
+    rerender({ activity: after })
+    act(() => {
+      vi.advanceTimersByTime(SAID_MS - 1)
+    })
+    expect(result.current).toHaveLength(1)
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(result.current).toEqual([])
+  })
+
+  it('says the pile was shuffled under it, by name, and only for a pile that holds cards', () => {
+    const { view } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} faces="http://faces.test" said={[{ pile: 'draw', seq: 12 }]} />)
+    const said = document.querySelector('[data-zone="draw"] .byd-pile-said')
+    expect(said?.textContent).toMatch(/blandad$|shuffled$/)
+    expect(said?.getAttribute('aria-hidden')).toBe('true')
+    expect(document.querySelector('[data-zone="discard"] .byd-pile-said')).toBeNull()
+  })
+})
+
 describe('the fan on the felt (L35)', () => {
   const fanOf = (pile: string) => Array.from(document.querySelectorAll(`[data-zone="${pile}"] .byd-pile-fan-card`))
 
@@ -148,6 +189,44 @@ describe('the fan on the felt (L35)', () => {
     }
     expect(document.querySelector('[data-zone="discard"]')!.hasAttribute('data-shuffling')).toBe(false)
     expect(fanOf('discard')).toHaveLength(0)
+  })
+
+  // The television fans a line and says it under the pile, and both are keyed by that line's
+  // `seq` so a second shuffle starts each over (#718). As siblings in one pile they shared a key,
+  // and React, told two children were one, left the old fan behind whenever the pile was drawn
+  // again: CI and a full gate counted eight fanned backs where there are four (#936), and a fan
+  // that ended was never taken off the felt. Each step a television goes through — the words and
+  // the fan arriving together or apart, the felt drawn again while both play, the fan ending
+  // before the words, the next shuffle — must hold exactly one fan, and React must not have had to
+  // say anything about keys.
+  it('holds exactly one fan through every step a shuffle takes on the television, beside its words (#936)', () => {
+    const { view } = buildScene()
+    const spoke = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const at = (shuffles: { pile: string; seq: number }[], said: { pile: string; seq: number }[]) => <TableRenderer view={view(null)} mode="tv" scale={1} faces={FACES} shuffles={shuffles} said={said} />
+      const first = [{ pile: 'draw', seq: 12 }]
+      const second = [{ pile: 'draw', seq: 13 }]
+      const steps: [string, ReturnType<typeof at>, number][] = [
+        ['the words alone', at([], first), 0],
+        ['the fan joins the words', at(first, first), 4],
+        ['the felt drawn again while both play', at(first, first), 4],
+        ['the fan ends before the words', at([], first), 0],
+        ['a second shuffle, fan and words together', at(second, second), 4],
+        ['its words end with the fan still playing', at(second, []), 4],
+        ['and its fan ends', at([], []), 0],
+        ['a third, the fan before its words', at(first, []), 4],
+        ['and its words after', at(first, first), 4],
+      ]
+      const { rerender } = render(steps[0]![1])
+      for (const [step, element, fan] of steps) {
+        rerender(element)
+        expect(fanOf('draw'), step).toHaveLength(fan)
+        expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan').length, step).toBe(fan > 0 ? 1 : 0)
+      }
+      expect(spoke.mock.calls.map((c) => String(c[0])).filter((m) => /same key/.test(m))).toEqual([])
+    } finally {
+      spoke.mockRestore()
+    }
   })
 
   it('fans nothing while no shuffle is playing', () => {
@@ -338,9 +417,14 @@ describe('the screens that see the pile play the shuffle (L35)', () => {
     await host.ready()
     await host.send({ v: 'shuffle', pile: 'draw' })
     await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-shuffling')).toBe('fan'))
-    expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')).toHaveLength(4)
+    // Where every fanned back stands, said when there are more than four: CI once counted eight
+    // here, which no run on a desk has (#718).
+    const fanned = [...document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')]
+    const where = fanned.map((c) => { const out: string[] = []; for (let e: Element | null = c.parentElement; e && out.length < 6; e = e.parentElement) out.push(`${e.tagName.toLowerCase()}.${[...e.classList].join('.')}${e.getAttribute('data-zone') ? `[${e.getAttribute('data-zone')}]` : ''}${e.getAttribute('data-shuffling') ? `{${e.getAttribute('data-shuffling')}}` : ''}`); return out.join(' < ') })
+    expect(fanned, where.join('\n')).toHaveLength(4)
     expect(document.querySelector('[data-zone="discard"]')!.hasAttribute('data-shuffling')).toBe(false)
-    await waitFor(() => expect(document.querySelector('[data-shuffling]')).toBeNull(), { timeout: SHUFFLE_MS + 500 })
+    // The television holds its fan longer than the other screens (#718).
+    await waitFor(() => expect(document.querySelector('[data-shuffling]')).toBeNull(), { timeout: SHUFFLE_TV_MS + 500 })
     host.close()
   })
 

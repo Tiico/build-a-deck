@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { chromium, type Browser } from 'playwright'
+import { capture } from '@byd/render'
 import { contrastRatio } from '../src/player/contrast.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -39,7 +40,7 @@ describe('the unticked box in the editor (#553)', () => {
         { waitUntil: 'load' },
       )
       const box = (await page.locator('input[type="checkbox"]').boundingBox())!
-      const shot = await page.screenshot({ clip: { x: box.x - 4, y: box.y - 4, width: box.width + 8, height: box.height + 8 } })
+      const shot = await capture(page, { clip: { x: box.x - 4, y: box.y - 4, width: box.width + 8, height: box.height + 8 } })
       // The edge is the darkest-to-lightest step across the box's left side, at its middle: read
       // every pixel along that row and take the one furthest from the ground.
       const edge = await page.evaluate(async ({ data, ground }) => {

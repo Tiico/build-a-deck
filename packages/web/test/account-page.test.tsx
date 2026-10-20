@@ -2,18 +2,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
+import { LoginCard } from '../src/account/LoginCard.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
-import { admit, createSession, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
+import { admit, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
-
-// Accounts (G1, prototype A): the home page is the login card until the link in the mail has
-// been followed; then it is "Mina spel". The cookie jar in test/setup.ts plays the browser.
+// Accounts (G1, prototype A): the login card at `/login` until the link in the mail has been
+// followed, and then "Mina spel" at `/`, where whoever is logged out finds the landing page (#1009). The cookie jar in test/setup.ts plays the browser.
 let run: Running
 // Den guidade starten hämtar startramens ansikte när spelet skapas (#420), och den trafiken går
 // inte ut på riktigt här: `watchFontNet` svarar på katalogens två adresser och på filen bygget
@@ -35,19 +33,20 @@ async function followMailedLink(): Promise<void> {
   expect(res.status).toBe(302)
 }
 
-describe('HomePage and the login card', () => {
+describe('the login card and HomePage', () => {
   it('continues directly as the logged-in user when the server enables the test bypass', async () => {
     await run.stop()
     run = await startServer({ auth: true, authBypass: true })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const home = location.pathname + location.search
     const gone: string[] = []
-    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    render(<LoginCard http={run.http} next={home} onNavigate={(u) => gone.push(u)} />)
 
     const email = await screen.findByLabelText('E-post')
     fireEvent.change(email, { target: { value: 'ada@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
 
-    await waitFor(() => expect(gone.at(-1)).toBe(location.pathname + location.search))
+    await waitFor(() => expect(gone.at(-1)).toBe(home))
     expect(screen.queryByText(/Kolla mejlen/)).toBeNull()
     expect(run.mail.sent).toHaveLength(0)
 
@@ -60,8 +59,13 @@ describe('HomePage and the login card', () => {
   it('asks for an address, says to check the mail, and after the link shows the account\'s games', async () => {
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
-    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    render(<LoginCard http={run.http} next={location.pathname + location.search} onNavigate={(u) => gone.push(u)} />)
     const email = await screen.findByLabelText('E-post')
+    // Named by a word that stays on the page while one types (#555 A-5, WCAG 3.3.2): the placeholder
+    // goes the moment anything is written, so it cannot be the only thing saying what the field is.
+    const said = screen.getByText('E-post', { selector: 'label span' })
+    expect(said.closest('label')?.contains(email)).toBe(true)
+    expect(email.hasAttribute('aria-label')).toBe(false)
     fireEvent.change(email, { target: { value: 'ada@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
     expect(await screen.findByText(/Kolla mejlen/)).toBeTruthy()
@@ -82,13 +86,10 @@ describe('HomePage and the login card', () => {
     expect(gone.at(-1)).toMatch(new RegExp(`^/editor\\?project=${run.projectId}`))
     fireEvent.click(screen.getByText(/Nytt spel/))
     expect(gone.at(-1)).toMatch(/^\/new\?/)
+    // Logged out, the same page is the landing page again (#1009), with its door back to the login.
     fireEvent.click(screen.getByText('logga ut'))
-    const field = await screen.findByLabelText('E-post')
-    // Named by a word that stays on the page while one types (#555 A-5, WCAG 3.3.2): the placeholder
-    // goes the moment anything is written, so it cannot be the only thing saying what the field is.
-    const said = screen.getByText('E-post', { selector: 'label span' })
-    expect(said.closest('label')?.contains(field)).toBe(true)
-    expect(field.hasAttribute('aria-label')).toBe(false)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Mina spel' }).getAttribute('href')).toMatch(/^\/login\?next=/)
   })
 })
 
@@ -198,6 +199,53 @@ describe('the tables the account sat at (G1)', () => {
     // Said once (#475): the address no longer carries it, so a reload does not say it again.
     expect(new URLSearchParams(location.search).get('claimed')).toBeNull()
     expect(new URLSearchParams(location.search).get('server')).toBe(run.http)
+  })
+
+  // «Tillbaka till bordet» takes her to her own seat and hand (#690, beslut 2026-10-06): before, it
+  // was the picker, where her seat stood taken under her own name and the name field was empty.
+  it('takes the guest back to her own seat and hand, not to the picker', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })).status).toBe(200)
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    const back = await screen.findByRole('link', { name: 'Tillbaka till bordet' })
+    expect(back.closest(`[data-played="${id}"]`)).not.toBeNull()
+    fireEvent.click(back)
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const to = new URL(gone[0]!, 'http://app.invalid')
+    expect(to.pathname).toBe('/play')
+    expect(Object.fromEntries(to.searchParams)).toMatchObject({ session: id, seat: 'A', name: 'Ada', code: roomOf(id).code, server: run.http.replace(/^http/, 'ws') })
+    // A token of its own: the server keeps only a hash, so the seat is handed a new one.
+    expect(to.searchParams.get('token')).toBeTruthy()
+    expect(to.searchParams.get('token')).not.toBe(token)
+  })
+
+  // A game taken away takes its tables with it (#676): the row says so, and offers no way back.
+  it('says a table\'s game was deleted, and offers no way back to it', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const json = { 'content-type': 'application/json' }
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const token = await admit(run, made.id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token }) })).status).toBe(200)
+    expect((await fetch(`${run.http}/projects/${run.projectId}`, { method: 'DELETE' })).status).toBe(200)
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+    expect(await screen.findByText('Bord du spelat vid')).toBeTruthy()
+    const card = await waitFor(() => document.querySelector(`[data-played="${made.id}"]`)!)
+    expect(card.textContent).toContain('Borttaget spel')
+    expect(card.textContent).not.toContain('pågår')
+    expect(within(card as HTMLElement).queryByRole('link', { name: 'Tillbaka till bordet' })).toBeNull()
   })
 })
 
@@ -323,7 +371,7 @@ describe('a game on the home page (G1)', () => {
     await waitFor(() => within(card()).getByRole('img', { name: 'Första kortet: Drake' }))
     const open = within(card()).getAllByRole('link')[0]!
     expect(open.getAttribute('href')).toMatch(/^\/editor\?/)
-    expect(screen.getByRole('link', { name: /^Skogens herrar rev 1 · aldrig spelat Första kortet: Drake$/ })).toBe(open)
+    expect(screen.getByRole('link', { name: /^Skogens herrar v1 · aldrig spelat Första kortet: Drake$/ })).toBe(open)
   })
 
   it('says it has never been played, and afterwards when it last was', async () => {
@@ -337,19 +385,55 @@ describe('a game on the home page (G1)', () => {
     expect(card().textContent).toContain('1 bord')
   })
 
+  // The table started is the first of «Pågår nu» (#724, beslut C + B): the room's code and the way
+  // to its screen, where they stay after a reload — the banner that said it went with the page.
+  const running = () => screen.queryByRole('region', { name: 'Pågår nu' })
   it('starts a table from the card and hands over the room code', async () => {
     await home()
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
     const said = await waitFor(() => {
-      const banner = document.querySelector('.byd-home-started')
-      expect(banner).not.toBeNull()
-      return banner!
+      expect(running()).not.toBeNull()
+      return running()!
     })
     expect(said.textContent).toMatch(/[A-Z2-9]{6}/)
     // The table is the server's, not something the page made up.
     const tables = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as unknown[]
     expect(tables).toHaveLength(1)
+  })
+
+  it('shows the tables that are running after a reload, each by its code, and opens one as its owner', async () => {
+    await home()
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    const now = await waitFor(() => {
+      expect(running()).not.toBeNull()
+      return running()!
+    })
+    expect(now.textContent).toContain('Skogens herrar')
+    expect(now.textContent).toContain(made.code)
+    const open = within(now).getByRole('link', { name: new RegExp(`Öppna bordet ${made.code}`) })
+    const url = new URL(open.getAttribute('href')!, 'http://x')
+    expect(url.pathname).toBe('/table')
+    expect(url.searchParams.get('session')).toBe(made.id)
+    expect(url.searchParams.get('owner')).toBe('1')
+  })
+
+  it('offers the running table before a new one, so a second press does not start a second table', async () => {
+    await home()
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    await waitFor(() => expect(running()).not.toBeNull())
+    fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    const open = await screen.findByRole('link', { name: `Öppna bordet ${made.code}` })
+    // The menu opens on its first choice, which is now the running table.
+    await waitFor(() => expect(document.activeElement).toBe(open))
+    expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
   })
 
   it('asks before taking a game away, and takes it away when the answer is yes', async () => {
@@ -427,11 +511,13 @@ describe('the game menu and the question on the home page (#475)', () => {
     fireEvent.click(more())
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
     await waitFor(() => expect(document.activeElement).toBe(more()))
-    const open = await screen.findByRole('link', { name: 'Öppna bordet (öppnas i ny flik)' })
-    expect(open.getAttribute('target')).toBe('_blank')    // Said in the page's own live region rather than by a region born with the words in it, which
+    // The way to it is the band in «Pågår nu» (#724), and says it opens a new tab.
+    const open = await screen.findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Skogens herrar \(öppnas i ny flik\)$/ })
+    expect(open.getAttribute('target')).toBe('_blank')
+    // Said in the page's own live region rather than by a region born with the words in it, which
     // screen readers do not reliably read (#555 A-8, WCAG 4.1.3).
     await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Bordet är igång\. Rumskoden är [A-Z0-9]{6}\.$/))
-    expect(document.querySelector('.byd-home-started')?.getAttribute('role')).toBeNull()
+    expect(document.querySelector('.byd-home-running')?.getAttribute('role')).toBeNull()
   })
 
   it('says the game is gone once it is, and leaves the focus on the heading rather than on nothing', async () => {
@@ -514,7 +600,7 @@ describe('exporting and importing a game (G5, #529)', () => {
     // What the waiting was for is where the keys are.
     await waitFor(() => expect(document.activeElement).toBe(download))
     fireEvent.click(download)
-    expect(saved.map((s) => s.name)).toEqual(['Skogens herrar rev-1.zip'])
+    expect(saved.map((s) => s.name)).toEqual(['Skogens herrar v1.zip'])
 
     // Escape closes it and gives the keys back to the ⋯ it was opened from.
     fireEvent.keyDown(dialog, { key: 'Escape' })
@@ -550,5 +636,125 @@ describe('exporting and importing a game (G5, #529)', () => {
     await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Öppna spelet' })))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Öppna spelet' }))
     expect(gone.at(-1)).toMatch(/^\/editor\?project=/)
+  })
+})
+
+// What a game's ⋯ offers follows what the role may do (D3, #689): taking the game away is the
+// owner's, taking it with you the owner's and the co-editors', and starting a table everyone's
+// but a viewer's. A choice the server would refuse is not drawn, and a role with none gets no ⋯.
+describe('the game menu follows the role (D3, #689)', () => {
+  async function signIn(email: string): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
+    await followMailedLink()
+  }
+  // Ada makes the game and shares it with Bo in `role`; the page is then Bo's.
+  async function homeAs(role: 'owner' | 'editor' | 'tester' | 'viewer'): Promise<void> {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    if (role !== 'owner') {
+      await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role }) })
+      const token = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+      await signIn('bo@example.com')
+      expect((await fetch(`${run.http}/invites/${token}`, { method: 'POST' })).status).toBe(200)
+    }
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+  }
+  const choices = (): string[] => {
+    const more = screen.queryByRole('button', { name: 'Fler val för Skogens herrar' })
+    if (!more) return []
+    fireEvent.click(more)
+    return within(screen.getByRole('group', { name: 'Val för Skogens herrar' }))
+      .getAllByRole('button')
+      .map((b) => b.textContent ?? '')
+  }
+
+  it.each([
+    ['owner', ['Starta bord', 'Byt namn…', 'Dubblera', 'Exportera…', 'Ta bort spelet']],
+    ['editor', ['Starta bord', 'Byt namn…', 'Dubblera', 'Exportera…']],
+    ['tester', ['Starta bord']],
+    ['viewer', []],
+  ] as const)('offers the %s only what the role may do', async (role, offered) => {
+    await homeAs(role)
+    expect(choices()).toEqual(offered)
+  })
+})
+
+// The start page's ⋯ carries the editor's four choices (#909, beställarens beslut C): a name changed
+// here is an edit in the game's log, as in the editor, and the list reads the name from the live
+// document — so the tile says it at once, and after a reload, without a version being made of it.
+describe('renaming and duplicating from «Mina spel» (#909)', () => {
+  async function home(): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByText('Skogens herrar')
+  }
+  const tileName = (id: string) => document.querySelector(`#home-${id}-name`)?.textContent
+
+  it('renames the game in its log, says the new name on the tile at once and after a reload, and makes no version', async () => {
+    await home()
+    fireEvent.click(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Byt namn…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Byt namn på «Skogens herrar»' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Spelets namn' }), { target: { value: 'Skogens andar' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Byt namn' }))
+    await waitFor(() => expect(tileName(run.projectId)).toBe('Skogens andar'))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // The keys go back to the game's ⋯, which now bears the new name.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens andar' })))
+    expect((await (await fetch(`${run.http}/projects/${run.projectId}/versions`)).json()) as unknown[]).toHaveLength(1)
+
+    cleanup()
+    render(<HomePage />)
+    await waitFor(() => expect(tileName(run.projectId)).toBe('Skogens andar'))
+  })
+
+  it('duplicates the game into a tile of its own, named as a copy, and says so', async () => {
+    await home()
+    fireEvent.click(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dubblera' }))
+    await screen.findByText('Skogens herrar (kopia)', { selector: '.byd-home-game strong' })
+    await waitFor(() => expect(document.body.textContent).toContain('«Skogens herrar (kopia)» ligger nu i Mina spel.'))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
+  })
+})
+
+// An imported game stood with its card shimmering until the page was reloaded (#725): the import
+// read the list again but not the cards. The import call is answered here by making the game the
+// ordinary way, because jsdom sends a Blob body as "[object Blob]".
+describe('a game imported from the start page', () => {
+  it('draws its card at once, without a reload', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.includes('/projects/import')) {
+        const made = await real(`${run.http}/projects`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'importerat', ...projectDoc() }) })
+        return new Response(JSON.stringify({ id: 'importerat', rev: 1 }), { status: made.ok ? 201 : made.status, headers: { 'content-type': 'application/json' } })
+      }
+      return real(input, init)
+    })
+    try {
+      render(<HomePage onNavigate={() => undefined} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Importera spel…' }))
+      const dialog = screen.getByRole('dialog')
+      fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [new File(['PK'], 'Skogens herrar rev-1.zip', { type: 'application/zip' })] } })
+      expect(await within(dialog).findByText(/är importerat/)).toBeTruthy()
+      await waitFor(() => expect(document.querySelector('#home-importerat-card[role="img"]')).not.toBeNull())
+      expect(document.querySelector('#home-importerat-card[data-waiting]')).toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
   })
 })

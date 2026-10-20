@@ -22,7 +22,7 @@ import { PlaySheet } from '../src/player/PlaySheet.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
 import { EndSheet, ExitSheet, FlagSheet } from '../src/player/SessionSheets.js'
-import { RuleDrawer } from '../src/rules/RuleDrawer.js'
+import { RuleShelf } from '../src/rules/RuleDrawer.js'
 import { Help } from '../src/editor/HelpDrawer.js'
 import { Survey } from '../src/player/Survey.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
@@ -100,7 +100,7 @@ function lost(html: string): string {
 }
 
 // The client is only ever a click target in these surfaces; nothing is sent.
-const idle = { send: async () => undefined } as unknown as Parameters<typeof SessionButtons>[0]['client']
+const idle = { send: async () => undefined, activity: [] } as unknown as Parameters<typeof SessionButtons>[0]['client']
 
 // PlayerPage itself needs a live socket, so its head is repeated here; everything below it is the
 // real component. Keep the two in step when the head changes.
@@ -175,15 +175,24 @@ function surfaces(view: Snapshot) {
     ),
     exit: (
       <div className="byd-player">
-        <ExitSheet onLeave={noop} onEnd={noop} onClose={noop} />
+        <ExitSheet pile="Draghög" onLeave={noop} onEnd={noop} onClose={noop} />
       </div>
     ),
     survey: (
       <div className="byd-player">
-        {/* With the way to an account in its foot (G1): the one link a thumb has to land on. */}
         <Survey who="Ada" version="v1" onSubmit={async () => undefined} saveUrl="http://claim.invalid/claim?token=t" />
       </div>
     ),
+    // The thanks, with the way to an account under them (G1): offered once the answers are sent
+    // (#690), and the one link a thumb has to land on.
+    thanks: (() => {
+      sessionStorage.setItem('byd.survey.sent.viewport:A', '1')
+      return (
+        <div className="byd-player">
+          <Survey who="Ada" version="v1" onSubmit={async () => undefined} saveUrl="http://claim.invalid/claim?token=t" remember="viewport:A" />
+        </div>
+      )
+    })(),
     // Enter on a hand card: the verbs and the named places (#1, variant C).
     address: (() => {
       const card = view.components.find((c) => c.zone === 'hand:A')!
@@ -413,7 +422,7 @@ describe("the seat's control row at 375px (#31)", () => {
       // here the rulebook's own button, which every game with rules brings (B7) — lands on a
       // second line. The single line above is therefore a row that fits, not a measurement that
       // cannot tell the difference.
-      const four = await row(<RuleDrawer http="http://rules.invalid" sessionId="s1" placement="phone" />)
+      const four = await row(<RuleShelf rules={null} placement="phone" />)
       expect(four).toHaveLength(4)
       expect(new Set(four.map((c) => c.top)).size).toBe(2)
     } finally {

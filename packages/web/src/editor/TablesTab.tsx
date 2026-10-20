@@ -2,22 +2,34 @@ import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as Rea
 import { QrCode } from '../table/QrCode.js'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
-import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tableName, tvUrl } from './tableLinks.js'
+import { stillRendering, useTextures, type Textures } from '../table/textures.js'
+import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tvUrl } from './tableLinks.js'
 import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useRoving } from './roving.js'
-import type { ProjectClient, TableSummary } from './ProjectClient.js'
+import { TableEnded, type ProjectClient, type TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { lastMoveWords } from './when.js'
+import { versionWord } from '../i18n/version.js'
+import { rowSummary } from './playtestReading.js'
+import type { PlaytestTable } from '@byd/server/doc'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
 // answer, never a list the editor keeps of its own.
-export type TablesTabProps = { client: ProjectClient; server: string | null }
+//
+// `started` is the table the header's «Starta bord» last started (#704): the column shows it the
+// way it shows one of its own, its group open, whether the column stood open at the start or is
+// opened afterwards.
+//
+// `onResults` opens the tab's Resultat view on a table (#1010): an ended table's row says what came
+// of it in one line, and the line is the way there.
+export type TablesTabProps = { client: ProjectClient; server: string | null; started?: string | null; onResults?: ((id: string) => void) | undefined }
 
-export function TablesTab({ client, server }: TablesTabProps) {
+export function TablesTab({ client, server, started = null, onResults }: TablesTabProps) {
   const t = useT()
   const [tables, setTables] = useState<TableSummary[] | null>(null)
   const [starting, setStarting] = useState(false)
@@ -31,17 +43,43 @@ export function TablesTab({ client, server }: TablesTabProps) {
   // The table this column just started or ended (#480): its group opens so its row is there to be
   // seen, the start is said in the status line, and an ended table's row takes the focus again
   // once the list has filed it under its new group — the row it had was taken down with the move.
-  const [revealed, setRevealed] = useState<{ id: string; why: 'started' | 'ended' } | null>(null)
+  // A table the header started (#704) only opens its group: the header's band already says it.
+  const [revealed, setRevealed] = useState<{ id: string; why: 'started' | 'ended' | 'header'; code?: string } | null>(started ? { id: started, why: 'header' } : null)
+  // A start from the header while the column stands open asks the server again; one made before
+  // the column opened is already in the list it asks for when it mounts.
+  const shown = useRef(started)
+  useEffect(() => {
+    if (!started || started === shown.current) return
+    shown.current = started
+    setRevealed({ id: started, why: 'header' })
+    setAsked((n) => n + 1)
+  }, [started])
   useEffect(() => {
     let live = true
     client.tables().then(
       (t) => live && setTables(t),
-      (err: unknown) => live && setNotice(err instanceof Error ? err.message : String(err)),
+      (err: unknown) => live && setNotice(saidOr(err, t('tables.error.list'))),
     )
     return () => {
       live = false
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the tables again
   }, [client, asked])
+  // What came of each ended table (#1010), for the one line its row says it in. Asked beside the
+  // list and with it, and only by someone who may read it (#524): a viewer's rows say nothing more.
+  const [results, setResults] = useState<Record<string, PlaytestTable>>({})
+  const reads = onResults !== undefined && client.mayStartTables
+  useEffect(() => {
+    if (!reads) return
+    let live = true
+    client.playtest().then(
+      (read) => live && setResults(Object.fromEntries(read.tables.map((x) => [x.id, x]))),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [client, asked, reads])
   // After the list has come back and the group has opened — a frame later, because the group opens
   // in an effect of its own — the ended table's row takes the focus again.
   useEffect(() => {
@@ -69,10 +107,10 @@ export function TablesTab({ client, server }: TablesTabProps) {
     try {
       const made = await client.startTable()
       setFailed(null)
-      setRevealed({ id: made.id, why: 'started' })
+      setRevealed({ id: made.id, why: 'started', code: made.code })
       setAsked((n) => n + 1)
     } catch (err) {
-      setFailed(err instanceof Error ? err.message : String(err))
+      setFailed(saidOr(err, t('tables.failed')))
     } finally {
       inFlight.current = false
       setStarting(false)
@@ -113,9 +151,13 @@ export function TablesTab({ client, server }: TablesTabProps) {
         </span>
         {starting ? t('tables.starting') : t('tables.new')}
       </button>
+      {/* A table started from a deck with no cards has nothing to deal and nothing to draw (#751).
+          The button stays — the deck may be filled in a minute — but the tab says so, and where
+          cards are added. */}
+      {deckIsEmpty(client.doc) && <p className="byd-tables-empty">{t('tables.noCards')}</p>}
       {revealed?.why === 'started' && failed === null && (
         <p className="byd-tables-started" role="status">
-          {t('tables.started', { table: tableName(revealed.id) })}
+          {t('tables.started', { table: revealed.code ?? '' })}
         </p>
       )}
       {failed !== null && (
@@ -138,9 +180,22 @@ export function TablesTab({ client, server }: TablesTabProps) {
             qrFor={qrFor}
             onQr={setQrFor}
             revealed={revealed?.id ?? null}
+            results={results}
+            {...(reads ? { onResults } : {})}
             onEnded={(id) => {
               setRevealed({ id, why: 'ended' })
               setAsked((n) => n + 1)
+            }}
+            onUpdate={async (id) => {
+              // An update the log refuses is a table that has ended meanwhile (#705): the list is
+              // asked again either way, and files it where it now belongs.
+              try {
+                await client.refreshTable(id)
+              } catch (err) {
+                if (!(err instanceof TableEnded)) throw err
+              } finally {
+                setAsked((n) => n + 1)
+              }
             }}
           />
         ))
@@ -158,28 +213,41 @@ export function TablesTab({ client, server }: TablesTabProps) {
 // A folded group draws nothing at all, which is the whole point: a row that is not drawn opens no
 // WebSocket and renders no thumbnail, so what the list costs follows what is on the screen rather
 // than what the game has ever started.
-function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void; revealed: string | null; onEnded(id: string): void }) {
+function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, onUpdate, results, onResults }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void; revealed: string | null; onEnded(id: string): void; onUpdate(id: string): Promise<void>; results: Record<string, PlaytestTable>; onResults?: (id: string) => void }) {
   const [chosen, setChosen] = useState(group.id === 'played')
   // A table this column just started or ended opens the group it is filed under (#480) — in the
   // same render that first draws it, so there is no folded frame for a click to land in, and a
   // designer who folds it again has folded it until the next table is revealed.
   const holds = revealed !== null && group.tables.some((table) => table.id === revealed)
   const [foldedFor, setFoldedFor] = useState<string | null>(null)
-  const open = chosen || (holds && foldedFor !== revealed)
+  // A table that was started and never played may still be drawing its cards, and the count that
+  // says so is on its row (#765) — which a folded group does not draw. So the group asks after the
+  // cards of its tables itself, and stands open while any of them is still on its way (#939,
+  // beslut 2026-10-07): the count is there without a click, and the group folds again when the
+  // cards are done, unless the designer opened it herself. One who folds it while it renders has
+  // folded it for those tables; another table that starts rendering opens it again.
+  const watches = group.id === 'untouched'
+  const [textures, setTextures] = useState<Record<string, Textures>>({})
+  const rendering = watches ? group.tables.filter((table) => stillRendering(textures[table.id] ?? null)).map((table) => table.id) : []
+  const [foldedWhile, setFoldedWhile] = useState<readonly string[]>([])
+  const drawing = rendering.some((id) => !foldedWhile.includes(id))
+  const open = chosen || (holds && foldedFor !== revealed) || drawing
   const setOpen = (next: (was: boolean) => boolean) => {
     const now = next(open)
     setChosen(now)
     if (!now && holds) setFoldedFor(revealed)
+    if (!now) setFoldedWhile((was) => [...was, ...rendering])
   }
   const headingId = `byd-tables-group-${group.id}`
   const listId = `byd-tables-list-${group.id}`
   const rows = (
     <ul id={listId} className="byd-tables-list" aria-labelledby={headingId}>
       {group.tables.map((table) => (
-        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} />
+        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} onUpdate={() => onUpdate(table.id)} {...(watches ? { textures: textures[table.id] ?? null } : {})} {...(results[table.id] && onResults ? { result: results[table.id], onResults: () => onResults(table.id) } : {})} />
       ))}
     </ul>
   )
+  const watchers = watches && group.tables.map((table) => <TexturesWatch key={table.id} http={httpOf(server)} sessionId={table.ended ? null : table.id} onTextures={(t) => setTextures((was) => ({ ...was, [table.id]: t }))} />)
   if (group.id === 'played')
     return (
       <section className="byd-tables-group" data-group={group.id}>
@@ -197,9 +265,24 @@ function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded }: 
         </span>
         {group.heading}
       </button>
+      {watchers}
       {open && rows}
     </section>
   )
+}
+
+// The server a table's HTTP questions go to: the one named, or the page's own.
+const httpOf = (server: string | null): string => server ?? location.origin
+
+// One table's cards, asked after by its group whether or not its row is drawn (#939). It draws
+// nothing; the polling stops by itself once every card is done (#765).
+function TexturesWatch({ http, sessionId, onTextures }: { http: string; sessionId: string | null; onTextures(t: Textures): void }) {
+  const textures = useTextures(sessionId ? http : null, sessionId)
+  useEffect(() => {
+    if (textures) onTextures(textures)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new callback each render is no new answer
+  }, [textures])
+  return null
 }
 
 // Variant B, the shortcut: the newest table of this game, from the header, on whichever tab the
@@ -294,7 +377,7 @@ const THUMBNAIL = { w: 640, h: 384 }
 // Live, as before: the same connection the TV makes (seatless, sees only what is public), so what
 // the row says about the table is what the table itself says. A row that is not drawn — a folded
 // group — makes no connection at all, which is what keeps the cost with what is on the screen.
-function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void }) {
+function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, textures: watched, result, onResults }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void; onUpdate?: () => Promise<void>; textures?: Textures | null; result?: PlaytestTable | undefined; onResults?: () => void }) {
   const t = useT()
   // The day and the clock a last move is said in are the reader's, not `sv-SE`'s (#228).
   const { lang } = useLang()
@@ -311,7 +394,27 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
     moreRef.current?.focus()
     setRefocus(false)
   }, [refocus])
-  const name = tableName(table.id)
+  // A table is called by its room code, as the band and the TV call it (#706, beslut A): the list
+  // has it for whoever may start tables while it still admits, and the table's own connection
+  // says it too, also once it has ended. Until either has answered it is called by its version.
+  const code = table.code ?? room?.code ?? null
+  const name = code ?? versionWord(table.version, t, 'short')
+  // The update of a row behind the project, from the row itself (#706): a press that takes a
+  // moment says so, and one that fails says so in a sentence of the tab's own.
+  const [updating, setUpdating] = useState(false)
+  const [updateFailed, setUpdateFailed] = useState(false)
+  const update = async () => {
+    if (!onUpdate || updating) return
+    setUpdating(true)
+    setUpdateFailed(false)
+    try {
+      await onUpdate()
+    } catch {
+      setUpdateFailed(true)
+    } finally {
+      setUpdating(false)
+    }
+  }
   // Sitting down from the editor takes the next free seat, as the phone's seat picker does (K12).
   const free = view?.seats.find((s) => s.name === null)?.id ?? null
   // A table the log has been locked on (C9) is over: it is still here to be read, never played.
@@ -325,6 +428,11 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
   // then the cards on the table are not the cards in the editor. The row has to say so — but not
   // about a table that has ended, which can never be updated again and is not behind anything.
   const stale = !ended && table.version !== `rev-${rev}`
+  // The cards still on their way, in the band's own words (#765, beslut B): the row says what the
+  // band says, so one state reads the same wherever the designer looks. An ended table is not asked.
+  // A row whose group already asks after its cards (#939) is told them rather than asking twice.
+  const own = useTextures(ended || watched !== undefined ? null : url.replace(/^ws/, 'http'), table.id)
+  const textures = ended ? null : watched === undefined ? own : watched
   // Every seat taken is not a reason to hide the way in; it is a reason to say why it is shut.
   const full = !ended && view !== null && free === null
 
@@ -338,9 +446,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
   // not answered yet there is no seat to take; the word stays where it is rather than swapping
   // under the pointer, and the row's own lines say why it cannot be had.
   const ready = ended ? (
-    <Way href={tvUrl(table.id, server, undefined, true)} label="tables.way.tv" table={name} ready />
+    <Way href={tvUrl(table.id, server, undefined, true, lang)} label="tables.way.tv" table={name} ready />
   ) : free ? (
-    <Way href={onlineUrl(table.id, server, free, true, t)} label="tables.way.play" table={name} ready />
+    <Way href={onlineUrl(table.id, server, free, true, t, lang)} label="tables.way.play" table={name} ready />
   ) : (
     <button type="button" className="byd-tables-ready" disabled>
       {t('tables.way.play')} <span className="byd-offscreen">{name}</span>
@@ -351,10 +459,11 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
   // no seat to take and nothing left to end, so its menu is the three that are still about
   // something.
   const ways: WayItem[] = [
-    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true), label: 'tables.way.tv' as Key }]),
-    { id: 'table', href: tableModeUrl(table.id, server, true), label: 'tables.way.tableMode' as Key },
-    { id: 'watch', href: observeUrl(table.id, server, true, t), label: 'tables.way.watch' as Key },
-    { id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) },
+    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true, lang), label: 'tables.way.tv' as Key }]),
+    { id: 'table', href: tableModeUrl(table.id, server, true, lang), label: 'tables.way.tableMode' as Key },
+    { id: 'watch', href: observeUrl(table.id, server, true, t, lang), label: 'tables.way.watch' as Key },
+    // A table that has ended lets nobody in, so it has no code to hold up (#706).
+    ...(ended ? [] : [{ id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) }]),
     ...(ended ? [] : [{ id: 'end', label: 'tables.end' as Key, apart: true, press: () => setAsking(true) }]),
   ]
 
@@ -370,22 +479,40 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
       </div>
       <div className="byd-tables-info">
         <p className="byd-tables-head">
-          <strong>{table.version}</strong>
+          {code && <strong className="byd-tables-name">{code}</strong>}
+          <span className="byd-tables-version">{versionWord(table.version, t, 'short')}</span>
           <span className="byd-tables-state" data-state={state}>
             {t(STATE_WORD[state])}
           </span>
-          {stale && <em className="byd-tables-stale">{t('tables.stale', { rev })}</em>}
+          {stillRendering(textures) && <span className="byd-tables-render">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>}
+          {stale && <em className="byd-tables-stale">{t('tables.stale', { version: versionWord(table.version, t, 'name'), rev })}</em>}
         </p>
         {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
         <p className="byd-tables-line">
           {lastMoveWords(table.lastAt, Date.now(), lang, t)}
           {full && ` · ${t('tables.full')}`}
         </p>
+        {/* What came of an ended table, in one line, and the way to all of it (#1010, A:s rad). */}
+        {ended && result && onResults && (
+          <button type="button" className="byd-tables-results" aria-label={t('results.row.aria', { table: name, summary: rowSummary(result, t) })} onClick={onResults}>
+            {rowSummary(result, t)}
+          </button>
+        )}
       </div>
       <div className="byd-tables-go">
+        {stale && onUpdate && (
+          <button type="button" className="byd-secondary byd-tables-update" aria-busy={updating} aria-label={t('tables.update.of', { table: name, rev })} onClick={() => void update()}>
+            {updating ? t('tables.update.busy') : t('tables.update', { rev })}
+          </button>
+        )}
         {ready}
         <RowWays table={name} ways={ways} button={moreRef} />
       </div>
+      {updateFailed && (
+        <p className="byd-tables-failed" role="alert">
+          {t('tables.update.failed')}
+        </p>
+      )}
       {/* The QR belongs beside the table it lets a phone into, and only when it is wanted: a wall
           of codes in a list is unreadable, and the code is meant to be held up to a camera. */}
       {qrOpen && room && (
@@ -564,3 +691,10 @@ function seated(seats: readonly { id: string; name: string | null }[] | null, ob
   return watching.length === 0 ? who : t('tables.watching', { who, names: watching.join(', ') })
 }
 
+// How many cards the deck holds: every row, as many times as its `antal` says (C7).
+function deckIsEmpty(doc: { rows: readonly { fields: Record<string, unknown> }[] }): boolean {
+  return doc.rows.every((row) => {
+    const n = Number(row.fields['antal'] ?? 1)
+    return Number.isFinite(n) && n <= 0
+  })
+}

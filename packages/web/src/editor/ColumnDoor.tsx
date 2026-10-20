@@ -4,7 +4,7 @@ import { Help } from './HelpDrawer.js'
 import { ProseSwitch, ProseReset } from './ProseSwitch.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useRoving } from './roving.js'
-import { fieldLabel } from './fields.js'
+import { clashOf, fieldLabel } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useT } from '../i18n/index.js'
 
@@ -111,7 +111,8 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
     const name = to.trim()
     if (name === '') return t('table.field.needsName')
     if (name === from) return null
-    if (taken.includes(name)) return t('table.field.taken', { field: name })
+    const clash = clashOf(name, taken, t, from)
+    if (clash !== null) return t('table.field.taken', { field: clash })
     return null
   }
   const refused = renaming === null ? null : trouble(renaming, draft)
@@ -301,7 +302,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                     </button>
                   ) : (
                     // The lock replaces an unavailable action; its accessible name explains why.
-                    <span className="byd-columns-system" role="img" aria-label={t('table.field.system', { field })} title={t('table.field.system', { field })}>
+                    <span className="byd-columns-system" role="img" aria-label={t('table.field.system', { field: fieldLabel(field, t) })} title={t('table.field.system', { field: fieldLabel(field, t) })}>
                       <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
                         <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
                         <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />

@@ -30,3 +30,26 @@ test('the link in the invitation mail opens the game in the editor', async ({ br
     await context.close()
   }
 })
+
+// Followed before logging in, the link lands on the login card, and the card says what the reader
+// came for (#691): the game she was invited to, by name, and no sales line for a product she has
+// not asked about.
+test('the link followed logged out names the game on the login card', async ({ browser, baseURL, page }) => {
+  await logIn(page.request)
+  const project = await makeProject(page.request, { name: 'Delad skog' })
+  const guest = `e2e-${crypto.randomUUID()}@example.com`
+  await page.request.post(`/projects/${encodeURIComponent(project.id)}/invites`, { data: { email: guest, role: 'editor' } })
+  const link = /\S+\/invites\/[A-Za-z0-9_-]+/.exec((await mailTo(guest)).text)?.[0]
+
+  const context = await browser.newContext({ viewport: DESK.viewport, ...(baseURL ? { baseURL } : {}) })
+  try {
+    const theirs = await context.newPage()
+    await theirs.goto(link!)
+    await expect(theirs).toHaveURL(/\/login\?next=/)
+    // A fresh browser of its own reads the card in the language it asks for, English here.
+    await expect(theirs.getByText('Log in to open the game you were invited to: Delad skog.')).toBeVisible()
+    await expect(theirs.getByText(/Build your own card game/)).toHaveCount(0)
+  } finally {
+    await context.close()
+  }
+})

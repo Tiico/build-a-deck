@@ -4,10 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../src/table/Texture.js'
 import { TextureFailures } from '../src/table/TextureFailures.js'
-import { App } from '../src/App.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { App, loadPage } from '../src/App.js'
 
 const FRONT = 'a'.repeat(64)
 const BACK = 'b'.repeat(64)
@@ -48,9 +45,9 @@ describe('cards that could not be rendered are announced once for the screen', (
     vi.useRealTimers()
   })
 
-  it('is mounted once around whichever screen the app is showing', () => {
+  it('is mounted once around whichever screen the app is showing', async () => {
     history.replaceState(null, '', '/table')
-    const { container } = render(<App />)
+    const { container } = render(<App Page={await loadPage()} />)
     expect(container.querySelectorAll('[data-texture-failures]')).toHaveLength(1)
   })
 })

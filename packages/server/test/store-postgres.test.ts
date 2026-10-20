@@ -1,12 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { PostgresLogStore, SeqConflictError } from '../src/index.js'
 import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
 import { SCHEMA_VERSION, type Applied } from '@byd/protocol'
 import postgres from 'postgres'
-import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
-
-vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 // Runs only against a real Postgres: DATABASE_URL=postgres://... pnpm test
 // In a schema of its own, so a stack running against the same database is never touched.
@@ -42,6 +39,45 @@ describe.skipIf(!url)('PostgresLogStore', () => {
     expect((await store.read(id)).map((l) => l.seq)).toEqual([1, 2])
   })
 
+  // The deck of each version a table was refreshed to (C7, #677), beside the start record it
+  // leaves alone; writing one version twice keeps the last.
+  it('keeps a refreshed deck under its version, and the start deck where it was', async () => {
+    const deck = { template, rows: {}, icons: {} }
+    const refreshed = `r-${Date.now()}`
+    await store.createSession({ id: refreshed, version: 'rev-1', setup: twoSeatSetup(), deck })
+    expect(await store.deckOf(refreshed, 'rev-1')).toEqual(deck)
+    await store.addDeck(refreshed, 'rev-2', { ...deck, rows: { a: { title: 'Ett' } } })
+    await store.addDeck(refreshed, 'rev-2', { ...deck, rows: { a: { title: 'Två' } } })
+    expect(await store.loadSession(refreshed)).toMatchObject({ version: 'rev-1' })
+    expect(await store.deckOf(refreshed, 'rev-2')).toEqual({ ...deck, rows: { a: { title: 'Två' } } })
+    expect(await store.deckOf(refreshed, 'rev-1')).toEqual(deck)
+  })
+
+  // A deck made before #1028 carries its pictures and typefaces as data URLs (DRIFT §4) — tens of
+  // megabytes for a game with art on every card — and the session is read by every door a table has: each socket
+  // that opens, each code that is looked up, each list of tables. Read with the session, the deck
+  // was parsed once per phone, and ten screens joining a table of 308 illustrated cards took the
+  // app past its heap and Postgres past its limit (#1012). Only the actor deals from the deck.
+  it('reads a session without its decks, which are read only for the version a table plays', async () => {
+    const deck = { template, rows: { a: { title: 'Ett' } }, icons: {} }
+    const heavy = `h-${Date.now()}`
+    await store.createSession({ id: heavy, version: 'rev-1', setup: twoSeatSetup(), deck })
+    await store.addDeck(heavy, 'rev-2', deck)
+    const session = await store.loadSession(heavy)
+    expect(session).toMatchObject({ id: heavy, version: 'rev-1' })
+    expect(session).not.toHaveProperty('deck')
+    expect(session).not.toHaveProperty('decks')
+  })
+
+  // «Ny kod» (#820): the code and the host key are rotated together, in one write.
+  it('rotates the code and the host key together', async () => {
+    const rotating = `k-${Date.now()}`
+    await store.createSession({ id: rotating, version: 'v1', setup: twoSeatSetup(), code: 'ABCDEF', codeExpiresAt: '2026-09-07T13:00:00.000Z', hostKeyHash: 'old' })
+    await store.rotateAdmission(rotating, 'GHJKMN', '2026-09-07T14:00:00.000Z', 'new')
+    expect(await store.loadSession(rotating)).toMatchObject({ code: 'GHJKMN', codeExpiresAt: '2026-09-07T14:00:00.000Z', hostKeyHash: 'new' })
+    expect(await store.sessionByCode('ABCDEF')).toBeNull()
+  })
+
   it('refuses a gap or an overlap', async () => {
     await expect(store.append(id, [line(4)])).rejects.toBeInstanceOf(SeqConflictError)
     await expect(store.append(id, [line(2)])).rejects.toBeInstanceOf(SeqConflictError)
@@ -61,6 +97,23 @@ describe.skipIf(!url)('PostgresLogStore', () => {
     } finally {
       await sql.end()
     }
+  })
+
+  // A table's last move is the last physical line, not the last line (#706): a seat taken after
+  // the last draw is not a move, and a table where only a seat was taken has none.
+  it("says a table's last move is its last move on the table, not a seat taken", async () => {
+    const game = `p-${Date.now()}`
+    const { zones, seats, floor } = twoSeatSetup()
+    await store.projects().create(game, { name: 'Drag', template, rows: [], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } })
+    const played = `played-${Date.now()}`
+    const seated = `seated-${Date.now()}`
+    await store.createSession({ id: played, version: 'v1', setup: twoSeatSetup(), project: game })
+    await store.createSession({ id: seated, version: 'v1', setup: twoSeatSetup(), project: game })
+    const claim = (seq: number, at: string): Applied => ({ ...line(seq), at, intent: { v: 'seat.claim', seat: 'A', name: 'Ada' } })
+    await store.append(played, [{ ...line(1), at: '2026-09-06T10:00:00.000Z' }, claim(2, '2026-09-06T11:00:00.000Z')])
+    await store.append(seated, [claim(1, '2026-09-06T12:00:00.000Z')])
+    const listed = Object.fromEntries((await store.sessionsOf(game)).map((s) => [s.id, s.lastAt]))
+    expect(listed).toEqual({ [played]: '2026-09-06T10:00:00.000Z', [seated]: null })
   })
 })
 
@@ -92,7 +145,11 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     await projects.invite({ tokenHash: `${id}-a`, project: id, email: 'bo@example.com', role: 'editor', expiresAt: later })
     await projects.invite({ tokenHash: `${id}-b`, project: id, email: 'cee@example.com', role: 'viewer', expiresAt: later })
     await projects.invite({ tokenHash: `${id}-c`, project: id, email: 'dee@example.com', role: 'viewer', expiresAt: '2000-01-01T00:00:00.000Z' })
+    // Which game a link leads to is told while it can be followed, and not after (#691).
+    expect(await projects.inviteTo(`${id}-b`, new Date().toISOString())).toBe(id)
+    expect(await projects.inviteTo(`${id}-c`, new Date().toISOString())).toBeNull()
     await projects.acceptInvite(`${id}-b`, new Date().toISOString())
+    expect(await projects.inviteTo(`${id}-b`, new Date().toISOString())).toBeNull()
     expect(await projects.openInvites(id, new Date().toISOString())).toEqual([{ email: 'bo@example.com', role: 'editor', expiresAt: later }])
     // Withdrawn, whatever case the address is written in, and only what was still waiting.
     expect(await projects.withdrawInvites(id, 'BO@example.com')).toBe(1)

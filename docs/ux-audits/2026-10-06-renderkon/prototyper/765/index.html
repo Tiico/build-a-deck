@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 765 — Renderkön på TV:n</title>
+<!-- PROTOTYP, #765. Kastas när en variant är vald.
+     Frågan: var TV:n och Bord-fliken säger att bordets kort fortfarande renderas (n av m), så att en
+     värd inte delar ut kort som på telefonen blir «namnet på färg». Bilderna är den byggda appen:
+     TV:n vid 1920 × 1080 och editorns Bord-flik vid 1440 × 900, ett bord med 8 platser och 323 kort
+     på en stack utan renderare, med variantens DOM ovanpå
+     (packages/e2e/test/zz-proto-765.spec.ts på grenen proto/765-renderkon). ?v=idag|A|B|C -->
+<style>
+  :root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1440px; margin: 0 0 12px; color: var(--amber); font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; } .rubrik p { margin: 0 0 4px; }
+  .anteckning { max-width: 1440px; margin: 8px 0 12px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12.5px; line-height: 1.55; }
+  .anteckning b { color: #ffe9b8; } .anteckning .plus { color: #b7dca0; } .anteckning .minus { color: #f0a58a; }
+  h2 { margin: 16px 0 6px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--quiet); }
+  img { display: block; outline: 1px dashed #4a4230; max-width: 100%; }
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+  .vaxlare .namn { padding: 0 10px; min-width: 320px; text-align: center; font-size: 12.5px; }
+  @media (max-width: 600px) { .vaxlare .namn { min-width: 0; } }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #765 · renderkön på TV:n och i Bord-fliken.</b> Ett bord startat på en kall kö står i en halv minut med kort utan textur. TV:n visar «Starta spelet» tänd och säger ingenting, och Bord-flikens rad säger «aldrig spelat». Den som delar ut då ger telefonerna kort som visar sitt namn på färg (L5).</p>
+  <p>Bilderna är den byggda appen; talet 70 av 323 är speltestets. ‹ › eller ← → byter variant.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<h2>TV:n · 1920 × 1080</h2>
+<img id="tv" alt="">
+<h2>Editorns Bord-flik · 1440 × 900</h2>
+<img id="bord" alt="">
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+</div>
+<script>
+// [namn, anteckning, TV-bild, Bord-bild]
+const V = {
+  idag: ['I dag', '<b>I dag.</b> TV:n har «Starta spelet» tänd och ingen status. Bord-flikens rad säger «rev-1 · aldrig spelat»; bara bandet överst räknar.', 'idag', 'idag'],
+  A: ['A — En rad i spalten', '<b>A — en rad i TV:ns spalt</b> under rumskoden: «Korten ritas · 70 av 323» i 24 px (K26) med en tunn stapel, polite (D5 «laddar»), borta när allt är klart. Bord-flikens rad får bandets ord efter läget: «renderar kort 70/323». <span class="plus">+ Spalten är gratis: filten är höjdbunden, så raden kostar inte en pixel kort. Samma ord som bandet; inget nytt läge.</span> <span class="minus">− Säger det bara. «Starta spelet» går fortfarande att trycka, så en värd som inte tittar åt höger delar ut ändå.</span>', 'A', 'A'],
+  B: ['B — Raden, och starten väntar', '<b>B — A:s rad, och «Starta spelet» väntar</b>: brickan står avstängd i sin befintliga form (K21, <code>start.blocked</code>) med «korten ritas · 70/323» under ordet, och tänds när sista kortet är klart. Bord-flikens rad som A. <span class="plus">+ Stänger själva risken: utdelningen sker inte förrän korten syns, samma princip som att editorns länk väntar (L5). Ingen ny form — avstängd bricka med skälet i ord finns redan.</span> <span class="minus">− En kö som står still håller bordet stängt; kräver en väg förbi (t.ex. «Starta ändå» när #88:s stilla-läge slår till). Brickans text är filtskalad och under 24 px.</span>', 'B', 'A'],
+  C: ['C — Skylt mitt på filten', '<b>C — en skylt mitt på filten</b> i D5:s form för det som ligger över en vy: «Korten ritas · 70 av 323 klara · Tills de är klara visar ett kort sitt namn på färg.» Bord-fliken visar räkningen över radens miniatyr. <span class="plus">+ Syns från soffan, omöjlig att missa; förklarar följden.</span> <span class="minus">− Täcker filtens mitt — draghögen och startbrickan — i upp till en halv minut, och D5 reserverar mittkortet för det som slutat vara sant (tappad lina), inte för väntan. Miniatyren är 120 px och talet blir litet.</span>', 'C', 'C'],
+}
+const q = new URLSearchParams(location.search)
+let v = V[q.get('v')] ? q.get('v') : 'B'
+function rita() {
+  const k = Object.keys(V)
+  document.getElementById('namn').textContent = `${k.indexOf(v) + 1}/${k.length} · ${V[v][0]}`
+  document.getElementById('anteckning').innerHTML = V[v][1]
+  const tv = document.getElementById('tv'); tv.src = `bilder/tv-${V[v][2]}.png`; tv.alt = `TV:n, ${V[v][0]}`
+  const bord = document.getElementById('bord'); bord.src = `bilder/bord-${V[v][3]}.png`; bord.alt = `Bord-fliken, ${V[v][0]}`
+  history.replaceState(null, '', `?v=${v}`)
+}
+const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1) })
+rita()
+</script>
+</body>
+</html>

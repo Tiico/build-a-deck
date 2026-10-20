@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 import { zoomTo } from '../../support/zoom.js'
 

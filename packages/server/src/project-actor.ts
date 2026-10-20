@@ -1,5 +1,5 @@
-import { applyEdit, type EditIntent } from './edits.js'
-import type { ProjectDoc, ProjectStore } from './projects.js'
+import { applyEdit, checkNewName, decideEdit, type EditIntent } from './edits.js'
+import { stamp, type ProjectDoc, type ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
 
 // One actor owns one project (D3). A project is structurally the same as a table — shared state
@@ -17,11 +17,22 @@ export type AppliedEdit = { seq: number; at: string; by?: string; from?: string;
 // `gone`: the project itself is no more (#485) — closed the way an unknown project is refused.
 export type Editor = { id: string; name: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void; gone?(): void }
 export type EditorMessage =
-  | { v: 'project'; doc: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
-  | { v: 'edits'; edits: AppliedEdit[] }
+  // `saved` is the version `rev` names, sent only when it is not `doc` — when the log has a tail
+  // nobody has saved yet (#764). Without it an editor could only take what it is handed for saved.
+  | { v: 'project'; doc: ProjectDoc; saved?: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
+  // `ask` is the number the editor gave its own edit (#993), on the echo the editor that sent it
+  // hears. It is the line's and not the log's: the log keeps the edit and who made it.
+  | { v: 'edits'; edits: (AppliedEdit & { ask?: number })[] }
   | { v: 'here'; here: Presence[] }
-  | { v: 'saved'; rev: number }
-  | { v: 'refused'; why: string }
+  // `from` is the editor whose save made the version (#988), so that one takes it for its answer
+  // and nobody else does; a version written over HTTP is nobody's line and names none.
+  | { v: 'saved'; rev: number; from?: string }
+  // `to` is which of the editor's requests the refusal answers (#991), so a refused edit never ends
+  // the wait of a save in the air, nor the other way round. A request that could not be read is
+  // neither and names none; neither does a server from before the field, so an editor reads a
+  // refusal without it the way it always did. `ask` is the number of the edit refused (#993), so
+  // the editor takes that edit back and keeps every other one it has on the line.
+  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number }
 export type Presence = { id: string; name: string; role?: Role }
 
 export class ProjectActor {
@@ -31,6 +42,8 @@ export class ProjectActor {
   private constructor(
     readonly id: string,
     private current: ProjectDoc,
+    // The document `rev` names: what is held, short of the tail nobody has saved (#764).
+    private saved: ProjectDoc,
     private rev: number,
     private at: number,
     private readonly store: ProjectStore,
@@ -56,20 +69,8 @@ export class ProjectActor {
   // Passed over, never swallowed: the seq is named on stderr, which is the whole of what the box
   // can be asked (DRIFT §8), and it is the seq a bug report already carries.
   static async load(id: string, store: ProjectStore): Promise<ProjectActor | null> {
-    const rec = await store.load(id)
-    if (!rec) return null
-    const versions = await store.versions(id)
-    const from = versions.find((v) => v.rev === rec.rev)?.atSeq ?? 0
-    const tail = await store.readEdits(id, from)
-    let doc = stripped(rec)
-    for (const entry of tail) {
-      try {
-        doc = applyEdit(doc, entry.intent)
-      } catch (err) {
-        console.error(JSON.stringify({ msg: 'edit-skipped', project: id, seq: entry.seq, intent: entry.intent.v, error: err instanceof Error ? err.message : String(err) }))
-      }
-    }
-    return new ProjectActor(id, doc, rec.rev, tail.at(-1)?.seq ?? from, store)
+    const got = await replayed(id, store)
+    return got && new ProjectActor(id, got.doc, got.saved, got.rev, got.seq, store)
   }
 
   get doc(): ProjectDoc {
@@ -85,7 +86,7 @@ export class ProjectActor {
   // An editor joins: it is given the document as it stands, and everyone is told who is here.
   subscribe(editor: Editor): () => void {
     this.editors.add(editor)
-    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.role ? { role: editor.role } : {}) } })
+    this.handOver(editor)
     this.tellPresence()
     return () => {
       this.editors.delete(editor)
@@ -107,35 +108,62 @@ export class ProjectActor {
 
   // One edit, in the only order there is: it must apply, then it is committed, then it is applied
   // for real, then everyone is told. An edit that makes no sense moves neither log nor document.
-  async edit(intent: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
-    return this.serial(async () => {
-      const next = applyEdit(this.current, intent)
-      const entry: AppliedEdit = { seq: this.at + 1, at: new Date().toISOString(), ...(by ? { by } : {}), ...(from ? { from } : {}), intent }
-      await this.store.appendEdits(this.id, [entry])
-      this.current = next
-      this.at = entry.seq
-      this.tell({ v: 'edits', edits: [entry] })
-      return entry
-    })
+  // `ask` is the editor's own number for the edit (#993), told back with the echo and never logged.
+  async edit(intent: EditIntent, by?: string, from?: string, ask?: number): Promise<AppliedEdit> {
+    return this.serial(() => this.commit(intent, by, from, ask))
+  }
+  private async commit(asked: EditIntent, by?: string, from?: string, ask?: number): Promise<AppliedEdit> {
+    // Decided first, so what is committed is the answer and not the question (#894).
+    const intent = decideEdit(this.current, asked)
+    // What may be made now is asked here as well as by the verb (#694); the log's replay asks
+    // only the verb, so a stricter rule about new names never makes an old log read differently.
+    checkNewName(this.current, intent)
+    const next = applyEdit(this.current, intent)
+    const entry: AppliedEdit = { seq: this.at + 1, at: new Date().toISOString(), ...(by ? { by } : {}), ...(from ? { from } : {}), intent }
+    await this.store.appendEdits(this.id, [entry])
+    this.current = next
+    this.at = entry.seq
+    this.tell({ v: 'edits', edits: [ask === undefined ? entry : { ...entry, ask }] })
+    return entry
   }
 
   // Saving makes a version of what stands now (B4), and marks how far the log had come, so a
-  // fresh actor knows which edits are already in it.
-  async save(): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
+  // fresh actor knows which edits are already in it. `from` is the editor that asked.
+  async save(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
+    return this.serial(() => this.makeVersion(from))
+  }
+  private async makeVersion(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
+    const result = await this.store.replace(this.id, this.rev, this.current, this.at)
+    if (result === 'missing') return { ok: false as const, reason: 'unknown project' }
+    if (result === 'conflict') return { ok: false as const, reason: 'conflict' }
+    this.rev = result.rev
+    this.saved = this.current
+    this.tell({ v: 'saved', rev: result.rev, ...(from ? { from } : {}) })
+    return { ok: true as const, rev: result.rev }
+  }
+
+  // A whole document written over HTTP (#768): an API client's `PUT /projects/:id`, or an editor
+  // that saves while its socket is down. It is the actor's to write, like every other change,
+  // or the actor goes on holding — and handing out — a document and a rev the store has left.
+  // So it is what a document taken back already is, a `restore` in the log, and then a version
+  // of it, in one turn of the queue so that no edit can land between the two. It is written
+  // against a rev, and a rev the project has left is a conflict, as it always was.
+  async put(expectedRev: number, doc: ProjectDoc, by?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
     return this.serial(async () => {
-      const result = await this.store.replace(this.id, this.rev, this.current, this.at)
-      if (result === 'missing') return { ok: false as const, reason: 'unknown project' }
-      if (result === 'conflict') return { ok: false as const, reason: 'conflict' }
-      this.rev = result.rev
-      this.tell({ v: 'saved', rev: result.rev })
-      return { ok: true as const, rev: result.rev }
+      if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
+      if (stamp(doc) !== stamp(this.current)) await this.commit({ v: 'restore', doc }, by)
+      return this.makeVersion()
     })
   }
 
   // An editor whose edit was refused has drifted from the truth: it is handed the document as it
   // stands, so it can carry on from what is real rather than from what it thought.
   resync(editor: Editor): void {
-    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.role ? { role: editor.role } : {}) } })
+    this.handOver(editor)
+  }
+  private handOver(editor: Editor): void {
+    const saved = this.saved === this.current ? {} : { saved: this.saved }
+    editor.send({ v: 'project', doc: this.current, ...saved, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.role ? { role: editor.role } : {}) } })
   }
 
   private tell(message: EditorMessage): void {
@@ -149,6 +177,27 @@ export class ProjectActor {
     this.queue = next.catch(() => undefined)
     return next
   }
+}
+
+// What the log says the project is (D3): the saved version, then every edit since it. It is what
+// an actor is built from, and what is read of a project nobody has open (#909) — the log is the
+// truth, and a saved version is only how far it had come when someone last saved.
+async function replayed(id: string, store: ProjectStore): Promise<{ doc: ProjectDoc; saved: ProjectDoc; rev: number; seq: number } | null> {
+  const rec = await store.load(id)
+  if (!rec) return null
+  const versions = await store.versions(id)
+  const from = versions.find((v) => v.rev === rec.rev)?.atSeq ?? 0
+  const tail = await store.readEdits(id, from)
+  const saved = stripped(rec)
+  let doc = saved
+  for (const entry of tail) {
+    try {
+      doc = applyEdit(doc, entry.intent)
+    } catch (err) {
+      console.error(JSON.stringify({ msg: 'edit-skipped', project: id, seq: entry.seq, intent: entry.intent.v, error: err instanceof Error ? err.message : String(err) }))
+    }
+  }
+  return { doc, saved, rev: rec.rev, seq: tail.at(-1)?.seq ?? from }
 }
 
 // The document without the record's own fields: what an editor holds and an edit applies to.
@@ -189,6 +238,14 @@ export class ProjectHost {
   // The actor if one is running, without loading one: nobody has a project open that has no actor.
   async running(id: string): Promise<ProjectActor | null> {
     return (await this.actors.get(id)?.catch(() => null)) ?? null
+  }
+
+  // The project as it stands (D3, #909): the running actor's document, or — when nobody has it open —
+  // what the log replays to, read without starting an actor that nobody would ever let go of.
+  async live(id: string): Promise<ProjectDoc | null> {
+    const actor = await this.running(id)
+    if (actor) return actor.doc
+    return (await replayed(id, this.store))?.doc ?? null
   }
 
   // A project that is gone has no actor: the next asker gets a fresh answer.

@@ -10,16 +10,13 @@
 // Talen till höger är mätningens egna, vid tio kolumner och två egna bredder. Inget ärende får bli
 // dyrare än i dagens dörr.
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const PROJECT = 'p1'
 // De sex kolumnerna mätningen la till, så tabellen står med samma tio som rapporten mätte:

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 729 — Favicon</title>
+<!-- PROTOTYP, #729. Kastas när en ikon är vald. Tre förslag på produktens ikon, var och en i de
+     storlekar och på de ytor den faktiskt syns: flikraden (16 px, ljust och mörkt), bokmärken (32 px)
+     och telefonens hemskärm (180 px). Ikonerna är SVG i den här katalogen (A.svg, B.svg, C.svg) i
+     produktens egna färger: bordets mörka #14161c, kortets papper #f4ead8, baksidans blå #3a4d7a och
+     accentens grön #7dd3a0. ?v=A|B|C -->
+<style>
+  :root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1100px; margin: 0 0 12px; color: var(--amber); font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; } .rubrik p { margin: 0 0 4px; }
+  .anteckning { max-width: 1100px; margin: 8px 0 16px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12.5px; line-height: 1.55; }
+  .anteckning b { color: #ffe9b8; } .anteckning .plus { color: #b7dca0; } .anteckning .minus { color: #f0a58a; }
+  h2 { font-size: 12px; color: var(--quiet); text-transform: uppercase; letter-spacing: 1.2px; margin: 18px 0 8px; }
+  .flikar { display: flex; gap: 2px; padding: 8px 8px 0; border-radius: 10px 10px 0 0; max-width: 760px; }
+  .flikar.ljus { background: #dee1e6; } .flikar.mork { background: #202124; }
+  .flik { display: flex; align-items: center; gap: 8px; width: 240px; height: 34px; padding: 0 12px; border-radius: 8px 8px 0 0; font-size: 12px; white-space: nowrap; overflow: hidden; }
+  .ljus .flik { color: #3c4043; } .ljus .flik.aktiv { background: #fff; color: #202124; }
+  .mork .flik { color: #bdc1c6; } .mork .flik.aktiv { background: #35363a; color: #e8eaed; }
+  .flik img { width: 16px; height: 16px; flex: none; }
+  .tom { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .6; flex: none; }
+  .bokmarken { display: flex; gap: 18px; align-items: center; padding: 10px 14px; background: #fff; color: #202124; border-radius: 8px; max-width: 760px; }
+  .bokmarken span { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .bokmarken img { width: 32px; height: 32px; }
+  .hem { display: grid; grid-template-columns: repeat(4, 76px); gap: 18px 14px; padding: 24px 22px; width: 390px; border-radius: 28px; background: linear-gradient(160deg, #3b5a87, #9b6a7f 60%, #d79a6b); }
+  .hem figure { margin: 0; text-align: center; color: #fff; font-size: 11px; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .hem img, .hem i { display: block; width: 60px; height: 60px; margin: 0 auto 5px; border-radius: 14px; }
+  .hem i { background: rgba(255,255,255,.35); }
+  .stora { display: flex; gap: 22px; align-items: end; }
+  .stora img { display: block; }
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+  .vaxlare .namn { padding: 0 10px; min-width: 280px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #729 · produktens ikon.</b> I dag har fliken webbläsarens tomma glob; editor, TV och telefon i varsin flik ser likadana ut, och en hand som läggs på hemskärmen får ingen ikon.</p>
+  <p>‹ › eller ← → byter förslag.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<h2>Storlekarna</h2>
+<div class="stora" id="stora"></div>
+<h2>Flikraden, 16 px, ljust och mörkt</h2>
+<div class="flikar ljus" id="ljus"></div>
+<div class="flikar mork" id="mork" style="margin-top:10px"></div>
+<h2>Bokmärken, 32 px</h2>
+<div class="bokmarken" id="bok"></div>
+<h2>Telefonens hemskärm, 180 px nedskalad</h2>
+<div class="hem" id="hem"></div>
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa">›</button>
+</div>
+<script>
+const V = {
+  A: ['A — Två kort i solfjäder', '<b>A — två kort i solfjäder</b> på bordets mörka grund: en baksida i blått och en framsida i kortets papper med accentens gröna prick. <span class="plus">+ Säger «kort» utan ord; bordets egna färger; skiljer sig från andra flikar även i 16 px.</span> <span class="minus">− Två lutade kort blir små i 16 px; pricken är mest dekor.</span>'],
+  B: ['B — Ett kort med «b»', '<b>B — ett mörkt kort med «b»</b> på accentens gröna. <span class="plus">+ Tydligast i 16 px; ett monogram som håller i alla storlekar.</span> <span class="minus">− Grönt fält är starkt i en flikrad; «b» säger lite om vad produkten är.</span>'],
+  C: ['C — En kortlek med plus', '<b>C — en kortlek sedd från sidan med ett grönt plus</b>: att bygga en lek. <span class="plus">+ Säger «bygga en lek» rakt ut.</span> <span class="minus">− Tre ränder blir en grå fläck i 16 px; plus läses som «nytt» i andra appar.</span>'],
+}
+const q = new URLSearchParams(location.search)
+let v = V[q.get('v')] ? q.get('v') : 'A'
+const flikar = (cls) => [['Sal\'s Saloon · Kortvägg · build-your-deck', true], ['Bordet · Rum Q6RN2C · build-your-deck', false], ['Din hand · Rum Q6RN2C · build-your-deck', false]]
+  .map(([t, a]) => `<div class="flik${a ? ' aktiv' : ''}"><img src="${v}.svg" alt="">${t}</div>`).join('') + `<div class="flik"><span class="tom"></span>Annan webbplats</div>`
+function rita() {
+  const k = Object.keys(V)
+  document.getElementById('namn').textContent = `${k.indexOf(v) + 1}/${k.length} · ${V[v][0]}`
+  document.getElementById('anteckning').innerHTML = V[v][1]
+  document.getElementById('stora').innerHTML = [16, 32, 64, 180].map((s) => `<figure style="margin:0;text-align:center;color:#868ea3;font-size:11px"><img src="${v}.svg" width="${s}" height="${s}" alt="">${s} px</figure>`).join('')
+  document.getElementById('ljus').innerHTML = flikar()
+  document.getElementById('mork').innerHTML = flikar()
+  document.getElementById('bok').innerHTML = `<span><img src="${v}.svg" alt="">Mina spel</span><span><img src="${v}.svg" alt="">Sal's Saloon</span>`
+  document.getElementById('hem').innerHTML = ['Klocka', 'Kamera', 'build-your-deck', 'Kartor', 'Musik', 'Väder', 'Anteckn.', 'Foton'].map((n) => n === 'build-your-deck' ? `<figure><img src="${v}.svg" alt="">Din hand</figure>` : `<figure><i></i>${n}</figure>`).join('')
+  history.replaceState(null, '', `?v=${v}`)
+}
+const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1) })
+rita()
+</script>
+</body>
+</html>

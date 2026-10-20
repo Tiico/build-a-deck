@@ -9,14 +9,11 @@
 //
 // Två krav, och det är samma fix som bär båda: knappen ska gå att nå med tangentbordet, och en
 // vandring genom en rad ska aldrig landa på `<body>`. Editorns a11y är inte mjukad (L12).
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Vägen till en ikon finns bara när projektet kan ta emot en (E4); utan `onSymbol` är en klammer
 // i en cell bara en klammer, och då finns ingen knapp att nå.
@@ -79,14 +76,18 @@ describe('en Tabb ur en cell landar aldrig utanför dokumentet (#395)', () => {
   })
 
   // Att nå knappen är ingenting värt om den inte går att trycka på därifrån.
-  it('skriver klammern när knappen trycks med tangentbordet, precis som när den klickas', async () => {
+  // Den skriver ingenting själv (#693): biblioteket öppnas, och fokus går tillbaka till fältet,
+  // som är där listan styrs ifrån.
+  it('öppnar biblioteket när knappen trycks med tangentbordet, precis som när den klickas', async () => {
     const user = userEvent.setup()
     const wrote: string[] = []
     table({ onCell: (_cardRef, _field, value) => wrote.push(String(value)) })
     await user.click(screen.getByLabelText('dragon title'))
     await user.tab()
     await user.keyboard('{Enter}')
-    expect(wrote).toEqual(['Drake{'])
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByLabelText('dragon title'))
+    expect(wrote).toEqual([])
   })
 
   // Och hela vandringen: inget steg genom en rad får lämna dokumentet.

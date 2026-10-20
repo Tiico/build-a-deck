@@ -15,3 +15,6 @@ packages/*/.playwright-report.json
 packages/e2e/.stack/
 packages/e2e/test-results/
 packages/e2e/playwright-report/
+
+# Lasttestets bygge, loggar och mätningar (#1012): resultatet står i DRIFT §1, råmaterialet stannar här.
+packages/e2e/.load/

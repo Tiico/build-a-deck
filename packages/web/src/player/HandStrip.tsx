@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
-import { useT } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
+import { returnPile } from '../table/handName.js'
 import { HOLD_MS, begin, cancel, end, move, timeout, type Tracking } from './gesture.js'
 import { keepInView } from './strip.js'
 
@@ -22,6 +23,8 @@ export type HandStripProps = {
   // thumb that rested until the card lifted and then went sideways, or by Alt and an arrow.
   // `position` is where it should stand in the strip as it is drawn, first card first.
   onReorder?: ((card: VisibleComponentState, position: number) => void) | undefined
+  // Whether the strip holds more than it shows (#767): the page offers the whole hand then.
+  onOverflow?: ((overflows: boolean) => void) | undefined
 }
 
 // The seat's own hand as a horizontal strip of big, readable cards (K4).
@@ -31,7 +34,7 @@ export type HandStripProps = {
 // is marked, and it is one tab stop with the arrows inside — the editor's roving tabindex, not a
 // second one written here. Space marks and unmarks, Enter opens the address panel. The gestures
 // K4 retains drag to play and hold to mark; the chosen phone A uses tap to select.
-export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces, onReorder }: HandStripProps) {
+export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces, onReorder, onOverflow }: HandStripProps) {
   const t = useT()
   // The hand read from the bottom up (#415, decision B of 2026-09-22). A drawn card lands on
   // top of the zone, which is index 0 of the projection's order, so reading the order
@@ -58,6 +61,27 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     const card = el.querySelector<HTMLElement>(`[data-hand-card="${CSS.escape(markedId)}"]`)
     if (card) keepInView(el, card)
   }, [markedId, hand.length])
+
+  // A card that leaves the hand while it holds the focus — played from the address panel, which
+  // hands the focus back to the card it was opened on just before the table takes that card away —
+  // took the focus with it to nothing (#761, K16). The focus goes to the card that now stands where
+  // it stood, or the one before it at the end of the strip, and to the deck's tile when the hand is
+  // empty: the first stop that is left, and the one a hand that was just emptied wants next.
+  const focused = useRef<{ id: string; at: number } | null>(null)
+  const ids = hand.map((c) => c.id).join(' ')
+  useLayoutEffect(() => {
+    const was = focused.current
+    if (!was || hand.some((c) => c.id === was.id)) return
+    focused.current = null
+    const now = document.activeElement
+    if (now !== null && now !== document.body) return
+    const next = hand[Math.min(was.at, hand.length - 1)]
+    const to = next
+      ? strip.current?.querySelector<HTMLElement>(`[data-hand-card="${CSS.escape(next.id)}"]`)
+      : document.querySelector<HTMLElement>('[data-zone-draw]')
+    to?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the hand's ids are what this answers
+  }, [ids])
 
   // The card a resting thumb has lifted, and the one being carried along the strip and how far the
   // thumb has gone with it (K4, #483). Where it would land is the gesture's, in `tracking`.
@@ -135,7 +159,43 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     return () => el.removeEventListener('touchmove', hold)
   }, [])
 
+  // Where in the hand the strip stands, while it holds more than it shows (#767, beslut A + B):
+  // with 25 cards the strip was ten screens wide and said nothing of where the thumb was. Read off
+  // the cards the strip shows whole, when it scrolls and when it or the hand changes size.
+  const [where, setWhere] = useState<{ from: number; to: number } | null>(null)
+  const told = useRef<boolean | null>(null)
+  useEffect(() => {
+    const el = strip.current
+    if (!el) return
+    const read = () => {
+      const box = el.getBoundingClientRect()
+      const cards = [...el.querySelectorAll<HTMLElement>('[data-hand-card]')]
+      const seen = cards.flatMap((c, i) => {
+        const r = c.getBoundingClientRect()
+        return r.left >= box.left - 1 && r.right <= box.right + 1 ? [i] : []
+      })
+      const over = el.scrollWidth > el.clientWidth + 1 && seen.length > 0
+      const first = seen[0]
+      const last = seen.at(-1)
+      setWhere(over && first !== undefined && last !== undefined ? { from: first + 1, to: last + 1 } : null)
+      if (told.current !== over) {
+        told.current = over
+        onOverflow?.(over)
+      }
+    }
+    read()
+    el.addEventListener('scroll', read, { passive: true })
+    const sized = typeof ResizeObserver === 'function' ? new ResizeObserver(read) : null
+    sized?.observe(el)
+    return () => {
+      el.removeEventListener('scroll', read)
+      sized?.disconnect()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- read again when the hand changes; the callback is the page's
+  }, [hand.length])
+
   return (
+    <>
     <div className="byd-strip" data-hand ref={strip}>
       {hand.map((c) => {
         const item = roving.itemProps(c.id)
@@ -153,7 +213,14 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
             style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(carrying?.id === c.id ? { translate: `${carrying.dx}px 0` } : {}) }}
             tabIndex={item.tabIndex}
             ref={item.ref}
-            onFocus={item.onFocus}
+            onFocus={() => {
+              focused.current = { id: c.id, at: hand.findIndex((x) => x.id === c.id) }
+              item.onFocus()
+            }}
+            onBlur={(e) => {
+              // Focus that went somewhere else on purpose is not this strip's to bring back.
+              if (e.relatedTarget !== null) focused.current = null
+            }}
             onKeyDown={(e) => {
               // Alt and an arrow carry the card one place along the strip (K4, #483), as Alt and an
               // arrow move a layer or a column everywhere else in this tool.
@@ -198,7 +265,30 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
       })}
       {/* A hand with nothing in it (UX-16): where the cards would be, the strip says what fills
           it, in the same form as the line under what lies in front of the seat. */}
-      {hand.length === 0 && <p className="byd-strip-empty">{t('player.hand.empty')}</p>}
+      {/* And with no card in any pile it does not ask for one (#751). */}
+      {hand.length === 0 && <p className="byd-strip-empty">{nothingToDraw(view) ? t('player.hand.empty.none') : emptyHand(view, t)}</p>}
     </div>
+    {/* The bar is drawn here rather than in the sheet: every byte of player.css is in the sheet
+        the first frame blocks on, which has none to spare (felt-font.spec.ts). */}
+    {where && (
+      <p className="byd-muted" data-strip-where style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+        <span>{t('player.hand.where', { from: where.from, to: where.to, n: hand.length })}</span>
+        <i aria-hidden="true" style={{ flex: 1, height: 4, borderRadius: 2, background: '#2a2f3c', position: 'relative' }}>
+          <b style={{ position: 'absolute', top: 0, bottom: 0, left: `${((where.from - 1) / hand.length) * 100}%`, width: `${((where.to - where.from + 1) / hand.length) * 100}%`, borderRadius: 2, background: '#7dd3a0' }} />
+        </i>
+      </p>
+    )}
+    </>
   )
+}
+
+// No pile on the table holds a card, so there is nothing a hand could be filled from.
+function nothingToDraw(view: Snapshot): boolean {
+  return view.zones.filter((z) => z.kind === 'pile').every((z) => (z.mode === 'count' ? z.count : z.order.length) === 0)
+}
+
+// What an empty hand says, naming the pile it fills from (#714).
+function emptyHand(view: Snapshot, t: T): string {
+  const pile = returnPile(view, view.seat)
+  return pile ? t('player.hand.empty', { pile }) : t('player.hand.empty.any')
 }

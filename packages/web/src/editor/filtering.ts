@@ -75,7 +75,7 @@ export function filterRows(
 // How much of the deck is on screen. The whole deck is still counted, because a filter hides
 // rows and never removes them: "6 av 24 kort" says both what is shown and what is waiting.
 export function countLabel(shown: number, total: number, t: T = swedish): string {
-  return t('table.count', { shown, total })
+  return t(total === 1 ? 'table.count.one' : 'table.count.other', { shown, total })
 }
 
 // A chip is a toggle: pressing it adds its value to the column's alternatives, pressing it again

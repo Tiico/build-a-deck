@@ -11,10 +11,7 @@ import { WebSocket as WsClient } from 'ws'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
-import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 
 // Every table this list connects to, as it connects: the address carries the session, so what a
 // row costs the server is readable from the outside rather than from inside the component.
@@ -90,6 +87,8 @@ describe('the three groups in the table column (#176, C9)', () => {
     await startTable()
     await startTable()
     await ended()
+    // Cards that are done: a group with a table still drawing them opens by itself (#939).
+    await run.completeRenders()
     await openTables()
 
     // What the designer came for stands in the open, and nothing else does.
@@ -114,6 +113,7 @@ describe('the three groups in the table column (#176, C9)', () => {
     const user = userEvent.setup()
     const playing = await played()
     const sleeping = await startTable()
+    await run.completeRenders()
     await openTables()
 
     // The row that is on the screen is live, as it always was: the thumbnail is the table itself.
@@ -135,7 +135,7 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     const id = await played()
     await openTables()
     const row = await playingRow()
-    const name = id.slice(0, 8)
+    const name = roomOf(id).code
 
     // The seat comes from the table itself (K12), so the ready way is complete once it answers.
     const ready = await within(row).findByRole('link', { name: `Spela härifrån för bordet ${name} (öppnas i ny flik)` })
@@ -148,7 +148,7 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     const id = await played()
     await openTables()
     const row = await playingRow()
-    const name = id.slice(0, 8)
+    const name = roomOf(id).code
     await within(row).findByRole('link', { name: /Spela härifrån/ })
 
     const more = within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` })
@@ -228,13 +228,16 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     await openTables()
     await user.click(await screen.findByRole('button', { name: 'Avslutade bord · 1' }))
     const row = within(screen.getByRole('list', { name: 'Avslutade bord · 1' })).getByRole('listitem')
-    const name = id.slice(0, 8)
+    // Called by its room code like any table (#706): the table's own connection still says it.
+    // Until that connection has answered, the row goes by its version (rev-1): on a loaded machine
+    // the list is drawn first, so the row is waited for under its code rather than read at once.
+    const name = roomOf(id).code
 
-    expect(within(row).getByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i ny flik)` })).toBeTruthy()
+    expect(await within(row).findByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i ny flik)` })).toBeTruthy()
     expect(within(row).queryByRole('link', { name: /Spela härifrån/ })).toBeNull()
     // And its menu has neither of the two an ended table has no use for.
     await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` }))
-    expect(within(row).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Bordsläge', 'Titta på', `QR för telefoner ${name}`])
+    expect(within(row).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Bordsläge', 'Titta på'])
   })
 })
 
@@ -248,12 +251,13 @@ describe('a table started or ended from the column (#480)', () => {
     await user.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
     const said = await screen.findByText(/Nytt bord startat:/)
     expect(said.closest('[role="status"]')).not.toBeNull()
-    const id = await waitFor(async () => {
-      const [only] = await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json() as { id: string }[]
+    const { id, code } = await waitFor(async () => {
+      const [only] = await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json() as { id: string; code: string }[]
       expect(only).toBeTruthy()
-      return only!.id
+      return only!
     })
-    expect(said.textContent).toContain(id.slice(0, 8))
+    // The table is said by its room code, the name its row and the band give it (#706).
+    expect(said.textContent).toBe(`Nytt bord startat: ${code}.`)
     await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
   })
 
@@ -263,10 +267,128 @@ describe('a table started or ended from the column (#480)', () => {
     await openTables()
     const row = await playingRow()
     await within(row).findByRole('link', { name: /Spela härifrån/ })
-    await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${id.slice(0, 8)}` }))
-    await user.click(within(row).getByRole('menuitem', { name: `Avsluta bordet ${id.slice(0, 8)}` }))
+    await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${roomOf(id).code}` }))
+    await user.click(within(row).getByRole('menuitem', { name: `Avsluta bordet ${roomOf(id).code}` }))
     await user.click(await screen.findByRole('button', { name: 'Ja, avsluta' }))
     expect(await screen.findByRole('button', { name: 'Avslutade bord · 1' })).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Bord som spelas' })).toBeNull()
+  })
+})
+
+// «Starta bord» i huvudet startade bordet, men kolumnen stod kvar på «Inget bord ännu» medan
+// bandet räknade spelare — och efter ett flikbyte låg bordet hopfällt (#704). Kolumnen är serverns
+// lista (L31): bordet huvudet startar visas där direkt, med sin grupp öppen, som när kolumnens egen
+// knapp startar det.
+describe('a table started from the header (#704)', () => {
+  const onlyTable = (): Promise<string> =>
+    waitFor(async () => {
+      const [only] = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as { id: string }[]
+      expect(only).toBeTruthy()
+      return only!.id
+    })
+
+  it('shows its row in the open column at once, with its group open', async () => {
+    const user = userEvent.setup()
+    await openTables()
+    await screen.findByText(/Inget bord ännu/)
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    const id = await onlyTable()
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+    expect(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.queryByText(/Inget bord ännu/)).toBeNull()
+  })
+
+  it('shows it with its group open when the column is opened afterwards', async () => {
+    const user = userEvent.setup()
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    const id = await onlyTable()
+    await screen.findByText(/Nytt bord startat på/)
+    await user.click(screen.getByRole('tab', { name: 'Bord' }))
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+    expect(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }).getAttribute('aria-expanded')).toBe('true')
+  })
+})
+
+// Gruppen «Startade, aldrig spelade» låg hopfälld också medan ett bord i den ritade sina kort, så
+// radens «renderar kort n/m» (#765) syntes först efter ett klick (#939). Beställarens beslut
+// 2026-10-07: gruppen fälls ut av sig själv medan något bord i den renderar, och ihop igen när
+// korten är klara — utom om designern själv fällt ut den.
+describe('the untouched group while a table in it renders its cards (#939)', () => {
+  const untouchedFold = () => screen.findByRole('button', { name: /^Startade, aldrig spelade/ })
+
+  // What the page has been told about the textures, answer by answer: a group that stays folded
+  // is only proven folded once the page has heard what it would have opened on.
+  const heard: { done: number; total: number }[] = []
+  beforeEach(() => {
+    heard.length = 0
+    const real = globalThis.fetch
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const res = await real(input, init)
+      if (String(input).endsWith('/textures') && res.ok) void res.clone().json().then((t: { done: number; total: number }) => heard.push(t))
+      return res
+    })
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+  const hears = (done: number) => waitFor(() => expect(heard.some((t) => t.done === done)).toBe(true))
+
+  it('opens by itself while the cards render, says the count without a click, and folds again when they are done', async () => {
+    const id = await startTable()
+    await openTables()
+    const fold = await untouchedFold()
+    await waitFor(() => expect(fold.getAttribute('aria-expanded')).toBe('true'))
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)?.textContent).toBe('renderar kort 0/4'))
+
+    expect(await run.completeRenders()).toBe(4)
+    await waitFor(() => expect(fold.getAttribute('aria-expanded')).toBe('false'))
+    expect(document.querySelector(`[data-table="${id}"]`)).toBeNull()
+  })
+
+  it('stays folded for a table whose cards are already done', async () => {
+    await startTable()
+    await run.completeRenders()
+    await openTables()
+    const fold = await untouchedFold()
+    await hears(4)
+    // A frame for the answer to reach the group.
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('stays open after the cards are done when the designer opened it herself', async () => {
+    const user = userEvent.setup()
+    const id = await startTable()
+    await openTables()
+    const fold = await untouchedFold()
+    // Folded by the designer while it renders, then opened by her: from then on it is hers.
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)).not.toBeNull())
+    await user.click(fold)
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+    await user.click(fold)
+    expect(fold.getAttribute('aria-expanded')).toBe('true')
+
+    await run.completeRenders()
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)).toBeNull())
+    expect(fold.getAttribute('aria-expanded')).toBe('true')
+    expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull()
+  })
+
+  it('stays folded when the designer folds it while the cards render, also as the count moves on', async () => {
+    const user = userEvent.setup()
+    const id = await startTable()
+    await openTables()
+    const fold = await untouchedFold()
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)).not.toBeNull())
+    await user.click(fold)
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+
+    expect(await run.completeRenders(1)).toBe(1)
+    await hears(1)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
   })
 })

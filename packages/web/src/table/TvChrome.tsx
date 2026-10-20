@@ -24,6 +24,8 @@ export type TvChromeProps = {
   // that is not joined from — the observer's — says nothing rather than spelling out an id.
   roomCode?: string | undefined
   joinUrl?: string | undefined
+  // The host the room's address starts with (#675): the code is said as `host/KOD`.
+  host?: string | undefined
   // The game this table runs, and which version of it (B4): the screen's title.
   title?: string | undefined
   version?: string | undefined
@@ -50,9 +52,16 @@ export type TvChromeProps = {
   // The room's own television (#573): the seats are on the felt's plates, and every word is at
   // K26's 24 px. The observer's screen is not the room's and leaves it off.
   room?: boolean | undefined
+  // The column's place for what the felt's corner holds on other screens (#875): the table's
+  // renderer draws «Starta om» and the help's disc into it.
+  corner?: ((el: HTMLElement | null) => void) | undefined
   // What a card opened from the seats' lists does (#551): the observer holds it up to be read. A
   // screen that passes nothing keeps its seats as rows that open nothing.
   onRead?: ReadCard | undefined
+  // The cards still on their way to the table (#765, beslut B 2026-10-06): one line under the way
+  // in, at K26's floor, with a thin bar, gone once every card can be seen. The column is free on a
+  // television bound by its height, so the line costs the felt nothing.
+  rendering?: { done: number; total: number; stalled: boolean } | null | undefined
   children: ReactNode
 }
 
@@ -68,7 +77,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
@@ -149,9 +158,26 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
           {/* The rulebook, beside the game's own name rather than over the felt (#30). */}
           {rules}
         </div>
-        {(roomCode || joinUrl) && (
+        {/* An ended table takes nobody in, so its code opens nothing (#717, #938): the row says
+            it has ended instead, and the help about joining goes with the code it was about. */}
+        {(roomCode || joinUrl) && view.ended && (
+          <div className="byd-tv-join" data-join-ended>
+            <span>{t('ended.title')}</span>
+          </div>
+        )}
+        {(roomCode || joinUrl) && !view.ended && (
           <div className="byd-tv-join byd-help-row">
             <span>{t('tv.join')}</span>
+            {/* The code is the address (#675, beslut C): the host on its own line, and `/KOD` on the
+                line under it, large, as the rest of one address — what a phone types is what the
+                room reads, and it lands in the seat picker. The host is the screen's own origin, so
+                the box says its own name and a development stack says its own. The slash is drawn
+                by the stylesheet, so the code read off the screen is the code. */}
+            {roomCode && host && (
+              <p className="byd-tv-address" data-address>
+                {host}
+              </p>
+            )}
             {roomCode && <strong>{roomCode}</strong>}
             {/* One line of the TV's own heading, and nobody presses a television: the code stays a
                 picture there (#225). The room's code stands beside it in plain figures anyway. */}
@@ -167,6 +193,14 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
             </Help>
           </div>
         )}
+        {rendering && (
+          <div className="byd-tv-render" role="status" {...(rendering.stalled ? { 'data-stalled': '' } : {})}>
+            <span>{t(rendering.stalled ? 'tv.render.stalled' : 'tv.render')}</span>
+            <b>{t('tv.render.count', { done: rendering.done, total: rendering.total })}</b>
+            <i aria-hidden="true" style={{ ['--byd-render-done' as string]: `${(100 * rendering.done) / Math.max(1, rendering.total)}%` }} />
+          </div>
+        )}
+        {corner && <div className="byd-tv-corner" ref={corner} />}
         <section className="byd-tv-inspect" aria-labelledby="tv-inspect">
           <h2 id="tv-inspect">{t('tv.inspect')}</h2>
           {shown ? (

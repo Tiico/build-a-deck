@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, type ReactNode } from 'react'
 import { useT } from '../i18n/index.js'
 
 // The one question the editor asks before something cannot be looked at afterwards: taking cards
@@ -33,7 +33,17 @@ export type QuestionProps = {
   // An answer that loses nothing and does the work anyway ("Spara och lämna"). When there is one
   // it comes first and is the safe answer the question opens on.
   keep?: { label: string; disabled?: boolean; onChoose(): void }
+  // A second answer that cannot be undone, which goes further than `confirm` ("Sparka och byt kod",
+  // #679). It stands after `confirm`, in the same red, and the question never opens on it.
+  further?: { label: string; onChoose(): void }
 }
+
+// Who wants to know that a question is standing (#698). The editor's line about what just happened
+// lies at the bottom of the screen, and a question asked down there is the present: the line gives
+// way to it rather than being drawn over its answers. Called when a question opens; what it
+// returns is called when the question goes. Outside the editor nobody listens.
+const nobody = () => undefined
+export const Asking = createContext<() => () => void>(() => nobody)
 
 type Answer = {
   key: string
@@ -46,11 +56,15 @@ type Answer = {
   onChoose(): void
 }
 
-export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep }: QuestionProps) {
+export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep, further }: QuestionProps) {
   const t = useT()
+  const asking = useContext(Asking)
+  // Before the paint, so the question is never drawn with the line still over its answers.
+  useLayoutEffect(() => asking(), [asking])
   const answers: Answer[] = [
     ...(keep ? [{ key: 'keep', kind: 'keep' as const, label: keep.label, disabled: keep.disabled === true, safe: true, onChoose: keep.onChoose }] : []),
     { key: 'confirm', kind: 'danger', label: confirm, disabled: false, safe: false, onChoose: onConfirm },
+    ...(further ? [{ key: 'further', kind: 'danger' as const, label: further.label, disabled: false, safe: false, onChoose: further.onChoose }] : []),
     { key: 'cancel', kind: undefined, label: cancel ?? t('editor.cancel'), disabled: false, safe: true, onChoose: onCancel },
   ]
   // The first answer that loses nothing and can actually be given. Not an index the call sites

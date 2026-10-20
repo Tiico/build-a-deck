@@ -49,6 +49,9 @@ class Editing {
   save(): void {
     this.ws.send(JSON.stringify({ t: 'save' }))
   }
+  raw(frame: unknown): void {
+    this.ws.send(JSON.stringify(frame))
+  }
   async until<T extends EditorMessage['v']>(v: T, ok: (m: Extract<EditorMessage, { v: T }>) => boolean = () => true): Promise<Extract<EditorMessage, { v: T }>> {
     for (let i = 0; i < 100; i++) {
       const found = [...this.seen].reverse().find((m): m is Extract<EditorMessage, { v: T }> => m.v === v && ok(m as Extract<EditorMessage, { v: T }>))
@@ -101,10 +104,65 @@ describe('two people editing the same project (D3)', () => {
     ada.close()
   })
 
+  // A refusal says which of the editor's requests it answers (#991). An editor has an edit and a
+  // save on the line at once, and a refused edit taken for the answer to the save called a version
+  // that was made a version that was not — and left its «saved» to nobody, or to the next save.
+  it('says whether a refusal answers an edit or a save', async () => {
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+    const ada = await Editing.open(run.base, 'p1', 'Ada')
+    await ada.until('project')
+    ada.send({ v: 'setCell', cardRef: 'ingen', field: 'title', value: 'x' })
+    expect(await ada.until('refused')).toEqual({ v: 'refused', why: 'no row ingen', to: 'edit' })
+
+    // The store moves on behind the actor's back, so the actor's next version is a conflict.
+    await run.projects.replace('p1', 1, { ...project(), name: 'Skrivet förbi aktören' })
+    ada.save()
+    expect(await ada.until('refused', (m) => m.why === 'conflict')).toEqual({ v: 'refused', why: 'conflict', to: 'save' })
+
+    // A request the door cannot read is no request in particular, and the refusal names none.
+    ada.raw({ t: 'nonsense' })
+    expect(await ada.until('refused', (m) => m.why !== 'conflict' && m.why !== 'no row ingen')).not.toHaveProperty('to')
+    ada.close()
+  })
+
+  // An editor can have several edits on the line, and the one the actor refuses has to come off the
+  // editor again and the others stay (#993). Each edit carries the number its editor gave it, and
+  // whatever answers the edit — the echo or the refusal — carries the same number back.
+  it('answers each edit under the number its editor gave it', async () => {
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+    const ada = await Editing.open(run.base, 'p1', 'Ada')
+    await ada.until('project')
+    ada.raw({ t: 'edit', intent: { v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drakhona' }, ask: 7 })
+    ada.raw({ t: 'edit', intent: { v: 'setCell', cardRef: 'ingen', field: 'title', value: 'x' }, ask: 8 })
+    ada.raw({ t: 'edit', intent: { v: 'setCell', cardRef: 'dragon', field: 'body', value: 'Eld.' }, ask: 9 })
+    expect((await ada.until('edits', (m) => m.edits[0]?.seq === 1)).edits[0]?.ask).toBe(7)
+    expect(await ada.until('refused')).toEqual({ v: 'refused', why: 'no row ingen', to: 'edit', ask: 8 })
+    expect((await ada.until('edits', (m) => m.edits[0]?.seq === 2)).edits[0]?.ask).toBe(9)
+    // The number is the line's and not the log's: what is written down is the edit and who made it.
+    expect((await run.projects.readEdits('p1', 0)).map((e) => 'ask' in e)).toEqual([false, false])
+
+    // A page loaded before the number sends none, and is answered without one, as it always was.
+    ada.send({ v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drake' })
+    expect((await ada.until('edits', (m) => m.edits[0]?.seq === 3)).edits[0]).not.toHaveProperty('ask')
+    ada.send({ v: 'setCell', cardRef: 'ingen', field: 'title', value: 'y' })
+    expect(await ada.until('refused', (m) => m.ask === undefined)).toEqual({ v: 'refused', why: 'no row ingen', to: 'edit' })
+    ada.close()
+  })
+
   it('lets nobody but the owner in', async () => {
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
     await expect(Editing.open(run.base, 'p1', 'Ingen', '')).rejects.toThrow(/closed/)
     await expect(Editing.open(run.base, 'nope', 'Ada')).rejects.toThrow(/closed/)
+  })
+
+  // Whether a game exists is its owner's to know (G1, #754). Nobody logged in is told to log in,
+  // the same way, whether the id names a game or nothing at all; only someone logged in learns
+  // that there is no such game.
+  it('tells nobody logged in to log in, whether or not the game exists', async () => {
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+    await expect(Editing.open(run.base, 'p1', 'Ingen', '')).rejects.toThrow('closed 4401')
+    await expect(Editing.open(run.base, 'finns-inte', 'Ingen', '')).rejects.toThrow('closed 4401')
+    await expect(Editing.open(run.base, 'finns-inte', 'Ada')).rejects.toThrow('closed 4004')
   })
 })
 
@@ -165,5 +223,53 @@ describe('an edit sent the moment the socket opens (D3)', () => {
     expect((await until('saved')).rev).toBe(2)
     expect((await run.projects.load('p1'))?.rows[0]?.fields['title']).toBe('Drakhona')
     ws.close()
+  })
+})
+
+// One writer per document (D3, #768). A `PUT /projects/:id` used to write the store past the
+// actor: the actor went on holding — and handing every editor — the document and rev it had
+// before, so one screen said «rev 1 · Sparat» while the table ran rev 16, and the editor's own
+// save was refused as a conflict that no reload could clear, since the actor is only rebuilt
+// once it is forgotten.
+describe('a whole document written over HTTP while the project is open (#768)', () => {
+  const create = () => fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+  const put = (doc: object, rev: number) =>
+    fetch(`${run.http}/projects/p1`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ ...doc, rev }) })
+
+  it('goes through the actor: the open editor is told, the next one is handed it, and saving goes on from it', async () => {
+    await create()
+    const ada = await Editing.open(run.base, 'p1', 'Ada')
+    await ada.until('project')
+
+    const res = await put({ ...project(), name: 'Bergens herrar' }, 1)
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { rev: number }).rev).toBe(2)
+
+    // The editor that has it open sees the new document and the version it became.
+    await ada.until('edits', (m) => m.edits.some((e) => e.intent.v === 'restore'))
+    expect((await ada.until('saved')).rev).toBe(2)
+
+    // An editor that opens now is handed what was written, at the rev it was written as.
+    const bo = await Editing.open(run.base, 'p1', 'Bo')
+    const handed = await bo.until('project')
+    expect(handed.rev).toBe(2)
+    expect(handed.doc.name).toBe('Bergens herrar')
+
+    // And a save from the editor is not a conflict.
+    bo.send({ v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drakhona' })
+    bo.save()
+    expect((await bo.until('saved', (m) => m.rev === 3)).rev).toBe(3)
+    const stored = await run.projects.load('p1')
+    expect(stored?.name).toBe('Bergens herrar')
+    expect(stored?.rows[0]?.fields['title']).toBe('Drakhona')
+    ada.close()
+    bo.close()
+  })
+
+  it('is refused as a conflict when it was written against a rev the project has left', async () => {
+    await create()
+    expect((await put({ ...project(), name: 'Andra' }, 1)).status).toBe(200)
+    expect((await put({ ...project(), name: 'Tredje' }, 1)).status).toBe(409)
+    expect((await run.projects.load('p1'))?.name).toBe('Andra')
   })
 })

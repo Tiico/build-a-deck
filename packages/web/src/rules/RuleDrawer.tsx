@@ -1,11 +1,15 @@
 import { Suspense, createContext, lazy, useContext, useEffect, useRef, useState, type Ref } from 'react'
-import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
+import { ruleEm, type RefKind, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import { zoneTally, type ZoneTally } from '@byd/engine'
 import type { ZoneView } from '@byd/protocol'
 import { SetupOverview } from './SetupOverview.js'
+import { sessionRules } from './sessionRules.js'
 import { useT } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
 import './rules-open.css'
+
+// What a reference the game lost is said as, in the reader's language (#708 added counters).
+const DRAWER_REF_WORD = { zone: 'rules.drawer.ref.zone', card: 'rules.drawer.ref.card', counter: 'rules.drawer.ref.counter' } as const satisfies Record<RefKind, Key>
 
 // Luckans insida kommer när den efterfrågas (#346, #186:s väg). Boken är tre och ett halvt
 // kilobyte stilmall bakom en knapp ingen har tryckt på när sidan målas första gången, så den
@@ -22,11 +26,12 @@ const RulePanel = lazy(() => import('./RulePanel.js').then((m) => ({ default: m.
 // It travels as a context rather than down every block and every span, because the one place
 // that reads it is the innermost one, and a prop through six components is six chances for a
 // surface to pass a table the reader is not sitting at.
-export type LiveTable = { zones: readonly ZoneView[] }
+// `version` is the version the table plays (C7): when «Uppdatera» moves it, the book is read again.
+export type LiveTable = { zones: readonly ZoneView[]; version?: string }
 const LiveTableContext = createContext<LiveTable | null>(null)
 
 // The rules at the table (B7): the rulebook a session hands out, rendered against the version it
-// was locked to at start. From the prototype: a drawer from the edge holding the whole book for
+// is locked to (B4, C7). From the prototype: a drawer from the edge holding the whole book for
 // whoever has never played, with the question on top for whoever is mid-turn and wants one rule.
 // A game with no rulebook offers nothing at all.
 // Where the press lives: over the felt, in a header (a TV's, #30), or in the phone's own row.
@@ -43,19 +48,20 @@ export type RuleDrawerProps = {
 
 export function RuleDrawer({ http, sessionId, placement, live: table }: RuleDrawerProps) {
   const [rules, setRules] = useState<RenderedRules | null | 'none'>(null)
-  // The rules of a running table never change under the players, so they are read once.
+  // The rules of a running table never change under the players: they are read once per version
+  // the table plays. «Uppdatera» moves the table to the next rev (C7), and a book written for that
+  // rev reaches the table in the patch that says so, without a reload (#677).
+  const version = table?.version
   useEffect(() => {
     let live = true
-    // 204 is the table saying it has no rulebook, which is an answer and not a failure.
-    fetch(`${http}/sessions/${encodeURIComponent(sessionId)}/rules`)
-      .then(async (res) => (res.ok && res.status !== 204 ? ((await res.json()) as RenderedRules) : 'none'))
-      .then((r) => live && setRules(r))
-      .catch(() => live && setRules('none'))
+    void sessionRules(http, sessionId).then((r) => live && setRules(r))
     return () => {
       live = false
     }
-  }, [http, sessionId])
-  if (rules === 'none') return null
+  }, [http, sessionId, version])
+  // The knob comes with the book: drawn while the table was still being asked, it went again for
+  // every table without one, a «Regler» that flashed and was gone (#709).
+  if (rules === null || rules === 'none') return null
   return <RuleShelf rules={rules} assets={http} placement={placement} live={table} />
 }
 
@@ -220,7 +226,7 @@ export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
           // A reference arrives carrying the name it stands for; one the game no longer has
           // says what was written instead of quietly saying nothing.
           case 'ref': {
-            const stands = n.name ?? `${t(n.of === 'zone' ? 'rules.drawer.ref.zone' : 'rules.drawer.ref.card')}:${n.id}`
+            const stands = n.name ?? `${t(DRAWER_REF_WORD[n.of])}:${n.id}`
             // The living number the reader's own projection allows beside this tag (#226).
             const tally = n.of === 'zone' ? zoneTally(live, n.id) : null
             return (

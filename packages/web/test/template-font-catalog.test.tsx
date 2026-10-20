@@ -6,9 +6,7 @@ import type { ProjectClient } from '../src/editor/ProjectClient.js'
 import type { CatalogFamily } from '../src/editor/font-catalog.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { Said } from '../src/i18n/said.js'
 
 // The typeface catalog (#329, L27): variant C, «Provraden» — a sheet where every hit sets the
 // card's own heading and its rule text, in the card's own grade. It opened under the card in Mall
@@ -175,11 +173,14 @@ describe('a catalog that does not answer (L27)', () => {
     })
     fireEvent.error(link)
     expect((await screen.findByRole('alert')).textContent).toMatch(/katalogen svarar inte/i)
+    // The foot counts what the sheet shows, and it shows nothing (#737): «2 av 2» under no row
+    // at all was a count of something the reader could not see.
+    expect(document.querySelector('.byd-font-catalog-count')?.textContent ?? '').toBe('')
   })
 
   it('says why the family she pressed is not in the project', async () => {
     const onCatalogFont = vi.fn(async () => {
-      throw new Error('Katalogen svarade inte. Familjen kunde inte hämtas hem.')
+      throw new Said('Katalogen svarade inte. Familjen kunde inte hämtas hem.')
     })
     canvas({ onCatalogFont })
     fireEvent.click(screen.getByRole('button', { name: /sök i google fonts/i }))
@@ -187,5 +188,18 @@ describe('a catalog that does not answer (L27)', () => {
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'cinzel' } })
     fireEvent.click(await screen.findByRole('button', { name: /lägg till cinzel$/i }))
     expect((await screen.findByRole('alert')).textContent).toMatch(/kunde inte hämtas hem/i)
+  })
+
+  // What the document or the network throws is English for the developer (#812, A4).
+  it('says a family that could not be added in a sentence of its own, never in the thrown words', async () => {
+    const onCatalogFont = vi.fn(async () => {
+      throw new TypeError('Failed to fetch')
+    })
+    canvas({ onCatalogFont })
+    fireEvent.click(screen.getByRole('button', { name: /sök i google fonts/i }))
+    await screen.findByRole('list', { name: /träffar/i })
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'cinzel' } })
+    fireEvent.click(await screen.findByRole('button', { name: /lägg till cinzel$/i }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Familjen Cinzel kunde inte läggas till. Försök igen.')
   })
 })

@@ -3,9 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { buildScene } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('HandStrip', () => {
   it("shows the seat's own cards by name oldest first, and nothing from anywhere else", () => {
@@ -163,11 +160,28 @@ describe('a hand with nothing in it (UX-16)', () => {
     const props = { selected: new Set<string>(), onTap: () => undefined, onHold: () => undefined, onLift: () => undefined, onOpen: () => undefined }
     const { rerender } = render(<HandStrip view={empty} {...props} />)
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0)
-    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Dra ett kort ur draghögen.')
+    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Dra ett kort ur Draghög.')
 
     rerender(<HandStrip view={dealt} {...props} />)
     expect(screen.queryByText(/Tom hand/)).toBeNull()
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2)
+  })
+
+  // And with no card left to draw it does not ask for one (#751): an empty draw pile beside an
+  // empty hand is a table where nothing can be drawn, and saying «Dra ett kort» there sends the
+  // player looking for a verb that is not on the pile.
+  it('does not ask for a card when no pile holds one', () => {
+    const { view } = buildScene()
+    const dealt = view('A')
+    const piles = new Set(dealt.zones.filter((z) => z.kind === 'pile').map((z) => z.id))
+    const nothing = {
+      ...dealt,
+      components: dealt.components.filter((c) => c.zone !== 'hand:A' && !piles.has(c.zone)),
+      zones: dealt.zones.map((z) => (z.kind !== 'pile' ? z : z.mode === 'count' ? { ...z, count: 0 } : { ...z, order: [] })),
+    }
+    const props = { selected: new Set<string>(), onTap: () => undefined, onHold: () => undefined, onLift: () => undefined, onOpen: () => undefined }
+    render(<HandStrip view={nothing} {...props} />)
+    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Det finns inga kort att dra.')
   })
 })
 

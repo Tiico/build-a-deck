@@ -72,4 +72,4 @@ export function Help({ topic, children, id }: HelpProps) {
 // The placement is the box's, and pure, so a browser test can lay a box by it against a rectangle
 // it has really measured. It is re-exported here because this is the module the pattern is known
 // by; it lives apart so that the ring can be drawn without the box's code (see `help-place.ts`).
-export { ROW, HELP_WIDTH, helpAnchor, helpPlacement, type HelpPlacement } from './help-place.js'
+export { ROW, HELP_WIDTH, explainsOf, helpAnchor, helpPlacement, type HelpPlacement } from './help-place.js'

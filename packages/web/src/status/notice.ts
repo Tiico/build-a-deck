@@ -31,7 +31,8 @@ export type Tone = 'wait' | 'gone' | 'shut' | 'broken' | 'ok'
 
 // Recovery is either a retry or a decision, never a reload: a reload throws away the very state
 // the reader is trying to keep, and two of them in a row is a loop.
-export type ActionKind = 'retry' | 'login' | 'home' | 'rescan'
+// `switch` signs out and then in again (#748): a page that offers it has the button that does it.
+export type ActionKind = 'retry' | 'login' | 'home' | 'rescan' | 'observe' | 'switch'
 export type Action = { kind: ActionKind; label: string; primary?: boolean }
 
 export type Notice = {
@@ -148,9 +149,10 @@ export function towardSeat(notice: Notice, t: T = swedish): Notice {
 
 // The way home from a page read by someone who is not signed in (#475). `/` is the login card for
 // them, and "Till mina spel" over it is a promise the page does not keep; "Till startsidan" is true
-// of both shapes the start page has.
+// of both shapes the start page has. The sentence over the button goes with it (#728).
 export function signedOut(notice: Notice, t: T = swedish): Notice {
-  return { ...notice, actions: notice.actions.map((a) => (a.kind === 'home' ? { ...a, label: t('status.act.home.start') } : a)) }
+  const text = notice.text === t('status.missing.text') ? t('status.missing.text.start') : notice.text
+  return { ...notice, text, actions: notice.actions.map((a) => (a.kind === 'home' ? { ...a, label: t('status.act.home.start') } : a)) }
 }
 
 // When old data is left on the screen the reader has to be told how old it is, or the picture
@@ -161,6 +163,8 @@ export function asOf(at: Date): string {
 
 // A refusal comes back from the server as a developer's sentence in English. It is a fact about
 // the intent, not a message to a person, so it is translated here and never shown as it stands.
+// These are the table's refusals, of moves: a save the editor asked for is said in the editor's
+// own words, from the client's closed set of reasons (#1018), and never reaches this list.
 const REFUSALS: { match: RegExp; say: Key }[] = [
   { match: /^not connected$/, say: 'refusal.notConnected' },
   { match: /^connection lost$/, say: 'refusal.connectionLost' },
@@ -178,8 +182,6 @@ const REFUSALS: { match: RegExp; say: Key }[] = [
   { match: /is not a pile|is not an area|into itself|needs x and y/, say: 'refusal.place' },
   { match: /cannot peek/, say: 'refusal.peek' },
   { match: /^unknown (component|zone|seat)/, say: 'refusal.unknown' },
-  // A save refused because the game is gone (#485): the editor put the server's words in its head.
-  { match: /^(unknown project|missing)$/, say: 'refusal.projectGone' },
 ]
 
 export function refusalText(reason: string, t: T = swedish): string {
@@ -190,6 +192,28 @@ export function refusalText(reason: string, t: T = swedish): string {
 // everything else — only smaller and standing somewhere different.
 export function refusal(reason: string, voice: Voice, t: T = swedish): Notice {
   return { ...noticeFor('refused', voice, t), text: refusalText(reason, t) }
+}
+
+// An address with nothing in it (#753): `/editor` with no project, `/table` with no session. It is
+// D5's «saknas» — there is nothing to show and waiting will not bring it — but nothing has gone
+// missing either, so the words say the link holds nothing rather than guess at a typo or an end.
+export function unlinked(voice: 'table' | 'editor', t: T = swedish): Notice {
+  const said = noticeFor('missing', voice, t)
+  return voice === 'table'
+    ? { ...said, heading: t('status.unlinked.table.heading'), text: t('status.unlinked.table.text') }
+    : { ...said, heading: t('status.unlinked.editor.heading'), text: t('status.unlinked.editor.text') }
+}
+
+// A viewer's link opened on the phone's page (#753): the table is up and the token is good, it
+// only has no seat to show a hand from. The way on is the observer's page with the same link.
+export function watchingNotice(t: T = swedish): Notice {
+  return {
+    ...noticeFor('missing', 'phone', t),
+    mark: t('status.watching.phone.mark'),
+    heading: t('status.watching.phone.heading'),
+    text: t('status.watching.phone.text'),
+    actions: [{ kind: 'observe', label: t('status.act.observe'), primary: true }, home(t, 'status.act.home.start')],
+  }
 }
 
 // What a guest's route says when it cannot show a table at all (#485): the phone's words and ways
@@ -207,6 +231,19 @@ export function guestNotice(state: 'missing' | 'forbidden', t: T = swedish): Not
 export function asObserver(notice: Notice, t: T = swedish): Notice {
   return { ...notice, actions: notice.actions.map((a) => (a.kind === 'rescan' ? { ...a, label: t('status.act.rejoin') } : a)) }
 }
+// A seat the host took away (DRIFT §9, #679, beställarens beslut C). The way on is away from the
+// table — «Välj plats igen» was the green first button, and two presses later the kicked player sat
+// at the same table again — and back to it only as a second way, while the code still opens the room.
+export function kickedNotice(open: boolean, t: T = swedish): Notice {
+  const shut = noticeFor('forbidden', 'phone', t)
+  return {
+    ...shut,
+    heading: t('status.kicked.heading'),
+    text: open ? t('status.kicked.text') : `${t('status.kicked.text')} ${t('status.kicked.closed')}`,
+    actions: [{ ...home(t, 'status.act.home.start'), primary: true }, ...(open ? [{ kind: 'rescan' as const, label: t('status.act.rescan') }] : [])],
+  }
+}
+
 export function observerNotice(refused: string, t: T = swedish): Notice {
   return asObserver(
     {
@@ -216,6 +253,18 @@ export function observerNotice(refused: string, t: T = swedish): Notice {
     },
     t,
   )
+}
+
+// The table screen shut for want of its key (#748), said to whoever stands at it. Signed out, it
+// needs the host's link or the owner's login — never «another account's», when there is no account
+// in the reader at all. Signed in, it is another account's, and which one she is in is the first
+// thing she needs to know: «Logga in» would send her straight back here as the same account, so
+// the way on is to switch. `undefined` is not known yet, and nothing is promised until it is.
+export function tableShut(account: string | null | undefined, t: T = swedish): Notice {
+  if (account === undefined) return noticeFor('loading', 'table', t)
+  const shut = noticeFor('forbidden', 'table', t)
+  if (account === null) return signedOut({ ...shut, heading: t('status.forbidden.table.out.heading'), text: t('status.forbidden.table.out.text') }, t)
+  return { ...shut, text: t('status.forbidden.table.other.text', { email: account }), actions: [{ kind: 'switch', label: t('status.act.switch'), primary: true }, home(t)] }
 }
 
 // An editor whose reader was logged out while it was open (#485, fynd 7): not «someone else's

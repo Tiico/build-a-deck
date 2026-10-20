@@ -50,6 +50,13 @@
 // other way round, and putting a test-only constant in `@byd/render`'s export map to make the
 // dependency usable would be paying in the shipped package for a convenience in the test one.
 // `test-support/` is where the things every package's tests share already live, reachable from
-// both by a relative path and owing nothing to either. `pg-suite-budget.test.ts` is what carries
-// this number to every suite it is for, including the next one written.
+// both by a relative path and owing nothing to either.
+//
+// The fifteen seconds are the worker's own, not the wall clock's (#848). At a load of 128 on eight
+// cores the deep history in `history.test.ts`, 1.3 s of CPU, took 15–20 s of wall clock: the test
+// was not waiting for Postgres, it was not being run. So each package with a member of this class
+// — `@byd/server` and `@byd/render` — holds every test in it to this many milliseconds of the time
+// its worker actually ran, from its `test/setup.ts`, under a ceiling vitest is given far above it
+// (`own-time.ts`). `pg-suite-budget.test.ts` checks that every member lives in such a package,
+// including the next one written.
 export const PG_TEST_BUDGET = 15_000

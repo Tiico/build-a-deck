@@ -6,12 +6,9 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { buildBlankProject } from '../src/wizard/build.js'
-import { asSeat, registerRoom, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
 import { layerNames, layerPick, layerRow, layerRows } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { openAllSections } from './sections.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The panel folds (#478); this file is about the controls in it, so every section stands open.
 beforeEach(openAllSections)
@@ -48,7 +45,7 @@ describe('EditorPage', () => {
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
     expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect(screen.getByRole('button', { name: /spara/i }).getAttribute('aria-disabled')).toBe('true')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(2)
@@ -64,7 +61,7 @@ describe('EditorPage', () => {
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&host=[A-Za-z0-9_-]{20,}&mode=tv/)
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
-  }, 20_000)
+  })
 
   it('shows on the Bord tab the deck a started table would get, rows times antal (L4, #85)', async () => {
     await run.projects.create(run.projectId, projectDoc())
@@ -85,7 +82,7 @@ describe('EditorPage', () => {
 
     const file = new File(['id,title,body,antal\nphoenix,Fenix,Återföds,3'], 'kort.csv', { type: 'text/csv' })
     // The CSV pair is behind the box at the end of the table's crown (#130).
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
     // The file leaves out cards the deck has, so the import asks before it removes them (#479).
     fireEvent.click(await screen.findByRole('button', { name: 'Ja, ersätt korten' }))
@@ -95,7 +92,7 @@ describe('EditorPage', () => {
     expect(save.getAttribute('aria-disabled')).toBe('false')
 
     fireEvent.click(save)
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.rows).toEqual([
       { id: 'phoenix', fields: { title: 'Fenix', body: 'Återföds', antal: 3 } },
     ])
@@ -124,7 +121,7 @@ describe('EditorPage', () => {
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
     expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.rows).toEqual([
       { id: 'dragon', fields: { title: 'Drake', body: 'Flygande.', antal: 4 } },
       { id: 'knight', fields: { title: 'Riddare', body: 'Sköld 1.', antal: 4 } },
@@ -209,7 +206,7 @@ describe('the table follows the editor (C7, L5)', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
     fireEvent.change(screen.getByLabelText('dragon antal'), { target: { value: '4' } })
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
-    await screen.findByText(/rev-2/)
+    await screen.findByText(/version 2/)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getAllByRole('link', { name: /öppna bordet/i })).toHaveLength(1)
 
@@ -219,7 +216,7 @@ describe('the table follows the editor (C7, L5)', () => {
     await screen.findByText(/nytt bord startat/i)
     const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
     expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)
-  }, 20_000)
+  })
 })
 
 describe('a table opens only once its cards can be seen (L5)', () => {
@@ -234,6 +231,41 @@ describe('a table opens only once its cards can be seen (L5)', () => {
     expect(await run.completeRenders()).toBe(4)
     expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
     expect(screen.queryByText(/renderar kort/i)).toBeNull()
+  })
+  // Opening the editor on a table whose cards were rendered long ago (#765): the band stood on
+  // «renderar kort 0/…» — three dots for a number — until the first answer came. What the page
+  // does not know yet it does not say; once it knows, it says what is true.
+  it('says nothing about rendering on a table it has not heard from yet, and never «0/…» (#765)', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+    expect(res.ok).toBe(true)
+    expect(await run.completeRenders()).toBe(4)
+
+    // The first answer about the textures is held back, so the moment before it can be looked at.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/textures')) await held
+      return real(input, init)
+    })
+    try {
+      history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+      render(<EditorPage />)
+      await screen.findByText(/Bordet kör version 1/)
+      const band = document.querySelector('.byd-editor-table-link')!
+      expect(band.textContent).not.toMatch(/renderar kort/i)
+      expect(band.textContent).not.toContain('…')
+      // Nor a dash that points at nothing.
+      expect(band.textContent).not.toMatch(/—\s*·/)
+      release()
+      expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
+      expect(screen.queryByText(/renderar kort/i)).toBeNull()
+    } finally {
+      release()
+      spy.mockRestore()
+    }
   })
 })
 
@@ -305,7 +337,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     expect(await screen.findByText(/renderar kort 3\/4/i)).toBeTruthy()
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual([])
     expect(await run.completeRenders()).toBe(1)
-    await screen.findByText(/bordet uppdaterat på rev-2/i)
+    await screen.findByText(/bordet uppdaterat på version 2/i)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
   })
@@ -338,10 +370,10 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))
     await screen.findByText(/renderar kort 3\/4/i)
     await run.completeRenders()
-    await screen.findByText(/bordet uppdaterat på rev-2/i)
+    await screen.findByText(/bordet uppdaterat på version 2/i)
     expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(false)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
-  }, 20_000)
+  })
 })
 
 describe('the header steps (#566)', () => {
@@ -389,7 +421,7 @@ describe('the editor by keyboard alone (UX-04)', () => {
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 1/ }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^v1$/ }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ångra: inget att ta tillbaka' }))
     await user.tab()
@@ -498,7 +530,7 @@ describe('editing the template on the canvas (#18)', () => {
 
     // It lands in the saved project through the same path every other editor change takes.
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'text-1'])
 
@@ -509,7 +541,7 @@ describe('editing the template on the canvas (#18)', () => {
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(layers()).toEqual(['body', 'title', 'frame'])
     expect(document.querySelector('[data-element="text-1"]')).toBeNull()
-  }, 20_000)
+  })
 })
 
 describe('the order of the layers (#18)', () => {
@@ -531,9 +563,9 @@ describe('the order of the layers (#18)', () => {
     expect(drawn()).toEqual(['frame', 'body', 'title'])
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body', 'title'])
-  }, 20_000)
+  })
 })
 
 describe('the host\'s controls (DRIFT §9)', () => {
@@ -553,12 +585,91 @@ describe('the host\'s controls (DRIFT §9)', () => {
     const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    // × asks first (#679, beställarens beslut C): a kick costs a player's hand mid-game, and a
+    // miss on the chip beside it cost another's. The question opens on «Avbryt».
     fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })
+    expect(ask.textContent).toContain('Korten i Adas hand går tillbaka i leken, och telefonen lämnar bordet.')
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Avbryt' }))
+    fireEvent.click(within(ask).getByRole('button', { name: 'Avbryt' }))
+    expect(ada.refused).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Sparka Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka Ada' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Sparka Ada' })).toBeNull())
     await waitFor(() => expect(ada.refused).toBe('kicked'))
+    // The code stays: a plain kick does not close the door, and the question said so by offering both.
+    expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).toBe(first)
+
+    // «Ny kod» asks too, and says what stops working; the answer is said in the band.
+    fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
+    const swap = await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })
+    expect(swap.textContent).toContain(`${first} på TV:n och i det du skickat slutar gälla`)
+    fireEvent.click(within(swap).getByRole('button', { name: 'Byt kod' }))
+    await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
+    expect(document.querySelector('[data-code-said]')?.textContent).toMatch(new RegExp(`^Ny rumskod [A-Z2-9]{6}\\. ${first} gäller inte längre\\.$`))
+  })
+
+  // And the kick can close the door in the same breath (#679 C): the kicked phone could sit down
+  // again two presses later with the code it already had.
+  it('kicks and changes the code at once, from the question, when asked to', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    const first = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session') ?? ''
+    registerRoom(sessionId, { code: first, hostKey: new URL(link.href).searchParams.get('host') ?? '' })
+    const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka och byt kod' }))
+    await waitFor(() => expect(ada.refused).toBe('kicked'))
+    await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
+  })
+
+  // «Ny kod» changes the host key too (#820): the editor's own link to the table and its kick go on
+  // with the new key, since the one the table was started with opens nothing any more.
+  it('carries the new host key after «Ny kod», in the link to the table and in a kick', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    const first = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session') ?? ''
+    const old = new URL(link.href).searchParams.get('host') ?? ''
 
     fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
-    await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })).getByRole('button', { name: 'Byt kod' }))
+    const code = await waitFor(() => {
+      const shown = screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent ?? ''
+      expect(shown).not.toBe(first)
+      return shown
+    })
+    const hostKey = await waitFor(() => {
+      const now = new URL((screen.getByRole('link', { name: /öppna bordet/i }) as HTMLAnchorElement).href).searchParams.get('host') ?? ''
+      expect(now).not.toBe(old)
+      return now
+    })
+    expect(hostKey).not.toBe('')
+    registerRoom(sessionId, { code, hostKey })
+    const table = TableClient.connect(await asTable(run, sessionId))
+    await table.ready()
+    expect(table.refused).toBeNull()
+    table.close()
+
+    const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka Ada' }))
+    await waitFor(() => expect(ada.refused).toBe('kicked'))
   })
 })
 
@@ -583,11 +694,11 @@ describe('a game made without the guided start (L42)', () => {
     fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['text-1'])
     expect(stored?.rows).toHaveLength(1)
-  }, 20_000)
+  })
 })
 
 // The empty game on the wall (#476, beslut 2026-09-27, variant A): a black wall and «0 kort · Inga

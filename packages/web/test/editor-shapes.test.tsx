@@ -4,10 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { openAllSections } from './sections.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The panel folds (#478); this file is about the controls in it, so every section stands open.
 beforeEach(openAllSections)
@@ -292,6 +289,8 @@ describe('the ready-made backs (L17)', () => {
   it('lays the whole back down in one go, as elements that can be taken apart afterwards', () => {
     const { onReplaceFace } = open({}, { face: 'back' })
     const gallery = screen.getByRole('group', { name: /färdiga baksidor/i })
+    // Folded under a back that has layers (#736).
+    fireEvent.click(within(gallery).getByRole('button', { name: /^Färdiga baksidor/ }))
     fireEvent.click(within(gallery).getByRole('button', { name: 'Romber' }))
     // The fixture's back has a layer, so the gallery asks first (#478).
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, byt baksida' }))
@@ -312,7 +311,10 @@ describe('the ready-made backs (L17)', () => {
 describe('what the ready-made backs are called (A4, L17)', () => {
   it('gives every layer an id nobody has to read and a name in the reader’s language', () => {
     const { onReplaceFace } = open({}, { face: 'back' })
-    fireEvent.click(within(screen.getByRole('group', { name: /färdiga baksidor/i })).getByRole('button', { name: 'Medaljong' }))
+    const gallery = within(screen.getByRole('group', { name: /färdiga baksidor/i }))
+    // Folded under a back that has layers (#736).
+    fireEvent.click(gallery.getByRole('button', { name: /^Färdiga baksidor/ }))
+    fireEvent.click(gallery.getByRole('button', { name: 'Medaljong' }))
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, byt baksida' }))
     const base = onReplaceFace.mock.calls.at(-1)?.[0] as Element[]
     // Ids are the document's and are written in the same language every other id in this

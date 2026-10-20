@@ -239,6 +239,17 @@ describe('connections', () => {
     expect(await res.json()).toEqual({ ok: true, release: 'v0.8.0', tables: 0, store: 'ok' })
   })
 
+  // Where a beta tester turns, and what she quotes back (#757): the contact the box was given
+  // (`BYD_CONTACT`) stands beside the release, and nothing is said when none was given.
+  it('health names the contact the box was given, and none when it was given none (#757)', async () => {
+    await run.stop()
+    run = await start({ release: 'v0.9.3', contact: 'beta@example.com' })
+    expect(await (await fetch(`${run.http}/health`)).json()).toEqual({ ok: true, release: 'v0.9.3', contact: 'beta@example.com', tables: 0, store: 'ok' })
+    await run.stop()
+    run = await start({ release: 'v0.9.3' })
+    expect(await (await fetch(`${run.http}/health`)).json()).not.toHaveProperty('contact')
+  })
+
   // A 503 is when the question is asked in earnest, and "which version is broken" is the first
   // thing asked back. A marker that only the healthy answer carries is missing where it counts.
   it('names it in the answer that says something is wrong, too', async () => {
@@ -447,6 +458,21 @@ describe('rewind on the wire (B)', () => {
     // The card's old id is gone from every view, and the outcome never crossed the wire.
     expect((await a.synced(3)).components.some((c) => c.id === seen.id)).toBe(false)
     expect(table.frames.some((f) => f.includes('"restore"') || f.includes('"table":'))).toBe(false)
+  })
+
+  // The felt's own screen plays as the table (K14) and takes back its own moves (#682): its view
+  // says what undo means for it, as a seat's does, and an observer's never does.
+  it('the table undoes its own move, and its view says when it can', async () => {
+    const id = await createSession(run.http)
+    const table = await connect(id, null)
+    expect((await table.synced(0)).undo).toBeNull()
+    expect((await table.send(null, { v: 'draw', from: 'draw', to: 'discard', count: 2 })).t).toBe('ack')
+    expect((await table.synced(1)).undo).toEqual({ toSeq: 0, contested: false })
+    expect((await table.send(null, { v: 'undo.self' })).t).toBe('ack')
+    const after = await table.synced(2)
+    expect(after.zones.find((z) => z.id === 'discard')).toMatchObject({ order: [] })
+    expect(after.zones.find((z) => z.id === 'draw')).toMatchObject({ count: 10 })
+    expect(after.undo).toBeNull()
   })
 
   it('a proposal shows on every view until the other seat confirms, and the actor survives a reload', async () => {

@@ -1,13 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A picture the designer picks, as a picture actually is: the server reads the bytes and not the
 // name, so a file called drake.png that is not one never becomes an asset (#204).
@@ -63,6 +60,33 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(field.getAttribute('aria-valuemax')).toBe(String(MAX_PLAYERS))
   })
 
+  // The guide opened on one card «Kort 1», cost 1 and no text (#733): a game made from the defaults
+  // was one card in the draw pile and showed nothing of what a field does. Decided 2026-10-04: three
+  // example cards, two of each, in the game's language, every field filled and one meaning each.
+  it('opens on three example cards that fill every field, and makes a table of six cards', async () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
+    // One card at a time behind its tab, as the guide shows them.
+    const tabs = [...document.querySelectorAll('.byd-wizard-card-tabs > button[aria-pressed]')] as HTMLElement[]
+    expect(tabs.map((b) => b.textContent)).toEqual(['1Skogsvandring', '2Guldfynd', '3Björnen'])
+    const card = (n: number) => {
+      fireEvent.click(tabs[n - 1]!)
+      const value = (label: string) => (screen.getByLabelText(`kort ${n} ${label}`) as HTMLInputElement).value
+      return [value('Titel'), value('Kostnad'), value('Regeltext')]
+    }
+    expect([1, 2, 3].map(card)).toEqual([
+      ['Skogsvandring', '1', 'Dra ett kort.'],
+      ['Guldfynd', '2', 'Få 2 {mynt|vinst}.'],
+      ['Björnen', '3', 'Gör 3 {svärd|anfall}.'],
+    ])
+
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Exempel' } })
+    fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const stored = await run.projects.load(new URL(gone[0]!, 'http://x').searchParams.get('project')!)
+    expect(stored?.rows.map((r) => r.fields['antal'])).toEqual([2, 2, 2])
+  })
+
   it('builds starter cards graphically and shows a newly added field on every card', () => {
     open(() => undefined)
 
@@ -70,7 +94,20 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(screen.getByLabelText('kort 1 Titel')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '+ Textfält' }))
     expect(screen.getByLabelText('kort 1 Nytt textfält')).toBeTruthy()
-    expect(screen.getByText('Placeras på mallen i editorn')).toBeTruthy()
+    expect(screen.getByText('Placeras i editorn')).toBeTruthy()
+  })
+
+  // Words a beginner has before the step that introduces them (#731): the prose field was «Text»
+  // beside the type «Text», and every field said «startramen» before any frame had been shown.
+  it('names the prose its own word and says where a field shows in words the beginner already has', async () => {
+    open(() => undefined)
+    expect(screen.getByLabelText('kort 1 Regeltext')).toBeTruthy()
+    expect(screen.getAllByText('Visas på kortet').length).toBeGreaterThan(0)
+    expect(document.body.textContent).not.toMatch(/startram/i)
+    // One door per paragraph in the help, each led by its own name.
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
+    const box = await screen.findByRole('dialog', { name: 'Hjälp om spelet' })
+    expect([...box.querySelectorAll('p')].map((p) => p.textContent!.split(':')[0])).toEqual(['Guidad start', 'Utan guidad start'])
   })
 
   it('lets the designer choose an image for an image field and previews it', async () => {
@@ -87,7 +124,8 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
     const live = () => within(document.querySelector('.byd-wizard-preview') as HTMLElement)
-    expect(live().getByText('Kort 1')).toBeTruthy()
+    // The first of the example cards the guide opens on (#733).
+    expect(live().getByText('Skogsvandring')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
     // The number written straight into the stepper's field, and kept when the field is left.
@@ -99,7 +137,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [file] } })
     await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })
     fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
-    fireEvent.change(screen.getByLabelText('kort 2 Titel'), { target: { value: 'Riddare' } })
+    fireEvent.change(screen.getByLabelText('kort 4 Titel'), { target: { value: 'Riddare' } })
 
     fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
     await waitFor(() => expect(gone).toHaveLength(1))
@@ -109,7 +147,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(url.searchParams.get('server')).toBe(run.http)
     const stored = await run.projects.load(id)
     expect(stored?.name).toBe('Skogens herrar')
-    expect(stored?.rows.map((r) => r.id)).toEqual(['drake', 'riddare'])
+    expect(stored?.rows.map((r) => r.id)).toEqual(['drake', 'guldfynd', 'bjornen', 'riddare'])
     // The image went up as an asset (E1): the row points at it by hash, and the server serves it.
     // The column is the field's name as written in step 2 (#476, L44).
     const art = String(stored?.rows[0]?.fields['Illustration'])
@@ -123,8 +161,12 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
 
   it('makes the editor the clear next step instead of offering a direct table', async () => {
     open(() => undefined)
-    expect(screen.getByText('Wizarden är startpunkten')).toBeTruthy()
-    // What waits in the editor is said behind the first step's question mark (L36).
+    // What waits in the editor is said behind the first step's question mark (L36), and the word
+    // «wizard» is not on the surface at all (#687): it is «guidad start» everywhere.
+    // The words on the page, not the card's own scoped style sheet (`#wizard-live …`).
+    const page = document.querySelector('.byd-wizard')!.cloneNode(true) as HTMLElement
+    for (const sheet of page.querySelectorAll('style')) sheet.remove()
+    expect(page.textContent).not.toMatch(/wizard/i)
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
     expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/csv-verktyg väntar i editorn/i)
     expect(screen.queryByRole('button', { name: /öppna bordet/i })).toBeNull()
@@ -242,6 +284,47 @@ describe('a game without the guided start (L42)', () => {
     expect(stored?.template.faces['back']?.base).toEqual([])
   })
 
+  // The door past the guided start leaves the guide's cards and fields behind (#732, L9, L42): with
+  // a title written on card 1 it made a game of no cards and no fields without a word. It asks
+  // first now, with the one question the tool asks before something cannot be looked at again —
+  // and only when the designer has made something there to lose.
+  it('asks before it leaves behind the cards and fields the designer has made', async () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
+    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
+    fireEvent.click(blank)
+
+    // The question travels behind a cut of its own (L40), so it is there once its chunk has come.
+    const asked = await screen.findByRole('alertdialog')
+    expect(asked.textContent).toMatch(/Korten och fälten du har gjort här följer inte med/)
+    // It opens on the answer that loses nothing, and that answer leaves everything where it was.
+    const cancel = within(asked).getByRole('button', { name: 'Avbryt' })
+    await waitFor(() => expect(document.activeElement).toBe(cancel))
+    fireEvent.click(cancel)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(blank)
+    expect((screen.getByLabelText('kort 1 Titel') as HTMLInputElement).value).toBe('Drake')
+
+    fireEvent.click(blank)
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Ja, skapa ett tomt spel' }))
+    await waitFor(() => expect(gone).toHaveLength(1))
+    expect(gone).toHaveLength(1)
+    const stored = await run.projects.load(new URL(gone[0]!, 'http://x').searchParams.get('project')!)
+    expect(stored?.name).toBe('Kråkkriget')
+    expect(stored?.rows).toEqual([])
+  })
+
+  it('asks nothing when the guide holds only what it opened with', async () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await waitFor(() => expect(gone).toHaveLength(1))
+  })
+
   it('asks for the name the same way the guided door does, instead of standing locked', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
@@ -291,6 +374,34 @@ describe('the draft in the wizard (#476)', () => {
     expect(leave()).toBe(false)
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
     expect(leave()).toBe(true)
+  })
+
+  // A draft the browser will not keep (#686) was dropped without a word, and a reload gave back
+  // whatever older draft the tab still held. It is now said at the head of the page, and the older
+  // draft is not left standing to come back in its place.
+  it('says at the head of the page when the browser will not keep it', async () => {
+    open(() => undefined)
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    await waitFor(() => expect(sessionStorage.getItem('byd.pending-wizard')).toContain('Skogens herrar'))
+    // On the tab's own storage, whichever runtime put it there.
+    const proto = Object.getPrototypeOf(sessionStorage) as Storage
+    const real = proto.setItem
+    const full = vi.spyOn(proto, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === 'byd.pending-wizard') throw new DOMException('full', 'QuotaExceededError')
+      real.call(this, key, value)
+    })
+    try {
+      fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
+      const header = document.querySelector('.byd-wizard > header') as HTMLElement
+      expect((await within(header).findByRole('alert')).textContent).toBe('Utkastet sparas inte längre i den här fliken — webbläsaren har inte plats för det. Laddar du om sidan eller stänger fliken försvinner det som står här.')
+      expect(sessionStorage.getItem('byd.pending-wizard')).toBeNull()
+    } finally {
+      full.mockRestore()
+    }
+    // And once it is kept again, the page stops saying it is not.
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drakar' } })
+    await waitFor(() => expect(within(document.querySelector('.byd-wizard > header') as HTMLElement).queryByRole('alert')).toBeNull())
+    expect(sessionStorage.getItem('byd.pending-wizard')).toContain('Drakar')
   })
 
   it('is never sent by itself when the page is opened again later', async () => {
@@ -384,6 +495,41 @@ describe('a file that is not a picture the game can hold (#476)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Bilden är större än 8 MB. Välj en mindre bild.')
     expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
   })
+
+  // The refusal was about the picture that stayed (#732): once that picture is taken away there is
+  // nothing left for it to be about, and «Bilden är större än 8 MB» under «Ingen bild vald» reads
+  // as if the removal had been refused too.
+  it('takes the refusal away with the picture it kept', async () => {
+    open(() => undefined)
+    const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File([PNG], 'drake.png', { type: 'image/png' })] } })
+    await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })
+    const big = new Uint8Array(8 * 1024 * 1024 + 1)
+    big.set(PNG)
+    fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [new File([big], 'stor.png', { type: 'image/png' })] } })
+    expect((await screen.findByRole('alert')).textContent).toMatch(/större än 8 MB/)
+    expect(screen.getByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
+    expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
+    expect(screen.getByText('Ingen bild vald')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})
+
+// A long title on its tab (#732): «Den gamla björnen som vaktade bron över Mörkälven i tusen år»
+// was written out whole, 484 px of tab, and «Ta bort valt kort» went to a row of its own. The tab
+// draws it cut short; the whole of it is on the tab for whoever points at it or reads it.
+describe('a card s tab (#732)', () => {
+  it('keeps the whole of a long title on the tab, and the cut-short drawing to its own box', () => {
+    open(() => undefined)
+    const long = 'Den gamla björnen som vaktade bron över Mörkälven i tusen år'
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: long } })
+    const tab = document.querySelector('.byd-wizard-card-tabs > button[aria-pressed="true"]') as HTMLElement
+    expect(tab.getAttribute('title')).toBe(long)
+    expect(tab.textContent).toBe(`1${long}`)
+    expect(tab.querySelector('.byd-wizard-card-tab-title')?.textContent).toBe(long)
+  })
 })
 
 // The live card reads the same columns the game will have (#476): with the fields named as they
@@ -394,9 +540,42 @@ describe('the live card after the fields are named (#476)', () => {
     open(() => undefined)
     fireEvent.change(screen.getByLabelText('Kostnad namn'), { target: { value: 'Pris' } })
     fireEvent.change(screen.getByLabelText('kort 1 Pris'), { target: { value: '7' } })
-    fireEvent.change(screen.getByLabelText('kort 1 Text'), { target: { value: 'Flygande drake.' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Regeltext'), { target: { value: 'Flygande drake.' } })
     const preview = document.querySelector('.byd-wizard-preview [data-card]') as HTMLElement
     await waitFor(() => expect(preview.textContent).toContain('Flygande drake.'))
     expect(preview.textContent).toContain('7')
+  })
+})
+
+// A logged-out guide said nothing about an account until «Skapa spelet» sent the designer to a login
+// after three minutes of filling in (#691, beslut 2026-10-06). It says so early, in the box at the
+// top that once said «Wizarden är startpunkten» (#687), and whoever is logged in gets no box at all.
+describe('the account the game is kept on (#691, #687)', () => {
+  const SAVED = 'Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.'
+  beforeEach(async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+  })
+
+  it('says early, to whoever is logged out, that the game is kept on an account', async () => {
+    open(() => undefined)
+    const box = (await screen.findByText(SAVED, { exact: false })).closest('.byd-wizard-handoff')
+    expect(box?.textContent).toBe(`Spelet sparas på ett konto. ${SAVED}`)
+    expect(box?.querySelector('strong')?.textContent).toBe('Spelet sparas på ett konto.')
+  })
+
+  it('says nothing about it to whoever is logged in', async () => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    const asked = vi.spyOn(globalThis, 'fetch')
+    open(() => undefined)
+    // The answer to who is here has come back and been drawn before the page is read.
+    await waitFor(() => expect(asked.mock.calls.findIndex(([input]) => String(input).endsWith('/auth/me'))).toBeGreaterThanOrEqual(0))
+    const at = asked.mock.calls.findIndex(([input]) => String(input).endsWith('/auth/me'))
+    expect((await asked.mock.results[at]?.value)?.status).toBe(200)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(screen.queryByText(SAVED, { exact: false })).toBeNull()
+    expect(document.querySelector('.byd-wizard-handoff')).toBeNull()
   })
 })

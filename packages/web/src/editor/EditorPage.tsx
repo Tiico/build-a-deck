@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
+import { Footed, SaidProvider } from './said.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
 import { PHONE_READING, SCREENS, minPtIn } from '../legibility.js'
 import { noFilter } from './filtering.js'
@@ -9,25 +10,30 @@ import { useHeaderStands, useRoom } from '../room.js'
 import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
-import { TableMenu, TablesTab } from './TablesTab.js'
-import { SetupEditor } from './SetupEditor.js'
+import { AiPanel, useAiKey } from './AiPanel.js'
+import { proposalView, rulesView, showsDeck, showsRules, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
+import { TableMenu } from './TablesTab.js'
+import { BordTab } from './BordTab.js'
 import { revealThemeSection, ThemePanel } from './ThemePanel.js'
 import { MediaPanel } from './MediaPanel.js'
 import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { GameMore } from './GameMore.js'
+import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
-import { Question } from './Question.js'
-import { useProjectClient } from './useProjectClient.js'
+import { Asking, Question } from './Question.js'
+import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
+import { Arriving } from './AssetImage.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
-import type { ProjectClient, Textures } from './ProjectClient.js'
-import { loginUrl } from '../account/api.js'
+import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
+import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
+import { loginUrl, removeProject } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor, refusalText, loggedOutNotice, asOf } from '../status/notice.js'
+import { noticeFor, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -35,30 +41,38 @@ import type { Motif } from '@byd/template'
 import { statusLinks } from '../status/links.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { useLang, useT, type T } from '../i18n/index.js'
+import { useLang, useT, type Key, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
+import { symbolName } from './symbols.js'
 import { HookGlyph } from '../glyphs.js'
 import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
+import { versionWord } from '../i18n/version.js'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
 
-// How long the render count may stand still before the line says so (#88, UX-43). A texture is a
-// page in Chromium and takes seconds, not minutes, so thirty seconds without a single card landing
-// is a queue that is not moving — a worker that is down, or none at all — and not a slow one.
-// The count itself is what is watched, not the polling: a poll that answers the same number is
-// no progress.
-export const RENDER_STALLED_AFTER_MS = 30_000
-export type EditorTiming = { renderStalledAfterMs: number; dropAfterMs: number }
-export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS, dropAfterMs: DEFAULT_TIMING.dropAfterMs }
-// A count under watch: which table's, where it stands, and how many times the designer has asked
-// for it to move. A stall is that same triple seen again when the patience ran out.
-type Watched = { table: string; done: number; asked: number }
+// How long the render count may stand still before the line says so (#88, UX-43): the table's own
+// patience, which the TV's start waits by too (#765).
+export { RENDER_STALLED_AFTER_MS }
+export type EditorTiming = { renderStalledAfterMs: number } & ProjectTiming
+export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS, slowAfterMs: DEFAULT_TIMING.slowAfterMs, dropAfterMs: DEFAULT_TIMING.dropAfterMs, connectTimeoutMs: DEFAULT_TIMING.connectTimeoutMs }
 
 // /editor?project=…&server=http://…
 // The editor (L, prototype answer): the deck wall as home, the template canvas for the template,
 // the table as a tab. One project, one preview path, and the header's filled action puts the work
 // on a table: "Starta bord" while the game has none, "Uppdatera bordet" once it has one (#417).
 export type EditorPageProps = { onNavigate?(url: string): void; timing?: EditorTiming }
+
+// What a save that made no version says, by why (#1018). A record and not a lookup with a reserve,
+// so a reason the client learns to give is a compile error here until it has a sentence.
+const SAVE_FAILED: Record<SaveFailure, Key> = {
+  conflict: 'editor.conflict',
+  missing: 'editor.save.gone',
+  forbidden: 'editor.save.forbidden',
+  loggedOut: 'editor.save.loggedOut',
+  offline: 'editor.save.offline',
+  failed: 'editor.save.failed',
+}
 
 export function EditorPage({ onNavigate = (url) => location.assign(url), timing = DEFAULT_EDITOR_TIMING }: EditorPageProps = {}) {
   const t = useT()
@@ -67,7 +81,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
-  const { client, fault, retry } = useProjectClient(http, projectId, timing.dropAfterMs)
+  const { client, fault, slow, retry } = useProjectClient(http, projectId, timing)
+  // Whether the designer has an AI key (#1001), asked beside the project so the panel is decided
+  // before the work is drawn and nothing moves over once it is.
+  const [aiKey, setAiKey] = useAiKey(http, projectId !== null)
   // How much room there is (L10), and where the designer is standing. One state answers both:
   // the desk shows a mode, a smaller screen shows the stage that mode is made of.
   const room = useRoom()
@@ -79,6 +96,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const headerStands = useHeaderStands()
   const actionsInHeader = room === 'desk' || headerStands
   const [stage, setStage] = useState<Stage>('wall')
+  // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
+  // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
+  const [askingCode, setAskingCode] = useState(false)
+  const [codeSaid, setCodeSaid] = useState<string | null>(null)
   // A room that does not offer the stage that was open — a phone has no canvas — puts the
   // designer on the deck wall rather than on a panel that is not there.
   const here: Stage = stages && !stages.some(([s]) => s === stage) ? 'wall' : stage
@@ -91,27 +112,60 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Which group the canvas edits (#13), or nothing for the base every card inherits.
   const [group, setGroup] = useState<string | null>(null)
   const [row, setRow] = useState<string | null>(null)
+  // An AI proposal laid on the wall among the deck's cards (#1002): its parts, translated against the
+  // game as it stands every time the wall is drawn, so the ghosts take the ids the game has free now.
+  // Held by what it was worked out from, so a wall drawn again over the same game draws the same cards.
+  // With the parts left out of it (#1003), which the wall and the table leave out as well.
+  const [ghosts, setGhosts] = useState<ShownProposal | null>(null)
+  const ghostWall = useRef<{ doc: ProjectDoc; shown: ShownProposal; view: ProposalView } | null>(null)
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
   // of news and one slot could only ever hold the later of them (#35).
-  const [notice, setNotice] = useState<string | null>(null)
+  // A notice is a saying of its own and not only its words (#996). A save or a table that goes
+  // through puts away the notice that stood when it was asked for, and never one said while it was
+  // on its way: a refusal that arrived in that moment was cleared by the save's answer a beat
+  // later, and the change it was about vanished without a word. Said again, the same words are a
+  // new notice, so a save cannot put away a word it never stood in front of.
+  const [notice, setNotice] = useState<{ text: string } | null>(null)
+  const say = useCallback((text: string) => setNotice({ text }), [])
+  const putAway = (standing: { text: string } | null) => setNotice((now) => (now === standing ? null : now))
   const confirmation = useConfirmation()
+  // How many questions stand right now (#698). While one does, what just happened is not drawn:
+  // it stood over «Ja, ta bort» and «Avbryt», and a step taken while the question stands would
+  // have been drawn there again. It is still said, and the question is what is on the screen.
+  const [questions, setQuestions] = useState(0)
+  const asking = useCallback(() => {
+    setQuestions((n) => n + 1)
+    return () => setQuestions((n) => n - 1)
+  }, [])
   // The question asked before the editor is left with work that is not saved (#8), and the way
   // back to the link that asked it: a question that takes the focus has to give it back.
-  const [leaving, setLeaving] = useState(false)
+  // Where the designer is on her way to while the question stands, or null when it does not.
+  const [leaving, setLeaving] = useState<string | null>(null)
   const [refocusLeave, setRefocusLeave] = useState(false)
   const leaveRef = useRef<HTMLAnchorElement>(null)
+  // What was pressed to leave, when it was not «Mina spel»: the keys go back to it on «Avbryt».
+  const leaveFrom = useRef<HTMLElement | null>(null)
+  // The question asked before the game is taken away from its ⋯ (#738), the ⋯ the keys go back to
+  // when it is answered «Behåll», and whether the game is on its way out: the server tells every
+  // open editor that a deleted game is gone, and this one is leaving for «Mina spel», not lost.
+  const [removing, setRemoving] = useState<'asking' | 'gone' | null>(null)
+  const moreRef = useRef<HTMLButtonElement>(null)
   // Where the keyboard goes once a press has taken away what it was standing on (#477): the
   // comparison a version was compared from, or the element that was chosen on a card on the wall.
   // Moved after the render that draws it, because it is not there until then.
-  const [focusNext, setFocusNext] = useState<{ compare: true } | { layer: string } | null>(null)
+  // Or a card's row in Tabell, which a remark on the wall leads to (#808).
+  const [focusNext, setFocusNext] = useState<{ compare: true } | { layer: string } | { row: string } | null>(null)
   useEffect(() => {
     if (!focusNext) return
     setFocusNext(null)
+    const rowOf = (cardRef: string) => document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(cardRef)}"]`)
     const target =
       'compare' in focusNext
         ? document.querySelector<HTMLElement>('.byd-data-compare button')
+        : 'row' in focusNext
+        ? (rowOf(focusNext.row)?.querySelector<HTMLElement>('[tabindex="0"], input, button') ?? document.getElementById(panelId('table')))
         : (document.querySelector<HTMLElement>(`[data-layer="${CSS.escape(focusNext.layer)}"] .byd-layer-pick`) ?? document.getElementById(panelId('template')))
     target?.focus()
   }, [focusNext])
@@ -122,7 +176,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The tab says which game is open, and what is wrong with it while something is (#12).
   // Which tab is open is part of where the designer is (#477), so the browser's tab says it too.
   const part = MODES.find(([m]) => m === mode)?.[1]
-  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault === 'loggedOut' ? 'forbidden' : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault === 'loggedOut' ? 'forbidden' : fault ?? (client ? null : slow ? 'slow' : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
   // What the header has standing over the work: the history (B4), which opens from the revision
   // where the version is already named, or who has the game (D3), which opens from the faces. One
   // state rather than two, because two panels over each other cover the work and each other — on
@@ -148,7 +202,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
   // A table picked up after a reload (`running`) has no key in the page; the account is the
   // authority for it instead.
-  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running' } | null>(null)
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running' | 'already'; saved?: boolean } | null>(null)
   // The table outlives the page (#477). Without this a reload put «Starta bord» back in the header
   // while the table was still running, and the press that followed started a second table with a
   // new code — the guests at the first never saw the update. The newest table that still runs and
@@ -184,21 +238,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [lost, setLost] = useState<number | null>(null)
   // What the line counts: the update's own poll while one runs, otherwise the table's textures.
   const progress = preparing ?? textures
-  const rendering = progress !== null && progress.done + progress.failed.length < progress.total
+  const rendering = stillRendering(progress)
   // The count has not moved for as long as the timing allows (#88). What is remembered is the
   // count the stall was seen at, so a count that moves on takes the message with it in the same
   // render; another table and the designer asking again start the wait over too.
   const [asked, setAsked] = useState(0)
-  const watching: Watched | null = rendering && table ? { table: table.id, done: progress.done, asked } : null
-  const [stalledAt, setStalledAt] = useState<Watched | null>(null)
-  const stalled = watching !== null && stalledAt !== null && stalledAt.table === watching.table && stalledAt.done === watching.done && stalledAt.asked === watching.asked
-  useEffect(() => {
-    if (!watching) return
-    const seen = watching
-    const timer = setTimeout(() => setStalledAt(seen), timing.renderStalledAfterMs)
-    return () => clearTimeout(timer)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- the watched record is new every render; its three values are what is watched
-  }, [watching?.table, watching?.done, watching?.asked, timing.renderStalledAfterMs])
+  const stalled = useStalled(rendering && table ? `${table.id}:${progress.done}:${asked}` : null, timing.renderStalledAfterMs)
   useEffect(() => {
     if (!client || !table) return
     let stop = false
@@ -213,8 +258,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         delay = Math.min(1000, delay * 2)
       }
     }
-    // A refreshed table keeps what is known until the next answer; another table starts over.
-    setTextures((t) => (t && table.kind === 'refreshed' ? t : null))
+    // A refreshed table keeps what is known until the next answer — so does one that already ran
+    // the version (#706); another table starts over.
+    setTextures((t) => (t && (table.kind === 'refreshed' || table.kind === 'already') ? t : null))
     void poll()
     return () => {
       stop = true
@@ -229,7 +275,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const unsaved = client?.dirty === true
   useEffect(() => {
     if (!refocusLeave) return
-    leaveRef.current?.focus()
+    ;(leaveFrom.current?.isConnected ? leaveFrom.current : leaveRef.current)?.focus()
     setRefocusLeave(false)
   }, [refocusLeave])
   // Closing or reloading the tab is the one way out the page cannot ask its own question about:
@@ -288,6 +334,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const deckMotifs = useMemo(() => previewMotifs(motifs, http, cropped), [motifs, http, cropped])
 
   const line = useLineState(client?.lineDown ?? false)
+  // An edit of the designer's own that the actor refused (#993) is taken off the screen again, and
+  // that is said: a change that just vanishes reads as the tool having lost it. Counted per client,
+  // so a project opened again starts from nothing refused.
+  const refusedEdits = client?.refusedEdits ?? 0
+  const heardRefusals = useRef<{ client: ProjectClient | null; n: number }>({ client: null, n: 0 })
+  useEffect(() => {
+    const heard = heardRefusals.current
+    if (heard.client === client && refusedEdits > heard.n) say(t('editor.edit.refused'))
+    heardRefusals.current = { client, n: refusedEdits }
+  }, [client, refusedEdits, say, t])
   // What the reading band has just answered a shortcut with; gone after a moment (#489).
   const [readingSaid, setReadingSaid] = useState<string | null>(null)
   useEffect(() => {
@@ -296,7 +352,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     return () => clearTimeout(timer)
   }, [readingSaid])
   const sayReading = (text: string) => setReadingSaid(text)
-  if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
+  if (!projectId) return <StatusNotice notice={unlinked('editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
     onNavigate(loginUrl(location.pathname + location.search, params.get('server')))
@@ -305,8 +361,27 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // A project that is missing, shut or out of reach says so in the editor's own words, with a
   // way back and — where waiting can help — a way to ask again (#12, UX-07).
   if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
-  if (!client) return <StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />
+  if (!client) return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={retry} />
   const doc = client.doc
+  const shownWall = (() => {
+    if (!ghosts) return null
+    const had = ghostWall.current
+    if (had && had.doc === doc && had.shown === ghosts) return had.view
+    const read = translated(doc, ghosts.parts, ghosts.leave)
+    if (!read.ok) return null
+    ghostWall.current = { doc, shown: ghosts, view: proposalView(doc, read) }
+    return ghostWall.current.view
+  })()
+  // The same proposal's rule text in the book (#1006), translated the same way; only the Regler tab
+  // draws it, so it is worked out only while that tab is open.
+  const shownRules = (() => {
+    if (!ghosts || mode !== 'rules') return null
+    const read = translated(doc, ghosts.parts, ghosts.leave)
+    return read.ok ? rulesView(doc, read) : null
+  })()
+  // A game this editor has just taken away is not a game that was lost (#738): it is on its way to
+  // «Mina spel», and the server's word that it is gone is not said over it.
+  const shownFault = removing === 'gone' ? null : fault
   if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype doc={doc} revision={client.rev} http={http} /></Suspense>
 
   // The one guard, so the button's greyed-out look and the chord's answer are the same rule said
@@ -314,41 +389,65 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the server holds has nothing to save, and a save that is still travelling is not asked twice.
   const save = async (): Promise<boolean> => {
     if (!unsaved || saving) return true
+    const standing = notice
     setSaving(true)
     const result = await client.save()
     setSaving(false)
-    // Never the server's own words (#485): a reason is translated, or said as the one it is not.
-    setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : refusalText(result.reason, t))
+    // Never the server's own words (#485), and never the table's (#1018): why a save made no
+    // version is one of the client's closed set, and each is said in the editor's voice.
+    if (result.ok) putAway(standing)
+    else say(t(SAVE_FAILED[result.reason]))
     return result.ok
   }
   // Out of the editor and back to the games. Work that differs from the saved project is asked
   // about first (#8); a project as it was loaded is simply left.
   const home = homeUrl(params.get('server'))
-  const goHome = () => {
+  const goTo = (url: string) => {
     answered.current = true
-    onNavigate(home)
+    onNavigate(url)
   }
-  const leave = () => (unsaved ? setLeaving(true) : goHome())
+  const goHome = () => goTo(home)
+  // The way out is asked about wherever it starts: «Mina spel» in the header, or the profile from
+  // the AI panel (#1001). The question stands where it always stands, and staying hands the keys back
+  // to whatever was pressed.
+  const leave = (to: string = home, from: HTMLElement | null = null) => {
+    leaveFrom.current = from
+    if (unsaved) setLeaving(to)
+    else goTo(to)
+  }
   const stay = () => {
-    setLeaving(false)
+    setLeaving(null)
     setRefocusLeave(true)
   }
   // "Spara och lämna" only leaves once the work is actually on the server: a save that collides
   // with someone else keeps the designer here, with the edit and the reason in
   // front of her.
   const saveAndLeave = async () => {
+    const to = leaving ?? home
     if (!(await save())) return stay()
-    setLeaving(false)
-    goHome()
+    setLeaving(null)
+    goTo(to)
   }
+  // A table that starts saves first, and puts away what stood when it was asked for, as a save does.
   const startTable = async () => {
+    const standing = notice
     try {
-      const started = await client.startTable()
-      setTable({ ...started, kind: 'new' })
-      setNotice(null)
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+      const { saved, ...started } = await client.startTable()
+      setTable({ ...started, kind: 'new', saved })
+      putAway(standing)
+    } catch {
+      say(t('editor.table.error.start'))
     }
+  }
+  // The header's table was ended — from the Bord tab, from the TV, or from another tab (#705). Its
+  // band was about a table that no longer runs: the kicks pointed at seats that were gone, and
+  // «Uppdatera bordet» could only be refused. So the band goes, the primary button starts a table
+  // again, and what happened is said once, in the channel routine news belongs in.
+  const tableEnded = () => {
+    setTable(null)
+    setLost(null)
+    setTextures(null)
+    confirmation.confirm(t('editor.table.ended'))
   }
   // Once a table exists, the primary button pushes the current rev to it (C7, L5) — but only
   // after the new textures are rendered, so the switch is atomic for the players: prepare,
@@ -373,10 +472,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         await new Promise((r) => setTimeout(r, delay))
         delay = Math.min(1000, delay * 2)
       }
-      const { version } = await client.refreshTable(table.id)
-      setTable({ ...table, version, kind: 'refreshed' })
+      // No line at all is the server saying the table already ran this version (#706).
+      const { version, seqs } = await client.refreshTable(table.id)
+      setTable({ ...table, version, kind: seqs.length === 0 ? 'already' : 'refreshed' })
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+      // What the server says in its own words is the developer's; the header says it in the
+      // designer's language, in a whole sentence (#705, A4).
+      if (err instanceof TableEnded) tableEnded()
+      else say(t('editor.table.error.update'))
     } finally {
       setPreparing(null)
       setUpdating(false)
@@ -390,8 +493,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     setAsked((n) => n + 1)
     try {
       await client.prepareTable(table.id, true)
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+    } catch {
+      say(t('editor.table.error.render'))
     }
   }
   // The cards a phone cannot read once they are rendered (#523, beslut C), said after the table is
@@ -409,10 +512,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     wall: () => (
       <DeckWall
         key={wallMount}
-        doc={doc}
+        doc={shownWall?.doc ?? doc}
+        proposed={shownWall?.added}
+        changed={shownWall?.changed}
+        redrawn={shownWall?.redrawn}
         assetBase={http}
         motifs={deckMotifs}
-        face="front"
+        // A proposed template for the back is shown on the backs (#1005): the wall shows the proposal.
+        face={shownWall?.face ?? 'front'}
         selectedRow={row}
         onSelectRow={setRow}
         view={wallView.current}
@@ -446,6 +553,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             }
           : {})}
         onOpenTemplate={() => setStage('canvas')}
+        // A text that does not fit is the card's own words, mended in its row (#808, E6).
+        onOpenRow={(cardRef) => {
+          setRow(cardRef)
+          setStage('table')
+          setFocusNext({ row: cardRef })
+        }}
+        // A font nothing pins is mended where the game's typefaces are (L57, #737).
+        onOpenFonts={() => {
+          revealThemeSection('fonts')
+          setStage('theme')
+        }}
       />
     ),
     template: () => (
@@ -467,7 +585,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
-        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))}
+        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => say(saidOr(err, t('symbols.place.failed', { name: symbolName(symbol, t) }))))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
         // Locking a layer and naming it are edits to the element (L15), so they go the way every
         // other change to an element goes — through the base, which is where the layer lives even
@@ -505,10 +623,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         reading={!client.mayEdit}
         project={projectId ?? undefined}
         assetBase={http}
-        onUpload={(file) => client.uploadAsset(file, 'image', t)}
+        onUpload={(file, onto) => client.addPicture(file, t, onto)}
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
+        // An AI proposal shown in the table (#1003), through the same comparison in its own words —
+        // but never one with a template, which is shown on the wall (#1005).
+        proposal={shownWall && !shownWall.templated ? shownWall : undefined}
+        onHideProposal={() => setGhosts(null)}
+        onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
         onSelectRow={setRow}
         onCell={(cardRef, field, value, gesture) => client.setCell(cardRef, field, value, gesture)}
@@ -522,25 +645,34 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onProse={(field, prose) => client.setProse(field, prose)}
       />
     ),
-    theme: () => <ThemePanel doc={doc} client={client} assetBase={http} />,
+    // The three tabs whose work has no foot of its own are given one (#698, L67): the line what
+    // just happened is said in, under the work, where Kortvägg, Mall and Tabell say it. Bord says
+    // it in the row over its felt, which a foot would have taken height from (L66).
+    theme: () => <Footed><ThemePanel doc={doc} client={client} assetBase={http} /></Footed>,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
-    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} {...(client.mayEdit ? { onAdd: (file: File) => client.addPicture(file, t), onRemove: (hash: string) => client.removePicture(hash) } : {})} />,
-    rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
+    media: () => <Footed><MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} {...(client.mayEdit ? { onAdd: (file: File) => client.addPicture(file, t), onRemove: (hash: string) => client.removePicture(hash) } : {})} /></Footed>,
+    rules: () => <Footed><RulesPanel doc={doc} client={client} assetBase={http} aiProposal={shownRules ?? undefined} onHideProposal={() => setGhosts(null)} /></Footed>,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
-    tables: () => <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} />} />,
+    // «Resultat» is a view of this tab (#1010), switched at the head of its first column.
+    tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />,
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
   const rotate = async () => {
     if (!table) return
+    setAskingCode(false)
     try {
-      const { code } = await client.rotateCode(table.id, table.hostKey)
-      setTable({ ...table, code })
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+      // The key changes with the code (#820). A table picked up again after a reload had no key in
+      // the page and is reached by the owner's login; it is not handed one now either.
+      const old = table.code
+      const { code, hostKey } = await client.rotateCode(table.id, table.hostKey)
+      setTable((now) => (now ? { ...now, code, ...(now.hostKey !== undefined ? { hostKey } : {}) } : now))
+      setCodeSaid(t('editor.table.newCode.said', { code, old }))
+    } catch {
+      say(t('editor.table.error.code'))
     }
   }
 
@@ -586,8 +718,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   )
 
   return (
-    <>
-    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(!client.mayEdit ? { 'data-readonly': '' } : {})} {...(fault ? { inert: true } : {})}>
+    <Asking.Provider value={asking}>
+    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(!client.mayEdit ? { 'data-readonly': '' } : {})} {...(shownFault ? { inert: true } : {})}>
       <header>
         <a
           ref={leaveRef}
@@ -604,8 +736,22 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           <span className="byd-editor-home-arrow" aria-hidden="true">←</span>
           <span className="byd-editor-home-word">{t('editor.home')}</span>
         </a>
-        <strong>{doc.name}</strong>
-        {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} />}
+        {/* The game's name is the page's heading (#762): one copy, the one that is drawn. */}
+        <h1 className="byd-editor-name">
+          <strong>{doc.name}</strong>
+        </h1>
+        {client.mayEdit && projectId && (
+          <GameMore
+            http={http}
+            game={{ id: projectId, name: doc.name, rev: client.rev }}
+            more={moreRef}
+            onShare={() => setOver('share')}
+            onRename={(name) => client.rename(name)}
+            onSaid={confirmation.confirm}
+            onFailed={say}
+            {...(client.mayDelete ? { onRemove: () => setRemoving('asking') } : {})}
+          />
+        )}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
         <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setOver((on) => (on === 'history' ? null : 'history'))}>
           {t('editor.rev', { n: client.rev })}
@@ -613,9 +759,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
             change from saved to unsaved and back is spoken as it happens rather than found by
             someone going looking for a greyed-out button. Both words ride along as attributes,
-            so the status can hold the room of the wider one and the row after it stays put (#668). */}
+            so the status can hold the room of the wider one and the row after it stays put (#668).
+            Below 1440 the word is read and not drawn: a tick or an amber dot is drawn instead, in
+            one fixed box, and the mark is hidden so the status says exactly the word (#668, A1). */}
         <span className="byd-editor-saved" role="status" data-unsaved={unsaved} data-saved-word={t('editor.saved')} data-unsaved-word={t('editor.unsaved')}>
-          {t(unsaved ? 'editor.unsaved' : 'editor.saved')}
+          <span className="byd-editor-saved-word">{t(unsaved ? 'editor.unsaved' : 'editor.saved')}</span>
+          <span className="byd-editor-saved-mark" aria-hidden="true" />
         </span>
         {client.mayEdit && <StepButtons client={client} onConfirm={confirmation.confirm} />}
         {/* The modes are the header's on a desk; below one they are the stage strip at the
@@ -624,22 +773,20 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* The people in the header are the door to who has the game at all (D3): who is here
             now and who may be here is one question. The name carries the count the button shows,
             so it can be spoken to by what it says (#556). */}
-        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.title')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
+        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.door')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
           {client.here.map((p) => (
             <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
               {p.name.slice(0, 1).toUpperCase()}
             </i>
           ))}
           {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}
+          <span className="byd-editor-here-word" aria-hidden="true">{t('share.word')}</span>
         </button>
         <span className="byd-editor-spacer" />
         {/* A save that could not happen is not a passing remark: it is spoken at once, because
             the work it was about is still only in this tab. It stands until it stops being true,
             and nothing routine may push it out of the way. */}
-        {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
-        {/* What just happened, in the channel routine news belongs in. It is read out politely by
-            `useConfirmation` and stands here only while it is still what just happened. */}
-        {confirmation.text && <span className="byd-editor-confirm">{confirmation.text}</span>}
+        {notice && <span role="alert" className="byd-editor-notice">{notice.text}</span>}
         <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} onReading={() => sayReading(t('editor.reading.nothing'))} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
@@ -666,15 +813,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       {room === 'phone' && (
         <p className="byd-editor-narrow">{t('editor.narrow')}</p>
       )}
-      {leaving && (
+      {leaving !== null && (
         <Question
           className="byd-editor-leave"
           label={t('editor.leave.title')}
           keep={{ label: t(saving ? 'editor.saving' : 'editor.leave.save'), disabled: saving, onChoose: () => void saveAndLeave() }}
           confirm={t('editor.leave.discard')}
           onConfirm={() => {
-            setLeaving(false)
-            goHome()
+            setLeaving(null)
+            goTo(leaving)
           }}
           onCancel={stay}
         >
@@ -683,12 +830,39 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {t('editor.leave.body', { game: doc.name })}
         </Question>
       )}
+      {/* The same question «Mina spel» asks (G1, #738), in the same words, standing where the
+          leave question stands: across the way out. Its tables end with it (#676). */}
+      {removing === 'asking' && projectId && (
+        <Question
+          className="byd-editor-leave byd-editor-remove"
+          label={t('home.remove.title')}
+          confirm={t('home.remove.confirm')}
+          cancel={t('home.remove.keep')}
+          onCancel={() => {
+            setRemoving(null)
+            moreRef.current?.focus()
+          }}
+          onConfirm={() => {
+            setRemoving('gone')
+            moreRef.current?.focus()
+            void removeProject(http, projectId, t).then(goHome, (err: unknown) => {
+              setRemoving(null)
+              say(saidOr(err, t('error.removeGame.failed')))
+            })
+          }}
+        >
+          {marked(t('home.remove.ask'), { name: <b>{doc.name}</b> })}
+        </Question>
+      )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? 'editor.table.started' : table.kind === 'running' ? 'editor.table.running' : 'editor.table.refreshed', { version: table.version })}{' '}
+          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: versionWord(table.version, t) })}
+          {/* The lead's dash points at what follows it; before the first answer about the textures
+              nothing does, and the band says nothing about rendering rather than «0/…» (#765). */}
+          {(lost !== null || preparing || textures) && ' — '}
           {lost !== null ? (
             <>
-              <span className="byd-editor-warning">{t('editor.table.lost', { n: lost })}</span>{' '}
+              <span className="byd-editor-warning">{t(lost === 1 ? 'editor.table.lost.one' : 'editor.table.lost.other', { n: lost })}</span>{' '}
               <button type="button" onClick={() => void updateTable(true)}>
                 {t('editor.table.retry')}
               </button>
@@ -696,12 +870,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           ) : preparing ? (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined)} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined, lang)} target="_blank" rel="noreferrer">
               {t('editor.table.open')}
             </a>
-          ) : (
-            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures?.done ?? 0, total: textures?.total ?? '…' })}</span>
-          )}
+          ) : textures ? (
+            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>
+          ) : null}
           {stalled && (
             <>
               {' '}· <span className="byd-editor-warning">{t('editor.table.stalled')}</span>{' '}
@@ -710,7 +884,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
               </button>
             </>
           )}
-          {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t('editor.table.failed', { n: textures.failed.length })}</span>}
+          {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t(textures.failed.length === 1 ? 'editor.table.failed.one' : 'editor.table.failed.other', { n: textures.failed.length })}</span>}
           {unreadable > 0 && (
             <>
               {' '}· <span className="byd-editor-warning" data-unreadable>{t(unreadable === 1 ? 'editor.table.unreadable.one' : 'editor.table.unreadable.other', { n: unreadable, pt: minPtIn(phone).toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), width: phone.window.w, floor: SCREENS[phone.screen].floorPx })}</span>{' '}
@@ -719,9 +893,28 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           )}
           <span className="byd-editor-room">
             {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
-            <button type="button" ref={newCodeRef} onClick={() => void rotate()}>{t('editor.table.newCode')}</button>
+            <button type="button" ref={newCodeRef} aria-expanded={askingCode} onClick={() => setAskingCode(true)}>{t('editor.table.newCode')}</button>
           </span>
-          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} lastStop={newCodeRef} />
+          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={say} onEnded={tableEnded} lastStop={newCodeRef} onRotate={rotate} />
+          {askingCode && (
+            <Question
+              className="byd-editor-table-ask"
+              label={t('editor.table.newCode.ask')}
+              confirm={t('editor.table.newCode.ask.yes')}
+              onConfirm={() => void rotate()}
+              onCancel={() => {
+                setAskingCode(false)
+                newCodeRef.current?.focus()
+              }}
+            >
+              <b>{t('editor.table.newCode.ask')}</b> {t('editor.table.newCode.ask.body', { code: table.code })}
+            </Question>
+          )}
+          {codeSaid !== null && !askingCode && (
+            <p className="byd-editor-table-said" role="status" data-code-said>
+              {codeSaid}
+            </p>
+          )}
         </div>
       )}
       {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
@@ -757,7 +950,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </div>
       )}
       {over && <PanelDoor opener={over === 'history' ? revRef : hereRef} onClose={() => setOver(null)} />}
-      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} draft={shareDraft} onDraft={setShareDraft} />}
+      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} role={client.role} onClose={() => setOver(null)} draft={shareDraft} onDraft={setShareDraft} />}
       {historyOpen && (
         <HistoryPanel
           client={client}
@@ -765,8 +958,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           // Everything under the panel changed at once, and «Osparat» was the only sign of it
           // (#477). It is said in words, with the way back, and the keyboard goes back to the
           // revision it came from rather than to a button that is no longer there.
+          // A comparison held over a restore compared a document nobody had chosen any more
+          // (#702): the band stood over a table that now showed the version taken back. Taking
+          // one back ends it, and the history is where a new one starts.
           onRestored={(rev) => {
             setOver(null)
+            setCompare(null)
             confirmation.confirm(t('history.restored', { rev }))
             revRef.current?.focus()
           }}
@@ -784,6 +981,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       {/* The marking the bulk editor works on stands above the panels (#222, L22): it is made in
           Tabell and acted on there and in Media, and only one of the two is ever mounted. */}
       <MarkedProvider>
+      {/* What just happened is drawn in the open tab's foot (#698, beslut B), and not while a
+          question stands: it stood over «Ja, ta bort» once, and the question is the present. */}
+      <SaidProvider text={questions === 0 ? confirmation.text : null}>
+      {/* Which pictures every surface is to wait for before asking for them (#907). */}
+      <Arriving.Provider value={client.assetsArriving}>
       <main>
         {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
@@ -792,7 +994,39 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
+        {/* The AI panel beside the work, in every tab (#1001, #940 A). On the desk only: it takes
+            380 px, which the desk's wall makes room for (L54) and nothing smaller has. A role that
+            may not change the game has nothing to ask about it here. */}
+        {room === 'desk' && client.mayEdit && projectId && aiKey.kind === 'ready' && (
+          <AiPanel
+            http={http}
+            project={projectId}
+            doc={doc}
+            aiKey={aiKey.key}
+            profileUrl={profileUrl(projectId, params.get('server'))}
+            onLeave={(url, from) => leave(url, from)}
+            onKeyGone={() => setAiKey(null)}
+            over={mode === 'theme' || mode === 'tables'}
+            // Shown where the designer is when she is in Tabell, through the table's own comparison;
+            // anywhere else on the wall (#1003) — and a template on the wall from Tabell too (#1005).
+            // Rule text is shown in the book (#1006): a proposal of nothing else takes her to Regler, and one
+            // that also has cards stays in Regler when she is there, and goes to the wall from elsewhere.
+            onShowOnWall={(shown, where) => {
+              setGhosts(shown)
+              if (!shown) return
+              const toBook = where === 'rules' || (showsRules(shown) && (mode === 'rules' || !showsDeck(shown)))
+              if (toBook) setStage('rules')
+              else if (mode !== 'table' || showsTemplate(shown)) setStage('wall')
+            }}
+            wallShown={ghosts !== null}
+            showsIn={mode === 'table' ? 'table' : mode === 'rules' ? 'rules' : 'wall'}
+            chosen={row}
+            onAccept={(edits) => client.editTogether(edits, 'undo.what.proposal')}
+          />
+        )}
       </main>
+      </Arriving.Provider>
+      </SaidProvider>
       </MarkedProvider>
       {stages && (
         <EditorStages stages={stages} stage={here} onSelect={setStage}>
@@ -803,8 +1037,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     </div>
     {/* A game deleted while it was open (#485): said over the work, which stays on the page and
         out of reach, rather than in place of it. */}
-    {fault && <StatusNotice notice={fault === 'loggedOut' ? loggedOutNotice(t) : noticeFor(fault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
-    </>
+    {shownFault && <StatusNotice notice={shownFault === 'loggedOut' ? loggedOutNotice(t) : noticeFor(shownFault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
+    </Asking.Provider>
   )
 }
 
@@ -936,6 +1170,13 @@ function homeUrl(server: string | null): string {
   return server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
 }
 
+// The profile, carrying this game so its way back names it (#999).
+function profileUrl(project: string, server: string | null): string {
+  const q = new URLSearchParams({ from: project })
+  if (server) q.set('server', server)
+  return `/profile?${q.toString()}`
+}
+
 // The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
 // over who is at the table, from the screen the host already has open.
 //
@@ -948,12 +1189,35 @@ function homeUrl(server: string | null): string {
 // where the next Tab starts over from the top (#477, fynd 6). So it is handed on: to the seat
 // that took the kicked one's place, the one before it at the end of the row, and «Ny kod» when
 // nobody is left.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice, lastStop }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void; lastStop: RefObject<HTMLButtonElement | null> }) {
+function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop, onRotate }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string): void; onEnded(): void; lastStop: RefObject<HTMLButtonElement | null>; onRotate(): Promise<void> }) {
   const t = useT()
   const labelId = useId()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
+  // The table says so itself the moment it is ended (#705), whoever ended it; this is the line the
+  // header already has open to it.
+  const ended = view?.ended === true
+  const latestEnded = useRef(onEnded)
+  latestEnded.current = onEnded
+  useEffect(() => {
+    if (ended) latestEnded.current()
+  }, [ended])
   const list = useRef<HTMLUListElement>(null)
   const kicked = useRef<{ seat: string; at: number } | null>(null)
+  // The seat × is asking about (#679, beställarens beslut C): a kick costs a player's hand mid-game,
+  // and the chips stand 8 px apart. The question offers to change the code in the same breath,
+  // since a kicked phone could otherwise sit down again with the code it already had.
+  const [asking, setAsking] = useState<{ seat: string; name: string; at: number } | null>(null)
+  const kick = (seat: string, name: string, at: number, rotate: boolean) => {
+    setAsking(null)
+    kicked.current = { seat, at }
+    void client
+      .kick(sessionId, hostKey, seat)
+      .then(() => (rotate ? onRotate() : undefined))
+      .catch(() => {
+        kicked.current = null
+        onNotice(t('editor.table.error.kick', { name }))
+      })
+  }
   const taken = view ? view.seats.filter((s) => s.name !== null) : []
   const seated = taken.map((s) => s.id).join(' ')
   useEffect(() => {
@@ -982,13 +1246,8 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, lastStop }: { cli
                 type="button"
                 aria-label={name}
                 title={name}
-                onClick={() => {
-                  kicked.current = { seat: s.id, at }
-                  void client.kick(sessionId, hostKey, s.id).catch((err: unknown) => {
-                    kicked.current = null
-                    onNotice(err instanceof Error ? err.message : String(err))
-                  })
-                }}
+                aria-expanded={asking?.seat === s.id}
+                onClick={() => setAsking({ seat: s.id, name: s.name ?? '', at })}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -996,6 +1255,22 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, lastStop }: { cli
           )
         })}
       </ul>
+      {asking && (
+        <Question
+          className="byd-editor-table-ask"
+          label={t('editor.seats.ask', { name: asking.name })}
+          confirm={t('editor.seats.kick', { name: asking.name })}
+          onConfirm={() => kick(asking.seat, asking.name, asking.at, false)}
+          further={{ label: t('editor.seats.ask.rotate'), onChoose: () => kick(asking.seat, asking.name, asking.at, true) }}
+          onCancel={() => {
+            const back = asking
+            setAsking(null)
+            list.current?.querySelector<HTMLButtonElement>(`[data-host-seat="${CSS.escape(back.seat)}"] button`)?.focus()
+          }}
+        >
+          <b>{t('editor.seats.ask', { name: asking.name })}</b> {t('editor.seats.ask.body', { name: asking.name })}
+        </Question>
+      )}
     </>
   )
 }

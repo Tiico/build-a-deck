@@ -1,9 +1,9 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
-import { isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
+import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
-import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
+import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
 // table — shared state several people change at once, which belongs in the history — so it gets
@@ -118,21 +118,33 @@ export type EditIntent =
   // did, so it is one edit — the same reason `replaceRows` exists rather than a removal and an
   // addition per card. Sent as a removal and an addition per layer it would be a dozen versions
   // and a dozen steps back (B4), with a half-built back standing at every one of them.
-  | { v: 'replaceFace'; face: string; base: Element[] }
+  // `variants` is a whole face with its groups (#1005): a proposed template brings its own, and the
+  // groups of the face it replaces go with it. Without them the groups stand, as they always have.
+  | { v: 'replaceFace'; face: string; base: Element[]; variants?: FaceTemplate['variants'] }
   | { v: 'resetElement'; face: string; id: string; group: string }
   | { v: 'setGroupColumn'; column: string | null }
   // The table (B5, K2)
   // The words come with the edit, so the actor writes the same zone names the editor showed the
   // designer — their own language, not the tool's home one (A4).
-  | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords }
-  | { v: 'addZone'; id: string; kind: 'area' | 'pile'; name: string }
+  // `places` is where the recipe laid what it laid — every zone it moved or made, by id, the felt
+  // among them (K18) — decided once when the edit is made (`decideEdit`, #895), for the same
+  // reason `addZone` carries its `geometry`. Only what the recipe touched is in it, so a line
+  // applied on a document a co-editor has changed since never takes their zones back.
+  | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords; places?: Places }
+  // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
+  // written into the log with it (#894). Where a new zone goes is a rule that changes with a
+  // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
+  // somewhere nobody saw it. A line written before the place was stored carries none, and is
+  // replayed by the rule of the day, as it always was.
+  | { v: 'addZone'; id: string; kind: 'area' | 'pile'; name: string; geometry?: Geometry }
   | { v: 'removeZone'; id: string }
   // The same zone for every seat (B5, reviderat): an area in front of each player, or the strip
   // its counters lie on. One thing the designer did, so one edit and one step back (B4) — eight
   // separate additions would be eight versions, with a half-laid table at every one of them.
   // `name` may carry `{seat}`, which becomes the seat's letter, and it is written in the language
   // the designer is building the game in (A4), like every other word the tool suggests.
-  | { v: 'addSeatZone'; role: SeatRole; name: string; shortcut?: Shortcut }
+  // `places` is where each seat's zone was laid, by id, decided once when the edit is made (#895).
+  | { v: 'addSeatZone'; role: SeatRole; name: string; shortcut?: Shortcut; places?: Places }
   // A whole zone laid down as it stands: what a paste is. `addZone` makes a blank one, which a
   // copy is not — the copy carries the question it asks, what it can be asked for, its shortcut,
   // its owner and its size, and those are the whole reason to copy a zone rather than build a
@@ -148,6 +160,13 @@ export type EditIntent =
   | { v: 'renameIcon'; from: string; to: string }
   | { v: 'removeIcon'; name: string }
   | { v: 'setRules'; rules: RuleDoc }
+  // Rule text placed where it stands (#1006): `blocks` in place of the blocks `replace` names, where
+  // the first of them stood, or — when nothing is replaced — after the block `after` names, `null`
+  // first in the book. By id and never by position, so the edit lands where it was meant on a book a
+  // co-editor has written in since, or nowhere: a block it names that is gone refuses it. It touches
+  // the blocks it names and no others, where `setRules` writes the whole book. `title` names the book
+  // for a game that has none yet. An accepted AI proposal's rule text is one per place (E4).
+  | { v: 'spliceRules'; replace: string[]; after: string | null; blocks: RuleDoc['blocks']; title?: string }
   // The game's meanings and what they are painted in (E4). The cards write the meaning and never
   // the colour, so repainting a deck is one edit here and renaming one rewrites every card that
   // says it — which is exactly what `renameIcon` already does for a symbol's name.
@@ -197,6 +216,84 @@ export type EditIntent =
   // Taking an older version back (B4) is an edit like any other: it lands in the log, everyone
   // with the project open sees it, and it becomes the next version when saved.
   | { v: 'restore'; doc: ProjectDoc }
+  // Several edits applied as one (#1002, PRD module 5): one line in the log, all or nothing, one
+  // step back and one thing a co-editor sees land. An accepted AI proposal is one. It holds plain
+  // edits only — a composite inside a composite says nothing a flat one cannot — and never none.
+  // The editor's vocabulary and not the table's closed intents (D3), so it is no protocol migration.
+  | { v: 'compound'; edits: EditIntent[] }
+
+// What an edit decides when it is made, written into it before it is committed (#894, D3). The
+// log stores results and never a question to be asked again: replay applies the line as it was
+// written, so a rule that changes with a deploy cannot move what a line already did. The editor
+// decides before it applies its own edit, so the place the designer sees is the place it sends;
+// the actor decides as well, for a caller that sent none. Everything else passes through as it is.
+export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
+  // Each part is decided against the document the parts before it left, which is the document it
+  // will be applied to: two piles made in one go are two places and not one place twice.
+  if (intent.v === 'compound') {
+    const edits: EditIntent[] = []
+    let at = doc
+    for (const part of compoundParts(intent)) {
+      const decided = decideEdit(at, part)
+      edits.push(decided)
+      try {
+        at = applyEdit(at, decided)
+      } catch {
+        // A part the document refuses is left for `applyEdit` to say why, as a single edit is.
+        return { v: 'compound', edits: [...edits, ...compoundParts(intent).slice(edits.length)] }
+      }
+    }
+    return { v: 'compound', edits }
+  }
+  if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone') && !intent.places) {
+    // The answer is what applying the edit by today's rule moved or made. An edit the document
+    // refuses has no answer, and passes on as it is for `applyEdit` to say why.
+    let next: ProjectDoc
+    try {
+      next = applyEdit(doc, intent)
+    } catch {
+      return intent
+    }
+    const before = new Map(doc.setup.zones.map((z) => [z.id, z.geometry]))
+    const places: Places = {}
+    for (const z of next.setup.zones) if (!sameGeometry(before.get(z.id), z.geometry)) places[z.id] = z.geometry
+    return { ...intent, places }
+  }
+  if (intent.v !== 'addZone' || intent.geometry || doc.setup.zones.some((z) => z.id === intent.id)) return intent
+  const geometry = intent.kind === 'pile' ? newPileSpot(doc.setup) : newAreaSpot(doc.setup)
+  return geometry === null ? intent : { ...intent, geometry }
+}
+
+// The parts of a composite edit, refused when there are none or when one of them is a composite
+// itself (#1002). Read off a line in the log as well as off the live door, so neither can hold one.
+export function compoundParts(intent: Extract<EditIntent, { v: 'compound' }>): EditIntent[] {
+  if (!Array.isArray(intent.edits) || intent.edits.length === 0) throw new Error('a composite edit holds at least one edit')
+  if (intent.edits.some((part) => part.v === 'compound')) throw new Error('a composite edit cannot hold a composite edit')
+  return intent.edits
+}
+
+// Every plain edit an edit stands for: itself, or the parts of a composite.
+export function plainEdits(intent: EditIntent): EditIntent[] {
+  return intent.v === 'compound' ? compoundParts(intent) : [intent]
+}
+
+// Where an edit laid the zones it moved or made, by id (#895).
+export type Places = Record<string, Geometry>
+const sameGeometry = (a: Geometry | undefined, b: Geometry): boolean => a !== undefined && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && a.rot === b.rot
+// A line that carries its answer is laid out by it. A zone the line placed lies where it was
+// placed; one it found on the table stays where it stood, whatever today's rule would do with
+// it; and one that today's rule adds but the line never knew of is laid by the rule, since the
+// line has nothing to say about it. A line without an answer is laid out by today's rule, as it
+// always was.
+function placed(before: Setup, after: Setup, places: Places | undefined): Setup {
+  if (!places) return after
+  const stood = new Map(before.zones.map((z) => [z.id, z.geometry]))
+  const zones = after.zones.map((z) => {
+    const geometry = places[z.id] ?? stood.get(z.id)
+    return geometry ? { ...z, geometry } : z
+  })
+  return { ...after, zones }
+}
 
 export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
   switch (intent.v) {
@@ -381,7 +478,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // A face the template does not have yet is made rather than refused: an empty back is
       // exactly the back a gallery is for.
       const face = doc.template.faces[intent.face] ?? { base: [], variants: {} }
-      return writeFace(doc, intent.face, { ...face, base: intent.base })
+      return writeFace(doc, intent.face, { ...face, base: intent.base, ...(intent.variants ? { variants: intent.variants } : {}) })
     }
     case 'moveElement': {
       const face = faceOf(doc, intent.face)
@@ -415,7 +512,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     }
 
     case 'setRecipe':
-      return { ...doc, setup: applyRecipe(doc.setup, intent.recipe, intent.words) }
+      return { ...doc, setup: placed(doc.setup, applyRecipe(doc.setup, intent.recipe, intent.words), intent.places) }
     case 'addZone': {
       if (doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`zone ${intent.id} already exists`)
       // En ny zon föds på ledig filt (#440 för ytan, #443 för högen). Var det är är
@@ -424,6 +521,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // stället för att stapla tyst. Panelen frågar med samma funktion innan den trycker, så
       // formgivaren får orden och aldrig det här kastet.
       const made = (): Zone => {
+        if (intent.geometry) return { id: intent.id, kind: intent.kind, name: intent.name, visibility: 'all', geometry: intent.geometry }
         if (intent.kind === 'pile') {
           const spot = newPileSpot(doc.setup)
           if (spot === null) throw new Error('no free felt for a new pile; move or remove a zone first')
@@ -450,7 +548,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'addSeatZone': {
       const made = seatZones(doc.setup, intent.role, intent.name, intent.shortcut)
       if (made.length === 0) return doc
-      return { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, ...made] } }
+      return { ...doc, setup: placed(doc.setup, { ...doc.setup, zones: [...doc.setup.zones, ...made] }, intent.places) }
     }
 
     // The deck moves to another pile, and the hands with it: a hand returns its cards to the deck,
@@ -536,6 +634,23 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, icons: without(doc.icons, intent.name), credits: without(doc.credits ?? {}, intent.name) }
     case 'setRules':
       return { ...doc, rules: intent.rules }
+    case 'spliceRules': {
+      const rules = doc.rules ?? { title: intent.title ?? doc.name, blocks: [] }
+      const had = new Set(rules.blocks.map((b) => b.id))
+      for (const id of intent.replace) if (!had.has(id)) throw new Error(`the rulebook has no block ${id}`)
+      if (intent.replace.length === 0 && intent.after !== null && !had.has(intent.after)) throw new Error(`the rulebook has no block ${intent.after}`)
+      const blocks = intent.blocks.map((block) => RuleBlock.parse(block))
+      const gone = new Set(intent.replace)
+      const at = intent.replace.length > 0 ? rules.blocks.findIndex((b) => gone.has(b.id)) : intent.after === null ? 0 : rules.blocks.findIndex((b) => b.id === intent.after) + 1
+      const kept = (part: readonly RuleBlock[]) => part.filter((b) => !gone.has(b.id))
+      const next = [...kept(rules.blocks.slice(0, at)), ...blocks, ...kept(rules.blocks.slice(at))]
+      const seen = new Set<string>()
+      for (const block of next) {
+        if (seen.has(block.id)) throw new Error(`the rulebook already has a block ${block.id}`)
+        seen.add(block.id)
+      }
+      return { ...doc, rules: { ...rules, blocks: next } }
+    }
     case 'setRole': {
       if (!intent.role.trim() || !intent.colour.trim()) throw new Error('a meaning needs a name and a colour')
       if (!isSymbolName(intent.role)) throw new Error(unwritable(intent.role))
@@ -609,6 +724,10 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return themed(doc, intent)
     case 'restore':
       return intent.doc
+    // All or nothing comes for free: the parts are applied to a document nobody else holds, and a
+    // part that throws throws away every part before it with it.
+    case 'compound':
+      return compoundParts(intent).reduce(applyEdit, doc)
     // The vocabulary is closed, but a stored log and an old browser both outlive it: `setFraming`
     // was retired with each card's own departure (#607). An edit the tool no longer knows is
     // refused rather than applied as nothing, so the log passes over it and says so, and a browser
@@ -717,6 +836,39 @@ function without<T>(record: Record<string, T>, key: string): Record<string, T> {
 // The one column the engine reads: how many copies of the card the deck holds (L4). It is not
 // the designer's to make or to take away, in the wizard or in the editor.
 export const ANTAL = 'antal'
+
+// The id a new card is given wherever it is made (#476): the table's button, the empty wall's door
+// and an accepted AI proposal (#1002) ask the same question of the same deck, so they cannot come
+// to different answers.
+export function nextCardRef(doc: Pick<ProjectDoc, 'rows'>): string {
+  let n = doc.rows.length + 1
+  while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
+  return `kort-${n}`
+}
+
+// Whether an edit arriving live may make the column it names (#694). A name that differs from a
+// column, from the card's `id` or from `antal` only in its capitals is one the CSV import folds
+// into that column (#479), so it is no new column. The rule is the live door's and not
+// `applyEdit`'s: a log is replayed through `applyEdit`, and a deck that got `TYP` beside `typ`
+// before the rule must read back with both, line for line, rather than lose one to a skipped
+// entry (DRIFT §7). The words the title and `antal` are shown with are the editor's question,
+// asked in the designer's language; the document has only the keys.
+export function checkNewName(doc: ProjectDoc, intent: EditIntent): void {
+  // A composite asks the rule of each part against the document the parts before it left.
+  if (intent.v === 'compound') {
+    compoundParts(intent).reduce((at, part) => {
+      checkNewName(at, part)
+      return applyEdit(at, part)
+    }, doc)
+    return
+  }
+  const name = intent.v === 'addField' ? intent.field : intent.v === 'renameField' ? intent.to : null
+  if (name === null) return
+  const self = intent.v === 'renameField' ? intent.from : null
+  const lower = name.toLowerCase()
+  const clash = ['id', ANTAL, ...columnsOf(doc)].find((known) => known !== self && known.toLowerCase() === lower)
+  if (clash !== undefined) throw new Error(`field ${clash} already exists`)
+}
 
 // Every name the deck answers to, in the order a table shows them: what the template draws,
 // face by face, then whatever else the cards carry. This is the truth about which columns a

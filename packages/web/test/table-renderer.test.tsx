@@ -9,13 +9,10 @@ import { buildScene, tableOf } from './scene.js'
 import { recipeSetup, twoSeatSetup } from './fixture.js'
 import { activeBounds, cameraOf, frameRect, overscanPx, pad, reachOf, union, type Rect } from '../src/table/camera.js'
 import { feltScale, fitScale, TV_AIR_PX } from '../src/table/fit.js'
-import { feltWithHands, handCountAt, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
+import { feltWithHands, handCountAt, handRoom, handRotation, type TableMode } from '../src/table/hand.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { RING_MARGIN } from '../src/table/ring.js'
 import { CARD_MM } from '../src/table/drop.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Linjerna handarnas antalsbrickor hänger från, som en ruta (#413). Kameran ramar in spelet, och
 // brickorna står utanför det vid kanten; det här är vad bilden måste hålla utöver spelet, och
@@ -412,7 +409,8 @@ describe('the camera (C5)', () => {
     // fitted to the frame with the TV's own air and nothing more. The phone's table mode (K9)
     // lies on wood that is fitted by its own rule. Neither knows the overscan margin.
     const drawn = (mode: TableMode) =>
-      feltWithHands(floor, snapshot.zones.filter((z) => z.kind === 'hand').map((z) => handExtent(z, floorZone, handRotation(z, floorZone, mode))))
+      // With the room the fit keeps for a hand somebody sits at (#721).
+      feltWithHands(floor, snapshot.zones.filter((z) => z.kind === 'hand').map((z) => handRoom(z, floorZone, handRotation(z, floorZone, mode), snapshot.seats.some((s) => s.id === z.owner && s.name !== null))))
     const observer = render(<TableRenderer view={snapshot} mode="tv" size={size} />)
     expect(document.querySelector('.byd-camera-world')).toBeNull()
     expect((document.querySelector('[data-table]') as HTMLElement).style.width).toBe(`${floor.w * fitScale(drawn('tv'), size, TV_AIR_PX)}px`)
@@ -593,7 +591,8 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerDown(card, client(-390, -240))
     fireEvent.pointerUp(card, client(-390, -240))
     const ring = document.querySelector('[data-radial]')!
-    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta', 'Avslöja'])
+    // A face-up card has nothing left to reveal, so the ring does not offer it (#719).
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
     expect(document.querySelector('[data-radial]')).toBeNull()
   })
@@ -608,6 +607,45 @@ describe('direct manipulation (K1, K2, C)', () => {
     expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta', 'Titta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
     expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
+  // A slice that can never go on this surface is not drawn (#719, beställarens beslut 2026-10-06):
+  // «Titta» on a hidden pile has no top to hold up, and «Avslöja» on a face-up card nothing to
+  // reveal. Two of five dead slices was what the shared screen showed. A verb that only cannot go
+  // right now — a shuffle of a single card — stays, greyed, where the hand expects it.
+  it('leaves out the slices that can never go: «Titta» on a hidden pile, «Avslöja» on a face-up card (#719)', () => {
+    const { view, faceDown } = buildScene()
+    render(<TableRenderer view={view(null)} mode="table" scale={1} onAct={vi.fn()} />)
+    const label = document.querySelector('[data-zone="draw"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(-100, 100))
+    fireEvent.pointerUp(label, client(-100, 100))
+    let ring = document.querySelector('[data-radial]')!
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta'])
+    fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
+
+    const card = document.querySelector(`[data-component="${faceDown}"]`)!
+    fireEvent.pointerDown(card, client(300, 200))
+    fireEvent.pointerUp(card, client(300, 200))
+    ring = document.querySelector('[data-radial]')!
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toContain('Avslöja')
+  })
+
+  // The sheet under the ring leaves out a start action whose only step is a verb the ring already
+  // shows (#719): the recipe's «Blanda» (when: both) stood there beside the ring's own «Blanda».
+  it('leaves a start action that only shuffles out of the sheet, and keeps one that does more (#719)', () => {
+    const { view } = buildScene()
+    const base = view(null)
+    const actions = [
+      { id: 'mix', label: 'Blanda leken', when: 'both' as const, steps: [{ v: 'shuffle' as const }] },
+      { id: 'deal', label: 'Ge alla tre', when: 'both' as const, steps: [{ v: 'shuffle' as const }, { v: 'deal' as const, each: { of: 'number' as const, n: 3 }, to: { at: 'hands' as const }, face: 'keep' as const }] },
+    ]
+    const v = { ...base, zones: base.zones.map((z) => (z.id === 'discard' ? { ...z, actions } : z)) }
+    render(<TableRenderer view={v} mode="table" scale={1} onAct={vi.fn()} />)
+    const label = document.querySelector('[data-zone="discard"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(100, 100))
+    fireEvent.pointerUp(label, client(100, 100))
+    expect(screen.queryByRole('button', { name: /Blanda leken/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Ge alla tre/ })).toBeTruthy()
   })
 
   // Vilken sida av högen som är "bredvid den" är högens egen sak (K21): den som lägger leken vid
@@ -691,11 +729,11 @@ describe('direct manipulation (K1, K2, C)', () => {
     // answer, read off the intent the very same gesture sends.
     fireEvent.pointerUp(top, client(-100, 100))
     const [[[landed]]] = onAct.mock.calls as [[[Extract<Intent, { v: 'split' }>]]]
-    // The ghost is placed in the felt's own pixels and the intent names a point on the table, so
-    // the floor's corner is what makes the two comparable; at scale 1 a millimetre is a pixel.
-    const floor = snapshot.zones.find((z) => z.id === snapshot.floor)!.geometry
-    expect(parseFloat(ghost.style.left)).toBeCloseTo(landed.x! - floor.x, 6)
-    expect(parseFloat(ghost.style.top)).toBeCloseTo(landed.y! - floor.y, 6)
+    // The ghost is placed in the felt's own pixels and the intent names a point in the floor's own
+    // coordinates (#680), which are the felt's; at scale 1 a millimetre is a pixel.
+    expect(landed.to).toBe(snapshot.floor)
+    expect(parseFloat(ghost.style.left)).toBeCloseTo(landed.x!, 6)
+    expect(parseFloat(ghost.style.top)).toBeCloseTo(landed.y!, 6)
   })
 
   it('dragging the top card off a pile drops it holding the point it was taken by', () => {
@@ -710,7 +748,9 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerDown(top, client(-200, 0))
     fireEvent.pointerMove(top, client(-100, 100))
     fireEvent.pointerUp(top, client(-100, 100))
-    expect(onAct).toHaveBeenLastCalledWith([{ v: 'split', pile: 'draw', at: 1, x: -100 - CARD_MM.w / 2, y: 100 - CARD_MM.h / 2 }])
+    // Named in the floor it lands on, in that floor's own coordinates, as a `move` is (#680).
+    const floor = view(null).zones.find((z) => z.id === 'table')!.geometry
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'split', pile: 'draw', at: 1, to: 'table', x: -100 - CARD_MM.w / 2 - floor.x, y: 100 - CARD_MM.h / 2 - floor.y }])
   })
 
   it('without onAct the table only shows: nothing moves and no ring opens', () => {
@@ -1143,7 +1183,38 @@ describe('the gap between the drop and the patch (K1)', () => {
     fireEvent.pointerUp(placed(), at)
     expect(onAct.mock.calls).toEqual([])
     expect({ left: placed().style.left, top: placed().style.top }).toEqual({ left: '100px', top: '50px' })
-    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+    // Said as D5 says a refusal: assertive, since what she asked for did not happen (#682) — and
+    // written beside the drop too, for whoever stands at the felt and hears nothing.
+    expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+    expect(document.querySelector('[data-felt-refusal]')?.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+  })
+
+  // A drop the server refuses was thrown away with `void client.send` (#682): the card hopped back
+  // four seconds later and the table then said it had not answered, which was not true either. The
+  // answer is read, said in the reader's words at the drop, and the card is given back at once.
+  it('says a drop the server refused beside the drop, in the reader\'s words, and gives the card back at once', async () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    render(
+      <StatusLive>
+        <TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => Promise.resolve({ ok: false as const, reason: 'zone hand:A is not an area' })} />
+      </StatusLive>,
+    )
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), client(300, 150))
+    fireEvent.pointerUp(placed(), client(300, 150))
+    await act(async () => undefined)
+    expect(document.querySelector('[data-felt-refusal]')?.textContent).toBe('Det går inte att lägga korten där.')
+    expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Det går inte att lägga korten där.')
+    expect({ left: placed().style.left, top: placed().style.top }).toEqual({ left: '100px', top: '50px' })
+    // It gives way after four seconds (D5, #682): faded, and then gone, and nothing more is said.
+    act(() => vi.advanceTimersByTime(4000))
+    expect(document.querySelector('[data-felt-refusal]')?.hasAttribute('data-gone')).toBe(true)
+    act(() => vi.advanceTimersByTime(1000))
+    expect(document.querySelector('[data-felt-refusal]')).toBeNull()
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
+    vi.useRealTimers()
   })
 
   // Drawing the top card off a pile is the same gap, and the one place it was never closed: the

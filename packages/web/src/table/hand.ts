@@ -18,6 +18,10 @@ export const FAN_MAX = 12
 // Degrees between two cards: a read fan steps sideways as well, a fan of backs only turns.
 export const FAN_TILT = 7
 export const BACK_TILT = 9
+// The farthest a fan of backs turns either way (#766, beställarens beslut A). Twelve backs at
+// BACK_TILT each turned ±49.5° and hung 38 px past the felt on the room's television; past this
+// ceiling the backs close up instead, so a fan keeps its shape and does not grow with the count.
+export const BACK_TURN_MAX = 22
 // The corner each card turns about, as a share of its own box: `transform-origin: 50% 140%`.
 export const FAN_PIVOT = { x: 0.5, y: 1.4 }
 
@@ -100,7 +104,8 @@ export function countSide(hand: ZoneView, floor: ZoneView, rot: number): 'below'
 // it turns. One rule, asked by the renderer that draws the fan and by the extent that measures it.
 export function fanPlace(i: number, count: number, spread: boolean): { step: number; tilt: number } {
   const k = i - (count - 1) / 2
-  return { step: spread ? k * HAND_STEP_MM : 0, tilt: k * (spread ? FAN_TILT : BACK_TILT) }
+  const back = count > 1 ? Math.min(BACK_TILT, (2 * BACK_TURN_MAX) / (count - 1)) : BACK_TILT
+  return { step: spread ? k * HAND_STEP_MM : 0, tilt: k * (spread ? FAN_TILT : back) }
 }
 
 // The point a hand's fan is drawn about. A hand's zone is a strip along the rim shallower than a
@@ -174,6 +179,20 @@ export function handCountAt(hand: ZoneView, floor: ZoneView, rot: number, folded
 // name, and rides in the air the frame already leaves around the table.
 export function handExtent(hand: ZoneView, floor: ZoneView, rot: number): Rect | null {
   const { count, spread } = fanned(hand)
+  return extentOf(hand, floor, rot, count, spread)
+}
+
+// The room the fit keeps for a hand (#721): for a hand somebody sits at, a full fan's, whatever it
+// holds now. A fan reaches further past the rim with every card it holds — 20 mm at one card, 51
+// at twelve — and the fit counts the fans (#23), so fitted to the hand as it is, the whole felt was
+// rescaled each time a card came or went, and by some 4 % the moment the first one landed. A hand
+// nobody sits at keeps the fan it has, which is usually none.
+export function handRoom(hand: ZoneView, floor: ZoneView, rot: number, seated: boolean): Rect | null {
+  const { count, spread } = fanned(hand)
+  return extentOf(hand, floor, rot, seated ? FAN_MAX : count, spread)
+}
+
+function extentOf(hand: ZoneView, floor: ZoneView, rot: number, count: number, spread: boolean): Rect | null {
   const local = fanExtent(count, spread)
   if (!local) return null
   const fan = turn(local, rot)

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { type CatalogFamily, isVariable, parseCatalog, sampleSheetHref, searchCatalog } from './font-catalog.js'
 import { useFocusTrap } from './focusTrap.js'
 import type { CardWords } from './fonts.js'
@@ -117,7 +118,9 @@ export function FontCatalog({ words, inGame, forLayer = false, onChoose, onClose
       )}
       <footer>
         <span>{t('fonts.catalog.foot')}</span>
-        <span className="byd-font-catalog-count">{all === null ? '' : t('fonts.catalog.count', { shown: String(shown.length), all: String(hits.length) })}</span>
+        {/* The foot counts the rows the sheet shows, so it says nothing while it shows none (#737):
+            «2 av 2» under a catalog that did not answer was a count of something nobody could see. */}
+        <span className="byd-font-catalog-count">{all === null || failed || shown.length === 0 ? '' : t('fonts.catalog.count', { shown: String(shown.length), all: String(hits.length) })}</span>
       </footer>
     </div>
   )
@@ -155,7 +158,7 @@ function Hit({ family, words, taken, forLayer, onChoose, onRefused }: { family: 
           setBusy(true)
           onRefused(null)
           void onChoose(family)
-            .catch((err: unknown) => onRefused(err instanceof Error ? err.message : String(err)))
+            .catch((err: unknown) => onRefused(saidOr(err, t('fonts.catalog.refused', { family: family.family }))))
             .finally(() => setBusy(false))
         }}
       >

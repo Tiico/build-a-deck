@@ -39,7 +39,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U byd -d byd"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U byd -d byd"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -67,6 +67,14 @@ services:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # Where a beta tester turns (#757, DRIFT §8): an address or a web address, said by the
+      # login card, My games, the login mail's foot and /health. Unset, all four leave it out.
+      BYD_CONTACT: ${BYD_CONTACT:-}
+      # The replay corpus (DRIFT §7, #1011): the accounts whose tables the operator may export,
+      # each one a yes in the invitation mail, and the operator's own address. Both or neither;
+      # unset, no account reads another's tables.
+      BYD_CORPUS_ACCOUNTS: ${BYD_CORPUS_ACCOUNTS:-}
+      BYD_OPERATOR: ${BYD_OPERATOR:-}
       # Assets in R2 (DRIFT §4): with credentials, textures are served as signed links. The
       # endpoint is the account's own unless the box says otherwise, which a bucket in a
       # jurisdiction — or a MinIO in development — requires.
@@ -75,6 +83,10 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_ASSETS_BUCKET: ${R2_ASSETS_BUCKET:-byd-assets}
       R2_ENDPOINT: ${R2_ENDPOINT:-}
+      # The master key the designers' own AI keys are sealed with (#999, DRIFT §5). The app's alone:
+      # never the database's or the backup agent's, so nothing archived to R2 can open a key.
+      # Unset, no key can be saved, and every key already saved reads as none.
+      AI_KEY_SECRET: ${AI_KEY_SECRET:-}
     # The tunnel reaches the app on the compose network; this host port is for the box itself.
     ports:
       - "127.0.0.1:8080:8080"

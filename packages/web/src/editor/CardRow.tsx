@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { titleOfRow } from '@byd/server/doc'
 import type { Element, FaceTemplate, ProjectDoc } from './types.js'
-import { useT } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
+import { ANTAL, titleOfRow } from '@byd/server/doc'
+import { fieldLabel } from './fields.js'
+import { FootSaid } from './said.js'
 
 type Card = ProjectDoc['rows'][number]
 
@@ -61,7 +63,7 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
     if (next) onPick(next.id)
   }
   const title = current ? titleOfRow(current) : ''
-  const values = current ? lookOf(face, current) : []
+  const values = current ? lookOf(face, current, t) : []
   return (
     <div className="byd-card-row" role="group" aria-label={t('canvas.card.row')} ref={box}>
       <button type="button" aria-label={t('canvas.card.prev')} disabled={at <= 0} onClick={() => step(-1)}>
@@ -74,16 +76,20 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
       <button type="button" aria-label={t('canvas.card.next')} disabled={at < 0 || at >= cards.length - 1} onClick={() => step(1)}>
         ›
       </button>
-      {values.length > 0 && (
-        <p className="byd-card-row-values">
-          {values.map(([column, value], i) => (
-            <span key={column}>
-              {i > 0 && ' · '}
-              <b>{column}</b> {value}
-            </span>
-          ))}
-        </p>
-      )}
+      {/* What just happened stands in the values' place for its moment (#698, beslut B): the
+          canvas' foot is the template's, and the values are its quiet line. */}
+      <FootSaid>
+        {values.length > 0 && (
+          <p className="byd-card-row-values">
+            {values.map(([column, value], i) => (
+              <span key={column}>
+                {i > 0 && ' · '}
+                <b>{column}</b> {value}
+              </span>
+            ))}
+          </p>
+        )}
+      </FootSaid>
       {open && (
         <div className="byd-card-row-list">
           <input
@@ -92,7 +98,7 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
             aria-label={t('canvas.card.search')}
             aria-expanded="true"
             aria-controls={listId}
-            placeholder={t('canvas.card.search.of', { n: cards.length })}
+            placeholder={t(cards.length === 1 ? 'canvas.card.search.of.one' : 'canvas.card.search.of.other', { n: cards.length })}
             autoFocus
             value={query}
             onChange={(event) => {
@@ -125,7 +131,7 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
 
 // The values on a card that decide how the template draws it: the column its look is grouped by,
 // every column a condition asks about, every column a colour follows — and how many there are.
-function lookOf(face: FaceTemplate | undefined, card: Card): [string, string][] {
+function lookOf(face: FaceTemplate | undefined, card: Card, t: T): [string, string][] {
   const columns = new Set<string>()
   if (face?.variantBy) columns.add(face.variantBy)
   const walk = (elements: readonly Element[]) => {
@@ -138,7 +144,8 @@ function lookOf(face: FaceTemplate | undefined, card: Card): [string, string][] 
     }
   }
   walk(face?.base ?? [])
-  const out: [string, string][] = [...columns].map((column) => [column, String(card.fields[column] ?? '')])
-  out.push(['antal', String(card.fields['antal'] ?? 1)])
+  // Each column under the name Data gives it, so the count is «Copies» here as well (#755).
+  const out: [string, string][] = [...columns].map((column) => [fieldLabel(column, t), String(card.fields[column] ?? '')])
+  out.push([fieldLabel(ANTAL, t), String(card.fields[ANTAL] ?? 1)])
   return out
 }

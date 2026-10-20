@@ -19,27 +19,32 @@ export const svPlay = {
   'texture.pending': 'Kortet renderas…',
   'texture.failed': 'Bilden kunde inte laddas',
   'texture.retry': 'Försök igen',
-  'texture.lost.one': '{n} kort kunde inte renderas',
-  'texture.lost.other': '{n} kort kunde inte renderas',
 
   // Bordsskärmen.
-  'play.refused.host': 'Bordsvyn öppnas med värdens länk från editorn.',
   'ended.title': 'Bordet är avslutat',
-  'ended.locked': 'Loggen är låst på {version}. Enkäten finns på telefonerna.',
-  'ended.rows.one': 'rader',
-  'ended.rows.other': 'rader',
+  // Slutskärmen talar spelets språk (#703): drag och de som satt vid bordet, inte loggens rader.
+  'ended.locked': 'Bordet stannade på {version}. Enkäten finns hos varje spelare.',
+  'ended.rows.one': 'drag',
+  'ended.rows.other': 'drag',
   'ended.flags.one': 'flaggade ögonblick',
   'ended.flags.other': 'flaggade ögonblick',
-  'ended.players.one': 'spelare',
-  'ended.players.other': 'spelare',
+  'ended.players.one': 'vid bordet',
+  'ended.players.other': 'vid bordet',
   'rewind.proposal': 'Förslag',
   'rewind.looked': 'så här såg bordet ut {where}',
-  'rewind.waiting': '· väntar på {who}',
+  'rewind.waiting': 'väntar på {who}',
   // En hög som bara finns för att två kort lades på varandra (K1) har inget namn från designern.
   'pile.dynamic': 'hög',
+  // Under högen på TV:n i tre sekunder efter en blandning (#718).
+  'pile.shuffled': '{pile} blandad',
 
   // TV-läget runt filten.
-  'tv.join': 'anslut med telefon',
+  // Ovanför adressen, som är värden och sedan /KOD (#675): orden följer värdens språk, adressen
+  // är densamma på alla.
+  'tv.join': 'öppna på telefonen',
+  'tv.render': 'Korten ritas',
+  'tv.render.stalled': 'Korten står stilla',
+  'tv.render.count': '{done} av {total}',
   'qr.enlarge': 'Visa koden större',
   'qr.title': 'Anslut med telefonen',
   'qr.close': 'Stäng',
@@ -57,7 +62,7 @@ export const svPlay = {
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Raden vid koden är fyra ord; vad
   // telefonen blir när den ansluter står i lådan.
   'tv.join.help.topic': 'att ansluta',
-  'tv.join.help.how': 'Spelarna öppnar adressen på sin telefon och skriver rumskoden, eller läser av rutan.',
+  'tv.join.help.how': 'Spelarna öppnar adressen på sin telefon — rumskoden är adressens sista del — eller läser av rutan.',
   'tv.join.help.phone': 'Telefonen blir handen: korten ligger där, och bordet står kvar här.',
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',
@@ -67,6 +72,8 @@ export const svPlay = {
   'tv.seat.hand.short.other': '{n} kort',
   // Platsens tredje rad innan platsen gjort något (UX-41): ett ord, inte ett streck.
   'tv.seat.none': 'Inget ännu',
+  // Where the name of a seat nobody sits in stands; the ball beside it keeps the letter (#717).
+  'tv.seat.free': 'ledig',
   // Observatörens platser som listor att fälla ut (#551, beslut A): ett kort per rad, och raden
   // säger var kortet ligger. Handen heter som på filten, «Adas hand» (K19).
   'tv.list.table': 'På bordet',
@@ -99,8 +106,13 @@ export const svPlay = {
   'ring.action.why.nothing': 'åtgärden har inga steg',
   'ring.action.why.gone': 'högen är inte kvar',
   'ring.action.why.asks': 'ett steg frågar efter ett tal',
+  'ring.action.why.unfinished': 'ett steg har inte sagt vilka kort det letar fram',
   'start.tile': 'Starta spelet',
   'start.blocked': 'Går inte att starta just nu: {why}',
+  'start.wait': 'korten ritas · {done}/{total}',
+  'start.wait.why': 'korten ritas fortfarande',
+  'start.anyway': 'Starta ändå',
+  'start.stalled': 'korten står stilla · {done}/{total}',
   'start.again.label': 'Starta om spelet?',
   'start.again.tile': 'Starta om',
   'drop.unanswered': 'Bordet har inte svarat på draget än.',
@@ -109,6 +121,20 @@ export const svPlay = {
   'start.again.action': '«{action}» på {pile}',
   'start.again.and': ' och ',
   'start.again.yes': 'Ja, starta om',
+  // Bordsläget utan telefoner (#682): hörnets rad om det som senast hände, och ⋯-menyn bredvid
+  // «Starta om». Avsluta frågar med telefonens egna ord (`end.sheet.*`), så frågan är densamma var
+  // den än ställs.
+  'table.last': 'Senast:',
+  'table.last.now': 'nyss',
+  'table.last.seconds': '{n} s',
+  'table.last.minutes': '{n} min',
+  'table.last.hours': '{n} h',
+  'table.more': 'Mer för bordet',
+  'table.undo': 'Ångra bordets senaste drag',
+  'table.undo.none': 'Bordet har inte gjort något drag än.',
+  'table.undo.phone': 'Senaste draget gjordes på en telefon — ångra det där.',
+  'table.end': 'Avsluta bordet…',
+  'table.end.hint': 'Vi frågar en gång till.',
   'kbd.hint.action.asks': 'kräver ett tal; skriv det i listan vid högen',
   'kbd.hint.action.own': 'spelets egen åtgärd',
   'ring.action.list': 'Vad {zone} kan',
@@ -132,12 +158,22 @@ export const svPlay = {
   'help.where.felt': 'på bordet',
   // Tangenten som betyder «gör det med det jag pekar på» heter olika på olika maskiner: Ctrl +
   // klick är systemets sekundärklick på en Mac, och sidan får då aldrig något `click`.
+  // Filtens egen regel och tangentbordets väg in står först i hjälpen (#719): en dragning flyttar,
+  // ett klick läser och frågar, och Tabb, pilarna och Enter når samma saker (K16).
+  'felt.press.drag': 'Dra',
+  'felt.key.drag': 'Flytta kortet eller högen dit du släpper den',
+  'felt.press.click': 'Klick',
+  'felt.key.click': 'Läs det du klickar på; ett klick till frågar vad som går att göra',
+  'felt.press.tab': 'Tabb',
+  'felt.press.arrowKeys': 'Pilar',
+  'felt.press.enter': 'Enter',
+  'felt.key.keyboard': 'Tabb till bordet, pilarna mellan sakerna på det, Enter för vad som går att göra',
   'felt.press.modClick': '{mod} + klick',
   'felt.press.doubleClick': 'Dubbelklick',
   'felt.key.flip': 'Vänd kortet, eller högens översta, under pekaren',
   'felt.key.draw': 'Dra översta kortet från högen under pekaren',
   'felt.key.shuffle': 'Blanda högen under pekaren',
-  'felt.key.escape': 'Stäng hjulet · avbryt draget',
+  'felt.key.escape': 'Stäng ringen · avbryt draget',
   'felt.key.help': 'Visa den här listan',
 
   // Kameran på live-bordet (C5, #325). Vyn står kvar tills den återställs, så varje väg tillbaka
@@ -156,7 +192,7 @@ export const svPlay = {
   'felt.press.arrows': 'Skift + piltangent',
   'felt.key.zoom': 'Zooma in och ut kring pekaren; vyn står kvar',
   'felt.key.pan': 'Panorera vyn',
-  'felt.key.escape.camera': 'Stäng hjulet · avbryt draget · visa hela bordet',
+  'felt.key.escape.camera': 'Stäng ringen · avbryt draget · visa hela bordet',
 
   // Tangentbordet på filten (#1, #2, variant C "adressen"). Zonnamn och kortnamn kommer från
   // spelet och står i meningarna som designern skrev dem; allt runt dem är verktygets.
@@ -187,6 +223,7 @@ export const svPlay = {
   'kbd.verb.lookTop': 'Titta på översta',
   'kbd.verb.lookBottom': 'Titta på understa',
   'kbd.verb.toHand': 'Dra 1 till min hand',
+  'kbd.verb.beside': 'Lägg 1 bredvid',
   'kbd.hint.reveal': 'visar kortet för alla',
   'kbd.hint.look': 'bara på den här skärmen',
   'kbd.hint.half': 'ny hög bredvid',
@@ -212,6 +249,7 @@ export const svPlay = {
   'kbd.panel.moveTop': 'Flytta översta kortet till',
   'kbd.panel.free': 'Fri placering — en punkt på filten',
   'kbd.panel.free.hint': 'kräver pekdon; med tangentbord finns bara platser med namn',
+  'kbd.panel.empty': 'Högen är tom. Det finns inget att göra med den.',
   'kbd.panel.close': 'Stäng',
 
   // "Sätt värde…" på en skärm utan tangentbord (#67): talet skrivs på verktygets egna knappar.
@@ -227,19 +265,28 @@ export const svPlay = {
   // Med kortets namn när läsaren får se kortet (#507 fynd 6); annars raden ovan.
   'activity.move.named': '{who} flyttade {card} till {zone}',
   // En hand namnges av den som sitter där (K19), mitt i meningen: "till Adas hand", "till min hand".
-  'activity.hand.my': 'min hand',
+  'activity.hand.my': 'din hand',
+  'activity.you': 'Du',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} vred ett kort',
   'activity.flip': '{who} vände ett kort',
   'activity.flip.named': '{who} vände {card}',
   'activity.stack': '{who} lade ett kort på ett annat',
-  'activity.split.to': '{who} drog {n} från {zone} till {to}',
-  'activity.split.beside': '{who} delade av {n} från {zone} till en ny hög',
+  'activity.split.to.one': '{who} drog {n} kort från {zone} till {to}',
+  'activity.split.to.other': '{who} drog {n} kort från {zone} till {to}',
+  'activity.split.beside.one': '{who} lade {n} kort bredvid {zone}',
+  // A pile made on the felt has no name of its own (K1); it is named by the area it lies in (#714).
+  'zone.pile.within': 'en hög i {area}',
+  'zone.pile.title': 'Hög i {area}',
+  'activity.split.beside.other': '{who} delade av {n} kort från {zone} till en ny hög',
   'activity.shuffle': '{who} blandade {zone}',
-  'activity.draw': '{who} drog {n} från {zone}',
-  'activity.deal': '{who} delade ut {n} var',
+  'activity.deal.one': '{who} delade ut {n} kort var till {to}',
+  'activity.deal.other': '{who} delade ut {n} kort var till {to}',
+  // How a list of places is said: «Adas hand, Bos hand och Cys hand».
+  'activity.and': 'och',
   'activity.roll': '{who} slog en tärning',
   'activity.setCounter': '{who} satte en räknare till {value}',
+  'activity.setCounter.named': '{who} satte {counter} till {value}',
   'activity.peek': '{who} tittade på ett kort',
   'activity.showTo': '{who} visade ett kort för {seats}',
   'activity.reveal': '{who} avslöjade ett kort',
@@ -264,12 +311,18 @@ export const svPlay = {
   // Att spola tillbaka: vart, och vem som avgör.
   'rewind.someone': 'någon annan',
   'rewind.deciders': '{others} eller {last}',
-  'rewind.before': 'före ”{what}”',
+  'rewind.before': 'före «{what}»',
   'rewind.atSeq': 'vid drag {n}',
-  'rewind.mine': 'Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {who} avgör.',
+  'rewind.mine': 'Du föreslår att spola tillbaka till hur bordet såg ut {where}. {who} avgör.',
+  // Ångra efter någon annans drag frågar först (#747, beslut A).
+  'rewind.propose.ask.title': 'Senaste draget är inte ditt',
+  'rewind.propose.ask.body': 'Bordet visar hur det såg ut {where}, och {who} avgör.',
+  'rewind.propose.ask.yes': 'Föreslå att spola tillbaka',
+  'rewind.propose.ask.no': 'Avbryt',
   'rewind.withdraw': 'Dra tillbaka förslaget',
   'rewind.ask.title': '{who} vill spola tillbaka',
-  'rewind.ask.body': 'Bordet visar hur det såg ut. Draghögen blandas om.',
+  'rewind.ask.body': 'Bordet visar hur det såg ut {where}. {pile} blandas om.',
+  'rewind.ask.body.any': 'Bordet visar hur det såg ut {where}. Leken blandas om.',
   'rewind.approve': 'Godkänn',
   'rewind.decline': 'Neka',
   'rewind.declined': '{who} sa nej till att spola tillbaka.',
@@ -284,7 +337,7 @@ export const svPlay = {
   'play.help.hand.hidden': 'De andra ser hur många kort du har, aldrig vilka.',
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
-  'player.hint.selected.one': '{n} valda',
+  'player.hint.selected.one': '{n} valt',
   'player.hint.selected.other': '{n} valda',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
@@ -308,13 +361,24 @@ export const svPlay = {
   'online.table.where': 'Hela bordet står på TV:n, eller på en skärm som rymmer det.',
   // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
   'player.hand.title': 'Dina kort',
+  // Handens överblick på telefonen (#767): «Visa alla» och var i remsan man står.
+  'player.hand.all': 'Visa alla · {n}',
+  'player.hand.where': '{from}–{to} av {n}',
+  'online.spread.title': 'Hela handen',
+  'online.spread.label.one': 'Hela handen, {n} kort',
+  'online.spread.label.other': 'Hela handen, {n} kort',
+  'online.spread.count.one': '{n} kort',
+  'online.spread.count.other': '{n} kort',
+  'online.spread.close': 'Stäng',
   'player.hand.actions': 'Spela valda kort',
   'player.hand.read': 'Läs valt kort',
   'player.hand.chosen': 'Valt: {name}',
   'player.hand.none': 'Inget kort valt',
   'player.hand.left': 'Flytta vänster',
   'player.hand.right': 'Flytta höger',
-  'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
+  'player.hand.empty': 'Tom hand. Dra ett kort ur {pile}.',
+  'player.hand.empty.any': 'Tom hand. Dra ett kort ur en hög.',
+  'player.hand.empty.none': 'Tom hand. Det finns inga kort att dra.',
   // Läsvyn går igenom raden kortet lyftes ur (#507): handen, ytan framför dig, eller en annan yta.
   'player.read.prev': 'Föregående kort',
   'player.read.next': 'Nästa kort',
@@ -340,7 +404,6 @@ export const svPlay = {
   'session.exit.aria': '{label} ur bordet',
   'session.flagged': 'Ögonblicket är flaggat',
   'session.version.this': 'den här versionen',
-  'session.refused.kicked': 'Värden har tagit bort dig från bordet.',
   'session.refused.gone': 'Länken gäller inte längre. Gå med igen med rumskoden.',
 
   // Att flagga ett ögonblick (G3) och att avsluta sessionen (C9).
@@ -351,7 +414,7 @@ export const svPlay = {
   'flag.sheet.cancel': 'Avbryt',
   'end.sheet.title': 'Avsluta bordet?',
   'end.sheet.body':
-    'Loggen låses på {version}, bordet kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.',
+    'Bordet stannar på {version} och kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.',
   'end.sheet.end': 'Avsluta för alla',
   'end.sheet.not': 'Inte än',
 
@@ -361,20 +424,25 @@ export const svPlay = {
   'exit.sheet.title': 'På väg ut?',
   'exit.sheet.leave': 'Lämna bordet',
   'exit.sheet.leave.body':
-    'Din plats blir ledig och korten i din hand går tillbaka i draghögen. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.',
+    'Din plats blir ledig och korten i din hand går tillbaka till {pile}. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.',
+  'exit.sheet.leave.body.any':
+    'Din plats blir ledig och korten i din hand går tillbaka till leken. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.',
   'exit.sheet.end': 'Avsluta bordet för alla',
   'exit.sheet.end.body': 'Ingen kan spela vidare, och alla får enkäten på sin telefon. Vi frågar en gång till innan det sker.',
   'exit.sheet.stay': 'Stanna kvar',
 
   // Enkäten efter sessionen (G3).
   'survey.title': 'Bordet är avslutat',
-  'survey.sub': 'Fyra frågor, en minut. Svaren knyts till version {version}.',
+  'survey.sub': 'Fyra frågor, en minut. Svaren knyts till {version}.',
   'survey.q.fun': 'Hur kul var det?',
   'survey.q.fun.low': 'segt',
   'survey.q.fun.high': 'jättekul',
   'survey.q.clarity': 'Hur tydliga var reglerna?',
   'survey.q.clarity.low': 'förvirrande',
   'survey.q.clarity.high': 'glasklara',
+  'survey.q.understood': 'Hur lätt var spelet att förstå?',
+  'survey.q.understood.low': 'förvirrande',
+  'survey.q.understood.high': 'självklart',
   'survey.q.balance': 'Hur balanserat kändes det?',
   'survey.q.balance.low': 'någon körde över',
   'survey.q.balance.high': 'jämnt',
@@ -386,6 +454,9 @@ export const svPlay = {
   'survey.thanks': 'Tack, {who}.',
   'survey.tied': 'Dina svar är knutna till {version}.',
   'survey.save': 'Spara till ditt konto',
+  'survey.saved': 'Sparat till ditt konto.',
+  // Vad som lagras om en gäst, där hon ansluter eller sparar (#757): knutet till bordet, inte till en person.
+  'guest.kept': 'Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.',
 
   // Åskådaren (C8).
   'observer.name': 'observatör',
@@ -400,14 +471,19 @@ export const svPlay = {
   'observer.more': 'Senast och platser',
 
   // Att sätta sig vid bordet (K12).
-  'join.code.missing': 'Ingen rumskod angiven.',
-  'join.code.gone': 'Rumskoden {code} gäller inte längre. Be värden om en ny.',
-  'join.ended': 'Det här bordet är avslutat. Be värden starta ett nytt.',
-  'join.code.expired': 'Rumskoden gäller inte längre. Be värden om en ny.',
+  // Koden är adressen (#675, beslut C): /join utan kod frågar efter den, och en kod som inte leder
+  // någonstans sägs på ett enda sätt — okänd och utgången likadant, så att inget avslöjar om en
+  // kod en gång funnits.
+  'join.code.title': 'Gå in vid ett bord',
+  'join.code.lead': 'Skriv rumskoden som står på bordets skärm.',
+  'join.code.label': 'Rumskod',
+  'join.code.go': 'Fortsätt',
   'join.seat.taken': 'Platsen togs precis av någon annan. Välj en annan.',
   // Kvitteringen för den som just lämnat: hon kommer tillbaka hit, och får veta vad som hände
   // med platsen och handen hon lämnade (#31).
-  'join.left': 'Din plats är ledig och handen ligger tillbaka i draghögen. De andra spelar vidare.',
+  // The picker's lobby carries no zones (DRIFT §9), so it cannot name the pile; «leken» is the
+  // game's own word for all of it, and not a pile's name it would get wrong (#714).
+  'join.left': 'Din plats är ledig och handen ligger tillbaka i leken. De andra spelar vidare.',
   'join.into': 'Du är på väg in i',
   'join.room': 'Rum {code}',
   'join.seat.chosen': 'Plats {seat} vald',
@@ -425,6 +501,7 @@ export const svPlay = {
   // knapp utan förklaring.
   'join.name.says': 'Skriv ditt namn först.',
   'join.sit': 'Sätt dig',
+  'join.sitting': 'Sätter dig…',
   'join.online': 'Spela på den här skärmen (bordet och handen här)',
   'join.observe': 'Bara titta (ser allt, alla ser dig)',
 
@@ -442,6 +519,7 @@ export const svPlay = {
   // En referens till något spelet inte längre har säger vad som stod skrivet.
   'rules.drawer.ref.zone': 'zon',
   'rules.drawer.ref.card': 'kort',
+  'rules.drawer.ref.counter': 'räknare',
   // Den levande siffran (#226). Brickan visar talet; örat får formen A:s hela mening, som är vad
   // beslutet gav B i utbyte mot att inte skriva ut den. «Ordningen dold» är skillnaden mellan
   // «18 kort, och jag vet vilka» och «18 kort, och det är allt som går att veta» — antalet i sig
@@ -464,4 +542,7 @@ export const svPlay = {
   'rules.setup.seat': 'Plats {seat}',
   'rules.setup.seat.zones': 'Zoner vid plats {seat}',
   'rules.setup.seat.empty': 'Inga egna zoner vid den här platsen.',
+
+  // Lånat från editorn men sagt på spelytorna också, och därför i den katalog de hämtar (#760).
+  'rules.caption.placeholder': 'Bildtext…',
 } as const

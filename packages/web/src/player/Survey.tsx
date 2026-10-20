@@ -1,25 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
-import { QUESTIONS, type SurveyAnswers } from './surveyApi.js'
+import { questions, type SurveyAnswers } from './surveyApi.js'
 import { useT } from '../i18n/index.js'
+import { versionWord } from '../i18n/version.js'
 
 // `saveUrl` (G1): where the guest goes to keep this session on an account; absent without a token.
+// It is offered on the thanks only, once the answers are sent (#690, beslut 2026-10-06): a guest
+// who went to save first never found the survey again on the other side of the login.
 // `remember`: the seat and session the answers are for, so a reload after sending shows the thanks
-// rather than the first question again (#483).
-export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined; remember?: string | undefined }
+// rather than the first question again (#483). `rulebook`: whether the table had one, which is
+// what the second question asks about when it did (#744); `null` while that is being asked.
+// `saved`: the claim has come back here (#690). Saving is only offered once the answers are sent,
+// so it is the thanks that stand — in a tab of its own too, where `remember` knows nothing — and
+// they say it is saved in place of offering it again.
+export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined; remember?: string | undefined; rulebook?: boolean | null | undefined; saved?: boolean | undefined }
 
 // The survey after a session (G3, prototype A): one question at a time with big buttons, a free
 // line last, then thanks. Answers are tied to the version the session ended on.
-export function Survey({ who, version, onSubmit, saveUrl, remember }: SurveyProps) {
+export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, saved = false }: SurveyProps) {
   const t = useT()
   const [step, setStep] = useState(0)
   const [scales, setScales] = useState<Partial<Record<'fun' | 'clarity' | 'balance', number>>>({})
   const [change, setChange] = useState('')
-  const [state, setState] = useState<'open' | 'sending' | 'sent' | 'failed'>(() => (remember !== undefined && wasSent(remember) ? 'sent' : 'open'))
+  const [state, setState] = useState<'open' | 'sending' | 'sent' | 'failed'>(() => (saved || (remember !== undefined && wasSent(remember)) ? 'sent' : 'open'))
   // The survey takes the focus when it appears (#483): it replaces the view whose button ended the
   // table, and a focus left on that button is a focus on nothing.
   const here = useRef<HTMLDivElement>(null)
   useEffect(() => here.current?.focus(), [state])
-  const q = QUESTIONS[step]
+  const q = questions(rulebook)[step]
   const send = async () => {
     const { fun, clarity, balance } = scales
     if (fun === undefined || clarity === undefined || balance === undefined) return
@@ -38,8 +45,10 @@ export function Survey({ who, version, onSubmit, saveUrl, remember }: SurveyProp
         <div />
         <div className="byd-survey-thanks">
           <strong>{t('survey.thanks', { who })}</strong>
-          <span>{t('survey.tied', { version })}</span>
-          {saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
+          <span>{t('survey.tied', { version: versionWord(version, t) })}</span>
+          {saved ? <span>{t('survey.saved')}</span> : saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
+          {/* What a guest leaves behind, said where she saves it (#757). */}
+          {!saved && saveUrl && <p className="byd-muted">{t('guest.kept')}</p>}
         </div>
         <div />
       </div>
@@ -49,7 +58,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember }: SurveyProp
     <div className="byd-survey" data-survey={q ? q.key : 'change'} ref={here} tabIndex={-1}>
       <div>
         <h1>{t('survey.title')}</h1>
-        <div className="byd-survey-sub">{t('survey.sub', { version })}</div>
+        <div className="byd-survey-sub">{t('survey.sub', { version: versionWord(version, t) })}</div>
       </div>
       <div className="byd-survey-q">
         {q ? (
@@ -91,7 +100,6 @@ export function Survey({ who, version, onSubmit, saveUrl, remember }: SurveyProp
           </button>
         )}
       </div>
-      {saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
 import { blockNames, type BlockName } from './rulesNames.js'
 import { arrangementOf, namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
@@ -7,6 +7,8 @@ import {
   importRules,
   planImport,
   plainOf,
+  refLabel,
+  refText,
   renderRules,
   ruleEm,
   type Names,
@@ -16,15 +18,20 @@ import {
   type RuleImages,
   type RuleImport,
   type RuleImportKind,
+  type RefKind,
   type RulePlan,
   type RulePlanSection,
   type RuleRun,
   renderLine,
+  itemsOfLines,
+  runsOf,
+  type WrittenRun,
 } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import type { Key } from '../i18n/sv.js'
+import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { useWordSteps } from './word-steps.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
@@ -37,15 +44,19 @@ import { SetupOverview } from '../rules/SetupOverview.js'
 // once (#481). The editor is a chunk of its own, so this costs the table's first frame nothing.
 import '../rules/rules.css'
 import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
+import { rulesWords, type RuleEntry, type RulesView } from './proposals.js'
 import { PickList, pickKey, pickOptionId, triggerBehind, writeTrigger } from './picking.js'
+import { caretInSource, readOffsetAt } from './caret.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
 // stands and closes when it is left, so what is being written is always what the reader will
 // meet — which is the whole point of rules that must work without the designer in the room.
 // References are ids: what a rule calls a thing follows what the thing is called.
-export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined }
+// `aiProposal` is an AI proposal's rule text laid in the book (#1006), and `onHideProposal` takes it
+// off again.
+export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined; aiProposal?: RulesView | undefined; onHideProposal?: (() => void) | undefined }
 
-export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
+export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal }: RulesPanelProps) {
   const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
   // Vilket block ＋:et står vid (#216). Ett enda ＋ följer det block som har pekaren eller fokus,
@@ -93,19 +104,25 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // once, here, and everything below is a rendering of it: the band counts it, the book is drawn
   // with its marks, and the column beside the book carries the same marks the book does.
   const plan = rules && proposal ? planImport(rules, proposal.doc) : null
+  // An AI proposal's rule text (#1006), shown while no file is lying in the book: the book as the
+  // proposal would leave it, read and never written in, as a file's proposal is — what is about to
+  // change is read before it is decided, and a page that could be typed into while it says so would
+  // be two things at once.
+  const ai = proposal === null ? (aiProposal ?? null) : null
+  const aiMarks = new Map<string, RuleEntry>((ai?.entries ?? []).map((entry) => [entry.block.id, entry]))
   // A book is being written in only when nothing is lying in it: a proposal is a reading of what
   // the book would become, and a page that can be typed into while it says what it is about to
   // lose would be two things at once.
   // A role that may not change the game reads the book and writes nothing (#489): no block opens,
   // no ＋ is drawn, and the ways in are not offered.
-  const writing = rules !== undefined && proposal === null && client.mayEdit
+  const writing = rules !== undefined && proposal === null && ai === null && client.mayEdit
   // There is no table to show a book that has not been written, and a proposal is a reading of
   // what the book would become rather than a book anybody is handed. Both fall back to the
   // editable mode rather than offering a preview of something that is not there.
   const mode: Mode = writing ? chosen : 'edit'
   // Everything the reader is shown, which over a book includes what is about to leave it. The book
   // that would be written is `plan.doc` and is a subset of this.
-  const shown = plan ? { title: plan.doc.title, blocks: plan.blocks.map((planned) => planned.block) } : (rules ?? proposal?.doc ?? templateRules(doc.name, t))
+  const shown = plan ? { title: plan.doc.title, blocks: plan.blocks.map((planned) => planned.block) } : ai ? { title: ai.title, blocks: ai.entries.map((entry) => entry.block) } : (rules ?? proposal?.doc ?? templateRules(doc.name, t))
   const marks = new Map((plan?.blocks ?? []).map((planned) => [planned.block.id, planned]))
   // The book is rendered against this very document, setup and all (#270): what the designer
   // reads is what a table locked to this version would hand its players.
@@ -140,6 +157,24 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   }, [mode])
   const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
     rules && client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
+  // A block written as something else (#707): a paragraph made a list, or cut into the paragraphs
+  // and lists its lines were written as. The first of them keeps the block's id, so the block that
+  // was open is the block the focus goes back to; the rest are handed ids of their own.
+  const recast = (id: string, runs: readonly WrittenRun[]) => {
+    if (!rules) return
+    const at = rules.blocks.findIndex((b) => b.id === id)
+    const was = rules.blocks[at]
+    if (!was) return
+    const taken: string[] = []
+    const made = runs.map((run, i): RuleBlock => {
+      const own = i === 0 ? id : freeId(rules, taken)
+      taken.push(own)
+      if (run.kind === 'list') return { kind: 'list', id: own, ordered: run.ordered, items: run.items }
+      // A template section keeps its question for as long as it stays a paragraph (#131).
+      return { kind: 'text', id: own, text: run.text, ...(i === 0 && was.kind === 'text' && was.ask ? { ask: was.ask } : {}) }
+    })
+    client.setRules({ ...rules, blocks: [...rules.blocks.slice(0, at), ...made, ...rules.blocks.slice(at + 1)] })
+  }
   // Ett tomt block i en skarv, öppnat där det landar. Skarven räknas i block och inte i knappar:
   // en bok med n block har n + 1 skarvar, och den före block ett är en av dem (#216).
   const addAt = (index: number) => {
@@ -187,6 +222,14 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     setEditing(head)
   }
   const open = (id: string) => rules && setEditing(id)
+  // Where a click on a paragraph landed, in the paragraph as it was read, so the field it opens
+  // puts its caret there and not at its start (#972). A key opens the field as before.
+  const clicked = useRef<{ id: string; read: string; at: number } | null>(null)
+  const openAt = (id: string, e: ReactMouseEvent<HTMLElement>) => {
+    const at = readOffsetAt(e.currentTarget, e.clientX, e.clientY)
+    clicked.current = at === null ? null : { id, read: e.currentTarget.textContent ?? '', at }
+    open(id)
+  }
   // Where the focus goes once an open block has closed on a key rather than on the focus leaving
   // it (#481): back to the block it was writing, or — when the block is gone — to the one now
   // standing in its place. Left alone it fell to <body> with the field it had been in.
@@ -254,7 +297,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
       return
     }
     const text = await md.text()
-    const read = importRules(text, doc.name, await pictures(text, files.filter((f) => f !== md), client, t))
+    const read = importRules(text, doc.name, await pictures(text, files.filter((f) => f !== md), client, t), names)
     // A file with nothing in it to make a book of says so, rather than looking as though the
     // press did nothing at all — and it says why, when there is a why. A file whose content was
     // its pictures, and whose own title became nothing because the book is called what the game
@@ -303,11 +346,13 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         <h2>{t('rules.title')}</h2>
         {writing && <Modes mode={mode} onMode={setMode} />}
         {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
-        {!rules && <span>{t('rules.empty')}</span>}
+        {/* While an AI proposal lies in the book nothing in it opens, and the band under says why (#1006). */}
+        {!ai && !rules && <span>{t('rules.empty')}</span>}
         <Help topic={t('rules.help.topic')}>
           <p>{t('rules.hint')}</p>
           <p>{t('rules.help.reach')}</p>
           <p>{t('rules.help.names')}</p>
+          <p>{t('rules.help.lists')}</p>
         </Help>
         {/* Which file the book came out of, and when (#131): text in the document, so it travels
             with the project rather than with the browser the file was picked in. */}
@@ -322,7 +367,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             {t(out.warnings.length === 1 ? 'rules.warnings.one' : 'rules.warnings.other', { n: out.warnings.length })}
           </span>
         )}
-        {client.mayEdit && !rules && !proposal && (
+        {client.mayEdit && !rules && !proposal && !ai && (
           <div className="byd-rules-ways">
             {/* Three ways in, and each of them does what it says: a control that does nothing yet
                 would be a promise nobody kept. */}
@@ -360,7 +405,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             divider at the far end of the header. Import and booklet only, because a control that is
             not a tool of the book — the switch, the hint — would make the group the header with a
             name on it, not a group. */}
-        {rules && !proposal && (
+        {rules && !proposal && !ai && (
           <div className="byd-rules-ways byd-rules-tools" role="group" aria-label={t('rules.tools')}>
             {client.mayEdit && (
               <PickFile
@@ -369,7 +414,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                 onPick={pick}
               />
             )}
-            <Booklet client={client} />
+            <Booklet client={client} book={rules} game={doc.name} />
           </div>
         )}
       </div>
@@ -397,6 +442,18 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
           }}
         />
       )}
+      {/* The AI proposal laid in the book (#1006), said as Tabell says one (#1003): what it is, in its
+          own words, and the way to take it off again. */}
+      {ai && (
+        <p className="byd-rules-ai" role="status" data-proposal="">
+          {t('rules.proposal')}: {rulesWords(ai.added, ai.rewritten, t).join(', ')}{' '}
+          {onHideProposal && (
+            <button type="button" onClick={onHideProposal}>
+              {t('rules.proposal.hide')}
+            </button>
+          )}
+        </p>
+      )}
       <div className="byd-rules-spread">
         {/* `proposed` is the mark that says a section has nothing written in it yet. A section
             read out of a file has, so only the template's own disposition carries it. The column
@@ -409,7 +466,8 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
           label={t('rules.toc')}
           {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
           {...(plan ? { marks: [...plan.sections, ...plan.subsections] } : {})}
-          {...(writing ? { onAdd: addSection } : proposal || rules ? {} : { proposed: true })}
+          {...(ai ? { marks: aiTocMarks(ai.entries) } : {})}
+          {...(writing ? { onAdd: addSection } : proposal || rules || ai ? {} : { proposed: true })}
         />
         {/* The book is read in an area of its own, beside the column's and never inside it (#210).
             Before this the pair shared the tab's single scrolling area and the column hung in it,
@@ -469,6 +527,10 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
               {out.blocks.map((b, i) => {
                 const source = shown.blocks.find((x) => x.id === b.id)
                 const planned = marks.get(b.id)
+                // What the AI proposal does to this block (#1006): the wall's two marks, «✦ Förslag» on
+                // what it adds and «✦ Ändrat» on what it writes in place of something, said once where
+                // an entry's run begins; and what it replaces struck where it stands, with the word.
+                const proposed = aiMarks.get(b.id)
                 // What is happening to this block, as words in the page and in the order they are read.
                 // A strike-through is a decoration and a colour is a colour; neither of them reaches a
                 // screen reader, and this is a report that has to be read carefully (L12).
@@ -490,6 +552,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                     className="byd-rules-block"
                     data-block={b.id}
                     data-mark={planned?.mark}
+                    data-ai={proposed?.mark ?? undefined}
                     data-open={editing === b.id ? 'true' : undefined}
                     data-at={where === b.id ? 'true' : undefined}
                     {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
@@ -498,6 +561,14 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                         a ring drawn round it: a decoration is not an answer (L12). It is not a
                         `figcaption`, because a caption is the designer's line and this is not. */}
                     {found === b.id && <span className="byd-rules-found">{t('rules.image.found')}</span>}
+                    {proposed?.first && proposed.mark !== 'gone' && (
+                      <span className="byd-rules-ai-mark">
+                        <span aria-hidden="true">✦</span> {t(proposed.mark === 'new' ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}
+                      </span>
+                    )}
+                    {proposed?.first && proposed.mark === 'gone' && (
+                      <span className="byd-rules-mark">{t(ai?.entries.some((entry) => entry.part === proposed.part && entry.mark === 'changed') ? 'rules.mark.replaced' : 'rules.mark.going')}</span>
+                    )}
                     {planned && saysMark && (
                       <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
                     )}
@@ -508,8 +579,10 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                         names={names}
                         assetBase={assetBase}
                         onPatch={(next, gesture) => patch(b.id, next, gesture)}
+                        onRecast={(runs) => recast(b.id, runs)}
                         onClose={(refocus) => close(b.id, refocus)}
                         onRemove={() => remove(b.id)}
+                        caret={clicked.current?.id === b.id && source.kind === 'text' ? caretInSource(clicked.current.read, clicked.current.at, source.text) : undefined}
                       />
                     ) : writing && b.kind === 'setup' ? (
                       // The setup carries controls of its own since #270 — the fold and the seat
@@ -535,7 +608,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => open(b.id)}
+                        onClick={(e) => openAt(b.id, e)}
                         onKeyDown={(e) => {
                           // A `role="button"` promises both keys, and Space promises not to scroll the
                           // page out from under the paragraph it just opened (L12).
@@ -688,11 +761,10 @@ const fileOf = (address: string): string => {
 // `conflict` is the protocol's word for that and nobody can act on it, so what goes on the screen
 // is the state she is actually in — the book is in front of her and it is not on the server —
 // together with the one way out of it, which is the editor's own answer to every collision:
-// reload, and do it again. Nothing is lost by that; the file is still on her disk.
-const whyNotSaved = (err: unknown, t: T): string => {
-  const why = err instanceof Error ? err.message : String(err)
-  return why === 'conflict' ? t('rules.import.conflict') : t('rules.import.failed', { why })
-}
+// reload, and do it again. Nothing is lost by that; the file is still on her disk. The client says
+// that sentence itself, since it is the one that knows the save collided; anything nobody put in
+// words is said as the import not being saved (#812).
+const whyNotSaved = (err: unknown, t: T): string => saidOr(err, t('rules.import.failed'))
 
 // What the import does with the file, read before the book is made and never after it (#131).
 // The rule behind the map is that nothing disappears silently, and this is where it is said: what
@@ -784,6 +856,7 @@ const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
   list: 'kept',
   ref: 'kept',
   image: 'kept',
+  unknownRef: 'changed',
   title: 'changed',
   raised: 'changed',
   folded: 'changed',
@@ -818,6 +891,13 @@ function Modes({ mode, onMode }: { mode: Mode; onMode(next: Mode): void }) {
   )
 }
 
+// An AI proposal's marks as the column carries them (#1006), in the import's words: a heading it adds
+// is new, one it writes in place of something is rewritten, and one it replaces is going.
+const AI_TOC: Record<RuleEntry['mark'] & string, RulePlanSection['mark']> = { new: 'added', changed: 'changed', gone: 'going' }
+function aiTocMarks(entries: readonly RuleEntry[]): Pick<RulePlanSection, 'id' | 'mark'>[] {
+  return entries.flatMap((entry) => (entry.block.kind === 'heading' && entry.mark ? [{ id: entry.block.id, mark: AI_TOC[entry.mark] }] : []))
+}
+
 // Where a heading stands, so the column beside the book can point at it. Both ranks carry one:
 // `Block` has written an anchor on every heading since the book was first rendered.
 const anchorOf = (id: string): string => `rule-${id}`
@@ -845,7 +925,7 @@ function Toc({
   label: string
   onAdd?: (() => void) | undefined
   proposed?: boolean | undefined
-  marks?: readonly RulePlanSection[] | undefined
+  marks?: readonly Pick<RulePlanSection, 'id' | 'mark'>[] | undefined
   silent?: readonly string[] | undefined
   onFind?: ((id: string) => void) | undefined
 }) {
@@ -943,21 +1023,33 @@ function Toc({
 }
 
 // The rulebook as a booklet for print (B7): one rendering of the rules as they stand, through
-// the same worker that renders every card. The link is offered only once there is a file.
-function Booklet({ client }: { client: ProjectClient }) {
+// the same worker that renders every card. The link is offered only once there is a file, and
+// only for as long as the book is the one it was made from: a change takes the control back to
+// the order (#678), and a rendering still on its way for the old book is let go.
+function Booklet({ client, book, game }: { client: ProjectClient; book: RuleDoc; game: string }) {
   const t = useT()
-  const [state, setState] = useState<'idle' | 'working' | { hash: string } | { error: string }>('idle')
+  // What the book said when the order was placed, read by value so a save that hands back the
+  // same words as a new object is not a change. Whatever the order came to belongs to that book.
+  const text = useMemo(() => JSON.stringify(book), [book])
+  const latest = useRef(text)
+  useEffect(() => {
+    latest.current = text
+  }, [text])
+  const [placed, setPlaced] = useState<{ of: string; is: 'working' | { hash: string } | { error: string } } | null>(null)
+  const state = placed && placed.of === text ? placed.is : 'idle'
   const order = async () => {
-    setState('working')
+    const of = text
+    const current = () => latest.current === of
+    setPlaced({ of, is: 'working' })
     try {
       const hash = await client.orderBooklet(t)
-      for (let i = 0; i < 120; i++) {
-        if (await client.rendered(hash)) return setState({ hash })
+      for (let i = 0; i < 120 && current(); i++) {
+        if (await client.rendered(hash)) return setPlaced({ of, is: { hash } })
         await new Promise((r) => setTimeout(r, 250))
       }
-      setState({ error: t('rules.booklet.failed') })
+      setPlaced({ of, is: { error: t('rules.booklet.failed') } })
     } catch (err) {
-      setState({ error: err instanceof Error ? err.message : String(err) })
+      setPlaced({ of, is: { error: saidOr(err, t('rules.booklet.orderFailed')) } })
     }
   }
   // The button the designer pressed turns into the link she came for, so the focus goes with it
@@ -969,7 +1061,7 @@ function Booklet({ client }: { client: ProjectClient }) {
   }, [done])
   if (typeof state === 'object' && 'hash' in state) {
     return (
-      <a ref={ready} className="byd-rules-booklet" href={client.bookletUrl(state.hash)} target="_blank" rel="noreferrer">
+      <a ref={ready} className="byd-rules-booklet" href={client.bookletUrl(state.hash, t('rules.booklet.file', { game }))} target="_blank" rel="noreferrer">
         {t('rules.booklet.open')}
       </a>
     )
@@ -997,22 +1089,36 @@ function Editing({
   names,
   assetBase,
   onPatch,
+  onRecast,
   onClose,
   onRemove,
+  caret,
 }: {
   block: RuleBlock
   called: BlockName
   names: Names
   assetBase?: string | undefined
   onPatch(next: Partial<RuleBlock>, gesture?: string): void
+  // The block written as other blocks: a paragraph as a list, or as the runs its lines make.
+  onRecast(runs: readonly WrittenRun[]): void
   // `refocus` when a key closed the block and the focus has nowhere of its own to go.
   onClose(refocus: boolean): void
   onRemove(): void
+  // Where the field's caret goes when it opens, if a click said (#972).
+  caret?: number | undefined
 }) {
   const t = useT()
   // Prose is written a letter at a time and the whole book is rewritten for each of them, so a
   // sentence is one step back and the paragraph before it is another (L14).
   const typing = useGesture('rule-field')
+  // Once, as the paragraph opens: the caret where the click landed, not at the start (#972).
+  // Through the field's box, since the field's own ref is the reference lookup's.
+  const paragraph = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (caret === undefined) return
+    paragraph.current?.querySelector('textarea')?.setSelectionRange(caret, caret)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- as the field opens, and never again while it is written in
+  }, [])
   // And inside a field a step back is a word, then the editor's (#481, L14): the field is
   // controlled, so the browser's own took one character at a time.
   const steps = useWordSteps()
@@ -1101,7 +1207,7 @@ function Editing({
         {(r) => (
           <>
             <span>{r.name}</span>
-            <small>{t(r.of === 'zone' ? 'rules.ref.zone' : 'rules.ref.card')}</small>
+            <small>{t(REF_KIND_WORD[r.of])}</small>
           </>
         )}
       </PickList>
@@ -1110,8 +1216,32 @@ function Editing({
   // after it in the book (#481, fynd 10).
   const leave = (refocus: boolean) => {
     if (block.kind === 'list' && block.items.some((item) => item.trim() === '')) onPatch({ items: block.items.filter((item) => item.trim() !== '') })
+    // A paragraph whose lines open with «- » or «1. » is closed as the list they say it is (#707):
+    // the marks the import reads are read here too, so a list can be written without a file.
+    if (block.kind === 'text') {
+      const runs = runsOf(block.text)
+      if (runs.length !== 1 || runs[0]?.kind !== 'text') onRecast(runs.length > 0 ? runs : [{ kind: 'text', text: '' }])
+    }
     onClose(refocus)
   }
+  // The block made the kind the chooser names (#707). A paragraph made a list keeps its lines as
+  // its points, and a list made a paragraph keeps its points as lines, so nothing written is lost
+  // by trying the other kind. A block just added says «Ny text.» to be seen at all; that is the
+  // tool's word and not the designer's, so a list made of it starts with one empty point.
+  const recastAs = (kind: BlockKind) => {
+    if (kindOf(block) === kind) return
+    if (kind === 'text') return block.kind === 'list' && onRecast([{ kind: 'text', text: block.items.join('\n') }])
+    const ordered = kind === 'numbers'
+    if (block.kind === 'list') return onPatch({ ordered })
+    if (block.kind !== 'text') return
+    const items = block.text === t('rules.newText') ? [] : itemsOfLines(block.text)
+    onRecast([{ kind: 'list', ordered, items: items.length > 0 ? items : [''] }])
+  }
+  // How the paragraph's lines will be read once the block is closed, when that is not how they
+  // stand in the field (#707): lines marked as points become a list, and a line break alone is a
+  // space, as it has always been — but no longer without a word.
+  const noteId = useId()
+  const notes = block.kind === 'text' ? notesOn(block.text) : []
   return (
     // The block closes when the focus leaves the block and not when it leaves a field (#481):
     // tabbing from the heading to its chooser, from the picture's words to its caption, or from
@@ -1141,6 +1271,19 @@ function Editing({
         leave(true)
       }}
     >
+      {/* The open block chooses its kind (#707, beslut 2026-10-06: C med A:s genväg): Stycke ·
+          Punktlista · Numrerad lista, on the block being written and on nothing else, so the book
+          gains no buttons in its margin. `.byd-choice` with `aria-pressed`, as the book's own
+          switch of modes: one of a set is what the button language already has a word for (L13). */}
+      {(block.kind === 'text' || block.kind === 'list') && (
+        <div className="byd-rules-kinds" role="group" aria-label={t('rules.kind', { block: called.self })}>
+          {BLOCK_KINDS.map((kind) => (
+            <button key={kind} type="button" className="byd-choice" aria-pressed={kindOf(block) === kind} onClick={() => recastAs(kind)}>
+              {t(BLOCK_KIND_WORD[kind])}
+            </button>
+          ))}
+        </div>
+      )}
       {/* A section's question is the field's placeholder and never its value (#131), so it is
           gone at the first character rather than being text to select and type over. Under it
           stands the tool's own notice, on a line of its own and always (#215, the approved form
@@ -1153,7 +1296,7 @@ function Editing({
           it, so a quieter weight for the tool's line would mean a layer of our own drawn over the
           field and kept in step with its value — which is exactly the kind of thing that drifts. */}
       {block.kind === 'text' && (
-        <div className="byd-rules-field">
+        <div className="byd-rules-field" ref={paragraph}>
           <textarea
             autoFocus
             rows={4}
@@ -1166,8 +1309,16 @@ function Editing({
               openRefs('text', e.target)
             }}
             {...refField('text', (text) => onPatch({ text }))}
+            {...(notes.length > 0 ? { 'aria-describedby': notes.map((note) => `${noteId}-${note}`).join(' ') } : {})}
           />
           {refList('text', (text) => onPatch({ text }))}
+          {/* What the field says about how its lines will be read (#707, A's «fältet säger det»),
+              and only while it is so: a paragraph on one line has nothing to be told. */}
+          {notes.map((note) => (
+            <p key={note} id={`${noteId}-${note}`} className="byd-rules-note">
+              {t(note === 'lists' ? 'rules.field.lists' : 'rules.field.wrap')}
+            </p>
+          ))}
         </div>
       )}
       {/* The heading and its chooser stand on one row; reaching for the chooser is staying in the
@@ -1410,7 +1561,7 @@ function Span({ nodes }: { nodes: readonly RenderedNode[] }) {
           case 'ref':
             return (
               <i key={i} className="byd-rules-ref" data-ref={n.id} {...(n.name ? {} : { 'data-missing': 'true' })}>
-                {n.name ?? `${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}`}
+                {n.name ?? refLabel(n)}
               </i>
             )
         }
@@ -1419,15 +1570,18 @@ function Span({ nodes }: { nodes: readonly RenderedNode[] }) {
   )
 }
 
-// What a rule can name: everything the game has, by what it is called.
-export type Referable = { of: 'zone' | 'card'; id: string; name: string }
+// What a rule can name: everything the game has, by what it is called — its counters too (#708).
+export type Referable = { of: RefKind; id: string; name: string }
 export function referables(names: Names): Referable[] {
   return [
     ...Object.entries(names.zones).map(([id, name]) => ({ of: 'zone' as const, id, name })),
     ...Object.entries(names.cards).map(([id, name]) => ({ of: 'card' as const, id, name })),
+    ...Object.entries(names.counters).map(([id, name]) => ({ of: 'counter' as const, id, name })),
   ]
 }
-export const refFor = (of: 'zone' | 'card', id: string): string => `[[${of === 'zone' ? 'zon' : 'kort'}:${id}]]`
+export const refFor = (of: RefKind, id: string): string => refText({ of, id })
+// The word the list says beside a name, so a counter called «Guld» is told apart from a card.
+const REF_KIND_WORD = { zone: 'rules.ref.zone', card: 'rules.ref.card', counter: 'rules.ref.counter' } as const satisfies Record<RefKind, Key>
 const refKey = (r: Referable): string => `${r.of}-${r.id}`
 
 // What opens the lookup in a rule, and what says it is over rather than unfinished (#215). The
@@ -1491,6 +1645,21 @@ function templateRules(name: string, t: T): RuleDoc {
       { kind: 'text', id: 'b11', text: '', ask: t('rules.ask.end') },
     ],
   }
+}
+
+// The kinds an open paragraph or list can be made (#707), in the order the chooser offers them.
+type BlockKind = 'text' | 'bullets' | 'numbers'
+const BLOCK_KINDS: readonly BlockKind[] = ['text', 'bullets', 'numbers']
+const BLOCK_KIND_WORD = { text: 'rules.kind.text', bullets: 'rules.kind.bullets', numbers: 'rules.kind.numbers' } as const satisfies Record<BlockKind, Key>
+const kindOf = (block: RuleBlock): BlockKind | null => (block.kind === 'text' ? 'text' : block.kind === 'list' ? (block.ordered ? 'numbers' : 'bullets') : null)
+
+// What an open paragraph's field says about its lines (#707). A paragraph is cut where a line is
+// empty, as `parseInline` cuts it, and a line break left inside one of them is read as a space.
+type FieldNote = 'lists' | 'wrap'
+function notesOn(text: string): FieldNote[] {
+  const runs = runsOf(text)
+  const wraps = runs.some((run) => run.kind === 'text' && run.text.split(/\n[ \t]*\n/).some((paragraph) => paragraph.trim().includes('\n')))
+  return [...(runs.some((run) => run.kind === 'list') ? ['lists' as const] : []), ...(wraps ? ['wrap' as const] : [])]
 }
 
 // The written field a key or a focus in an open block belongs to, if it was one.

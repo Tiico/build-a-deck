@@ -5,9 +5,6 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A layer drawn on some cards only (#478, beslut 2026-09-27, variant A: the condition as a folder).
 // An `if-*` layer gave an empty panel under an empty «Layout» head, no frame on the card, no word
@@ -61,7 +58,7 @@ describe('a layer drawn on some cards only (#478)', () => {
     const user = userEvent.setup()
     open(null)
     const row = document.querySelector('[data-layer="if-drake"]') as HTMLElement
-    expect(row.textContent).toContain('om title = Drake · 1 kort')
+    expect(row.textContent).toContain('om Titel = Drake · 1 kort')
     await user.click(within(row).getByRole('button', { name: 'Visa vad som ingår i if-drake' }))
     expect(screen.getByRole('list', { name: 'I if-drake' }).textContent).toContain('badge')
   })
@@ -81,7 +78,7 @@ describe('a layer drawn on some cards only (#478)', () => {
     open(null, 'knight')
     const frame = document.querySelector('[data-condition="if-drake"]') as HTMLElement
     expect(frame).toBeTruthy()
-    expect(frame.textContent).toContain('om title = Drake')
+    expect(frame.textContent).toContain('om Titel = Drake')
     expect(frame.hasAttribute('data-off')).toBe(true)
   })
 
@@ -91,7 +88,7 @@ describe('a layer drawn on some cards only (#478)', () => {
     const user = userEvent.setup()
     const { onRename } = open(null)
     const pick = document.querySelector('[data-layer="if-drake"] .byd-layer-pick') as HTMLElement
-    expect(pick.textContent).toContain('om title = Drake · 1 kort')
+    expect(pick.textContent).toContain('om Titel = Drake · 1 kort')
     pick.focus()
     await user.keyboard('{F2}{Enter}')
     expect(onRename).not.toHaveBeenCalled()

@@ -31,14 +31,24 @@ export type StepPillProps = {
   less: string
   more: string
   onStep(by: 1 | -1): void
+  // Why the steps do not answer, while something else holds the measure (#701): on the wall the
+  // guide at arm's length and the reading views draw the card at a width of their own. The steps
+  // stay in place and keep the focus — `aria-disabled` and not `disabled`, as everywhere in the
+  // editor (#477) — say the reason, and a press on them is refused rather than counted.
+  held?: string | undefined
   // The choices behind the measure, when there are any; their name is the menu's.
   choices?: { label: string; items: PillChoice[] } | undefined
 }
 
-export function StepPill({ label, value, said, note, less, more, onStep, choices }: StepPillProps) {
+export function StepPill({ label, value, said, note, less, more, onStep, held, choices }: StepPillProps) {
+  const why = useId()
+  const step = (by: 1 | -1) => {
+    if (!held) onStep(by)
+  }
+  const refused = held ? { 'aria-disabled': true, 'aria-describedby': why, title: held } : {}
   return (
     <div className="byd-pill" role="group" aria-label={label}>
-      <button type="button" className="byd-pill-step" aria-label={less} onClick={() => onStep(-1)}>
+      <button type="button" className="byd-pill-step" aria-label={less} {...refused} onClick={() => step(-1)}>
         <span aria-hidden="true">&#x2212;</span>
       </button>
       {choices ? (
@@ -48,9 +58,14 @@ export function StepPill({ label, value, said, note, less, more, onStep, choices
           {value}
         </output>
       )}
-      <button type="button" className="byd-pill-step" aria-label={more} onClick={() => onStep(1)}>
+      <button type="button" className="byd-pill-step" aria-label={more} {...refused} onClick={() => step(1)}>
         <span aria-hidden="true">+</span>
       </button>
+      {held && (
+        <span id={why} className="byd-offscreen">
+          {held}
+        </span>
+      )}
     </div>
   )
 }

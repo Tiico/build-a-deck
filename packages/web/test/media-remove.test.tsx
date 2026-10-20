@@ -4,7 +4,7 @@
 // template draws as a picture that still points at it. A picture no card uses goes at once; one
 // that cards use is asked about first, with the cards named, and the cards emptied and the picture
 // gone are one step back.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
@@ -12,9 +12,6 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { layerPick } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const SKOG = '1'.repeat(64)
 const KARTA = '3'.repeat(64)
@@ -161,12 +158,14 @@ describe('a picture the template carries is taken out and put back (#320)', () =
     await user.click(within(asked).getByRole('button', { name: 'Ja, ta bort' }))
     await waitFor(() => expect(tile(LOGO)).toBeNull())
 
-    // The element is still there, bound to nothing: the panel says so.
+    // The element is still there, bound to nothing: the panel says so, and so does the canvas,
+    // on the layer itself (#802).
     await user.click(screen.getByRole('tab', { name: 'Mall' }))
     fireEvent.click(await screen.findByRole('radio', { name: 'Baksida' }))
     fireEvent.click(layerPick('logo'))
     expect((screen.getByRole('radio', { name: 'Fast bild' }) as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByText('Ingen bild vald')).toBeTruthy()
+    expect(within(document.querySelector('.byd-props-picture') as HTMLElement).getByText('Ingen bild vald')).toBeTruthy()
+    expect(document.querySelector('[data-drag="logo"] .byd-placeholder-tag')?.textContent).toContain('Ingen bild vald')
     expect(document.querySelector('#canvas [data-element="logo"] img.byd-art')).toBeNull()
 
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })

@@ -6,9 +6,6 @@ import type { Motif } from '@byd/template'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Half of «Bildernas mått» moves and half is retired (#221, L22, beslut 3). How large a drawing
 // is drawn is a question about the frame, and the frame is the template's — so it stands in the

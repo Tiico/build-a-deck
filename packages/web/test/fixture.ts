@@ -1,9 +1,13 @@
-import type { Server } from 'node:http'
+import { createServer as createHttpServer, type Server } from 'node:http'
+import { randomBytes } from 'node:crypto'
 import { connect as connectSocket, createServer as createSocketServer, type Server as SocketServer, type Socket } from 'node:net'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '@byd/server'
 import { openingSetup, type Recipe } from '@byd/server/doc'
 import { MemoryRenderStore } from '@byd/render/queue'
+import { AiKeyVault, MemoryAiKeyStore } from '../../server/src/ai-keys.js'
+import { providersFromEnv } from '../../server/src/ai-providers.js'
+import { fakeAiProvider, type FakeAiProvider } from '../../../test-support/fake-ai-provider.js'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
 export const registry = new TypeRegistry(STANDARD_TYPES)
@@ -266,12 +270,17 @@ export type Running = {
   restart(): Promise<void>
   completeRenders(limit?: number, smallestPt?: number | null): Promise<number>
   failRenders(): Promise<number>
+  // With `ai`: the vault the profile page keeps its key in, and the fake providers it is proved
+  // against (#999) — never the real ones.
+  ai?: { vault: AiKeyVault; fake: FakeAiProvider }
+  // With `auth`: the accounts, so a test can name one by its address (#1001).
+  auth?: MemoryAuthStore
 }
 // Enough to tell two fixtures apart within a worker, which is as far as a port ever travels.
 let fixtures = 0
 
 // With `auth`, accounts are on (G1): projects need a login and belong to whoever made them.
-export async function startServer(opts: { auth?: boolean; authBypass?: boolean } = {}): Promise<Running> {
+export async function startServer(opts: { auth?: boolean; authBypass?: boolean; ai?: boolean } = {}): Promise<Running> {
   const store = new MemoryLogStore()
   const projects = new MemoryProjectStore()
   const renders = new MemoryRenderStore()
@@ -280,15 +289,38 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
   const auth = opts.auth ? new MemoryAuthStore() : undefined
   let http = ''
   const assets = new MemoryAssetStore()
-  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}) })
+  // The providers the key is proved against, on a port out of this worker's own slice like the
+  // server's, and a vault with a master key of the run's own.
+  const fake = opts.ai ? fakeAiProvider() : null
+  const fakeServer = fake ? createHttpServer(fake.listener) : null
+  const fakeUrl = fakeServer ? `http://127.0.0.1:${await claim(fakeServer)}` : ''
+  const vault = fake ? new AiKeyVault(new MemoryAiKeyStore(), randomBytes(32)) : null
+  const ai = vault ? { vault, providers: providersFromEnv({ AI_ANTHROPIC_URL: `${fakeUrl}/anthropic`, AI_OPENAI_URL: `${fakeUrl}/openai` }) } : null
+  const make = () => {
+    const made = createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(ai ? { ai } : {}) })
+    // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
+    // client in this same process sends its next request on the connection it pooled: on a box
+    // where a worker is descheduled for longer than that, the two meet on one socket and the
+    // request comes back «fetch failed». With no timeout here the client alone decides when a
+    // connection is done, and `stop` below closes this end when the test is over.
+    made.keepAliveTimeout = 0
+    return made
+  }
   let server: Server = make()
   const port = await claim(server)
   http = `http://127.0.0.1:${port}`
-  const stop = () =>
+  const closeServer = () =>
     new Promise<void>((resolve) => {
       server.closeAllConnections()
       server.close(() => resolve())
     })
+  const stop = async () => {
+    await closeServer()
+    if (fakeServer?.listening) {
+      fakeServer.closeAllConnections()
+      await new Promise<void>((resolve) => fakeServer.close(() => resolve()))
+    }
+  }
   const nth = (fixtures += 1)
   return {
     url: `ws://127.0.0.1:${port}`,
@@ -299,6 +331,8 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
     projectId: `p1-f${nth}`,
     otherProjectId: `p2-f${nth}`,
     answering: (door = '/health') => untilAnswering(`http://127.0.0.1:${port}`, door),
+    ...(vault && fake ? { ai: { vault, fake } } : {}),
+    ...(auth ? { auth } : {}),
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium. A limit renders only that many, which is a worker
@@ -327,7 +361,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
     },
     // Same port, same store: what a deploy on the box looks like from the client's side.
     restart: async () => {
-      await stop()
+      await closeServer()
       server = make()
       await bind(server, port)
     },
@@ -456,7 +490,9 @@ export async function createNamedSession(run: Running, name: string, id = 's1'):
 // through to `target` until `deafen()`, which drops the live ones and from then on accepts new
 // connections and says nothing on them — an attempt that is neither refused nor answered, which is
 // what left a reconnect standing at «försök 1 av 4» for ever.
-export type GoingDeaf = { url: string; deafen(): void; held(): number; stop(): Promise<void> }
+// `hear()` is the way back (#876): new connections go through again, while the ones it took when
+// deaf stay held, so a client is only ever answered on a call it placed after the line came back.
+export type GoingDeaf = { url: string; deafen(): void; hear(): void; held(): number; stop(): Promise<void> }
 export async function goingDeafProxy(target: string): Promise<GoingDeaf> {
   const { hostname, port: to } = new URL(target.replace(/^ws/, 'http'))
   const piped: Socket[] = []
@@ -480,6 +516,9 @@ export async function goingDeafProxy(target: string): Promise<GoingDeaf> {
     deafen: () => {
       deaf = true
       for (const s of piped.splice(0)) s.destroy()
+    },
+    hear: () => {
+      deaf = false
     },
     held: () => hanging.length,
     stop: () =>

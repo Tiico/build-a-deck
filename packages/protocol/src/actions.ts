@@ -44,7 +44,9 @@ const Lands = z.union([FaceId, z.literal('keep')])
 export const ActionStep = z.discriminatedUnion('v', [
   z.object({ v: z.literal('split'), count: ActionAmount, to: ActionTarget, face: Lands }),
   z.object({ v: z.literal('deal'), each: ActionAmount, to: ActionTarget, face: Lands }),
-  z.object({ v: z.literal('take'), which: CardQuery, to: ActionTarget, face: Lands }),
+  // `which: null` is a search not asked yet (#713, decided 2026-10-04): a new «Leta fram» starts
+  // there rather than at «every card», and runs nothing until the designer says which cards.
+  z.object({ v: z.literal('take'), which: CardQuery.nullable(), to: ActionTarget, face: Lands }),
   z.object({ v: z.literal('shuffle') }),
   z.object({ v: z.literal('flipTop'), face: z.union([FaceId, z.literal('toggle')]) }),
   z.object({ v: z.literal('movePile'), to: ActionTarget }),

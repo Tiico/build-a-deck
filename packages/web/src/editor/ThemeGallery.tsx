@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { applyEdit } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
+import { proseFieldsOf } from './body.js'
+import { CARD_TOP, bandEndOf, cropOf, linesIn, proseBoxOf } from './theme-crop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { catalogFaceSource } from './font-catalog.js'
@@ -9,6 +11,7 @@ import type { ProjectClient } from './ProjectClient.js'
 import { ThemeTile } from './ThemeTile.js'
 import { THEMES, departures, sayDeparture, themeFamilies, themeIntent, themeOf, type Theme } from './themes.js'
 import { useLang, useT } from '../i18n/index.js'
+import { Said, saidOr } from '../i18n/said.js'
 import { useSay } from '../status/StatusLive.js'
 
 // The ready-made themes, first in Speltema (L57, #632), and the line under them that says what the
@@ -38,10 +41,10 @@ export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; clie
     const wanted = [...new Map(THEMES.flatMap(themeFamilies).map((f) => [f.family, f])).values()]
     void Promise.all(wanted.map(async (family) => [family.family, carried[family.family]?.src ? carried[family.family] : await catalogFaceSource(family)] as const))
       .then((found) => {
-        if (found.some(([, face]) => !face)) throw new Error(t('fonts.catalog.silent'))
+        if (found.some(([, face]) => !face)) throw new Said(t('fonts.catalog.silent'))
         setFaces(Object.fromEntries(found) as Record<string, { stack: string; src?: string }>)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => setError(saidOr(err, t('fonts.catalog.silent'))))
       .finally(() => setLooking(false))
   }
   // One theme at a time: a press while one is on its way is not a second theme, and the status line
@@ -53,7 +56,7 @@ export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; clie
     void client
       .useTheme(theme, t)
       .then(() => say?.('polite', t('theme.gallery.chosen', { name: t(theme.name) })))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => setError(saidOr(err, t('theme.gallery.failed', { name: t(theme.name) }))))
       .finally(() => setBusy(null))
   }
   return (
@@ -114,6 +117,12 @@ function Departures({ doc, client, lang, busy, onReset }: { doc: ProjectDoc; cli
 
 // The game's own first card as the theme would set it: the theme laid over a copy of the document
 // by the very edit that choosing it sends, so the tile cannot show what the choice would not do.
+//
+// The tile draws a crop of it (#741, beställarens val A 2026-10-04): the title band and the first
+// lines of the prose, at the size the prose can be read at, centred on the prose box. The card is
+// still the one renderer's whole card (E2); the crop only clips it. Where the template leaves a gap
+// of paper between the band and the prose, the gap is cut away and a dashed line stands where it
+// was (#830, beställarens val C 2026-10-04).
 function ThemeCard({ doc, theme, faces, assetBase }: { doc: ProjectDoc; theme: Theme; faces: Record<string, { stack: string; src?: string }>; assetBase: string }) {
   const t = useT()
   const themed = useMemo(() => {
@@ -124,13 +133,69 @@ function ThemeCard({ doc, theme, faces, assetBase }: { doc: ProjectDoc; theme: T
   const fonts = useMemo(() => ({ ...previewFonts(themed, assetBase), ...Object.fromEntries(themeFamilies(theme).flatMap((f) => { const face = faces[f.family]; return face ? [[f.family, face] as const] : [] })) }), [themed, theme, faces, assetBase])
   const front = themed.template.faces['front']
   const row = themed.rows[0]
+  const box = useMemo(() => (front && row ? proseBoxOf(front, row.fields, proseFieldsOf(themed)) : null) ?? CARD_TOP, [front, row, themed])
+  // The size the prose was fitted to (E6), which is the size the reader sees: the template's own
+  // until the card has been fitted.
+  const [fitted, setFitted] = useState<{ element: string; sizePt: number } | null>(null)
+  // And how many lines the prose is set in once it is fitted (#830), counted from the rendered text
+  // as E6 measures it: the prose's piece is as tall as that, up to three.
+  const [lines, setLines] = useState<{ element: string; lines: number } | null>(null)
+  const prose = useRef<HTMLSpanElement | null>(null)
+  const bandEnd = useMemo(() => (front && row && box !== CARD_TOP ? bandEndOf(front, row.fields, box) : undefined), [front, row, box])
+  const room = useWidth()
   if (!front || !row) return null
+  const counted = lines?.element === box.element ? lines.lines : undefined
+  const crop = cropOf(box, fitted?.element === box.element ? fitted.sizePt : box.sizePt, room.width, { lines: counted, bandEnd })
+  // The pieces are clips of the one renderer's card (E2), each the whole card drawn by the same
+  // CardPreview and shown from its own height; the last is the prose's.
+  const last = crop.pieces.length - 1
   return (
-    <span className="byd-theme-card" data-theme-card aria-hidden="true">
-      <CardPreview id={`theme-${theme.id}`} face={front} row={row.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={themed.palette} scale={CARD_SCALE} />
+    <span ref={room.ref} className="byd-theme-card" data-theme-card data-prose={box.element} data-lines={counted} aria-hidden="true">
+      <span className="byd-theme-crop" data-fade={crop.fade > 0 ? '' : undefined} style={{ width: crop.width, height: crop.height, ['--byd-theme-fade' as string]: `${crop.fade}px` }}>
+        {crop.pieces.map((piece, i) => (
+          <span key={i === last ? 'body' : 'band'} ref={i === last ? prose : undefined} className="byd-theme-piece" data-theme-piece={i === last ? 'body' : 'band'} style={{ height: piece.height }}>
+            <span className="byd-theme-card-at" style={{ left: crop.left, top: -piece.from }}>
+              <CardPreview
+                id={`theme-${theme.id}${i === last ? '' : '-band'}`}
+                face={front}
+                row={row.fields}
+                icons={icons}
+                fonts={fonts}
+                assetBase={assetBase}
+                palette={themed.palette}
+                scale={crop.zoom}
+                {...(i === last
+                  ? {
+                      onFitted: (sizes: { element: string; sizePt: number }[]) => {
+                        const found = sizes.find((s) => s.element === box.element)
+                        if (found) setFitted({ element: found.element, sizePt: found.sizePt })
+                        const text = [...(prose.current?.querySelectorAll<HTMLElement>('[data-element]') ?? [])].find((el) => el.dataset['element'] === box.element)
+                        const n = text ? linesIn(text) : 0
+                        if (n > 0) setLines({ element: box.element, lines: n })
+                      },
+                    }
+                  : {})}
+              />
+            </span>
+          </span>
+        ))}
+        {crop.cut !== null && <i className="byd-theme-cut" style={{ top: crop.cut, ['--byd-theme-ink' as string]: box.color }} />}
+      </span>
     </span>
   )
 }
 
-// How large a tile draws the card: the most four tiles in a row hold at 1024 px.
-const CARD_SCALE = 0.7
+// How wide an element is: measured once it is drawn, and again whenever its width changes.
+function useWidth(): { ref: (el: HTMLElement | null) => void; width: number } {
+  const [el, setEl] = useState<HTMLElement | null>(null)
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    if (!el) return
+    setWidth(el.clientWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(() => setWidth(el.clientWidth))
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [el])
+  return { ref: setEl, width }
+}

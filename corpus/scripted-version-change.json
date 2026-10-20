@@ -387,6 +387,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": [
             "c0"
           ]
@@ -406,6 +407,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -461,7 +463,8 @@
         "contested": false
       },
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v2"
     },
     "B": {
       "seq": 5,
@@ -527,6 +530,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 1
         },
         {
@@ -544,6 +548,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -583,7 +588,8 @@
       "rewind": null,
       "undo": null,
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v2"
     },
     "table": {
       "seq": 5,
@@ -649,6 +655,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 1
         },
         {
@@ -666,6 +673,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -705,7 +713,8 @@
       "rewind": null,
       "undo": null,
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v2"
     },
     "observer": {
       "seq": 5,
@@ -780,6 +789,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": [
             "c0"
           ]
@@ -799,6 +809,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -955,7 +966,8 @@
       "rewind": null,
       "undo": null,
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v2"
     }
   }
 }

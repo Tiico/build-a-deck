@@ -7,7 +7,8 @@ import {
   diff,
   initialState,
   project,
-  projectActivity,
+  activityOf,
+  tellAfter,
   replay,
   uuidIds,
   type DecideDeps,
@@ -19,7 +20,7 @@ import {
   type TypeRegistry,
 } from '@byd/engine'
 import type { RenderStore } from '@byd/render/queue'
-import { facesOf, type Deck } from './faces.js'
+import { queueFaces, type Deck } from './faces.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
@@ -40,6 +41,9 @@ export class TableActor {
   private lastActivity = Date.now()
 
   private readonly deps: DecideDeps
+  // Each seat's name as the log has it so far, so a new line is told by the name its seat sits under
+  // as it is written (#714), and the history keeps it after the seat is left.
+  private readonly names = new Map<string, string>()
 
   private constructor(
     readonly id: string,
@@ -62,6 +66,7 @@ export class TableActor {
         lines: () => this.log,
       },
     }
+    for (const line of log) tellAfter(this.names, line)
   }
 
   static async load(id: string, registry: TypeRegistry, store: LogStore, sources?: Sources, renders?: RenderStore): Promise<TableActor | null> {
@@ -71,11 +76,13 @@ export class TableActor {
     const log = await store.read(id)
     const state = replay(initial, registry, log)
     let cards: DeckFacts | undefined
-    if (record.deck) {
+    // The deck of the version the log says the table plays (C7, #677): a refreshed table's, not
+    // the one it started with, over the cards that version deals — the replayed setup, not the start record's.
+    const deck = await store.deckOf(id, state.version)
+    if (deck) {
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
-      const compiled = facesOf(record.deck, record.setup, registry, TEXTURE_DPI, Date.now())
+      const compiled = await queueFaces(deck, state.setup, registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job) ?? Promise.resolve())
       cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
-      if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
     }
     return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders)
   }
@@ -83,9 +90,9 @@ export class TableActor {
   // A newer deck (C7): recompute texture hashes and queue what is not rendered yet. Views
   // pick the new hashes up with the next projection.
   async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
-    const compiled = facesOf(deck, setup, this.registry, TEXTURE_DPI, Date.now())
+    const renders = this.renders
+    const compiled = await queueFaces(deck, setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job) ?? Promise.resolve())
     this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
-    if (this.renders) for (const job of compiled.jobs) await this.renders.enqueue(job)
   }
 
   get seq(): number {
@@ -117,17 +124,20 @@ export class TableActor {
   }
 
   // A tokenless lobby exists only to choose a seat. Keep the snapshot envelope so the regular
-  // client can follow seat patches, but strip the table, cards, rewind state and activity.
+  // client can follow seat patches, but strip the table, cards, rewind state and activity. That
+  // the table is over stays (#705): it is no secret to whoever already holds the table's id — an
+  // ended table's code hands the id out to nobody (#938) — and the editor's header follows its own
+  // table through a lobby.
   private viewFor(sub: Subscriber): Snapshot {
     const snapshot = project(this.state, this.registry, sub.seat, this.cards, this.deps.history, sub.observer !== undefined)
     if (!sub.lobby) return snapshot
-    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null, ended: false }
+    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null }
   }
 
   subscribe(sub: Subscriber): void {
     const snapshot = this.viewFor(sub)
     this.subscribers.set(sub, snapshot)
-    sub.send({ t: 'snapshot', snapshot, activity: sub.lobby ? [] : this.log.slice(-SNAPSHOT_ACTIVITY).map(projectActivity) })
+    sub.send({ t: 'snapshot', snapshot, activity: sub.lobby ? [] : activityOf(this.log, SNAPSHOT_ACTIVITY) })
     if (sub.observer !== undefined) this.broadcastRoster()
     else if (!sub.lobby) sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()
@@ -232,12 +242,14 @@ export class TableActor {
     if (!decision.ok) return decision
 
     await this.store.append(this.id, decision.applied)
+    const told = []
     for (const line of decision.applied) {
       this.state = apply(this.state, this.registry, line)
       this.log.push(line)
+      told.push(tellAfter(this.names, line))
     }
 
-    const activity = decision.applied.map(projectActivity)
+    const activity = told
     for (const [sub, previous] of this.subscribers) {
       const next = this.viewFor(sub)
       const patch = diff(previous, next)
@@ -306,12 +318,18 @@ export class TableHost {
   async endStale(olderThan: Date): Promise<string[]> {
     const ended: string[] = []
     for (const id of await this.store.staleSessions(olderThan)) {
-      const actor = await this.get(id)
-      if (!actor) continue
-      const d = await actor.submit({ id: `end-${id}-${Date.now()}`, seat: null, intents: [{ v: 'session.end' }] })
-      if (d.ok) ended.push(id)
+      if (await this.end(id)) ended.push(id)
     }
     return ended
+  }
+
+  // Ends one table as the table itself would (C9): the log is locked and every screen at it is
+  // told. True when this call ended it; a table that had already ended is left as it is.
+  async end(id: string): Promise<boolean> {
+    const actor = await this.get(id)
+    if (!actor || actor.ended) return false
+    const d = await actor.submit({ id: `end-${id}-${Date.now()}`, seat: null, intents: [{ v: 'session.end' }] })
+    return d.ok
   }
 
   async drain(reason: string): Promise<void> {

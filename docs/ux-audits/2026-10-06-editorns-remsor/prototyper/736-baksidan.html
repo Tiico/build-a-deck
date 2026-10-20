@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 736 — Baksidans lager</title>
+<link rel="stylesheet" href="proto.css">
+<!-- PROTOTYP, #736 (del 2). Kastas när en variant är vald.
+     Frågan: hur baksidans egna lager nås förbi galleriet «Färdiga baksidor». Bilderna är den riktiga appen
+     (scripts/prototype/run.ts) med galleriet flyttat eller fällt av en Playwright-drivare.
+     ?v=idag|A|B|C&s=1280x800|1024x768 -->
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #736 · baksidans lager.</b> På Baksida tar galleriet 506 px av lagerkolumnens rullyta (515 px vid 1280, 483 vid 1024). Första lagerraden, «typ», står på y 756 — under kolumnens kant i båda storlekarna — så inget av baksidans fyra lager syns utan rullning.</p>
+  <p>Galleriet står framme med avsikt (kommentaren vid <code>canvas.backs</code>): den som landar på en <i>tom</i> baksida ska se vägen vidare utan att leta. ‹ › eller ← → byter variant.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<img id="bild" alt="">
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+  <span class="sep"></span>
+  <button type="button" data-s="1280x800">1280</button>
+  <button type="button" data-s="1024x768">1024</button>
+</div>
+<script>
+window.PROTO = {
+  prefix: '736-baksida',
+  start: 'A',
+  varianter: {
+    idag: ['I dag', '<b>I dag.</b> Galleriet först och öppet; lagren under kanten (0 av 4 synliga).'],
+    A: ['A — Fällt under lagren', '<b>A — galleriet fällt under lagren</b>: «▸ Färdiga baksidor (7)» som ett stängt huvud direkt efter baksidans lagerrader; öppet från början bara när baksidan saknar egna lager. <span class="plus">+ Alla fyra lagren syns från y 234; vägen till galleriet står kvar synlig och kostar 44 px; en tom baksida ser galleriet som i dag.</span> <span class="minus">− Ett tryck till för att byta baksida på en baksida som redan har lager; huvudet har ett läge (öppet/stängt) som följer baksidan, inte designern.</span>'],
+    B: ['B — Öppet under lagren', '<b>B — galleriet öppet, men under lagren</b>. <span class="plus">+ Lagren först (4 av 4 synliga); inget fälls, ingen ny kontroll.</span> <span class="minus">− «Rutnät 1 mm» och Grupper trycks ~500 px ner, så de hamnar under kanten i stället; en tom baksida ser galleriet först när lagerlistan är tom, vilket den är — så det fungerar, men på en baksida med lager tar galleriet ändå hela kolumnens nedre del.</span>'],
+    C: ['C — En dörr i kronan', '<b>C — «Byt till en färdig baksida…» i lagerkolumnens krona</b>, som öppnar galleriet som en lyft box över duken (samma <code>Lifted</code> som «Sätt fält», L58). <span class="plus">+ Lagren syns från y 292; galleriet kan visas större än kolumnens 195 px; kolumnen är bara lager.</span> <span class="minus">− Galleriet står inte längre framme på en tom baksida, vilket var hela skälet till dess plats; ny yta att bygga.</span>'],
+  },
+}
+</script>
+<script src="visare.js"></script>
+</body>
+</html>

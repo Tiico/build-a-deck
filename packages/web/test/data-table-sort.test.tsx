@@ -6,9 +6,6 @@ import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A project whose creation order is neither alphabetical by title nor numeric by cost, so any
 // sorted order is visibly different from the project's own order.
@@ -93,7 +90,7 @@ describe('DataTable sorting (a view, #15)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^kostnad/ }))
     expect(shownOrder()).toEqual(['knight', 'wizard', 'dragon'])
 
-    fireEvent.click(screen.getByRole('button', { name: /^antal/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Antal/ }))
     expect(shownOrder()).toEqual(['knight', 'dragon', 'wizard'])
   })
 
@@ -154,7 +151,7 @@ describe('DataTable sorting (a view, #15)', () => {
     expect(onRemoveRow).toHaveBeenCalledWith('knight')
 
     expect(doc.rows.map((row) => row.id)).toEqual(['dragon', 'knight', 'wizard'])
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     const csv = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(decodeURIComponent(csv.href).indexOf('dragon')).toBeLessThan(decodeURIComponent(csv.href).indexOf('knight'))
   })
@@ -185,7 +182,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Importera' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'CSV' }))
     // First in the table, the way past it (#575).
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Hoppa förbi tabellen/ }))
@@ -198,7 +195,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     // the × that took the column away — so a designer tabbing to the column she wanted passed
     // through a control that removes one on the way to each. They are behind the head's own door
     // now (#46 on #32), which is one stop rather than one per column.
-    expect(buttons.map(nameOf)).toEqual(['id', 'Titel', 'body', 'kostnad', 'antal', 'Kolumner'])
+    expect(buttons.map(nameOf)).toEqual(['id', 'Titel', 'body', 'kostnad', 'Antal', 'Kolumner'])
     for (const button of buttons) {
       await user.tab()
       expect(document.activeElement).toBe(button)

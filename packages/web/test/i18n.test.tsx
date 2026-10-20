@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { Language, LanguagePicker, chosenLang, detectLang, possessive, rememberLang, translate, useT, type T } from '../src/i18n/index.js'
@@ -9,11 +9,8 @@ import { svEditor } from '../src/i18n/sv.editor.js'
 import { svPlay } from '../src/i18n/sv.play.js'
 import { svAccount } from '../src/i18n/sv.account.js'
 import { svStatus } from '../src/i18n/sv.status.js'
-import { inviteToProject, requestLink } from '../src/account/api.js'
+import { acceptInvite, inviteToProject, projectMembers, removeProject, requestLink, startTable, unshareProject } from '../src/account/api.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function Sample() {
   const t = useT()
@@ -223,8 +220,46 @@ describe('the tool in the reader\'s own language (A4)', () => {
     globalThis.fetch = (async () => new Response('{}', { status: 403 })) as typeof fetch
     const english: T = (key, params) => translate('en', key, params)
     try {
-      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor', english)).rejects.toThrow('only the owner can share the game')
-      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor')).rejects.toThrow('bara ägaren kan dela spelet')
+      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor', english)).rejects.toThrow('Only the owner can share the game.')
+      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor')).rejects.toThrow('Bara ägaren kan dela spelet.')
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  // A status code is said to the one who wrote the code, not to the one reading (A4, #689): what
+  // the service refused is said as the reason, and anything else as words that say what to do.
+  it('never puts the service\'s status number into what the reader is told', async () => {
+    for (const catalogue of [sv, en]) expect(Object.entries(catalogue).filter(([, m]) => m.includes('{status}'))).toEqual([])
+
+    const real = globalThis.fetch
+    try {
+      for (const status of [403, 404, 500, 503]) {
+        globalThis.fetch = (async () => new Response('{}', { status })) as typeof fetch
+        const said = await Promise.all(
+          [
+            () => projectMembers('http://server.test', 'p1'),
+            () => inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor'),
+            () => unshareProject('http://server.test', 'p1', 'bo@example.com'),
+            () => acceptInvite('http://server.test', 'token'),
+            () => startTable('http://server.test', 'p1'),
+            () => removeProject('http://server.test', 'p1'),
+          ].map((call) => call().then(() => '', (err: Error) => err.message)),
+        )
+        expect(said.filter((m) => /\d{3}/.test(m))).toEqual([])
+      }
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('says why the owner\'s choices were refused to someone who is not the owner', async () => {
+    const real = globalThis.fetch
+    globalThis.fetch = (async () => new Response('{}', { status: 403 })) as typeof fetch
+    try {
+      await expect(removeProject('http://server.test', 'p1')).rejects.toThrow('bara ägaren kan ta bort spelet')
+      await expect(unshareProject('http://server.test', 'p1', 'bo@example.com')).rejects.toThrow('Bara ägaren kan ta bort någon från spelet.')
+      await expect(startTable('http://server.test', 'p1')).rejects.toThrow('en betraktare kan inte starta bord')
     } finally {
       globalThis.fetch = real
     }
@@ -255,5 +290,49 @@ describe('the tool in the reader\'s own language (A4)', () => {
     history.replaceState(null, '', '/?lang=sv')
     expect(detectLang()).toBe('sv')
     history.replaceState(null, '', '/')
+  })
+})
+
+// One quotation style per language (#728): «…» in Swedish, “…” in English, and never the typewriter's
+// straight mark, which the catalogue had in five places and which reads as a slip in either.
+describe('the catalogues quote the way their language does', () => {
+  it.each([
+    ['sv', sv, /["“”]/],
+    ['en', en, /["«»]/],
+  ] as const)('%s', (_, catalogue, wrong) => {
+    const off = Object.entries(catalogue).filter(([, text]) => wrong.test(text))
+    expect(off).toEqual([])
+  })
+})
+
+// A count is grammar in English and not in Swedish (#755): «1 kort» hides a missing singular that
+// «1 cards» does not. So every English message that puts a count in front of a plural noun is one
+// half of a `.one`/`.other` pair, and the call site picks by that count. A message whose count can
+// never be one is let through only by name, with the reason it cannot.
+describe('every count in front of a noun has a singular to be chosen', () => {
+  const neverOne: Record<string, string> = {
+    'media.add.batch': 'a batch is two files or more; one file says media.add.done',
+    'history.daysAgo': 'today and yesterday have words of their own; this is two to six days',
+    'home.when.days': 'today and yesterday have words of their own; this is two to six days',
+    'upload.one.only': 'said only when more than one file was dropped',
+    'wizard.name.max': 'the count is the name limit, a constant',
+    'library.use.many': 'one card says library.use',
+    'symbols.foot': 'the noun counts the whole library, a constant',
+    'setup.family.some': 'some of the seats, and not all of them, is two seats or more',
+    'fonts.catalog.search': 'the count is the whole font catalogue, hundreds of families',
+  }
+
+  it('pairs each one', () => {
+    // A count, by the names the catalogue gives one, in front of a word in the plural.
+    const counted = /\{(?:n|m|of|total|had|shown|ok|count)\} [a-z]+s\b/
+    const unpaired = Object.entries(en)
+      .filter(([key, text]) => counted.test(text) && !(key in neverOne))
+      .map(([key]) => key)
+      .filter((key) => !(/\.other(?=\.|$)/.test(key) && key.replace(/\.other(?=\.|$)/, '.one') in en))
+    expect(unpaired).toEqual([])
+  })
+
+  it('lets nothing through by name that is not in the catalogue', () => {
+    expect(Object.keys(neverOne).filter((key) => !(key in en))).toEqual([])
   })
 })

@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ZoneAction } from '@byd/protocol'
 import type { Zone } from '@byd/server/doc'
 import { ZoneActions } from '../src/editor/ZoneActions.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Ett val bland femtio (#230). I ett spel med tjugo zoner har rutan fyrtiosju val i fyra osorterade
 // block, och den sista är sex rullningar bort. Beslutet 2026-09-18: en ruta, inte fyra steg — allt
@@ -172,8 +169,8 @@ describe('rutan som öppnas ur en slot (#230)', () => {
   // Ändringen gäller rutorna som växer med spelet. Tre sidor är ingen lista att söka i, och den
   // rutan står kvar som den var.
   it('lämnar den korta rutan i fred: tre sidor söks inte igenom', () => {
-    const box = openSlot('som de ligger')
-    expect(words(box)).toEqual(['som de ligger', 'uppvända', 'nedvända'])
+    const box = openSlot('som det ligger')
+    expect(words(box)).toEqual(['som det ligger', 'uppvänt', 'nedvänt'])
     expect(within(box).queryByLabelText('Sök bland valen')).toBeNull()
   })
 

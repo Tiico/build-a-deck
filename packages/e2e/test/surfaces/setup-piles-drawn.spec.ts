@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { painted, type Spot } from '../../../web/test/painted.js'
 import { logIn, makeProject } from '../../support/api.js'
 
@@ -68,13 +68,17 @@ async function pixels(page: Page, box: Box): Promise<{ x: number; y: number; rgb
   return out
 }
 
-async function bord(page: Page) {
+async function bord(page: Page, key = false) {
   await logIn(page.request)
+  // With a key the AI panel stands open (#1001), and over Bord it is a sheet that takes none of the
+  // felt's width.
+  if (key) expect((await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefP1l2' } })).status()).toBe(200)
   const project = await makeProject(page.request, { name: 'Högarna', players: 4, cards: 12 })
   await page.goto(project.editorUrl)
   await page.locator('#byd-editor-tab-tables').click()
   await expect(page.locator('.byd-setup-felt .byd-pile[data-zone="draw"] [data-back="own"] svg path')).toBeAttached()
   await expect(page.locator('.byd-setup-felt .byd-pile[data-zone="discard"]')).toBeVisible()
+  if (key) await expect(page.locator('.byd-ai[data-open][data-over]')).toBeVisible()
   // Nothing pointed at or chosen: the piles at rest, with no name plate lit over them (#581).
   await page.mouse.move(0, 0)
 }
@@ -108,8 +112,9 @@ for (const [width, height] of [[1024, 768], [1280, 800]] as const) {
       expect(apart(hexOf(read['beyond']!.shades[1]), ground), `a third of a card above the deck is ${read['beyond']!.shades[1]}, the felt ${read['felt']!.shades[1]}`).toBeLessThan(12)
     })
 
-    test('the card shows under its count, and the count stands on its pile', async ({ page }) => {
-      await bord(page)
+    for (const open of [false, true])
+    test(`the card shows under its count, and the count stands on its pile${open ? ', the AI panel open over the felt' : ''}`, async ({ page }) => {
+      await bord(page, open)
       const c = await card(page, 'draw')
       const n = await badge(page, 'draw')
       // The back the felt compiled for this deck, read off its own markup and not written here.
@@ -118,9 +123,13 @@ for (const [width, height] of [[1024, 768], [1280, 800]] as const) {
       const foot = await probe(page, 'byd-probe-foot', { x: c.x + c.width * 0.3, width: c.width * 0.4, y: c.y + c.height * 0.8, height: c.height * 0.15 })
       const read = await painted(page, [{ what: 'foot', inside: foot, inset: 0 }])
       expect(apart(hexOf(read['foot']!.shades[1]), hexOf(fill!)), `the card's foot is painted ${read['foot']!.shades[1]}, its back is ${fill}`).toBeLessThan(30)
-      // K19 (#76): the badge stands nowhere the pile is not. Half a pixel for the rounding of a box.
-      expect(n.x).toBeGreaterThanOrEqual(c.x - 0.5)
-      expect(n.x + n.width).toBeLessThanOrEqual(c.x + c.width + 0.5)
+      // K19 (#76): the badge stands nowhere the pile is not, but for the rounding of a box: half a
+      // pixel, and one at 1280, where the AI panel's folded tab took 44 px of the felt's width and the
+      // badge was measured past the card's left edge by 0.56 px on a Mac and 0.92 px on CI's Linux,
+      // whose numerals are wider (beställarens beslut 2026-10-18, #1001).
+      const slack = width === 1280 ? 1 : 0.5
+      expect(n.x).toBeGreaterThanOrEqual(c.x - slack)
+      expect(n.x + n.width).toBeLessThanOrEqual(c.x + c.width + slack)
     })
 
     test("the handle's line crosses neither pile's badge", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 
 // The import asks before it removes cards (#479). The question is a sentence, and the import box
@@ -12,7 +12,7 @@ test('asks under the import pair rather than between it', async ({ page }) => {
   await page.goto(project.editorUrl)
   await expect(page.getByText('Skogens herrar').first()).toBeVisible()
   await page.locator('#byd-editor-tab-table').click()
-  await page.getByRole('button', { name: 'Importera' }).click()
+  await page.getByRole('button', { name: 'CSV' }).click()
   const pick = page.locator('.byd-data-tools label')
   const save = page.locator('.byd-data-tools a')
   const before = { pick: await pick.boundingBox(), save: await save.boundingBox() }

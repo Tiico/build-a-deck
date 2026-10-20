@@ -45,6 +45,16 @@ create table if not exists surveys (
   observer    boolean not null default false,
   answers     jsonb not null
 );
+-- One answer per seat and per observer at a table (#1021, G3): a second one replaces the first.
+-- Before the keys anyone could answer any number of times, so the answers that were given twice
+-- are cut down to the latest, the one a replacing answer would have left standing.
+delete from surveys older using surveys newer
+  where older.session_id = newer.session_id
+    and older.observer = newer.observer
+    and (case when older.observer then older.who = newer.who else older.seat = newer.seat end)
+    and (newer.at, newer.id) > (older.at, older.id);
+create unique index if not exists surveys_seat on surveys (session_id, seat) where not observer;
+create unique index if not exists surveys_observer on surveys (session_id, who) where observer;
 
 -- Accounts for creators (G1, DRIFT §11): magic links and session cookies, no passwords.
 create table if not exists accounts (
@@ -157,4 +167,29 @@ create table if not exists project_invites (
   expires_at  timestamptz not null,
   accepted_at timestamptz,
   created_at  timestamptz not null default now()
+);
+
+-- The deck of each version «Uppdatera» moved a table to (C7, #677). The session row keeps the deck
+-- the table started with; a table reloaded after a refresh takes its faces from the version its
+-- log says it plays.
+create table if not exists session_decks (
+  session_id  text not null references sessions(id) on delete cascade,
+  version     text not null,
+  deck        jsonb not null,
+  primary key (session_id, version)
+);
+
+-- The designer's own AI key (#999, E4, DRIFT §5): one per account, sealed with AES-256-GCM under the
+-- master key in the box's environment (`AI_KEY_SECRET`), which is never in this database and so never
+-- in its backups. Only what the profile may show is kept beside the seal: the provider, the last four
+-- characters, the chosen model (null is the provider's standard) and when the key was proved.
+create table if not exists ai_keys (
+  account_id   bigint primary key references accounts(id) on delete cascade,
+  provider     text not null check (provider in ('anthropic', 'openai')),
+  ciphertext   bytea not null,
+  nonce        bytea not null,
+  last4        text not null,
+  model        text,
+  verified_at  timestamptz not null,
+  updated_at   timestamptz not null default now()
 );

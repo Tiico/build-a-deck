@@ -5,5 +5,5 @@
     // pure functions out of: one of them reaches a `.tsx` two hops down, and the compiler has to
     // be able to parse that file even though nothing here renders anything.
     "jsx": "react-jsx", "lib": ["ES2023", "DOM", "DOM.Iterable"] },
-  "include": ["test", "support", "playwright.config.ts"]
+  "include": ["test", "support", "load", "playwright.config.ts"]
 }

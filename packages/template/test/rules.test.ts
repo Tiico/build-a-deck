@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseInline } from '../src/inline.js'
 import { BOOKLET_MARGIN_MM, BOOKLET_PAGE_MM, RULE_IMAGE_FRAME, RuleDoc, imageBoxMm, renderLine, renderRules } from '../src/rules.js'
 
-const names = { zones: { discard: 'Kasthög', draw: 'Draghög' }, cards: { drake: 'Drake' } }
+const names = { zones: { discard: 'Kasthög', draw: 'Draghög' }, cards: { drake: 'Drake' }, counters: { guld: 'Guld' } }
 
 describe('references in rule text (B7): what a rule calls a thing follows what it is called', () => {
   it('reads a reference only where references are asked for, so card text keeps its four constructions (L2)', () => {
@@ -50,7 +50,7 @@ describe('the rulebook (B7): a versioned document that knows the game it belongs
   })
 
   it('follows a rename without the rules being touched', () => {
-    const renamed = renderRules(doc, { zones: { ...names.zones, discard: 'Påsen' }, cards: names.cards })
+    const renamed = renderRules(doc, { ...names, zones: { ...names.zones, discard: 'Påsen' } })
     expect(renamed.text).toContain('Lägg det i Påsen')
     expect(renamed.warnings).toEqual([])
   })
@@ -62,6 +62,25 @@ describe('the rulebook (B7): a versioned document that knows the game it belongs
       { block: 't1', of: 'card', id: 'troll' },
     ])
     expect(out.text).toContain('[[zon:soptunna]]')
+  })
+})
+
+// A counter is the third kind of thing a rule can name (#708). A book about a game of gold says
+// «guld» on every other line, and written as text it did not follow the counter when it was
+// renamed — which is the whole of what a reference is for.
+describe('a reference to a counter (#708)', () => {
+  const doc: RuleDoc = { title: 'Sal’s Saloon', blocks: [{ kind: 'text', id: 't1', text: 'Ta ett [[räknare:guld]] för varje kort.' }] }
+
+  it('reads `[[räknare:id]]` as a reference and stands it for what the counter is called now', () => {
+    expect(parseInline('[[räknare:guld]]', { refs: true })[0]?.children).toEqual([{ type: 'ref', of: 'counter', id: 'guld' }])
+    expect(renderRules(doc, names).text).toBe('Ta ett Guld för varje kort.')
+    expect(renderRules(doc, { ...names, counters: { guld: 'Dukater' } }).text).toBe('Ta ett Dukater för varje kort.')
+  })
+
+  it('warns about a counter the game no longer has, as it warns about a zone or a card', () => {
+    const out = renderRules(doc, { ...names, counters: {} })
+    expect(out.warnings).toEqual([{ block: 't1', of: 'counter', id: 'guld' }])
+    expect(out.text).toContain('[[räknare:guld]]')
   })
 })
 
@@ -96,7 +115,7 @@ describe('a reference in a heading (#272)', () => {
   it('follows the pile when it is renamed, which is the whole reason the heading holds an id', () => {
     const doc = headed('Ur [[zon:draw]]')
     expect(renderRules(doc, names).text).toBe('Ur Draghög')
-    expect(renderRules(doc, { zones: { ...names.zones, draw: 'Dragbunten' }, cards: names.cards }).text).toBe('Ur Dragbunten')
+    expect(renderRules(doc, { ...names, zones: { ...names.zones, draw: 'Dragbunten' } }).text).toBe('Ur Dragbunten')
   })
 
   // Where the decision stops (#272, decided 2026-09-19). The setup's caption and the picture's are
@@ -138,7 +157,7 @@ describe('the rulebook has one declaration (#183): the schema that validates is 
 // stands for the name the thing has right now.
 describe('one line of the book on its own (#131)', () => {
   it('reads emphasis and references out of a single sentence', () => {
-    expect(renderLine('Dra ett **kort** ur [[zon:draw]].', { zones: { draw: 'Draghög' }, cards: {} })).toEqual([
+    expect(renderLine('Dra ett **kort** ur [[zon:draw]].', { zones: { draw: 'Draghög' }, cards: {}, counters: {} })).toEqual([
       { type: 'text', text: 'Dra ett ' },
       { type: 'bold', children: [{ type: 'text', text: 'kort' }] },
       { type: 'text', text: ' ur ' },

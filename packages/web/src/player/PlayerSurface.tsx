@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -18,6 +18,7 @@ import { Help } from '../editor/HelpDrawer.js'
 import { playIntents } from './play.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
+import { HandSpread } from '../online/HandSpread.js'
 
 // What a player is given on a screen that cannot carry the board: the seat's own hand as K10's
 // strip, the counters, the private zones, and the table itself as names and counts rather than as
@@ -84,7 +85,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
   // phone and has to be answered, so nothing behind it is a Tab stop or a press.
   const asking = standingRewind(view)
-  const behind = asking && asking.by !== seat ? { inert: true } : {}
   const personal = useRef<HTMLDetailsElement>(null)
   const [chosenId, setChosenId] = useState<string | null>(null)
   const [quickTarget, setQuickTarget] = useState<string | null>(null)
@@ -96,6 +96,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // of her, or an area of the table — which is what the held card walks, and what it offers to do.
   const [held, setHeld] = useState<{ card: VisibleComponentState; row: 'hand' | 'mine' | { zone: string } } | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
+  // Out of reach while another seat's rewind is asked of this one (#483), and while a card is held
+  // up (#715): the hand's buttons showed through the veil and read into the card's own row.
+  const behind = (asking && asking.by !== seat) || held !== null ? { inert: true } : {}
   const [sheet, setSheet] = useState<Sheet>(null)
   // Which target the table said no to, and why.
   const refusal = useRefusal('phone')
@@ -167,8 +170,20 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     if (!gone || gone.some(id => hand.some(c => c.id === id))) return
     regain.current = null
     const stranded = document.activeElement === null || document.activeElement === document.body
-    if (stranded) document.querySelector<HTMLElement>('.byd-strip[data-hand] [data-hand-card][tabindex="0"]')?.focus()
+    // An emptied hand has no stop left, and the deck's tile is the one it wants next (#761).
+    if (stranded) (document.querySelector<HTMLElement>('.byd-strip[data-hand] [data-hand-card][tabindex="0"]') ?? document.querySelector<HTMLElement>('[data-zone-draw]'))?.focus()
   }, [hand])
+  // Cards she has just played in front of herself, and the area they are going to (C4). The fold
+  // opens in the commit that draws them there (#958): the table's answer is a frame of its own
+  // after the patch, and opening on the answer drew the card into a closed fold first — or never
+  // opened it, when the line went between the two frames.
+  const reveal = useRef<{ ids: string[]; zone: string } | null>(null)
+  useLayoutEffect(() => {
+    const going = reveal.current
+    if (!going || !view.components.some(c => c.zone === going.zone && going.ids.includes(c.id))) return
+    reveal.current = null
+    if (personal.current) personal.current.open = true
+  }, [view])
   const playDirect = async (cards: VisibleComponentState[], zone: string, at: 'top' | 'bottom') => {
     const first = cards[0]
     if (quickBusy.current || !first) return
@@ -177,9 +192,15 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     setQuickPending(true)
     setQuickTarget(zone)
     setQuickSource(first.zone === `hand:${seat}` ? 'hand' : first.id)
+    if (view.zones.some(z => z.id === zone && z.kind === 'area' && z.owner === seat)) reveal.current = { ids: cards.map(c => c.id), zone }
     try {
       const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at)
       const result = await quick.watch(client.send(...intents))
+      // A play the table refused brings nothing in front of her. A line lost on the way may still
+      // have carried it, and the view after the resync says so, so that one stays armed. A play
+      // that went through is left for the effect: the client holds the patch before React has
+      // drawn it.
+      if (!result.ok && result.reason !== 'connection lost') reveal.current = null
       if (result.ok) {
         if (zone !== `hand:${seat}` && cards.some(c => c.zone === `hand:${seat}`)) regain.current = cards.map(c => c.id)
         if (cards.some(c => c.zone === `hand:${seat}`) || zone === `hand:${seat}`) {
@@ -187,7 +208,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           setChosenId(null)
         }
         if (zone === `hand:${seat}`) setChosenId(first.id)
-        if (view.zones.some(z => z.id === zone && z.kind === 'area' && z.owner === seat) && personal.current) personal.current.open = true
       }
     } finally {
       quickBusy.current = false
@@ -205,6 +225,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       setChosenId(card.id)
       marks.clear()
     }
+  }
+  // The whole hand, a press away while the strip holds more than it shows (#767, beslut A + B):
+  // the grid /online has (K17), in the strip's own order, and a card chosen there is the chosen
+  // card, brought into the strip's view.
+  const [overflows, setOverflows] = useState(false)
+  const [spread, setSpread] = useState(false)
+  const showAll = useRef<HTMLButtonElement>(null)
+  const pickFromAll = (card: VisibleComponentState) => {
+    setSpread(false)
+    setChosenId(card.id)
+    marks.clear()
+    requestAnimationFrame(() => document.querySelector(`[data-hand-card="${CSS.escape(card.id)}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' }))
   }
   const toggle = (card: VisibleComponentState) => {
     if (marks.selected.size === 1 && marks.selected.has(card.id)) setChosenId('')
@@ -236,9 +268,19 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       </div>
       <main className="byd-phone-main" {...behind}>
-        <h1>{t('player.hand.title')}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1>{t('player.hand.title')}</h1>
+          {overflows && (
+            <button type="button" ref={showAll} className="byd-foot-more" style={{ marginLeft: 'auto' }} aria-expanded={spread ? 'true' : 'false'} onClick={() => setSpread(true)}>
+              {t('player.hand.all', { n: hand.length })}
+            </button>
+          )}
+        </div>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
-        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
+        {/* What the table just said to this seat, in the page's flow under the piles (#715, beslut
+            2026-10-04): fixed at the top it hid a counter's name and value while it stood. */}
+        {toast && <p className="byd-phone-said" role="status">{toast}</p>}
+        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} onOverflow={setOverflows} />
         {hand.length > 0 && marks.selected.size > 0 && <p className="byd-hint">{t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size })}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
@@ -258,6 +300,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             hidden information exists to keep out. It reads and never acts — the draw stays in the
             row above, where a thumb already knows to find it. */}
         <details className="byd-phone-table" data-phone-table aria-labelledby={`${folds}-table`}><summary id={`${folds}-table`}>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} /></details>
+        {spread && (
+          <HandSpread
+            cards={[...hand].reverse()}
+            columns={4}
+            faces={faces}
+            onOpen={pickFromAll}
+            onClose={() => {
+              setSpread(false)
+              showAll.current?.focus()
+            }}
+          />
+        )}
         <details className="byd-phone-history" aria-labelledby={`${folds}-latest`}><summary id={`${folds}-latest`}>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
@@ -345,7 +399,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           refusedZone={refusedZone}
         />
       )}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={toast} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} />
     </>
   )
 }

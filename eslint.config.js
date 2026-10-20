@@ -7,7 +7,7 @@ export default tseslint.config(
   // `.stack` är E2E-svitens bygge av appen, lagt bredvid paketet och ignorerat av git — samma
   // slags artefakt som `dist`, och lika lite källkod. Utan den här raden faller `pnpm lint` för
   // var och en som kört E2E-sviten före den, på minifierad kod ingen skrivit.
-  { ignores: ['**/dist/**', '**/.stack/**', '**/node_modules/**', '**/prototype/**', '**/prototyper/**', '.claude/worktrees/**'] },
+  { ignores: ['**/dist/**', '**/.stack/**', '**/.load/**','**/node_modules/**', '**/prototype/**', '**/prototyper/**', '.claude/worktrees/**'] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
@@ -29,6 +29,27 @@ export default tseslint.config(
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
+    },
+  },
+  {
+    // Every E2E spec runs under the suite's own `test` (#1008): it is what fails a spec when the
+    // page's Content-Security-Policy refuses something (DRIFT §14). A spec on Playwright's bare
+    // `test` would be one the policy could break in silence.
+    files: ['packages/e2e/test/**'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@playwright/test',
+              importNames: ['test', 'expect'],
+              allowTypeImports: true,
+              message: "Import `test` and `expect` from the suite's support/test.ts, which watches the page's Content-Security-Policy (#1008).",
+            },
+          ],
+        },
+      ],
     },
   },
   {

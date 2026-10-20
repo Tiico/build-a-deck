@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
+import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { asSeat, asTable, createNamedSession, createSession, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -33,7 +31,7 @@ describe('TablePage', () => {
     expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('7')
     expect(document.querySelector('[data-zone="hand:A"]')!.getAttribute('data-count')).toBe('3')
     // The seat's words stand on its plate on the felt (#573, beslut C), not in the column.
-    await waitFor(() => expect(document.querySelector('[data-seat-plate="A"]')?.textContent).toMatch(/Ada.*3 kort på hand/))
+    await waitFor(() => expect(document.querySelector('[data-seat-plate="A"]')?.textContent).toMatch(/Ada.*3 kort$/))
     other.close()
   })
 })
@@ -43,16 +41,32 @@ describe('the screen says which game it runs (C)', () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-1'))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 1'))
+  })
+
+  // «Uppdatera» (C7) moves the table to the next rev while the TV stands there (#677): the title
+  // follows the very patch that writes «Spelet uppdaterades till version 2» in SENAST, not a reload.
+  it('follows a version change live, as the log line arrives', async () => {
+    const id = await createNamedSession(run, 'Skogens herrar')
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 1'))
+    const doc = (await run.projects.load('p-s1'))!
+    expect(await run.projects.replace('p-s1', 1, { name: doc.name, template: doc.template, rows: [...doc.rows, { id: 'ny', fields: { title: 'Nytt kort' } }], icons: doc.icons, setup: doc.setup })).not.toBe('conflict')
+    expect((await fetch(`${run.http}/sessions/${id}/refresh`, { method: 'POST' })).status).toBe(200)
+    expect(await screen.findByText(/Spelet uppdaterades till version 2/)).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 2')
   })
 })
 
 describe('the table mode names the game too (B)', () => {
-  it('writes the game, its version and the room code along the top of the felt', async () => {
+  it('writes the game, its version and the room’s address along the top of the felt', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(`Skogens herrar · rev-1 · ${roomOf(id).code}`))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar · version 1'))
+    // The code is the address (#675, beslut C): the plate says where to go, and that is the way in.
+    expect(document.querySelector('.byd-table-plate [data-address]')?.textContent).toBe(`${location.host}/${roomOf(id).code}`)
     // The felt is the whole screen in table mode: no TV chrome around it.
     expect(document.querySelector('[data-tv]')).toBeNull()
   })
@@ -74,7 +88,7 @@ describe('a screen that joins mid-game (#20)', () => {
     const feed = screen.getByRole('list', { name: /senast/i })
     await waitFor(() => expect(within(feed).getAllByRole('listitem')).toHaveLength(2))
     expect(within(feed).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
-      expect.stringMatching(/^2.*Bordet drog 2 från Draghög/),
+      expect.stringMatching(/^2.*Bordet drog 2 kort från Draghög/),
       expect.stringMatching(/^1.*Ada satte sig/),
     ])
   })
@@ -114,7 +128,7 @@ describe('a screen that joins mid-game', () => {
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
-    expect(screen.getByText(/drog 2 från Draghög/)).toBeTruthy()
+    expect(screen.getByText(/drog 2 kort från Draghög/)).toBeTruthy()
   })
 })
 
@@ -138,6 +152,11 @@ describe('a proposed rewind on the table (C)', () => {
     expect(document.querySelector('[data-zone="discard"]')!.getAttribute('data-count')).toBe('0')
     expect(screen.getByText(/så här såg bordet ut/)).toBeTruthy()
     expect(screen.getByText(/väntar på Bo/)).toBeTruthy()
+    // The label wraps between its parts, and the separator goes with the part before it, so no line
+    // starts with «·» (#723) — a hard space ties it there.
+    const parts = [...document.querySelectorAll('.byd-rewind-label > span')].map((s) => s.textContent ?? '')
+    expect(parts.filter((p) => p.trimStart().startsWith('·'))).toEqual([])
+    expect(parts[1]).toMatch(/\u00a0·$/)
     expect(screen.queryByRole('button', { name: /Godkänn|Avvisa/ })).toBeNull()
 
     // The preview on the TV is the table's own socket speaking, and Bo's phone is a different
@@ -172,7 +191,7 @@ describe('a table that ends with a proposal still standing (C9, K13)', () => {
     await waitFor(() => expect(document.querySelector('[data-rewind-preview]')).toBeTruthy())
 
     await ada.send({ v: 'session.end' })
-    await screen.findByText(/Bordet är avslutat/)
+    await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     expect(document.querySelector('[data-rewind-preview]')).toBeNull()
     expect(screen.queryByText(/väntar på/)).toBeNull()
     // And the table behind the notice is the one the log closed on, not the one the proposal
@@ -267,30 +286,107 @@ describe('the end of a session on the table (C9)', () => {
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await ada.send({ v: 'flag', note: 'hm' })
     await ada.send({ v: 'session.end' })
-    const over = await screen.findByText(/Bordet är avslutat/)
+    const over = await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     const overlay = over.closest('[data-ended]')!
-    await waitFor(() => expect(overlay.textContent).toMatch(/v1/))
+    // In the game's own words (#703): the version by its name, the moves that were made — the seat
+    // taken and the flag are not moves — those who sat at the table, and a survey line that holds
+    // for a table played without phones too.
+    // The fixture's session is version «v1», which the name of a version leaves as it is.
+    await waitFor(() => expect(overlay.textContent).toMatch(/Bordet stannade på v1\./))
+    expect(overlay.textContent).toMatch(/1 drag/)
     expect(overlay.textContent).toMatch(/1 flaggade ögonblick/)
-    expect(overlay.textContent).toMatch(/1 spelare/)
-    expect(overlay.textContent).toMatch(/telefonerna/)
+    expect(overlay.textContent).toMatch(/1 vid bordet/)
+    expect(overlay.textContent).toMatch(/Enkäten finns hos varje spelare/)
+    expect(overlay.textContent).not.toMatch(/rev|rader|Loggen/)
     ada.close()
   })
 })
 
 describe('the host\'s screen (DRIFT §9)', () => {
+  // A game taken away takes its tables with it (#676): the owner's own screen is told that, and
+  // not that the table belongs to another account.
+  it('says the game was deleted when the owner opens a table whose game is gone', async () => {
+    const id = await createNamedSession(run, 'Sal\'s Saloon')
+    expect((await fetch(`${run.http}/projects/p-s1`, { method: 'DELETE' })).status).toBe(200)
+    history.replaceState(null, '', `/table?session=${id}&owner=1&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(
+      <DocumentTitle route="table">
+        <TablePage />
+      </DocumentTitle>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Spelet är borttaget' })).toBeTruthy()
+    expect(screen.queryByText(/annat konto/)).toBeNull()
+    expect(screen.queryByText(/värdens länk/)).toBeNull()
+    // The tab says what happened too: the table is not there, not «Ingen tillgång».
+    await waitFor(() => expect(document.title).toMatch(/^Bordet finns inte/))
+  })
+
   it('opens only with the host key, and shows the room code it is told rather than anything from the URL', async () => {
     const id = await createSession(run)
     history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
     const { unmount } = render(<TablePage />)
-    expect(await screen.findByText(/värdens länk/)).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Bordet behöver värdens länk eller ägarens inloggning' })).toBeTruthy()
     expect(document.querySelector('[data-table]')).toBeNull()
     unmount()
 
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
-    const qr = await screen.findByAltText(new RegExp(`join\\?code=${roomOf(id).code}`))
-    expect(qr.getAttribute('alt')).toContain(`join?code=${roomOf(id).code}`)
+    // The square carries the room's own address, the same one the words beside it say (#675).
+    const qr = await screen.findByAltText(new RegExp(`/${roomOf(id).code}\\?server=`))
+    expect(qr.getAttribute('alt')).toContain(`${location.origin}/${roomOf(id).code}?server=`)
+    expect(document.querySelector('[data-address]')?.textContent).toBe(location.host)
+  })
+
+  // DRIFT §9 shows the key once (#758): a screen share or a photo of the TV must not carry it.
+  it('takes the host key out of the address, and opens again from the tab without it', async () => {
+    const id = await createSession(run)
+    const server = encodeURIComponent(run.url)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${server}`)
+    const { unmount } = render(<TablePage />)
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
+    expect(location.search).toBe(`?session=${id}&mode=tv&server=${server}`)
+    expect(location.href).not.toContain(roomOf(id).hostKey)
+    unmount()
+
+    // A reload: the same tab, the cleaned address.
+    render(<TablePage />)
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
+  })
+
+  // «Ny kod» takes back a leaked key (#820): the screen that is open is handed the new one, keeps
+  // it in the tab instead of the old, and a reload opens the table with it.
+  it('keeps the key a rotation hands it, so a reload after «Ny kod» still opens the table', async () => {
+    const id = await createSession(run)
+    const old = roomOf(id).hostKey
+    history.replaceState(null, '', `/table?session=${id}&host=${old}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<TablePage />)
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
+
+    const rotated = await fetch(`${run.http}/sessions/${id}/code`, { method: 'POST', headers: { authorization: `Bearer ${old}` } })
+    const { code, hostKey } = (await rotated.json()) as { code: string; hostKey: string }
+    expect(await screen.findByText(code)).toBeTruthy()
+    await waitFor(() => expect(JSON.stringify({ ...sessionStorage })).toContain(hostKey))
+    expect(JSON.stringify({ ...sessionStorage })).not.toContain(old)
+    unmount()
+
+    // A reload: the same tab, the cleaned address, and only the new key to open it with.
+    render(<TablePage />)
+    expect(await screen.findByText(code)).toBeTruthy()
+    expect(location.href).not.toContain(hostKey)
+  })
+
+  it('keeps one table’s key to that table', async () => {
+    const first = await createSession(run)
+    history.replaceState(null, '', `/table?session=${first}&host=${roomOf(first).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<TablePage />)
+    expect(await screen.findByText(roomOf(first).code)).toBeTruthy()
+    unmount()
+
+    const second = await createSession(run, 's2')
+    history.replaceState(null, '', `/table?session=${second}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    expect(await screen.findByRole('heading', { name: 'Bordet behöver värdens länk eller ägarens inloggning' })).toBeTruthy()
   })
 })
 
@@ -324,5 +420,95 @@ describe('a card a phone shows for everyone (#508)', () => {
     expect(shown.querySelector(`[data-tv-show="${up}"]`)).toBeTruthy()
     table.close()
     ada.close()
+  })
+})
+
+// Bordsläget utan telefoner (#682, beställarens beslut 2026-10-17: raden E och ångra/avsluta C).
+// A group that plays straight on the felt could neither read what had just happened, nor take
+// back a wrong move, nor end the table when it was done.
+describe('the felt’s own screen says what happened, and can undo and end (#682)', () => {
+  const openTable = async (id: string) => {
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(document.querySelector('[data-table]')).toBeTruthy())
+  }
+
+  it('keeps the last thing that happened in the corner, with how long ago', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    const other = TableClient.connect(await asTable(run, id))
+    await other.ready()
+    await other.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    await waitFor(() => expect(document.querySelector('[data-table-last]')?.textContent).toBe('Senast: Bordet drog 2 kort från Draghög till Kasthög · nyss'))
+    other.close()
+  })
+
+  it('takes back the table’s own last move from the ⋯ menu, saying which move it is', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    const other = TableClient.connect(await asTable(run, id))
+    await other.ready()
+    await other.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('8'))
+
+    const more = screen.getByRole('button', { name: 'Mer för bordet' })
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(more)
+    expect(more.getAttribute('aria-expanded')).toBe('true')
+    const menu = screen.getByRole('menu')
+    const undo = within(menu).getByRole('menuitem', { name: /Ångra bordets senaste drag/ })
+    expect(undo.textContent).toBe('Ångra bordets senaste dragBordet drog 2 kort från Draghög till Kasthög')
+    await waitFor(() => expect(document.activeElement).toBe(undo))
+    fireEvent.click(undo)
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('10'))
+    expect(screen.queryByRole('menu')).toBeNull()
+    other.close()
+  })
+
+  it('does not offer to undo what a phone did since, and says where that is done', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    const other = TableClient.connect(await asTable(run, id))
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    await Promise.all([other.ready(), ada.ready()])
+    await other.send({ v: 'draw', from: 'draw', to: 'discard', count: 1 })
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('8'))
+    fireEvent.click(screen.getByRole('button', { name: 'Mer för bordet' }))
+    const undo = within(screen.getByRole('menu')).getByRole('menuitem', { name: /Ångra bordets senaste drag/ })
+    expect(undo.getAttribute('aria-disabled')).toBe('true')
+    expect(undo.textContent).toBe('Ångra bordets senaste dragSenaste draget gjordes på en telefon — ångra det där.')
+    fireEvent.click(undo)
+    expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('8')
+    other.close()
+    ada.close()
+  })
+
+  it('ends the table only after asking, and the question opens on «Inte än»', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    fireEvent.click(screen.getByRole('button', { name: 'Mer för bordet' }))
+    // Nothing done yet at this table: nothing to take back, and it says so.
+    expect(within(screen.getByRole('menu')).getByRole('menuitem', { name: /Ångra bordets senaste drag/ }).textContent).toBe('Ångra bordets senaste dragBordet har inte gjort något drag än.')
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: /Avsluta bordet…/ }))
+    const ask = screen.getByRole('alertdialog', { name: 'Avsluta bordet?' })
+    await waitFor(() => expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Inte än' })))
+    fireEvent.click(within(ask).getByRole('button', { name: 'Inte än' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mer för bordet' })))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mer för bordet' }))
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: /Avsluta bordet…/ }))
+    fireEvent.click(within(screen.getByRole('alertdialog', { name: 'Avsluta bordet?' })).getByRole('button', { name: 'Avsluta för alla' }))
+    await waitFor(() => expect(document.querySelector('[data-ended]')).toBeTruthy())
+  })
+
+  it('has neither the corner line nor the menu on the room’s television', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(roomOf(id).code)
+    expect(screen.queryByRole('button', { name: 'Mer för bordet' })).toBeNull()
+    expect(document.querySelector('[data-table-last]')).toBeNull()
   })
 })

@@ -10,7 +10,7 @@
 // real engine against the stylesheet the editor ships.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -19,9 +19,6 @@ import { tabId } from '../src/editor/EditorTabs.js'
 import { projectDoc } from './project-doc.js'
 import { registerRoom, startServer, asSeat, asTable, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -85,6 +82,9 @@ async function twelveTables(): Promise<number> {
   for (let i = 0; i < 6; i++) await startTable()
   await endedTable()
   await endedTable()
+  // Every card done: the column measured is the one a designer comes back to, and a group whose
+  // table still draws its cards stands open by itself (#939).
+  await run.completeRenders()
   return PLAYERS.length
 }
 
@@ -93,6 +93,7 @@ async function twelveTables(): Promise<number> {
 async function fiveTables(): Promise<number> {
   await playedTable(PLAYERS[0]!)
   for (let i = 0; i < 4; i++) await startTable()
+  await run.completeRenders()
   return 1
 }
 

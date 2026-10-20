@@ -3,9 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('DeckWall (C as the home view)', () => {
   it('renders every row as a compiled card with its copies and warnings, and reports clicks on cards and elements', () => {
@@ -262,6 +259,29 @@ describe('the reading views among the eyes (K26, #512)', () => {
     expect(readOf('dragon')?.hasAttribute('data-under')).toBe(false)
   })
 
+  // Där kronan är smal visar en låda bara sitt val (#477, variant B), och läsvyerna är ögonens
+  // längsta ord: bredvid AI-panelen vid 1280 bröt «TV:ns «Visa för alla»» raden (#1047). Det korta
+  // ordet är ytan som håller upp kortet; hela meningen står kvar som lådans namn och tooltip.
+  it('gives each reading view the surface’s name as its short word, and keeps the whole one as the box’s name', () => {
+    wall()
+    openBox(/^Ögon/)
+    for (const [name, short] of [
+      ['Telefonens läsvy', 'Telefonen'],
+      ['Bordets lyft', 'Bordet'],
+      ['TV:ns «Visa för alla»', 'TV:n'],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name }))
+      const box = screen.getByRole('button', { name: /^Ögon/ })
+      expect(box.getAttribute('aria-label')).toBe(`Ögon: ${name}`)
+      expect(box.getAttribute('title')).toBe(`Ögon: ${name}`)
+      expect(box.querySelector('.byd-crown-long')?.textContent).toBe(name)
+      expect(box.querySelector('.byd-crown-short')?.textContent).toBe(short)
+    }
+    // An eye whose word already fits has no second one.
+    fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
+    expect(screen.getByRole('button', { name: /^Ögon/ }).querySelector('.byd-crown-short')).toBeNull()
+  })
+
   it('says it in words when a card’s text falls under the floor, and not by colour alone', () => {
     const doc = projectDoc()
     const face = doc.template.faces['front']!
@@ -283,5 +303,60 @@ describe('the reading views among the eyes (K26, #512)', () => {
     expect(document.querySelector('.byd-crown-foot')!.textContent).not.toContain('px')
     fireEvent.click(screen.getByRole('button', { name: /^Bordets lyft/ }))
     expect(readOf('dragon')?.textContent).toBe('Minsta text 11,5 px · under golvet 12 px')
+  })
+})
+
+// Tätheten är låst medan något annat bestämmer kortets bredd (#701): guiden «på armlängds avstånd»
+// och läsvyerna ritar kortet i en bredd av sin egen. Då säger pillret varför det inte svarar, och ett
+// tryck på det får inte flytta det sparade steget — annars hoppade väggen till en annan storlek än
+// den hade när låsningen släpptes.
+describe('the density pill while a guide or a reading view holds the width (#701)', () => {
+  const wall = () => {
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
+    return document.querySelector('[data-wall]') as HTMLElement
+  }
+  const pill = () => within(screen.getByRole('group', { name: 'Täthet' }))
+  const steps = () => [pill().getByRole('button', { name: /Fler kort per rad/ }), pill().getByRole('button', { name: /Färre och större kort/ })]
+  const description = (el: HTMLElement) =>
+    (el.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ')
+      .trim()
+
+  it('is aria-disabled with the guide on, says why, and a press leaves the remembered step alone', () => {
+    localStorage.setItem('byd.wall.density', '3')
+    const el = wall()
+    for (const step of steps()) expect(step.getAttribute('aria-disabled')).toBeNull()
+    openBox(/^Guider/)
+    fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
+    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('90px')
+    for (const step of steps()) {
+      expect(step.getAttribute('aria-disabled')).toBe('true')
+      expect(description(step)).toBe('Bredden följer guiden')
+    }
+    fireEvent.click(steps()[1]!)
+    fireEvent.click(steps()[1]!)
+    expect(localStorage.getItem('byd.wall.density')).toBe('3')
+    // Släppt står väggen där den stod före guiden.
+    fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
+    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('150px')
+    for (const step of steps()) expect(step.getAttribute('aria-disabled')).toBeNull()
+  })
+
+  it('is aria-disabled in a reading view, says the view holds the width, and keeps the step', () => {
+    localStorage.setItem('byd.wall.density', '3')
+    const el = wall()
+    openBox(/^Ögon/)
+    fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
+    for (const step of steps()) {
+      expect(step.getAttribute('aria-disabled')).toBe('true')
+      expect(description(step)).toBe('Bredden följer läsvyn')
+    }
+    fireEvent.click(steps()[0]!)
+    fireEvent.click(steps()[0]!)
+    expect(localStorage.getItem('byd.wall.density')).toBe('3')
+    fireEvent.click(screen.getByRole('button', { name: /^Som du ser det/ }))
+    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('150px')
   })
 })

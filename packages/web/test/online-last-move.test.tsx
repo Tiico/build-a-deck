@@ -4,9 +4,6 @@ import { act, render } from '@testing-library/react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { LastMove } from '../src/online/LastMove.js'
 import { seatColor } from '../src/table/seatColor.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // What somebody else just did, still said in the top bar after its 1.6 s ring has gone (#484 fynd 12,
 // beslut A, prototyp 26): the same sentence the screen reader is given, in the seat's colour, with
@@ -38,7 +35,7 @@ describe('the last move somebody else made (#484)', () => {
     vi.useFakeTimers({ now: NOW })
     const { container } = render(<LastMove view={view} activity={[line(1, 'B', 40), line(2, 'A', 5)]} seat="A" />)
     const el = container.querySelector('[data-last-move]') as HTMLElement
-    expect(el.textContent).toBe('Senast: Bo drog 1 från Draghög · för 40 s sedan')
+    expect(el.textContent).toBe('Senast: Bo drog 1 kort från Draghög till Bos hand · för 40 s sedan')
     expect(el.style.getPropertyValue('--seat')).toBe(seatColor(1))
     act(() => vi.advanceTimersByTime(60_000))
     expect(el.textContent).toMatch(/· för 1 min sedan$/)

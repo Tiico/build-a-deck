@@ -52,9 +52,41 @@ describe('room codes', () => {
     now = new Date(now.getTime() + 3 * 3600_000 + 1)
     expect((await fetch(`${run.http}/rooms/${code}`)).status).toBe(404)
   })
+
+  // Whether a code once existed is nobody's business (#675), and a table that has ended is no
+  // exception (beställarens beslut 2026-10-07, #938): before, its code answered 410 with the
+  // table's id. Every question the door answers is asked of all four, and compared byte for byte.
+  it('answers a code that never was, one that went out, one rotated away and an ended table’s the same way', async () => {
+    const lapsed = await createRoom(run.http, 'lapsed')
+    now = new Date(now.getTime() + 3 * 3600_000 + 1)
+    const rotated = await createRoom(run.http, 'rotated')
+    expect((await post(run.http, `/sessions/${rotated.id}/code`, {}, { authorization: `Bearer ${rotated.hostKey}` })).status).toBe(200)
+    const ended = await createRoom(run.http, 'ended')
+    const tv = await run.connectTable(ended.id, ended.hostKey)
+    expect(await tv.send(null, { v: 'session.end' })).toMatchObject({ t: 'ack' })
+    await tv.close()
+
+    const answers = async (code: string) => {
+      const said: { status: number; body: string }[] = []
+      for (const res of [
+        await fetch(`${run.http}/rooms/${code}`),
+        await post(run.http, `/rooms/${code}/join`, { name: 'Ada', seat: 'A' }),
+        await post(run.http, `/rooms/${code}/join`, { name: 'Tittare' }),
+        await post(run.http, `/rooms/${code}/join`, { seat: 'A' }),
+      ]) said.push({ status: res.status, body: await res.text() })
+      return said
+    }
+    const never = await answers('ZZZZZZ')
+    expect(never.map((a) => a.status)).toEqual([404, 404, 404, 404])
+    for (const room of [lapsed, rotated, ended]) {
+      const said = await answers(room.code)
+      expect(said).toEqual(never)
+      for (const a of said) expect(a.body).not.toContain(room.id)
+    }
+  })
 })
 
-const post = (http: string, path: string, body: unknown, headers: Record<string, string> = {}) =>
+const post =(http: string, path: string, body: unknown, headers: Record<string, string> = {}) =>
   fetch(`${http}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) })
 
 describe('guest tokens', () => {
@@ -188,6 +220,20 @@ describe('the seat list a lobby is told (K12, #39)', () => {
     for (const zone of ['hand:A', 'hand:B', 'draw', 'discard', 'geometry']) expect(said).not.toContain(zone)
     await Promise.all([tv.close(), lobby.close()])
   })
+
+  // That the table is over is no secret to a lobby, which already holds the table's id — the code
+  // says nothing of it (#938), and an ended table's code no longer hands the id out — and the
+  // editor's header follows its own table through a lobby (#705): told nothing of it, the band
+  // stood on after the table had ended, with kicks for seats nobody could sit in.
+  it('is told when the table ends', async () => {
+    const { id, hostKey } = await createRoom(run.http)
+    const lobby = await WireClient.connect(run.base, id, null, { role: 'lobby' })
+    expect(lobby.view?.ended).toBe(false)
+    const tv = await run.connectTable(id, hostKey)
+    expect(await tv.send(null, { v: 'session.end' })).toMatchObject({ t: 'ack' })
+    await lobby.waitFor(() => lobby.view?.ended === true)
+    await Promise.all([tv.close(), lobby.close()])
+  })
 })
 
 describe('the host', () => {
@@ -212,6 +258,44 @@ describe('the host', () => {
     expect(a.messages.some((m) => m.t === 'room')).toBe(false)
     expect(a.frames.join('\n')).not.toContain(next.code)
     await Promise.all([tv.close(), a.close()])
+  })
+
+  // A leaked host key is taken back the way a leaked code is (#820): «Ny kod» changes both. The
+  // screen that is already open is handed the new key over its own connection, so it is not shut
+  // out by its own rotation; a phone or an observer never sees it, on the wire or anywhere else.
+  it('rotates the host key with the code: the old key opens nothing, the table screen is handed the new one, guests are not', async () => {
+    const { id, hostKey } = await createRoom(run.http)
+    const tv = await run.connectTable(id, hostKey)
+    await tv.waitFor((m) => m.t === 'room')
+    const a = await run.connect(id, 'A')
+    const eva = await run.connect(id, null, { role: 'observer', name: 'Eva' })
+
+    const rotated = await post(run.http, `/sessions/${id}/code`, {}, { authorization: `Bearer ${hostKey}` })
+    expect(rotated.status).toBe(200)
+    const next = (await rotated.json()) as { code: string; hostKey: string }
+    expect(next.hostKey.length).toBeGreaterThanOrEqual(32)
+    expect(next.hostKey).not.toBe(hostKey)
+
+    // The screen that was open hears the new key with the new code, and only it.
+    const told = await tv.waitFor((m) => m.t === 'room' && m.code === next.code)
+    expect(told).toMatchObject({ t: 'room', code: next.code, hostKey: next.hostKey })
+    await new Promise((r) => setTimeout(r, 30))
+    for (const guest of [a, eva]) {
+      expect(guest.frames.join('\n')).not.toContain(next.hostKey)
+      expect(guest.frames.join('\n')).not.toContain(hostKey)
+    }
+
+    // The old key is dead everywhere it worked: the table's door and the host's controls.
+    const stale = await run.connectTable(id, hostKey)
+    expect(stale.messages[0]).toEqual({ t: 'refused', reason: 'the table needs the host key' })
+    await stale.close()
+    expect((await post(run.http, `/sessions/${id}/code`, {}, { authorization: `Bearer ${hostKey}` })).status).toBe(403)
+    expect((await post(run.http, `/sessions/${id}/kick`, { seat: 'A' }, { authorization: `Bearer ${hostKey}` })).status).toBe(403)
+
+    // The new one opens the table again, as a reload of the same screen would.
+    const reloaded = await run.connectTable(id, next.hostKey)
+    expect(await reloaded.waitFor((m) => m.t === 'room')).toMatchObject({ t: 'room', code: next.code })
+    await Promise.all([tv.close(), a.close(), eva.close(), reloaded.close()])
   })
 
   it('kicks a guest: the connection is refused and closed, the seat is freed, the token is dead, and the seat can be taken again', async () => {
@@ -301,11 +385,63 @@ describe('claiming a guest session to an account (G1)', () => {
     expect(open).toEqual([expect.objectContaining({ session: id, seat: 'A', name: 'Ada', game: null, version: 'v1', ended: false, surveyed: false, flags: 1, code })])
 
     await ada.send('A', { v: 'session.end' })
-    await post(run.http, `/sessions/${id}/survey`, { who: 'Ada', seat: 'A', answers: { fun: 4, clarity: 3, balance: 5, change: '' } })
+    expect((await post(run.http, `/sessions/${id}/survey`, { token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 5, change: '' } })).status).toBe(201)
     const done = (await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()) as Record<string, unknown>[]
     expect(done[0]).toMatchObject({ ended: true, surveyed: true, flags: 1 })
     expect(done[0]).not.toHaveProperty('code')
     expect((await fetch(`${run.http}/me/played`)).status).toBe(401)
     await ada.close()
+  })
+
+  // «Tillbaka till bordet» takes the guest to her own seat and hand (#690, beslut 2026-10-06), not
+  // to the picker as a newcomer: the account that claimed the admission is handed a fresh token for
+  // the same seat. Only the token is new, so the seat, the name and the history stay hers; the old
+  // token is the one it replaces, as a bearer secret should be when it moves to another screen.
+  it('hands the account a fresh token for its own seat while the table runs', async () => {
+    const { id } = await createRoom(run.http)
+    const token = await run.admit(id, 'A', 'Ada')
+    const ada = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await ada.close()
+    const back = (cookie?: string) => post(run.http, `/me/played/${encodeURIComponent(id)}/return`, {}, cookie ? { cookie } : {})
+    expect((await back()).status).toBe(401)
+    const bo = await login('bo@example.com')
+    expect((await back(bo)).status).toBe(404)
+    await post(run.http, '/guests/claim', { token }, { cookie: bo })
+
+    const answer = await back(bo)
+    expect(answer.status).toBe(200)
+    const again = (await answer.json()) as { token: string; seat: string | null; name: string; kind: string }
+    expect(again).toMatchObject({ seat: 'A', name: 'Ada', kind: 'seat' })
+    expect(again.token).not.toBe(token)
+    const seated = await WireClient.connect(run.base, id, 'A', undefined, { token: again.token })
+    expect(seated.messages[0]?.t).toBe('snapshot')
+    expect(seated.view?.seats.find((s) => s.id === 'A')?.name).toBe('Ada')
+    await seated.close()
+    const old = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    expect(old.messages[0]).toMatchObject({ t: 'refused' })
+    await old.close()
+    // The table is still the account's to list, under the seat it sat at.
+    expect(await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()).toEqual([expect.objectContaining({ session: id, seat: 'A', name: 'Ada' })])
+    // Another account has nothing to come back to.
+    expect((await back(await login('cy@example.com'))).status).toBe(404)
+
+    const tv = await WireClient.connect(run.base, id, 'A', undefined, { token: again.token })
+    await tv.send('A', { v: 'session.end' })
+    await tv.close()
+    expect((await back(bo)).status).toBe(410)
+  })
+
+  it('has nothing to hand back once the guest has left the seat', async () => {
+    const { id } = await createRoom(run.http)
+    const token = await run.admit(id, 'A', 'Ada')
+    const ada = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    const bo = await login('bo@example.com')
+    await post(run.http, '/guests/claim', { token }, { cookie: bo })
+    await ada.send('A', { v: 'seat.release', seat: 'A' })
+    await ada.close()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect((await post(run.http, `/me/played/${encodeURIComponent(id)}/return`, {}, { cookie: bo })).status).toBe(404)
   })
 })

@@ -6,16 +6,13 @@
 // stand together in one labelled group at the far end of the header, behind a divider.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { Language } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import type { RuleDoc } from '@byd/server'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

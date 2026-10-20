@@ -6,9 +6,6 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -259,6 +256,8 @@ describe('the setup editor (B5, L17): the deck\'s own back', () => {
     // Pick a ready-made back on the canvas, and come back to the table.
     fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Baksida' }))
+    // Folded under a back that has layers (#736).
+    fireEvent.click(screen.getByRole('button', { name: /^Färdiga baksidor/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Medaljong' }))
     // The back has layers, so the gallery asks first (#478).
     fireEvent.click(screen.getByRole('button', { name: 'Ja, byt baksida' }))
@@ -644,5 +643,45 @@ describe('läge och storlek utan att dra (#579, #554)', () => {
     await spara()
     expect(await geometryOf('hand:A')).toMatchObject({ x: -300, y: 320, w: 620, h: 110 })
     expect(await geometryOf('discard')).toMatchObject({ x: 200, y: 0 })
+  })
+})
+
+// Two new counters were both «Liv», which the phone and the TV drew as two «LIV» (#713). A new
+// counter takes a free name, the way new piles do since #480.
+describe('a new counter in the recipe', () => {
+  it('takes a name no other counter has', async () => {
+    const doc = projectDoc()
+    doc.setup.counters = [{ name: 'Guld', start: 0 }]
+    await run.projects.create(run.projectId, doc)
+    await openBord()
+    const add = await screen.findByRole('button', { name: '＋ Räknare' })
+    fireEvent.click(add)
+    fireEvent.click(add)
+    fireEvent.click(add)
+    const names = [1, 2, 3, 4].map((n) => (screen.getByLabelText(`Namn för räknare ${n}`) as HTMLInputElement).value)
+    expect(names).toEqual(['Guld', 'Liv', 'Liv 2', 'Liv 3'])
+  })
+})
+
+// A rule names a counter by its id (#708, B7), so renaming the counter must leave the id where it
+// was. A counter written before counters had ids is known by its name, and keeps that as its id
+// the first time it is renamed; a new one gets an id of its own that no other counter has.
+describe('a counter keeps what the rules call it (#708)', () => {
+  it('keeps the id a rule names it by when it is renamed, and gives a new counter one of its own', async () => {
+    const doc = projectDoc()
+    doc.setup.counters = [{ name: 'Guld', start: 0 }]
+    doc.rules = { title: 'Skogens herrar', blocks: [{ kind: 'text', id: 't1', text: 'Ta ett [[räknare:Guld]].' }] }
+    await run.projects.create(run.projectId, doc)
+    await openBord()
+    fireEvent.change(await screen.findByLabelText('Namn för räknare 1'), { target: { value: 'Dukater' } })
+    fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
+    await spara()
+    const stored = await run.projects.load(run.projectId)
+    const [gold, life] = stored?.setup.counters ?? []
+    expect(gold).toEqual({ id: 'Guld', name: 'Dukater', start: 0 })
+    expect(life?.id).toBeTruthy()
+    expect(life?.id).not.toBe('Guld')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+    await waitFor(() => expect(document.querySelector('[data-rulebook]')?.textContent).toContain('Ta ett Dukater.'))
   })
 })

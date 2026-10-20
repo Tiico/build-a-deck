@@ -2,12 +2,13 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { ObjectStore } from '@byd/render'
-import type { Applied } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
-import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
+import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import { checkedHistory, liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
 import { PostgresAssetStore } from './assets.js'
+import { PostgresAiKeyStore } from './ai-keys.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
@@ -53,10 +54,24 @@ import type { SurveyRecord, SurveyStore } from './surveys.js'
 export class PostgresSurveyStore implements SurveyStore {
   constructor(private readonly sql: postgres.Sql) {}
 
-  async add(r: SurveyRecord): Promise<void> {
+  // One answer per seat and per observer (#1021): the unique keys in the schema hold it, and a
+  // second answer takes the place of the first.
+  async put(r: SurveyRecord): Promise<void> {
+    const answers = this.sql.json(r.answers as never)
+    if (r.observer) {
+      await this.sql`
+        insert into surveys (session_id, version, at, who, seat, observer, answers)
+        values (${r.sessionId}, ${r.version}, ${r.at}, ${r.who}, null, true, ${answers})
+        on conflict (session_id, who) where observer
+        do update set version = excluded.version, at = excluded.at, answers = excluded.answers
+      `
+      return
+    }
     await this.sql`
       insert into surveys (session_id, version, at, who, seat, observer, answers)
-      values (${r.sessionId}, ${r.version}, ${r.at}, ${r.who}, ${r.seat}, ${r.observer ?? false}, ${this.sql.json(r.answers as never)})
+      values (${r.sessionId}, ${r.version}, ${r.at}, ${r.who}, ${r.seat}, false, ${answers})
+      on conflict (session_id, seat) where not observer
+      do update set version = excluded.version, at = excluded.at, who = excluded.who, answers = excluded.answers
     `
   }
 
@@ -98,6 +113,11 @@ export class PostgresLogStore implements LogStore {
     return new PostgresAuthStore(this.sql)
   }
 
+  // The designer's own AI key (#999): sealed, one per account.
+  aiKeys(): PostgresAiKeyStore {
+    return new PostgresAiKeyStore(this.sql)
+  }
+
   // The project's images (E1): in the object store when there is one, else in this database.
   assets(objects?: ObjectStore): PostgresAssetStore {
     return new PostgresAssetStore(this.sql, objects)
@@ -122,9 +142,24 @@ export class PostgresLogStore implements LogStore {
     `
   }
 
-  async loadSession(id: string): Promise<SessionRecord | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null; project: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
-      select id, version, setup, deck, project, code, code_expires_at, host_key_hash from sessions where id = ${id}
+  async addDeck(sessionId: string, version: string, deck: Deck): Promise<void> {
+    await this.sql`
+      insert into session_decks (session_id, version, deck) values (${sessionId}, ${version}, ${this.sql.json(deck as never)})
+      on conflict (session_id, version) do update set deck = excluded.deck
+    `
+  }
+
+  async deckOf(sessionId: string, version: string): Promise<Deck | null> {
+    const [refreshed] = await this.sql<{ deck: Deck }[]>`select deck from session_decks where session_id = ${sessionId} and version = ${version}`
+    if (refreshed) return refreshed.deck
+    const [start] = await this.sql<{ deck: Deck | null }[]>`select deck from sessions where id = ${sessionId}`
+    return start?.deck ?? null
+  }
+
+  // Never the deck (#1012): see `SessionInfo`. It is `deckOf`'s, for the one reader that deals.
+  async loadSession(id: string): Promise<SessionInfo | null> {
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
+      select id, version, setup, project, code, code_expires_at, host_key_hash from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
@@ -132,7 +167,6 @@ export class PostgresLogStore implements LogStore {
       id: row.id,
       version: row.version,
       setup: row.setup,
-      ...(row.deck ? { deck: row.deck } : {}),
       ...(row.project ? { project: row.project } : {}),
       ...(row.code ? { code: row.code } : {}),
       ...(row.code_expires_at ? { codeExpiresAt: row.code_expires_at.toISOString() } : {}),
@@ -147,6 +181,10 @@ export class PostgresLogStore implements LogStore {
 
   async setCode(sessionId: string, code: string, expiresAt: string): Promise<void> {
     await this.sql`update sessions set code = ${code}, code_expires_at = ${expiresAt} where id = ${sessionId}`
+  }
+
+  async rotateAdmission(sessionId: string, code: string, expiresAt: string, hostKeyHash: string): Promise<void> {
+    await this.sql`update sessions set code = ${code}, code_expires_at = ${expiresAt}, host_key_hash = ${hostKeyHash} where id = ${sessionId}`
   }
 
   async issueGuest(sessionId: string, g: GuestRecord): Promise<boolean> {
@@ -171,6 +209,17 @@ export class PostgresLogStore implements LogStore {
     `
     if (!row) return null
     return { tokenHash: row.token_hash, kind: row.kind, seat: row.seat, name: row.name, issuedAt: row.issued_at.toISOString(), expiresAt: row.expires_at.toISOString(), ...(row.revoked_at ? { revokedAt: row.revoked_at.toISOString() } : {}) }
+  }
+
+  async guestsAt(sessionId: string): Promise<GuestRecord[]> {
+    const rows = await this.sql<GuestRow[]>`
+      select session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
+      from guest_tokens where session_id = ${sessionId} order by issued_at
+    `
+    return rows.map((row) => {
+      const { sessionId: _session, ...guest } = played(row)
+      return guest
+    })
   }
 
   async activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null> {
@@ -202,6 +251,19 @@ export class PostgresLogStore implements LogStore {
       from guest_tokens where account_id = ${accountId} order by issued_at desc
     `
     return rows.map(played)
+  }
+
+  async returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null> {
+    const [row] = await this.sql<GuestRow[]>`
+      update guest_tokens set token_hash = ${tokenHash}
+      where token_hash = (
+        select token_hash from guest_tokens
+        where session_id = ${sessionId} and account_id = ${accountId} and revoked_at is null and expires_at > ${now}
+        order by issued_at desc limit 1
+      )
+      returning session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
+    `
+    return row ? played(row) : null
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
@@ -242,7 +304,7 @@ export class PostgresLogStore implements LogStore {
   async sessionsOf(project: string): Promise<SessionSummary[]> {
     const rows = await this.sql<{ id: string; last_at: Date | null }[]>`
       select s.id, last.at as last_at from sessions s
-      left join lateral (select at from events e where e.session_id = s.id order by seq desc limit 1) last on true
+      left join lateral (select at from events e where e.session_id = s.id and e.intent->>'v' = any(${PHYSICAL_VERBS as string[]}) order by seq desc limit 1) last on true
       where s.project = ${project}
       order by s.created_at desc, s.id desc
     `
@@ -379,6 +441,14 @@ export class PostgresProjectStore implements ProjectStore {
       returning token_hash
     `
     return rows.length
+  }
+
+  async inviteTo(tokenHash: string, now: string): Promise<string | null> {
+    const [row] = await this.sql<{ project_id: string }[]>`
+      select project_id from project_invites
+      where token_hash = ${tokenHash} and accepted_at is null and expires_at > ${now}
+    `
+    return row?.project_id ?? null
   }
 
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {

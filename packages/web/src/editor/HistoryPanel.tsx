@@ -4,6 +4,7 @@ import type { VersionSummary } from '@byd/server'
 import type { ProjectClient } from './ProjectClient.js'
 import { byDay, historyRow, type HistoryRow } from './historyRow.js'
 import { translate, useLang, useT, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
@@ -44,7 +45,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
     let live = true
     client.versions().then(
       (v) => live && setVersions(v),
-      (err: unknown) => live && setError(err instanceof Error ? err.message : String(err)),
+      (err: unknown) => live && setError(saidOr(err, t('history.error.read'))),
     )
     // Asked for beside the list and not after it, so the panel opens on its rows. What every
     // version changed is a bigger question than what the versions are, and a history of a year
@@ -60,18 +61,19 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
     return () => {
       live = false
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the history again
   }, [client, asked])
 
-  // What a version changed card by card is asked for when the row is opened, not for all of them
-  // at once: the whole difference is what the comparison is for, and a long history should not be
+  // What a version changed card by card is asked for when the row is opened and its own line is
+  // missing, not for all of them at once: the whole difference is what the comparison is for, and a long history should not be
   // a long wait for something nobody looked at.
   const show = (rev: number) => {
     if (open === rev) return setOpen(null)
     setOpen(rev)
-    if (diffs[rev] !== undefined) return
+    if (diffs[rev] !== undefined || changes?.[rev]) return
     client.diff(rev).then(
       (d) => setDiffs((m) => ({ ...m, [rev]: d ?? 'first' })),
-      (err: unknown) => setError(err instanceof Error ? err.message : String(err)),
+      (err: unknown) => setError(saidOr(err, t('history.error.diff', { rev }))),
     )
   }
   const name = async (rev: number, label: string | null) => {
@@ -80,7 +82,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
       setAsked((n) => n + 1)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(saidOr(err, t('history.error.name', { rev })))
     }
   }
   const restore = async (rev: number) => {
@@ -88,7 +90,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
       await client.restore(rev)
       onRestored(rev)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(saidOr(err, t('history.error.restore', { rev })))
     }
   }
   const days = versions ? byDay(versions, { now, lang, t }) : []
@@ -140,10 +142,18 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
                       </button>
                       {open === v.rev && (
                         <div className="byd-history-detail">
-                          {/* Against the version before it, which is never the same document, so
+                          {/* What the save changed is the row's own line, and the detail said it
+                              again under it (#702): «Spelet skapades.» twice, «mallen ändrad.»
+                              under the chip saying the same. So it is said here only when the
+                              row could not say it — the summaries never came — and is otherwise
+                              left to the row, and the whole difference to the comparison.
+
+                              Against the version before it, which is never the same document, so
                               an empty difference here means a change with no word rather than no
                               change at all — the same thing the row's own line says. */}
-                          <p>{diff === undefined ? t('history.reading') : diff === 'first' ? t('history.created') : <Summary diff={diff} empty={t('history.diff.other')} />}</p>
+                          {!changes?.[v.rev] && (
+                            <p>{diff === undefined ? t('history.reading') : diff === 'first' ? t('history.created') : <Summary diff={diff} empty={t('history.diff.other')} />}</p>
+                          )}
                           <label>
                             {t('history.name')}
                             <input

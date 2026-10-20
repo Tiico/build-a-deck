@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ProjectClient } from '../src/editor/ProjectClient.js'
+import { ProjectClient, setEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
+import { EditSocket } from './setup.js'
+import { SavedHeldBack } from './saved-held-back.js'
+import type { RuleDoc } from '@byd/server'
 import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { assetTypeDeclaring } from '@byd/protocol'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { columnsOf } from '@byd/server/doc'
+import { Said } from '../src/i18n/said.js'
+import { DEFAULT_TIMING } from '../src/status/connection.js'
 
 let run: Running
 // Every client this file opens, shut when its test ends.
@@ -105,6 +108,104 @@ describe('ProjectClient', () => {
     expect(session.id).toMatch(/[0-9a-f-]{36}/)
     expect(session.version).toBe('rev-1')
     expect((await run.store.loadSession(session.id))?.setup.components).toHaveLength(4)
+  })
+})
+
+// A save over the actor's line is over when the actor answers or the line goes (#708's flake). It
+// had a two-second clock of its own besides, and a page held up for longer than that — a busy
+// machine, a long task — let the clock win against an answer already on its way: the version was
+// made, and the booklet said «Boken kunde inte sparas». The clock is now only the backstop for an
+// actor that never answers, and a line that goes ends the save at once.
+describe('the end of a save over the line', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  it('reports a save as made when the page was held up past two seconds before the answer was read', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    client.setCell('dragon', 'title', 'Drakhona')
+    const saving = client.save()
+    const until = Date.now() + 2_100
+    while (Date.now() < until) {
+      // The page is busy: nothing else runs, the answer included.
+    }
+    expect(await saving).toEqual({ ok: true, rev: 2 })
+    expect(client.dirty).toBe(false)
+  })
+
+  it('ends a save as not made the moment the line goes under it, without waiting for a clock', async () => {
+    // A line that opens, takes the save and goes, as a socket does when the network drops.
+    setEditSocketImplementation(class {
+      readyState = 1
+      onopen: (() => void) | null = null
+      onmessage: ((event: { data: unknown }) => void) | null = null
+      onclose: (() => void) | null = null
+      onerror: (() => void) | null = null
+      constructor() {
+        queueMicrotask(() => this.onopen?.())
+      }
+      send(data: string): void {
+        if ((JSON.parse(data) as { t: string }).t !== 'save') return
+        this.readyState = 3
+        queueMicrotask(() => this.onclose?.())
+      }
+      close(): void {
+        this.readyState = 3
+      }
+    } as unknown as EditSocketCtor)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    client.setCell('dragon', 'title', 'Drakhona')
+    const began = performance.now()
+    expect(await client.save()).toMatchObject({ ok: false })
+    expect(performance.now() - began).toBeLessThan(1_000)
+    expect(client.dirty).toBe(true)
+  })
+
+  // An actor that takes the save and never answers is an answer that never came, the same as a
+  // line that goes (#1018): what the editor says of it is that no answer came, never the server's
+  // or the table's words — and the backstop's own «save failed» was both a developer's sentence and
+  // one the table's translation read as a refused move.
+  it('ends a save the actor never answers as one that got no answer', async () => {
+    setEditSocketImplementation(class {
+      readyState = 1
+      onopen: (() => void) | null = null
+      onmessage: ((event: { data: unknown }) => void) | null = null
+      onclose: (() => void) | null = null
+      onerror: (() => void) | null = null
+      constructor() {
+        queueMicrotask(() => this.onopen?.())
+      }
+      send(): void {
+        // Taken, and never answered.
+      }
+      close(): void {
+        this.readyState = 3
+      }
+    } as unknown as EditSocketCtor)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    client.setCell('dragon', 'title', 'Drakhona')
+    vi.useFakeTimers()
+    try {
+      const saving = client.save()
+      await vi.advanceTimersByTimeAsync(DEFAULT_TIMING.connectTimeoutMs)
+      expect(await saving).toEqual({ ok: false, reason: 'offline' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // What the actor refuses a save with is read for the two words it says itself, and anything else
+  // is a fault under it: the store's own message never travels past the client.
+  it('reads a refusal it does not know as a save that failed, and never passes the server’s words on', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    client.setCell('dragon', 'title', 'Drakhona')
+    vi.spyOn(run.projects, 'replace').mockRejectedValueOnce(new Error('connection terminated'))
+    expect(await client.save()).toEqual({ ok: false, reason: 'failed' })
   })
 })
 
@@ -385,6 +486,73 @@ describe('what counts as unsaved (#8)', () => {
 })
 
 describe('the setup in the editor (B5, K2)', () => {
+  // Var en ny zon föds är en regel som ändras med en driftsättning (#443, #480, #881). Platsen
+  // designern såg är den som skickas och den loggen spelar upp, inte en ny fråga till regeln (#894).
+  it('sends a new zone with the place it showed, so the log holds that place', async () => {
+    // What leaves the editor is read off the socket itself: the actor answers the same rule
+    // today, so only the frame says whether the editor sent the place or the question.
+    const sent: unknown[] = []
+    setEditSocketImplementation(class extends EditSocket {
+      override send(data: string): void {
+        const message = JSON.parse(data) as { t: string; intent?: unknown }
+        if (message.t === 'edit') sent.push(message.intent)
+        super.send(data)
+      }
+    } as unknown as EditSocketCtor)
+    try {
+      const created = await run.projects.create(run.projectId, projectDoc())
+      const client = await openClient(created.id)
+      await vi.waitFor(() => expect(client.connected).toBe(true))
+
+      const pile = client.addZone('pile')
+      const area = client.addZone('area')
+      const shown = (id: string) => client.doc.setup.zones.find((z) => z.id === id)?.geometry
+      const expected = [
+        expect.objectContaining({ v: 'addZone', id: pile, geometry: shown(pile) }),
+        expect.objectContaining({ v: 'addZone', id: area, geometry: shown(area) }),
+      ]
+      expect(sent).toEqual(expected)
+      await vi.waitFor(async () => expect(await run.projects.readEdits(created.id, 0)).toHaveLength(2))
+      expect((await run.projects.readEdits(created.id, 0)).map((e) => e.intent)).toEqual(expected)
+    } finally {
+      setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    }
+  })
+
+  // Samma sak för platsernas zoner och receptets uppställning (#895): det designern såg, filten
+  // med, är det som skickas och det loggen spelar upp.
+  it('sends a recipe and a seat zone with the places it showed, so the log holds that table', async () => {
+    const sent: unknown[] = []
+    setEditSocketImplementation(class extends EditSocket {
+      override send(data: string): void {
+        const message = JSON.parse(data) as { t: string; intent?: unknown }
+        if (message.t === 'edit') sent.push(message.intent)
+        super.send(data)
+      }
+    } as unknown as EditSocketCtor)
+    try {
+      const created = await run.projects.create(run.projectId, projectDoc())
+      const client = await openClient(created.id)
+      await vi.waitFor(() => expect(client.connected).toBe(true))
+
+      client.setRecipe({ ...client.recipe, players: 3 })
+      const afterRecipe = client.doc.setup
+      client.addSeatZone('counters')
+      const shown = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, client.doc.setup.zones.find((z) => z.id === id)?.geometry]))
+      const counters = client.doc.setup.zones.filter((z) => z.id.startsWith('counters:')).map((z) => z.id)
+      expect(counters).toHaveLength(3)
+      const expected = [
+        expect.objectContaining({ v: 'setRecipe', places: expect.objectContaining(shown(['hand:C', afterRecipe.floor])) }),
+        expect.objectContaining({ v: 'addSeatZone', role: 'counters', places: shown(counters) }),
+      ]
+      expect(sent).toEqual(expected)
+      await vi.waitFor(async () => expect(await run.projects.readEdits(created.id, 0)).toHaveLength(2))
+      expect((await run.projects.readEdits(created.id, 0)).map((e) => e.intent)).toEqual(expected)
+    } finally {
+      setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    }
+  })
+
   it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
@@ -704,6 +872,336 @@ describe('the history (B4)', () => {
   })
 })
 
+// A save is answered by the version it made, and by no other (#988). The answer used to be
+// whichever «saved» came next on the line: a second save asked while the first was in the air took
+// the first one's answer and left the first to the backstop, and a version somebody else made
+// answered a save of one's own. Either way an import named the wrong version, and the book she
+// wrote by hand lost the name that was its only way back (B4).
+describe('which version answers a save (#988)', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  const book = (text: string): RuleDoc => ({ title: 'Skogens herrar', blocks: [{ kind: 'text', id: 't1', text }] })
+  // Which file the book of the version a name sits on came out of: the name and the book have to
+  // be the same version, or the name is pointing somewhere else.
+  const namedFiles = async (id: string): Promise<Record<string, string | undefined>> => {
+    const versions = await run.projects.versions(id)
+    const named = versions.filter((v) => v.label !== undefined)
+    return Object.fromEntries(await Promise.all(named.map(async (v) => [v.label, (await run.projects.at(id, v.rev))?.rules?.source?.file])))
+  }
+
+  it('names each of two imports pressed one after the other on the version that holds its own book', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    // The second is asked before the first is answered: nothing is awaited between them.
+    const first = client.importRules(book('Skrivet för hand.'), 'skrivet.md')
+    const second = client.importRules(book('Ur filen.'), 'regler-v4.md')
+    await Promise.all([first, second])
+    expect(await namedFiles(created.id)).toEqual({ 'Importerad: skrivet.md': 'skrivet.md', 'Importerad: regler-v4.md': 'regler-v4.md' })
+    expect(client.dirty).toBe(false)
+  })
+
+  // With the line down a save is written over HTTP against the rev the editor holds, and two in the
+  // air at once wrote against the same one: the second was a conflict with the first, and an
+  // import that was never in anybody's way said it could not be saved.
+  it('names both of two imports pressed one after the other while the line is down', async () => {
+    // Every line falls the moment it is opened, before anything else can run, so no save ever
+    // finds one standing: each goes over HTTP, retries included.
+    let fell = 0
+    setEditSocketImplementation(function (): WebSocketLike {
+      const dead: WebSocketLike = { send: () => undefined, close: () => undefined, readyState: 3, onopen: null, onmessage: null, onclose: null, onerror: null }
+      queueMicrotask(() => {
+        dead.onclose?.({ code: 1006 })
+        fell += 1
+      })
+      return dead
+    } as unknown as EditSocketCtor)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(fell).toBeGreaterThan(0))
+    const first = client.importRules(book('Skrivet för hand.'), 'skrivet.md')
+    const second = client.importRules(book('Ur filen.'), 'regler-v4.md')
+    await Promise.all([first, second])
+    expect(await namedFiles(created.id)).toEqual({ 'Importerad: skrivet.md': 'skrivet.md', 'Importerad: regler-v4.md': 'regler-v4.md' })
+  })
+
+  it('does not take a version somebody else made for the answer to its own save', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    // Bo's line holds every «saved» it is told, so Ada's version reaches him while his own save
+    // is in the air — the order two editors fall into when they save in the same moment.
+    const line = new SavedHeldBack()
+    setEditSocketImplementation(line.Line)
+    const bo = await openClient(created.id)
+    await vi.waitFor(() => expect(bo.connected).toBe(true))
+    setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    const ada = await openClient(created.id)
+    await vi.waitFor(() => expect(ada.connected).toBe(true))
+
+    ada.rename('Skogens herrar II')
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(line.waiting).toBe(1))
+    const importing = bo.importRules(book('Bos bok.'), 'bo.md')
+    // Ada's version is told first and Bo's own after it, both the actor's real answers.
+    await vi.waitFor(() => expect(line.waiting).toBe(2))
+    line.release()
+    await importing
+    expect(await namedFiles(created.id)).toEqual({ 'Importerad: bo.md': 'bo.md' })
+  })
+})
+
+// A refusal is the answer to the request it refuses, and to no other (#991). An edit and a save
+// can be on the line at once, and a refused edit used to be taken for the answer to the save: an
+// import whose version was made said it could not be saved, and the version's own «saved» came to
+// nobody — or to the next save in the queue, which then named somebody else's version.
+describe('which wait a refusal ends (#991)', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  const book = (text: string): RuleDoc => ({ title: 'Skogens herrar', blocks: [{ kind: 'text', id: 't1', text }] })
+  const namedFiles = async (id: string): Promise<Record<string, string | undefined>> => {
+    const versions = await run.projects.versions(id)
+    const named = versions.filter((v) => v.label !== undefined)
+    return Object.fromEntries(await Promise.all(named.map(async (v) => [v.label, (await run.projects.at(id, v.rev))?.rules?.source?.file])))
+  }
+  // Bo and Ada with the same game open. Bo's is the line that can be held.
+  const twoEditors = async (line: SavedHeldBack) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    setEditSocketImplementation(line.Line)
+    const bo = await openClient(created.id)
+    await vi.waitFor(() => expect(bo.connected).toBe(true))
+    setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    const ada = await openClient(created.id)
+    await vi.waitFor(() => expect(ada.connected).toBe(true))
+    return { id: created.id, bo, ada }
+  }
+  // Bo types into a card in the moment Ada takes it away. His edit leaves late, reaches the actor
+  // after her removal, and is refused — the one way an edit the editor itself let through comes to
+  // be refused, and nothing about it is invented: it is two people working at once.
+  const typedIntoAsItIsRemoved = async (line: SavedHeldBack, bo: ProjectClient, ada: ProjectClient, alsoAsked: () => void = () => undefined) => {
+    line.holdRequests()
+    bo.setCell('dragon', 'title', 'Drakhona')
+    alsoAsked()
+    ada.removeRow('dragon')
+    await vi.waitFor(() => expect(bo.doc.rows.some((r) => r.id === 'dragon')).toBe(false))
+    line.letOut()
+  }
+  const outcome = (importing: Promise<void>) => importing.then(
+    () => 'saved',
+    (err: unknown) => (err instanceof Error ? err.message : String(err)),
+  )
+
+  it('lets an import whose version is made keep it, when an edit beside it is refused', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    const importing = outcome(bo.importRules(book('Bos bok.'), 'bo.md'))
+    // The version is made, and its answer is on the line.
+    await vi.waitFor(() => expect(line.waiting).toBe(1))
+    await typedIntoAsItIsRemoved(line, bo, ada)
+    await vi.waitFor(() => expect(line.heard).toContain('refused'))
+    line.release()
+    expect(await importing).toBe('saved')
+    expect(await namedFiles(id)).toEqual({ 'Importerad: bo.md': 'bo.md' })
+  })
+
+  it('ends a save with its own refusal, and not with that of an edit sent beside it', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    // The store moves on behind the actor's back, so the version Bo asks for is a conflict.
+    await run.projects.replace(id, 1, { ...projectDoc(), name: 'Skrivet förbi aktören' })
+    let saving: Promise<unknown> = Promise.resolve()
+    await typedIntoAsItIsRemoved(line, bo, ada, () => {
+      saving = bo.save()
+    })
+    expect(await saving).toEqual({ ok: false, reason: 'conflict' })
+  })
+
+  // And the other way: a refused save is the save's, and an edit sent with it is still the edit it
+  // was — it lands, and the others see it.
+  it('ends a refused save and leaves the edit waiting beside it to land', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    await run.projects.replace(id, 1, { ...projectDoc(), name: 'Skrivet förbi aktören' })
+    line.holdRequests()
+    bo.setCell('knight', 'title', 'Riddarinna')
+    const saving = bo.save()
+    line.letOut()
+    expect(await saving).toEqual({ ok: false, reason: 'conflict' })
+    await vi.waitFor(() => expect(ada.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna'))
+    expect(bo.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna')
+    expect(bo.dirty).toBe(true)
+  })
+
+  // A server from before #991 says no address, and a page loaded since has to go on hearing it
+  // through a deploy: an unaddressed refusal is read the way it always was, as the save's.
+  it('reads a refusal without an address as the answer to the save, as before', async () => {
+    const line = new SavedHeldBack({ unaddressed: true })
+    const { id, bo } = await twoEditors(line)
+    await run.projects.replace(id, 1, { ...projectDoc(), name: 'Skrivet förbi aktören' })
+    expect(await bo.save()).toEqual({ ok: false, reason: 'conflict' })
+  })
+})
+
+// A refused edit leaves nothing behind (#993). The editor applies its own edit at once and keeps it
+// until the actor answers; one the actor refuses, but the editor could apply by itself, stayed in
+// that keeping and was laid on top of the actor's document again when the actor handed it over.
+// The editor then showed what nobody else had, under an «Osparat» that saving could not take away.
+describe('an edit the actor refuses (#993)', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  // Bo and Ada with the same game open. Bo's is the line whose requests can be held on the way out.
+  const twoEditors = async (line: SavedHeldBack) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    // Nothing the actor says is held back on the way in: only Bo's requests are late.
+    line.release()
+    setEditSocketImplementation(line.Line)
+    const bo = await openClient(created.id)
+    await vi.waitFor(() => expect(bo.connected).toBe(true))
+    setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    const ada = await openClient(created.id)
+    await vi.waitFor(() => expect(ada.connected).toBe(true))
+    return { id: created.id, bo, ada }
+  }
+  // The actor's document, as an editor that opens the game now is handed it.
+  const actorDoc = async (id: string) => {
+    const fresh = await openClient(id)
+    await vi.waitFor(() => expect(fresh.who).not.toBeNull())
+    return fresh.doc
+  }
+
+  it('takes the column Bo named in the moment Ada named it with other capitals off his editor again', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    line.holdRequests()
+    bo.addField('Kraft')
+    // Ada names the same column and saves it; Bo hears both before his own edit has left.
+    ada.addField('kraft')
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(columnsOf(bo.doc)).toContain('kraft'))
+    await vi.waitFor(() => expect(line.heard).toContain('saved'))
+    line.letOut()
+    // The actor folds a name that differs only in its capitals into the column it has (#694).
+    await vi.waitFor(() => expect(line.heard).toContain('refused'))
+    await vi.waitFor(() => expect(line.heard.slice(line.heard.indexOf('refused'))).toContain('project'))
+    expect(columnsOf(bo.doc)).toEqual(columnsOf(await actorDoc(id)))
+    expect(bo.doc).toEqual(await actorDoc(id))
+    expect(bo.dirty).toBe(false)
+    expect(bo.refusedEdits).toBe(1)
+  })
+
+  // Three of Bo's edits on the line at once, and the actor refuses the one in the middle. The other
+  // two land and the refused one is the only one to go: an answer taken for the wrong edit took
+  // off one that had landed and kept the refused one, laid on top at the next handover.
+  it('takes off only the refused one of several edits on the line, and lets the others land', async () => {
+    const line = new SavedHeldBack()
+    const { id, bo, ada } = await twoEditors(line)
+    line.holdRequests()
+    bo.setCell('knight', 'title', 'Riddarinna')
+    bo.addField('Kraft')
+    bo.setCell('wizard', 'title', 'Häxmästare')
+    ada.addField('kraft')
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(line.heard).toContain('saved'))
+    line.letOut()
+    await vi.waitFor(() => expect(ada.doc.rows.find((r) => r.id === 'wizard')?.fields['title']).toBe('Häxmästare'))
+    expect(ada.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna')
+    expect(columnsOf(ada.doc)).not.toContain('Kraft')
+    const actor = await actorDoc(id)
+    await vi.waitFor(() => expect(bo.doc).toEqual(actor))
+    expect(bo.refusedEdits).toBe(1)
+    // And what Bo holds is what is saved once Ada saves it: nothing of his is still waiting.
+    expect(await ada.save()).toEqual({ ok: true, rev: 3 })
+    await vi.waitFor(() => expect(bo.rev).toBe(3))
+    expect(bo.dirty).toBe(false)
+  })
+
+  // A server from before the number answers without it, and a page loaded since has to go on
+  // working against it through a deploy: its echoes are taken oldest first, as they always were,
+  // and an edit refused because what it wrote in is gone falls off at the handover, as before.
+  it('goes on working against a server that gives no number back', async () => {
+    const line = new SavedHeldBack({ unnumbered: true })
+    const { id, bo, ada } = await twoEditors(line)
+    line.holdRequests()
+    bo.setCell('dragon', 'title', 'Drakhona')
+    bo.setCell('knight', 'title', 'Riddarinna')
+    ada.removeRow('dragon')
+    await vi.waitFor(() => expect(bo.doc.rows.some((r) => r.id === 'dragon')).toBe(false))
+    line.letOut()
+    await vi.waitFor(() => expect(ada.doc.rows.find((r) => r.id === 'knight')?.fields['title']).toBe('Riddarinna'))
+    const actor = await actorDoc(id)
+    await vi.waitFor(() => expect(bo.doc).toEqual(actor))
+    expect(bo.refusedEdits).toBe(1)
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(bo.rev).toBe(2))
+    expect(bo.dirty).toBe(false)
+  })
+
+  // What a save behind a refused edit made (#994). The version is the actor's document when the save
+  // reached it, and the refused edit is not in it. The editor took what it held as the save left for
+  // the saved document — the refused edit included — so once the refused edit was taken off again,
+  // the editor held exactly the version and still said «Osparat».
+  describe('a save sent behind an edit the actor refuses (#994)', () => {
+    const title = (doc: { rows: { id: string; fields: Record<string, unknown> }[] }, id: string) => doc.rows.find((r) => r.id === id)?.fields['title']
+
+    it('says saved once the refused edit is gone, because what Bo holds is the version his save made', async () => {
+      const line = new SavedHeldBack()
+      const { id, bo, ada } = await twoEditors(line)
+      line.holdRequests()
+      bo.setCell('knight', 'title', 'Riddarinna')
+      bo.addField('Kraft')
+      const saving = bo.save()
+      ada.addField('kraft')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      await vi.waitFor(() => expect(columnsOf(bo.doc)).toContain('kraft'))
+      line.letOut()
+      expect(await saving).toEqual({ ok: true, rev: 3 })
+      // The version holds Bo's edit that landed and not the one that was refused.
+      const version = await run.projects.at(id, 3)
+      expect(title(version!, 'knight')).toBe('Riddarinna')
+      expect(columnsOf(version!)).not.toContain('Kraft')
+      expect(bo.refusedEdits).toBe(1)
+      expect(bo.doc).toEqual(await actorDoc(id))
+      expect(bo.dirty).toBe(false)
+    })
+
+    // And the save says no more than that: an edit Bo makes while that save travels is not in its
+    // version, and stays unsaved however the handover in between rebuilt his document.
+    it('still says unsaved for an edit made while that save travels', async () => {
+      const line = new SavedHeldBack()
+      const { id, bo, ada } = await twoEditors(line)
+      line.holdRequests()
+      bo.addField('Kraft')
+      const saving = bo.save()
+      bo.setCell('wizard', 'title', 'Häxmästare')
+      ada.addField('kraft')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      await vi.waitFor(() => expect(columnsOf(bo.doc)).toContain('kraft'))
+      line.letOut()
+      // Nothing of Bo's had reached the actor when his save did, so the version it names is Ada's.
+      expect(await saving).toEqual({ ok: true, rev: 2 })
+      expect(title((await run.projects.at(id, 2))!, 'wizard')).not.toBe('Häxmästare')
+      await vi.waitFor(() => expect(title(ada.doc, 'wizard')).toBe('Häxmästare'))
+      expect(bo.doc).toEqual(await actorDoc(id))
+      expect(bo.dirty).toBe(true)
+    })
+
+    // The same holds for a version somebody else makes: an edit of Bo's that has not reached the
+    // actor is not in Ada's version, and taking what Bo holds for it said «Sparat» over that edit.
+    it('says unsaved for an edit of his own that had not landed when somebody else saved', async () => {
+      const line = new SavedHeldBack()
+      const { id, bo, ada } = await twoEditors(line)
+      line.holdRequests()
+      bo.setCell('wizard', 'title', 'Häxmästare')
+      ada.rename('Skogens herrar II')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      await vi.waitFor(() => expect(bo.rev).toBe(2))
+      expect(bo.dirty).toBe(true)
+      line.letOut()
+      await vi.waitFor(() => expect(title(ada.doc, 'wizard')).toBe('Häxmästare'))
+      expect(title((await run.projects.at(id, 2))!, 'wizard')).not.toBe('Häxmästare')
+      expect(bo.dirty).toBe(true)
+    })
+  })
+})
+
 // A click in the symbol library used to wait for the network before anything happened (#310).
 // An asset is named by the hash of its bytes and by nothing else, so that name is knowable here,
 // before the bytes have travelled — and once it is known, the whole click stops needing the
@@ -950,6 +1448,51 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
     }
   })
 
+  // The picture is in the game before its bytes are, so whatever draws it would ask the service
+  // for bytes it does not hold yet, get a 404, and go on showing a broken picture after they came
+  // (#907). The client says which bytes are still on their way — from the very edit that put the
+  // picture in, never a notice later — so a surface can wait for them instead of asking early.
+  it('says which bytes are on their way from the edit that placed them until they land, or fail', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    // Every hash the document held, on every notice, that was neither said to be on its way nor
+    // yet held by the service.
+    const early: string[] = []
+    const held = new Set<string>()
+    client.subscribe((c) => {
+      for (const hash of Object.keys(c.doc.pictures ?? {})) if (!c.assetsArriving.has(hash) && !held.has(hash)) early.push(hash)
+    })
+
+    const { land, landed } = holding()
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') {
+        await landed
+        if (new Uint8Array(await (init?.body as Blob).arrayBuffer())[10] === 0) return new Response('nope', { status: 500 })
+        const res = await real(input, init)
+        held.add(((await res.clone().json()) as { hash: string }).hash)
+        return res
+      }
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      const adding = client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))
+      await vi.waitFor(() => expect(client.assetsArriving.size).toBe(1))
+      land()
+      const hash = await adding
+      expect(client.doc.pictures?.[hash]).toEqual({ name: 'drake.png' })
+      expect(client.assetsArriving.size).toBe(0)
+      expect(early).toEqual([])
+
+      // And a picture whose bytes never arrive is not left waiting for them.
+      const failed = new Uint8Array([...PNG.slice(0, 10), 0])
+      await expect(client.addPicture(new File([failed], 'aldrig.png', { type: 'image/png' }))).rejects.toThrow()
+      expect(client.assetsArriving.size).toBe(0)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
   it('costs nothing on the wire for a typeface the game already has', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
@@ -998,8 +1541,8 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
   // entry is taken back exactly as a placement is (#310): nothing that happened, no row in the
   // history — and the caller is told, in words that name what went and why (L37).
   it.each([
-    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' })), /^Bilden drake\.png kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500$/],
-    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' })), /^Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500$/],
+    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' })), /^Bilden drake\.png kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen$/],
+    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' })), /^Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen$/],
   ])('leaves the document exactly as it was when the bytes of %s never arrive, and says so', async (_what, take, said) => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
@@ -1102,28 +1645,28 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
       take: (client: ProjectClient) => client.useSymbol(skold),
       holds: (client: ProjectClient) => client.doc.icons['sköld'] !== undefined,
       then: (client: ProjectClient) => client.addPicture(picture()),
-      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
     {
       what: 'a symbol placed on a card',
       take: (client: ProjectClient) => client.placeIcon(skold, 'front', null),
       holds: (client: ProjectClient) => client.doc.icons['sköld'] !== undefined || (client.doc.template.faces['front']?.base ?? []).some((e) => e.kind === 'icons'),
       then: (client: ProjectClient) => client.addPicture(picture()),
-      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
     {
       what: 'a typeface',
       take: (client: ProjectClient) => client.useFont(typeface()),
       holds: (client: ProjectClient) => client.doc.fonts?.['Rubrikserif'] !== undefined,
       then: (client: ProjectClient) => client.addPicture(picture()),
-      said: 'Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
     {
       what: 'a picture',
       take: (client: ProjectClient) => client.addPicture(picture()),
       holds: (client: ProjectClient) => Object.keys(client.doc.pictures ?? {}).length > 0,
       then: (client: ProjectClient) => client.useFont(typeface()),
-      said: 'Bilden drake.png kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Bilden drake.png kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
   ] as const
 
@@ -1448,5 +1991,93 @@ describe('an editor whose role may not change the game', () => {
     expect(client.doc).toBe(before)
     expect(client.dirty).toBe(false)
     expect(client.canUndo).toBe(false)
+  })
+})
+
+// A file the service is certain to refuse is refused here, before a byte of it leaves (#742). The
+// gate's own rules — the four picture formats, read out of the bytes, and the 8 MB a file may
+// weigh — are the protocol's and not the server's alone, so asking them in the browser is the same
+// question asked where the answer is free: a 19.6 MB photo used to travel the whole way over a home
+// line before the 413 came back, and every refusal left a resource error in the console. The
+// document is not touched either, so nothing is drawn from bytes that are never coming.
+describe('a file the gate would refuse never leaves the browser (#742)', () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+  const sent = (): { posts: string[]; hangUp: () => void } => {
+    const real = globalThis.fetch
+    const posts: string[] = []
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if ((init?.method ?? 'GET') === 'POST') posts.push(new URL(String(input)).pathname)
+      return real(input, init)
+    }) as typeof fetch
+    return {
+      posts,
+      hangUp: () => {
+        globalThis.fetch = real
+      },
+    }
+  }
+  // A PNG that weighs more than the gate takes: the signature first, so only its size is wrong.
+  const heavy = (): File => {
+    const bytes = new Uint8Array(9 * 1024 * 1024)
+    bytes.set(PNG)
+    return new File([bytes], 'stor.png', { type: 'image/png' })
+  }
+  const svg = (): File => new File(['<svg xmlns="http://www.w3.org/2000/svg"/>'], 'logga.svg', { type: 'image/svg+xml' })
+
+  it.each([
+    ['too heavy', heavy, 'stor.png', 'filen är för stor (max 8 MB)'],
+    ['a drawing and not a picture', svg, 'logga.svg', 'filen är inte PNG, JPEG, GIF eller WebP'],
+  ] as const)('refuses a picture that is %s without posting it or touching the game', async (_what, file, name, why) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const before = client.doc
+    const line = sent()
+    try {
+      // The picture is named, as a taken-back one is (L37) — but nothing is said to be removed,
+      // because nothing was added.
+      await expect(client.addPicture(file())).rejects.toThrow(`Bilden ${name} kunde inte laddas upp: ${why}`)
+      await expect(client.uploadAsset(file(), 'image')).rejects.toThrow(why)
+      // Said in the reader's words, so a surface shows the reason rather than its own «failed» (#812).
+      await expect(client.addPicture(file())).rejects.toBeInstanceOf(Said)
+    } finally {
+      line.hangUp()
+    }
+    expect(line.posts).toEqual([])
+    expect(client.doc).toBe(before)
+    expect(client.undo()).toBeNull()
+  })
+})
+
+// A picture uploaded from a card's own image cell is a picture brought into the game like any
+// other (#742, L22 beslut 6): it keeps its file name, and the cell is written in the same step, so
+// one step back takes back the one thing the designer did.
+describe("a picture uploaded from a card's cell (#742, L22)", () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 4, 5, 6])
+
+  it('keeps the file name and writes the cell, as one step back', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const cardRef = client.doc.rows[0]!.id
+    const before = client.doc
+
+    const hash = await client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }), undefined, { cardRef, field: 'art' })
+
+    expect(client.doc.pictures?.[hash]).toEqual({ name: 'drake.png' })
+    expect(client.doc.rows[0]!.fields['art']).toBe(`asset:${hash}`)
+    client.undo()
+    expect(client.doc.pictures?.[hash]).toBeUndefined()
+    expect(client.doc.rows[0]!.fields['art']).toBe(before.rows[0]!.fields['art'])
+  })
+
+  it('writes the cell from a picture the game already has, under the name it already has', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const cardRef = client.doc.rows[1]!.id
+    const hash = await client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))
+
+    expect(await client.addPicture(new File([PNG], 'kopia.png', { type: 'image/png' }), undefined, { cardRef, field: 'art' })).toBe(hash)
+
+    expect(client.doc.pictures?.[hash]).toEqual({ name: 'drake.png' })
+    expect(client.doc.rows[1]!.fields['art']).toBe(`asset:${hash}`)
   })
 })

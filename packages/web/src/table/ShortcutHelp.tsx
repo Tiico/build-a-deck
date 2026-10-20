@@ -20,7 +20,10 @@ import { useT } from '../i18n/index.js'
 // thing, and two rows carrying one sentence is that sentence read twice for a single action.
 export type Shortcut = { press: readonly string[]; what: string }
 
-export function ShortcutHelp({ where, shortcuts }: { where: string; shortcuts: readonly Shortcut[] }) {
+// `named` says the disc's name beside it as well (#684): the room's television has a second «?»,
+// under the room code, and two identical discs told apart only by their aria-label are told apart
+// by nobody on the sofa.
+export function ShortcutHelp({ where, shortcuts, named = false }: { where: string; shortcuts: readonly Shortcut[]; named?: boolean }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const opener = useRef<HTMLButtonElement | null>(null)
@@ -49,6 +52,7 @@ export function ShortcutHelp({ where, shortcuts }: { where: string; shortcuts: r
           in conflict: one is what is drawn, the other what can be hit. */}
       <button ref={opener} type="button" className="byd-shortcut-open" aria-expanded={open} aria-label={name} onClick={() => setOpen((was) => !was)}>
         <span>?</span>
+        {named && <b aria-hidden="true">{t('help.title')}</b>}
       </button>
     </div>
   )

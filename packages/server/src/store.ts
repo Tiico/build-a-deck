@@ -1,4 +1,4 @@
-import type { Applied, GameVersionId } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied, type GameVersionId } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import type { Deck } from './faces.js'
 
@@ -13,6 +13,12 @@ export type { Deck }
 // Admission (DRIFT §9): `code` is what guests reach the table by, alive until `codeExpiresAt`,
 // and `hostKeyHash` is the hash of the key that opens the table's own view.
 export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
+// A session as it is read back: everything but its decks (#1012). A deck names its pictures and
+// typefaces by hash since #1028, but one made before that carries them as data URLs, tens of
+// megabytes for a game with art on every card — and the session is read by every door a table has:
+// each socket that opens, each code looked up, each list of tables. The deck is read by the one
+// reader that deals from it, through `deckOf`.
+export type SessionInfo = Omit<SessionRecord, 'deck'>
 
 // A guest's admission (DRIFT §9): the hash of the token a phone or an observer connects with,
 // what it admits to, and the name it was bought under. A pending admission expires unless it
@@ -23,7 +29,13 @@ export type PlayedRecord = GuestRecord & { sessionId: string }
 
 export type LogStore = {
   createSession(record: SessionRecord): Promise<void>
-  loadSession(id: string): Promise<SessionRecord | null>
+  loadSession(id: string): Promise<SessionInfo | null>
+  // The deck a table is refreshed to (C7), kept under the version it is for. Written before the
+  // version.change line is committed, so a log that says a version always has its deck.
+  addDeck(sessionId: string, version: GameVersionId, deck: Deck): Promise<void>
+  // The deck a table plays at `version`: the one «Uppdatera» moved it to, or else the start deck,
+  // which stays where it was because that is where replay begins (#677). Null without a deck.
+  deckOf(sessionId: string, version: GameVersionId): Promise<Deck | null>
   append(sessionId: string, lines: readonly Applied[]): Promise<void>
   read(sessionId: string): Promise<Applied[]>
   // Sessions whose latest line (or creation, if none) is older than `olderThan` and that have
@@ -35,12 +47,17 @@ export type LogStore = {
   // Admission (DRIFT §9): the session behind a code, and giving a session its (next) code.
   sessionByCode(code: string): Promise<{ id: string; codeExpiresAt: string } | null>
   setCode(sessionId: string, code: string, expiresAt: string): Promise<void>
+  // «Ny kod» (#820): a new code and a new host key in one write, so a leaked key is taken back
+  // with the code it was leaked beside, and there is never a moment when only one of them is new.
+  rotateAdmission(sessionId: string, code: string, expiresAt: string, hostKeyHash: string): Promise<void>
   // Atomically reserves a live seat. False means another live guest already holds it.
   // Observer admissions do not reserve a seat.
   issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean>
   // Turns a still-valid pending admission into a longer-lived active admission.
   activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null>
   guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null>
+  // Every admission ever given at a table, revoked ones too, oldest first: who came to it (#1010).
+  guestsAt(sessionId: string): Promise<GuestRecord[]>
   // Revokes every token for a seat (or every observer token, for null); returns how many.
   revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number>
   // Claiming (G1): the admission behind a token becomes the account's, once; null when there
@@ -48,6 +65,9 @@ export type LogStore = {
   claimGuest(tokenHash: string, accountId: string): Promise<PlayedRecord | 'other' | null>
   // Every admission an account has claimed, newest first.
   guestsOf(accountId: string): Promise<PlayedRecord[]>
+  // «Tillbaka till bordet» (#690): the account's newest live admission at a table is given a new
+  // token in place of its old one, keeping its seat, name and account; null when there is none.
+  returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null>
 }
 
 // A table as a list can show it before anyone opens it: which session, and the moment of its
@@ -64,6 +84,7 @@ export class SeqConflictError extends Error {
 // In-memory store for tests and local play. Same contract, no durability.
 export class MemoryLogStore implements LogStore {
   private readonly sessions = new Map<string, SessionRecord>()
+  private readonly decks = new Map<string, Map<GameVersionId, Deck>>()
   private readonly logs = new Map<string, Applied[]>()
   private readonly createdAt = new Map<string, number>()
   private readonly guests = new Map<string, GuestRecord[]>()
@@ -75,9 +96,23 @@ export class MemoryLogStore implements LogStore {
     this.createdAt.set(record.id, Date.now())
   }
 
-  async loadSession(id: string): Promise<SessionRecord | null> {
+  async loadSession(id: string): Promise<SessionInfo | null> {
     const r = this.sessions.get(id)
-    return r ? structuredClone(r) : null
+    if (!r) return null
+    const { deck: _deck, ...info } = r
+    return structuredClone(info)
+  }
+
+  async addDeck(sessionId: string, version: GameVersionId, deck: Deck): Promise<void> {
+    if (!this.sessions.has(sessionId)) throw new Error(`unknown session ${sessionId}`)
+    const decks = this.decks.get(sessionId) ?? new Map<GameVersionId, Deck>()
+    decks.set(version, structuredClone(deck))
+    this.decks.set(sessionId, decks)
+  }
+
+  async deckOf(sessionId: string, version: GameVersionId): Promise<Deck | null> {
+    const deck = this.decks.get(sessionId)?.get(version) ?? this.sessions.get(sessionId)?.deck
+    return deck ? structuredClone(deck) : null
   }
 
   async append(sessionId: string, lines: readonly Applied[]): Promise<void> {
@@ -103,7 +138,7 @@ export class MemoryLogStore implements LogStore {
     const out: SessionSummary[] = []
     for (const [id, record] of this.sessions) {
       if (record.project !== project) continue
-      out.push({ id, lastAt: this.logs.get(id)?.at(-1)?.at ?? null })
+      out.push({ id, lastAt: this.logs.get(id)?.findLast((l) => PHYSICAL_VERBS.includes(l.intent.v))?.at ?? null })
     }
     // Insertion order is the order they were started; the newest table is the one being played.
     return out.reverse()
@@ -126,6 +161,12 @@ export class MemoryLogStore implements LogStore {
     r.codeExpiresAt = expiresAt
   }
 
+  async rotateAdmission(sessionId: string, code: string, expiresAt: string, hostKeyHash: string): Promise<void> {
+    await this.setCode(sessionId, code, expiresAt)
+    const r = this.sessions.get(sessionId)
+    if (r) r.hostKeyHash = hostKeyHash
+  }
+
   async issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean> {
     if (!this.sessions.has(sessionId)) throw new Error(`unknown session ${sessionId}`)
     const guests = this.guests.get(sessionId) ?? []
@@ -141,6 +182,10 @@ export class MemoryLogStore implements LogStore {
   async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {
     const g = (this.guests.get(sessionId) ?? []).find((x) => x.tokenHash === tokenHash)
     return g ? structuredClone(g) : null
+  }
+
+  async guestsAt(sessionId: string): Promise<GuestRecord[]> {
+    return (this.guests.get(sessionId) ?? []).map((g) => structuredClone(g))
   }
 
   async activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null> {
@@ -167,6 +212,15 @@ export class MemoryLogStore implements LogStore {
       for (const g of guests) if (g.accountId === accountId) out.push({ ...structuredClone(g), sessionId })
     }
     return out.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
+  }
+
+  async returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null> {
+    const live = (this.guests.get(sessionId) ?? [])
+      .filter((g) => g.accountId === accountId && g.revokedAt === undefined && Date.parse(g.expiresAt) > Date.parse(now))
+      .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))[0]
+    if (!live) return null
+    live.tokenHash = tokenHash
+    return structuredClone(live)
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {

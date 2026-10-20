@@ -1,5 +1,7 @@
 /* A game's own menu (G1, #475): under a tile's ⋯ in «Mina spel», and under the ⋯ beside the game's
    name in the editor (#542). Where it hangs is the page's; what it looks like is said here. */
 .byd-game-menu { position: absolute; z-index: 5; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
-.byd-game-menu button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
-.byd-game-menu button:hover { background: #262a35; }
+.byd-game-menu :is(button, a) { min-height: 44px; box-sizing: border-box; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; text-decoration: none; display: flex; align-items: center; }
+.byd-game-menu :is(button, a):hover { background: #262a35; }
+/* A running table is opened before a new one is started (#724): a rule between the two kinds. */
+.byd-game-menu a + button { margin-top: 4px; border-top: 1px solid #262a35; border-radius: 0 0 7px 7px; }

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyper 2026-10-08 — statussidan i rummet</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { max-width: 760px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { color: #fff; font-size: 20px; margin: 0 0 6px; }
+  .under { color: var(--quiet-2); font-size: 13px; line-height: 1.6; margin: 0 0 24px; }
+  a.rad { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #e6ecfa; text-decoration: none; }
+  a.rad:hover { border-color: var(--primary-mark); background: #1b2030; }
+  a.rad:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  a.rad b { display: block; font-size: 14px; margin-bottom: 2px; }
+  a.rad small { color: var(--quiet-2); font-size: 12px; line-height: 1.45; }
+  a.rad .nr { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: #24507f; color: #fff; font-weight: 700; font-size: 13px; }
+  a.rad em { font-style: normal; color: var(--quiet); font-size: 11px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <h1>Prototyper 2026-10-08 — statussidan i rummet</h1>
+  <p class="under">
+    Hur stor D5:s statussida och skalet från #749 ska vara på TV:n och i bordsläget, där K26:s golv
+    är 24 px och sidan i dag ritar 12–26 (#925). Bilderna är det byggda appen på e2e-stacken med
+    varje variant lagd ovanpå den riktiga sidan, mätt i Chromium vid TV 1280 × 720, TV 1920 × 1080 och
+    bordsläge 1280 × 800; skripten ligger i <code>matning/</code>. Öppna över http
+    (<code>python3 -m http.server</code> i mappen), inte som fil.
+  </p>
+  <a class="rad" href="01-statussidan.html?v=b&amp;s=tv1920&amp;l=offline"><span class="nr">01</span><span><b>Statussidan i rummet</b><small>Nu och tre varianter — golvet, rummets brödtext, skylten — i fem lägen (laddar och dröjer i skalet, nätfel, saknas, stängt) på tre skärmar, med varje ords storlek mätt.</small></span><em>#925</em></a>
+</div>
+</body>
+</html>

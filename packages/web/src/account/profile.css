@@ -1,0 +1,85 @@
+/* The profile page (#999, #998 variant A): one column on the account's dark ground, a card per thing
+   the account has, and the key box in the account's green room (L13's roles, `.byd-account` tokens).
+   It travels with the page's own chunk, never in the sheet the felt's first frame blocks on. */
+.byd-profile {
+  --byd-profile-line: #262a35;
+  --byd-profile-ink: #e6ecfa;
+  --byd-profile-soft: #c3cbdd;
+  --byd-profile-quiet: #9aa3b8;
+  --byd-profile-ok: #7dd3a0;
+  --byd-profile-fail-bg: #3d2632;
+  --byd-profile-fail-ink: #ffe4ea;
+  --byd-profile-mark: #c9a7ff;
+  width: min(640px, 100%);
+  display: grid;
+  gap: 16px;
+}
+.byd-profile :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+/* A heading takes the focus when what had it went away (a key saved, a key removed). It cannot be
+   pressed, so it wears no ring (#555). */
+.byd-profile h2:focus-visible { outline: none; }
+
+.byd-profile-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--byd-profile-quiet); font-size: 14px; text-decoration: none; }
+.byd-profile-back:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.byd-profile-head { display: grid; gap: 4px; margin-bottom: 8px; }
+.byd-profile-head h1 { margin: 0; font-size: 28px; }
+.byd-profile-head p { overflow-wrap: anywhere; }
+
+.byd-profile-card { display: grid; gap: 12px; padding: 24px; border-radius: 16px; border: 1px solid var(--byd-profile-line); background: var(--byd-account-card-bg); color: var(--byd-profile-ink); font-size: 14px; }
+.byd-profile-card h2 { margin: 0; font-size: 18px; font-weight: 750; }
+.byd-profile-key { gap: 16px; }
+.byd-profile-quiet { color: var(--byd-profile-quiet); }
+.byd-profile-small { margin: 0; font-size: 13px; line-height: 1.5; }
+.byd-profile-lead { margin: 0; line-height: 1.5; color: var(--byd-profile-soft); }
+.byd-profile-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.byd-profile-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; box-sizing: border-box; border-radius: 10px; font: inherit; font-size: 14px; cursor: pointer; text-decoration: none; }
+
+/* A field: its label over it, at the account's own field ground. A picker is as wide as what it
+   says and never the card's whole width — «Claude Sonnet 5.5 (standard)» is a short name. */
+.byd-profile-field { display: grid; gap: 8px; justify-items: start; font-size: 13px; }
+.byd-profile-field > label { font-weight: 650; }
+.byd-profile-field > :is(input, select) { min-height: 44px; box-sizing: border-box; border-radius: 8px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font: inherit; font-size: 14px; }
+.byd-profile-field > input { justify-self: stretch; min-width: 0; padding: 0 12px; }
+.byd-profile-field > select { max-width: 100%; padding: 0 8px; cursor: pointer; }
+.byd-profile-field > input[aria-invalid='true'] { border-color: #f4b9c7; }
+.byd-profile-field > .byd-profile-quiet a { color: var(--byd-profile-soft); text-underline-offset: 3px; }
+.byd-profile-field > .byd-profile-quiet a:hover { color: #fff; }
+
+.byd-profile-form { display: grid; gap: 16px; }
+.byd-profile-providers { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.byd-profile-providers legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 650; }
+/* Valt (L13): the chosen provider carries the room's 3 px bar under it, never a fill. */
+.byd-profile-provider { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; box-sizing: border-box; border: 1px solid var(--byd-secondary-line); border-radius: 8px; color: var(--byd-secondary-ink); font-weight: 600; cursor: pointer; }
+.byd-profile-provider:has(input:checked) { box-shadow: inset 0 -3px 0 var(--byd-chosen-bar); color: var(--byd-chosen-ink); }
+.byd-profile-provider:has(input:focus-visible) { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-profile-provider input { width: 16px; height: 16px; margin: 0; accent-color: var(--byd-chosen-bar); }
+.byd-profile-provider input:focus-visible { outline: none; }
+
+/* What is sent where (E4): always in view, marked as something to read rather than to press. */
+.byd-profile-note { margin: 0; padding-left: 12px; border-left: 3px solid var(--byd-profile-mark); color: var(--byd-profile-soft); font-size: 13px; line-height: 1.5; }
+
+.byd-profile-saved { margin: 0; display: flex; gap: 12px; align-items: flex-start; line-height: 1.5; }
+/* The last four stay together: «…» on one line and «x7Qd» on the next is not a key's end. */
+.byd-profile-saved code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; padding: 0 4px; border-radius: 4px; background: #232838; white-space: nowrap; }
+.byd-profile-tick { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 50%; background: var(--byd-profile-ok); color: #0b2a18; font-size: 13px; font-weight: 800; }
+.byd-profile-done { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border-radius: 10px; background: #1b2a22; color: #d8ffe8; font-size: 14px; }
+.byd-profile-fail { display: grid; gap: 4px; margin: 0; padding: 12px; border-radius: 8px; background: var(--byd-profile-fail-bg); color: var(--byd-profile-fail-ink); font-size: 13px; line-height: 1.45; }
+.byd-profile-fail-line { color: #ffb4c4; font-size: 13px; margin: 0; }
+
+/* «Ta bort nyckeln?» is the one question (L9): a strip where it was asked, the answer that keeps the
+   key first and holding the focus, the one that cannot be undone in red and in words. */
+.byd-profile-question { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 8px; background: #3b3222; color: #ffeccc; }
+.byd-profile-question > p { flex: 1 1 240px; margin: 0; line-height: 1.45; }
+/* The secondary line is 2.92:1 on the strip's amber, so the strip draws its own: #a39a86 is 4.52:1
+   there (L13: a line is held to 3:1 against the ground it lands on). */
+.byd-profile-question > button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #a39a86; background: transparent; color: var(--byd-secondary-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.byd-profile-question > button[data-kind='danger'] { border-color: #7a3243; background: #7a3243; color: #ffe4ea; font-weight: 700; }
+
+.byd-profile-facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; }
+.byd-profile-facts dt { color: var(--byd-profile-quiet); }
+.byd-profile-facts dd { margin: 0; overflow-wrap: anywhere; }
+.byd-profile .byd-about { margin-top: 8px; }
+
+@media (max-width: 480px) {
+  .byd-profile-card { padding: 16px; }
+}

@@ -63,8 +63,9 @@ const SIZES: Record<ElementKind, { w: number; h: number }> = {
 }
 
 // A new element of a kind: in the middle of the card, so it is seen the moment it is there, with
-// a free id and the deck's first field to show. Everything else is a default the property panel
-// can change; nothing here is a decision the designer cannot take back.
+// a free id and the field the caller chose for it to show — or, with none, a value that draws
+// nothing (#700). Everything else is a default the property panel can change; nothing here is a
+// decision the designer cannot take back.
 export function newElement(kind: ElementKind, opts: { taken: readonly string[]; field?: string | undefined; card: CardSize }): Element {
   const { w, h } = SIZES[kind]
   const box = { id: freeId(kind, opts.taken), x: round((opts.card.widthMm - w) / 2), y: round((opts.card.heightMm - h) / 2), w, h }
@@ -125,9 +126,11 @@ export function iconElement(name: string, opts: { taken: readonly string[]; card
 // away to the other side — and setting either of W and H in the panel sets both.
 //
 // Only for an icon bound to a name. A row of icons reads a column (L1) and its box is a strip
-// several symbols stand in; how big they are is a separate measure there, and rightly so.
+// several symbols stand in; how big they are is a separate measure there, and rightly so. A row
+// the tool placed in a game with no column to read is bound to no name at all (#700), and that is
+// still a row and not an icon: a 24 × 6 mm strip squared off the moment its width was typed (#829).
 export function iconSized(el: Element | undefined, patch: Partial<Element>): Partial<Element> {
-  if (!el || el.kind !== 'icons' || 'field' in el.bind) return patch
+  if (!el || el.kind !== 'icons' || 'field' in el.bind || el.bind.literal === '') return patch
   const box = patch as Partial<Box>
   if (box.w === undefined && box.h === undefined) return patch
   const w = box.w ?? el.w

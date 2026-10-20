@@ -11,7 +11,7 @@ import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } 
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
-import type { Subscriber, TableHost } from './actor.js'
+import type { Subscriber, TableActor, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, liftDoc, type ProjectCredit, type ProjectRecord, type ProjectStore, type RuleDoc } from './projects.js'
 import { setupFromProject } from './setup.js'
@@ -19,14 +19,20 @@ import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff
 import { ProjectHost, type EditorMessage } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, namesOfProject, peekFace, type CardFace } from './names.js'
-import { SurveyAnswer, type SurveyStore } from './surveys.js'
+import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
+import { playtestOf, type PlaytestSource } from './playtest.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
-import { facesOf, printExportOf } from './faces.js'
-import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
+import { printExportOf, queueFaces } from './faces.js'
+import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
+import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
+import { AiProviderError, type AiProviders } from './ai-providers.js'
+import type { Corpus } from './corpus.js'
+import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
+import { UPLOAD_POLICY, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -59,6 +65,18 @@ export type ServerOptions = {
   // The release this process is running, named in /health so the box can be asked what it is
   // (DRIFT §7, §8): the box is otherwise mute about its own version.
   release?: string
+  // Where a beta tester turns (#757, DRIFT): the box's own setting (`BYD_CONTACT`), named in
+  // /health so the login card and Mina spel can say it, and in the foot of the login mail. Never an
+  // address in the code; nothing is said when the box was given none.
+  contact?: string
+  // The designer's own key for the editor's AI help (#999, E4): sealed in the vault, proved and
+  // listed through the providers, tried a handful of times an hour per account. Without it the
+  // profile has no key to keep. `caps` are the ceilings on the editor's questions (#1001, `AI_CAPS`).
+  ai?: { vault: AiKeyVault; providers: AiProviders; limiter?: KeyTryLimiter; caps?: Partial<AiCaps> }
+  // The replay corpus's door (#1011, DRIFT §7): the operator, and the accounts that said yes in
+  // their invitation, whose tables' exports the operator may read. Read from the box's settings
+  // at start (`corpusFromEnv`); without it no account reads another's tables.
+  corpus?: Corpus
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -68,6 +86,23 @@ function admission(opts: ServerOptions): { code: string; hostKey: string; record
   const code = newCode()
   const hostKey = newSecret()
   return { code, hostKey, record: { code, codeExpiresAt: codeExpiry(clock(opts)), hostKeyHash: hash(hostKey) } }
+}
+
+// What the door says about every code that opens nothing (#675): one status and one body, so that
+// nothing in the answer tells whether a code once existed.
+const UNKNOWN_CODE = { error: 'unknown or expired code' }
+
+// The table a room code opens (DRIFT §9), or nothing. A code that never was, one that has gone out
+// or been rotated away, and one whose table has ended all open nothing, and are told apart nowhere
+// (beställarens beslut 2026-10-07, #938): an ended table is locked (C9) and its door hands out no
+// token (#485), and saying 410 for it said that the code had been real.
+async function openRoom(opts: ServerOptions, typed: string): Promise<{ id: string; actor: TableActor } | null> {
+  const code = normaliseCode(decodeURIComponent(typed))
+  const found = code ? await opts.store.sessionByCode(code) : null
+  if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return null
+  const actor = await opts.host.get(found.id)
+  if (!actor || actor.ended) return null
+  return { id: found.id, actor }
 }
 
 const DeckBody = z.object({
@@ -83,8 +118,9 @@ const ClaimBody = z.object({ token: z.string().min(1) })
 
 // The tables an account sat at (G1), newest first, each with what came of it: the game's name,
 // whether it ended, whether the survey was answered from that seat, how many moments were flagged
-// from it, and the code to come back by while the table is open and the code lives.
-export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string }
+// from it, the code to come back by while the table is open and the code lives, and whether its
+// game has been taken away since (#676).
+export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string; deleted?: true }
 async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[]> {
   const out: Played[] = []
   for (const g of await opts.store.guestsOf(accountId)) {
@@ -96,7 +132,9 @@ async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[
     const flags = log.filter((l) => l.intent.v === 'flag' && (g.kind === 'seat' ? l.by === g.seat : l.intent.observer === g.name)).length
     const surveyed = opts.surveys ? (await opts.surveys.list(g.sessionId)).some((s) => (g.kind === 'seat' ? s.seat === g.seat : s.observer === true && s.who === g.name)) : false
     const codeLives = session.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > clock(opts).getTime()
-    out.push({ session: g.sessionId, seat: g.seat, name: g.name, kind: g.kind, at: g.issuedAt, game: project?.name ?? null, version: session.version, ended, surveyed, flags, ...(!ended && codeLives && session.code ? { code: session.code } : {}) })
+    // A table whose game was taken away (#676) says so, rather than passing for «a table».
+    const deleted = session.project !== undefined && opts.projects !== undefined && project === null
+    out.push({ session: g.sessionId, seat: g.seat, name: g.name, kind: g.kind, at: g.issuedAt, game: project?.name ?? null, version: session.version, ended, surveyed, flags, ...(!ended && codeLives && session.code ? { code: session.code } : {}), ...(deleted ? { deleted: true as const } : {}) })
   }
   return out
 }
@@ -142,6 +180,21 @@ async function playtestReader(opts: ServerOptions, req: IncomingMessage, session
   const role = await opts.projects.roleOf(session.project, account.id)
   return role !== null && canStartTables(role) ? 'yes' : 'no'
 }
+// The replay corpus's door (#1011, DRIFT §7): the operator, by login, reading a table in a game
+// whose owner said yes in her invitation. Never with a key, and never a game from before accounts,
+// which has no owner to have said yes. It opens the export and nothing else; the caller is the one
+// route that asks it.
+async function corpusReader(opts: ServerOptions, req: IncomingMessage, session: SessionRecord): Promise<boolean> {
+  const corpus = opts.corpus
+  if (!corpus || !opts.auth || !opts.projects || !session.project) return false
+  if (/^Bearer\s/i.test(req.headers.authorization ?? '')) return false
+  const reader = await accountOf(opts.auth, req)
+  if (reader?.email.toLowerCase() !== corpus.operator) return false
+  const project = await opts.projects.load(session.project)
+  if (project?.owner === undefined) return false
+  const owner = await opts.auth.accountById(project.owner)
+  return owner !== null && corpus.accounts.includes(owner.email.toLowerCase())
+}
 // Answers a refused reader and says whether the caller may go on.
 async function mayReadPlaytest(opts: ServerOptions, req: IncomingMessage, res: ServerResponse, session: SessionRecord): Promise<boolean> {
   const may = await playtestReader(opts, req, session)
@@ -157,11 +210,33 @@ const CreateSession = z.object({
   deck: DeckBody.optional(),
 })
 
+// How long an idle keep-alive connection is kept open from this end (#986, DRIFT §2).
+//
+// The proxy in front — the box's traefik, or cloudflared on a box without one — pools its idle
+// connection to this server for 90 s by default and sends the next request on it. Node's own
+// default hangs up after 5 s, and a request the proxy sends in that same moment goes out on a
+// socket that is just closing: a 502 for nothing. Longer than the proxy, it is always the proxy
+// that lets go first, and it never sends on a connection it has already given up. Thirty seconds
+// of margin, so that a proxy tuned a little longer than its default does not bring the race back.
+const KEEP_ALIVE_MS = 120_000
+// Just above the idle timer, the way Node asks for it: a request whose first byte arrives at the
+// last moment of an idle connection is not cut off waiting for the rest of its headers. Still
+// inside the whole request's limit (Node's 300 s), which Node refuses to have the other way round.
+const HEADERS_TIMEOUT_MS = KEEP_ALIVE_MS + 1_000
+
 // HTTP for the few things that are not a table (health, creating a session), and one
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
 export function createServer(given: ServerOptions): Server {
-  const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter() }
-  const http = createHttpServer((req, res) => void route(opts, req, res))
+  const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter(), ...(given.ai ? { ai: { limiter: new KeyTryLimiter(), ...given.ai } } : {}) }
+  const http = createHttpServer({ keepAliveTimeout: KEEP_ALIVE_MS, headersTimeout: HEADERS_TIMEOUT_MS }, (req, res) => {
+    // A closing server lets go of a connection as soon as it goes quiet. Node hangs up the idle
+    // ones when `close` is called, but one still answering then becomes idle a moment later and
+    // would sit out the whole keep-alive timer above, with `close` waiting on it.
+    res.once('finish', () => {
+      if (!http.listening) setImmediate(() => http.closeIdleConnections())
+    })
+    void route(opts, req, res)
+  })
   const wss = new WebSocketServer({ noServer: true })
 
   http.on('upgrade', (req, socket, head) => {
@@ -221,11 +296,16 @@ function originOf(value: string | undefined): string | null {
   }
 }
 
+// The scheme the browser reached us by: what the proxy in front says, else what the public origin is.
+function schemeOf(opts: ServerOptions, req: IncomingMessage): string {
+  const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
+  return forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')
+}
+
 function browserOriginAllowed(opts: ServerOptions, req: IncomingMessage): boolean {
   const origin = originOf(req.headers.origin)
   if (!origin) return false
-  const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
-  const own = req.headers.host ? `${forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')}://${req.headers.host}` : null
+  const own = req.headers.host ? `${schemeOf(opts, req)}://${req.headers.host}` : null
   return [opts.publicOrigin, opts.appOrigin, own].some((candidate) => originOf(candidate ?? undefined) === origin)
 }
 
@@ -254,7 +334,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const loaded = await opts.host.loaded()
       // Every answer carries it, the 503s included: which version is broken is the first thing
       // asked back, and the box has nowhere else to say it (DRIFT §8).
-      const who = { ...(opts.release ? { release: opts.release } : {}), tables: loaded.length }
+      const who = { ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), tables: loaded.length }
       try {
         await opts.store.staleSessions(new Date(0))
       } catch (err) {
@@ -283,25 +363,23 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     // A code resolves to a session while it lives (DRIFT §9): what the join page asks first.
     const room = /^\/rooms\/([^/]+)$/.exec(url.pathname)
     if (req.method === 'GET' && room) {
-      const code = normaliseCode(decodeURIComponent(room[1] ?? ''))
-      const found = code ? await opts.store.sessionByCode(code) : null
-      if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
-      // A table that has ended is locked (C9), and the picker is told so rather than shown a table
-      // it can no longer sit down at (#485).
-      if ((await opts.host.get(found.id))?.ended) return json(res, 410, { error: 'session ended', session: found.id })
-      return json(res, 200, { session: found.id })
+      const found = await openRoom(opts, room[1] ?? '')
+      if (!found) return json(res, 404, UNKNOWN_CODE)
+      // The game's name, which the join card is headed with (#675). It is what `GET /sessions/:id`
+      // already says to whoever holds the id this answer hands out, so it tells nobody anything
+      // new — and the project it came from stays out of it.
+      const session = await opts.store.loadSession(found.id)
+      const named = session?.project && opts.projects ? await opts.projects.load(session.project) : null
+      return json(res, 200, { session: found.id, ...(named ? { name: named.name } : {}) })
     }
     // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
     const join = /^\/rooms\/([^/]+)\/join$/.exec(url.pathname)
     if (req.method === 'POST' && join) {
-      const code = normaliseCode(decodeURIComponent(join[1] ?? ''))
-      const found = code ? await opts.store.sessionByCode(code) : null
-      if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
+      // The code before the body: a code that opens nothing gets the same answer whatever was sent.
+      const found = await openRoom(opts, join[1] ?? '')
+      if (!found) return json(res, 404, UNKNOWN_CODE)
+      const { actor } = found
       const body = JoinBody.parse(JSON.parse(await readBody(req)))
-      const actor = await opts.host.get(found.id)
-      if (!actor) return json(res, 404, { error: 'unknown session' })
-      // And its door hands out nothing (#485): a token would land a newcomer in a finished game.
-      if (actor.ended) return json(res, 410, { error: 'session ended', session: found.id })
       if (body.seat !== undefined) {
         const seat = actor.seats().find((s) => s.id === body.seat)
         if (!seat) return json(res, 404, { error: `unknown seat ${body.seat}` })
@@ -332,13 +410,32 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (claimed === 'other') return json(res, 409, { error: 'another account has this session' })
       return json(res, 200, { session: claimed.sessionId, seat: claimed.seat, name: claimed.name })
     }
+    if (url.pathname === '/me/ai-key' || url.pathname.startsWith('/me/ai-key/')) return await routeAiKey(opts, req, res, url)
     if (req.method === 'GET' && url.pathname === '/me/played') {
       if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
       const account = await accountOf(opts.auth, req)
       if (!account) return json(res, 401, { error: 'log in first' })
       return json(res, 200, await playedBy(opts, account.id))
     }
-    // The host's controls (DRIFT §9): a new code, and a kick. With the host key, or the owner's cookie.
+    // «Tillbaka till bordet» (#690, beslut 2026-10-06): the guest goes back to her own seat and
+    // hand, not to the picker as a newcomer. The server keeps only a token's hash, so the account's
+    // admission is handed a new token in place of the old one — the seat, the name and the history
+    // stay as they were. An ended table hands out nothing, as its door does not (#485).
+    const back = /^\/me\/played\/([^/]+)\/return$/.exec(url.pathname)
+    if (req.method === 'POST' && back) {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const sessionId = decodeURIComponent(back[1] ?? '')
+      const actor = (await opts.store.loadSession(sessionId)) ? await opts.host.get(sessionId) : null
+      if (!actor) return json(res, 404, { error: 'unknown session' })
+      if (actor.ended) return json(res, 410, { error: 'session ended', session: sessionId })
+      const guestToken = newSecret()
+      const guest = await opts.store.returnGuest(sessionId, account.id, hash(guestToken), clock(opts).toISOString())
+      if (!guest) return json(res, 404, { error: 'no seat of yours at this table' })
+      return json(res, 200, { session: sessionId, token: guestToken, kind: guest.kind, seat: guest.seat, name: guest.name })
+    }
+    // The host's controls (DRIFT §9): a new code (and with it a new host key, #820), and a kick. With the host key, or the owner's cookie.
     const control = /^\/sessions\/([^/]+)\/(code|kick)$/.exec(url.pathname)
     if (req.method === 'POST' && control) {
       const sessionId = decodeURIComponent(control[1] ?? '')
@@ -351,9 +448,12 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         const expiresAt = codeExpiry(clock(opts))
         let code = newCode()
         for (let tries = 0; (await opts.store.sessionByCode(code)) !== null && tries < 5; tries++) code = newCode()
-        await opts.store.setCode(sessionId, code, expiresAt)
-        actor?.tellTable({ t: 'room', code, expiresAt })
-        return json(res, 200, { code, expiresAt })
+        // The host key goes with the code (#820): whoever saw the screen saw both. The screens that
+        // are open are handed the new key over their own connection — the table's, never a guest's.
+        const hostKey = newSecret()
+        await opts.store.rotateAdmission(sessionId, code, expiresAt, hash(hostKey))
+        actor?.tellTable({ t: 'room', code, expiresAt, hostKey })
+        return json(res, 200, { code, expiresAt, hostKey })
       }
       const { seat } = KickBody.parse(JSON.parse(await readBody(req)))
       if (!session.setup.seats.includes(seat)) return json(res, 404, { error: `unknown seat ${seat}` })
@@ -362,9 +462,18 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 200, { ok: true, revoked })
     }
     // Following an invitation (D3): whoever is signed in when they follow it joins the project
-    // with the role it names. The link is good once, and says nothing about the project until it
-    // has been used, so a stray link tells a stranger nothing.
+    // with the role it names. The link is good once. While it can still be followed it names the
+    // game it leads to (#691) — the name the mail already carried, for the login card the link
+    // lands on — and nothing more; a used, withdrawn or made-up link says nothing at all.
     const invite = /^\/invites\/([A-Za-z0-9_-]+)$/.exec(url.pathname)
+    // A browser following the link asks for the page, and gets the app (`PAGE_PATHS`), not this.
+    const pageWanted = Boolean(opts.staticDir) && (req.headers['accept'] ?? '').includes('text/html')
+    if (invite && req.method === 'GET' && opts.projects && !pageWanted) {
+      const project = await opts.projects.inviteTo(hash(decodeURIComponent(invite[1] ?? '')), clock(opts).toISOString())
+      const rec = project ? await opts.projects.load(project) : null
+      if (!rec) return json(res, 404, { error: 'unknown or spent invitation' })
+      return json(res, 200, { name: rec.name })
+    }
     if (invite && req.method === 'POST' && opts.projects) {
       const account = opts.auth ? await accountOf(opts.auth, req) : null
       if (!account) return json(res, 401, { error: 'log in first' })
@@ -403,7 +512,11 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const hash = face[1] ?? ''
       // In R2 (DRIFT §4): a short-lived link the browser follows and keeps for most of its
       // life, so a texture is one round trip to the house and then none.
-      const link = await opts.renders.link(hash, FACE_LINK_TTL_S)
+      // A booklet is opened by name (#678): the reader's tab and the file she saves say what it
+      // is. A face of a card is fetched by nobody's name and carries none.
+      const name = url.searchParams.get('name')
+      const disposition = name ? inlineDisposition(name) : undefined
+      const link = await opts.renders.link(hash, FACE_LINK_TTL_S, disposition)
       if (link) {
         res.writeHead(302, { location: link, 'cache-control': `private, max-age=${FACE_LINK_TTL_S - FACE_LINK_SLACK_S}` })
         res.end()
@@ -411,7 +524,13 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       }
       const bytes = await opts.renders.output(hash)
       if (bytes) {
-        res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
+        // The type is the file's own (#678): a booklet is a PDF, and answered as a picture it
+        // opened as a broken one.
+        res.writeHead(200, {
+          'content-type': renderedTypeOf(bytes),
+          'cache-control': 'public, max-age=31536000, immutable',
+          ...(disposition ? { 'content-disposition': disposition } : {}),
+        })
         res.end(Buffer.from(bytes))
         return
       }
@@ -427,12 +546,35 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 404, { error: 'unknown face' })
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
-      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res)) return
+      const policy = (scriptHashes: readonly string[]) => pagePolicy({ scriptHashes, socket: socketOrigin(req.headers.host, schemeOf(opts, req) === 'https'), objects: opts.objects?.origin ?? null })
+      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res, policy)) return
     }
     json(res, 404, { error: 'not found' })
   } catch (err) {
     json(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }
+}
+
+// What a rendering is, read off its first bytes: the queue renders PNG textures, and PDFs for
+// print and for the booklet. Anything else is bytes and is said to be.
+export function renderedTypeOf(bytes: Uint8Array): string {
+  const starts = (sig: number[]) => sig.every((b, i) => bytes[i] === b)
+  if (starts([0x25, 0x50, 0x44, 0x46, 0x2d])) return 'application/pdf'
+  if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png'
+  return 'application/octet-stream'
+}
+
+// `inline` with the name the file is to have (RFC 6266): the name in full as UTF-8, and a plain
+// ASCII stand-in for a reader that knows only the old form. Whatever the name holds, it never
+// leaves the quoted string, so a name cannot write a header of its own.
+export function inlineDisposition(name: string): string {
+  const plain = name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2010-\u2015]/g, '-')
+    .replace(/[^\x20-\x7e]|["\\]/g, '_')
+  const full = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `inline; filename="${plain}"; filename*=UTF-8''${full}`
 }
 
 // A face link lives an hour; the browser may reuse it for all but the last ten minutes, so a
@@ -448,6 +590,7 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.webmanifest': 'application/manifest+json',
   '.woff2': 'font/woff2',
   '.txt': 'text/plain; charset=utf-8',
 }
@@ -460,7 +603,7 @@ const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '
 // following it asks for HTML and gets the app, which accepts the invitation with a POST to the
 // same path; anything else asking gets the API's answer.
 const PAGE_PATHS = [/^\/invites\/[A-Za-z0-9_-]+$/]
-async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse): Promise<boolean> {
+async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse, policy: (scriptHashes: readonly string[]) => string): Promise<boolean> {
   const page = PAGE_PATHS.some((p) => p.test(pathname)) && (wants ?? '').includes('text/html')
   // The API never falls back to the app, whatever is or is not mounted.
   if (!page && API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
@@ -473,6 +616,9 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
   const hashed = file.includes(`${sep}assets${sep}`)
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
+  // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
+  // hashes of the file being sent.
+  if (type.startsWith('text/html')) head['content-security-policy'] = policy(await scriptHashesOf(file))
   // The box compresses what it serves (DRIFT §13, #372): the blocking stylesheet uncompressed is
   // the single largest item in the first painting's price. `Vary` goes on everything that *could*
   // have been compressed rather than on what was, because a cache between here and the browser
@@ -509,6 +655,9 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
   // accounts are disabled, projects are intentionally open and the same development flow works.
   if (ask.owner) {
+    // A table whose game was taken away (#676) is not someone else's table: it is told so, and
+    // never «the host key or its owner», which sent the owner looking for another account.
+    if (session.project && opts.projects && !(await opts.projects.load(session.project))) return { refused: 'the game was deleted' }
     if (!session.project || (opts.auth && (!browserOriginAllowed(opts, req) || (await hostOf(opts, req, session)) !== 'host'))) return { refused: 'the table needs the host key or its owner' }
     if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
     if (ask.role === 'observer') {
@@ -517,7 +666,18 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     }
     return { seat: ask.seat }
   }
-  if (ask.host !== null) return session.hostKeyHash && hash(ask.host) === session.hostKeyHash ? { seat: null } : { refused: 'the table needs the host key' }
+  // The table's own view (DRIFT §9): the host key opens it, and so does the login of whoever may
+  // open the game's tables (#748) — the server already knows who she is, so an owner who arrives
+  // without the key is not sent to log in to the account she is already in. A key that does not
+  // fit is no reason to shut her out either. The cookie is believed only from the app's own pages.
+  if (ask.host !== null || (ask.seat === null && ask.role === null && ask.token === null)) {
+    if (ask.host !== null && session.hostKeyHash && hash(ask.host) === session.hostKeyHash) return { seat: null }
+    if (opts.auth && session.project && opts.projects) {
+      if (!(await opts.projects.load(session.project))) return { refused: 'the game was deleted' }
+      if (browserOriginAllowed(opts, req) && (await hostOf(opts, req, session)) === 'host') return { seat: null }
+    }
+    return { refused: 'the table needs the host key' }
+  }
   const now = clock(opts)
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
@@ -525,6 +685,27 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name } : { refused: 'an observer needs a token' }
   if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
+}
+
+// Who is answering the survey (G3, #1021), or null for nobody this table admitted. A guest is
+// her admission: the token is tried the way the door tries it, and the name and the seat are the
+// admission's. Without a token it is the project's host, from the editor's own ways in, by the
+// same login the door lets her sit down with — never the table screen's key, which sits nowhere.
+async function surveySender(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyBody): Promise<Omit<SurveyAnswer, 'answers'> | null> {
+  const observer = body.observer === true
+  const seat = body.seat ?? null
+  if (body.token !== undefined) {
+    const now = clock(opts)
+    const guest = await opts.store.activateGuest(session.id, hash(body.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
+    if (!guest) return null
+    if (guest.kind === 'observer') return observer && seat === null ? { who: guest.name, seat: null, observer: true } : null
+    return !observer && seat === guest.seat ? { who: guest.name, seat: guest.seat } : null
+  }
+  if (!session.project) return null
+  if (opts.auth && (/^Bearer\s/i.test(req.headers.authorization ?? '') || (await hostOf(opts, req, session)) !== 'host')) return null
+  if (observer) return seat === null && body.who ? { who: body.who, seat: null, observer: true } : null
+  if (seat === null || !session.setup.seats.includes(seat)) return null
+  return { who: actor.seats().find((s) => s.id === seat)?.name ?? seat, seat }
 }
 
 // One editor on one project (D3). Only the account that owns the project may edit it; roles for
@@ -581,7 +762,10 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   const account = opts.auth ? await accountOf(opts.auth, req) : null
   const rec = projects ? await projects.load(projectId) : null
   if (!projects || !rec) {
-    ws.close(4004, 'unknown project')
+    // Nobody logged in learns nothing of which games exist (#754): an unknown id is told to log
+    // in, the same as a game that is somebody's.
+    if (!account && opts.auth) ws.close(4401, 'log in')
+    else ws.close(4004, 'unknown project')
     return
   }
   const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
@@ -602,26 +786,45 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   ws.on('close', leave)
   ws.on('message', (data) => {
     void (async () => {
+      // Which of the editor's requests a refusal answers (#991): an edit and a save can both be on
+      // the line at once, and the editor ends only the wait the refusal is about. A request that
+      // cannot be read is neither, and its refusal names none. A refused edit is named by the
+      // number its editor gave it (#993), when it gave one.
+      let to: 'edit' | 'save' | undefined
+      let ask: number | undefined
+      const refuse = (why: string) => send({ v: 'refused', why, ...(to ? { to } : {}), ...(ask === undefined ? {} : { ask }) })
       try {
         const raw: unknown = JSON.parse(data.toString())
         const msg = EditorRequest.parse(raw)
+        to = msg.t
         // A viewer watches the project change and does not change it (D3).
         if (!canEdit(role)) {
-          send({ v: 'refused', why: `en ${roleWord(role)} kan bara titta` })
+          refuse(`en ${roleWord(role)} kan bara titta`)
           return
         }
         if (msg.t === 'save') {
-          const saved = await actor.save()
-          if (!saved.ok) send({ v: 'refused', why: saved.reason })
+          const saved = await actor.save(editor.id)
+          if (!saved.ok) refuse(saved.reason)
           return
         }
-        await actor.edit(msg.intent as EditIntent, account?.id, editor.id)
+        ask = msg.ask
+        await actor.edit(msg.intent as EditIntent, account?.id, editor.id, ask)
       } catch (err) {
-        send({ v: 'refused', why: err instanceof Error ? err.message : String(err) })
+        refuse(err instanceof Error ? err.message : String(err))
         actor.resync(editor)
       }
     })()
   })
+}
+
+// The AI answers in flight on this server (#1001), counted against its ceilings.
+const FLIGHTS = new WeakMap<ServerOptions, AiFlight>()
+function flightOf(opts: ServerOptions, caps: Partial<AiCaps> | undefined): AiFlight {
+  const existing = FLIGHTS.get(opts)
+  if (existing) return existing
+  const flight = new AiFlight({ ...AI_CAPS, ...caps })
+  FLIGHTS.set(opts, flight)
+  return flight
 }
 
 // The editing actors of this server, made on first use so a server without projects has none.
@@ -634,8 +837,10 @@ function editors(opts: ServerOptions, projects: ProjectStore): ProjectHost {
   return host
 }
 
-// What an editor may send: an edit, or an ask to make a version of what stands now.
-const EditorRequest = z.union([z.object({ t: z.literal('edit'), intent: z.record(z.string(), z.unknown()) }), z.object({ t: z.literal('save') })])
+// What an editor may send: an edit, or an ask to make a version of what stands now. An edit may
+// carry the number its editor gave it (#993), which is how the editor knows what answers it; a
+// page from before the number sends none.
+const EditorRequest = z.union([z.object({ t: z.literal('edit'), intent: z.record(z.string(), z.unknown()), ask: z.number().int().optional() }), z.object({ t: z.literal('save') })])
 
 async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
   const deliver = holdFrames(ws)
@@ -732,8 +937,9 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
 
 // Projects (L4, L5): a revisioned document, and "start a table" which expands the rows into a
 // session with its deck so textures start rendering at once.
-// The deck a table or a print is made from: the project's rows with their images inlined (E1),
-// so the compiled page is complete and the render worker needs nothing but the page.
+// The deck a table or a print is made from: the project's rows with their pictures and typefaces
+// named by hash (E1, #1028). The compiled page says which bytes it is drawn from, and the render
+// worker reads them from the store the app put them in (DRIFT §4).
 async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   if (!opts.assets) return deckFromProject(rec)
   const { rows, motifs } = await resolveAssets(rec.rows, opts.assets, rec.pictures ?? {})
@@ -766,8 +972,8 @@ async function bookletJobOf(opts: ServerOptions, rec: ProjectRecord, rules: Rule
   const compiled = bookletOf({
     rules: renderRules(rules, namesOfProject(rec), arrangementOf(rec)),
     icons: opts.assets ? await resolveIcons(rec.icons, opts.assets) : rec.icons,
-    // The pictures the book holds travel with it (#173): the printer is handed the bytes, never
-    // a reference it could not follow.
+    // The pictures the book holds travel with it (#173), named by hash as a card's are (#1028):
+    // the worker reads the bytes from the store, and a picture that is gone is left out.
     images: opts.assets ? await resolveRuleImages(rules, opts.assets) : {},
     pageMm: A5,
     credits: creditsOf(rec),
@@ -917,7 +1123,7 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       json(res, 404, { error: 'unknown asset' })
       return true
     }
-    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable' })
+    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable', 'content-security-policy': UPLOAD_POLICY })
     res.end(Buffer.from(got.bytes))
     return true
   }
@@ -935,7 +1141,7 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       json(res, 404, { error: 'unknown asset' })
       return true
     }
-    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable' })
+    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable', 'content-security-policy': UPLOAD_POLICY })
     res.end(Buffer.from(got.bytes))
     return true
   }
@@ -951,7 +1157,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   // is open to anyone, as it always was.
   const allowed = async (id: string, may: (role: Role) => boolean): Promise<{ rec: ProjectRecord; role: Role } | { status: number; error: string }> => {
     const rec = await projects.load(id)
-    if (!rec) return { status: 404, error: 'unknown project' }
+    // Whether a game exists is its owner's to know (G1, #754): ids are short readable slugs, so
+    // nobody logged in is told to log in whether the id names a game or nothing at all. Only an
+    // account learns that there is no such game. A game from before accounts is open to anyone,
+    // so its existence was never a secret.
+    if (!rec) return opts.auth && !account ? { status: 401, error: 'log in first' } : { status: 404, error: 'unknown project' }
     if (rec.owner === undefined) return { rec, role: 'owner' }
     if (!account) return { status: 401, error: 'log in first' }
     const role = await projects.roleOf(id, account.id)
@@ -967,12 +1177,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     // Every game with how many tables it has and when one was last played at (G1). The tables
     // are the log's, not something the list keeps of its own.
+    // The name is the live document's (#909, beslut C): a game renamed from here or from an editor
+    // is an edit in the log and not yet a version, and the list says what the log says (D3).
     const mine = await projects.list(account.id)
+    const host = editors(opts, projects)
     const played = await Promise.all(
       mine.map(async (p) => {
         const sessions = await opts.store.sessionsOf(p.id)
         const last = sessions.map((s) => s.lastAt).filter((at): at is string => at !== null)
-        return { ...p, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
+        const name = (await host.live(p.id))?.name ?? p.name
+        return { ...p, name, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
       }),
     )
     json(res, 200, played)
@@ -1058,6 +1272,37 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 201, { id: rec.id, rev: rec.rev })
     return true
   }
+  // A question to the AI about the game (#1001, E4): whoever may edit the game asks, with her own
+  // key, about the game as it stands in the editor right now — the live document, unsaved edits and
+  // all, since that is what she is looking at. The answer streams back (`ai-ask.ts`).
+  const asking = /^\/projects\/([^/]+)\/ai\/ask$/.exec(url.pathname)
+  if (asking && req.method === 'POST') {
+    if (!opts.ai || !opts.auth) {
+      json(res, 404, { error: 'not found' })
+      return true
+    }
+    // The key is the account's, so a game from before accounts is asked about by an account too.
+    if (!account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const gate = await allowed(decodeURIComponent(asking[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    // Forty turns of twenty thousand characters is the most a conversation can be; a body past that
+    // is not kept.
+    const bytes = await readBytes(req, ASK_MAX_BYTES)
+    if (!bytes) {
+      json(res, 413, { error: 'too big' })
+      return true
+    }
+    const ask = AskBody.parse(JSON.parse(Buffer.from(bytes).toString('utf8')))
+    const doc = (await editors(opts, projects).live(gate.rec.id)) ?? gate.rec
+    await answerQuestion({ vault: opts.ai.vault, providers: opts.ai.providers, flight: flightOf(opts, opts.ai.caps) }, res, account.id, doc, ask)
+    return true
+  }
   const one = /^\/projects\/([^/]+)$/.exec(url.pathname)
   if (one && req.method === 'GET') {
     const got = await owned(decodeURIComponent(one[1] ?? ''))
@@ -1077,10 +1322,34 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     if (body.name !== gate.rec.name) checkedName(body.name)
     const { rev, ...doc } = body
     validateSetup(setupFromProject(doc), opts.registry)
-    const result = await projects.replace(decodeURIComponent(one[1] ?? ''), rev, doc)
-    if (result === 'missing') json(res, 404, { error: 'unknown project' })
-    else if (result === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
-    else json(res, 200, { id: result.id, rev: result.rev })
+    // Through the project's actor and never past it (D3, #768): the actor is the one writer, so
+    // a document written here is in its log, on every open editor's screen, and in the rev the
+    // next editor is handed — not only in the store, behind an actor that goes on saying rev 1.
+    const actor = await editors(opts, projects).get(gate.rec.id)
+    const result = actor ? await actor.put(rev, doc, account?.id) : ({ ok: false, reason: 'unknown project' } as const)
+    if (!result.ok && result.reason === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
+    else if (!result.ok) json(res, 404, { error: 'unknown project' })
+    else json(res, 200, { id: gate.rec.id, rev: result.rev })
+    return true
+  }
+  // «Byt namn» from the start page's ⋯ (#909, beställarens beslut C): the same `rename` edit the
+  // editor sends (#738), through the same actor, so it is in the log, on every open editor's screen
+  // and undoable — and no version is made of it, so nobody's unsaved work is saved for them.
+  const renaming = /^\/projects\/([^/]+)\/name$/.exec(url.pathname)
+  if (renaming && req.method === 'PUT') {
+    const gate = await allowed(decodeURIComponent(renaming[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const { name } = z.object({ name: z.string() }).parse(JSON.parse(await readBody(req)))
+    const actor = await editors(opts, projects).get(gate.rec.id)
+    if (!actor) {
+      json(res, 404, { error: 'unknown project' })
+      return true
+    }
+    const entry = await actor.edit({ v: 'rename', name }, account?.id)
+    json(res, 200, { id: gate.rec.id, name: actor.doc.name, seq: entry.seq })
     return true
   }
   // The history (B4): every save is a version, none of them is ever rewritten. It is presented
@@ -1329,6 +1598,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
+    // And its tables go with it (#676), as the question promised: each is ended as the table ends
+    // one (C9), so its code opens no door, the phones at it are told, and no seat plays on a game
+    // that no longer exists. Ended before the game goes, so a table is never left behind.
+    for (const table of await opts.store.sessionsOf(gate.rec.id)) await opts.host.end(table.id)
     const removed = await projects.remove(gate.rec.id)
     // Everyone who has the game open is told it is gone, and the actor goes with it (#485).
     const host = editors(opts, projects)
@@ -1444,6 +1717,26 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     res.end(zip)
     return true
   }
+  // «Dubblera» (#738): a second game made of the first, the duplicating account's own. It is taken by
+  // those who may take the game with them (G5), as an export is. What is copied is the game as it
+  // stands in the editor, saved or not — the copy is of what the designer is looking at — and it
+  // starts a history of its own: the versions are the first game's story, not the copy's.
+  const duplicating = /^\/projects\/([^/]+)\/duplicate$/.exec(url.pathname)
+  if (duplicating && req.method === 'POST') {
+    const gate = await allowed(decodeURIComponent(duplicating[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    // What the log says, whether or not anyone has the game open now (D3, #909).
+    const { id: _id, rev: _rev, owner: _owner, ...saved } = gate.rec
+    const doc = (await editors(opts, projects).live(gate.rec.id)) ?? saved
+    const taken = account ? (await projects.list(account.id)).map((p) => p.name) : []
+    const name = duplicatedName(doc.name, taken, langOf(url.searchParams.get('lang')))
+    const rec = await projects.create(randomUUID(), { ...structuredClone(doc), name }, account?.id)
+    json(res, 201, { id: rec.id, rev: rec.rev, name })
+    return true
+  }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)
   // The tables this game has (#19): the editor's Bord tab reads them here. The version and
   // whether the log is locked come from the actor, the same source `GET /sessions/:id` answers
@@ -1471,6 +1764,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 200, tables)
     return true
   }
+  // What the game's playtests said (#1010, G3): every table's answers, flags and people, and every
+  // version's sums, in one answer rather than a survey and a whole log per table. It is the same
+  // playtest data a table's log and surveys are (#524), so it is read by the same people: whoever
+  // may start the game's tables. Read from the store and never from the actors — an ended table
+  // has nothing left to load, and the answer is the log's.
+  const playtest = /^\/projects\/([^/]+)\/playtest$/.exec(url.pathname)
+  if (playtest && req.method === 'GET') {
+    const gate = await allowed(decodeURIComponent(playtest[1] ?? ''), canStartTables)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const sources: PlaytestSource[] = []
+    for (const { id } of await opts.store.sessionsOf(gate.rec.id)) {
+      const session = await opts.store.loadSession(id)
+      if (!session) continue
+      const [log, surveys, admissions] = await Promise.all([opts.store.read(id), opts.surveys ? opts.surveys.list(id) : [], opts.store.guestsAt(id)])
+      sources.push({ id, session, log, surveys, admissions })
+    }
+    json(res, 200, playtestOf(sources))
+    return true
+  }
   if (start && req.method === 'POST') {
     // Running a playtest is the test leader's whole purpose (D3); a viewer only looks.
     const gate = await allowed(decodeURIComponent(start[1] ?? ''), canStartTables)
@@ -1496,8 +1811,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: 'unknown session' })
       return true
     }
-    if (!(await mayReadPlaytest(opts, req, res, session))) return true
-    json(res, 200, { id: sessionId, version: session.version, setup: session.setup, log: await opts.store.read(sessionId) })
+    // Read through the corpus's door (#1011), the export says so: the script takes only the
+    // owner's own tables (#540), and this is the one other kind it may take.
+    const consented = await corpusReader(opts, req, session)
+    if (!consented && !(await mayReadPlaytest(opts, req, res, session))) return true
+    json(res, 200, { id: sessionId, version: session.version, setup: session.setup, log: await opts.store.read(sessionId), ...(consented ? { consented: true } : {}) })
     return true
   }
     // A session as a record (C9): which version runs, whether the log is locked.
@@ -1516,13 +1834,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 200, { id: sessionId, version: actor.version, ended: actor.ended, ...(session.project ? { project: session.project } : {}), ...(named ? { name: named.name } : {}) })
     return true
   }
-    // The rules a table plays by (B7): rendered against the very version the session was locked
-  // to at start (B4), so a game in progress is never rewritten under the players. References are
-  // resolved here — the table and the phone read names, never ids.
+  // The rules a table plays by (B7): rendered against the very version the session is locked to
+  // (B4), so a game in progress is never rewritten under the players by an edit. «Uppdatera»
+  // moves that lock (C7), and the version it moved to is the log's, which the actor holds: the
+  // session row keeps the version the table *started* on, because that is where replay begins
+  // (#677). References are resolved here — the table and the phone read names, never ids.
   const sessionRules = /^\/sessions\/([^/]+)\/rules$/.exec(url.pathname)
   if (sessionRules && req.method === 'GET') {
-    const session = await opts.store.loadSession(decodeURIComponent(sessionRules[1] ?? ''))
-    const rev = Number(/^rev-(\d+)$/.exec(session?.version ?? '')?.[1])
+    const sessionId = decodeURIComponent(sessionRules[1] ?? '')
+    const session = await opts.store.loadSession(sessionId)
+    const actor = session ? await opts.host.get(sessionId) : null
+    const rev = Number(/^rev-(\d+)$/.exec(actor?.version ?? '')?.[1])
     const rec = session?.project && Number.isFinite(rev) ? await projects.at(session.project, rev) : null
     // A table nobody has written rules for is most tables, and every phone at one asks this on
     // the way in: the answer is nothing, not an error, or every ordinary session leaves a red
@@ -1556,8 +1878,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 409, { error: 'the session has not ended' })
       return true
     }
-    const answer = SurveyAnswer.parse(JSON.parse(await readBody(req)))
-    await opts.surveys.add({ sessionId, version: actor.version, at: new Date().toISOString(), ...answer })
+    const body = SurveyBody.parse(JSON.parse(await readBody(req)))
+    const sender = await surveySender(opts, req, session, actor, body)
+    if (!sender) {
+      json(res, 403, { error: 'an answer needs the admission it was given at this table' })
+      return true
+    }
+    await opts.surveys.put({ sessionId, version: actor.version, at: clock(opts).toISOString(), ...sender, answers: body.answers })
     json(res, 201, { ok: true })
     return true
   }
@@ -1596,18 +1923,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: session ? 'unknown project' : 'unknown session' })
       return true
     }
-    const compiled = facesOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now())
     // A job that failed for good stays failed here (#10): enqueueing it again would put it back
     // in the queue and the editor would poll a dead render forever, never learning it was dead.
     // `?retry=1` is the one place that says "try it anyway", and it comes from a person asking.
     const retryFailed = url.searchParams.get('retry') === '1'
-    if (opts.renders) {
-      for (const job of compiled.jobs) {
-        if (!retryFailed && (await opts.renders.status(job.hash))?.state === 'failed') continue
-        await opts.renders.enqueue(job)
-      }
-    }
-    json(res, 200, await progress(opts, compiled.jobs.map((j) => j.hash), frontsOf(compiled.faces)))
+    const renders = opts.renders
+    const compiled = await queueFaces(await deckOf(opts, rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now(), async (job) => {
+      if (!renders) return
+      if (!retryFailed && (await renders.status(job.hash))?.state === 'failed') return
+      await renders.enqueue(job)
+    })
+    json(res, 200, await progress(opts, compiled.hashes, frontsOf(compiled.faces)))
     return true
   }
   // "Uppdatera bordet" on a running table (C7, L5): the project's current rev becomes a
@@ -1631,8 +1957,20 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const setup = setupFromProject(rec)
-    await actor.refreshDeck(await deckOf(opts, rec), setup)
+    const deck = await deckOf(opts, rec)
     const version = `rev-${rec.rev}`
+    // A table already on this version has nothing to move to, and a line saying it moved would
+    // tell every phone «Spelet uppdaterades» about no change at all (#706).
+    if (actor.version === version) {
+      json(res, 200, { version, seqs: [] })
+      return true
+    }
+    // The deck is kept under its version before the line that moves the table there is committed
+    // (#677): the session row keeps the start deck, and an actor reloaded after a restart takes
+    // its faces from the version its log says it plays. A refusal below leaves a deck no line
+    // names, which is never read.
+    await opts.store.addDeck(sessionId, version, deck)
+    await actor.refreshDeck(deck, setup)
     const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, ...(setup.cards ? { cards: setup.cards } : {}) }] })
     if (!decision.ok) json(res, 409, { error: decision.reason })
     else json(res, 200, { version, seqs: decision.applied.map((l) => l.seq) })
@@ -1662,9 +2000,74 @@ async function progress(opts: ServerOptions, hashes: readonly string[], fronts: 
 const frontsOf = (faces: Record<string, Record<string, string>>): Record<string, string> =>
   Object.fromEntries(Object.entries(faces).flatMap(([row, perFace]) => (perFace['front'] ? [[row, perFace['front']]] : [])))
 
+// The key on the profile page (#999, E4). GET describes it — the provider, the last four, the model
+// and when it was proved, never the key — and says whether this box can keep one at all. PUT asks the
+// provider for the key's models, and only a key the provider accepts is sealed; the answer carries
+// the models, so the page has its picker without asking twice. A refusal is one of the provider's
+// closed set of words (`AiFailure`), and nothing is kept. PUT …/model chooses a model, null being the
+// provider's standard; GET …/models lists them anew; DELETE forgets the key.
+// A body that is not a key is refused without a word of what it held, and nothing here logs.
+const AiKeyBody = z.object({ provider: z.enum(AI_PROVIDERS), key: z.string().trim().min(8).max(512).regex(/^[\x21-\x7e]+$/) })
+const AiModelBody = z.object({ model: z.string().min(1).max(200).regex(/^[A-Za-z0-9._:/-]+$/).nullable() })
+const parsedOrNull = (text: string): unknown => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+async function routeAiKey(opts: ServerOptions, req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const ai = opts.ai
+  if (!ai || !opts.auth) return json(res, 404, { error: 'not found' })
+  const account = await accountOf(opts.auth, req)
+  if (!account) return json(res, 401, { error: 'log in first' })
+  const said = (key: AiKeyDescription | null) => (key ? { ...key, defaultModel: ai.providers[key.provider].defaultModel } : null)
+  const asked = async <T>(attempt: () => Promise<T>): Promise<T | { refused: string }> => {
+    try {
+      return await attempt()
+    } catch (err) {
+      if (err instanceof AiProviderError) return { refused: err.kind }
+      throw err
+    }
+  }
+  if (url.pathname === '/me/ai-key' && req.method === 'GET') return json(res, 200, { key: said(await ai.vault.describe(account.id)), sealing: ai.vault.sealing })
+  if (url.pathname === '/me/ai-key' && req.method === 'DELETE') {
+    await ai.vault.remove(account.id)
+    return json(res, 200, { key: null })
+  }
+  if (url.pathname === '/me/ai-key' && req.method === 'PUT') {
+    const body = AiKeyBody.safeParse(parsedOrNull(await readBody(req)))
+    if (!body.success) return json(res, 400, { error: 'malformed' })
+    if (!ai.vault.sealing) return json(res, 503, { error: 'unavailable' })
+    if (ai.limiter?.allow(account.id, Date.now()) === false) return json(res, 429, { error: 'too-many' })
+    const { provider, key } = body.data
+    const models = await asked(() => ai.providers[provider].models(key))
+    if ('refused' in models) return json(res, 422, { error: models.refused })
+    // A new key from the same provider keeps the model chosen before it, as long as the key can use
+    // it; a key from the other provider starts on its standard model.
+    const before = await ai.vault.describe(account.id)
+    const kept = before?.provider === provider && before.model !== null && models.some((m) => m.id === before.model) ? before.model : null
+    return json(res, 200, { key: said(await ai.vault.save(account.id, provider, key, kept)), models })
+  }
+  if (url.pathname === '/me/ai-key/model' && req.method === 'PUT') {
+    const body = AiModelBody.safeParse(parsedOrNull(await readBody(req)))
+    if (!body.success) return json(res, 400, { error: 'malformed' })
+    const key = await ai.vault.setModel(account.id, body.data.model)
+    return key ? json(res, 200, { key: said(key) }) : json(res, 404, { error: 'no key' })
+  }
+  if (url.pathname === '/me/ai-key/models' && req.method === 'GET') {
+    const opened = await ai.vault.open(account.id)
+    if (!opened) return json(res, 404, { error: 'no key' })
+    const models = await asked(() => ai.providers[opened.provider].models(opened.key))
+    if ('refused' in models) return json(res, 422, { error: models.refused })
+    return json(res, 200, { models, defaultModel: ai.providers[opened.provider].defaultModel })
+  }
+  json(res, 404, { error: 'not found' })
+}
+
 // Magic links (G1, DRIFT §11). POST /auth/login mails a link and always answers 200 — never a
 // word about whether the address is known. GET /auth/verify redeems it once, sets the session
-// cookie and sends the browser on. GET /auth/me says who you are; POST /auth/logout forgets.
+// cookie and sends the browser on. GET /auth/me says who you are, or `null`; POST /auth/logout forgets.
 async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   const now = () => new Date()
   if (req.method === 'POST' && url.pathname === '/auth/login') {
@@ -1685,7 +2088,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     // The link must come back to this API, where the cookie lives: never the page's origin.
     const base = opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`
     const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
-    await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang)))
+    await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang), opts.contact))
     return json(res, 200, { ok: true })
   }
   if (req.method === 'GET' && url.pathname === '/auth/verify') {
@@ -1701,7 +2104,9 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
   }
   if (req.method === 'GET' && url.pathname === '/auth/me') {
     const account = await accountOf(auth, req)
-    return account ? json(res, 200, { email: account.email }) : json(res, 401, { error: 'not logged in' })
+    // Nobody is an answer and not a failure (#744): every guest page asks, a guest is never logged
+    // in (G1), and a 401 is written in the browser's console as an error on each of those pages.
+    return json(res, 200, { email: account?.email ?? null })
   }
   if (req.method === 'POST' && url.pathname === '/auth/logout') {
     const sid = req.headers.cookie?.match(new RegExp(`${COOKIE}=([^;]+)`))?.[1]

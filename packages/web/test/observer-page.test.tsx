@@ -1,15 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { admit, asSeat, asTable, createSession, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { tabFrom, tabStops } from './tabs.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -150,7 +147,7 @@ describe('the observer screen is not a screen to join from (K12)', () => {
     render(<ObserverPage />)
     await screen.findByText(/Du är observatör/)
     expect(screen.queryByText(id)).toBeNull()
-    expect(screen.queryByText(/anslut med telefon/)).toBeNull()
+    expect(screen.queryByText(/öppna på telefonen/)).toBeNull()
   })
 })
 
@@ -204,7 +201,8 @@ describe('the observer has no seat to leave (#31)', () => {
     expect(screen.queryByRole('button', { name: 'Ut…' })).toBeNull()
     expect(screen.queryByText(/Lämna bordet/)).toBeNull()
     // The question mark is one of them since #305: the help is a control she keeps, not a way out.
-    // The rows of «Platser» open lists to read (#551) and are no way out either.
+    // The rows of «Platser» open lists to read (#551) and are no way out either. This table has no
+    // rulebook, so there is no «Regler» either (#709): that knob comes only with a book.
     expect(screen.getAllByRole('button').filter((b) => !b.closest('.byd-tv-seats')).map((b) => b.textContent)).toEqual(['?', expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
   })
 })
@@ -248,7 +246,8 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     const stops = tabStops()
     expect(stops.length).toBeGreaterThan(1)
     expect(stops.every((el) => survey.contains(el))).toBe(true)
-    const last = screen.getByRole('link', { name: /Spara till ditt konto/ })
+    // The last answer while «Nästa» waits for one: the save is offered on the thanks only (#690).
+    const last = screen.getByRole('button', { name: '5' })
     expect(stops.at(-1)).toBe(last)
     expect(tabFrom(last)).toBe(screen.getByRole('button', { name: '1' }))
     table.close()

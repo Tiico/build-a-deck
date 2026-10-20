@@ -19,9 +19,6 @@ import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { atWidth } from './viewport.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -93,8 +90,8 @@ async function markupOfPanel(filled: boolean): Promise<string> {
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
   try {
-    await screen.findByRole('button', { name: /rev \d/ })
-    fireEvent.click(screen.getByRole('button', { name: /rev \d/ }))
+    await screen.findByRole('button', { name: /^v\d+$/ })
+    fireEvent.click(screen.getByRole('button', { name: /^v\d+$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     // The summaries are the server's diff of every version against the one before, a real round
     // trip. At the worked history's 26 versions it took up to 739 ms with every core busy, and the

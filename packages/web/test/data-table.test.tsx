@@ -6,9 +6,6 @@ import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
 import { groundOf } from '../src/editor/palette.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('DataTable (B as a tab)', () => {
   it('shows one row per card with the fields the template binds plus antal, edits cells, adds and removes rows', () => {
@@ -27,13 +24,13 @@ describe('DataTable (B as a tab)', () => {
     // row (#46).
     const heads = screen.getAllByRole('columnheader')
     const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*¶?\s*$/, ''))
-    expect(headers).toEqual(['', 'id', 'Titel', 'body', 'antal', 'Ta bort'])
+    expect(headers).toEqual(['', 'id', 'Titel', 'body', 'Antal', 'Ta bort'])
     // And nothing about which columns are the designer's is said in the head itself any more: the
     // × that took one away, and the padlock that stood in its place where one could not be taken
     // away, are both behind the head's own door (#46 on #32), which is where the table already
     // said something about its columns as columns. A heading is a name and the way it sorts.
     expect(heads.filter((h) => h.querySelector('.byd-data-system, .byd-data-dropfield'))).toEqual([])
-    expect(heads.map((h) => h.textContent)).toContain('antal ↕')
+    expect(heads.map((h) => h.textContent)).toContain('Antal ↕')
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
     expect(rows[1]!.getAttribute('aria-selected')).toBe('true')
@@ -60,8 +57,10 @@ describe('DataTable (B as a tab)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
 
-    // The CSV pair is what falls into a box in the crown (#130): done once, and not a state.
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    // The CSV pair is what falls into a box in the crown (#130): done once, and not a state. The box
+    // is named for both ways through it (#739): called «Importera», it hid the download behind the
+    // other way.
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     const download = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(download.download).toBe('skogens-herrar-kort.csv')
     expect(decodeURIComponent(download.href.split(',')[1] ?? '')).toContain('id,title,body,antal')
@@ -152,8 +151,10 @@ describe('image cells (E1)', () => {
 
     const file = new File(['png'], 'riddare.png', { type: 'image/png' })
     fireEvent.change(within(rows[1]!).getByLabelText('Ladda upp bild för knight'), { target: { files: [file] } })
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('knight', 'art', `asset:${'d'.repeat(64)}`))
-    expect(onUpload).toHaveBeenCalledWith(file)
+    // The upload is handed the cell it came from, and writes it in the same step as the picture
+    // it brings into the game, under the file's name (#742) — so the table writes nothing itself.
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, { cardRef: 'knight', field: 'art' }))
+    expect(onCell).not.toHaveBeenCalled()
 
     fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Ta bort bild för dragon' }))
     expect(onCell).toHaveBeenCalledWith('dragon', 'art', '')
@@ -335,39 +336,59 @@ describe('the symbol picker at the brace (E4)', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
-  it('takes the brace back when the brace button is pressed a second time (#236)', () => {
+  // The button opens the library and writes nothing (#693). It used to write the brace typing one
+  // does, so the library had something to stand on; a brace the designer never typed then stood in
+  // the value after Escape, and Tab saved it — `Pla{ycard` instead of `Playcard`, and the column
+  // that groups on the value no longer found the card. Only a choice writes, and it writes the
+  // whole token where the caret stood.
+  it('opens the library from the button without writing anything, and Escape leaves the value as it was (#693)', () => {
+    const { cell, onCell } = setup()
+    fireEvent.focus(cell)
+    cell.setSelectionRange(3, 3)
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt in en ikon' }))
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    expect(onCell).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(cell, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(onCell).not.toHaveBeenCalled()
+    expect(cell.value).toBe('Drake')
+  })
+
+  it('writes the chosen symbol, braces and all, where the caret stood when the button was pressed (#693)', async () => {
+    const { cell, onCell } = setup()
+    fireEvent.focus(cell)
+    cell.setSelectionRange(3, 3)
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt in en ikon' }))
+    const list = screen.getByRole('listbox', { name: 'Symboler' })
+    const name = within(list).getAllByRole('option')[0]!.getAttribute('data-symbol')
+
+    fireEvent.click(within(list).getAllByRole('option')[0]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', `Dra{${name}}ke`))
+    expect(onCell).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the library on a second press, and writes nothing either way (#236, #693)', () => {
     const { cell, onCell } = setup()
     fireEvent.focus(cell)
     const brace = screen.getByRole('button', { name: 'Sätt in en ikon' })
-    // The cell already reads `Drake`, so the brace lands at the end of it.
     fireEvent.click(brace)
-    expect(onCell).toHaveBeenLastCalledWith('dragon', 'title', 'Drake{', expect.anything())
     expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
-
-    // A second press is the same press undone: the list goes, and so does the brace it wrote. A
-    // brace standing alone with no finished symbol in it is not something anybody typed — it is a
-    // step that was begun and taken back.
     fireEvent.click(brace)
-    expect(onCell).toHaveBeenLastCalledWith('dragon', 'title', 'Drake', expect.anything())
     expect(screen.queryByRole('listbox')).toBeNull()
+    expect(onCell).not.toHaveBeenCalled()
   })
 
-  it('only ever takes back a brace it wrote itself, never one that was typed (#236)', () => {
+  it('closes a library a typed brace opened, and leaves that brace where the designer put it (#236)', () => {
     const { cell, onCell } = setup()
-    // A brace the designer typed herself. The button has no claim on it: pressing it writes a
-    // second brace rather than eating the first, because what somebody typed is theirs.
     fireEvent.focus(cell)
     type(cell, 'Flygande. {')
+    const typed = onCell.mock.calls.length
     expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    // What somebody typed is theirs: the press is the list's, and the text is not touched.
     fireEvent.click(screen.getByRole('button', { name: 'Sätt in en ikon' }))
-    // A brace was written, not taken away: the value the cell is asked to hold is one character
-    // longer than what it held and ends in the new brace. (The cell is controlled by the document,
-    // and this test's `onCell` is a spy that does not write one, so the text it starts from is the
-    // row's own `Drake` rather than what was typed over it.)
-    const [, , written] = onCell.mock.calls.at(-1) as [string, string, string, unknown]
-    expect(written.endsWith('{')).toBe(true)
-    expect(written.length).toBeGreaterThan('Drake'.length)
-    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(onCell).toHaveBeenCalledTimes(typed)
   })
 
   it('moves through the list with the arrow keys, takes one with Enter, and closes on Escape', async () => {
@@ -460,6 +481,47 @@ describe('comparing with an older version in the table (B4)', () => {
     expect(within(title).getByText('Drake')!.tagName).toBe('S')
     // A cell that did not move says it once.
     expect(within(rows[1]!).queryByText('Riddare', { selector: 's' })).toBeNull()
+  })
+
+  // A version that moved only the template holds the table against itself (#702): seventy-seven
+  // rows without a mark and a band reading «mallen ändrad.» left the designer to work out that the
+  // table could never show her the difference. The band says it, and offers the tab that can.
+  it('says no card differs when only the template moved, and offers the template tab', () => {
+    const before = projectDoc()
+    before.template.faces['front']!.base.pop()
+    const opened = vi.fn()
+    render(
+      <DataTable
+        doc={projectDoc()}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        onAddField={() => undefined}
+        onRemoveField={() => undefined}
+        onMoveField={() => undefined}
+        compareWith={{ rev: 2, label: 'Första milstolpen', doc: before }}
+        onStopCompare={() => undefined}
+        onOpenTemplate={opened}
+      />,
+    )
+    const band = document.querySelector('.byd-data-compare')!
+    expect(band.textContent).toContain('Jämför med version 2 · Första milstolpen: Inga kort skiljer sig — skillnaden ligger i mallen.')
+    fireEvent.click(within(band as HTMLElement).getByRole('button', { name: 'Öppna Mall' }))
+    expect(opened).toHaveBeenCalledOnce()
+  })
+
+  // And where the difference is a part the table has no tab for in the band, it is still named.
+  it('names every part the difference lies in when no card differs', () => {
+    const before = projectDoc()
+    before.template.faces['front']!.base.pop()
+    before.rules = { blocks: [] } as unknown as NonNullable<typeof before.rules>
+    render(<DataTable doc={projectDoc()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} compareWith={{ rev: 1, doc: before }} />)
+    expect(document.querySelector('.byd-data-compare')!.textContent).toContain('Inga kort skiljer sig — skillnaden ligger i mallen och reglerna.')
+    // Without a way to the template there is nothing to offer.
+    expect(screen.queryByRole('button', { name: 'Öppna Mall' })).toBeNull()
   })
 
   it('is not in the way when nothing is being compared', () => {
@@ -796,7 +858,7 @@ describe('dropping a CSV on the import (#292)', () => {
         onMoveField={() => undefined}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     return { onReplaceRows }
   }
   const control = () => screen.getByLabelText('Importera CSV…').closest('label') as HTMLLabelElement

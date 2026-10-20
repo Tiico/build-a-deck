@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { brotliDecompressSync, gunzipSync } from 'node:zlib'
 import { afterEach, describe, expect, it } from 'vitest'
-import { TableHost, createServer, MemoryLogStore } from '../src/index.js'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore } from '../src/index.js'
 import { listenInBand, registry } from './fixture.js'
 
 // In production the web app and the API share one origin (README): the server serves the built
@@ -16,9 +16,9 @@ afterEach(async () => {
   stop = null
 })
 
-async function serve(staticDir?: string, store = new MemoryLogStore(), appOrigin?: string) {
+async function serve(staticDir?: string, store = new MemoryLogStore(), appOrigin?: string, projects?: MemoryProjectStore) {
   const host = new TableHost(registry, store)
-  const server = createServer({ host, store, registry, ...(staticDir ? { staticDir } : {}), ...(appOrigin ? { appOrigin } : {}) })
+  const server = createServer({ host, store, registry, ...(staticDir ? { staticDir } : {}), ...(appOrigin ? { appOrigin } : {}), ...(projects ? { projects } : {}) })
   // Out of this package's block of the band, like every other server in this suite: a port asked
   // for as "any port at all" is one a neighbouring run can be handed at the same moment (#58, #289).
   const port = await listenInBand(server)
@@ -69,7 +69,9 @@ describe('serving the web app (DRIFT §1)', () => {
   it('hands the invitation link to the app when a browser asks for a page, and keeps the API answer otherwise', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'byd-static-'))
     await writeFile(join(dir, 'index.html'), '<!doctype html><title>byd</title>')
-    const http = await serve(dir)
+    // With the projects mounted, as on the box: the link also answers the login card with the
+    // game's name (#691), and that answer must not take the page's place.
+    const http = await serve(dir, new MemoryLogStore(), undefined, new MemoryProjectStore())
     const page = await fetch(`${http}/invites/abc_DEF-123`, { headers: { accept: 'text/html,application/xhtml+xml,*/*;q=0.8' } })
     expect(page.status).toBe(200)
     expect(page.headers.get('content-type')).toMatch(/text\/html/)
@@ -78,7 +80,7 @@ describe('serving the web app (DRIFT §1)', () => {
     expect(head.status).toBe(200)
     const api = await fetch(`${http}/invites/abc_DEF-123`, { headers: { accept: 'application/json' } })
     expect(api.status).toBe(404)
-    expect(await api.json()).toEqual({ error: 'not found' })
+    expect(api.headers.get('content-type')).toMatch(/application\/json/)
     // Only the link itself is a page; the rest of the prefix stays the API's.
     expect((await fetch(`${http}/invites`, { headers: { accept: 'text/html' } })).status).toBe(404)
     expect((await fetch(`${http}/invites/a/b`, { headers: { accept: 'text/html' } })).status).toBe(404)

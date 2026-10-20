@@ -15,6 +15,7 @@ describe('which route a path is', () => {
     ['/play', 'play'],
     ['/online', 'online'],
     ['/observe', 'observe'],
+    ['/profile', 'profile'],
   ])('reads %s as %s', (path, route) => {
     expect(routeOf(path)).toBe(route)
   })
@@ -42,9 +43,11 @@ describe('which route a path is', () => {
 describe('the title of a route', () => {
   it.each([
     ['home', {}, 'Mina spel · build-your-deck'],
+    ['landing', {}, 'Bygg ditt kortspel · build-your-deck'],
     ['login', {}, 'Logga in · build-your-deck'],
     ['new', {}, 'Nytt spel · build-your-deck'],
     ['claim', {}, 'Spara bordet · build-your-deck'],
+    ['profile', {}, 'Profil · build-your-deck'],
     ['editor', { game: 'Skogens herrar' }, 'Skogens herrar · Editor · build-your-deck'],
     ['table', { room: '4KJ2' }, 'Bordet · Rum 4KJ2 · build-your-deck'],
     ['join', { room: '4KJ2' }, 'Gå med i rum 4KJ2 · build-your-deck'],
@@ -62,6 +65,29 @@ describe('the title of a route', () => {
   // part of the editor that is open stands where the word «Editor» stood.
   it('names the part of the editor that is open', () => {
     expect(documentTitle('editor', { game: 'Skogens herrar', part: 'Tabell' })).toBe('Skogens herrar · Tabell · build-your-deck')
+  })
+
+  // A guest is never told the code (DRIFT §9); the game's name is what they know the table by (#759).
+  it.each([
+    ['observe', 'Tittar på Skogens herrar · build-your-deck'],
+    ['play', 'Din hand · Skogens herrar · build-your-deck'],
+    ['online', 'Spela · Skogens herrar · build-your-deck'],
+    ['table', 'Bordet · Skogens herrar · build-your-deck'],
+  ] as const)('names %s by the game when there is no code', (route, expected) => {
+    expect(documentTitle(route, { game: 'Skogens herrar' })).toBe(expected)
+  })
+
+  it('names the room by its code when there is one, even with the game known', () => {
+    expect(documentTitle('observe', { room: '4KJ2', game: 'Skogens herrar' })).toBe('Tittar på rum 4KJ2 · build-your-deck')
+  })
+
+  // D5: every state its own title; the TV kept «Bordet · Rum …» over its summary (#717).
+  it('says the table has ended on the table screen too', () => {
+    expect(documentTitle('table', { room: 'Q6RN2C', part: 'Bordet är avslutat' })).toBe('Bordet är avslutat · Rum Q6RN2C · build-your-deck')
+  })
+
+  it('says the game on an ended phone without a code', () => {
+    expect(documentTitle('play', { game: "Sal's Saloon", part: 'Bordet är avslutat' })).toBe("Bordet är avslutat · Sal's Saloon · build-your-deck")
   })
 
   it('leaves out the room and the game rather than writing an empty gap', () => {

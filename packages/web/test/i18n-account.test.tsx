@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Language } from '../src/i18n/index.js'
 import { LoginCard } from '../src/account/LoginCard.js'
@@ -7,9 +7,7 @@ import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { buildProject } from '../src/wizard/build.js'
 import { defaultFields } from '../src/wizard/frames.js'
 import { translate } from '../src/i18n/index.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { sv } from '../src/i18n/sv.js'
 
 // The account and the guided start in the reader's own language (A4). Neither surface talks to a
 // server before it is touched, so the language is all these tests are about.
@@ -27,7 +25,8 @@ describe('the login card (G1) in the reader\'s own language', () => {
     )
     expect(screen.getByRole('button', { name: 'Send sign-in link' })).toBeTruthy()
     expect(screen.getByLabelText('Email')).toBeTruthy()
-    expect(screen.getByText(/Log in to get to your games/)).toBeTruthy()
+    // A first visit (#691): the same link logs in and makes the account.
+    expect(screen.getByText(/Log in or create an account with your email/)).toBeTruthy()
     // The guest's way in is behind the question mark (L36), in the same language.
     fireEvent.click(screen.getByRole('button', { name: 'Help about logging in' }))
     expect((await screen.findByRole('dialog', { name: 'Help about logging in' })).textContent).toMatch(/no account needed/)
@@ -40,6 +39,20 @@ describe('the login card (G1) in the reader\'s own language', () => {
     render(<LoginCard http="http://server.local" next="/" onNavigate={() => undefined} />)
     expect(screen.getByRole('button', { name: 'Skicka inloggningslänk' })).toBeTruthy()
     expect(screen.getByLabelText('E-post')).toBeTruthy()
+  })
+})
+
+// «e-post» in a sentence is one word and never two lines (#920): a plain hyphen is a place the
+// browser may end a line, and on a phone the first visit's line ended on «e-» and went on with
+// «post». The sentences carry a non-breaking hyphen instead. The field's own name stays «E-post»:
+// it is one word on a line of its own and never wraps, and it is the name a screen reader and
+// voice control are asked for.
+describe('«e-post» in Swedish copy', () => {
+  it('is joined by a non-breaking hyphen wherever it stands in a sentence', () => {
+    const sentences = Object.entries(sv).filter(([, text]) => /\s/.test(text.trim()))
+    expect(sentences.filter(([, text]) => /e-post/i.test(text)).map(([key]) => key)).toEqual([])
+    // And the rule is about something: the sentences that say it are still there.
+    expect(sentences.filter(([, text]) => /e\u2011post/i.test(text)).length).toBeGreaterThanOrEqual(4)
   })
 })
 
@@ -73,7 +86,7 @@ describe('the guided start (L6) in the reader\'s own language', () => {
     expect(screen.getByRole('button', { name: 'Classic' })).toBeTruthy()
     // The example card the wizard seeds is a word the designer reads and writes over, like the
     // field names it suggests, so it starts in the language they are building the game in.
-    expect(screen.getByRole('button', { name: /Card 1/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Forest walk/ })).toBeTruthy()
     cleanup()
 
     render(<NewProjectPage onNavigate={() => undefined} />)

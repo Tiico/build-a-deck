@@ -10,7 +10,7 @@ import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
 import { Stepper } from '../Stepper.js'
-import { MAX_PLAYERS, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, counterId, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -24,6 +24,7 @@ import { landingOf } from './landing.js'
 import { CARD_MM } from '../table/drop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
+import { FootSaid } from './said.js'
 
 // The setup editor (B5, K2). The table is the designer's: the recipe laid the first one out and
 // then let go, so what stands here stands here because they left it standing. The list on the left
@@ -46,6 +47,11 @@ export type SetupEditorProps = {
   // list of tables the game is being played at. The setup owns the tab's layout — it is the one
   // that knows there are three columns — so the list is handed to it rather than dropped after it.
   beside?: ReactNode
+  // What stands over the felt, at the head of the middle column (#1010): the Bord tab's switch to
+  // its Resultat view, which stands in the same place in both views. Not over the first column,
+  // whose ways to add a zone must all show at 1024 × 640 (#711), and not in the row over the
+  // felt, which a chosen zone's four fields fill at 1024 (L50).
+  lead?: ReactNode
 }
 
 // What one CSS millimetre is worth in pixels. A compiled card is laid out in millimetres, the
@@ -65,7 +71,7 @@ function inAField(e: KeyboardEvent): boolean {
   return on.some((el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 }
 
-export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEditorProps) {
+export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: SetupEditorProps) {
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
@@ -76,6 +82,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // What the last step back would take back, said where the removal happened rather than only in
   // the header: a zone that went by mistake is one press from standing again.
   const [undoable, setUndoable] = useState<string | null>(null)
+  // Whether what can be undone was a cut rather than a removal: the same zone gone, said as what it
+  // is (#712) — «Yta 1 är borttagen.» over a zone that was on its way to be pasted read as a loss.
+  const [wasCut, setWasCut] = useState(false)
   // Which zone the way back would restore, and whether the way back should take the focus: the ×
   // or the handle that had it is gone with the zone (#480).
   const [removedId, setRemovedId] = useState<string | null>(null)
@@ -134,9 +143,10 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
     opener.current = null
     back?.focus()
   }
-  const remove = (zone: Zone) => {
+  const remove = (zone: Zone, cut = false) => {
     client.removeZone(zone.id)
     setUndoable(zone.name)
+    setWasCut(cut)
     setRemovedId(zone.id)
     setFocusUndo((n) => n + 1)
     setSaid(null)
@@ -201,10 +211,15 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         setSelected(now.client.insertZone({ ...held.zone, name: held.cut ? held.zone.name : now.t('zone.copy', { name: held.zone.name }), geometry }))
         // Pasted once, a cut is placed; the next paste is a copy of it.
         if (held.cut) clipboard.current = { zone: held.zone, cut: false }
+        // The cut is placed, so what it said about the zone being gone is over too (#712).
+        setUndoable(null)
         setSaid(null)
         return
       }
-      const zone = now.setup.zones.find((z) => z.id === now.selected)
+      // The zone chosen, or else the one whose row has the focus — the list is where a keyboard stands
+      // on a zone, and a Ctrl+C there did nothing at all (#712).
+      const row = document.activeElement instanceof Element ? document.activeElement.closest('[data-zone-row]')?.getAttribute('data-zone-row') : null
+      const zone = now.setup.zones.find((z) => z.id === (now.selected ?? row))
       if (!zone) return
       e.preventDefault()
       // A hand is its seat's (C3), so it is never something to lay down a second copy of.
@@ -219,7 +234,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           return
         }
         clipboard.current = { zone, cut: true }
-        now.remove(zone)
+        now.remove(zone, true)
         return
       }
       clipboard.current = { zone, cut: false }
@@ -268,19 +283,33 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           onPatch={(id, patch, gesture) => client.patchZone(id, patch, gesture)}
           onDeck={(id) => client.setDeck(id)}
           onHold={setHeld}
+          adds={{
+            table: (
+              <>
+                <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
+                <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
+              </>
+            ),
+            seats: (
+              <>
+                {/* The heading says «per seat»; the name read out says it whole. */}
+                <button type="button" aria-label={t('setup.addSeatArea')} onClick={() => addSeat('mine')}>
+                  {t('setup.addSeatArea.short')}
+                </button>
+                <button type="button" aria-label={t('setup.addSeatCounters')} onClick={() => addSeat('counters')}>
+                  {t('setup.addSeatCounters.short')}
+                </button>
+              </>
+            ),
+          }}
         />
-        <div className="byd-setup-tools">
-          <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
-          <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
-          <button type="button" onClick={() => addSeat('mine')}>{t('setup.addSeatArea')}</button>
-          <button type="button" onClick={() => addSeat('counters')}>{t('setup.addSeatCounters')}</button>
-        </div>
       </div>
       <div className="byd-setup-canvas">
+        {lead}
         <div className="byd-setup-said" data-setup-said>
           {undoable && (
             <span className="byd-setup-undo" role="status">
-              {t('setup.removed', { name: undoable })}
+              {t(wasCut ? 'setup.cut' : 'setup.removed', { name: undoable })}
               <button
                 ref={undoButton}
                 type="button"
@@ -320,6 +349,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             <p>{t('setup.help.keys')}</p>
             <p>{t('setup.help.list')}</p>
           </Help>
+          {/* What just happened, after what the row already says (#698, L67): this row is where Bord
+              says its quiet line, and a foot would have cost the columns their height (L66). */}
+          <FootSaid />
         </div>
         {view ? (
           <Felt
@@ -409,7 +441,10 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
   // are a step back each, as they always were (L14).
   const typing = useGesture('counter-field')
   const turn = (patch: Partial<typeof recipe>, gesture?: string) => client.setRecipe({ ...recipe, ...patch }, recipeWords(t), gesture)
-  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, ...patch } : c)) }, typing.token())
+  // A counter is named in the rules by its id (#708), so the id is written down before the name
+  // changes: one made before counters had ids is known by its name, and would otherwise lose every
+  // rule that names it at the first letter typed.
+  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, id: counterId(c), ...patch } : c)) }, typing.token())
   // Counters lie in the seats' counters zones (C4). A game whose seats have none draws no chips,
   // however long the list is, so the panel says so where the list is rather than leaving the
   // designer to wonder why the table looks the same.
@@ -457,7 +492,7 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
               </button>
             </div>
           ))}
-          <button type="button" onClick={() => turn({ counters: [...recipe.counters, recipe.counters.length === 0 ? { name: t('counter.score'), start: 0 } : { name: t('counter.life'), start: 20 }] })}>
+          <button type="button" onClick={() => turn({ counters: [...recipe.counters, newCounter(recipe.counters, t)] })}>
             {t('setup.counter.add')}
           </button>
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
@@ -465,6 +500,20 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
       </section>
     </aside>
   )
+}
+
+// A new counter: the first is the score, the rest are lives — under a name no counter has yet, the
+// way new piles get one (#480). Two «Liv» were two «LIV» on the phone and the TV (#713).
+function newCounter(counters: readonly Counter[], t: T): Counter {
+  const [base, start] = counters.length === 0 ? [t('counter.score'), 0] : [t('counter.life'), 20]
+  const taken = new Set(counters.map((c) => c.name))
+  let name = base
+  for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
+  // And an id no counter has, which the rules name it by however it is renamed later (#708).
+  const ids = new Set(counters.map(counterId))
+  let id = counterId({ name })
+  for (let n = 2; ids.has(id); n++) id = `${counterId({ name })}-${n}`
+  return { id, name, start }
 }
 
 // Vilken zonfamilj en zon hör till, eller ingen (#175). En zon är per plats när dess id är rollen
@@ -529,6 +578,10 @@ function settle(family: Family): Family {
 // opening one shows what the zone is, and the × takes it away — or says, where the × would be, why
 // this one stays.
 //
+// Each group carries the ways to add to it under its heading (#711, beställarens beslut B): they
+// stood last in the column, and at 1024 × 640 none of them showed without scrolling it. Under the
+// heading they say what they add to, and a group is drawn for them even when it holds no zone.
+//
 // Vid platserna är raden familjens och inte zonens (#175): «Hand · 8 platser» är en rad, inte åtta,
 // och trekanten fäller ut platserna när en enskild zon ska nås.
 function ZoneList({
@@ -542,6 +595,7 @@ function ZoneList({
   onPatch,
   onDeck,
   onHold,
+  adds,
 }: {
   setup: Setup
   rows: ProjectDoc['rows']
@@ -553,19 +607,21 @@ function ZoneList({
   onPatch(id: string, patch: ZonePatch, gesture?: string): void
   onDeck(id: string): void
   onHold(id: string | null): void
+  adds: { table: ReactNode; seats: ReactNode }
 }) {
   const t = useT()
-  const groups: [string, Row[]][] = [
-    [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone }))],
-    [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined))],
+  const groups: [string, Row[], ReactNode][] = [
+    [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone })), adds.table],
+    [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined)), adds.seats],
   ]
   const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} onHold={onHold} />
   return (
     <div className="byd-setup-zones" data-zone-list>
-      {groups.map(([title, rows]) =>
-        rows.length === 0 ? null : (
-          <section key={title}>
-            <h2>{title}</h2>
+      {groups.map(([title, rows, add]) => (
+        <section key={title}>
+          <h2>{title}</h2>
+          <div className="byd-setup-tools">{add}</div>
+          {rows.length > 0 && (
             <ul aria-label={title}>
               {rows.map((it) =>
                 it.kind === 'zone' ? (
@@ -577,9 +633,9 @@ function ZoneList({
                 ),
               )}
             </ul>
-          </section>
-        ),
-      )}
+          )}
+        </section>
+      ))}
     </div>
   )
 }

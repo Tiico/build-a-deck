@@ -15,7 +15,7 @@ for (const players of [2, 4, 8]) {
     const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
     await expect(page.locator('.byd-card[data-component]').first()).toBeVisible()
     await expect(page.locator('[data-seat-plate]')).toHaveCount(players)
-    await expect(page.locator('[data-seat-plate="A"]')).toContainText('2 kort på hand')
+    await expect(page.locator('[data-seat-plate="A"]')).toContainText('2 kort')
 
     const small = await page.evaluate(() => {
       const out: string[] = []

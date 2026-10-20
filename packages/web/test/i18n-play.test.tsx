@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { projectActivity } from '@byd/engine'
 import { Language } from '../src/i18n/index.js'
@@ -10,9 +10,6 @@ import { SessionButtons } from '../src/player/SessionOverlays.js'
 import { Survey } from '../src/player/Survey.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { buildScene } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const english = (ui: React.ReactNode) => render(<Language lang="en">{ui}</Language>)
 const swedish = (ui: React.ReactNode) => render(<Language lang="sv">{ui}</Language>)
@@ -30,7 +27,8 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
         <div data-testid="table" />
       </TvChrome>,
     )
-    expect(screen.getByText(/join with your phone/i)).toBeTruthy()
+    // Above the room's address (#675): the words follow the reader, the address does not.
+    expect(screen.getByText(/open on your phone/i)).toBeTruthy()
     expect(screen.getByRole('region', { name: /inspection/i })).toBeTruthy()
 
     // The panel holds the card the last line was about (K8), so its waiting words are read where
@@ -55,7 +53,7 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     // Named, because the card lies face up where the television sees it (#507 fynd 6).
     expect(lines).toContainEqual(expect.stringMatching(/The table flipped (?!a card)\S/))
     // The zone is the designer's word and stays theirs, in either language.
-    expect(lines).toContainEqual(expect.stringMatching(/The table drew 2 from Draghög/))
+    expect(lines).toContainEqual(expect.stringMatching(/The table drew 2 cards from Draghög/))
   })
 
   it('says the phone in English, and leaves the designer\'s zone names and shortcuts alone', () => {
@@ -98,7 +96,7 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
 
     // The way out (#31), in English: both exits named, and both consequences said — including the
     // one the whole wording exists for, that losing the connection is not this.
-    english(<ExitSheet onLeave={() => undefined} onEnd={() => undefined} onClose={() => undefined} />)
+    english(<ExitSheet pile="Draghög" onLeave={() => undefined} onEnd={() => undefined} onClose={() => undefined} />)
     const exit = screen.getByRole('dialog', { name: 'On your way out?' })
     expect(within(exit).getAllByRole('button').map((b) => b.textContent)).toEqual(['Leave the table', 'End the table for everyone', 'Stay'])
     expect(exit.textContent).toMatch(/Lose the connection instead and your seat stands/)

@@ -1,4 +1,4 @@
-import type { Intent } from '@byd/protocol'
+import type { Intent, Presence } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 import type { Table } from './api.js'
 
@@ -72,6 +72,15 @@ export class Host {
       this.ws.addEventListener('message', onMessage)
       this.ws.send(JSON.stringify({ t: 'envelope', envelope: { id, seat: null, intents } }))
     })
+  }
+
+  /**
+   * Says what this screen is doing right now (K6): a cursor, a carried card, a point. Presence is
+   * relayed to the others at the table and never written to the log, so there is nothing to wait
+   * for — the screens that are told draw it when it arrives.
+   */
+  presence(presence: Presence): void {
+    this.ws.send(JSON.stringify({ t: 'presence', presence }))
   }
 
   /** The table as this connection sees it, which is everything: the host screen hides nothing. */

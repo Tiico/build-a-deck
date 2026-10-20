@@ -73,13 +73,17 @@ describe('logging in with a magic link', () => {
   it('mails a link, which sets a session cookie once; /auth/me then knows who you are, and logout forgets', async () => {
     const cookie = await login('ada@example.com')
     expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com' })
-    expect((await get('/auth/me')).status).toBe(401)
+    // Not being logged in is an answer and not a failure (#744): every guest page asks, and a 401
+    // is written in the browser's console as an error on each of them.
+    const nobody = await get('/auth/me')
+    expect(nobody.status).toBe(200)
+    expect(await nobody.json()).toEqual({ email: null })
     // The same link a second time is refused.
     const mail = run.mail.sent.at(-1)
     const link = /\/auth\/verify\?token=\S+/.exec(mail?.text ?? '')?.[0] ?? ''
     expect((await get(link)).status).toBe(400)
     expect((await post('/auth/logout', {}, cookie)).status).toBe(200)
-    expect((await get('/auth/me', cookie)).status).toBe(401)
+    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: null })
   })
 
   it('lands the browser on the web app after the link when that is another origin (development)', async () => {
@@ -121,5 +125,22 @@ describe('projects belong to accounts (G1)', () => {
     // A project without an owner (from before accounts) stays open, as the seed makes them.
     await run.projects.create('legacy', project())
     expect((await get('/projects/legacy')).status).toBe(200)
+  })
+
+  // Whether a game exists is its owner's to know (G1, #754). Ids are short readable slugs, so an
+  // answer that differed between an unknown id and a real one would let anyone without an
+  // account list the games there are. Logged out, both answer «log in first», word for word;
+  // logged in, «no such game» and «someone else's» may differ, since the account is known.
+  it('answers nobody logged in the same for an unknown game as for a real one', async () => {
+    const ada = await login('ada@example.com')
+    expect((await post('/projects', { id: 'p1', ...project() }, ada)).status).toBe(201)
+    const put = (id: string) => fetch(`${run.http}/projects/${id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...project(), rev: 1 }) })
+    for (const ask of [(id: string) => get(`/projects/${id}`), (id: string) => get(`/projects/${id}/versions`), put]) {
+      const real = await ask('p1')
+      const unknown = await ask('finns-inte')
+      expect(real.status).toBe(401)
+      expect({ status: unknown.status, body: await unknown.text() }).toEqual({ status: real.status, body: await real.text() })
+    }
+    expect((await get('/projects/finns-inte', ada)).status).toBe(404)
   })
 })

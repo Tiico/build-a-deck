@@ -30,8 +30,9 @@ export type RenderStore = {
   // Null until there is an output under the hash.
   fitOf(hash: string): Promise<Fit | null>
   // A URL a browser may fetch the finished output from directly for `ttlSeconds` (DRIFT §4);
-  // null when there is no such output, or when the bytes have to come through the server.
-  link(hash: string, ttlSeconds: number): Promise<string | null>
+  // null when there is no such output, or when the bytes have to come through the server. With
+  // `disposition`, what the file is to be called when it is opened (#678).
+  link(hash: string, ttlSeconds: number, disposition?: string): Promise<string | null>
   // Jobs running longer than `olderThanMs` as of `now` go back to the queue; returns their hashes.
   reap(olderThanMs: number, now: number): Promise<string[]>
 }
@@ -107,8 +108,8 @@ export class MemoryRenderStore implements RenderStore {
     return this.outputs.has(hash) ? this.objects.get(outputKey(hash)) : null
   }
 
-  async link(hash: string, ttlSeconds: number): Promise<string | null> {
-    return this.outputs.has(hash) ? this.objects.link(outputKey(hash), ttlSeconds) : null
+  async link(hash: string, ttlSeconds: number, disposition?: string): Promise<string | null> {
+    return this.outputs.has(hash) ? this.objects.link(outputKey(hash), ttlSeconds, disposition) : null
   }
 
   async reap(olderThanMs: number, now: number): Promise<string[]> {

@@ -6,10 +6,7 @@ import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/Template
 import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
 import { layerPick } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { openAllSections } from './sections.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The panel folds (#478); this file is about the controls in it, so every section stands open.
 beforeEach(openAllSections)
@@ -110,7 +107,7 @@ describe('the keyboard when it is not about the card (#18)', () => {
 })
 
 describe('adding an element from the canvas (#18)', () => {
-  it('has a tool for each kind, and a new element lands on the card, is bound to a field and is selected', async () => {
+  it('has a tool for each kind, and a new element lands on the card, is bound to what it can show and is selected', async () => {
     const user = userEvent.setup()
     const { onAdd, onSelectElement } = canvas()
     const tools = within(screen.getByRole('toolbar', { name: /verktyg/i }))
@@ -131,9 +128,11 @@ describe('adding an element from the canvas (#18)', () => {
     expect(onSelectElement).toHaveBeenLastCalledWith('text-1')
 
     await user.click(tools.getByRole('button', { name: 'Bild' }))
-    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'image', id: 'image-1', bind: { field: 'title' } }))
+    // A picture and a row of icons read a column that holds what they draw, and this deck has
+    // neither, so they read none (#700).
+    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'image', id: 'image-1', bind: { literal: '' } }))
     await user.click(tools.getByRole('button', { name: 'Ikonrad' }))
-    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'icons', id: 'icons-1', iconMm: 5 }))
+    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'icons', id: 'icons-1', iconMm: 5, bind: { literal: '' } }))
     await user.click(tools.getByRole('button', { name: 'Form' }))
     expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'shape', id: 'shape-1', shape: 'rect' }))
   })
@@ -468,8 +467,8 @@ describe('the second door into a new field (#32)', () => {
     const onAddField = vi.fn()
     const { onPatch } = canvas({ onAddField })
 
-    const field = screen.getByLabelText('Fält') as HTMLSelectElement
-    expect([...field.options].map((o) => o.textContent)).toEqual(['title', 'body', 'antal', 'nytt fält…'])
+    const field = screen.getByLabelText('Visar fältet') as HTMLSelectElement
+    expect([...field.options].map((o) => o.textContent)).toEqual(['Titel', 'body', 'Antal', 'nytt fält…'])
     await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
 
     const form = screen.getByRole('form', { name: 'Nytt fält' })
@@ -492,7 +491,7 @@ describe('the second door into a new field (#32)', () => {
     const user = userEvent.setup()
     const onAddField = vi.fn()
     canvas({ onAddField })
-    const field = screen.getByLabelText('Fält') as HTMLSelectElement
+    const field = screen.getByLabelText('Visar fältet') as HTMLSelectElement
 
     await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
     const form = screen.getByRole('form', { name: 'Nytt fält' })
@@ -521,7 +520,7 @@ describe('the second door into a new field (#32)', () => {
   it('gives the focus back to the picker it was opened from, whichever way the form is left', async () => {
     const user = userEvent.setup()
     canvas()
-    const field = () => screen.getByLabelText('Fält') as HTMLSelectElement
+    const field = () => screen.getByLabelText('Visar fältet') as HTMLSelectElement
     const open = async () => user.selectOptions(field(), within(field()).getByRole('option', { name: 'nytt fält…' }))
 
     await open()

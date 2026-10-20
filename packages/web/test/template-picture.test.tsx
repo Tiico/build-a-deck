@@ -10,9 +10,6 @@ import type { ProjectDoc } from '@byd/server'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import { layerShown } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const SKOG = '1'.repeat(64)
 const LOGO = '2'.repeat(64)

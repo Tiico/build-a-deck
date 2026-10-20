@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject } from '../../support/api.js'
 
 // A new card where it can be seen (#479): with 77 cards «+ Nytt kort» put the row 3 000 px below a

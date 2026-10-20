@@ -1,6 +1,7 @@
-import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
 import { BackTexture, Texture } from './Texture.js'
-import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneAction, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
@@ -16,16 +17,22 @@ import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { useSay } from '../status/StatusLive.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
+import { refusalText } from '../status/notice.js'
+import type { SendResult } from '../client.js'
+import { besideDrop, type Box } from './besideDrop.js'
+import { loadAfterSheet } from './after.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { compileStart, startsAt } from './actions.js'
 import { Question } from '../editor/Question.js'
+import { DragDoor } from '../editor/DragDoor.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
-import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handRoom, handRotation, type TableMode } from './hand.js'
+import { gapAbove, nameAt } from './labels.js'
+import { placeNames, placePlates, type PlateAt } from './freeSide.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
@@ -40,6 +47,14 @@ import { useT, type Key, type T } from '../i18n/index.js'
 // från mitten, och närmaste zon någon plats äger — ytan framför den — börjar 230 mm ut. Brickan
 // ligger mitt i det bandet, alltså 101 mm ned, och tar 72 mm av de 186 som finns.
 const START_MM = { w: 260, h: 72, below: 101 }
+// Men pillren under högarna — namnet och antalet, och på en spelbar filt högens enda handtag —
+// hänger i pixlar och krymper inte med filten (`.byd-pile-count[data-handle]`: 52 px under kortet,
+// 44 px hög). Vid 1024 låg brickan därför 10 px över dem (#721). Så brickan står där bandet säger,
+// men aldrig närmare än pillrets underkant och luften under det; och aldrig längre ned än att den
+// ryms i bandet, som slutar där ytan framför en plats börjar, 230 mm ut.
+const PILL_BELOW_PX = 52
+const PILL_AIR_PX = 12
+const BAND_END_MM = 230
 
 // Varför starten inte går att köra, i ringens egna ord: det är samma maskin som svarar, så det
 // ska vara samma mening. Ett steg som frågar efter ett tal har ingen att fråga i det ögonblick
@@ -71,7 +86,9 @@ export type { TableMode } from './hand.js'
 // `onTable` says whether a point on the screen lies on the table's own picture — the felt and the
 // wooden frame it lies in — as opposed to the dark around it and whatever stands beside it (#484).
 // `cardPx` is a card on the felt as it is drawn now, in pixels across (#484 fynd 4).
-export type TableHandle = { toTable(clientX: number, clientY: number): Point | null; onTable(clientX: number, clientY: number): boolean; cardPx(): number }
+// `answer` reads what the table said to an act sent from outside the felt — a card played out of the
+// hand beside it (#682) — and says a refusal beside where it was let go, as the felt says its own.
+export type TableHandle = { toTable(clientX: number, clientY: number): Point | null; onTable(clientX: number, clientY: number): boolean; cardPx(): number; answer(sent: Promise<SendResult>, clientX: number, clientY: number): void }
 // The keyboard's layer over the felt (#1, #2, variant C). It draws nothing: it puts a role, a
 // name, one tab stop and a focus ring on the nodes this renderer already draws, which is what
 // keeps K9 — one renderer, one way to draw a card. A table that is only shown passes none of
@@ -87,7 +104,7 @@ export type FeltItemProps = {
 export type CameraDrive = 'follow' | 'hand'
 
 export type FeltKeyboard = {
-  // Every node the keyboard may stand on, keyed `card:<id>`, `top:<zone>` or `pile:<zone>`,
+  // Every node the keyboard may stand on, keyed `card:<id>`, `counter:<id>` or `pile:<zone>`,
   // with the sentence that names it. Nodes this map does not mention stay pictures.
   labels: ReadonlyMap<string, string>
   // Which node the panel currently stands open on, if any.
@@ -106,13 +123,18 @@ export type TableRendererProps = {
   scale?: number
   rotate?: Rotation | undefined
   faces?: string | undefined
-  onAct?: ((intents: Intent[]) => void) | undefined
+  // What the felt sends. A route that hands back the table's answer has a refused act said beside
+  // where it was asked for (#682); one that answers nothing is simply not told.
+  onAct?: ((intents: Intent[]) => void) | ((intents: Intent[]) => Promise<SendResult>) | undefined
   peers?: readonly Peer[] | undefined
   pulses?: readonly Pulse[] | undefined
   recent?: readonly Recent[] | undefined
   // Which piles are being shuffled right now (L35): the fan is played on each, by the log line
   // that says so and never by a difference between two snapshots. `useShuffles` derives it.
   shuffles?: readonly Shuffle[] | undefined
+  // Which piles say, under themselves, that they were just shuffled (#718): the room's television
+  // only, for three seconds a line. Played by the same lines as the fan.
+  said?: readonly Shuffle[] | undefined
   onPresence?: ((p: Presence) => void) | undefined
   // Vem som får köra kameran på den här ytan (C5, #325). `follow` är TV:n: den ramar in det som
   // är i spel av sig själv, och vem som helst kan ta över vyn. `hand` är observatören: ingen
@@ -193,6 +215,19 @@ export type TableRendererProps = {
   // it is the legend for the rest. The names are still drawn and only hidden, so a name that is lit
   // stands where K19 puts it.
   lit?: ReadonlySet<string> | undefined
+  // Where «Starta om» and the help's disc stand instead of the felt's corner (#875, beställarens
+  // beslut 2026-10-05): the room's television gives them its side column, where nothing is drawn
+  // under them, because the corner lay over a seat's hand at eight seats. Without it they keep the
+  // corner beside the felt's rim.
+  cornerIn?: HTMLElement | null | undefined
+  // The cards still on their way when the game is about to start (#765, beslut B 2026-10-06): the
+  // tile stays dark in its own form, with the count under the word, until the last card can be
+  // seen — dealing cards without faces is what it waits against, as the editor's link does (L5).
+  // A queue that stands still (#88) opens it again as «Starta ändå». Null when nothing is pending.
+  startWait?: { done: number; total: number; stalled: boolean } | null | undefined
+  // What the screen adds to the corner, between «Starta om» and «?»: the felt's own screen puts its
+  // «⋯» there (#682). The corner lays them out on one row, so none of them is placed on its own.
+  more?: ReactNode | undefined
 }
 
 // The short side a card on the felt is brought to by the lens's first step in (K9).
@@ -205,6 +240,13 @@ const HOLD_MS = 350
 // browser has already decided it is a double press before it fires `dblclick`; this only rules
 // out a stale memory of something clicked a while ago.
 const DOUBLE_MS = 700
+// How long the plate beside a refused drop stands, and how long it takes to fade (#682, D5: it
+// gives way after four seconds).
+export const TOLD_MS = 4000
+const TOLD_FADE_MS = 600
+// What the plate gives way to: everything on the felt a player reads, and the screen's own chrome
+// laid over it. A zone's bare ground is not in it — text may lie over an empty area, never a card.
+const TOLD_AVOIDS = '.byd-card, .byd-pile-top, .byd-pile-caption, .byd-pile-name, .byd-seat-name, [data-seat-plate], .byd-hand-count, .byd-token, .byd-zone > span, .byd-felt-corner > *, .byd-camera-controls, .byd-table-plate > *, .byd-table-last, .byd-table-start'
 const POINT_MS = 450
 const DRAG_MM = 4
 // How far the pointer must move off the point a drag let go at before resting on a card reads it.
@@ -252,14 +294,12 @@ const TOKEN_FIGURE_EM = 0.62
 const tokenInkPx = (chipPx: number, value: string, named: boolean): number =>
   Math.min(chipPx * (named ? TOKEN_NAMED_INK_TALL : TOKEN_INK_TALL), (chipPx * (named ? TOKEN_NAMED_INK_WIDE : TOKEN_INK_WIDE)) / (Math.max(1, value.length) * TOKEN_FIGURE_EM))
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
-// The felt's width across the reader's view under which its names no longer fit beside the zones
-// they name (K19, #76). Two seats facing each other across the felt each want about 76 px for a
-// name, and the shared piles and their count badges stand between them; below this the two reaches
-// meet in the middle. It is the same number `table.css` hides the played felt's names at.
+// The felt's width across the reader's view under which its names are set at the felt's tightest
+// (K19, #76): two seats facing each other across the felt each want about 76 px for a name, and the
+// shared piles and their count badges stand between them. It is the same number `table.css` hides
+// the played felt's names at. Where a name stands is the same rule on every felt (#685): beside its
+// zone as K19 says, then a free side (`placeNames`).
 const TIGHT_FELT_PX = 460
-// How far a name above its own zone stands off it, there. One pixel, because the room it is
-// standing in is the room the seat at the next rim has already been given.
-const NAME_RIM_PX = 1
 const CAMERA_PAD_MM = 60
 const GLIDE_MS = 700
 // Vad en piltangent flyttar kameran, i skärmens egna pixlar (#325): samma steg prototypen mättes
@@ -283,7 +323,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, more }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -315,7 +355,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const folded = (z: ZoneView) => foldHand !== null && z.owner === foldHand
   // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
   // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
-  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handExtent(z, floor, handRot(z)))))
+  // And a full fan's room for every hand somebody sits at (#721), so the felt stands still while
+  // hands fill and empty.
+  const seated = new Set(view.seats.filter((s) => s.name !== null).map((s) => s.id))
+  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handRoom(z, floor, handRot(z), z.owner !== undefined && seated.has(z.owner)))))
   // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
@@ -350,6 +393,41 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const letGo = useRef<{ x: number; y: number } | null>(null)
   const [drag, setDrag] = useState<Live | null>(null)
   const [settling, setSettling] = useState<Settled | null>(null)
+  // What the felt says beside a drop that did not happen (#682, beslut: raden E). The sentence is
+  // the one the live region says, in the region D5 gives a refusal; the plate is for whoever stands
+  // at the felt and hears nothing, so it is hidden from the reader who already heard it. It stands
+  // TOLD_MS, fades, and is gone.
+  // The plate's own sheet is not in the blocking one (L40): it is asked for as soon as the felt can be
+  // played, which is long before anything can be refused.
+  const playing = onAct !== undefined
+  useEffect(() => {
+    if (playing) void loadAfterSheet()
+  }, [playing])
+  const [answer, setAnswer] = useState<{ text: string; at: Point | null; n: number; gone: boolean } | null>(null)
+  const answerN = useRef(0)
+  const dropAt = useRef<Point | null>(null)
+  const tell = (text: string, at: Point | null, live: 'polite' | 'assertive' = 'assertive') => {
+    say?.(live, text)
+    answerN.current += 1
+    setAnswer({ text, at, n: answerN.current, gone: false })
+  }
+  useEffect(() => {
+    if (!answer) return
+    const timer = setTimeout(() => (answer.gone ? setAnswer(null) : setAnswer({ ...answer, gone: true })), answer.gone ? TOLD_FADE_MS : TOLD_MS)
+    return () => clearTimeout(timer)
+  }, [answer])
+  // Sends, and reads the table's answer: a refusal is said where the act was asked for, and what
+  // was held in place for the patch that will now never come is given back at once (#682).
+  const heard = (sent: Promise<SendResult>, at: Point | null, refused?: () => void) =>
+    void sent.then((result) => {
+      if (result.ok) return
+      refused?.()
+      tell(refusalText(result.reason, t), at)
+    })
+  const send = (intents: Intent[], at: Point | null, refused?: () => void) => {
+    const sent = onAct?.(intents)
+    if (sent instanceof Promise) heard(sent, at, refused)
+  }
   const [ring, setRing] = useState<Ring | null>(null)
   // "Sätt värde…" (#67): the chip whose value is being said outright, on this screen's own keys.
   const [entry, setEntry] = useState<VisibleComponentState | null>(null)
@@ -421,8 +499,67 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const lensHandOver = useRef(false)
   const lensOn = lens && mode === 'table' && fixedScale === undefined && fitted !== null && size !== null && size.w > 0 && size.h > 0
   const zoomed = lensOn ? lensAt.k : 1
-  const scale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
+  // The felt as it is fitted to its frame, before any camera or lens: the scale the zones' names
+  // choose their sides at (#685).
+  const fit = fixedScale ?? fitted ?? 1
   const measured = fixedScale !== undefined || (size !== null && (!following || placed !== null))
+  // Where the zones' names stand is decided once, at the fitted scale, and then stays put while the
+  // camera or the lens moves (#43, #685): a name is hung from a corner of its own zone, which the
+  // felt scales, and stepped off it in screen pixels, which it does not. `namesAt` is the felt the
+  // names were last laid out for; a felt that differs from it — another table, another window,
+  // another zone lit on the Bord tab, a name that changed its size — is drawn once at its fitted
+  // scale, the names are laid out on it (`placeNames`), and the next drawing, still before
+  // anything is painted, is the camera's again.
+  // A ref and not state: laying the names out is no reason to draw the felt again, and a state set
+  // in a layout effect flushes every passive effect above it early — which moved when the page said
+  // a reconnection out loud. Only a felt drawn at its fitted scale for the decision is drawn again.
+  const namesAt = useRef<string | null>(null)
+  // Where each seat's plate was laid out on the room's television (#683), by seat: decided with the
+  // names, at the fitted scale, and drawn from at every scale after.
+  const platesAt = useRef<Record<string, PlateAt>>({})
+  const [, redrawNames] = useState(0)
+  const [namesResized, setNamesResized] = useState(0)
+  const namesKey = measured
+    ? JSON.stringify([namesResized, mode, rotate, Math.round(fit * 1e4), forTheRoom, [...(lit ?? [])].sort(), view.zones.map((z) => [z.id, z.kind, z.name, z.geometry.x, z.geometry.y, z.geometry.w, z.geometry.h]), view.seats.map((s) => s.name)])
+    : null
+  const liveScale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
+  const deciding = namesKey !== null && namesAt.current !== namesKey && liveScale !== fit
+  const scale = deciding ? fit : liveScale
+  // What the names were measured by when they were last laid out, so that a name that changes its
+  // size afterwards — a face arriving, a wider one on another machine — is laid out again.
+  const namesWatch = useRef<ResizeObserver | null>(null)
+  useLayoutEffect(() => {
+    const felt = table.current
+    if (!felt || namesKey === null || namesAt.current === namesKey) return
+    // On the room's television the seats' plates are laid out too (#683): the names first against
+    // every plate at its own place, then the plates on a free place clear of those names, and the
+    // names once more against where the plates went.
+    if (forTheRoom) placePlates(felt, true)
+    placeNames(felt)
+    if (forTheRoom) {
+      platesAt.current = placePlates(felt)
+      placeNames(felt)
+    }
+    // The words they were laid out against are watched as well: a pile's caption (#771) changes its
+    // width when the pile's top card changes, and comes and goes with the card's picture (#886).
+    // None of them changes its size when the camera zooms, so watching them never re-decides a side
+    // the camera moved (#43).
+    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span, :scope > [data-seat-plate] > b > span, :scope > [data-seat-plate] > span, .byd-pile-caption')]
+    const measure = () => spans.map((el) => `${el.scrollWidth}x${el.offsetHeight}`).join()
+    const laidOutFor = measure()
+    namesWatch.current?.disconnect()
+    namesWatch.current = null
+    if (typeof ResizeObserver !== 'undefined') {
+      const watch = new ResizeObserver(() => {
+        if (measure() !== laidOutFor) setNamesResized((n) => n + 1)
+      })
+      for (const el of spans) watch.observe(el)
+      namesWatch.current = watch
+    }
+    namesAt.current = namesKey
+    if (deciding) redrawNames((n) => n + 1)
+  }, [namesKey, deciding, forTheRoom])
+  useEffect(() => () => namesWatch.current?.disconnect(), [])
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
   // Opening the ring is one act however it was asked for, so both ways in pull it inside the
@@ -505,7 +642,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!settling) return
     const timer = setTimeout(() => {
       setSettling(null)
-      say?.('polite', t('drop.unanswered'))
+      tell(t('drop.unanswered'), dropAt.current, 'polite')
     }, DEFAULT_TIMING.slowAfterMs)
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the wait starts over only with another drop; what is said is said as it stands
@@ -516,7 +653,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // keeps the floor's shape and is then turned, so a container query on it measures the other
   // side. Under `TIGHT_FELT_PX` the felt is smaller than the names it carries and draws them at
   // its own tightest (K19, #76) — which in practice is the observer on a phone (C8, L12).
-  const feltWidePx = px(rotate % 180 === 0 ? floor.geometry.w : floor.geometry.h)
+  // It is the felt as fitted that is tight, and not the picture a camera has zoomed: a name that
+  // changed its size when the camera moved would change its side with it (#43, #685).
+  const feltWidePx = fit * (rotate % 180 === 0 ? floor.geometry.w : floor.geometry.h)
   const tight = mode === 'tv' && measured && feltWidePx > 0 && feltWidePx < TIGHT_FELT_PX
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
@@ -528,11 +667,32 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // En filt där ingen hög bär en startåtgärd ritar ingen bricka alls — samma regel som K14 ger
   // ringen: en ring utan verb öppnas inte, och ett kommando utan något att göra är samma fel.
   const start = onAct && startsAt(view).length > 0 ? compileStart(view) : null
+  // Where the start tile's top edge stands, in the felt's pixels (K25, #721).
+  const startTop = (): number => {
+    const middle = floor.geometry.y + floor.geometry.h / 2
+    const across = floor.geometry.x + floor.geometry.w / 2
+    // The piles the tile lies under, across: their pills are what it must not cover.
+    const under = view.zones.filter((z) => z.kind === 'pile' && Math.abs(z.geometry.x - across) < START_MM.w / 2 + CARD_MM.w / 2)
+    const pills = under.map((z) => top(z.geometry.y + CARD_MM.h / 2) + PILL_BELOW_PX + PILL_AIR_PX)
+    const wanted = top(middle + START_MM.below)
+    const last = top(middle + BAND_END_MM - START_MM.h)
+    return Math.min(Math.max(wanted, ...pills), last)
+  }
   // Ett andra tryck mitt i spelet är hur en ny giv ges, och det ska gå (K23) — men inte av
   // misstag, eftersom det drar tillbaka varje hand och blandar om leken. Frågan ställs bara när
   // något faktiskt hänt vid bordet; `view.played` är den uppgiften, och den räknar inte den som
   // bara satt sig (#452).
   const [askingStart, setAskingStart] = useState(false)
+  // «Starta spelet» gives way to «Starta om» in the corner once the start has run, and the tile that
+  // was pressed is gone from under the focus (#761, K16: the first stop that is left, never
+  // nothing). The focus is carried to the tile that took its place, the same control by another name.
+  const startHadFocus = useRef(false)
+  useEffect(() => {
+    if (!view.played || !startHadFocus.current) return
+    startHadFocus.current = false
+    const at = document.activeElement
+    if (at === null || at === document.body) document.querySelector<HTMLElement>('.byd-table-restart')?.focus()
+  }, [view.played])
   // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
   // surface that supplies none keeps the stand-in weave `table.css` draws.
   const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
@@ -551,25 +711,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const onWood = { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) }
     return Math.max(px(TOKEN_MM), leaningSquare(leaning, onWood, TOUCH_PX))
   }
-  // K19 on a felt too small to hold its own names beside the zones they name (#76). At the side
-  // rims a name stands above its zone instead, anchored at the end nearest the rim and growing
-  // inward, so that it keeps to its own half of the felt rather than reaching across it — where
-  // the shared piles and their count badges stand, and the opposite seat's name comes the other
-  // way. It is said through the same two variables the stylesheet's rim rules use, because the
-  // only thing the sheet cannot work out for itself is how large the zone came out in pixels.
-  const overRim = (z: ZoneView, rim: Rim, grow: Grow): Record<string, string> => {
-    if (!tight || (rim !== 'E' && rim !== 'W')) return {}
-    const turnedZone = rotate % 180 === 0 ? { w: z.geometry.w, h: z.geometry.h } : { w: z.geometry.h, h: z.geometry.w }
-    const side = rim === 'E' ? `${px(turnedZone.w)}px - 100% - var(--name-in)` : `var(--name-in) - ${px(turnedZone.w)}px`
-    return { '--name-side': `calc(${side})`, '--name-end': `calc(-100% - ${NAME_RIM_PX}px${grow === 'back' ? ` - ${px(turnedZone.h)}px` : ''})` }
-  }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
-  const ownedBySeat = (zone: string) => view.zones.find((z) => z.id === zone)?.owner !== undefined
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
   const colourOf = (seat: string | null) => (seat === null ? TABLE_GREY : seatColor(seatIndex(seat)))
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
   const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
   const shuffling = new Map(shuffles.map((s) => [s.pile, s.seq]))
+  const told = new Map(said.map((s) => [s.pile, s.seq]))
 
   // Pointer → table millimetres, fixed when a drag begins (the layout does not change under it).
   const mapper = (): ((cx: number, cy: number) => Point) | null => {
@@ -609,7 +757,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const u = tiltedToTable({ frame: { w: fr.width, h: fr.height }, wood: { left: w.offsetLeft, top: w.offsetTop, w: w.offsetWidth, h: w.offsetHeight } }, cx - fr.left, cy - fr.top)
     return Math.abs(u.x) <= w.offsetWidth / 2 && Math.abs(u.y) <= w.offsetHeight / 2
   }
-  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null, onTable, cardPx: () => px(CARD_MM.w) }))
+  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null, onTable, cardPx: () => px(CARD_MM.w), answer: (sent, cx, cy) => heard(sent, { x: cx, y: cy }) }))
 
   const down = (e: RPointerEvent, target: DragTarget) => {
     if (!onAct) return
@@ -622,7 +770,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (modifierHeld(e)) {
       e.preventDefault()
       const turn = flipUnder(view, target)
-      if (turn) onAct(turn)
+      if (turn) send(turn, { x: e.clientX, y: e.clientY })
       return
     }
     const map = mapper()
@@ -698,10 +846,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       // and it is said why, or the felt would seem not to have heard the drop.
       const empty = nobodysHand(view, d, mode)
       const seat = empty === null ? undefined : view.zones.find((z) => z.id === empty)?.owner
-      if (seat !== undefined) say?.('polite', t('drop.nobody', { seat: view.seats.find((s) => s.id === seat)?.name ?? seat }))
+      if (seat !== undefined) tell(t('drop.nobody', { seat: view.seats.find((s) => s.id === seat)?.name ?? seat }), asked)
       return
     }
-    onAct(intents)
+    dropAt.current = asked
+    send(intents, asked, () => setSettling((held) => (held?.ids === d.ids ? null : held)))
     // The card stays where it was put until the table has moved it. Between here and the patch the
     // view still says where the card came from, and drawing it there is the flinch (#29).
     // A whole pile waits for the same patch, and is held by where its zone was rather than by ids.
@@ -721,6 +870,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }
   const up = (e: RPointerEvent) => release({ x: e.clientX, y: e.clientY }, edgesOf(e.currentTarget as HTMLElement))
   const cancel = () => release(null)
+  // Escape while something is carried takes the drag back (#681, K14), as the editor's (#142) and
+  // the hand's (#484) do: the thing is drawn where it lay again, nothing is sent, and the release
+  // that follows finds no drag and so neither drops nor asks. The pointer keeps its capture, so
+  // that release still comes here and not to whatever happens to be under it.
+  const callOff = () => {
+    const d = live.current
+    clearHold()
+    live.current = null
+    setDrag(null)
+    if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
+  }
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: cancel })
   // Pointing at a card is not touching it: it only says what the screen should show large.
   const inspects = (c: VisibleComponentState | undefined) =>
@@ -1011,6 +1171,37 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const lensUp = () => {
     lensPan.current = null
   }
+  // Two fingers over the felt are the lens too (#720): spread, it enlarges about the point between
+  // them, and the page stays as it is — the frame takes the gesture (`touch-action` in `table.css`)
+  // rather than the browser zooming the whole page, the help and the corner with it. Read in the
+  // capture phase, so a finger that lands on a card counts as much as one on the bare felt.
+  const touches = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{ d: number; k: number } | null>(null)
+  const spread = () => {
+    const [a, b] = [...touches.current.values()]
+    return a && b ? { d: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } } : null
+  }
+  const pinchDown = (e: RPointerEvent) => {
+    if (!lensOn || e.pointerType !== 'touch') return
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const now = spread()
+    if (touches.current.size === 2 && now && now.d > 0) {
+      pinch.current = { d: now.d, k: lensAt.k }
+      lensPan.current = null
+    }
+  }
+  const pinchMove = (e: RPointerEvent) => {
+    if (!touches.current.has(e.pointerId)) return
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const held = pinch.current
+    const now = spread()
+    if (!held || !now) return
+    lensTo(Math.min(lensFloor * LENS_MAX, Math.max(1, (held.k * now.d) / held.d)), now.mid)
+  }
+  const pinchUp = (e: RPointerEvent) => {
+    touches.current.delete(e.pointerId)
+    if (touches.current.size < 2) pinch.current = null
+  }
 
   const doubled = (e: RMouseEvent) => {
     if (turnAgain()) return
@@ -1029,7 +1220,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const turn = was && onAct && Date.now() - was.at < DOUBLE_MS ? flipUnder(view, was.target) : null
     if (!turn) return false
     setRing(null)
-    onAct?.(turn)
+    send(turn, ring ? { x: ring.x, y: ring.y } : null)
     return true
   }
 
@@ -1095,7 +1286,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       keyboard.onActivate(key)
     }
   }
-  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, look, setEntry, moveOn(ring.target), t) : []
+  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, (intents) => send(intents, { x: ring.x, y: ring.y }), look, setEntry, moveOn(ring.target), t) : []
   // What is lifted now, read off the table as it is now: a card turned since is drawn turned, and
   // one that has left what this screen sees is not drawn at all.
   const liftOf = (l: Lift | null): Lift | null => {
@@ -1129,13 +1320,40 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     return { x: x - r.left, y: y - r.top }
   }
   const ringAt = ring ? fixedAt(ring.x, ring.y) : null
+  // Where the plate beside a refused drop stands (#682): measured at three widths, and put where it
+  // covers nothing — `besideDrop` decides, in the window's coordinates, before the first paint.
+  const toldEl = useRef<HTMLParagraphElement | null>(null)
+  const [toldAt, setToldAt] = useState<{ n: number; left: number; top: number; maxWidth: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = toldEl.current
+    const ground = wood.current ?? frame.current
+    if (!answer || answer.gone || !el || !ground) return
+    const room = ground.getBoundingClientRect()
+    const full = Math.min(420, Math.max(220, room.width * 0.4))
+    const shapes = [full, Math.round(full * 0.76), Math.round(full * 0.62)].map((maxWidth) => {
+      el.style.maxWidth = `${maxWidth}px`
+      const r = el.getBoundingClientRect()
+      return { maxWidth, w: r.width, h: r.height }
+    })
+    const avoid: Box[] = [...document.querySelectorAll(TOLD_AVOIDS)]
+      .filter((o) => o !== el && !o.contains(el) && getComputedStyle(o).visibility !== 'hidden')
+      .map((o) => o.getBoundingClientRect())
+      .filter((r) => r.width >= 1 && r.height >= 1)
+    const at = answer.at ?? { x: room.left + room.width / 2, y: room.top + room.height / 2 }
+    const placed = besideDrop({ left: at.x - 1, right: at.x + 1, top: at.y - 1, bottom: at.y + 1 }, shapes, room, avoid)
+    const p = fixedAt(placed.x, placed.y)
+    setToldAt({ n: answer.n, left: p.x, top: p.y, maxWidth: placed.maxWidth })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- placed once per plate; it does not chase the felt while it stands
+  }, [answer?.n])
   const ringOn = ring?.target
   const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
   // The game's own actions for the pile the ring is about (K14, extended). They hang under the
   // ring as a list, because a designer's sentence does not fit in a circle's button; a pile with
   // none opens no sheet, for the same reason a ring with no verbs does not open.
   const ringZone = ringOn && (ringOn.kind === 'pile' || ringOn.kind === 'pileTop') ? view.zones.find((z) => z.id === ringOn.pile) : undefined
-  const ringActions = ringZone?.actions ?? []
+  // A start action whose only step is a verb the ring already shows is left out (#719): the
+  // recipe's «Blanda» (when: both) stood beside the ring's own «Blanda», two buttons for one thing.
+  const ringActions = (ringZone?.actions ?? []).filter((a) => !(a.when === 'both' && echoesRing(a)))
   const ringPile = ringOn?.kind === 'counterPile' ? ringOn.ids.flatMap((id) => view.components.find((c) => c.id === id) ?? []) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
@@ -1236,7 +1454,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 {...(crowded ? { 'data-mid': '' } : {})}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
-                {!(forTheRoom && z.owner !== undefined) && <span style={overRim(z, rim, grow)}>{z.name}</span>}
+                {!(forTheRoom && z.owner !== undefined) && <span>{z.name}</span>}
                 {/* How much lies in an area this screen may not look into (#414, decision B of
                     2026-09-22). `count` is already on the wire and was being thrown away, so a
                     seat with three cards in front of it drew the same empty box as a seat with
@@ -1252,7 +1470,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               </div>
             )
           })}
-          {forTheRoom && view.seats.map((seat, i) => <SeatPlate key={seat.id} view={view} seat={seat} color={seatColor(i)} left={left} top={top} t={t} />)}
+          {forTheRoom && view.seats.map((seat, i) => <SeatPlate key={seat.id} view={view} seat={seat} color={seatColor(i)} left={left} top={top} t={t} at={platesAt.current[seat.id]} />)}
           {/* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24): platsens egna
               millimeter av kanten, i platsens färg. Den ligger vid kanten och inte kring
               fläkten, eftersom kanten är den enda ytan kring en hand som kortet man bär aldrig
@@ -1287,6 +1505,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 px={px}
                 lifted={whole}
                 shuffle={shuffling.get(z.id)}
+                said={told.get(z.id)}
                 still={still}
                 topInspects={bothPointing(inspects(lifting ? topOf(z, 1) : topOf(z)), reads({ kind: 'pileTop', pile: z.id }))}
                 bottomCard={bottomOf(z, byId)}
@@ -1374,9 +1593,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                   {...keys(`counter:${c.id}`)}
                   style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)) + peek, width: px(TOKEN_MM), height: px(TOKEN_MM) }}
                 >
-                  {/* On the room's television a seat's chip is said on its plate (#573). */}
-                  {!(forTheRoom && ownedBySeat(c.zone)) && <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>}
-                  {wide && <span>{c.cardRef ?? ''}</span>}
+                  {/* Every chip says its own figure, a seat's too (#683, beslut E): on the room's
+                      television in the room's 24 px pill, and without its name, which the felt
+                      there no longer writes. */}
+                  <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>
+                  {wide && !forTheRoom && <span>{c.cardRef ?? ''}</span>}
                   {hit > 0 && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
                 </div>
               )
@@ -1455,17 +1676,27 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             <button
               type="button"
               className="byd-table-start"
-              data-table-start={start.ok ? 'ready' : 'why'}
-              disabled={!start.ok}
-              title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
-              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 + START_MM.below), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
-              onClick={() => {
-                if (!start.ok) return
+              data-table-start={!start.ok ? 'why' : startWait === null ? 'ready' : startWait.stalled ? 'anyway' : 'wait'}
+              disabled={!start.ok || (startWait !== null && !startWait.stalled)}
+              title={!start.ok ? t('start.blocked', { why: t(whyKey(start)) }) : startWait !== null && !startWait.stalled ? t('start.blocked', { why: t('start.wait.why') }) : undefined}
+              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: startTop(), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
+              onClick={(e) => {
+                if (!start.ok || (startWait !== null && !startWait.stalled)) return
                 if (view.played) setAskingStart(true)
-                else onAct?.(start.intents)
+                else {
+                  startHadFocus.current = e.currentTarget === document.activeElement
+                  onAct?.(start.intents)
+                }
               }}
             >
-              {t('start.tile')}
+              {startWait === null ? (
+                t('start.tile')
+              ) : (
+                <>
+                  {t(startWait.stalled ? 'start.anyway' : 'start.tile')}
+                  <small>{t(startWait.stalled ? 'start.stalled' : 'start.wait', { done: startWait.done, total: startWait.total })}</small>
+                </>
+              )}
             </button>
           )}
           {overlay?.({ px, left, top, scale })}
@@ -1491,6 +1722,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       onPointerMove={drivable ? panMove : lensOn ? lensMove : undefined}
       onPointerUp={drivable ? panUp : lensOn ? lensUp : undefined}
       onPointerCancel={drivable ? panUp : lensOn ? lensUp : undefined}
+      onPointerDownCapture={lensOn ? pinchDown : undefined}
+      onPointerMoveCapture={lensOn ? pinchMove : undefined}
+      onPointerUpCapture={lensOn ? pinchUp : undefined}
+      onPointerCancelCapture={lensOn ? pinchUp : undefined}
     >
       {placed ? (
         <div className="byd-camera-world" style={{ left: placed.left, top: placed.top, width: px(floorRect.w), height: px(floorRect.h) }}>
@@ -1499,6 +1734,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ) : (
         felt
       )}
+      {drag?.started && <DragDoor onCancel={callOff} />}
       {ringVerbs.length > 0 && ring && ringAt && (
         <RadialMenu
           id={ringName(ring.target)}
@@ -1520,7 +1756,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           actions={ringActions}
           x={ringAt.x}
           y={ringAt.y + RING_REACH + RING_AIR * 2}
-          onAct={onAct}
+          onAct={(intents) => send(intents, { x: ring.x, y: ring.y })}
           onClose={shut(ring)}
         />
       )}
@@ -1568,20 +1804,28 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           })}
         </Question>
       )}
-      {start && view.played && (
-        <button
-          type="button"
-          className="byd-table-restart"
-          data-table-start={start.ok ? 'ready' : 'why'}
-          disabled={!start.ok}
-          title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
-          onClick={() => start.ok && setAskingStart(true)}
-        >
-          {t('start.again.tile')}
-        </button>
+      {/* The corner beside the felt's rim: «Starta om» and the help's disc on one row (#482, #684),
+          so a disc that says its name on the room's television pushes the tile aside rather than
+          lying over it. */}
+      {((corner) => (cornerIn ? createPortal(corner, cornerIn) : <div className="byd-felt-corner">{corner}</div>))(
+        <>
+        {start && view.played && (
+          <button
+            type="button"
+            className="byd-table-restart"
+            data-table-start={start.ok ? 'ready' : 'why'}
+            disabled={!start.ok}
+            title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
+            onClick={() => start.ok && setAskingStart(true)}
+          >
+            {t('start.again.tile')}
+          </button>
+        )}
+        {more}
+        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} named={forTheRoom} />}
+        </>,
       )}
-      {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
-      {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
+      {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => send([{ v: 'setCounter', component: entry.id, value }], null)} onClose={() => setEntry(null)} />}
       {reading && (
         <Lifted
           c={reading.c}
@@ -1595,6 +1839,20 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           // A screen that watches has nothing to ask, so a press on what it reads puts it down.
           onAsk={() => (onAct ? ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2) : putDown())}
         />
+      )}
+      {answer && (
+        // Hidden from a reader who has already been told in the live region (D5): it is the same
+        // sentence, for the eyes.
+        <p
+          ref={toldEl}
+          className="byd-felt-refusal"
+          data-felt-refusal=""
+          data-gone={answer.gone ? '' : undefined}
+          aria-hidden="true"
+          style={toldAt?.n === answer.n ? { left: toldAt.left, top: toldAt.top, maxWidth: toldAt.maxWidth } : { left: 0, top: 0, visibility: 'hidden' }}
+        >
+          {answer.text}
+        </p>
       )}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
@@ -1650,9 +1908,10 @@ const ringName = (target: Ring['target']): string =>
   target.kind === 'card' || target.kind === 'counter' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
 
 // The felt node a ring is opened on, keyed the way the keyboard layer knows it (`thingsOn`): where
-// focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip.
+// focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip, and a
+// pile and its top card are one stop (#572, #723).
 const ringKey = (target: Ring['target']): string =>
-  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : target.kind === 'pileTop' ? `top:${target.pile}` : `pile:${target.pile}`
+  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : `pile:${target.pile}`
 
 // What the ring is called: the sentence the keyboard reader hears on the thing it was opened on.
 function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undefined {
@@ -1661,6 +1920,12 @@ function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undef
 }
 
 // The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
+// Whether an action does nothing but what one of the ring's own verbs does (#719).
+const echoesRing = (a: ZoneAction): boolean => {
+  const [only, ...more] = a.steps
+  return only !== undefined && more.length === 0 && (only.v === 'shuffle' || (only.v === 'flipTop' && only.face === 'toggle'))
+}
+
 function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, move: (() => void) | undefined, t: T): RadialItem[] {
   const target = ring.target
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
@@ -1692,7 +1957,9 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
       flip(c),
       { label: t('ring.rotate'), run: () => act([{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }]) },
       look(c),
-      { label: t('ring.reveal'), run: c.cardRef === null ? () => act([{ v: 'reveal', components: [c.id] }]) : null },
+      // A slice that can never go is not drawn (#719): a card this screen already reads has nothing
+      // left to reveal. A verb that only cannot go right now stays, greyed, where the hand expects it.
+      ...(c.cardRef === null ? [{ label: t('ring.reveal'), run: () => act([{ v: 'reveal', components: [c.id] }]) }] : []),
       ...(move ? [{ label: t('ring.move'), run: move }] : []),
     ]
   }
@@ -1708,11 +1975,13 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
   const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
   return [
     { label: t('ring.shuffle'), run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
-    // One card off the top is `drawOne`, which the panel and the `D` key send too (K16, #224).
-    { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(z)]) : null },
+    // One card off the top is `drawOne`, which the panel and the `D` key send too (K16, #224): to
+    // this screen's own hand when it has one (#746), beside the pile when it has none.
+    { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(view, z)]) : null },
     { label: t('ring.half'), run: count > 1 ? () => act([split(Math.ceil(count / 2))]) : null },
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
-    look(top),
+    // A hidden pile shows no top, so there is nothing to hold up (#719).
+    ...(top ? [look(top)] : []),
   ]
 }
 
@@ -1852,7 +2121,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, lit = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, pileKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; lit?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; pileKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
+function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, lit = false, shuffle, said, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, pileKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; lit?: boolean | undefined; shuffle?: number | undefined; said?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; pileKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a
   // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
@@ -1913,6 +2182,12 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   const fanned = playing && !still
   const fanHash = ownBack ?? topCard?.faces?.['back']
   const fanBack = fanHash ? <BackTexture faces={faces} hash={fanHash} /> : back
+  // The top card's name as a caption under the pile's own name (#771, K19), and in table mode on a
+  // plate by the pile's handle (#789). A felt draws a pile's card too small to carry its name: the
+  // waiting or failed state set it at 8 px. The caption is the same word the state would have written — `cardWord`, so
+  // it names exactly what this view may already know, and a face-down pile hidden from it names
+  // nothing — and `table.css` draws it only while the top card's state is on show.
+  const caption = count > 0 ? cardWord(topCard) : null
   return (
     <div
       className="byd-pile"
@@ -1953,7 +2228,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
       {fanned && (
-        <div className="byd-pile-fan" key={shuffle} aria-hidden="true">
+        <div className="byd-pile-fan" key={`fan-${shuffle}`} aria-hidden="true">
           {FAN.map(([out, turn], i) => (
             <i key={i} className="byd-pile-fan-card" data-face="back" data-back={fanBack ? 'own' : undefined} style={{ ['--fan-out' as string]: `${out}%`, ['--fan-turn' as string]: `${turn}deg` }}>
               {fanBack}
@@ -1964,7 +2239,22 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
         <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
+        {/* Always there, and empty when there is nothing to say: the felt's names and plates are laid
+            out again when it changes size (#886), and only an element that is there can be watched.
+            Empty, it is never drawn: `table.css` shows it only beside the card state's own name,
+            and the state names the card exactly when `cardWord` has a word for it. */}
+        <span className="byd-pile-caption">{caption ?? ''}</span>
       </span>
+      {/* That the pile was just shuffled, in words, under it (#718). The activity list says the
+          same line for whoever reads it out, so this is for the eye only. Keyed by the line, so a
+          second shuffle starts it over. The fan above is keyed by the very same line, and the two are
+          siblings: each key says what it is the line *of*, or React takes the two for one child and
+          keeps a fan that ended — the television counted eight backs where there are four (#936). */}
+      {said !== undefined && count > 0 && (
+        <span className="byd-pile-said" key={`said-${said}`} aria-hidden="true">
+          {t('pile.shuffled', { pile: zone.dynamic ? t('pile.dynamic') : zone.name })}
+        </span>
+      )}
     </div>
   )
 }
@@ -1995,49 +2285,64 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
   )
 }
 
-// Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
-// whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
-// the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-// A seat's words on the room's television, on one plate beside the seat's own zones (#573,
-// beslut C efter prototyp): its letter and name in its colour, what its hand holds, and its
-// counters by name and value. It stands on the side of the zones that faces the middle of the
-// table, and a seat at the side stacks its words, since a wide plate there reached the piles
-// (measured at four seats). It is drawn before the piles and the cards, so a card played
-// beside a seat lies over the plate and never under it.
+// A seat's words on the room's television, on one plate on the felt (#573, beslut C; #683, beslut E):
+// its letter and name in its colour and what its hand holds — «(B) ledig 5 kort». A counter's
+// figure is on the seat's own chip. Where the plate stands is `placePlates`'s, decided with the
+// zones' names at the felt's fitted scale (`at`); until it has been, the plate stands at its own
+// place, beside the seat's zones on the side that faces the middle of the table, and a seat at the
+// side stacks its words. It is drawn before the piles and the cards, so a card played beside a seat
+// lies over the plate and never under it. No plate is cut short: one that fits nowhere is drawn as
+// a badge with the seat's mark (`data-form="badge"`), its words still in the page.
 const PLATE_AIR_PX = 8
-function SeatPlate({ view, seat, color, left, top, t }: { view: Snapshot; seat: Snapshot['seats'][number]; color: string; left: (mm: number) => number; top: (mm: number) => number; t: T }) {
+function SeatPlate({ view, seat, color, left, top, t, at }: { view: Snapshot; seat: Snapshot['seats'][number]; color: string; left: (mm: number) => number; top: (mm: number) => number; t: T; at: PlateAt | undefined }) {
   const own = view.zones.filter((z) => z.owner === seat.id && z.kind === 'area')
   const hand = view.zones.find((z) => z.owner === seat.id && z.kind === 'hand')
   const around = own.length > 0 ? own : hand ? [hand] : []
   if (around.length === 0) return null
-  const x0 = Math.min(...around.map((z) => z.geometry.x))
-  const y0 = Math.min(...around.map((z) => z.geometry.y))
-  const x1 = Math.max(...around.map((z) => z.geometry.x + z.geometry.w))
-  const y1 = Math.max(...around.map((z) => z.geometry.y + z.geometry.h))
+  // The seat's own zones on the felt, in pixels: what `placePlates` reads, and what `at` hangs from.
+  const box = {
+    l: left(Math.min(...around.map((z) => z.geometry.x))),
+    t: top(Math.min(...around.map((z) => z.geometry.y))),
+    r: left(Math.max(...around.map((z) => z.geometry.x + z.geometry.w))),
+    b: top(Math.max(...around.map((z) => z.geometry.y + z.geometry.h))),
+  }
   const edge = seat.edge ?? 'S'
-  const at: CSSProperties =
-    edge === 'N' ? { left: left(x0), top: top(y1) + PLATE_AIR_PX } :
-    edge === 'S' ? { left: left(x0), top: top(y0) - PLATE_AIR_PX, transform: 'translateY(-100%)' } :
-    edge === 'W' ? { left: left(x1) + PLATE_AIR_PX, top: top((y0 + y1) / 2), transform: 'translateY(-50%)' } :
-    { left: left(x0) - PLATE_AIR_PX, top: top((y0 + y1) / 2), transform: 'translate(-100%, -50%)' }
+  const placed: CSSProperties | null = at
+    ? {
+        left: (at.x === 'l' ? box.l : at.x === 'r' ? box.r : (box.l + box.r) / 2) + at.dx,
+        top: (at.y === 't' ? box.t : at.y === 'b' ? box.b : (box.t + box.b) / 2) + at.dy,
+        ...(edge === 'E' ? { transform: 'translateX(-100%)' } : {}),
+      }
+    : null
+  const home: CSSProperties =
+    edge === 'N' ? { left: box.l, top: box.b + PLATE_AIR_PX } :
+    edge === 'S' ? { left: box.l, top: box.t - PLATE_AIR_PX, transform: 'translateY(-100%)' } :
+    edge === 'W' ? { left: box.r + PLATE_AIR_PX, top: (box.t + box.b) / 2, transform: 'translateY(-50%)' } :
+    { left: box.l - PLATE_AIR_PX, top: (box.t + box.b) / 2, transform: 'translate(-100%, -50%)' }
   const held = hand ? (hand.mode === 'count' ? hand.count : hand.order.length) : null
-  const owned = new Set(own.map((z) => z.id))
-  const chips = view.components.filter((c) => c.counter !== null && c.counter !== undefined && owned.has(c.zone))
-  const name = seat.name ?? seat.id
+  // A seat nobody sits in keeps its letter in the ball and says it is free where the name goes; the
+  // letter written twice read «A A» (#717).
   return (
-    <div className="byd-seat-plate" data-seat-plate={seat.id} data-edge={edge} style={{ ...at, ['--seat' as string]: color }}>
+    <div
+      className="byd-seat-plate"
+      data-seat-plate={seat.id}
+      data-edge={edge}
+      data-box={`${box.l} ${box.t} ${box.r} ${box.b}`}
+      {...(at?.form === 'badge' ? { 'data-form': 'badge' } : {})}
+      style={{ ...(placed ?? home), ['--seat' as string]: color }}
+    >
       <b>
-        <i aria-hidden="true">{name.slice(0, 1)}</i>
-        {name}
+        <i aria-hidden="true">{(seat.name ?? seat.id).slice(0, 1)}</i>
+        <span>{seat.name ?? t('tv.seat.free')}</span>
       </b>
-      {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: held })}</span>}
-      {chips.map((c) => (
-        <span key={c.id}>{c.cardRef ? `${c.cardRef} ${c.counter ?? 0}` : String(c.counter ?? 0)}</span>
-      ))}
+      {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.short.one' : 'tv.seat.hand.short.other', { n: held })}</span>}
     </div>
   )
 }
 
+// Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
+// whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
+// the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
 function Hand({ zone, color, rot, countAt, countIn = false, counted = true, folded = false, taking = 0, left, top, px, cards, faces, reach }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; counted?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined; reach?: ((c: VisibleComponentState) => Partial<Pointing & Handlers>) | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)

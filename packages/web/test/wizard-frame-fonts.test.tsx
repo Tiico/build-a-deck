@@ -10,16 +10,14 @@
 // Vägen mäts hela vägen: sidan trycks, dokumentet går till `POST /projects`, och kontrollen körs
 // på det som ligger kvar på servern — inte på det som byggdes i minnet.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Element } from '@byd/template'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { FRAMES } from '../src/wizard/frames.js'
 import { deckIssues } from '../src/editor/checks.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 let net: FontNet
@@ -50,9 +48,12 @@ async function madeWith(frame: string, theme?: string): Promise<ProjectDoc> {
   fireEvent.click(screen.getByRole('button', { name: frame }))
   if (theme) fireEvent.click(screen.getByRole('button', { name: `Välj temat ${theme}` }))
   for (const [i, kort] of KORT.entries()) {
-    if (i > 0) fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    // The guide opens on example cards (#733): write over those first, then add.
+    const tabs = [...document.querySelectorAll<HTMLElement>('.byd-wizard-card-tabs > button[aria-pressed]')]
+    if (i < tabs.length) fireEvent.click(tabs[i]!)
+    else fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
     fireEvent.change(screen.getByLabelText(`kort ${i + 1} Titel`), { target: { value: kort.title } })
-    fireEvent.change(screen.getByLabelText(`kort ${i + 1} Text`), { target: { value: kort.body } })
+    fireEvent.change(screen.getByLabelText(`kort ${i + 1} Regeltext`), { target: { value: kort.body } })
   }
   fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
   await waitFor(() => expect(gone).toHaveLength(1))
@@ -105,7 +106,9 @@ describe('the theme a guided start is made in (#633, #420, B3, L27)', () => {
   // Samma regel som `setTheme` (L57): prosan i brödtextens familj, allt annat i rubrikens.
   it('sets the prose in the theme s body family and everything else in its heading family', async () => {
     const doc = await madeWith('Klassisk', 'Krönika')
-    const texts = Object.fromEntries((doc.template.faces['front']?.base ?? []).flatMap((el) => (el.kind === 'text' ? [[el.id, el.font.family]] : [])))
+    // Into the frame's conditions too: the cost stands inside the one that draws it only when there is one (#730).
+    const all = (els: readonly Element[]): Element[] => els.flatMap((el) => ('children' in el ? [el, ...all(el.children)] : [el]))
+    const texts = Object.fromEntries(all(doc.template.faces['front']?.base ?? []).flatMap((el) => (el.kind === 'text' ? [[el.id, el.font.family]] : [])))
     expect(texts).toEqual({ title: 'Lora', body: 'Merriweather', cost: 'Lora' })
   })
 
@@ -160,13 +163,32 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   const preview = () => document.querySelector('.byd-wizard-preview') as HTMLElement
   const drawn = () => [...preview().querySelectorAll('style')].map((s) => s.textContent ?? '').join('\n')
 
-  it('asks the catalogue for nothing until a theme is pressed, a frame included, and says the faces come with it', async () => {
+  // The preselection is not a press (#687, variant D): Skogssaga is marked «Förval» and the card
+  // stands greyed with the way to see it, and nothing is asked for until that way is taken.
+  it('asks the catalogue for nothing until a theme is pressed, a frame included, and offers to show the card in the preselection', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: 'Minimal' }))
     await new Promise((r) => setTimeout(r, 50))
     expect(net.asked).toEqual([])
-    expect(preview().textContent).toContain('Temats typsnitt hämtas när du väljer tema.')
+    const skog = screen.getByRole('button', { name: 'Välj temat Skogssaga' })
+    expect(skog.getAttribute('aria-pressed')).toBe('false')
+    expect(document.getElementById(skog.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Förval')
+    expect(preview().hasAttribute('data-unseen')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Visa kortet i Skogssaga' })).toBeTruthy()
+  })
+
+  it('presses the preselection from the card, fetches its faces, and shows the card', async () => {
+    history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
+    render(<NewProjectPage onNavigate={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Visa kortet i Skogssaga' }))
+    await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Cinzel"/))
+    await waitFor(() => expect(preview().hasAttribute('data-unseen')).toBe(false))
+    const skog = screen.getByRole('button', { name: 'Välj temat Skogssaga' })
+    expect(skog.getAttribute('aria-pressed')).toBe('true')
+    expect(skog.hasAttribute('aria-describedby')).toBe(false)
+    expect(screen.queryByRole('button', { name: 'Visa kortet i Skogssaga' })).toBeNull()
+    expect(document.activeElement?.getAttribute('role')).toBe('img')
   })
 
   it('draws the preview in the pressed theme s heading and body faces once they have been fetched', async () => {
@@ -175,7 +197,30 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Välj temat Retro' }))
     await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Oswald";src:url\("https:\/\/fonts\.gstatic\.com\/s\/oswald\/latin\.woff2"\)/))
     expect(drawn()).toMatch(/@font-face\{font-family:"Roboto Condensed";src:url\("https:\/\/fonts\.gstatic\.com\/s\/roboto-condensed\/latin\.woff2"\)/)
-    expect(preview().textContent).not.toContain('Temats typsnitt hämtas när du väljer tema.')
+    await waitFor(() => expect(preview().hasAttribute('data-unseen')).toBe(false))
+    expect(preview().textContent).not.toContain('Hämtar typsnitten')
+  })
+
+  // A catalogue that does not answer is said on the card, with the way to ask again — never a
+  // pressed tile beside a card that looks like the theme and is not.
+  it('says on the card when the catalogue does not answer, and asks again from there', async () => {
+    net.undo()
+    const real = globalThis.fetch
+    const failing = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (String(input).startsWith('https://fonts.')) throw new TypeError('offline')
+      return real(input, init)
+    })
+    try {
+      history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
+      render(<NewProjectPage onNavigate={() => undefined} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Välj temat Krönika' }))
+      expect(await screen.findByText('Katalogen svarade inte, så kortet står inte i temats typsnitt.')).toBeTruthy()
+      expect(preview().hasAttribute('data-unseen')).toBe(true)
+      expect(screen.getByRole('button', { name: 'Visa kortet i Krönika' })).toBeTruthy()
+    } finally {
+      failing.mockRestore()
+      net = watchFontNet()
+    }
   })
 
   // The theme's colours reach the card through its meanings (E4): a symbol written with a meaning is
@@ -183,7 +228,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   it('paints a meaning in the pressed theme s colour, and changes it when the theme changes', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
-    fireEvent.change(screen.getByLabelText('kort 1 Text'), { target: { value: 'Betala {mynt|kostnad}.' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Regeltext'), { target: { value: 'Betala {mynt|kostnad}.' } })
     const ink = () => (preview().querySelector('.byd-ink') as HTMLElement | null)?.style.background
     await waitFor(() => expect(ink()).toBe('rgb(143, 45, 32)'))
     fireEvent.click(screen.getByRole('button', { name: 'Välj temat Krönika' }))

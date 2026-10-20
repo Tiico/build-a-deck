@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "playwright test"
+    "test": "playwright test",
+    "load:memory": "node --import tsx load/run.ts",
+    "load:ai": "node --import tsx load/ai.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

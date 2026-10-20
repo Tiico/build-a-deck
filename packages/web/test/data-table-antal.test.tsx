@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DataTable } from '../src/editor/DataTable.js'
 import { importCardsCsv } from '../src/editor/csv.js'
 import { copiesOf } from '../src/editor/fields.js'
+import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // `antal` is how many copies of a card the deck holds (L4, #479): a whole number from nought. It
 // took 0 on a backspace, 0 on an `e`, −2 pasted and −5 from the bulk row, and the card was then
@@ -37,7 +36,7 @@ describe('how many copies a card has (#479)', () => {
     fireEvent.change(cell, { target: { value: '-2' } })
     expect(onCell).not.toHaveBeenCalled()
     expect(cell.getAttribute('aria-invalid')).toBe('true')
-    expect(document.getElementById(cell.getAttribute('aria-describedby') ?? '')?.textContent).toBe('antal är ett heltal från 0')
+    expect(document.getElementById(cell.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Antal är ett heltal från 0')
     fireEvent.change(cell, { target: { value: '4' } })
     expect(onCell).toHaveBeenLastCalledWith('dragon', 'antal', 4, expect.any(String))
     expect(cell.getAttribute('aria-invalid')).not.toBe('true')
@@ -116,7 +115,7 @@ describe('a new card (#479)', () => {
 // cards it read, how many went, and which columns are new — in the status, where it is heard.
 describe('what an import did (#479)', () => {
   const importing = (text: string) => {
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [new File([text], 'kort.csv', { type: 'text/csv' })] } })
   }
 
@@ -160,6 +159,79 @@ describe('what an import did (#479)', () => {
   })
 })
 
+// The line belongs to its import (#739). After «5 kort lästes: 0 nya, 72 togs bort.» and Ctrl+Z it
+// stood on, saying what a file had done to a table that no longer held it; and the next file that
+// would not read put its refusal beside it, so the box said two things at once. A file with nothing
+// in it and a file that is no CSV both got «CSV-filen behöver en id-kolumn», which is true of
+// neither: each is said in its own words.
+describe('what an import did belongs to that import (#739)', () => {
+  // The editor's history, as much of it as the table can see: the rows come back as they were.
+  function Undoable() {
+    const [doc, setDoc] = useState<ProjectDoc>(projectDoc())
+    const [was, setWas] = useState<ProjectDoc['rows'] | null>(null)
+    return (
+      <>
+        <button
+          type="button"
+          disabled={was === null}
+          onClick={() => {
+            setDoc((d) => ({ ...d, rows: was! }))
+            setWas(null)
+          }}
+        >
+          Ångra
+        </button>
+        <DataTable
+          doc={doc}
+          selectedRow={null}
+          onSelectRow={() => undefined}
+          onCell={() => undefined}
+          onAddRow={() => undefined}
+          onRemoveRow={() => undefined}
+          onReplaceRows={(rows) => {
+            setWas(doc.rows)
+            setDoc((d) => ({ ...d, rows }))
+          }}
+          onAddField={() => undefined}
+          onRemoveField={() => undefined}
+          onMoveField={() => undefined}
+        />
+      </>
+    )
+  }
+  const picking = (text: string, name = 'kort.csv', type = 'text/csv') =>
+    fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [new File([text], name, { type })] } })
+  const ALL = 'id,title\ndragon,Drake\nknight,Riddare\nwizard,Trollkarl\nny,Ny'
+
+  it('is gone once the import is undone', async () => {
+    render(<Undoable />)
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
+    picking(ALL)
+    await screen.findByText(/kort lästes/)
+    fireEvent.click(screen.getByRole('button', { name: 'Ångra' }))
+    expect(screen.queryByText(/kort lästes/)).toBeNull()
+  })
+
+  it('gives way to the next file, which says alone what it did', async () => {
+    render(<Undoable />)
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
+    picking(ALL)
+    await screen.findByText(/kort lästes/)
+    picking('title\nDrake')
+    expect((await screen.findByRole('alert')).textContent).toBe('CSV-filen behöver en id-kolumn')
+    expect(screen.queryByText(/kort lästes/)).toBeNull()
+  })
+
+  it('says an empty file is empty, and a file that is no CSV is no CSV, from the picker too', async () => {
+    render(<Undoable />)
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
+    picking('', 'tom.csv')
+    expect((await screen.findByRole('alert')).textContent).toBe('tom.csv är tom. Importen behöver en rad med kolumnernas namn och ett kort per rad.')
+    picking('id,title\ndragon,Drake', 'anteckningar.txt', 'text/plain')
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('anteckningar.txt är ingen datafil. Importen tar CSV eller tabbavgränsad text.'))
+  })
+})
+
 // From the wall and back (#479, with #477's own half on the wall): the table opened at its top
 // whichever card was chosen, and a caret in a cell did not choose its card. The table now opens
 // with the chosen card in view, and a cell the keyboard walks into chooses the card it is on.
@@ -183,5 +255,25 @@ describe('the chosen card in the table (#479)', () => {
     render(<DataTable doc={projectDoc()} selectedRow="dragon" onSelectRow={onSelectRow} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
     fireEvent.focus(screen.getByLabelText('knight title'))
     expect(onSelectRow).toHaveBeenLastCalledWith('knight')
+  })
+})
+
+// «antal är ett heltal från 0» was one 123 px line in a 65 px column, running on under «grupp»
+// (#728). The message breaks inside the column it is about.
+describe('the count message stays in its column', () => {
+  it('lets the message wrap rather than holding it to one line', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = document.createElement('style')
+    css.textContent = readFileSync('src/editor/editor.css', 'utf8')
+    document.head.append(css)
+    try {
+      const says = document.createElement('small')
+      says.className = 'byd-data-says'
+      document.body.append(says)
+      expect(getComputedStyle(says).whiteSpace).not.toBe('nowrap')
+      says.remove()
+    } finally {
+      css.remove()
+    }
   })
 })

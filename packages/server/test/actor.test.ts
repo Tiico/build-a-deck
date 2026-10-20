@@ -98,18 +98,23 @@ function bind(store: MemoryLogStore): LogStore {
   return {
     createSession: (r) => store.createSession(r),
     loadSession: (id) => store.loadSession(id),
+    addDeck: (id, version, deck) => store.addDeck(id, version, deck),
+    deckOf: (id, version) => store.deckOf(id, version),
     append: (id, lines) => store.append(id, lines),
     read: (id) => store.read(id),
     staleSessions: (d) => store.staleSessions(d),
     sessionsOf: (project) => store.sessionsOf(project),
     sessionByCode: (code) => store.sessionByCode(code),
     setCode: (id, code, at) => store.setCode(id, code, at),
+    rotateAdmission: (id, code, at, key) => store.rotateAdmission(id, code, at, key),
     issueGuest: (id, g) => store.issueGuest(id, g),
     activateGuest: (id, token, now, expires) => store.activateGuest(id, token, now, expires),
     guestByToken: (id, h) => store.guestByToken(id, h),
+    guestsAt: (id) => store.guestsAt(id),
     revokeGuests: (id, seat, at) => store.revokeGuests(id, seat, at),
     claimGuest: (h, a) => store.claimGuest(h, a),
     guestsOf: (a) => store.guestsOf(a),
+    returnGuest: (id, a, h, now) => store.returnGuest(id, a, h, now),
   }
 }
 

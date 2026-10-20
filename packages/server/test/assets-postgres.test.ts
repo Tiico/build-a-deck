@@ -1,11 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { MemoryObjectStore } from '@byd/render'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { MemoryObjectStore, PostgresRenderStore } from '@byd/render'
 import { PostgresLogStore } from '../src/index.js'
 import { assetHash } from '../src/assets.js'
 import { start } from './fixture.js'
-import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
-
-vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 // Runs only against a real Postgres: DATABASE_URL=postgres://... pnpm test
 const url = process.env['DATABASE_URL']
@@ -39,6 +36,24 @@ describe.skipIf(!url)('PostgresAssetStore', () => {
     expect(await objects.get(`assets/${h2}`)).toEqual(other)
     expect(await inR2.get(h2)).toEqual({ bytes: other, contentType: 'image/webp' })
     expect(await inR2.get('0'.repeat(64))).toBeNull()
+  })
+
+  // The render worker reads the bytes a page names by hash itself (#1028), from the same table and
+  // the same bucket the app put them in: it is another process, with a connection of its own.
+  it('hands the render worker the bytes the app stored, whether they are in the database or in the bucket', async () => {
+    const objects = new MemoryObjectStore()
+    const worker = PostgresRenderStore.connect(url!, objects, { schema })
+    try {
+      const inDb = await store.assets().put(PNG, 'image/png')
+      const other = new Uint8Array([5, 6, 7, 8])
+      const inR2 = await store.assets(objects).put(other, 'image/webp')
+      const read = worker.assets()
+      expect(await read.get(inDb)).toEqual({ bytes: PNG, contentType: 'image/png' })
+      expect(await read.get(inR2)).toEqual({ bytes: other, contentType: 'image/webp' })
+      expect(await read.get('0'.repeat(64))).toBeNull()
+    } finally {
+      await worker.close()
+    }
   })
 
   // The gate is the route's and not the store's, but what a store keeps is what a reader is later

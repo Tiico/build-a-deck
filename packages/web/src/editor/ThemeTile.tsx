@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { INK, LIBRARY } from './symbols.js'
 import { themeFamilies, type Theme } from './themes.js'
 import { useT } from '../i18n/index.js'
@@ -13,10 +13,15 @@ import './theme-tile.css'
 // faces would need the catalog's sheet the moment the tile is drawn, and the catalog is reached on
 // the designer's handling and never before it (L27, DRIFT §12). `children` is where a room that
 // has been asked for the faces draws the card in them (beställarens val C, 2026-10-01).
-export function ThemeTile({ theme, pressed, busy = false, waiting = false, onPress, children }: { theme: Theme; pressed: boolean; busy?: boolean; waiting?: boolean; onPress(): void; children?: ReactNode }) {
+//
+// `mark` is a word under the name that says what the tile is without pressing it: the guided
+// start's «Förval» (#687), a theme the game gets unless another is pressed. It is the tile's
+// description, so it is heard with the name, and never a pressed state the designer did not make.
+export function ThemeTile({ theme, pressed, busy = false, waiting = false, mark, onPress, children }: { theme: Theme; pressed: boolean; busy?: boolean; waiting?: boolean; mark?: string | undefined; onPress(): void; children?: ReactNode }) {
   const t = useT()
+  const marked = useId()
   return (
-    <button type="button" className="byd-theme-tile" aria-label={t('theme.gallery.choose', { name: t(theme.name) })} aria-pressed={pressed} aria-busy={busy} aria-disabled={waiting} onClick={onPress}>
+    <button type="button" className="byd-theme-tile" aria-label={t('theme.gallery.choose', { name: t(theme.name) })} aria-pressed={pressed} aria-busy={busy} aria-disabled={waiting} {...(mark ? { 'aria-describedby': marked, 'data-marked': '' } : {})} onClick={onPress}>
       <span className="byd-theme-tile-paper" style={{ background: theme.paper }} aria-hidden="true">
         {theme.meanings.map((m, i) => (
           <img key={m.id} src={painted(SAMPLES[i] ?? 'mynt', m.colour)} alt="" />
@@ -24,6 +29,7 @@ export function ThemeTile({ theme, pressed, busy = false, waiting = false, onPre
       </span>
       {children}
       <b>{t(theme.name)}</b>
+      {mark && <span className="byd-theme-tile-mark" id={marked}>{mark}</span>}
       <small className="byd-theme-tile-families">{themeFamilies(theme).map((f) => f.family).join(' · ')}</small>
       <small>{t(theme.about)}</small>
     </button>

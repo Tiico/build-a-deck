@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { assetAccept } from '@byd/protocol'
 import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
@@ -9,7 +10,8 @@ import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
 import { Lifted } from './Lifted.js'
 import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
-import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
+import { AssetImage } from './AssetImage.js'
+import { ASSET_DRAG_TYPE, assetRef, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { proseChoiceOf, proseFieldsOf } from './body.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
@@ -21,8 +23,9 @@ import { braceSections, bracePicks, partAt, pickKeyOf, type BracePart, type Brac
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { groundOf } from './palette.js'
 import { pickOptionId, triggerBehind } from './picking.js'
-import { diffProjects, type RowChange } from '@byd/server/doc'
+import { DOC_PARTS, diffProjects, type DocDiff, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
+import type { ProposalView } from './proposals.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState, cellOf } from './sorting.js'
@@ -34,8 +37,11 @@ import { useMarked } from './marked.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
+import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
+import { FootSaid } from './said.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -80,7 +86,10 @@ export type DataTableProps = {
   // The project's images (E1): where they are served from, and how a chosen file becomes one.
   // Without both, image fields are edited as text.
   assetBase?: string | undefined
-  onUpload?: ((file: File) => Promise<string>) | undefined
+  // A file into the game's pictures; `onto` is the card cell it was uploaded from, which the
+  // upload writes in the same step as the picture (#742), so the picture keeps its file name the
+  // way one added in Media does (L22) and a step back takes back both.
+  onUpload?: ((file: File, onto?: { cardRef: string; field: string }) => Promise<string>) | undefined
   // Taking a symbol into the game from where it is written (E4): returns the name it got in the
   // project's icon set. Without it, a brace in a cell is just a brace.
   onSymbol?: ((symbol: GameSymbol) => Promise<string>) | undefined
@@ -88,6 +97,15 @@ export type DataTableProps = {
   // cards that came or went are shown as rows.
   compareWith?: { rev: number; label?: string | undefined; doc: ProjectDoc } | undefined
   onStopCompare?: (() => void) | undefined
+  // An AI proposal held against the deck (#1003): the same comparison as a version's, with the deck
+  // as it stands as the old and the proposal as the new, said in the proposal's own words — «Jämför
+  // med version 1» and «Sluta jämföra» mean nothing for a proposal. A card it changes or adds is a
+  // record to look at, with nothing in it to write in, until the proposal is accepted; every other
+  // card is written in as ever. It stands in place of a version's comparison while it is shown.
+  proposal?: ProposalView | undefined
+  onHideProposal?: (() => void) | undefined
+  // The way to the template tab, offered when a comparison's whole difference is in the template.
+  onOpenTemplate?: (() => void) | undefined
 }
 
 // The game's own name, folded down to something a file system will carry — and folding is all
@@ -157,6 +175,17 @@ const isDataFile = (file: File) => /\.(csv|tsv)$/i.test(file.name) || file.type 
 // Deliberately one self-contained function with no imports: the browser test runs this very
 // function inside the page, so what is measured there is what ships.
 export function markCut(box: Element): void {
+  // Och var ikonfliken hänger (#693, beställarens beslut A). Den står på fältets övre högra hörn,
+  // över raden ovanför (#593) — men när det som står ovanför är tabellens huvud låg den på
+  // kolumnens ▾, och den hänger då i stället under hörnet. Det är en fråga om läge och inte om
+  // ordning: i en rullad tabell är det någon annan rad än den första som står mot huvudet, så det
+  // mäts, och samma bildruta som rullningen frågar. Mot en av huvudets celler och inte mot
+  // `<thead>`: det är cellerna som står fast när lådan rullas, raden under dem följer med.
+  const tab = box.querySelector<HTMLElement>('tbody .byd-data-icon')
+  const head = box.querySelector('thead > tr > th')
+  const field = tab?.parentElement
+  if (tab && head && field && field.getBoundingClientRect().top - tab.offsetHeight < head.getBoundingClientRect().bottom - 0.5) box.setAttribute('data-tab', 'under')
+  else box.removeAttribute('data-tab')
   const pin = box.querySelector('thead .byd-data-remove')
   if (!pin) return
   const over = pin.getBoundingClientRect()
@@ -182,7 +211,9 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare, reading = false }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith: versionCompare, onStopCompare, proposal, onHideProposal, onOpenTemplate, reading = false }: DataTableProps) {
+  // A proposal shown in the table takes the comparison's place (#1003).
+  const compareWith = proposal ? undefined : versionCompare
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -198,10 +229,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // since it, and which symbol is under the arrow keys.
   // `role` is what stands after the bar, or null when no bar has been typed: the syntax itself
   // is what says whether the designer is naming a symbol or the meaning to draw it in (E4).
-  // `wrote` is true when the brace under the cursor is one the `{ }` button put there rather than
-  // one the designer typed. Only such a brace may be taken back by pressing that button again
-  // (#236): what somebody typed is theirs, and a control that eats it is a control nobody trusts.
-  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string; role: string | null; wrote: boolean } | null>(null)
+  // `typed` is false when the `{ }` button opened the library (#693): then there is no brace in
+  // the text at all, `at` is where the caret stood, and the token goes in there whole when a symbol
+  // is chosen. The button used to write the brace the key does, and a brace nobody typed stood in
+  // the value after Escape and was saved with it. Nothing is written until something is chosen.
+  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string; role: string | null; typed: boolean } | null>(null)
   const [choice, setChoice] = useState(0)
   // The symbol chosen in the box, while its meaning is still the question (L34). Null until one
   // is chosen, and null again the moment anything else is typed: what was chosen was chosen for
@@ -268,19 +300,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // moment to re-measure, it is the same edit going on.
   const editing = here !== null
   // Var markören ska stå efter att verktyget skrivit åt designern — en symbol tagen ur listan i
-  // en body-cell — och vilken klammer knappen `{ }` själv skrev. Båda är ett meddelande till
-  // nästa rendering och inget tillstånd att rita av, så de bor i en ref.
+  // en body-cell. Ett meddelande till nästa rendering och inget tillstånd att rita av, så det bor
+  // i en ref.
   const caretAfter = useRef<{ cardRef: string; field: string; at: number } | null>(null)
-  const braceByButton = useRef(false)
-  const openBrace = (cardRef: string, field: string, el: HTMLInputElement, wrote = false) =>
-    openBraceAt(cardRef, field, el.value, el.selectionStart ?? el.value.length, wrote)
-  const openBraceAt = (cardRef: string, field: string, value: string, caret: number, wrote = false) => {
+  const openBrace = (cardRef: string, field: string, el: HTMLInputElement) => openBraceAt(cardRef, field, el.value, el.selectionStart ?? el.value.length)
+  // The `{ }` button (#33, #693): the library a typed brace opens, at the caret, with nothing
+  // written. Pressed while the cell's library is open, whoever opened it, it closes it and leaves
+  // the text alone (#236): what somebody typed is theirs.
+  const toggleLibrary = (cardRef: string, field: string, caret: number) => {
+    if (cellPicking(cardRef, field)) return closeBrace()
+    setBrace({ cardRef, field, at: caret, query: '', role: null, typed: false })
+    setPicked(null)
+    setChoice(0)
+  }
+  const openBraceAt = (cardRef: string, field: string, value: string, caret: number) => {
     // Where the brace stands behind the caret and what has been written since it is the same
     // question the rulebook's `[[` asks, so it is asked in one place (L23, #215). A closed brace
     // is written text and stops the lookup; a bare number in braces is a pip (L2) and is this
     // surface's own exception, since only a cell has pips in it.
-    const byButton = braceByButton.current
-    braceByButton.current = false
     const found = triggerBehind(value, caret, BRACE, BRACE_STOPS)
     if (!found || /^\d+$/.test(found.query)) return closeBrace()
     // The bar is the whole of the switch: before it the designer is naming a symbol, after it the
@@ -289,8 +326,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const bar = found.query.indexOf('|')
     setBrace(
       bar < 0
-        ? { cardRef, field, at: found.at, query: found.query, role: null, wrote: wrote || byButton }
-        : { cardRef, field, at: found.at, query: found.query.slice(0, bar), role: found.query.slice(bar + 1), wrote: wrote || byButton },
+        ? { cardRef, field, at: found.at, query: found.query, role: null, typed: true }
+        : { cardRef, field, at: found.at, query: found.query.slice(0, bar), role: found.query.slice(bar + 1), typed: true },
     )
     setPicked(null)
     setChoice(0)
@@ -312,9 +349,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     closeBrace()
     const bare = iconFieldsOf(doc).includes(open.field)
     const write = (name: string) => {
+      // A typed brace and the name after it are replaced; with the button's library there is
+      // nothing in the text to replace, and the token goes in at the caret (#693).
       const before = current.slice(0, open.at)
-      const after = current.slice(open.at + 1 + open.query.length)
-      const written = bare ? `${before.replace(/\{$/, '')}${token(name, role, true)}${after}`.trim() : `${before}${token(name, role, false)}${after}`
+      const after = current.slice(open.at + (open.typed ? 1 + open.query.length : 0))
+      const written = bare ? `${open.typed ? before.replace(/\{$/, '') : before}${token(name, role, true)}${after}`.trim() : `${before}${token(name, role, false)}${after}`
       caretAfter.current = { cardRef: open.cardRef, field: open.field, at: written.length - after.length }
       onCell(open.cardRef, open.field, written)
     }
@@ -394,6 +433,42 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const next = shownRef.current[at + by]
     if (!next) return
     document.querySelector<HTMLElement>(`[aria-label="${CSS.escape(`${next.id} ${field}`)}"]`)?.focus()
+  }
+  // PageDown and PageUp in a cell (#692, L49): the focus goes with the page. Left to the browser
+  // they scroll the box a page and leave the cell being written in behind, out of sight — a field
+  // has no page of its own to move in. So the cell a page further down the same column takes the
+  // focus, and the box moves exactly as far as that row did, so the hand stands where it stood on
+  // the screen. A page is the box's height under its sticky head; at the table's ends it is the
+  // first or the last card.
+  const pageInColumn = (cardRef: string, field: string, by: 1 | -1) => {
+    const box = scrollRef.current
+    const rows = shownRef.current
+    const at = rows.findIndex((r) => r.id === cardRef)
+    const rowOf = (id: string) => box?.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(id)}"]`) ?? null
+    const from = at < 0 ? null : rowOf(cardRef)
+    if (!box || !from) return
+    const page = Math.max(box.clientHeight - (box.querySelector('thead')?.getBoundingClientRect().height ?? 0), from.getBoundingClientRect().height)
+    const top = from.getBoundingClientRect().top
+    let to: { id: string; row: HTMLElement } | null = null
+    for (let i = at + by; i >= 0 && i < rows.length; i += by) {
+      const id = rows[i]?.id
+      const row = id === undefined ? null : rowOf(id)
+      if (!id || !row) break
+      to = { id, row }
+      if (Math.abs(row.getBoundingClientRect().top - top) >= page) break
+    }
+    if (!to) return
+    box.scrollTop += to.row.getBoundingClientRect().top - top
+    to.row.querySelector<HTMLElement>(`[aria-label="${CSS.escape(`${to.id} ${field}`)}"]`)?.focus({ preventScroll: true })
+    // Where the box could not move far enough — at its ends — the row is brought into it.
+    to.row.scrollIntoView?.({ block: 'nearest' })
+  }
+  const pageKey = (cardRef: string, field: string, e: KeyboardEvent): boolean => {
+    if (e.key !== 'PageDown' && e.key !== 'PageUp') return false
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.nativeEvent.isComposing) return false
+    e.preventDefault()
+    pageInColumn(cardRef, field, e.key === 'PageDown' ? 1 : -1)
+    return true
   }
   // A block of cells from a paste (#479): rows by line, columns by tab, laid from this cell right
   // and down over the cards as the table shows them and the columns as it draws them. A count is
@@ -532,10 +607,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       return
     }
     try {
-      onCell(cardRef, field, assetRef(await onUpload(one.file)))
+      await onUpload(one.file, { cardRef, field })
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // The same upload, for the action row rather than for a cell: the file becomes one asset and the
@@ -551,7 +626,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       setBulkImage(await onUpload(one.file))
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
@@ -567,6 +642,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [replacing, setReplacing] = useState<{ rows: ProjectDoc['rows']; file: string } | null>(null)
   // What the last import did, said where it was asked for (#479).
   const [imported, setImported] = useState<string | null>(null)
+  // The line is about the rows the import landed and nothing after them (#739): the first change to
+  // the rows is the import arriving, and the next — an undo, an edit — makes the line a report on a
+  // table that is no longer there.
+  const importLanding = useRef(false)
+  useEffect(() => {
+    if (importLanding.current) importLanding.current = false
+    else setImported(null)
+  }, [doc.rows])
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   // Which column's filter door stands open, if any: one at a time, like the crown's boxes.
@@ -714,6 +797,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     // the caret arriving in a cell or leaving one, which is what decides whether the widths are
     // being held; leaving one is therefore also when they settle on what was written.
   }, [deck, editing, widths])
+  // Ikonfliken följer med cellen man står i (#693), och vilken sida av fältet den hänger på är
+  // lådans egen läsning (`markCut`). Den läses alltså om när fliken flyttar, inte bara när lådan
+  // rullas: Enter och ↓ går från raden mot huvudet till raden under utan att något annat ändras.
+  useLayoutEffect(() => {
+    if (scrollRef.current) markCut(scrollRef.current)
+  }, [here])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
@@ -1066,6 +1155,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     if (row) of(row)?.focus()
   }
   const goneShown = isFiltering(asked) ? filterRows(goneRows, columns, asked) : goneRows
+  // The cards a shown proposal adds (#1003), after the deck's, asked the same question as every card.
+  const addedRows = proposal ? proposal.doc.rows.filter((r) => proposal.added.has(r.id)) : []
+  const addedShown = isFiltering(asked) ? filterRows(addedRows, columns, asked) : addedRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
   const chosen = shown.filter((row) => selected.has(row.id))
@@ -1110,15 +1202,32 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }
   const nextRef = () => nextCardRef(doc)
   const land = (rows: ProjectDoc['rows']) => {
+    importLanding.current = true
     onReplaceRows(rows)
     setImported(importSummary(doc, rows, t))
   }
   const importFile = (file: File | undefined) => {
     if (!file) return
+    // A new file is a new answer (#739): what the last one did gives way to what this one does,
+    // rather than standing beside its refusal.
+    setImported(null)
+    setImportError(null)
+    // The picker's `accept` is a suggestion a file dialog lets the designer step past, so the type
+    // is the import's to say and not only the drop's.
+    if (!isDataFile(file)) {
+      setImportError(t('table.import.wrongType', { file: file.name }))
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const rows = importCardsCsv(String(reader.result ?? ''), t, fieldsOf(doc))
+        const text = String(reader.result ?? '')
+        // A file with nothing in it has no id column either, but that is not what is wrong with it.
+        if (text.replace(/^\uFEFF/, '').trim() === '') {
+          setImportError(t('table.import.empty', { file: file.name }))
+          return
+        }
+        const rows = importCardsCsv(text, t, fieldsOf(doc))
         setImportError(null)
         // An import that takes cards away asks first (#479, beslut 2026-09-27; L9): the question
         // before a deletion stands although there is an undo. One that only adds and changes
@@ -1127,7 +1236,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         if (doc.rows.some((r) => !now.has(r.id))) setReplacing({ rows, file: file.name })
         else land(rows)
       } catch (err) {
-        setImportError(err instanceof Error ? err.message : String(err))
+        setImportError(saidOr(err, t('table.import.failed')))
       }
     }
     reader.readAsText(file)
@@ -1141,11 +1250,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const [file, ...rest] = dropped
     if (!file) return
     if (rest.length > 0) {
+      setImported(null)
       setImportError(t('table.import.one', { files: dropped.map((f) => f.name).join(', ') }))
-      return
-    }
-    if (!isDataFile(file)) {
-      setImportError(t('table.import.wrongType', { file: file.name }))
       return
     }
     importFile(file)
@@ -1228,7 +1334,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             {replacing && (
               <Question
                 className="byd-data-bulk"
-                label={t('table.import.ask', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
+                label={t(doc.rows.length === 1 ? 'table.import.ask.one' : 'table.import.ask.other', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
                 confirm={t('table.import.yes')}
                 cancel={t('editor.cancel')}
                 onConfirm={() => {
@@ -1237,7 +1343,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 }}
                 onCancel={() => setReplacing(null)}
               >
-                {t('table.import.ask', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
+                {t(doc.rows.length === 1 ? 'table.import.ask.one' : 'table.import.ask.other', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
               </Question>
             )}
             {imported && <span role="status">{imported}</span>}
@@ -1255,7 +1361,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             <ul aria-label={t('table.images')}>
               {images.map(({ hash, cards }) => (
                 <li key={hash} data-asset={hash}>
-                  <img src={assetUrl(assetBase, hash)} alt={t('table.image.alt', { cards: cards.join(', ') })} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
+                  <AssetImage base={assetBase} hash={hash} alt={t('table.image.alt', { cards: cards.join(', ') })} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
                   <small>{t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
                 </li>
               ))}
@@ -1267,56 +1373,31 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           <span className="byd-data-said" role="status">{said ?? ''}</span>
         </div>
       )}
+      {proposal && (
+        <p className="byd-data-compare" role="status" data-proposal="">
+          {t('table.proposal')}: <Summary diff={diffProjects(doc, proposal.doc)} />{' '}
+          {onHideProposal && (
+            <button type="button" onClick={onHideProposal}>
+              {t('table.proposal.hide')}
+            </button>
+          )}
+        </p>
+      )}
       {compareWith && diff && (
         <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
-          {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
+          {compareWith.label ? ` · ${compareWith.label}` : ''}: <CompareSummary diff={diff} />{' '}
+          {onOpenTemplate && noCardDiffers(diff) && diff.template && (
+            <button type="button" onClick={onOpenTemplate}>
+              {t('table.compare.template')}
+            </button>
+          )}
           {onStopCompare && (
             <button type="button" onClick={onStopCompare}>
               {t('table.compare.stop')}
             </button>
           )}
         </p>
-      )}
-      {dropping !== null && (
-        <Question
-          className="byd-data-bulk"
-          label={dropLabel(doc, dropping, t)}
-          confirm={t('table.remove.yes')}
-          cancel={t('editor.cancel')}
-          onConfirm={() => {
-            onRemoveField(dropping)
-            forgetWidth(dropping)
-            setDropping(null)
-            setRefocus('addField')
-          }}
-          onCancel={() => {
-            const field = dropping
-            setDropping(null)
-            setRefocus({ field })
-          }}
-        >
-          {dropLabel(doc, dropping, t)}
-        </Question>
-      )}
-      {removing !== null && (
-        <Question
-          className="byd-data-bulk"
-          label={t('table.remove.card', { cardRef: removing })}
-          confirm={t('table.remove.yes')}
-          cancel={t('editor.cancel')}
-          onConfirm={() => {
-            onRemoveRow(removing)
-            setRemoving(null)
-            setRefocus('all')
-          }}
-          onCancel={() => {
-            setRemoving(null)
-            setRefocus({ cardRef: removing })
-          }}
-        >
-          {t('table.remove.card.question', { cardRef: removing })}
-        </Question>
       )}
       {/* A wide table on a narrow screen has one honest answer: the table scrolls inside its own
           box, the page never scrolls sideways, and the column that removes a card is pinned to
@@ -1332,7 +1413,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           addCardRef.current?.focus()
         }}
       >
-        {t('table.skip', { n: shown.length })}
+        {t(shown.length === 1 ? 'table.skip.one' : 'table.skip.other', { n: shown.length })}
       </a>
       <div className="byd-data-scroll" ref={scrollRef}>
       <table className="byd-data">
@@ -1463,7 +1544,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           </tr>
         </thead>
         <tbody>
-          {shown.map(({ id: cardRef, fields: row }) => (
+          {shown.map(({ id: cardRef, fields: row }) =>
+            proposal?.changed.has(cardRef) ? (
+              <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={{ ticked: selected.has(cardRef), chosen: selectedRow === cardRef, onTick: () => setSelected(toggleRow(selected, cardRef)), onChoose: () => onSelectRow(cardRef), onFocus: () => setStanding(cardRef), onKeyDown: (event) => rowKey(cardRef, event, (r) => r.querySelector('.byd-data-check input')), ...stop(cardRef) }} />
+            ) : (
             <tr
               key={cardRef}
               data-card-ref={cardRef}
@@ -1508,7 +1592,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                         onLibrary: (hash) => onCell(cardRef, f, assetRef(hash)),
                       })}
                     >
-                      {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
+                      {isAssetRef(row[f]) ? <AssetImage base={assetBase} hash={String(row[f]).slice(ASSET_PREFIX.length)} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
                       {over === `${cardRef}:${f}` && <DropSays />}
                       {/* The library (#296): a picture the game already has, into this cell.
                           The upload beside it stays as it was — a file off the disk is the
@@ -1518,7 +1602,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       </button>
                       <label className="byd-data-file">
                         {t('table.image.upload')}
-                        <input className="byd-offscreen" type="file" accept="image/*" {...stop(cardRef)} aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
+                        <input className="byd-offscreen" type="file" accept={assetAccept('image')} {...stop(cardRef)} aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
                       </label>
                       {isAssetRef(row[f]) && (
                         <button type="button" {...stop(cardRef)} aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
@@ -1537,7 +1621,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     t={t}
                     icons={gameIcons}
                     was={moved(changeOf(cardRef), f) ? String(wasCell(cardRef, f) ?? '') : null}
-                    picking={brace?.cardRef === cardRef && brace.field === f}
                     open={here?.cardRef === cardRef && here.field === f}
                     caretAt={caretAfter.current?.cardRef === cardRef && caretAfter.current.field === f ? caretAfter.current.at : null}
                     onWrite={(text, at) => {
@@ -1555,19 +1638,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
                       if (brace?.cardRef === cardRef && brace.field === f) closeBrace()
                     }}
-                    onSymbol={() => {
-                      // Ett andra tryck på `{ }` är listans eget: den stängs, och ingen ny
-                      // klammer skrivs (#236 i den form den kan ta i en skrivyta).
-                      if (!(brace?.cardRef === cardRef && brace.field === f && brace.wrote)) {
-                        braceByButton.current = true
-                        return false
-                      }
-                      closeBrace()
-                      return true
-                    }}
+                    onSymbol={(at) => toggleLibrary(cardRef, f, at)}
                     onListKey={(e) => {
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
+                      if (pageKey(cardRef, f, e)) return
                       // Enter is a new paragraph in prose (L39); Ctrl/Cmd+Enter goes down the
                       // column and Shift with it up, as Enter does in every other cell (#479).
                       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -1581,11 +1656,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     {cellPicker(cardRef, f)}
                   </BodyTd>
                 ) : (
-                <td
-                  key={f}
-                  data-col={f}
-                  className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}
-                >
+                <td key={f} data-col={f}>
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
                   {/* The field and the tab its icon control hangs from (#593). It is a box inside
                       the cell and not the cell itself, so the tab can stand on the field's own
@@ -1624,6 +1695,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
                       if (f !== ANTAL && cellUndo(cardRef, f, e)) return
+                      if (lineKey(e) || pageKey(cardRef, f, e)) return
                       // The spreadsheet's keys (#479, beslut 2026-09-27, variant A): Enter and ↓
                       // down the column, Shift+Enter and ↑ up it.
                       const by = e.key === 'Enter' ? (e.shiftKey ? -1 : 1) : e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
@@ -1638,6 +1710,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       if (!/[\t\n]/.test(text.replace(/\r?\n$/, ''))) return
                       e.preventDefault()
                       fillBlock(cardRef, f, text)
+                    }}
+                    // The button's library has no brace in the text to hang from, only the caret
+                    // (#693): a click elsewhere in the field moves where the choice will go.
+                    onSelect={(e) => {
+                      const caret = e.currentTarget.selectionStart
+                      if (brace && !brace.typed && cellPicking(cardRef, f) && caret !== null && caret !== brace.at) setBrace({ ...brace, at: caret })
                     }}
                     onFocus={(e) => {
                       visits.visit.onFocus()
@@ -1662,8 +1740,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   )}
                   {f === 'antal' && antalDraft[cardRef] === undefined && Number(row[f] ?? 1) === 0 && <small className="byd-data-out">{t('table.antal.out')}</small>}
                   {/* The brace, made visible in the cell the designer is standing in (#33). It
-                      writes the brace and opens the same picker typing one does — one way in, seen
-                      rather than known. Only in the cell being worked in: one handle per cell is a
+                      opens the same picker typing one does — one way in, seen rather than known —
+                      and writes nothing until a symbol is chosen (#693). Only in the cell being worked in: one handle per cell is a
                       wall of braces on screen, and a hundred stops in the tab order.
                       It stands after the field and not before it: the field, and then the control
                       that belongs to it, which is the order they are read in (#140). On the screen
@@ -1681,29 +1759,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       onClick={(event) => {
                         const input = event.currentTarget.closest('td')?.querySelector('input')
                         if (!input) return
-                        // Pressed a second time it is the same press undone (#236): the library
-                        // goes, and so does the brace this button wrote. A brace still open is by
-                        // construction a brace with no finished symbol in it — `openBrace` closes
-                        // the moment a `}` is written — so there is nothing here to lose. Only the
-                        // brace itself is taken; letters typed after it are the designer's.
-                        const mine = brace?.cardRef === cardRef && brace.field === f && brace.wrote ? brace : null
-                        if (mine) {
-                          const undone = `${input.value.slice(0, mine.at)}${input.value.slice(mine.at + 1)}`
-                          typing.current[`${cardRef}:${f}`] = undone
-                          onCell(cardRef, f, undone, cellGesture())
-                          input.value = undone
-                          input.focus()
-                          input.setSelectionRange(mine.at, mine.at)
-                          return closeBrace()
-                        }
-                        const at = input.selectionStart ?? input.value.length
-                        const next = `${input.value.slice(0, at)}{${input.value.slice(at)}`
-                        typing.current[`${cardRef}:${f}`] = next
-                        onCell(cardRef, f, next, cellGesture())
-                        input.value = next
                         input.focus()
-                        input.setSelectionRange(at + 1, at + 1)
-                        openBrace(cardRef, f, input, true)
+                        toggleLibrary(cardRef, f, input.selectionStart ?? input.value.length)
                       }}
                     >
                       {'{ }'}
@@ -1740,6 +1797,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 </button>
               </td>
             </tr>
+            ),
+          )}
+          {addedShown.map(({ id: cardRef, fields: row }) => (
+            <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="added" was={null} now={row} />
           ))}
                   {/* A card gone since the version compared with is a record of what it was (#479, B4):
               its values as text and struck through, with nothing on it to write in, tick or press
@@ -1793,7 +1854,50 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </>
           )}
         </p>
-      {chosen.length > 0 &&
+      {/* One row's × asks the same kind of question the marking does, and in the same place
+          (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
+          that had just pressed it. In the foot it takes the toolbar's place while it stands. The
+          column door's × asks there too (#858): its question moved the table and the door hanging
+          from the head with it. */}
+      {dropping !== null ? (
+        <Question
+          className="byd-data-bulk"
+          label={dropLabel(doc, dropping, t)}
+          confirm={t('table.remove.yes')}
+          cancel={t('editor.cancel')}
+          onConfirm={() => {
+            onRemoveField(dropping)
+            forgetWidth(dropping)
+            setDropping(null)
+            setRefocus('addField')
+          }}
+          onCancel={() => {
+            const field = dropping
+            setDropping(null)
+            setRefocus({ field })
+          }}
+        >
+          {dropLabel(doc, dropping, t)}
+        </Question>
+      ) : removing !== null ? (
+        <Question
+          className="byd-data-bulk"
+          label={t('table.remove.card', { cardRef: removing })}
+          confirm={t('table.remove.yes')}
+          cancel={t('editor.cancel')}
+          onConfirm={() => {
+            onRemoveRow(removing)
+            setRemoving(null)
+            setRefocus('all')
+          }}
+          onCancel={() => {
+            setRemoving(null)
+            setRefocus({ cardRef: removing })
+          }}
+        >
+          {t('table.remove.card.question', { cardRef: removing })}
+        </Question>
+      ) : chosen.length > 0 &&
         (confirming ? (
           <Question
             className="byd-data-bulk"
@@ -1821,7 +1925,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               {t('table.bulk.set.box')} <span aria-hidden="true">▾</span>
             </button>
             {setting && (
-              <Lifted handle={setBox} label={t('table.bulk.set.label', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
+              <Lifted handle={setBox} label={t(chosen.length === 1 ? 'table.bulk.set.label.one' : 'table.bulk.set.label.other', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
             <label>
               {t('table.bulk.field')}
               <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
@@ -1848,7 +1952,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   onLibrary: setBulkImage,
                 })}
               >
-                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
+                {bulkImage ? <AssetImage base={assetBase} hash={bulkImage} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
                 {bulkOver && <DropSays />}
                 {/* The library (#296): a picture the game already has, onto every marked card. */}
                 <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
@@ -1856,7 +1960,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 </button>
                 <label className="byd-data-file">
                   {t('table.image.upload')}
-                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
+                  <input className="byd-offscreen" type="file" accept={assetAccept('image')} aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
                 </label>
               </div>
             ) : (
@@ -1885,7 +1989,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 setBulkImage(null)
               }}
             >
-              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
+              {bulkIsImage ? t(chosen.length === 1 ? 'table.bulk.setImage.one' : 'table.bulk.setImage.other', { n: chosen.length }) : t(chosen.length === 1 ? 'table.bulk.set.one' : 'table.bulk.set.other', { field, n: chosen.length })}
             </button>
               </Lifted>
             )}
@@ -1900,7 +2004,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </button>
           </div>
         ))}
-        <p className="byd-data-sort byd-crown-end" role="status">{sortLabel(sort, t)}</p>
+        {/* What just happened stands in the sort's place for its moment (#698, beslut B). */}
+        <FootSaid>
+          <p className="byd-data-sort byd-crown-end" role="status">{sortLabel(sort, t)}</p>
+        </FootSaid>
       </CrownFoot>
       {library !== null && assetBase && (
         <PictureLibraryDialog
@@ -1941,7 +2048,6 @@ function BodyTd({
   row,
   t,
   was,
-  picking,
   children,
   ...cell
 }: Omit<BodyCellProps, 'label' | 'head' | 'value'> & {
@@ -1951,11 +2057,10 @@ function BodyTd({
   row: ProjectRow['fields']
   t: T
   was: string | null
-  picking: boolean
 }) {
   const value = row[field]
   return (
-    <td data-col={field} className={picking ? 'byd-data-picking' : undefined}>
+    <td data-col={field}>
       {was !== null && <s className="byd-data-was">{was}</s>}
       <BodyCell
         {...cell}
@@ -2125,6 +2230,58 @@ function importSummary(doc: ProjectDoc, rows: readonly ProjectDoc['rows'][number
   const gone = doc.rows.filter((r) => !now.has(r.id)).length
   const known = new Set(['id', ...fieldsOf(doc)])
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r.fields)))].filter((f) => !known.has(f))
-  const read = `${t('table.import.read', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
+  const read = `${t(rows.length === 1 ? 'table.import.read.one' : 'table.import.read.other', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
   return columns.length === 0 ? read : `${read} ${t(columns.length === 1 ? 'table.import.column.one' : 'table.import.column.other', { names: columns.join(', ') })}`
+}
+
+// A comparison whose whole difference lies outside the cards (#702). The table has nothing to
+// mark then, and a band that only said «mallen ändrad.» over seventy-seven unmarked rows left the
+// designer to work out that it never could — so it says no card differs and where the difference
+// is, in the words the history's chips already use for those parts.
+const noCardDiffers = (diff: DocDiff) => diff.rows.length === 0 && !diff.reordered && !diff.columns
+
+function CompareSummary({ diff }: { diff: DocDiff }) {
+  const t = useT()
+  const parts = DOC_PARTS.filter((part) => diff[part]).map((part) => t(`history.part.${part}`))
+  if (!noCardDiffers(diff) || parts.length === 0 || diff.name) return <Summary diff={diff} />
+  const where = parts.reduce((said, part, i) => (i === 0 ? part : i === parts.length - 1 ? `${said}${t('table.compare.and')}${part}` : `${said}, ${part}`), '')
+  return <>{t('table.compare.noCards', { where })}</>
+}
+
+// A card an AI proposal changes or adds, as the comparison shows it (#1003): a record to look at, in
+// the form a version's comparison already draws — a changed cell's value as it stands struck over
+// the value the proposal gives it, and a new card tinted as an added one — with nothing in it to
+// write in, tick or press, since what it shows is not in the deck until the proposal is accepted.
+// The proposal's own word for it stands by its key.
+// A changed card is still the game's card, so its tick stays — the marking is a view of the deck
+// (L4) and may well be what the question was about — while a new one has no row to tick. It is
+// chosen and ticked as every other row is (#1037), with the row's one stop and the row's arrows
+// (#575), so the panel, the foot and the rows say the same selection; a bulk action works on it
+// with the game's own values, since the table never holds the proposal's.
+type RowMarks = { ticked: boolean; chosen: boolean; onTick: () => void; onChoose: () => void; onFocus: () => void; onKeyDown: (event: KeyboardEvent<HTMLElement>) => void; tabIndex?: number }
+function ProposedRow({ cardRef, fields, grouping, change, was, now, marked }: { cardRef: string; fields: readonly string[]; grouping: boolean; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: RowMarks }) {
+  const t = useT()
+  const text = (value: Cell | undefined) => (value === undefined || value === null ? '' : String(value))
+  return (
+    <tr data-card-ref={cardRef} data-change={change} data-proposed="" {...(marked ? { 'aria-selected': marked.chosen ? 'true' : 'false', onClick: marked.onChoose, onFocus: marked.onFocus } : {})}>
+      <td className="byd-data-check" onClick={(event) => event.stopPropagation()}>
+        {marked && (
+          <label className="byd-data-tick">
+            <input type="checkbox" checked={marked.ticked} onChange={marked.onTick} onKeyDown={marked.onKeyDown} {...(marked.tabIndex === undefined ? {} : { tabIndex: marked.tabIndex })} aria-label={t('table.mark', { cardRef })} />
+          </label>
+        )}
+      </td>
+      <td className="byd-data-id" data-col="id">
+        {cardRef} <span className="byd-data-proposed">{t(change === 'added' ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}</span>
+      </td>
+      {fields.map((f) => (
+        <td key={f} data-col={f} className="byd-data-record">
+          {was && text(was[f]) !== text(now[f]) && <s className="byd-data-was">{text(was[f])}</s>}
+          <span>{text(now[f] ?? (f === 'antal' ? 1 : ''))}</span>
+        </td>
+      ))}
+      {grouping && <td />}
+      <td className="byd-data-remove" />
+    </tr>
+  )
 }

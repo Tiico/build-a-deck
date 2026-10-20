@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CARD, CARDS, Harness, inZone, zoneView } from './fixture.js'
+import { applyPatch, diff } from '../src/index.js'
 
 const spec = (cardRef: string) => ({ type: CARD, cardRef, zone: 'draw', face: 'back' })
 
@@ -44,5 +45,21 @@ describe('version.change (C7): the deck follows the project, the table stays whe
     const line = h.do(null, { v: 'version.change', to: 'v2', components: [...CARDS.map(spec), spec('phoenix')] })
     expect(line.outcome).toBeUndefined()
     expect(h.state.components['c10']).toMatchObject({ cardRef: 'phoenix', zone: 'draw', face: 'back' })
+  })
+
+  // Every screen says which version it plays (C7): a TV's title, the book a phone hands out
+  // (#677). It is the view's, so it changes in the very patch that carries the line, for every
+  // seat alike — it is no secret which version is on the table.
+  it('says in the view which version the table plays, and a patch carries the change', () => {
+    const h = new Harness()
+    const before = h.view('A')
+    expect(before.version).toBe('v1')
+    h.do(null, { v: 'version.change', to: 'v2', components: CARDS.map(spec) })
+    const after = h.view('A')
+    expect(after.version).toBe('v2')
+    expect(h.view(null).version).toBe('v2')
+    const patch = diff(before, after)
+    expect(patch.ops).toContainEqual({ op: 'version', version: 'v2' })
+    expect(applyPatch(before, patch)).toEqual(after)
   })
 })

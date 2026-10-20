@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LoginPage } from '../src/account/LoginPage.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { projectDoc } from './project-doc.js'
 
 // `/login` for somebody who is already signed in (#475): the card asked for an address the page
 // already had, and a link that led here with somewhere to go next went nowhere.
@@ -50,7 +48,7 @@ describe('an address the server would not take (#475)', () => {
     fireEvent.change(field, { target: { value: 'ada@nowhere' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
     const said = await screen.findByRole('alert')
-    expect(said.textContent).toMatch(/inte ut som en e-postadress/)
+    expect(said.textContent).toMatch(/inte ut som en e\u2011postadress/)
     expect(field.getAttribute('aria-invalid')).toBe('true')
     expect(field.getAttribute('aria-describedby')).toBe(said.id)
 
@@ -74,7 +72,7 @@ describe('an address that is not one yet (#475)', () => {
     expect(button.hasAttribute('disabled')).toBe(false)
 
     fireEvent.click(button)
-    expect((await screen.findByRole('alert')).textContent).toBe('Skriv in din e-postadress först.')
+    expect((await screen.findByRole('alert')).textContent).toBe('Skriv in din e\u2011postadress först.')
     expect(document.activeElement).toBe(field)
 
     fireEvent.change(field, { target: { value: 'ada' } })
@@ -84,5 +82,48 @@ describe('an address that is not one yet (#475)', () => {
     expect(field.getAttribute('aria-invalid')).toBe('true')
     expect(field.getAttribute('aria-describedby')).toBe(said.id)
     expect(run.mail.sent).toHaveLength(0)
+  })
+})
+
+// One lead per way in, as the claim already has its own (#691, beslut 2026-10-06). The one line the
+// card kept after L36 spoke to whoever already had games; the invited, the new and the one whose
+// game is waiting on the other side of the login were each told something that was not theirs.
+describe('the line the card leads with, chosen by the way in (#691)', () => {
+  const card = async (next: string) => {
+    history.replaceState(null, '', `/login?next=${encodeURIComponent(next)}&server=${encodeURIComponent(run.http)}`)
+    render(<LoginPage onNavigate={() => undefined} />)
+    await screen.findByLabelText('E-post')
+  }
+  // Ada shares the game with Bo and logs out again: the page is a stranger's until Bo logs in.
+  const invited = async (): Promise<string> => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
+    await fetch(`${run.http}/auth/logout`, { method: 'POST' })
+    return /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+  }
+
+  it('names the game an invitation leads to, and shows no sales line', async () => {
+    const token = await invited()
+    await card(`/invites/${token}`)
+    expect(screen.getByText('Logga in för att öppna spelet du bjudits in till: Skogens herrar.')).toBeTruthy()
+    expect(screen.queryByText(/Skapa ditt kortspel/)).toBeNull()
+  })
+
+  it('still says it is an invitation when the link no longer names a game', async () => {
+    await card('/invites/made-up-token')
+    expect(screen.getByText('Logga in för att öppna spelet du bjudits in till.')).toBeTruthy()
+  })
+
+  it('says the guide’s game is made once the login is done', async () => {
+    await card('/new?resume=1')
+    expect(screen.getByText('Ditt spel skapas när du loggat in.')).toBeTruthy()
+    expect(screen.queryByText(/Skapa ditt kortspel/)).toBeNull()
+  })
+
+  it('tells a first visit that the link in the mail makes the account', async () => {
+    localStorage.clear()
+    await card('/')
+    expect(screen.getByText('Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.')).toBeTruthy()
   })
 })

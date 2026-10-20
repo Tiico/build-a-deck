@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import { logIn, makeProject, startTable } from '../../support/api.js'
 
 // The editor is an application on the web: the window itself never scrolls (UX-KONTROLLER, L12).

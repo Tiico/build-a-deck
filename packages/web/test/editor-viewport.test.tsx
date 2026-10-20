@@ -100,7 +100,7 @@ async function cardFiles(width: number): Promise<Record<string, string>> {
   try {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     await screen.findByLabelText('Importera CSV…')
     // A marked card opens the action row, and the row draws a picker of its own the moment the
     // column it is set to is the image one (#17 on E1) — before that it offers a text field.
@@ -179,6 +179,9 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
   const started = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
   if (!started.ok) throw new Error(`could not start a table: ${started.status}`)
   const table = ((await started.json()) as { id: string }).id
+  // Its cards done, so its group lies folded until the press below: a group whose table still
+  // draws them opens by itself (#939), and the press would then fold it.
+  await run.completeRenders()
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   // The table's own door and not the server's, because that is what this surface waits on below:
@@ -598,6 +601,33 @@ async function bord(width: number): Promise<Record<string, string>> {
   }
 }
 
+// Bord-fliken i vila, med en hög vald och med en zon med storlek vald (#710). Valet görs som en
+// tangentbordsanvändare gör det, med Enter på zonens handtag på filten, och det som fångas är raden
+// över filten med fälten i: två för högen, fyra för zonen. Handen vid A är zonen med det längsta
+// namnet bordet har, «Hand · A».
+async function bordChosen(width: number): Promise<Record<string, string>> {
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    await screen.findAllByText('Draghög')
+    const out: Record<string, string> = { vila: document.querySelector('.byd-editor')!.outerHTML }
+    const choose = async (id: string, fields: number) => {
+      fireEvent.keyDown(document.querySelector(`[data-zone-handle="${id}"]`)!, { key: 'Enter' })
+      await waitFor(() => expect(document.querySelectorAll('[data-setup-said] [data-setup-coords] input')).toHaveLength(fields))
+      return document.querySelector('.byd-editor')!.outerHTML
+    }
+    out['hög'] = await choose('discard', 2)
+    out['yta'] = await choose('hand:A', 4)
+    return out
+  } finally {
+    unmount()
+  }
+}
+
 // The two widths the editor is held to (UX-KONTROLLER, L12). Both are asked, and the narrow one is
 // where the answer was no: a surface as wide as its own longest sentence looks perfectly well
 // behaved right up until the window stops being wider than the sentence (#127).
@@ -655,6 +685,25 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
     )
     // With no operation to report, the row offers help without a standing instruction.
     expect(measured).toEqual({ Bord: { controls: ['Hjälp om zonerna'], cut: [] } })
+  }, 90_000)
+
+  // L50: raden är alltid 44 px hög, så att filten inte flyttar sig under handen när en zon väljs
+  // (#710). Fälten för en zons x, y, b och h bröt till en andra rad vid 1280, och vid 1024 också
+  // högens två, och filten föll 48 px. Höjden och filtens överkant är det som frågas, inte någon
+  // bredd: de är desamma i vilket typsnitt maskinen än har, så länge fälten ryms på raden.
+  it('keeps the row over the felt one tap tall whatever is chosen, so the felt never moves', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.evaluate(() => ({
+          fields: document.querySelectorAll('[data-setup-said] [data-setup-coords] input').length,
+          row: Math.round(document.querySelector('[data-setup-said]')!.getBoundingClientRect().height),
+          felt: Math.round(document.querySelector('.byd-setup-felt')!.getBoundingClientRect().top),
+        })),
+      bordChosen,
+    )
+    const felt = measured['vila']!.felt
+    expect(measured).toEqual({ vila: { fields: 0, row: 44, felt }, hög: { fields: 2, row: 44, felt }, yta: { fields: 4, row: 44, felt } })
   }, 90_000)
 })
 

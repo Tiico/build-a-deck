@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import { project, projectActivity } from '@byd/engine'
@@ -8,9 +9,6 @@ import { seatColor } from '../src/table/seatColor.js'
 import { SHOW_MS, type Shown } from '../src/table/presence.js'
 import { useShowing } from '../src/table/useShowing.js'
 import { buildScene, registry } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('TvChrome (C as the TV surroundings)', () => {
   it('shows the room code, a dock with every seat and its hand count, and the recent activity in words', () => {
@@ -36,7 +34,7 @@ describe('TvChrome (C as the TV surroundings)', () => {
     expect(lines[0]).toMatch(/Bordet vände (?!ett kort)\S/)
     expect(lines).toHaveLength(3)
     expect(lines).not.toContainEqual(expect.stringMatching(/satte sig/))
-    expect(lines).not.toContainEqual(expect.stringMatching(/Bordet drog 2 från Draghög/))
+    expect(lines).not.toContainEqual(expect.stringMatching(/Bordet drog 2 kort från Draghög/))
   })
 })
 
@@ -74,6 +72,36 @@ describe('the table screen’s own help (L32, #305)', () => {
   })
 })
 
+// A table that has ended takes nobody in: the code on its screen opens nothing any more (#717, #938).
+describe('the table screen after the end', () => {
+  it('says the table has ended where the invitation stood, and offers no code or square', () => {
+    const { view, log } = buildScene()
+    render(
+      <TvChrome view={{ ...view(null), ended: true }} activity={log.map(projectActivity)} roomCode="KX7P" joinUrl="http://example.test/join?code=KX7P">
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.queryByText('KX7P')).toBeNull()
+    expect(screen.queryByRole('img', { name: /example\.test\/join/ })).toBeNull()
+    expect(screen.queryByText('öppna på telefonen')).toBeNull()
+    expect(screen.getByText('Bordet är avslutat')).toBeTruthy()
+  })
+
+  it('closes the help about joining when the summary takes the screen', async () => {
+    const { view, log } = buildScene()
+    const at = (ended: boolean) => (
+      <TvChrome view={{ ...view(null), ended }} activity={log.map(projectActivity)} roomCode="KX7P">
+        <div />
+      </TvChrome>
+    )
+    const { rerender } = render(at(false))
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att ansluta' }))
+    await screen.findByRole('dialog', { name: 'Hjälp om att ansluta' })
+    rerender(at(true))
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om att ansluta' })).toBeNull()
+  })
+})
+
 describe('QR to join', () => {
   // A reader hears what the picture is for and which room before the address (#560 P-21), and the
   // address is still there to type for someone without a camera (K9).
@@ -103,6 +131,24 @@ describe('the observer is never invisible (C8)', () => {
 })
 
 describe('the header names the game (C)', () => {
+  // «Lords of the Forest rev-» on one line and «1» alone on the next (#717): a version is one word.
+  it('never breaks the version across lines', () => {
+    const css = document.createElement('style')
+    css.textContent = readFileSync('src/table/table.css', 'utf8')
+    document.head.append(css)
+    try {
+      const { view, log } = buildScene()
+      render(
+        <TvChrome view={view(null)} activity={log.map(projectActivity)} title="Lords of the Forest" version="rev-1">
+          <div />
+        </TvChrome>,
+      )
+      expect(getComputedStyle(screen.getByRole('heading', { level: 1 }).querySelector('em')!).whiteSpace).toBe('nowrap')
+    } finally {
+      css.remove()
+    }
+  })
+
   it('titles the screen with the game and its version, and never prints the join URL as running text', async () => {
     const { view, log } = buildScene()
     render(
@@ -263,7 +309,7 @@ describe('the seat dock (C)', () => {
     const [ada, free] = seats as [HTMLElement, HTMLElement]
     expect(ada.querySelector('[data-avatar]')!.textContent).toBe('A')
     expect(ada.textContent).toMatch(/2 kort på hand/)
-    expect(ada.textContent).toMatch(/Ada drog 2 från Draghög/)
+    expect(ada.textContent).toMatch(/Ada drog 2 kort från Draghög/)
     // A seat that has done nothing says so in words, never with a dash (UX-41, #86): from across
     // a room "—" reads as a missing value, "Inget ännu" as a state.
     expect(free.textContent).toMatch(/Inget ännu/)
@@ -329,6 +375,16 @@ describe('the observer’s seats open into lists of cards (#551)', () => {
     rows[1]!.focus()
     await userEvent.keyboard('{Enter}')
     expect(onRead).toHaveBeenCalledWith(hand[1], hand)
+  })
+
+  // Two lines for the eye are two blocks side by side for a screen reader, and nothing stood between
+  // them: «Draw pilepile, 3 cards» (#745). The row's name says its parts with a comma between.
+  it('names a row by its parts with a separator between them, and not its avatar’s initial', () => {
+    const { view } = mount()
+    const discard = view.zones.find((z) => z.id === 'discard')!
+    const top = view.components.find((c) => discard.mode === 'order' && c.id === discard.order[0])!
+    expect(screen.getByRole('button', { name: /^Ada, 2 kort på hand, \S/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: `Kasthög, hög, 3 kort, överst ${top.title}` })).toBeTruthy()
   })
 
   it('lists what lies on the table, zone by zone: a pile by its top, a face-down card said as such', async () => {

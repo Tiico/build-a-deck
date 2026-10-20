@@ -151,6 +151,44 @@ describe('refreshing a running table from its project (C7, L5)', () => {
     await table.close()
   })
 
+  // The faces a refreshed table deals are the version it now runs, also after the server has
+  // forgotten the table: the session row keeps the deck the table *started* with, because that is
+  // where replay begins (#677), so the actor that reloads it must not take its faces from there.
+  it('keeps dealing the refreshed version\'s faces after a restart', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+
+    const next = project()
+    next.rows[0] = { id: 'dragon', fields: { title: 'Drakhona', antal: 3 } }
+    next.rows.push({ id: 'phoenix', fields: { title: 'Fenix', antal: 1 } })
+    expect((await json('PUT', `/projects/${id}`, { ...next, rev: 1 })).status).toBe(200)
+    expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
+
+    // Every card face up on the table, so each one says what it is and which front it shows.
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 6 })
+    await table.synced(2)
+    await table.send(null, ...table.view!.components.map((c) => ({ v: 'flip' as const, component: c.id, face: 'front' })))
+    await table.synced(8)
+    await table.close()
+    const fronts = async (): Promise<Record<string, string | undefined>> => {
+      const looking = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+      const out = Object.fromEntries(looking.view!.components.map((c) => [c.cardRef ?? '?', c.faces?.['front']]))
+      await looking.close()
+      return out
+    }
+    const textures = async () => (await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()) as { total: number }
+    const before = await fronts()
+    expect(Object.keys(before).sort()).toEqual(['dragon', 'knight', 'phoenix', 'wizard'])
+    expect(Object.values(before).every((h) => h !== undefined)).toBe(true)
+    // Four fronts — the dragon's new one and the phoenix among them — and the one shared back.
+    expect((await textures()).total).toBe(5)
+
+    await run.restart()
+    expect(await fronts()).toEqual(before)
+    expect((await textures()).total).toBe(5)
+  })
+
   it('refuses to refresh a session that was not started from a project', async () => {
     await run.store.createSession({ id: 'loose', version: 'v1', setup: twoSeatSetup() })
     expect((await json('POST', '/sessions/loose/refresh', {})).status).toBe(409)
@@ -206,6 +244,9 @@ describe('a version change is atomic for the players (L5)', () => {
 })
 
 describe('the survey after a session (G3)', () => {
+  // The project's own host answers from the seat she played from the editor (`owner=1`), with
+  // her login and no admission of her own (#1021): the seat is hers to name, and the name is the
+  // one the table knows the seat by — the seat itself, when nobody sat down there by name.
   it('accepts one structured answer per participant once the session has ended, tied to its version, and lists them', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
     const { id: sessionId, version, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; version: string; hostKey: string }
@@ -218,7 +259,22 @@ describe('the survey after a session (G3)', () => {
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(201)
     expect((await json('POST', `/sessions/${sessionId}/survey`, { ...answer, answers: { fun: 9 } })).status).toBe(400)
     const listed = (await (await json('GET', `/sessions/${sessionId}/surveys`)).json()) as unknown[]
-    expect(listed).toEqual([expect.objectContaining({ ...answer, version })])
+    expect(listed).toEqual([expect.objectContaining({ who: 'A', seat: 'A', answers: answer.answers, version })])
+  })
+
+  // The table screen's key opens the table, which sits at no seat; and someone with no login and
+  // no admission is nobody this table let in.
+  it('takes no answer on the table screen’s key, nor from someone the table never admitted', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'session.end' })
+    await table.close()
+    const answer = JSON.stringify({ seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: '' } })
+    const as = (headers: Record<string, string>) => fetch(`${run.http}/sessions/${sessionId}/survey`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: answer })
+    expect((await as({ authorization: `Bearer ${hostKey}` })).status).toBe(403)
+    expect((await as({})).status).toBe(403)
+    expect((await as({ cookie: await login('dan@example.com') })).status).toBe(403)
   })
 })
 
@@ -304,6 +360,38 @@ describe('the tables a project has (#19)', () => {
     expect(Date.parse(tables[1]!.lastAt!)).toBeGreaterThan(0)
   })
 
+  // «Senaste drag» is a player's move and nothing else (#706): a seat taken, a table refreshed or
+  // ended is the table being looked after, and a list that counted them called a table nobody had
+  // touched a card on «played», with the time someone sat down as its last move.
+  it('counts only a move on the table as its last move, not a seat taken or a version changed (#706)', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await table.synced(1)
+    expect((await json('PUT', `/projects/${id}`, { ...project(), name: 'Skogens herrar v2', rev: 1 })).status).toBe(200)
+    expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
+    const before = (await (await json('GET', `/projects/${id}/sessions`)).json()) as { lastAt: string | null }[]
+    expect(before).toEqual([expect.objectContaining({ lastAt: null })])
+
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await table.synced(3)
+    await table.close()
+    const after = (await (await json('GET', `/projects/${id}/sessions`)).json()) as { lastAt: string | null }[]
+    expect(Date.parse(after[0]!.lastAt!)).toBeGreaterThan(0)
+  })
+
+  // A refresh to the version the table already runs changes nothing, so it writes nothing (#706):
+  // the line it used to write told every phone «Spelet uppdaterades till rev-1» about no change.
+  it('writes no line when a table is refreshed to the version it already runs (#706)', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const same = await json('POST', `/sessions/${sessionId}/refresh`, {})
+    expect(same.status).toBe(200)
+    expect(await same.json()).toEqual({ version: 'rev-1', seqs: [] })
+    expect(await run.store.read(sessionId)).toEqual([])
+  })
+
   it('says which version a refreshed table runs and which table has ended, and shows nothing of another account\'s game', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
     const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
@@ -343,6 +431,30 @@ describe('the tables a project has (#19)', () => {
     const foreign = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie, origin: 'https://foreign.example' } })
     expect(await firstMessage(foreign)).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
     foreign.close()
+  })
+
+  // The owner who opens her table's screen without its key (#748) is known by her login: the
+  // server already knows who she is, so the address need not say `owner=1` for the table to open.
+  // She gets the table's own view — what the host key gives — and nobody else's cookie does.
+  it('opens the table view to the signed-in owner without the host key, and to no other account', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+
+    const own = new WebSocket(`${run.base}/sessions/${sessionId}`, { headers: { cookie, origin: 'http://test.local' } })
+    expect(await firstMessage(own)).toMatchObject({ t: 'snapshot' })
+    own.close()
+
+    const other = await login('bo@example.com')
+    for (const headers of [{ cookie: other, origin: 'http://test.local' }, { origin: 'http://test.local' }, { cookie, origin: 'https://foreign.example' }]) {
+      const shut = new WebSocket(`${run.base}/sessions/${sessionId}`, { headers })
+      expect(await firstMessage(shut)).toEqual({ t: 'refused', reason: 'the table needs the host key' })
+      shut.close()
+    }
+
+    // A key that does not open it is not the last word for whoever may open it anyway.
+    const stale = new WebSocket(`${run.base}/sessions/${sessionId}?host=nope`, { headers: { cookie, origin: 'http://test.local' } })
+    expect(await firstMessage(stale)).toMatchObject({ t: 'snapshot' })
+    stale.close()
   })
 
   // Every way into a table other than the host key asks `owner=1` (DRIFT §9), and that question
@@ -649,6 +761,22 @@ describe('the rulebook in the project (B7)', () => {
     // A card with no title falls back to its id, so a reference is never empty.
     expect(namesOfProject({ ...doc, rows: [{ id: 'namnlöst', fields: {} }] }).cards['namnlöst']).toBe('namnlöst')
   })
+
+  // A counter is the third thing a rule can name (#708), and it is named by an id like the other
+  // two, so a rule follows the counter when it is renamed. A counter written before it had an id is
+  // known by its name, spelled the way a reference's id may be spelled.
+  it('names the counters by their id, and a counter without one by its own name', async () => {
+    const { namesOfProject } = await import('../src/doc.js')
+    const doc = { ...project(), setup: { ...project().setup, counters: [{ id: 'guld', name: 'Dukater', start: 0 }, { name: 'Liv 2', start: 20 }] } }
+    expect(namesOfProject(doc).counters).toEqual({ guld: 'Dukater', 'Liv-2': 'Liv 2' })
+  })
+
+  it('keeps a counter’s id through the document, so a reference to it is still standing after a save (#708)', async () => {
+    const setup = { ...project().setup, counters: [{ id: 'guld', name: 'Guld', start: 0 }] }
+    const { id } = (await (await json('POST', '/projects', { ...project(), setup })).json()) as { id: string }
+    const read = (await (await json('GET', `/projects/${id}`)).json()) as { setup: { counters: unknown } }
+    expect(read.setup.counters).toEqual([{ id: 'guld', name: 'Guld', start: 0 }])
+  })
 })
 
 // A picture in the book has to come out the other end as the picture that went in (#173): the
@@ -726,6 +854,25 @@ describe('the rules a table plays by (B7)', () => {
     const body = (await (await fetch(`${run.http}/sessions/${id}/rules`)).json()) as { text: string }
     expect(body.text).toContain('Dra ur Draghög')
     expect(body.text).not.toContain('Helt andra regler')
+  })
+
+  // «Uppdatera» moves the table to the project's current rev (C7), and the book moves with it
+  // (#677): the version a table is locked to is the one it now runs, not the one it was started
+  // on. The session's start record stays what it was — it is where the log's replay begins.
+  it('hands a refreshed table the rules of the version it now runs, and keeps the start record', async () => {
+    await json('POST', '/projects', { id: 'p-refreshed', ...project() })
+    const started = await json('POST', '/projects/p-refreshed/sessions', {})
+    const { id } = (await started.json()) as { id: string }
+    expect((await fetch(`${run.http}/sessions/${id}/rules`)).status).toBe(204)
+
+    expect((await json('PUT', '/projects/p-refreshed', { rev: 1, ...project(), rules: rulesDoc })).status).toBe(200)
+    expect((await json('POST', `/sessions/${id}/refresh`, {})).status).toBe(200)
+
+    const res = await fetch(`${run.http}/sessions/${id}/rules`)
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { text: string }).text).toContain('Dra ur Draghög')
+    const exported = (await (await json('GET', `/sessions/${id}/export`)).json()) as { version: string }
+    expect(exported.version).toBe('rev-1')
   })
 
   // A table without a rulebook is not a mistake — most tables are that, and every phone at one

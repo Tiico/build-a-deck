@@ -1,4 +1,4 @@
-import type { Lang, T } from '../i18n/index.js'
+import { readerLocale, type Lang, type T } from '../i18n/index.js'
 
 // When something happened, in the words a reader uses about it — the day and the clock.
 //
@@ -25,14 +25,18 @@ export function dayWord(iso: string, now: number, lang: Lang, t: T): string {
   if (dayKey(at) === dayKey(yesterday)) return t('history.day.yesterday')
   // A date from another year says which one; within this year the year would be noise.
   const year = at.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' as const }
-  return at.toLocaleDateString(lang, { day: 'numeric', month: 'long', ...year })
+  return at.toLocaleDateString(readerLocale(lang), { day: 'numeric', month: 'long', ...year })
 }
 
-export const clockWord = (iso: string, lang: Lang): string => new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
+export const clockWord = (iso: string, lang: Lang): string => new Date(iso).toLocaleTimeString(readerLocale(lang), { hour: '2-digit', minute: '2-digit' })
 
 // When the table last moved, in the words a designer uses about it. A table nobody has played has
 // no moment at all, and saying "inga drag än" is truer than showing when it was started.
 export function lastMoveWords(at: string | null, now: number, lang: Lang, t: T): string {
   if (at === null) return t('tables.noMoves')
-  return t('tables.lastMove', { at: `${dayWord(at, now, lang, t)} ${clockWord(at, lang)}` })
+  // The history heads a group with its day, «I dag»; here the day stands inside a sentence, where
+  // it is written small (#706). A date keeps its own case — «October 5» is a name.
+  const day = dayWord(at, now, lang, t)
+  const word = day === t('history.day.today') || day === t('history.day.yesterday') ? day.toLocaleLowerCase(readerLocale(lang)) : day
+  return t('tables.lastMove', { at: `${word} ${clockWord(at, lang)}` })
 }

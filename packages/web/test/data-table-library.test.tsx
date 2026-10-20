@@ -8,9 +8,6 @@ import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const SKOG = '1'.repeat(64)
 const KARTA = '3'.repeat(64)
@@ -79,7 +76,7 @@ describe('a picture cell opens the library (#296)', () => {
     renderTable(deckWithArt(), { onCell, onUpload })
     const file = new File(['png'], 'riddare.png', { type: 'image/png' })
     fireEvent.change(within(row('knight')).getByLabelText('Ladda upp bild för knight'), { target: { files: [file] } })
-    expect(onUpload).toHaveBeenCalledWith(file)
+    expect(onUpload).toHaveBeenCalledWith(file, { cardRef: 'knight', field: 'art' })
   })
 
   it('changes nothing on Avbryt, on the × and on Escape, and hands the focus back each time', async () => {

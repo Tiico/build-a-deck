@@ -13,11 +13,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { LoginCard } from '../src/account/LoginCard.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
-
-const PITCH = /Skapa ditt kortspel, speltesta det på skärmen, beställ hem det/
+// What the product does during the beta, and that print is on its way (#743): ordering is phase 5,
+// and a line that promised it sent a beta tester looking for something that was not there.
+const PITCH = /Skapa ditt kortspel och speltesta det på skärmen — tryck kommer\./
 const NO_PASSWORD = /Länken i mejlet loggar in dig/
 const GUEST = /Skanna QR-koden på bordet/
 
@@ -39,6 +38,8 @@ afterEach(() => {
 describe('the login card', () => {
   it('keeps one line about what logging in is for, and moves the password and the guest behind the question mark', async () => {
     login()
+    cleanup()
+    login()
     expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
     expect(screen.queryByText(NO_PASSWORD)).toBeNull()
     expect(screen.queryByText(GUEST)).toBeNull()
@@ -55,6 +56,18 @@ describe('the login card', () => {
     expect(screen.getByText(PITCH)).toBeTruthy()
     expect(ask()).toBeTruthy()
     expect((await opened()).textContent).toMatch(PITCH)
+  })
+
+  // The one line under the pitch spoke only to whoever already had an account (#691, beslut
+  // 2026-10-06): the first visit says that the same address both logs in and makes the account.
+  it('tells the first visit that the link in the mail makes the account too', () => {
+    login()
+    expect(screen.getByText('Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.')).toBeTruthy()
+    expect(screen.queryByText('Logga in för att komma till dina spel.')).toBeNull()
+    cleanup()
+    login()
+    expect(screen.queryByText(/skapa konto med din e\u2011post/)).toBeNull()
+    expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
   })
 
   it('drops the sales line for whoever comes back, and keeps it behind the question mark', async () => {
@@ -199,5 +212,15 @@ describe('the guided start on a phone, one step at a time', () => {
     fireEvent.click(screen.getByRole('tab', { name: '3 · Korten' }))
     expect(asks()).toHaveLength(1)
     expect((await askOn('korten')).textContent).toMatch(FOOTER)
+  })
+})
+
+// Neither language promises an order the product cannot take yet (#743).
+describe('the pitch during the beta', () => {
+  it('promises no ordering in Swedish or English', async () => {
+    const { translate } = await import('../src/i18n/index.js')
+    expect(translate('sv', 'login.pitch')).toBe('Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.')
+    expect(translate('en', 'login.pitch')).toBe('Build your own card game and playtest it on screen — print is coming.')
+    for (const lang of ['sv', 'en'] as const) expect(translate(lang, 'login.pitch')).not.toMatch(/beställ|order/i)
   })
 })

@@ -648,3 +648,41 @@ describe('two seats facing each other across the felt (#52)', () => {
     expect(seat.name).toContain(west)
   }, 60_000)
 })
+
+// The two seats that are not bounded across the felt (#52) were left unbounded altogether, on the
+// reasoning that a seat alone on its edge has empty felt beside it (#42). Empty felt is not
+// endless felt: in the playtest of 2026-10-02 (#750) a 59-letter name on the north seat grew its
+// pill to 398 px on a 390 px phone and hung off both sides of the screen, while the east and west
+// seats were cut neatly at 133. A name is only ever as long as somebody typed it, so every seat is
+// bounded the same way — a name tag is one object whichever edge it is on.
+describe('a sixty-letter name on every seat (#750)', () => {
+  const sixty = (seat: string) => `${seat} Åke «Örnen» Östlund & söner, Bartholomew Longbottom d.y.`.padEnd(60, '!').slice(0, 60)
+  it.each([2, 4, 8])('keeps every pill of a %i-seat table on the felt and on the screen', async (count) => {
+    const seats = 'ABCDEFGH'.slice(0, count).split('')
+    const markup = await picker(recipeSetup(count), Object.fromEntries(seats.map((s) => [s, sixty(s)])))
+    const { felt, seats: boxes } = await measure(markup)
+    // A north or south pill lies along the felt's edge, so it stays inside the felt's own width;
+    // an east or west pill hangs off its edge by design, and stays on the screen.
+    const out = boxes
+      .filter((b) => (b.edge === 'N' || b.edge === 'S' ? b.x < felt.x || b.x + b.w > felt.x + felt.w : b.x < 0 || b.x + b.w > 390))
+      .map((b) => `${b.seat} ${place(b)}`)
+    expect(out).toEqual([])
+    const stacked = pairsOf(boxes)
+      .filter(([a, b]) => overlap(a, b).w > 0 && overlap(a, b).h > 0)
+      .map(([a, b]) => `${a.seat}×${b.seat}`)
+    expect(stacked).toEqual([])
+  }, 120_000)
+
+  it('cuts the north and south seats to the width it cuts the east and west ones, and says each name whole', async () => {
+    const markup = await picker(recipeSetup(4), { A: sixty('A'), B: sixty('B'), C: sixty('C'), D: sixty('D') })
+    const read = await Promise.all(['A', 'B', 'C', 'D'].map(async (seat) => [seat, await pill(markup, seat)] as const))
+    // One cap for all four: the same length of name is cut to the same width on every edge.
+    expect(new Set(read.map(([, p]) => p.w)).size).toBe(1)
+    for (const [seat, p] of read) {
+      expect(p.cut).toBe(true)
+      expect(p.marked).toBe(true)
+      expect(p.shown).toBe(sixty(seat).slice(0, p.shown.length))
+      expect(p.name).toContain(sixty(seat))
+    }
+  }, 120_000)
+})

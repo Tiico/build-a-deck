@@ -5,9 +5,6 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { TableClient } from '../src/client.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { admit, asSeat, asTable, createSession, recipeSetup, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -34,24 +31,31 @@ describe('JoinPage', () => {
   })
 
   // A code for a table that has ended (#485, fynd 3; C9): the picker used to look normal, hand out
-  // a token and land the newcomer in a finished game. It says the table is over, and offers no seat.
-  it('says the table is over for a code whose table has ended, and offers no seat', async () => {
+  // a token and land the newcomer in a finished game. It offers no seat — and it says what it says
+  // of a code that never was (beställarens beslut 2026-10-07, #938), since saying the table is over
+  // told whoever typed the code that it had been real.
+  it('asks again for a code whose table has ended, as for one that never was, and offers no seat', async () => {
     const id = await createSession(run)
     const host = TableClient.connect(await asTable(run, id))
     await host.ready()
     await host.send({ v: 'session.end' })
-    history.replaceState(null, '', `/join?code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    const code = roomOf(id).code
+    history.replaceState(null, '', `/join?code=${code}&server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
-    expect(await screen.findByRole('heading', { name: 'Bordet är slut' })).toBeTruthy()
-    expect(screen.getByText('Det här bordet är avslutat. Be värden starta ett nytt.')).toBeTruthy()
+    const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
+    expect(field.value).toBe(code)
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    expect(screen.queryByText(/avslutat|slut/)).toBeNull()
     expect(document.querySelector('[data-seat]')).toBeNull()
     host.close()
   })
 
-  it('says that no code was given when there is none, rather than that a table has ended', async () => {
+  // Without a code the page asks for one (#675), rather than saying a table has ended.
+  it('asks for the code when there is none, rather than saying a table has ended', async () => {
     history.replaceState(null, '', `/join?server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
-    expect(await screen.findByText('Ingen rumskod angiven.')).toBeTruthy()
+    expect(await screen.findByLabelText('Rumskod')).toBeTruthy()
+    expect(screen.queryByText(/avslutat|slut/)).toBeNull()
   })
 
   it('shows every seat live with who sits there, and preselects the next free one', async () => {
@@ -126,6 +130,52 @@ describe('watching instead of playing (C8)', () => {
   })
 })
 
+// Tre tryck på «Sätt dig» köpte tre platser (#752): den första fick en token, de två andra 409 och
+// varsitt konsolfel. Knappen stod levande medan svaret väntade, så på ett långsamt nät trycker
+// spelaren igen. Samma vakt som «Starta nytt bord» (L31): knappen säger att den arbetar från
+// första trycket, och handlaren vägrar ett andra köp — inte bara knappen, för en tangent hinner
+// före omritningen.
+describe('one join at a time (#752)', () => {
+  it('buys one seat for three presses, and says it is sitting down while the answer is on its way', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/join?code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    const gone: string[] = []
+    render(<JoinPage onSit={(url) => gone.push(url)} />)
+    const sit = await screen.findByRole('button', { name: /Sätt dig/ })
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Bo' } })
+
+    // Svaret hålls kvar tills alla tre trycken är gjorda: det är det långsamma nätet.
+    const real = globalThis.fetch
+    const joins: string[] = []
+    let answer!: () => void
+    const held = new Promise<void>((resolve) => (answer = resolve))
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input)
+      if (init?.method === 'POST' && url.endsWith('/join')) {
+        joins.push(url)
+        await held
+      }
+      return real(input, init)
+    })
+    try {
+      fireEvent.click(sit)
+      fireEvent.click(sit)
+      fireEvent.submit(document.querySelector('form')!)
+
+      expect(joins).toHaveLength(1)
+      expect(sit.getAttribute('aria-busy')).toBe('true')
+      expect(sit.textContent).toMatch(/Sätter dig/)
+
+      answer()
+      await waitFor(() => expect(gone).toHaveLength(1))
+      expect(new URL(gone[0] ?? '', 'http://x').pathname).toBe('/play')
+      expect(joins).toHaveLength(1)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})
+
 describe('playing from this screen (C2)', () => {
   it('offers to play with the table on this screen, which leads to the online view for the chosen seat', async () => {
     const id = await createSession(run)
@@ -153,7 +203,7 @@ describe('coming back to the picker after leaving (#31)', () => {
     history.replaceState(null, '', `/join?code=${roomOf(id).code}&left=1&server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
     await screen.findByRole('button', { name: /Sätt dig/ })
-    expect(screen.getByText(/Din plats är ledig och handen ligger tillbaka i draghögen/)).toBeTruthy()
+    expect(screen.getByText(/Din plats är ledig och handen ligger tillbaka i leken\./)).toBeTruthy()
     expect(document.querySelector('[data-seat="A"]')!.getAttribute('aria-pressed')).toBe('true')
   })
 
@@ -165,23 +215,24 @@ describe('coming back to the picker after leaving (#31)', () => {
 })
 
 describe('a code that does not resolve (DRIFT §9)', () => {
-  it('says the code no longer applies instead of connecting', async () => {
+  it('asks for the code again instead of connecting, and says why once (#675)', async () => {
     history.replaceState(null, '', `/join?code=ZZZZZZ&server=${encodeURIComponent(run.url)}`)
     // The page says it where every state is said (#7): the one assertive live region the app
-    // mounts, rather than a `role="alert"` of its own invention.
+    // mounts, rather than a `role="alert"` of its own invention that would say it a second time.
     render(
       <StatusLive>
         <JoinPage />
       </StatusLive>,
     )
-    const said = await screen.findByText(/gäller inte längre/)
-    expect(said.textContent).toContain('ZZZZZZ')
-    // The heading is read where the focus lands, and the live region says the rest (#555).
-    await waitFor(() => expect(document.activeElement?.textContent).toMatch(/bordet finns inte/i))
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/ZZZZZZ gäller inte längre/))
+    const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
+    // The focus is in the field, which carries the code and is described by why it led nowhere.
+    await waitFor(() => expect(document.activeElement).toBe(field))
+    expect(field.value).toBe('ZZZZZZ')
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.'))
+    expect(document.querySelector('.byd-code-says[role="alert"]')).toBeNull()
     // Choosing a seat again at the same code leads back to this very page (#555 A-14).
     expect(screen.queryByRole('link', { name: 'Välj plats igen' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'Till startsidan' })).toBeTruthy()
   })
 })
 

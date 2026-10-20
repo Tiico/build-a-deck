@@ -50,7 +50,10 @@ export const ServerMessage = z.discriminatedUnion('t', [
   // kick. The server closes after it; the client must not reconnect on its own.
   z.object({ t: z.literal('refused'), reason: z.string() }),
   // The room code (DRIFT §9), to the host's screens only: on connect and whenever it rotates.
-  z.object({ t: z.literal('room'), code: z.string(), expiresAt: z.string() }),
+  // A rotation changes the host key too (#820), and the screens that are open are handed the new
+  // one here so they are not shut out by it; `hostKey` is never sent on connect, and never to a
+  // seat, an observer or the lobby.
+  z.object({ t: z.literal('room'), code: z.string(), expiresAt: z.string(), hostKey: z.string().min(1).optional() }),
   z.object({ t: z.literal('presence'), from: PresenceFrom, presence: Presence }),
   // Who is watching (C8): sent to everyone on connect and whenever it changes. Observers are
   // never invisible.

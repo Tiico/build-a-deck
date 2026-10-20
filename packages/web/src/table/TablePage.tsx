@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Intent, VisibleComponentState } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Intent, type VisibleComponentState } from '@byd/protocol'
 import './table.css'
 import { TableRenderer, type TableMode } from './TableRenderer.js'
 import { TvChrome } from './TvChrome.js'
@@ -7,45 +7,60 @@ import { useTableClient } from './useTableClient.js'
 import { previewOf, standingRewind } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
 import { useShowing } from './useShowing.js'
-import { useShuffles } from './shuffle.js'
+import { SAID_MS, SHUFFLE_MS, SHUFFLE_TV_MS, useShuffles } from './shuffle.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
 import { useActivityLive } from './useActivityLive.js'
 import { RewindFrame } from './RewindFrame.js'
-import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
+import { LastLine } from './LastLine.js'
+import { TableMenu } from './TableMenu.js'
+import { KEEP_TRYING_MS, DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { noticeFor, tableShut, unlinked } from '../status/notice.js'
+import { logout, whoAmI } from '../account/session.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
+import { keepHostKey, takeHostKey } from './hostKey.js'
+import { useCardsPending } from './textures.js'
+import { versionWord } from '../i18n/version.js'
+import { rememberTableLang } from './tableLang.js'
 
-type SessionRecord = { name?: string; version?: string }
+type SessionRecord = { name?: string }
 
 // /table?session=…&host=…&mode=table|tv&server=ws://…
 // The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
 // host's screen (DRIFT §9): the host key opens it, and it is told the room code to show.
-export type TablePageProps = { timing?: StatusTiming }
+export type TablePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: number } }
 
 export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
+  // The host's language, carried here by the editor's link, is this screen's from now on (#756).
+  useEffect(() => rememberTableLang(), [])
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
-  const host = params.get('host') ?? undefined
+  // Read once and out of the address at once (#758): the key never stands in the address bar.
+  const [host] = useState(() => takeHostKey(sessionId))
   const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs, keepTryingMs: timing.keepTryingMs ?? KEEP_TRYING_MS } : null)
   const { client, view, status, activity, observers, room, refused } = conn
+  // «Ny kod» changes the key too (#820), and the key this tab was opened with opens nothing after
+  // it: the one the rotation handed the screen is what a reload must find.
+  useEffect(() => {
+    if (sessionId && conn.hostKey) keepHostKey(sessionId, conn.hostKey)
+  }, [sessionId, conn.hostKey])
   const roomCode = room?.code ?? params.get('code') ?? ''
   // The room reads its own state across a room, so a message that lands on top of the felt is a
   // card in the middle of it (#12, #7, variant C).
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: roomCode })
-  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: roomCode || sessionId })
-  // The session record: which game this table runs and which version of it (L5, C9). The name
-  // titles the screen; the version is also what the log is locked on when the session ends.
+  // The session record: which game this table runs (L5). The name titles the screen. Which version
+  // it runs is the view's (C7, #677): «Uppdatera» moves it mid-game, and the title, the book and
+  // the ended screen follow it in the patch that carries the line.
   const [record, setRecord] = useState<SessionRecord | null>(null)
   useEffect(() => {
     if (!sessionId) return
@@ -58,14 +73,48 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       live = false
     }
   }, [sessionId, url])
+  // Without a code — an owner who opened their own table — the game's name names it (#759).
+  // A table whose game was taken away (#676) is not there, which is not the same as shut.
+  const gameDeleted = refused === 'the game was deleted'
+  // Who stands at a shut table (#748): signed out, or in an account that may not open it. The
+  // server would have let the owner in, so a signed-in reader here is someone else's account.
+  const http = url.replace(/^ws/, 'http')
+  const [account, setAccount] = useState<string | null | undefined>(undefined)
+  const shut = refused !== null && !gameDeleted
+  useEffect(() => {
+    if (!shut) return
+    let live = true
+    // A service that cannot say who is here has nobody signed in to name.
+    void whoAmI(http).then(
+      (email) => live && setAccount(email),
+      () => live && setAccount(null),
+    )
+    return () => {
+      live = false
+    }
+  }, [shut, http])
+  const switchAccount = () => {
+    if (links.login === undefined) return
+    const login = links.login
+    void logout(http).then(() => location.assign(login))
+  }
+  // The cards still on their way (#765, beslut B): the start waits for them on the host's screens,
+  // and the TV says how far they have come for as long as any are missing — also after a start
+  // that went ahead anyway.
+  const rendering = useCardsPending(http, sessionId, view, timing.renderStalledAfterMs)
+  usePageTitle({ state: sessionId ? (gameDeleted ? 'missing' : refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null, part: view?.ended ? t('title.play.ended') : null })
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
+  // The TV's column holds what the felt's corner holds on the other screens (#875).
+  const [corner, setCorner] = useState<HTMLElement | null>(null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   // Which piles are being shuffled right now (L35): played by the line, on this screen as on
   // every other that sees the pile, and never for the lines the snapshot brought.
-  const shuffles = useShuffles(activity, view !== null)
+  const shuffles = useShuffles(activity, view !== null, mode === 'tv' ? SHUFFLE_TV_MS : SHUFFLE_MS)
+  // And on the television, the words under the pile (#718).
+  const said = useShuffles(activity, view !== null && mode === 'tv', SAID_MS, SAID_MS)
   // The felt as controls (#2): the table screen plays as the table itself, so what it can reach
   // is what a table may see.
   const playable = view !== null && !view.rewind && !view.ended && client !== null
@@ -89,26 +138,31 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // The table screen acts as the table itself, so a line with no seat on it is its own (K14).
   useActivityLive(activity, view, null)
 
+  // The code is the address (#675, beslut C): the room's own address is the screen's origin and
+  // the code, and the square carries the very same one as the words beside it.
   const joinUrl = useMemo(() => {
     if (!roomCode) return undefined
-    const q = new URLSearchParams({ code: roomCode })
     const server = params.get('server')
-    if (server) q.set('server', server)
-    return `${location.origin}/join?${q.toString()}`
+    return `${location.origin}/${roomCode}${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`
   }, [params, roomCode])
+  const site = location.host
 
   // A link with no room in it is a link to a room that does not exist.
-  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={unlinked('table', t)} surface="page" links={links} room={mode} />
   // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: t('play.refused.host') }} surface="page" links={links} />
+  // A table whose game was taken away (#676) is gone with it: the code that stood here is spent,
+  // which is D5's «saknas», said as what happened — never «another account's», which it is not.
+  if (gameDeleted) return <StatusNotice notice={{ ...noticeFor('missing', 'table', t), heading: t('status.deleted.table.heading'), text: t('status.deleted.table.text') }} surface="page" links={links} room={mode} />
+  if (refused) return <StatusNotice notice={tableShut(account, t)} surface="page" links={links} onSwitch={switchAccount} room={mode} />
   // Nothing behind worth protecting: the message is the whole screen, in the room's own words.
-  if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+  if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} room={mode} />
 
   // A proposed rewind (C): the screen shows the table as it was at the target and who is waited
   // on. It has no buttons — the phones decide, and an ended table has nobody left to decide.
   const proposal = standingRewind(view)
   // The table screen plays as the table itself (seat null): whoever stands at it acts for the group.
-  const onAct = client ? (intents: Intent[]) => void client.send(...intents) : undefined
+  // The answer goes back to the felt, which says a refusal beside the drop (#682).
+  const onAct = client ? (intents: Intent[]) => client.send(...intents) : undefined
   const rendered = (
     <TableRenderer
       view={previewOf(view)}
@@ -120,23 +174,36 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       pulses={presence.pulses}
       recent={recent}
       shuffles={shuffles}
+      said={said}
+      // The lens /online has had since #502, on the table's own screen too (#720, C5): the wheel,
+      // a pinch, a double press on the bare felt and the corner's buttons. The TV has a camera.
+      lens={mode === 'table'}
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
       camera={mode === 'tv' ? 'follow' : undefined}
       forTheRoom={mode === 'tv'}
+      cornerIn={mode === 'tv' ? corner : undefined}
+      startWait={rendering}
+      // The felt's own screen can take back its own move and end the table (#682, C); the room's
+      // television has no buttons (K13), and a proposed rewind or an ended table has nothing to offer.
+      more={mode === 'table' && client && !proposal && !view.ended ? <TableMenu view={view} activity={activity} version={versionWord(view.version, t)} send={(...intents) => client.send(...intents)} /> : undefined}
       {...(sessionId ? { remember: `table:${sessionId}` } : {})}
       onInspect={mode === 'tv' ? setInspecting : undefined}
       onShow={mode === 'tv' ? shown.show : undefined}
     />
   )
+  // The version as people read it (#703), never the id «rev-5».
+  const version = versionWord(view.version, t)
+  // What the end screen counts are the game's moves, not the log's lines (#703).
+  const moves = activity.filter((l) => PHYSICAL_VERBS.includes(l.intent.v)).length
   const flags = activity.filter((l) => l.intent.v === 'flag').length
   const players = view.seats.filter((s) => s.name !== null).length
   const ended = view.ended && (
     <div className="byd-ended" data-ended>
       <div>
         <h1>{t('ended.title')}</h1>
-        <p>{t('ended.locked', { version: record === null ? '…' : (record.version ?? '?') })}</p>
+        <p>{t('ended.locked', { version })}</p>
         <div className="byd-ended-summary">
-          <Count n={view.seq} one="ended.rows.one" other="ended.rows.other" />
+          <Count n={moves} one="ended.rows.one" other="ended.rows.other" />
           <Count n={flags} one="ended.flags.one" other="ended.flags.other" />
           <Count n={players} one="ended.players.one" other="ended.players.other" />
         </div>
@@ -165,13 +232,23 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         {...(live.stale ? { inert: true } : {})}
       >
       {mode === 'table' && (
-        // The felt is the whole screen (B); a quiet line along its top says which game this is.
-        <h1 className="byd-table-plate">{[record?.name ?? t('play.table'), record?.version, roomCode].filter(Boolean).join(' · ')}</h1>
+        // The felt is the whole screen (B); a quiet line along its top says which game this is, and
+        // beside it the room's address, which is the way in (#675, beslut C): no square here, the
+        // address is enough for a table everyone is sitting at.
+        <div className="byd-table-plate">
+          <h1>{[record?.name ?? t('play.table'), version].filter(Boolean).join(' · ')}</h1>
+          {roomCode && !view.ended && (
+            <p data-address>
+              {site}/<b>{roomCode}</b>
+            </p>
+          )}
+        </div>
       )}
+      {mode === 'table' && !view.ended && <LastLine activity={activity} view={view} />}
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} host={site} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner} rendering={rendering}>
           {table}
         </TvChrome>
       ) : (
@@ -183,7 +260,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         {felt.panel}
         {ended}
       </div>
-      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} room={mode} />
     </>
   )
 }

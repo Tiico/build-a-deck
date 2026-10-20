@@ -2,12 +2,14 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
-import { standingRewind, whoDecides } from '../table/rewind.js'
-import { FlagSheet, EndSheet, ExitSheet } from './SessionSheets.js'
+import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
+import { FlagSheet, EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
+import { useHasRulebook } from '../rules/sessionRules.js'
 import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
+import { returnPile } from '../table/handName.js'
 import { FlagGlyph, HookGlyph } from '../glyphs.js'
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
@@ -22,7 +24,7 @@ export function refusedText(reason: string, t: T): string {
 
 // Which sheet the seat's screen has raised. `exit` is the way out asking which way out (#31); it
 // is the only one that opens another, and the one it opens is `end`, unchanged.
-export type Sheet = 'flag' | 'exit' | 'end' | null
+export type Sheet = 'flag' | 'exit' | 'end' | 'propose' | null
 
 // The version the session runs on, from the session record; the survey and the end sheet say it.
 export function useSessionVersion(http: string, sessionId: string | null, when: boolean): string | null {
@@ -106,8 +108,21 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
           }}
         />
       )}
+      {sheet === 'propose' && view.undo?.contested && (
+        <ProposeSheet
+          where={whereTo(view, { id: '', toSeq: view.undo.toSeq, by: seat }, client.activity, t)}
+          who={whoDecides(view, { id: '', toSeq: view.undo.toSeq, by: seat }, t)}
+          onPropose={() => {
+            const toSeq = view.undo?.toSeq
+            onSheet(null)
+            if (toSeq !== undefined) void client.send({ v: 'rewind.propose', toSeq })
+          }}
+          onClose={() => onSheet(null)}
+        />
+      )}
       {sheet === 'exit' && (
         <ExitSheet
+          pile={returnPile(view, seat)}
           refusal={gone}
           onLeave={() => {
             void gone.watch(client.send({ v: 'seat.release', seat })).then((result) => {
@@ -141,12 +156,12 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
       )}
       {proposal && proposal.by === seat && (
         <div className="byd-rewind-mine" data-rewind-mine>
-          <span>{t('rewind.mine', { who: whoDecides(view, proposal, t) })}</span>
+          <span>{t('rewind.mine', { who: whoDecides(view, proposal, t), where: whereTo(view, proposal, client.activity, t) })}</span>
           <button onClick={() => settle('rewind.reject')}>{t('rewind.withdraw')}</button>
         </div>
       )}
       {proposal && proposal.by !== seat && (
-        <RewindAsk who={view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table')} onSettle={settle} />
+        <RewindAsk who={view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table')} where={whereTo(view, proposal, client.activity, t)} pile={returnPile(view, view.seat)} onSettle={settle} />
       )}
     </>
   )
@@ -161,13 +176,19 @@ export type SeatSurveyProps = {
   http: string
   sessionId: string
   version: string | null
+  // The admission the seat was taken with (#1021), which is who the answer is from; absent for the
+  // host playing from the editor.
+  token?: string | undefined
   // Where to save the session to an account afterwards (G1); absent without a guest token.
   saveUrl?: string | null | undefined
+  // The claim has come back here (#690).
+  saved?: boolean | undefined
 }
 
-export function SeatSurvey({ view, seat, name, http, sessionId, version, saveUrl }: SeatSurveyProps) {
+export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved }: SeatSurveyProps) {
+  const rulebook = useHasRulebook(http, sessionId, view.ended)
   if (!view.ended) return null
-  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} remember={`${sessionId}:${seat}`} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
+  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} saved={saved} remember={`${sessionId}:${seat}`} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })} />
 }
 
 // The three buttons every seat has, and three is the number (#31): the row is full at 375 px,
@@ -197,17 +218,26 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
     opener.current = event.currentTarget
     onSheet(which)
   }
-  const tapUndo = () => {
-    if (!view.undo) return
-    void client.send(view.undo.contested ? { v: 'rewind.propose', toSeq: view.undo.toSeq } : { v: 'undo.self' })
+  // «Ångra» switches itself off by being pressed: the one thing there was to undo is undone. A
+  // `disabled` button cannot hold the focus, so the focus that pressed it fell to nothing and the
+  // next Tab began again at the top (#761, K16). It is `aria-disabled` instead, as the strip's
+  // «Flytta vänster» is at the end of the hand (L53): said to be off, kept in the tab order, and
+  // doing nothing when pressed.
+  const off = !view.undo || !!view.rewind || view.ended
+  const tapUndo = (event: { currentTarget: HTMLButtonElement }) => {
+    if (off || !view.undo) return
+    // Someone else's move is asked about first (#747, beställarens beslut A); one's own is undone.
+    if (view.undo.contested) raise('propose')(event)
+    else void client.send({ v: 'undo.self' })
   }
   return (
     <>
-      <button className="byd-undo" disabled={!view.undo || !!view.rewind || view.ended} onClick={tapUndo}>
+      {/* The word stays the button's name and its title: under 375 px only the icon is drawn (#716, L62). */}
+      <button className="byd-undo" aria-disabled={off} onClick={tapUndo} title={t('session.undo')}>
         <HookGlyph />
         {t('session.undo')}
       </button>
-      <button className="byd-flag" disabled={view.ended} onClick={raise('flag')}>
+      <button className="byd-flag" disabled={view.ended} onClick={raise('flag')} title={t('session.flag')}>
         <FlagGlyph />
         {t('session.flag')}
       </button>
@@ -220,7 +250,8 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
 
 // Another seat's rewind, asked of this one (K13, #483): a dialog over the whole phone that takes the
 // focus and holds it, on the answer that changes nothing, until it is answered.
-function RewindAsk({ who, onSettle }: { who: string; onSettle(v: 'rewind.confirm' | 'rewind.reject'): void }) {
+// `where` is the move the table would go back to before, said as the TV's frame says it (#714).
+function RewindAsk({ who, where, pile, onSettle }: { who: string; where: string; pile: string | null; onSettle(v: 'rewind.confirm' | 'rewind.reject'): void }) {
   const t = useT()
   const id = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -229,7 +260,7 @@ function RewindAsk({ who, onSettle }: { who: string; onSettle(v: 'rewind.confirm
   return (
     <div className="byd-rewind-ask" data-rewind-ask ref={box} role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`}>
       <h1 id={`${id}-title`}>{t('rewind.ask.title', { who })}</h1>
-      <p id={`${id}-body`}>{t('rewind.ask.body')}</p>
+      <p id={`${id}-body`}>{pile ? t('rewind.ask.body', { pile, where }) : t('rewind.ask.body.any', { where })}</p>
       <button data-kind="ok" className="byd-primary" onClick={() => onSettle('rewind.confirm')}>
         {t('rewind.approve')}
       </button>

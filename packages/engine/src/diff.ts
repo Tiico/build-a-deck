@@ -34,6 +34,7 @@ export function diff(prev: Snapshot, next: Snapshot): Patch {
   if (!deepEqual(prev.undo, next.undo)) ops.push({ op: 'undo', undo: next.undo })
   if (prev.ended !== next.ended) ops.push({ op: 'ended', ended: next.ended })
   if (prev.played !== next.played) ops.push({ op: 'played', played: next.played })
+  if (prev.version !== next.version) ops.push({ op: 'version', version: next.version })
   return { seq: next.seq, ops }
 }
 
@@ -46,6 +47,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
   let undo = prev.undo
   let ended = prev.ended
   let played = prev.played
+  let version = prev.version
   for (const op of patch.ops) {
     switch (op.op) {
       case 'upsert':
@@ -78,6 +80,9 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
       case 'played':
         played = op.played
         break
+      case 'version':
+        version = op.version
+        break
     }
   }
   const sortedZones = [...zones.values()].sort((a, b) => a.id.localeCompare(b.id))
@@ -92,6 +97,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
     undo,
     ended,
     played,
+    version,
   }
 }
 

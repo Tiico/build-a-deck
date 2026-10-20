@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { ConsoleMailer, ResendMailer, mailerFromEnv } from '../src/auth.js'
+import { corpusFromEnv } from '../src/corpus.js'
 
 // What the box hands the container (DRIFT §7, §11). The stack is the only place the account
 // settings can reach the process, and the only place a development flag could slip into
@@ -47,6 +48,22 @@ describe('the stack hands the app its configuration', () => {
     expect(Object.keys(env)).toEqual(expect.arrayContaining(['DATABASE_URL', 'PUBLIC_ORIGIN', 'RESEND_API_KEY', 'MAIL_FROM']))
   })
 
+  // The replay corpus's door (#1011, DRIFT §7) is set in the box's .env and nowhere else; a name
+  // the stack does not pass is a door that never opens, however carefully the list was written.
+  it('passes the corpus consent list and the operator through, empty when unset', () => {
+    const env = serviceEnvironment(compose, 'app')
+    expect(env['BYD_CORPUS_ACCOUNTS']).toBe('${BYD_CORPUS_ACCOUNTS:-}')
+    expect(env['BYD_OPERATOR']).toBe('${BYD_OPERATOR:-}')
+  })
+
+  // Where a beta tester turns (#757, DRIFT §8) is the box's to say. Left out of the stack, the
+  // contact line, the mail's foot and /health.contact stayed empty on the box from the day they
+  // were built, and every test of them passed because none ran the stack.
+  it('passes the contact through, empty when unset', () => {
+    const env = serviceEnvironment(compose, 'app')
+    expect(env['BYD_CONTACT']).toBe('${BYD_CONTACT:-}')
+  })
+
   it('leaves room on a box that is not only ours', () => {
     // DRIFT §1 budgeted the whole 8 GB for this stack; the box it actually runs on was
     // already carrying its own containers and swapping. The three that are always up have
@@ -72,6 +89,18 @@ describe('the stack hands the app its configuration', () => {
     const env = serviceEnvironment(compose, 'app')
     expect(Object.keys(env)).not.toContain('AUTH_BYPASS')
     expect(Object.keys(env)).not.toContain('WEB_ORIGIN')
+    // The fake providers a test stack talks to (#999): the box always reaches the real ones.
+    expect(Object.keys(env)).not.toContain('AI_ANTHROPIC_URL')
+    expect(Object.keys(env)).not.toContain('AI_OPENAI_URL')
+  })
+
+  it('hands the app the AI keys’ master key, and nothing that makes backups hands it on (#999)', () => {
+    // DRIFT §5: the master key lives in the box's environment and only there. The app needs it;
+    // the database and the agent that archives it to R2 must never see it, or a leaked backup
+    // leaks every designer's key with it.
+    expect(serviceEnvironment(compose, 'app')['AI_KEY_SECRET']).toBe('${AI_KEY_SECRET:-}')
+    for (const service of ['postgres', 'backup', 'render']) expect(serviceLines(compose, service).join('\n')).not.toContain('AI_KEY_SECRET')
+    expect(readFileSync(new URL('../../../.env.example', import.meta.url), 'utf8')).toMatch(/^AI_KEY_SECRET=$/m)
   })
 })
 
@@ -136,6 +165,23 @@ describe('mailerFromEnv', () => {
   it('never sends from an empty address', () => {
     const mailer = mailerFromEnv({ RESEND_API_KEY: 'key', MAIL_FROM: '' })
     expect((mailer as ResendMailer).from).toMatch(/@/)
+  })
+})
+
+// The consent list is typed by hand into the box's .env (#1011), so it is read the way a person
+// writes it: spaces after the commas, an address in capitals, a trailing comma. An address is the
+// account's as the login stores it — trimmed and in lower case.
+describe('corpusFromEnv', () => {
+  it('opens nothing unless both the operator and at least one account are named', () => {
+    expect(corpusFromEnv({})).toBeUndefined()
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: '', BYD_OPERATOR: '' })).toBeUndefined()
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: 'ada@example.com' })).toBeUndefined()
+    expect(corpusFromEnv({ BYD_OPERATOR: 'op@example.com' })).toBeUndefined()
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: ' , ', BYD_OPERATOR: 'op@example.com' })).toBeUndefined()
+  })
+
+  it('reads the addresses as the login stores them', () => {
+    expect(corpusFromEnv({ BYD_CORPUS_ACCOUNTS: ' Ada@Example.com, bo@example.com ,', BYD_OPERATOR: ' Op@Example.com ' })).toEqual({ operator: 'op@example.com', accounts: ['ada@example.com', 'bo@example.com'] })
   })
 })
 

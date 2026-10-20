@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { Language } from '../src/i18n/index.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { layerPick } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {
@@ -74,10 +71,10 @@ describe('the editor in the reader\'s own language (A4)', () => {
     await openEditor()
     openTab('Data')
     expect(screen.getByPlaceholderText('Search every field…')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     expect(screen.getByLabelText('Import CSV…')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Download CSV' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     expect(screen.getByText('3 of 3 cards')).toBeTruthy()
     expect(screen.getByText('Unsorted: the cards’ order in the game.')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ New card' })).toBeTruthy()
@@ -88,7 +85,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     // is what every card is called (#476).
     expect(screen.getByRole('button', { name: /^body/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Title/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^copies/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Copies/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^antal/ })).toBeNull()
   })
 
@@ -206,13 +203,13 @@ describe('the editor in the reader\'s own language (A4)', () => {
 
   it('says the history and who has the game in English', async () => {
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /^rev / }))
+    fireEvent.click(screen.getByRole('button', { name: /^v\d/ }))
     const history = await screen.findByRole('dialog', { name: 'History' })
     expect(within(history).getByRole('heading', { name: 'History' })).toBeTruthy()
     expect(within(history).getByRole('button', { name: 'Close the history' })).toBeTruthy()
     fireEvent.click(within(history).getByRole('button', { name: 'Close the history' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Who has the game' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Share · who has the game' }))
     const share = await screen.findByRole('dialog', { name: 'Who has the game' })
     expect(within(share).getByPlaceholderText('name@example.com')).toBeTruthy()
     expect(within(share).getByRole('button', { name: 'Invite' })).toBeTruthy()

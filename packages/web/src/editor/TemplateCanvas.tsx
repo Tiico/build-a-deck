@@ -5,16 +5,17 @@ import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
+import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, PX_PER_MM, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
 import { StepPill } from './StepPill.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
-import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
-import { assetRef, assetUrl, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
-import { fieldsOf, takenNames } from './fields.js'
+import { AssetImage } from './AssetImage.js'
+import { assetRef, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
+import { fieldLabel, fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, valuesIn, type Layer } from './groups.js'
@@ -32,6 +33,9 @@ import { useT, type Key, type T, useLang } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { useSay } from '../status/StatusLive.js'
 import { DragDoor } from './DragDoor.js'
+import { OversetMarks } from './OversetMarks.js'
+import { useCut } from './overset.js'
+import { placeholderOf, PLACEHOLDER_WORDS, THIN_PX, type Placeholder, type PlaceholderCase } from './placeholder.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 
 export type TemplateCanvasProps = {
@@ -127,6 +131,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The face the open tab is about (#13): with a group open, the face as it stands, so the group
   // is applied; with no group open, the face without its grouping rule, which is the base.
   const tabFace = useMemo(() => faceOfTab(faceTemplate, group), [faceTemplate, group])
+  // The texts on the card shown that the fitting could not fit even shrunk (#808), as the card's own
+  // fitting measured them: marked on the canvas the way they are on the wall and in the guide.
+  const [cut, onMeasured] = useCut()
   // What the card is compiled from, worked out once per part of the document it is read from. Both
   // build a fresh object every call, and the compiler is memoised on identity — so without this the
   // card is compiled again for every re-render of the canvas, which is every pointer move of a drag
@@ -181,6 +188,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // A ready-made back waiting for its answer (#478), and the gallery button it came from, which is
   // where the focus goes back to whatever the answer.
   const [swapping, setSwapping] = useState<{ name: string; base: Element[]; from: HTMLElement } | null>(null)
+  // Whether the back has layers of its own, which is what the gallery's fold follows (#736). A back
+  // laid down on an empty one folds the gallery under the button that laid it, so the hand is given
+  // to the gallery's head rather than dropped on the page.
+  const backIsEmpty = (doc.template.faces['back']?.base.length ?? 0) === 0
+  const [backLaid, setBackLaid] = useState(false)
   const swapBack = () => {
     const from = swapping?.from
     setSwapping(null)
@@ -237,6 +249,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // an element, and the card moves under the pointer that is working on it. It is a view of this
   // desk and not of the game, so it is remembered in the browser and never in the document.
   const [folded, setFolded] = useState(foldedProps)
+  // The new picture whose library opens the moment its panel does (#700).
+  const [choosingFor, setChoosingFor] = useState<string | null>(null)
   const fold = (away: boolean) => {
     setFolded(away)
     rememberFoldedProps(away)
@@ -252,10 +266,20 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   const goesOn = goes?.kind === 'if' ? shownCards.filter((r) => holds(goes.when, r.fields)).length : drawnOn
   // A new element is added where it can be seen and is selected at once, so the next thing the
   // designer does — drag it, nudge it, bind it — is about the element they just asked for.
+  //
+  // It reads a column that already holds what it draws (#700). The deck's first column suits a
+  // text box and nothing else: a picture bound to «typ» drew a broken image with src «Playcard»,
+  // and a row of icons wrote «{Playcard}» in the warning red. A picture takes the first column the
+  // template already draws as one, a row of icons the first it already reads names from, and
+  // where there is none it reads no column and draws nothing until the designer says what.
   const add = (kind: ElementKind) => {
-    const element = newElement(kind, { taken: idsOnFace(faceTemplate), field: fields[0], card: CARD_STANDARD_63x88.physical })
+    const field = kind === 'image' ? imageFieldsOf(doc)[0] : kind === 'icons' ? iconFieldsOf(doc)[0] : fields[0]
+    const element = newElement(kind, { taken: idsOnFace(faceTemplate), field, card: CARD_STANDARD_63x88.physical })
     onAdd(element)
     onSelectElement(element.id)
+    // A picture that reads no column is a fixed picture with none chosen yet, so the game's
+    // pictures open at once: choosing one is the next thing the designer does with it.
+    if (kind === 'image' && field === undefined) setChoosingFor(element.id)
   }
 
   // One panel or all four: a stage draws exactly what it is named after, so nothing is mounted
@@ -277,7 +301,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
               <option value="">{t('canvas.groupBy.none')}</option>
               {fields.map((f) => (
                 <option key={f} value={f}>
-                  {f}
+                  {fieldLabel(f, t)}
                 </option>
               ))}
             </select>
@@ -289,7 +313,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       )}
       {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={onPlaceIcon} />}
       {shows('layers') && (
-      <aside className="byd-canvas-layers">
+      // Two columns stand beside the canvas, so each says which it is (#762).
+      <aside className="byd-canvas-layers" aria-label={t('editor.stage.layers')}>
         {/* The column is a frame and not a scroller (#129): a crown that says which face is being
             listed and how many cards the panel is about, the list itself, and a foot with the line
             about dragging. All three used to scroll together — at 1024 the list ran 690 px past the
@@ -300,21 +325,6 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
         </div>
         <div className="byd-canvas-scroll">
-          {/* The ready-made backs (L17) stand in the open while the back is being edited, above the
-              layers that make it up, rather than behind a button: whoever lands on an empty back
-              should see the way on without hunting for it. Not inside a group — a group's back is
-              an override of the base's (#14), and laying a whole face down there would quietly
-              make every layer of it the group's own. */}
-          {face === 'back' && !group && (
-            <BackGallery
-              onPick={(back, from) => {
-                // A back with layers on it is asked about first (#478), as one layer is (#143);
-                // a back with nothing on it is simply laid down.
-                if ((doc.template.faces['back']?.base.length ?? 0) === 0) onReplaceFace(back.base)
-                else setSwapping({ ...back, from })
-              }}
-            />
-          )}
           <LayerList
             layers={[...panel].reverse().map((l) => l.element)}
             selected={selectedElement}
@@ -333,11 +343,39 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
                   onRename,
                 })}
             markOf={(id) => markOf(panel, column, group, id, t)}
-            conditionOf={(one) => (one.kind === 'if' ? t('canvas.if.row', { condition: conditionWords(one.when, t), n: shownCards.filter((r) => holds(one.when, r.fields)).length }) : null)}
+            conditionOf={(one) => {
+              if (one.kind !== 'if') return null
+              const n = shownCards.filter((r) => holds(one.when, r.fields)).length
+              return t(n === 1 ? 'canvas.if.row.one' : 'canvas.if.row.other', { condition: conditionWords(one.when, t), n })
+            }}
             pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
             labelledBy="layers-heading"
           />
+          {/* The ready-made backs (L17), folded under the layers that make the back up (#736,
+              beslut A 2026-10-06). Open while the back has no layers of its own — whoever lands on
+              an empty back should see the way on without hunting for it — and folded as soon as
+              it has some, because open above them it took 506 px of the column and hid every one.
+              Not inside a group — a group's back is an override of the base's (#14), and laying a
+              whole face down there would quietly make every layer of it the group's own. */}
+          {face === 'back' && !group && (
+            <BackGallery
+              // Whether the back has layers decides how the gallery stands, each time that changes;
+              // between those moments it stands as the designer left it.
+              key={backIsEmpty ? 'empty' : 'own'}
+              open={backIsEmpty}
+              takeFocus={backLaid}
+              onFocused={() => setBackLaid(false)}
+              onPick={(back, from) => {
+                // A back with layers on it is asked about first (#478), as one layer is (#143);
+                // a back with nothing on it is simply laid down.
+                if (backIsEmpty) {
+                  onReplaceFace(back.base)
+                  if (back.base.length > 0) setBackLaid(true)
+                } else setSwapping({ ...back, from })
+              }}
+            />
+          )}
           <label className="byd-canvas-grid-toggle">
             <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
             {t('canvas.grid')}
@@ -381,6 +419,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           tabIndex={0}
           // The zoom the card is drawn at, for the marks on it that must not shrink with it (#478).
           style={{ ['--byd-canvas-scale' as string]: String(zoom.scale) }}
+          // A face with nothing on it yet is drawn as blank paper, so there is a card to draw on (#735).
+          {...(tabFace.base.length === 0 ? { 'data-blank': '' } : {})}
           onClick={() => onSelectElement(null)}
           {...(column ? { id: GROUP_PANEL, 'aria-labelledby': GROUP_BUTTON } : { 'aria-label': t('canvas.stage') })}
         >
@@ -395,7 +435,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} />}
+            onMeasured={onMeasured}
+            overlay={<><DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} /><OversetMarks found={oversetOf(tabFace, rowData, cut)} scale={zoom.scale} zoomed /></>}
           />
         </section>
           <ZoomBand zoom={zoom} />
@@ -414,7 +455,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             question standing inside it would lose the layer the moment the answer that keeps it
             was pressed — which is the one answer that must cost nothing. It is otherwise the same
             strip the table asks its own two questions in, in the colours a deletion is asked in
-            there, and in the column where the card it draws on is. */}
+            there, and in the column where the card it draws on is. It lies over the canvas' foot
+            rather than taking a row from the stage, so the card stands still while it is asked
+            (#698): the fit follows the window, not a strip. */}
         {/* Why a locked layer did not move (L15), under the card where the canvas's question
             stands (#478): at the stage's foot it was cut by the stage it stood in. */}
         {refusedLayer && (
@@ -426,7 +469,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         {swapping && (
           <Question
             className="byd-canvas-question"
-            label={t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+            label={backSwapAsk(swapping.name, doc.template.faces['back']?.base.length ?? 0, t)}
             confirm={t('canvas.back.swap.yes')}
             onConfirm={() => {
               onReplaceFace(swapping.base)
@@ -434,7 +477,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             }}
             onCancel={swapBack}
           >
-            {t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+            {backSwapAsk(swapping.name, doc.template.faces['back']?.base.length ?? 0, t)}
           </Question>
         )}
         {goes && (
@@ -459,7 +502,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       {shows('props') && !(stage === null && folded) && (
       <Reading.Provider value={reading}>
       <SectionsOpen.Provider value={sections}>
-      <aside className="byd-canvas-props" id={PROPS_COLUMN}>
+      <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')}>
         <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
@@ -494,6 +537,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             onPatch={(changed, gesture) => patch(el.id, changed, gesture)}
             onAddField={onAddField}
             point={pointAt}
+            chooseNow={choosingFor === el.id}
+            onChoosing={() => setChoosingFor(null)}
           />
         )}
         {layer && group && overridden.has(layer.element.id) && (
@@ -688,10 +733,17 @@ const ARMS: readonly Arm[] = ['in', 'out']
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint, reading = false }: { boxes: BoxElement[]; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
+function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint, reading = false }: { boxes: BoxElement[]; row: Row; scale: number; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
+  // What each layer that draws nothing on this card says about it (#802), and the id its tag is
+  // known by, so the layer can be described by the tag it wears.
+  const tagIds = useId()
+  const said = new Map(boxes.flatMap((box) => {
+    const placeholder = placeholderOf(box, row)
+    return placeholder ? [[box.id, placeholder] as const] : []
+  }))
   const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean; scroll: { x: number; y: number } }) | null>(null)
   // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
   // of the same title are two things the designer did, and two steps back.
@@ -1040,6 +1092,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
           aria-pressed={moving?.id === box.id}
           {...(moving?.id === box.id ? { 'data-moving': '' } : {})}
           {...hollowProps(box)}
+          {...(said.has(box.id) ? { 'aria-describedby': `${tagIds}-${box.id}` } : {})}
           onKeyDown={(event) => keys(event, box)}
           style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, ['--byd-box-w' as string]: `${box.w}mm`, ['--byd-box-h' as string]: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop, ...hollowStyle(box) }}
           // The selection follows the focus here for the same reason it does in the layer list
@@ -1059,6 +1112,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
           onPointerCancel={callOff}
           onClick={(event) => event.stopPropagation()}
         >
+          {said.get(box.id) && <PlaceholderFrame id={`${tagIds}-${box.id}`} of={said.get(box.id) as Placeholder} thin={box.h * PX_PER_MM * scale < THIN_PX} />}
           {kept?.id === box.id && (
             <span className="byd-drag-kept" data-toward={kept.toward} role="status">
               {t('canvas.drag.kept')}
@@ -1451,7 +1505,8 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
     onPlaceIcon(symbol)
   }
   return (
-    <aside
+    // A toolbar, not a column beside the work: an aside's own role may not be overridden (#762).
+    <div
       className="byd-canvas-tools"
       role="toolbar"
       aria-label={t('canvas.tools')}
@@ -1521,7 +1576,7 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
           </div>
         )
       })}
-    </aside>
+    </div>
   )
 }
 
@@ -1602,7 +1657,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
             <select value={rule.field} onChange={(e) => onPatch({ fill: { ...rule, field: e.target.value } })}>
               {[...new Set([...fields, rule.field])].map((f) => (
                 <option key={f} value={f}>
-                  {f}
+                  {fieldLabel(f, t)}
                 </option>
               ))}
             </select>
@@ -1732,6 +1787,27 @@ function useMeasure(): (n: number) => string {
   }, [lang])
 }
 
+// The placeholder on a layer that draws nothing on the card shown (#802, beställarens beslut
+// variant A, «rutan säger det»): a dashed frame exactly on the layer, and a short word in a dark
+// tag in its middle that is always there, so an empty layer is seen without being looked for. It
+// is the drag box's own child and not a layer of its own, so a press on it is a press on the
+// element; and the tag carries the whole sentence — what it is and what to do — as its title and
+// its name, which is what the layer is described by.
+function PlaceholderFrame({ id, of, thin }: { id: string; of: Placeholder; thin: boolean }) {
+  const t = useT()
+  const words = PLACEHOLDER_WORDS[`${of.kind}.${of.why}` as PlaceholderCase]
+  const field = 'field' in of ? { field: of.field } : undefined
+  const sentence = t(words.sentence, field)
+  return (
+    <span className="byd-mark byd-placeholder" data-placeholder={`${of.kind}.${of.why}`} {...(thin ? { 'data-thin': '' } : {})}>
+      <span className="byd-mark-tag byd-placeholder-tag" id={id} role="img" aria-label={sentence} title={sentence}>
+        <i aria-hidden="true">{TOOLS.find((tool) => tool.id === of.kind)?.glyph}</i>
+        <span>{t(thin ? words.short : words.long, field)}</span>
+      </span>
+    </span>
+  )
+}
+
 // Where a condition layer stands on the card (#478): round what is in it that has a place, with
 // its condition in words and whether it holds for the card shown.
 type ConditionFrame = { id: string; x: number; y: number; w: number; h: number; words: string; holds: boolean }
@@ -1766,7 +1842,7 @@ function ConditionProps({ el, fields, valuesIn, cards, onPatch, onShow }: { el: 
           <select value={el.when.field} onChange={(e) => write(equals ? { field: e.target.value, equals: (el.when as { equals: string }).equals } : { field: e.target.value, nonEmpty: true })}>
             {[...new Set([...fields, el.when.field])].map((f) => (
               <option key={f} value={f}>
-                {f}
+                {fieldLabel(f, t)}
               </option>
             ))}
           </select>
@@ -1789,7 +1865,7 @@ function ConditionProps({ el, fields, valuesIn, cards, onPatch, onShow }: { el: 
             </datalist>
           </label>
         )}
-        <p className="byd-props-wide byd-canvas-affects">{t('canvas.if.count', { n: on.length, of: cards.length })}</p>
+        <p className="byd-props-wide byd-canvas-affects">{t(cards.length === 1 ? 'canvas.if.count.one' : 'canvas.if.count.other', { n: on.length, of: cards.length })}</p>
         {onShow && first && (
           <button type="button" className="byd-props-wide byd-props-show byd-secondary" onClick={() => onShow(first.id)}>
             {t('canvas.if.show')}
@@ -2009,6 +2085,8 @@ function Properties({
   onPatch,
   onAddField,
   point,
+  chooseNow = false,
+  onChoosing,
 }: {
   el: Element
   face: string
@@ -2028,6 +2106,10 @@ function Properties({
   // Which point of an own shape the canvas is standing on (L38), for the one command that is
   // about a point rather than about the whole shape.
   point: number | null
+  // Whether the game's pictures open as the panel does — a new picture with none chosen (#700) —
+  // and the word back that they have.
+  chooseNow?: boolean
+  onChoosing?(): void
 }) {
   const t = useT()
   // A picture of the template's own (#320): whether the window over the game's pictures is open
@@ -2036,6 +2118,11 @@ function Properties({
   // first column the template draws as a picture. Held here and not in the element: the model
   // carries what the card is, not what it used to be.
   const [choosing, setChoosing] = useState(false)
+  useEffect(() => {
+    if (!chooseNow) return
+    setChoosing(true)
+    onChoosing?.()
+  }, [chooseNow, onChoosing])
   const wasFrom = useRef(new Map<string, string>())
   const fixedRef = useRef<HTMLInputElement>(null)
   const [backToSwitch, setBackToSwitch] = useState(false)
@@ -2048,7 +2135,14 @@ function Properties({
   // Whether this element has anything to say about what it shows. A shape shows nothing but
   // itself, so it is given no section about it — a heading over an empty section is a promise
   // the panel does not keep.
-  const content = el.kind === 'icons' || el.kind === 'image' || ('bind' in el && !isFixed)
+  //
+  // A text layer is the exception (#736, beslut C 2026-10-06): the column it shows is all it has to
+  // say about what it shows, so that one line stands under the panel's heading — where the layer
+  // is named — and no section is drawn round it. That section's heading and its 44 px were part of
+  // what put «Anpassning» under the fold.
+  const bindsAbove = el.kind === 'text'
+  const reading = useContext(Reading)
+  const content = el.kind === 'icons' || el.kind === 'image' || ('bind' in el && !isFixed && !bindsAbove)
   const closeLibrary = () => {
     setChoosing(false)
     setBackToSwitch(true)
@@ -2084,11 +2178,12 @@ function Properties({
   // it is set in, what colour it is and which column it draws stay open — locking a layer is not
   // freezing its design.
   const measure = useMeasure()
-  const num = (label: Key, key: 'x' | 'y' | 'w' | 'h', icon: string) =>
+  const num = (label: Key, key: 'x' | 'y' | 'w' | 'h') =>
     key in el ? (
       <Scrub
         name={t(label)}
-        icon={icon}
+        // The grip's letter is the measure's initial in the reader's language (#933).
+        icon={t(`canvas.props.grip.${key}`)}
         unit="mm"
         step={0.5}
         // A box is never typed or pulled down to nothing (#478): an emptied Bredd used to be 0 mm
@@ -2104,6 +2199,46 @@ function Properties({
         onWrite={(value, gesture) => onPatch({ [key]: value } as Partial<Element>, gesture)}
       />
     ) : null
+  // Every element that shows data says which column it shows — a picture and a row of icons as much
+  // as a text box, or one added from the tool rail could never be bound. A text layer says it on a
+  // line of its own under the heading (#736), the others inside Innehåll.
+  const fieldPicker = 'bind' in el && !isFixed && (
+    <label className={bindsAbove ? 'byd-props-field byd-props-bind' : 'byd-props-field'}>
+      {t(bindsAbove ? 'canvas.props.shows' : 'canvas.props.field')}
+      <select
+        ref={fieldRef}
+        value={'field' in el.bind ? el.bind.field : ''}
+        onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : e.target.value !== '' && onPatch({ bind: { field: e.target.value } }))}
+      >
+        {/* An element bound to a value shows no column, and the picker says so. Without this
+            the browser draws the first column as the chosen one and the panel states a
+            binding the element does not have. */}
+        {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
+        {fields.map((f) => (
+          <option key={f} value={f}>
+            {fieldLabel(f, t)}
+          </option>
+        ))}
+        {/* The second door (#32): the designer noticed the column was missing here, so this
+            is where she is allowed to make it — and the element is bound to it at once. */}
+        <option value={NEW_FIELD}>{t('canvas.props.field.new')}</option>
+      </select>
+      {making && (
+        <NewField
+          taken={taken}
+          kind={el.kind === 'image' ? 'image' : 'text'}
+          onCreate={(field) => {
+            // One call, because it is one thing: the column and this element's binding to it
+            // arrive together or the first Ctrl+Z leaves the column standing with the element
+            // bound back to whatever it showed before.
+            onAddField(field, el.id)
+            closeForm()
+          }}
+          onCancel={closeForm}
+        />
+      )}
+    </label>
+  )
   return (
     <div className="byd-props">
       {el.locked && (
@@ -2111,11 +2246,21 @@ function Properties({
           {t('canvas.props.locked')}
         </p>
       )}
+      {/* Outside every section, so it is read rather than written by itself where a section's
+          rows would be (#489). */}
+      {bindsAbove &&
+        (reading ? (
+          <fieldset className="byd-reading-set" disabled>
+            {fieldPicker}
+          </fieldset>
+        ) : (
+          fieldPicker
+        ))}
       <Section id="layout" name={t('canvas.props.sec.layout')} summary={'w' in el ? `${measure(el.x)}, ${measure(el.y)} · ${measure(el.w)} × ${measure(el.h)} mm` : undefined}>
-        {num('canvas.props.x', 'x', 'X')}
-        {num('canvas.props.y', 'y', 'Y')}
-        {num('canvas.props.w', 'w', 'B')}
-        {num('canvas.props.h', 'h', 'H')}
+        {num('canvas.props.x', 'x')}
+        {num('canvas.props.y', 'y')}
+        {num('canvas.props.w', 'w')}
+        {num('canvas.props.h', 'h')}
       </Section>
       {/* What the element shows (#32, #320, #33): the column it draws, or the one picture or
           icon it carries itself. Every element that shows data says which column it shows. */}
@@ -2137,7 +2282,9 @@ function Properties({
               {t('canvas.props.icon')}
               <select value={'literal' in el.bind ? el.bind.literal : ''} onChange={(e) => e.target.value !== '' && onPatch({ bind: { literal: e.target.value } })}>
                 {'field' in el.bind && <option value="">{t('canvas.props.icon.fromField')}</option>}
-                {[...new Set([...icons, ...('literal' in el.bind ? [el.bind.literal] : [])])].map((name) => (
+                {/* A row with no name yet says so in words rather than as a blank choice (#849). */}
+                {'literal' in el.bind && el.bind.literal === '' && <option value="">{t('canvas.props.icon.none')}</option>}
+                {[...new Set([...icons, ...('literal' in el.bind && el.bind.literal !== '' ? [el.bind.literal] : [])])].map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
@@ -2176,45 +2323,7 @@ function Properties({
               onCancel={closeForm}
             />
           )}
-          {'bind' in el && !isFixed && (
-            // Every element that shows data says which column it shows — a picture and a row of
-            // icons as much as a text box, or one added from the tool rail could never be bound.
-            <label className="byd-props-field">
-              {t('canvas.props.field')}
-              <select
-                ref={fieldRef}
-                value={'field' in el.bind ? el.bind.field : ''}
-                onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : e.target.value !== '' && onPatch({ bind: { field: e.target.value } }))}
-              >
-                {/* An element bound to a value shows no column, and the picker says so. Without this
-                    the browser draws the first column as the chosen one and the panel states a
-                    binding the element does not have. */}
-                {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
-                {fields.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-                {/* The second door (#32): the designer noticed the column was missing here, so this
-                    is where she is allowed to make it — and the element is bound to it at once. */}
-                <option value={NEW_FIELD}>{t('canvas.props.field.new')}</option>
-              </select>
-              {making && (
-                <NewField
-                  taken={taken}
-                  kind={el.kind === 'image' ? 'image' : 'text'}
-                  onCreate={(field) => {
-                    // One call, because it is one thing: the column and this element's binding to it
-                    // arrive together or the first Ctrl+Z leaves the column standing with the element
-                    // bound back to whatever it showed before.
-                    onAddField(field, el.id)
-                    closeForm()
-                  }}
-                  onCancel={closeForm}
-                />
-              )}
-            </label>
-          )}
+          {!bindsAbove && fieldPicker}
         </Section>
       )}
       {choosing && assetBase && (
@@ -2255,7 +2364,7 @@ function Properties({
             <input type="color" value={el.color} {...typing.visit} onChange={(e) => onPatch({ color: e.target.value }, typing.token())} />
           </label>
           <PlacePad el={el} onPatch={onPatch} />
-          <label>
+          <label className="byd-props-fit">
             {t('canvas.props.fit')}
             <select value={el.fit ?? 'shrink'} onChange={(e) => onPatch({ fit: e.target.value as 'shrink' | 'fixed' })}>
               <option value="shrink">{t('canvas.fit.shrink')}</option>
@@ -2317,7 +2426,7 @@ function FixedPicture({ el, pictures, assetBase, onChoose }: { el: Element & { k
   const name = hash === null ? t('canvas.props.picture.none') : (picture?.name ?? t('canvas.props.picture.unnamed'))
   return (
     <div className="byd-props-picture">
-      {hash !== null && assetBase && <img src={assetUrl(assetBase, hash)} alt="" />}
+      {hash !== null && assetBase && <AssetImage base={assetBase} hash={hash} alt="" />}
       <span>{name}</span>
       <button type="button" className="byd-secondary" onClick={onChoose}>
         {t('canvas.props.picture.choose')}
@@ -2364,7 +2473,7 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
         {el.pattern ? ` · ${t('canvas.props.sum.pattern')}` : ''}
       </>
     ) : (
-      t('canvas.props.sum.byField', { field: el.fill.field })
+      t('canvas.props.sum.byField', { field: fieldLabel(el.fill.field, t) })
     )
   return (
     <>
@@ -2687,12 +2796,28 @@ function PatternGlyph({ kind }: { kind: Pattern['kind'] }) {
 // The ready-made backs (L17), each drawn by the one renderer at thumbnail size — a picture of a
 // card is a compiled card here as everywhere else (E2), so a back can never look like one thing
 // in the gallery and another once it is laid down.
-function BackGallery({ onPick }: { onPick(back: { name: string; base: Element[] }, from: HTMLElement): void }) {
+//
+// Folded under its head while the back has layers of its own (#736): the head is a disclosure that
+// says how many there are, and stands where the list would.
+function BackGallery({ open: openFromStart, takeFocus, onFocused, onPick }: { open: boolean; takeFocus: boolean; onFocused(): void; onPick(back: { name: string; base: Element[] }, from: HTMLElement): void }) {
   const t = useT()
+  const [open, setOpen] = useState(openFromStart)
+  const list = useId()
+  const head = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!takeFocus) return
+    head.current?.focus()
+    onFocused()
+  }, [takeFocus, onFocused])
   return (
     <div className="byd-backs" role="group" aria-label={t('canvas.backs')}>
-      <h2>{t('canvas.backs')}</h2>
-      <div className="byd-backs-list">
+      <h2>
+        <button ref={head} type="button" aria-expanded={open} aria-controls={list} onClick={() => setOpen(!open)}>
+          {t('canvas.backs.n', { n: BACKS.length })}
+        </button>
+      </h2>
+      {open && (
+      <div className="byd-backs-list" id={list}>
         {BACKS.map((back) => (
           <button key={back.id} type="button" onClick={(event) => onPick({ name: t(back.name), base: back.base(t) }, event.currentTarget)}>
             <span className="byd-backs-card">
@@ -2702,6 +2827,10 @@ function BackGallery({ onPick }: { onPick(back: { name: string; base: Element[] 
           </button>
         ))}
       </div>
+      )}
     </div>
   )
 }
+
+// What replacing the back throws away, counted in the reader's grammar (#755).
+const backSwapAsk = (name: string, n: number, t: T): string => t(n === 1 ? 'canvas.back.swap.ask.one' : 'canvas.back.swap.ask.other', { name, n })

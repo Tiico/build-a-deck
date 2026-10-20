@@ -44,7 +44,7 @@ const CARDS = [
   { id: 'the-getaway', fields: { typ: 'Location', title: 'Stolen Goods', body: 'Förstör en varelse med kostnad 3 eller mindre', antal: 1 } },
 ]
 
-function deckDoc(): ProjectDoc {
+function deckDoc(cards: ProjectDoc['rows'] = CARDS): ProjectDoc {
   const doc = projectDoc()
   const front = doc.template.faces['front']!
   return {
@@ -69,12 +69,12 @@ function deckDoc(): ProjectDoc {
         },
       },
     },
-    rows: CARDS,
+    rows: cards,
   }
 }
 
-function Table({ prose }: { prose?: ProjectDoc['prose'] }) {
-  const [doc, setDoc] = useState(() => (prose ? { ...deckDoc(), prose } : deckDoc()))
+function Table({ prose, cards }: { prose?: ProjectDoc['prose']; cards?: ProjectDoc['rows'] }) {
+  const [doc, setDoc] = useState(() => (prose ? { ...deckDoc(cards), prose } : deckDoc(cards)))
   return (
     <DataTable
       doc={doc}
@@ -229,6 +229,96 @@ describe('the card the row belongs to, at the far end of a sideways scroll (#145
       }),
     )
     expect(seen).toBe('in the corner')
+  }, 90_000)
+})
+
+// The cell being written in, with the box scrolled both ways (#696). Lifted over its neighbours so
+// that what it carries is drawn above the row it stands on (#593), it was lifted over the rail and
+// the head too: both stood at the same `z-index`, and the cell came later. With the box rolled
+// 300 px sideways the open `body` cell began 163 px inside the rail, covering `sals-saloon`, and
+// rolled down it lay over the column names. L55 says the rail and the head stand over everything
+// that scrolls; L46 says the open cell starts at the room that can be seen.
+describe('den öppna cellen när lådan är rullad i båda leder (#696)', () => {
+  // Enough cards that the box scrolls downward as well, which six do not.
+  const MANY = Array.from({ length: 4 }, (_, n) => CARDS.map((c) => ({ ...c, id: n === 0 ? c.id : `${c.id}-${n}` }))).flat()
+  const OPEN = 'sals-saloon-1'
+
+  async function rolled() {
+    const { container, unmount } = render(<Table cards={MANY} />)
+    let html: string
+    try {
+      const grip = container.querySelector('thead th[data-col="body"] .byd-data-pull') as HTMLElement
+      fireEvent.pointerDown(grip, { pointerId: 1, button: 0, clientX: 0 })
+      fireEvent.pointerMove(grip, { pointerId: 1, clientX: 1400 })
+      fireEvent.pointerUp(grip, { pointerId: 1, clientX: 1400 })
+      // Open in React, which is what draws the cell's head and its ceiling; the page below then
+      // puts the caret in it, which is what `:focus-within` answers to.
+      fireEvent.focus(container.querySelector(`tr[data-card-ref="${OPEN}"] td[data-col="body"] [role="textbox"]`) as HTMLElement)
+      html = container.innerHTML
+    } finally {
+      unmount()
+    }
+    const page = await browser.newPage({ viewport: { width: 1280, height: 600 } })
+    try {
+      await page.setContent(shellOf(html), { waitUntil: 'load' })
+      await page.evaluate(
+        ({ deck, fit, open }) => {
+          const box = document.querySelector('.byd-data-scroll') as HTMLElement
+          new Function('box', 'deck', `(${fit})(box, deck)`)(box, deck)
+          // The caret in the cell, for real: `:focus-within` is the page's to answer, not jsdom's.
+          const write = box.querySelector(`tr[data-card-ref="${open}"] td[data-col="body"] [role="textbox"]`) as HTMLElement
+          write.focus({ preventScroll: true })
+          // Rolled so that the body column's own start is 300 px under the rail, and the open
+          // cell's top under the head.
+          const head = (box.querySelector('thead') as HTMLElement).getBoundingClientRect()
+          const cell = (write.closest('td') as HTMLElement).getBoundingClientRect()
+          const rail = (box.querySelector('thead th[data-col="id"]') as HTMLElement).getBoundingClientRect()
+          box.scrollLeft = cell.left - rail.right + 300
+          box.scrollTop = cell.top - head.bottom + 40
+        },
+        { deck: deckValues(deckDoc(MANY), sv), fit: FIT, open: OPEN },
+      )
+      await page.evaluate((pin) => new Function('box', `(${pin})(box)`)(document.querySelector('.byd-data-scroll')), PIN)
+      return await page.evaluate((open) => {
+        const box = document.querySelector('.byd-data-scroll') as HTMLElement
+        const td = box.querySelector(`tr[data-card-ref="${open}"] td[data-col="body"]`) as HTMLElement
+        const cell = td.querySelector('.byd-data-bodycell') as HTMLElement
+        const id = box.querySelector(`tr[data-card-ref="${open}"] .byd-data-id`) as HTMLElement
+        const idHead = box.querySelector('thead th[data-col="id"]') as HTMLElement
+        const name = box.querySelector('thead th[data-col="body"]') as HTMLElement
+        const said = (el: Element | null) => (el ? `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}` : 'ingenting')
+        const owner = (hit: Element | null, want: HTMLElement) => (want === hit || want.contains(hit) ? 'sig själv' : said(hit))
+        const c = cell.getBoundingClientRect()
+        const r = id.getBoundingClientRect()
+        const h = name.getBoundingClientRect()
+        const ih = idHead.getBoundingClientRect()
+        return {
+          open: cell.hasAttribute('data-open'),
+          rolled: { x: Math.round(box.scrollLeft), y: Math.round(box.scrollTop) },
+          // The premise: the cell's column really runs under both, or the answers are right for nothing.
+          underRail: td.getBoundingClientRect().left < r.right - 100,
+          underHead: td.getBoundingClientRect().top < h.bottom - 20,
+          rail: owner(document.elementFromPoint(r.left + r.width / 2, h.bottom + 6), id),
+          railHead: owner(document.elementFromPoint(ih.left + ih.width / 2, ih.top + ih.height / 2), idHead),
+          head: owner(document.elementFromPoint(Math.min(Math.max(c.left, r.right) + 40, h.right - 4), h.top + h.height / 2), name),
+          // L46: the open cell starts at the room that can be seen, not at the column's own start.
+          startsAt: Math.round(c.left - r.right),
+        }
+      }, OPEN)
+    } finally {
+      await page.close()
+    }
+  }
+
+  it('lämnar listen och huvudet ovanpå, och börjar där rummet som syns börjar', async () => {
+    const seen = await rolled()
+    expect(seen.open).toBe(true)
+    expect(seen.rolled.x).toBeGreaterThan(0)
+    expect(seen.rolled.y).toBeGreaterThan(0)
+    expect(seen.underRail).toBe(true)
+    expect(seen.underHead).toBe(true)
+    expect({ rail: seen.rail, railHead: seen.railHead, head: seen.head }).toEqual({ rail: 'sig själv', railHead: 'sig själv', head: 'sig själv' })
+    expect(seen.startsAt).toBeGreaterThanOrEqual(0)
   }, 90_000)
 })
 

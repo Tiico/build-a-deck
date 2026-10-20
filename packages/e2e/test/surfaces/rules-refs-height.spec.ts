@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../../support/test.js'
 import type { Page } from '@playwright/test'
 import { standing } from '../../support/surface.js'
 

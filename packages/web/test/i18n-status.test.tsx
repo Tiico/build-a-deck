@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Refusal, useRefusal } from '../src/status/Refusal.js'
 import { StatusNotice } from '../src/status/StatusNotice.js'
@@ -17,9 +17,6 @@ import { documentTitle } from '../src/status/title.js'
 import { Language, translate, type T } from '../src/i18n/index.js'
 import { NotFoundPage } from '../src/status/NotFoundPage.js'
 import { STATUS_KEYS, noticeFor, refusal, refusalText, VOICES } from '../src/status/notice.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const english: T = (key, params) => translate('en', key, params)
 
@@ -117,12 +114,13 @@ describe('the nine states in the reader\'s own language (A4)', () => {
   // Swedish however well the state is written. Every route that can reach one without a table
   // behind it is opened here with nothing in its address.
   it.each([
-    ['/table', () => <TablePage />, 'The table is over'],
+    ['/table', () => <TablePage />, 'No link to a table'],
     // A guest's routes say it in the guest's words (#485): the host's «start a new table» is not hers.
     ['/observe', () => <ObserverPage />, 'The table is not there'],
     ['/online', () => <OnlinePage />, 'The table is not there'],
     ['/play', () => <PlayerPage />, 'The table is not there'],
-    ['/join', () => <JoinPage />, 'The table is not there'],
+    // Without a code `/join` asks for one (#675), in the reader's language.
+    ['/join', () => <JoinPage />, 'Join a table'],
   ])('opens %s with nothing in its address and says so in English', (path, page, heading) => {
     history.replaceState(null, '', path)
     render(<Language lang="en">{page()}</Language>)
@@ -141,6 +139,7 @@ describe('the nine states in the reader\'s own language (A4)', () => {
       activity: [],
       observers: [],
       room: null,
+      hostKey: null,
       refused: null,
       trouble: null,
       unansweredSince: null,

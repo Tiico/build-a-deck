@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Statussidan i rummet (#925)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#925) ──────────────────────────────────────────────────────────────────────
+     D5:s statussida (`StatusNotice`, sidformen) och skalet som ärver den (#749) ritar märket i
+     12 px, rubriken i 26 px och texten och knapparna i 14 px — också på TV:n, där K26 sätter
+     golvet för all text till 24 px och brödtexten till 28–32 px. Hur stor ska sidan vara i rummet,
+     och gäller rummets mått också bordsläget?
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken) på /table, med variantens CSS lagd ovanpå
+     den riktiga sidan och mätt i Chromium. Laddar och dröjer är skalet, med appens skript stoppade;
+     nätfel är appen med bordets WebSocket hållen utan svar; saknas är ett bord servern inte känner;
+     stängt är en fel värdnyckel. Inget är ritat för hand. Skripten ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px; background: #15171c; align-content: start; }
+  @media (max-width: 1100px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bilder { display: grid; gap: 16px; min-width: 0; }
+  .bilder.fyra { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 760px) { .bilder.fyra { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; margin: 0; }
+  .bild img { display: block; width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild figcaption { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; line-height: 1.45; }
+  .bild figcaption b { color: #e6ecfa; }
+  .sido { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; font-size: 13px; }
+  .ruta ul { margin: 0; padding-left: 18px; color: #c9d1e3; font-size: 13px; line-height: 1.5; }
+  table.m { border-collapse: collapse; font-size: 12px; width: 100%; }
+  table.m th, table.m td { border-top: 1px solid #2f333d; padding: 4px 5px; text-align: right; color: #c9d1e3; }
+  table.m th:first-child, table.m td:first-child { text-align: left; }
+  table.m th { color: var(--quiet-2); font-weight: 600; }
+  table.m td.lag { color: #ff9fae; font-weight: 700; }
+  table.m tr.vald td { background: #1d2a40; }
+</style>
+</head>
+<body>
+<header class="krona">
+  <h1>Prototyp 01 — Statussidan i rummet (#925) · <span style="color:var(--quiet-2);font-weight:400">PROTOTYP, slängs när beslutet står i K26/D5</span></h1>
+  <div class="rad" id="v"><span>Variant</span></div>
+  <div class="rad" id="s"><span>Skärm</span></div>
+  <div class="rad" id="l"><span>Läge</span></div>
+</header>
+<main class="scen">
+  <div class="bilder" id="bilder"></div>
+  <aside class="sido">
+    <div class="ruta" id="om"></div>
+    <div class="ruta"><h2>Mätt på sidan</h2><table class="m" id="tal"></table>
+      <p style="margin-top:8px">Rött är under K26:s golv för skärmen: 24 px på TV:n, och för bordsläget beroende på om det räknas som rummet (24) eller skrivbordet (12).</p></div>
+    <div class="ruta">
+      <h2>Vid sidan av</h2>
+      <ul>
+        <li><b>Bordet är slut</b> är ingen statussida på TV:n och i bordsläget: filten står kvar med sammanfattningen över sig (<a href="img/nu-tv1280-ended.jpg">1280</a>, <a href="img/nu-tv1920-ended.jpg">1920</a>). Där är etiketterna <code>clamp(13px, 1.5vw, 24px)</code>, alltså 19 px vid 1280 — också under rummets golv.</li>
+        <li>D5:s <b>kort mitt på filten</b> (tappad linje på TV:n) har rubriken 28 px och texten 17 px: samma fråga, i kortformen.</li>
+        <li>TV:ns hemväg heter «Till mina spel» / «Till startsidan»: en knapp ingen i soffan kan trycka på, i rummets storlek.</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+<script src="data.js"></script>
+<script>
+  const VARIANTER = {
+    nu: { namn: 'Nu', om: 'Som det byggda appen ritar sidan i dag, på varje skärm: märket 12 px, rubriken 26, texten och knapparna 14.' },
+    jmf: { namn: 'Jämför alla', om: 'Nu, A, B och C på samma skärm och i samma läge.' },
+    a: { namn: 'A · Golvet', om: 'K26:s golv och inget mer, bara på TV:n: allt minst 24 px, rubriken 36, knapparna 56 px höga. Bordsläget räknas som skrivbordet (K26:s tabell) och står kvar som nu.' },
+    b: { namn: 'B · Rummets brödtext', rek: true, om: 'K26:s egna tal för TV:n: brödtexten 32 px (28–32), rubriken 48, märket 24, knapparna 28 px i 64 px höjd. Fasta px som resten av TV:ns krom ([data-room]), så TV:n på 1280 läser lika stort som på 1920. Bordsläget är rummets delade skärm och får golvet: allt minst 24 px, rubriken 36 (A:s mått).' },
+    c: { namn: 'C · Skylten', om: 'Sidan som skylt, skalad med fönstrets höjd (TV:n är höjdbunden): rubriken 7vh — 76 px vid 1080, 50 vid 720, 56 vid 800 — och texten 3,2vh med golvet 24. Samma regel i bordsläget. Den långa rubriken för «stängt» bryter på två rader och tar halva skärmens bredd.' },
+  }
+  const SKARMAR = { tv1280: 'TV 1280 × 720', tv1920: 'TV 1920 × 1080', bord1280: 'Bordsläge 1280 × 800' }
+  const LAGEN = { loading: 'Laddar (skalet)', slow: 'Dröjer (skalet)', offline: 'Nätfel', missing: 'Saknas', shut: 'Stängt' }
+  const q = new URLSearchParams(location.search)
+  const st = { v: q.get('v') ?? 'b', s: q.get('s') ?? 'tv1920', l: q.get('l') ?? 'offline' }
+  const knappar = (id, alla, key) => {
+    const rad = document.getElementById(id)
+    for (const [k, d] of Object.entries(alla)) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = typeof d === 'string' ? d : d.namn + (d.rek ? ' ★' : '')
+      if (d.rek) b.classList.add('rek')
+      b.dataset.k = k
+      b.onclick = () => { st[key] = k; rita() }
+      rad.append(b)
+    }
+  }
+  knappar('v', VARIANTER, 'v'); knappar('s', SKARMAR, 's'); knappar('l', LAGEN, 'l')
+  const golv = (s, v) => (s.startsWith('tv') ? 24 : v === 'b' || v === 'c' ? 24 : 12)
+  function rita() {
+    for (const [id, key] of [['v', 'v'], ['s', 's'], ['l', 'l']]) for (const b of document.querySelectorAll(`#${id} button`)) b.setAttribute('aria-pressed', String(b.dataset.k === st[key]))
+    history.replaceState(null, '', `?v=${st.v}&s=${st.s}&l=${st.l}`)
+    const vs = st.v === 'jmf' ? ['nu', 'a', 'b', 'c'] : [st.v]
+    const bilder = document.getElementById('bilder')
+    bilder.className = 'bilder' + (vs.length > 1 ? ' fyra' : '')
+    bilder.replaceChildren(...vs.map((v) => {
+      const m = MATT.find((r) => r.v === v && r.screen === st.s && r.state === st.l)
+      const f = document.createElement('figure')
+      f.className = 'bild'
+      f.innerHTML = `<a href="img/${m.file}"><img src="img/${m.file}" alt="${VARIANTER[v].namn}, ${SKARMAR[st.s]}, ${LAGEN[st.l]}" width="${m.w}" height="${m.h}"></a><figcaption><b>${VARIANTER[v].namn}</b> · ${SKARMAR[st.s]} · ${LAGEN[st.l]} — rubrik ${m.heading} px, text ${m.text} px, minsta ${m.smallest} px, blocket ${m.block} px högt</figcaption>`
+      return f
+    }))
+    document.getElementById('om').innerHTML = `<h2>${VARIANTER[st.v].namn}</h2><p>${VARIANTER[st.v].om}</p>`
+    const rader = MATT.filter((r) => r.screen === st.s && r.state === st.l && r.v !== undefined)
+    const t = document.getElementById('tal')
+    const c = (x, g) => `<td${x !== null && x < g ? ' class="lag"' : ''}>${x ?? '–'}</td>`
+    t.innerHTML = '<tr><th>Variant</th><th>Märke</th><th>Rubrik</th><th>Text</th><th>Knapp</th><th>Rader</th><th>Block</th></tr>' + rader.map((r) => {
+      const g = golv(r.screen, r.v)
+      return `<tr class="${r.v === st.v ? 'vald' : ''}"><td>${VARIANTER[r.v]?.namn ?? r.v}</td>${c(r.mark, g)}${c(r.heading, g)}${c(r.text, g)}${c(r.button, g)}<td>${r.headingLines}</td><td>${r.block}</td></tr>`
+    }).join('')
+  }
+  rita()
+</script>
+</body>
+</html>

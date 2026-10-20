@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { ZoneAction } from './actions.js'
-import { ComponentId, FaceId, SeatId, TypeRef, ZoneId } from './ids.js'
+import { ComponentId, FaceId, GameVersionId, SeatId, TypeRef, ZoneId } from './ids.js'
 
 // What one seat is allowed to know about one component.
 // `cardRef` is the component's identity (which row of the table it is).
@@ -70,6 +70,9 @@ const zoneBase = {
   // they are in the rulebook — so every view gets them as they stand.
   actions: z.array(ZoneAction).optional(),
   owner: SeatId.optional(),
+  // Where a hand's cards go when its seat is left (C4): the setup's and no secret, and what lets a
+  // phone say the pile by its own name — «Dra ett kort ur Kortlek», not «ur draghögen» (B5, #714).
+  returnTo: ZoneId.optional(),
   // Who the zone shows its cards to (B6): everyone, its owner, or nobody. It is the setup's and no
   // secret, so every view carries it; what it decides about a face is still the face's rule. A
   // phone reads it to tell a card the table sees — one it may hold up for the room (#518) — from
@@ -149,6 +152,10 @@ export const Snapshot = z.object({
   //
   // It leaks nothing (B6): that somebody moved a card is as public as that a pile was shuffled.
   played: z.boolean(),
+  // Which version of the game the table plays (C7): the one it started on until «Uppdatera» moves
+  // it. Every screen names it — a TV's title, the book a phone hands out (#677) — and it changes
+  // in the very patch that carries the version.change line. No secret: it is the room's.
+  version: GameVersionId,
 })
 export type Snapshot = z.infer<typeof Snapshot>
 
@@ -162,6 +169,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('undo'), undo: UndoMeaning }),
   z.object({ op: z.literal('ended'), ended: z.boolean() }),
   z.object({ op: z.literal('played'), played: z.boolean() }),
+  z.object({ op: z.literal('version'), version: GameVersionId }),
 ])
 export type Op = z.infer<typeof Op>
 

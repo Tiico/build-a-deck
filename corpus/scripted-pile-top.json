@@ -394,6 +394,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": [
             "r3"
           ]
@@ -413,6 +414,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -511,7 +513,8 @@
         "contested": true
       },
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "B": {
       "seq": 8,
@@ -578,6 +581,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 1
         },
         {
@@ -595,6 +599,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -677,7 +682,8 @@
       "rewind": null,
       "undo": null,
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "table": {
       "seq": 8,
@@ -744,6 +750,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 1
         },
         {
@@ -761,6 +768,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -841,9 +849,13 @@
         }
       ],
       "rewind": null,
-      "undo": null,
+      "undo": {
+        "toSeq": 7,
+        "contested": false
+      },
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "observer": {
       "seq": 8,
@@ -917,6 +929,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": [
             "r3"
           ]
@@ -936,6 +949,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -1109,7 +1123,8 @@
       "rewind": null,
       "undo": null,
       "ended": false,
-      "played": true
+      "played": true,
+      "version": "v1"
     }
   }
 }

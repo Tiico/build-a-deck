@@ -12,7 +12,7 @@ describe('the name a column is shown by (#476)', () => {
   it('shows the title and antal in the reader s language, and every other column as it is named', () => {
     expect(fieldLabel('title', sv)).toBe('Titel')
     expect(fieldLabel('title', en)).toBe('Title')
-    expect(fieldLabel('antal', sv)).toBe('antal')
+    expect(fieldLabel('antal', sv)).toBe('Antal')
     expect(fieldLabel('Pris', sv)).toBe('Pris')
   })
 })

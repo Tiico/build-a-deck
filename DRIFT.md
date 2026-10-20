@@ -22,6 +22,74 @@ Följdkrav:
 Stacken måste gå att starta om med ett kommando och innehålla allt: aktörsserver, Postgres, renderworker, backupagent, tunnel.
 Hårda minnestak per container, eftersom OOM-killern annars väljer offer själv.
 
+### Taken under last (#1012)
+
+Mätt 2026-10-18 med `pnpm --filter @byd/e2e load:memory` (`packages/e2e/load/`), som startar grundstacken med lådans egna `mem_limit` under ett eget projektnamn och läser varje containers cgroup två gånger i sekunden.
+Talet som hålls mot taket är arbetsmängden — `memory.current` utan den inaktiva filcachen, samma tal som `docker stats` visar — och kärnans `memory.events` säger om containern slog i taket eller dödades; en container som kom inom en tiondel av taket räknas inte som att den ryms.
+Varje scenario börjar från en tom stack, som efter en deploy.
+Scenariot per bord: en designer loggar in med länken ur mejlet, laddar upp bilder och två typsnitt (Liberation, ~400 kB TTF vardera), sparar spelet i 15 versioner och startar ett bord för åtta platser; åtta telefoner, TV:n och en observatör spelar 200 intents på egna WebSockets med blandningar och tillbakaspolningar och hämtar varje textur de visas; samtidigt sparar designern en version som ritar om varje kort och skickar den till bordet.
+Maskinen var Docker Desktops VM på en Mac (8 kärnor, 29,6 GB), inte lådan, och stacken körde utan R2: varje bild och textur gick genom app och Postgres, vilket är tyngre för båda än lådan med R2.
+
+| Scenario | app (tak 512 MB) | render (tak 1 500 MB) | postgres (tak 768 MB) |
+|---|---|---|---|
+| 1 bord, 308 kort på 308 bilder à 250 kB | 512 — i taket 882 gånger, överlevde | 477 | 637 |
+| 1 bord, 308 kort på 77 bilder à 250 kB | 512 — i taket 463 gånger, överlevde | 491 | 653 |
+| 3 bord, 308 kort på 308 bilder | dog vid bordsstarten (V8-heapen) | 231 | 183 |
+| 3 bord, 308 kort på 77 bilder | dog vid bordsstarten | 219 | 111 |
+| 1 bord, 77 bilder, app utan tak | 691 | 481 | 644 |
+| 3 bord, 308 bilder, app utan tak | 1 693 | 569 | 768 — i taket 61 465 gånger |
+
+Talen är toppar i MiB.
+Render ryms med god marginal i alla scenarier: en sida i taget håller, även med tre bord som ritas om samtidigt.
+App och Postgres ryms inte: ett bord i betans densitet pressar appen mot taket, och tre bord samtidigt fäller den vid bordsstarten.
+
+Två fel hittades och rättades i samma ändring.
+Varje anslutning, kodfråga och bordslista läste hela sessionens lek, alla bilder med, så tio skärmar som anslöt läste den tio gånger och tog både appen och Postgres förbi taket; leken läses nu bara av aktören (`deckOf`).
+Och ett bords alla sidor kompilerades innan någon köades, 400 MB sidor på en gång för 308 kort; nu köas varje sida innan nästa kompileras (`queueFaces`).
+
+Det som stod kvar var att sessionens lek bar varje bild som data-URL (§4): JSON upprepade en delad bild per rad, så 308 kort var ~100 MB lek oavsett hur många bilder de delade, och varje sida bar sin bild och båda typsnitten igen in i renderkön.
+Att höja taken hade varit att ge stacken ~4,5 GB på en låda som delas med ett trettiotal containrar och redan swappar.
+
+### Efter #1028: tre bord ryms
+
+Beställaren valde 2026-10-18 att sidorna bär asset-hashar och att renderworkern hämtar bytesen själv (§4).
+Samma lasttest, samma maskin, samma tak och fortfarande utan R2, körd om samma dag efter ändringen:
+
+| Scenario | app (tak 512 MB) | render (tak 1 500 MB) | postgres (tak 768 MB) |
+|---|---|---|---|
+| 1 bord, 308 kort på 308 bilder à 250 kB | 158 | 513 | 173 |
+| 3 bord, 308 kort på 308 bilder | 189 | 602 | 201 |
+
+Talen är toppar i MiB av arbetsmängden; ingen container kom inom en tiondel av sitt tak med sin arbetsmängd, ingen dödades och ingen startades om.
+Appen ligger nära vila (~140 MiB) genom hela speltestet, eftersom ingen bild längre passerar den; den högsta punkten är förberedelsen, när designerna laddar upp bilderna.
+Render är den enda som växer med antalet bord, och det med rendering och inte med lekar: en sida i taget, och Chromiums egen cache.
+Postgres arbetsmängd är ~200 MiB, men med tre bord nådde containern sitt tak 865 gånger med filcache — sidor ur `render_outputs` och `assets` som kärnan släpper när det behövs; den anonyma delen var 34 MiB.
+Det är tryck utan risk, men det säger att Postgres är den som fyller sin ruta först, och i drift går bytesen till R2 och inte genom Postgres.
+Med tre bord ritas de 309 texturerna per bord på 113, 227 och 340 sekunder: en worker tar dem i tur och ordning, så det tredje bordet väntar längst.
+
+Workerns hämtning ur objektbutiken prövades samma dag mot MinIO i stället för R2: bilden låg bara i bucketen, workern läste den därifrån och texturen visade den.
+
+### AI-frågornas kostnad för lådan (#1007)
+
+Mätt 2026-10-19 med `pnpm --filter @byd/e2e load:ai` (`packages/e2e/load/ai.ts`), som startar appen ur källkoden som containern startar den, mot Postgres, och låter den falska leverantören svara ett ord var 1,5 sekund så att varje svar håller sin anslutning i femton sekunder, som ett riktigt svar gör.
+Varje designer har eget konto, egen nyckel och eget spel om 308 kort med femton fält, en hel regelbok och en mall med varianter (`packages/server/scripts/large-deck.ts`); ett scenarios frågor ställs i samma ögonblick.
+Maskinen var en Mac och appen en process på den, inte containern på lådan, så vilominnet är högre än lådans (~140 MiB, ovan); det som mäts är vad frågorna lägger till.
+
+| Scenario | appens minne, ökning över vila | uppströms per fråga | uppströms totalt |
+|---|---|---|---|
+| 1 fråga | +0,1 MiB | 129 KiB | 129 KiB |
+| 8 samtidigt (taket) | +0,0 MiB | 129 KiB | 1,0 MiB |
+| 8 samtidigt, alla 308 kort valda | +17 MiB | 285 KiB | 2,2 MiB |
+
+En fråga är spelets kontext (96 kB, sammanfattad inom budgeten), förslagets schema (22 kB) och instruktionerna (3 kB); innan kontexten fick en budget skickades leken hel, 173 kB, och samma fråga var ~205 KiB.
+Det tyngsta en fråga kan bära är ett urval av hela leken, eftersom valda kort alltid skickas hela och utanför budgeten; det är den tredje raden.
+Appens minne rör sig knappt: en fråga håller kontexten och sin begäran, några hundra kilobyte, och resten är en öppen anslutning.
+Även det tyngsta fallet, åtta frågor med hela leken vald, är 17 MiB på en container med 512 MB tak, och dess 2,2 MiB uppströms tar under en sekund vid 20 Mbit/s.
+
+Taken står kvar: två svar åt gången per konto, åtta totalt, tre minuter och 1 MiB för en frågas kropp (§8).
+Inget av talen säger att åtta hotar minnestaket, så det totala taket sänks inte; det är fortfarande rätt storlek för en handfull designers samtidigt, och det håller uppströms under ett par megabyte även i det tyngsta fallet.
+Kroppens tak gäller det klienten skickar, som är frågan, samtalet och urvalets id:n, aldrig kontexten: urvalet av hela den stora leken är 5 kB id:n, och det som ryms upp till taket är samtalets fyrtio turer.
+
 ## 2. Exponering: lådans egen omvänd proxy om den har en, annars Cloudflare Tunnel
 
 Ursprungsbeslutet var `cloudflared` i stacken och inga öppna portar mot bostadsnätet; tunneln löser dynamisk IP, TLS och WebSockets.
@@ -40,6 +108,23 @@ Health-endpointen bör kontrollera Postgres och R2, inte bara att processen svar
 Kedjan framför appen får aldrig vara husets SSO: produkten har egna konton, och en gäst kommer till bordet med en rumskod och inget konto alls (§9, §11).
 Den kedja som väljs ska däremot bära rate limiting, som är vad §9 ber om, och proxyn måste lita på Cloudflares vidarebefordrade huvuden för att räkna på rätt avsändare.
 Den dagen lådan byts mot en tom är tunneln kvar i stacken och kostar ett `COMPOSE_FILE` att byta till.
+
+### Inaktiva anslutningar: proxyn stänger först (#986)
+
+Appen håller en inaktiv keep-alive-anslutning öppen i 120 s (`KEEP_ALIVE_MS` i `packages/server/src/server.ts`) och väntar på en förfrågans huvuden i 121 s (`HEADERS_TIMEOUT_MS`).
+Proxyn närmast appen håller sin inaktiva anslutning till den i 90 s: traefiks `serversTransport.forwardingTimeouts.idleConnTimeout` och cloudflareds `originRequest.keepAliveTimeout` har båda det standardvärdet, och varken stacken eller överlägget sätter något annat.
+Nodes eget standardvärde är 5 s.
+Med det stängde appen anslutningen medan proxyn fortfarande hade den i sin pool, och en förfrågan som skickades i samma ögonblick gick ut på en stängd socket och kom tillbaka som 502 (samma race som i testfixturerna, #848).
+När appen väntar längre än proxyn är det alltid proxyn som släpper först, och den skickar aldrig på en anslutning den redan gett upp.
+De 30 sekunderna över 90 är marginal för en proxy som ställts in lite längre än standard.
+Huvudtiden ligger strax över, så att en förfrågan som börjar i sista stund på en inaktiv anslutning inte klipps medan huvudena kommer, och under Nodes `requestTimeout` på 300 s.
+Cloudflare längst ut talar med proxyn och inte med appen, så dess tider berör inte det här ledet.
+
+Följdkrav:
+Den som höjer proxyns tid för inaktiva anslutningar uppströms höjer `KEEP_ALIVE_MS` över den i samma ändring.
+WebSockets påverkas inte: en uppgraderad anslutning lämnar HTTP-serverns timers, vilket prövades med timers under en sekund och en WebSocket som stod tyst i fyra.
+Dräneringen (§3) väntar inte längre för det: `close` lägger på de inaktiva anslutningarna direkt, och en som fortfarande svarar läggs på så fort svaret är ute.
+`packages/server/test/proxy-connection.test.ts` håller tiderna, en anslutning som står tyst förbi Nodes fem sekunder, och nedstängningen.
 
 ## 3. Aktörsmodellen utan Durable Objects
 
@@ -88,7 +173,28 @@ Uppladdade bilder (E1) byggt 2026-09-07:
 `POST /assets` tar en bild (png, jpeg, webp, gif, svg; högst 8 MB) från en inloggad skapare och svarar med dess sha256-hash; samma bytes ger samma hash och kostar inget andra gången.
 Bytesen ligger under `assets/<hash>` i R2 och tabellen `assets` håller hash, typ och storlek; utan R2 ligger bytesen i tabellen.
 `GET /assets/<hash>` svarar som `/faces`: 302 till en signerad länk när R2 finns, annars bytesen med oföränderlig cache. Hashen är kapabiliteten, som för ansikten.
-När ett bord eller ett tryck görs av projektet löses radernas `asset:<hash>` till data-URL:er innan kompileringen, så sessionens lek bär sina bilder som förut och renderworkern behöver inget annat än sidan.
+~~När ett bord eller ett tryck görs av projektet löses radernas `asset:<hash>` till data-URL:er innan kompileringen, så sessionens lek bär sina bilder som förut och renderworkern behöver inget annat än sidan.~~
+
+Reviderat 2026-10-18 av beställaren (#1028): **sidan namnger sina bilder och typsnitt med hash, och renderworkern hämtar bytesen själv.**
+När ett bord, ett tryck eller ett regelhäfte görs av projektet står radernas, mallens, symbolernas, bildernas och typsnittens `asset:<hash>` kvar som de är.
+Appen frågar bara vilka av hasharna som finns, i en fråga och utan att läsa en byte; en referens till något som inte finns blir tom, så kortet tappar bilden i stället för att bära en referens ingen kan följa.
+Sessionens lek, dess versioner och varje sida i `render_jobs` bär alltså kilobyte i stället för bilderna.
+Renderworkern läser bytesen ur samma ställe som appen lade dem — `assets` i Postgres utan R2, `assets/<hash>` i R2 med — genom samma funktion (`assetFromPostgres`), och håller de senast använda i en liten cache per hash (32 MB) så att typsnitten och en delad bild läses en gång.
+Workern behöver alltså mer än sidan: den behöver tillgångarna, och den når dem redan för sina utdata.
+En hash som workern inte hittar är ett misslyckat jobb med hashen i felet, inte en textur utan bild som sedan sparas för gott under sidans hash.
+
+Motiveringen är lasttestet (§1).
+Med bilderna som data-URL:er upprepade JSON en delad bild en gång per rad, så 308 kort var ~100 MB lek i appen och i Postgres oavsett hur många bilder de delade, och varje sida bar sin bild och båda typsnitten igen in i renderkön, ~1,4 MB per sida och ~430 MB per lekversion.
+Ett bord i betans densitet höll appen i sitt tak och tre bord fällde den; efter ändringen ryms tre bord (§1).
+Det andra alternativet — att leken pekar med hash och appen bäddar in bilden sida för sida när den köar — hade behållit regeln men låtit appen läsa varje bild en gång per bordsstart och `render_jobs` vara lika stor som förut.
+
+Texturhashen bestäms fortfarande av det som ritas: en asset skrivs aldrig om och raderas aldrig, så hashen på sidan avgör bytesen lika säkert som bytesen själva.
+Varje textur och tryckfil av ett kort med en uppladdad bild, symbol eller ett uppladdat typsnitt fick en ny hash när sidan bytte form, och renderas om en gång efter deployen, vilket beställaren godtog.
+Bord som startades före ändringen har kvar sin lek med data-URL:er och spelar som förut; workern ritar en sida utan hashar precis som den alltid gjort.
+
+En bilds hash går aldrig till en klient.
+Hashen är en kapabilitet (`GET /assets/<hash>`), och på tråden skulle den visa vilket kort som ligger i någon annans hand lika säkert som texturen; projektionen bär texturernas hashar och inget annat.
+Det visas på råa frames i `packages/server/test/assets.test.ts`.
 
 ## 5. Backup: WAL-arkivering till R2 med återställningstest
 
@@ -107,11 +213,28 @@ Postgres-bilden (`ops/Dockerfile.postgres`) är fortfarande Alpine — lådans d
 `ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tom katalog i backup-bilden, startar Postgres där, räknar, och spelar upp den senaste sessionens logg genom motorn i app-bilden.
 Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är densamma.
 
+### Huvudnyckeln för AI-nycklarna (#999)
+
+Designerns egen API-nyckel hos Anthropic eller OpenAI (E4) ligger i tabellen `ai_keys`, krypterad med AES-256-GCM under en huvudnyckel som heter `AI_KEY_SECRET`.
+Huvudnyckeln är 32 slumpade byte i base64, gjorda en gång med `openssl rand -base64 32`, och den finns i lådans `.env` och i en lösenordshanterare, ingen annanstans.
+Den ligger alltså inte i databasen och därför inte i WAL-arkivet eller basbackuperna i R2: en läckt backup läcker ciffertext, leverantör och fyra tecken per konto, aldrig en nyckel.
+Stacken ger den bara till `app`; `postgres`, `backup` och `render` får den aldrig, vilket `packages/server/test/deploy.test.ts` håller.
+Krypteringen binder varje rad till sitt konto och sin leverantör, så en rad som flyttas öppnas inte för någon.
+
+Att förlora huvudnyckeln, eller att byta den, är ingen dataförlust.
+Varje sparad nyckel läses då som ingen nyckel, profilsidan säger att ingen nyckel finns och designern ombeds ange den igen; inget fel visas och inget annat i tjänsten påverkas.
+Saknas variabeln, eller är den inte 32 byte, går ingen nyckel att spara (servern svarar 503 och säger det i startloggen), och utan Postgres gör processen en egen huvudnyckel som dör med den, som minneslagret gör.
+Servern loggar aldrig en nyckel; startraden `ai-keys` säger bara om nycklar kan sparas.
+
+Återställningstestet visar det: `ops/restore.sh` skriver ut raderna i `ai_keys` ur den återställda databasen, och `packages/server/scripts/ai-keys-check.ts` öppnar dem med en huvudnyckel som görs för körningen och aldrig är lådans.
+Varje nyckel ska läsas som ingen — «ange nyckeln igen» — och testet går rött om en enda öppnas.
+
 ## 6. Renderfarm: Postgres-kö, en worker, cache per innehållshash
 
 Jobbtabell i Postgres med `SELECT … FOR UPDATE SKIP LOCKED`.
 Två prioriteter: bordstextur före tryck-PDF.
 En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 GB sedan 2026-09-11.
+Sidan namnger sina bilder och typsnitt med hash, och workern läser bytesen själv ur Postgres eller R2 (§4, #1028).
 Utdata i R2 under hash av mall, rad, typversion och fontset; ett jobb vars hash redan finns är en no-op.
 En reaper återställer jobb vars `started_at` är äldre än en gräns, eftersom Chromium ibland hänger utan att dö.
 
@@ -133,6 +256,13 @@ Händelseschemat migreras aldrig på disk; varje `Applied` bär `schemaVersion` 
 Ingen permanent staging på lådan.
 Grinden är replay-korpusen i CI: anonymiserade riktiga loggar som måste spela upp identiskt.
 
+Riktiga loggar hämtas ur lådan med `pnpm --filter @byd/engine corpus` och tar bara bord ur spel som kontot äger — utom när ägaren har sagt ja (#1011, beställarens beslut 2026-10-18).
+Samtycket ges i inbjudan och inte i produkten: beställaren frågar varje betadesigner när hen bjuds in, och svaret är ett ja i mejlet, som sparas.
+Ett ja skrivs in på lådan som kontots adress i `BYD_CORPUS_ACCOUNTS`, kommaseparerat, och operatörens adress står i `BYD_OPERATOR`.
+Operatörens kaka i `BYD_COOKIE` får då läsa `GET /sessions/:id/export` för ett bord vars spel ägs av ett samtyckt konto, och ingenting annat: inte enkätsvaren, inte spelet, ingen skrivväg och inget bord i ett annat kontos spel.
+Exporten säger då `consented`, och det är det enda skäl utöver ägarskap som skriptet tar ett bord för; anonymiseringen (#540) gäller för deras loggar som för alla andra.
+Båda variablerna läses när appen startar, så ett konto som stryks ur listan är stängt efter nästa omstart; utan båda läser inget konto ett annat kontos bord.
+
 ## 8. Observabilitet: enbart docker logs
 
 Inget utöver containerloggar med rotation.
@@ -142,6 +272,12 @@ Lådan kan inte berätta att den är nere; när fibern ligger är varje övervak
 Den enda signalen blir en användare som skriver.
 En gratis extern pulskoll är tio minuters arbete om det behövs senare, och ändrar inget annat.
 
+Reviderat 2026-10-18, inför betan: **en extern pulskoll läggs till.**
+Med riktiga användare är ett avbrott som ingen märker det dyraste läget, och den enda signalen får inte vara en betadesigner som skriver.
+En gratis extern tjänst frågar `https://deck.ockelberg.com/health` med några minuters mellanrum och mejlar beställaren när svaret inte är 200 — `/health` svarar 503 när Postgres eller R2 inte svarar (§2), så samma koll fångar både fibern och stacken.
+Kontot i tjänsten är beställarens och ligger utanför repot; ingenting i stacken ändras.
+Det är fortfarande den enda övervakningen: inga mätvärden och ingen loggaggregering.
+
 Kompensation som redan finns:
 En buggrapport är ett sessions-id och ett seq-nummer; `replay` till den punkten ger exakt det tillstånd användaren såg.
 
@@ -150,6 +286,20 @@ Byggt 2026-09-14:
 Utan den frågan var lådan stum om sin egen version, och en deploy gick bara att verifiera genom att fingeravtrycka den JS-bundle den serverar.
 Varje svar bär den, 503:orna med: vilken version som är trasig är det första man frågar tillbaka.
 Utanför lådan är variabeln osatt, och då säger `/health` ingenting om någon release i stället för att hitta på en.
+
+Byggt 2026-10-06 (#757):
+`BYD_CONTACT` är vart en betatestare vänder sig — en e-postadress eller en webbadress — och sätts på lådan, aldrig i koden.
+`/health` bär den som `contact` bredvid `release`, inloggningskortet och Mina spel säger den sist som «Kontakt» (en adress med `http(s)://` länkas som den är, allt annat som `mailto:`), och inloggningsmejlets fot säger den.
+Är variabeln osatt utelämnas «Kontakt» överallt, och utan `BYD_TAG` utelämnas versionen; utan någon av dem står ingen rad alls.
+
+Byggt 2026-10-18 (#999): en API-nyckel når aldrig `docker logs`.
+Nyckelns vägar — spara, pröva, byta modell, ta bort — skriver ingenting till loggen, och ett nej från leverantören är ett ord ur en sluten mängd utan nyckeln i (§5).
+`packages/server/test/ai-key-routes.test.ts` läser den faktiska loggutskriften medan nycklar sparas, avvisas och tas bort.
+
+Byggt 2026-10-18 (#1001): editorns frågor till AI:n skriver en rad var i loggen, med fälten `msg: "ai"`, `account`, `provider`, `ms` och `outcome` och inget annat.
+Utfallet är `ok`, `cancelled`, `timeout` eller leverantörens ord för nej; nyckeln, spelet, frågan och svaret skrivs aldrig.
+Varje svar håller en anslutning till leverantören och spelets kontext i appcontainerns minne (§1), så servern tar två svar åt gången per konto och åtta totalt och avbryter ett svar efter tre minuter.
+`packages/server/test/ai-ask.test.ts` läser den faktiska loggutskriften, och `packages/e2e/test/ai-question.spec.ts` läser serverns logg i den byggda stacken.
 
 ## 9. Missbruk: Cloudflare rate limiting, korta koder, värdkontroll
 
@@ -161,12 +311,29 @@ Byggt 2026-09-07:
 Koden är sex tecken ur ett alfabet utan I, L, O, 0 och 1, går ut tre timmar efter senaste anslutning och förlängs av varje anslutning; `GET /rooms/:kod` löser upp den.
 `POST /rooms/:kod/join` med namn och plats (eller utan plats, för att titta) ger en token; en upptagen plats ger 409. En oanvänd platsreservation löper ut efter två minuter; första WebSocket-anslutningen förlänger token till tre timmar och varje återanslutning förlänger den igen.
 WebSocket-anslutningen kräver token för platser och observatörer, värdnyckeln (`host`) för bordets egen vy, eller rollen `lobby`, som ser platserna och inget mer.
+Bordets egen vy öppnas också utan värdnyckel för den som får starta projektets bord, via kontokakan från appens egen origin (#748): ägaren som loggar in för att öppna sitt bord ska inte skickas tillbaka till samma stängda dörr.
 Editorn kan uttryckligen ansluta bord, plats eller observatör med `owner=1`; servern godtar då bara projektägaren via kontokakan (eller ett öppet projekt när konton är avstängda lokalt).
 Allt annat får `refused` och stängs; klienten återansluter aldrig efter det.
 Värdnyckeln skapas med sessionen, visas en gång för den som startar bordet och lagras hashad, som tokens.
 `POST /sessions/:id/code` roterar koden och `POST /sessions/:id/kick` sparkar en plats: tokens ogiltigförklaras, anslutningarna stängs med `refused: kicked`, platsen släpps. Värdnyckeln som bearer eller ägarens kaka är behörigheten.
 Bordsskärmen får koden i ett `room`-meddelande, vid anslutning och vid rotation; gäster får den aldrig.
+Rotationen byter också värdnyckeln (#820, beställarens beslut 2026-10-05): en nyckel som läckt tillsammans med koden — en skärmdelning, en vidarebefordrad länk — dras tillbaka med samma «Ny kod», och den gamla öppnar varken bordet eller värdens kontroller efteråt.
+Den nya nyckeln står i svaret till den som roterade och i `room`-meddelandet vid rotationen, bara till bordets egna anslutningar, så att en TV som står öppen inte stängs ute av bytet; den sparar nyckeln i fliken och återansluter med den.
+Telefoner, observatörer och lobbyn får den aldrig, vilket ett test på de råa ramarna visar.
+Det som inte dras tillbaka är en bordsvy som just då står öppen med den läckta nyckeln: den räknas som en av bordets skärmar och får den nya.
+Den som vill stänga också den startar ett nytt bord.
 Sessioner från före koder saknar kod och nyckel: de kan inte nås med kod eller öppnas som bordet.
+
+Byggt 2026-10-06 (#675, beställarens beslut C): koden är också rummets adress.
+`/<KOD>` är appen, i vilken bokstavsstorlek som helst, och landar i platsväljaren; TV:n säger värden ur sitt eget origin, på lådan `PUBLIC_ORIGIN`:s värd.
+Sidan på adressen frågar aldrig efter koden: varje kod, känd, okänd eller utgången, får samma bytes, och lagret tillfrågas inte.
+Den enda vägen att pröva en kod är därmed fortfarande `GET /rooms/:kod`, som appen frågar precis som `/join?code=` alltid har gjort, så adressen är ingen andra dörr förbi rate limiting ovan, och proxyns gräns gäller hela värden och därmed `/<KOD>` också.
+En okänd, en utgången och en roterad kod får samma 404 med samma kropp, och telefonen säger dem likadant: inget avslöjar om en kod en gång funnits.
+Ett avslutat bords kod gör det också (#938, beställarens beslut 2026-10-07): förut svarade den 410 med bordets id, vilket sa den som provade koder att just den hade varit verklig.
+Dörren är stängd som förut (C9, #485) — `POST /rooms/:kod/join` lämnar ingen token — men den säger det med samma 404 och samma kropp som för en kod som aldrig funnits, och koden prövas före kroppen, så att inte heller en trasig kropp skiljer dem åt.
+Den som redan sitter vid bordet får veta att det är slut genom sin egen anslutning, och kontots väg tillbaka (`POST /me/played/:id/return`) svarar fortfarande 410, eftersom den bara når den som satt där.
+`GET /rooms/:kod` säger också spelets namn när bordet startades ur ett spel — det `GET /sessions/:id` redan sa till den som har id:t svaret lämnar ut — och aldrig projektet.
+Generatorn drar om en kod som stavar ett av appens egna vägord (`ROUTE_WORDS` i `packages/protocol`): `ASSETS` och `GUESTS` är de enda sex tecknen ur alfabetet som redan är en adress.
 
 ## 10. Administration: Tailscale
 
@@ -234,6 +401,66 @@ Grinden läser `Content-Encoding` på det blockerande arket mot en riktigt serve
 Bortfallet går rött, inte tyst grönt — varje väg till att inte mäta något (inget ark i dokumentet, ingen instans som svarar, ingen rubrik) är skriven som ett fel med en mening om vilken det var.
 En proxy framför lådan måste respektera `Vary: Accept-Encoding`, som svaren bär.
 
+## 14. Innehållspolicyn (CSP) sätts av appen
+
+Byggt 2026-10-19 (#1008).
+
+`app` skickar själv en verkställd `Content-Security-Policy` med varje HTML-svar från den byggda webben.
+Policyn reser därmed med bygget, som komprimeringen i §13: den gäller på lådan bakom sin proxy, i E2E-stacken och på en port som öppnats direkt, och vilar inte på att något framför lådan minns den.
+Den skrivs i `packages/server/src/csp.ts`.
+
+Skälet är kontots kaka och designernas opublicerade spel.
+AI-nyckeln når aldrig webbläsaren (§5), men ett inskjutet skript på sidan kan ändå göra allt den inloggade designern kan, och editorn visar alltmer text som någon annan — en medspelare, en modell — har skrivit.
+Policyn är ett lager under React, inte i stället för det: ett `<img onerror=…>` i ett korts text eller ett skript från en främmande adress körs inte även om något annat har släppt in det.
+
+Policyn, direktiv för direktiv:
+
+- `default-src 'self'` — det som inte nämns nedan (manifestet, ramar, workers, media) får bara komma från appens eget origin.
+- `script-src 'self' 'sha256-…'` — appens egna chunkar och de tre inline-skripten i `index.html` (skalets språk och dess ifyllning från #749, förladdningen från #760), godkända med sina hashar.
+  Inget `'unsafe-inline'`, inget `'unsafe-eval'`.
+- `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` — `'unsafe-inline'` eftersom React skriver `style=`-attribut, kortförhandsvisningen sätter det kompilerade kortets ark som `<style>` i sin skuggrot och kortets markup bär egna `style=`; inget av det finns vid bygget, så det finns inget att hasha.
+  En stil kan inte köra kod.
+  Googles `css2`-ark är typsnittsväljarens prover (§12).
+- `font-src 'self' data: https://fonts.gstatic.com` — filtens typsnitt reser i arket som data-URL (#95), projektets typsnitt kommer från `/assets/<hash>/bytes` (§4), och katalogens filer från Google när väljaren är öppen (§12).
+- `img-src 'self' data: <objektlagret>` — bilder och texturer omdirigeras till R2 (§4); data: är QR-koden, symbolerna, temarutorna och en bild som visas innan den laddats upp.
+- `connect-src 'self' ws(s)://<värden> https://fonts.googleapis.com https://fonts.gstatic.com <objektlagret>` — API:t och bordets WebSocket på eget origin, katalogens ark och fil när en familj väljs, och objektlagret för det som hämtas genom en omdirigering dit.
+  WebSocket-adressen står utskriven eftersom äldre Safari inte räknar `ws:` som `'self'`; den byggs av förfrågans `Host` och schemat proxyn anger (`X-Forwarded-Proto`), och ett `Host` som inte är ett värdnamn lämnas utanför i stället för att skrivas in i rubriken.
+- `object-src 'none'`, `base-uri 'none'`, `form-action 'self'` — inga insticksprogram, ingen `<base>` som flyttar relativa adresser, inga formulär som postar någon annanstans.
+- `frame-ancestors 'none'` — ingenting i produkten bäddas in i en annan sida, och ingen annan sida får rama in appen.
+
+Objektlagrets origin läses ur samma konfiguration som omdirigeringarna (`R2_ENDPOINT`, annars kontots R2-adress), aldrig hårdkodat; utan R2 nämns det inte alls.
+
+Inline-skripten godkänns med hash och inte med nonce.
+Servern läser hasharna ur exakt den fil den skickar, en gång per ändring på disken, så de kan inte glida isär från sidan vad bygget än lägger i den härnäst.
+En nonce per svar hade krävt att sidan skrevs om vid varje förfrågan, och då hade den förkomprimerade kopian i §13 inte längre varit samma bytes som svaret.
+
+zod provar en gång om den får kompilera en snabbväg med `new Function`.
+Den fångar felet och går vidare, men webbläsaren har redan rapporterat försöket som ett brott mot policyn, på varje sida; webben sätter därför `jitless` innan något tolkas (`packages/web/src/no-eval.ts`).
+I webbläsaren är svaret nej oavsett, så inget blir långsammare.
+
+En uppladdad bild som serveras från appens eget origin — utan R2 (§4) — får en egen policy, `default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox`.
+En SVG som öppnas på sin egen adress är annars ett dokument på appens origin, och sidans policy släpper in `'self'`.
+
+`?server=<api>` är utvecklingsläget med Vite på en port och API:t på en annan, och där skickar Vite sidan utan policy.
+I produktion stoppar `connect-src` en sådan länk som pekar ut appen mot en annan server, vilket är avsikten.
+
+Det sviten hittade när policyn slogs på, och vad som gjordes:
+
+- zod:s `new Function`-prov på varje sida, ovan.
+- Skalets omladdningsknapp (#749) bar `onclick="location.reload()"` i markupen och var död under policyn; lyssnaren sätts nu av skalets eget skript, som är godkänt med sin hash.
+- «Öppna häftet» (#678) frågade om häftet var klart genom att följa omdirigeringen till R2, som svarar utan CORS, så länken kom aldrig på lådan.
+  Det var inget policyfel utan ett produktionsfel som syntes först när stacken fick ett objektlager; nu räcker omdirigeringen själv som svar.
+- Två specar hämtade sina egna data-URL:er eller spelade R2 med en påhittad adress; de läser nu sina bytes utan att ansluta, och använder stackens objektlager.
+
+Följdkrav:
+**Lådans egna middleware får inte skicka en andra CSP.**
+Två policyer gäller båda samtidigt, så en till kan bara strama åt, och en som inte känner till hasharna stänger av skalet.
+`chain-no-auth@file` ligger utanför repot och ska hållas fri från `Content-Security-Policy`.
+E2E-sviten kör den byggda appen med policyn påslagen och med ett objektlager på ett eget origin bredvid stacken (`packages/e2e/support/objects.ts`), som svarar utan CORS precis som R2, så att produktionsvägen med 302 till R2 är den som testas; `packages/e2e/test/csp-bucket.spec.ts` visar att en bild verkligen hämtas därifrån.
+Varje spec körs genom svitens egen `test` (`packages/e2e/support/test.ts`), som fäller den spec där policyn vägrade något, och lint förbjuder Playwrights bara `test` i specarna.
+`packages/e2e/test/csp.spec.ts` visar att ett inskjutet externt skript och ett inline-attribut vägras, och `packages/server/test/csp.test.ts` kräver varje direktiv i rubriken.
+En ny källa — ett nytt CDN, en inbäddning, en tredje part — är en ändring här och i `csp.ts`, med motivering.
+
 ---
 
 ## Compose-stacken i ett stycke
@@ -277,6 +504,7 @@ Tidsstämplarna står kvar som de loggades.
 Anonymiseringen går igenom hela posten, också en tillbakaspolnings lagrade bord.
 `pnpm --filter @byd/engine corpus <namn> <https://…/sessions/:id/export>` lägger till en riktig logg, med ägarens kaka i `BYD_COOKIE`, och tar bara bord ur spel som kontot äger tills villkoren säger något annat.
 Exporten och enkätsvaren (`GET /sessions/:id/surveys`) lämnas bara till ett konto som projektet låter öppna sina bord som värd, eftersom loggen bär varje hand, gästernas namn och flaggornas text; skriptet tar kontots kaka i `BYD_COOKIE`.
+Undantaget med samtycke, och hur det blir en behörighet på lådan, står i §7 (#1011).
 Händelseschemats `schemaVersion` och upcasters (§7) byggda 2026-09-07: varje ny rad bär `SCHEMA_VERSION`, rader utan fält är version 0, motorn lyfter dem steg för steg vid inläsning (`liftLine`), Postgres skriver versionen i `schema_version` och lämnar gamla rader orörda, och korpusens filer ligger kvar som de spelades in medan grinden lyfter dem.
 Backup (§5) byggd 2026-09-07 med WAL-G, se §5; den nattliga `pg_dump`-dumpen är ersatt.
 Assets i R2 (§4) byggt 2026-09-07, se §4.
@@ -286,4 +514,4 @@ Administration över Tailscale (§10) är lådans sak; Postgres lyssnar bara på
 
 Hur replay-korpusen anonymiseras utan att förlora det som gör den värdefull.
 UPS för lådan — billig, men inte beslutad.
-Om en extern pulskoll ska läggas till trots beslut 8.
+~~Om en extern pulskoll ska läggas till trots beslut 8.~~ Besvarad 2026-10-18: ja, inför betan, se §8.

@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
 // The starter flow below the desk (#4, L10): three steps with one job each, instead of one page
 // two and a half screens long where the frame is chosen half a metre from the card it changes.
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function wizardAt(width: number) {
   atWidth(width)
@@ -72,6 +69,43 @@ describe('the wizard on a phone', () => {
     await user.click(screen.getByRole('tab', { name: '3 · Korten' }))
     await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
     expect((screen.getByLabelText('Spelets namn') as HTMLInputElement).value).toBe('Skogens herrar')
+  })
+})
+
+// A step opens at its top (#732). The steps share one scrolling body, so a step left scrolled to
+// its bottom handed the next one the same distance: at 768 «Nästa» opened step 3 101 px down, its
+// heading above the edge and the card's top cut off — and «Föregående» back did the same.
+describe('a step that opens (#732)', () => {
+  it('starts at its top, whichever way it was walked to', async () => {
+    const user = userEvent.setup()
+    wizardAt(768)
+    const body = document.querySelector('.byd-wizard-body') as HTMLElement
+    // jsdom lays nothing out and keeps no scroll of its own, so the body is given one to keep.
+    let top = 0
+    Object.defineProperty(body, 'scrollTop', { configurable: true, get: () => top, set: (v: number) => { top = v } })
+    const scrolled = () => { top = 101 }
+
+    scrolled()
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Fälten')
+    expect(top).toBe(0)
+
+    scrolled()
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    expect(top).toBe(0)
+
+    scrolled()
+    await user.click(screen.getByRole('button', { name: /Föregående/ }))
+    expect(top).toBe(0)
+
+    scrolled()
+    await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
+    expect(top).toBe(0)
+
+    // And a step that does not change leaves the scroll where the reader put it.
+    scrolled()
+    await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
+    expect(top).toBe(101)
   })
 })
 
@@ -141,7 +175,8 @@ describe('the focus in the wizard (#476)', () => {
     await user.click(screen.getByRole('button', { name: '+ Textfält' }))
     expect(document.activeElement).toBe(screen.getByLabelText('Nytt textfält namn'))
     await user.click(screen.getByRole('button', { name: '+ Nytt kort' }))
-    expect(document.activeElement).toBe(screen.getByLabelText('kort 2 Titel'))
+    // After the three example cards the guide opens on (#733).
+    expect(document.activeElement).toBe(screen.getByLabelText('kort 4 Titel'))
   })
 
   it('never leaves the focus on nothing when a card is taken away or a step button locks', async () => {
@@ -182,10 +217,10 @@ describe('the names of the fields (#476)', () => {
     const cost = screen.getByLabelText('Kostnad namn')
 
     await user.clear(cost)
-    await user.type(cost, 'Text')
+    await user.type(cost, 'Regeltext')
     expect(cost.getAttribute('aria-invalid')).toBe('true')
     const said = document.getElementById(cost.getAttribute('aria-describedby') ?? '')
-    expect(said?.textContent).toBe('Två fält kan inte heta «Text».')
+    expect(said?.textContent).toBe('Två fält kan inte heta «Regeltext».')
 
     await user.clear(cost)
     expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Fältet behöver ett namn.')

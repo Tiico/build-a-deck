@@ -1,15 +1,12 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { passedToEditor } from '../src/editor/keys.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Undo in a cell (#479, beslut 2026-09-27, variant C; L14): Ctrl+Z in a cell took one character
 // back and outside it the whole visit; Escape put nothing back. Escape now gives the cell back what

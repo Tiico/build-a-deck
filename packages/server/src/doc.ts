@@ -8,3 +8,15 @@ export * from './edits.js'
 export * from './setup.js'
 // The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
 export * from './roles.js'
+// What the profile page says about a designer's AI key (#999): the words only, never the vault.
+export type { AiProvider, AiKeyDescription } from './ai-keys.js'
+export type { AiFailure, AiModel } from './ai-providers.js'
+// What the editor's AI panel says is sent before it is asked (#1001): the same reading of the game
+// the context the model gets is built from, so the chips cannot promise something else.
+export { aiContextParts, type AiContextParts } from './ai-context.js'
+// What the AI may propose and how a proposal becomes edits (#1002) is the editor's as much as the
+// server's, but it is read with zod, and this path reaches the phone: it has a path of its own,
+// `@byd/server/proposal`, so that only the editor's chunk carries the schema (`phone-bundle.spec.ts`).
+
+// What the Resultat view reads (#1010): the shape of the playtest the server counts, types only.
+export type { Distribution, Playtest, PlaytestAnswer, PlaytestFlag, PlaytestPerson, PlaytestQuestion, PlaytestTable, PlaytestVersion } from './playtest.js'

@@ -1,22 +1,25 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { oversetOf } from '@byd/template'
 import { CardPreview } from '../editor/CardPreview.js'
+import { oversetWords, useCut } from '../editor/overset.js'
 import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
-import { loginUrl, withCredentials } from '../account/api.js'
+import { loginUrl, whoAmI, withCredentials } from '../account/api.js'
 import { assetRef, bytesOfDataUrl, imageTypeOf } from '../editor/assets.js'
-import { ASSET_MAX_BYTES } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetAccept } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, DEFAULT_THEME, themeOfState, typedFields, type WizardState } from './build.js'
-import { themeFaceSources, uploadTheme } from './fonts.js'
+import { facesLoaded, themeFaceSources, uploadTheme } from './fonts.js'
 import { NotMade } from './not-made.js'
+import { forgetDraft, isImageRef, keepDraft, readDraft, restoreImages } from './draft.js'
 import { columnOf, defaultFields, FRAMES, type Field } from './frames.js'
 import { previewFonts as stacksOf } from '../editor/fonts.js'
 import { THEMES } from '../editor/themes.js'
 import { ThemeTile } from '../editor/ThemeTile.js'
 import { fieldLabel } from '../editor/fields.js'
 import { ANTAL } from '@byd/server/doc'
-import { useT, type Key, type T } from '../i18n/index.js'
+import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
@@ -24,60 +27,41 @@ import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
 
+// The mark round a text that does not fit (#808) is drawn only when one does not, which no first
+// painting of the guide shows, so it and its sheet are fetched when it is first needed (L40).
+const OversetMarks = lazy(() => import('../editor/OversetMarks.js').then((m) => ({ default: m.OversetMarks })))
+// The question the door past the guided start asks (#732) is drawn only after a press, so it too is
+// fetched when it is first needed (L40).
+const BlankAsk = lazy(() => import('./BlankAsk.js').then((m) => ({ default: m.BlankAsk })))
+
 // The first card is the designer's own content from the moment it appears, so its title is the
 // game's language and not the tool's; the fields around it are the tool's suggestion.
 // The example card the wizard starts with. Its title is a word the designer reads and writes
 // over, so it is written in the language they are building the game in (A4).
-const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
-const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', theme: DEFAULT_THEME.id, rows: [firstRow(t)] })
-// The draft, kept for the life of the tab (#476): a reload, a step back or a login round gives it
-// back as it was. It is only ever *sent* on the way back from the login it was waiting for — the
-// `resume` mark on that one address — and never because `/new` was opened again later.
-const PENDING_KEY = 'byd.pending-wizard'
+// The example cards the guide opens on (#733, beslut 2026-10-04): three, two of each, so a table made
+// from the defaults has six cards to draw from, and every field shows what it does — a cost, a line
+// of text, and a meaning written the way the deck writes one. In the designer's language, and theirs
+// to write over or take away like any card they add.
+const exampleRows = (t: T): Record<string, string>[] =>
+  ([1, 2, 3] as const).map((n) => ({ title: t(`wizard.example.${n}.title`), cost: String(n), body: t(`wizard.example.${n}.body`), art: '', antal: '2' }))
+const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', theme: DEFAULT_THEME.id, themePressed: false, rows: exampleRows(t) })
+// The draft (`draft.ts`) is only ever *sent* on the way back from the login it was waiting for —
+// the `resume` mark on that one address — and never because `/new` was opened again later.
 const RESUME = 'resume'
-// `blank` is the door the draft was on its way through (L42), so a login asked for on the way
-// past the guided start resumes past it, not through it.
-type PendingWizard = { state: WizardState; server: string | null; blank?: boolean }
 // The two doors out of the wizard: through its three steps, or past them with a blank game.
 type Via = 'guided' | 'blank'
+// What the page says at its head about the draft (#686), when a reload would not give it back.
+type DraftSays = 'wizard.draft.unsaved' | 'wizard.draft.lost-image'
 
-function pendingWizard(server: string | null): PendingWizard | null {
-  try {
-    const raw = sessionStorage.getItem(PENDING_KEY)
-    if (!raw) return null
-    const value = JSON.parse(raw) as Partial<PendingWizard>
-    const state = value.state
-    if (
-      value.server !== server ||
-      !state ||
-      typeof state.name !== 'string' ||
-      typeof state.players !== 'number' ||
-      typeof state.frame !== 'string' ||
-      !Array.isArray(state.fields) ||
-      !Array.isArray(state.rows)
-    ) return null
-    // A draft begun before «Utseende» (#633) has no theme, and starts from the first one.
-    return { ...value, state: { ...state, theme: typeof state.theme === 'string' ? state.theme : DEFAULT_THEME.id } } as PendingWizard
-  } catch {
-    return null
-  }
-}
+// The draft as the page starts on it: words at once, and every picture empty until the store has
+// given it back — never the reference standing in for it.
+const withoutImageRefs = (state: WizardState): WizardState => ({
+  ...state,
+  rows: state.rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, isImageRef(value) ? '' : value]))),
+})
 
-function rememberWizard(pending: PendingWizard): void {
-  try {
-    sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending))
-  } catch {
-    // Login still works if storage is unavailable; only automatic resume is lost.
-  }
-}
-
-function forgetWizard(): void {
-  try {
-    sessionStorage.removeItem(PENDING_KEY)
-  } catch {
-    // Nothing else depends on cleanup succeeding.
-  }
-}
+// The cards and the fields, which are what a game made past the guided start does not take along.
+const madeOf = (state: WizardState) => [state.fields, state.rows]
 
 const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].includes(key)
 
@@ -101,13 +85,27 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
-  const pending = useMemo(() => pendingWizard(server), [server])
+  const pending = useMemo(() => readDraft(server), [server])
   const resuming = useMemo(() => params.get(RESUME) === '1', [params])
   // What an untouched wizard holds, so a draft is only a draft once something has been written.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- what an untouched wizard holds is taken once, in the language `s` was begun in
   const pristine = useMemo(() => JSON.stringify(emptyState(t)), [])
-  const [s, setS] = useState<WizardState>(pending?.state ?? emptyState(t))
+  const [s, setS] = useState<WizardState>(pending ? withoutImageRefs(pending.state) : emptyState(t))
+  // The draft's pictures come back from their store after the words (#686), and nothing is kept
+  // until they have — a save before that would keep the draft without them.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once, of the draft the page started on
+  const restoring = useMemo(() => pending && pending.state.rows.some((row) => Object.values(row).some(isImageRef)) ? restoreImages(pending.state) : null, [])
+  const [restored, setRestored] = useState(restoring === null)
+  const [draftSays, setDraftSays] = useState<DraftSays | null>(null)
   const dirty = JSON.stringify(s) !== pristine
+  // What the door past the guided start leaves behind (#732, L42): the cards and the fields. Only
+  // when the designer has made something of them is there anything to lose by going that way.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- what an untouched guide holds is taken once, as `pristine` is
+  const untouched = useMemo(() => JSON.stringify(madeOf(emptyState(t))), [])
+  const madeHere = JSON.stringify(madeOf(s)) !== untouched
+  // The question the door asks before it leaves them behind (L9): standing, or not.
+  const [askingBlank, setAskingBlank] = useState(false)
+  const blankDoor = useRef<HTMLButtonElement>(null)
   // Set on the way out through one of the page's own doors, so the question below is not asked
   // about a leaving the page itself asked for.
   const leaving = useRef(false)
@@ -117,6 +115,20 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const at = STEPS.findIndex(([key]) => key === step)
   const { itemProps } = useRoving({ ids: STEPS.map(([key]) => key), selected: step, orientation: 'horizontal' })
   const [busy, setBusy] = useState(false)
+  // Whoever is not logged in is told early that the game is kept on an account (#691), rather than
+  // finding out from a login after the guide has been filled in. A service that cannot say who is
+  // here says nothing, and neither does the page.
+  const [loggedOut, setLoggedOut] = useState(false)
+  useEffect(() => {
+    let live = true
+    void whoAmI(http).then(
+      (email) => live && setLoggedOut(email === null),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [http])
   // Which door the game is being made through, so the wait and the error stand at that door.
   const [via, setVia] = useState<Via>('guided')
   const [error, setError] = useState<string | null>(null)
@@ -151,35 +163,82 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const look = useMemo(() => buildProject({ ...s, rows: [] }, t), [s.fields, s.frame, s.theme, t])
   const front = look.template.faces['front'] ?? { base: [], variants: {} }
   // Each theme's faces, once a press on that theme has fetched them (#476, L27): the preview is drawn
-  // in them from then on, and until then it says the faces come with the choice. Nothing is asked of
-  // the catalogue before a theme is pressed — the wizard opening, and a frame pressed, ask for
-  // nothing, since a frame carries no face of its own any more.
+  // in them from then on. Nothing is asked of the catalogue before a theme is pressed — the wizard
+  // opening, and a frame pressed, ask for nothing, since a frame carries no face of its own any more.
+  // The preselection is not a press (#687, beslut 2026-10-06, variant D): Skogssaga is the game's
+  // theme until another is pressed, but it is marked «Förval» and not pressed, and the card stands
+  // greyed with «Visa kortet i Skogssaga» on it until the designer asks to see it. A draft whose
+  // theme was pressed on an earlier visit was asked for then, and is asked again on arrival.
   // The asking itself is kept too, so «Skapa» pressed before it has answered waits for the same
   // answer instead of asking the catalogue a second time.
   const [faces, setFaces] = useState<Record<string, Record<string, { stack: string; src: string }>>>({})
+  // Where each asked theme stands: on its way — the sheet, then the files — in the page and drawing,
+  // or not come, which is said on the card with the way to ask again.
+  const [fetched, setFetched] = useState<Record<string, 'asking' | 'drawn' | 'silent'>>({})
   const asking = useRef(new Map<string, Promise<Record<string, { stack: string; src: string }> | null>>())
-  const pickTheme = (id: string) => {
-    setS((current) => ({ ...current, theme: id }))
+  const ask = (id: string) => {
     const chosen = THEMES.find((candidate) => candidate.id === id)
     if (!chosen || asking.current.has(id)) return
     const asked = themeFaceSources(chosen)
     asking.current.set(id, asked)
+    setFetched((known) => ({ ...known, [id]: 'asking' }))
     void asked.then((face) => {
       if (face) setFaces((known) => ({ ...known, [id]: face }))
-      else asking.current.delete(id)
+      else {
+        asking.current.delete(id)
+        setFetched((known) => ({ ...known, [id]: 'silent' }))
+      }
     })
   }
+  const pickTheme = (id: string) => {
+    setS((current) => ({ ...current, theme: id, themePressed: true }))
+    ask(id)
+  }
+  useEffect(() => {
+    if (s.themePressed) ask(s.theme)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once, for the draft the page started on
+  }, [])
   const face = faces[theme.id]
+  // The faces are the theme's once the page has them loaded, not once the sheet has answered
+  // (#687): until then the card says they are on their way, whatever `font-display` draws.
+  const progress = fetched[theme.id]
+  useEffect(() => {
+    if (!face || progress !== 'asking') return
+    let live = true
+    const id = theme.id
+    void facesLoaded(Object.keys(face)).then((drawn) => {
+      if (!live) return
+      if (!drawn) asking.current.delete(id)
+      setFetched((known) => ({ ...known, [id]: drawn ? 'drawn' : 'silent' }))
+    })
+    return () => {
+      live = false
+    }
+  }, [face, progress, theme.id])
+  const pressed = s.themePressed === true
+  const shown = pressed && progress === 'drawn'
   const fonts = useMemo(() => ({ ...stacksOf(look, undefined), ...face }), [look, face])
-  const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
+  // Where the focus goes once «Visa kortet i …» has done its work and left: onto the card it showed.
+  const cardRef = useRef<HTMLDivElement>(null)
+  // With every card taken away the preview still draws one, blank under its tool name.
+  const blank = useMemo((): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '', body: '', art: '' }), [t])
+  const row = s.rows[selectedRow] ?? s.rows[0] ?? blank
   // The card as the game will hold it, under the columns the fields were named (#476).
   const card = useMemo(() => typedFields(row, s.fields), [row, s.fields])
+  // The texts on the live card its fitting could not fit even shrunk (#808): framed on the card and
+  // said in its name, as the editor says them on the wall and in Mall.
+  const { lang } = useLang()
+  const [cut, onMeasured] = useCut()
+  const overset = oversetOf(front, card, cut)
 
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
   }
-  const toEditor = async (door: Via = 'guided') => {
+  // `state` is what is made: the page's own, or — on the way back from a login — the draft as its
+  // store gave it back, pictures and all (#686), since the page's own may not have them yet.
+  const toEditor = async (door: Via = 'guided', state: WizardState = s) => {
+    const s = state
     // A second press while the first is on its way is not a second game.
     if (busy) return
     // Den utgång som trycks utan namn går ingenstans — den säger vad som saknas, vid fältet, och
@@ -203,8 +262,9 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     setError(null)
     // A login asked for here is the same login the project needs; the draft waits for it in
     // this tab and comes back through the same door.
-    const login = () => {
-      rememberWizard({ state: s, server, blank: door === 'blank' })
+    const login = async () => {
+      // Kept before the page is left, pictures and all, or the way back finds the draft without them.
+      await keepDraft({ state: s, server, blank: door === 'blank' })
       const back = new URLSearchParams(location.search)
       back.set(RESUME, '1')
       leaving.current = true
@@ -220,18 +280,18 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         // The chosen images go up first (E1): the project's rows point at them by hash, not by
         // carrying the bytes.
         const uploaded = await uploadImages(t, http, s)
-        if (uploaded === 'login') throw login()
+        if (uploaded === 'login') throw await login()
         // And the theme's own faces and icons with them (#420, #633): the game is set in typefaces
         // it carries, so the first screen in the editor is a card that can be printed as it stands.
         const known = await asking.current.get(theme.id)
         const files = await uploadTheme(t, http, theme, Object.fromEntries(Object.entries(known ?? {}).map(([family, at]) => [family, at.src])))
-        if (files === 'login') throw login()
+        if (files === 'login') throw await login()
         doc = buildProject(uploaded, t, files)
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
-      if (res.status === 401) throw login()
+      if (res.status === 401) throw await login()
       if (!res.ok) throw new NotMade('wizard.error.create')
-      forgetWizard()
+      forgetDraft()
       const { id } = (await res.json()) as { id: string }
       leaving.current = true
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
@@ -271,14 +331,49 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     const rest = new URLSearchParams(location.search)
     rest.delete(RESUME)
     history.replaceState(history.state, '', `${location.pathname}${rest.toString() ? `?${rest.toString()}` : ''}`)
-    void toEditor(pending.blank ? 'blank' : 'guided')
+    const door = pending.blank ? 'blank' : 'guided'
+    if (restoring) void restoring.then((back) => toEditor(door, back.state))
+    else void toEditor(door)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- said once, on arrival: the mark leaves the address as it is read
   }, [])
-  // The draft follows every keystroke into the tab's storage, and an untouched wizard keeps nothing.
   useEffect(() => {
-    if (dirty) rememberWizard({ state: s, server })
-    else forgetWizard()
-  }, [s, dirty, server])
+    if (!restoring) return
+    let live = true
+    void restoring.then((back) => {
+      if (!live) return
+      // Every picture goes back where it stood, unless something was written there meanwhile.
+      setS((current) => ({
+        ...current,
+        rows: current.rows.map((row, index) => ({
+          ...row,
+          ...Object.fromEntries(Object.entries(back.state.rows[index] ?? {}).filter(([key, value]) => value.startsWith('data:') && key in row && !row[key])),
+        })),
+      }))
+      if (back.lost > 0) setDraftSays('wizard.draft.lost-image')
+      setRestored(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [restoring])
+  // The draft follows every keystroke into the tab's storage, and an untouched wizard keeps nothing.
+  // A draft the browser would not keep is said at the head of the page (#686): a reload would not
+  // give it back, and the page must not let it look as if it would.
+  useEffect(() => {
+    if (!restored) return
+    if (!dirty) {
+      forgetDraft()
+      setDraftSays((said) => (said === 'wizard.draft.unsaved' ? null : said))
+      return
+    }
+    let live = true
+    void keepDraft({ state: s, server }).then((kept) => {
+      if (live) setDraftSays((said) => (kept ? (said === 'wizard.draft.unsaved' ? null : said) : 'wizard.draft.unsaved'))
+    })
+    return () => {
+      live = false
+    }
+  }, [s, dirty, server, restored])
   // And the browser asks before a reload or a closed tab takes it, as the editor does.
   useEffect(() => {
     if (!dirty) return
@@ -292,6 +387,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     return () => window.removeEventListener('beforeunload', hold)
   }, [dirty])
 
+  // A step opens at its top (#732). The three share one scrolling body, and a step left scrolled to
+  // its bottom handed the next one the same distance: its heading above the edge and the card cut
+  // off. Before the paint, and before the focus the step asks for scrolls what it lands on in view.
+  const body = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (body.current) body.current.scrollTop = 0
+  }, [step])
   // A step walked to by the buttons takes the focus with it: the button pressed may lock at the
   // end it has reached, and a locked button cannot keep the focus.
   const walk = (by: number) => {
@@ -332,6 +434,20 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
       reader.readAsDataURL(file)
     })
+  }
+  // The picture goes, and the refusal that kept it goes with it (#732): what was said was about the
+  // picture that stayed, and under «Ingen bild vald» it reads as if the removal had been refused.
+  const removeImage = (key: string) => {
+    updateRow(selectedRow, key, '')
+    setRefused((said) => (said?.field === key ? null : said))
+    setFocusOn({ at: `[data-image-field="${key}"] input[type="file"]` })
+  }
+  // The door past the guided start (L42) asks first when it would leave cards or fields behind
+  // (#732, L9). Without a name it says so at the field, as before, and asks nothing yet.
+  const toBlank = () => {
+    if (busy) return
+    if (named && madeHere) setAskingBlank(true)
+    else void toEditor('blank')
   }
   const addField = (kind: Field['kind']) => {
     // The key is the form's own handle for the field — what the rows are kept under while the
@@ -449,7 +565,24 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <div className="byd-wizard-blank">
         <strong>{t('wizard.blank.title')}</strong>
         <p>{t('wizard.blank.body')}</p>
-        <button type="button" className="byd-secondary" {...working(busy)} onClick={() => void toEditor('blank')}><Held busy={busy && via === 'blank'} idle={t('wizard.blank.create')} working={t('wizard.creating')} /></button>
+        <button ref={blankDoor} type="button" className="byd-secondary" {...working(busy)} onClick={toBlank}><Held busy={busy && via === 'blank'} idle={t('wizard.blank.create')} working={t('wizard.creating')} /></button>
+        {/* The tool's one question (L9), where the door was pressed. It opens on «Avbryt», and
+            either answer hands the focus back to the door. */}
+        {askingBlank && (
+          <Suspense fallback={null}>
+            <BlankAsk
+              onCancel={() => {
+                setAskingBlank(false)
+                blankDoor.current?.focus()
+              }}
+              onConfirm={() => {
+                setAskingBlank(false)
+                blankDoor.current?.focus()
+                void toEditor('blank')
+              }}
+            />
+          </Suspense>
+        )}
         {error && via === 'blank' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}
       </div>
     </section>
@@ -494,7 +627,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         </div>
         <div className="byd-wizard-themes" role="group" aria-labelledby="byd-wizard-look-theme">
           <p id="byd-wizard-look-theme">{t('wizard.look.theme')}</p>
-          {THEMES.map((candidate) => <ThemeTile key={candidate.id} theme={candidate} pressed={theme.id === candidate.id} onPress={() => pickTheme(candidate.id)} />)}
+          {THEMES.map((candidate) => <ThemeTile key={candidate.id} theme={candidate} pressed={pressed && theme.id === candidate.id} mark={!pressed && theme.id === candidate.id ? t('wizard.look.preselected') : undefined} onPress={() => pickTheme(candidate.id)} />)}
         </div>
       </fieldset>
     </section>
@@ -512,7 +645,27 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span>
       </div>
       <div className="byd-wizard-card-workspace">
-        <div className="byd-wizard-preview"><div role="img" aria-label={t('wizard.preview.card', { n: selectedRow + 1, title: row['title'] || t('wizard.card.untitled') })}><CardPreview id="wizard-live" face={front} row={card} icons={look.icons} fonts={fonts} palette={look.palette} /></div><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
+        {/* The card is the theme's only once its faces are drawing (#687): until then it stands
+            greyed, with what would show it — or what is on its way — over it, where the eye is. */}
+        <div className="byd-wizard-preview" {...(shown ? {} : { 'data-unseen': '' })}>
+          <div ref={cardRef} role="img" tabIndex={-1} aria-label={[t('wizard.preview.card', { n: selectedRow + 1, title: row['title'] || t('wizard.card.untitled') }), ...overset.map((o) => oversetWords(o, t, lang).sentence)].join('. ').replace(/\.\. /g, '. ')}><CardPreview id="wizard-live" face={front} row={card} icons={look.icons} fonts={fonts} palette={look.palette} onMeasured={onMeasured} overlay={overset.length > 0 && <Suspense fallback={null}><OversetMarks found={overset} scale={1} zoomed /></Suspense>} /></div>
+          <span>{t('wizard.preview')}</span>
+          <div className="byd-wizard-preview-over">
+            <p role="status">{pressed && progress === 'asking' ? t('wizard.preview.fetching', { theme: t(theme.name) }) : pressed && progress === 'silent' ? t('wizard.preview.silent') : ''}</p>
+            {(!pressed || progress === 'silent') && (
+              <button
+                type="button"
+                className="byd-wizard-preview-show"
+                onClick={() => {
+                  pickTheme(theme.id)
+                  cardRef.current?.focus()
+                }}
+              >
+                {t('wizard.preview.show', { theme: t(theme.name) })}
+              </button>
+            )}
+          </div>
+        </div>
         <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide" data-image-field={field.key}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
           role="group"
           aria-label={t('wizard.image.field', { label: field.label })}
@@ -523,14 +676,26 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             onOver: (on) => setOver(on ? field.key : null),
             onFiles: (files) => chooseImage(selectedRow, field.key, files),
           })}
-        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => { updateRow(selectedRow, field.key, ''); setFocusOn({ at: `[data-image-field="${field.key}"] input[type="file"]` }) }}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept={assetAccept('image')} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => removeImage(field.key)}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
-      <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
+      <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => {
+        // A long title is drawn cut short on its tab (#732), and the whole of it is the tab's own.
+        const title = candidate['title'] || t('wizard.card.untitled')
+        return <button type="button" key={index} className="byd-choice" title={title} aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b><span className="byd-wizard-card-tab-title">{title}</span></button>
+      })}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
       <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards} {...working(busy)} onClick={() => void toEditor()}><Held busy={busy && via === 'guided'} idle={t('wizard.create')} working={t('wizard.creating')} /></button>{error && via === 'guided' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}</footer>
     </section>
   )
-  // The handoff's body is said behind the first step's question mark (L36); the title stays.
-  const handoff = <div className="byd-wizard-handoff"><strong>{t('wizard.handoff.title')}</strong></div>
+  // The box at the top (#687, beslut 2026-10-06): logged out, it says the game is kept on an
+  // account (#691) — here and only here — and logged in there is no box. What the guided start is
+  // the start of is said behind the first step's question mark (L36).
+  const handoff = loggedOut ? (
+    <div className="byd-wizard-handoff">
+      <p>
+        <strong>{t('wizard.handoff.account.lead')}</strong> {t('wizard.handoff.account')}
+      </p>
+    </div>
+  ) : null
   const panels: Record<Step, ReactNode> = { spelet, falten: <>{falten}</>, korten }
 
   return (
@@ -543,6 +708,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         </a>
         <div><span>{t('wizard.eyebrow')}</span><h1>{t('wizard.title')}</h1></div>
         <span>{t('wizard.steps')}</span>
+        {draftSays && <p className="byd-wizard-draft-says" role="alert">{t(draftSays)}</p>}
       </header>
       {desk ? (
         // All three steps are the page's main content (#555): the first two are the form as much
@@ -581,7 +747,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
               )
             })}
           </div>
-          <div className="byd-wizard-body">
+          <div className="byd-wizard-body" ref={body}>
             {STEPS.map(([key]) => (
               <div key={key} id={`byd-wizard-panel-${key}`} role="tabpanel" aria-labelledby={`byd-wizard-tab-${key}`} tabIndex={0} hidden={step !== key}>
                 {step === key && (

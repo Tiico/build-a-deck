@@ -6,9 +6,6 @@ import { deckIssues, fixesFor } from '../src/editor/checks.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import type { Element } from '@byd/template'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The wall offers the remedy, and the remedy mends the deck (#233).
 //
@@ -81,5 +78,36 @@ describe('a check that offers its own remedy on the wall (#233)', () => {
     openChecks(doc, /typsnitt/, () => undefined)
     await waitFor(() => expect(screen.getByText(/kan inte rättas åt dig/)).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Rätta i mallen' })).toBeNull()
+  })
+})
+
+// A remark that cannot be mended for the reader still has to say where it is mended (#737):
+// «typsnitt som inte följer med» opened to «back, front» and «ett formval», with no way on.
+describe('a remark whose remedy lives somewhere else (#737)', () => {
+  const fontless = (): ProjectDoc => {
+    const doc = projectDoc()
+    doc.fonts = undefined
+    return doc
+  }
+
+  it('takes the reader to the game’s typefaces in Speltema', async () => {
+    const onOpenFonts = vi.fn()
+    render(<DeckWall doc={fontless()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} onFixChecks={() => undefined} onOpenFonts={onOpenFonts} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Fysisk kontroll/ }))
+    fireEvent.click([...document.querySelectorAll<HTMLElement>('.byd-wall-checks li > button')].find((b) => /typsnitt/.test(b.textContent ?? ''))!)
+    fireEvent.click(await screen.findByRole('button', { name: /Speltema/ }))
+    expect(onOpenFonts).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the card’s sides in the reader’s language, and the remedy in hers rather than the tool’s', async () => {
+    openChecks(fontless(), /typsnitt/, () => undefined)
+    const detail = await waitFor(() => {
+      const found = document.querySelector('.byd-wall-check-detail')
+      expect(found).not.toBeNull()
+      return found as HTMLElement
+    })
+    expect(detail.textContent).toContain('Framsida')
+    expect(detail.textContent).not.toMatch(/\bfront\b|\bback\b/)
+    expect(detail.textContent).not.toContain('formval')
   })
 })
