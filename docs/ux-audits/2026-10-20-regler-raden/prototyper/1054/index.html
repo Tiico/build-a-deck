@@ -1,0 +1,109 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Regler-raden #1054</title><style>
+:root { --bg: #f6f6f4; --ink: #1c1d21; --quiet: #5b5f6a; --line: #d9d9d4; --mark: #1f6feb; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; --mark: #6ea8ff; } }
+:root[data-theme="dark"] { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; --mark: #6ea8ff; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; } main { max-width: 1320px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; } p { max-width: 70ch; color: var(--quiet); } section { margin: 40px 0; } h2 { font-size: 17px; margin: 0 0 4px; } h3 { font-size: 14px; margin: 20px 0 6px; }
+section[data-chosen] h2::after { content: " ★"; color: var(--mark); }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 12px; } figure { margin: 0; } figcaption { font-size: 12px; color: var(--quiet); }
+img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+.scroll { overflow-x: auto; } table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; } th, td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: right; } th:first-child, td:first-child { text-align: left; }
+</style></head><body><main><h1>Regler-fliken: boken står still när ett förslag eller en import visas (#1054)</h1>
+<p>Den riktiga editorn i utvecklingsläge, med AI-panelen öppen, vid 1280 × 800 och 1440 × 900 på svenska och engelska. Talen är y för bokens övre kant (<code>.byd-rules-spread</code>) i varje läge, mätta i den här maskinens typsnitt. Prototypen ligger på grenen <code>proto/1054-regler-raden</code>, <code>?proto=1054&amp;variant=AE|B</code>.</p>
+<section><h2>I dag (main)</h2><p>Raden har växeln och verktygen i en skriven bok, men bara rubriken och ? när ett förslag ligger i boken; förslagets rad står som en egen rad under den. Boken hoppar 32 px ned när ett förslag visas och upp igen när det döljs, och 175 px under en import. I en bok ur en fil bryter raden vid 1280 på engelska, så boken står 58 px lägre där än i en skriven bok.</p>
+<div class="scroll"><table><tr><th>Läge</th><th>1280 sv</th><th>1440 sv</th><th>1280 en</th><th>1440 en</th></tr>
+<tr><td>Boken som skriven</td><td>131</td><td>131</td><td>131</td><td>131</td></tr>
+<tr><td>Med ett förslag ([regler-om])</td><td>163</td><td>163</td><td>163</td><td>163</td></tr>
+<tr><td>Importens rapport öppen</td><td>306</td><td>306</td><td>306</td><td>306</td></tr>
+<tr><td>Boken gjord ur en fil</td><td>131</td><td>131</td><td>189</td><td>131</td></tr>
+</table></div>
+<h3>Boken som skriven</h3><div class="pair">
+<figure><img src="bilder/idag-1280-sv-skriven.png" alt="I dag (main), boken som skriven, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/idag-1440-sv-skriven.png" alt="I dag (main), boken som skriven, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/idag-1280-en-skriven.png" alt="I dag (main), boken som skriven, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 131</figcaption></figure>
+<figure><img src="bilder/idag-1440-en-skriven.png" alt="I dag (main), boken som skriven, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 131</figcaption></figure>
+</div>
+<h3>Med ett förslag ([regler-om])</h3><div class="pair">
+<figure><img src="bilder/idag-1280-sv-forslag.png" alt="I dag (main), med ett förslag ([regler-om]), 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 163</figcaption></figure>
+<figure><img src="bilder/idag-1440-sv-forslag.png" alt="I dag (main), med ett förslag ([regler-om]), 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 163</figcaption></figure>
+<figure><img src="bilder/idag-1280-en-forslag.png" alt="I dag (main), med ett förslag ([regler-om]), 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 163</figcaption></figure>
+<figure><img src="bilder/idag-1440-en-forslag.png" alt="I dag (main), med ett förslag ([regler-om]), 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 163</figcaption></figure>
+</div>
+<h3>Importens rapport öppen</h3><div class="pair">
+<figure><img src="bilder/idag-1280-sv-import.png" alt="I dag (main), importens rapport öppen, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 306</figcaption></figure>
+<figure><img src="bilder/idag-1440-sv-import.png" alt="I dag (main), importens rapport öppen, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 306</figcaption></figure>
+<figure><img src="bilder/idag-1280-en-import.png" alt="I dag (main), importens rapport öppen, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 306</figcaption></figure>
+<figure><img src="bilder/idag-1440-en-import.png" alt="I dag (main), importens rapport öppen, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 306</figcaption></figure>
+</div>
+<h3>Boken gjord ur en fil</h3><div class="pair">
+<figure><img src="bilder/idag-1280-sv-urfil.png" alt="I dag (main), boken gjord ur en fil, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/idag-1440-sv-urfil.png" alt="I dag (main), boken gjord ur en fil, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/idag-1280-en-urfil.png" alt="I dag (main), boken gjord ur en fil, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 189</figcaption></figure>
+<figure><img src="bilder/idag-1440-en-urfil.png" alt="I dag (main), boken gjord ur en fil, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 131</figcaption></figure>
+</div>
+</section>
+<section data-chosen><h2>AE — förslaget i verktygsraden (rekommenderad)</h2><p>Förslagets rad står på verktygens plats, bakom samma hårlinje, eftersom verktygen ändå är dolda medan ett förslag ligger i boken. Raden har en fast höjd i alla lägen, och raden om filen står i innehållskolumnens fot i stället för i raden. Boken står på 131 i skriven bok, med förslag och ur fil, vid båda bredderna och på båda språken. Raden brukar korta ord bara under 760 px, där inget av de fyra fallen hamnar. Kostnaden är att raden om filen hamnar i kolumnen, där den läses som en del av innehållet och inte av raden. Importens rapport trycker fortfarande ned boken (330), enligt #131 prototyp 8 variant B, och nu 24 px längre än i dag eftersom raden behåller sin höjd.</p>
+<div class="scroll"><table><tr><th>Läge</th><th>1280 sv</th><th>1440 sv</th><th>1280 en</th><th>1440 en</th></tr>
+<tr><td>Boken som skriven</td><td>131</td><td>131</td><td>131</td><td>131</td></tr>
+<tr><td>Med ett förslag ([regler-om])</td><td>131</td><td>131</td><td>131</td><td>131</td></tr>
+<tr><td>Importens rapport öppen</td><td>330</td><td>330</td><td>330</td><td>330</td></tr>
+<tr><td>Boken gjord ur en fil</td><td>131</td><td>131</td><td>131</td><td>131</td></tr>
+</table></div>
+<h3>Boken som skriven</h3><div class="pair">
+<figure><img src="bilder/AE-1280-sv-skriven.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken som skriven, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1440-sv-skriven.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken som skriven, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1280-en-skriven.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken som skriven, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1440-en-skriven.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken som skriven, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 131</figcaption></figure>
+</div>
+<h3>Med ett förslag ([regler-om])</h3><div class="pair">
+<figure><img src="bilder/AE-1280-sv-forslag.png" alt="AE — förslaget i verktygsraden (rekommenderad), med ett förslag ([regler-om]), 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1440-sv-forslag.png" alt="AE — förslaget i verktygsraden (rekommenderad), med ett förslag ([regler-om]), 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1280-en-forslag.png" alt="AE — förslaget i verktygsraden (rekommenderad), med ett förslag ([regler-om]), 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1440-en-forslag.png" alt="AE — förslaget i verktygsraden (rekommenderad), med ett förslag ([regler-om]), 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 131</figcaption></figure>
+</div>
+<h3>Importens rapport öppen</h3><div class="pair">
+<figure><img src="bilder/AE-1280-sv-import.png" alt="AE — förslaget i verktygsraden (rekommenderad), importens rapport öppen, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 330</figcaption></figure>
+<figure><img src="bilder/AE-1440-sv-import.png" alt="AE — förslaget i verktygsraden (rekommenderad), importens rapport öppen, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 330</figcaption></figure>
+<figure><img src="bilder/AE-1280-en-import.png" alt="AE — förslaget i verktygsraden (rekommenderad), importens rapport öppen, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 330</figcaption></figure>
+<figure><img src="bilder/AE-1440-en-import.png" alt="AE — förslaget i verktygsraden (rekommenderad), importens rapport öppen, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 330</figcaption></figure>
+</div>
+<h3>Boken gjord ur en fil</h3><div class="pair">
+<figure><img src="bilder/AE-1280-sv-urfil.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken gjord ur en fil, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1440-sv-urfil.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken gjord ur en fil, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1280-en-urfil.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken gjord ur en fil, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 131</figcaption></figure>
+<figure><img src="bilder/AE-1440-en-urfil.png" alt="AE — förslaget i verktygsraden (rekommenderad), boken gjord ur en fil, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 131</figcaption></figure>
+</div>
+</section>
+<section><h2>B — en fast statusrad under raden</h2><p>Verktygsraden ser ut som i dag. Under den står en statusrad som alltid är lika hög och bär raden om filen och varningarna, eller förslagets rad. Boken står still på 189 i alla tre lägen, men statusraden kostar 58 px av bokens höjd vid varje bredd, också när den är tom. Det gäller en skriven bok utan fil, som är det vanligaste fallet. Ledtexten som uppdraget nämnde finns inte kvar att bära, eftersom #674 flyttade den in i hjälpen. Importen trycker ned boken som i AE (388).</p>
+<div class="scroll"><table><tr><th>Läge</th><th>1280 sv</th><th>1440 sv</th><th>1280 en</th><th>1440 en</th></tr>
+<tr><td>Boken som skriven</td><td>189</td><td>189</td><td>189</td><td>189</td></tr>
+<tr><td>Med ett förslag ([regler-om])</td><td>189</td><td>189</td><td>189</td><td>189</td></tr>
+<tr><td>Importens rapport öppen</td><td>388</td><td>388</td><td>388</td><td>388</td></tr>
+<tr><td>Boken gjord ur en fil</td><td>189</td><td>189</td><td>189</td><td>189</td></tr>
+</table></div>
+<h3>Boken som skriven</h3><div class="pair">
+<figure><img src="bilder/B-1280-sv-skriven.png" alt="B — en fast statusrad under raden, boken som skriven, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1440-sv-skriven.png" alt="B — en fast statusrad under raden, boken som skriven, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1280-en-skriven.png" alt="B — en fast statusrad under raden, boken som skriven, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1440-en-skriven.png" alt="B — en fast statusrad under raden, boken som skriven, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 189</figcaption></figure>
+</div>
+<h3>Med ett förslag ([regler-om])</h3><div class="pair">
+<figure><img src="bilder/B-1280-sv-forslag.png" alt="B — en fast statusrad under raden, med ett förslag ([regler-om]), 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1440-sv-forslag.png" alt="B — en fast statusrad under raden, med ett förslag ([regler-om]), 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1280-en-forslag.png" alt="B — en fast statusrad under raden, med ett förslag ([regler-om]), 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1440-en-forslag.png" alt="B — en fast statusrad under raden, med ett förslag ([regler-om]), 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 189</figcaption></figure>
+</div>
+<h3>Importens rapport öppen</h3><div class="pair">
+<figure><img src="bilder/B-1280-sv-import.png" alt="B — en fast statusrad under raden, importens rapport öppen, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 388</figcaption></figure>
+<figure><img src="bilder/B-1440-sv-import.png" alt="B — en fast statusrad under raden, importens rapport öppen, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 388</figcaption></figure>
+<figure><img src="bilder/B-1280-en-import.png" alt="B — en fast statusrad under raden, importens rapport öppen, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 388</figcaption></figure>
+<figure><img src="bilder/B-1440-en-import.png" alt="B — en fast statusrad under raden, importens rapport öppen, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 388</figcaption></figure>
+</div>
+<h3>Boken gjord ur en fil</h3><div class="pair">
+<figure><img src="bilder/B-1280-sv-urfil.png" alt="B — en fast statusrad under raden, boken gjord ur en fil, 1280 sv" loading="lazy"><figcaption>1280 · sv · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1440-sv-urfil.png" alt="B — en fast statusrad under raden, boken gjord ur en fil, 1440 sv" loading="lazy"><figcaption>1440 · sv · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1280-en-urfil.png" alt="B — en fast statusrad under raden, boken gjord ur en fil, 1280 en" loading="lazy"><figcaption>1280 · en · boken på y 189</figcaption></figure>
+<figure><img src="bilder/B-1440-en-urfil.png" alt="B — en fast statusrad under raden, boken gjord ur en fil, 1440 en" loading="lazy"><figcaption>1440 · en · boken på y 189</figcaption></figure>
+</div>
+</section>
+</main></body></html>

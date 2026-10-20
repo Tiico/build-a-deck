@@ -364,9 +364,6 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
           <p>{t('rules.help.names')}</p>
           <p>{t('rules.help.lists')}</p>
         </Help>
-        {/* Which file the book came out of, and when (#131): text in the document, so it travels
-            with the project rather than with the browser the file was picked in. */}
-        {rules?.source && <span>{t('rules.source', { file: rules.source.file, when: when(rules.source.at, Date.now(), t) })}</span>}
         {failed && (
           <span role="alert" className="byd-rules-warn">
             {failed}
@@ -427,6 +424,23 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
             <Booklet client={client} book={rules} game={doc.name} />
           </div>
         )}
+        {/* The AI proposal laid in the book (#1006), said as Tabell says one (#1003): what it is, in
+            its own words, and the way to take it off again. It stands in the tools' place, behind
+            their divider, because the tools are not offered while it lies in the book (#1054,
+            variant AE): as a row of its own under this one it moved the book 32 px down when it came
+            and back up when it went, and the reader lost her place in the text. */}
+        {ai && (
+          <div className="byd-rules-ways byd-rules-tools byd-rules-ai" role="status" data-proposal="">
+            <span>
+              {t('rules.proposal')}: {rulesWords(ai.added, ai.rewritten, t).join(', ')}
+            </span>
+            {onHideProposal && (
+              <button type="button" onClick={onHideProposal}>
+                {t('rules.proposal.hide')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {proposal && (
         <Report
@@ -452,18 +466,6 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
           }}
         />
       )}
-      {/* The AI proposal laid in the book (#1006), said as Tabell says one (#1003): what it is, in its
-          own words, and the way to take it off again. */}
-      {ai && (
-        <p className="byd-rules-ai" role="status" data-proposal="">
-          {t('rules.proposal')}: {rulesWords(ai.added, ai.rewritten, t).join(', ')}{' '}
-          {onHideProposal && (
-            <button type="button" onClick={onHideProposal}>
-              {t('rules.proposal.hide')}
-            </button>
-          )}
-        </p>
-      )}
       <div className="byd-rules-spread">
         {/* `proposed` is the mark that says a section has nothing written in it yet. A section
             read out of a file has, so only the template's own disposition carries it. The column
@@ -478,6 +480,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
           {...(plan ? { marks: [...plan.sections, ...plan.subsections] } : {})}
           {...(ai ? { marks: aiTocMarks(ai.entries) } : {})}
           {...(writing ? { onAdd: addSection } : proposal || rules || ai ? {} : { proposed: true })}
+          {...(rules?.source ? { source: t('rules.source', { file: rules.source.file, when: when(rules.source.at, Date.now(), t) }) } : {})}
         />
         {/* The book is read in an area of its own, beside the column's and never inside it (#210).
             Before this the pair shared the tab's single scrolling area and the column hung in it,
@@ -930,6 +933,7 @@ function Toc({
   marks,
   silent,
   onFind,
+  source,
 }: {
   blocks: readonly RenderedBlock[]
   label: string
@@ -938,6 +942,7 @@ function Toc({
   marks?: readonly Pick<RulePlanSection, 'id' | 'mark'>[] | undefined
   silent?: readonly string[] | undefined
   onFind?: ((id: string) => void) | undefined
+  source?: string | undefined
 }) {
   const t = useT()
   // The book as the column lists it: a section per heading of the first level and, under it, the
@@ -1028,6 +1033,11 @@ function Toc({
           {t('rules.addSection')}
         </button>
       )}
+      {/* Which file the book came out of, and when (#131): text in the document, so it travels
+          with the project rather than with the browser the file was picked in. It stands at the
+          foot of the column and not in the tab's row (#1054, variant AE): in the row it broke the
+          row onto two at 1280 beside the AI panel, in CI's face, and moved the book 58 px. */}
+      {source && <p className="byd-rules-source">{source}</p>}
     </nav>
   )
 }
