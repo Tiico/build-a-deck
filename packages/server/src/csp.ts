@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 
 // The page's Content-Security-Policy (#1008, DRIFT §14). Written here, sent by this server with
@@ -17,16 +17,19 @@ const GOOGLE_FILES = 'https://fonts.gstatic.com'
 export type PolicyInputs = {
   // The hashes of the inline scripts in the page this policy goes with, as CSP writes them.
   scriptHashes: readonly string[]
+  // This response's nonce (`pageNonce`), for the inline script the edge in front of the box writes
+  // into the page (#1043, DRIFT §14). None of the page's own scripts carries it.
+  nonce: string
   // The table's socket on this origin: `ws://host` or `wss://host`, when the host is one we can name.
   socket: string | null
   // The object store the redirects of `/faces` and `/assets` point at (DRIFT §4), when there is one.
   objects: string | null
 }
 
-export function pagePolicy({ scriptHashes, socket, objects }: PolicyInputs): string {
+export function pagePolicy({ scriptHashes, nonce, socket, objects }: PolicyInputs): string {
   const directives: [string, string[]][] = [
     ['default-src', ["'self'"]],
-    ['script-src', ["'self'", ...scriptHashes]],
+    ['script-src', ["'self'", ...scriptHashes, `'nonce-${nonce}'`]],
     // `'unsafe-inline'`, and why it is the one place it stands: React writes `style=` attributes,
     // the card preview sets the compiled card's own sheet as a `<style>` in its shadow root, and
     // the compiled card's markup carries its own `style=` too — none of it written at build time,
@@ -44,6 +47,14 @@ export function pagePolicy({ scriptHashes, socket, objects }: PolicyInputs): str
     ['frame-ancestors', ["'none'"]],
   ]
   return directives.map(([name, sources]) => `${name} ${sources.join(' ')}`).join('; ')
+}
+
+// Cloudflare's JavaScript Detections (#1043): the edge writes an inline script into every page it
+// passes on, its bytes different on every request, so no hash of ours can name it. It reads the
+// nonce off this header instead and puts it on that script. A nonce is a secret for the length of
+// one response: 128 random bits, never reused, and written nowhere in the page itself.
+export function pageNonce(): string {
+  return randomBytes(16).toString('base64')
 }
 
 // For the bytes a creator uploaded, served from this origin when there is no object store

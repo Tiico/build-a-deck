@@ -416,7 +416,7 @@ Policyn är ett lager under React, inte i stället för det: ett `<img onerror=�
 Policyn, direktiv för direktiv:
 
 - `default-src 'self'` — det som inte nämns nedan (manifestet, ramar, workers, media) får bara komma från appens eget origin.
-- `script-src 'self' 'sha256-…'` — appens egna chunkar och de tre inline-skripten i `index.html` (skalets språk och dess ifyllning från #749, förladdningen från #760), godkända med sina hashar.
+- `script-src 'self' 'sha256-…' 'nonce-…'` — appens egna chunkar och de tre inline-skripten i `index.html` (skalets språk och dess ifyllning från #749, förladdningen från #760), godkända med sina hashar, och en nonce per svar för det skript Cloudflare lägger in i sidan (nedan, #1043).
   Inget `'unsafe-inline'`, inget `'unsafe-eval'`.
 - `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` — `'unsafe-inline'` eftersom React skriver `style=`-attribut, kortförhandsvisningen sätter det kompilerade kortets ark som `<style>` i sin skuggrot och kortets markup bär egna `style=`; inget av det finns vid bygget, så det finns inget att hasha.
   En stil kan inte köra kod.
@@ -432,7 +432,14 @@ Objektlagrets origin läses ur samma konfiguration som omdirigeringarna (`R2_END
 
 Inline-skripten godkänns med hash och inte med nonce.
 Servern läser hasharna ur exakt den fil den skickar, en gång per ändring på disken, så de kan inte glida isär från sidan vad bygget än lägger i den härnäst.
-En nonce per svar hade krävt att sidan skrevs om vid varje förfrågan, och då hade den förkomprimerade kopian i §13 inte längre varit samma bytes som svaret.
+En nonce på appens egna skript hade krävt att sidan skrevs om vid varje förfrågan, och då hade den förkomprimerade kopian i §13 inte längre varit samma bytes som svaret.
+
+Kanten lägger däremot in ett eget skript i varje sida: Cloudflares JavaScript Detections, ett inline-skript som laddar `/cdn-cgi/challenge-platform/scripts/jsd/main.js` och vars bytes är olika vid varje förfrågan (#1043).
+Ingen hash i bygget kan nämna det, och under Bot Fight Mode går detekteringen inte att stänga av.
+Cloudflare läser i stället svarets CSP-rubrik och sätter dess nonce på skriptet det lägger in; det fungerar bara med en rubrik, inte med en `<meta>`.
+Servern skriver därför en ny nonce, 128 slumpade bitar, i rubriken på varje HTML-svar (`pageNonce` i `csp.ts`).
+Den står bara i rubriken och aldrig i sidan, så sidans bytes och den förkomprimerade kopian är desamma som förut, och det finns inget i dokumentet för ett inskjutet skript att läsa av.
+Skriptet det laddar ligger på eget origin och släpps in av `'self'`.
 
 zod provar en gång om den får kompilera en snabbväg med `new Function`.
 Den fångar felet och går vidare, men webbläsaren har redan rapporterat försöket som ett brott mot policyn, på varje sida; webben sätter därför `jitless` innan något tolkas (`packages/web/src/no-eval.ts`).
@@ -458,7 +465,7 @@ Två policyer gäller båda samtidigt, så en till kan bara strama åt, och en s
 `chain-no-auth@file` ligger utanför repot och ska hållas fri från `Content-Security-Policy`.
 E2E-sviten kör den byggda appen med policyn påslagen och med ett objektlager på ett eget origin bredvid stacken (`packages/e2e/support/objects.ts`), som svarar utan CORS precis som R2, så att produktionsvägen med 302 till R2 är den som testas; `packages/e2e/test/csp-bucket.spec.ts` visar att en bild verkligen hämtas därifrån.
 Varje spec körs genom svitens egen `test` (`packages/e2e/support/test.ts`), som fäller den spec där policyn vägrade något, och lint förbjuder Playwrights bara `test` i specarna.
-`packages/e2e/test/csp.spec.ts` visar att ett inskjutet externt skript och ett inline-attribut vägras, och `packages/server/test/csp.test.ts` kräver varje direktiv i rubriken.
+`packages/e2e/test/csp.spec.ts` visar att ett inskjutet externt skript och ett inline-attribut vägras, och att ett skript som en kant lägger in med rubrikens nonce körs; `packages/server/test/csp.test.ts` kräver varje direktiv i rubriken och en ny nonce på varje sida.
 En ny källa — ett nytt CDN, en inbäddning, en tredje part — är en ändring här och i `csp.ts`, med motivering.
 
 ---
