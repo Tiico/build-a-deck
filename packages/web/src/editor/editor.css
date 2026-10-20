@@ -2405,10 +2405,11 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    with #695), and a button, because knowing they are there is no use without a way to them.
    When the row runs out of room the names give way first and from their end, and the number
    stays: the names' track is the only one that may be narrower than what it holds, so the button
-   is never narrower than its number, and it gives way long before anything else in the row
-   does. It is the 44 px every target in the editor is, and takes a line of text's height in the
+   is never narrower than its number. It takes only the room the row has left over (a basis of
+   nought, grown no further than what it says), so nothing else in the row gives way — the quiet
+   line wrapped, and a confirmation was cut — until the names are gone. It is the 44 px every target in the editor is, and takes a line of text's height in the
    row, so the foot keeps the height it has without it; the ring is drawn round the words. */
-.byd-crown-foot .byd-data-outside { flex: 0 1000 auto; display: inline-grid; grid-template-columns: auto minmax(0, max-content) auto; align-items: center; margin-block: calc((1lh - var(--byd-tap)) / 2); padding: 0 var(--byd-s2); border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-count-ink); font: inherit; cursor: pointer; }
+.byd-crown-foot .byd-data-outside { flex: 1 1 0; min-width: min-content; max-width: max-content; display: inline-grid; grid-template-columns: auto minmax(0, max-content) auto; align-items: center; margin-block: calc((1lh - var(--byd-tap)) / 2); padding: 0 var(--byd-s2); border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-count-ink); font: inherit; cursor: pointer; }
 .byd-crown-foot .byd-data-outside[data-side='left'] { grid-template-columns: auto auto minmax(0, max-content); }
 .byd-crown-foot .byd-data-outside > span { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
 .byd-crown-foot .byd-data-outside:hover { color: #e6ecfa; }
@@ -2416,7 +2417,9 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-crown-foot .byd-data-outside:focus-visible { outline-offset: -4px; }
 .byd-crown-foot .byd-data-outside[data-side='left'] > :first-child { margin-right: var(--byd-s1); }
 .byd-crown-foot .byd-data-outside[data-side='right'] > :last-child { margin-left: var(--byd-s1); }
-.byd-data-outside-names { overflow: hidden; text-overflow: ellipsis; }
+/* The names are cut by their own box, and the underline hangs under the line: the box reaches a
+   rung further down than it is laid out, so the cut is to the side and never under the words. */
+.byd-data-outside-names { overflow: hidden; text-overflow: ellipsis; padding-block: var(--byd-s1); margin-block: calc(-1 * var(--byd-s1)); }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 4px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
