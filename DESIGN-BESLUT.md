@@ -4029,6 +4029,19 @@ Början är densamma på alla, så den får ge vika: raden börjar med «…» o
 Bara villkor kapas så; ett namngivet element är skrivet av formgivaren och läses från början som förut.
 Känd begränsning: två villkor med samma antal kort skiljs högst av värdets sista bokstav (Koppar och Diamant har båda 12 i Sal's Saloon), och med ett bredare typsnitt än Macens — DejaVu på Linux — inte alls; då är det namnet i `title` och panelen som skiljer dem.
 
+**Reviderat 2026-10-20 (#699, beställarens val variant D efter [prototypen](docs/ux-audits/2026-10-07-lagerraden/prototyper/01-lagerraden.html)): raden bryter, mappknappen går.**
+Kapningen i början (#569) och mappknappen (#478) ersätts.
+Ett villkor ingen döpt skrivs ut helt och bryts över de rader det behöver: «om raritet = / Karaktär · 10 kort».
+Kolumnens namn avstavas där det måste brytas, värdet bryts bara mellan ord, och ingenting kapas; två rader ryms i radens 44 px, så Sal's Saloons sex villkor står lika höga som alla andra lager och bara ett långt villkor gör sin rad högre.
+Mappknappen (44 px) tas ur raden och ger namnet sina pixlar: ett villkor fälls ut när det väljs, som tangentbordet redan gjorde, och mappens pil ritas som ett tecken där greppet står.
+Att titta i en mapp utan att välja den går därför inte längre med pekaren; tangentbordet nådde aldrig knappen.
+Lagret har ett namn, ordagrant detsamma i raden, på dukens flik, i egenskapsrubriken och i frågan före en borttagning: villkoret, «om raritet = Karaktär», tills formgivaren döper det.
+Skärmläsaren hör radens namn, antalet kort och, i en grupp, vems lagret är: «om raritet = Silver, 14 kort».
+I en grupp står inget märke på basens lager — skärmläsaren hör «från basen» — och det gruppen ändrar får brickan «gruppens», i stället för «· bas» på varje rad; ett lager gruppen tar bort säger det som förut, överstruket.
+Grupper-listan skrivs i ord: gruppens värde, antalet kort och vad varje sida ändrar, med lagren vid sitt namn och villkoren räknade — «Trap+ · 3 kort · baksidan ändrar band, raritet och 6 villkor · framsidan ändrar band».
+Skälet: med kapningen hette Sal's Saloons sex villkor «…r · 10 kort», «…r · 14 kort» i en kolumn på 220 px, värdet syntes aldrig och samma lager hette tre saker; variant D var den enda av fyra där varje värde står helt i båda språken, med Macens typsnitt och med DejaVus, utan mätning i JS och utan att bero på grannarna.
+Priset är höjd för långa villkor: prototypens lek med sex långa svenska villkor blev 178 px längre.
+
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
@@ -4627,7 +4640,8 @@ Prototypen `packages/web/src/prototype/layers` ställde tre varianter mot varand
 Beställaren valde **A**, och valde bort upp/ned-knappar helt: ordningen ändras med drag och med Alt och en piltangent, och det som gör dragningen lättare är dropplinjen som säger var lagret hamnar, inte en knapp till.
 
 **Raden.** Lås till vänster, glyf för sorten, namnet, vad lagret visar, och ett grepp till höger.
-Namnet är lagrets id, för det är ordet wizarden gjorde av kolumnen och ordet egenskapspanelen redan har i sin rubrik — eller det namn designern själv gett lagret, som byts med dubbelklick eller F2.
+Namnet är lagrets id, för det är ordet wizarden gjorde av kolumnen — eller det namn designern själv gett lagret, som byts med dubbelklick eller F2; ett villkor ingen döpt heter sitt villkor (#478, #699).
+Egenskapspanelens rubrik säger samma namn, i gemener som namnet är skrivet, och inte id:t i versaler (reviderat 2026-10-20, #699): ett lager har ett namn, ordagrant detsamma i listan, på duken och i rubriken.
 Namnet är en egen egenskap och inte id:t: id:t är det gruppernas `override` och `remove` pekar på (L3), så att byta det vore en migrering och inte en omdöpning.
 Andraraden är vad lagret visar, och står där bara när det inte är namnet en gång till.
 
