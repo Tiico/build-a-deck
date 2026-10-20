@@ -803,7 +803,7 @@
 .byd-setup-canvas { display: flex; flex-direction: column; gap: 8px; overflow: auto; }
 /* Without an inline instruction before it, help can be the row's first control. Keep its
    whole hit area inside the canvas instead of borrowing room from a preceding sentence. */
-.byd-setup-said > .byd-help { padding-inline: calc((var(--byd-tap) - 22px) / 2); }
+.byd-setup-said > .byd-help { padding-inline: calc((var(--byd-tap) - 22px) / 2); } /* undantag: ringens 22 px mot träffytans 44 är inget avstånd på stegen. */
 .byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* Under the heading of the group it adds to (#711, beslut B), between the heading and the rows. */
 .byd-setup-zones section > .byd-setup-tools { margin: var(--byd-s1) 0 var(--byd-s2); }

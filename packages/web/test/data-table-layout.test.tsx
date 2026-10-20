@@ -756,10 +756,11 @@ async function measureFoot({ html, deck }: Table): Promise<{ height: number; too
 
 // «Följ höjden igen» in the column door (#739): a 44 px target whose words were 10 px, underlined,
 // 6 px over the next column's name, in a door whose other small text — the prose switch beside
-// it — is 11. The words are read at least at the door's small size, and the next row starts a step
-// of the ladder further down.
+// it — is 11. Since #674 it is a ↶ on its own column's row rather than words on a line under it:
+// drawn at least at the door's small size, and wholly inside the row it belongs to, so nothing of
+// it can be read as the next column's.
 describe('the way back to the height in the column door (#739)', () => {
-  it("is written at least as large as the door's other small text, with air before the next column", async () => {
+  it("is drawn at least as large as the door's other small text, inside its own column's row", async () => {
     const user = userEvent.setup()
     const doc = projectDoc()
     doc.prose = { title: true }
@@ -777,15 +778,17 @@ describe('the way back to the height in the column door (#739)', () => {
           named: follow.getAttribute('aria-label'),
           size: parseFloat(getComputedStyle(follow).fontSize),
           small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-prose-switch > button')!).fontSize),
-          air: next.getBoundingClientRect().top - follow.getBoundingClientRect().bottom,
-          step: parseFloat(getComputedStyle(document.querySelector('.byd-columns')!).getPropertyValue('--byd-s2')),
+          own: (({ top, bottom }) => ({ top, bottom }))(follow.closest('li')!.getBoundingClientRect()),
+          box: (({ top, bottom }) => ({ top, bottom }))(follow.getBoundingClientRect()),
+          next: next.getBoundingClientRect().top,
         }
       })
       expect(read.named).toBe('Följ höjden igen, Titel')
       expect(read.small).toBeGreaterThan(0)
       expect(read.size).toBeGreaterThanOrEqual(read.small)
-      expect(read.step).toBeGreaterThan(0)
-      expect(read.air).toBeGreaterThanOrEqual(read.step)
+      expect(read.box.top).toBeGreaterThanOrEqual(read.own.top)
+      expect(read.box.bottom).toBeLessThanOrEqual(read.own.bottom)
+      expect(read.next).toBeGreaterThan(read.box.bottom)
     } finally {
       await page.close()
     }
