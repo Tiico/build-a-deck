@@ -20,9 +20,10 @@ export type LayerListProps = {
   onRename?(id: string, name: string | null): void
   // The heading the surrounding view gives the list; the list does not know its own frame.
   labelledBy: string
-  // What a layer belongs to, said on the layer itself (#13): the base, or the group that
-  // overrides it. Nothing at all when the list is not about a group.
-  markOf?(id: string): string | null
+  // What a layer belongs to (#13): the base, the open group, or — a base layer the group takes
+  // away — gone from the group's cards; and the group's rule. Nothing at all when the list is not
+  // about a group.
+  markOf?(id: string): LayerMark | null
   // The layers the open group takes away from its own cards: still listed, so the removal can be
   // seen and undone, but struck through — they are not on the card in front of the designer.
   removed?: ReadonlySet<string>
@@ -36,6 +37,9 @@ export type LayerListProps = {
 // «om raritet = Karaktär» — the column's name as it stands inside those words, and how many cards
 // it holds, «10 kort».
 export type ConditionSaid = { words: string; field: string; cards: string }
+
+// Whose a layer is while a group is open (#13, #699).
+export type LayerMark = { of: 'base' | 'group' | 'removed'; rule: string }
 
 // What the designer calls a layer: the name she gave it, or else its id — which is the word the
 // wizard made out of the column and the word the properties panel puts in its heading (L15).
@@ -140,6 +144,17 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
         // keyboard, which chooses by walking, never reached it anyway.
         const unfold = folder !== null && selected === el.id
         const mark = markOf?.(el.id) ?? null
+        // What a screen reader hears on the layer (#699): its name, what it shows, how many cards a
+        // condition holds, and whose the layer is in a group — «om raritet = Silver, 14 kort»,
+        // «title, från basen». The dot and the badge are for the eye; the words are the same.
+        const said = [
+          name,
+          el.kind === 'if' ? (el.name ? condition?.words : null) : shows,
+          condition?.cards,
+          mark && t(mark.of === 'base' ? 'canvas.mark.base' : mark.of === 'group' ? 'canvas.mark.own.said' : 'canvas.mark.removedIn', { rule: mark.rule }),
+        ]
+          .filter(Boolean)
+          .join(', ')
         const locked = el.locked === true
         return (
           <div
@@ -208,6 +223,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                 <button
                   type="button"
                   className="byd-layer-pick"
+                  aria-label={said}
                   {...withMove(el.id, at, cellProps(el.id, 'layer', () => onSelect(el.id)))}
                   onClick={() => onSelect(el.id)}
                   onDoubleClick={() => onRename && setRenaming(el.id)}
@@ -232,7 +248,15 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                     </span>
                   )}
                   {shows && <i className="byd-layer-shows">{shows}</i>}
-                  {mark && <span className="byd-layer-source">· {mark}</span>}
+                  {/* In a group a base layer carries no mark (#699): «· bas» on every row said what
+                      the rows all shared, and broke each of them in two. What the group changes
+                      carries its badge, and a layer it takes away says so, struck through. */}
+                  {mark?.of === 'group' && (
+                    <span className="byd-layer-own" title={mark.rule}>
+                      {t('canvas.mark.own')}
+                    </span>
+                  )}
+                  {mark?.of === 'removed' && <span className="byd-layer-source">· {t('canvas.mark.removedIn', { rule: mark.rule })}</span>}
                 </button>
               )}
               {folder && unfold && (

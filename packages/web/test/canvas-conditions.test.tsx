@@ -106,6 +106,8 @@ describe('a layer drawn on some cards only (#478)', () => {
     row.focus()
     await user.keyboard('{Delete}')
     expect(screen.getByRole('alertdialog').textContent).toMatch(/1 kort/)
+    // By the layer's one name (#699), not its id.
+    expect(screen.getByRole('alertdialog').textContent).toMatch(/^Ta bort om Titel = Drake från framsida\?/)
   })
 })
 
@@ -121,6 +123,22 @@ describe('one name for a condition layer (#699)', () => {
     expect(row.textContent).toBe('om Titel = Drake · 1 kort')
     expect(tab.textContent).toBe('om Titel = Drake')
     expect(screen.getByRole('heading', { name: 'Egenskaper · om Titel = Drake' })).toBeTruthy()
+  })
+
+  // The grid is untouched (L15): the arrow walks from one condition to the next, and what is heard
+  // there is the condition and its count, with a pause where the eye sees a dot.
+  it('is heard by its condition and its count, and the arrow walks to the next condition', async () => {
+    const user = userEvent.setup()
+    const doc: ProjectDoc = projectDoc()
+    const knight: Element = { kind: 'if', id: 'if-riddare', when: { field: 'title', equals: 'Riddare' }, children: [{ kind: 'shape', id: 'shield', shape: 'rect', x: 5, y: 5, w: 8, h: 8, fill: '#335577' }] }
+    doc.template.faces['front']!.base.push(knight, BADGE)
+    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="if-drake" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onReplaceFace={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />)
+    const drake = document.querySelector('[data-layer="if-drake"] .byd-layer-pick') as HTMLElement
+    expect(drake.getAttribute('aria-label')).toBe('om Titel = Drake, 1 kort')
+    drake.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(document.activeElement).toBe(document.querySelector('[data-layer="if-riddare"] .byd-layer-pick'))
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('om Titel = Riddare, 1 kort')
   })
 
   it('heads the properties of a named layer with its name, not its id', () => {
