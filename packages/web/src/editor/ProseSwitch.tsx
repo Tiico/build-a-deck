@@ -1,4 +1,5 @@
 import type { HTMLAttributes, Ref } from 'react'
+import { HookGlyph } from '../glyphs.js'
 import { useT } from '../i18n/index.js'
 
 // Vad en kolumn skrivs som, där den står (L43, ändrat i #615): i kolumnlistan bakom `＋`, på samma
@@ -56,14 +57,16 @@ export function ProseSwitch({ label, prose, choice, onProse, keys }: ProseSwitch
   )
 }
 
-// Reset is an action, so it stays beside the switch. The explanation is shared by the list.
+// Reset is an action, so it stays beside the switch it answers, before the ×. Its slot keeps its
+// width when there is nothing to reset, so the × stands in one column down the list. The
+// explanation is shared by the list.
 export function ProseReset({ label, choice, onProse, keys }: ProseSwitchProps) {
   const t = useT()
   return (
     <span className="byd-prose-reset">
       {choice !== null && (
         <button type="button" className="byd-prose-follow" {...keys('follow')} aria-label={t('table.prose.turn.named', { turn: t('table.prose.follow'), field: label })} title={t('table.prose.follow')} onClick={() => onProse(null)}>
-          <span aria-hidden="true">↶</span>
+          <HookGlyph />
         </button>
       )}
     </span>

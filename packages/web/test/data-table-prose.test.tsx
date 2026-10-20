@@ -279,4 +279,19 @@ describe('växeln nås med tangentbordet i dörrens egen ordning (#388, #615)', 
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
   })
+
+  // Vägen tillbaka till höjden hör till växeln och står intill den, före × (#674): pilarna går i
+  // den ordning raden läses, och × är radens sista kontroll, i samma kolumn som låset.
+  it('går till vägen tillbaka mellan växeln och ×', async () => {
+    const doc = projectDoc()
+    doc.prose = { body: false }
+    table(doc, { onRenameField: () => undefined })
+    door()
+    const user = userEvent.setup()
+    act(() => screen.getByRole('button', { name: 'Text, body' }).focus())
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Följ höjden igen, body' }))
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+  })
 })

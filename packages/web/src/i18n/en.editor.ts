@@ -584,7 +584,7 @@ export const enEditor = {
 
   'table.columns.help.topic': 'columns',
   'table.columns.help.prose': 'Prose gives you multiple lines and text formatting. Text is a plain text field.',
-  'table.columns.help.auto': 'A dashed selection follows the template’s text box. Your own choice stays until you reset it with ↶.',
+  'table.columns.help.auto': 'A dashed selection follows the template’s text box. Your own choice stays until you reset it with the arrow beside the switch.',
   'table.columns.help.manage': 'Press a column name to rename it. Locked columns are required by the game. Link images to columns in Template.',
   'table.columns': 'Columns',
   'table.column.moved': '{field} is column {at} of {of}',

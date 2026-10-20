@@ -795,6 +795,49 @@ describe('the way back to the height in the column door (#739)', () => {
   }, 60_000)
 })
 
+// The row's last control is the × or, where a column cannot be taken away, the lock that stands
+// in its place (#674): the two are one column down the list, so a row's ending reads the same on
+// every row. The way back to the height belongs to the switch and stands beside it, drawn with the
+// editor's own hook rather than a ↶ the machine's font makes a hairline of.
+describe('the column door ends every row in one column (#674)', () => {
+  it('puts the lock under the ×, and the way back between the switch and the ×', async () => {
+    const user = userEvent.setup()
+    const doc = projectDoc()
+    doc.prose = { title: true }
+    const { container, unmount } = render(<Table doc={doc} />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const html = container.innerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+      const read = await page.evaluate(() => {
+        const right = (el: Element | null) => (el ? Math.round(el.getBoundingClientRect().right) : null)
+        const rows = [...document.querySelectorAll('.byd-columns-list li')]
+        const follow = document.querySelector('.byd-columns .byd-prose-follow')!
+        const row = follow.closest('li')!
+        return {
+          ends: rows.map((li) => right(li.querySelector('.byd-data-dropfield, .byd-columns-system'))),
+          switchRight: right(row.querySelector('.byd-prose-switch')),
+          followLeft: Math.round(follow.getBoundingClientRect().left),
+          followRight: right(follow),
+          removeLeft: Math.round(row.querySelector('.byd-data-dropfield')!.getBoundingClientRect().left),
+          drawn: follow.querySelector('svg') !== null,
+          typed: follow.textContent,
+        }
+      })
+      expect(read.ends.length).toBeGreaterThan(2)
+      expect(new Set(read.ends).size).toBe(1)
+      expect(read.followLeft).toBeGreaterThanOrEqual(read.switchRight!)
+      expect(read.followRight).toBeLessThanOrEqual(read.removeLeft)
+      expect(read.drawn).toBe(true)
+      expect(read.typed).toBe('')
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
 // The column door's own question (#858): «Ta bort fältet body» asked in the same band over the
 // head that the row's × used to (#739), so the table — and the door hanging from its head — moved
 // down under the hand that had just pressed the ×. It asks in the foot, as the row's × and the

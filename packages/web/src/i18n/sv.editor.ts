@@ -654,7 +654,7 @@ export const svEditor = {
 
   'table.columns.help.topic': 'kolumnerna',
   'table.columns.help.prose': 'Prosa ger flera rader och textformatering. Text är ett vanligt textfält.',
-  'table.columns.help.auto': 'En streckad markering följer mallens textruta. Ett eget val gäller tills du återställer det med ↶.',
+  'table.columns.help.auto': 'En streckad markering följer mallens textruta. Ett eget val gäller tills du återställer det med pilen bredvid växeln.',
   'table.columns.help.manage': 'Tryck på ett kolumnnamn för att byta det. Låsta kolumner behövs av spelet. Bilder kopplas till kolumner i Mall.',
   'table.columns': 'Kolumner',
   'table.column.moved': '{field} är kolumn {at} av {of}',

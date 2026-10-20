@@ -20,8 +20,9 @@ på plats. Prototypen är borttagen efter implementation.
 Nu är raderna 44 px och panelen 470 px i samma sexkolumnsexempel. Panelen
 blir cirka 77 px lägre, trots att även låsta rader får full höjd. Listan rullar
 när fönstret är lågt. Prosa/Text och borttagning ligger kvar i varje rad;
-«Följ höjden igen» är en namngiven återställningsknapp, ↶. Ett lås ersätter
-systemkolumnens mening, med orsaken kvar i tillgängligt namn. Gemensam hjälp
+«Följ höjden igen» är en namngiven återställningsknapp, en ritad krok intill
+växeln. Ett lås ersätter systemkolumnens mening, med orsaken kvar i tillgängligt
+namn, och står i ×:ets kolumn. Gemensam hjälp
 förklarar textlägena, streckad markering, återställning, namnbyte och bilder.
 Måttuträkningarna tillför inget som behövs för valet och har tagits bort.
 

@@ -165,16 +165,17 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   // What a row has to stand on. `id` and `antal` have neither a name that is a control nor an × —
   // they are span names with the padlock in the ×'s place — so a row with nothing to focus is no
   // row in the ring at all. A width is a control only for a column a hand has pulled (#46).
-  // The switch stands between the name and the × (#615), and the way back to the height on the
-  // same row, so the arrows walk the row in the order it is read.
+  // The switch stands between the name and the × (#615), and the way back to the height beside
+  // the switch it answers (#674), so the arrows walk the row in the order it is read and the × —
+  // or the lock in its place — is every row's last.
   const cellsOf = (field: string): Cell[] => {
     const prose = proseHere(field)
     return [
       ...(canRename(field) ? (['name'] as Cell[]) : []),
       ...(widths[field] !== undefined ? (['width'] as Cell[]) : []),
       ...(prose ? (['prose', 'plain'] as Cell[]) : []),
-      ...(canRemove(field) ? (['remove'] as Cell[]) : []),
       ...(prose && prose.choice !== null ? (['follow'] as Cell[]) : []),
+      ...(canRemove(field) ? (['remove'] as Cell[]) : []),
     ]
   }
   const rows = columns.filter((field) => cellsOf(field).length > 0)
@@ -290,6 +291,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                     </button>
                   )}
                   {prose && <ProseSwitch label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} />}
+                  {prose && <ProseReset label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} />}
                   {canRemove(field) ? (
                     <button
                       type="button"
@@ -309,7 +311,6 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                       </svg>
                     </span>
                   )}
-                  {prose && <ProseReset label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} />}
                 </>
               )}
               {renaming === field && refused !== null && (

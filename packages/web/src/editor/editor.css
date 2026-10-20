@@ -2811,7 +2811,8 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-columns-head { flex: 0 0 auto; justify-content: space-between; min-height: var(--byd-tap); }
 .byd-columns-head strong { font-size: 12px; }
 .byd-prose-reset { flex: 0 0 var(--byd-tap); }
-.byd-columns .byd-prose-follow { width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; font-size: 20px; cursor: pointer; }
+.byd-columns .byd-prose-follow { display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; cursor: pointer; }
+.byd-columns .byd-prose-follow .byd-glyph { width: 16px; height: 16px; }
 .byd-columns .byd-prose-follow:hover, .byd-columns .byd-prose-follow:focus-visible { color: #fff; }
 .byd-columns-system { flex: 0 0 var(--byd-tap); display: flex; align-items: center; justify-content: center; color: var(--byd-editor-quiet); }
 .byd-columns-system svg { flex: 0 0 auto; }
