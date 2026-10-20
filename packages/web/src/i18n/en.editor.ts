@@ -627,9 +627,6 @@ export const enEditor = {
   'canvas.card.none': 'No card is called that.',
   'canvas.if.equals': 'if {field} = {value}',
   'canvas.if.filled': 'if {field} is filled',
-  'canvas.if.row.one': '{condition} · {n} card',
-  'canvas.if.row.other': '{condition} · {n} cards',
-  'canvas.if.open': 'Show what is in {name}',
   'canvas.if.inside': 'In {name}',
   'canvas.if.sec': 'Condition',
   'canvas.if.field': 'The column the condition asks',
@@ -721,7 +718,6 @@ export const enEditor = {
   // the press will make it, because that is what a designer is deciding when she reads it.
   'canvas.props.fold': 'Fold the properties away',
   'canvas.props.show': 'Show the properties',
-  'canvas.props.of': 'Properties · {id}',
   'canvas.props.sec.layout': 'Layout',
   'canvas.props.sec.content': 'Content',
   'canvas.props.sec.text': 'Text',

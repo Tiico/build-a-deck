@@ -707,9 +707,6 @@ export const svEditor = {
   'canvas.card.none': 'Inget kort heter så.',
   'canvas.if.equals': 'om {field} = {value}',
   'canvas.if.filled': 'om {field} finns',
-  'canvas.if.row.one': '{condition} · {n} kort',
-  'canvas.if.row.other': '{condition} · {n} kort',
-  'canvas.if.open': 'Visa vad som ingår i {name}',
   'canvas.if.inside': 'I {name}',
   'canvas.if.sec': 'Villkor',
   'canvas.if.field': 'Kolumnen villkoret frågar',
@@ -810,7 +807,6 @@ export const svEditor = {
   // trycket gör den till, för det är det formgivaren står och bestämmer när hon läser den.
   'canvas.props.fold': 'Fäll ihop egenskaperna',
   'canvas.props.show': 'Visa egenskaperna',
-  'canvas.props.of': 'Egenskaper · {id}',
   // Panelens avdelningar (L25). De står alltid öppna och har inget läge att minnas.
   'canvas.props.sec.layout': 'Layout',
   'canvas.props.sec.content': 'Innehåll',

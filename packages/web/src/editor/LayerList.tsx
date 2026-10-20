@@ -29,8 +29,13 @@ export type LayerListProps = {
   // What a picture the template carries by itself is called (#320), by the hash of its bytes.
   pictureName?(hash: string): string
   // What a condition layer says on its row (#478): its condition and on how many cards it holds.
-  conditionOf?(el: Element): string | null
+  conditionOf?(el: Element): ConditionSaid | null
 }
+
+// A condition in the words the row is written in (#699): the condition as the canvas says it —
+// «om raritet = Karaktär» — the column's name as it stands inside those words, and how many cards
+// it holds, «10 kort».
+export type ConditionSaid = { words: string; field: string; cards: string }
 
 // What the designer calls a layer: the name she gave it, or else its id — which is the word the
 // wizard made out of the column and the word the properties panel puts in its heading (L15).
@@ -74,9 +79,6 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
   // Which layer is being renamed. One at a time: a rename is something the designer is in the
   // middle of, not a state a row can be left in.
   const [renaming, setRenaming] = useState<string | null>(null)
-  // The condition layers opened like folders (#478, variant A). A chosen one stands open by itself,
-  // so the keyboard, which chooses by walking, sees what is in it without a stop of its own.
-  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set())
   const { cellProps, focus } = useCells(ids, selected)
   // A field that took the focus gives it back (#8), and it has to wait for the row to be a row
   // again: the layer cell does not exist while its own name is being typed into, so focusing it
@@ -93,7 +95,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
 
   // A condition layer nobody has named is called by its condition (#478): «if-guld» says
   // nothing the condition does not say better.
-  const nameOf = (el: Element) => (el.kind === 'if' && !el.name ? (conditionOf?.(el) ?? layerName(el)) : layerName(el))
+  const nameOf = (el: Element) => (el.kind === 'if' && !el.name ? (conditionOf?.(el)?.words ?? layerName(el)) : layerName(el))
   const say = useSay()
   const moveTo = (id: string, to: number) => {
     if (!onReorder || to < 0 || to >= layers.length) return
@@ -127,9 +129,16 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
     <div role="grid" aria-labelledby={labelledBy} className="byd-layers">
       {layers.map((el, at) => {
         const name = nameOf(el)
-        const shows = el.kind === 'if' ? (el.name ? (conditionOf?.(el) ?? null) : null) : layerShows(el, pictureName)
+        const condition = el.kind === 'if' ? (conditionOf?.(el) ?? null) : null
+        // A condition nobody has named is written out whole and wraps (#699); a named one says its
+        // condition after its name, the way any other layer says what it shows.
+        const wraps = condition !== null && !el.name
+        const shows = el.kind === 'if' ? (condition && el.name ? `${condition.words} · ${condition.cards}` : null) : layerShows(el, pictureName)
         const folder = el.kind === 'if' ? el : null
-        const unfold = folder !== null && (unfolded.has(el.id) || selected === el.id)
+        // A condition layer is a folder (#478) that opens when it is chosen (#699, variant D): the
+        // button that opened it without choosing it took 44 px of the 220 the row has, and the
+        // keyboard, which chooses by walking, never reached it anyway.
+        const unfold = folder !== null && selected === el.id
         const mark = markOf?.(el.id) ?? null
         const locked = el.locked === true
         return (
@@ -210,28 +219,24 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                   }}
                 >
                   <KindGlyph kind={el.kind} />
-                  {/* A condition is cut at its start (#569, beslut B): «om raritet = …» is the same on
-                      every one of them, and what tells them apart is their end — the value's last
-                      letters and how many cards they hold. The whole name is still the button's. */}
-                  <span className="byd-layer-name" title={name} {...(el.kind === 'if' ? { 'data-cut': 'start' } : {})}>
-                    {el.kind === 'if' ? <bdi>{name}</bdi> : name}
-                  </span>
+                  {/* A condition is written out whole and breaks over as many lines as it needs (#699,
+                      variant D, which revises #569's cut at the start): «om raritet = / Karaktär · 10
+                      kort». Nothing is cut, so the row needs no title to say what it hides. */}
+                  {condition && wraps ? (
+                    <span className="byd-layer-name" data-wraps="">
+                      <ConditionWords said={condition} /> <span className="byd-layer-count">· {condition.cards}</span>
+                    </span>
+                  ) : (
+                    <span className="byd-layer-name" title={name}>
+                      {name}
+                    </span>
+                  )}
                   {shows && <i className="byd-layer-shows">{shows}</i>}
                   {mark && <span className="byd-layer-source">· {mark}</span>}
                 </button>
               )}
-              {folder && (
-                <button
-                  type="button"
-                  className="byd-layer-fold"
-                  tabIndex={-1}
-                  aria-label={t('canvas.if.open', { name: layerName(el) })}
-                  aria-expanded={unfold}
-                  onClick={() => setUnfolded((was) => (was.has(el.id) ? new Set([...was].filter((id) => id !== el.id)) : new Set([...was, el.id])))}
-                />
-              )}
               {folder && unfold && (
-                <ul className="byd-layer-inside" aria-label={t('canvas.if.inside', { name: layerName(el) })}>
+                <ul className="byd-layer-inside" aria-label={t('canvas.if.inside', { name })}>
                   {folder.children.map((child) => (
                     <li key={child.id}>
                       <KindGlyph kind={child.kind} />
@@ -241,15 +246,36 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                 </ul>
               )}
             </span>
-            {onReorder && (
-              <span className="byd-layer-grip" aria-hidden="true">
-                ⠿
-              </span>
+            {/* The grip, and on a folder the folder's arrow in its place (#699): only a sign, since
+                choosing the layer is what opens it, and still the grip on a list that can be dragged. */}
+            {folder ? (
+              <span className={onReorder ? 'byd-layer-grip byd-layer-folder' : 'byd-layer-folder'} data-open={unfold ? 'true' : 'false'} aria-hidden="true" />
+            ) : (
+              onReorder && (
+                <span className="byd-layer-grip" aria-hidden="true">
+                  ⠿
+                </span>
+              )
             )}
           </div>
         )
       })}
     </div>
+  )
+}
+
+// A condition's words with the column's name set apart (#699): a long column name is hyphenated
+// where the line has to break it — «Utrustnings-kategori» — while the value, which is what tells
+// one condition from the next, breaks only between its words.
+function ConditionWords({ said }: { said: ConditionSaid }) {
+  const at = said.words.indexOf(said.field)
+  if (at < 0 || said.field === '') return <>{said.words}</>
+  const end = at + said.field.length
+  return (
+    <>
+      <span className="byd-layer-field">{said.words.slice(0, end)}</span>
+      {said.words.slice(end)}
+    </>
   )
 }
 

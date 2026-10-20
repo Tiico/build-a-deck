@@ -1,5 +1,5 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
-import { cardsWhere, conditionWords, holds } from './conditions.js'
+import { cardsWhere, conditionWords, holds, layerTitle } from './conditions.js'
 import { CardRow } from './CardRow.js'
 import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
@@ -346,7 +346,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             conditionOf={(one) => {
               if (one.kind !== 'if') return null
               const n = shownCards.filter((r) => holds(one.when, r.fields)).length
-              return t(n === 1 ? 'canvas.if.row.one' : 'canvas.if.row.other', { condition: conditionWords(one.when, t), n })
+              return { words: conditionWords(one.when, t), field: fieldLabel(one.when.field, t), cards: cardsLabel(n, t) }
             }}
             pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
@@ -503,7 +503,17 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       <Reading.Provider value={reading}>
       <SectionsOpen.Provider value={sections}>
       <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')}>
-        <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
+        {/* The layer's one name (#699), as the designer wrote it and not set in capitals the way the
+            word «Egenskaper» before it is: an id in capitals was a third name for the same layer. */}
+        <h2>
+          {t('canvas.props')}
+          {layer && (
+            <>
+              {' · '}
+              <span className="byd-canvas-props-name">{layerTitle(layer.element, t)}</span>
+            </>
+          )}
+        </h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
@@ -1820,7 +1830,7 @@ function conditionFrames(shown: readonly Element[], row: Row, t: T): ConditionFr
     const y = Math.min(...placed.map((b) => b.y))
     const right = Math.max(...placed.map((b) => b.x + b.w))
     const bottom = Math.max(...placed.map((b) => b.y + b.h))
-    return [{ id: el.id, x, y, w: right - x, h: bottom - y, words: conditionWords(el.when, t), holds: holds(el.when, row) }]
+    return [{ id: el.id, x, y, w: right - x, h: bottom - y, words: layerTitle(el, t), holds: holds(el.when, row) }]
   })
 }
 
@@ -1873,7 +1883,7 @@ function ConditionProps({ el, fields, valuesIn, cards, onPatch, onShow }: { el: 
         )}
       </Section>
       <Section id="shape" name={t('canvas.if.children')}>
-        <ul className="byd-props-wide byd-layer-inside" aria-label={t('canvas.if.inside', { name: layerName(el) })}>
+        <ul className="byd-props-wide byd-layer-inside" aria-label={t('canvas.if.inside', { name: layerTitle(el, t) })}>
           {el.children.map((child) => (
             <li key={child.id}>{layerName(child)}</li>
           ))}
