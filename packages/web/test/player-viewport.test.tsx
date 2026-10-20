@@ -127,7 +127,6 @@ function surfaces(view: Snapshot) {
         {/* The overview since #79: a pile that has a card is a control that draws it (K14). */}
         <TableSummary view={view} activity={[]} onDraw={noop} />
         <HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
-        <p className="byd-hint">Tryck för att läsa · håll för att välja flera</p>
       </div>
     ),
     handActions: <div className="byd-player"><HandActions view={view} cards={view.components.filter(c => c.zone === 'hand:A').slice(0, 1)} pending={false} onPlay={noop} onMore={noop} /></div>,
