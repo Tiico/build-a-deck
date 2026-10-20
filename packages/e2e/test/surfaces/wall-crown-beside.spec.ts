@@ -21,8 +21,8 @@ const PANEL = 380
 const FIELD = 180
 
 const TYPES = ['Playcard', 'Location', 'Effect', 'Karaktär', 'Character', 'Shopcard', 'Trap-', 'Trap+']
-// Grouped, as a real deck is: the crown then carries the grouping's value and the jump column's
-// fold, which is the fullest the row gets.
+// Grouped, as a real deck is: the crown then carries the grouping's value, and the jump column
+// stands beside the wall with its own fold on it (#1019).
 function deck() {
   const doc = gameDoc({ name: "Sal's Saloon", cards: 48 })
   doc.rows = doc.rows.map((row, i) => ({ ...row, fields: { ...row.fields, typ: TYPES[i % TYPES.length]! } }))
@@ -108,17 +108,18 @@ for (const locale of ['sv-SE', 'en-GB']) {
         await logIn(page.request)
         const project = await makeProjectOf(page.request, deck())
         await page.goto(project.editorUrl)
-        await expect(page.locator('.byd-wall-view .byd-crown-fold')).toBeVisible()
+        await expect(page.locator('.byd-wall-view .byd-wall-fold')).toBeVisible()
         await standBeside(page, PANEL)
         // The crown answers its own width once the wall has given way; wait for the layout to have
         // settled on it rather than reading the frame the column was added in.
         await expect.poll(async () => (await measure(page)).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
         const measured = await measure(page)
         // Non-vacuity: the column stands where the panel will, at its width, and the crown holds
-        // its whole set of tools — the field, four boxes, the stepper's two presses and the fold.
+        // its whole set of tools — the field, four boxes and the stepper's two presses. The fold
+        // stands on the column since #1019, not in the crown.
         expect(measured.beside).toBe(PANEL)
         expect(measured.edge).toBe(viewport.width - PANEL)
-        expect(measured.controls).toBeGreaterThanOrEqual(8)
+        expect(measured.controls).toBeGreaterThanOrEqual(7)
         expect(measured.cut, 'every control of the crown is wholly visible, beside the panel and not under it').toEqual([])
         expect(measured.over, 'the crown does not overflow its own box').toBeLessThanOrEqual(0)
         expect(measured.field, 'the search field is wide enough to read what is written in it').toBeGreaterThanOrEqual(FIELD)
@@ -134,7 +135,8 @@ for (const locale of ['sv-SE', 'en-GB']) {
 // a row that breaks costs the wall 52 px of its height for nothing.
 //
 // The row is measured in every state it is drawn in. Grouped, the grouping box says the column and
-// the fold stands beside it. Ungrouped, the fold goes and the box says that nothing groups the wall:
+// the jump column stands with its fold on it (#1019). Ungrouped, the column and its fold go and the
+// box says that nothing groups the wall:
 // a deck whose template names no column, as the one a template proposal starts from (#1005), or a
 // grouped deck the designer chose to see whole. A proposal waiting in the panel stands on the wall
 // under the crown.
@@ -182,7 +184,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
             await expect(page.locator('.byd-wall-card[data-proposed]')).toHaveCount(3)
           }
           // Non-vacuity: the crown is in the state named, by what it carries.
-          await expect(crown.locator('.byd-crown-fold')).toHaveCount(grouped ? 1 : 0)
+          await expect(page.locator('.byd-wall-view .byd-wall-fold')).toHaveCount(grouped ? 1 : 0)
           await expect(crown.getByRole('button', { name: words.grouping })).toHaveAccessibleName(grouped ? /: typ$/ : new RegExp(`: ${words.off}$`))
           await expect(page.locator('.byd-crown-drawer')).toHaveCount(0)
           await expect.poll(async () => (await measure(page, '.byd-ai')).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
@@ -195,7 +197,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
             const measured = await measure(page, '.byd-ai')
             expect(measured.beside).toBe(PANEL)
             expect(measured.edge).toBe(viewport.width - PANEL)
-            expect(measured.controls).toBeGreaterThanOrEqual(grouped ? 8 : 7)
+            expect(measured.controls).toBeGreaterThanOrEqual(7)
             expect(measured.cut, `in ${face}, every control of the crown is wholly visible, beside the panel and not under it`).toEqual([])
             expect(measured.over, `in ${face}, the crown does not overflow its own box`).toBeLessThanOrEqual(0)
             expect(measured.field, `in ${face}, the search field is wide enough to read what is written in it`).toBeGreaterThanOrEqual(FIELD)
@@ -213,8 +215,8 @@ for (const locale of ['sv-SE', 'en-GB']) {
 // deck's grouping. #1045 measured the row in «Som du ser det» only; the reading views (#512) are
 // the eye's longest words, «TV:ns «Visa för alla»» and «The phone’s reading view», and a row that
 // stands in the first eye and breaks in the TV's is a row the designer sees jump as they choose.
-// Measured grouped, where the fold stands in the row, and ungrouped, where the grouping box says
-// so: the two fullest rows #1045 found.
+// Measured grouped, where the grouping box says its column, and ungrouped, where it says that
+// nothing groups the wall: the two fullest rows #1045 found.
 const EYE_WORDS: Record<string, { eyes: string; eyeNames: readonly string[] }> = {
   'sv-SE': {
     eyes: 'Ögon',
@@ -260,13 +262,13 @@ for (const locale of ['sv-SE', 'en-GB']) {
             // The box says the eye chosen, whole, as its name — whatever the row shows of it.
             await expect(box).toHaveAccessibleName(`${words.eyes}: ${name}`)
             await expect(box).toHaveAttribute('title', `${words.eyes}: ${name}`)
-            await expect(crown.locator('.byd-crown-fold')).toHaveCount(state === 'grouped' ? 1 : 0)
+            await expect(page.locator('.byd-wall-view .byd-wall-fold')).toHaveCount(state === 'grouped' ? 1 : 0)
             await expect.poll(async () => (await measure(page, '.byd-ai')).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
             for (const face of ['system-ui', 'wide']) {
               const wide = face === 'wide' ? await page.addStyleTag({ content: ".byd-wall-crown * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" }) : null
               const measured = await measure(page, '.byd-ai')
               expect(measured.beside).toBe(PANEL)
-              expect(measured.controls).toBeGreaterThanOrEqual(state === 'grouped' ? 8 : 7)
+              expect(measured.controls).toBeGreaterThanOrEqual(7)
               const fault = [
                 measured.rows !== 1 && `${measured.rows} rows`,
                 measured.cut.length > 0 && `cut ${measured.cut.join(', ')}`,

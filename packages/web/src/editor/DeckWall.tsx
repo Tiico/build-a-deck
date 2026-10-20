@@ -154,6 +154,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // be folded to a strip — and the choice is this browser's, opening open.
   const [jumpOpen, setJumpOpen] = useState(heldJumpOpen)
   const jumpId = useId()
+  // The column folds itself (#1019): its control stands in the open column's head and at the top of
+  // the strip, so a press takes away the button that was pressed. The focus goes to the one that
+  // took its place — never to the document, where the next Tab would start over (#477, fynd 6).
+  const foldRef = useRef<HTMLButtonElement>(null)
+  const folded = useRef(false)
+  useEffect(() => {
+    if (!folded.current) return
+    folded.current = false
+    foldRef.current?.focus()
+  }, [jumpOpen])
   const deckRef = useRef<HTMLDivElement>(null)
   // What the wall tells the editor about where it stands. The scroll goes by a ref, because a
   // re-render per scrolled pixel is the price of nothing.
@@ -432,6 +442,30 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       </div>
     )
   }
+  // The column folds itself (#1019, variant C): the way in and out of the strip stands on the column
+  // it folds — in its head beside «Leken», and at the top of the strip — drawn as the AI panel's own
+  // ⟩ is drawn on its panel, mirrored on the wall's other side, so the two side panels fold one way.
+  // Where it stands says what it folds, which the crown never could without a word it had no room
+  // for; and it is always there, never a corner that appears under a pointer (#184). With no column
+  // drawn — a search that found nothing — there is nothing to fold and no control (#556).
+  const foldButton = (
+    <button
+      ref={foldRef}
+      type="button"
+      className="byd-wall-fold"
+      aria-expanded={jumpOpen}
+      aria-controls={jumpId}
+      aria-label={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+      title={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+      onClick={() => {
+        folded.current = true
+        setJumpOpen(!jumpOpen)
+        rememberJumpOpen(!jumpOpen)
+      }}
+    >
+      <span aria-hidden="true">{jumpOpen ? '⟨' : '⟩'}</span>
+    </button>
+  )
   return (
     <div className="byd-wall-view">
       <EyeFilters />
@@ -487,30 +521,6 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             onToggle={() => toggle('grouping')}
             boxRef={groupingBox}
           />
-          {/* The way in and out of the strip is a word in the crown and not a corner that appears
-              under a pointer: a reader who has never folded anything has no way of guessing that the
-              column to the left is foldable, and a hover-only door is the very thing #184 is taking
-              out of the editor elsewhere. */}
-          {/* Read off the deck and not off what a search left standing (#477): a search that finds
-              nothing took the button with it, and every box after it moved. */}
-          {column !== null && doc.rows.length > 0 && (
-            <button
-              type="button"
-              className="byd-crown-fold"
-              // With no column drawn — a search that found nothing — it opens and controls nothing
-              // (#556), so it says neither; it stays in the crown so nothing after it moves (#477).
-              {...(bands.length > 0 ? { 'aria-expanded': jumpOpen, 'aria-controls': jumpId } : {})}
-              aria-label={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
-              title={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
-              onClick={() => {
-                setJumpOpen(!jumpOpen)
-                rememberJumpOpen(!jumpOpen)
-              }}
-            >
-              <span aria-hidden="true">{jumpOpen ? '\u27E8' : '\u27E9'}</span>
-              <span className="byd-crown-name">{jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}</span>
-            </button>
-          )}
           <CrownBox name={t('wall.checks.title')} count={groups.length} short={t('wall.checks.short')} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
         </Crown>
       </div>
@@ -597,32 +607,38 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             groups may well share a head colour on the wall beside it. */}
         {bands.length > 0 && !jumpOpen && (
           <nav className="byd-wall-rail" id={jumpId} aria-label={t('wall.groups.folded')}>
-            {bands.map((band) => {
-              const key = band.value ?? ''
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  data-tile={key}
-                  {...roving.itemProps(key)}
-                  aria-current={here === key}
-                  aria-label={bandName(band)}
-                  title={bandName(band)}
-                  // The tile's height is the group's share of the deck, so the strip reads as a
-                  // cross-section rather than a menu. `--tap` floors it in CSS: the tail is
-                  // pressed flat so it stays hittable, and the top of the strip stays true.
-                  style={{ flexGrow: bandCount(band).n, ...tileStyle(paints.get(key)) }}
-                  onClick={() => jumpTo(key)}
-                >
-                  {bandCount(band).n}
-                </button>
-              )
-            })}
+            {foldButton}
+            <div className="byd-wall-rail-scroll">
+              {bands.map((band) => {
+                const key = band.value ?? ''
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    data-tile={key}
+                    {...roving.itemProps(key)}
+                    aria-current={here === key}
+                    aria-label={bandName(band)}
+                    title={bandName(band)}
+                    // The tile's height is the group's share of the deck, so the strip reads as a
+                    // cross-section rather than a menu. `--tap` floors it in CSS: the tail is
+                    // pressed flat so it stays hittable, and the top of the strip stays true.
+                    style={{ flexGrow: bandCount(band).n, ...tileStyle(paints.get(key)) }}
+                    onClick={() => jumpTo(key)}
+                  >
+                    {bandCount(band).n}
+                  </button>
+                )
+              })}
+            </div>
           </nav>
         )}
         {bands.length > 0 && jumpOpen && (
           <nav className="byd-wall-jump" id={jumpId} aria-label={t('wall.groups')}>
-            <h2>{t('wall.deck')}</h2>
+            <div className="byd-wall-jump-head">
+              <h2>{t('wall.deck')}</h2>
+              {foldButton}
+            </div>
             <div className="byd-wall-jump-scroll">
               {bands.map((band) => {
                 const key = band.value ?? ''

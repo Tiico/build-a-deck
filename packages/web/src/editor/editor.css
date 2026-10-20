@@ -1056,7 +1056,7 @@
 .byd-crown-box > .byd-crown-short { display: none; }
 @media (min-width: 1024px) {
   @container byd-wall-crown (width < 1248px) {
-    .byd-crown-box > .byd-crown-name, .byd-crown-fold > .byd-crown-name, .byd-crown-box > .byd-crown-long { display: none; }
+    .byd-crown-box > .byd-crown-name, .byd-crown-box > .byd-crown-long { display: none; }
     .byd-crown-box > .byd-crown-short { display: inline; }
   }
 }
@@ -1124,7 +1124,13 @@
    A row is a tap target like everything else in the editor — the desk is not where 44 px stops
    being a rule (L12). */
 .byd-wall-jump { grid-column: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid #2f333d; border-radius: 14px; background: var(--byd-editor-panel-bg); overflow: hidden; }
-.byd-wall-jump h2 { flex: none; margin: 0; padding: var(--byd-s3) var(--byd-s3) var(--byd-s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+/* The column folds itself (#1019, variant C): its head carries its name and the control that folds
+   it, and the strip carries the same control at its top. It is the AI panel's own ⟩, mirrored on the
+   wall's other side and drawn by the same rule (.byd-ai-close), so the two side panels fold one way;
+   always drawn, never a corner under a pointer (#184). The 8 px above it and to its right are its
+   focus ring's room, since the column clips to its rounded edge. */
+.byd-wall-jump-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: var(--byd-s2) var(--byd-s2) 0 var(--byd-s3); }
+.byd-wall-jump h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-wall-jump-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--byd-s2) var(--byd-s3); }
 .byd-wall-jump-scroll button { display: flex; width: 100%; box-sizing: border-box; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 0; border-radius: 8px; background: transparent; color: #e6ecfa; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
 .byd-wall-jump-scroll button:hover { background: #1b1f2a; }
@@ -1135,34 +1141,33 @@
 /* The same contents, folded to a strip. 66 px is counted and not chosen: the tile's own 44 px,
    the mark's room to the left of it, air to the right and the strip's two borders — and that is
    what hands the card column back at 1280 and at 1440.
+   The control that unfolds it stands at its top, over the tiles and not among them (#1019): the
+   tiles scroll in a box of their own under it, so a deck of thirty groups scrolled to its tail still
+   has its way back out in sight. The strip itself clips to its rounded edge.
    undantag: the left padding is the mark's room and the right is the tile's air, so the two edges
    of this one box are deliberately unequal rungs (12 and 8) rather than one. */
-.byd-wall-rail { grid-column: 1; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--byd-s1); padding: var(--byd-s2) var(--byd-s2) var(--byd-s2) var(--byd-s3); border: 1px solid #2f333d; border-radius: 14px; background: var(--byd-editor-panel-bg); overflow: auto; scrollbar-width: none; }
-.byd-wall-rail::-webkit-scrollbar { display: none; }
+.byd-wall-rail { grid-column: 1; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid #2f333d; border-radius: 14px; background: var(--byd-editor-panel-bg); overflow: hidden; }
+.byd-wall-rail > .byd-wall-fold { margin: var(--byd-s2) 0 0 var(--byd-s3); }
+.byd-wall-rail-scroll { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--byd-s1); padding: var(--byd-s2) var(--byd-s2) var(--byd-s2) var(--byd-s3); overflow: auto; scrollbar-width: none; }
+.byd-wall-rail-scroll::-webkit-scrollbar { display: none; }
 /* The height is the group's share of the deck, floored at a tap target: the tail is pressed flat
    so it stays hittable, and the top of the strip stays true. */
-.byd-wall-rail button { position: relative; flex: 1 1 0; min-height: var(--byd-tap); min-width: var(--byd-tap); display: grid; place-items: center; border: 0; border-radius: 7px; padding: 0; background: var(--byd-band-quiet, #2c303a); color: var(--byd-band-ink, #fff); font: inherit; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; }
-.byd-wall-rail button:hover { background: var(--byd-band-paint, #3a3f4c); }
+.byd-wall-rail [data-tile] { position: relative; flex: 1 1 0; min-height: var(--byd-tap); min-width: var(--byd-tap); display: grid; place-items: center; border: 0; border-radius: 7px; padding: 0; background: var(--byd-band-quiet, #2c303a); color: var(--byd-band-ink, #fff); font: inherit; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; }
+.byd-wall-rail [data-tile]:hover { background: var(--byd-band-paint, #3a3f4c); }
 /* "Where am I" on three channels and not one: the same mark the open column sets in front of the
    band, a brighter tile, and the count standing at full weight on it. Two groups can share a head
    colour on the wall — the colour was never allowed to carry this alone.
    The tile is not dimmed with a filter, which would take the count down with the ground it stands
    on: the two grounds are worked out per group against the ink that reads on them, so a count is
    never under 4.5:1 whatever colour the deck painted its heads (L11, E5). */
-.byd-wall-rail button[aria-current='true'] { background: var(--byd-band-paint, #3a3f4c); font-size: 11px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
+.byd-wall-rail [data-tile][aria-current='true'] { background: var(--byd-band-paint, #3a3f4c); font-size: 11px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
 /* The mark stands outside the tile rather than inset in it: an inset shadow follows a rounded
    corner and reads as a loose outline, where outside it is the same straight stroke the open
    column draws.
    undantag: 8 px out is the left padding above, and the 6 px inset is the tile's own corner
    radius — both are this one shape's geometry and not a distance between things. */
-.byd-wall-rail button[aria-current='true']::before { content: ''; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--byd-editor-primary-mark); }
+.byd-wall-rail [data-tile][aria-current='true']::before { content: ''; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--byd-editor-primary-mark); }
 
-/* The way in and out of the strip, in the crown: a real word on a real button, because a reader
-   who has never folded anything cannot guess that the column is foldable, and an affordance that
-   only appears under a pointer is the thing #184 is taking out of the editor elsewhere. */
-.byd-crown-fold { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--byd-s1); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
-.byd-crown-fold:hover { border-color: var(--byd-editor-primary-mark); color: #fff; }
-.byd-crown-fold > span[aria-hidden='true'] { color: var(--byd-editor-primary-mark); font-weight: 700; }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
 .byd-wall-checks { flex: 1 1 auto; min-width: 0; }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
@@ -4319,8 +4324,9 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-head h2 { flex: 1 1 auto; margin: 0; font-size: 14px; font-weight: 750; white-space: nowrap; }
 .byd-ai-who { min-width: 0; display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s2); overflow: hidden; color: var(--byd-editor-saved-ink); font-size: 12px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .byd-ai-who:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
-.byd-ai-close { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 18px; cursor: pointer; }
-.byd-ai-close:hover { background: #1b1d23; color: #fff; }
+/* The jump column's fold is this same control, mirrored on the wall's other side (#1019). */
+.byd-ai-close, .byd-wall-fold { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 18px; cursor: pointer; }
+.byd-ai-close:hover, .byd-wall-fold:hover { background: #1b1d23; color: #fff; }
 .byd-ai-log { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--byd-s4); }
 .byd-ai-empty { display: grid; gap: var(--byd-s3); line-height: 1.5; color: #c3cbdd; }
 .byd-ai-empty p { margin: 0; }
