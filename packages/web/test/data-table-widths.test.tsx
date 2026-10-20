@@ -22,11 +22,7 @@ import { applyEdit } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
-
-// A surface mounted on its own speaks Swedish (A4), which is what the markup below is rendered in.
-const sv: T = (key, params) => translate('sv', key, params)
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
@@ -223,7 +219,7 @@ async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '', 
           cut: [...new Set([...table.querySelectorAll('tbody td[data-cut="true"]')].map((cell) => cell.getAttribute('data-col') ?? '?'))],
         }
       },
-      { deck: deckValues(deck, sv), fit, decide: String(fitColumns), mark: String(markValues) },
+      { deck: deckValues(deck), fit, decide: String(fitColumns), mark: String(markValues) },
     )) as Measured
   } finally {
     await page.close()
@@ -278,7 +274,7 @@ async function measurements(doc: ProjectDoc): Promise<{ first: number; second: n
         proto.measureText = own
         return { first, second, ms }
       },
-      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+      { deck: deckValues(doc), decide: String(fitColumns) },
     )
   } finally {
     await page.close()
@@ -310,7 +306,7 @@ describe("a card's id is measured in the face it is drawn in", () => {
               .map((td) => td.textContent),
           }
         },
-        { deck: deckValues(doc, sv), decide: String(fitColumns) },
+        { deck: deckValues(doc), decide: String(fitColumns) },
       )
       expect(broken).toEqual({ ids: 77, broken: [] })
     } finally {
@@ -346,7 +342,7 @@ describe('a cell keeps inside its own column (#46)', () => {
     // vocabulary — three words over six cards — and since #617 such a column carries its filter's
     // handle in its head, which is what keeps it over the floor. The head is still measured, so
     // that is said here rather than left for the next reader to rediscover.
-    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['title', 'cost', 'antal'])
+    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['antal', 'title', 'cost'])
     expect(over.width.art!).toBeGreaterThanOrEqual(80)
     expect(over.spill.every((c) => c.px === 80 - over.width[c.col]!)).toBe(true)
     expect(over.spill.length).toBe(CARDS.length * 3)
@@ -408,8 +404,9 @@ describe('the row ends where the last field ends (#46)', () => {
     const after = await measure(deckDoc())
 
     // Named rather than counted: the column that went is named by its absence from this list, so
-    // a rename cannot quietly satisfy a count. `newfield` stood between `antal` and `remove`.
-    expect(after.columns.map((c) => c.head)).toEqual(['check', 'id', 'art', 'title', 'body', 'cost', 'antal', 'remove'])
+    // a rename cannot quietly satisfy a count. `newfield` stood between `antal` and `remove`, when
+    // `antal` was last; it stands on the rail beside `id` since #695.
+    expect(after.columns.map((c) => c.head)).toEqual(['check', 'id', 'antal', 'art', 'title', 'body', 'cost', 'remove'])
 
     // And every one of them has cells: the tick column holds a tick per card, the pinned column
     // holds a button per card, and each column of the deck holds its values. A column with no
@@ -576,7 +573,7 @@ describe("a heading is the column's name and the way it sorts (#46 on #32)", () 
     const { heads, width } = await measure(deckDoc())
 
     // The head really has both kinds of column, so this is not a guard that matches nothing.
-    expect(heads.map((h) => h.col)).toEqual(['id', 'art', 'title', 'body', 'cost', 'antal'])
+    expect(heads.map((h) => h.col)).toEqual(['id', 'antal', 'art', 'title', 'body', 'cost'])
     // And not one of them carries an × or a mark: no control, and no hole where one was.
     expect(heads.filter((h) => h.canRemove || h.badge > 0 || h.says !== '')).toEqual([])
 
@@ -694,7 +691,7 @@ async function reach(doc: ProjectDoc, { hover = false } = {}): Promise<Reach> {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
         new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
       },
-      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+      { deck: deckValues(doc), decide: String(fitColumns) },
     )
     // The pointer really put on the heading, so `:hover` is the browser's own and not a class the
     // test wrote. Aimed at the heading's left edge, which is the part that is the word.
@@ -719,6 +716,63 @@ async function reach(doc: ProjectDoc, { hover = false } = {}): Promise<Reach> {
     await page.close()
   }
 }
+
+// The column the template is grouped by carries the mark «kortgrupp» and L32's question mark on a
+// second line of its head (#695, beställarens val D + A). A heading's floor is what stands in its
+// flow, and read as one line the mark would have been added to the name: the column ~80 px wider
+// for a line that stands under the name and not beside it. Each line is asked for its own width,
+// and the column takes the widest.
+describe('a grouped column carries its mark on a second line, and pays for the wider line only (#695)', () => {
+  const grouped = (): ProjectDoc => {
+    const doc = deckDoc()
+    return { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, front: { ...doc.template.faces.front!, variantBy: 'art' } } } }
+  }
+
+  const headOf = async (doc: ProjectDoc) => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    try {
+      await page.setContent(shellOf(markupOf(doc), read('src/help.css')), { waitUntil: 'load' })
+      return await page.evaluate(
+        ({ deck, decide }) => {
+          const box = document.querySelector('.byd-data-scroll') as HTMLElement
+          new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
+          const th = box.querySelector('thead th[data-col="art"]') as HTMLElement
+          const line = th.querySelector('.byd-data-grouped') as HTMLElement | null
+          const ask = th.querySelector('.byd-help-ask') as HTMLElement | null
+          const name = th.querySelector(':scope > button') as HTMLElement
+          const filter = th.querySelector('.byd-column-filter') as HTMLElement | null
+          const r = th.getBoundingClientRect()
+          return {
+            width: Math.round(r.width),
+            head: Math.round((box.querySelector('thead') as HTMLElement).getBoundingClientRect().height),
+            first: Math.round(name.getBoundingClientRect().width + (filter?.getBoundingClientRect().width ?? 0)),
+            second: line ? Math.round(line.getBoundingClientRect().width) : 0,
+            // The question mark's whole target, not only its ring: a target cut by the heading
+            // that clips it is a smaller target than the 44 px it is drawn to be.
+            askInside: ask ? ask.getBoundingClientRect().right <= r.right + 0.5 && ask.getBoundingClientRect().left >= r.left - 0.5 : null,
+            onTwoLines: line ? line.getBoundingClientRect().top >= name.getBoundingClientRect().bottom - 8 : null,
+          }
+        },
+        { deck: deckValues(doc), decide: String(fitColumns) },
+      )
+    } finally {
+      await page.close()
+    }
+  }
+
+  it('is as wide as its widest line, holds the question mark whole, and is one line deeper', async () => {
+    const [plain, marked] = await Promise.all([headOf(deckDoc()), headOf(grouped())])
+    // The premise: the mark really is there, on a line of its own.
+    expect(marked.second).toBeGreaterThan(0)
+    expect(marked.onTwoLines).toBe(true)
+    // The widest line and not the two end to end.
+    expect(marked.width).toBeLessThan(marked.first + marked.second)
+    expect(marked.width).toBeGreaterThanOrEqual(marked.second)
+    expect(marked.askInside).toBe(true)
+    // And the price is the one the decision names: the head one mark's line deeper, 16 px.
+    expect(marked.head - plain.head).toBe(16)
+  }, 60_000)
+})
 
 describe('what a tap on the narrowest heading lands on (#46 on #32)', () => {
   it('gives the whole heading to the one control in it, pointed at or not', async () => {
@@ -873,7 +927,7 @@ describe('the measured total is the table (#46)', () => {
 
     // Nothing in this deck gives or takes, so this really is the case with no sentence to absorb
     // the slack — and there is a great deal of slack: the table is far inside a 1280 px box.
-    expect(at.columns.map((c) => c.head)).toEqual(['check', 'id', 'cost', 'styrka', 'liv', 'antal', 'remove'])
+    expect(at.columns.map((c) => c.head)).toEqual(['check', 'id', 'antal', 'cost', 'styrka', 'liv', 'remove'])
     expect(at.table).toBeLessThan(at.scroll - 400)
     // Every column is a number's width, and the sum of them is the table.
     for (const col of ['cost', 'styrka', 'liv', 'antal']) expect(at.width[col]!).toBeLessThanOrEqual(96)
@@ -951,7 +1005,7 @@ async function cue(doc: ProjectDoc, extra = '', html = ''): Promise<Cue> {
           ink: { x: seen.right - 48, y: seen.top, width: 24, height: seen.height },
         }
       },
-      { deck: deckValues(doc, sv), decide: String(fitColumns), mark: String(markValues), col: CUT_COL },
+      { deck: deckValues(doc), decide: String(fitColumns), mark: String(markValues), col: CUT_COL },
     )
     const atRest = await capture(page, { clip: facts.clip })
     // The caret put in the very cell being read, and sent to the end of the value — which is where
@@ -1074,7 +1128,7 @@ async function plus(doc: ProjectDoc, { hover = false } = {}): Promise<Plus> {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
         new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
       },
-      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+      { deck: deckValues(doc), decide: String(fitColumns) },
     )
     const button = (await page.$('thead .byd-data-remove > button'))!
     if (hover) {

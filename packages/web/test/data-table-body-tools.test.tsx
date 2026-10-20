@@ -25,10 +25,8 @@ import { chromium, type Browser } from 'playwright'
 import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
 
-const sv: T = (key, params) => translate('sv', key, params)
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
 // En regeltext av det slag L39 finns för, lång nog att den öppna cellen har något att bryta rad på.
@@ -119,7 +117,7 @@ async function measure(width: number, extra = ''): Promise<Sedd> {
           huvudetÖverSkrivytan: Math.abs(huvud.left - skriv.left) <= 2 && Math.abs(huvud.right - skriv.right) <= 2,
         }
       },
-      { deck: deckValues(deck(), sv), fit: String(fitColumns), mark: String(markValues), pin: String(markCut) },
+      { deck: deckValues(deck()), fit: String(fitColumns), mark: String(markValues), pin: String(markCut) },
     )
   } finally {
     await page.close()

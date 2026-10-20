@@ -4004,6 +4004,7 @@ Duken får en flik per grupp plus "Bas (alla)"; det som ändras med en gruppflik
 Lagerordningen är basens och delas av alla grupper — den ändras därför bara med basfliken vald.
 Lagerpanelen säger per lager om det är basens eller gruppens och hur många kort gruppen gäller; variant B:s regellista står kvar som sammanfattning i samma panel.
 Variant C valdes bort som redigeringsväg — tjugo fällor skulle kräva tjugo val — men tabellen visar vilken grupp en rad faller i, läsbart och inte redigerbart.
+*Ändrat 2026-10-20 (#695):* tabellen säger det i den kolumn mallen grupperas av och inte i en egen kolumn «grupp», som bara upprepade den kolumnens värde; dess huvud bär märket «kortgrupp» och L32:s frågetecken (L4).
 Prototypen `packages/web/src/prototype/groups` togs bort när även baksidesflödet i #14 hade svarat.
 
 Reviderat 2026-09-16 (#129, prototypat i tre varianter och avgjort av beställaren): **grupperna är en meny i krönet, inte en rad flikar.**
@@ -4050,6 +4051,7 @@ En kolumn blir bildkolumn där mallen ritar den som bild, tal sorteras som tal n
 En bildcell är en referens till en innehållsadresserad asset; vid import löses URL eller filnamn upp mot uppladdade filer.
 Varje rad har en systemkolumn `antal` med standard 1.
 Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
+I tabellen står `antal` på listen direkt efter `id`, ett Tab-tryck från radens bock (#695, se tillägget 2026-10-20 nedan); i CSV:n och i dokumentets ordning står den fortfarande sist.
 
 *Tillagt 2026-09-27 (#479, beställarens beslut efter prototyp 13 och 15):*
 En import som skulle ta bort kort frågar först och säger hur många som finns och hur många filen har; en import som bara lägger till eller ändrar landar direkt.
@@ -4136,7 +4138,7 @@ En rubrik bär sitt ord och sättet den sorterar på, och ingenting mer — vilk
 Hänglaset flyttar med: i en panel finns plats för skälet i ord, vilket en rubrik aldrig hade, och `antal` får tillbaka de nitton pixlar det tog.
 Huvudets tabbordning är ett stopp per kolumn och en dörr, där den förr hade en kontroll som tar bort en kolumn mellan varje par av namn.
 Kolumnlistan i dörren rullar och blanketten under den står stilla: en lek med tjugo kolumner hängde annars dörren utanför fönstrets nederkant, och det som föll av var vägen att göra den tjugoförsta.
-Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står sist där tabellen visar det (L4).
+Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står på listen bredvid den, där ingen flytt skulle synas (L55, #695).
 Pilen utan Alt är läsarens egen och rörs inte, och en rubrik som kan bäras har inte slutat vara en som kan tryckas för att sortera.
 En flytt sägs i den enda kanal allt på en skärm talar i (#7): ett drag är sitt eget svar för ögat, men en kolumn som flyttat sig under fokus utan att något sagts är en kolumn läsaren har tappat.
 
@@ -4155,6 +4157,35 @@ Knappen tar ett steg på fyra femtedelar av lådan i stället för ett hopp till
 En kolumn är utanför när dess rubrik inte alls överlappar den del av lådan som går att läsa — förbi vänsterkanten, eller bakom nålen. Delvis täckt är inte utanför; det är just den kapning uttoningen redan finns till för.
 Glidningen begärs vid anropet och inte i stilmallen: `scroll-behavior` på lådan hade varit ett svar på varje rullning någon någonsin ber den om — inklusive den ett test gör för att se var nålen faller, och webbläsarens egen när den hämtar in en fokuserad cell. Den som bett om mindre rörelse får hoppet i stället; meningen är densamma.
 De tre varianter som inte vann, och varför: samma uttoning i huvudet som raderna har (minsta möjliga ändring, men säger varken hur många eller vilka); en rullningslist som alltid syns (kan inte lånas av webbläsaren — macOS gömmer sin överliggande list och Chromium lägger ingen i layouten alls, uppmätt `clientHeight === offsetHeight`, så den måste ritas för hand); och att låta det stå.
+*Ändrat 2026-09-16 (#145):* chipset över tabellen togs bort, eftersom den fasta kanten under listen sa samma sak om vänster.
+Åt höger sa då ingenting det.
+
+*Tillagt 2026-10-20 (#695, beställarens val D + A efter [prototypen](https://github.com/Tiico/build-a-deck/blob/2c339706a33d20c8c6ddabc2e5fa24a1ca394138/docs/ux-audits/2026-10-07-antal-och-grupp/prototyper/695-antal-och-grupp.html) i `docs/ux-audits/2026-10-07-antal-och-grupp/prototyper/`):* `antal` står på listen, grupp går upp i typ, och foten säger vilka kolumner som står utanför.
+Speltestet 2026-10-02 hittade att `antal` inte syntes, och mätningen hittade varför: L46:s tak gör body exakt lika bred som det rum som syns, så en kolumn efter body kan inte börja i bild vid någon bredd — `antal` började bakom × också vid 1440.
+I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vid varje bredd, och ingenting sa det.
+
+- **`antal` står på listen, efter `id`.**
+  Listen blir tre kolumner (L55), och `antal` nås med ett Tab-tryck från radens bock, syns vid 1024 och 1280 utan rullning i sidled — också med text 15 % bredare, som på Linux — och står kvar när man skriver långt ut i body.
+  Kolumnen som styr hur många kopior som går i leken är den första en ny formgivare ser efter kortets namn.
+  Priset är taget: body syns 89 px smalare i prototypens mätning (571 → 482 vid 1280, 315 → 226 vid 1024 i provleken).
+  Mätt i det byggda appen när det byggdes, med AI-hjälpens list som tillkommit sedan prototypen, syns body 427 px vid 1280 och 171 vid 1024 i provleken, 413 och 157 i den täta leken, och 368 och 112 i provleken med text 15 % bredare.
+  Var `antal` börjar är `id`:s mätta bredd efter bocken, som bara mätningen vet; `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<kolumn>` på tabellen.
+  En cell som tas in i bild — av fokus eller av `scrollIntoView` — tas in i det rum som går att läsa och inte till lådans kant: lådans `scroll-padding` är listens mätta bredd till vänster och ×:ets tryckbredd till höger. Med listen bredare och Linux-text började kolumnen efter body utanför lådan, och togs den in stod dess slut under ×.
+- **Grupp går upp i typ.**
+  Kolumnen «grupp» (#13) var alltid typ en gång till: `groupOfRow` läser mallens `variantBy`-kolumn, så cellen sa «typ = Playcard» där typ redan sa Playcard.
+  Den kolumn mallen grupperas av bär i stället märket «kortgrupp» och L32:s frågetecken på en egen rad i sitt huvud, som säger att kolumnen styr kortets utseende och att utseendet ändras i Mall under Kortgrupper.
+  Huvudet blir 16 px högre; på samma rad som namnet hade kolumnen blivit ~80 px bredare och body lika mycket smalare.
+  En rubrik med två rader behöver sin bredaste rad och inte båda efter varandra, och det är så `fitColumns` räknar den.
+  Ett kort utan typ syns som en tom typ, som varje tom cell; «Bas» sägs i frågetecknets låda.
+- **Foten säger vilka kolumner som står utanför**, som variant C ovan beslutade, efter räkningen: «7 kolumner till höger: sida, kraft, …», och meningen är en knapp som tar ett steg på fyra femtedelar av lådan.
+  Det som står utanför räknas mellan listen och pinnen, så listens egna kolumner står aldrig utanför; åt vänster sägs det också, eftersom kanten under listen säger att något finns där men inte vad.
+  När raden tar slut kortas namnen bakifrån och talet står kvar.
+  Meningen viker för markeringens verktyg och för frågorna som tar deras plats, kolumndörrens inräknad (#858), så att den tysta raden inte bryts vid 1024; L67:s bekräftelse står kvar hel och meningens namn kortas för den.
+  Meningen tar bara det rum raden har över, så ingenting annat i raden ger vika förrän namnen är borta; mätt med två markerade kort var den tysta raden till höger om verktygen annars den som bröts.
+  Under skrivbordets bredd bryts foten hellre på två rader än att sidan rullar i sidled för den, som krönet gör (#567).
+- Grupp-cellernas 13 px mot fältens 12 px försvann med kolumnen.
+
+`table-antal-rail.spec.ts` mäter i det byggda appen, i provleken och i en lek skalad genom API:t till 308 kort och elva fält, vid 1280 och 1024 med och utan text 15 % bredare, att `antal` står helt i bild bredvid `id` och ovanpå det som rullar, att foten säger vilka kolumner som står utanför och att den håller en rad med två markerade kort, med kolumndörrens fråga och med en bekräftelse.
 
 Dörrens lista tar den höjd fönstret lämnar den (prototypat 2026-09-15 i tre varianter, godkänd variant B):
 Listan var 232 px hur högt fönstret än var — fem rader av en lek med tio kolumner, den femte kapad mot blankettens egen linje, och ingenting sa att den fortsatte.
@@ -5524,6 +5555,8 @@ Fel, väntestatus och det som säger vad en åtgärd får för följd flyttas al
 Inventeringen räknade bort 19 sådana strängar (1 515 tecken) innan något annat gjordes.
 
 Mönstret är editorns och gäller hela produkten: #304, #305, #297, #298 och #302 använder det och hittar inte på ett eget.
+*Tillagt 2026-10-20 (#695):* frågetecknet står också i ett tabellhuvud — på den kolumn mallen grupperas av, efter märket «kortgrupp» — och lådan säger vad kolumnen styr och att utseendet ändras i Mall under Kortgrupper (L4).
+Ringens träffyta står 11 px utanför ringen, och en rubrik klipper sitt eget spill, så raden lämnar plats för den.
 
 **Prövat vid 390 px (2026-09-20, #305): lådan är densamma på telefonen.**
 Tre former mättes i spelarvyn — samma låda, ett ark från nederkanten, och helskärm:
@@ -6612,6 +6645,8 @@ Linjen mellan två kort gick från 1,07:1 till 1,24:1, och huvudet stängs av me
 Jämförelsens tinter ligger nu som ett lager över cellens grund i stället för att vara grunden.
 Som grund gjorde de de fastnålade cellerna genomskinliga, så att ett värde som skrollats in under dem syntes igenom.
 `data-table-hover.test.tsx` mäter listen, kanten och bläcket på målade bildpunkter, på alla fem grunderna.
+*Ändrat 2026-10-20 (#695, beställarens val D + A):* listen är tre kolumner — bocken, `id` och `antal` — och kanten står på `antal`, listens sista.
+`antal` stod sist och syntes inte vid någon bredd (L4); på listen läses den i listens bläck, som `id`.
 
 **Kolumndörrens handtag blir × medan dörren står** (variant A av tre: ＋ blir ×, en stängknapp i dörren och klick utanför stänger).
 Handtaget ritas nedtryckt, i dörrens egen grund.

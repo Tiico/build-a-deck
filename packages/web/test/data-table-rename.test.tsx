@@ -235,10 +235,10 @@ describe('vad som följer med namnet (#384)', () => {
     const doc = (await renamed()).doc
     expect(doc.columns).toEqual(['title', 'rubrik'])
     // Och ordningen är den tabellen ritar: rubriken står kvar sist av designerns egna, med
-    // räknekolumnen efter sig som alltid.
-    // `#group` är inte en kolumn i dokumentet utan duken läst baklänges (#13), och den står där
-    // den alltid står: sist av allt utom räknekolumnen.
-    expect(Array.from(document.querySelectorAll('thead th[data-col]')).map((th) => th.getAttribute('data-col'))).toEqual(['id', 'title', 'rubrik', 'antal', '#group'])
+    // räknekolumnen på listen bredvid id (#695). Gruppen är ingen kolumn av sin egen längre: den
+    // sägs i huvudet på den kolumn mallen grupperas av, och det följer med namnet.
+    expect(Array.from(document.querySelectorAll('thead th[data-col]')).map((th) => th.getAttribute('data-col'))).toEqual(['id', 'antal', 'title', 'rubrik'])
+    expect(document.querySelector('thead th[data-col="rubrik"] .byd-data-grouped')).not.toBeNull()
   })
 
   it('tar prosavalet med sig (L43)', async () => {

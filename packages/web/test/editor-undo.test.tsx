@@ -37,7 +37,7 @@ describe('a step back in the editor (#35)', () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
     const cell = await waitFor(() => {
-      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement | null
       if (!el) throw new Error('no cell yet')
       return el
     })
@@ -45,7 +45,7 @@ describe('a step back in the editor (#35)', () => {
     await userEvent.type(cell, 'Drakhona')
     // The focus leaves the field, so the chord is the project's and not the field's.
     ;(document.activeElement as HTMLElement | null)?.blur()
-    await waitFor(() => expect((document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement).value).toBe('Drakhona'))
+    await waitFor(() => expect((document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement).value).toBe('Drakhona'))
 
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
     expect(await screen.findByText(/Tog tillbaka: en ändring i kortleken/)).toBeTruthy()
@@ -58,7 +58,7 @@ describe('a step back in the editor (#35)', () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
     const cell = await waitFor(() => {
-      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement | null
       if (!el) throw new Error('no cell yet')
       return el
     })
@@ -76,14 +76,14 @@ describe('a step back in the editor (#35)', () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
     const cell = await waitFor(() => {
-      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement | null
       if (!el) throw new Error('no cell yet')
       return el
     })
     await userEvent.clear(cell)
     await userEvent.type(cell, 'Drakhona')
     ;(document.activeElement as HTMLElement | null)?.blur()
-    const value = () => (document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement).value
+    const value = () => (document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement).value
     await waitFor(() => expect(value()).toBe('Drakhona'))
 
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true, repeat: true })
@@ -101,7 +101,7 @@ describe('a step back in the editor (#35)', () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
     const cell = await waitFor(() => {
-      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement | null
       if (!el) throw new Error('no cell yet')
       return el
     })
@@ -181,7 +181,7 @@ describe('a saving that changes nothing (B4)', () => {
   async function typeInTheDeck(what: string) {
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
     const cell = await waitFor(() => {
-      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement | null
       if (!el) throw new Error('no cell yet')
       return el
     })

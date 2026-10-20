@@ -18,11 +18,7 @@ import { applyEdit } from '@byd/server/doc'
 import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
-
-// A surface mounted on its own speaks Swedish (A4), which is what the markup below is rendered in.
-const sv: T = (key, params) => translate('sv', key, params)
 
 // A table is its markup *and* what the deck holds, because since #46 the second is what decides
 // how wide the first is drawn. Handing them round together is what keeps every measurement in this
@@ -85,7 +81,7 @@ async function markup(open: boolean, marked = false, removing = false): Promise<
   if (removing) await user.click(screen.getAllByRole('button', { name: /^ta bort / })[0]!)
   const html = container.innerHTML
   unmount()
-  return { html, deck: deckValues(projectDoc(), sv) }
+  return { html, deck: deckValues(projectDoc()) }
 }
 
 let browser: Browser
@@ -159,7 +155,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.door).not.toBeNull()
     expect(open.door!.h).toBeGreaterThan(open.row.h)
     expect(shut.door).toBeNull()
-    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕', 'Ta bort'])
+    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Antal ↕', 'Titel ↕', 'body ↕¶', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
     // The condition itself: the head is exactly as tall as it was, every heading cell stands
@@ -221,7 +217,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     // And that is exactly the fault the prototype had: every heading beside it is pushed down,
     // and so is the first card.
     const pushed = inFlow.headings.filter((h, i) => h.ink.y > held.headings[i]!.ink.y)
-    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕'])
+    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Antal ↕', 'Titel ↕', 'body ↕¶'])
     expect(inFlow.firstRow.y).toBeGreaterThan(held.firstRow.y)
   }, 60_000)
 })
@@ -242,7 +238,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // The head is the shape it is meant to be, named rather than counted, so this is not a guard
     // over a table without the cells in question.
-    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕', 'remove'])
+    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Antal ↕', 'Titel ↕', 'body ↕¶', 'remove'])
 
     // Nothing in the head stands over nothing.
     expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
@@ -268,19 +264,19 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // Every column from the missing cell on has drifted, and the head still has all of its own.
     const drift = short.columns.filter((c) => c.bodyBox === null || c.bodyBox.x !== c.headBox.x || c.bodyBox.w !== c.headBox.w)
-    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'Antal ↕', 'remove'])
+    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Antal ↕', 'Titel ↕', 'body ↕¶', 'remove'])
 
-    // And the drift is the one that shipped: the × has slid a whole heading to the left, onto
-    // `antal`, and taken that heading's width instead of a tap target's.
-    const antal = short.columns.find((c) => c.head === 'Antal ↕')!
+    // And the drift is the one that shipped: the × has slid a whole heading to the left, onto the
+    // last field — `antal` then, `body` since `antal` stands on the rail (#695) — and taken that
+    // heading's width instead of a tap target's.
+    const last = short.columns.find((c) => c.head === 'body ↕¶')!
     const remove = short.columns.find((c) => c.head === 'remove')!
     expect(remove.body).toBe('remove')
-    expect(remove.bodyBox!.x).toBe(antal.headBox.x)
-    expect(remove.bodyBox!.w).toBe(antal.headBox.w)
-    expect(antal.headBox.w).toBeGreaterThan(44)
+    expect(remove.bodyBox!.x).toBe(last.headBox.x)
+    expect(remove.bodyBox!.w).toBe(last.headBox.w)
+    expect(last.headBox.w).toBeGreaterThan(44)
   }, 60_000)
 })
-
 
 // The pinned × lies over what scrolls under it, and no stylesheet can stop it: the content and the
 // pin share one clipping rectangle, and the only way out — a pin outside the scroller — costs the
@@ -307,7 +303,7 @@ async function markupOf(doc: ProjectDoc): Promise<Table> {
   const { container, unmount } = render(<Table doc={doc} />)
   const html = container.innerHTML
   unmount()
-  return { html, deck: deckValues(doc, sv) }
+  return { html, deck: deckValues(doc) }
 }
 
 // The three places the box can be: where it opens, halfway along, and as far as it goes.
@@ -850,7 +846,7 @@ describe('the rows stand still when the column door asks (#858)', () => {
     if (asking) await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
     const html = container.innerHTML
     unmount()
-    return { html, deck: deckValues(projectDoc(), sv) }
+    return { html, deck: deckValues(projectDoc()) }
   }
 
   it('keeps the first row and the door where they were, and asks in the foot, one row tall and in sight', async () => {

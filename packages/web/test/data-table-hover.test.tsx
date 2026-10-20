@@ -30,10 +30,8 @@ import { DataTable } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import { contrastRatio, cssDeclaredUnder, parseColor, relativeLuminance } from '../src/player/contrast.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
 
-const sv: T = (key, params) => translate('sv', key, params)
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
 // Radens fem grunder, en rad var, i en och samma tabell — så att alla fem mäts mot samma
@@ -227,7 +225,10 @@ type Readings = {
   ink: Record<Ground, string>
   /** Det `id` raden står under, som motorn räknar fram det (#609). */
   idInk: Record<Ground, string>
-  /** Den målade kanten längst in i `id`-cellen, mot det som glider in under den (#609). */
+  /** Och det `antal` raden bär, som står på listen bredvid `id` sedan #695. */
+  antalInk: Record<Ground, string>
+  /** Den målade kanten längst in i listens sista cell, mot det som glider in under den (#609) —
+   *  `antal` sedan #695, som står sist på listen. */
   edge: Record<Ground, string>
 }
 
@@ -249,7 +250,7 @@ async function measure(): Promise<Readings> {
   try {
     await page.setContent(shellOf(markup()), { waitUntil: 'load' })
     await page.evaluate(({ deck, fit }) => new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck), {
-      deck: deckValues(now_(), sv),
+      deck: deckValues(now_()),
       fit: FIT,
     })
 
@@ -281,9 +282,13 @@ async function measure(): Promise<Readings> {
       (rows) => Object.fromEntries(Object.entries(rows).map(([ground, cardRef]) => [ground, getComputedStyle(document.querySelector(`.byd-data tbody tr[data-card-ref="${cardRef}"] .byd-data-id`)!).color])),
       GROUNDS as Record<string, string>,
     )
+    const antalInk = await page.evaluate(
+      (rows) => Object.fromEntries(Object.entries(rows).map(([ground, cardRef]) => [ground, getComputedStyle(document.querySelector(`.byd-data tbody tr[data-card-ref="${cardRef}"] td[data-col="antal"] :is(input, s)`)!).color])),
+      GROUNDS as Record<string, string>,
+    )
     await page.mouse.move(0, 0)
-    const edge = await edgesOf(page, Object.fromEntries(Object.entries(GROUNDS).map(([ground, cardRef]) => [ground, `.byd-data tbody tr[data-card-ref="${cardRef}"] .byd-data-id`])))
-    return { rest, hover, ink: ink as Record<Ground, string>, idInk: idInk as Record<Ground, string>, edge: edge as Record<Ground, string> }
+    const edge = await edgesOf(page, Object.fromEntries(Object.entries(GROUNDS).map(([ground, cardRef]) => [ground, `.byd-data tbody tr[data-card-ref="${cardRef}"] td[data-col="antal"]`])))
+    return { rest, hover, ink: ink as Record<Ground, string>, idInk: idInk as Record<Ground, string>, antalInk: antalInk as Record<Ground, string>, edge: edge as Record<Ground, string> }
   } finally {
     await page.close()
   }
@@ -394,6 +399,17 @@ describe('listen de fastnålade cellerna står på (#609)', () => {
     const r = await readings()
     const under = (Object.keys(GROUNDS) as Ground[])
       .map((g) => ({ g, ratio: contrastRatio(r.idInk[g]!, r.rest[`${g} · byd-data-id`]!) }))
+      .filter(({ ratio }) => ratio < 4.5)
+      .map(({ g, ratio }) => `${g}: ${ratio.toFixed(2)}:1`)
+    expect(under).toEqual([])
+  }, 120_000)
+
+  // `antal` står på samma list sedan #695 och läses på samma grund: listen är en slöja och inte en
+  // färg per kolumn, så `id`-cellens grund är `antal`-cellens också.
+  it('läser antal med AA på listen, på varje grund (#695)', async () => {
+    const r = await readings()
+    const under = (Object.keys(GROUNDS) as Ground[])
+      .map((g) => ({ g, ratio: contrastRatio(r.antalInk[g]!, r.rest[`${g} · byd-data-id`]!) }))
       .filter(({ ratio }) => ratio < 4.5)
       .map(({ g, ratio }) => `${g}: ${ratio.toFixed(2)}:1`)
     expect(under).toEqual([])

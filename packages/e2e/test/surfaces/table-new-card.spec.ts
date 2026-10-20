@@ -15,5 +15,6 @@ test('scrolls the new card into view and puts the caret in it', async ({ page })
   await page.getByRole('button', { name: '+ Nytt kort' }).click()
   const row = page.locator('tr[data-card-ref="kort-78"]')
   await expect(row).toBeInViewport()
-  await expect(row.locator('.byd-data-lane input').first()).toBeFocused()
+  // Its first cell to write in, which is not the count on the rail beside the id (#695).
+  await expect(row.getByLabel('kort-78 title', { exact: true })).toBeFocused()
 })

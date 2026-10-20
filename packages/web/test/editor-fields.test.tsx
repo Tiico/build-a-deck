@@ -159,13 +159,13 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     openTab('Tabell')
 
     const order = () => Array.from(document.querySelectorAll('thead th[data-col]')).map((th) => th.getAttribute('data-col'))
-    expect(order()).toEqual(['id', 'title', 'body', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'title', 'body'])
 
     // Alt and an arrow, which is the same move the drag makes and the one a test can make.
     const heading = document.querySelector('thead th[data-col="body"] button') as HTMLButtonElement
     heading.focus()
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}')
-    await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
+    await waitFor(() => expect(order()).toEqual(['id', 'antal', 'body', 'title']))
 
     // It is an edit like any other: one step back puts the column where it stood, named in the
     // words the designer reads rather than in the verb's. Asked here and not after the reload,
@@ -173,11 +173,11 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     // survives (B4), and it is a different thing.
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
     expect(await screen.findAllByText(/Tog tillbaka: ett fält i kortleken/)).not.toHaveLength(0)
-    await waitFor(() => expect(order()).toEqual(['id', 'title', 'body', 'antal']))
+    await waitFor(() => expect(order()).toEqual(['id', 'antal', 'title', 'body']))
 
     heading.focus()
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}')
-    await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
+    await waitFor(() => expect(order()).toEqual(['id', 'antal', 'body', 'title']))
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await screen.findByText(/v[23]/)
     // What the server kept, and in the form the document keeps it in: an order, not a list.
@@ -187,7 +187,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     cleanup()
     await openEditor()
     openTab('Tabell')
-    await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
+    await waitFor(() => expect(order()).toEqual(['id', 'antal', 'body', 'title']))
   })
 })
 

@@ -24,10 +24,8 @@ import { chromium, type Browser } from 'playwright'
 import { DataTable } from '../src/editor/DataTable.js'
 import { deckValues, dragScroll, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
 
-const sv: T = (key, params) => translate('sv', key, params)
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
 // The deck the issue measured: a column of single words, one of short titles, one of sentences,
@@ -146,7 +144,7 @@ async function measure(html: string, width = 1440): Promise<Laid> {
           page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         }
       },
-      { deck: deckValues(deckDoc(), sv), fit: FIT },
+      { deck: deckValues(deckDoc()), fit: FIT },
     )) as Laid
   } finally {
     await page.close()
@@ -237,7 +235,7 @@ describe('the box under a drag that has reached its edge (#141)', () => {
             middleOfTheRoad,
           }
         },
-        { deck: deckValues(deckDoc(), sv), fit: FIT, decide: String(dragScroll) },
+        { deck: deckValues(deckDoc()), fit: FIT, decide: String(dragScroll) },
       )
 
       // The fixture really is wider than its box, or every answer below would be nought for the
@@ -270,7 +268,7 @@ describe('the box under a drag that has reached its edge (#141)', () => {
           const step = new Function('box', 'clientX', `return (${decide})(box, clientX)`) as (box: Element, x: number) => number
           return { room: box.scrollWidth - box.clientWidth, right: step(box, at.right - 5), left: step(box, at.left + 5) }
         },
-        { deck: deckValues(deckDoc(), sv), fit: FIT, decide: String(dragScroll) },
+        { deck: deckValues(deckDoc()), fit: FIT, decide: String(dragScroll) },
       )
       expect(seen.room).toBe(0)
       expect({ right: seen.right, left: seen.left }).toEqual({ right: 0, left: 0 })

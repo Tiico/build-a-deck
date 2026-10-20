@@ -32,10 +32,8 @@ import { chromium, type Browser } from 'playwright'
 import { DataTable } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
 
-const sv: T = (key, params) => translate('sv', key, params)
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
 // Tre kort som ställer frågan: en rad, en lista, och en lista som är för lång för taket. Samma
@@ -104,7 +102,7 @@ async function onPage<T>(doc: ProjectDoc, extra: string, read: (table: Table) =>
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
   try {
     await page.setContent(shellOf(markup(doc), extra), { waitUntil: 'load' })
-    return await page.evaluate(read, { deck: deckValues(doc, sv), fit: String(fitColumns), mark: String(markValues), which })
+    return await page.evaluate(read, { deck: deckValues(doc), fit: String(fitColumns), mark: String(markValues), which })
   } finally {
     await page.close()
   }

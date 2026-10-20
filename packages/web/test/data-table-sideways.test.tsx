@@ -15,6 +15,7 @@
 // still in the block direction, with an edge under `id` that says there is more to the left. The
 // chip that used to say `← 3 kolumner till vänster` goes with it — the edge says the same thing
 // without costing the place the reader was standing in, and two cues for one fact is one too many.
+// (#695 brought the sentence back, in the foot, where it costs no place either; see the end.)
 //
 // jsdom lays nothing out and scrolls nothing, so every question here is put to a real engine
 // against the stylesheet the editor ships.
@@ -24,13 +25,11 @@ import { useState } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
-import { DataTable, markCut } from '../src/editor/DataTable.js'
+import { DataTable, columnsOutside, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
 
-const sv: T = (key, params) => translate('sv', key, params)
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
 // Cards that cannot be told apart by their titles, which is the fixture's whole job here: a row
@@ -137,7 +136,7 @@ async function at<T_>(html: string, to: 'start' | 'end', read_: (page: import('p
         new Function('box', 'deck', `(${fit})(box, deck)`)(box, deck)
         box.scrollLeft = to === 'end' ? box.scrollWidth - box.clientWidth : 0
       },
-      { deck: deckValues(deckDoc(), sv), fit: FIT, to },
+      { deck: deckValues(deckDoc()), fit: FIT, to },
     )
     await page.evaluate((pin) => new Function('box', `(${pin})(box)`)(document.querySelector('.byd-data-scroll')), PIN)
     return await read_(page)
@@ -276,7 +275,7 @@ describe('den öppna cellen när lådan är rullad i båda leder (#696)', () => 
           box.scrollLeft = cell.left - rail.right + 300
           box.scrollTop = cell.top - head.bottom + 40
         },
-        { deck: deckValues(deckDoc(MANY), sv), fit: FIT, open: OPEN },
+        { deck: deckValues(deckDoc(MANY)), fit: FIT, open: OPEN },
       )
       await page.evaluate((pin) => new Function('box', `(${pin})(box)`)(document.querySelector('.byd-data-scroll')), PIN)
       return await page.evaluate((open) => {
@@ -360,8 +359,9 @@ const rubrikenOchLådan = (page: import('playwright').Page, col: string) =>
     const namn = th.querySelector('button') as HTMLElement
     const låda = box.getBoundingClientRect()
     const r = namn.getBoundingClientRect()
-    // Det som står stilla ovanpå kolumnen, mätt på sidan i stället för skrivet här.
-    const fast = [...box.querySelectorAll('thead .byd-data-check, thead th[data-col="id"]')]
+    // Det som står stilla ovanpå kolumnen, mätt på sidan i stället för skrivet här: bocken, `id`
+    // och sedan #695 `antal`.
+    const fast = [...box.querySelectorAll('thead .byd-data-check, thead th[data-col="id"], thead th[data-col="antal"]')]
       .reduce((sum, cell) => sum + cell.getBoundingClientRect().width, 0)
     return {
       vänster: Math.round(r.left - låda.left),
@@ -452,6 +452,71 @@ describe('rubriken «id» står över sin egen text (#629)', () => {
     // Och `id` glider inte när resten rullar förbi: den är redan där lanen slutar.
     expect(await at(burst(), 'end', (page) => indrag(page, 'id'))).toBe(id)
   }, 90_000)
+
+  // Samma sak för `antal`, som står på listen sedan #695: den är lika mycket en del av det
+  // fastnålade som `id`, och knuffades den till lanens slut stod namnet vid sin egen högerkant.
+  it('gäller också «antal», som står på listen bredvid id (#695)', async () => {
+    const [antal, typ] = await at(burst(), 'start', async (page) => [await indrag(page, 'antal'), await indrag(page, 'typ')])
+    expect(antal).toBe(typ)
+    expect(await at(burst(), 'end', (page) => indrag(page, 'antal'))).toBe(antal)
+  }, 90_000)
+})
+
+// antal på listen (#695, beställarens val D + A 2026-10-20). Den stod sist, och L46:s tak gör body
+// exakt lika bred som det rum som syns, så en kolumn efter body kunde inte börja i bild vid någon
+// bredd: antal började bakom × också vid 1440. Nu står den bredvid `id`, och listen är tre kolumner.
+describe('antal på listen bredvid id (#695)', () => {
+  const listen = (page: import('playwright').Page) =>
+    page.evaluate(() => {
+      const box = document.querySelector('.byd-data-scroll') as HTMLElement
+      const room = box.getBoundingClientRect()
+      const said = (el: Element | null) => (el ? `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}` : 'ingenting')
+      const fel: string[] = []
+      const rows = [...box.querySelectorAll('thead tr, tbody tr')]
+      for (const row of rows) {
+        const id = row.querySelector('[data-col="id"]') as HTMLElement
+        const antal = row.querySelector('[data-col="antal"]') as HTMLElement | null
+        const vem = row.getAttribute('data-card-ref') ?? 'huvudet'
+        if (!antal) {
+          fel.push(`${vem}: ingen antal-cell`)
+          continue
+        }
+        const a = antal.getBoundingClientRect()
+        const i = id.getBoundingClientRect()
+        if (Math.abs(a.left - i.right) > 0.5) fel.push(`${vem}: ${Math.round(a.left - i.right)} px från id`)
+        if (a.left < room.left - 0.5 || a.right > room.right + 0.5) fel.push(`${vem}: utanför lådan`)
+        // Vad webbläsaren själv svarar mitt i cellen: en cell som står på rätt plats medan ett
+        // värde ritas ovanpå den står inte stilla.
+        const hit = document.elementFromPoint(a.left + a.width / 2, a.top + a.height / 2)
+        if (hit !== antal && !antal.contains(hit)) fel.push(`${vem}: ${said(hit)} ovanpå`)
+      }
+      return { rullad: Math.round(box.scrollLeft), över: box.scrollWidth - box.clientWidth, rader: rows.length, fel }
+    })
+
+  it('står bredvid id på varje rad och i huvudet, också rullad till slutet, och ritas ovanpå det som rullar', async () => {
+    const [början, slutet] = await Promise.all([at(burst(), 'start', listen), at(burst(), 'end', listen)])
+    // Premissen: tabellen rullar verkligen, och är rullad till slutet.
+    expect(slutet.över).toBeGreaterThan(0)
+    expect(slutet.rullad).toBe(slutet.över)
+    expect(slutet.rader).toBe(CARDS.length + 1)
+    expect(början.fel).toEqual([])
+    expect(slutet.fel).toEqual([])
+  }, 90_000)
+
+  // Kanten mot det som glider in under listen står på listens sista kolumn, alltså på antal och
+  // inte längre på id (L55): en kant mitt i listen säger att det är där det fasta slutar.
+  it('bär listens kant, och id gör det inte längre', async () => {
+    const kanter = await at(burst(), 'end', (page) =>
+      page.evaluate(() => {
+        const shadow = (sel: string) => getComputedStyle(document.querySelector(sel) as HTMLElement).boxShadow
+        return { id: shadow('tbody tr .byd-data-id'), antal: shadow('tbody tr td[data-col="antal"]'), idHead: shadow('thead th[data-col="id"]'), antalHead: shadow('thead th[data-col="antal"]') }
+      }),
+    )
+    expect(kanter.antal).toContain('inset')
+    expect(kanter.antalHead).toContain('inset')
+    expect(kanter.id).toBe('none')
+    expect(kanter.idHead).toBe('none')
+  }, 90_000)
 })
 
 describe('kapet mot lådan bär samma gest som kapet mot kolumnen (#401)', () => {
@@ -519,14 +584,32 @@ describe('uttoningen vid lådans kant lämnar den fastnålade × i fred (#401, #
   }, 90_000)
 })
 
-// The chip only ever existed after a real scroll had been measured, and the markup this file
-// hands to the browser is taken in jsdom, where nothing is laid out and nothing has scrolled. So
-// it cannot be asked for by looking at a page — which is why this is read as text, the way the
-// spacing ladder is (#132). It is a weak guard and it is the honest one: what it says is that the
-// editor no longer has a second way to say the thing the fixed edge now says.
-describe('the chip that used to say what had gone out of the box (#145)', () => {
-  it('is gone from the table and from the stylesheet, because the fixed edge says it instead', () => {
-    expect(read('src/editor/DataTable.tsx')).not.toContain('byd-data-outside')
-    expect(read('src/editor/editor.css')).not.toContain('byd-data-outside')
-  }, 60_000)
+// Vilka kolumner som står utanför lådan (L4 variant C, 2026-09-15; tillbaka i foten med #695).
+//
+// #145 tog bort chipset över tabellen som sa det, eftersom den fasta kanten under listen sa samma
+// sak om vänster. Men åt höger sa ingenting det: i en tät lek stod sju kolumner utanför vid varje
+// bredd, också vid 1440, och ingenting på skärmen nämnde dem. Beställarens val D + A
+// (2026-10-20) lägger meningen i foten, som en knapp som rullar dit.
+//
+// En kolumn är utanför när dess rubrik inte alls överlappar den del av lådan som går att läsa —
+// mellan listen och pinnen. Delvis täckt är inte utanför; det är kapet uttoningen redan finns till
+// för. Listens egna kolumner står aldrig utanför.
+describe('vilka kolumner som står utanför lådan (#695)', () => {
+  const UTE = `(box) => (${String(columnsOutside)})(box)`
+  const ute = (page: import('playwright').Page) => page.evaluate((fn) => new Function('box', `return (${fn})(box)`)(document.querySelector('.byd-data-scroll')) as { left: string[]; right: string[] }, UTE)
+  it('nämner det som står helt utanför åt höger, och inte det som delvis syns', async () => {
+    // `typ` dragen bredare än lådan: allt efter den står utanför vid början, och den själv syns.
+    const sedd = await at(markup({ field: 'typ', by: 1400 }), 'start', ute)
+    expect(sedd).toEqual({ left: [], right: ['title', 'body'] })
+  }, 90_000)
+
+  it('nämner det som rullats förbi åt vänster, och aldrig listens egna kolumner', async () => {
+    // `body` dragen bredare än lådan: vid slutet står allt före den utanför åt vänster.
+    const sedd = await at(burst(), 'end', ute)
+    expect(sedd).toEqual({ left: ['typ', 'title'], right: [] })
+  }, 90_000)
+
+  it('nämner ingenting när tabellen får plats', async () => {
+    expect(await at(markup(), 'start', ute)).toEqual({ left: [], right: [] })
+  }, 90_000)
 })

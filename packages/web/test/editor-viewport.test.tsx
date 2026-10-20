@@ -23,10 +23,10 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 const shell = read('index.html')
 const css = `${read('src/editor/editor.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
 
-const document_ = (html: string) =>
+const document_ = (html: string, extra = '') =>
   shell
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
-    .replace('</head>', `<style>${css}</style></head>`)
+    .replace('</head>', `<style>${css}${extra}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
 // Every surface below begins by asking the fixture whether the server is answering, and only then
@@ -209,13 +209,13 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
 }
 
 // The same surfaces, in a real engine at that width, measured by `read_`.
-async function measure<T>(width: number, read_: (page: Page) => Promise<T>, of: (width: number) => Promise<Record<string, string>> = surfaces): Promise<Record<string, T>> {
+async function measure<T>(width: number, read_: (page: Page) => Promise<T>, of: (width: number) => Promise<Record<string, string>> = surfaces, extra = ''): Promise<Record<string, T>> {
   const marked = await of(width)
   const page = await browser.newPage({ viewport: { width, height: 800 } })
   try {
     const out: Record<string, T> = {}
     for (const [name, html] of Object.entries(marked)) {
-      await page.setContent(document_(html), { waitUntil: 'load' })
+      await page.setContent(document_(html, extra), { waitUntil: 'load' })
       out[name] = await read_(page)
     }
     return out
@@ -510,6 +510,16 @@ describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) =>
 
   it('names every file picker in it, hands each the pointer through its label, and rings them on focus', async () => {
     const measured = await measure(width, (page) => page.$$eval(".byd-table-wrap input[type='file']", filePickerFaults), cardFiles)
+    expect(measured).toEqual({ 'Tabell · filer': { pickers: 5, faults: [] } })
+  }, 90_000)
+})
+
+// The same pickers with text as wide as CI's Linux draws it (#695): the image cells then run past
+// the box at 768, and a picker brought into view to the box's edge stood under the pinned ×, which
+// took the pointer. Verdana is about as wide as DejaVu, so the Mac sees what CI sees.
+describe('the card table with a picture in it, at 768px with text as wide as on Linux (#695)', () => {
+  it('hands each file picker the pointer through its label', async () => {
+    const measured = await measure(768, (page) => page.$$eval(".byd-table-wrap input[type='file']", filePickerFaults), cardFiles, 'body, body * { font-family: Verdana, sans-serif !important; }')
     expect(measured).toEqual({ 'Tabell · filer': { pickers: 5, faults: [] } })
   }, 90_000)
 })

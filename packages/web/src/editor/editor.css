@@ -2127,6 +2127,9 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    half and there is nothing to say the deck ended there. It is room to scroll into and not a row,
    so the table still holds every row it draws to the height of one target. */
 .byd-data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 56px; /* undantag: svansen är en kortrad plus luft, inte ett avstånd på stegen (#130) */ }
+/* What scrolls a cell into view stops short of the pinned × (#695), which is a tap wide at every
+   width; the rail on the left is measured, and `fitColumns` says it on the box. */
+.byd-data-scroll { scroll-padding-right: var(--byd-tap); }
 .byd-data-tools { margin: 0; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
 /* The import is a label with a file input in the corner behind it (#193), and the tap rule
@@ -2401,6 +2404,30 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-column-filter-tick:hover { background: #232838; }
 .byd-column-filter-tick > input { width: var(--byd-tick); height: var(--byd-tick); margin: 0; accent-color: var(--byd-editor-primary-mark); color-scheme: dark; }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
+/* Which columns stand outside the box, said after the count (L4 variant C, #46; back in the foot
+   with #695), and a button, because knowing they are there is no use without a way to them.
+   When the row runs out of room the names give way first and from their end, and the number
+   stays: the names' track is the only one that may be narrower than what it holds, so the button
+   is never narrower than its number. It takes only the room the row has left over (a basis of
+   nought, grown no further than what it says), so nothing else in the row gives way — the quiet
+   line wrapped, and a confirmation was cut — until the names are gone. It is the 44 px every target in the editor is, and takes a line of text's height in the
+   row, so the foot keeps the height it has without it; the ring is drawn round the words. */
+.byd-crown-foot .byd-data-outside { flex: 1 1 0; min-width: min-content; max-width: max-content; display: inline-grid; grid-template-columns: auto minmax(0, max-content) auto; align-items: center; margin-block: calc((1lh - var(--byd-tap)) / 2); padding: 0 var(--byd-s2); border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-count-ink); font: inherit; cursor: pointer; }
+.byd-crown-foot .byd-data-outside[data-side='left'] { grid-template-columns: auto auto minmax(0, max-content); }
+.byd-crown-foot .byd-data-outside > span { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
+.byd-crown-foot .byd-data-outside:hover { color: #e6ecfa; }
+.byd-crown-foot .byd-data-outside:hover > span { text-decoration-color: currentColor; }
+.byd-crown-foot .byd-data-outside:focus-visible { outline-offset: -4px; }
+.byd-crown-foot .byd-data-outside[data-side='left'] > :first-child { margin-right: var(--byd-s1); }
+.byd-crown-foot .byd-data-outside[data-side='right'] > :last-child { margin-left: var(--byd-s1); }
+/* Below the desk the row breaks rather than the page scrolling sideways for it, as the crown's
+   does (#567): at 400 % the number alone was 13 px wider than the room. */
+@media (max-width: 1023px), (pointer: coarse) {
+  .byd-crown-foot:has(> .byd-data-outside) { flex-wrap: wrap; row-gap: var(--byd-s1); }
+}
+/* The names are cut by their own box, and the underline hangs under the line: the box reaches a
+   rung further down than it is laid out, so the cut is to the side and never under the words. */
+.byd-data-outside-names { overflow: hidden; text-overflow: ellipsis; padding-block: var(--byd-s1); margin-block: calc(-1 * var(--byd-s1)); }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 4px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
@@ -2504,20 +2531,31 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-data tbody tr { background: #1b1d23; }
 .byd-data tbody .byd-data-check { position: sticky; left: 0; z-index: 4; background: inherit; }
 .byd-data tbody .byd-data-id { position: sticky; left: var(--byd-tap); z-index: 4; background: inherit; }
+/* And the count beside them (#695, beställarens val D + A): `antal` stood last, and L46's ceiling
+   makes `body` exactly as wide as the room that shows, so a column after it could not begin on the
+   screen at any width. On the rail it is one Tab from the tick and stays while the hand writes far
+   out in `body`. Where it starts is `id`'s measured width past the tick, which only the
+   measurement knows and says in `--byd-data-at-antal`; before it the tick's width keeps the cell
+   pinned at all, which is what the measurement asks the sheet before it says anything. */
+.byd-data :is(tbody td, thead th)[data-col='antal'] { position: sticky; left: var(--byd-data-at-antal, var(--byd-tap)); }
+.byd-data tbody td[data-col='antal'] { z-index: 4; background: inherit; }
+.byd-data tbody td[data-col='antal'] input { color: var(--byd-editor-data-rail-ink); }
 /* And they stand on a rail of their own (#609, beställarens beslut B): inheriting the row's ground,
    nothing but a shadow drawn once a value was already under them said they were standing still.
    The rail is a veil laid over the inherited ground rather than a colour instead of it, so every
    tint the row carries reaches the pinned cells too; under the pointer the row's own lift is laid
    over it (#400). The edge against what slides in is drawn at all times, not only once something
    has slid in, because it is what says the column stands still before anything has moved. */
-.byd-data tbody tr :is(.byd-data-check, .byd-data-id) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
-.byd-data thead :is(.byd-data-check, th[data-col='id']) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
-.byd-data tbody tr:hover :is(.byd-data-check, .byd-data-id) { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
-.byd-data tbody .byd-data-id, .byd-data thead th[data-col='id'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge); }
-/* The id heading is read on the head's rail in the same ink, save while it is what the table is
-   sorted by, when it is the green every sorting heading is. */
-.byd-data thead th[data-col='id'] > button:not([data-active='true'], :hover),
-.byd-data thead th[data-col='id'] > button:not([data-active='true']) span { color: var(--byd-editor-data-rail-ink); }
+.byd-data tbody tr :is(.byd-data-check, .byd-data-id, td[data-col='antal']) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+.byd-data thead :is(.byd-data-check, th[data-col='id'], th[data-col='antal']) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
+.byd-data tbody tr:hover :is(.byd-data-check, .byd-data-id, td[data-col='antal']) { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+/* The edge stands on the rail's last column, which is `antal` since #695: an edge between `id`
+   and `antal` would say the rail ends where it does not. */
+.byd-data :is(tbody td, thead th)[data-col='antal'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge); }
+/* The rail's headings are read on the head's rail in the same ink, save while one is what the
+   table is sorted by, when it is the green every sorting heading is. */
+.byd-data thead :is(th[data-col='id'], th[data-col='antal']) > button:not([data-active='true'], :hover),
+.byd-data thead :is(th[data-col='id'], th[data-col='antal']) > button:not([data-active='true']) span { color: var(--byd-editor-data-rail-ink); }
 /* A marked row's id keeps its own ink, which is declared later and weighs the same. */
 .byd-data tbody tr .byd-data-id { color: var(--byd-editor-data-rail-ink); }
 /* The head's own two, so the corner where the row that stands still upward crosses the columns
@@ -2531,14 +2569,15 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    mätningen, som säger det i `--byd-data-lane`; före första mätningen räcker bocken. */
 /* Utom `id` (#629): den är själv en del av det fastnålade som lanen mäter, så lanens slut är dess
    egen cells högerkant — och dit knuffades namnet, ~150 px från texten under det. */
-.byd-data thead th[data-col]:not([data-col='id']) > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
+/* Och `antal` av samma skäl, sedan den står på listen (#695). */
+.byd-data thead th[data-col]:not([data-col='id'], [data-col='antal']) > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
 .byd-data thead .byd-data-check { position: sticky; left: 0; z-index: 5; }
 .byd-data thead th[data-col='id'] { position: sticky; left: var(--byd-tap); z-index: 5; }
+.byd-data thead th[data-col='antal'] { z-index: 5; }
 /* The edge that says there is more to the left. It is a promise that something is there, so it is
    drawn only once something is: `data-under` is set on the box by the same frame that asks
    whether a value has run under the pin. */
-.byd-data-scroll[data-under] .byd-data .byd-data-id,
-.byd-data-scroll[data-under] .byd-data thead th[data-col='id'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge), 8px 0 12px -8px rgb(0 0 0 / 80%); }
+.byd-data-scroll[data-under] .byd-data :is(tbody td, thead th)[data-col='antal'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge), 8px 0 12px -8px rgb(0 0 0 / 80%); }
 /* The tick keeps the size a tick has; what a thumb hits is the label around it. */
 .byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
 /* The column that removes a card is pinned to the right edge of the scrolling box: it is the
@@ -2749,6 +2788,19 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    `.byd-data th button span` färgar annars om det till pilens grå. */
 .byd-data th button .byd-prose-pilcrow { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); padding-left: 4px; font-weight: 400; color: var(--byd-editor-quiet); }
 .byd-data th button .byd-prose-pilcrow[data-from='choice'] { color: #9ec4e8; }
+/* ── Kolumnen mallen grupperas av (#695, beställarens val D + A) ─────────────────────────────
+   «grupp» var en egen kolumn som sa «typ = Playcard» där typ redan sa Playcard: gruppen *är*
+   värdet i den kolumn mallen grupperas av. Kolumnen gick upp i den kolumnens huvud, som bär märket
+   «kortgrupp» och L32:s frågetecken på en egen rad under namnet. På en egen rad för att märket på
+   samma rad gjorde kolumnen ~80 px bredare och meningarna lika mycket smalare; huvudet blir en rad
+   om 16 px djupare i stället. Ringen är 22 px och står ut över radens 16 px åt båda håll, i
+   namnets tomma luft ovanför och huvudets egen padding under.
+   Raden är ett eget block, så `fitColumns` räknar den som en egen rad och inte som en förlängning
+   av namnet, och den är så bred som det den bär, så att den kan glida med namnet (#401).
+   Till höger lämnar den plats för ringens träffyta, som står 11 px utanför ringen och annars
+   klipptes av rubrikens egen kant. */
+.byd-data thead .byd-data-grouped { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); display: flex; align-items: center; gap: var(--byd-s1); width: fit-content; height: var(--byd-s4); padding-right: var(--byd-s1); color: var(--byd-editor-count-ink); font-size: 11px; font-weight: 400; }
+.byd-data-grouped-mark { padding: 0 4px; border: 1px solid #3b4358; border-radius: 4px; line-height: 14px; }
 
 /* The head's own door (#46 on #32): the list of the table's columns, and under it the form that
    makes one. It hangs out of the head's last cell, which is the one heading deliberately not

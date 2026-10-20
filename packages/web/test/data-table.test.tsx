@@ -18,13 +18,13 @@ describe('DataTable (B as a tab)', () => {
 
     // Every column header is a sort control (#15) and nothing else: its name is the column, the
     // arrow is the state. The first column carries no name: the selection's checkbox is its own
-    // label (#17). Last stands the pinned column that removes a card, which says so for a reader
+    // label (#17); `antal` stands on the rail beside `id` (#695). Last stands the pinned column that removes a card, which says so for a reader
     // who cannot see the ×; the door to the table's columns stands in its head rather than
     // bringing a column of its own to stand in, because that column had nothing under it on any
     // row (#46).
     const heads = screen.getAllByRole('columnheader')
     const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*¶?\s*$/, ''))
-    expect(headers).toEqual(['', 'id', 'Titel', 'body', 'Antal', 'Ta bort'])
+    expect(headers).toEqual(['', 'id', 'Antal', 'Titel', 'body', 'Ta bort'])
     // And nothing about which columns are the designer's is said in the head itself any more: the
     // × that took one away, and the padlock that stood in its place where one could not be taken
     // away, are both behind the head's own door (#46 on #32), which is where the table already

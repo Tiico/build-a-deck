@@ -29,13 +29,14 @@ import type { ProposalView } from './proposals.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState, cellOf } from './sorting.js'
-import { deckValues, dragScroll, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
+import { deckValues, dragScroll, fitColumns, markValues, widthKind } from './columns.js'
 import { TAP_FLOOR, heldWidths, rememberWidths } from './widths.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, typedColumn, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { useMarked } from './marked.js'
-import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
+import { groupColumn } from './groups.js'
 import { Question } from './Question.js'
+import { Help } from './HelpDrawer.js'
 import { useT, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
@@ -209,7 +210,57 @@ export function markCut(box: Element): void {
   else box.removeAttribute('data-beyond')
 }
 
-// The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
+// Which of the table's columns are standing outside the box altogether (L4 variant C, #46; back in
+// the foot with #695).
+//
+// A different question from the pin's above. The pin's is about a value crossing under a control
+// on its way past; this is about a column a reader cannot see at all. In a dense deck seven
+// columns stood outside at every width, also at 1440, because L46's ceiling makes `body` exactly
+// as wide as the room that shows — and nothing on the screen named them.
+//
+// A column is outside when its heading does not overlap the part of the box that can be read:
+// between what stands pinned on the left (the tick, `id`, `antal`) and the pinned × on the right.
+// Partly covered is not outside — that is the cut the fade is already for — and a pinned column is
+// never outside, since it is the one thing that cannot be scrolled away. What is pinned is asked
+// of the stylesheet, as `fitColumns` asks it, so this cannot drift from `editor.css`.
+//
+// Deliberately one self-contained function with no imports, as `markCut` and `fitColumns` are:
+// the browser test runs this very function inside the page, so what is measured there is what
+// ships.
+export function columnsOutside(box: Element): { left: string[]; right: string[] } {
+  const left: string[] = []
+  const right: string[] = []
+  const scroller = box as HTMLElement
+  // A table that fits has nothing outside it, and this is also what keeps the question honest
+  // where nothing is laid out at all: every rectangle is then nought wide, and every column would
+  // otherwise read as having gone out to the left.
+  if (scroller.scrollWidth <= scroller.clientWidth + 1) return { left, right }
+  const seen = scroller.getBoundingClientRect()
+  let from = seen.left
+  let to = seen.left + scroller.clientWidth
+  const heads = Array.from(box.querySelectorAll('thead > tr > th')) as HTMLElement[]
+  const pinned = (th: HTMLElement) => {
+    const how = getComputedStyle(th)
+    return how.position === 'sticky' && (how.left !== 'auto' || how.right !== 'auto')
+  }
+  for (const th of heads) {
+    if (!pinned(th)) continue
+    const at = th.getBoundingClientRect()
+    if (getComputedStyle(th).left !== 'auto') from = Math.max(from, at.right)
+    else to = Math.min(to, at.left)
+  }
+  for (const th of heads) {
+    const name = th.getAttribute('data-col')
+    if (!name || pinned(th)) continue
+    const at = th.getBoundingClientRect()
+    if (at.right <= from + 0.5) left.push(name)
+    else if (at.left >= to - 0.5) right.push(name)
+  }
+  return { left, right }
+}
+
+// The table (B as a tab): one row per card, the template's fields as columns, `antal` on the rail
+// beside `id` (L55, #695).
 // This is where the designer already lives; a change here reaches every copy of the card.
 export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith: versionCompare, onStopCompare, proposal, onHideProposal, onOpenTemplate, reading = false }: DataTableProps) {
   // A proposal shown in the table takes the comparison's place (#1003).
@@ -713,9 +764,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // the box travels, so the width it is drawn at is the hand's distance plus the box's.
   const gripped = useRef<{ field: string; from: number; was: number; pulled: boolean; at: number; scrolled: number } | null>(null)
   const travelling = useRef<number | null>(null)
-  // Which columns are standing outside the box, and the answer they were last drawn from (#46).
-  // The set is held as state because it is words on the screen; the key beside it is what keeps a
-  // scroll from setting state on every frame it does not change anything.
+  // Which columns are standing outside the box, and the answer they were last drawn from (#46,
+  // #695). The set is held as state because it is words on the screen; the key beside it is what
+  // keeps a scroll from setting state on every frame it does not change anything.
+  const [outside, setOutside] = useState<{ left: string[]; right: string[] }>({ left: [], right: [] })
+  const outsideNow = useRef('|')
   const removeRef = useRef<HTMLButtonElement>(null)
   const allRef = useRef<HTMLInputElement>(null)
   // The × of every row on screen, so the question a row asks can hand the focus back to it.
@@ -731,7 +784,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // and never off `shown`, which is what keeps a width from moving when a filter or a sort does.
   // Held against the project rather than rebuilt every render: walking every value of every column
   // into a list is the same size as measuring them, and the table renders on every keystroke.
-  const deck = useMemo(() => deckValues(doc, t), [doc, t])
+  const deck = useMemo(() => deckValues(doc), [doc])
   // The table's own reading of itself, in the one order the two halves of it can be true in: how
   // wide each column has to be to show what stands in it (#46), and then — at those widths —
   // whether a column has run in under the pinned × (#53).
@@ -753,6 +806,13 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       // number rather than eight rectangles. The edge under `id` is a promise that something is
       // there; drawn against a table scrolled to its start it would be a lie.
       box.toggleAttribute('data-under', box.scrollLeft > 0)
+      // And which columns have left the box altogether (#695), which is the same size of question
+      // asked of the same rectangles; the foot says it.
+      const gone = columnsOutside(box)
+      const key = `${gone.left.join(',')}|${gone.right.join(',')}`
+      if (key === outsideNow.current) return
+      outsideNow.current = key
+      setOutside(gone)
     }
     const soon = () => {
       if (frame === 0) frame = requestAnimationFrame(pin)
@@ -832,7 +892,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const row = document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(arriving)}"]`)
     if (!row) return
     setArriving(null)
-    const cell = row.querySelector<HTMLElement>('.byd-data-lane input, [contenteditable="true"]')
+    // The first cell to write in, which is not the count on the rail (#695): a new card is one
+    // copy, and what it is called is what the hand came to write.
+    const cell = row.querySelector<HTMLElement>(`td:not([data-col="${ANTAL}"]) .byd-data-lane input, [contenteditable="true"]`)
     cell?.scrollIntoView?.({ block: 'nearest' })
     cell?.focus()
   }, [arriving, doc.rows])
@@ -856,9 +918,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const fields = fieldsOf(doc)
   // The columns whose place along the head is the designer's (#46). The card's id is not one of
   // them and never was — it is a column of the table without being a field of a card — and
-  // `antal` stands last wherever the table shows it (L4), so a move of it could not be seen and a
+  // `antal` stands on the rail beside it (L55, #695), so a move of it could not be seen and a
   // place in front of it is not on offer.
   const mine = fields.filter((field) => field !== ANTAL)
+  // The columns in the order the table draws them: `antal` first, on the rail with the tick and
+  // `id` (#695, beställarens val D + A), and then the designer's own in her order. It stood last,
+  // and at every width it began behind the × — the column that says how many copies go into the
+  // deck was the last one a new designer found. `fields` keeps the document's order, which is the
+  // one CSV and the bulk row's list speak in; only the table's columns move.
+  const drawn = [ANTAL, ...mine]
   // Where a column comes to stand when it is dropped on a heading. Dropped on one to its left it
   // stands in front of that heading; dropped on one to its right it stands after it, which is in
   // front of whatever follows and last of all when nothing does. Said in columns and never in
@@ -991,6 +1059,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // to see where the pin falls, and including the browser's own when it brings a focused cell into
   // view. A reader who has asked for less motion is handed the jump instead; it is the same
   // sentence either way, and nothing else moves.
+  const bring = (dir: -1 | 1) => {
+    const box = scrollRef.current
+    if (!box) return
+    const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    box.scrollBy({ left: dir * Math.round(box.clientWidth * 0.8), behavior: still ? 'auto' : 'smooth' })
+  }
   // What a heading needs to be the edge its column is pulled by. The two the table owns have
   // none: a card's id is a machine key and `antal` is the engine's own count, and neither is
   // prose anybody reads at a width of her choosing (L4).
@@ -1103,8 +1177,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           },
         }
       : undefined
-  // Which group a row falls into (#13, from variant C): read here, decided on the canvas. A deck
-  // that is not grouped says nothing at all, rather than a column of the same word on every row.
+  // The column the template is grouped by (#13, from variant C): read here, decided on the canvas.
+  // Its head says so (#695); a deck that is not grouped says nothing at all.
   const grouping = groupColumn(doc)
   // What the table shows is a view of the project, never its order: the sort (#15) and the filter
   // (#16) decide the rows on screen and leave `doc.rows` alone. This one line is the whole view,
@@ -1428,14 +1502,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           {/* And what the designer set it to, when she has set it (#46). It travels on the column
               beside what the column is worth sizing like, so the measurement is told the whole of
               it by the table and needs to know nothing about what any column is called. */}
-          {fields.map((f) => (
+          {drawn.map((f) => (
             <col key={f} data-col={f} data-kind={widthKind(doc, f)} {...(widths[f] === undefined ? {} : { 'data-width': widths[f] })} />
           ))}
-          {/* Which group a card falls into is the canvas's answer read back (#13), not prose the
-              designer writes, so it takes the room its longest label needs and no share of the
-              rest — and is therefore never cut, which is as well, since it is the one column of
-              the table that is not an input to fade. */}
-          {grouping && <col data-col={GROUP_COL} data-kind="key" />}
           <col data-kind="tap" />
         </colgroup>
         <thead>
@@ -1456,7 +1525,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               </label>
             </th>
             <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
-            {fields.map((f) => (
+            {drawn.map((f) => (
               <SortableHeader
                 key={f}
                 field={f}
@@ -1481,9 +1550,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 // Bara en kolumn som skrivs som prosa får märket (#615); räknekolumnen är motorns
                 // egen (L4) och skrivs aldrig som prosa.
                 prose={f !== ANTAL && bodyFields.includes(f) ? { from: proseChoiceOf(doc, f) === null ? 'height' : 'choice' } : undefined}
+                // The column the template is grouped by says so in its own head (#695): the group
+                // a card falls into is the value it carries there, so a column of its own only
+                // said the same word twice.
+                grouped={f === grouping ? f : undefined}
               />
             ))}
-            {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
             {/* The button that makes a column stands at the end of the head, where the column it
                 makes will stand (#32) — but it no longer brings a column of its own to stand in.
                 It had one, and every card's row met it with an empty cell: about 200 px of
@@ -1546,7 +1618,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         <tbody>
           {shown.map(({ id: cardRef, fields: row }) =>
             proposal?.changed.has(cardRef) ? (
-              <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={{ ticked: selected.has(cardRef), chosen: selectedRow === cardRef, onTick: () => setSelected(toggleRow(selected, cardRef)), onChoose: () => onSelectRow(cardRef), onFocus: () => setStanding(cardRef), onKeyDown: (event) => rowKey(cardRef, event, (r) => r.querySelector('.byd-data-check input')), ...stop(cardRef) }} />
+              <ProposedRow key={cardRef} cardRef={cardRef} fields={drawn} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={{ ticked: selected.has(cardRef), chosen: selectedRow === cardRef, onTick: () => setSelected(toggleRow(selected, cardRef)), onChoose: () => onSelectRow(cardRef), onFocus: () => setStanding(cardRef), onKeyDown: (event) => rowKey(cardRef, event, (r) => r.querySelector('.byd-data-check input')), ...stop(cardRef) }} />
             ) : (
             <tr
               key={cardRef}
@@ -1573,7 +1645,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 </label>
               </td>
               <td className="byd-data-id" data-col="id">{cardRef}</td>
-              {fields.map((f) =>
+              {drawn.map((f) =>
                 imageFields.includes(f) && assetBase ? (
                   <td key={f} className="byd-data-image" data-col={f}>
                     <div
@@ -1771,7 +1843,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 </td>
                 ),
               )}
-              {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
               {/* Every heading has a cell under it and every cell has a heading over it. A row
                   one short of the head is still a legal table and the browser lays it out without
                   complaint — what the designer sees is the pinned × under the wrong heading, at
@@ -1800,7 +1871,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             ),
           )}
           {addedShown.map(({ id: cardRef, fields: row }) => (
-            <ProposedRow key={cardRef} cardRef={cardRef} fields={fields} grouping={Boolean(grouping)} change="added" was={null} now={row} />
+            <ProposedRow key={cardRef} cardRef={cardRef} fields={drawn} change="added" was={null} now={row} />
           ))}
                   {/* A card gone since the version compared with is a record of what it was (#479, B4):
               its values as text and struck through, with nothing on it to write in, tick or press
@@ -1810,12 +1881,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             <tr key={cardRef} data-card-ref={cardRef} data-change="removed">
               <td className="byd-data-check" />
               <td className="byd-data-id" data-col="id">{cardRef}</td>
-              {fields.map((f) => (
+              {drawn.map((f) => (
                 <td key={f} data-col={f} className="byd-data-gone">
                   <s>{String(row[f] ?? '')}</s>
                 </td>
               ))}
-              {grouping && <td />}
               <td className="byd-data-remove" />
             </tr>
           ))}
@@ -1854,6 +1924,29 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </>
           )}
         </p>
+        {/* Which columns stand outside the box, said in the line that says what the view holds,
+            and a button, because knowing they are there is no use without a way to them (L4
+            variant C; back in the foot with #695). When room runs out the names shorten from the
+            end and the number stays. It yields to the marking's tools and to the questions that
+            take their place: the hand is then busy with something else, and at 1024 the quiet line
+            to its right broke over two lines for it. */}
+        {dropping === null &&
+          removing === null &&
+          chosen.length === 0 &&
+          (['left', 'right'] as const).map((side) => {
+            const gone = outside[side]
+            if (gone.length === 0) return null
+            const count = t(gone.length === 1 ? `table.columns.${side}.one` : `table.columns.${side}.other`, { n: gone.length })
+            const names = gone.map((field) => fieldLabel(field, t)).join(', ')
+            return (
+              <button key={side} type="button" className="byd-data-outside" data-side={side} aria-label={`${count}: ${names}`} onClick={() => bring(side === 'left' ? -1 : 1)}>
+                {side === 'left' && <span aria-hidden="true">‹</span>}
+                <span>{count}</span>
+                <span className="byd-data-outside-names">: {names}</span>
+                {side === 'right' && <span aria-hidden="true">›</span>}
+              </button>
+            )
+          })}
       {/* One row's × asks the same kind of question the marking does, and in the same place
           (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
           that had just pressed it. In the foot it takes the toolbar's place while it stands. The
@@ -2074,18 +2167,6 @@ function BodyTd({
   )
 }
 
-// Which group a row falls into (#13). A card whose column is empty takes the base look (L3), and
-// the cell says exactly that rather than leaving the eye to guess at a blank.
-function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: string; cardRef: string; row: ProjectRow['fields'] }) {
-  const t = useT()
-  const group = groupOfRow(doc, { id: cardRef, fields: row })
-  return (
-    <td className="byd-data-group" data-col={GROUP_COL} data-group-of={cardRef}>
-      {group === null ? t('table.group.base') : ruleLabel(column, group)}
-    </td>
-  )
-}
-
 // One header per column (variant A): a real button, so the tab order and Enter/Space come for
 // free, and `aria-sort` on the `th` for the state. The arrow is the same fact for the eye.
 //
@@ -2125,7 +2206,8 @@ type Pull = {
 // column's name and the way it is sorted, moved and pulled, and nothing that opens.
 type ProseSign = { from: 'height' | 'choice' }
 
-function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined; filter?: ColumnFilterProps | undefined }) {
+function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter, grouped }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined; filter?: ColumnFilterProps | undefined; grouped?: string | undefined }) {
+  const t = useT()
   const active = sort?.field === field ? sort.dir : null
   return (
     <th
@@ -2169,6 +2251,21 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter
       {/* The column's filter, after its sort (#617): a Tab through the head meets what the column
           is called and sorts on, then what it is narrowed to. */}
       {filter && <ColumnFilter {...filter} />}
+      {/* The column the template is grouped by, said on a line of its own under the name (#695,
+          beställarens val D + A): the mark says in a glance that this column decides the card's
+          look, and L32's question mark says where the look is changed. On a second line because
+          on the first it made the column ~80 px wider and the sentences as much narrower; the
+          head is 16 px taller instead. After the sort and the filter in the Tab order: the name
+          first, then what is said about it. */}
+      {grouped !== undefined && (
+        <span className="byd-data-grouped">
+          <span className="byd-data-grouped-mark">{t('table.grouped')}</span>
+          <Help topic={t('table.grouped.topic', { field: grouped })}>
+            <p>{t('table.grouped.help', { field: grouped })}</p>
+            <p>{t('table.grouped.where')}</p>
+          </Help>
+        </span>
+      )}
       {/* The edge the column is pulled by, and nothing a reader without a pointer has to step
           over: the keys do the same thing from the heading itself, and what a column was set to
           is read and given back in the head's own door. So it is out of the tab order and out of
@@ -2259,7 +2356,7 @@ function CompareSummary({ diff }: { diff: DocDiff }) {
 // (#575), so the panel, the foot and the rows say the same selection; a bulk action works on it
 // with the game's own values, since the table never holds the proposal's.
 type RowMarks = { ticked: boolean; chosen: boolean; onTick: () => void; onChoose: () => void; onFocus: () => void; onKeyDown: (event: KeyboardEvent<HTMLElement>) => void; tabIndex?: number }
-function ProposedRow({ cardRef, fields, grouping, change, was, now, marked }: { cardRef: string; fields: readonly string[]; grouping: boolean; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: RowMarks }) {
+function ProposedRow({ cardRef, fields, change, was, now, marked }: { cardRef: string; fields: readonly string[]; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: RowMarks }) {
   const t = useT()
   const text = (value: Cell | undefined) => (value === undefined || value === null ? '' : String(value))
   return (
@@ -2280,7 +2377,6 @@ function ProposedRow({ cardRef, fields, grouping, change, was, now, marked }: { 
           <span>{text(now[f] ?? (f === 'antal' ? 1 : ''))}</span>
         </td>
       ))}
-      {grouping && <td />}
       <td className="byd-data-remove" />
     </tr>
   )
