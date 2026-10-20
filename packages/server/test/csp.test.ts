@@ -56,9 +56,11 @@ describe('the page carries a Content-Security-Policy (#1008)', () => {
     expect(script).toContain("'self'")
     expect(script).toContain(sha(SHELL_LANG))
     expect(script).toContain(sha(SHELL_FILL))
-    // Every source, not only the absence of the obvious one: anything but our own origin and the
-    // two hashes would be a door the policy says it closes.
-    expect(script.sort()).toEqual(["'self'", sha(SHELL_LANG), sha(SHELL_FILL)].sort())
+    // Every source, not only the absence of the obvious one: anything but our own origin, the
+    // two hashes and this page's nonce would be a door the policy says it closes.
+    const nonces = script.filter((s) => s.startsWith("'nonce-"))
+    expect(nonces).toHaveLength(1)
+    expect(script.filter((s) => !s.startsWith("'nonce-")).sort()).toEqual(["'self'", sha(SHELL_LANG), sha(SHELL_FILL)].sort())
 
     const connect = csp.get('connect-src') ?? []
     expect(connect).toContain("'self'")
@@ -75,6 +77,24 @@ describe('the page carries a Content-Security-Policy (#1008)', () => {
     expect(csp.get('object-src')).toEqual(["'none'"])
     expect(csp.get('base-uri')).toEqual(["'none'"])
     expect(csp.get('default-src')).toEqual(["'self'"])
+  })
+
+  // The edge in front of the box writes an inline script of its own into the page, different on
+  // every request (#1043), and puts on it the nonce it reads off this header. A nonce is only
+  // worth something if it cannot be guessed, so every page gets its own, of 128 random bits.
+  it('gives every page a nonce of its own, for the script the edge in front adds', async () => {
+    const http = await serve()
+    const nonceOf = async (path: string) => {
+      const res = await fetch(`${http}${path}`, { headers: { accept: 'text/html' } })
+      const found = (directives(res.headers.get('content-security-policy')).get('script-src') ?? []).filter((s) => s.startsWith("'nonce-"))
+      expect(found, path).toHaveLength(1)
+      return /^'nonce-([A-Za-z0-9+/]+=*)'$/.exec(found[0] ?? '')?.[1] ?? ''
+    }
+    const seen = [await nonceOf('/'), await nonceOf('/'), await nonceOf('/editor?project=x'), await nonceOf('/index.html')]
+    expect(new Set(seen).size).toBe(seen.length)
+    for (const n of seen) expect(Buffer.from(n, 'base64').length).toBeGreaterThanOrEqual(16)
+    // Nothing else the box serves is a page, and nothing else carries one.
+    expect((await fetch(`${http}/health`)).headers.get('content-security-policy') ?? '').not.toContain("'nonce-")
   })
 
   it('lets images and connections reach the object store the redirects point at, read from the same configuration', async () => {
@@ -102,7 +122,7 @@ describe('the page carries a Content-Security-Policy (#1008)', () => {
     expect(directives(await policyFor({ 'x-forwarded-proto': 'https', host: 'deck.example' })).get('connect-src')).toContain('wss://deck.example')
     // A Host that is not a host name is not written into a header that other sources sit in.
     const forged = directives(await policyFor({ host: "deck.example;script-src*" }))
-    expect(forged.get('script-src')?.every((s) => s === "'self'" || s.startsWith("'sha256-"))).toBe(true)
+    expect(forged.get('script-src')?.every((s) => s === "'self'" || s.startsWith("'sha256-") || s.startsWith("'nonce-"))).toBe(true)
     expect(forged.get('connect-src')?.some((s) => s.includes('deck.example'))).toBe(false)
   })
 

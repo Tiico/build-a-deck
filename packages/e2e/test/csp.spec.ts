@@ -38,3 +38,32 @@ test('a script injected from another origin is refused, and so is one written in
   expect(await page.evaluate(() => (window as unknown as { __pwned?: string }).__pwned)).toBeUndefined()
   expect(fetched, 'the browser asked the foreign origin for the script').toBe(false)
 })
+
+// The edge in front of the box writes a script of its own into every page it passes on (#1043,
+// DRIFT §14): Cloudflare's JavaScript Detections, inline, with different bytes on every request,
+// so no hash in the build can let it through. What Cloudflare does instead is read the nonce off
+// the response's policy header and put it on the script it adds. The edge is played here the way
+// it behaves: the page as the box sent it, a fresh inline script before `</body>`, carrying the
+// nonce the header named — and that script has to run without a refusal anywhere.
+test('a script the edge adds with the nonce from the policy header runs, and the nonce is new on every page', async ({ page }) => {
+  const nonces: string[] = []
+  await page.route(
+    (url) => url.pathname === '/' || url.pathname === '/editor',
+    async (route) => {
+      const res = await route.fetch()
+      const policy = res.headers()['content-security-policy'] ?? ''
+      const nonce = /'nonce-([^']+)'/.exec(/script-src[^;]*/.exec(policy)?.[0] ?? '')?.[1]
+      if (nonce) nonces.push(nonce)
+      const edge = `<script nonce="${nonce ?? ''}">window.__edge = ${JSON.stringify(Math.random().toString(36))}</script>`
+      return route.fulfill({ response: res, body: (await res.text()).replace('</body>', `${edge}</body>`) })
+    },
+  )
+
+  for (const path of ['/', '/editor']) {
+    await page.goto(path)
+    await expect(page.locator('#root')).not.toBeEmpty()
+    expect(await page.evaluate(() => typeof (window as unknown as { __edge?: string }).__edge), `the edge's script did not run on ${path}`).toBe('string')
+  }
+  expect(nonces).toHaveLength(2)
+  expect(new Set(nonces).size, 'two pages were sent with the same nonce').toBe(2)
+})

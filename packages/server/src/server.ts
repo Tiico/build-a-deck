@@ -32,7 +32,7 @@ import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } f
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
-import { UPLOAD_POLICY, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
+import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -546,7 +546,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 404, { error: 'unknown face' })
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
-      const policy = (scriptHashes: readonly string[]) => pagePolicy({ scriptHashes, socket: socketOrigin(req.headers.host, schemeOf(opts, req) === 'https'), objects: opts.objects?.origin ?? null })
+      const policy = (scriptHashes: readonly string[]) => pagePolicy({ scriptHashes, nonce: pageNonce(), socket: socketOrigin(req.headers.host, schemeOf(opts, req) === 'https'), objects: opts.objects?.origin ?? null })
       if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res, policy)) return
     }
     json(res, 404, { error: 'not found' })
@@ -617,7 +617,7 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const hashed = file.includes(`${sep}assets${sep}`)
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
   // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
-  // hashes of the file being sent.
+  // hashes of the file being sent, and the edge's by a nonce made for this response (#1043).
   if (type.startsWith('text/html')) head['content-security-policy'] = policy(await scriptHashesOf(file))
   // The box compresses what it serves (DRIFT §13, #372): the blocking stylesheet uncompressed is
   // the single largest item in the first painting's price. `Vary` goes on everything that *could*
