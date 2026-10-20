@@ -114,49 +114,64 @@ describe('ångra tar bara tillbaka det egna (#1056)', () => {
 // Aktören prövar steget mot sanningen (#1056): Bos ändring av samma cell har landat hos aktören men
 // inte hos Ada när hon trycker ångra. Hon ser ingen konflikt och skickar steget; aktören vägrar det,
 // och editorn säger att steget inte gick att ta, inte att en ändring gick förlorad.
+//
+// Det aktören säger till den första editorn som öppnas kan hållas kvar: en långsam linje.
+function slowFirstLine(): { hold(): void; release(): void; held(): number; done(): void } {
+  let holding = false
+  const held: (() => void)[] = []
+  let first = true
+  setEditSocketImplementation(
+    class extends EditSocket {
+      constructor(url: string) {
+        super(url)
+        if (!first) return
+        first = false
+        // The client's own handler is kept beside the socket, and the socket's frames reach it
+        // through a listener that can hold them back.
+        let handler: ((event: { data: unknown }) => void) | null = null
+        Object.defineProperty(this, 'onmessage', {
+          get: () => handler,
+          set: (h: ((event: { data: unknown }) => void) | null) => {
+            handler = h
+          },
+        })
+        this.addEventListener('message', (event: { data: unknown }) => {
+          const deliver = () => handler?.({ data: event.data })
+          if (holding) held.push(deliver)
+          else deliver()
+        })
+      }
+    } as unknown as EditSocketCtor,
+  )
+  return {
+    hold: () => {
+      holding = true
+    },
+    release: () => {
+      holding = false
+      for (const message of held.splice(0)) message()
+    },
+    held: () => held.length,
+    done: () => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor),
+  }
+}
+
 describe('ett steg som aktören vägrar (#1056)', () => {
   it('sägs som ett ångra som inte gick, och tar inte över Bos cell', async () => {
-    // Det aktören säger till den första editorn kan hållas kvar: en långsam linje.
-    let holding = false
-    const held: (() => void)[] = []
-    let first = true
-    setEditSocketImplementation(
-      class extends EditSocket {
-        constructor(url: string) {
-          super(url)
-          if (!first) return
-          first = false
-          // The client's own handler is kept beside the socket, and the socket's frames reach it
-          // through a listener that can hold them back.
-          let handler: ((event: { data: unknown }) => void) | null = null
-          Object.defineProperty(this, 'onmessage', {
-            get: () => handler,
-            set: (h: ((event: { data: unknown }) => void) | null) => {
-              handler = h
-            },
-          })
-          this.addEventListener('message', (event: { data: unknown }) => {
-            const deliver = () => handler?.({ data: event.data })
-            if (holding) held.push(deliver)
-            else deliver()
-          })
-        }
-      } as unknown as EditSocketCtor,
-    )
+    const line = slowFirstLine()
     try {
       const { ada, bo, close } = await pair()
       try {
         ada.setCell('dragon', 'title', 'Ada')
         await landed(ada)
         await eventually(() => expect(title(bo)).toBe('Ada'))
-        holding = true
+        line.hold()
         bo.setCell('dragon', 'title', 'Bo')
         await vi.waitFor(async () => expect((await run.projects.readEdits(run.projectId, 0)).length).toBe(2))
 
         expect(ada.undo()).toBe('undo.what.deck')
-        await vi.waitFor(() => expect(held.length).toBeGreaterThanOrEqual(2))
-        holding = false
-        for (const message of held.splice(0)) message()
+        await vi.waitFor(() => expect(line.held()).toBeGreaterThanOrEqual(2))
+        line.release()
         await eventually(() => expect(ada.refusedStep).toEqual({ dir: 'undo', what: 'undo.what.deck' }))
         expect(ada.refusedEdits).toBe(0)
         expect(ada.canRedo).toBe(false)
@@ -167,7 +182,38 @@ describe('ett steg som aktören vägrar (#1056)', () => {
         close()
       }
     } finally {
-      setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+      line.done()
+    }
+  })
+
+  // Kapplöpningen i #1070: Bos flytt av samma lager har landat hos aktören men inte hos Ada när hon
+  // ångrar sin flytt. Aktören prövade förut bara att lagret steget lägger det efter fanns kvar, och
+  // flyttade tillbaka det över Bos flytt.
+  it('flyttar inte tillbaka ett lager över Bos flytt av det (#1070)', async () => {
+    const line = slowFirstLine()
+    const layers = (editor: ProjectClient) => editor.doc.template.faces['front']?.base.map((e) => e.id)
+    try {
+      const { ada, bo, close } = await pair()
+      try {
+        ada.moveElement('front', 'body', 0)
+        await landed(ada)
+        await eventually(() => expect(layers(bo)).toEqual(['body', 'frame', 'title']))
+        line.hold()
+        bo.moveElement('front', 'body', 1)
+        await vi.waitFor(async () => expect((await run.projects.readEdits(run.projectId, 0)).length).toBe(2))
+
+        expect(ada.undo()).toBe('undo.what.template')
+        await vi.waitFor(() => expect(line.held()).toBeGreaterThanOrEqual(2))
+        line.release()
+        await eventually(() => expect(ada.refusedStep).toEqual({ dir: 'undo', what: 'undo.what.template' }))
+        await eventually(() => expect(layers(ada)).toEqual(['frame', 'body', 'title']))
+        expect(layers(bo)).toEqual(['frame', 'body', 'title'])
+        expect((await run.projects.readEdits(run.projectId, 0)).map((e) => e.intent.v)).toEqual(['moveElement', 'moveElement'])
+      } finally {
+        close()
+      }
+    } finally {
+      line.done()
     }
   })
 })

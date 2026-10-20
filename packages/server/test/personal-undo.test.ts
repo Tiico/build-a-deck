@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, type EditIntent } from '../src/edits.js'
+import { applyEdit, columnsOf, type EditIntent } from '../src/edits.js'
 import { stamp, type ProjectDoc } from '../src/projects.js'
 import { openingSetup } from '../src/recipe.js'
 import { changeOf, joined, revertOf, type Change } from '../src/undo.js'
@@ -270,8 +270,104 @@ describe('ett grepp är ett steg, och aktören prövar steget mot sanningen (#10
     expect(() => applyEdit(raced, back.edit!)).toThrow(/someone else wrote/)
   })
 
+  // Kapplöpningen i #1070: Adas editor prövar steget mot sin kopia, där ingen annan har flyttat
+  // något, och skickar det. Innan det når aktören har Bos flytt av samma sak landat där. Aktören
+  // ska då vägra, inte flytta tillbaka över Bo.
+  const zonesWith = (doc: ProjectDoc, first: string): EditIntent => {
+    const zones = doc.setup.zones
+    return { v: 'restore', doc: { ...doc, setup: { ...doc.setup, zones: [zones.find((z) => z.id === first)!, ...zones.filter((z) => z.id !== first)] } } }
+  }
+  const rowsAs = (doc: ProjectDoc, ids: string[]): EditIntent => ({ v: 'replaceRows', rows: ids.map((id) => doc.rows.find((r) => r.id === id)!) })
+  const discard = (doc: ProjectDoc) => doc.setup.zones.find((z) => z.id === 'discard')!
+  const RACES: { what: string; mine: (doc: ProjectDoc) => EditIntent; theirs: (doc: ProjectDoc) => EditIntent; order: (doc: ProjectDoc) => unknown }[] = [
+    { what: 'ett kort', mine: (doc) => rowsAs(doc, ['kort-2', 'kort-3', 'kort-1']), theirs: (doc) => rowsAs(doc, ['kort-2', 'kort-1', 'kort-3']), order: (doc) => doc.rows.map((r) => r.id) },
+    { what: 'ett lager', mine: () => ({ v: 'moveElement', face: 'front', id: 'body', to: 0 }), theirs: () => ({ v: 'moveElement', face: 'front', id: 'body', to: 1 }), order: (doc) => doc.template.faces['front']!.base.map((e) => e.id) },
+    {
+      what: 'en zon',
+      mine: (doc) => ({ v: 'compound', edits: [{ v: 'removeZone', id: 'discard' }, { v: 'insertZone', zone: discard(doc) }] }),
+      theirs: (doc) => zonesWith(doc, 'discard'),
+      order: (doc) => doc.setup.zones.map((z) => z.id),
+    },
+    { what: 'kolumnordningen', mine: () => ({ v: 'moveField', field: 'typ', before: 'title' }), theirs: () => ({ v: 'moveField', field: 'typ', before: 'bild' }), order: (doc) => doc.columns },
+  ]
+  for (const { what, mine, theirs, order } of RACES) {
+    it(`vägrar flytta tillbaka ${what} som någon hann flytta innan steget nådde aktören (#1070)`, () => {
+      const doc = rich()
+      const after = applyEdit(doc, mine(doc))
+      const back = revertOf(changeOf(doc, after), after)
+      if (!back.ok || !back.edit) throw new Error('no step')
+      const raced = applyEdit(after, theirs(after))
+      expect(order(raced)).not.toEqual(order(after))
+      expect(() => applyEdit(raced, back.edit!)).toThrow(/since/)
+    })
+  }
+
+  it('flyttar tillbaka Adas lager när det som hann före var ett annat lager som lades till (#1070)', () => {
+    const doc = game()
+    const after = applyEdit(doc, { v: 'moveElement', face: 'front', id: 'body', to: 0 })
+    const back = revertOf(changeOf(doc, after), after)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const raced = applyEdit(after, { v: 'addElement', face: 'front', element: image })
+    expect(applyEdit(raced, back.edit).template.faces['front']!.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'bild'])
+  })
+
   it('läser ingen väg som når förbi spelet', () => {
     expect(() => applyEdit(game(), { v: 'revert', parts: [{ at: ['__proto__', 'x'], to: 1 }] })).toThrow(/no part of a game/)
     expect(() => applyEdit(game(), { v: 'revert', parts: [{ at: ['name', 'x'], to: 1 }] })).toThrow(/no part of a game/)
+  })
+})
+
+// En ny kolumn skriver en tom cell i varje kort (#1069). Den tomma cellen är ingenting någon har
+// skrivit i Adas kort, så kortet hon lade till går att ångra; ett värde Bo har skrivit i det gör det inte.
+describe('en tom cell är ingenting någon skrev (#1069)', () => {
+  const rows = (doc: ProjectDoc) => doc.rows.map((r) => r.id)
+  const ADDS: EditIntent = { v: 'addRow', cardRef: 'kort-4', fields: { title: '', antal: 1 } }
+  const COLUMN: EditIntent = { v: 'addField', field: 'kraft' }
+
+  it('tar bort Adas nya kort fast Bo har lagt till en kolumn sedan, och Bos kolumn står kvar', () => {
+    const doc = game()
+    const back = docOf(undone(doc, ADDS, [COLUMN]))
+    expect(rows(back)).toEqual(['kort-1', 'kort-2', 'kort-3'])
+    expect(stamp(back)).toBe(stamp(applyEdit(doc, COLUMN)))
+  })
+
+  it('vägrar när Bo har skrivit ett värde i den nya kolumnen på Adas kort', () => {
+    const r = undone(game(), ADDS, [COLUMN, { v: 'setCell', cardRef: 'kort-4', field: 'kraft', value: '3' }])
+    expect(r).toEqual({ refused: [['rows', 'kort-4']] })
+  })
+
+  it('vägrar när Adas kort är det enda som bär Bos kolumn, så att kolumnen inte går med kortet', () => {
+    const r = undone({ ...game(), rows: [] }, ADDS, [COLUMN])
+    expect(r).toEqual({ refused: [['rows', 'kort-4']] })
+  })
+
+  // Åt andra hållet: kortet som läggs tillbaka tar inte med sig en tom cell i en kolumn som inget
+  // annat kort längre har. Annars kom en kolumn Bo har tagit bort tillbaka, tom, med Adas kort.
+  it('gör om lägger tillbaka Adas kort utan Bos kolumn när Bo har tagit bort den efter att Ada ångrat', () => {
+    const doc = game()
+    const added = applyEdit(doc, ADDS)
+    const widened = applyEdit(added, COLUMN)
+    const back = revertOf(changeOf(doc, added), widened)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const undoneDoc = applyEdit(widened, back.edit)
+    const narrowed = applyEdit(undoneDoc, { v: 'removeField', field: 'kraft' })
+    const forward = revertOf(changeOf(widened, undoneDoc), narrowed)
+    if (!forward.ok || !forward.edit) throw new Error('no step forward')
+    const redone = applyEdit(narrowed, forward.edit)
+    expect(rows(redone)).toEqual(['kort-1', 'kort-2', 'kort-3', 'kort-4'])
+    expect(columnsOf(redone)).not.toContain('kraft')
+    expect(redone.rows[3]).toEqual({ id: 'kort-4', fields: { title: '', antal: 1 } })
+  })
+
+  it('gör om lägger tillbaka den tomma cellen när kolumnen står kvar', () => {
+    const doc = game()
+    const added = applyEdit(doc, ADDS)
+    const widened = applyEdit(added, COLUMN)
+    const back = revertOf(changeOf(doc, added), widened)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const undoneDoc = applyEdit(widened, back.edit)
+    const forward = revertOf(changeOf(widened, undoneDoc), undoneDoc)
+    if (!forward.ok || !forward.edit) throw new Error('no step forward')
+    expect(stamp(applyEdit(undoneDoc, forward.edit))).toBe(stamp(widened))
   })
 })
