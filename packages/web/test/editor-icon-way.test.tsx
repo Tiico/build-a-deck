@@ -46,7 +46,7 @@ async function openTable(doc = projectDoc()) {
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
   return await waitFor(() => {
-    const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+    const el = document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement | null
     if (!el) throw new Error('no cell yet')
     return el
   })
@@ -81,7 +81,7 @@ describe('the way to an icon (#33)', () => {
     fireEvent.click(within(list).getAllByRole('option')[0]!)
 
     // L2: an icon in card text is its name in braces, and that is what the cell now holds.
-    await waitFor(() => expect((document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement).value).toMatch(/\{[^}]+\}/))
+    await waitFor(() => expect((document.querySelector('.byd-data tbody td:not(.byd-data-check, [data-col="antal"]) input') as HTMLInputElement).value).toMatch(/\{[^}]+\}/))
   })
 
   it('writes a bare name where a row of icons reads one, and a sentence where card text does', async () => {
