@@ -202,8 +202,16 @@ test('foten håller en rad vid 1024 med två markerade kort och med kolumndörre
   expect(frågan.krockar).toEqual([])
   expect(frågan.utanför).toBe(0)
   expect(frågan.högerkant).toBeLessThanOrEqual(0.5)
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Avbryt' }).click()
+  // Besvarad från tangentbordet: med Linux bredare text ligger den öppna dörren, som hänger ned
+  // till fönstrets fot i toppskiktet (L55), över frågans «Avbryt» vid 1024. Det är #858:s
+  // placering och inte fotens mening (#1061).
+  const avbryt = page.getByRole('alertdialog').getByRole('button', { name: 'Avbryt' })
+  await avbryt.focus()
+  await avbryt.press('Enter')
   await expect(page.getByRole('alertdialog')).toBeHidden()
+  // Och dörren stängd, dit fokus gick tillbaka, så att den inte ligger över någon cell nedan.
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('group', { name: 'Kolumner', exact: true })).toBeHidden()
 
   // Och L67:s bekräftelse, som står i den tysta radens ställe: meningen kortar sina namn för den,
   // och bekräftelsen står hel.
