@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 1019 — hoppspaltens knapp i den smala kronan (#1019)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#1019) ─────────────────────────────────────────────────────────────────────
+     När kortväggens krona är smalare än 1248 px (1100 × 800 utan panel, eller 1280 med AI-panelen
+     öppen) är «Fäll ihop hoppspalten» bara ett «⟨» i en 44 px-ruta: den enda kontrollen i kronan
+     utan ett ord. Ska den få ett ord, en ikon, flytta till spalten, eller bara synas bättre?
+
+     Varje bild är den BYGGDA editorn (packages/e2e-stacken, ett origin som på lådan), Kortväggen
+     med provleken Sal's Saloon grupperad efter typ, med varianten injicerad i den riktiga kronan av
+     matning/page.js: samma knapp, samma stilmall, samma container-regel. AI-panelen är den riktiga,
+     öppen för ett konto med en nyckel mot stackens falska leverantör. «Brett typsnitt» ritar kronan
+     i Verdana, DejaVus bredd, som e2e-grinden för #1045 gör. Kontrasten är mätt på de målade
+     bildpunkterna, inte på deklarationerna. Skripten ligger i matning/. Inget är ritat för hand.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root { --panel: #1b1d23; --line: #2f333d; --quiet-2: #9aa3b8; --primary-mark: #6ea8ff; }
+  body { display: flex; flex-direction: column; min-height: 100vh; padding: 0; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px; align-content: start; }
+  @media (max-width: 1000px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; }
+  .bild img { border: 1px solid #2f333d; border-radius: 6px; outline: 0; height: auto; width: 100%; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .ruta img { width: 100%; height: auto; border-radius: 6px; outline: 0; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  #matris { border-collapse: collapse; font-size: 12px; min-width: 1000px; }
+  #matris th, #matris td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
+  #matris th { color: #fff; background: #1b1f2a; }
+  #matris .valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  #matris td.ok { background: #16301f; color: #9be3b5; }
+  #matris td.nej { background: #3a1c1c; color: #ffb3a8; }
+  #matris td.mitt { color: #f0d7a0; background: #2e2716; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 1019 — hoppspaltens knapp i den smala kronan (#1019) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är den byggda editorn med varianten injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="bredder"><span>Bredd</span></div>
+  <div class="rad" id="sprak"><span>Språk</span></div>
+  <div class="rad" id="typsnitt"><span>Typsnitt</span></div>
+  <div class="rad" id="spalten"><span>Spalten</span></div>
+</div>
+<div class="scen">
+  <div class="bild"><a id="bildlank" target="_blank" title="Öppna bilden i full storlek"><img id="bild" alt=""></a><p id="bildtext"></p></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Lupp</h2><img id="lupp" alt=""><p id="lupptext" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här ytan</h2><div class="tal" id="tal"></div></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla varianter mot issuets fråga</h2>
+    <p class="forkl">Grönt håller, rött håller inte, gult är ett pris. Fyrtio ytor per variant: 1100, 1280 och 1440 utan något bredvid väggen och 1280 och 1440 med AI-panelen öppen, på svenska och engelska, i Macens typsnitt och i ett brett (Verdana, DejaVus bredd), med spalten öppen och ihopfälld. «Smal krona» är där kronan är under 1248 px och boxarna säger sina korta ord (1100, 1280 + AI, 1440 + AI). Marginalen är vad raden har kvar med sökfältet vid sitt golv på 180 px (#477 fynd 12). Kontrasten är den starkaste målade bildpunkten i kontrollen mot kontrollens grund, och kanten mot kronan runt den; 2× är en Mac-skärm, 1× en vanlig. Klicka en kolumnrubrik för att visa varianten.</p>
+    <table id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'Under 1248 px krona göms ordet och bara «⟨» / «⟩» står kvar: 12 px, i editorns blå märkfärg (#3c8ce7), vänsterställt i en 44 px-ruta med kronans kant #3b414e. Det är den enda kontrollen i kronan som inte behåller ett ord — boxarna säger «typ», «Kontroll (1)», ögat sitt läge.', pris: 'Det issuet beskriver. Tecknet når 4,7–4,9:1 mot rutan, så det är inte kontrasttalet som brister utan vad tecknet är: ett tunt, blått, förskjutet skiljetecken som läses som en trasig glyf och inte säger vad det fäller.' },
+  { id: 'a', namn: 'A · Ett kort ord', regel: 'Knappen gör som grannarna och behåller ett ord i den smala kronan: «⟨ Fäll ihop» / «⟩ Fäll ut» («Fold» / «Unfold»), fet som boxarna, tecknet i boxens bläck. Hela meningen «Fäll ihop hoppspalten» är fortfarande namn och tooltip.', pris: 'Ordet kostar 24–48 px, och raden har inte den bredden: bredvid AI-panelen vid 1280 i det breda typsnittet har kronan 12 px kvar i dag, och med ordet bryter den på två rader — precis det #1045 tog bort. Ett ord som säger vad men inte vad som fälls, för ett pris kronan inte har.' },
+  { id: 'b', namn: 'B · En ikon i appens ikonspråk', regel: 'Tecknet byts mot en ikon ritad som ångra och gör om (glyphs.tsx: 16-rutan, 1,6 px linje, runda ändar, 20 px, boxens bläck #dce3f2): en panel med sin spalt tonad, och en vinkel som pekar åt det håll spalten går. Centrerad i 44 × 44 som de andra boxarna. I den långa kronan står ikonen före «Fäll ihop hoppspalten».', pris: 'Ingen bredd: rutan är 44 px som i dag. Ikonen säger «panel som fälls» för den som känner konventionen (ett sidofält med vinkel), men den är kronans enda bild bland ord, och vad den fäller står fortfarande bara i tooltipen.' },
+  { id: 'c', namn: 'C · Spalten fäller sig själv', rek: true, regel: 'Kontrollen lämnar kronan och står på det den fäller: i spaltens eget huvud bredvid «LEKEN», och överst i den hopfällda remsan — ritad exakt som AI-panelens egen «⟩» (.byd-ai-close: 44 px, tyst bläck, 18 px, ingen kant), spegelvänd på väggens andra sida. Alltid synlig, aldrig bara under pekaren (#184). Samma namn, aria-expanded och aria-controls som i dag.', pris: 'Kronan får ett verktyg färre och 52 px mer marginal (12 → 64 px vid 1280 + AI i brett typsnitt). Spaltens huvud blir 15 px högre och remsan lämnar 48 px av sin höjd till knappen. Ordet «Fäll ihop hoppspalten» syns inte längre i den långa kronan vid 1280 och 1440 — L21 sa att kontrollen bor i krönet, så det beslutet ändras.' },
+  { id: 'd', namn: 'D · Samma tecken, synligt', regel: 'Den minsta ändringen: «⟨» i 18 px och full bläckfärg (#dce3f2), centrerat i rutan, och sekundärrollens kant --byd-secondary-line (#6f7a90, 3:1 mot kronan, L13).', pris: 'Tecknet syns och kanten når 3,5:1, men det säger fortfarande inte vad det gör — och rutan blir den enda i kronan med en synlig kant, vilket läser som en annan roll än boxarna bredvid.' },
+]
+const BREDDER = [
+  { id: '1100', namn: '1100 × 800' }, { id: '1280', namn: '1280 × 800' }, { id: '1440', namn: '1440 × 900' },
+  { id: '1280-ai', namn: '1280 + AI-panel' }, { id: '1440-ai', namn: '1440 + AI-panel' },
+]
+const SPRAK = [{ id: 'sv', namn: 'Svenska' }, { id: 'en', namn: 'English' }]
+const TYPSNITT = [{ id: 'mac', namn: 'Macens' }, { id: 'bred', namn: 'Brett (DejaVu)' }]
+const SPALTEN = [{ id: 'oppen', namn: 'Öppen' }, { id: 'ihop', namn: 'Ihopfälld' }]
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'c'
+let [b, l, f, o] = (() => {
+  const y = q.get('yta') ?? '1280-ai-sv-mac-oppen'
+  const p = y.split('-')
+  const ai = p[1] === 'ai'
+  return [ai ? `${p[0]}-ai` : p[0], ...p.slice(ai ? 2 : 1)]
+})()
+const yta = () => `${b}-${l}-${f}-${o}`
+const cell = (vv, yy) => window.MATT.find((m) => m.v === vv && m.s === yy)
+const cells = (vv, pred) => window.MATT.filter((m) => m.v === vv && pred(m))
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((x) => x.remove())
+  for (const x of lista) {
+    const k = document.createElement('button')
+    k.textContent = x.namn
+    if (x.rek) k.classList.add('rek')
+    k.setAttribute('aria-pressed', String(x.id === nu))
+    k.onclick = () => val(x.id)
+    rot.append(k)
+  }
+}
+const SMAL = (s) => /^(1100|1280-ai|1440-ai)-/.test(s)
+const x2 = (m) => !m.s.endsWith('-x1')
+const kort = (s) => s.replace('-ai', '+AI').replace('-oppen', ' öppen').replace('-ihop', ' ihop').replace(/-/g, ' ')
+const SAGER = {
+  nu: { t: 'nej — ett skiljetecken; vad det gör står bara i tooltipen', c: 'nej' },
+  a: { t: 'vad den gör, inte vad den fäller («Fäll ihop»)', c: 'mitt' },
+  b: { t: 'delvis — en panel som fälls, för den som känner ikonen', c: 'mitt' },
+  c: { t: 'ja — den står på spalten den fäller, som AI-panelens ⟩ på sin', c: 'ok' },
+  d: { t: 'nej — ett synligare skiljetecken', c: 'nej' },
+}
+function rows() {
+  const r = []
+  const per = (fn) => VARIANTER.map((x) => fn(x.id))
+  r.push(['Kronan på en rad (40 ytor)', per((id) => {
+    const br = cells(id, (m) => x2(m) && m.rows > 1)
+    return br.length ? { t: `bryter vid ${br.map((m) => kort(m.s)).join(', ')}`, c: 'nej' } : { t: 'ja, alla 40', c: 'ok' }
+  })])
+  r.push(['Minsta marginal, smal krona (Mac · brett)', per((id) => {
+    const mac = cells(id, (m) => x2(m) && SMAL(m.s) && m.s.includes('-mac-'))
+    const bred = cells(id, (m) => x2(m) && SMAL(m.s) && m.s.includes('-bred-'))
+    const lo = (xs) => xs.reduce((a, m) => (m.headroom < a.headroom ? m : a))
+    const a = lo(mac), z = lo(bred)
+    return { t: `${a.headroom} px (${kort(a.s)}) · ${z.headroom} px (${kort(z.s)})`, c: z.headroom < 0 ? 'nej' : z.headroom < 24 ? 'mitt' : 'ok' }
+  })])
+  r.push(['Kontrollens storlek, smal krona', per((id) => {
+    const xs = cells(id, (m) => x2(m) && SMAL(m.s))
+    const w = Math.min(...xs.map((m) => m.foldW)), h = Math.min(...xs.map((m) => m.foldH))
+    const W = Math.max(...xs.map((m) => m.foldW))
+    return { t: `${w}–${W} × ${h} px`, c: w >= 44 && h >= 44 ? 'ok' : 'nej' }
+  })])
+  r.push(['Vad som syns i den smala kronan (sv · en)', per((id) => {
+    const s = cell(id, '1280-ai-sv-mac-oppen'), e = cell(id, '1280-ai-en-mac-ihop')
+    const show = (m) => (m.foldText ? `«${m.foldText}»` : 'ikonen')
+    return { t: `${show(s)} · ${show(e)}`, c: id === 'nu' || id === 'd' ? 'nej' : id === 'b' ? 'mitt' : 'ok' }
+  })])
+  r.push(['Tecknets kontrast mot rutan, smal krona (2× · 1×)', per((id) => {
+    const a = cells(id, (m) => x2(m) && SMAL(m.s) && m.s.includes('-mac-')).map((m) => m.inkRatio)
+    const z = cells(id, (m) => !x2(m)).map((m) => m.inkRatio)
+    const lo = Math.min(...a), lz = Math.min(...z)
+    const ink = id === 'a' ? ' (ordet; tecknet i samma bläck)' : ''
+    return { t: `${lo}:1 · ${lz}:1${ink}`, c: lz < 3 ? 'nej' : lz < 4.5 ? 'mitt' : 'ok' }
+  })])
+  r.push(['Kant mot kronan', per((id) => {
+    const m = cell(id, '1100-sv-mac-oppen')
+    if (m.lineRatio === null) return { t: 'ingen kant, som AI-panelens ⟩ (en dörr är ingen roll)', c: 'ok' }
+    return { t: `${m.lineRatio}:1 (${m.line} mot ${m.outside})${m.lineRatio < 3 ? ' — som varje box i kronan' : ' — den enda synliga kanten i kronan'}`, c: m.lineRatio < 3 ? 'mitt' : 'mitt' }
+  })])
+  r.push(['Skärmläsaren hör (öppen · ihop)', per((id) => {
+    const a = cell(id, '1100-sv-mac-oppen'), z = cell(id, '1100-sv-mac-ihop')
+    return { t: `${a.said.replace(/: .*$/, '')} · ${z.said.replace(/: .*$/, '')}`, c: 'ok' }
+  })])
+  r.push(['Säger «fäll spalten» utan hover', per((id) => SAGER[id])])
+  r.push(['Spaltens kostnad vid 1280 + AI (första gruppens topp · minsta bricka · remsan rullar)', per((id) => {
+    const a = cell(id, '1280-ai-sv-mac-oppen'), z = cell(id, '1280-ai-sv-mac-ihop'), n = cell('nu', '1280-ai-sv-mac-oppen')
+    const d = a.firstGroupTop - n.firstGroupTop
+    return { t: `${a.firstGroupTop} px${d ? ` (+${d})` : ''} · ${z.tileMin} px · ${z.railScrolls ? 'ja' : 'nej'}`, c: d > 0 ? 'mitt' : 'ok' }
+  })])
+  r.push(['Kortspalter på väggen (1100 · 1280 + AI, öppen)', per((id) => {
+    const a = cell(id, '1100-sv-mac-oppen'), z = cell(id, '1280-ai-sv-mac-oppen'), na = cell('nu', '1100-sv-mac-oppen'), nz = cell('nu', '1280-ai-sv-mac-oppen')
+    return { t: `${a.wallCols} · ${z.wallCols}`, c: a.wallCols < na.wallCols || z.wallCols < nz.wallCols ? 'nej' : 'ok' }
+  })])
+  return r
+}
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta()}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#bredder'), BREDDER, b, (x) => { b = x; visa() })
+  knappar(document.querySelector('#sprak'), SPRAK, l, (x) => { l = x; visa() })
+  knappar(document.querySelector('#typsnitt'), TYPSNITT, f, (x) => { f = x; visa() })
+  knappar(document.querySelector('#spalten'), SPALTEN, o, (x) => { o = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  const m = cell(v, yta())
+  const namn = `${V.namn} · ${BREDDER.find((x) => x.id === b).namn} · ${l} · ${TYPSNITT.find((x) => x.id === f).namn.toLowerCase()} typsnitt · spalten ${o === 'oppen' ? 'öppen' : 'ihopfälld'}`
+  const img = document.querySelector('#bild'), lupp = document.querySelector('#lupp')
+  if (m?.f) {
+    img.src = 'img/' + m.f; img.alt = namn; img.hidden = false; document.querySelector('#bildlank').href = 'img/' + m.f
+    lupp.src = 'img/' + m.lupp; lupp.alt = 'Kontrollen förstorad: ' + namn; lupp.hidden = false
+    document.querySelector('#lupptext').textContent = 'Kontrollen och 150 px på var sida, i 2×.'
+  } else {
+    img.hidden = true; lupp.hidden = true
+    document.querySelector('#lupptext').textContent = ''
+  }
+  document.querySelector('#bildtext').textContent = m?.f ? namn : `${namn}: mätt men inte fotograferad — bilder finns för svenska i Macens typsnitt vid alla bredder, och för 1280 + AI-panel också i det breda typsnittet och på engelska. Talen står till höger.`
+  const t = []
+  if (m) {
+    t.push(['Kronans bredd', `${m.room} px${m.narrow ? ' (smal: korta ord)' : ''}`])
+    t.push(['Rader', m.rows], ['Marginal med fältet på 180 px', `${m.headroom} px`], ['Verktyg i kronan', m.tools])
+    t.push(['Kontrollen', `${m.foldW} × ${m.foldH} px`], ['Syns', m.foldText ? `«${m.foldText}»` : '(ikon)'])
+    t.push(['Bläck mot grund', `${m.inkRatio}:1 (${m.ink} på ${m.ground})`])
+    if (m.lineRatio !== null) t.push(['Kant mot kronan', `${m.lineRatio}:1 (${m.line} mot ${m.outside})`])
+    t.push(['Skärmläsaren', m.said.replace(/: .*$/, '')])
+    if (m.firstGroupTop !== null) t.push(['Första gruppen i spalten', `${m.firstGroupTop} px under spaltens topp`])
+    if (m.tileMin !== null) t.push(['Minsta bricka i remsan', `${m.tileMin} px${m.railScrolls ? ', remsan rullar' : ''}`])
+    t.push(['Kortspalter på väggen', m.wallCols])
+  }
+  document.querySelector('#tal').innerHTML = t.map(([k, n]) => `<span>${k}</span><b>${String(n).replace(/</g, '&lt;')}</b>`).join('')
+  const tab = document.querySelector('#matris')
+  const head = '<thead><tr><th>Fråga</th>' + VARIANTER.map((x) => `<th class="${x.id === v ? 'valt' : ''}"><a href="?v=${x.id}&yta=${yta()}" data-v="${x.id}" style="color:inherit">${x.namn}</a></th>`).join('') + '</tr></thead>'
+  tab.innerHTML = head + '<tbody>' + rows().map(([fr, cs]) => `<tr><td>${fr}</td>${cs.map((c, i) => `<td class="${c.c}${VARIANTER[i].id === v ? ' valt' : ''}">${c.t}</td>`).join('')}</tr>`).join('') + '</tbody>'
+  tab.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; visa(); scrollTo(0, 0) }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
