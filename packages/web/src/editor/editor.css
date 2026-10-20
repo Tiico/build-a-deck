@@ -2132,9 +2132,21 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    half and there is nothing to say the deck ended there. It is room to scroll into and not a row,
    so the table still holds every row it draws to the height of one target. */
 .byd-data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 56px; /* undantag: svansen är en kortrad plus luft, inte ett avstånd på stegen (#130) */ }
-/* What scrolls a cell into view stops short of the pinned × (#695), which is a tap wide at every
-   width; the rail on the left is measured, and `fitColumns` says it on the box. */
-.byd-data-scroll { scroll-padding-right: var(--byd-tap); }
+/* En cell som tas in i bild — av fokus eller av `scrollIntoView` — tas in i det rum som går att
+   läsa, och inte till lådans kant där listen och × står (#695): listens mätta bredd till vänster
+   (`--byd-data-lane`, som `fitColumns` säger på tabellen) och ×:ets tryckbredd till höger.
+   Det sägs på det som rullar och inte på lådan (#1067). Som lådans `scroll-padding` gällde rummet
+   också det fastnålade, som står i lådans kant och alltså aldrig i rummet: Chromium centrerar ett
+   fokuserat element som inte står helt i rummet, och handtaget «Kolumner» rullade lådan
+   (bredd − list) / 2 åt sidan, 432 px vid 1280, utan att självt flytta sig. Bocken i en rad drog på
+   samma sätt en rullad låda tillbaka till början. Det fastnålade har ingen marginal och står därför
+   alltid i bild; det som står klistrat mot rummets vänstra kant (rubrikens namn, den öppna
+   body-cellen) står exakt i rummet. En låda som lyfts ur en cell (L55) är inte tabellens. */
+.byd-data :is(tbody td, thead th):not(.byd-data-check, [data-col='id'], [data-col='antal'], .byd-data-remove) :not([popover], [popover] *),
+.byd-data :is(tbody td, thead th):not(.byd-data-check, [data-col='id'], [data-col='antal'], .byd-data-remove) {
+  scroll-margin-left: var(--byd-data-lane, var(--byd-tap));
+  scroll-margin-right: var(--byd-tap);
+}
 .byd-data-tools { margin: 0; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
 /* The import is a label with a file input in the corner behind it (#193), and the tap rule

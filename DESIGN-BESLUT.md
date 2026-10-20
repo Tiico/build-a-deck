@@ -4184,7 +4184,12 @@ I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vi
   Priset är taget: body syns 89 px smalare i prototypens mätning (571 → 482 vid 1280, 315 → 226 vid 1024 i provleken).
   Mätt i det byggda appen när det byggdes, med AI-hjälpens list som tillkommit sedan prototypen, syns body 427 px vid 1280 och 171 vid 1024 i provleken, 413 och 157 i den täta leken, och 368 och 112 i provleken med text 15 % bredare.
   Var `antal` börjar är `id`:s mätta bredd efter bocken, som bara mätningen vet; `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<kolumn>` på tabellen.
-  En cell som tas in i bild — av fokus eller av `scrollIntoView` — tas in i det rum som går att läsa och inte till lådans kant: lådans `scroll-padding` är listens mätta bredd till vänster och ×:ets tryckbredd till höger. Med listen bredare och Linux-text började kolumnen efter body utanför lådan, och togs den in stod dess slut under ×.
+  En cell som tas in i bild — av fokus eller av `scrollIntoView` — tas in i det rum som går att läsa och inte till lådans kant: listens mätta bredd till vänster och ×:ets tryckbredd till höger.
+  Med listen bredare och Linux-text började kolumnen efter body utanför lådan, och togs den in stod dess slut under ×.
+  *Ändrat 2026-10-21 (#1067):* rummet är en `scroll-margin` på det som rullar och inte lådans `scroll-padding`.
+  Som lådans gällde det också det fastnålade, som står i lådans kant och alltså aldrig i rummet, och Chromium centrerar ett fokuserat element som inte står helt i rummet.
+  Handtaget «Kolumner» rullade därför lådan (bredd − list) / 2 åt sidan när det fick fokus, 432 px vid 1280, och bocken i en rad drog en rullad låda tillbaka till början, utan att någon av dem själv flyttade sig.
+  Det fastnålade har ingen marginal och står alltid i bild; `packages/e2e/test/surfaces/table-sticky-focus.spec.ts` är grinden.
 - **Grupp går upp i typ.**
   Kolumnen «grupp» (#13) var alltid typ en gång till: `groupOfRow` läser mallens `variantBy`-kolumn, så cellen sa «typ = Playcard» där typ redan sa Playcard.
   Den kolumn mallen grupperas av bär i stället märket «kortgrupp» och L32:s frågetecken på en egen rad i sitt huvud, som säger att kolumnen styr kortets utseende och att utseendet ändras i Mall under Kortgrupper.
