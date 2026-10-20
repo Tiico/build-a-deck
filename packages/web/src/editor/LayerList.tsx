@@ -34,9 +34,10 @@ export type LayerListProps = {
 }
 
 // A condition in the words the row is written in (#699): the condition as the canvas says it —
-// «om raritet = Karaktär» — the column's name as it stands inside those words, and how many cards
-// it holds, «10 kort».
-export type ConditionSaid = { words: string; field: string; cards: string }
+// «om raritet = Karaktär» — the column's name and the value as they stand inside those words (no
+// value for a condition that only asks whether the column is filled), and how many cards it
+// holds, «10 kort».
+export type ConditionSaid = { words: string; field: string; value: string | null; cards: string }
 
 // Whose a layer is while a group is open (#13, #699).
 export type LayerMark = { of: 'base' | 'group' | 'removed'; rule: string }
@@ -288,13 +289,27 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
   )
 }
 
-// A condition's words with the column's name set apart (#699): a long column name is hyphenated
-// where the line has to break it — «Utrustnings-kategori» — while the value, which is what tells
-// one condition from the next, breaks only between its words.
+// A condition's words, broken on purpose (#699): the column's part on a line of its own —
+// «om raritet =» — and the value first on the next, so the values of conditions on one column
+// line up under each other, which is where the eye compares them. A long column name is
+// hyphenated where the line has to break it — «Utrustnings-kategori» — while the value, which is
+// what tells one condition from the next, breaks only between its words. A condition that asks
+// only whether a column is filled has no value, and is one sentence.
 function ConditionWords({ said }: { said: ConditionSaid }) {
-  const at = said.words.indexOf(said.field)
-  if (at < 0 || said.field === '') return <>{said.words}</>
-  const end = at + said.field.length
+  const at = said.value === null || said.value === '' ? -1 : said.words.lastIndexOf(said.value)
+  if (said.value !== null && at > 0) {
+    return (
+      <>
+        <span className="byd-layer-field" data-head="">
+          {said.words.slice(0, at).trimEnd()}
+        </span>{' '}
+        <span className="byd-layer-value">{said.words.slice(at)}</span>
+      </>
+    )
+  }
+  const field = said.words.indexOf(said.field)
+  if (field < 0 || said.field === '') return <>{said.words}</>
+  const end = field + said.field.length
   return (
     <>
       <span className="byd-layer-field">{said.words.slice(0, end)}</span>

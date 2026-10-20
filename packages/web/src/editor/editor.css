@@ -1827,6 +1827,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-layer-pick:has(> .byd-layer-name[data-wraps]) { padding: var(--byd-s1) 0; }
 .byd-layer-name[data-wraps] { flex: 1 1 auto; white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
 .byd-layer-field { hyphens: auto; }
+.byd-layer-field[data-head] { display: block; }
 .byd-layer-count { white-space: nowrap; font-size: 11px; color: var(--byd-editor-source-ink); }
 .byd-layer-shows { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: normal; font-size: 11px; color: var(--byd-editor-source-ink); }
 .byd-layer-grip { color: #454c5c; font-size: 12px; text-align: center; cursor: grab; }

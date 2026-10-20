@@ -346,7 +346,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             conditionOf={(one) => {
               if (one.kind !== 'if') return null
               const n = shownCards.filter((r) => holds(one.when, r.fields)).length
-              return { words: conditionWords(one.when, t), field: fieldLabel(one.when.field, t), cards: cardsLabel(n, t) }
+              return { words: conditionWords(one.when, t), field: fieldLabel(one.when.field, t), value: 'equals' in one.when ? one.when.equals : null, cards: cardsLabel(n, t) }
             }}
             pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}

@@ -394,8 +394,13 @@ async function conditionRows(deck: Deck, width: number, wide: boolean) {
       const lines = [...range.getClientRects()]
       const inside = lines.every((r) => r.left >= cell.left - 0.5 && r.right <= cell.right + 0.5 && r.top >= cell.top - 0.5 && r.bottom <= cell.bottom + 0.5)
       const cs = getComputedStyle(name)
-      return [{ text: name.textContent, inside, clipped: name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > name.clientHeight + 1, cut: cs.textOverflow === 'ellipsis' && cs.whiteSpace === 'nowrap', h: row.getBoundingClientRect().height }]
-    }))()`)) as { text: string; inside: boolean; clipped: boolean; cut: boolean; h: number }[]
+      // Where the value begins: at the start of a line of its own, under the column's name.
+      const value = name.querySelector('.byd-layer-value')
+      const head = name.querySelector('.byd-layer-field')
+      const first = value && value.getClientRects()[0]
+      const ownLine = first && head ? Math.abs(first.left - name.getBoundingClientRect().left) < 1 && first.top >= head.getBoundingClientRect().bottom - 1 : null
+      return [{ text: name.textContent, inside, clipped: name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > name.clientHeight + 1, cut: cs.textOverflow === 'ellipsis' && cs.whiteSpace === 'nowrap', h: row.getBoundingClientRect().height, ownLine }]
+    }))()`)) as { text: string; inside: boolean; clipped: boolean; cut: boolean; h: number; ownLine: boolean | null }[]
   } finally {
     await page.close()
   }
@@ -419,12 +424,17 @@ describe('the condition layers in the layer list (#699)', () => {
           expect(new Set(rows.map((r) => r.text)).size).toBe(6)
         }, 60_000)
 
-  // A short condition stays as tall as every other layer: Sal's Saloon's six take two lines at
-  // most, and two lines fit in the 44 px a row has anyway.
-  it('keeps Sal’s Saloon’s rows at the 44 px every layer has', async () => {
+  // The row breaks on purpose, after the condition's column: «om raritet = / Karaktär · 10 kort».
+  // Left to the line, «om raritet = Silver / · 14 kort» and «om raritet = / Koppar · 12 kort» stood
+  // next to each other, and the six values never lined up. And a short condition stays as tall as
+  // every other layer: two lines fit in the 44 px a row has anyway.
+  it('writes each of Sal’s Saloon’s values first on a line of its own, in the 44 px every layer has', async () => {
     const rows = await conditionRows(DECKS[0]!, 1280, false)
     expect(rows).toHaveLength(6)
-    for (const row of rows) expect(row.h, row.text).toBeLessThanOrEqual(44)
+    for (const row of rows) {
+      expect(row.ownLine, row.text).toBe(true)
+      expect(row.h, row.text).toBeLessThanOrEqual(44)
+    }
   }, 60_000)
 })
 
