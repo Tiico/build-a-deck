@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { importCardsCsv } from '../src/editor/csv.js'
 import { copiesOf } from '../src/editor/fields.js'
@@ -275,5 +276,27 @@ describe('the count message stays in its column', () => {
     } finally {
       css.remove()
     }
+  })
+})
+
+// antal står på listen bredvid id (#695, beställarens val D + A 2026-10-20). Den stod sist, och
+// vid varje bredd började den bakom × — kolumnen som säger hur många kopior som går i leken var
+// den sista en ny formgivare hittade. Nu är den den första efter kortets namn, ett Tab-tryck från
+// radens bock, och står kvar när lådan rullas (det mäts i `data-table-sideways.test.tsx`).
+describe('antal på listen (#695)', () => {
+  it('står direkt efter id, i huvudet och på varje rad', () => {
+    table()
+    expect([...document.querySelectorAll('thead th[data-col]')].map((th) => th.getAttribute('data-col'))).toEqual(['id', 'antal', 'title', 'body'])
+    for (const row of document.querySelectorAll('tbody tr')) {
+      expect([...row.querySelectorAll('td[data-col]')].map((td) => td.getAttribute('data-col'))).toEqual(['id', 'antal', 'title', 'body'])
+    }
+  })
+
+  it('nås med ett Tab-tryck från radens bock', async () => {
+    const user = userEvent.setup()
+    table()
+    ;(screen.getByLabelText('markera dragon') as HTMLInputElement).focus()
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByLabelText('dragon antal'))
   })
 })

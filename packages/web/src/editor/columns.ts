@@ -1,15 +1,8 @@
 import { ANTAL } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
-import type { T } from '../i18n/index.js'
 import { fieldsOf } from './fields.js'
 import { columnKind } from './sorting.js'
 import { imageFieldsOf } from './assets.js'
-import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
-
-// The column the canvas's grouping adds to the table (#13). It is not a field of a card, so it
-// has no name of its own to be keyed by; `#` cannot start a field name — `addField` folds a name
-// down to letters, digits and hyphens — so nothing a designer writes can collide with this.
-export const GROUP_COL = '#group'
 
 // What a column has to be sized like. The first two are chrome and not values: a tick box and the
 // × that removes a card are one tap wide and nothing else. `key` is measured like text but never
@@ -30,7 +23,7 @@ export function widthKind(doc: ProjectDoc, field: string): WidthKind {
 // and filtering are views of the project and never touch it (L4), so a width taken from the view
 // would jump with every character typed into the search box and shuffle the columns along with
 // the rows. The deck is the deck whichever part of it is being looked at.
-export function deckValues(doc: ProjectDoc, t: T): Record<string, string[]> {
+export function deckValues(doc: ProjectDoc): Record<string, string[]> {
   const out: Record<string, string[]> = { id: doc.rows.map((row) => row.id) }
   for (const field of fieldsOf(doc)) {
     // The same value the cell shows, including the count a card that never said one falls back
@@ -38,13 +31,6 @@ export function deckValues(doc: ProjectDoc, t: T): Record<string, string[]> {
     out[field] = doc.rows.map((row) => {
       const value = row.fields[field]
       return value === undefined || value === null ? (field === ANTAL ? '1' : '') : String(value)
-    })
-  }
-  const grouping = groupColumn(doc)
-  if (grouping) {
-    out[GROUP_COL] = doc.rows.map((row) => {
-      const group = groupOfRow(doc, row)
-      return group === null ? t('table.group.base') : ruleLabel(grouping, group)
     })
   }
   return out
@@ -143,18 +129,30 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   // × while the column is pointed at (#46), so its drawn width is smaller then, and a floor read
   // off the drawn width alone would make the same heading two different sizes. Its own declared
   // minimum does not move, and asking the page for it keeps the number out of this file.
+  //
+  // A heading can have more than one line (#695): the column the template is grouped by carries
+  // its mark on a line of its own under the name. What stands inline adds up along a line, and a
+  // child that is a block of its own is a line by itself, so the heading needs its widest line and
+  // not every line laid end to end.
   const heads = Array.from(table.querySelectorAll('thead > tr > *')) as HTMLElement[]
   const headNeed = (i: number): number => {
     const th = heads[i]
     if (!th) return tap
     const own = getComputedStyle(th)
-    let flow = 0
+    let widest = 0
+    let line = 0
     for (const child of Array.from(th.children) as HTMLElement[]) {
       const how = getComputedStyle(child)
       if (how.position === 'absolute' || how.position === 'fixed' || how.display === 'none') continue
-      flow += Math.max(child.getBoundingClientRect().width, child.scrollWidth, parseFloat(how.minWidth) || 0) + parseFloat(how.marginLeft) + parseFloat(how.marginRight)
+      const takes = Math.max(child.getBoundingClientRect().width, child.scrollWidth, parseFloat(how.minWidth) || 0) + parseFloat(how.marginLeft) + parseFloat(how.marginRight)
+      if (how.display.startsWith('inline')) {
+        line += takes
+        continue
+      }
+      widest = Math.max(widest, line, takes)
+      line = 0
     }
-    return Math.ceil(flow + parseFloat(own.paddingLeft) + parseFloat(own.paddingRight))
+    return Math.ceil(Math.max(widest, line) + parseFloat(own.paddingLeft) + parseFloat(own.paddingRight))
   }
 
   // An image cell is the one cell that is not a value: a thumbnail with a place to drop, a button
@@ -251,6 +249,20 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   // mot sina värden som varje annan kolumn. Samma tal som taket ovan räknas mot, så de två kan
   // inte glida isär.
   table.style.setProperty('--byd-data-lane', `${pinned}px`)
+  // Och var varje fastnålad kolumn börjar, som stilmallen behöver för den som inte står först
+  // (#695): `antal` står efter `id`, och hur bred `id` är vet bara mätningen. Sagt per kolumn och
+  // med kolumnens eget namn, så att arket kan säga `--byd-data-at-antal` utan att räkna kolumner.
+  // Sagt till tabellen och inte till lådan: cellerna som läser det står i tabellen.
+  let at = 0
+  for (const [i, track] of tracks.entries()) {
+    const th = heads[i]
+    if (!th) continue
+    const how = getComputedStyle(th)
+    if (how.position !== 'sticky' || how.left === 'auto') continue
+    const name = track.col.getAttribute('data-col')
+    if (name && /^[\w-]+$/.test(name)) table.style.setProperty(`--byd-data-at-${name}`, `${at}px`)
+    at += track.width
+  }
   // And nothing else may have an opinion about it. The stylesheet's `min-width: 100%` was written
   // for the layout this replaced, where a table that could not see its own content had to be told
   // to fill the box; under a fixed layout it does not merely widen the table, it hands the

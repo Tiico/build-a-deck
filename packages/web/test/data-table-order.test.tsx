@@ -53,25 +53,25 @@ describe('the order of the columns is the designer\'s (#46)', () => {
   it('moves a column by dragging its heading onto another, either way along the head', () => {
     const moves: [string, string | null][] = []
     render(<Editing moves={moves} />)
-    expect(order()).toEqual(['id', 'title', 'body', 'kostnad', 'typ', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'title', 'body', 'kostnad', 'typ'])
 
     // Dropped on a heading to its left, the column comes to stand before that heading.
     fireEvent.dragStart(head('typ'))
     fireEvent.dragOver(head('title'))
     fireEvent.drop(head('title'))
     expect(moves.at(-1)).toEqual(['typ', 'title'])
-    expect(order()).toEqual(['id', 'typ', 'title', 'body', 'kostnad', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'typ', 'title', 'body', 'kostnad'])
 
     // Dropped on one to its right, it comes to stand after it — which is before whatever follows.
     fireEvent.dragStart(head('typ'))
     fireEvent.drop(head('body'))
-    expect(order()).toEqual(['id', 'title', 'body', 'typ', 'kostnad', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'title', 'body', 'typ', 'kostnad'])
 
     // And dropped on the last of them it is last of all, which has nothing to stand before.
     fireEvent.dragStart(head('title'))
     fireEvent.drop(head('kostnad'))
     expect(moves.at(-1)).toEqual(['title', null])
-    expect(order()).toEqual(['id', 'body', 'typ', 'kostnad', 'title', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'body', 'typ', 'kostnad', 'title'])
   })
 
   it('moves a column with the keyboard as well, so the order is not a drag away only', async () => {
@@ -80,10 +80,10 @@ describe('the order of the columns is the designer\'s (#46)', () => {
     name('body').focus()
 
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}')
-    expect(order()).toEqual(['id', 'body', 'title', 'kostnad', 'typ', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'body', 'title', 'kostnad', 'typ'])
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}')
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}')
-    expect(order()).toEqual(['id', 'title', 'kostnad', 'body', 'typ', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'title', 'kostnad', 'body', 'typ'])
 
     // The column keeps the focus it was moved with: a designer moving a column two places may not
     // have to find it again between the two keystrokes.
@@ -93,7 +93,7 @@ describe('the order of the columns is the designer\'s (#46)', () => {
     // wrapping the column round to the other side of the head.
     name('title').focus()
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}')
-    expect(order()).toEqual(['id', 'title', 'kostnad', 'body', 'typ', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'title', 'kostnad', 'body', 'typ'])
   })
 
   it('leaves the arrow alone: without Alt, a heading answers the way it always did', async () => {
@@ -102,7 +102,7 @@ describe('the order of the columns is the designer\'s (#46)', () => {
     name('body').focus()
 
     await user.keyboard('{ArrowLeft}')
-    expect(order()).toEqual(['id', 'title', 'body', 'kostnad', 'typ', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'title', 'body', 'kostnad', 'typ'])
     // And the heading is still the control that sorts: a column that can be dragged has not
     // stopped being one that can be pressed.
     await user.click(name('body'))
@@ -123,10 +123,10 @@ describe('the order of the columns is the designer\'s (#46)', () => {
     name('id').focus()
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}')
     expect(moves).toEqual([])
-    expect(order()).toEqual(['id', 'title', 'body', 'kostnad', 'typ', 'antal'])
+    expect(order()).toEqual(['id', 'antal', 'title', 'body', 'kostnad', 'typ'])
 
-    // Nor is one of them a place to drop a column: `antal` stands last wherever the table shows
-    // it, so a column dropped on it would be asking for a place that is not on offer.
+    // Nor is one of them a place to drop a column: `antal` stands on the rail beside `id` (#695),
+    // so a column dropped on it would be asking for a place that is not on offer.
     fireEvent.dragStart(head('title'))
     fireEvent.drop(head('antal'))
     expect(moves).toEqual([])

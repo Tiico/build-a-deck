@@ -29,11 +29,9 @@ import { chromium, type Browser } from 'playwright'
 import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { translate, type T } from '../src/i18n/index.js'
 import { template } from './project-doc.js'
 import { twoSeatSetup } from './fixture.js'
 
-const sv: T = (key, params) => translate('sv', key, params)
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
 // A deck whose columns are the two shapes the issue is about: `typ` and `raritet` hold a word, so
@@ -144,7 +142,7 @@ async function measure<T_>(html: string, width: number, read_: (page: import('pl
   try {
     await page.setContent(shellOf(html), { waitUntil: 'load' })
     await page.evaluate(({ deck, fit }) => new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck), {
-      deck: deckValues(saloonDoc(length), sv),
+      deck: deckValues(saloonDoc(length)),
       fit: FIT,
     })
     return await read_(page)

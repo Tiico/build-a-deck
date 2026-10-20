@@ -73,7 +73,7 @@ Editorn:
 - ✅ Editor till bord med förrenderade texturer; bytet är atomiskt för spelarna (L5).
 - ✅ "Bord"-fliken: spelets alla bord med miniatyr ur bordets egen snapshot, vem som spelar, vilken version som körs och vägarna in — TV, bordsläge, spela härifrån, titta på, QR — plus avslut med bekräftelse (L5, K9, C7, C9).
 - ✅ Former bortom rektangeln: varje form ritas som en path i en SVG, en parametrisk kärna (polygon och stjärna) under ett galleri av sjutton namngivna konturer, formen passas in i sin ruta och konturen ligger innanför den; mönster som ett lager över fyllningen i fem sorter med färg, storlek och vinkel; skugga som fyra förval med fem tal bakom `Anpassa`; och färdiga baksidor som läggs ut som vanliga lager i en enda redigering (L1, L16, L17, E5).
-- ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellen visar vilken grupp en rad faller i; dolda kort får gruppens baksida utan identitetsläcka och tryckmanifestet håller varje fram-/baksidespar ihop (L3, L7).
+- ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellens kolumn som styr gruppen bär märket «kortgrupp» (#695); dolda kort får gruppens baksida utan identitetsläcka och tryckmanifestet håller varje fram-/baksidespar ihop (L3, L7).
 - ✅ "Mina spel" och inloggningskortet (G1).
 - ✅ Skydd för osparat arbete: osparat mätt mot servern, fråga vid vägen ut, `beforeunload` vid stängning och omladdning, bekräftelse innan ett kort tas bort, och sparat/osparat i huvudet (L9).
 - ✅ Editorn, wizarden och observatören på små skärmar: namngivna etapper under 1024 px, ingen duk under 768 px och gränssnittet säger det, tre steg i wizarden, bordet först och ingen banner över spelet hos observatören (L10, #4, #5, #6).
@@ -178,7 +178,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 
 - ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757); stacken skickar `BYD_CONTACT` till appen sedan 2026-10-18 (#1030), och lådans `.env` behöver raden ifylld.
 - ✅ Säljtexten lovar inte trycket (L36, #743).
-- 🔶 Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade utom två som väntade på beställarens val av prototyp (#695, #699); båda valdes 2026-10-20, och lagerraden som bryter är byggd (L3, #699).
+- ✅ Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade; de två som väntade på beställarens val av prototyp valdes 2026-10-20 och är byggda: lagerraden som bryter (L3, #699) och antal på listen med grupp i typ (L4, #695).
 - ✅ Designern läser playtestets svar — enkätsvar och flaggor per bord och version, i Bord-flikens vy «Resultat» (G3, L70, #1010).
 - ✅ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
 - ✅ Ett enkätsvar kommer från deltagarens eget inträde, ett per plats, och ett andra svar ersätter det första (G3, #1021).

@@ -33,14 +33,6 @@ export function cardsInGroup(doc: ProjectDoc, group: string): ProjectRow[] {
   return doc.rows.filter((row) => valueOf(row, column) === group)
 }
 
-// The group a card falls into, or nothing when it takes the base look.
-export function groupOfRow(doc: ProjectDoc, row: ProjectRow): string | null {
-  const column = groupColumn(doc)
-  if (!column) return null
-  const value = valueOf(row, column)
-  return value !== '' && groupsOf(doc).includes(value) ? value : null
-}
-
 // A group said as what it is: the rule, so nobody reads it as a bag of cards.
 export function ruleLabel(column: string, group: string): string {
   return `${column} = ${group}`

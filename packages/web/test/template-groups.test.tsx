@@ -256,27 +256,48 @@ describe('grouping the deck by a column (#13)', () => {
 })
 
 // Variant C is not the way a group is made, but the table is where the deck is read, so it says
-// which group a row falls into (#13). Reading only: the rule is changed on the canvas.
-describe('the group a row falls into, in the table (#13)', () => {
-  it('says nothing about groups until the deck is grouped, and then names the rule per row', async () => {
+// which column decides the group (#13). Reading only: the rule is changed on the canvas.
+//
+// It said so in a column of its own, «grupp», until #695 (beställarens val D + A 2026-10-20): the
+// cell read `typ = Playcard` where typ already said Playcard, since the group *is* the value of the
+// column the template is grouped by. So the column goes up in that column's own head, which carries
+// the mark «kortgrupp» and L32's question mark saying where the look is changed.
+describe('the column that decides the group, in the table (#13, #695)', () => {
+  const head = (field: string) => document.querySelector(`thead th[data-col="${field}"]`) as HTMLElement
+
+  it('marks nothing until the deck is grouped, and then marks the column it is grouped by', async () => {
     const user = await openTemplate()
     await user.click(screen.getByRole('tab', { name: /tabell/i }))
-    expect(screen.queryByRole('columnheader', { name: 'grupp' })).toBeNull()
+    expect(document.querySelector('.byd-data-grouped')).toBeNull()
 
     await user.click(screen.getByRole('tab', { name: /mall/i }))
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     await user.click(screen.getByRole('tab', { name: /tabell/i }))
-    expect(screen.getByRole('columnheader', { name: 'grupp' })).toBeTruthy()
-    expect([...document.querySelectorAll('[data-group-of]')].map((c) => c.textContent)).toEqual(['typ = varelse', 'typ = fälla', 'typ = fälla'])
+    expect(within(head('typ')).getByText('kortgrupp')).toBeTruthy()
+    expect([...document.querySelectorAll('.byd-data-grouped')]).toHaveLength(1)
+    // And no column of its own: the group is typ, said once.
+    expect([...document.querySelectorAll('thead th[data-col]')].map((th) => th.getAttribute('data-col'))).not.toContain('#group')
+    expect(screen.queryByRole('columnheader', { name: 'grupp' })).toBeNull()
   })
 
-  it('says a card with no value in the column takes the base look', async () => {
+  it('says behind its question mark what the column decides and where the look is changed', async () => {
+    const user = await openTemplate()
+    await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
+    await user.click(screen.getByRole('tab', { name: /tabell/i }))
+    await user.click(within(head('typ')).getByRole('button', { name: 'Hjälp om typ styr kortgruppen' }))
+    const box = await screen.findByRole('dialog', { name: 'Hjälp om typ styr kortgruppen' })
+    expect(box.textContent).toContain('kort med samma typ får samma utseende')
+    expect(box.textContent).toContain('Hur en grupp ser ut ändras i Mall, under Kortgrupper.')
+  })
+
+  it('shows a card with no value in the column as an empty cell, as every empty cell is', async () => {
     const doc = typed()
     doc.rows.push({ id: 'blank', fields: { typ: '', title: 'Namnlös', body: '', antal: 1 } })
     const user = await openTemplate(doc)
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     await user.click(screen.getByRole('tab', { name: /tabell/i }))
-    expect([...document.querySelectorAll('[data-group-of]')].map((c) => c.textContent)).toEqual(['typ = varelse', 'typ = fälla', 'typ = fälla', 'Bas'])
+    expect((screen.getByLabelText('blank typ') as HTMLInputElement).value).toBe('')
+    expect(document.querySelector('[data-group-of]')).toBeNull()
   })
 })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectDoc } from '@byd/server'
-import { cardsInGroup, groupColumn, groupOfRow, groupsOf, overriddenIds, ruleLabel, valuesIn } from '../src/editor/groups.js'
+import { cardsInGroup, groupColumn, groupsOf, overriddenIds, ruleLabel, valuesIn } from '../src/editor/groups.js'
 import { projectDoc } from './project-doc.js'
 
 // A deck whose cards carry a `typ` column, grouped by it on the front only.
@@ -37,13 +37,11 @@ describe('the column that makes the groups (#13)', () => {
     expect(cardsInGroup(doc, 'fälla')).toEqual([])
   })
 
-  it('says which cards a group is about, and which group a card falls into', () => {
+  // Which group one card falls into was the table's question, and the table no longer asks it:
+  // the group is the value in the column the template is grouped by (#695).
+  it('says which cards a group is about', () => {
     const doc = grouped()
     expect(cardsInGroup(doc, 'fälla').map((r) => r.id)).toEqual(['trap', 'snare'])
-    expect(groupOfRow(doc, doc.rows[1]!)).toBe('fälla')
-    // An empty value is no group: the card gets the base look (L3).
-    expect(groupOfRow(doc, doc.rows[3]!)).toBeNull()
-    expect(groupOfRow(projectDoc(), projectDoc().rows[0]!)).toBeNull()
   })
 
   it('names a group as the rule it is, never as the cards in it', () => {
