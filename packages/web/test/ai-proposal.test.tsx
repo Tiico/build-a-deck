@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
+import { applyEdit } from '@byd/server/doc'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { Language, type Lang } from '../src/i18n/index.js'
 import { StatusLive } from '../src/status/StatusLive.js'
@@ -54,6 +55,15 @@ const proposedCards = () => [...proposal().querySelectorAll('.byd-ai-card .byd-p
 const rows = async () => (await run.projects.load(run.projectId))?.rows.map((r) => r.id)
 const logged = async () => run.projects.readEdits(run.projectId, 0)
 
+// The game as the actor holds it after the log: the version it was opened on and every line since.
+// A step back writes back only what the step changed (#1056), so it is read off the result and not
+// off the line.
+const held = async (): Promise<ProjectDoc> => {
+  const rec = await run.projects.load(run.projectId)
+  if (!rec) throw new Error('no project')
+  return (await logged()).reduce((doc: ProjectDoc, e) => applyEdit(doc, e.intent), rec)
+}
+
 describe('a proposal of new cards', () => {
   it('draws each card in the panel as it arrives, by the one renderer', async () => {
     await ownGame()
@@ -88,9 +98,8 @@ describe('a proposal of new cards', () => {
     const undo = screen.getByRole('button', { name: 'Ångra det godtagna förslaget' })
     fireEvent.click(undo)
     await waitFor(async () => expect(await logged()).toHaveLength(2))
-    expect((await logged())[1]!.intent.v).toBe('restore')
-    const restored = (await logged())[1]!.intent
-    expect(restored.v === 'restore' && restored.doc.rows.map((r) => r.id)).toEqual(['dragon', 'knight', 'wizard'])
+    expect((await logged())[1]!.intent.v).toBe('revert')
+    expect((await held()).rows.map((r) => r.id)).toEqual(['dragon', 'knight', 'wizard'])
   })
 
   it('is discarded without a change to the game', async () => {

@@ -66,7 +66,7 @@ test('a designer asks for cards, sees them stream in and on the wall, accepts th
   await expect(panel.getByText('Accepted: 3 new cards in the deck.')).toBeVisible()
   await expect(ghosts).toHaveCount(0)
   await expect(wall).toHaveCount(9)
-  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string }[]; doc?: { rows: unknown[] } } })
+  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string }[]; parts?: { at: string[]; to?: unknown }[] } })
   expect(edits()).toHaveLength(1)
   expect(edits()[0]!.intent.v).toBe('compound')
   expect(edits()[0]!.intent.edits!.map((e) => e.v)).toEqual(['addRow', 'addRow', 'addRow'])
@@ -76,8 +76,12 @@ test('a designer asks for cards, sees them stream in and on the wall, accepts th
   await undo.click()
   await expect(wall).toHaveCount(6)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
-  expect(edits()[1]!.intent.doc!.rows).toHaveLength(6)
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
+  // The three cards the proposal added go, and nothing else is named.
+  const parts = edits()[1]!.intent.parts!
+  expect(parts.every((p) => p.at[0] === 'rows' && !('to' in p))).toBe(true)
+  expect(new Set(parts.map((p) => p.at[1])).size).toBe(3)
 
   // A second proposal, discarded: nothing is sent, and the deck is as it was.
   await field.fill('Two more [kort:2]')

@@ -25,7 +25,7 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   await expect(page.getByRole('heading', { level: 1, name: GAME })).toBeVisible()
   const panel = page.getByRole('complementary', { name: 'AI help' })
   const field = panel.getByRole('textbox', { name: 'Ask about the game' })
-  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; after?: string | null; blocks?: { text?: string }[] }[]; doc?: typeof doc } })
+  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; after?: string | null; blocks?: { text?: string }[] }[]; parts?: { at: string[]; to?: unknown }[] } })
 
   // 1. Ask for rules.
   await field.fill('Write the rules for drawing a card [regler]')
@@ -59,8 +59,10 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(book).not.toContainText('Börja din tur')
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
-  expect(edits()[1]!.intent.doc!.rules).toEqual(doc.rules)
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
+  // Only the rulebook is named: nothing else of the game is written back.
+  expect(edits()[1]!.intent.parts!.every((p) => p.at[0] === 'rules')).toBe(true)
 
   // 5. Rule text naming a zone the game does not have is refused, with the reason, and writes nothing.
   await field.fill('Again [regler-trasig]')

@@ -406,6 +406,9 @@ export const enEditor = {
   'redo.button.none': 'Redo: nothing to do again',
   'undo.took': 'Took back: {what}',
   'undo.redid': 'Put back: {what}',
+  // Personal undo (#1056): what someone else has changed since is never written over, and that is said.
+  'undo.refused': 'Could not undo {what}: someone else has changed the same thing since. Nothing was written over.',
+  'redo.refused': 'Could not redo {what}: someone else has changed the same thing since. Nothing was written over.',
   'undo.what.name': "the game's name",
   'undo.what.deck': 'a change to the deck',
   'undo.what.field': 'a field of the deck',

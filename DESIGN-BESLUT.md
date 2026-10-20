@@ -1143,7 +1143,7 @@ Regelboken samredigeras block för block (#1053, 2026-10-20).
 Varje redigering i fliken Regler är en `spliceRules` som namnger de block den ändrar och inga andra: ett stycke som skrivs i, ett block som byter slag eller blir flera när det stängs (L68), ett block som läggs till, ett block eller ett avsnitt som tas bort, ett eget avsnitt sist i boken och en bok som påbörjas där det inte fanns någon.
 Förut skrev fliken hela boken med `setRules` vid varje tangenttryck, så den redigering som landade sist bar med sig boken som den såg ut hos sin skribent och skrev tyst över det en medredigerare hunnit skriva i ett annat stycke — på båda skärmarna och i den sparade versionen, och lika mycket när skribentens linje var långsam eller nere och redigeringen skickades när den kom tillbaka.
 `setRules` står kvar bara där hela boken verkligen byts ut: importen, som gör en namngiven version (B7).
-Ett steg tillbaka och en äldre version som tas tillbaka är `restore`, och loggens äldre rader med `setRules` spelas upp som de skrevs.
+En äldre version som tas tillbaka är `restore`, ett steg tillbaka är `revert` (#1056, nedan), och loggens äldre rader med `setRules` spelas upp som de skrevs.
 Två som skriver i samma block samtidigt får inget avslag: den redigering som landar sist är blocket.
 Skälet är att ett block skrivs helt vid varje tangenttryck. Ett avslag med omsynk skulle avvisa vart och ett av den andras tangenttryck medan den första skriver och ta bort det hon just skrev från skärmen, vilket är värre än att se den andras text ersätta sin; ett stycke skrivs i praktiken av en hand åt gången, och varje redigering står i loggen med vem som gjorde den.
 Ett block som någon tagit bort förs aldrig tillbaka av den andras skrivande: `spliceRules` avvisas när ett block den namnger saknas, och den som skrev får dokumentet med avslaget.
@@ -1151,6 +1151,13 @@ Ett nytt block får ett id draget slumpvis i stället för det första lediga `b
 Två som påbörjar en bok samtidigt börjar med samma id:n, så den andra avvisas i stället för att skriva över den första.
 Delarna avgörs var för sig mot det dokument delarna före dem lämnade, så två högar som läggs i samma redigering får två platser, och regeln för nya namn (#694) frågas för varje del på samma sätt.
 En sammansatt redigering håller aldrig en annan och är aldrig tom; uppspelning och den levande dörren läser den med samma `applyEdit`.
+Ångra är personligt (2026-10-20, #1056, beställarens beslut), som bordets är (C6).
+Ett steg tillbaka eller framåt i en editor tar bara tillbaka det den editorns egna redigeringar ändrade, och det en medredigerare ändrat står kvar.
+Förut var steget `restore` med hela dokumentet som det såg ut före ändringen, så det en medredigerare hunnit skriva i en annan del av spelet försvann tyst.
+Steget är redigeringen `revert`: de delar av dokumentet steget skriver, var och en som den är nu (`was`) och som den ska bli (`to`), och var en post som tas tillbaka ska stå (`places`).
+Aktören avvisar steget när en del inte längre är det `was` säger, eller när en post steget tar bort bär något steget inte nämner, så ett steg aldrig skriver över den som hann före; editorn säger avslaget som ett steg som inte gick att ta, inte som en ändring som gick förlorad.
+Vad en del är och när två ändringar rör samma sak står i L14.
+`revert` är editorns vokabulär och inte bordets slutna intents, så den är ingen protokollmigrering, och den spelas upp ur loggen med samma `applyEdit` som allt annat: prövningen ger samma svar vid uppspelning som när den gjordes, eftersom loggen spelas i samma ordning.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
 Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
@@ -4665,6 +4672,7 @@ Alternativet — att skicka en dragning först när pekaren släpps — skulle h
 Följdkrav:
 Trafiken på tråden är oförändrad; varje bildruta går fortfarande som sin egen `patchElement` till aktören.
 Stacken är fortfarande dokumentögonblicksbilder som tas tillbaka med `restore` (B4), och poletten avgör bara när en ny bild läggs på.
+(Reviderat 2026-10-20, #1056: stacken är det redigeringarna ändrade, del för del, och ett steg tas tillbaka med `revert`; se nedan. Poletten avgör fortfarande när ett nytt steg läggs på.)
 En ny yta som skriver många gånger om samma handling — ett reglage, en färgväljare som drar — ska bära en polett; en som skriver en gång ska inte.
 
 Kravet gällde lika för de ytor som redan fanns, och tre av dem bar ingen polett.
@@ -4680,6 +4688,58 @@ Escape återställer cellen till värdet den hade när den fick fokus, och Ctrl+
 När cellen är tillbaka där den började går nästa Ctrl+Z vidare till editorns stack, så samma tangent aldrig är död och aldrig hoppar över det designern nyss skrev.
 Stacken är oförändrad: orden är cellens egen minnesbild under ett och samma grepp, och greppet är fortfarande ett steg när cellen lämnas.
 Samma sak gäller regelbokens fält sedan #481 (fynd 7): rubrik, stycke, punkt, bildtext och alt-text går ordvis tillbaka och sedan vidare till editorn, med samma kod (`packages/web/src/editor/word-steps.ts`); Escape stänger där blocket i stället för att återställa fältet.
+
+Reviderat 2026-10-20 (#1056, beställarens beslut): **ångra är personligt.**
+Ett steg tillbaka tar bara tillbaka det designern själv ändrade, och det en medredigerare har ändrat står kvar — samma svar som C6 gav bordet.
+Stacken var ögonblicksbilder av hela dokumentet, och ett steg tillbaka skickades som `restore` med dokumentet som det såg ut före ändringen.
+Med två som redigerar samtidigt tog det med sig allt annat också: Ada ändrar ett kort i Tabell, Bo skriver ett stycke i Regler, Ada trycker ångra, och Bos stycke försvinner utan ett ord, på båda skärmarna och i versionen som sparas.
+
+Ett steg är nu det redigeringen ändrade, del för del, räknat där redigeringen görs och mot det dokument den gjordes på (`changeOf` i `packages/server/src/undo.ts`).
+Att ta steget tillbaka är att skriva tillbaka just de delarna som de var, och inga andra (`revertOf`), som redigeringen `revert` (D3).
+Det är inversen av samma form som redigeringen: den rör det redigeringen rörde.
+Den räknas ur dokumentet och inte ur verbet, så varje redigering i vokabuläret har en, också `restore`, `setTheme`, `setRecipe` och `compound`, och en redigering som läggs till i morgon har en utan att någon skriver den för hand och håller den i takt med `applyEdit`.
+Ett test går igenom varje verb i vokabuläret, med nyckeln skriven som verbet så att ett nytt verb utan rad är ett typfel (`packages/server/test/personal-undo.test.ts`).
+Att göra om är samma sak åt andra hållet: steget tillbaka är också en ändring, och den räknas likadant.
+
+Delarna är den upplösning två som redigerar samtidigt kan hålla isär, och den är vad «samma sak» betyder:
+
+- En cell, alltså ett kort gånger en kolumn, så Ada och Bo kan skriva i var sin kolumn på samma kort.
+- Att ett kort finns, och var det står i leken.
+- En egenskap hos ett lager, i basen eller i en grupps egen formgivning, så den ena kan flytta ett lager och den andra färga det.
+- Att ett lager finns och var det står bland lagren, en grupps borttagna lager, och sidans gruppkolumn.
+- Ett block i regelboken helt, som regelboken samredigeras (D3, #1053), och bokens titel och källa.
+- En egenskap hos en zon, att zonen finns, och var den står.
+- En post bland symbolerna, licenserna, betydelsernas färger, bilderna, typsnitten och prosavalen.
+- Spelets namn, temat, kortleken, golvet och platserna.
+- Kolumnernas ordning, som en enda del, eftersom `moveField` skriver den hel och två som flyttar kolumner samtidigt flyttar samma sak.
+
+Platsernas antal och räknarna är receptets och skrivs hela av det, så de är en del var.
+En del dokumentet får i morgon som inte står i uppräkningen tas tillbaka hel, aldrig glöms.
+
+Har någon annan ändrat en av stegets delar sedan, **vägras steget**, och ingenting skrivs.
+Editorn säger det där den redan säger att en ändring inte gick igenom (#993): «Det gick inte att ångra en ändring i kortleken: någon annan har ändrat samma sak sedan dess. Inget skrevs över.», och för gör om «Det gick inte att göra om …».
+Steget tas av stacken: det kan aldrig tas tillbaka nu, och kvar överst hade varje följande tryck fått samma svar.
+Nästa tryck tar nästa steg, som prövas för sig.
+En del som någon annan redan har skrivit tillbaka dit den var är ingen konflikt, utan redan gjord, och ett steg där allt redan är tillbaka skickar ingenting.
+Ett kort, ett lager eller en zon som steget skapade tas bara bort om ingen annan har lagt något i det sedan; annars vägras steget, eftersom det någon annan skrev i posten annars försvann med den.
+En samling som steget påbörjade — regelboken, prosavalen, en grupps egen formgivning — står kvar med det andra har lagt i den, och tas bort bara när den är tom.
+En post som steget flyttade flyttas bara tillbaka om det som stod närmast före den, bland det som fanns både då och nu, står där fortfarande; annars har någon annan flyttat den, och steget vägras.
+En post som steget tog bort läggs tillbaka efter den närmaste post som stod före den och står kvar, så ett kort som tas tillbaka hamnar där det stod också när någon lagt till eller tagit bort kort runt det.
+
+Steget prövas två gånger.
+Editorn prövar mot det den har, som är aktörens dokument med varje redigering tråden har sagt landat, och vägrar med besked direkt.
+Aktören prövar mot sanningen: `revert` bär varje del som den var när steget räknades fram (`was`), och en del som någon hann ändra innan steget nådde aktören avvisar hela steget i stället för att skriva över den som hann före.
+Editorn säger det avslaget med samma mening som sitt eget, och tar bort det steg det hade lagt på den andra stacken.
+
+Ett grepp (L14) är fortfarande ett steg: varje redigering i greppet lägger sina delar på samma steg, där den första säger var en del var och den sista var den hamnade.
+En redigering som inte ändrade någonting blir inget steg.
+En gest som kallas av (#142) går samma väg: det gesten ändrade skrivs tillbaka, och har en medredigerare hunnit röra samma sak står gesten kvar som den gjordes, med sitt steg.
+
+Bortvalda vägar: hela dokumentet med en varning när någon annan har redigerat sedan, och ångra avstängt medan någon annan redigerar.
+En handskriven invers per verb, sammansatt av de verb som finns, prövades i tanken och valdes bort: `setTheme`, `setRecipe`, `removeField`, `removePicture` och `restore` har ingen invers i vokabuläret, och varje ny redigering hade blivit en invers till att skriva och hålla sann.
+
+Byggt 2026-10-20 (#1056, ingen prototyp: ingenting nytt ritas, och avslaget sägs där editorn redan säger att en ändring inte gick igenom).
+Grindar: `packages/server/test/personal-undo.test.ts`, `packages/web/test/personal-undo.test.ts` och `packages/e2e/test/editor-personal-undo.spec.ts`, där två editorer i var sin webbläsare ångrar i Tabell, Regler och Mall, gör om, och får nej när den andra har ändrat samma cell eller samma lager.
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
 
@@ -5793,6 +5853,9 @@ Den tredje visade sig vid bygget: vägen framåt som en gest lagt undan lämnas 
 Bara de bilder som nämner bytenas hash rörs; en bild som aldrig höll dem är redan den historik ombaseringen vill åstadkomma.
 Etiketterna lämnas som de är: vad ett steg heter är vad designern gjorde, och en rättelse får inte skriva om historiens ord om det.
 Den öppna gestens fall är oförändrat — `callOff` gör som förr, och då finns det heller ingen bild att basera om.
+
+Reviderat 2026-10-20 (#1056): stacken håller inte längre dokumentbilder utan det varje steg ändrade, del för del (L14).
+Ombaseringen är därför att ta bort ur varje steg i `past`, `future` och `futureBeforeGesture` de delar som nämner bytenas hash — i vägen eller i värdet före eller efter — så att inget tryck på Ctrl+Z eller Ctrl+Shift+Z skriver tillbaka dem, och resten av steget betyder det det betydde.
 Testet som pinnade hålet pinnar nu att det är stängt, och alla fyra vägarna in — `useSymbol`, `placeIcon`, `useFont`, `addPicture` — går hela historiken igenom, fram och tillbaka, utan att någon press når tillgången.
 
 ### L38. En kurva dras fram ur kanten, och mittpricken skiljer klick från drag (prototypat 2026-09-20, #327)

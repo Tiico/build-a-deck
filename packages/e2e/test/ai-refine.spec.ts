@@ -23,7 +23,7 @@ test('a designer refines a proposal, sees the refined one replace it on the wall
   const panel = page.getByRole('complementary', { name: 'AI help' })
   const wall = page.locator('.byd-wall-card')
   await expect(wall).toHaveCount(6)
-  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; fields?: Record<string, unknown> }[]; doc?: { rows: unknown[] } } })
+  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; fields?: Record<string, unknown> }[]; parts?: { at: string[]; to?: unknown }[] } })
 
   const ask = panel.getByRole('textbox', { name: 'Ask about the game' })
   await ask.fill('Three cheap cards [kort:3]')
@@ -88,6 +88,10 @@ test('a designer refines a proposal, sees the refined one replace it on the wall
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(wall).toHaveCount(6)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
-  expect(edits()[1]!.intent.doc!.rows).toHaveLength(6)
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
+  // The cards the proposal added go, and nothing else is named.
+  const parts = edits()[1]!.intent.parts!
+  expect(parts.every((p) => p.at[0] === 'rows' && !('to' in p))).toBe(true)
+  expect(new Set(parts.map((p) => p.at[1])).size).toBe(edits()[0]!.intent.edits!.length)
 })

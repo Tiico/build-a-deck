@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
+import { applyEdit } from '@byd/server/doc'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { tabId } from '../src/editor/EditorTabs.js'
 import { Language, type Lang } from '../src/i18n/index.js'
@@ -66,6 +67,15 @@ const lastQuestion = () => {
 }
 const proposal = () => within(panel()).getByRole('group', { name: /^Förslag/ })
 const logged = async () => run.projects.readEdits(run.projectId, 0)
+
+// The game as the actor holds it after the log: the version it was opened on and every line since.
+// A step back writes back only what the step changed (#1056), so it is read off the result and not
+// off the line.
+const held = async (): Promise<ProjectDoc> => {
+  const rec = await run.projects.load(run.projectId)
+  if (!rec) throw new Error('no project')
+  return (await logged()).reduce((doc: ProjectDoc, e) => applyEdit(doc, e.intent), rec)
+}
 
 describe('the selected cards as the question’s context', () => {
   it('sends the card chosen on the wall and the rows ticked in Tabell, and says so before they go', async () => {
@@ -186,7 +196,8 @@ describe('a proposal of changed cards', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ångra det godtagna förslaget' }))
     await waitFor(async () => expect(await logged()).toHaveLength(2))
     const restored = (await logged())[1]!.intent
-    expect(restored.v === 'restore' && restored.doc.rows.map((r) => [r.id, r.fields['title'], r.fields['kostnad']])).toEqual([
+    expect(restored.v).toBe('revert')
+    expect((await held()).rows.map((r) => [r.id, r.fields['title'], r.fields['kostnad']])).toEqual([
       ['dragon', 'Drake', 3],
       ['knight', 'Riddare', 2],
       ['wizard', 'Trollkarl', 1],
@@ -334,7 +345,8 @@ describe('«Välj delar…»', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ångra det godtagna förslaget' }))
     await waitFor(async () => expect(await logged()).toHaveLength(2))
     const restored = (await logged())[1]!.intent
-    expect(restored.v === 'restore' && restored.doc.rows).toEqual(game().rows)
+    expect(restored.v).toBe('revert')
+    expect((await held()).rows).toEqual(game().rows)
   })
 
   it('cannot accept nothing', async () => {

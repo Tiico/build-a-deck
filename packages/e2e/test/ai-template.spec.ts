@@ -26,7 +26,7 @@ test('a designer asks for a template, sees it on the wall with its warnings, acc
   const panel = page.getByRole('complementary', { name: 'AI help' })
   const field = panel.getByRole('textbox', { name: 'Ask about the game' })
   const wallCard = (cardRef: string) => page.locator(`.byd-wall-card[data-card-ref="${cardRef}"]`)
-  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; field?: string; cardRef?: string; value?: unknown }[]; doc?: typeof doc } })
+  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; field?: string; cardRef?: string; value?: unknown }[]; parts?: { at: string[]; to?: unknown }[] } })
   await expect(page.locator('.byd-wall-card')).toHaveCount(6)
 
   await field.fill('A card with its power in a coin in the corner [mall]')
@@ -80,9 +80,10 @@ test('a designer asks for a template, sees it on the wall with its warnings, acc
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(wallCard('kort-1').locator('[data-element="coin"]')).toHaveCount(0)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
-  expect(edits()[1]!.intent.doc!.template).toEqual(doc.template)
-  expect(edits()[1]!.intent.doc!.rows.every((r) => !('kraft' in r.fields))).toBe(true)
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
+  // Only the template and the column's cells are named: nothing else of the game is written back.
+  expect(edits()[1]!.intent.parts!.every((p) => p.at[0] === 'template' || p.at[0] === 'rows')).toBe(true)
 
   // A template with its title past the card's edge is refused, with the reason, and writes nothing.
   await field.fill('Another one [mall-trasig]')

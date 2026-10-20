@@ -78,7 +78,7 @@ test('a designer selects cards, asks for a change, sees old → new on the wall 
   await expect(proposal).toContainText('2 of 4 parts chosen')
   await proposal.getByRole('button', { name: 'Accept chosen' }).click()
   await expect(panel.getByText('Accepted: 1 new card and 1 changed card.')).toBeVisible()
-  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; cardRef?: string; field?: string; value?: unknown }[]; doc?: { rows: { id: string; fields: Record<string, unknown> }[] } } })
+  const edits = () => wire.sent().filter((f) => f.includes('"t":"edit"')).map((f) => JSON.parse(f) as { intent: { v: string; edits?: { v: string; cardRef?: string; field?: string; value?: unknown }[]; parts?: { at: string[]; to?: unknown }[] } })
   expect(edits()).toHaveLength(1)
   expect(edits()[0]!.intent.v).toBe('compound')
   expect(edits()[0]!.intent.edits!.map((e) => [e.v, e.cardRef, e.field ?? null])).toEqual([
@@ -93,7 +93,9 @@ test('a designer selects cards, asks for a change, sees old → new on the wall 
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(page.locator('.byd-wall-card')).toHaveCount(6)
   expect(edits()).toHaveLength(2)
-  expect(edits()[1]!.intent.v).toBe('restore')
-  expect(edits()[1]!.intent.doc!.rows.map((r) => [r.id, r.fields['title'], r.fields['kostnad']])).toEqual(doc.rows.map((r) => [r.id, r.fields['title'], r.fields['kostnad']]))
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
+  // Only the deck's cells and cards are named: nothing else of the game is written back.
+  expect(edits()[1]!.intent.parts!.every((p) => p.at[0] === 'rows')).toBe(true)
   await expect(wallCard('kort-2').locator('.byd-preview')).not.toContainText(`${cardTitle(1)} II`)
 })

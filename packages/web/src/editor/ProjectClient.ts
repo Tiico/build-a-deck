@@ -4,7 +4,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, decideEdit, plainEdits, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -64,9 +64,13 @@ export class ProjectUnavailable extends Error {
 // `intents` is the inverse of the edit that put the asset into the document; `said` and `name`
 // are how the notice says which of the things the designer did went away again.
 type Undoing = { said: Key; name: string; intents: readonly EditIntent[] }
-// One step of the way back or the way forward: the document it was taken from, and the word for
-// what the designer did to leave it (#35).
-type Step = { doc: ProjectDoc; what: Key }
+// One step of the way back or the way forward: what the designer's own edits changed, part by part,
+// worked out where they were made and against the document they were made on (#1056), and the word
+// for what she did (#35). Not the document she left: a co-editor's work since then is not hers to
+// take back.
+type Step = { change: Change; what: Key }
+// Which way a step went, for the word said when it could not be taken (#1056).
+export type StepRefusal = { dir: 'undo' | 'redo'; what: Key }
 
 // Why a save made no version (#1018), as a closed set of words the editor says in its own voice.
 // The server's sentence about a refused save is a developer's, and the table's translation of it
@@ -99,7 +103,9 @@ export type TableSummary = { id: string; version: string; ended: boolean; lastAt
 
 // An edit of this editor's own that the actor has not answered yet, under the number it was sent
 // with (#993).
-type Waiting = { ask: number; intent: EditIntent }
+// `step` is set when the edit is a step back or forward (#1056): what the actor refuses then is the
+// designer's own step, and it is said as one. `taken` is the step it put on the other stack.
+type Waiting = { ask: number; intent: EditIntent; step?: StepRefusal & { taken: Step } }
 
 // The project as the editor holds it, and its end of the actor (D3): the document, who else has
 // it open, and one socket the edits go both ways over. An edit is applied here at once and sent;
@@ -140,6 +146,11 @@ export class ProjectClient {
   // taken off this editor again, and the designer is told that it did not go through: it vanished
   // from the screen without a word, which reads as the tool having lost it.
   public refusedEdits = 0
+  // How many steps back or forward could not be taken, and the last of them (#1056): something a
+  // co-editor changed since stood in the way, and nothing was written over it. Counted apart from
+  // `refusedEdits` because it is said in other words — what could not be taken back, and why.
+  public refusedSteps = 0
+  public refusedStep: StepRefusal | null = null
   // The hashes of the bytes this client has put into the document and is still sending (#907).
   // A new set on every change, so a view can tell it changed by its identity.
   private arriving: ReadonlySet<string> = new Set()
@@ -349,7 +360,7 @@ export class ProjectClient {
         if (message.from === this.me) this.finishSave({ ok: true, rev: message.rev })
         this.notify()
         return
-      case 'refused':
+      case 'refused': {
         // A refusal answers the request it names and no other (#991). A refused edit taken for the
         // save's answer said a version that was made could not be saved, and left the version's
         // own «saved» to nobody, or to the next save. A refused edit ends no wait: the actor sends
@@ -362,10 +373,21 @@ export class ProjectClient {
         // The refused edit comes off this editor (#993): kept, it was laid on top of the document
         // the actor hands over next, and the editor showed what the actor had refused. A server
         // from before the number names no edit, and its handover lays them all on top as before.
+        // A step back or forward the actor refused (#1056) — a co-editor's edit reached it first and
+        // changed what the step would have written over — is said as that step, and the step it
+        // put on the other stack goes: it would bring back what never happened.
+        const step = message.ask === undefined ? undefined : this.pending.find((waiting) => waiting.ask === message.ask)?.step
         if (message.ask !== undefined) this.answered(message.ask)
+        if (step) {
+          this.past = this.past.filter((s) => s !== step.taken)
+          this.future = this.future.filter((s) => s !== step.taken)
+          this.refuseStep({ dir: step.dir, what: step.what })
+          return
+        }
         this.refusedEdits += 1
         this.notify()
         return
+      }
     }
   }
 
@@ -473,13 +495,17 @@ export class ProjectClient {
     // document refuses never happened, so it must cost neither a version nor a step back (#41,
     // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.
     const next = applyEdit(this.doc, intent)
-    // Where the designer was before this: a step back is `restore` with that document, which is
-    // already how taking a document back is said (B4), so no new verb is needed (#35). A new edit
-    // is a new branch, so what was taken back stops waiting to come forward.
-    // The gesture that is already open keeps the document it began from: that is the whole of
-    // taking a move back in one press, and it is why the token must be new for every new grab.
-    if (gesture === undefined || gesture !== this.gesture) {
-      this.past.push({ doc: this.doc, what: what ?? whatOf(intent) })
+    // What this edit changed, part by part, against the document it was made on (#1056): that is
+    // what a step back takes back, and nothing a co-editor did before or after it. A new edit is a
+    // new branch, so what was taken back stops waiting to come forward.
+    // The gesture that is already open grows its step: that is the whole of taking a move back in
+    // one press, and it is why the token must be new for every new grab (L14).
+    const change = changeOf(this.doc, next)
+    const top = this.past.at(-1)
+    if (gesture !== undefined && gesture === this.gesture && top) {
+      this.past[this.past.length - 1] = { ...top, change: joined(top.change, change) }
+    } else {
+      this.past.push({ change, what: what ?? whatOf(intent) })
       if (this.past.length > UNDO_STEPS) this.past.shift()
       this.futureBeforeGesture = this.future
     }
@@ -499,10 +525,10 @@ export class ProjectClient {
   // It must apply before it is sent: an edit that makes no sense is the editor's mistake to see,
   // not something to find out about a round trip later. `edit` has already applied it by the time
   // it gets here, and hands over what came out rather than having it worked out twice.
-  private send(intent: EditIntent, next: ProjectDoc = applyEdit(this.doc, intent)): void {
+  private send(intent: EditIntent, next: ProjectDoc = applyEdit(this.doc, intent), step?: Waiting['step']): void {
     this.commit(next)
     const ask = ++this.asks
-    this.pending.push({ ask, intent })
+    this.pending.push({ ask, intent, ...(step ? { step } : {}) })
     this.post(JSON.stringify({ t: 'edit', intent, ask }))
   }
 
@@ -523,45 +549,79 @@ export class ProjectClient {
 
   // A step back, and the word for what it took. Null when there is nothing behind: the view says
   // nothing rather than saying it undid something.
+  //
+  // The step takes back the designer's own change and nothing else (#1056, L14): the parts it
+  // changed are written back as they were, as a `revert`, and everything a co-editor changed
+  // stands. When a co-editor has changed one of those very parts since, nothing is taken: the step
+  // is refused, said as refused (`refusedStep`), and taken off the stack — it can never be taken
+  // back now, and leaving it on top would make every later press the same refusal. Null then too.
   undo(): Key | null {
-    const step = this.past.pop()
+    return this.take('undo')
+  }
+
+  redo(): Key | null {
+    return this.take('redo')
+  }
+
+  private take(dir: 'undo' | 'redo'): Key | null {
+    const from = dir === 'undo' ? this.past : this.future
+    const to = dir === 'undo' ? this.future : this.past
+    const step = from.pop()
     if (!step) return null
     // A step back closes whatever was open: the next patch of a gesture that is still being made
     // would otherwise join the step the designer just took off the stack.
     this.gesture = null
-    this.future.push({ doc: this.doc, what: step.what })
-    this.send({ v: 'restore', doc: step.doc })
+    const back = revertOf(step.change, this.doc)
+    if (!back.ok) {
+      this.refuseStep({ dir, what: step.what })
+      return null
+    }
+    // Everything the step changed is already as it was — somebody wrote it back, or it was never a
+    // change at all — so there is nothing to send. The step still goes over to the other side
+    // under its own name: it is something the designer did, and the way forward must say so.
+    if (back.edit === null) {
+      to.push({ change: changeOf(this.doc, this.doc), what: step.what })
+      this.notify()
+      return step.what
+    }
+    const next = applyEdit(this.doc, back.edit)
+    const taken: Step = { change: changeOf(this.doc, next), what: step.what }
+    to.push(taken)
+    this.send(back.edit, next, { dir, what: step.what, taken })
     return step.what
   }
 
+  private refuseStep(refusal: StepRefusal): void {
+    this.refusedSteps += 1
+    this.refusedStep = refusal
+    this.notify()
+  }
+
   // A gesture called off before it ever ended (#142): a drag the hand took back with Escape, or
-  // one the browser took away from the page. The document goes back to the one the gesture began
-  // from and the step it opened goes with it — and that second half is the whole difference
-  // between taking a move back and never having made it. A step back is a row in the history
-  // (B4); a drag that was called off is nothing that happened.
+  // one the browser took away from the page. What the gesture changed goes back to how it was and
+  // the step it opened goes with it — and that second half is the whole difference between taking
+  // a move back and never having made it. A step back is a row in the history (B4); a drag that
+  // was called off is nothing that happened.
   //
   // Only the gesture still being made can be called off. Anything else is a doing that is already
-  // over, and the way back from one of those is the way back from any other.
+  // over, and the way back from one of those is the way back from any other. And a gesture a
+  // co-editor has laid a hand on meanwhile is not called off at all (#1056): it stands as made,
+  // and so does its step.
   callOff(gesture: string): void {
     if (this.gesture !== gesture) return
-    const step = this.past.pop()
+    const step = this.past.at(-1)
     if (!step) return
     this.gesture = null
+    const back = revertOf(step.change, this.doc)
+    if (!back.ok) return
+    this.past.pop()
     // And what the gesture's first patch emptied on the way in is put back with it, for the same
     // reason the step is: the designer took a change back, laid a hand on something, thought
     // better of it, and must find the way forward exactly where she left it.
     this.future = this.futureBeforeGesture
     this.futureBeforeGesture = []
-    this.send({ v: 'restore', doc: step.doc })
-  }
-
-  redo(): Key | null {
-    const step = this.future.pop()
-    if (!step) return null
-    this.gesture = null
-    this.past.push({ doc: this.doc, what: step.what })
-    this.send({ v: 'restore', doc: step.doc })
-    return step.what
+    if (back.edit) this.send(back.edit)
+    else this.notify()
   }
 
   // Typing into a cell is a gesture too (#35): the table writes a value per keystroke, and a
@@ -728,7 +788,8 @@ export class ProjectClient {
   //
   // `setRules`, which writes the whole book, is left to where the whole book truly is replaced: an
   // import (`importRules`, below), and the log's own older rows, which replay as they were written.
-  // A version taken back, or a step back, is `restore` and writes the whole document.
+  // A version taken back is `restore` and writes the whole document; a step back is `revert` and
+  // writes back only what the designer's own step changed (#1056).
   spliceRules(splice: Omit<Extract<EditIntent, { v: 'spliceRules' }>, 'v'>, gesture?: string): void {
     this.edit({ v: 'spliceRules', ...splice }, gesture)
   }
@@ -981,20 +1042,36 @@ export class ProjectClient {
     return new Said(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: saidOr(why, t('upload.failed')) }))
   }
 
-  // One step with the correction laid on it (#358). Only the document changes: what the step is
-  // called is what the designer did, and a correction may not rewrite the history's own account
-  // of that.
+  // One step with the correction laid on it (#358). Only what the step changes is touched: what the
+  // step is called is what the designer did, and a correction may not rewrite the history's own
+  // account of that.
   //
-  // A step that never held the bytes is left untouched, and the bytes have a name to ask for: the
-  // hash is their name wherever they are written down — as the reference a symbol or a typeface
-  // points at, and as the key a picture is filed under — so a document holds what fell away
-  // exactly when it says that hash somewhere. Asking is not thrift but care: a removal writes the
-  // shelf it removes from, so running one over a step from before the asset existed would leave
-  // an empty `credits` where there was nothing at all, and the editor reads that difference as
-  // the project having unsaved changes (#8).
+  // A step holds the parts it changes and not whole documents (#1056), so the correction is to
+  // leave out of it every part that would bring back what never arrived. Two kinds: every part that
+  // says the bytes — the hash is their name wherever they are written down, as the reference a
+  // symbol or a typeface points at and as the key a picture is filed under — and every part the
+  // correction itself takes away from where the step would lead, such as the layer that showed a
+  // symbol on a card. What the correction only adds on its way, an empty shelf of licences, is not
+  // something the step brought, and stays the step's to take. No press of Ctrl+Z or Ctrl+Shift+Z then writes them back, and the rest of the
+  // step goes on meaning what it meant. A step that never held them is left as it is.
   private rebase(step: Step, ref: string, intents: readonly EditIntent[]): Step {
-    if (!JSON.stringify(step.doc).includes(ref.slice(ASSET_PREFIX.length))) return step
-    return { ...step, doc: intents.reduce(applyEdit, step.doc) }
+    const hash = ref.slice(ASSET_PREFIX.length)
+    const says = (value: unknown) => value !== undefined && JSON.stringify(value).includes(hash)
+    const corrected = new Set<string>()
+    const back = revertOf(step.change, this.doc)
+    if (back.ok && back.edit) {
+      const there = applyEdit(this.doc, back.edit)
+      let fixed = there
+      try {
+        fixed = intents.reduce(applyEdit, there)
+      } catch {
+        // A correction that has nothing to take where the step leads takes nothing there.
+      }
+      for (const [key, part] of changeOf(there, fixed).parts) if (part.to === undefined) corrected.add(key)
+    }
+    const parts = [...step.change.parts].filter(([key, part]) => !corrected.has(key) && !says(part.at) && !says(part.from) && !says(part.to))
+    if (parts.length === step.change.parts.size) return step
+    return { ...step, change: { ...step.change, parts: new Map(parts) } }
   }
 
   // A token no other doing can carry, so a placement that has to be taken back takes back its
