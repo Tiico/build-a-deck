@@ -218,7 +218,7 @@ async function firstRowTabs(width: number, extra = ''): Promise<Record<string, s
 // wider than the Mac's faces, and Verdana here is as wide. With `antal` on the rail and L46's
 // ceiling on `body`, the column after `body` begins outside the box, and a cell the hand goes into
 // has to be brought into the room that can be read — not to the box's edge, where the pinned ×
-// stands (`scroll-padding`, said by `fitColumns`).
+// stands (`scroll-margin` on what scrolls, from the rail `fitColumns` measures; #1067).
 const WIDE = 'body, body * { font-family: Verdana, sans-serif !important; }'
 
 describe('a cell with the icon path, at 1024px with text as wide as on Linux (#695)', () => {

@@ -249,12 +249,8 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   // mot sina värden som varje annan kolumn. Samma tal som taket ovan räknas mot, så de två kan
   // inte glida isär.
   table.style.setProperty('--byd-data-lane', `${pinned}px`)
-  // Och samma tal till lådan, som det rum en cell ska tas in i (#695). Webbläsaren tar in en cell
-  // till lådans kant, och där står det fastnålade: listen till vänster och × till höger, så en cell
-  // som togs in stod med sitt slut under dem. × är ett tryck brett och sägs i arket; listen är mätt
-  // och sägs här, som lådans egen `scroll-padding` och inte som en variabel på tabellen, som lådan
-  // inte ser.
-  ;(box as HTMLElement).style.scrollPaddingLeft = `${pinned}px`
+  // Samma tal är det rum en cell tas in i (#695, #1067): arket sätter det som `scroll-margin` på det
+  // som rullar, så att en cell som tas in inte står med sitt slut under listen.
   // Och var varje fastnålad kolumn börjar, som stilmallen behöver för den som inte står först
   // (#695): `antal` står efter `id`, och hur bred `id` är vet bara mätningen. Sagt per kolumn och
   // med kolumnens eget namn, så att arket kan säga `--byd-data-at-antal` utan att räkna kolumner.
