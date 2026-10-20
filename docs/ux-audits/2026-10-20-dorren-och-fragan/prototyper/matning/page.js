@@ -262,6 +262,7 @@
         footRows,
         quiet: quiet ? hit(quiet) : 'saknas',
         quietText: quiet?.textContent ?? '',
+        quietLines: quiet && quiet.checkVisibility() ? lines(quiet) : 0,
         count: count ? hit(count) : 'saknas',
         seen,
         row: row && doorShown ? rect(row) : null,
