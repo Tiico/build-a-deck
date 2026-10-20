@@ -159,6 +159,10 @@ export type EditIntent =
   | { v: 'setIcon'; name: string; url: string; credit?: ProjectCredit }
   | { v: 'renameIcon'; from: string; to: string }
   | { v: 'removeIcon'; name: string }
+  // The whole book written out. Since #1053 it is what an import does and nothing else: the Regler tab
+  // writes a block at a time with `spliceRules` below, so a co-editor's paragraph is never written
+  // back over by a book somebody else had on the screen. Older rows of the log carry it for every
+  // keystroke and replay as they were.
   | { v: 'setRules'; rules: RuleDoc }
   // Rule text placed where it stands (#1006): `blocks` in place of the blocks `replace` names, where
   // the first of them stood, or — when nothing is replaced — after the block `after` names, `null`
