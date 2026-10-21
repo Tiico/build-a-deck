@@ -5,7 +5,8 @@ import { CARD_PX, cornerPx } from './corner.js'
 import { ASSET_PREFIX, iconFieldsOf, isAssetRef, previewIcons } from './assets.js'
 import { AssetImage } from './AssetImage.js'
 import { cardWords, previewFonts } from './fonts.js'
-import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
+import { INK, LIBRARY } from './symbols.js'
+import { creditOf, decksterIcons, loadIconCatalog, searchIcons, type CatalogIcon, type IconSource } from './icon-catalog.js'
 import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { FontShelf } from './FontShelf.js'
@@ -13,7 +14,7 @@ import { ThemeGallery } from './ThemeGallery.js'
 import { FontCatalog } from './FontCatalog.js'
 import { contrastRatio, elementsFor, isSymbolName } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
-import { useT, type Key } from '../i18n/index.js'
+import { useLang, useT, type Key } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
@@ -208,33 +209,57 @@ function ThemeFonts({ doc, client, catalogRef, onOpenCatalog }: { doc: ProjectDo
   )
 }
 
-// The symbol library (E4), opened from Spelets ikoner (L57): search, categories and the licence on
-// every symbol. Taking one in names it in the game's icon set, which is what `{namn}` in card text
-// looks up (L2). It stands beside the sections rather than over them, so the set can be seen
-// growing while symbols are taken in.
+// The symbol library (E4), opened from Spelets ikoner (L57): search, the libraries as a row of
+// choices and the licence on every symbol. Since #1087 (L71) it searches the icon catalog — the
+// symbols drawn for the project, game-icons.net and Lucide — the very catalog the sheet under the
+// card in Mall searches, so a library is the same library wherever it is opened. Taking one in
+// names it in the game's icon set, which is what `{namn}` in card text looks up (L2). It stands
+// beside the sections rather than over them, so the set can be seen growing while symbols are
+// taken in.
+//
+// Deckster's own symbols stand at once; the two libraries come in behind the catalog's dynamic
+// import, which the opening of this panel is the caller of.
+const LIBRARY_PAGE = 60
+type Shelf = 'alla' | IconSource
+const LIBRARY_SHELVES: readonly Shelf[] = ['alla', 'deckster', 'game-icons', 'lucide']
 function SymbolLibrary({ doc, client, onClose }: { doc: ProjectDoc; client: ProjectClient; onClose(): void }) {
   const t = useT()
+  const { lang } = useLang()
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<string | null>(null)
+  const [shelf, setShelf] = useState<Shelf>('alla')
   const [notice, setNotice] = useState<string | null>(null)
+  const [catalog, setCatalog] = useState<CatalogIcon[] | null>(null)
   const search = useRef<HTMLInputElement>(null)
   useEffect(() => search.current?.focus(), [])
-  const found = searchSymbols(query, category, t)
+  useEffect(() => {
+    let standing = true
+    loadIconCatalog(lang).then(
+      (icons) => standing && setCatalog(icons),
+      () => standing && setNotice(t('icons.catalog.failed')),
+    )
+    return () => {
+      standing = false
+    }
+  }, [lang, t])
+  const all = useMemo(() => catalog ?? decksterIcons(lang), [catalog, lang])
+  const found = useMemo(() => searchIcons(all, { query, source: shelf }, lang), [all, query, shelf, lang])
   // The library's symbols the game already has, by the source its credit names (#481): the name
   // in the game is the designer's and may be anything, the source is the library's own id.
   const had = new Map(Object.entries(doc.credits ?? {}).flatMap(([name, credit]) => (doc.icons[name] !== undefined && credit.source ? [[credit.source, name] as const] : [])))
+  const hadOf = (icon: CatalogIcon) => had.get(creditOf(icon).source ?? '')
   const [hadSaid, setHadSaid] = useState<string | null>(null)
-  const take = (symbol: GameSymbol) => {
+  const take = (icon: CatalogIcon) => {
     // A second press on a symbol the game has says so, rather than doing nothing without a word.
-    const kept = had.get(symbol.id)
-    if (kept !== undefined) return setHadSaid(t('symbols.take.had', { name: symbolName(symbol, t), as: `{${kept}}` }))
+    const kept = hadOf(icon)
+    if (kept !== undefined) return setHadSaid(t('symbols.take.had', { name: icon.name, as: `{${kept}}` }))
     setHadSaid(null)
     void client
-      .useSymbol(symbol, undefined, t)
+      .useIcon(icon, undefined, t)
       // Taking it in is said where a second press is (#558): the tile changed and nothing read it.
-      .then(() => setHadSaid(t('symbols.taken', { name: symbolName(symbol, t) })))
-      .catch((err: unknown) => setNotice(saidOr(err, t('symbols.take.failed', { name: symbolName(symbol, t) }))))
+      .then(() => setHadSaid(t('symbols.taken', { name: icon.name })))
+      .catch((err: unknown) => setNotice(saidOr(err, t('symbols.take.failed', { name: icon.name }))))
   }
+  const shelfCount = (s: Shelf): number | null => (s === 'alla' ? (catalog?.length ?? null) : s === 'deckster' ? all.filter((i) => i.source === s).length : catalog === null ? null : catalog.filter((i) => i.source === s).length)
   return (
     <section
       className="byd-theme-sheet byd-symbols-library"
@@ -256,38 +281,43 @@ function SymbolLibrary({ doc, client, onClose }: { doc: ProjectDoc; client: Proj
         </button>
       </header>
       <input ref={search} className="byd-theme-search" type="search" aria-label={t('symbols.search')} placeholder={t('symbols.search.placeholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
-      <div className="byd-theme-kinds" role="group" aria-label={t('symbols.categories')}>
-        <button type="button" className="byd-choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
-          {t('symbols.all')}
-        </button>
-        {CATEGORIES.map((c) => (
-          <button key={c} type="button" className="byd-choice" aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>
-            {t(c)}
-          </button>
-        ))}
+      <div className="byd-theme-kinds" role="group" aria-label={t('icons.catalog.source')}>
+        {LIBRARY_SHELVES.map((s) => {
+          const n = shelfCount(s)
+          return (
+            <button key={s} type="button" className="byd-choice" aria-pressed={shelf === s} onClick={() => setShelf(s)}>
+              {t(`icons.catalog.source.${s}` as Key)}
+              {n !== null && <small> {n.toLocaleString(lang)}</small>}
+            </button>
+          )
+        })}
       </div>
       <div className="byd-theme-sheet-scroll">
         {found.length === 0 ? (
           <p className="byd-symbols-empty">{t('symbols.none')}</p>
         ) : (
           <div className="byd-symbols-grid">
-            {found.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className="byd-symbols-tile"
-                // A symbol the game has is named by what the tile shows (#558), since a press on it
-                // no longer takes anything in: it says it is already there.
-                aria-label={had.has(s.id) ? t('symbols.had.name', { name: symbolName(s, t) }) : t('symbols.take', { name: symbolName(s, t) })}
-                {...(had.has(s.id) ? { 'data-had': 'true' } : {})}
-                onClick={() => take(s)}
-              >
-                <img src={symbolPreview(s)} alt="" />
-                <span>{symbolName(s, t)}</span>
-                {/* In words and not only as a mark (L13): the game already has this one. */}
-                {had.has(s.id) ? <small className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
-              </button>
-            ))}
+            {found.slice(0, LIBRARY_PAGE).map((s) => {
+              const kept = hadOf(s)
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="byd-symbols-tile"
+                  // A symbol the game has is named by what the tile shows (#558), since a press on it
+                  // no longer takes anything in: it says it is already there.
+                  aria-label={kept !== undefined ? t('symbols.had.name', { name: s.name }) : t('symbols.take', { name: s.name })}
+                  {...(kept !== undefined ? { 'data-had': 'true' } : {})}
+                  onClick={() => take(s)}
+                >
+                  <img src={`data:image/svg+xml;utf8,${encodeURIComponent(s.svg)}`} alt="" />
+                  <span>{s.name}</span>
+                  {/* In words and not only as a mark (L13): the game already has this one. A symbol
+                      drawn by a person names them, for the print hand-off (E4). */}
+                  {kept !== undefined ? <small className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.source === 'deckster' ? s.licence : `${s.licence} · ${s.by}`}</small>}
+                </button>
+              )
+            })}
           </div>
         )}
         {notice && <p role="alert">{notice}</p>}
@@ -295,7 +325,7 @@ function SymbolLibrary({ doc, client, onClose }: { doc: ProjectDoc; client: Proj
           {hadSaid ?? ''}
         </p>
       </div>
-      <footer>{t('symbols.foot', { n: found.length, of: SYMBOL_COUNT, m: Object.keys(doc.icons).length })}</footer>
+      <footer>{t('symbols.foot', { n: Math.min(LIBRARY_PAGE, found.length), of: found.length, m: Object.keys(doc.icons).length })}</footer>
     </section>
   )
 }

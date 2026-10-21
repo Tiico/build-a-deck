@@ -7443,3 +7443,10 @@ En tryckt ikon öppnar bibliotekets ark under kortet för just den raden, och ar
 Arket har typsnittskatalogens form, och varje bricka ritar ikonen som mask i radens färg på kortets papper, så att provet inte kan lova en annan ikon än kortet visar (L34).
 Hyllorna är Alla, I spelet, Deckster, Game Icons och Lucide.
 Att gå tillbaka till en ikon på alla kort ger den ikon lagret hade, inte ett tomrum, på samma sätt som en bilds väg tillbaka till kolumnen inte är en gissning (#320).
+
+**Byggt 2026-10-22 (#1087): Speltemats bibliotek söker i katalogen.**
+Symbolbiblioteket som öppnas ur Spelets ikoner söker i samma katalog som arket under kortet i Mall, så ett bibliotek är samma bibliotek var det än öppnas.
+Kategorierna (Resurser, Handlingar, Tillstånd, Platshållare) gällde bara Decksters egna 20 och ersätts av biblioteken som val: Alla, Deckster, Game Icons och Lucide.
+Decksters symboler står direkt, och de två biblioteken kommer in bakom katalogens dynamiska import när panelen öppnas.
+En bricka ur game-icons eller Lucide skriver upphovspersonen bredvid licensen.
+Klammerns «Hela biblioteket» i Tabell och ikonverktyget i Mall erbjuder fortfarande Decksters egna 20; de följer efter i #1093.

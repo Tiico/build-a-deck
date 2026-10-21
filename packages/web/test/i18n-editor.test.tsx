@@ -133,12 +133,13 @@ describe('the editor in the reader\'s own language (A4)', () => {
     fireEvent.click(screen.getByRole('button', { name: /From the library/ }))
     expect(screen.getByRole('heading', { name: 'Symbol library' })).toBeTruthy()
     expect(screen.getByPlaceholderText('Search for a symbol…')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'All' })).toBeTruthy()
+    // The libraries are the row of choices (#1087); a count joins each name once it is known.
+    expect(within(screen.getByRole('group', { name: 'Library' })).getByRole('button', { name: /^All/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy()
     // The library is the tool's own, so its symbols are named in the reader's language — and a
     // symbol taken from here is called that in the game from then on.
     expect(screen.getByRole('button', { name: 'Take in sword' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Resources' })).toBeTruthy()
+    expect(within(screen.getByRole('group', { name: 'Library' })).getByRole('button', { name: /^Game Icons/ })).toBeTruthy()
   })
 
   it('says the rulebook in English before there is a rulebook', async () => {
