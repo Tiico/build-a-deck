@@ -83,6 +83,7 @@ export const enEditor = {
   'editor.save.loggedOut': 'You are no longer signed in, so the save did not go through. What you changed is still in this tab.',
   'editor.save.offline': 'The save got no answer from the server. What you changed is still in this tab, so it is fine to press “Save” again.',
   'editor.save.failed': 'The save did not go through. What you changed is still in this tab, so it is fine to press “Save” again.',
+  'editor.notice.close': 'Close the message',
   'editor.edit.refused': 'A change did not go through and was taken back. The game now shows what everyone else sees.',
   'editor.rev': 'v{n}',
   'editor.here.name': 'Share · who has the game, {n} here',

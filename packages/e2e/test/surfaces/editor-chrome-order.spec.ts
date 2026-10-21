@@ -17,6 +17,8 @@ import { inject, standing } from '../../support/surface.js'
 // Every strip the editor can put between its header and the work, in the order `EditorPage`
 // writes them. `stagebar` is not one of them: it stands below the work, in thumb's reach.
 const STRIPS = [
+  // What could not happen, first under the header whatever else is up (#1073).
+  { cls: 'byd-editor-notice-band', html: '<div class="byd-editor-notice-band"><svg viewBox="0 0 24 24" aria-hidden="true"></svg><span role="alert" class="byd-editor-notice">Bordet kunde inte uppdateras. Försök igen.</span><button type="button" class="byd-editor-notice-close" aria-label="Stäng meddelandet"><span aria-hidden="true">×</span></button></div>' },
   { cls: 'byd-editor-narrow', html: '<p class="byd-editor-narrow">Kortmallen läggs ut på en bredare skärm.</p>' },
   { cls: 'byd-editor-leave', html: '<div class="byd-editor-leave" role="alertdialog"><p>Osparade ändringar.</p><button>Spara och lämna</button></div>' },
   { cls: 'byd-editor-table-link', html: '<div class="byd-editor-table-link" role="status">Bordet är startat i version 3.</div>' },
@@ -85,8 +87,8 @@ test.describe('the strips the editor says things in', () => {
   // work by its own height, so it has to land in the same place every time: what a designer sees
   // move must be the strip arriving, never the strip arriving somewhere new.
   test('gives the same place to a line that has gone, whatever else is up beside it', async ({ page }) => {
-    const lonely = await lay(page, [STRIPS[3]!])
-    const crowded = await lay(page, [STRIPS[0]!, STRIPS[1]!, STRIPS[2]!, STRIPS[3]!, STRIPS[4]!])
+    const lonely = await lay(page, [STRIPS[4]!])
+    const crowded = await lay(page, [...STRIPS])
     const height = (box: Record<string, Box>) => box['byd-editor-offline']!.bottom - box['byd-editor-offline']!.top
     expect(height(lonely)).toBe(height(crowded))
     // In both, it is the strip immediately above the work it is about.

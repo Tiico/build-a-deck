@@ -33,6 +33,10 @@
      (L10) — and the strip of stages under it: the open one, the rest, and the two actions. */
   --byd-editor-narrow-bg: #2a2417;
   --byd-editor-narrow-ink: #ffd98a;
+  /* What could not happen, in the band under the header (#1073): the reading band's amber. */
+  --byd-editor-notice-bg: #2a2418;
+  --byd-editor-notice-ink: #ffe4b0;
+  --byd-editor-notice-mark: #ffd98a;
   --byd-editor-stage-bg: #1b1d23;
   --byd-editor-stage-ink: #9aa3b8;
   --byd-editor-stage-action-bg: #23262e;
@@ -408,9 +412,20 @@
 .byd-share-question button { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
 .byd-share-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
 .byd-share form [role='status'] { grid-column: 1 / -1; margin: 4px 0 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
-/* A save that could not happen has to be readable, so it wraps rather than pushing the header
-   sideways; on a desk the header has a whole row of its own for it. */
-.byd-editor-notice { min-width: 0; color: #f0b64a; }
+/* What could not happen stands in a band first under the header (#1073, beställarens val B
+   2026-10-21), never in the header's row: there it took its room from the game's name and broke over
+   up to twenty lines. The reading band's language (#489) — amber ground, a sign, light words — on
+   one line at every width the desk has; a sentence longer than the window wraps rather than being
+   cut, because something that could not happen has to be read whole. The × is a full target at the
+   band's right edge and decides the band's height, so the band is the same height whatever it says
+   in one line. It is a door and no role (L13, #791): no fill and no line, and its ring is drawn
+   inside it so the window's edge never clips it. */
+.byd-editor-notice-band { flex: none; display: flex; align-items: center; gap: var(--byd-s3); margin: 0; padding: 0 var(--byd-s1) 0 var(--byd-s4); background: var(--byd-editor-notice-bg); border-bottom: 1px solid #4a4230; color: var(--byd-editor-notice-ink); font-size: 13px; line-height: 1.45; }
+.byd-editor-notice-band > svg { flex: none; width: 18px; height: 18px; color: var(--byd-editor-notice-mark); }
+.byd-editor-notice { flex: 1; min-width: 0; padding: var(--byd-s2) 0; text-wrap: pretty; }
+.byd-editor-notice-close { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--byd-editor-notice-mark); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+.byd-editor-notice-close:hover { background: #3a3222; }
+.byd-editor .byd-editor-notice-close:focus-visible { outline-offset: -3px; }
 /* What just happened stands in the open tab's foot, in the stead of the foot's quiet line (#698,
    beslut B 2026-10-06). It floated at the bottom of the screen (#566, beslut D) and lay over «Nästa
    kort», over the table's «Ta bort 1 kort» and once over «Ja, ta bort». In the foot it lies over

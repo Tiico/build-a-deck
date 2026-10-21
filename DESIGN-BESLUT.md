@@ -1123,6 +1123,17 @@ En sida som inte skickar något nummer får inget tillbaka, och en server före 
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 En redigering som aktören avvisat läggs aldrig tillbaka (#993): editorn tar bort den, bygger om från aktörens dokument och de redigeringar som fortfarande väntar, och säger att ändringen inte gick igenom.
 En sparning eller ett bord som går igenom tar bara bort den notis som stod när formgivaren tryckte, aldrig en som sades medan de var på väg (#996): beskedet om ett avslag som kom under tiden står kvar efter «Sparat».
+Notisen står i ett band först under editorns huvud, aldrig i huvudets rad (2026-10-21, #1073, beställarens val B efter prototyp).
+I huvudet fanns inget rum över under 1440: notisen tog sitt rum från spelets namn, som klipptes till «S…» på varje yta där det annars lästes helt, och bröts på fyra till tjugo rader i det som blev kvar, så att huvudet växte till 353 px och varje kontroll i det flyttade.
+Bandet har läsbandets språk: amber mark, ett varningstecken och ljus text (12,45:1), på en rad över hela fönstret med varje mening editorn säger i dag, vid 1024, 1280 och 1440, på svenska och engelska och med ett typsnitt lika brett som DejaVu.
+En mening som ändå är längre än fönstret bryts i stället för att kortas, eftersom det som inte kunde hända måste läsas helt.
+Det står först under huvudet, före bordets remsa, så att det står på samma ställe vad som än är uppe under det; huvudet behåller sina 57 px och arbetet flyttas ned med bandets 45 px medan det står.
+Bandet har ett × vid sin högra kant, ett helt mål på 44 px som heter «Stäng meddelandet» («Close the message»), och det tar bort notisen innan den slutat vara sann; annars står den kvar som förut tills en sparning eller ett bord som går igenom tar bort den.
+×-et är en dörr och ingen roll (L13, tillägg #791), och dess fokusring ritas inuti det så att fönstrets kant aldrig klipper den.
+Stod fokus på ×-et när bandet gick lämnas det åt den öppna flikens panel, aldrig åt ingenting.
+Meningen är en levande region som förut (`role="alert"`), och ×-et står utanför den.
+`editor-notice-band.spec.ts` mäter det i den byggda appen på 48 ytor, och `editor-personal-undo.spec.ts` ser en riktig vägran från två editorer landa i bandet.
+Prototypen: `docs/ux-audits/2026-10-21-notisen/prototyper/1073-notisen.html`.
 Det som blev sparat är aktörens dokument när versionen gjordes, aldrig editorns när sparningen skickades (#994).
 Editorn håller aktörens dokument så som tråden berättat det: överlämningen och sedan varje redigering den sagt landat, egna som andras, i den ordning den sa dem.
 Ett «saved» sägs efter varje redigering som kom med i versionen och före varje som inte gjorde det, så det dokumentet är versionen, vem som än bad om den.
@@ -1171,6 +1182,7 @@ Ytan prototypades i tre former: en panel från editorns huvud, ett ark på spele
 Ett projekt från före konton tillhör fortfarande ingen och är öppet för alla, som det alltid varit.
 Läsläget, prototypat och beslutat 2026-09-28 (#489, beslut C efter prototyp 35):
 En roll som inte får ändra spelet möter ett läsband under huvudet, på varje flik: vad rollen får, och att den ber ägaren om rätten att ändra.
+Notisen om det som inte kunde hända har sedan 2026-10-21 samma språk i ett eget band, först under huvudet och ovanför läsbandet (#1073, se ovan).
 Det som bara ändrar ritas inte alls: verktygsraden, lägg till och ta bort, uppladdning, dragpunkterna, «Ta tillbaka» och «Spara».
 Det som bär ett värde står kvar som ett värde, skrivskyddat eller avstängt, och läses utan ruta att skriva i.
 Det som läser lever som förut: sökning, zoom, Ögon, flikarna, historiken, jämförelsen, CSV-exporten och valet av kort och lager; testledaren startar dessutom bord.
@@ -7180,7 +7192,7 @@ I Mall täckte den kortradens «Nästa kort» och kortnamnet, i Tabell fotens «
 Bekräftelsen står i den öppna flikens fot och ersätter fotens tysta rad medan den står: kortradens värden i Mall, sorteringen i Tabell, och efter antalet och anmärkningarna i Kortvägg.
 Speltema, Media och Regler hade ingen fot och får en: en rad under arbetet, med samma linje och textstorlek som Kortväggens, som håller en rads höjd också när den inte säger något, så att det som sägs i den inte flyttar något.
 Bord säger det i raden ovanför filten, efter hjälptexten och dess «?»: där säger fliken redan sitt tysta läge, och en fot hade tagit den höjd från vänsterkolumnen som L66 mäter att knapparna för nya zoner behöver vid 1024 × 640.
-Den är grön med en bock, eftersom inget är fel; det amberfärgade i huvudet är fortfarande det som inte kunde hända.
+Den är grön med en bock, eftersom inget är fel; det amberfärgade bandet under huvudet (#1073) är fortfarande det som inte kunde hända.
 Den sägs till skärmläsaren som förut genom appens artiga kanal, och ritas utan att läsas upp en gång till; en tyst rad som är en levande region döljs medan bekräftelsen står och tas inte bort.
 Medan en fråga står ritas den inte (#916).
 

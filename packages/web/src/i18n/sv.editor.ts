@@ -96,6 +96,8 @@ export const svEditor = {
   'editor.save.loggedOut': 'Du är inte inloggad längre, så sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken.',
   'editor.save.offline': 'Sparningen fick inget svar från servern. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.',
   'editor.save.failed': 'Sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.',
+  // Bandet under huvudet som säger det som inte kunde hända stängs med ett × (#1073).
+  'editor.notice.close': 'Stäng meddelandet',
   // En ändring som aktören avvisade tas bort ur editorn igen (#993), och det sägs: den försvann
   // annars utan ett ord. Den andra meningen förklarar varför skärmen ändrades under formgivaren.
   'editor.edit.refused': 'En ändring gick inte igenom och togs bort. Spelet visar nu det alla andra ser.',

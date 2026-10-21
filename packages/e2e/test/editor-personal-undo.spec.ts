@@ -17,7 +17,8 @@ const BO = 'Bo skrev det här.'
 
 const undo = (page: Page) => page.getByRole('button', { name: /^Ångra/ }).first()
 const redo = (page: Page) => page.getByRole('button', { name: /^Gör om/ }).first()
-const notice = (page: Page) => page.locator('.byd-editor-notice')
+// Vägran står i bandet först under huvudet, aldrig i huvudets rad (#1073).
+const notice = (page: Page) => page.locator('.byd-editor > header + .byd-editor-notice-band .byd-editor-notice')
 
 async function tab(page: Page, name: 'Tabell' | 'Regler' | 'Mall'): Promise<void> {
   const it = page.getByRole('tab', { name })
@@ -164,6 +165,9 @@ test('ångra vägrar med en mening när Bo har ändrat samma cell sedan dess, oc
     await expect(cell(game.bo, 'kort-1 title')).toHaveValue(BO)
     // Steget som inte gick att ta tillbaka är borta ur stacken: knappen har inget mer att ångra.
     await expect(undo(page)).toHaveAttribute('aria-disabled', 'true')
+    // Ada har läst det och stänger bandet med ×.
+    await page.getByRole('button', { name: 'Stäng meddelandet' }).click()
+    await expect(page.locator('.byd-editor-notice-band')).toHaveCount(0)
     expect(title(await stored(page, page.request, game.id), 'kort-1')).toBe(BO)
   } finally {
     await game.close()
