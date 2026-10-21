@@ -71,6 +71,9 @@ type Undoing = { said: Key; name: string; intents: readonly EditIntent[] }
 type Step = { change: Change; what: Key }
 // Which way a step went, for the word said when it could not be taken (#1056).
 export type StepRefusal = { dir: 'undo' | 'redo'; what: Key }
+// A step that was taken, but without the values in columns someone else has removed since (#1072):
+// which way it went, and the columns, by their keys in the order the step named them.
+export type StepDrop = { dir: 'undo' | 'redo'; fields: string[] }
 
 // Why a save made no version (#1018), as a closed set of words the editor says in its own voice.
 // The server's sentence about a refused save is a developer's, and the table's translation of it
@@ -151,6 +154,10 @@ export class ProjectClient {
   // `refusedEdits` because it is said in other words — what could not be taken back, and why.
   public refusedSteps = 0
   public refusedStep: StepRefusal | null = null
+  // How many steps were taken without a value someone else's removal of its column took away, and
+  // the last of them (#1072): the card came back, the column did not, and the designer is told why.
+  public droppedSteps = 0
+  public droppedStep: StepDrop | null = null
   // The hashes of the bytes this client has put into the document and is still sending (#907).
   // A new set on every change, so a view can tell it changed by its identity.
   private arriving: ReadonlySet<string> = new Set()
@@ -335,7 +342,17 @@ export class ProjectClient {
       case 'edits': {
         // An edit of one's own was applied when it was made; its echo only says it landed.
         const mine = message.edits.filter((e) => e.from === this.me)
-        for (const echo of mine) this.answered(echo.ask)
+        for (const echo of mine) {
+          // A step back the actor wrote without a value whose column was taken away before the
+          // step reached it (#1072): this editor brought the value back, the actor let it go, and
+          // the edit after it in the line takes it off here too. What it let go is said.
+          const waiting = echo.ask === undefined ? undefined : this.pending.find((w) => w.ask === echo.ask)
+          if (waiting?.step) {
+            const fields = letGo(waiting.intent, echo.intent)
+            if (fields.length > 0) this.dropStep({ dir: waiting.step.dir, fields })
+          }
+          this.answered(echo.ask)
+        }
         const theirs = message.edits.filter((e) => e.from !== this.me)
         if (theirs.length > 0) this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
         // The actor's document moves by every edit it tells of, whoever made it.
@@ -579,6 +596,9 @@ export class ProjectClient {
     // Everything the step changed is already as it was — somebody wrote it back, or it was never a
     // change at all — so there is nothing to send. The step still goes over to the other side
     // under its own name: it is something the designer did, and the way forward must say so.
+    // A value that comes back in a column someone else has taken away since is let go (#1072): the
+    // card comes back, the column does not, and that is said beside the confirmation.
+    if (back.dropped) this.dropStep({ dir, fields: [...new Set(back.dropped.map((at) => at[3] ?? ''))] })
     if (back.edit === null) {
       to.push({ change: changeOf(this.doc, this.doc), what: step.what })
       this.notify()
@@ -589,6 +609,12 @@ export class ProjectClient {
     to.push(taken)
     this.send(back.edit, next, { dir, what: step.what, taken })
     return step.what
+  }
+
+  // Said with the step itself, which tells the views it moved.
+  private dropStep(drop: StepDrop): void {
+    this.droppedSteps += 1
+    this.droppedStep = drop
   }
 
   private refuseStep(refusal: StepRefusal): void {
@@ -1589,4 +1615,16 @@ function stamp(value: unknown): string {
 function hostAuthority(hostKey: string | undefined, init: RequestInit): RequestInit {
   if (!hostKey) return withCredentials(init)
   return { ...init, headers: { ...(init.headers as Record<string, string> | undefined), authorization: `Bearer ${hostKey}` } }
+}
+
+// The columns whose values a step back sent and the actor's line does not carry (#1072): cells the
+// step brought back into a column that was still there when it was worked out (`standing`), and
+// that someone else took away before it reached the actor. An empty cell was nothing (#1069), and
+// letting it go is not news.
+function letGo(sent: EditIntent, written: EditIntent): string[] {
+  if (sent.v !== 'revert' || written.v !== 'revert') return []
+  const kept = new Set(written.parts.map((part) => JSON.stringify(part.at)))
+  const cell = (at: string[]) => at.length === 4 && at[0] === 'rows' && at[2] === 'fields'
+  const fields = sent.parts.filter((part) => part.standing && cell(part.at) && part.to !== '' && part.to !== null && !kept.has(JSON.stringify(part.at))).map((part) => part.at[3] ?? '')
+  return [...new Set(fields)]
 }

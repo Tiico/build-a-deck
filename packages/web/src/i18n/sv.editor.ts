@@ -452,6 +452,11 @@ export const svEditor = {
   // Personlig ångra (#1056): det någon annan har ändrat sedan skrivs aldrig över, och det sägs.
   'undo.refused': 'Det gick inte att ångra {what}: någon annan har ändrat samma sak sedan dess. Inget skrevs över.',
   'redo.refused': 'Det gick inte att göra om {what}: någon annan har ändrat samma sak sedan dess. Inget skrevs över.',
+  // Ett kort som kommer tillbaka tar inte med sig en kolumn någon annan har tagit bort (#1072). Kolumnens
+  // namn är spelets och står som det skrevs; samma mening för ångra och gör om, för kortet kom tillbaka.
+  'undo.dropped.one': 'Det som stod i {fields} kom inte tillbaka: någon annan har tagit bort kolumnen.',
+  'undo.dropped.other': 'Det som stod i {fields} kom inte tillbaka: någon annan har tagit bort kolumnerna.',
+  'undo.dropped.field': '«{field}»',
   'undo.what.name': 'namnet på spelet',
   'undo.what.deck': 'en ändring i kortleken',
   'undo.what.field': 'ett fält i kortleken',

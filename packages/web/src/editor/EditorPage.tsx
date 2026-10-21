@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { nextCardRef } from './fields.js'
+import { fieldLabel, nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { Footed, SaidProvider } from './said.js'
@@ -354,6 +354,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     if (heard.client === client && refusedSteps > heard.n && step) say(t(step.dir === 'undo' ? 'undo.refused' : 'redo.refused', { what: t(step.what) }))
     heardSteps.current = { client, n: refusedSteps }
   }, [client, refusedSteps, say, t])
+  // A step taken without the values in a column a co-editor has removed since (#1072): the card came
+  // back, the column did not, and the designer is told which column and why, in the same place.
+  const droppedSteps = client?.droppedSteps ?? 0
+  const heardDrops = useRef<{ client: ProjectClient | null; n: number }>({ client: null, n: 0 })
+  useEffect(() => {
+    const heard = heardDrops.current
+    const drop = client?.droppedStep
+    if (heard.client === client && droppedSteps > heard.n && drop) {
+      const fields = drop.fields.map((field) => t('undo.dropped.field', { field: fieldLabel(field, t) })).join(', ')
+      say(t(drop.fields.length === 1 ? 'undo.dropped.one' : 'undo.dropped.other', { fields }))
+    }
+    heardDrops.current = { client, n: droppedSteps }
+  }, [client, droppedSteps, say, t])
   // What the reading band has just answered a shortcut with; gone after a moment (#489).
   const [readingSaid, setReadingSaid] = useState<string | null>(null)
   useEffect(() => {
