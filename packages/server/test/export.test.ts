@@ -248,6 +248,25 @@ describe('importing an export (G5, #528)', () => {
     expect(await run.projects.list((await run.projects.load('p1'))!.owner!)).toHaveLength(1)
   }, 90_000)
 
+  // An export is the other way bytes reach the asset store (#1087), so a drawing in one is held to
+  // the gate `POST /assets` holds it to: a zip must not be a way round it.
+  it('refuses a zip whose drawing is one the upload gate would refuse, and leaves nothing behind', async () => {
+    const svg = strToU8('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(document.cookie)"/>')
+    const hash = sha(svg)
+    const file = `assets/${hash}.svg`
+    const res = await bring(
+      edited((files) => {
+        const m = manifestOf(zip)
+        files[file] = svg
+        files['spel.json'] = strToU8(JSON.stringify({ ...m, assets: [...m.assets, { hash, file, contentType: 'image/svg+xml', size: svg.length }] }))
+      }),
+    )
+    expect(res.status).toBe(422)
+    expect(await res.json()).toMatchObject({ problems: [{ code: 'asset-unsafe', values: { hash, file } }] })
+    expect(await run.projects.list((await run.projects.load('p1'))!.owner!)).toHaveLength(1)
+    expect((await fetch(`${run.http}/assets/${hash}`)).status).toBe(404)
+  }, 90_000)
+
   it('refuses what is not an export, a newer format, and a document that points at a picture it does not carry', async () => {
     // Every refusal is a code and what it is about, so the tool can say it in the reader's words.
     const refused = async (res: Response) => ({ status: res.status, codes: ((await res.json()) as { problems: { code: string }[] }).problems.map((p) => p.code) })

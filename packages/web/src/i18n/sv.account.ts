@@ -352,6 +352,7 @@ export const svAccount = {
   'home.import.problem.asset-hash': 'Filen {file} är inte den fil dess namn säger.',
   'home.import.problem.asset-too-big': 'Filen {file} är större än en uppladdning får vara.',
   'home.import.problem.asset-format': 'Filen {file} är inte {type}.',
+  'home.import.problem.asset-unsafe': 'Ritningen {file} innehåller något som inte är säkert att visa.',
   'home.import.problem.asset-unknown': 'Spelet använder en bild eller ett typsnitt som varken finns i zippen eller här ({hash}).',
   'home.import.problem.unplayable': 'Den senaste versionen går inte att spela: {message}',
   'home.import.problem.too-big': 'Filen är större än en import får vara.',

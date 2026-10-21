@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate'
 import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
 import { ProjectDoc, checkedHistory, liftDoc } from './projects.js'
-import { assetHash } from './assets.js'
+import { assetHash, svgBytesRefusal } from './assets.js'
 import { PROJECT_NAME_MAX } from './edits.js'
 
 // Full export of a game (G5, #527): the designer's data, whole, in a format they can open without
@@ -188,6 +188,7 @@ export type ImportProblemCode =
   | 'asset-hash'
   | 'asset-too-big'
   | 'asset-format'
+  | 'asset-unsafe'
   | 'asset-unknown'
   | 'unplayable'
 export type ImportProblem = { code: ImportProblemCode; values?: Record<string, string | number> }
@@ -253,6 +254,13 @@ export function readExport(zip: Uint8Array): ReadExport {
     const format = sniffAsset(bytes)
     if (!format || format.type !== asset.contentType) {
       problems.push({ code: 'asset-format', values: { ...about, type: asset.contentType } })
+      continue
+    }
+    // A drawing is held to the allowlist `POST /assets` holds it to (#1087): a zip is the other
+    // door into the store, and the gate is no gate if a hand-made export walks round it.
+    const unsafe = format.type === 'image/svg+xml' ? svgBytesRefusal(bytes) : null
+    if (unsafe) {
+      problems.push({ code: 'asset-unsafe', values: { ...about, reason: unsafe } })
       continue
     }
     assets.set(asset.hash, { bytes, contentType: format.type, ...(asset.motif ? { motif: asset.motif } : {}) })
