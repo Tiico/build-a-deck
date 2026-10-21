@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { svgRefusal } from '@byd/protocol'
 import { createRequire } from 'node:module'
 import { ICON_SOURCES_COMMAND, loadIconCatalog, searchIcons, staleIconSourcesMessage } from '../src/editor/icon-catalog.js'
 
@@ -71,5 +72,18 @@ describe('the age and reach of the icon sources (#1087)', () => {
     const offered = (await loadIconCatalog('sv')).filter((i) => i.source === 'game-icons').length
     // 66 of 4 134 have no single author that can be stated when this was written (#1087).
     expect(offered / pinned.length, `re-run \`${ICON_SOURCES_COMMAND}\``).toBeGreaterThan(0.97)
+  })
+})
+
+// Every icon the catalog offers is uploaded as the game's own asset, and `POST /assets` holds every
+// SVG to the allowlist (#1087). So the whole catalog has to pass it unchanged, or taking an icon in
+// would be refused by the service the moment its bytes arrived.
+describe('the catalog and the gate (#1087)', () => {
+  it('offers nothing the service would refuse to store', async () => {
+    const refused = (await loadIconCatalog('sv')).flatMap((icon) => {
+      const why = svgRefusal(icon.svg)
+      return why ? [`${icon.id}: ${why}`] : []
+    })
+    expect(refused).toEqual([])
   })
 })

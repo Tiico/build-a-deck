@@ -917,7 +917,14 @@ export class ProjectClient {
     return this.takeIcon(icon.svg, as ?? icon.name, creditOf(icon), t)
   }
 
-  private async takeIcon(svg: string, wanted: string, credit: ProjectCredit, t: T): Promise<string> {
+  // A drawing of the designer's own (#1087), already cleaned against the allowlist (`cleanSvg`):
+  // the hash is taken of the cleaned bytes, which are what the service will be asked to store. A
+  // credit only when the designer gave one — an uploaded file knows nothing of its licence (L27).
+  async useOwnIcon(svg: string, wanted: string, credit?: ProjectCredit, t: T = swedish): Promise<string> {
+    return this.takeIcon(svg, wanted, credit, t)
+  }
+
+  private async takeIcon(svg: string, wanted: string, credit: ProjectCredit | undefined, t: T): Promise<string> {
     this.mustBeAbleToEdit(t)
     const file = svgBytes({ svg })
     // The reference first, off the bytes themselves (#310). It is the name the service will give
@@ -929,7 +936,7 @@ export class ProjectClient {
     const name = freeIconName(wanted, this.doc.icons)
     const taking = this.newGesture('symbol')
     this.onTheirWay(ref)
-    this.edit({ v: 'setIcon', name, url: ref, credit }, taking)
+    this.edit({ v: 'setIcon', name, url: ref, ...(credit ? { credit } : {}) }, taking)
     await this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t)
     return name
   }

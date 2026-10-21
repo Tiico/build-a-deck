@@ -27,7 +27,7 @@ import { useRoving } from './roving.js'
 import { cardWords, familyChoices, previewFonts } from './fonts.js'
 import { FontCatalog } from './FontCatalog.js'
 import type { CatalogFamily } from './font-catalog.js'
-import { IconCatalog, type IconChoice } from './IconCatalog.js'
+import { IconCatalog, type IconChoice, type OwnIcon } from './IconCatalog.js'
 import type { CatalogIcon } from './icon-catalog.js'
 import { IconLook, type IconTarget } from './IconLook.js'
 import { groundOf } from './palette.js'
@@ -110,6 +110,8 @@ export type TemplateCanvasProps = {
   // game's own asset with its credit, and the canvas told the name it came to have in the set.
   // Absent, the layer's panel offers the game's own icons and nothing more.
   onCatalogIcon?: ((icon: CatalogIcon) => Promise<string>) | undefined
+  // A drawing of the designer's own from the same sheet (#1087), cleaned there and taken in here.
+  onOwnIcon?: ((icon: OwnIcon) => Promise<string>) | undefined
   // A picture brought in from the designer's own disk for the template's own picture (#320), by
   // the very path Media takes: it lands in the library, and the element is then bound to it.
   // Uploading is the client's work, so the canvas asks and is told the hash the bytes were
@@ -123,7 +125,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onAddPicture, reading = false }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, reading = false }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -256,7 +258,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       paper={groundOf(doc, face)}
       target={iconFor.kind === 'value' && 'field' in iconLayer.bind ? t('icons.catalog.for.value', { field: fieldLabel(iconLayer.bind.field, t), value: iconFor.value }) : t(iconFor.kind === 'else' ? 'icons.catalog.for.else' : 'icons.catalog.for.all')}
       onChoose={async (choice: IconChoice) => {
-        const name = 'inGame' in choice ? choice.inGame : onCatalogIcon ? await onCatalogIcon(choice.icon) : null
+        const name = 'inGame' in choice ? choice.inGame : 'own' in choice ? (onOwnIcon ? await onOwnIcon(choice.own) : null) : onCatalogIcon ? await onCatalogIcon(choice.icon) : null
         if (name === null) return
         const pick = iconLayer.pick ?? { map: {} }
         patch(

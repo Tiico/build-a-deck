@@ -82,4 +82,26 @@ describe('an icon per card type, and its colour (#1087)', () => {
     fireEvent.click(within(look).getByLabelText('Färga ikonerna'))
     await waitFor(() => expect(document.querySelector('.byd-ink[aria-label="heart"]')).toBeTruthy())
   })
+
+  // A drawing of the designer's own goes the whole way (#1087, beslut 4): cleaned before its hash is
+  // taken, stored by the service — which would refuse it uncleaned — and drawn on the card in the
+  // layer's colour, under the name the designer gave it.
+  it('takes a drawing of the designer’s own onto the card, cleaned, in the layer’s colour', async () => {
+    const look = await openLayer()
+    fireEvent.click(within(look).getByLabelText('Färga ikonerna'))
+    fireEvent.click(within(look).getByRole('button', { name: 'Välj ikon för alla kort' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Sök i ikonbiblioteken' })
+    const file = new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><path d="M0 0h10v10z"/></svg>'], 'stämpel.svg', { type: 'image/svg+xml' })
+    fireEvent.change(within(sheet).getByLabelText('Ladda upp SVG …'), { target: { files: [file] } })
+    fireEvent.click(await within(sheet).findByRole('button', { name: 'Lägg till i spelet' }))
+
+    // Drawn from the service once its bytes have landed (#959): the mask names the asset by hash.
+    const hash = await waitFor(() => {
+      const found = document.querySelector('.byd-ink[aria-label="stämpel"]')?.getAttribute('style')?.match(/\/assets\/([0-9a-f]{64})/)?.[1]
+      if (!found) throw new Error('not drawn from the service yet')
+      return found
+    })
+    expect(await (await fetch(`${run.http}/assets/${hash}`)).text()).not.toContain('onload')
+  })
 })
+

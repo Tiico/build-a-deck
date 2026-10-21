@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { isSymbolName } from '@byd/template'
 import { useLang, useT, type Key } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { loadIconCatalog, searchIcons, type CatalogIcon, type IconSource } from './icon-catalog.js'
 import { useFocusTrap } from './focusTrap.js'
 import { INK } from './symbols.js'
+import { cleanSvg } from './svg-clean.js'
+import type { ProjectCredit } from '@byd/server'
 
 // The icon libraries' sheet (#1087, L71, beslut A): the typeface catalog's form (L27), standing
 // under the card in Mall, so a library looks the same whether it holds families or icons. It is
@@ -22,7 +25,11 @@ const SHELVES: readonly Shelf[] = ['alla', 'spelet', 'deckster', 'game-icons', '
 // An icon the game already holds: what the card text writes, and where its file is drawn from.
 export type GameIcon = { name: string; src: string }
 
-export type IconChoice = { inGame: string } | { icon: CatalogIcon }
+// A drawing of the designer's own (#1087), cleaned and named, with a credit only when both its
+// halves were given — what a credit is for is the print hand-off, and half of one names nobody.
+export type OwnIcon = { svg: string; name: string; credit?: ProjectCredit }
+
+export type IconChoice = { inGame: string } | { icon: CatalogIcon } | { own: OwnIcon }
 
 export type IconCatalogProps = {
   inGame: readonly GameIcon[]
@@ -37,6 +44,16 @@ export type IconCatalogProps = {
   onClose(): void
 }
 
+// The name a file suggests for the game's set: what card text writes between braces, so letters,
+// digits, `_` and `-` (L2), lower case, the ending dropped.
+const nameOf = (file: string): string =>
+  file
+    .replace(/\.svg$/i, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\p{L}\p{N}_-]/gu, '') || 'ikon'
+
 const fileUrl = (svg: string): string => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 
 export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }: IconCatalogProps) {
@@ -47,6 +64,18 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
   const [refused, setRefused] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [shelf, setShelf] = useState<Shelf>('alla')
+  // A drawing read from the designer's disk and cleaned, waiting for its name and its licence.
+  const [own, setOwn] = useState<{ svg: string; file: string; name: string; licence: string; by: string } | null>(null)
+  const readOwn = async (file: File | undefined) => {
+    if (!file) return
+    setRefused(null)
+    setOwn(null)
+    // What is wrong with a file is said in the reader's words (A4): the gate's reason is English
+    // for the developer, and «det är ingen SVG-ritning» is what a designer can act on.
+    const cleaned = cleanSvg(await file.text())
+    if ('refused' in cleaned) return setRefused(t('icons.own.refused', { file: file.name }))
+    setOwn({ svg: cleaned.svg, file: file.name, name: nameOf(file.name), licence: '', by: '' })
+  }
   const sheet = useRef<HTMLDivElement | null>(null)
   const search = useRef<HTMLInputElement | null>(null)
   useFocusTrap(sheet, { onEscape: onClose, initial: () => search.current })
@@ -63,12 +92,12 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
   }, [lang])
 
   // The game's own icons are searched by the name the game gave them, which is the designer's word.
-  const own = useMemo(() => {
+  const gameHits = useMemo(() => {
     const q = query.trim().toLowerCase()
     return inGame.filter((g) => q === '' || g.name.toLowerCase().includes(q))
   }, [inGame, query])
   const hits = useMemo(() => (shelf === 'spelet' || !all ? [] : searchIcons(all, { query, source: shelf }, lang)), [all, query, shelf, lang])
-  const count = shelf === 'spelet' ? own.length : hits.length
+  const count = shelf === 'spelet' ? gameHits.length : hits.length
   const ink = colour ?? INK
 
   const choose = (choice: IconChoice, name: string) => {
@@ -85,9 +114,15 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
           <span className="byd-offscreen">{t('icons.catalog.title')}</span>
           <input ref={search} type="search" value={query} placeholder={t('icons.catalog.search', { count: (all?.length ?? 0).toLocaleString(lang) })} onChange={(e) => setQuery(e.target.value)} />
         </label>
-        <button type="button" className="byd-font-catalog-close" onClick={onClose}>
-          {t('icons.catalog.close')}
-        </button>
+        <div className="byd-icon-catalog-actions">
+          <label className="byd-font-catalog-close byd-icon-catalog-upload">
+            {t('icons.own.upload')}
+            <input className="byd-offscreen" type="file" accept=".svg,image/svg+xml" onChange={(e) => void readOwn(e.target.files?.[0])} />
+          </label>
+          <button type="button" className="byd-font-catalog-close" onClick={onClose}>
+            {t('icons.catalog.close')}
+          </button>
+        </div>
         <div className="byd-font-catalog-kinds" role="group" aria-label={t('icons.catalog.source')}>
           {SHELVES.map((s) => {
             const n = shelfCount(s)
@@ -101,6 +136,55 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
           <span className="byd-icon-catalog-target">{target}</span>
         </div>
       </header>
+      {own && (
+        <fieldset className="byd-icon-own">
+          <legend>{t('icons.own.title')}</legend>
+          <span className="byd-icon-own-proof">
+            <span className="byd-icon-paper" style={{ background: paper }}>
+              <img src={fileUrl(own.svg)} alt="" />
+            </span>
+            {t('icons.own.file')}
+          </span>
+          <span className="byd-icon-own-proof">
+            <span className="byd-icon-paper" style={{ background: paper }}>
+              <span className="byd-icon-sample" style={{ background: ink, WebkitMaskImage: `url("${fileUrl(own.svg)}")`, maskImage: `url("${fileUrl(own.svg)}")` }} />
+            </span>
+            {t('icons.own.shape')}
+          </span>
+          <div className="byd-icon-own-form">
+            <label>
+              {t('icons.own.name')}
+              <input value={own.name} onChange={(e) => setOwn({ ...own, name: e.target.value })} />
+            </label>
+            <label>
+              {t('icons.own.licence')}
+              <input value={own.licence} placeholder="CC-BY-4.0" onChange={(e) => setOwn({ ...own, licence: e.target.value })} />
+            </label>
+            <label>
+              {t('icons.own.by')}
+              <input value={own.by} onChange={(e) => setOwn({ ...own, by: e.target.value })} />
+            </label>
+            <p>{t('icons.own.note', { file: own.file })}</p>
+            <div className="byd-icon-own-do">
+              <button
+                type="button"
+                className="byd-primary"
+                disabled={!isSymbolName(own.name)}
+                onClick={() => {
+                  const licence = own.licence.trim()
+                  const by = own.by.trim()
+                  choose({ own: { svg: own.svg, name: own.name, ...(licence && by ? { credit: { licence, by } } : {}) } }, own.name)
+                }}
+              >
+                {t('icons.own.take')}
+              </button>
+              <button type="button" className="byd-secondary" onClick={() => setOwn(null)}>
+                {t('icons.own.cancel')}
+              </button>
+            </div>
+          </div>
+        </fieldset>
+      )}
       {failed ? (
         <p className="byd-font-catalog-said" role="alert">
           {t('icons.catalog.failed')}
@@ -114,7 +198,7 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
       ) : (
         <ul className="byd-icon-catalog-hits" aria-label={t('icons.catalog.hits')}>
           {shelf === 'spelet'
-            ? own.slice(0, PAGE).map((g) => (
+            ? gameHits.slice(0, PAGE).map((g) => (
                 <Tile key={g.name} label={t('icons.catalog.tile.inGame', { name: g.name })} name={g.name} meta={t('icons.catalog.source.spelet')} src={g.src} ink={ink} paper={paper} onPress={() => choose({ inGame: g.name }, g.name)} />
               ))
             : hits.slice(0, PAGE).map((icon) => {

@@ -40,4 +40,42 @@ describe('the icon sheet (#1087)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^eldklot · I spelet$/ }))
     await waitFor(() => expect(onChoose).toHaveBeenCalledWith({ inGame: 'eldklot' }))
   })
+
+  // A designer's own drawing, in the same sheet (#1087, beslut 4): cleaned in the browser before
+  // its hash is taken, shown as the file and as the shape the card will paint, and taken in with a
+  // licence only when both halves of one are given — as an uploaded typeface is (L27).
+  it('takes a drawing of the designer’s own in, cleaned, and says what it will look like', async () => {
+    const onChoose = open()
+    const file = new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><script>alert(2)</script><path d="M0 0h10v10z"/></svg>'], 'Min Logga.svg', { type: 'image/svg+xml' })
+    fireEvent.change(screen.getByLabelText('Ladda upp SVG …'), { target: { files: [file] } })
+
+    const own = await screen.findByRole('group', { name: 'Egen ikon' })
+    expect((within(own).getByLabelText('Namn') as HTMLInputElement).value).toBe('min-logga')
+    expect(within(own).getByText(/det vita i filen blir färg/)).toBeTruthy()
+    fireEvent.click(within(own).getByRole('button', { name: 'Lägg till i spelet' }))
+    await waitFor(() => expect(onChoose).toHaveBeenCalledTimes(1))
+    const { own: taken } = (onChoose.mock.calls[0] as unknown as [{ own: { svg: string; name: string; credit?: unknown } }])[0]
+    expect(taken.name).toBe('min-logga')
+    expect(taken.svg).not.toMatch(/script|onload/)
+    expect(taken.credit).toBeUndefined()
+  })
+
+  it('records a licence only when both the licence and the person are given', async () => {
+    const onChoose = open()
+    fireEvent.change(screen.getByLabelText('Ladda upp SVG …'), { target: { files: [new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0h10v10z"/></svg>'], 'mark.svg')] } })
+    const own = await screen.findByRole('group', { name: 'Egen ikon' })
+    fireEvent.change(within(own).getByLabelText('Licens'), { target: { value: 'CC-BY-4.0' } })
+    fireEvent.change(within(own).getByLabelText('Upphovsperson'), { target: { value: 'Ada' } })
+    fireEvent.click(within(own).getByRole('button', { name: 'Lägg till i spelet' }))
+    await waitFor(() => expect(onChoose).toHaveBeenCalledWith({ own: expect.objectContaining({ name: 'mark', credit: { licence: 'CC-BY-4.0', by: 'Ada' } }) }))
+  })
+
+  it('says in words that a file is no drawing it can use, and takes nothing in', async () => {
+    const onChoose = open()
+    fireEvent.change(screen.getByLabelText('Ladda upp SVG …'), { target: { files: [new File(['<html><body>nej</body></html>'], 'sida.svg')] } })
+    expect((await screen.findByRole('alert')).textContent).toBe('sida.svg går inte att använda som ikon: det är ingen SVG-ritning.')
+    expect(screen.queryByRole('group', { name: 'Egen ikon' })).toBeNull()
+    expect(onChoose).not.toHaveBeenCalled()
+  })
 })
+
