@@ -86,6 +86,31 @@ describe('physical validation (E5): what looks fine on a screen and fails in the
   })
 })
 
+// A coloured icon layer (#1087) is graphics, and WCAG holds graphics to 3:1 against what is behind
+// them — the same floor as text's error, with no second rung, since an icon is not read letter by
+// letter. A layer without a colour is the file's own ink and is not something this check can see.
+describe('an icon layer in a colour of its own is read against what lies behind it (E5, #1087)', () => {
+  const icon = (over: Partial<Extract<Element, { kind: 'icons' }>> = {}): Element => ({ kind: 'icons', id: 'typ', x: 50, y: 6, w: 8, h: 8, bind: { literal: 'svard' }, iconMm: 8, ...over })
+
+  it('refuses a colour the paper swallows, and says how far off it is', () => {
+    const faint = check([bg(), icon({ color: '#d8c9a8' })])
+    expect(codes(faint)).toEqual(['low-contrast:error'])
+    expect(faint[0]).toMatchObject({ element: 'typ', values: { limit: 3 } })
+    expect(check([bg(), icon({ color: '#8a8071' })])).toEqual([])
+  })
+
+  it('measures the colour each card gets when the colour follows a column', () => {
+    const typed = icon({ color: { field: 'typ', map: { Anfall: '#a8322d', Magi: '#e9dcc0' } } })
+    expect(check([bg(), typed], { typ: 'Anfall' })).toEqual([])
+    expect(codes(check([bg(), typed], { typ: 'Magi' }))).toEqual(['low-contrast:error'])
+  })
+
+  it('says nothing of a layer that draws no icon on the card', () => {
+    const picking = icon({ bind: { field: 'typ' }, pick: { map: { Anfall: 'svard' } }, color: '#e9dcc0' })
+    expect(check([bg(), picking], { typ: 'Händelse' })).toEqual([])
+  })
+})
+
 describe('a font the version is not pinned to (B3, E5)', () => {
   const withFont = (family: string): Element[] => [bg(), text({ font: { family, sizePt: 10 } })]
 

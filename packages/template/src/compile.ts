@@ -239,10 +239,11 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       break
     }
     case 'icons': {
-      const names = resolve(el.bind, input.row).split(/[\s,]+/).filter((n) => n.length > 0)
+      const names = iconsOf(el, input.row)
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;display:flex;align-items:center;}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-icon{height:${el.iconMm}mm;width:${el.iconMm}mm;margin-right:${el.gapMm ?? 1}mm;}`)
-      html.push(`<div data-element="${attr(el.id)}">${names.map((n) => renderNode(iconNode(n), el.id, symbolsOf(input), warnings)).join('')}</div>`)
+      const ink = paintOf(el.color, input.row)
+      html.push(`<div data-element="${attr(el.id)}">${names.map((n) => renderNode(iconNode(n), el.id, symbolsOf(input), warnings, ink)).join('')}</div>`)
       break
     }
     case 'shape': {
@@ -360,6 +361,19 @@ export function elementsFor(face: FaceTemplate, row: Row): Element[] {
   return merged
 }
 
+// The icons a layer draws on a row, as they are written: names, each perhaps with a meaning,
+// `svard|fara`. A layer that picks by value names at most one; any other reads its cell or its
+// literal as a list. The one answer to the question, so the card, the printed text and the
+// editor's counts cannot come to disagree about which icons a card has.
+export function iconsOf(el: Extract<Element, { kind: 'icons' }>, row: Row): string[] {
+  if (el.pick && 'field' in el.bind) {
+    const value = row[el.bind.field]
+    const picked = (value === null || value === undefined ? undefined : el.pick.map[String(value)]) ?? el.pick.else
+    return picked === undefined ? [] : [picked]
+  }
+  return resolve(el.bind, row).split(/[\s,]+/).filter((n) => n.length > 0)
+}
+
 function resolve(bind: { field: string } | { literal: string }, row: Row): string {
   if ('literal' in bind) return bind.literal
   const v = row[bind.field]
@@ -380,7 +394,9 @@ function renderParagraphs(text: string, element: string, icons: Symbols, warning
     .join('')
 }
 
-function renderNode(n: InlineNode, element: string, icons: Symbols, warnings: Warning[]): string {
+// `ink` is the colour the element paints its symbols in when the text names no meaning (#1087):
+// an icon layer's own colour. A sentence has none, and its symbols stay pictures.
+function renderNode(n: InlineNode, element: string, icons: Symbols, warnings: Warning[], ink?: string): string {
   switch (n.type) {
     case 'text':
       return escape(n.text)
@@ -400,15 +416,16 @@ function renderNode(n: InlineNode, element: string, icons: Symbols, warnings: Wa
         warnings.push({ element, code: 'unknown-icon', detail: n.name })
         return `<span class="byd-icon-missing">{${escape(n.name)}}</span>`
       }
-      const ink = n.role === undefined ? undefined : icons.palette?.[n.role]
+      const meant = n.role === undefined ? undefined : icons.palette?.[n.role]
       // A meaning the deck has not named loses its colour and keeps its symbol: a card missing a
       // word is worse than a card missing a shade, and the deck is told which meaning it was.
-      if (n.role !== undefined && ink === undefined) warnings.push({ element, code: 'unknown-role', detail: n.role })
-      if (ink === undefined) return `<img class="byd-icon" src="${attr(src)}" alt="${attr(n.name)}">`
+      if (n.role !== undefined && meant === undefined) warnings.push({ element, code: 'unknown-role', detail: n.role })
+      const paint = meant ?? ink
+      if (paint === undefined) return `<img class="byd-icon" src="${attr(src)}" alt="${attr(n.name)}">`
       // The shape is the mask and the colour is paint behind it. The file is therefore never
       // asked to be red, which is what lets one upload serve every colour on every card.
       const mask = `url(${attr(`"${src}"`)})`
-      return `<span class="byd-icon byd-ink" role="img" aria-label="${attr(n.name)}" style="background:${attr(ink)};-webkit-mask-image:${mask};mask-image:${mask}"></span>`
+      return `<span class="byd-icon byd-ink" role="img" aria-label="${attr(n.name)}" style="background:${attr(paint)};-webkit-mask-image:${mask};mask-image:${mask}"></span>`
     }
   }
 }
@@ -445,7 +462,7 @@ export function printedText(input: Pick<CompileInput, 'face' | 'row'>): string[]
           }
         }
       } else if (el.kind === 'icons') {
-        const names = resolve(el.bind, input.row).split(/[\s,]+/).filter((n) => n.length > 0)
+        const names = iconsOf(el, input.row)
         if (names.length > 0) lines.push(names.map((n) => spoken(iconNode(n))).join(', '))
       } else if (el.kind === 'if') {
         if (holds(el.when, input.row)) walk(el.children)
