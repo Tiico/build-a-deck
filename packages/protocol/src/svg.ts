@@ -20,7 +20,7 @@
 // The elements a shape is made of: geometry, grouping, reuse within the file, and the gradients
 // and masks a drawn icon may carry. Nothing that holds text to lay out, a picture to fetch, a
 // stylesheet, a link, or a timeline.
-const ELEMENTS: ReadonlySet<string> = new Set([
+export const SVG_ELEMENTS: ReadonlySet<string> = new Set([
   'svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon',
   'defs', 'clipPath', 'mask', 'use', 'symbol', 'title', 'desc',
   'linearGradient', 'radialGradient', 'stop',
@@ -29,7 +29,7 @@ const ELEMENTS: ReadonlySet<string> = new Set([
 // The attributes those elements need. No `style`: a stylesheet is a language of its own, with
 // `url()`, `@import` and escapes, and every property an icon needs has a presentation attribute
 // that says the same thing in a value this file can read.
-const ATTRIBUTES: ReadonlySet<string> = new Set([
+export const SVG_ATTRIBUTES: ReadonlySet<string> = new Set([
   // geometry
   'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'points',
   // painting
@@ -44,12 +44,14 @@ const ATTRIBUTES: ReadonlySet<string> = new Set([
 
 // The only places text means anything in a drawing that is a shape. Everywhere else it is the
 // whitespace between tags.
-const HOLDS_TEXT: ReadonlySet<string> = new Set(['title', 'desc'])
+export const SVG_TEXT_HOLDERS: ReadonlySet<string> = new Set(['title', 'desc'])
+
+export const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 
 // The namespaces the two `xmlns` attributes may declare. Another one would make the elements below
 // it something other than SVG, which the allowlist above says nothing about.
 const NAMESPACES: ReadonlyMap<string, string> = new Map([
-  ['xmlns', 'http://www.w3.org/2000/svg'],
+  ['xmlns', SVG_NAMESPACE],
   ['xmlns:xlink', 'http://www.w3.org/1999/xlink'],
 ])
 
@@ -130,7 +132,7 @@ export function svgRefusal(text: string): string | null {
       if (name !== 'svg') return `the root element is <${name}>, not <svg>`
       rooted = true
     } else if (open.length === 0) return 'there is more than one root element'
-    if (!ELEMENTS.has(name)) return `<${name}> is not an element a drawing may hold`
+    if (!SVG_ELEMENTS.has(name)) return `<${name}> is not an element a drawing may hold`
 
     const seen = new Set<string>()
     for (;;) {
@@ -175,18 +177,27 @@ function textRefusal(text: string, parent: string | undefined): string | null {
   if (text === '') return null
   const decoded = decodedEntities(text)
   if (decoded === null) return 'it uses an entity XML does not define'
-  if (parent && HOLDS_TEXT.has(parent)) return null
+  if (parent && SVG_TEXT_HOLDERS.has(parent)) return null
   return /^[ \t\r\n]*$/.test(decoded) ? null : parent ? `<${parent}> holds text` : 'there is text outside the drawing'
 }
 
+// An attribute as it stands in the file: its entities are read first, since the checks are made on
+// the value the browser reads.
 function attributeRefusal(name: string, raw: string): string | null {
-  // A handler is refused by name before anything else: it is the one attribute whose whole
-  // purpose is to run, and the reason should say so.
-  if (/^on/i.test(name)) return `${name} is an event handler`
-  if (!ATTRIBUTES.has(name)) return `${name} is not an attribute a drawing may carry`
   if (raw.includes('<')) return `${name} holds a <`
   const value = decodedEntities(raw)
   if (value === null) return `${name} uses an entity XML does not define`
+  return svgAttributeRefusal(name, value)
+}
+
+// Why an attribute may not stay on a drawing, asked of its name as the file spells it (`xlink:href`)
+// and its value as the DOM reads it, entities expanded. It is the question the editor's cleaner
+// asks of each attribute it keeps, so what it keeps is what this file lets through.
+export function svgAttributeRefusal(name: string, value: string): string | null {
+  // A handler is refused by name before anything else: it is the one attribute whose whole
+  // purpose is to run, and the reason should say so.
+  if (/^on/i.test(name)) return `${name} is an event handler`
+  if (!SVG_ATTRIBUTES.has(name)) return `${name} is not an attribute a drawing may carry`
   const namespace = NAMESPACES.get(name)
   if (namespace !== undefined && value !== namespace) return `${name} declares a namespace other than ${namespace}`
   if ((name === 'href' || name === 'xlink:href') && !FRAGMENT.test(value)) return `${name} points outside the drawing`
