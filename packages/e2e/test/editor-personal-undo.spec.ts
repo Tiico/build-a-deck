@@ -1,7 +1,8 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import type { ProjectDoc } from '@byd/server'
 import { DESK } from '../support/devices.js'
-import { twoEditors } from '../support/editors.js'
+import { RULES, twoEditors } from '../support/editors.js'
+import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 
 // Personlig ångra i editorn (#1056, L14, D3). Ada äger spelet och Bo redigerar det med henne, var
@@ -340,6 +341,80 @@ test('gör om lägger tillbaka Adas kopia utan värdet i kolumnen Bo har tagit b
     }
     const doc = await stored(page, page.request, game.id)
     expect(doc.rows.some((r) => 'body' in r.fields)).toBe(false)
+  } finally {
+    await game.close()
+  }
+})
+
+// Ett namnbyte på en kolumn som mallen inte ritar, och Bo som tar bort kolumnen under sitt nya namn
+// (#1076). Ångra lade tillbaka värdena under det gamla namnet, och Bos borttagna kolumn stod i leken
+// igen. Det steget ska ta tillbaka — kolumnens namn — finns inte längre, så steget vägras.
+const KRAFT: ProjectDoc = (() => {
+  const doc = gameDoc({ name: 'Skogens herrar', players: 2 })
+  return { ...doc, rules: RULES, rows: doc.rows.map((r, i) => ({ ...r, fields: { ...r.fields, kraft: String(i + 1) } })) }
+})()
+async function renameColumn(page: Page, from: string, to: string): Promise<void> {
+  await tab(page, 'Tabell')
+  await page.getByRole('button', { name: 'Kolumner', exact: true }).click()
+  const door = page.getByRole('group', { name: 'Kolumner', exact: true })
+  await door.getByRole('button', { name: `Byt namn på kolumnen ${from}` }).click()
+  const box = door.getByRole('textbox', { name: `Namn på kolumnen ${from}` })
+  await box.fill(to)
+  await box.press('Enter')
+  await page.keyboard.press('Escape')
+  await expect(column(page, to)).toHaveCount(1)
+}
+const hasField = (doc: ProjectDoc, field: string) => doc.rows.some((r) => field in r.fields)
+
+test('ångra vägrar ta tillbaka Adas namnbyte på en kolumn som Bo har tagit bort, och kolumnen kommer inte tillbaka (#1076)', async ({ browser, baseURL, page }) => {
+  const game = await twoEditors(browser, baseURL, page, KRAFT)
+  try {
+    await page.goto(game.editorUrl)
+    await game.bo.goto(game.editorUrl)
+
+    await renameColumn(page, 'kraft', 'styrka')
+    await tab(game.bo, 'Tabell')
+    await expect(column(game.bo, 'styrka')).toHaveCount(1)
+    await removeColumn(game.bo, 'styrka')
+    await expect(column(page, 'styrka')).toHaveCount(0)
+
+    await undo(page).click()
+    await expect(notice(page)).toHaveText('Det gick inte att ångra ett fält i kortleken: någon annan har ändrat samma sak sedan dess. Inget skrevs över.')
+    for (const editor of [page, game.bo]) {
+      await expect(column(editor, 'kraft')).toHaveCount(0)
+      await expect(column(editor, 'styrka')).toHaveCount(0)
+    }
+    const doc = await stored(page, page.request, game.id)
+    expect(hasField(doc, 'kraft')).toBe(false)
+    expect(hasField(doc, 'styrka')).toBe(false)
+  } finally {
+    await game.close()
+  }
+})
+
+test('gör om vägrar lägga tillbaka Adas namnbyte när Bo har tagit bort kolumnen efter att hon ångrat (#1076)', async ({ browser, baseURL, page }) => {
+  const game = await twoEditors(browser, baseURL, page, KRAFT)
+  try {
+    await page.goto(game.editorUrl)
+    await game.bo.goto(game.editorUrl)
+
+    await renameColumn(page, 'kraft', 'styrka')
+    await undo(page).click()
+    await expect(column(page, 'kraft')).toHaveCount(1)
+    await tab(game.bo, 'Tabell')
+    await expect(column(game.bo, 'kraft')).toHaveCount(1)
+    await removeColumn(game.bo, 'kraft')
+    await expect(column(page, 'kraft')).toHaveCount(0)
+
+    await redo(page).click()
+    await expect(notice(page)).toHaveText('Det gick inte att göra om ett fält i kortleken: någon annan har ändrat samma sak sedan dess. Inget skrevs över.')
+    for (const editor of [page, game.bo]) {
+      await expect(column(editor, 'kraft')).toHaveCount(0)
+      await expect(column(editor, 'styrka')).toHaveCount(0)
+    }
+    const doc = await stored(page, page.request, game.id)
+    expect(hasField(doc, 'kraft')).toBe(false)
+    expect(hasField(doc, 'styrka')).toBe(false)
   } finally {
     await game.close()
   }
