@@ -3,7 +3,7 @@ import { assetAccept } from '@byd/protocol'
 import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
-import { ANTAL, drawnBy } from '@byd/server/doc'
+import { ANTAL, drawnBy, type ColumnKind } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
@@ -68,7 +68,9 @@ export type DataTableProps = {
   onReplaceRows(rows: ProjectRow[]): void
   // A column of the deck (#32): made in the head where it will stand, taken away by the × on its
   // own heading. Each is one edit, so each is one version and one step back (B4).
-  onAddField(field: string): void
+  // `kind` is what the column is made as (#1085): the door asks, and a picture column takes
+  // pictures the moment it is made.
+  onAddField(field: string, kind?: ColumnKind): void
   onRemoveField(field: string): void
   // Where a column stands (#46). `before` is the column it comes to stand in front of, and null
   // is last of all — the two ways a drag along the head can end. It is an edit like the other
@@ -79,11 +81,11 @@ export type DataTableProps = {
   // priset är taget medvetet, CSV-rubriken byter namn med kolumnen. Utan den står namnen kvar i
   // dörren som ord: en tabell utan projekt bakom sig har ingenstans att skriva bytet.
   onRenameField?: ((from: string, to: string) => void) | undefined
-  // Vad en kolumn är: prosa eller vanlig text (L43, #362). Rutans höjd i mallen föreslår, och
-  // det här är designerns svar på förslaget — `null` när hon lämnar tillbaka frågan till höjden.
-  // Utan den står märket kvar och säger vad kolumnen är, men det går inte att vända: en tabell
-  // utan projekt bakom sig har ingenting att skriva valet i.
-  onProse?: ((field: string, prose: boolean | null) => void) | undefined
+  // Vad en kolumn är: text, prosa eller bild (#1085; L43, #362). Mallen föreslår — en hög ruta
+  // prosa, ett bildlager bild — och det här är designerns svar på förslaget, `null` när hon lämnar
+  // tillbaka frågan till mallen. Utan den står märket kvar och säger vad kolumnen är, men det går
+  // inte att vända: en tabell utan projekt bakom sig har ingenting att skriva valet i.
+  onColumnKind?: ((field: string, kind: ColumnKind | null) => void) | undefined
   // The project's images (E1): where they are served from, and how a chosen file becomes one.
   // Without both, image fields are edited as text.
   assetBase?: string | undefined
@@ -262,7 +264,7 @@ export function columnsOutside(box: Element): { left: string[]; right: string[] 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` on the rail
 // beside `id` (L55, #695).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith: versionCompare, onStopCompare, proposal, onHideProposal, onOpenTemplate, reading = false }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onColumnKind, assetBase, onUpload, onSymbol, compareWith: versionCompare, onStopCompare, proposal, onHideProposal, onOpenTemplate, reading = false }: DataTableProps) {
   // A proposal shown in the table takes the comparison's place (#1003).
   const compareWith = proposal ? undefined : versionCompare
   const t = useT()
@@ -1632,16 +1634,17 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   // Vad varje kolumn skrivs som, och vägen att vända det (L43, #615): verktygets
                   // två kolumner har ingen växel, eftersom en kontroll som bara kan svara ett är
                   // ingen fråga.
-                  proseOf={(field) => (field === 'id' || field === ANTAL ? null : { prose: bodyFields.includes(field), choice: proseChoiceOf(doc, field) })}
-                  {...(onProse ? { onProse } : {})}
+                  kindOf={(field) => (field === 'id' || field === ANTAL ? null : kindIn(doc, field, bodyFields))}
+                  {...(onColumnKind ? { onKind: onColumnKind } : {})}
+                  keptIn={(field) => doc.rows.filter((row) => isKeptText(row.fields[field])).length}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
                   // Yes and no leave by the same door, so they hand the focus back to the same
                   // place: the button the form was opened from, which is still there and is
                   // ready to make the next column. Without it the pressed button unmounts under
                   // the designer's finger and the focus falls to `<body>`.
-                  onCreate={(field) => {
-                    onAddField(field)
+                  onCreate={(field, kind) => {
+                    onAddField(field, kind)
                     shutDoor()
                     setRefocus('addField')
                   }}
@@ -1703,7 +1706,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                         onLibrary: (hash) => onCell(cardRef, f, assetRef(hash)),
                       })}
                     >
-                      {isAssetRef(row[f]) ? <AssetImage base={assetBase} hash={String(row[f]).slice(ASSET_PREFIX.length)} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
+                      {isAssetRef(row[f]) ? (
+                        <AssetImage base={assetBase} hash={String(row[f]).slice(ASSET_PREFIX.length)} alt={`${cardRef} ${f}`} />
+                      ) : isKeptText(row[f]) ? (
+                        // Text from when the column was text (#1085): not a picture and not drawn
+                        // as one, but not gone either — it comes back when the column is text again.
+                        <s className="byd-data-kept">{String(row[f])}</s>
+                      ) : (
+                        <span>{t('table.image.drop')}</span>
+                      )}
                       {over === `${cardRef}:${f}` && <DropSays />}
                       {/* The library (#296): a picture the game already has, into this cell.
                           The upload beside it stays as it was — a file off the disk is the
@@ -2315,6 +2326,20 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter
     </th>
   )
 }
+
+// What a column is, for the switch on its row in the door (#1085): the template's suggestion
+// weighed by the designer's word, and whether she has said one. A picture's own word is in
+// `images`; a column that is text or prose has hers in `prose` too, and the one under a picture
+// is kept for when it is text again, so it is no choice the switch can show.
+function kindIn(doc: ProjectDoc, field: string, prose: readonly string[]): { kind: ColumnKind; chosen: boolean } {
+  const kind: ColumnKind = imageFieldsOf(doc).includes(field) ? 'image' : prose.includes(field) ? 'prose' : 'text'
+  const chosen = doc.images?.[field] !== undefined || (kind !== 'image' && doc.prose?.[field] !== undefined)
+  return { kind, chosen }
+}
+
+// Text in a picture column that is not a picture (#1085): what the column held when it was text.
+// Not drawn as a picture, and back the moment the column is text again.
+const isKeptText = (value: unknown): boolean => value !== undefined && value !== null && value !== '' && !isAssetRef(value)
 
 // What a column takes with it, in the two things it can take: the value on the cards that hold
 // one — a column nobody has written in loses nothing, and the question says so rather than

@@ -100,6 +100,35 @@ describe('a new picture layer (#700)', () => {
   })
 })
 
+// A column made a picture in the table (#1085) is a picture column before anything draws it, and
+// it is the one a new picture layer is for: the designer made it to put it on the card.
+describe('a new picture layer reads the picture column the designer made (#1085)', () => {
+  it('reads a column made a picture in the table, though nothing on the template draws it yet', async () => {
+    const doc = deck()
+    for (const row of doc.rows) row.fields['bild1'] = ''
+    doc.images = { bild1: true }
+    const el = await place(doc, 'Bild')
+    expect(el).toMatchObject({ kind: 'image', bind: { field: 'bild1' } })
+  })
+
+  it('takes the picture column the card does not show yet over one it already does', async () => {
+    const doc = deck()
+    doc.template.faces['back']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'bild' } })
+    for (const row of doc.rows) Object.assign(row.fields, { bild: `asset:${SKOG}`, bild1: '' })
+    doc.images = { bild1: true }
+    const el = await place(doc, 'Bild')
+    expect(el).toMatchObject({ kind: 'image', bind: { field: 'bild1' } })
+  })
+
+  it('never reads a column the designer said is text, whatever the template draws from it', async () => {
+    const doc = deck()
+    doc.template.faces['back']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'typ' } })
+    doc.images = { typ: false }
+    const el = await place(doc, 'Bild')
+    expect(el).toMatchObject({ kind: 'image', bind: { literal: '' } })
+  })
+})
+
 describe('a new row of icons (#700)', () => {
   it('in a game without an icon column reads no column, and the card writes no raw {…}', async () => {
     const el = await place(deck(), 'Ikonrad')

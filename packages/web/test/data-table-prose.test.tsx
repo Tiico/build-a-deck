@@ -21,7 +21,7 @@ const table = (doc = projectDoc(), extra: Partial<Parameters<typeof DataTable>[0
       onAddField={() => undefined}
       onRemoveField={() => undefined}
       onMoveField={() => undefined}
-      onProse={() => undefined}
+      onColumnKind={() => undefined}
       {...extra}
     />,
   )
@@ -150,11 +150,11 @@ describe('huvudet bär ingen kontroll för prosavalet (#615)', () => {
 })
 
 describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
-  it('säger «höjden föreslog» om en kolumn som aldrig fått ett val', () => {
+  it('säger «mallen föreslog» om en kolumn som aldrig fått ett val', () => {
     table()
     door()
-    expect(within(row('body')).getByRole('group', { name: 'body skrivs som prosa, höjden föreslog' })).toBeTruthy()
-    expect(within(row('title')).getByRole('group', { name: 'Titel skrivs som vanlig text, höjden föreslog' })).toBeTruthy()
+    expect(within(row('body')).getByRole('group', { name: 'body är prosa, mallen föreslog' })).toBeTruthy()
+    expect(within(row('title')).getByRole('group', { name: 'Titel är text, mallen föreslog' })).toBeTruthy()
   })
 
   it('säger «du valde» om en kolumn designern har svarat för, åt båda hållen', () => {
@@ -162,17 +162,18 @@ describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
     doc.prose = { body: false, title: true }
     table(doc)
     door()
-    expect(within(row('body')).getByRole('group', { name: 'body skrivs som vanlig text, du valde' })).toBeTruthy()
-    expect(within(row('title')).getByRole('group', { name: 'Titel skrivs som prosa, du valde' })).toBeTruthy()
+    expect(within(row('body')).getByRole('group', { name: 'body är text, du valde' })).toBeTruthy()
+    expect(within(row('title')).getByRole('group', { name: 'Titel är prosa, du valde' })).toBeTruthy()
   })
 
-  it('visar vad kolumnen är som en tryckt knapp av två', () => {
+  it('visar vad kolumnen är som en tryckt knapp av tre (#1085)', () => {
     table()
     door()
     expect(pressed('Prosa, body')).toBe('true')
     expect(pressed('Text, body')).toBe('false')
     expect(pressed('Prosa, Titel')).toBe('false')
     expect(pressed('Text, Titel')).toBe('true')
+    expect(pressed('Bild, body')).toBe('false')
   })
 
   it('bär skillnaden mellan förval och val i växelns form också', () => {
@@ -180,7 +181,7 @@ describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
     doc.prose = { title: true }
     table(doc)
     door()
-    expect((within(row('body')).getByRole('group') as HTMLElement).dataset['from']).toBe('height')
+    expect((within(row('body')).getByRole('group') as HTMLElement).dataset['from']).toBe('template')
     expect((within(row('title')).getByRole('group') as HTMLElement).dataset['from']).toBe('choice')
   })
 
@@ -201,7 +202,7 @@ describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
     fireEvent.click(ask)
     const help = await screen.findByRole('dialog', { name: 'Hjälp om kolumnerna' })
     expect(help.textContent).toContain('Prosa ger flera rader och textformatering.')
-    expect(help.textContent).toContain('Bilder kopplas till kolumner i Mall.')
+    expect(help.textContent).toContain('Bild tar emot bilder i cellerna.')
     const user = userEvent.setup()
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: 'Hjälp om kolumnerna' })).toBeNull()
@@ -213,41 +214,41 @@ describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
 })
 
 describe('växeln vänder valet och lämnar tillbaka det (L43, #615)', () => {
-  it('skriver ett uttryckligt nej om en kolumn höjden föreslog prosa åt', () => {
-    const onProse = vi.fn()
-    table(projectDoc(), { onProse })
+  it('skriver ett uttryckligt nej om en kolumn mallen föreslog prosa åt', () => {
+    const onColumnKind = vi.fn()
+    table(projectDoc(), { onColumnKind })
     door()
     fireEvent.click(screen.getByRole('button', { name: 'Text, body' }))
-    expect(onProse.mock.calls).toEqual([['body', false]])
+    expect(onColumnKind.mock.calls).toEqual([['body', 'text']])
   })
 
-  it('skriver ett uttryckligt ja om en kolumn höjden föreslog vanlig text åt', () => {
-    const onProse = vi.fn()
-    table(projectDoc(), { onProse })
+  it('skriver ett uttryckligt ja om en kolumn mallen föreslog vanlig text åt', () => {
+    const onColumnKind = vi.fn()
+    table(projectDoc(), { onColumnKind })
     door()
     fireEvent.click(screen.getByRole('button', { name: 'Prosa, Titel' }))
-    expect(onProse.mock.calls).toEqual([['title', true]])
+    expect(onColumnKind.mock.calls).toEqual([['title', 'prose']])
   })
 
   // Att trycka den knapp som redan är tryckt på en kolumn som följer höjden gör förslaget till ett
   // val: designern har sagt det, och då ska nästa omritning av mallen inte ta det ifrån henne.
   it('gör förslaget till ett val när den redan tryckta knappen trycks', () => {
-    const onProse = vi.fn()
-    table(projectDoc(), { onProse })
+    const onColumnKind = vi.fn()
+    table(projectDoc(), { onColumnKind })
     door()
     fireEvent.click(screen.getByRole('button', { name: 'Prosa, body' }))
-    expect(onProse.mock.calls).toEqual([['body', true]])
+    expect(onColumnKind.mock.calls).toEqual([['body', 'prose']])
   })
 
   it('lämnar tillbaka frågan till höjden, och erbjuder det bara där det finns ett val att lämna', () => {
-    const onProse = vi.fn()
+    const onColumnKind = vi.fn()
     const doc = projectDoc()
     doc.prose = { body: false }
-    table(doc, { onProse })
+    table(doc, { onColumnKind })
     door()
-    expect(screen.queryByRole('button', { name: 'Följ höjden igen, Titel' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Följ höjden igen, body' }))
-    expect(onProse.mock.calls).toEqual([['body', null]])
+    expect(screen.queryByRole('button', { name: 'Följ mallen igen, Titel' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Följ mallen igen, body' }))
+    expect(onColumnKind.mock.calls).toEqual([['body', null]])
   })
 
   it('står kvar öppen efter ett val, så nästa kolumn kan väljas i samma andetag', () => {
@@ -258,7 +259,7 @@ describe('växeln vänder valet och lämnar tillbaka det (L43, #615)', () => {
   })
 
   it('visar ingen växel i en tabell som inte har något projekt att skriva i', () => {
-    table(projectDoc(), { onProse: undefined })
+    table(projectDoc(), { onColumnKind: undefined })
     door()
     expect(screen.queryByRole('button', { name: 'Prosa, body' })).toBeNull()
   })
@@ -273,9 +274,11 @@ describe('växeln nås med tangentbordet i dörrens egen ordning (#388, #615)', 
     const user = userEvent.setup()
     act(() => screen.getByRole('button', { name: 'Byt namn på kolumnen body' }).focus())
     await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Text, body' }))
+    await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Prosa, body' }))
     await user.keyboard('{ArrowRight}')
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Text, body' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Bild, body' }))
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
   })
@@ -288,9 +291,9 @@ describe('växeln nås med tangentbordet i dörrens egen ordning (#388, #615)', 
     table(doc, { onRenameField: () => undefined })
     door()
     const user = userEvent.setup()
-    act(() => screen.getByRole('button', { name: 'Text, body' }).focus())
+    act(() => screen.getByRole('button', { name: 'Bild, body' }).focus())
     await user.keyboard('{ArrowRight}')
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Följ höjden igen, body' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Följ mallen igen, body' }))
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
   })

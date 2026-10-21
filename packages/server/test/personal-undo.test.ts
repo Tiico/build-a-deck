@@ -131,6 +131,7 @@ const EVERY: Record<EditIntent['v'], { mine: (doc: ProjectDoc) => EditIntent; th
   removeField: { mine: () => ({ v: 'removeField', field: 'body' }) },
   renameField: { mine: () => ({ v: 'renameField', from: 'body', to: 'text' }) },
   setProse: { mine: () => ({ v: 'setProse', field: 'body', prose: null }) },
+  setColumnKind: { mine: () => ({ v: 'setColumnKind', field: 'body', kind: 'image' }) },
   moveField: { mine: () => ({ v: 'moveField', field: 'typ', before: 'title' }) },
   patchElement: { mine: () => ({ v: 'patchElement', face: 'front', id: 'title', patch: { x: 9, name: 'Rubrik' } }) },
   addElement: { mine: () => ({ v: 'addElement', face: 'front', element: image, icon: { name: 'stjarna', url: `asset:${OTHER}`, credit: { licence: 'CC0', by: 'Ada' } } }) },
@@ -472,6 +473,11 @@ describe('ett steg som skulle återskapa något helt som någon annan tagit bort
   it('vägrar lägga tillbaka Adas prosaval för en kolumn Bo har tagit bort', () => {
     const r = undone({ ...game(), prose: { body: true } }, { v: 'setProse', field: 'body', prose: null }, [{ v: 'removeField', field: 'body' }])
     expect(r).toEqual({ refused: [['prose', 'body']] })
+  })
+
+  it('vägrar lägga tillbaka Adas bildval för en kolumn Bo har tagit bort (#1085)', () => {
+    const r = undone({ ...game(), images: { body: true } }, { v: 'setColumnKind', field: 'body', kind: null }, [{ v: 'removeField', field: 'body' }])
+    expect(r).toEqual({ refused: [['images', 'body']] })
   })
 
   it('lägger tillbaka lagret och kolumnen när det var Adas eget steg som tog kolumnen', () => {

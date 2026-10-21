@@ -1,4 +1,5 @@
 import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
+import { columnsOf } from '@byd/server/doc'
 import type { FaceTemplate, ProjectDoc, Row } from './types.js'
 
 // The project's images in the editor (E1, DRIFT §4): a row points at an image by the hash of
@@ -130,7 +131,9 @@ export function iconFieldsOf(doc: ProjectDoc): string[] {
   return out
 }
 
-export function imageFieldsOf(doc: ProjectDoc): string[] {
+// The columns the template draws as images, in template order: what the template *suggests* a
+// picture column is (#1085). The designer's own word is weighed over it in `imageFieldsOf`.
+export function drawnImageFieldsOf(doc: ProjectDoc): string[] {
   const out: string[] = []
   const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {
     for (const el of els) {
@@ -143,6 +146,18 @@ export function imageFieldsOf(doc: ProjectDoc): string[] {
     for (const v of Object.values(face.variants)) walk(v.override ?? [])
   }
   return out
+}
+
+// The picture columns of the deck (#1085): what the template draws as a picture, weighed by what
+// the designer has said. «Mallen föreslår, designern avgör», as L43 says of prose — a column she
+// made a picture is one at once, with nothing on the card yet, and one she said is text is text
+// whatever layer is bound to it. The template's own come first, in its order, then the ones only
+// she has named, in the table's.
+export function imageFieldsOf(doc: ProjectDoc): string[] {
+  const said = doc.images ?? {}
+  const drawn = drawnImageFieldsOf(doc).filter((field) => said[field] !== false)
+  const named = columnsOf(doc).filter((field) => said[field] === true && !drawn.includes(field))
+  return [...drawn, ...named]
 }
 
 // Every picture the game holds, once, with the cards it sits on, in the order first seen (#222,

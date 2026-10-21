@@ -14,7 +14,7 @@ import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, pathFor, sha
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { AssetImage } from './AssetImage.js'
-import { assetRef, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
+import { assetRef, drawnImageFieldsOf, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { fieldLabel, fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
@@ -272,8 +272,13 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // and a row of icons wrote «{Playcard}» in the warning red. A picture takes the first column the
   // template already draws as one, a row of icons the first it already reads names from, and
   // where there is none it reads no column and draws nothing until the designer says what.
+  //
+  // A picture column the designer made in the table and nothing draws yet comes first (#1085): it
+  // is the column she made to put on the card, and the one already on it needs no second layer.
   const add = (kind: ElementKind) => {
-    const field = kind === 'image' ? imageFieldsOf(doc)[0] : kind === 'icons' ? iconFieldsOf(doc)[0] : fields[0]
+    const pictures = imageFieldsOf(doc)
+    const drawn = drawnImageFieldsOf(doc)
+    const field = kind === 'image' ? (pictures.find((f) => !drawn.includes(f)) ?? pictures[0]) : kind === 'icons' ? iconFieldsOf(doc)[0] : fields[0]
     const element = newElement(kind, { taken: idsOnFace(faceTemplate), field, card: CARD_STANDARD_63x88.physical })
     onAdd(element)
     onSelectElement(element.id)
