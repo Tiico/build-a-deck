@@ -133,6 +133,42 @@ describe('handing the app to a reverse proxy that is already there', () => {
   })
 })
 
+describe('a host the service has moved away from (A5, #1080)', () => {
+  // deck.ockelberg.com became deckster.se. Login links already sent, bookmarks and the QR codes
+  // on printed table cards still name the old host, so it answers 301 to the new one with the path
+  // and the query kept. The redirect is the proxy's: the app knows one origin, PUBLIC_ORIGIN.
+  const moved = readFileSync(new URL('../../../docker-compose.traefik-moved.yml', import.meta.url), 'utf8')
+  const labels = serviceLines(moved, 'app')
+    .filter((line) => line.trim().startsWith('- "traefik.'))
+    .map((line) => line.trim().replace(/^- "|"$/g, ''))
+  const label = (suffix: string) => labels.find((l) => l.endsWith(suffix) || l.includes(`${suffix}=`))?.split('=').slice(1).join('=') ?? ''
+  // What compose makes of a label: the box's hosts filled in, and `$$` a literal `$`.
+  const interpolate = (value: string) => value.replace(/(?<!\$)\$\{([A-Z_]\w*)(?::\?[^}]*)?\}/g, (_, name: string) => ({ BYD_HOSTNAME: 'deckster.se', BYD_MOVED_FROM: 'deck.ockelberg.com' })[name] ?? '').replace(/\$\$/g, '$')
+
+  it('routes the old host, named in .env, and only it', () => {
+    expect(label('byd-moved-rtr.rule')).toMatch(/^Host\(`\$\{BYD_MOVED_FROM:\?[^}]+\}`\)$/)
+    expect(label('byd-moved-rtr.entrypoints')).toBe('https')
+    expect(label('byd-moved-rtr.tls')).toBe('true')
+    expect(label('byd-moved-rtr.middlewares')).toBe('byd-moved')
+  })
+
+  it('answers 301 to the same path and query on the new host', () => {
+    expect(label('byd-moved.redirectregex.permanent')).toBe('true')
+    // Traefik matches the whole URL, scheme to query, and Go's regexp reads this one as JS does.
+    const regex = new RegExp(interpolate(label('byd-moved.redirectregex.regex')))
+    const replacement = interpolate(label('byd-moved.redirectregex.replacement')).replace(/\$\{(\d+)\}/g, '$$$1')
+    const to = (from: string) => from.replace(regex, replacement)
+    expect(to('https://deck.ockelberg.com/ABCD?x=1')).toBe('https://deckster.se/ABCD?x=1')
+    expect(to('https://deck.ockelberg.com/auth/verify?token=abc')).toBe('https://deckster.se/auth/verify?token=abc')
+    expect(to('https://deck.ockelberg.com/')).toBe('https://deckster.se/')
+  })
+
+  it('is an overlay of its own, so a box that never moved names no old host', () => {
+    expect(overlay).not.toContain('BYD_MOVED_FROM')
+    expect(compose).not.toContain('BYD_MOVED_FROM')
+  })
+})
+
 describe('where the box keeps the checkout is the box‚Äôs business', () => {
   const unit = readFileSync(new URL('../../../ops/byd-deploy.service', import.meta.url), 'utf8')
   const install = readFileSync(new URL('../../../ops/install.sh', import.meta.url), 'utf8')

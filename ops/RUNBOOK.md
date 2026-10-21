@@ -120,6 +120,19 @@ BYD_HOSTNAME=deck.example
 
 `docker-compose.traefik.yml` lägger `app` på proxyns nät och sätter dess etiketter: värdnamnet från `BYD_HOSTNAME`, port 8080, och kedjan `chain-no-auth@file`.
 
+**Att flytta till ett nytt värdnamn** (A5, #1080). Det gamla ska fortsätta svara, med 301 till det nya, eftersom utskickade inloggningslänkar, bokmärken och QR-koder bär det:
+
+```sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml:docker-compose.traefik-moved.yml
+BYD_HOSTNAME=nytt.example
+BYD_MOVED_FROM=gammalt.example
+PUBLIC_ORIGIN=https://nytt.example
+```
+
+Byt `MAIL_FROM` till det nya värdnamnet först när det är verifierat som avsändardomän hos Resend; före det kommer inget inloggningsmejl fram, och då kommer ingen in.
+Kör `sudo ops/deploy.sh --force` efteråt, eftersom etiketterna bara läses när containern skapas.
+Den som var inloggad på det gamla värdnamnet loggar in en gång till: kakan hör till sitt origin.
+
 Kedjan är inte fritt vald. Husets SSO får aldrig stå framför den här appen: produkten har egna konton, och en gäst kommer till bordet med en rumskod och inget konto alls (DRIFT §9, §11). En inloggningsvägg där hade avvisat varje spelare innan koden ens lästes. Kedjan som väljs ska däremot bära rate limiting, vilket är vad DRIFT §9 ber om.
 
 Kontrollera tre saker i proxyn innan du deployar:

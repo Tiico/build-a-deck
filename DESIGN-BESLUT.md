@@ -190,7 +190,7 @@ Följdkrav:
 
 - Produktionen flyttar från `deck.ockelberg.com` när domänen är registrerad och ligger i Cloudflare (#1080): `PUBLIC_ORIGIN`, `BYD_HOSTNAME` och `MAIL_FROM` på lådan, deckster.se verifierad som avsändardomän hos Resend, och pulskollen omriktad (DRIFT §8).
 - Den gamla adressen svarar 301 till deckster.se med sökväg och query kvar, så att utskickade inloggningslänkar, bokmärken och QR-koder fortsätter att fungera.
-  Omdirigeringen ligger framför appen, inte i den: appen känner ett enda origin, `PUBLIC_ORIGIN`, och inget domännamn är inskrivet i koden (K12).
+  Omdirigeringen ligger i proxyn, i överlägget `docker-compose.traefik-moved.yml` (DRIFT §2), inte i appen: appen känner ett enda origin, `PUBLIC_ORIGIN`, och inget domännamn är inskrivet i koden (K12).
 - Ikoner som redan lagts i ett spel behåller upphovsraden `build-your-deck`; den är spelets data, och bara nya får `Deckster`.
 - `packages/server/test/service-name.test.ts` håller båda reglerna: ingen .com-adress för namnet någonstans i repot, och inget `build-your-deck` i det en användare kan läsa.
 
