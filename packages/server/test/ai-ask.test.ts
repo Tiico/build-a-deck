@@ -545,7 +545,9 @@ describe('the ceilings', () => {
 })
 
 describe('the log', () => {
-  it('says who asked, which provider, how long it took and how it went — and never the key, the game, the question or the answer', async () => {
+  // The provider's status beside a failure (#1088): an answer turned away with a 400 read as a line
+  // that broke, and nothing in the log said otherwise.
+  it('says who asked, which provider, how long it took, how it went and what the provider answered — and never the key, the game, the question or the answer', async () => {
     const w = await world()
     const ada = await idOf(w, 'ada@example.com')
     await w.vault.save(ada, 'anthropic', ADA_KEY)
@@ -560,15 +562,17 @@ describe('the log', () => {
     expect(asked.text).toContain('HEMLIG-FRÅGA')
     const stop = new AbortController()
     await read(await post(w, w.ada, { question: 'Långt [slow]', turns: [] }, stop.signal), () => stop.abort())
-    await until(() => printed.filter((l) => l.includes('"msg":"ai"')).length >= 2)
+    await ask(w, w.ada, 'Trångt [overloaded]')
+    await until(() => printed.filter((l) => l.includes('"msg":"ai"')).length >= 3)
     vi.restoreAllMocks()
 
     const lines = printed.filter((l) => l.includes('"msg":"ai"')).map((l) => JSON.parse(l) as Record<string, unknown>)
     expect(lines.map((l) => ({ ...l, ms: typeof l['ms'] }))).toEqual([
       { msg: 'ai', account: ada, provider: 'anthropic', ms: 'number', outcome: 'ok' },
       { msg: 'ai', account: ada, provider: 'anthropic', ms: 'number', outcome: 'cancelled' },
+      { msg: 'ai', account: ada, provider: 'anthropic', ms: 'number', outcome: 'overloaded', status: 529 },
     ])
     const all = printed.join('\n')
-    for (const secret of [ADA_KEY, ADA_KEY.slice(0, 20), 'HEMLIG-FRÅGA', GAME, 'Drake', 'Du frågade', 'Långt']) expect(all).not.toContain(secret)
+    for (const secret of [ADA_KEY, ADA_KEY.slice(0, 20), 'HEMLIG-FRÅGA', GAME, 'Drake', 'Du frågade', 'Långt', 'Trångt']) expect(all).not.toContain(secret)
   })
 })

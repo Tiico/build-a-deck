@@ -43,6 +43,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // as a model that chooses to answer in words gives it — a refining instruction included, which
 // leaves the proposal it refines standing.
 //
+// A strict tool is held to the limits Anthropic publishes for structured outputs, and a request past
+// them is turned away the way the real one turns it away, with a 400 before a word: at most 20 strict
+// tools, 24 optional properties and 16 properties of a union type across all of them. Without this
+// the fake took a schema the real provider never compiled, and every suite was green while every
+// question asked in production failed.
+//
 // The listener binds nothing itself: each package takes its ports out of its own band
 // (`listen-zero.ts`), so the caller makes the server and listens where its rules say.
 
@@ -109,6 +115,35 @@ export function fakeAiProvider(): FakeAiProvider {
     },
   }
   return fake
+}
+
+// Anthropic's published limits on strict tools (structured outputs, «Schema complexity limits»). A
+// property counts as a union when its schema is an `anyOf` or a list of types, and as optional when
+// the object it is in does not require it.
+const STRICT_TOOLS = 20
+const STRICT_OPTIONAL = 24
+const STRICT_UNIONS = 16
+function tooComplex(body: unknown): boolean {
+  const strict = ((body as { tools?: { strict?: unknown; input_schema?: unknown }[] } | null)?.tools ?? []).filter((t) => t.strict === true)
+  let optional = 0
+  let unions = 0
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(walk)
+    if (node === null || typeof node !== 'object') return
+    const n = node as Record<string, unknown>
+    if (n['properties'] && typeof n['properties'] === 'object') {
+      const required = new Set(Array.isArray(n['required']) ? n['required'] : [])
+      for (const [name, property] of Object.entries(n['properties'] as Record<string, unknown>)) {
+        if (!required.has(name)) optional++
+        const p = (property ?? {}) as Record<string, unknown>
+        if (Array.isArray(p['anyOf']) || Array.isArray(p['type'])) unions++
+      }
+    }
+    for (const [key, value] of Object.entries(n)) if (key !== 'properties') walk(value)
+    if (n['properties'] && typeof n['properties'] === 'object') Object.values(n['properties'] as object).forEach(walk)
+  }
+  strict.forEach((t) => walk(t.input_schema))
+  return strict.length > STRICT_TOOLS || optional > STRICT_OPTIONAL || unions > STRICT_UNIONS
 }
 
 const keyOf = (provider: Provider, req: IncomingMessage): string | null =>
@@ -222,6 +257,7 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   const key = keyOf(provider, req)
   fake.calls.push({ provider, path, key, version: (req.headers['anthropic-version'] as string | undefined) ?? null, body })
   if (refused(provider, key, req, res)) return
+  if (provider === 'anthropic' && tooComplex(body)) return send(res, 400, { type: 'error', error: { type: 'invalid_request_error', message: 'Schema is too complex for compilation.' } })
   const { question, game, selected, refining } = questionOf(provider, body)
   if (question.includes('[overloaded]')) return overloaded(provider, res)
   const stream: FakeAiStream = { provider, question, finished: false, closed: false }

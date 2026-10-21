@@ -87,7 +87,8 @@ test('a designer adds her key from the editor, asks about her game, stops an ans
   await expect.poll(() => aiLines().filter((l) => l['account'] === owner).length).toBeGreaterThanOrEqual(3)
   const written = readFileSync(log!, 'utf8')
   const lines = aiLines()
-  expect(lines.filter((l) => l['account'] === owner).map((l) => l['outcome'])).toEqual(['ok', 'cancelled', 'overloaded'])
-  for (const line of lines) expect(Object.keys(line).sort()).toEqual(['account', 'ms', 'msg', 'outcome', 'provider'])
+  expect(lines.filter((l) => l['account'] === owner).map((l) => [l['outcome'], l['status'] ?? null])).toEqual([['ok', null], ['cancelled', null], ['overloaded', 529]])
+  // The provider's status stands beside an answer it turned away (#1088), and nothing else is added.
+  for (const line of lines) expect(Object.keys(line).filter((k) => k !== 'status').sort()).toEqual(['account', 'ms', 'msg', 'outcome', 'provider'])
   for (const secret of [KEY.slice(0, 24), 'What is the game called', 'Tell me everything', 'Du frågade']) expect(written).not.toContain(secret)
 })
