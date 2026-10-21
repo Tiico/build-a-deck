@@ -122,9 +122,6 @@ test('frågan besvaras från tangentbordet: Escape lämnar fokus på ×:et, med 
   const door = page.locator('.byd-columns')
   await expect(door.getByRole('textbox', { name: 'Namn' })).toBeFocused()
   // Från formuläret till listans rad, ned till kraft, och till radens sista kontroll, som är ×:et.
-  // Formulärets typval står mellan namnet och listan (#1085), ett tabbstopp med pilar.
-  await page.keyboard.press('Shift+Tab')
-  await expect(door.getByRole('button', { name: 'Text', exact: true })).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   const kraft = door.locator('li[data-col="kraft"]')
   for (let i = 0; i < 20 && !(await kraft.evaluate((li) => li.contains(document.activeElement))); i++) await page.keyboard.press('ArrowDown')

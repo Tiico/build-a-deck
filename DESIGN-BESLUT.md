@@ -6273,7 +6273,9 @@ En kolumn blev förut bildkolumn bara där mallen ritade den som bild, så en ny
 Nu är bild ett läge i samma växel, och «höjden föreslår» blir **«mallen föreslår»**: en hög ruta föreslår prosa, ett bildlager föreslår bild, och återställningen heter «Följ mallen igen».
 Prototypen hade fyra varianter: typen i formuläret (A), typen på raden och i formuläret (B), tre skapa-knappar som i guiden (C), och dagens dörr.
 B valdes för att en kolumns typ då står på ett enda ställe, både när den görs och efteråt, i ett mönster dörren redan hade.
-Formuläret för en ny kolumn har samma tre knappar över namnet, Text tryckt, och en rad om vad valet gör; namnförslaget följer typen (`bild1`) tills designern skrivit ett eget.
+Formuläret för en ny kolumn har samma tre val under namnet, Text valt, och en rad om vad valet gör; namnförslaget följer typen (`bild1`) tills designern skrivit ett eget.
+Under och inte över, som prototypen ritade: vägen upp från namnet till listan är den #388 räknade tryck på, och ett tabbstopp mellan dem hade gjort varje sådan väg ett tryck längre.
+I formuläret är de tre ett val bland flera och ritas i verktygets gemensamma språk för det (`.byd-choice`, markerat och inte fyllt); på raderna bär växeln fortfarande skillnaden mellan mallens förslag och designerns val.
 Verktygets två kolumner har fortfarande ingen växel.
 
 Bildvalet ligger i `images` bredvid `prose` i `ProjectDoc` och inte i stället för det: `true` när kolumnen gjorts till bild, `false` när designern valt text eller prosa för en kolumn mallen ritar som bild.

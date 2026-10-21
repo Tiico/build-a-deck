@@ -524,9 +524,9 @@ describe('the card table with a picture in it, at 768px with text as wide as on 
   }, 90_000)
 })
 
-// The form that makes a column, with its door held open (#50). It asks for a name and nothing
-// else: the kind of field follows from where it was opened (#479), so the radios that once stood
-// here are gone and only the name and the two answers are left to measure.
+// The form that makes a column, with its door held open (#50). It asks for a name and what the
+// column is (#1085): the radios #479 took away only changed the suggested name, and the three that
+// stand here now write what the column is — so the name, the three kinds and the two answers.
 describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
   it('gives every control in it a 44 by 44 pixel hit area', async () => {
     const measured = await measure(
@@ -547,8 +547,8 @@ describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
         }),
       newField,
     )
-    // The name and the two answers.
-    expect(measured).toEqual({ 'Nytt fält': { controls: 3, small: [] } })
+    // The name, the three kinds and the two answers.
+    expect(measured).toEqual({ 'Nytt fält': { controls: 6, small: [] } })
   }, 90_000)
 })
 

@@ -85,18 +85,33 @@ export function NewField({ taken, keeps = true, kind, choose = false, onCreate, 
         if (event.key === 'Escape') onCancel()
       }}
     >
+      <label>
+        {t('table.field.name')}
+        <input
+          ref={nameBox}
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value)
+            setTyped(true)
+            setRefused(null)
+          }}
+        />
+      </label>
       {choose && (
         <div className="byd-newfield-kind">
           <span id={kindLabel}>{t('table.field.kind')}</span>
-          <span className="byd-kind-switch" role="group" aria-labelledby={kindLabel} data-from="choice">
+          <span className="byd-newfield-kinds" role="group" aria-labelledby={kindLabel}>
             {KINDS.map((as) => (
               <button
                 key={as}
                 type="button"
+                // One of a set, so drawn in the language every such set speaks (`.byd-choice`): a
+                // chosen kind is marked, not filled.
+                className="byd-choice"
                 aria-pressed={made === as}
                 // One stop in the form's tab order, with the arrows between the three, as every row
-                // of the door above it is (#388): three stops between the list and the name made the
-                // way back up to the list three presses longer.
+                // of the door above it is (#388). After the name and not before it: the way up from
+                // the name to the list is the one #388 counted, and it stays as short as it was.
                 tabIndex={made === as ? 0 : -1}
                 onClick={() => makeAs(as)}
                 onKeyDown={(event) => {
@@ -117,18 +132,6 @@ export function NewField({ taken, keeps = true, kind, choose = false, onCreate, 
           <small>{t(`table.field.kind.${made}`)}</small>
         </div>
       )}
-      <label>
-        {t('table.field.name')}
-        <input
-          ref={nameBox}
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value)
-            setTyped(true)
-            setRefused(null)
-          }}
-        />
-      </label>
       {refused !== null && <p role="alert">{refused}</p>}
       <div className="byd-newfield-do">
         <button type="submit" className="byd-secondary">{t('table.field.create')}</button>

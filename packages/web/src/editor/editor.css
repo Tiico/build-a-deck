@@ -2923,11 +2923,12 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-columns .byd-kind-switch > button[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
 .byd-columns .byd-kind-switch[data-from='template'] > button[aria-pressed='true'] { background: transparent; color: #9ec4e8; box-shadow: none; outline: 1px dashed #46597a; outline-offset: -4px; }
 .byd-columns .byd-kind-switch > button:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 0; }
-/* I formuläret står växeln över namnet och tar formulärets bredd, med en rad under om vad valet
-   gör (#1085): att en bildkolumn tar emot bilder direkt är just det som inte syntes förut. */
+/* I formuläret står typen under namnet och tar formulärets bredd, med en rad under om vad valet
+   gör (#1085): att en bildkolumn tar emot bilder direkt är just det som inte syntes förut. Tre
+   val bland flera, i det språk varje sådan uppsättning talar (`.byd-choice`). */
 .byd-newfield-kind { display: grid; gap: var(--byd-s1); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-quiet); }
-.byd-columns .byd-newfield-kind .byd-kind-switch { display: flex; }
-.byd-columns .byd-newfield-kind .byd-kind-switch > button { flex: 1 1 0; justify-content: center; text-align: center; }
+.byd-newfield-kinds { display: flex; gap: var(--byd-s1); }
+.byd-columns .byd-newfield-kinds > button { flex: 1 1 0; min-height: var(--byd-tap); justify-content: center; text-align: center; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .byd-newfield-kind small { font-size: 11px; line-height: 1.35; text-transform: none; letter-spacing: 0; }
 /* Text som står kvar i en kolumn som blivit bild (#1085): en rad för sig, som namnets vägran, så
    att växeln står kvar hel. Den enda förklaring en rad bär; resten står i dörrens hjälp. */
@@ -4323,7 +4324,7 @@ img[data-arriving] { opacity: 0; }
   .byd-canvas-tools, .byd-backs, .byd-drag-handle, .byd-point-mid, .byd-point, .byd-point-handle, .byd-canvas-reset,
   .byd-props-picture .byd-secondary, .byd-props-straighten, .byd-fonts li[data-font] button, .byd-fonts-catalog, .byd-fonts-upload, .byd-newfield,
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
-  .byd-data-add, .byd-data-bodytools, .byd-kind-switch, .byd-kind-follow, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
+  .byd-data-add, .byd-data-bodytools, .byd-kind-switch, .byd-kind-follow, .byd-newfield-kinds, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
   .byd-theme-tiles, .byd-theme-reset, .byd-theme-show,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,

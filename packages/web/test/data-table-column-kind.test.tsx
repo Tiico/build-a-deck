@@ -141,16 +141,17 @@ describe('en ny kolumn får sin typ i formuläret (#1085, variant B)', () => {
     render(<Editing />)
     await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     const form = screen.getByRole('form', { name: 'Nytt fält' })
-    await user.keyboard('{Shift>}{Tab}{/Shift}')
+    // Under namnet, så att vägen upp från namnet till listan är lika kort som förut (#388).
+    await user.keyboard('{Tab}')
     expect(document.activeElement).toBe(within(form).getByRole('button', { name: 'Text' }))
     await user.keyboard('{ArrowRight}{ArrowRight}')
     const bild = within(form).getByRole('button', { name: 'Bild' })
     expect(document.activeElement).toBe(bild)
     expect(bild.getAttribute('aria-pressed')).toBe('true')
     expect((within(form).getByLabelText('Namn') as HTMLInputElement).value).toBe('bild1')
-    // Och ett steg till bakåt är listan, inte en annan av de tre.
-    await user.keyboard('{Shift>}{Tab}{/Shift}')
-    expect(form.contains(document.activeElement)).toBe(false)
+    // Och ett steg till är «Lägg till», inte en annan av de tre.
+    await user.keyboard('{Tab}')
+    expect(document.activeElement).toBe(within(form).getByRole('button', { name: 'Lägg till' }))
   })
 
   it('gör en bildkolumn som tar emot bilder direkt, med ett namn som säger bild', async () => {
