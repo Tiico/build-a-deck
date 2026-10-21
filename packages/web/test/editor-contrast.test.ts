@@ -94,6 +94,17 @@ describe('the palette the small screens are drawn in', () => {
   })
 })
 
+// What could not happen, in the band under the header (#1073): the sentence is text, and the sign
+// and the × are marks a hand and an eye have to find on the same ground.
+describe('the palette the notice band is drawn in', () => {
+  it('gives the sentence AA contrast', () => {
+    expect(contrastRatio(token('--byd-editor-notice-ink'), token('--byd-editor-notice-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+  it('gives the sign and the × AA contrast too', () => {
+    expect(contrastRatio(token('--byd-editor-notice-mark'), token('--byd-editor-notice-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 // The table's filter row (#16) is read at a glance while the eye is really on the rows: the
 // count, the search field, and a chip pressed or not are all held to the same bar.
 describe('the palette the table filter is drawn in', () => {
