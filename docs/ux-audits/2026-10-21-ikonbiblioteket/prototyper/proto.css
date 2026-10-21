@@ -1,0 +1,84 @@
+/* PROTOTYP (#1087). Editorns krom efterliknad ur bilder av den byggda appen 2026-10-21. Kastas när varianten är vald. */
+:root { --bg: #23262f; --panel: #1b1d24; --line: #343846; --ink: #e6ecfa; --quiet: #9aa1b4; --accent: #3a86ff; --amber: #ffd98a; --paper: #f5eedc; --band: #6b4a2b; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 13px system-ui, -apple-system, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.top { height: 56px; display: flex; align-items: center; gap: 18px; padding: 0 16px; border-bottom: 1px solid var(--line); background: #1e2028; }
+.top b { font-size: 15px; }
+.tabs { display: flex; gap: 4px; background: #15171c; border-radius: 10px; padding: 4px 8px; }
+.tabs span { padding: 8px 10px; color: var(--quiet); font-weight: 600; border-bottom: 2px solid transparent; cursor: pointer; }
+.tabs span.on { color: #fff; border-color: var(--accent); }
+.work { display: grid; grid-template-columns: 56px 210px 1fr 270px; height: calc(100vh - 56px); }
+.rail { border-right: 1px solid var(--line); padding: 10px 6px; display: flex; flex-direction: column; gap: 8px; }
+.rail div { height: 46px; border: 1px solid var(--line); border-radius: 8px; display: grid; place-items: center; font-size: 10.5px; color: var(--quiet); text-align: center; line-height: 1.2; }
+.rail div.on { border-color: var(--accent); color: #fff; }
+.layers { border-right: 1px solid var(--line); padding: 14px 10px; overflow: auto; }
+.cap { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--quiet); font-weight: 700; margin: 0 0 10px; }
+.layer { display: flex; gap: 8px; align-items: center; padding: 9px 10px; border-radius: 8px; color: #cfd5e4; }
+.layer.on { background: #2f3a52; color: #fff; }
+.layer small { color: var(--quiet); }
+.stage { position: relative; overflow: hidden; background: repeating-conic-gradient(#262932 0 25%, #22252d 0 50%) 0 0 / 22px 22px; display: flex; flex-direction: column; }
+.canvas { flex: 1; display: grid; place-items: center; position: relative; min-height: 0; }
+.props { border-left: 1px solid var(--line); padding: 14px 12px; overflow: auto; }
+.row { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; }
+.lbl { font-size: 12px; color: var(--quiet); margin: 0 0 4px; }
+.field { border: 1px solid #4a5063; background: #14161b; border-radius: 8px; padding: 8px 10px; min-height: 40px; }
+.btn { border: 1px solid #4a5063; background: transparent; border-radius: 8px; padding: 9px 12px; font-weight: 600; min-height: 40px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.quiet { border-color: transparent; color: #9cc3ff; padding: 6px 4px; min-height: 0; }
+.switch { display: inline-flex; border: 1px solid #4a5063; border-radius: 8px; overflow: hidden; }
+.switch button { border: 0; background: transparent; padding: 7px 10px; color: var(--quiet); font-weight: 600; }
+.switch button.on { background: #2f3a52; color: #fff; }
+.well { width: 40px; height: 32px; border: 1px solid #4a5063; border-radius: 6px; padding: 2px; background: #14161b; }
+.well input { width: 100%; height: 100%; border: 0; padding: 0; background: none; cursor: pointer; }
+.contrast { font-size: 11px; color: var(--quiet); white-space: nowrap; }
+.contrast.low { color: #f0a58a; }
+.valrow { display: grid; grid-template-columns: 42px 1fr 40px; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid #2c303b; }
+.valrow .v { font-weight: 600; }
+.valrow .v small { display: block; font-weight: 400; color: var(--quiet); font-size: 11px; }
+
+/* Kortet */
+.card { width: 380px; height: 531px; background: var(--paper); border-radius: 14px; position: relative; box-shadow: 0 2px 0 #0003, 0 20px 40px #0006; color: #2b2118; }
+.card .frame { position: absolute; inset: 14px; border: 3px solid #4a3322; border-radius: 12px; }
+.card .band { position: absolute; left: 17px; right: 17px; top: 17px; height: 76px; background: var(--band); border-radius: 9px 9px 14px 14px; }
+.card .title { position: absolute; left: 30px; top: 26px; font: 800 26px Georgia, serif; color: #fbf3e0; }
+.card .typ { position: absolute; left: 30px; top: 62px; font: 700 16px system-ui; color: #f2e4c6; }
+.card .body { position: absolute; left: 30px; right: 96px; top: 120px; font: 19px/1.4 system-ui; }
+.card .iconbox { position: absolute; right: 26px; top: 108px; width: 56px; height: 56px; border-radius: 4px; }
+.card .iconbox.sel { outline: 2px solid var(--accent); outline-offset: 3px; }
+.ink { display: block; width: 100%; height: 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+.nav { height: 52px; border-top: 1px solid var(--line); background: #1e2028; display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+.mini { display: flex; gap: 8px; overflow-x: auto; }
+.mini button { display: flex; gap: 6px; align-items: center; border: 1px solid var(--line); background: #15171c; border-radius: 8px; padding: 4px 10px 4px 4px; color: #cfd5e4; }
+.mini button.on { border-color: var(--accent); }
+.mini .chip { width: 30px; height: 30px; border-radius: 5px; background: var(--paper); padding: 3px; }
+
+/* Biblioteket */
+.sources { display: flex; gap: 6px; flex-wrap: wrap; }
+.sources button { border: 1px solid #4a5063; background: transparent; border-radius: 999px; padding: 5px 11px; font-weight: 600; font-size: 12px; }
+.sources button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sources button small { color: inherit; opacity: .7; font-weight: 500; }
+.grid { display: grid; gap: 8px; align-content: start; }
+.tile { border: 1px solid #343846; background: #20232c; border-radius: 10px; padding: 8px 6px 7px; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; min-width: 0; }
+.tile:hover, .tile:focus-visible, .tile.on { border-color: var(--accent); outline: none; }
+.tile .paper { width: 48px; height: 48px; border-radius: 6px; background: var(--paper); padding: 6px; }
+.tile .nm { font-weight: 600; font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .src { font-size: 10.5px; line-height: 1.25; color: var(--quiet); max-width: 100%; }
+.tile .src b { font-weight: 600; color: #c9cfdd; }
+.foot { font-size: 12px; color: var(--quiet); display: flex; justify-content: space-between; gap: 12px; }
+.empty { color: var(--quiet); padding: 20px 4px; }
+
+/* Uppladdning */
+.upload { border: 1px dashed #5a6176; border-radius: 10px; padding: 12px; display: grid; grid-template-columns: auto auto 1fr; gap: 12px; align-items: start; background: #1a1c23; }
+.upload .pv { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--quiet); }
+.upload .pv div { width: 64px; height: 64px; border-radius: 8px; background: var(--paper); padding: 8px; }
+.upload label { display: block; font-size: 12px; color: var(--quiet); margin: 0 0 6px; }
+.upload input[type=text] { width: 100%; border: 1px solid #4a5063; background: #14161b; border-radius: 8px; padding: 7px 9px; margin-top: 3px; }
+.note { font-size: 12px; color: #e9d7a8; background: #1f1b12; border: 1px solid #4a4230; border-radius: 8px; padding: 8px 10px; line-height: 1.5; }
+
+/* Växlaren hör inte till designen */
+.vaxlare { position: fixed; top: 8px; right: 16px; z-index: 90; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: var(--amber); color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: var(--amber); font: inherit; padding: 0 12px; }
+.vaxlare .namn { padding: 0 10px; min-width: 300px; text-align: center; font-size: 12.5px; }
+.forklaring { position: fixed; left: 64px; bottom: 70px; z-index: 89; max-width: 206px; font-size: 11.5px; }
