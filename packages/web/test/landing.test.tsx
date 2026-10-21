@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
 import { pitchSeen } from '../src/account/pitch.js'
+import { faviconSvg } from '../src/brand/mark.js'
 import { startServer, type Running } from './fixture.js'
 
 // `/` for whoever is not logged in (#1009, beställarens beslut 2026-10-18, variant A «Bordet»): the
@@ -65,6 +66,21 @@ describe('the landing page at / (#1009)', () => {
     // The table's words are its picture's: none of them is read out on its own.
     expect(within(scene).queryAllByRole('heading')).toEqual([])
     expect(scene.textContent).toContain('Ugglans råd')
+  })
+
+  it('wears the same hand as the tab beside the name (#1082)', async () => {
+    render(<HomePage onNavigate={() => undefined} />)
+    await landed()
+    const head = document.querySelector('.byd-landing-head') as HTMLElement
+    const mark = head.querySelector('svg') as SVGSVGElement
+    // One drawing (src/brand/mark.ts): the cards on the page are the favicon's, card for card.
+    const tab = new DOMParser().parseFromString(faviconSvg(), 'image/svg+xml').documentElement
+    const drawn = (svg: Element) => [...svg.querySelectorAll('rect')].map((r) => [r.getAttribute('fill'), r.getAttribute('transform')])
+    expect(drawn(mark)).toEqual(drawn(tab))
+    expect(mark.getAttribute('viewBox')).toBe(tab.getAttribute('viewBox'))
+    // The picture is the name's, and is not read out a second time.
+    expect(mark.closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(head.querySelector('.byd-landing-mark')?.textContent).toBe('Deckster')
   })
 
   it('counts as the sales line having been seen (L36), so the login card does not sell twice', async () => {

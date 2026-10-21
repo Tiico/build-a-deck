@@ -16,7 +16,8 @@
 .byd-account-wide { align-content: start; }
 .byd-muted { color: #9aa3b8; font-size: 14px; line-height: 1.5; margin: 0; }
 .byd-login { width: min(420px, 100%); background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
-.byd-login h1 { margin: 0; font-size: 26px; }
+.byd-login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; }
+.byd-login-mark { width: 32px; height: 32px; flex: none; }
 .byd-login form { display: grid; gap: 10px; }
 .byd-login-email { display: grid; gap: 6px; }
 /* The code row under the card (#675) wears the card's own label, field and button. */

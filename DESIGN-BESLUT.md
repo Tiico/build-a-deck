@@ -194,6 +194,29 @@ Följdkrav:
 - Ikoner som redan lagts i ett spel behåller upphovsraden `build-your-deck`; den är spelets data, och bara nya får `Deckster`.
 - `packages/server/test/service-name.test.ts` håller båda reglerna: ingen .com-adress för namnet någonstans i repot, och inget `build-your-deck` i det en användare kan läsa.
 
+### A6. Märket: handen (beslutat 2026-10-21, #1082)
+
+Decksters märke är **handen**: tre kort i solfjäder, i bärnsten, grönt och papper, från vänster.
+Det var landningssidans logga (#1009) och ersätter #729:s två kort (blå baksida, papper med grön prick), som fliken bar.
+Produkten hade alltså två ansikten, ett i fliken och ett annat på sidan, och nu har den ett.
+
+Märket ritas en gång, i `packages/web/src/brand/mark.ts`, och allt annat görs av den ritningen:
+
+- flikens `favicon.svg` och `favicon.ico`, där handen står fritt, utan ruta, så att de tre korten får hela 16 px och kortens mörka kant håller pappret isär från en ljus flikrad;
+- hemskärmarnas `apple-touch-icon.png`, `icon-192.png` och `icon-512.png`, där handen ligger på landningssidans trä kant i kant, inpassad i den maskerbara ikonens cirkel på 80 %;
+- `DecksterMark` bredvid namnet på landningssidan och i inloggningskortet, där kanten är den mark handen ligger på.
+
+Pappret är ett: `#f4ead8`. Landningssidans logga hade `#f7f1e3`. Filtens krita `#f3e9d6` är en textfärg och inget kort, så den står kvar.
+
+Följdkrav:
+
+- Ingen fil i `public/` ritas för hand. `pnpm --filter @byd/web exec tsx scripts/brand-icons.ts` skriver dem, och `packages/web/test/brand.test.ts` stoppar en `favicon.svg` som inte är ritningen.
+- `packages/e2e/test/app-icon.spec.ts` läser de serverade ikonernas pixlar: de tre kortens färger finns, och PNG:erna ligger på trä och inte på bordets mörka.
+- En delad länk (`og:image`) och TV:ns sidospalt bär också handen, men de kräver mer än ritningen (#1084).
+- UI-ikonerna är en egen fråga (#1083): märket är produktens ansikte, glyferna är kontrollernas hand.
+
+Prototypen: `docs/ux-audits/2026-10-21-deckster-ikoner/prototyper/deckster/` (`?v=B`).
+
 ## B. Domänmodellen
 
 ### B1. Full typad komponentmodell (fråga 2)

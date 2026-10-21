@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { DecksterMark } from '../brand/DecksterMark.js'
+import { WOOD_EDGE } from '../brand/mark.js'
 import { CardPreview } from '../editor/CardPreview.js'
 import { LanguagePicker, useLang, useT } from '../i18n/index.js'
 import { AboutLine } from './AboutLine.js'
@@ -30,11 +32,8 @@ export function LandingPage({ http, server, onNavigate }: { http: string; server
     <div className="byd-account byd-landing" data-page="home" data-landing>
       <header className="byd-landing-head">
         <span className="byd-landing-mark">
-          <span aria-hidden="true" className="byd-landing-logo">
-            <i />
-            <i />
-            <i />
-          </span>
+          {/* The product's one mark (#1082), on the room's own dark. */}
+          <DecksterMark className="byd-landing-logo" edge={WOOD_EDGE} />
           <span className="byd-landing-name">Deckster</span>
         </span>
         <nav aria-label={t('landing.nav')}>
