@@ -4,7 +4,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -598,7 +598,7 @@ export class ProjectClient {
     // under its own name: it is something the designer did, and the way forward must say so.
     // A value that comes back in a column someone else has taken away since is let go (#1072): the
     // card comes back, the column does not, and that is said beside the confirmation.
-    if (back.dropped) this.dropStep({ dir, fields: [...new Set(back.dropped.map((at) => at[3] ?? ''))] })
+    if (back.dropped) this.dropStep({ dir, fields: [...new Set(back.dropped.flatMap((at) => cellColumn(at) ?? []))] })
     if (back.edit === null) {
       to.push({ change: changeOf(this.doc, this.doc), what: step.what })
       this.notify()
@@ -1624,7 +1624,6 @@ function hostAuthority(hostKey: string | undefined, init: RequestInit): RequestI
 function letGo(sent: EditIntent, written: EditIntent): string[] {
   if (sent.v !== 'revert' || written.v !== 'revert') return []
   const kept = new Set(written.parts.map((part) => JSON.stringify(part.at)))
-  const cell = (at: string[]) => at.length === 4 && at[0] === 'rows' && at[2] === 'fields'
-  const fields = sent.parts.filter((part) => part.standing && cell(part.at) && part.to !== '' && part.to !== null && !kept.has(JSON.stringify(part.at))).map((part) => part.at[3] ?? '')
+  const fields = sent.parts.flatMap((part) => (part.standing && part.to !== '' && part.to !== null && !kept.has(JSON.stringify(part.at)) ? (cellColumn(part.at) ?? []) : []))
   return [...new Set(fields)]
 }

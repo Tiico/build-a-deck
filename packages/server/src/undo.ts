@@ -71,10 +71,10 @@ const DOC = record(
   ['name', 'template', 'rows', 'icons', 'setup'],
 )
 
-// `stood` är de kolumner delen hör till eller nämner, som de var före redigeringen, och som stod kvar
-// i leken efter den (#1072): en cell i ett kort som gick, ett lager som ritade kolumnen, ett
-// prosaval. Är en av dem borta när steget tas tillbaka har någon annan tagit bort den, och delen
-// skulle återskapa den.
+// `stood` är de kolumner delen hör till eller nämner med värdet ett steg tillbaka skriver, bland dem
+// som stod kvar i leken efter redigeringen (#1072): en cell i ett kort som gick, ett lager som ritade
+// kolumnen, ett prosaval. Är en av dem borta när steget tas tillbaka har någon annan tagit bort den,
+// och delen skulle återskapa den.
 type Part = { at: Path; from: unknown; to: unknown; stood?: string[] }
 type Order = { at: Path; from: string[]; to: string[]; moved: ReadonlySet<string> }
 // Vad en redigering ändrade: varje del före och efter, och ordningen i varje samling den ändrade —
@@ -243,7 +243,7 @@ export function decideRevert(doc: ProjectDoc, edit: Revert): Revert {
     if (!Array.isArray(part.standing) || part.standing.some((c) => typeof c !== 'string')) throw new Error('a part stands on the names of columns')
     const { standing, ...rest } = part
     if (standing.every((c) => columns.has(c))) parts.push(rest)
-    else if (!(Array.isArray(part.at) && isCell(part.at))) parts.push(part)
+    else if (cellColumn(part.at) === null) parts.push(part)
   }
   return { ...edit, parts }
 }
@@ -257,10 +257,10 @@ export function decideRevert(doc: ProjectDoc, edit: Revert): Revert {
 export function applyRevert(doc: ProjectDoc, asked: Revert): ProjectDoc {
   if (!Array.isArray(asked.parts)) throw new Error('a revert names the parts it writes')
   const edit = decideRevert(doc, asked)
-  const gone = edit.parts.find((part) => part.standing !== undefined && !isCell(part.at))
-  if (gone) throw new Error(`${gone.at.join('/')} names a column someone else has removed since; the undo would bring it back`)
   for (const part of edit.parts) {
     checkPath(part.at)
+    // En del som fortfarande frågar efter sina kolumner har en som är borta (`decideRevert`).
+    if (part.standing !== undefined) throw new Error(`${part.at.join('/')} names a column someone else has removed since; the undo would bring it back`)
     if (!same(valueAt(doc, part.at), part.was)) throw new Error(`${part.at.join('/')} has changed since; the undo would write over it`)
   }
   const seen = new Map<string, string[]>()
@@ -442,15 +442,17 @@ function foreign(doc: ProjectDoc, at: Path, named: ReadonlySet<string>): boolean
   return [...out.parts].some(([key, part]) => !named.has(key) && !(isBlankAt(part.at, part.to) && elsewhere(doc, at, part.at)))
 }
 
-// En cell (kort × kolumn), och kolumnen den står i.
-function isCell(at: Path): boolean {
-  return Array.isArray(at) && at.length === 4 && at[0] === 'rows' && at[2] === 'fields'
+// Kolumnen en cell (kort × kolumn) står i, eller `null` för en del som inte är en cell.
+export function cellColumn(at: unknown): string | null {
+  return Array.isArray(at) && at.length === 4 && at[0] === 'rows' && at[2] === 'fields' && typeof at[3] === 'string' ? at[3] : null
 }
+const isCell = (at: Path): boolean => cellColumn(at) !== null
 
 // De kolumner en del hör till eller nämner, med värdet den har: en cell står i sin kolumn, ett
 // prosaval gäller sin, och mallen nämner kolumner där den binder, villkorar och grupperar.
 function columnsNamed(at: Path, value: unknown): string[] {
-  if (isCell(at)) return [at[3] ?? '']
+  const column = cellColumn(at)
+  if (column !== null) return [column]
   if (at[0] === 'prose' && at.length === 2) return [at[1] ?? '']
   if (at[0] !== 'template') return []
   const out: string[] = []

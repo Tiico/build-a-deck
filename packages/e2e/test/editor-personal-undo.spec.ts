@@ -262,7 +262,7 @@ test('ångra vägrar ta bort Adas nya kort när Bo har skrivit i det, i sin nya 
 // Ett kort med ett värde i en kolumn, och Bo som tar bort kolumnen (#1072). Ångra lade tillbaka
 // kortet med sitt värde, och kolumnen stod i leken igen för båda: Bos borttagning var delvis ogjord
 // utan att han fick veta det. Nu kommer kortet tillbaka utan värdet, och Ada får veta varför.
-const DROPPED = 'Det som stod i «body» kom inte tillbaka: någon annan har tagit bort kolumnen.'
+const DROPPED = 'Värdet i «body» kom inte tillbaka: någon annan har tagit bort kolumnen.'
 // Kolumnen i tabellens huvud. `body` skrivs som prosa och har ingen textruta i cellen, så att
 // kolumnen är borta läses i huvudet och i kortets rad.
 const column = (page: Page, name: string) => page.locator(`.byd-data thead th[data-col="${name}"]`)
