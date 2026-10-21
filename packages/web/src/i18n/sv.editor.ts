@@ -1175,8 +1175,6 @@ export const svEditor = {
   'symbols.search': 'Sök symbol',
   'symbols.search.placeholder': 'Sök symbol…',
   'symbols.foot': '{n} av {of} symboler · {m} i spelet',
-  'symbols.categories': 'Kategorier',
-  'symbols.all': 'Alla',
   'symbols.none': 'Inget med det namnet. Sök på vad symbolen är till för, som «försvar» eller «skörd».',
   'symbols.taken': '{name} är i spelet.',
   'symbols.had.name': '{name}, i spelet',

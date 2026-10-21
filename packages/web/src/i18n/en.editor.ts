@@ -1067,8 +1067,6 @@ export const enEditor = {
   'symbols.search': 'Search for a symbol',
   'symbols.search.placeholder': 'Search for a symbol…',
   'symbols.foot': '{n} of {of} symbols · {m} in the game',
-  'symbols.categories': 'Categories',
-  'symbols.all': 'All',
   'symbols.none': 'Nothing by that name. Search for what the symbol is for, such as “försvar” or “skörd”.',
   'symbols.taken': '{name} is in the game.',
   'symbols.had.name': '{name}, in the game',

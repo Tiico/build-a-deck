@@ -132,7 +132,7 @@ describe('the library, opened from Spelets ikoner (L57, E4)', () => {
   // fails is said in a sentence of the library's own.
   it('says a symbol could not be taken in, in words and not in the document’s', async () => {
     await run.projects.create(run.projectId, projectDoc())
-    const spy = vi.spyOn(ProjectClient.prototype, 'useSymbol').mockRejectedValue(new Error('icon sköld already exists'))
+    const spy = vi.spyOn(ProjectClient.prototype, 'useIcon').mockRejectedValue(new Error('icon sköld already exists'))
     try {
       await openTheme()
       fireEvent.click(head(/^Spelets ikoner/))

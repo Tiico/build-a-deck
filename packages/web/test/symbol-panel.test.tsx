@@ -34,22 +34,26 @@ const tile = (name: string) => screen.getByRole('button', { name: `Ta in ${name}
 const hadTile = (name: string) => screen.getByRole('button', { name: `${name}, i spelet` })
 
 describe('the symbol library in the editor (E4)', () => {
-  it('searches the library, narrows to a category, and says what a symbol is licensed under', async () => {
+  it('searches the libraries, narrows to one of them, and says what a symbol is licensed under', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openSymbols()
     expect(tile('sköld')).toBeTruthy()
     expect(tile('sköld').textContent).toContain('CC0-1.0')
 
+    // The libraries stand in the panel as a row of choices, the chosen one pressed (L57), and
+    // Deckster's own is one of them (#1087): «försvar» is one of its symbols' words.
+    const shelves = screen.getByRole('group', { name: 'Bibliotek' })
+    expect(within(shelves).getByRole('button', { name: /^Alla/ }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(shelves).getByRole('button', { name: /^Deckster/ }))
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'försvar' } })
     expect(screen.getAllByRole('button', { name: /^Ta in / })).toHaveLength(1)
-    fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: '' } })
-    // The categories stand in the library as a row of choices, the chosen one pressed (L57).
-    const kinds = screen.getByRole('group', { name: 'Kategorier' })
-    expect(within(kinds).getByRole('button', { name: 'Alla' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(within(kinds).getByRole('button', { name: 'Platshållare' }))
-    expect(within(kinds).getByRole('button', { name: 'Platshållare' }).getAttribute('aria-pressed')).toBe('true')
+
+    // The two libraries come in once the panel has loaded them (L71), and a game icon says who
+    // drew it beside its licence, because the print hand-off has to name the person (E4).
+    fireEvent.click(within(shelves).getByRole('button', { name: /^Game Icons/ }))
+    fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'svärd' } })
+    expect((await screen.findByRole('button', { name: 'Ta in crossed-swords' })).textContent).toContain('CC-BY-3.0 · Lorc')
     expect(screen.queryByRole('button', { name: 'Ta in sköld' })).toBeNull()
-    expect(screen.getByRole('button', { name: /Ta in ram-tunn/ })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'ingenting alls' } })
     expect(screen.getByText(/Inget med det namnet/)).toBeTruthy()
   })

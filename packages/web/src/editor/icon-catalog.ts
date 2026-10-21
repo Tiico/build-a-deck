@@ -52,7 +52,7 @@ let loaded: Promise<CatalogIcon[]> | null = null
 // The symbols drawn for the project (E4), in the reader's own words: the library is the tool's,
 // so its names are the tool's catalogue keys, and a symbol is named in the language the designer
 // builds in (A4). The two other libraries are named in English whatever the reader's language.
-const deckster = (lang: Lang): CatalogIcon[] =>
+export const decksterIcons = (lang: Lang): CatalogIcon[] =>
   LIBRARY.map((s) => ({
     id: `deckster:${s.id}`,
     name: translate(lang, s.name),
@@ -65,7 +65,7 @@ const deckster = (lang: Lang): CatalogIcon[] =>
 
 // The catalog: Deckster's symbols first, then the two libraries, which are loaded once per page.
 export async function loadIconCatalog(lang: Lang): Promise<CatalogIcon[]> {
-  return [...deckster(lang), ...(await libraries())]
+  return [...decksterIcons(lang), ...(await libraries())]
 }
 
 function libraries(): Promise<CatalogIcon[]> {
@@ -112,6 +112,8 @@ export function searchIcons(icons: readonly CatalogIcon[], { query, source }: Ic
   )
   // A name that is a whole word of the query comes before one that merely holds it, and a shorter
   // name before a longer: «sword» before «sword-in-stone».
+  // Nothing typed is the catalog as it stands: Deckster's own first, then the two libraries.
+  if (typed.length === 0) return hits
   const first = typed[0] ?? []
   const whole = (icon: CatalogIcon) => (icon.name.split('-').some((part) => first.some((w) => part === w || part === `${w}s`)) ? 0 : 1)
   return hits.sort((a, b) => whole(a) - whole(b) || a.name.length - b.name.length || a.name.localeCompare(b.name, 'en'))
