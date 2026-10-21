@@ -34,7 +34,7 @@ export function LandingPage({ http, server, onNavigate }: { http: string; server
         <span className="byd-landing-mark">
           {/* The product's one mark (#1082), on the room's own dark. */}
           <DecksterMark className="byd-landing-logo" edge={WOOD_EDGE} />
-          <span className="byd-landing-name">build-your-deck</span>
+          <span className="byd-landing-name">Deckster</span>
         </span>
         <nav aria-label={t('landing.nav')}>
           <a className="byd-landing-quiet" href="#byd-landing-steps">

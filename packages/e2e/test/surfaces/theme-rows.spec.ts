@@ -91,7 +91,7 @@ for (const [locale, words] of Object.entries(WORDS)) {
         await page.setViewportSize({ width, height })
         const doc = gameDoc({ name: 'Skogens herrar', cards: 4 }) as unknown as ProjectDoc
         doc.icons = { mynt: ICON, sköld: ICON, ö: ICON, 'en-mycket-lång-ikon': ICON }
-        doc.credits = { mynt: { licence: 'CC0', by: 'build-your-deck' } }
+        doc.credits = { mynt: { licence: 'CC0', by: 'Deckster' } }
         await openTheme(page, doc)
         await page.getByRole('button', { name: words.icons }).click()
         const rows = await page.locator('.byd-symbols-set li').evaluateAll((lis) =>

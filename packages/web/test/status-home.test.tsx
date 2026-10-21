@@ -29,7 +29,7 @@ describe('the start page when the service cannot be reached', () => {
     expect(panel.textContent).toMatch(/når inte/i)
     expect(panel.textContent).not.toMatch(/fetch failed|Error|could not/i)
     expect(within(panel).getByRole('button', { name: /försök igen/i })).toBeTruthy()
-    await waitFor(() => expect(document.title).toBe('Ingen kontakt · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Ingen kontakt · Deckster'))
   })
 
   it('says it is loading before it says anything else', () => {
@@ -54,13 +54,13 @@ describe('the tab over the way in', () => {
   it('says what the page is showing: the landing page, and then the games', async () => {
     open(run.http)
     await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })
-    await waitFor(() => expect(document.title).toBe('Bygg ditt kortspel · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Bygg ditt kortspel · Deckster'))
 
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')![0]
     await fetch(`${run.http}${link}`, { redirect: 'manual' })
     open(run.http)
     await screen.findAllByText('Mina spel')
-    await waitFor(() => expect(document.title).toBe('Mina spel · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Mina spel · Deckster'))
   })
 })

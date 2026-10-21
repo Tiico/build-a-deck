@@ -107,7 +107,7 @@ export class ResendMailer implements Mailer {
 export function mailerFromEnv(env: Record<string, string | undefined>): Mailer {
   const apiKey = env['RESEND_API_KEY']
   if (!apiKey) return new ConsoleMailer()
-  return new ResendMailer(apiKey, env['MAIL_FROM'] || 'build-your-deck <login@example.com>')
+  return new ResendMailer(apiKey, env['MAIL_FROM'] || 'Deckster <login@example.com>')
 }
 
 // Five links an hour per address (DRIFT §9 is the outer wall; this is the inner one).
@@ -149,20 +149,20 @@ export function safeNext(next: string | undefined): string {
 const siteOf = (link: string): string | null => (URL.canParse(link) ? new URL(link).origin : null)
 const mailFoot = (link: string, contact: string | undefined, label: string): string => {
   const site = siteOf(link)
-  return `\n\n— \nbuild-your-deck${site ? ` · ${site}` : ''}${contact ? `\n${label}: ${contact}` : ''}`
+  return `\n\n— \nDeckster${site ? ` · ${site}` : ''}${contact ? `\n${label}: ${contact}` : ''}`
 }
 
 export function loginMail(to: string, link: string, lang: Lang = 'sv', contact?: string): Mail {
   if (lang === 'en') {
     return {
       to,
-      subject: 'Sign in to build-your-deck',
+      subject: 'Sign in to Deckster',
       text: `Hello!\n\nClick to sign in: ${link}\n\nThe link works for 15 minutes and only once. If you did not ask for it, you can ignore this mail.${mailFoot(link, contact, 'Contact')}`,
     }
   }
   return {
     to,
-    subject: 'Logga in på build-your-deck',
+    subject: 'Logga in på Deckster',
     text: `Hej!\n\nKlicka för att logga in: ${link}\n\nLänken fungerar i 15 minuter och bara en gång. Har du inte bett om den kan du ignorera det här mejlet.${mailFoot(link, contact, 'Kontakt')}`,
   }
 }

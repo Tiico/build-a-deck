@@ -161,7 +161,7 @@ describe('an edit is a thing that happened to the project (D3)', () => {
   it('writes the symbols and the rules, which travel with the document', () => {
     const doc = after(
       base(),
-      { v: 'setIcon', name: 'sköld', url: 'asset:abc', credit: { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } },
+      { v: 'setIcon', name: 'sköld', url: 'asset:abc', credit: { licence: 'CC0-1.0', by: 'Deckster', source: 'skold' } },
       { v: 'renameIcon', from: 'sköld', to: 'försvar' },
       { v: 'setRules', rules: { title: 'Reglerna', blocks: [{ kind: 'text', id: 't1', text: 'Dra ett kort.' }] } },
     )

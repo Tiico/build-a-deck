@@ -6,7 +6,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 
 // Until #12 there was one title for the whole product: the static line in index.html. A tab is
 // a place too, and a tab that says nothing is a tab nobody can find their way back to.
-export const APP = 'build-your-deck'
+export const APP = 'Deckster'
 
 export const ROUTES = ['home', 'landing', 'login', 'new', 'claim', 'invite', 'profile', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
 export type Route = (typeof ROUTES)[number]

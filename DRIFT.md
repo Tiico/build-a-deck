@@ -109,6 +109,10 @@ Kedjan framför appen får aldrig vara husets SSO: produkten har egna konton, oc
 Den kedja som väljs ska däremot bära rate limiting, som är vad §9 ber om, och proxyn måste lita på Cloudflares vidarebefordrade huvuden för att räkna på rätt avsändare.
 Den dagen lådan byts mot en tom är tunneln kvar i stacken och kostar ett `COMPOSE_FILE` att byta till.
 
+Tillagt 2026-10-21 (A5, #1080): när tjänsten flyttar till ett nytt värdnamn svarar det gamla 301 till det nya, med sökväg och query kvar, så att utskickade inloggningslänkar, bokmärken och QR-koder fortsätter att fungera.
+Omdirigeringen är proxyns, i överlägget `docker-compose.traefik-moved.yml` med det gamla värdnamnet i `BYD_MOVED_FROM`; appen känner bara ett origin, `PUBLIC_ORIGIN`.
+`deploy.test.ts` håller etiketterna och visar att omskrivningen behåller sökväg och query, och samma regex är provad mot traefik v2.11 och v3.3.
+
 ### Inaktiva anslutningar: proxyn stänger först (#986)
 
 Appen håller en inaktiv keep-alive-anslutning öppen i 120 s (`KEEP_ALIVE_MS` i `packages/server/src/server.ts`) och väntar på en förfrågans huvuden i 121 s (`HEADERS_TIMEOUT_MS`).

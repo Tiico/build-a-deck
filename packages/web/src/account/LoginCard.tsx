@@ -58,7 +58,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
       {/* The product's one mark (#1082) beside its name, on the card's own dark. */}
       <h1>
         <DecksterMark className="byd-login-mark" edge="#171a23" />
-        build-your-deck
+        Deckster
       </h1>
       {pitch && <p className="byd-muted" data-pitch>{t('login.pitch')}</p>}
       {/* The field and its button are under this row, and the box never lands on them (#726). */}

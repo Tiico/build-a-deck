@@ -184,6 +184,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 - ✅ Ett enkätsvar kommer från deltagarens eget inträde, ett per plats, och ett andra svar ersätter det första (G3, #1021).
 - ✅ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012), och tre bord på 308 kort ryms sedan leken bär hashar i stället för bilder (DRIFT §4, #1028). Det tredje av tre bord som startas samtidigt väntar runt sex minuter på sina texturer; beställaren beslutade 2026-10-18 att mäta det i betan i stället för att bygga bort det.
 - ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).
+- 🔶 Tjänsten heter Deckster och ligger på deckster.se (A5): namnet är bytt överallt en användare läser det, och flytten av produktionen från `deck.ockelberg.com`, med 301 från den gamla adressen, väntar på att domänen registreras (#1080).
 - ⬜ En release från main med allt ovan, och tre till fem designers inbjudna med samtyckesfrågan.
 
 ## Fas 5 — Tryck

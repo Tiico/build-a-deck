@@ -11,7 +11,7 @@ export const svAccount = {
   'login.pitch': 'Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.',
   // Den tysta raden sist i inloggningskortet och på Mina spel (#757).
   'about.contact': 'Kontakt',
-  'about.version': 'build-your-deck {release}',
+  'about.version': 'Deckster {release}',
   'login.lead': 'Logga in för att komma till dina spel.',
   // En lead per väg in (#691, beslut 2026-10-06), som claim har sin: första besöket säger att samma
   // länk både loggar in och skapar kontot, inbjudan säger vilket spel den leder till, och guidens
