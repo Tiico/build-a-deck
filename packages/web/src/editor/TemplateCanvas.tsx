@@ -10,7 +10,7 @@ import { StepPill } from './StepPill.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
-import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, paintOf, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { AssetImage } from './AssetImage.js'
@@ -27,6 +27,10 @@ import { useRoving } from './roving.js'
 import { cardWords, familyChoices, previewFonts } from './fonts.js'
 import { FontCatalog } from './FontCatalog.js'
 import type { CatalogFamily } from './font-catalog.js'
+import { IconCatalog, type IconChoice } from './IconCatalog.js'
+import type { CatalogIcon } from './icon-catalog.js'
+import { IconLook, type IconTarget } from './IconLook.js'
+import { groundOf } from './palette.js'
 import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import { useT, type Key, type T, useLang } from '../i18n/index.js'
@@ -102,6 +106,10 @@ export type TemplateCanvasProps = {
   // as the game's own asset, and the canvas is told what the family came to be called so the
   // layer can be set in it. Absent, the layer's list offers no way into the catalog.
   onCatalogFont?: ((family: CatalogFamily) => Promise<string>) | undefined
+  // An icon taken out of the libraries for the chosen icon layer (#1087, L71): copied in as the
+  // game's own asset with its credit, and the canvas told the name it came to have in the set.
+  // Absent, the layer's panel offers the game's own icons and nothing more.
+  onCatalogIcon?: ((icon: CatalogIcon) => Promise<string>) | undefined
   // A picture brought in from the designer's own disk for the template's own picture (#320), by
   // the very path Media takes: it lands in the library, and the element is then bound to it.
   // Uploading is the client's work, so the canvas asks and is told the hash the bytes were
@@ -115,7 +123,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onAddPicture, reading = false }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onAddPicture, reading = false }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -235,6 +243,32 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       onClose={closeCatalog}
     />
   )
+  // The icon libraries' sheet (#1087, L71, beslut A), opened from «Ikon och färg» for one row of
+  // the chosen icon layer. It is the typeface catalog's sheet under the card, and stands where that
+  // one stands; it goes when the chosen layer is no longer an icon layer.
+  const [iconFor, setIconFor] = useState<IconTarget | null>(null)
+  const iconLayer = iconFor && el?.kind === 'icons' ? el : null
+  const closeIcons = () => setIconFor(null)
+  const iconSheet = iconLayer && iconFor && (
+    <IconCatalog
+      inGame={Object.keys(doc.icons).map((name) => ({ name, src: icons[name] ?? '' }))}
+      colour={paintOf(iconLayer.color, iconFor.kind === 'value' && 'field' in iconLayer.bind ? { [iconLayer.bind.field]: iconFor.value } : {})}
+      paper={groundOf(doc, face)}
+      target={iconFor.kind === 'value' && 'field' in iconLayer.bind ? t('icons.catalog.for.value', { field: fieldLabel(iconLayer.bind.field, t), value: iconFor.value }) : t(iconFor.kind === 'else' ? 'icons.catalog.for.else' : 'icons.catalog.for.all')}
+      onChoose={async (choice: IconChoice) => {
+        const name = 'inGame' in choice ? choice.inGame : onCatalogIcon ? await onCatalogIcon(choice.icon) : null
+        if (name === null) return
+        const pick = iconLayer.pick ?? { map: {} }
+        patch(
+          iconLayer.id,
+          iconFor.kind === 'fixed' ? { bind: { literal: name } } : iconFor.kind === 'else' ? { pick: { ...pick, else: name } } : { pick: { ...pick, map: { ...pick.map, [iconFor.value]: name } } },
+        )
+        closeIcons()
+      }}
+      onClose={closeIcons}
+    />
+  )
+  const sheet = catalog || iconSheet
   const stageEl = useRef<HTMLElement | null>(null)
   // The zoom grows around the element that is chosen (#478); read at the press, not at the render.
   const chosenRef = useRef(selectedElement)
@@ -291,7 +325,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // twice and nothing a tab does not point at is left in the tab order.
   const shows = (which: CanvasStage) => stage === null || stage === which
   return (
-    <div className="byd-canvas" {...(catalog && stage === null ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
+    <div className="byd-canvas" {...(sheet && stage === null ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
       {/* The crown over the whole desk and not over the card alone (#129): which column makes the
           groups, which group is open, whether the properties are folded away, and which face is
           being edited. It spans the four columns because that is the only place its four controls
@@ -470,7 +504,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             {t('canvas.layer.isLocked', { name: layerTitle(refusedLayer, t) })}
           </p>
         )}
-        {stage === null && catalog}
+        {stage === null && sheet}
         {swapping && (
           <Question
             className="byd-canvas-question"
@@ -547,7 +581,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             taken={takenNames(doc)}
             fonts={doc}
             onMoreFonts={onCatalogFont && !reading ? () => setCatalogOpen(true) : undefined}
-            icons={Object.keys(doc.icons)}
+            srcOf={(name) => icons[name]}
+            paper={groundOf(doc, face)}
+            onChooseIcon={reading ? undefined : setIconFor}
             valuesIn={(field) => valuesIn(doc, field)}
             onPatch={(changed, gesture) => patch(el.id, changed, gesture)}
             onAddField={onAddField}
@@ -563,7 +599,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         )}
         {/* On a stage of its own the panel is the whole screen and the card is another stage away,
             so the catalog stands in the panel that opened it. */}
-        {stage !== null && catalog}
+        {stage !== null && sheet}
         {/* The game's typefaces are the game's and not a layer's (#478). They stood here while no
             layer was chosen, and stand in Speltema since L57 (#630); the panel says where. */}
         {!layer && onOpenFonts && (
@@ -2113,7 +2149,9 @@ function Properties({
   taken,
   fonts,
   onMoreFonts,
-  icons,
+  srcOf,
+  paper,
+  onChooseIcon,
   valuesIn,
   onPatch,
   onAddField,
@@ -2132,7 +2170,11 @@ function Properties({
   fonts: Pick<ProjectDoc, 'fonts' | 'theme'>
   // Opens the catalog for the chosen layer (#634); absent where nothing can be brought in.
   onMoreFonts?: (() => void) | undefined
-  icons: string[]
+  srcOf(name: string): string | undefined
+  paper: string
+  // Opens the icon libraries' sheet for one row of an icon layer (#1087); absent where nothing
+  // may be chosen.
+  onChooseIcon?: ((target: IconTarget) => void) | undefined
   valuesIn(field: string): string[]
   onPatch(patch: Partial<Element>, gesture?: string): void
   onAddField(field: string, bindTo: string): void
@@ -2298,32 +2340,13 @@ function Properties({
       {/* What the element shows (#32, #320, #33): the column it draws, or the one picture or
           icon it carries itself. Every element that shows data says which column it shows. */}
       {content && (
-        <Section id="content" name={t('canvas.props.sec.content')}>
-          {/* Which icon a single one shows (#33). It is bound to a name rather than to a column
-              because this icon is the card's and not the row's — a suit mark is the same on every
-              card — so the set is what it is chosen from, and the field picker below is the way to
-              make it the row's after all. The name it already carries is offered whatever the set
-              holds, exactly as the family picker offers the one an element is already set in: an
-              element is never moved to another icon behind the designer's back.
-
-              And it stays here when the element has been bound to a column, saying that the icons
-              come from there rather than pointing at a name the element does not show. Naming one is
-              then the way back: the two pickers are two ways of saying the same thing, so each is the
-              way out of what the other did, and neither has to guess a name to go back to. */}
-          {el.kind === 'icons' && (icons.length > 0 || 'literal' in el.bind) && (
-            <label>
-              {t('canvas.props.icon')}
-              <select value={'literal' in el.bind ? el.bind.literal : ''} onChange={(e) => e.target.value !== '' && onPatch({ bind: { literal: e.target.value } })}>
-                {'field' in el.bind && <option value="">{t('canvas.props.icon.fromField')}</option>}
-                {/* A row with no name yet says so in words rather than as a blank choice (#849). */}
-                {'literal' in el.bind && el.bind.literal === '' && <option value="">{t('canvas.props.icon.none')}</option>}
-                {[...new Set([...icons, ...('literal' in el.bind && el.bind.literal !== '' ? [el.bind.literal] : [])])].map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <Section id="content" name={t(el.kind === 'icons' ? 'canvas.props.sec.iconLook' : 'canvas.props.sec.content')}>
+          {/* What an icon layer shows and in what colour (#1087, L71, beslut A): one icon on every
+              card, one per value of a column, or the icons a column writes (#33's icon row). The
+              name it already carries is shown whatever the set holds, as before: an element is
+              never moved to another icon behind the designer's back. */}
+          {el.kind === 'icons' && (
+            <IconLook el={el} fields={fields} valuesIn={valuesIn} srcOf={srcOf} paper={paper} onPatch={onPatch} onChoose={(target) => onChooseIcon?.(target)} />
           )}
           {/* Where a picture comes from (#320): the row's column, or one picture the template carries
               itself — a background, a frame, a logo that is the same on every card. The switch only
@@ -2356,7 +2379,7 @@ function Properties({
               onCancel={closeForm}
             />
           )}
-          {!bindsAbove && fieldPicker}
+          {!bindsAbove && el.kind !== 'icons' && fieldPicker}
         </Section>
       )}
       {choosing && assetBase && (

@@ -7417,3 +7417,29 @@ Ett lager utan färg ritar ikonen som den bild den alltid varit, så en äldre m
 E5 mäter ett färgat ikonlager mot det som ligger bakom, med WCAG:s gräns för grafik, 3:1, som fel och utan ett andra steg.
 En ikon är en form att känna igen och inget ord att läsa bokstav för bokstav.
 Ett lager utan färg är filens eget bläck, och det kan kontrollen inte se in i.
+
+**Byggt 2026-10-22 (#1087), led 2: katalogen.**
+`@iconify-json/game-icons` och `@iconify-json/lucide` är pinnade beroenden och läses bakom en dynamisk import, som bara öppnandet av biblioteket anropar.
+Ingenting hämtas från någon annan, inte ens från designerns webbläsare: en ikon är några hundra byte, till skillnad från en fontfil, så hela katalogen kan resa med bygget.
+Det som paketen inte säger om sig själva skrivs av `scripts/icon-sources.ts` till `icon-sources.ts`, stämplat och åldersgrindat som typsnittslistan (#370).
+Det är vem som ritade varje game-icon och under vilken licens, ur katalogträdet i `game-icons/icons` och dess `license.txt`, och Lucides nyckelord.
+En ikon vars upphovsperson inte går att ange lämnas utanför och skrivs ut av skriptet, eftersom en upphovsrad som gissar är sämre än ingen post (L27).
+Den 2026-10-21 var det 66 av 4 134.
+63 är namn som finns i två mappar, där paketet håller en av dem och inte säger vilken; 16 av dem delar namn med mappen `badges`.
+Två ligger i `various-artists`, som `license.txt` inte namnger, och en finns inte i repot alls.
+Två personer, Viscious Speed och Zeromancer, ger bort sina under CC0, och det står i deras poster.
+En grind håller att katalogen erbjuder minst 97 % av paketets game-icons, så ett uppdaterat paket utan omkört skript blir rött.
+Sökningen tar ett ord var som helst i namnet, eftersom biblioteken skriver ihop ord («broadsword»), men bara från början av ett nyckelord, eftersom Lucide har sin nyckel under «password».
+Båda biblioteken har engelska namn, så en kort lista med spelord på svenska (`icon-words.ts`) översätts före sökningen: «svärd» hittar det «sword» hittar.
+Listan är ett spels ordförråd och ingen ordbok, och ett ord utanför den söks som det skrevs.
+Decksters egna symboler står i samma katalog och behåller sin upphovsrad, symbolens id, så en symbol som tas in genom katalogen blir samma post som förut.
+
+**Byggt 2026-10-22 (#1087), led 3: Mall.**
+Ikonlagrets innehållssektion heter «Ikon och färg».
+«Visar» väljer mellan en ikon på alla kort, en ikon per värde i en kolumn och ikonerna kolumnen skriver; den sista är ikonraden som den alltid varit.
+Per värde är en tabell med en rad per värde i kolumnen och en rad för övriga, och varje rad har ikonen, namnet och färgen.
+«Färga ikonerna» slår på färgen; utan den är ikonen den bild den är.
+En tryckt ikon öppnar bibliotekets ark under kortet för just den raden, och arket säger vilken («för typ = Anfall»).
+Arket har typsnittskatalogens form, och varje bricka ritar ikonen som mask i radens färg på kortets papper, så att provet inte kan lova en annan ikon än kortet visar (L34).
+Hyllorna är Alla, I spelet, Deckster, Game Icons och Lucide.
+Att gå tillbaka till en ikon på alla kort ger den ikon lagret hade, inte ett tomrum, på samma sätt som en bilds väg tillbaka till kolumnen inte är en gissning (#320).

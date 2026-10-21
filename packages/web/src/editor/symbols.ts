@@ -76,7 +76,7 @@ export function freeIconName(wanted: string, taken: Record<string, string>): str
 
 // The symbol as a file, for the upload that makes it one of the project's assets (E1): once it
 // is the project's own, what the cards look like no longer depends on the library standing still.
-export function svgBytes(symbol: GameSymbol): { type: string; bytes: Uint8Array<ArrayBuffer> } {
+export function svgBytes(symbol: Pick<GameSymbol, 'svg'>): { type: string; bytes: Uint8Array<ArrayBuffer> } {
   const encoded = new TextEncoder().encode(symbol.svg)
   const bytes = new Uint8Array(encoded.length)
   bytes.set(encoded)

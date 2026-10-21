@@ -8,6 +8,7 @@ import { PHONE_READING, SCREENS, minPtIn } from '../legibility.js'
 import { noFilter } from './filtering.js'
 import { useHeaderStands, useRoom } from '../room.js'
 import { useDoor } from '../doors.js'
+import type { CatalogIcon } from './icon-catalog.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
@@ -630,6 +631,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // A text layer's «Fler typsnitt…» (#634): the family comes into the game the way Speltema
         // brings it, and the canvas sets the layer in whatever it came to be called.
         {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
+        {...(client.mayEdit ? { onCatalogIcon: (icon: CatalogIcon) => client.useIcon(icon, undefined, t) } : {})}
         // The template's own picture is uploaded by the path Media takes (#320), so it lands there.
         onAddPicture={(file) => client.addPicture(file, t)}
         group={group}

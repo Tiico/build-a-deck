@@ -5,6 +5,7 @@ import { SavedHeldBack } from './saved-held-back.js'
 import type { RuleDoc } from '@byd/server'
 import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
+import { loadIconCatalog } from '../src/editor/icon-catalog.js'
 import { startServer, type Running } from './fixture.js'
 import { assetTypeDeclaring } from '@byd/protocol'
 import { columnsOf } from '@byd/server/doc'
@@ -654,6 +655,29 @@ describe('symbols (E4)', () => {
     const stored = await run.projects.load(run.projectId)
     expect(stored?.icons['sköld']).toBe(client.doc.icons['sköld'])
     expect(stored?.credits).toEqual({ 'sköld': { licence: 'CC0-1.0', by: 'Deckster', source: 'skold' } })
+  })
+})
+
+// An icon from the libraries (#1087, L71) is taken in the way a symbol is: the bytes become the
+// project's own asset, and the credit records who drew it and where it came from, so the print
+// hand-off can name the person (E4). A Deckster symbol found through the catalog is the very same
+// symbol, and keeps the credit it has always had.
+describe('an icon taken in from the libraries (#1087)', () => {
+  it('takes a game icon in with its author and licence, and the same icon twice is one entry', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const catalog = await loadIconCatalog('sv')
+    const swords = catalog.find((i) => i.id === 'game-icons:crossed-swords')!
+
+    expect(await client.useIcon(swords)).toBe('crossed-swords')
+    expect(client.doc.credits?.['crossed-swords']).toEqual({ licence: 'CC-BY-3.0', by: 'Lorc', source: 'game-icons:crossed-swords' })
+    const served = await fetch(`${run.http}/assets/${client.doc.icons['crossed-swords']!.slice('asset:'.length)}`)
+    expect(await served.text()).toBe(swords.svg)
+    expect(await client.useIcon(swords)).toBe('crossed-swords')
+    expect(Object.keys(client.doc.icons)).toEqual(['crossed-swords'])
+
+    expect(await client.useIcon(catalog.find((i) => i.id === 'deckster:skold')!)).toBe('sköld')
+    expect(client.doc.credits?.['sköld']).toEqual({ licence: 'CC0-1.0', by: 'Deckster', source: 'skold' })
   })
 })
 

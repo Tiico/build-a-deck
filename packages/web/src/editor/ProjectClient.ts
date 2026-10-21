@@ -12,6 +12,7 @@ import { iconElement } from './canvas.js'
 import { idsOnFace } from './groups.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
+import { creditOf, type CatalogIcon } from './icon-catalog.js'
 import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type Theme } from './themes.js'
 import type { EditorMessage, Presence } from '@byd/server'
 import { canDelete, canEdit, canStartTables, type Role } from '@byd/server/doc'
@@ -905,20 +906,30 @@ export class ProjectClient {
   // assets, the icon set gets a name for it, and the licence is kept beside the set so it can
   // travel to the printer. The same symbol twice is the same entry, not a second name.
   async useSymbol(symbol: GameSymbol, as?: string, t: T = swedish): Promise<string> {
+    // What the symbol is called in the language the designer is working in: the icon name is
+    // theirs from here on, and card text writes it between braces (L2, A4).
+    return this.takeIcon(symbol.svg, as ?? symbolName(symbol, t), { licence: symbol.licence, by: symbol.by, source: symbol.id }, t)
+  }
+
+  // An icon from the libraries (#1087, L71), taken in exactly as a symbol is: the catalog knows
+  // who drew it and under what licence, and that is what the set records beside it.
+  async useIcon(icon: CatalogIcon, as?: string, t: T = swedish): Promise<string> {
+    return this.takeIcon(icon.svg, as ?? icon.name, creditOf(icon), t)
+  }
+
+  private async takeIcon(svg: string, wanted: string, credit: ProjectCredit, t: T): Promise<string> {
     this.mustBeAbleToEdit(t)
-    const file = svgBytes(symbol)
+    const file = svgBytes({ svg })
     // The reference first, off the bytes themselves (#310). It is the name the service will give
     // them, so the question the next line asks — does the game already have this symbol? — is
     // answered without asking anybody: a symbol already in the set costs nothing on the wire.
     const ref = await assetRefOf(file.bytes)
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
     if (already) return already[0]
-    // What the symbol is called in the language the designer is working in: the icon name is
-    // theirs from here on, and card text writes it between braces (L2, A4).
-    const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
+    const name = freeIconName(wanted, this.doc.icons)
     const taking = this.newGesture('symbol')
     this.onTheirWay(ref)
-    this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }, taking)
+    this.edit({ v: 'setIcon', name, url: ref, credit }, taking)
     await this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t)
     return name
   }

@@ -320,6 +320,7 @@ describe('every count in front of a noun has a singular to be chosen', () => {
     'symbols.foot': 'the noun counts the whole library, a constant',
     'setup.family.some': 'some of the seats, and not all of them, is two seats or more',
     'fonts.catalog.search': 'the count is the whole font catalogue, hundreds of families',
+    'icons.catalog.search': 'the count is the whole icon catalogue, thousands of icons',
   }
 
   it('pairs each one', () => {

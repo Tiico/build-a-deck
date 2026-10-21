@@ -1,3 +1,4 @@
+import type { ProjectCredit } from '@byd/server'
 import { translate, type Lang } from '../i18n/index.js'
 import { INK, LIBRARY } from './symbols.js'
 import { ICON_WORDS } from './icon-words.js'
@@ -27,6 +28,11 @@ export type CatalogIcon = {
   by: string
   svg: string
 }
+
+// What the game's set records beside the icon once it is taken in (E4). A Deckster symbol keeps
+// the credit it has always had, the bare symbol id, so one taken in through the catalog is the same
+// entry as one taken in before there was a catalog; the libraries record `source:name`.
+export const creditOf = (icon: CatalogIcon): ProjectCredit => ({ licence: icon.licence, by: icon.by, source: icon.source === 'deckster' ? icon.id.slice('deckster:'.length) : icon.id })
 
 type IconSet = { icons: Record<string, { body: string }>; width?: number; height?: number }
 
