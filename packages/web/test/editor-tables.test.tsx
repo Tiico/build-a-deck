@@ -417,7 +417,9 @@ describe('ending a table from the editor (#19, C9)', () => {
     try {
       const header = document.querySelector('header')!
       await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
-      expect((await within(header).findByRole('alert')).textContent).toBe('Bordet kunde inte uppdateras. Försök igen.')
+      // In the band under the header, never in the header's row (#1073).
+      expect((await screen.findByRole('alert')).textContent).toBe('Bordet kunde inte uppdateras. Försök igen.')
+      expect(within(header).queryByRole('alert')).toBeNull()
       expect(document.querySelector('.byd-editor-table-link')).toBeTruthy()
 
       answer = 409

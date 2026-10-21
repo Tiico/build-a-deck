@@ -19,6 +19,7 @@ import { MediaPanel } from './MediaPanel.js'
 import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { GameMore } from './GameMore.js'
+import { NoticeBand } from './NoticeBand.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
@@ -806,10 +807,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           <span className="byd-editor-here-word" aria-hidden="true">{t('share.word')}</span>
         </button>
         <span className="byd-editor-spacer" />
-        {/* A save that could not happen is not a passing remark: it is spoken at once, because
-            the work it was about is still only in this tab. It stands until it stops being true,
-            and nothing routine may push it out of the way. */}
-        {notice && <span role="alert" className="byd-editor-notice">{notice.text}</span>}
         <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} onReading={() => sayReading(t('editor.reading.nothing'))} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
@@ -830,6 +827,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           </>
         )}
       </header>
+      {/* A save that could not happen is not a passing remark: it is spoken at once, because the
+          work it was about is still only in this tab. It stands until it stops being true, and
+          nothing routine may push it out of the way — but the designer may put it away (#1073).
+          It is the first strip under the header, so it is in the same place whatever is up below
+          it, and the header's row never gives it room: the game's name is never cut for it. */}
+      {notice && <NoticeBand text={notice.text} onClose={() => setNotice(null)} />}
       {/* Said out loud, because a tool that is quietly missing reads as a tool that is broken: on
           a phone the editor is a reading and writing surface, and laying a card out waits for a
           wider screen (L10). */}
