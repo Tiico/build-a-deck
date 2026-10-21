@@ -4746,6 +4746,16 @@ Förut kastade det steget ett fel i editorn och försvann ur stacken utan ett or
 Prövningen av posten gäller varje del, men i dag är gruppen det enda en annan redigering tar bort helt med något i (`replaceFace` med grupper, och `restore`): kort, zoner och regelblock står i samlingar som aldrig tas bort.
 Kolumnernas ordning har inte mönstret, eftersom den läses som en ordning och hoppar över ett namn ingen kolumn svarar på.
 
+Detsamma gäller ett **namnbyte** (2026-10-21, #1076).
+Ada byter namn på kolumnen K till L, Bo tar bort L, och Ada ångrar: ritade mallen inte kolumnen kom värdena tillbaka under K, och Bos borttagna kolumn stod i leken igen under sitt gamla namn.
+Det steget ska ta tillbaka — kolumnens namn — finns inte längre, så steget vägras med den vanliga meningen, och ingenting skrivs.
+Samma sak när Bo har bytt namn på L igen (kolumnen hade annars stått två gånger), och åt andra hållet: Ada ångrar namnbytet, Bo tar bort K, och Ada gör om.
+Namnbytet läses ur dokumentet och inte ur verbet: en kolumn steget tog bort och en det gjorde, med samma värde kort för kort på varje kort som stod kvar, är samma kolumn under ett nytt namn, och allt som stod under det gamla namnet — cellerna, prosavalet, ett lager som ritade det — står på kolumnen under det nya.
+En kolumn som togs bort i samma steg som en annan lades till, med andra värden, är två kolumner, och borttagningen var Adas egen; den tas tillbaka som förut.
+Ritar mallen kolumnen vägrades steget redan, eftersom Bos borttagning tog lagret som var bundet till den.
+Det andra som handlar om en kolumn stod redan på samma sida: en flytt av en kolumn Bo har tagit bort vägras, eftersom kolumnernas ordning är en del och Bos borttagning skrev den, och ett prosaval vägras enligt #1072 ovan.
+Utöver det mallen säger om den har en kolumn inga andra inställningar i dokumentet än namnet, platsen och prosavalet; bredden i tabellen är läsarens och står i webbläsaren.
+
 Undantaget för en tom cell (#1069) gäller celler och inget annat, eftersom det är där mönstret finns: ingen redigering skriver ett tomt standardvärde i varje lager eller varje zon.
 Det som rör alla lager eller zoner på en gång skriver över ett värde posten redan hade — temat byter typsnitt i varje text, kortleken som flyttas byter vart varje hand lämnar sina kort, platserna lägger ut stolarnas zoner igen — och det är en ändring av samma del, som vägrar steget som vilken annan.
 En grupps egen formgivning av ett lager står i gruppen och inte i lagret, så den har aldrig hindrat att lagret tas bort.
@@ -4766,6 +4776,7 @@ Aktören prövar också kolumnerna (#1072): `revert` bär för varje del som hö
 Har någon tagit bort en av dem innan steget når aktören släpps cellen, och vägras steget för en annan del.
 Svaret skrivs i loggen (`decideEdit`, #894): raden bär steget utan cellen och utan frågan, så uppspelningen aldrig frågar efter kolumnerna igen.
 Editorn ser i ekot att cellen den skickade inte kom med, och säger samma mening som när den släppte cellen själv.
+Ett namnbyte behöver ingen fråga på tråden (#1076): steget tillbaka bär varje cell under det nya namnet som den var (`was`), så en borttagning som hann före steget avvisar det hos aktören, och editorn säger det som ett ångra som inte gick.
 
 Ett grepp (L14) är fortfarande ett steg: varje redigering i greppet lägger sina delar på samma steg, där den första säger var en del var och den sista var den hamnade.
 En redigering som inte ändrade någonting blir inget steg.
@@ -4778,6 +4789,7 @@ Byggt 2026-10-20 (#1056, ingen prototyp: ingenting nytt ritas, och avslaget säg
 Grindar: `packages/server/test/personal-undo.test.ts`, `packages/web/test/personal-undo.test.ts` och `packages/e2e/test/editor-personal-undo.spec.ts`, där två editorer i var sin webbläsare ångrar i Tabell, Regler och Mall, gör om, och får nej när den andra har ändrat samma cell eller samma lager.
 Följderna byggda 2026-10-21 (#1069, #1070, ingen prototyp: ingenting nytt ritas): samma E2E-spec ångrar ett nytt kort efter den andras nya kolumn och får nej när den andra skrivit i kortet, och kapplöpningen spelas mot aktören för kort, lager, zoner och kolumnordningen i serverns test och för ett lager med två editorer mot en riktig aktör i webbens.
 Kolumnerna byggda 2026-10-21 (#1072, ingen prototyp: notisen står där editorn redan säger att ett steg inte gick): samma E2E-spec ångrar ett borttaget kort och gör om en kopia efter den andras borttagning av kolumnen, serverns test prövar lager, prosaval, grupper och kapplöpningen, och webbens spelar kapplöpningen med två editorer mot en riktig aktör.
+Namnbytet byggt 2026-10-21 (#1076, ingen prototyp: avslaget är det som redan finns): samma E2E-spec ångrar och gör om ett namnbyte efter den andras borttagning av kolumnen, serverns test prövar ett nytt namnbyte, prosavalet, mallen, kolumnordningen, två kolumner i ett steg och kapplöpningen, och webbens spelar kapplöpningen med två editorer mot en riktig aktör.
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
 
