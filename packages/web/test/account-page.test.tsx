@@ -7,6 +7,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
+import { faviconSvg } from '../src/brand/mark.js'
 import { admit, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 
@@ -54,6 +55,15 @@ describe('the login card and HomePage', () => {
     render(<HomePage onNavigate={(u) => gone.push(u)} />)
     expect(await screen.findByText('Mina spel')).toBeTruthy()
     expect(screen.getByText('ada@example.com', { exact: false })).toBeTruthy()
+  })
+
+  it('heads the card with the product\'s hand beside its name (#1082)', async () => {
+    render(<LoginCard http={run.http} next="/" onNavigate={() => undefined} />)
+    const heading = await screen.findByRole('heading', { level: 1 })
+    const mark = heading.querySelector('svg[aria-hidden="true"]') as SVGSVGElement
+    const tab = new DOMParser().parseFromString(faviconSvg(), 'image/svg+xml').documentElement
+    const drawn = (svg: Element) => [...svg.querySelectorAll('rect')].map((r) => r.getAttribute('fill'))
+    expect(drawn(mark)).toEqual(drawn(tab))
   })
 
   it('asks for an address, says to check the mail, and after the link shows the account\'s games', async () => {

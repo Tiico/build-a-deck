@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { DecksterMark } from '../brand/DecksterMark.js'
 import { requestLink } from './session.js'
 import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -54,7 +55,11 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
   }
   return (
     <div className="byd-login" data-login>
-      <h1>build-your-deck</h1>
+      {/* The product's one mark (#1082) beside its name, on the card's own dark. */}
+      <h1>
+        <DecksterMark className="byd-login-mark" edge="#171a23" />
+        build-your-deck
+      </h1>
       {pitch && <p className="byd-muted" data-pitch>{t('login.pitch')}</p>}
       {/* The field and its button are under this row, and the box never lands on them (#726). */}
       <div className="byd-muted byd-help-row" data-help-explains=".byd-login form">

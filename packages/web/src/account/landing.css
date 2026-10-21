@@ -39,11 +39,7 @@
 .byd-landing-head nav { display: flex; gap: 12px; align-items: center; flex: none; }
 .byd-landing-mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; white-space: nowrap; min-width: 0; }
 .byd-landing-name { overflow: hidden; text-overflow: ellipsis; }
-.byd-landing-logo { width: 22px; height: 28px; position: relative; flex: none; }
-.byd-landing-logo i { position: absolute; inset: 0; border-radius: 4px; background: #f7f1e3; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
-.byd-landing-logo i:nth-child(1) { transform: rotate(-14deg) translate(-3px, 1px); background: var(--byd-landing-amber); }
-.byd-landing-logo i:nth-child(2) { transform: rotate(-2deg); background: var(--byd-landing-accent); }
-.byd-landing-logo i:nth-child(3) { transform: rotate(11deg) translate(3px, 1px); }
+.byd-landing-logo { width: 30px; height: 30px; flex: none; }
 .byd-landing-quiet { display: inline-flex; align-items: center; min-height: 44px; color: var(--byd-landing-muted); text-decoration: none; font-size: 15px; padding: 0 4px; box-sizing: border-box; }
 .byd-landing-quiet:hover { color: var(--byd-landing-ink); }
 
