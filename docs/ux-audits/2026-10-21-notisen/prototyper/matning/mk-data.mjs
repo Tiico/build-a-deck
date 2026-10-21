@@ -3,7 +3,7 @@
 // och en lupp i 2× över huvudet, notisen och arbetets överkant.
 //   node mk-data.mjs <katalog med results-*.json och png>
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -11,7 +11,9 @@ const DIR = process.argv[2]
 const IMG = join(HERE, '..', 'img')
 mkdirSync(IMG, { recursive: true })
 const rows = new Map()
-for (const f of readdirSync(DIR).filter((f) => f.startsWith('results-')).sort()) {
+// The newest run of a cell wins.
+const byAge = (f) => statSync(join(DIR, f)).mtimeMs
+for (const f of readdirSync(DIR).filter((f) => f.startsWith('results-')).sort((a, b) => byAge(a) - byAge(b))) {
   for (const r of JSON.parse(readFileSync(join(DIR, f), 'utf8'))) rows.set(`${r.v}|${r.s}|${r.key}`, r)
 }
 const out = []

@@ -78,7 +78,10 @@ window.__p1073 = (() => {
           if (n.contains(document.elementFromPoint(cx, cy))) covers.push((el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 30))
         }
       }
-      return { lines: tops.size, box, covers, ink: getComputedStyle(words).color }
+      // The words' own box, for the contrast: a short sentence on a wide band is under 1 % of it.
+      const t = range.getBoundingClientRect()
+      const text = { x: Math.floor(t.x), y: Math.floor(t.y), w: Math.ceil(t.width), h: Math.ceil(t.height) }
+      return { lines: tops.size, box, text, covers, ink: getComputedStyle(words).color }
     },
   }
 })()

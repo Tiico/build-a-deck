@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notisen — prototyp</title>
+<link rel="stylesheet" href="proto.css">
+<!-- PROTOTYP, #1073. Kastas när varianten är vald och byggd. -->
+</head>
+<body>
+<div class="rubrik">
+  <p><b>Notisen, 2026-10-21.</b> Bilder och mätningar av den byggda editorns huvud vid 1024, 1280 och 1440 med en riktig notis uppe och varianterna injicerade; på svenska och engelska, i Macens typsnitt och i ett brett (DejaVus bredd), med och utan ett bord igång, med och utan AI-panelen, med sju meningar som står på samma yta.</p>
+</div>
+<ul>
+  <li><a href="1073-notisen.html">1073 — var editorns notis om något som inte kunde hända står</a> (#1073): Nu, A en egen rad i huvudet, B ett band under huvudet, C en lapp under huvudets högra hörn. Rekommendation B.</li>
+</ul>
+<p class="anteckning">Öppna över http, inte file://: <code>python3 -m http.server 8073 --bind 127.0.0.1</code> i den här katalogen, sedan <code>http://127.0.0.1:8073/1073-notisen.html?v=b&amp;yta=1024-sv-mac-bord-plain&amp;mening=undo-kortleken</code>. Mätningen görs om med skripten i <code>matning/</code> (rig.mts, shoot.mjs, mk-data.mjs).</p>
+</body>
+</html>

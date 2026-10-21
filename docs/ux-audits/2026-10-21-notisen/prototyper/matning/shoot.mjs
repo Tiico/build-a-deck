@@ -169,7 +169,7 @@ for (const w of WIDTHS) for (const lang of ['sv', 'en']) for (const font of ['ma
       const dy = Math.round(p.y - was.y)
       if (dx || dw || dy) moved.push(`${p.k}: x${dx >= 0 ? '+' : ''}${dx} w${dw >= 0 ? '+' : ''}${dw} y${dy >= 0 ? '+' : ''}${dy}`)
     }
-    const contrast = await painted(page, { x: n.box.x, y: n.box.y, width: Math.max(1, n.box.w), height: Math.max(1, n.box.h) })
+    const contrast = await painted(page, { x: n.text.x, y: n.text.y, width: Math.max(1, n.text.w), height: Math.max(1, n.text.h) })
     const file = SHOWN.has(key) && who === 'plain' ? `${v}-${s}-${key}.png` : null
     if (file) await page.screenshot({ path: join(OUT, file) })
     const row = { v, s, w: Number(w), h: H[w], lang, font, state, who, aiOpen, key, text, real, file, lines: n.lines, box: n.box, covers: n.covers, headerBefore: before.header.h, headerAfter: after.header.h, workDown: after.workTop - before.workTop, workTop: after.workTop, nameBefore: before.name, nameAfter: after.name, cut: after.cut, cutBefore: before.cut, moved, across: after.across, contrast }
