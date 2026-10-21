@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ikonbiblioteket — prototyp</title>
+<link rel="stylesheet" href="proto.css">
+<!-- PROTOTYP, #1087. Tre former för var ikonbiblioteken söks och hur ikonlagret färgas, i Mall med en lek
+     vars kolumn «typ» är Anfall, Försvar, Magi och Händelse. Kastas när varianten är vald och byggd. -->
+<script src="data.js"></script>
+</head>
+<body>
+<div class="top">
+  <span style="color:var(--quiet)">Mina spel</span><b>Duellen</b><span style="color:var(--quiet)">v4 · Sparat</span>
+  <div class="tabs" id="tabs"></div>
+</div>
+<div class="work">
+  <div class="rail"><div>T<br>Text</div><div>▣<br>Bild</div><div class="on">●<br>Ikon</div><div>●●<br>Ikonrad</div><div>◻<br>Form</div></div>
+  <div class="layers" id="layers"></div>
+  <div class="stage" id="stage"></div>
+  <div class="props" id="props"></div>
+</div>
+<div class="note forklaring" id="forklaring"></div>
+<div class="vaxlare" role="toolbar" aria-label="Prototypens varianter">
+  <button id="prev" aria-label="Föregående variant">←</button><span class="namn" id="vnamn"></span><button id="next" aria-label="Nästa variant">→</button>
+</div>
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────────────────────
+const wrap = (body, size) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" fill="#000" color="#000">${body}</svg>`
+// Enkla citattecken, eftersom url() står i ett style-attribut med dubbla.
+const url = (svg) => `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27')}')`
+const LIB = [
+  ...DK.map(([n, w, b]) => ({ id: 'dk:' + n, name: n, words: w, src: 'dk', lic: 'CC0-1.0', by: 'Deckster', svg: wrap(b, 24) })),
+  ...GI.map(([n, by, b]) => ({ id: 'gi:' + n, name: n, words: '', src: 'gi', lic: 'CC BY 3.0', by, svg: wrap(b, 512) })),
+  ...LU.map(([n, t, b]) => ({ id: 'lu:' + n, name: n, words: t, src: 'lu', lic: 'ISC', by: 'Lucide', svg: wrap(b, 24) })),
+]
+const BY = Object.fromEntries(LIB.map((i) => [i.id, i]))
+const SRC = { dk: 'Deckster', gi: 'Game Icons', lu: 'Lucide', egen: 'Egen' }
+const TOTAL = DK.length + window.TOTAL.gi + window.TOTAL.lu
+const DECK = [
+  { titel: 'Hugg', typ: 'Anfall', text: 'Gör 3 skada på en motståndare.' },
+  { titel: 'Parera', typ: 'Försvar', text: 'Förhindra nästa skada du tar den här rundan.' },
+  { titel: 'Gnista', typ: 'Magi', text: 'Dra två kort. Kasta sedan ett.' },
+  { titel: 'Stormen', typ: 'Händelse', text: 'Alla spelare skickar ett kort till vänster.' },
+]
+const VALUES = ['Anfall', 'Försvar', 'Magi', 'Händelse']
+const COUNT = { Anfall: 18, Försvar: 14, Magi: 11, Händelse: 6 }
+const INK = '#2b2118', PAPER = '#f5eedc'
+// En uppladdad fil i flera färger, för att visa vad en silhuett gör av den: den vita stjärnan blir inget hål.
+const UPLOAD_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#c0392b"/><circle cx="32" cy="32" r="22" fill="#f1c40f"/><path d="M32 16l4.7 9.5 10.5 1.5-7.6 7.4 1.8 10.4L32 40l-9.4 4.8 1.8-10.4-7.6-7.4 10.5-1.5z" fill="#fff"/></svg>'
+
+// ── Tillstånd ─────────────────────────────────────────────────────────────────────────────────
+const VARIANTS = [
+  { id: 'A', namn: 'A — Arket under kortet, en tabell per typ', rek: true },
+  { id: 'B', namn: 'B — Speltema är hemmet, Mall väljer ur spelets ikoner' },
+  { id: 'C', namn: 'C — Väljaren på kortet, med färgen i samma ruta' },
+]
+const params = new URLSearchParams(location.search)
+const S = {
+  v: (params.get('v') || 'A').toUpperCase(), card: 0, tab: 'Mall',
+  byColumn: true, icon: 'gi:crossed-swords', colour: INK,
+  iconMap: { Anfall: 'gi:crossed-swords', Försvar: 'gi:checked-shield', Magi: 'gi:crystal-wand' },
+  colourMap: { Anfall: '#a8322d', Försvar: '#2f5d8a', Magi: '#6b3f8f' }, colourElse: INK,
+  open: false, target: null, q: '', src: 'alla', uploading: false, preview: null,
+  game: new Set(['gi:crossed-swords', 'gi:checked-shield', 'gi:crystal-wand']),
+}
+
+// ── Hjälpare ──────────────────────────────────────────────────────────────────────────────────
+const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const ink = (id, colour) => id && BY[id] ? `<span class="ink" style="background:${colour};-webkit-mask-image:${url(BY[id].svg)};mask-image:${url(BY[id].svg)}"></span>` : ''
+const lum = (hex) => { const c = hex.match(/\w\w/g).map((x) => parseInt(x, 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+const contrast = (c) => { const r = ratio(c, PAPER); return `<span class="contrast ${r < 3 ? 'low' : ''}">${r.toFixed(1).replace('.', ',')}:1${r < 3 ? ' — svag mot papperet' : ''}</span>` }
+const iconOf = (row) => S.preview && S.target === (S.byColumn ? row.typ : 'fast') ? S.preview : S.byColumn ? S.iconMap[row.typ] : S.icon
+const colourOf = (row) => (S.byColumn ? S.colourMap[row.typ] ?? S.colourElse : S.colour)
+const words = (q) => q.toLowerCase().split(/[\s,]+/).filter(Boolean).map((w) => { const sv = Object.keys(SV).find((k) => k.startsWith(w)); return sv ? [w, SV[sv]] : [w] })
+function search() {
+  const ws = words(S.q)
+  const pool = LIB.filter((i) => S.src === 'alla' || (S.src === 'spelet' ? S.game.has(i.id) : i.src === S.src))
+  // Namnet matchas var som helst (så «sword» hittar «broadsword»), nyckelorden bara från ordets början (så inte «password»).
+  const hits = pool.filter((i) => ws.every((alts) => alts.some((w) => i.name.includes(w) || i.words.split(/[\s,]+/).some((k) => k.startsWith(w)))))
+  return hits.sort((a, b) => (S.game.has(b.id) - S.game.has(a.id)) || (a.src === 'dk' ? -1 : 0) - (b.src === 'dk' ? -1 : 0) || a.name.length - b.name.length)
+}
+const shown = (i) => i.name.replace(/-/g, ' ')
+
+// ── Ytor som alla varianter delar ─────────────────────────────────────────────────────────────
+function card(row, selected) {
+  const ic = iconOf(row)
+  return `<div class="card"><div class="frame"></div><div class="band"></div><div class="title">${esc(row.titel)}</div><div class="typ">${esc(row.typ)}</div>
+    <div class="iconbox ${selected ? 'sel' : ''}" id="iconbox">${ic ? ink(ic, colourOf(row)) : ''}</div>
+    <div class="body">${esc(row.text)}</div></div>`
+}
+function nav() {
+  return `<div class="nav"><span style="color:var(--quiet)">Leken</span><div class="mini">${DECK.map((r, i) => `<button data-card="${i}" class="${i === S.card ? 'on' : ''}"><span class="chip">${iconOf(r) ? ink(iconOf(r), colourOf(r)) : ''}</span>${esc(r.titel)} <small style="color:var(--quiet)">${esc(r.typ)}</small></button>`).join('')}</div></div>`
+}
+function layers() {
+  return `<p class="cap">Lager · Framsida</p><div class="layer on">●&nbsp; typikon <small>${S.byColumn ? 'efter typ' : shown(BY[S.icon])}</small></div>` +
+    ['title', 'typ', 'body', 'band', 'frame', 'paper'].map((n) => `<div class="layer">${n === 'band' || n === 'frame' || n === 'paper' ? '▢' : 'T'}&nbsp; ${n}</div>`).join('')
+}
+function sources() {
+  const n = (k) => (k === 'alla' ? TOTAL : k === 'spelet' ? S.game.size : k === 'dk' ? DK.length : window.TOTAL[k])
+  return `<div class="sources">${['alla', 'spelet', 'dk', 'gi', 'lu'].map((k) => `<button data-src="${k}" class="${S.src === k ? 'on' : ''}">${k === 'alla' ? 'Alla' : k === 'spelet' ? 'I spelet' : SRC[k]} <small>${n(k).toLocaleString('sv')}</small></button>`).join('')}</div>`
+}
+function tile(i, colour) {
+  return `<button class="tile ${S.preview === i.id ? 'on' : ''}" data-pick="${i.id}" title="${esc(shown(i))} · ${esc(i.lic)} · ${esc(i.by)}"><span class="paper">${ink(i.id, colour)}</span><span class="nm">${esc(shown(i))}</span><span class="src">${S.game.has(i.id) ? '<b>I spelet</b>' : `${SRC[i.src]} · ${esc(i.lic)}`}</span></button>`
+}
+function upload(colour) {
+  if (!S.uploading) return ''
+  return `<div class="upload"><div class="pv"><div><img src="data:image/svg+xml,${encodeURIComponent(UPLOAD_SVG)}" width="48" height="48" alt=""></div>Filen</div>
+    <div class="pv"><div><span class="ink" style="background:${colour};-webkit-mask-image:${url(UPLOAD_SVG)};mask-image:${url(UPLOAD_SVG)}"></span></div>Som ikon</div>
+    <div><label>Namn <input type="text" value="min-logga"></label><div class="row"><label style="flex:1">Licens <input type="text" placeholder="t.ex. CC BY 4.0"></label><label style="flex:1">Upphovsperson <input type="text"></label></div>
+    <p class="lbl" style="line-height:1.5">min-logga.svg · 1,2 kB. Skript, länkar och inbäddade bilder tas bort när filen sparas. Ikonen ritas som en form i lagrets färg — det vita i filen blir färg, inte ett hål.</p>
+    <div class="row"><button class="btn primary" data-upload-done>Lägg till i spelet</button><button class="btn" data-upload-cancel>Avbryt</button></div></div></div>`
+}
+function libraryBody(cols, colour, max = 60) {
+  const hits = search()
+  return `<div class="grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${hits.slice(0, max).map((i) => tile(i, colour)).join('') || `<p class="empty">Ingen ikon heter så. Pröva ett kortare ord, eller på engelska.</p>`}</div>
+    <div class="foot" style="margin-top:8px"><span>${Math.min(max, hits.length)} av ${hits.length.toLocaleString('sv')} träffar · urval i prototypen: ${LIB.length.toLocaleString('sv')} av ${TOTAL.toLocaleString('sv')}</span></div>`
+}
+function searchField(placeholder, grow = true) {
+  return `<input class="field" id="q" style="${grow ? 'flex:1;' : 'flex:none;'}width:100%" placeholder="${placeholder}" value="${esc(S.q)}" autocomplete="off">`
+}
+function colourWell(key, value) {
+  return `<span class="well"><input type="color" data-colour="${key}" value="${value}"></span>`
+}
+const targetColour = () => (S.target && S.target !== 'fast' ? S.colourMap[S.target] ?? S.colourElse : S.colour)
+const targetLabel = () => (S.target && S.target !== 'fast' ? `för typ = ${S.target}` : 'för alla kort')
+
+// ── Variant A: arket under kortet, och en tabell per typ i panelen ────────────────────────────
+function A() {
+  const row = DECK[S.card]
+  const sheet = S.open ? `<div style="position:absolute;left:0;right:0;bottom:52px;height:60%;background:#1b1d24;border-top:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 -10px 30px #0006">
+      <div class="row" style="margin:0">${searchField(`Sök bland ${TOTAL.toLocaleString('sv')} ikoner — svenska eller engelska`)}<button class="btn" data-upload>Ladda upp SVG …</button><button class="btn" data-close>Stäng</button></div>
+      <div class="row" style="margin:0;justify-content:space-between">${sources()}<span class="lbl" style="margin:0">Väljer ikon ${targetLabel()}</span></div>
+      ${upload(targetColour())}
+      <div style="overflow:auto;flex:1">${libraryBody(7, targetColour(), 63)}</div>
+      <div class="foot"><span>Proven ritas på kortets papper i lagrets färg. Ikonen kopieras in i spelet med sin licens.</span></div></div>` : ''
+  stage.innerHTML = `<div class="canvas" style="${S.open ? 'place-items:start center;padding-top:14px' : ''}"><div style="${S.open ? 'transform:scale(.62);transform-origin:top center' : ''}">${card(row, true)}</div></div>${sheet}${nav()}`
+  const mode = `<div class="switch"><button data-mode="fast" class="${S.byColumn ? '' : 'on'}">Samma på alla</button><button data-mode="kolumn" class="${S.byColumn ? 'on' : ''}">Efter kolumn</button></div>`
+  const rows = S.byColumn
+    ? `<div class="row" style="margin:8px 0 4px"><span class="lbl" style="margin:0">Kolumn</span><select class="field" style="flex:1"><option>typ</option><option>raritet</option></select></div>` +
+      VALUES.map((v) => `<div class="valrow"><button class="tile ${S.open && S.target === v ? 'on' : ''}" style="padding:3px" data-open="${v}" aria-label="Byt ikon för ${v}"><span class="paper" style="width:30px;height:30px;padding:3px">${S.iconMap[v] ? ink(S.iconMap[v], S.colourMap[v] ?? S.colourElse) : '<span style="color:#8a7f6a;font-size:18px;line-height:24px">＋</span>'}</span></button>
+        <span class="v">${v}<small>${COUNT[v]} kort · ${S.iconMap[v] ? shown(BY[S.iconMap[v]]) : 'ingen ikon'}</small></span>${colourWell(v, S.colourMap[v] ?? S.colourElse)}</div>`).join('') +
+      `<div class="valrow"><span></span><span class="v">Övriga<small>ett värde utan rad</small></span>${colourWell('else', S.colourElse)}</div>`
+    : `<div class="valrow"><button class="tile" style="padding:3px" data-open="fast"><span class="paper" style="width:30px;height:30px;padding:3px">${ink(S.icon, S.colour)}</span></button><span class="v">${shown(BY[S.icon])}<small>${BY[S.icon].lic} · ${esc(BY[S.icon].by)}</small></span>${colourWell('fast', S.colour)}</div>`
+  props.innerHTML = `<p class="cap">Egenskaper · typikon</p><p class="cap" style="margin-top:16px">⌄ Layout</p><div class="row"><span class="field" style="flex:1">X 52 mm</span><span class="field" style="flex:1">Y 18 mm</span></div><div class="row"><span class="field" style="flex:1">B 8 mm</span><span class="field" style="flex:1">H 8 mm</span></div>
+    <p class="cap" style="margin-top:16px">⌄ Ikon och färg</p>${mode}${rows}
+    <p class="lbl" style="margin-top:10px;line-height:1.5">${S.byColumn ? 'Tryck på en ikon för att byta den. Kontrasten mot papperet:' : 'Kontrasten mot papperet:'} ${contrast(colourOf(row))}</p>`
+}
+
+// ── Variant B: Speltema är hemmet; Mall väljer bara ur spelets egna ikoner ────────────────────
+function B() {
+  if (S.tab === 'Speltema') return Btheme()
+  const row = DECK[S.card]
+  stage.innerHTML = `<div class="canvas">${card(row, true)}</div>${nav()}`
+  const gameIcons = [...S.game].map((id) => BY[id]).filter(Boolean)
+  const pick = (key, current) => `<select class="field" style="flex:1" data-select="${key}">${gameIcons.map((i) => `<option value="${i.id}" ${i.id === current ? 'selected' : ''}>${esc(shown(i))}</option>`).join('')}<option value="">ingen ikon</option></select>`
+  props.innerHTML = `<p class="cap">Egenskaper · typikon</p><p class="cap" style="margin-top:16px">⌄ Layout</p><div class="row"><span class="field" style="flex:1">X 52 mm</span><span class="field" style="flex:1">Y 18 mm</span></div>
+    <p class="cap" style="margin-top:16px">⌄ Ikon</p>
+    <div class="switch" style="margin-bottom:8px"><button data-mode="fast" class="${S.byColumn ? '' : 'on'}">Fast</button><button data-mode="kolumn" class="${S.byColumn ? 'on' : ''}">Följer typ</button></div>
+    ${S.byColumn ? VALUES.map((v) => `<div class="row"><span style="width:70px">${v}</span>${pick(v, S.iconMap[v])}</div>`).join('') : `<div class="row">${pick('fast', S.icon)}</div>`}
+    <button class="btn quiet" data-tab="Speltema">Fler ikoner finns i Speltema ›</button>
+    <p class="cap" style="margin-top:16px">⌄ Färg</p>
+    <div class="switch" style="margin-bottom:8px"><button data-cmode="fast" class="${S.byColumn ? '' : 'on'}">Fast</button><button data-cmode="kolumn" class="${S.byColumn ? 'on' : ''}">Följer typ</button></div>
+    ${S.byColumn ? VALUES.map((v) => `<div class="row"><span style="width:70px">${v}</span>${colourWell(v, S.colourMap[v] ?? S.colourElse)}${contrast(S.colourMap[v] ?? S.colourElse)}</div>`).join('') : `<div class="row">${colourWell('fast', S.colour)}${contrast(S.colour)}</div>`}`
+}
+function Btheme() {
+  stage.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px;height:100%;overflow:hidden">
+    <div style="overflow:auto"><div class="field" style="padding:14px"><p style="font-weight:700;margin:0 0 10px">⌄ Spelets ikoner <span style="color:var(--quiet);font-weight:400">${S.game.size}</span></p>
+      ${[...S.game].map((id) => BY[id]).filter(Boolean).map((i) => `<div class="row" style="border:1px solid var(--line);border-radius:8px;padding:6px"><span class="tile" style="padding:3px"><span class="paper" style="width:30px;height:30px;padding:3px">${ink(i.id, INK)}</span></span><code style="color:var(--amber)">{${esc(i.name)}}</code><span style="flex:1;color:var(--quiet)">${esc(i.lic)} · ${esc(i.by)}</span><span class="btn" style="min-height:0;padding:4px 9px">×</span></div>`).join('')}
+      <p class="lbl" style="margin-top:10px">En ikon som tas in här finns i Mallens ikonlager och i klammern i Tabell.</p></div></div>
+    <div class="field" style="padding:14px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+      <div class="row" style="margin:0;justify-content:space-between"><b>Ikonbibliotek</b><span><button class="btn" data-upload>Ladda upp SVG …</button> <button class="btn" data-tab="Mall">Klar</button></span></div>
+      ${searchField(`Sök bland ${TOTAL.toLocaleString('sv')} ikoner`, false)}${sources()}${upload(INK)}
+      <div style="overflow:auto;flex:1">${libraryBody(4, INK, 48)}</div></div></div>${''}`
+  props.innerHTML = `<p class="lbl" style="line-height:1.5">I B har Speltema hela bredden; Mallens panel syns inte här. Ett tryck på en ikon tar in den i spelet. Den placeras inte — det görs i Mall, ur spelets ikoner.</p>`
+}
+
+// ── Variant C: väljaren hänger vid ikonen på kortet, med färgen i samma ruta ──────────────────
+function C() {
+  const row = DECK[S.card]
+  const t = S.byColumn ? row.typ : 'fast'
+  S.target = t
+  const colour = colourOf(row)
+  const swatches = ['#2b2118', '#a8322d', '#2f5d8a', '#6b3f8f', '#2f6b3a', '#b07a1c']
+  const pop = S.open ? `<div style="position:absolute;right:16px;top:16px;width:420px;max-height:calc(100% - 120px);background:#1b1d24;border:1px solid #4a5063;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 40px #0008">
+      <div class="row" style="margin:0;justify-content:space-between"><b>Ikon ${S.byColumn ? `för typ = ${esc(row.typ)}` : 'på alla kort'}</b><label class="lbl" style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" data-bycol ${S.byColumn ? 'checked' : ''}> Olika per typ</label></div>
+      ${searchField('Sök — svenska eller engelska', false)}${sources()}${upload(colour)}
+      <div style="overflow:auto;flex:1;min-height:120px">${libraryBody(5, colour, 40)}</div>
+      <div><p class="lbl">Färg ${S.byColumn ? `för ${esc(row.typ)}` : ''}</p><div class="row" style="margin:0;flex-wrap:wrap">${swatches.map((c) => `<button data-swatch="${c}" style="width:28px;height:28px;border-radius:50%;border:2px solid ${c === colour ? '#fff' : 'transparent'};background:${c}" aria-label="${c}"></button>`).join('')}${colourWell(S.byColumn ? row.typ : 'fast', colour)}${contrast(colour)}</div></div>
+      <div class="row" style="margin:0;justify-content:space-between"><button class="btn" data-upload>Ladda upp SVG …</button><button class="btn primary" data-close>Klar</button></div></div>` : ''
+  stage.innerHTML = `<div class="canvas" style="${S.open ? 'justify-items:start;padding-left:32px' : ''}">${card(row, true)}</div>${pop}${nav()}`
+  props.innerHTML = `<p class="cap">Egenskaper · typikon</p><p class="cap" style="margin-top:16px">⌄ Layout</p><div class="row"><span class="field" style="flex:1">X 52 mm</span><span class="field" style="flex:1">Y 18 mm</span></div>
+    <p class="cap" style="margin-top:16px">⌄ Ikon</p><button class="btn" data-open="${t}" style="width:100%;text-align:left">${S.open ? 'Väljaren är öppen vid kortet' : 'Välj ikon och färg …'}</button>
+    <p class="lbl" style="margin-top:10px;line-height:1.5">Väljaren öppnas också med ett dubbelklick på ikonen. Att peka på en ikon i listan visar den på kortet innan den väljs.</p>`
+}
+
+// ── Montering ─────────────────────────────────────────────────────────────────────────────────
+const stage = document.getElementById('stage'), props = document.getElementById('props')
+const FORKLARING = {
+  A: '<b>A (rekommenderas).</b> Typsnittskatalogens form (L27): biblioteket är ett ark under kortet, och kortet står kvar ovanför. Ikonen och färgen sitter i samma tabell i panelen, en rad per värde i kolumnen — så «ikon per korttyp» är en tabell att fylla i, som formens fyllning efter kolumn (L16). <span class="plus">+</span> en väg, hela leken syns i tabellen. <span class="minus">−</span> arket döljer kortets nedre del medan man väljer.',
+  B: '<b>B.</b> Speltema äger biblioteket (L57): ikoner tas in i spelet där, och Mallens ikonlager väljer bara ur spelets egna. Ikon och färg är två sektioner. <span class="plus">+</span> spelets uppsättning hålls liten och samlad. <span class="minus">−</span> en ny ikon kräver ett flikbyte, och ikonen syns inte på kortet medan man söker.',
+  C: '<b>C.</b> Väljaren hänger vid ikonen på kortet. Att peka på en ikon visar den på kortet direkt, och färgen väljs i samma ruta. <span class="plus">+</span> snabbast, och förhandsvisningen är kortet självt. <span class="minus">−</span> man ser bara ett kort och en typ i taget, och rutan skymmer duken bredvid kortet.',
+}
+function render() {
+  const keepFocus = document.activeElement?.id === 'q', caret = keepFocus ? document.activeElement.selectionStart : 0
+  document.getElementById('tabs').innerHTML = ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'].map((t) => `<span class="${t === S.tab ? 'on' : ''}" data-tab="${t}">${t}</span>`).join('')
+  document.getElementById('layers').innerHTML = layers()
+  ;({ A, B, C })[S.v]()
+  const v = VARIANTS.find((x) => x.id === S.v)
+  document.getElementById('vnamn').textContent = v.namn + (v.rek ? ' · rekommenderas' : '')
+  document.getElementById('forklaring').innerHTML = FORKLARING[S.v]
+  if (keepFocus) { const q = document.getElementById('q'); if (q) { q.focus(); q.setSelectionRange(caret, caret) } }
+}
+function go(d) {
+  const i = (VARIANTS.findIndex((x) => x.id === S.v) + d + VARIANTS.length) % VARIANTS.length
+  Object.assign(S, { v: VARIANTS[i].id, open: false, uploading: false, tab: 'Mall', preview: null, q: '', src: 'alla' })
+  params.set('v', S.v); history.replaceState(null, '', '?' + params)
+  render()
+}
+document.getElementById('prev').onclick = () => go(-1)
+document.getElementById('next').onclick = () => go(1)
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input,textarea,select,[contenteditable]')) return
+  if (e.key === 'ArrowLeft') go(-1)
+  if (e.key === 'ArrowRight') go(1)
+  if (e.key === 'Escape' && S.open) { S.open = false; render() }
+})
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'q') { S.q = e.target.value; render() }
+  const k = e.target.dataset.colour
+  if (k) {
+    if (k === 'fast') S.colour = e.target.value
+    else if (k === 'else') S.colourElse = e.target.value
+    else S.colourMap[k] = e.target.value
+    // Bara kortet och leken ritas om medan brunnen dras, så färgväljaren står kvar öppen.
+    const row = DECK[S.card]
+    document.getElementById('iconbox').innerHTML = iconOf(row) ? ink(iconOf(row), colourOf(row)) : ''
+    document.querySelector('.nav').outerHTML = nav()
+  }
+})
+document.addEventListener('change', (e) => {
+  if (e.target.dataset.colour) render()
+  const sel = e.target.dataset.select
+  if (sel) { if (sel === 'fast') S.icon = e.target.value; else S.iconMap[sel] = e.target.value || undefined; render() }
+  if (e.target.matches('[data-bycol]')) { S.byColumn = e.target.checked; render() }
+})
+document.addEventListener('pointerover', (e) => {
+  if (S.v !== 'C') return
+  const p = e.target.closest('[data-pick]')?.dataset.pick ?? null
+  if (p === S.preview) return
+  S.preview = p
+  const row = DECK[S.card]
+  document.getElementById('iconbox').innerHTML = iconOf(row) ? ink(iconOf(row), colourOf(row)) : ''
+})
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button,[data-tab],[data-card]')
+  if (!el) return
+  const d = el.dataset
+  if (d.tab) { S.tab = d.tab; S.open = false; S.uploading = false }
+  else if (d.card) S.card = +d.card
+  else if (d.open) { S.open = true; S.target = d.open; S.q = ''; S.src = 'alla' }
+  else if (d.close !== undefined) { S.open = false; S.uploading = false }
+  else if (d.mode || d.cmode) S.byColumn = (d.mode || d.cmode) === 'kolumn'
+  else if (d.src) S.src = d.src
+  else if (d.swatch) { if (S.byColumn) S.colourMap[DECK[S.card].typ] = d.swatch; else S.colour = d.swatch }
+  else if (d.upload !== undefined) S.uploading = true
+  else if (d.uploadCancel !== undefined) S.uploading = false
+  else if (d.uploadDone !== undefined) {
+    BY['egen:min-logga'] = { id: 'egen:min-logga', name: 'min-logga', words: '', src: 'egen', lic: 'ingen angiven', by: '—', svg: UPLOAD_SVG }
+    LIB.unshift(BY['egen:min-logga']); S.game.add('egen:min-logga'); S.uploading = false; S.src = 'spelet'
+  } else if (d.pick) {
+    S.game.add(d.pick); S.preview = null
+    if (S.v === 'B') { /* tas bara in i spelet */ }
+    else if (S.target === 'fast') S.icon = d.pick
+    else S.iconMap[S.target] = d.pick
+    if (S.v === 'A') S.open = false
+  } else return
+  render()
+})
+render()
+</script>
+</body>
+</html>

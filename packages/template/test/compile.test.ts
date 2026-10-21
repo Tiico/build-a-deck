@@ -672,6 +672,52 @@ describe('compile — a symbol in the colour of its role (E4)', () => {
   })
 })
 
+// The icon layer wears a colour of its own (#1087), the way a shape wears its fill: one colour, or
+// one per value of a column (L16). It is the template's colour and not the card text's, so it is
+// one place to change, and a meaning written in the cell still says more than the layer does.
+describe('compile — an icon layer in a colour of its own (#1087)', () => {
+  const set = { svard: 'svard.svg', skold: 'skold.svg' }
+  const layer = (extra: object, bind: object = { literal: 'svard' }): FaceTemplate => ({
+    base: [{ kind: 'icons', id: 'typ', x: 50, y: 4, w: 8, h: 8, bind, iconMm: 8, ...extra } as Element],
+    variants: {},
+  })
+  const draw = (face: FaceTemplate, row: Record<string, string> = {}) => compile({ type: CARD_STANDARD_63x88, face, row, icons: set, palette: { fara: '#8f2d20' } })
+
+  it('paints the icon in the layer’s colour, through its own shape', () => {
+    const out = draw(layer({ color: '#2f5d8a' }))
+
+    expect(out.html).toContain('<span class="byd-icon byd-ink" role="img" aria-label="svard" style="background:#2f5d8a;-webkit-mask-image:url(&quot;svard.svg&quot;);mask-image:url(&quot;svard.svg&quot;)"></span>')
+    expect(out.warnings).toEqual([])
+  })
+
+  it('lets a meaning written in the cell paint its own icon over the layer’s colour', () => {
+    const out = draw(layer({ color: '#2f5d8a' }, { field: 'marks' }), { marks: 'svard|fara skold' })
+
+    expect(out.html).toContain('aria-label="svard" style="background:#8f2d20;')
+    expect(out.html).toContain('aria-label="skold" style="background:#2f5d8a;')
+  })
+
+  it('picks the icon and its colour by the value of a column, so a card type needs no icon names in the deck', () => {
+    const typed = layer(
+      { pick: { map: { Anfall: 'svard', Försvar: 'skold' } }, color: { field: 'typ', map: { Anfall: '#a8322d', Försvar: '#2f5d8a' } } },
+      { field: 'typ' },
+    )
+
+    expect(draw(typed, { typ: 'Anfall' }).html).toContain('aria-label="svard" style="background:#a8322d;')
+    expect(draw(typed, { typ: 'Försvar' }).html).toContain('aria-label="skold" style="background:#2f5d8a;')
+  })
+
+  it('draws nothing for a value the pick does not name, unless it says what such a card gets', () => {
+    const typed = (pick: object) => layer({ pick }, { field: 'typ' })
+
+    const bare = draw(typed({ map: { Anfall: 'svard' } }), { typ: 'Händelse' })
+    expect(bare.html).toContain('<div data-element="typ"></div>')
+    // A value with no icon is a card without one, not a fault: the word is not an icon name.
+    expect(bare.warnings).toEqual([])
+    expect(draw(typed({ map: { Anfall: 'svard' }, else: 'skold' }), { typ: 'Händelse' }).html).toContain('alt="skold"')
+  })
+})
+
 // A body carrying the subset (L2, #308): bold, italic, paragraphs, a bullet list and symbols.
 // One code path draws it — the editor preview, the felt's texture and the print PDF all come
 // through `compile` (B3, E2) — so what is asserted here is what every surface shows.

@@ -1,5 +1,5 @@
 import type { ComponentTypeDef } from '@byd/engine'
-import { elementsFor } from './compile.js'
+import { elementsFor, iconsOf } from './compile.js'
 import { detectScript } from './fit.js'
 import type { FitReport } from './dom-fit.js'
 import { paintOf, type Element, type FaceTemplate, type Row } from './model.js'
@@ -27,6 +27,9 @@ const SMALL_TEXT_FACTOR = 1.35
 // Print contrast, in the ratio WCAG uses: under 3 is unreadable on paper, under 4.5 is a risk.
 const CONTRAST_ERROR = 3
 const CONTRAST_WARNING = 4.5
+// Graphics have one rung (WCAG 1.4.11): an icon under 3 is lost on its ground. An icon is a shape
+// to recognise and not a word to read letter by letter, so there is no second, stricter warning.
+const ICON_CONTRAST = 3
 // What a press can hold. Below a quarter of a millimetre a line breaks up or disappears.
 const HAIRLINE_ERROR_MM = 0.25
 const HAIRLINE_WARNING_MM = 0.4
@@ -62,6 +65,18 @@ export function validateCard({ type, face, row, fonts, fitted }: ValidateInput):
         const ratio = Math.min(...behind.map((colour) => contrastRatio(el.color, colour)))
         if (ratio < CONTRAST_ERROR) issues.push({ element: el.id, code: 'low-contrast', severity: 'error', values: { ratio: ratio.toFixed(1), limit: CONTRAST_ERROR } })
         else if (ratio < CONTRAST_WARNING) issues.push({ element: el.id, code: 'low-contrast', severity: 'warning', values: { ratio: ratio.toFixed(1), limit: CONTRAST_WARNING } })
+      }
+    }
+
+    // A coloured icon layer (#1087) is read against its ground like the words are. One with no
+    // colour of its own is the file's ink, which this check cannot see into; and a card the layer
+    // draws no icon on has nothing to read.
+    if (el.kind === 'icons') {
+      const ink = paintOf(el.color, row)
+      const behind = behindOf(box, boxes, row)
+      if (ink !== undefined && behind.length > 0 && iconsOf(el, row).length > 0) {
+        const ratio = Math.min(...behind.map((colour) => contrastRatio(ink, colour)))
+        if (ratio < ICON_CONTRAST) issues.push({ element: el.id, code: 'low-contrast', severity: 'error', values: { ratio: ratio.toFixed(1), limit: ICON_CONTRAST } })
       }
     }
 

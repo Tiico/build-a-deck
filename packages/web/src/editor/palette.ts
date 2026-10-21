@@ -139,6 +139,9 @@ export function iconsPainted(doc: Pick<ProjectDoc, 'template'>): Record<string, 
   const walk = (els: ProjectDoc['template']['faces'][string]['base'], how: Painted, touched: ReadonlySet<string>) => {
     for (const el of els) {
       if (el.kind === 'icons' && 'literal' in el.bind) for (const name of namesIn(el.bind.literal)) paint(name, touched.has(el.id) ? 'some' : how)
+      // A layer that picks its icon by a column's value (#1087) paints each icon on the cards with
+      // that value, and its fallback on the rest — never one icon on every card.
+      if (el.kind === 'icons' && el.pick && 'field' in el.bind) for (const name of [...Object.values(el.pick.map), ...(el.pick.else ? [el.pick.else] : [])]) for (const n of namesIn(name)) paint(n, 'some')
       // A condition is the template's own way of saying "not on every card"; a group is a
       // position and decides nothing about whether what it holds is drawn.
       if (el.kind === 'if') walk(el.children, 'some', touched)

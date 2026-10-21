@@ -134,4 +134,11 @@ describe('the symbols the template paints (#213)', () => {
     // And one that replaces it by id draws its own symbol there instead, on those cards only.
     expect(iconsPainted(faces([mark('svärd')], { hjälte: { override: [mark('krona', 'mark')] } }))).toEqual({ svärd: 'some', krona: 'some' })
   })
+
+  it('reads a layer that picks its icon by a column as painting each of them on some cards (#1087)', () => {
+    // «Anfall» draws the sword and «Försvar» the shield; neither is on every card, and the icon for
+    // a value the table does not name is on the rest of them — some cards too.
+    const picking = { kind: 'icons', id: 'typ', x: 50, y: 6, w: 8, h: 8, bind: { field: 'typ' }, iconMm: 8, pick: { map: { Anfall: 'svärd', Försvar: 'sköld' }, else: 'stjärna' } }
+    expect(iconsPainted(faces([picking]))).toEqual({ svärd: 'some', sköld: 'some', stjärna: 'some' })
+  })
 })

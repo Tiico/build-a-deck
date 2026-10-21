@@ -80,13 +80,6 @@ export const ImageElement = z.object({
   // only reach this schema through `liftTemplate` and nothing drops the field quietly.
   frame: z.strictObject({ fill: z.number().gt(0).lte(1) }).optional(),
 })
-export const IconsElement = z.object({
-  kind: z.literal('icons'),
-  ...Box,
-  bind: Bind,
-  iconMm: Mm.positive(),
-  gapMm: Mm.nonnegative().optional(),
-})
 // A colour, or a rule that reads one off the deck (L16): the column to look in, a colour per
 // value, and what a value the rule does not name gets. The colours stay in the template, where
 // every other style lives — the deck says which of them a card gets, and changing a shade is one
@@ -112,6 +105,24 @@ export function paintOf(paint: Paint | undefined, row: Row): string | undefined 
   const named = value === null || value === undefined ? undefined : paint.map[String(value)]
   return named ?? paint.else
 }
+
+export const IconsElement = z.object({
+  kind: z.literal('icons'),
+  ...Box,
+  bind: Bind,
+  iconMm: Mm.positive(),
+  gapMm: Mm.nonnegative().optional(),
+  // The layer's own colour (#1087), as a shape has its fill: one colour, or one per value of a
+  // column (L16). Without it an icon is the picture it has always been, which is what lets an old
+  // template compile to the bytes it always did. A meaning written in the cell, `svard|fara`,
+  // still paints its own icon: the card's words say more about one icon than the layer does.
+  color: Paint.optional(),
+  // Which icon a value picks (#1087), when the layer reads a column of words rather than a column
+  // of icon names: «Anfall» is a card type, and the deck should not have to learn that it is drawn
+  // as `svard`. The same shape as a paint's rule, so a type's icon and its colour are one table.
+  // Only a layer bound to a field has a value to pick by; on a fixed icon it means nothing.
+  pick: z.object({ map: z.record(z.string(), z.string().min(1)), else: z.string().min(1).optional() }).optional(),
+})
 
 // A shadow (L17): how far the shape is lifted off the paper, how softly, and in what colour.
 // Transparency is its own number rather than part of the colour, because the tool that picks a

@@ -7379,3 +7379,41 @@ Allt räknas på servern i en endpoint per spel, `GET /projects/:id/playtest`, m
 Namnen härleds ur `seat.claim` och inträdena, aldrig i klienten; «drag n av N» räknas med motorns `movesOf`, de rader i spel som är fysiska drag.
 Ett enkätsvar kommer från ett inträde och ett per plats och observatör (#1021), så summorna räknar bara svar som deltagarna gav.
 `playtest-route.test.ts` prövar endpointen mot minne och Postgres, och att betraktaren får 403; `playtest-results.spec.ts` spelar ett bord från två telefoner, flaggar, avslutar och svarar, och läser svaren i Resultat i det byggda appen.
+
+### L71. Ikonbiblioteken söks som typsnitten, och ikonlagret har en färg och en ikon per värde (prototypat och beslutat 2026-10-21, #1087)
+
+En enkel ikon som visar vilken typ ett kort är, ett svärd på anfallen och en sköld på försvaren, är något nästan varje lek vill ha.
+Det gick bara med de 20 symboler som ritats för projektet (E4), ikonen kunde bara färgas genom en betydelse i korttexten (L34), och ikonlagret i mallen hade ingen färg.
+
+Beställaren beslutade 2026-10-21:
+
+- **Två etablerade bibliotek kommer in bredvid de egna symbolerna:** [game-icons.net](https://game-icons.net), 4 133 ikoner ritade för spel under CC BY 3.0 med en upphovsperson per ikon, och [Lucide](https://lucide.dev), ~1 980 linjeikoner under ISC.
+  Det är E4:s «kurerat CC0- och CC-BY-bibliotek», och strukturen bar redan licens och upphovsperson per symbol.
+- **De söks som typsnittskatalogen (L27):** katalogen reser med bygget och nås först på designerns handling, och en vald ikon kopieras in som projektets asset med licensen ifylld.
+- **Ikonlagret får en färg,** en `Paint` som formens fyllning: en fast färg eller en per värde i en kolumn (L16).
+  Fri färg i korttexten införs inte; `{namn|roll}` är som förut.
+- **Ikonlagret får en ikon per värde,** i samma form som en fyllning efter kolumn.
+  «Anfall» är en korttyp, och leken ska inte behöva veta att den ritas som `svard`.
+- **En egen SVG kan laddas upp i samma flöde** och ritas som en silhuett i lagrets färg.
+
+Tre former prövades i [`docs/ux-audits/2026-10-21-ikonbiblioteket/prototyper/1087-ikonbiblioteket.html`](docs/ux-audits/2026-10-21-ikonbiblioteket/prototyper/1087-ikonbiblioteket.html), med riktiga ikoner ur båda biblioteken.
+Den första var arket under kortet, med ikon och färg i en tabell per värde (A).
+Den andra lät Speltema äga biblioteket, så att Mall bara väljer ur spelets ikoner (B).
+Den tredje var en väljare som hänger vid ikonen på kortet (C).
+Valet blev **A**.
+Det är typsnittskatalogens form, så ett bibliotek ser likadant ut vare sig det håller familjer eller ikoner.
+Med tabellen är «en ikon per korttyp» en tabell att fylla i, och hela leken syns i den.
+B krävde ett flikbyte för varje ny ikon och visade den inte på kortet medan man sökte.
+C visade ett kort och en typ i taget.
+
+**Byggt 2026-10-21 (#1087), led 1: mallmodellen.**
+`IconsElement` har `color?: Paint` och `pick?: { map, else? }`.
+`pick` gäller bara ett lager bundet till ett fält: värdet slås upp i kartan, och ett värde kartan inte nämner får `else` eller ingen ikon.
+Ett värde utan ikon är ett kort utan ikon och inget fel, eftersom ordet inte var ett ikonnamn.
+Kompilatorn ritar en färgad ikon som mask med färgen bakom, samma enda väg som `{namn|roll}` (E2).
+En betydelse skriven i cellen, `svard|fara`, vinner över lagrets färg, eftersom kortets ord säger mer om en ikon än lagret gör.
+Ett lager utan färg ritar ikonen som den bild den alltid varit, så en äldre mall kompileras till samma bytes.
+`iconsOf` är det enda svaret på vilka ikoner ett lager ritar på en rad; kortet, den utskrivna texten och Speltemats «målas av mallen» läser det.
+E5 mäter ett färgat ikonlager mot det som ligger bakom, med WCAG:s gräns för grafik, 3:1, som fel och utan ett andra steg.
+En ikon är en form att känna igen och inget ord att läsa bokstav för bokstav.
+Ett lager utan färg är filens eget bläck, och det kan kontrollen inte se in i.
