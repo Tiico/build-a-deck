@@ -75,7 +75,11 @@ const DOC = record(
 // som stod kvar i leken efter redigeringen (#1072): en cell i ett kort som gick, ett lager som ritade
 // kolumnen, ett prosaval. Är en av dem borta när steget tas tillbaka har någon annan tagit bort den,
 // och delen skulle återskapa den.
-type Part = { at: Path; from: unknown; to: unknown; stood?: string[] }
+// `into` är de kolumner en kolumn delen nämner blev av redigeringen, när den bytte namn (#1076): en
+// cell, ett prosaval eller ett lager under det gamla namnet. Är en av dem borta när steget tas
+// tillbaka har någon annan tagit bort kolumnen under dess nya namn, och delen skulle återskapa den
+// under det gamla.
+type Part = { at: Path; from: unknown; to: unknown; stood?: string[]; into?: string[] }
 type Order = { at: Path; from: string[]; to: string[]; moved: ReadonlySet<string> }
 // Vad en redigering ändrade: varje del före och efter, och ordningen i varje samling den ändrade —
 // före, efter, och vilka poster den flyttade. `undefined` är en del som inte finns.
@@ -102,13 +106,42 @@ export function changeOf(before: ProjectDoc, after: ProjectDoc): Change {
   const out: Change = { parts: new Map(), orders: new Map() }
   walk(DOC, before, after, [], false, out)
   let standing: ReadonlySet<string> | null = null
+  let became: ReadonlyMap<string, string[]> | null = null
   for (const part of out.parts.values()) {
     if (part.from === undefined) continue
     const named = columnsNamed(part.at, part.from)
     if (named.length === 0) continue
-    standing ??= new Set(columnsOf(after))
-    const stood = named.filter((c) => standing?.has(c))
+    const stands = (standing ??= new Set(columnsOf(after)))
+    const stood = named.filter((c) => stands.has(c))
     if (stood.length > 0) part.stood = stood
+    if (stood.length === named.length) continue
+    became ??= renamedIn(before, after, stands)
+    const into = [...new Set(named.flatMap((c) => became?.get(c) ?? []))]
+    if (into.length > 0) part.into = into
+  }
+  return out
+}
+
+// Vad varje kolumn redigeringen tog bort blev av den (#1076): den kolumn redigeringen gjorde som bär
+// precis de värden den borttagna bar, på varje kort som stod kvar. Det är ett namnbyte, läst ur
+// dokumentet och inte ur verbet — `renameField` flyttar värdena oförändrade, kort för kort — och en
+// kolumn som togs bort i samma steg som en annan, med andra värden, lades till är två kolumner.
+function renamedIn(before: ProjectDoc, after: ProjectDoc, standing: ReadonlySet<string>): Map<string, string[]> {
+  const was = columnsOf(before)
+  const had = new Set(was)
+  const made = [...standing].filter((c) => !had.has(c))
+  const out = new Map<string, string[]>()
+  if (made.length === 0) return out
+  const rows = new Map(after.rows.map((r) => [r.id, r.fields]))
+  for (const gone of was) {
+    if (standing.has(gone)) continue
+    const into = made.filter((c) =>
+      before.rows.every((r) => {
+        const now = rows.get(r.id)
+        return now === undefined || !Object.hasOwn(r.fields, gone) || (Object.hasOwn(now, c) && same(now[c], r.fields[gone]))
+      }),
+    )
+    if (into.length > 0) out.set(gone, into)
   }
   return out
 }
@@ -121,7 +154,7 @@ export function joined(earlier: Change, later: Change): Change {
   for (const [key, part] of later.parts) {
     const was = parts.get(key)
     // Kolumnerna en del nämner följer värdet den skrivs tillbaka till, och det är det första greppets.
-    const next = was ? { at: part.at, from: was.from, to: part.to, ...(was.stood ? { stood: was.stood } : {}) } : part
+    const next = was ? { at: part.at, from: was.from, to: part.to, ...(was.stood ? { stood: was.stood } : {}), ...(was.into ? { into: was.into } : {}) } : part
     if (same(next.from, next.to)) parts.delete(key)
     else parts.set(key, next)
   }
@@ -152,6 +185,18 @@ export function revertOf(change: Change, now: ProjectDoc): Reverted {
     if (same(here, part.to)) {
       const back: RevertPart = { at: part.at, ...(part.to === undefined ? {} : { was: part.to }), ...(part.from === undefined ? {} : { to: part.from }) }
       const cell = isCell(part.at)
+      // En del under en kolumns gamla namn, som steget lägger tillbaka, står på kolumnen under det nya
+      // (#1076). Har någon annan tagit bort den finns det steget vill ta tillbaka — namnet — inte
+      // längre, och att lägga tillbaka delen vore att återskapa kolumnen under det gamla namnet: steget
+      // vägras, också för en cell, eftersom kortet står kvar och det enda cellen lägger tillbaka är
+      // kolumnen. Hos aktören behövs ingen fråga: steget bär cellerna under det nya namnet med `was`.
+      if (part.into && back.to !== undefined) {
+        standing ??= new Set(columnsOf(now))
+        if (part.into.some((c) => !standing?.has(c))) {
+          conflicts.push(part.at)
+          continue
+        }
+      }
       // En cell som finns nu står i en kolumn som finns; bara en som läggs tillbaka kan återskapa den.
       if (part.stood && back.to !== undefined && (!cell || back.was === undefined)) {
         standing ??= new Set(columnsOf(now))

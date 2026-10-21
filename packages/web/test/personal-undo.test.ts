@@ -281,3 +281,59 @@ describe('ett kort som ångras tillbaka tar inte med sig en kolumn någon annan 
     }
   })
 })
+
+// Ada byter namn på en kolumn mallen inte ritar, Bo tar bort den under det nya namnet, och Ada ångrar
+// (#1076): värdena kom tillbaka under det gamla namnet, och Bos borttagna kolumn stod i leken igen.
+// Det steget ska ta tillbaka finns inte längre, så det vägras — i editorn, och hos aktören när Bos
+// borttagning hann före.
+describe('ett namnbyte på en kolumn någon annan har tagit bort tas inte tillbaka (#1076)', () => {
+  const columns = (editor: ProjectClient) => [...new Set(editor.doc.rows.flatMap((r) => Object.keys(r.fields)))]
+  const last = async () => (await run.projects.readEdits(run.projectId, 0)).at(-1)?.intent.v
+  async function renamed(ada: ProjectClient, bo: ProjectClient): Promise<void> {
+    ada.addField('kraft')
+    ada.setCell('dragon', 'kraft', '3')
+    ada.renameField('kraft', 'styrka')
+    await landed(ada)
+    await eventually(() => expect(columns(bo)).toContain('styrka'))
+  }
+
+  it('vägrar i editorn när Bos borttagning har landat, och kolumnen kommer inte tillbaka', async () => {
+    const { ada, bo, close } = await pair()
+    try {
+      await renamed(ada, bo)
+      bo.removeField('styrka')
+      await eventually(() => expect(columns(ada)).not.toContain('styrka'))
+
+      expect(ada.undo()).toBeNull()
+      expect(ada.refusedStep).toEqual({ dir: 'undo', what: 'undo.what.field' })
+      for (const editor of [ada, bo]) expect(columns(editor)).toEqual(['title', 'body', 'antal'])
+      expect(await last()).toBe('removeField')
+    } finally {
+      close()
+    }
+  })
+
+  it('vägras hos aktören när Bos borttagning hann före, och sägs som ett ångra som inte gick', async () => {
+    const line = slowFirstLine()
+    try {
+      const { ada, bo, close } = await pair()
+      try {
+        await renamed(ada, bo)
+        line.hold()
+        bo.removeField('styrka')
+        await vi.waitFor(async () => expect(await last()).toBe('removeField'))
+
+        expect(ada.undo()).toBe('undo.what.field')
+        await vi.waitFor(() => expect(line.held()).toBeGreaterThanOrEqual(2))
+        line.release()
+        await eventually(() => expect(ada.refusedStep).toEqual({ dir: 'undo', what: 'undo.what.field' }))
+        for (const editor of [ada, bo]) await eventually(() => expect(columns(editor)).toEqual(['title', 'body', 'antal']))
+        expect(await last()).toBe('removeField')
+      } finally {
+        close()
+      }
+    } finally {
+      line.done()
+    }
+  })
+})

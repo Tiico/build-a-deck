@@ -489,3 +489,72 @@ describe('ett steg som skulle återskapa något helt som någon annan tagit bort
     expect(stamp(applyEdit(after, decideEdit(after, back.edit)))).toBe(stamp(doc))
   })
 })
+
+// Ett namnbyte på en kolumn som mallen inte ritar (#1076). Ada byter `kraft` till `styrka`, Bo tar
+// bort `styrka`, och Ada ångrar: värdena kom tillbaka under `kraft`, och Bos borttagna kolumn stod i
+// leken igen under sitt gamla namn. Det steget ska ta tillbaka — kolumnens namn — finns inte längre,
+// så steget vägras.
+describe('ett namnbyte på en kolumn någon annan har tagit bort tas inte tillbaka (#1076)', () => {
+  const kraft = (): ProjectDoc => ({ ...game(), rows: game().rows.map((r, i) => ({ ...r, fields: { ...r.fields, kraft: String(i + 1) } })) })
+  const RENAMES: EditIntent = { v: 'renameField', from: 'kraft', to: 'styrka' }
+  const cells = (field: string) => game().rows.map((r) => ['rows', r.id, 'fields', field])
+
+  it('vägrar ångra namnbytet när Bo har tagit bort kolumnen under sitt nya namn', () => {
+    const r = undone(kraft(), RENAMES, [{ v: 'removeField', field: 'styrka' }])
+    expect(r).toEqual({ refused: cells('kraft') })
+  })
+
+  it('vägrar ångra namnbytet när Bo har bytt namn på kolumnen igen, så att den inte står två gånger', () => {
+    const r = undone(kraft(), RENAMES, [{ v: 'renameField', from: 'styrka', to: 'mod' }])
+    expect(r).toEqual({ refused: cells('kraft') })
+  })
+
+  it('vägrar göra om namnbytet när Bo har tagit bort kolumnen efter att Ada ångrat', () => {
+    const doc = kraft()
+    const after = applyEdit(doc, RENAMES)
+    const back = revertOf(changeOf(doc, after), after)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const undoneDoc = applyEdit(after, back.edit)
+    expect(stamp(undoneDoc)).toBe(stamp(doc))
+    const narrowed = applyEdit(undoneDoc, { v: 'removeField', field: 'kraft' })
+    expect(revertOf(changeOf(after, undoneDoc), narrowed)).toEqual({ ok: false, conflicts: cells('styrka') })
+  })
+
+  it('vägrar också prosavalet som följde med namnbytet', () => {
+    const r = undone({ ...kraft(), prose: { kraft: true } }, RENAMES, [{ v: 'removeField', field: 'styrka' }])
+    expect(r).toEqual({ refused: expect.arrayContaining([['prose', 'kraft'], ...cells('kraft')]) })
+  })
+
+  it('vägrar ångra namnbytet på en kolumn mallen ritar, när Bos borttagning tog lagret med sig', () => {
+    const r = undone(game(), { v: 'renameField', from: 'body', to: 'text' }, [{ v: 'removeField', field: 'text' }])
+    expect(r).toEqual({ refused: expect.arrayContaining([['template', 'faces', 'front', 'base', 'body', 'bind'], ...cells('body')]) })
+  })
+
+  // Det andra som handlar om en kolumn står redan på samma sida: att flytta tillbaka en kolumn Bo
+  // har tagit bort vägras, eftersom kolumnordningen är en del och Bos borttagning skrev den.
+  it('vägrar flytta tillbaka en kolumn som Bo har tagit bort', () => {
+    const r = undone(kraft(), { v: 'moveField', field: 'kraft', before: 'title' }, [{ v: 'removeField', field: 'kraft' }])
+    expect(r).toEqual({ refused: [['columns']] })
+  })
+
+  // En kolumn som Ada tog bort i samma steg som hon lade till en annan, med andra värden, är två
+  // kolumner och inte ett namnbyte: borttagningen var hennes egen, och den tas tillbaka.
+  it('tar tillbaka en kolumn Ada tog bort när den nya hon lade till i samma steg var en annan kolumn', () => {
+    const doc = kraft()
+    const both: EditIntent = { v: 'compound', edits: [{ v: 'removeField', field: 'kraft' }, { v: 'addField', field: 'styrka' }] }
+    const back = docOf(undone(doc, both, [{ v: 'removeField', field: 'styrka' }]))
+    expect(stamp(back)).toBe(stamp(doc))
+  })
+
+  // Kapplöpningen: Adas editor räknar fram steget när `styrka` står kvar, men Bos borttagning når
+  // aktören först. Steget bär varje cell i `styrka` som den var, så aktören vägrar det.
+  it('vägrar hos aktören när Bos borttagning av kolumnen hann före steget', () => {
+    const doc = kraft()
+    const after = applyEdit(doc, RENAMES)
+    const back = revertOf(changeOf(doc, after), after)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const raced = applyEdit(after, { v: 'removeField', field: 'styrka' })
+    expect(() => applyEdit(raced, decideEdit(raced, back.edit!))).toThrow(/has changed since/)
+    expect(stamp(applyEdit(after, decideEdit(after, back.edit)))).toBe(stamp(doc))
+  })
+})
