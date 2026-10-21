@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Decksters ansikte</title>
+<!-- PROTOTYP. Kastas när ett märke är valt. Frågan: vilket märke bär Deckster överallt där
+     produkten syns — flik, hemskärm, landningssida, inloggning, TV:n och en delad länk — så att
+     det blir ett märke i stället för två? I dag ritar favicon.svg två kort (blå baksida, papper
+     #f4ead8, grön prick) och landningssidan tre andra (bärnsten, grönt, papper #f7f1e3).
+     Tre förslag via ?v=A|B|C. Gemensamt för alla: en palett med en papperston, och en enhetlig
+     uppsättning UI-ikoner i glyphs.tsx-handen (16-rutnät, 1,6 rund linje). -->
+<style>
+  :root {
+    --bord: #14161c; --papper: #f4ead8; --baksida: #3a4d7a; --gron: #7dd3a0; --barnsten: #f0b64a;
+    --ink: #e6ecfa; --quiet: #868ea3; --proto: #ffd98a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bord); color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1120px; margin: 0 0 12px; color: var(--proto); font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; } .rubrik p { margin: 0 0 4px; }
+  .anteckning { max-width: 1120px; margin: 8px 0 16px; padding: 10px 14px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12.5px; line-height: 1.6; }
+  .anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+  h2 { font-size: 12px; color: var(--quiet); text-transform: uppercase; letter-spacing: 1.2px; margin: 28px 0 10px; font-weight: 700; }
+  h2 small { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 8px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-end; }
+  #stora { padding: 18px 20px; border-radius: 12px; background: linear-gradient(90deg, #5b6172 0 50%, #e9e6df 50% 100%); max-width: 820px; }
+  #stora figcaption { color: #1f2430; }
+  figure { margin: 0; }
+  figcaption { color: var(--quiet); font-size: 11px; margin-top: 6px; text-align: center; }
+
+  /* Flikraden */
+  .flikar { display: flex; gap: 2px; padding: 8px 8px 0; border-radius: 10px 10px 0 0; max-width: 820px; overflow: hidden; }
+  .flikar.ljus { background: #dee1e6; } .flikar.mork { background: #202124; margin-top: 10px; }
+  .flik { display: flex; align-items: center; gap: 8px; width: 250px; flex: none; height: 34px; padding: 0 12px; border-radius: 8px 8px 0 0; font-size: 12px; white-space: nowrap; overflow: hidden; }
+  .ljus .flik { color: #3c4043; } .ljus .flik.aktiv { background: #fff; color: #202124; }
+  .mork .flik { color: #bdc1c6; } .mork .flik.aktiv { background: #35363a; color: #e8eaed; }
+  .flik svg { width: 16px; height: 16px; flex: none; }
+  .tom { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .6; flex: none; }
+
+  /* Hemskärmar */
+  .hem { display: grid; grid-template-columns: repeat(4, 70px); gap: 16px 12px; padding: 22px 20px; border-radius: 28px; }
+  .hem.ios { background: linear-gradient(160deg, #3b5a87, #9b6a7f 60%, #d79a6b); }
+  .hem.android { background: linear-gradient(200deg, #2b3a2f, #6d8a6a 70%, #c8c19a); }
+  .hem figure { text-align: center; color: #fff; font-size: 11px; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+  .hem .app, .hem i { display: block; width: 58px; height: 58px; margin: 0 auto 5px; overflow: hidden; }
+  .ios .app, .ios i { border-radius: 13px; } .android .app, .android i { border-radius: 50%; }
+  .hem .app svg { display: block; width: 100%; height: 100%; }
+  .android .app svg { transform: scale(1.25); } /* maskerbar: synligt är mitten 80 % */
+  .hem i { background: rgba(255,255,255,.33); }
+
+  /* Landningssidans huvud */
+  .landning { border-radius: 14px; overflow: hidden; background: radial-gradient(120% 80% at 70% 10%, #2f2722 0%, #17120f 55%, #0d0b0a 100%); max-width: 820px; }
+  .landning-huvud { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; }
+  .landning nav { display: flex; gap: 12px; align-items: center; }
+  .tyst { color: #b7c0d6; font-size: 15px; }
+  .pille { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; font-size: 16px; }
+  .pille.fylld { background: var(--gron); color: #0f1117; font-weight: 700; }
+  .landning-hero { padding: 18px 28px 34px; }
+  .landning-hero p { color: #f0b64a; font-weight: 700; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 10px; }
+  .landning-hero h1 { margin: 0; font-size: 40px; line-height: 1; letter-spacing: -0.035em; font-weight: 800; color: #e8eaf0; }
+
+  .lockup { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; letter-spacing: -0.02em; color: #e8eaf0; white-space: nowrap; }
+  .lockup svg { flex: none; }
+  .lockup.tat { gap: 1px; }
+
+  /* Inloggningskortet */
+  .konto { background: #0f1117; border-radius: 14px; padding: 30px; display: grid; place-items: center; width: 480px; max-width: 100%; }
+  .login { width: 100%; max-width: 420px; background: #171a23; border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; }
+  .login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; letter-spacing: -0.02em; }
+  .login .falt { padding: 14px 16px; border-radius: 12px; border: 1px solid #6f7a90; background: var(--bord); color: #7d869b; font-size: 16px; }
+  .login .knapp { padding: 14px 18px; border-radius: 12px; font-size: 16px; background: var(--gron); color: #0b2a18; font-weight: 700; text-align: center; }
+
+  /* TV:ns hörn */
+  .tv { position: relative; width: 640px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #5a3b22; border: 8px solid #0b0b0b; }
+  .filt { position: absolute; inset: 22px 120px 22px 22px; border-radius: 22px; background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); box-shadow: inset 0 0 40px rgba(0,0,0,.55); }
+  .spalt { position: absolute; right: 0; top: 0; bottom: 0; width: 120px; background: #171a23; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 14px 8px; color: #f3e9d6; }
+  .qr { width: 78px; height: 78px; background: repeating-conic-gradient(#f3e9d6 0 25%, #171a23 0 50%) 0 0 / 13px 13px; border: 5px solid #f3e9d6; border-radius: 4px; }
+  .kod { font: 700 16px ui-monospace, Menlo, monospace; letter-spacing: .2em; }
+  .adress { font-size: 11px; color: #c9c2b5; display: flex; align-items: center; gap: 6px; }
+  .tv .kort { position: absolute; width: 58px; height: 82px; border-radius: 6px; background: var(--papper); box-shadow: 0 6px 14px rgba(0,0,0,.4); }
+
+  /* Delad länk */
+  .chatt { background: #e9e9eb; border-radius: 18px; padding: 16px; width: 380px; max-width: 100%; color: #111; }
+  .bubbla { background: #fff; border-radius: 16px; overflow: hidden; }
+  .bubbla .og { display: block; width: 100%; height: auto; }
+  .bubbla div { padding: 8px 12px 10px; font-size: 13px; }
+  .bubbla small { color: #6b6b70; display: block; }
+
+  /* Palett och UI-ikoner */
+  .palett { display: flex; flex-wrap: wrap; gap: 10px; }
+  .farg { width: 150px; border-radius: 10px; overflow: hidden; border: 1px solid #2a2e3a; }
+  .farg span { display: block; height: 52px; border-bottom: 1px solid #2a2e3a; }
+  .farg code { display: block; font-size: 10.5px; color: #9aa3b8; }
+  .farg div { padding: 6px 8px; font-size: 11.5px; line-height: 1.45; background: #1b1e26; }
+  .farg s { color: #f0a58a; }
+  table.ikoner { border-collapse: collapse; font-size: 12px; }
+  .ikoner th { text-align: left; color: var(--quiet); font-weight: 600; padding: 4px 14px 6px 0; border-bottom: 1px solid #2a2e3a; }
+  .ikoner td { padding: 5px 14px 5px 0; border-bottom: 1px solid #1f232c; vertical-align: middle; }
+  .ikoner .idag { font-size: 16px; font-family: system-ui, sans-serif; width: 60px; }
+  .ikoner .ny svg { width: 16px; height: 16px; vertical-align: middle; }
+  .ikoner .ny svg.stor { width: 32px; height: 32px; margin-left: 10px; }
+  .ikoner .var { color: var(--quiet); }
+  .ytor { display: flex; flex-wrap: wrap; gap: 12px; }
+  .yta { padding: 12px 14px; border-radius: 10px; display: flex; flex-wrap: wrap; gap: 14px; max-width: 360px; align-items: center; }
+  .yta svg { width: 16px; height: 16px; }
+  .yta b { width: 100%; font-size: 11px; font-weight: 600; opacity: .8; }
+
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: var(--proto); color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: var(--proto); font: inherit; cursor: pointer; padding: 0 12px; }
+  .vaxlare .namn { padding: 0 10px; min-width: 300px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP · Decksters ansikte.</b> I dag har produkten två märken: fliken ritar två kort (#729, beslut A), landningssidan tre andra i andra färger. Inloggningen, TV:n och en delad länk har inget alls.</p>
+  <p>‹ › eller ← → byter förslag. Paletten och UI-ikonerna längst ned är gemensamma för alla tre.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+
+<h2>Ikonen <small>16 · 32 · 64 · 180 px, och 512 som maskerbar</small></h2>
+<div class="rad" id="stora"></div>
+
+<h2>Flikraden, ljust och mörkt</h2>
+<div class="flikar ljus" id="ljus"></div>
+<div class="flikar mork" id="mork"></div>
+
+<h2>Hemskärmen <small>iOS rundad ruta · Android cirkelmask (mitten 80 %)</small></h2>
+<div class="rad">
+  <div class="hem ios" id="ios"></div>
+  <div class="hem android" id="android"></div>
+</div>
+
+<h2>Landningssidans huvud</h2>
+<div class="landning">
+  <div class="landning-huvud"><span id="landmark"></span><nav><span class="tyst">Så går det till</span><span class="pille fylld">Mina spel</span></nav></div>
+  <div class="landning-hero"><p>Bygg · spela · ändra</p><h1>Bygg ditt kortspel.</h1></div>
+</div>
+
+<div class="rad" style="align-items:flex-start;margin-top:6px">
+  <div>
+    <h2>Inloggningskortet <small>i dag ett ensamt «build-your-deck»</small></h2>
+    <div class="konto"><div class="login"><h1 id="loginmark"></h1><span style="color:#9aa3b8;font-size:14px">Vi skickar en länk till din e-post.</span><span class="falt">din@adress.se</span><span class="knapp">Skicka länken</span></div></div>
+  </div>
+  <div>
+    <h2>TV:n <small>sidospalten är gratis, filten är höjdbunden</small></h2>
+    <div class="tv"><div class="filt"><span class="kort" style="left:38%;top:30%;rotate:-6deg"></span><span class="kort" style="left:50%;top:32%;rotate:5deg"></span></div>
+      <div class="spalt"><div class="qr"></div><div class="kod">Q6RN2C</div><div class="adress" id="tvmark"></div></div></div>
+  </div>
+</div>
+
+<h2>En delad länk <small>og:image 1200 × 630 — finns inte i dag</small></h2>
+<div class="chatt"><div class="bubbla" id="og"></div></div>
+
+<h2>Gemensamt: en palett <small>tre papperstoner blir en, och baksidans blå får ett namn</small></h2>
+<div class="palett" id="palett"></div>
+
+<h2>Gemensamt: UI-ikonerna <small>glyphs.tsx-handen — 16-rutnät, 1,6 rund linje, currentColor — för allt som i dag är ett tecken</small></h2>
+<div class="rad" style="align-items:flex-start;gap:40px">
+  <table class="ikoner" id="ikoner"></table>
+  <div>
+    <div class="ytor" id="ytor"></div>
+    <p style="color:var(--quiet);max-width:360px;line-height:1.55;font-size:12px">Ett tecken ritas av maskinens typsnitt: ✓ och ⚑ är en annan hand på Linux än på en Mac, och ▾ sitter på sin egen baslinje. Samma skäl som gav glyphs.tsx dess fyra glyfer gäller för de ~20 tecken som är kvar, och för de nio lösa SVG:erna på 12-, 14-, 20- och 24-rutnät med linjer från 1,2 till 2.</p>
+  </div>
+</div>
+
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa">›</button>
+</div>
+
+<script>
+const P = '#f4ead8', BORD = '#14161c', BLA = '#3a4d7a', GRON = '#7dd3a0', BARN = '#f0b64a'
+
+// Varje förslag ritar sitt märke på 64-rutnätet: med ruta (ikonen) eller fritt (bredvid namnet).
+const MARK = {
+  A(ruta, mark = BORD) {
+    const g = `<g transform="translate(32 41)"><rect x="-14" y="-31" width="24" height="33" rx="4" fill="${BLA}" transform="rotate(-16)"/><rect x="-11" y="-31" width="24" height="33" rx="4" fill="${P}" stroke="${mark}" stroke-width="1.75" transform="rotate(10)"/><circle cx="1" cy="-14.5" r="4.2" fill="${GRON}" transform="rotate(10)"/></g>`
+    return ruta ? `<rect width="64" height="64" rx="14" fill="${BORD}"/>${g}` : g
+  },
+  B(ruta, mark = BORD) {
+    const k = (rot, dx, fill) => `<rect x="-11" y="-30" width="22" height="30" rx="3.5" fill="${fill}" stroke="${mark}" stroke-width="2" transform="translate(${dx} 0) rotate(${rot})"/>`
+    const g = `<g transform="translate(32 47)">${k(-18, -5, BARN)}${k(-2, 0, GRON)}${k(14, 5, P)}</g>`
+    return ruta ? `<defs><radialGradient id="tra" cx="70%" cy="10%" r="110%"><stop offset="0" stop-color="#2f2722"/><stop offset=".55" stop-color="#17120f"/><stop offset="1" stop-color="#0d0b0a"/></radialGradient></defs><rect width="64" height="64" rx="14" fill="url(#tra)"/>${g}` : g
+  },
+  C(ruta, mark = BORD) {
+    const g = `<g transform="rotate(-8 32 32)"><rect x="15" y="7" width="34" height="50" rx="6" fill="${BLA}" transform="rotate(14 32 32) translate(4 0)"/><rect x="15" y="7" width="34" height="50" rx="6" fill="${P}" stroke="${mark}" stroke-width="1.75"/><path d="M24.5 19.5h6.5a12.5 12.5 0 0 1 0 25h-6.5z" fill="none" stroke="${BORD}" stroke-width="6" stroke-linejoin="round"/><circle cx="34" cy="32" r="3.4" fill="${GRON}"/></g>`
+    return ruta ? `<rect width="64" height="64" rx="14" fill="${BORD}"/>${g}` : g
+  },
+}
+const VB = { A: '9 5 46 46', B: '8 10 48 48', C: '9 3 46 58' }
+// B:s favicon står fritt — ingen ruta — så att tre kort får hela 16 px.
+const favicon = (v) => v === 'B' ? `<svg viewBox="${VB.B}">${MARK.B(false)}</svg>` : `<svg viewBox="0 0 64 64">${MARK[v](true)}</svg>`
+const ikon = (v) => `<svg viewBox="0 0 64 64">${MARK[v](true)}</svg>`
+const fri = (v, h, mark) => `<svg viewBox="${VB[v]}" height="${h}" width="${h * (+VB[v].split(' ')[2] / +VB[v].split(' ')[3])}">${MARK[v](false, mark)}</svg>`
+const lockup = (v, h, mark, storlek) => v === 'C'
+  ? `<span class="lockup tat" style="font-size:${storlek}px">${fri('C', h * 1.25, mark)}<span>eckster</span></span>`
+  : `<span class="lockup" style="font-size:${storlek}px">${fri(v, h, mark)}<span>Deckster</span></span>`
+
+const V = {
+  A: ['A — Solfjädern, en gång till', `<b>A — #729:s två kort blir hela märket.</b> Landningssidans tre kort byts mot samma två som fliken: blå baksida, papper med grön prick. Namnet står bredvid i systemets 800-vikt. Korten är något större än i dag, så att de håller i 16 px. <span class="plus">+ Bygger på ett fattat beslut; den minsta ändringen; baksidans blå är bordets egen.</span> <span class="minus">− Landningssidan tappar sin bärnsten; märket och namnet är två saker bredvid varandra, inte en.</span>`],
+  B: ['B — Handen, från landningssidan', `<b>B — landningssidans tre kort blir hela märket</b>, en hand i bärnsten, grönt och papper, och fliken följer efter. Faviconen står fritt utan ruta; app-ikonen ligger på landningssidans trä. <span class="plus">+ Varmast; tar färgerna en besökare möter först; tre kort läses som «en hand» och «en lek».</span> <span class="minus">− River upp #729:s beslut; tre kort i 16 px är trångt; utan ruta syns pappret dåligt i en ljus flikrad, så konturen måste bära.</span>`],
+  C: ['C — D-kortet', `<b>C — ett kort med ett D</b>, och i D:ets öga sitter accentens gröna prick. Bakom ligger baksidans blå, så solfjädern från #729 finns kvar. I namnet ersätter kortet versalen: [D]eckster. <span class="plus">+ Tydligast i 16 px; märket och namnet är ett; D:et säger Deckster, vilket «b» i #729:s förslag B inte gjorde.</span> <span class="minus">− Ett monogram är en bokstav att känna igen, inte en bild av ett kort; ordbilden [D]eckster kräver att märket står först, och fungerar inte i löptext.</span>`],
+}
+const q = new URLSearchParams(location.search)
+let v = V[q.get('v')] ? q.get('v') : 'A'
+
+const FLIKAR = [['Sal\'s Saloon · Kortvägg · Deckster', true], ['Bordet · Rum Q6RN2C · Deckster', false], ['Din hand · Rum Q6RN2C · Deckster', false]]
+
+function rita() {
+  const k = Object.keys(V)
+  document.getElementById('namn').textContent = `${k.indexOf(v) + 1}/${k.length} · ${V[v][0]}`
+  document.getElementById('anteckning').innerHTML = V[v][1]
+  document.getElementById('stora').innerHTML = [16, 32, 64, 180].map((s) => `<figure><div style="width:${s}px;height:${s}px">${s <= 32 ? favicon(v) : ikon(v)}</div><figcaption>${s} px</figcaption></figure>`).join('')
+    + `<figure><div style="width:180px;height:180px;border-radius:50%;overflow:hidden;outline:1px dashed #555"><div style="transform:scale(1.25);width:100%;height:100%">${ikon(v)}</div></div><figcaption>512 maskerbar, cirkel</figcaption></figure>`
+  const flikar = FLIKAR.map(([t, a]) => `<div class="flik${a ? ' aktiv' : ''}">${favicon(v)}${t}</div>`).join('') + `<div class="flik"><span class="tom"></span>Annan webbplats</div>`
+  document.getElementById('ljus').innerHTML = flikar
+  document.getElementById('mork').innerHTML = flikar
+  const hem = ['Klocka', 'Kamera', 'Deckster', 'Kartor', 'Musik', 'Väder', 'Anteckn.', 'Foton'].map((n) => n === 'Deckster' ? `<figure><span class="app">${ikon(v)}</span>Deckster</figure>` : `<figure><i></i>${n}</figure>`).join('')
+  document.getElementById('ios').innerHTML = hem
+  document.getElementById('android').innerHTML = hem
+  document.getElementById('landmark').innerHTML = lockup(v, 30, '#17120f', 19)
+  document.getElementById('loginmark').innerHTML = v === 'C' ? lockup('C', 28, '#171a23', 26).replace('lockup', 'lockup" style="font-size:26px;color:#e6e6e6') : `${fri(v, 30, '#171a23')}<span>Deckster</span>`
+  document.getElementById('tvmark').innerHTML = `${fri(v, 16, '#171a23')}<span>deckster.se</span>`
+  document.getElementById('og').innerHTML = `<svg class="og" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${BORD}"/><g transform="translate(110 165)">${v === 'C' ? `<svg viewBox="${VB.C}" x="0" y="-20" width="240" height="300">${MARK.C(false)}</svg>` : `<svg viewBox="${VB[v]}" width="300" height="300">${MARK[v](false)}</svg>`}</g><text x="${v === 'C' ? 360 : 450}" y="330" fill="#e8eaf0" font-family="system-ui, sans-serif" font-weight="800" font-size="${v === 'C' ? 150 : 120}" letter-spacing="-3">${v === 'C' ? 'eckster' : 'Deckster'}</text><text x="${v === 'C' ? 368 : 456}" y="410" fill="#b7c0d6" font-family="system-ui, sans-serif" font-size="40">Bygg ett kortspel. Spela det runt en TV.</text></svg><div><b>Deckster</b><small>deckster.se</small></div>`
+  history.replaceState(null, '', `?v=${v}`)
+}
+
+// Paletten, gemensam.
+document.getElementById('palett').innerHTML = [
+  [BORD, 'Bord <code>--deckster-bord</code><br>#14161c — finns', '#e6ecfa'],
+  [P, 'Papper <code>--deckster-papper</code><br>#f4ead8 · <s>#f7f1e3</s> · <s>#f3e9d6</s>'],
+  [BLA, 'Baksida <code>--deckster-baksida</code><br>#3a4d7a — saknar namn i dag, fyra hex'],
+  [GRON, 'Grön <code>--deckster-gron</code><br>#7dd3a0 — första handlingen'],
+  [BARN, 'Bärnsten <code>--deckster-barnsten</code><br>#f0b64a — filtens accent'],
+].map(([c, t]) => `<div class="farg"><span style="background:${c}"></span><div>${t}</div></div>`).join('')
+
+// UI-ikonerna, gemensamma: glyphs.tsx-handen.
+const S = (d, extra = '') => `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>${extra}</svg>`
+const prick = (pts) => pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.25" fill="currentColor"/>`).join('')
+const IK = [
+  ['Ångra', '↶', 'M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7', 'finns: HookGlyph'],
+  ['Flagga', '⚑', 'M3.5 14V2.5M3.5 3h8.25l-1.75 3 1.75 3H3.5', 'finns, men editor.css ritar ⚑'],
+  ['Stäng', '×', 'M4 4l8 8M12 4l-8 8', 'NoticeBand, HelpBox, FilterField'],
+  ['Klart', '✓', 'M3 8.5l3.25 3.25L13 5', 'StepPill, editor.css, Media'],
+  ['Fäll ut', '▾', 'M4 6l4 4 4-4', 'TemplateCanvas, SharePanel, Crown'],
+  ['Fäll in', '▸', 'M6 4l4 4-4 4', 'table.css, ColumnFilter'],
+  ['Tillbaka', '←', 'M13 8H3M7 4 3 8l4 4', 'editorns väg hem'],
+  ['Vidare', '→', 'M3 8h10M9 4l4 4-4 4', 'landningssidans pille'],
+  ['Sortera', '↕', 'M5 6l3-3 3 3M5 10l3 3 3-3', 'DataTable'],
+  ['Redigera', '✎', 'M10.5 2.75l2.75 2.75L6 12.75l-3.25.5.5-3.25z', ''],
+  ['Sparar', '⟳', 'M13 8a5 5 0 1 1-1.46-3.54M13 2.75V5.5h-2.75', 'MediaPanel'],
+  ['Dra', '⠿', '', 'LayerList', prick([[6, 4], [10, 4], [6, 8], [10, 8], [6, 12], [10, 12]])],
+  ['Mer', '⋯', '', '', prick([[3.5, 8], [8, 8], [12.5, 8]])],
+  ['Låst', '<svg viewBox="0 0 12 12" width="12" height="12"><rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="currentColor"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>', 'M5.5 7.5V5.5a2.5 2.5 0 0 1 5 0v2M4.5 7.5h7a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1z', 'ColumnDoor 12-rutnät, LayerList 1,5'],
+  ['Regler', '<svg viewBox="0 0 20 20" width="16" height="16"><path d="M10 5C8 3.5 5 3.3 3 3.6v11c2-.3 5 0 7 1.4 2-1.4 5-1.7 7-1.4v-11c-2-.3-5-.1-7 1.4zM10 5v11" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>', 'M8 4.5C6.5 3.25 4.5 3 2.5 3.25v9c2-.25 4 0 5.5 1.25 1.5-1.25 3.5-1.5 5.5-1.25v-9C11.5 3 9.5 3.25 8 4.5zM8 4.5v9', 'RuleDrawer 20-rutnät, EditorPage 1,4'],
+  ['Spela', '<svg viewBox="0 0 14 14" width="14" height="14"><path d="M3 2v10l9-5z" fill="currentColor"/></svg>', 'M5 3.5v9l7.5-4.5z', 'TablesTab 14-rutnät, fylld'],
+  ['Sudda', '⌫', 'M6 3.5h7a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6L2 8zM8 6.25l3.5 3.5M11.5 6.25 8 9.75', 'CounterEntry'],
+  ['Notis', '<svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>', 'M8 7.25v4M8 4.75v.01', 'NoticeBand 24-rutnät, linje 2', '<circle cx="8" cy="8" r="5.75" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+]
+document.getElementById('ikoner').innerHTML = '<tr><th>Betydelse</th><th>I dag</th><th>Enhetligt, 16 och 32 px</th><th>Var</th></tr>' + IK.map(([n, idag, d, var_, extra = '']) => {
+  const svg = S(d, extra)
+  return `<tr><td>${n}</td><td class="idag">${idag}</td><td class="ny">${svg}${svg.replace('<svg', '<svg class="stor"')}</td><td class="var">${var_}</td></tr>`
+}).join('')
+const rad = IK.map(([, , d, , extra = '']) => S(d, extra)).join('')
+document.getElementById('ytor').innerHTML = [
+  ['Editorns huvud', '#23262e', '#c3cbdd'],
+  ['Filten', '#1f4a30', '#f3e9d6'],
+  ['Telefonen', '#14161c', '#e6ecfa'],
+  ['Wizardens papper', '#f4ead8', '#1c1c1c'],
+].map(([t, bg, ink]) => `<div class="yta" style="background:${bg};color:${ink}"><b>${t}</b>${rad}</div>`).join('')
+
+const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+addEventListener('keydown', (e) => { if (e.target.closest('input,textarea,[contenteditable]')) return; if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1) })
+rita()
+</script>
+</body>
+</html>
