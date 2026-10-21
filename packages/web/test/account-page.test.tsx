@@ -59,7 +59,8 @@ describe('the login card and HomePage', () => {
 
   it('heads the card with the product\'s hand beside its name (#1082)', async () => {
     render(<LoginCard http={run.http} next="/" onNavigate={() => undefined} />)
-    const heading = await screen.findByRole('heading', { level: 1 })
+    // The picture is not read out: the heading's name is the product's name alone.
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Deckster' })
     const mark = heading.querySelector('svg[aria-hidden="true"]') as SVGSVGElement
     const tab = new DOMParser().parseFromString(faviconSvg(), 'image/svg+xml').documentElement
     const drawn = (svg: Element) => [...svg.querySelectorAll('rect')].map((r) => r.getAttribute('fill'))

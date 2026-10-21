@@ -80,6 +80,7 @@ describe('the landing page at / (#1009)', () => {
     expect(mark.getAttribute('viewBox')).toBe(tab.getAttribute('viewBox'))
     // The picture is the name's, and is not read out a second time.
     expect(mark.closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(head.querySelector('.byd-landing-mark')?.textContent).toBe('Deckster')
   })
 
   it('counts as the sales line having been seen (L36), so the login card does not sell twice', async () => {
