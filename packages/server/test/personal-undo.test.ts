@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, columnsOf, type EditIntent } from '../src/edits.js'
+import { applyEdit, columnsOf, decideEdit, type EditIntent } from '../src/edits.js'
 import { stamp, type ProjectDoc } from '../src/projects.js'
 import { openingSetup } from '../src/recipe.js'
 import { changeOf, joined, revertOf, type Change } from '../src/undo.js'
@@ -369,5 +369,123 @@ describe('en tom cell är ingenting någon skrev (#1069)', () => {
     const forward = revertOf(changeOf(widened, undoneDoc), undoneDoc)
     if (!forward.ok || !forward.edit) throw new Error('no step forward')
     expect(stamp(applyEdit(undoneDoc, forward.edit))).toBe(stamp(widened))
+  })
+})
+
+// Ett kort som ångras tillbaka tar inte med sig en kolumn någon annan har tagit bort (#1072). Ada tar
+// bort ett kort med ett värde i en kolumn, Bo tar bort kolumnen, och Ada ångrar: kortet kommer
+// tillbaka utan värdet, och Bos borttagning står. Det som släpptes sägs (`dropped`), så editorn kan
+// säga varför.
+describe('ett kort som kommer tillbaka tar inte med sig en kolumn någon annan tagit bort (#1072)', () => {
+  const REMOVES: EditIntent = { v: 'removeRow', cardRef: 'kort-1' }
+  const NO_BODY: EditIntent = { v: 'removeField', field: 'body' }
+
+  it('lägger tillbaka Adas kort utan värdet i kolumnen Bo har tagit bort, och säger vad som släpptes', () => {
+    const doc = game()
+    const after = applyEdit(doc, REMOVES)
+    const now = applyEdit(after, NO_BODY)
+    const back = revertOf(changeOf(doc, after), now)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const undoneDoc = applyEdit(now, back.edit)
+    expect(undoneDoc.rows.map((r) => r.id)).toEqual(['kort-1', 'kort-2', 'kort-3'])
+    expect(undoneDoc.rows[0]).toEqual({ id: 'kort-1', fields: { title: 'Björn', antal: 1 } })
+    expect(columnsOf(undoneDoc)).not.toContain('body')
+    expect(back.dropped).toEqual([['rows', 'kort-1', 'fields', 'body']])
+  })
+
+  it('lägger tillbaka kolumnen med kortet när det var Adas borttagning av kortet som tog den', () => {
+    const doc: ProjectDoc = { ...game(), rows: [{ id: 'kort-1', fields: { title: 'Björn', kraft: '', antal: 1 } }] }
+    const after = applyEdit(doc, REMOVES)
+    expect(columnsOf(after)).not.toContain('kraft')
+    const back = revertOf(changeOf(doc, after), after)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    expect(stamp(applyEdit(after, back.edit))).toBe(stamp(doc))
+    expect(back.dropped).toBeUndefined()
+  })
+
+  it('släpper värdet också när mallen var den enda andra som bar kolumnen', () => {
+    const doc: ProjectDoc = { ...game(), rows: [{ id: 'kort-1', fields: { title: 'Björn', body: 'Rad 1.', antal: 1 } }] }
+    const after = applyEdit(doc, REMOVES)
+    const now = applyEdit(after, NO_BODY)
+    const back = revertOf(changeOf(doc, after), now)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const undoneDoc = applyEdit(now, back.edit)
+    expect(undoneDoc.rows).toEqual([{ id: 'kort-1', fields: { title: 'Björn', antal: 1 } }])
+    expect(columnsOf(undoneDoc)).not.toContain('body')
+  })
+
+  it('gör om lägger tillbaka Adas nya kort utan värdet i kolumnen Bo tog bort efter att hon ångrat', () => {
+    const doc = game()
+    const added = applyEdit(doc, { v: 'addRow', cardRef: 'kort-4', fields: { title: 'Lo', body: 'Rad 4.', antal: 1 } })
+    const back = revertOf(changeOf(doc, added), added)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const undoneDoc = applyEdit(added, back.edit)
+    const narrowed = applyEdit(undoneDoc, NO_BODY)
+    const forward = revertOf(changeOf(added, undoneDoc), narrowed)
+    if (!forward.ok || !forward.edit) throw new Error('no step forward')
+    const redone = applyEdit(narrowed, forward.edit)
+    expect(redone.rows.find((r) => r.id === 'kort-4')).toEqual({ id: 'kort-4', fields: { title: 'Lo', antal: 1 } })
+    expect(columnsOf(redone)).not.toContain('body')
+    expect(forward.dropped).toEqual([['rows', 'kort-4', 'fields', 'body']])
+  })
+
+  // Kapplöpningen: Adas editor prövar steget mot sin kopia, där kolumnen står kvar, men Bos
+  // borttagning av den når aktören först. Aktören släpper värdet i stället för att återskapa
+  // kolumnen, och loggen bär steget som det skrevs: utan värdet, och utan frågan.
+  it('släpper värdet hos aktören när Bos borttagning av kolumnen hann före steget', () => {
+    const doc = game()
+    const after = applyEdit(doc, REMOVES)
+    const back = revertOf(changeOf(doc, after), after)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const raced = applyEdit(after, NO_BODY)
+    const logged = decideEdit(raced, back.edit)
+    expect(JSON.stringify(logged)).not.toContain('standing')
+    expect(JSON.stringify(logged)).not.toContain('Rad 1.')
+    for (const edit of [logged, back.edit]) {
+      const landed = applyEdit(raced, edit)
+      expect(landed.rows[0]).toEqual({ id: 'kort-1', fields: { title: 'Björn', antal: 1 } })
+      expect(columnsOf(landed)).not.toContain('body')
+    }
+    // Står kolumnen kvar när steget når aktören, kommer värdet tillbaka med kortet.
+    expect(stamp(applyEdit(after, decideEdit(after, back.edit)))).toBe(stamp(doc))
+  })
+})
+
+// Samma mönster utanför tabellen (#1072, L14): det som kommer tillbaka hör till något helt som någon
+// annan har tagit bort — ett lager till en grupp, ett lager eller ett prosaval till en kolumn. Där
+// finns inget kort som kan komma tillbaka utan delen: det steget vill lägga tillbaka *är* delen, så
+// steget vägras i stället för att återskapa gruppen eller kolumnen.
+describe('ett steg som skulle återskapa något helt som någon annan tagit bort vägras (#1072)', () => {
+  const LAYER = ['template', 'faces', 'front', 'variants', 'eld', 'override', 'title']
+
+  it('vägrar lägga tillbaka Adas lager i en grupp som Bo har tagit bort', () => {
+    const doc = rich()
+    const r = undone(doc, { v: 'resetElement', face: 'front', id: 'title', group: 'eld' }, [{ v: 'replaceFace', face: 'front', base: doc.template.faces['front']!.base, variants: {} }])
+    expect(r).toEqual({ refused: expect.arrayContaining([LAYER]) })
+  })
+
+  it('vägrar lägga tillbaka Adas lager som ritar en kolumn Bo har tagit bort, så att kolumnen inte kommer tillbaka', () => {
+    const r = undone(game(), { v: 'removeElement', face: 'front', id: 'body' }, [{ v: 'removeField', field: 'body' }])
+    expect(r).toEqual({ refused: [['template', 'faces', 'front', 'base', 'body', 'bind']] })
+  })
+
+  it('vägrar lägga tillbaka Adas prosaval för en kolumn Bo har tagit bort', () => {
+    const r = undone({ ...game(), prose: { body: true } }, { v: 'setProse', field: 'body', prose: null }, [{ v: 'removeField', field: 'body' }])
+    expect(r).toEqual({ refused: [['prose', 'body']] })
+  })
+
+  it('lägger tillbaka lagret och kolumnen när det var Adas eget steg som tog kolumnen', () => {
+    const doc = { ...game(), rows: game().rows.map((r) => ({ ...r, fields: { title: r.fields['title'] ?? '', antal: 1 } })) }
+    expect(stamp(docOf(undone(doc, { v: 'removeElement', face: 'front', id: 'body' }, [])))).toBe(stamp(doc))
+  })
+
+  it('vägrar hos aktören när Bos borttagning av kolumnen hann före steget som lägger tillbaka lagret', () => {
+    const doc = game()
+    const after = applyEdit(doc, { v: 'removeElement', face: 'front', id: 'body' })
+    const back = revertOf(changeOf(doc, after), after)
+    if (!back.ok || !back.edit) throw new Error('no step')
+    const raced = applyEdit(after, { v: 'removeField', field: 'body' })
+    expect(() => applyEdit(raced, decideEdit(raced, back.edit!))).toThrow(/someone else has removed/)
+    expect(stamp(applyEdit(after, decideEdit(after, back.edit)))).toBe(stamp(doc))
   })
 })

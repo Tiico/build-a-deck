@@ -1156,6 +1156,7 @@ Ett steg tillbaka eller framåt i en editor tar bara tillbaka det den editorns e
 Förut var steget `restore` med hela dokumentet som det såg ut före ändringen, så det en medredigerare hunnit skriva i en annan del av spelet försvann tyst.
 Steget är redigeringen `revert`: de delar av dokumentet steget skriver, var och en som den är nu (`was`) och som den ska bli (`to`), och var en post som tas tillbaka ska stå (`places`).
 Aktören avvisar steget när en del inte längre är det `was` säger, när en post steget tar bort bär något steget inte nämner (en tom cell i en kolumn som står kvar utan posten undantagen, #1069), eller när en post steget flyttar tillbaka har flyttats av någon annan sedan steget räknades fram (`orders`, #1070), så ett steg aldrig skriver över den som hann före; editorn säger avslaget som ett steg som inte gick att ta, inte som en ändring som gick förlorad.
+En del som hör till eller nämner en kolumn bär de kolumner den står på (`standing`, #1072): är en av dem borttagen när steget når aktören släpps delen om den är en cell, och annars avvisas steget, så ett steg aldrig återskapar en kolumn någon annan har tagit bort; loggen bär svaret och inte frågan (`decideEdit`).
 Vad en del är och när två ändringar rör samma sak står i L14.
 `revert` är editorns vokabulär och inte bordets slutna intents, så den är ingen protokollmigrering, och den spelas upp ur loggen med samma `applyEdit` som allt annat: prövningen ger samma svar vid uppspelning som när den gjordes, eftersom loggen spelas i samma ordning.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
@@ -4727,8 +4728,25 @@ En ny kolumn skriver en tom cell i varje kort, också i ett kort Ada just lade t
 Gränsen går nu så här: en cell som någon annan lagt i kortet och som är tom (tom text eller inget värde) hindrar inte att kortet tas bort, så länge kolumnen står kvar på något annat kort.
 Bos kolumn står då kvar, och det kortet tar med sig är bara en tom ruta Bo aldrig skrev i.
 Har Bo skrivit ett värde i Adas kort vägras steget som förut, och likaså när Adas kort är det enda som bär hans kolumn, eftersom kolumnen då hade gått med kortet.
-Åt andra hållet tar ett kort som läggs tillbaka inte med sig en tom cell i en kolumn som inget annat kort har längre, så en kolumn någon annan tagit bort inte kommer tillbaka tom med kortet.
-Undantaget gäller celler och inget annat, eftersom det är där mönstret finns: ingen redigering skriver ett tomt standardvärde i varje lager eller varje zon.
+
+Åt andra hållet **återskapar ett steg aldrig en kolumn någon annan har tagit bort** (2026-10-21, #1072, beställarens beslut).
+Ada tar bort ett kort med ett värde i kolumnen K, Bo tar bort K, och Ada ångrar: kortet kom tillbaka med sitt värde, och K stod i leken igen för alla, så Bos borttagning var delvis ogjord utan att han fick veta det.
+Nu kommer kortet tillbaka utan värdet i K, K kommer inte tillbaka för någon, och Bos borttagning står.
+Editorn säger det i samma notis som avslagen (#993): «Värdet i «K» kom inte tillbaka: någon annan har tagit bort kolumnen.», och samma mening för gör om, eftersom kortet kom tillbaka åt båda hållen.
+Gränsen är kolumnen som den stod efter steget.
+En cell steget tog bort i en kolumn som stod kvar i leken efteråt, på ett annat kort eller i mallen, gick med sitt kort och inte med kolumnen; är kolumnen borta när steget tas tillbaka har någon annan tagit bort den, och cellen släpps.
+Var Adas kort det sista som bar kolumnen tog hennes eget steg kolumnen med sig, och då kommer den tillbaka med kortet.
+En tom cell släpps på samma sätt men utan ett ord, eftersom den inte var något (#1069).
+En kolumn som försvann för att någon tog bort varje annat kort som bar den räknas som borttagen; dokumentet säger inte vilken redigering som tog den, bara att den är borta.
+
+Regeln gäller allt som hör till en kolumn, inte bara cellerna: ett lager som ritar den (en bindning, ett villkor eller sidans gruppkolumn) och ett prosaval för den.
+Där finns inget kort som kan komma tillbaka utan delen — det steget vill lägga tillbaka *är* delen — så steget vägras med den vanliga meningen i stället för att återskapa kolumnen.
+Samma mönster finns ett steg längre ut: en del vars post någon annan har tagit bort, som ett lager i en grupp som inte finns längre, vägras också.
+Förut kastade det steget ett fel i editorn och försvann ur stacken utan ett ord.
+Prövningen av posten gäller varje del, men i dag är gruppen det enda en annan redigering tar bort helt med något i (`replaceFace` med grupper, och `restore`): kort, zoner och regelblock står i samlingar som aldrig tas bort.
+Kolumnernas ordning har inte mönstret, eftersom den läses som en ordning och hoppar över ett namn ingen kolumn svarar på.
+
+Undantaget för en tom cell (#1069) gäller celler och inget annat, eftersom det är där mönstret finns: ingen redigering skriver ett tomt standardvärde i varje lager eller varje zon.
 Det som rör alla lager eller zoner på en gång skriver över ett värde posten redan hade — temat byter typsnitt i varje text, kortleken som flyttas byter vart varje hand lämnar sina kort, platserna lägger ut stolarnas zoner igen — och det är en ändring av samma del, som vägrar steget som vilken annan.
 En grupps egen formgivning av ett lager står i gruppen och inte i lagret, så den har aldrig hindrat att lagret tas bort.
 En samling som steget påbörjade — regelboken, prosavalen, en grupps egen formgivning — står kvar med det andra har lagt i den, och tas bort bara när den är tom.
@@ -4744,6 +4762,10 @@ Förut prövade aktören bara att posten den skulle läggas efter fanns kvar, s�
 Det gäller kort, lager och zoner; kolumnernas ordning är en enda del med sitt eget `was`, och prövades redan.
 Ett steg i loggen från före prövningen bär ingen ordning och spelas upp som det skrevs.
 Editorn säger det avslaget med samma mening som sitt eget, och tar bort det steg det hade lagt på den andra stacken.
+Aktören prövar också kolumnerna (#1072): `revert` bär för varje del som hör till eller nämner en kolumn de kolumner den står på, som de stod när steget räknades fram (`standing`).
+Har någon tagit bort en av dem innan steget når aktören släpps cellen, och vägras steget för en annan del.
+Svaret skrivs i loggen (`decideEdit`, #894): raden bär steget utan cellen och utan frågan, så uppspelningen aldrig frågar efter kolumnerna igen.
+Editorn ser i ekot att cellen den skickade inte kom med, och säger samma mening som när den släppte cellen själv.
 
 Ett grepp (L14) är fortfarande ett steg: varje redigering i greppet lägger sina delar på samma steg, där den första säger var en del var och den sista var den hamnade.
 En redigering som inte ändrade någonting blir inget steg.
@@ -4755,6 +4777,7 @@ En handskriven invers per verb, sammansatt av de verb som finns, prövades i tan
 Byggt 2026-10-20 (#1056, ingen prototyp: ingenting nytt ritas, och avslaget sägs där editorn redan säger att en ändring inte gick igenom).
 Grindar: `packages/server/test/personal-undo.test.ts`, `packages/web/test/personal-undo.test.ts` och `packages/e2e/test/editor-personal-undo.spec.ts`, där två editorer i var sin webbläsare ångrar i Tabell, Regler och Mall, gör om, och får nej när den andra har ändrat samma cell eller samma lager.
 Följderna byggda 2026-10-21 (#1069, #1070, ingen prototyp: ingenting nytt ritas): samma E2E-spec ångrar ett nytt kort efter den andras nya kolumn och får nej när den andra skrivit i kortet, och kapplöpningen spelas mot aktören för kort, lager, zoner och kolumnordningen i serverns test och för ett lager med två editorer mot en riktig aktör i webbens.
+Kolumnerna byggda 2026-10-21 (#1072, ingen prototyp: notisen står där editorn redan säger att ett steg inte gick): samma E2E-spec ångrar ett borttaget kort och gör om en kopia efter den andras borttagning av kolumnen, serverns test prövar lager, prosaval, grupper och kapplöpningen, och webbens spelar kapplöpningen med två editorer mot en riktig aktör.
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
 

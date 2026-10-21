@@ -409,6 +409,11 @@ export const enEditor = {
   // Personal undo (#1056): what someone else has changed since is never written over, and that is said.
   'undo.refused': 'Could not undo {what}: someone else has changed the same thing since. Nothing was written over.',
   'redo.refused': 'Could not redo {what}: someone else has changed the same thing since. Nothing was written over.',
+  // A card that comes back does not bring back a column someone else has removed (#1072). The column's
+  // name is the game's and stays as written; one sentence for undo and redo, since the card came back.
+  'undo.dropped.one': 'The value in {fields} did not come back: someone else has removed the column.',
+  'undo.dropped.other': 'The values in {fields} did not come back: someone else has removed the columns.',
+  'undo.dropped.field': '“{field}”',
   'undo.what.name': "the game's name",
   'undo.what.deck': 'a change to the deck',
   'undo.what.field': 'a field of the deck',

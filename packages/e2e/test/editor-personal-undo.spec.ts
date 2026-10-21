@@ -259,6 +259,92 @@ test('ångra vägrar ta bort Adas nya kort när Bo har skrivit i det, i sin nya 
   }
 })
 
+// Ett kort med ett värde i en kolumn, och Bo som tar bort kolumnen (#1072). Ångra lade tillbaka
+// kortet med sitt värde, och kolumnen stod i leken igen för båda: Bos borttagning var delvis ogjord
+// utan att han fick veta det. Nu kommer kortet tillbaka utan värdet, och Ada får veta varför.
+const DROPPED = 'Värdet i «body» kom inte tillbaka: någon annan har tagit bort kolumnen.'
+// Kolumnen i tabellens huvud. `body` skrivs som prosa och har ingen textruta i cellen, så att
+// kolumnen är borta läses i huvudet och i kortets rad.
+const column = (page: Page, name: string) => page.locator(`.byd-data thead th[data-col="${name}"]`)
+async function removeCard(page: Page, id: string): Promise<void> {
+  await tab(page, 'Tabell')
+  await page.getByRole('button', { name: `ta bort ${id}`, exact: true }).click()
+  await page.getByRole('button', { name: 'Ja, ta bort' }).click()
+  await expect(card(page, id)).toHaveCount(0)
+}
+async function removeColumn(page: Page, name: string): Promise<void> {
+  await tab(page, 'Tabell')
+  await page.getByRole('button', { name: 'Kolumner', exact: true }).click()
+  const door = page.getByRole('group', { name: 'Kolumner', exact: true })
+  await door.getByRole('button', { name: `Ta bort fältet ${name}` }).click()
+  await door.getByRole('alertdialog').getByRole('button', { name: 'Ja, ta bort' }).click()
+  await page.keyboard.press('Escape')
+  await expect(column(page, name)).toHaveCount(0)
+}
+
+test('ångra lägger tillbaka Adas kort utan värdet i kolumnen Bo har tagit bort, och säger varför (#1072)', async ({ browser, baseURL, page }) => {
+  const game = await twoEditors(browser, baseURL, page)
+  try {
+    await page.goto(game.editorUrl)
+    await game.bo.goto(game.editorUrl)
+
+    await removeCard(page, 'kort-1')
+    await tab(game.bo, 'Tabell')
+    await expect(card(game.bo, 'kort-1')).toHaveCount(0)
+    await expect(column(page, 'body')).toHaveCount(1)
+    await removeColumn(game.bo, 'body')
+    await expect(column(page, 'body')).toHaveCount(0)
+
+    await undo(page).click()
+    await expect(page.locator('.byd-editor-confirm')).toHaveText('Tog tillbaka: en ändring i kortleken')
+    await expect(notice(page)).toHaveText(DROPPED)
+    for (const editor of [page, game.bo]) {
+      await expect(cell(editor, 'kort-1 title')).toHaveValue('Björn 1')
+      await expect(card(editor, 'kort-1')).not.toContainText('Rad 1.')
+      await expect(column(editor, 'body')).toHaveCount(0)
+    }
+    const doc = await stored(page, page.request, game.id)
+    expect(doc.rows.find((r) => r.id === 'kort-1')?.fields).toEqual({ title: 'Björn 1', antal: 1 })
+    expect(doc.rows.some((r) => 'body' in r.fields)).toBe(false)
+  } finally {
+    await game.close()
+  }
+})
+
+test('gör om lägger tillbaka Adas kopia utan värdet i kolumnen Bo har tagit bort, och säger varför (#1072)', async ({ browser, baseURL, page }) => {
+  const game = await twoEditors(browser, baseURL, page)
+  try {
+    await page.goto(game.editorUrl)
+    await game.bo.goto(game.editorUrl)
+
+    // En kopia av kort-1 är ett kort med ett värde i varje kolumn, lagt till i ett steg.
+    await tab(page, 'Tabell')
+    await page.getByRole('checkbox', { name: 'markera kort-1', exact: true }).check()
+    await page.getByRole('button', { name: 'Duplicera 1 kort' }).click()
+    await expect(card(page, 'kort-1-kopia')).toContainText('Rad 1.')
+    await page.getByRole('button', { name: 'Avmarkera alla' }).click()
+    await undo(page).click()
+    await expect(card(page, 'kort-1-kopia')).toHaveCount(0)
+    await tab(game.bo, 'Tabell')
+    await expect(card(game.bo, 'kort-1-kopia')).toHaveCount(0)
+    await expect(column(page, 'body')).toHaveCount(1)
+    await removeColumn(game.bo, 'body')
+    await expect(column(page, 'body')).toHaveCount(0)
+
+    await redo(page).click()
+    await expect(notice(page)).toHaveText(DROPPED)
+    for (const editor of [page, game.bo]) {
+      await expect(cell(editor, 'kort-1-kopia title')).toHaveValue('Björn 1')
+      await expect(card(editor, 'kort-1-kopia')).not.toContainText('Rad 1.')
+      await expect(column(editor, 'body')).toHaveCount(0)
+    }
+    const doc = await stored(page, page.request, game.id)
+    expect(doc.rows.some((r) => 'body' in r.fields)).toBe(false)
+  } finally {
+    await game.close()
+  }
+})
+
 test('gör om vägrar när Bo har skrivit i cellen efter att Ada ångrat (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {

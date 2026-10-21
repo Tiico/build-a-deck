@@ -6,7 +6,7 @@ export * from './names.js'
 export * from './recipe.js'
 export * from './edits.js'
 // Personlig ångra (#1056): vad en redigering ändrade, och steget tillbaka från det.
-export { changeOf, joined, revertOf, type Change, type Reverted, type Revert } from './undo.js'
+export { cellColumn, changeOf, joined, revertOf, type Change, type Reverted, type Revert } from './undo.js'
 export * from './setup.js'
 // The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
 export * from './roles.js'

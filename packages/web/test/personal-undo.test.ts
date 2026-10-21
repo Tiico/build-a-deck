@@ -217,3 +217,67 @@ describe('ett steg som aktören vägrar (#1056)', () => {
     }
   })
 })
+
+// Ada tar bort ett kort med ett värde i en kolumn, Bo tar bort kolumnen, och Ada ångrar (#1072):
+// kortet kommer tillbaka utan värdet, kolumnen kommer inte tillbaka för någon, och editorn vet vad
+// som släpptes så att den kan säga det.
+describe('ett kort som ångras tillbaka tar inte med sig en kolumn någon annan tagit bort (#1072)', () => {
+  const dragon = (editor: ProjectClient) => editor.doc.rows.find((r) => r.id === 'dragon')
+  const hasBody = (editor: ProjectClient) => editor.doc.rows.some((r) => 'body' in r.fields) || (editor.doc.template.faces['front']?.base ?? []).some((e) => 'bind' in e && 'field' in e.bind && e.bind.field === 'body')
+
+  it('lägger tillbaka kortet utan värdet, hos båda och i loggen, och säger vad som släpptes', async () => {
+    const { ada, bo, close } = await pair()
+    try {
+      ada.removeRow('dragon')
+      await landed(ada)
+      await eventually(() => expect(dragon(bo)).toBeUndefined())
+      bo.removeField('body')
+      await eventually(() => expect(hasBody(ada)).toBe(false))
+
+      expect(ada.undo()).toBe('undo.what.deck')
+      expect(ada.droppedStep).toEqual({ dir: 'undo', fields: ['body'] })
+      expect(ada.droppedSteps).toBe(1)
+      await landed(ada)
+      for (const editor of [ada, bo]) {
+        await eventually(() => expect(dragon(editor)).toEqual({ id: 'dragon', fields: { title: 'Drake', antal: 2 } }))
+        expect(hasBody(editor)).toBe(false)
+      }
+      expect(JSON.stringify((await run.projects.readEdits(run.projectId, 0)).at(-1)?.intent)).not.toContain('Flygande.')
+    } finally {
+      close()
+    }
+  })
+
+  // Kapplöpningen: Bos borttagning av kolumnen har landat hos aktören men inte hos Ada när hon
+  // ångrar. Hon ser kolumnen stå kvar och skickar värdet med; aktören släpper det, och editorn säger
+  // det när ekot visar vad aktören skrev.
+  it('släpper värdet hos aktören när Bos borttagning hann före, och säger det', async () => {
+    const line = slowFirstLine()
+    try {
+      const { ada, bo, close } = await pair()
+      try {
+        ada.removeRow('dragon')
+        await landed(ada)
+        await eventually(() => expect(dragon(bo)).toBeUndefined())
+        line.hold()
+        bo.removeField('body')
+        await vi.waitFor(async () => expect((await run.projects.readEdits(run.projectId, 0)).length).toBe(2))
+
+        expect(ada.undo()).toBe('undo.what.deck')
+        expect(ada.droppedSteps).toBe(0)
+        await vi.waitFor(() => expect(line.held()).toBeGreaterThanOrEqual(2))
+        line.release()
+        await eventually(() => expect(ada.droppedStep).toEqual({ dir: 'undo', fields: ['body'] }))
+        expect(ada.refusedSteps).toBe(0)
+        for (const editor of [ada, bo]) {
+          await eventually(() => expect(dragon(editor)).toEqual({ id: 'dragon', fields: { title: 'Drake', antal: 2 } }))
+          expect(hasBody(editor)).toBe(false)
+        }
+      } finally {
+        close()
+      }
+    } finally {
+      line.done()
+    }
+  })
+})
