@@ -188,7 +188,8 @@ export function revertOf(change: Change, now: ProjectDoc): Reverted {
       // En del under en kolumns gamla namn, som steget lägger tillbaka, står på kolumnen under det nya
       // (#1076). Har någon annan tagit bort den finns det steget vill ta tillbaka — namnet — inte
       // längre, och att lägga tillbaka delen vore att återskapa kolumnen under det gamla namnet: steget
-      // vägras, också för en cell, eftersom det inte finns något kort som kan komma tillbaka utan den.
+      // vägras, också för en cell, eftersom kortet står kvar och det enda cellen lägger tillbaka är
+      // kolumnen. Hos aktören behövs ingen fråga: steget bär cellerna under det nya namnet med `was`.
       if (part.into && back.to !== undefined) {
         standing ??= new Set(columnsOf(now))
         if (part.into.some((c) => !standing?.has(c))) {
