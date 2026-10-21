@@ -55,7 +55,7 @@ describe('choosing a ready-made theme (L57, #632)', () => {
     const client = await openClient()
     await client.useTheme(skogssaga)
     expect(Object.keys(client.doc.icons)).toEqual(['mynt', 'sköld', 'svärd', 'hjärta', 'kristall', 'dra'])
-    expect(client.doc.credits?.['mynt']).toEqual({ licence: 'CC0-1.0', by: 'build-your-deck', source: 'mynt' })
+    expect(client.doc.credits?.['mynt']).toEqual({ licence: 'CC0-1.0', by: 'Deckster', source: 'mynt' })
     for (const url of Object.values(client.doc.icons)) expect((await fetch(`${run.http}/assets/${url.slice('asset:'.length)}`)).ok).toBe(true)
   })
 

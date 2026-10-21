@@ -653,7 +653,7 @@ describe('symbols (E4)', () => {
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
     const stored = await run.projects.load(run.projectId)
     expect(stored?.icons['sköld']).toBe(client.doc.icons['sköld'])
-    expect(stored?.credits).toEqual({ 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } })
+    expect(stored?.credits).toEqual({ 'sköld': { licence: 'CC0-1.0', by: 'Deckster', source: 'skold' } })
   })
 })
 

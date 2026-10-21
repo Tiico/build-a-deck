@@ -157,9 +157,9 @@ describe('mailerFromEnv', () => {
   })
 
   it('sends through Resend when there is one', () => {
-    const mailer = mailerFromEnv({ RESEND_API_KEY: 'key', MAIL_FROM: 'build-your-deck <login@deck.example>' })
+    const mailer = mailerFromEnv({ RESEND_API_KEY: 'key', MAIL_FROM: 'Deckster <login@deck.example>' })
     expect(mailer).toBeInstanceOf(ResendMailer)
-    expect((mailer as ResendMailer).from).toBe('build-your-deck <login@deck.example>')
+    expect((mailer as ResendMailer).from).toBe('Deckster <login@deck.example>')
   })
 
   it('never sends from an empty address', () => {

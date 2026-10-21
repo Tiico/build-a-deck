@@ -93,7 +93,7 @@ describe.each(LIVE.filter((live) => live.route !== 'join'))('$path when the room
 
   it('says it in the tab as well, so a screen nobody is watching is honest', async () => {
     await open(live, { session: 'no-such-room' })
-    await waitFor(() => expect(document.title).toBe('Bordet finns inte · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Bordet finns inte · Deckster'))
   })
 
   it('announces it assertively, because it is an answer to something someone asked for', async () => {
@@ -123,7 +123,7 @@ describe('/join when the room does not exist (#675)', () => {
 
   it('says it in the tab as well', async () => {
     await open(join, { session: 'no-such-room' })
-    await waitFor(() => expect(document.title).toBe('Bordet finns inte · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Bordet finns inte · Deckster'))
   })
 
   it('announces it assertively, because it is an answer to something someone asked for', async () => {
@@ -142,7 +142,7 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
     expect(panel.textContent).toMatch(/når inte|kontakt/i)
     expect(within(panel).getByRole('button', { name: /försök/i })).toBeTruthy()
     expect(within(panel).getAllByRole('link').length).toBeGreaterThan(0)
-    await waitFor(() => expect(document.title).toBe('Ingen kontakt · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Ingen kontakt · Deckster'))
     expect(deaf.stayedDeaf()).toBe(true)
     await deaf.stop()
   })
@@ -203,7 +203,7 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
     expect(stale).toBeTruthy()
     expect(stale!.hasAttribute('inert')).toBe(true)
     expect(notice()!.textContent).toMatch(/Det du ser är från \d\d:\d\d/)
-    await waitFor(() => expect(document.title).toBe('Frånkopplad · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Frånkopplad · Deckster'))
   })
 
   // «Försök nu» takes its own message away once the line is back, and the focus went with it, to
@@ -374,7 +374,7 @@ describe('a room that is up says which room it is in the tab', () => {
     await waitFor(() => expect(noticeState()).toBeNull())
     // The room code is what a room is called out loud (DRIFT §9), so it is what the tab says.
     await waitFor(() => expect(document.title).toContain(roomOf(id).code))
-    expect(document.title.endsWith('· build-your-deck')).toBe(true)
+    expect(document.title.endsWith('· Deckster')).toBe(true)
   })
 })
 

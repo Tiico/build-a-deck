@@ -174,6 +174,26 @@ Det finns ingen språkväljare på filten: språket väljs där värden arbetar 
 Telefonernas väg in, koden och QR:en, bär inget språk; en spelare följer sin egen webbläsare.
 `table-lang.test.tsx` håller länkarna och minnet, och `table-lang.spec.ts` visar en TV som öppnats på svenska tala svenska också utan `?lang=` i en engelsk webbläsare.
 
+### A5. Namnet: Deckster, på deckster.se (beslutat 2026-10-21, #1080)
+
+Tjänsten heter **Deckster** och ligger på **deckster.se**.
+`build-your-deck` var ett arbetsnamn och står kvar bara där verkstaden talar: repot, paketen `@byd/*`, `BYD_*` i driften, bilderna i GHCR och systemd-enheterna.
+
+Namnet skrivs **Deckster** överallt där en användare läser det — flikens titel, inloggningskortet, landningssidan, inloggningsmejlet och dess fot, versionsraden, appens manifest och upphovsraden på ikonerna som följer med verktyget.
+Bara domänen skrivs gement, för att den är en adress.
+Namnet översätts inte (A4): det är detsamma på svenska och engelska.
+
+Namnets .com-adress är någon annans.
+Den får aldrig stå i repot, inte ens som exempel: en länk, en avsändare eller ett exempel med .com skickar läsaren — eller ett inloggningsmejl — till en främlings sajt, och ser rätt ut för alla som bara ögnar igenom det.
+
+Följdkrav:
+
+- Produktionen flyttar från `deck.ockelberg.com` när domänen är registrerad och ligger i Cloudflare (#1080): `PUBLIC_ORIGIN`, `BYD_HOSTNAME` och `MAIL_FROM` på lådan, deckster.se verifierad som avsändardomän hos Resend, och pulskollen omriktad (DRIFT §8).
+- Den gamla adressen svarar 301 till deckster.se med sökväg och query kvar, så att utskickade inloggningslänkar, bokmärken och QR-koder fortsätter att fungera.
+  Omdirigeringen ligger framför appen, inte i den: appen känner ett enda origin, `PUBLIC_ORIGIN`, och inget domännamn är inskrivet i koden (K12).
+- Ikoner som redan lagts i ett spel behåller upphovsraden `build-your-deck`; den är spelets data, och bara nya får `Deckster`.
+- `packages/server/test/service-name.test.ts` håller båda reglerna: ingen .com-adress för namnet någonstans i repot, och inget `build-your-deck` i det en användare kan läsa.
+
 ## B. Domänmodellen
 
 ### B1. Full typad komponentmodell (fråga 2)
@@ -1264,7 +1284,7 @@ På bordet och på telefonen ligger beskedet ovanpå vyn och tar ingen plats ifr
 Ett besked som kommer och går på en tredjedels sekund är därför inte bara oläsbart, det är en sida som hoppar till av skäl ingen får veta.
 Serverns egna meningar når aldrig skärmen: en avvisad `SendResult` översätts till en svensk mening, med en egen mening som reserv för ett skäl översättningen inte känner igen.
 
-Dokumenttiteln sätts på ett ställe, av routen, med lägets överskrivning: `Bordet · Rum 4KJ2 · build-your-deck` när allt är uppe, `Frånkopplad · build-your-deck` när linan är nere.
+Dokumenttiteln sätts på ett ställe, av routen, med lägets överskrivning: `Bordet · Rum 4KJ2 · Deckster` när allt är uppe, `Frånkopplad · Deckster` när linan är nere.
 Namnet ligger först eftersom en flik klipps från höger, och titeln är inte ett meddelande: den som behöver ordet "fel" får det i vyn och i live-regionen, inte i fliken.
 En okänd sökväg är en egen route som säger att sidan inte finns; förut föll den igenom till startsidan, så en felstavad länk visade tyst någon annans spel.
 
@@ -1889,7 +1909,7 @@ Korten på sidan är en påhittad lek, «Skogens herrar», skriven som en vanlig
 Bordet ritas i en ram av fast storlek och zoomas till sin kolumn, så bilden behåller sina proportioner; utan rörelse (`prefers-reduced-motion`) delas inga kort ut och telefonerna står still.
 Sidan är ett av kontots rum i knappspråket (#44): grönt fyllt för första handlingen, kontur för den andra, och bara formen — en pille — är sidans egen.
 Ett besök på landningssidan räknas som att säljraden (L36) setts, så inloggningskortet säljer inte produkten en gång till.
-Fliken heter «Bygg ditt kortspel · build-your-deck».
+Fliken heter «Bygg ditt kortspel · Deckster» (A5).
 Grindarna: `packages/web/test/landing.test.tsx` (sidan i kortets ställe, dörrarna, kodraden, korten och säljraden), `button-language.test.tsx` (sidan som vy i knappspråket), `packages/e2e/test/code-address.spec.ts` (båda dörrarna på första skärmen vid 320 × 568) och `packages/e2e/test/surfaces/account-viewport.spec.ts` (44 px och ingen sidledsrullning på sidan och på `/login`).
 Prototypen: `docs/ux-audits/2026-10-18-landningssidan/prototyper/1009/`.
 

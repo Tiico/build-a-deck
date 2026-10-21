@@ -30,7 +30,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 export const INK = '#1c1c1c'
 const svg = (body: string, fill: string = INK): string => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${fill}">${body}</svg>`
 
-const CC0 = { licence: 'CC0-1.0', by: 'build-your-deck' }
+const CC0 = { licence: 'CC0-1.0', by: 'Deckster' }
 
 export const LIBRARY: GameSymbol[] = [
   { id: 'svard', name: 'symbols.name.svard', category: 'symbols.cat.resource', keywords: 'symbols.words.svard', ...CC0, svg: svg('<path d="M4 20l3-1 10-10 2-6-6 2L3 15l-1 3z"/>') },

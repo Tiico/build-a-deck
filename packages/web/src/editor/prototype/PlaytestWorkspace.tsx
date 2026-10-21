@@ -91,7 +91,7 @@ export default function PlaytestWorkspace({ doc, revision, http }: Props) {
   const testPanel = run.state === 'Planerat' ? preparation : run.state === 'Pågår' ? liveTest : review
   const cardsPanel = <div className="ux-work-cards"><div><label>Sök kort<input value={query} onChange={e => search(e.target.value)} /></label>{cardList}</div>{editCard}</div>
   const phasePanel = phase === 'Kort' ? cardsPanel : phase === 'Förbered' ? preparation : testPanel
-  const heading = <header className="ux-work-head"><div><p className="ux-eyebrow">{playing ? 'Spelarvy · samma speltest' : 'build-your-deck / arbetsyta'}</p><h1>{doc.name}</h1></div><div className="ux-row"><span className="ux-pill">Test {run.number} · {run.state}</span><span className="ux-pill">rev {localRevision}{dirty ? ' · ändrat' : ''}</span></div></header>
+  const heading = <header className="ux-work-head"><div><p className="ux-eyebrow">{playing ? 'Spelarvy · samma speltest' : 'Deckster / arbetsyta'}</p><h1>{doc.name}</h1></div><div className="ux-row"><span className="ux-pill">Test {run.number} · {run.state}</span><span className="ux-pill">rev {localRevision}{dirty ? ' · ändrat' : ''}</span></div></header>
   const context = <aside className="ux-context"><p className="ux-eyebrow">Du är här</p><h3>{phase}</h3><p>{phase === 'Kort' ? 'Läs eller ändra ett kort. Fortsätt sedan till förberedelsen.' : phase === 'Förbered' ? 'Välj en fråga och starta testet.' : phase === 'Speltest' ? 'Prova spelarvyn och lämna ett svar.' : 'Ta med en observation till nästa kortändring.'}</p><hr /><small>Testfråga</small><p>{run.state === 'Planerat' ? goal : run.goal}</p></aside>
   return <div className={'ux-proto ux-work ux-work-' + variant.toLowerCase()}>
     {heading}

@@ -74,7 +74,7 @@ Två saker om filens form, eftersom den läses av både Compose och systemd.
 Värden med mellanslag måste citeras:
 
 ```sh
-MAIL_FROM="build-your-deck <login@ditt-värdnamn>"
+MAIL_FROM="Deckster <login@ditt-värdnamn>"
 ```
 
 Och en kommentar får bara stå först på raden. `PUBLIC_ORIGIN=https://x  # kommentar` blir värdet `https://x  # kommentar` för systemd, som bara känner igen `#` i radens början.

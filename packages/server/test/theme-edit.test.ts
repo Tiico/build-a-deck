@@ -102,9 +102,9 @@ describe('ett temabyte är en redigering (L57, #632)', () => {
   })
 
   it('tar in startikonerna med sina licenser', () => {
-    const doc = applyEdit(base(), skogssaga({ icons: { mynt: { url: 'asset:eee', credit: { licence: 'CC0-1.0', by: 'build-your-deck', source: 'mynt' } } } }))
+    const doc = applyEdit(base(), skogssaga({ icons: { mynt: { url: 'asset:eee', credit: { licence: 'CC0-1.0', by: 'Deckster', source: 'mynt' } } } }))
     expect(doc.icons).toEqual({ mynt: 'asset:eee' })
-    expect(doc.credits).toEqual({ mynt: { licence: 'CC0-1.0', by: 'build-your-deck', source: 'mynt' } })
+    expect(doc.credits).toEqual({ mynt: { licence: 'CC0-1.0', by: 'Deckster', source: 'mynt' } })
   })
 
   it('vägrar en familj som varken följer med bytet eller redan finns i spelet', () => {

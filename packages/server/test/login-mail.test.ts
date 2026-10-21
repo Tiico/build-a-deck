@@ -8,18 +8,18 @@ describe('the foot of the login mail (#757)', () => {
   const link = 'https://byd.example.com/auth/verify?token=abc'
 
   it('names the service, the site and the contact, in the reader’s language', () => {
-    expect(loginMail('a@b.se', link, 'sv', 'beta@example.com').text).toMatch(/\n\n— \nbuild-your-deck · https:\/\/byd\.example\.com\nKontakt: beta@example\.com$/)
-    expect(loginMail('a@b.se', link, 'en', 'beta@example.com').text).toMatch(/\n\n— \nbuild-your-deck · https:\/\/byd\.example\.com\nContact: beta@example\.com$/)
+    expect(loginMail('a@b.se', link, 'sv', 'beta@example.com').text).toMatch(/\n\n— \nDeckster · https:\/\/byd\.example\.com\nKontakt: beta@example\.com$/)
+    expect(loginMail('a@b.se', link, 'en', 'beta@example.com').text).toMatch(/\n\n— \nDeckster · https:\/\/byd\.example\.com\nContact: beta@example\.com$/)
   })
 
   it('leaves the contact out when the box was given none', () => {
     const text = loginMail('a@b.se', link, 'sv').text
-    expect(text).toMatch(/build-your-deck · https:\/\/byd\.example\.com$/)
+    expect(text).toMatch(/Deckster · https:\/\/byd\.example\.com$/)
     expect(text).not.toMatch(/Kontakt/)
   })
 
   it('leaves the site out, rather than failing, when the link is a path on this site', () => {
     const text = loginMail('a@b.se', '/auth/verify?token=abc', 'sv', 'beta@example.com').text
-    expect(text).toMatch(/\n\n— \nbuild-your-deck\nKontakt: beta@example\.com$/)
+    expect(text).toMatch(/\n\n— \nDeckster\nKontakt: beta@example\.com$/)
   })
 })

@@ -136,9 +136,9 @@ describe('the history and the keyboard (#477)', () => {
       </DocumentTitle>,
     )
     await screen.findByRole('button', { name: /^v\d+$/ })
-    await waitFor(() => expect(document.title).toMatch(/ · Kortvägg · build-your-deck$/))
+    await waitFor(() => expect(document.title).toMatch(/ · Kortvägg · Deckster$/))
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
-    await waitFor(() => expect(document.title).toMatch(/ · Tabell · build-your-deck$/))
+    await waitFor(() => expect(document.title).toMatch(/ · Tabell · Deckster$/))
   })
 
   it('saves a version\'s name on Enter, not only when the field is left', async () => {

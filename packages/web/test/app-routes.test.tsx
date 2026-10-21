@@ -29,14 +29,14 @@ describe('a path nothing serves', () => {
 
   it('names the page in the tab', async () => {
     await open('/spel/4KJ2')
-    await waitFor(() => expect(document.title).toBe('Sidan finns inte · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Sidan finns inte · Deckster'))
   })
 })
 
 describe('every main route names itself in the tab', () => {
   it.each([
-    ['/login', 'Logga in · build-your-deck'],
-    ['/new', 'Nytt spel · build-your-deck'],
+    ['/login', 'Logga in · Deckster'],
+    ['/new', 'Nytt spel · Deckster'],
   ])('titles %s', async (path, title) => {
     await open(path)
     await waitFor(() => expect(document.title).toBe(title))
@@ -47,6 +47,6 @@ describe('every main route names itself in the tab', () => {
   // is one, so a tab never claims to hold a room it has not reached.
   it('lets the state of a session route win over the route while it is still connecting', async () => {
     await open('/table?session=4KJ2')
-    await waitFor(() => expect(document.title).toBe('Ansluter · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Ansluter · Deckster'))
   })
 })

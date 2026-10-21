@@ -88,7 +88,7 @@ export const svStatus = {
   'status.shell.slow.phone.text': 'Vi hämtar fortfarande sidan. Din plats står kvar.',
   'status.shell.slow.editor.text': 'Vi hämtar fortfarande sidan.',
   'status.shell.reload': 'Ladda om sidan',
-  'status.shell.noscript': 'build-your-deck behöver JavaScript. Slå på det och ladda om sidan.',
+  'status.shell.noscript': 'Deckster behöver JavaScript. Slå på det och ladda om sidan.',
 
   'status.spent.mark': 'Gäller inte',
   'status.missing.mark': 'Finns inte',

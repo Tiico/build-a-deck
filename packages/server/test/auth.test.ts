@@ -40,18 +40,18 @@ describe('the mail the tool sends, in the reader\'s language (A4)', () => {
   it('writes the sign-in link in Swedish by default and in English when the reader asked for it', async () => {
     expect((await post('/auth/login', { email: 'ada@example.com' })).status).toBe(200)
     const swedish = run.mail.sent.at(-1)!
-    expect(swedish.subject).toBe('Logga in på build-your-deck')
+    expect(swedish.subject).toBe('Logga in på Deckster')
     expect(swedish.text).toContain('Klicka för att logga in')
 
     expect((await post('/auth/login', { email: 'bo@example.com', lang: 'en' })).status).toBe(200)
     const english = run.mail.sent.at(-1)!
-    expect(english.subject).toBe('Sign in to build-your-deck')
+    expect(english.subject).toBe('Sign in to Deckster')
     expect(english.text).toContain('Click to sign in')
     // The link itself is the same link, whatever the language around it.
     expect(english.text).toMatch(/\/auth\/verify\?token=/)
     // A language the tool does not speak is not an error: the mail goes out in Swedish.
     expect((await post('/auth/login', { email: 'cee@example.com', lang: 'kl' })).status).toBe(200)
-    expect(run.mail.sent.at(-1)!.subject).toBe('Logga in på build-your-deck')
+    expect(run.mail.sent.at(-1)!.subject).toBe('Logga in på Deckster')
   })
 })
 
