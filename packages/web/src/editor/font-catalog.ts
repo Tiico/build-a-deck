@@ -118,17 +118,23 @@ export const CATALOG_COMMAND = 'pnpm --filter @byd/web exec tsx scripts/google-f
 // half-written stamp, a month of 31 February or a sentence and answer with a date or with
 // `Invalid Date`, and both of those read as «not older than six months». A stamp that cannot be
 // read is a broken gate, so it is an error and not a silence.
-export function catalogStamp(stamp: string): Date {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(stamp)) throw new Error(`the catalog stamp is not a YYYY-MM-DD date: ${JSON.stringify(stamp)} — re-run \`${CATALOG_COMMAND}\``)
+// `command` is what regenerates the list the stamp is on: the icon sources (#1087) are stamped and
+// gated the same way, and a broken stamp should name the script that wrote it.
+export function catalogStamp(stamp: string, command: string = CATALOG_COMMAND): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(stamp)) throw new Error(`the catalog stamp is not a YYYY-MM-DD date: ${JSON.stringify(stamp)} — re-run \`${command}\``)
   const date = new Date(`${stamp}T00:00:00Z`)
-  if (date.toISOString().slice(0, 10) !== stamp) throw new Error(`the catalog stamp is not a day that exists: ${stamp} — re-run \`${CATALOG_COMMAND}\``)
+  if (date.toISOString().slice(0, 10) !== stamp) throw new Error(`the catalog stamp is not a day that exists: ${stamp} — re-run \`${command}\``)
   return date
 }
 
-export function staleCatalogMessage(stamp: string, now: Date): string | null {
-  const generated = catalogStamp(stamp)
-  const limit = new Date(generated)
+// Whether a stamped list is past the age limit, as of `now`.
+export function pastAge(stamp: string, now: Date, command: string = CATALOG_COMMAND): boolean {
+  const limit = catalogStamp(stamp, command)
   limit.setUTCMonth(limit.getUTCMonth() + CATALOG_MAX_AGE_MONTHS)
-  if (now < limit) return null
+  return now >= limit
+}
+
+export function staleCatalogMessage(stamp: string, now: Date): string | null {
+  if (!pastAge(stamp, now)) return null
   return `The Google Fonts catalog in \`google-fonts.ts\` was generated ${stamp} and is older than ${CATALOG_MAX_AGE_MONTHS} months (today is ${now.toISOString().slice(0, 10)}). Re-run \`${CATALOG_COMMAND}\` and commit the result (#370, L27).`
 }

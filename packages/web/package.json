@@ -13,6 +13,8 @@
     "@byd/engine": "workspace:*",
     "@byd/protocol": "workspace:*",
     "@byd/template": "workspace:*",
+    "@iconify-json/game-icons": "1.2.4",
+    "@iconify-json/lucide": "1.2.147",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
