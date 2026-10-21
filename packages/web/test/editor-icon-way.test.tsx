@@ -229,12 +229,12 @@ describe('the icon as a tool on the canvas (#33)', () => {
     const x = screen.getByRole('spinbutton', { name: /^x/i }) as HTMLInputElement
     expect(x.value).toBe('27.5')
 
-    // The panel says which icon this is, and it does not claim a column it does not show: the
-    // picker names the first field for anything bound to a literal, and that would be a lie.
-    expect((screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement).value).toBe('svärd')
-    const field = screen.getByLabelText('Fält') as HTMLSelectElement
-    expect(field.value).toBe('')
-    expect(within(field).getByRole('option', { name: 'inget fält' }).getAttribute('value')).toBe('')
+    // The panel says which icon this is, and it does not claim a column it does not show: one
+    // icon on every card has no column to name (#1087).
+    const look = screen.getByRole('region', { name: 'Ikon och färg' })
+    expect((within(look).getByLabelText('Visar') as HTMLSelectElement).value).toBe('fixed')
+    expect(within(look).getByText('svärd')).toBeTruthy()
+    expect(within(look).queryByText('Kolumn')).toBeNull()
 
     // Nudged and taken away by the same keys as everything else on the canvas: the move is made
     // from the element's own stop, inside the mode Enter opens (#144).
@@ -333,22 +333,20 @@ describe('the icon as a tool on the canvas (#33)', () => {
     fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
     await screen.findByRole('heading', { name: /icon-1/ })
 
-    fireEvent.change(screen.getByLabelText('Fält'), { target: { value: 'title' } })
-    await waitFor(() => expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('title'))
+    const look = screen.getByRole('region', { name: 'Ikon och färg' })
+    fireEvent.change(within(look).getByLabelText('Visar'), { target: { value: 'cell' } })
+    const column = () => within(look).getByRole('combobox', { name: /^Kolumn/ }) as HTMLSelectElement
+    fireEvent.change(column(), { target: { value: 'title' } })
+    await waitFor(() => expect(column().value).toBe('title'))
     // It is the column's now, so the card draws whatever that column says — which is not an icon.
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
 
-    // And the icon picker is still there, claiming nothing: it says the element takes its icons
-    // from the column, exactly as the field picker says "inget fält" for one bound to a name.
-    const icon = screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement
-    expect(icon.value).toBe('')
-    expect(within(icon).getByRole('option', { name: 'från kolumnen' }).getAttribute('value')).toBe('')
-
-    // Naming an icon is saying this icon rather than the row's, which is the way back.
-    fireEvent.change(icon, { target: { value: 'svärd' } })
+    // One icon on every card again is the way back, and back to the icon it was: going back is
+    // not a guess, as a picture's way back to its column is not (#320).
+    fireEvent.change(within(look).getByLabelText('Visar'), { target: { value: 'fixed' } })
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
-    expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('')
-    expect((screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement).value).toBe('svärd')
+    expect(within(look).queryByText('Kolumn')).toBeNull()
+    expect(within(look).getByText('svärd')).toBeTruthy()
   })
 
   // A row of icons placed where the game has no column of names reads none and draws nothing
@@ -364,17 +362,16 @@ describe('the icon as a tool on the canvas (#33)', () => {
     fireEvent.click(within(tools).getByRole('button', { name: 'Ikonrad' }))
     await screen.findByRole('heading', { name: /icons-1/ })
 
-    const icon = screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement
-    expect(icon.value).toBe('')
-    expect(icon.selectedOptions[0]?.textContent).toBe('ingen ikon')
-    // One empty option and not two: the blank the layer carries is the one that is named.
-    expect([...icon.options].filter((o) => o.value === '')).toHaveLength(1)
-    expect([...icon.options].every((o) => (o.textContent ?? '').trim() !== '')).toBe(true)
+    const look = screen.getByRole('region', { name: 'Ikon och färg' })
+    expect(within(look).getByText('ingen ikon')).toBeTruthy()
 
-    // And naming one is still how the row gets its icon.
-    fireEvent.change(icon, { target: { value: 'svärd' } })
-    await waitFor(() => expect((screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement).value).toBe('svärd'))
-    expect(within(screen.getByLabelText('Ikon', { selector: 'select' })).queryByRole('option', { name: 'ingen ikon' })).toBeNull()
+    // And choosing one is how the row gets its icon: the game's own are a shelf of the sheet.
+    fireEvent.click(within(look).getByRole('button', { name: 'Välj ikon för alla kort' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Sök i ikonbiblioteken' })
+    fireEvent.click(within(sheet).getByRole('button', { name: /^I spelet/ }))
+    fireEvent.click(await within(sheet).findByRole('button', { name: 'svärd · I spelet' }))
+    await waitFor(() => expect(within(look).getByText('svärd')).toBeTruthy())
+    expect(within(look).queryByText('ingen ikon')).toBeNull()
   })
 
   it('closes when the focus leaves the rail, instead of hanging over the canvas', async () => {

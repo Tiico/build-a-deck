@@ -1936,6 +1936,22 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-props-paint li > label { display: contents; }
 .byd-props-paint li > label > input { width: var(--byd-tap); height: 28px; padding: 0; }
 .byd-props-paint li > button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-quiet); font-size: 15px; cursor: pointer; }
+/* «Ikon och färg» (#1087, L71): what the layer shows and the column it reads, each on a line of
+   its own because «en ikon per värde i en kolumn» does not fit half the panel, and under them the table — a row per value with its icon,
+   its name and its colour, in four columns that stand still whether or not a row has a way back,
+   for the reason the fill's rows do (L16). */
+.byd-icon-look { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; }
+.byd-icon-look > label:not(.byd-props-switch) { grid-column: 1 / -1; }
+.byd-icon-look-rows { grid-column: 1 / -1; list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.byd-icon-look-row { display: grid; grid-template-columns: var(--byd-tap) minmax(0, 1fr) var(--byd-tap) var(--byd-tap); align-items: center; gap: 0 8px; min-height: var(--byd-tap); }
+.byd-icon-look-pick { width: var(--byd-tap); height: var(--byd-tap); display: grid; place-items: center; border: 1px solid var(--byd-editor-line); border-radius: 8px; padding: 0; background: transparent; cursor: pointer; }
+.byd-icon-look-pick:hover, .byd-icon-look-pick:focus-visible { border-color: var(--byd-editor-primary-mark); }
+.byd-icon-paper.byd-icon-paper-small { width: 36px; height: 36px; padding: var(--byd-s1); display: grid; place-items: center; }
+.byd-icon-empty { color: #8a7f6a; font-size: 16px; line-height: 1; }
+.byd-icon-look-what { min-width: 0; display: grid; font-size: 12px; color: #fff; overflow-wrap: anywhere; }
+.byd-icon-look-what small { font-size: 10.5px; color: var(--byd-editor-quiet); }
+.byd-props .byd-icon-look-row > input { grid-column: 3; width: var(--byd-tap); height: 28px; padding: 0; }
+.byd-icon-look-clear { grid-column: 4; min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-quiet); font-size: 15px; cursor: pointer; }
 .byd-props-locked { grid-column: 1 / -1; margin: 0; color: var(--byd-editor-locked-ink); font-size: 11px; line-height: 1.4; }
 .byd-props input[readonly] { color: var(--byd-editor-source-ink); cursor: not-allowed; }
 /* The stage is what pans once the card is bigger than it (#146, L19). `overscroll-behavior` is
@@ -2138,6 +2154,15 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-font-catalog-said[role='alert'] { color: var(--byd-editor-unsaved-ink); }
 .byd-font-catalog footer { flex: none; display: flex; gap: 10px; align-items: center; padding: var(--byd-s2) var(--byd-s3); border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-font-catalog-count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.byd-font-catalog-kinds small { opacity: 0.7; font-variant-numeric: tabular-nums; }
+.byd-icon-catalog-target { margin-left: auto; align-self: center; font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-icon-catalog-hits { flex: 1 1 auto; min-height: 0; overflow: auto; list-style: none; margin: 0; padding: var(--byd-s2); display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; align-content: start; }
+.byd-icon-catalog-hits button { width: 100%; display: grid; justify-items: center; gap: 4px; border: 1px solid var(--byd-editor-line); border-radius: 10px; padding: var(--byd-s2) var(--byd-s1); background: var(--byd-editor-part-bg); color: var(--byd-editor-home-ink); font: inherit; cursor: pointer; min-width: 0; text-align: center; }
+.byd-icon-catalog-hits button:hover, .byd-icon-catalog-hits button:focus-visible { border-color: var(--byd-editor-primary-mark); }
+.byd-icon-paper { width: 48px; height: 48px; box-sizing: border-box; border-radius: 6px; padding: var(--byd-s2); display: block; }
+.byd-icon-sample { display: block; width: 100%; height: 100%; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+.byd-icon-name { max-width: 100%; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-icon-meta { max-width: 100%; font-size: 10.5px; line-height: 1.25; color: var(--byd-editor-quiet); }
 
 /* Table */
 /* The tab is a column: the tools, the filter and what is marked stay put, and only the rows
