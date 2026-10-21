@@ -6,7 +6,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path'
 import { compressible, encodedCopy } from './compress.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, svgRefusal, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -1034,6 +1034,19 @@ const MOTIFS_AT_ONCE = 500
 const IMPORT_MAX_BYTES = 256 * 1024 * 1024
 const ASSET_LINK_TTL_S = 3600
 
+// Why a drawing's bytes may not be stored (#1087). They are read as UTF-8 and nothing else,
+// strictly: bytes that are not UTF-8 would be read by the browser as some other text than the one
+// `svgRefusal` was asked about.
+function svgRefusalOf(bytes: Uint8Array): string | null {
+  let text: string
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    return 'it is not UTF-8 text'
+  }
+  return svgRefusal(text)
+}
+
 // Images (E1, DRIFT §4): POST /assets takes one from a logged-in creator and answers with its
 // hash; GET /assets/:hash serves it to whoever knows the hash, from R2 when there is one.
 async function routeAssets(opts: ServerOptions, assets: AssetStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
@@ -1063,6 +1076,18 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
     if (format?.kind !== kind) {
       json(res, 415, { error: `the bytes are not ${assetFormatsNamed(kind)}` })
       return true
+    }
+    // A drawing is a document that runs (#1087), so opening with `<svg` is not enough: the whole
+    // of it is read against the allowlist the editor cleaned it to. The file is refused rather
+    // than cleaned here, because the document names these bytes by their hash and a cleaned copy
+    // would be stored under a name nothing refers to. 422 rather than 415: the bytes are an SVG,
+    // and it is what the SVG holds that is refused.
+    if (format.type === 'image/svg+xml') {
+      const reason = svgRefusalOf(bytes)
+      if (reason) {
+        json(res, 422, { error: `the SVG is not safe to draw: ${reason}` })
+        return true
+      }
     }
     const hash = await assets.put(bytes, format.type)
     json(res, 201, { hash })
