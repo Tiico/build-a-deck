@@ -98,10 +98,10 @@ describe('the rulebook as a booklet for print (B7)', () => {
       rules: renderRules(doc, names),
       icons,
       pageMm: { w: 148, h: 210 },
-      credits: [{ name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck' }],
+      credits: [{ name: 'sköld', licence: 'CC0-1.0', by: 'Deckster' }],
     })
     expect(out.html).toContain('CC0-1.0')
-    expect(out.html).toContain('build-your-deck')
+    expect(out.html).toContain('Deckster')
   })
 })
 
@@ -180,7 +180,7 @@ describe('a picture in the booklet (#173)', () => {
 
 describe('the booklet in the language the game is made in (A4)', () => {
   it('prints the one heading the tool contributes in the language the order was placed in', () => {
-    const credits = [{ name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck' }]
+    const credits = [{ name: 'sköld', licence: 'CC0-1.0', by: 'Deckster' }]
     const swedish = bookletOf({ rules: renderRules(doc, names), icons, pageMm: A5, credits })
     expect(swedish.html).toContain('Symboler och licenser')
     const english = bookletOf({ rules: renderRules(doc, names), icons, pageMm: A5, credits, lang: 'en' })

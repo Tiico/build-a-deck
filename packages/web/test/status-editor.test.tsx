@@ -50,7 +50,7 @@ describe('a project that does not exist', () => {
 
   it('names the missing game in the tab', async () => {
     open(`project=nope&server=${encodeURIComponent(run.http)}`)
-    await waitFor(() => expect(document.title).toBe('Spelet finns inte · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Spelet finns inte · Deckster'))
   })
 })
 
@@ -87,7 +87,7 @@ describe('a project that belongs to someone else', () => {
       expect(panel.textContent).toMatch(/någon annan|inte tillgång/i)
       expect(within(panel).getByRole('link', { name: /logga in/i })).toBeTruthy()
       expect(within(panel).getByRole('link', { name: /mina spel/i })).toBeTruthy()
-      await waitFor(() => expect(document.title).toBe('Ingen tillgång · build-your-deck'))
+      await waitFor(() => expect(document.title).toBe('Ingen tillgång · Deckster'))
     } finally {
       await owned.stop()
     }
@@ -101,7 +101,7 @@ describe('a server the editor cannot reach', () => {
     const panel = notice() as HTMLElement
     expect(panel.textContent).toMatch(/når inte servern/i)
     expect(within(panel).getByRole('button', { name: /försök igen/i })).toBeTruthy()
-    await waitFor(() => expect(document.title).toBe('Ingen kontakt · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Ingen kontakt · Deckster'))
   })
 
   it('asks the server again in place when a person presses, and opens the game when it answers', async () => {
@@ -138,10 +138,10 @@ describe('a server that takes the call and never answers', () => {
       expect(notice()!.textContent).toMatch(/spelet dröjer/i)
       expect(within(notice() as HTMLElement).getByRole('button', { name: /försök igen/i })).toBeTruthy()
       expect(within(notice() as HTMLElement).getByRole('link', { name: /mina spel/i })).toBeTruthy()
-      expect(document.title).toBe('Laddar · build-your-deck')
+      expect(document.title).toBe('Laddar · Deckster')
       await act(() => vi.advanceTimersByTimeAsync(HELD.connectTimeoutMs))
       expect(noticeState()).toBe('offline')
-      expect(document.title).toBe('Ingen kontakt · build-your-deck')
+      expect(document.title).toBe('Ingen kontakt · Deckster')
     } finally {
       vi.useRealTimers()
     }
@@ -217,7 +217,7 @@ describe('a project on its way in', () => {
     open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     await screen.findByText('Skogens herrar')
     // The wall is where the editor opens, and the tab says so (#477).
-    await waitFor(() => expect(document.title).toBe('Skogens herrar · Kortvägg · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Skogens herrar · Kortvägg · Deckster'))
   })
 })
 

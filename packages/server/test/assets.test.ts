@@ -376,7 +376,7 @@ describe('symbols in a project (E4): the icon set is assets too, and the licence
       template,
       rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Sköld {sköld}.', antal: 1 } }],
       icons: { 'sköld': `asset:${hash}` },
-      credits: { 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } },
+      credits: { 'sköld': { licence: 'CC0-1.0', by: 'Deckster', source: 'skold' } },
       fonts: { Rubrik: { stack: '"Rubrik", Georgia, serif', asset: 'asset:' + '0'.repeat(64), licence: { licence: 'OFL-1.1', by: 'Typverket', source: 'rubrik.woff2' } } },
       setup: { zones, seats, floor, deckZone: 'draw' },
     }
@@ -391,7 +391,7 @@ describe('symbols in a project (E4): the icon set is assets too, and the licence
     // A typeface is borrowed under a licence exactly as a symbol is, so it travels with the
     // print order too (B3, E4).
     expect(body.credits).toEqual([
-      { name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' },
+      { name: 'sköld', licence: 'CC0-1.0', by: 'Deckster', source: 'skold' },
       { name: 'Rubrik', licence: 'OFL-1.1', by: 'Typverket', source: 'rubrik.woff2' },
     ])
   })

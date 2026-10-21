@@ -28,7 +28,7 @@ describe('the foot of the login card (#757)', () => {
       if (!el) throw new Error('no foot yet')
       return el
     })
-    expect(foot.textContent).toBe('Kontakt · build-your-deck v0.9.3')
+    expect(foot.textContent).toBe('Kontakt · Deckster v0.9.3')
     expect(screen.getByRole('link', { name: 'Kontakt' }).getAttribute('href')).toBe('mailto:beta@example.com')
     expect(document.querySelector('.byd-login')!.lastElementChild).toBe(foot)
   })
@@ -36,7 +36,7 @@ describe('the foot of the login card (#757)', () => {
   it('leaves «Kontakt» out when the box was given no contact', async () => {
     health({ ok: true, release: 'v0.9.3', tables: 0 })
     card()
-    await waitFor(() => expect(document.querySelector('[data-about]')?.textContent).toBe('build-your-deck v0.9.3'))
+    await waitFor(() => expect(document.querySelector('[data-about]')?.textContent).toBe('Deckster v0.9.3'))
     expect(screen.queryByRole('link', { name: 'Kontakt' })).toBeNull()
   })
 

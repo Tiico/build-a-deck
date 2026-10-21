@@ -1,0 +1,19 @@
+# A host the service has moved away from answers 301 to the one it lives on now (A5, #1080):
+# deck.ockelberg.com became deckster.se, and login links already sent, bookmarks and the QR codes
+# on printed table cards still name the old host. Path and query are kept, so every one of them
+# lands where it meant to.
+#
+# Merged on top of docker-compose.traefik.yml by COMPOSE_FILE, and only on a box that has moved:
+# the redirect is the proxy's, and the app itself knows one origin, PUBLIC_ORIGIN.
+services:
+  app:
+    labels:
+      - "traefik.http.routers.byd-moved-rtr.entrypoints=https"
+      - "traefik.http.routers.byd-moved-rtr.rule=Host(`${BYD_MOVED_FROM:?set BYD_MOVED_FROM to the host the service moved away from}`)"
+      - "traefik.http.routers.byd-moved-rtr.tls=true"
+      - "traefik.http.routers.byd-moved-rtr.middlewares=byd-moved"
+      # A router needs a service even when its middleware always answers first.
+      - "traefik.http.routers.byd-moved-rtr.service=byd-svc"
+      - "traefik.http.middlewares.byd-moved.redirectregex.regex=^https?://[^/]+/(.*)$$"
+      - "traefik.http.middlewares.byd-moved.redirectregex.replacement=https://${BYD_HOSTNAME}/$${1}"
+      - "traefik.http.middlewares.byd-moved.redirectregex.permanent=true"

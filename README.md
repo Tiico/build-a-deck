@@ -1,4 +1,6 @@
-# build-your-deck
+# Deckster
+
+Deckster, på [deckster.se](https://deckster.se), är tjänsten; `build-your-deck` är repots och paketens arbetsnamn (DESIGN-BESLUT A5).
 
 Skapa ditt eget kortspel, speltesta det digitalt utan regelmotor, och beställ hem det fysiskt.
 Besluten bakom allt finns i [DESIGN-BESLUT.md](DESIGN-BESLUT.md), driften i [DRIFT.md](DRIFT.md), första skivan i [TUNN-SKIVA.md](TUNN-SKIVA.md), och vägen till release i [ROADMAP.md](ROADMAP.md).

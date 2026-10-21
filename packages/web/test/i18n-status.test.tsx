@@ -173,8 +173,8 @@ describe('the nine states in the reader\'s own language (A4)', () => {
         </DocumentTitle>
       </Language>,
     )
-    expect(document.title).toBe('Your hand · Room 4KJ2 · build-your-deck')
-    expect(documentTitle('editor', { state: 'missing' }, english)).toBe('The game is not there · build-your-deck')
-    expect(documentTitle('editor', { state: 'missing' })).toBe('Spelet finns inte · build-your-deck')
+    expect(document.title).toBe('Your hand · Room 4KJ2 · Deckster')
+    expect(documentTitle('editor', { state: 'missing' }, english)).toBe('The game is not there · Deckster')
+    expect(documentTitle('editor', { state: 'missing' })).toBe('Spelet finns inte · Deckster')
   })
 })
