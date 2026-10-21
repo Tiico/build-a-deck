@@ -3,8 +3,13 @@ import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant 
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
-import { applyRevert, type Revert } from './undo.js'
+import { applyRevert, decideRevert, type Revert } from './undo.js'
+import { columnsOf } from './columns.js'
 import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
+
+// The columns are their own module so that `undo.ts` can ask about them without importing the edits
+// that import it (#1072).
+export { columnsOf }
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
 // table — shared state several people change at once, which belongs in the history — so it gets
@@ -255,6 +260,9 @@ export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
     }
     return { v: 'compound', edits }
   }
+  // A step back that brings a cell back into a column someone has taken away since it was worked
+  // out lets that cell go (#1072), and the line says so by not carrying it.
+  if (intent.v === 'revert') return decideRevert(doc, intent)
   if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone') && !intent.places) {
     // The answer is what applying the edit by today's rule moved or made. An edit the document
     // refuses has no answer, and passes on as it is for `applyEdit` to say why.
@@ -880,48 +888,6 @@ export function checkNewName(doc: ProjectDoc, intent: EditIntent): void {
   const lower = name.toLowerCase()
   const clash = ['id', ANTAL, ...columnsOf(doc)].find((known) => known !== self && known.toLowerCase() === lower)
   if (clash !== undefined) throw new Error(`field ${clash} already exists`)
-}
-
-// Every name the deck answers to, in the order a table shows them: what the template draws,
-// face by face, then whatever else the cards carry. This is the truth about which columns a
-// project has — there is no list of fields in the document, and there is deliberately none:
-// a column is either drawn or written in, and both are visible here.
-export function columnsOf(doc: ProjectDoc): string[] {
-  const seen = new Set<string>()
-  const out: string[] = []
-  const add = (field: string) => {
-    if (seen.has(field)) return
-    seen.add(field)
-    out.push(field)
-  }
-  const walk = (els: readonly Element[]) => {
-    for (const el of els) {
-      if ('bind' in el && 'field' in el.bind) add(el.bind.field)
-      if (el.kind === 'if') {
-        add(el.when.field)
-        walk(el.children)
-      }
-      if (el.kind === 'group') walk(el.children)
-    }
-  }
-  for (const face of Object.values(doc.template.faces)) {
-    if (face.variantBy) add(face.variantBy)
-    walk(face.base)
-    for (const v of Object.values(face.variants)) walk(v.override ?? [])
-  }
-  for (const row of doc.rows) for (const key of Object.keys(row.fields)) add(key)
-  // And the order the designer put them in, laid over that (#46). It is read as an order and
-  // never as the list itself: a name in it that the deck no longer answers to is stepped over,
-  // and a column it does not mention — one made since the last move — keeps the place the walk
-  // above gave it. So a project that has never been reordered, and a project whose order is
-  // half a year out of date, both read back as decks with exactly the columns they have.
-  const wanted = doc.columns
-  if (!wanted || wanted.length === 0) return out
-  const has = new Set(out)
-  const order = wanted.filter((f) => has.has(f))
-  const placed = new Set(order)
-  for (const field of out) if (!placed.has(field)) order.push(field)
-  return order
 }
 
 // The columns the template draws as pictures, across every face and every variant's override:
