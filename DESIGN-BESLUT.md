@@ -4123,8 +4123,15 @@ Priset är höjd för långa villkor: prototypens lek med sex långa svenska vil
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
-*Rättat 2026-09-27 (#479, beställarens beslut efter prototyp 12):* en kolumn bär ingen typ i dokumentet — namnet är nyckeln (L44) och inget mer.
+*Rättat 2026-10-21 (#1085, beställarens beslut efter prototypen, variant B):* en kolumn är **text, prosa eller bild**, och mallen föreslår medan designern avgör — samma regel som L43 redan hade för prosan.
+Ett bildlager i mallen föreslår bild och en hög ruta prosa; det designern har valt står i dokumentet och väger över.
+Valet görs på två ställen med samma växel: i formuläret för en ny kolumn, där en bildkolumn tar emot bilder i Tabell direkt utan något besök i Mall, och på varje kolumns rad i dörren bakom `＋`, där en befintlig kolumn går att vända.
+Tal sorteras fortfarande som tal när cellerna är tal, och «Tal» är ingen typ att välja: valet skulle inte göra något, vilket är det som fällde typvalet 2026-09-27.
+Beställarens ord: *«Det är ganska förvirrande att man måste in i template för att få över den till en bildkolumn i datatabellen.»*
+
+*Ersatt — 2026-09-27 (#479, beställarens beslut efter prototyp 12):* en kolumn bär ingen typ i dokumentet — namnet är nyckeln (L44) och inget mer.
 En kolumn blir bildkolumn där mallen ritar den som bild, tal sorteras som tal när cellerna är tal, och tabellens «Nytt fält» frågar därför inte efter en typ utan säger det i en rad.
+Typvalet som togs bort då bytte bara namnförslaget; det som infördes 2026-10-21 skriver vad kolumnen är.
 En bildcell är en referens till en innehållsadresserad asset; vid import löses URL eller filnamn upp mot uppladdade filer.
 Varje rad har en systemkolumn `antal` med standard 1.
 Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
@@ -6283,6 +6290,28 @@ En kolumn som tas bort tar sitt val med sig, annars ärver nästa kolumn med sam
 Och **valet följer med när kolumnen byter nyckel**: annars faller kolumnen tillbaka på höjden, alltså rakt in i den bugg det här beslutet handlar om, utan att någon rört prosafrågan.
 Namnbytet är därför en egen redigering, `renameField`, som flyttar nyckeln överallt dokumentet skriver den — kortens fält, mallens bindningar och villkor, gruppkolumnen, kolumnordningen, beskärningarna och prosavalet — i ett steg och inte sex.
 En kolumn som bara flyttade hälften av sig är värre än en som inte kunde flytta alls.
+
+**Tillägg 2026-10-21 (#1085, beställarens val B efter prototypen `docs/ux-audits/2026-10-21-kolumnens-typ/prototyper/1085-kolumnens-typ.html`): växeln har tre lägen, Text | Prosa | Bild.**
+En kolumn blev förut bildkolumn bara där mallen ritade den som bild, så en ny bildkolumn var en textkolumn i Tabell tills designern gått till Mall och bundit ett bildlager till den.
+Nu är bild ett läge i samma växel, och «höjden föreslår» blir **«mallen föreslår»**: en hög ruta föreslår prosa, ett bildlager föreslår bild, och återställningen heter «Följ mallen igen».
+Prototypen hade fyra varianter: typen i formuläret (A), typen på raden och i formuläret (B), tre skapa-knappar som i guiden (C), och dagens dörr.
+B valdes för att en kolumns typ då står på ett enda ställe, både när den görs och efteråt, i ett mönster dörren redan hade.
+Formuläret för en ny kolumn har samma tre val under namnet, Text valt, och en rad om vad valet gör; namnförslaget följer typen (`bild1`) tills designern skrivit ett eget.
+Under och inte över, som prototypen ritade: vägen upp från namnet till listan är den #388 räknade tryck på, och ett tabbstopp mellan dem hade gjort varje sådan väg ett tryck längre.
+I formuläret är de tre ett val bland flera och ritas i verktygets gemensamma språk för det (`.byd-choice`, markerat och inte fyllt); på raderna bär växeln fortfarande skillnaden mellan mallens förslag och designerns val.
+Verktygets två kolumner har fortfarande ingen växel.
+
+Bildvalet ligger i `images` bredvid `prose` i `ProjectDoc` och inte i stället för det: `true` när kolumnen gjorts till bild, `false` när designern valt text eller prosa för en kolumn mallen ritar som bild.
+Så läser varje dokument och varje `setProse` i loggen tillbaka som förut, utan migrering, och en kolumn som var prosa och gjordes till bild är prosa igen när den blir text — prosavalet står kvar under bilden.
+En redigering, `setColumnKind`, skriver båda i ett steg, och `addField` bär typen så att en ny bildkolumn är en version och ett steg tillbaka.
+`null` tar bort båda posterna.
+En bildkolumn är aldrig prosa, vad som än står i `prose`.
+Ett nytt bildlager i Mall läser i första hand en bildkolumn som ingenting på kortet ritar ännu: det är kolumnen designern gjorde för att sätta på kortet.
+
+Text i en kolumn som görs till bild tas inte bort: den står överstruken i bildcellens ruta och kommer tillbaka med Text, och raden i dörren säger hur många kort som har sådan text.
+Det är den enda förklaring en rad bär, och den syns bara medan sådan text finns; revideringen 2026-10-03 flyttade dörrens övriga förklaringar till hjälpen.
+Prototypens rad «Inte på kortet än» under varje kolumn som mallen inte ritar byggdes därför inte.
+Formulärets rad för Bild och hjälpen säger i stället att kortet visar kolumnen när ett lager i Mall pekar dit.
 
 ### L44. Namnet är nyckeln, och kolumnen döps om bakom huvudets egen dörr (prototypat och beslutat 2026-09-21, #384)
 

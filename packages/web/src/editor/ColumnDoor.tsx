@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { NewField } from './NewField.js'
 import { Help } from './HelpDrawer.js'
-import { ProseSwitch, ProseReset } from './ProseSwitch.js'
+import { KindSwitch, KindReset } from './KindSwitch.js'
+import type { ColumnKind } from '@byd/server/doc'
 import { useFocusTrap } from './focusTrap.js'
 import { useRoving } from './roving.js'
 import { clashOf, fieldLabel } from './fields.js'
@@ -43,12 +44,15 @@ export type ColumnDoorProps = {
   // What a column is written as, and the way to turn it (L43, #615). `null` for a column that is
   // never prose — the two the tool keeps — and absent altogether where there is no project to
   // write in, in which case no row has a switch.
-  proseOf?: ((field: string) => { prose: boolean; choice: boolean | null } | null) | undefined
-  onProse?: ((field: string, next: boolean | null) => void) | undefined
+  kindOf?: ((field: string) => { kind: ColumnKind; chosen: boolean } | null) | undefined
+  onKind?: ((field: string, next: ColumnKind | null) => void) | undefined
+  // Hur många kort som har text kvar i en kolumn som blivit bild (#1085), som raden säger under
+  // växeln. Den enda förklaringen en rad bär: allt annat står i dörrens hjälp (beslut 2026-10-03).
+  keptIn?: ((field: string) => number) | undefined
   // What the form under the list needs, unchanged from when it stood here alone (#32).
   taken: readonly string[]
   keeps: boolean
-  onCreate(field: string): void
+  onCreate(field: string, kind: ColumnKind): void
   onCancel(): void
 }
 
@@ -80,12 +84,12 @@ const REFUSED = 'byd-column-refused'
 
 // What a row of the list can hold, in the order it holds it (#388). The name is a control only
 // where the column is the designer's own, and the width only where a hand set one.
-type Cell = 'name' | 'width' | 'prose' | 'plain' | 'remove' | 'follow'
+type Cell = 'name' | 'width' | ColumnKind | 'follow' | 'remove'
 
-export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asked, question, widths, onWidth, onRename, proseOf, onProse, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
+export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asked, question, widths, onWidth, onRename, kindOf, onKind, keptIn, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
   // A column's switch, where there is one: the door has to have somewhere to write the answer.
-  const proseHere = (field: string) => (onProse ? (proseOf?.(field) ?? null) : null)
+  const kindHere = (field: string) => (onKind ? (kindOf?.(field) ?? null) : null)
   const panel = useRef<HTMLDivElement>(null)
   // Which column is being renamed, what stands in the box, and what the surface has to say about
   // it. The draft is the door's own and never the document's: nothing reaches the actor until the
@@ -178,12 +182,12 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
   // the switch it answers (#674), so the arrows walk the row in the order it is read and the × —
   // or the lock in its place — is every row's last.
   const cellsOf = (field: string): Cell[] => {
-    const prose = proseHere(field)
+    const kind = kindHere(field)
     return [
       ...(canRename(field) ? (['name'] as Cell[]) : []),
       ...(widths[field] !== undefined ? (['width'] as Cell[]) : []),
-      ...(prose ? (['prose', 'plain'] as Cell[]) : []),
-      ...(prose && prose.choice !== null ? (['follow'] as Cell[]) : []),
+      ...(kind ? (['text', 'prose', 'image'] as Cell[]) : []),
+      ...(kind?.chosen ? (['follow'] as Cell[]) : []),
       ...(canRemove(field) ? (['remove'] as Cell[]) : []),
     ]
   }
@@ -244,7 +248,8 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
       <ul ref={list} className="byd-columns-list" inert={asked !== null} {...(asked !== null && held !== null ? { style: { '--byd-columns-held': `${held}px` } as CSSProperties } : {})}>
         {columns.map((field) => {
           const keys = keysOf(field)
-          const prose = proseHere(field)
+          const kind = kindHere(field)
+          const kept = kind?.kind === 'image' ? (keptIn?.(field) ?? 0) : 0
           return (
             <li key={field} data-col={field} {...(renaming === field ? { 'data-renaming': '' } : {})} {...(asked === field ? { 'data-asked': '' } : {})}>
               {renaming === field ? (
@@ -302,8 +307,8 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
                       {t('table.column.width.px', { px: widths[field] })}
                     </button>
                   )}
-                  {prose && <ProseSwitch label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} />}
-                  {prose && <ProseReset label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} />}
+                  {kind && <KindSwitch label={fieldLabel(field, t)} {...kind} onKind={(next) => onKind?.(field, next)} keys={keys} />}
+                  {kind && <KindReset label={fieldLabel(field, t)} {...kind} onKind={(next) => onKind?.(field, next)} keys={keys} />}
                   {canRemove(field) ? (
                     <button
                       type="button"
@@ -328,6 +333,12 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
                   )}
                 </>
               )}
+              {/* Text kept in a column made a picture (#1085): not lost, and back with Text. Said on
+                  a line of its own like a refused name, and only while there is such text: the
+                  door's other explanations live in its help (beslut 2026-10-03). */}
+              {renaming !== field && kept > 0 && (
+                <p className="byd-columns-note">{t(kept === 1 ? 'table.kind.kept.one' : 'table.kind.kept.other', { n: kept, field: fieldLabel(field, t) })}</p>
+              )}
               {renaming === field && refused !== null && (
                 // Said while the name is written, not when it is submitted, and said politely: a
                 // sentence shouted over every keystroke is a sentence nobody can type through.
@@ -339,7 +350,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
           )
         })}
       </ul>
-      {asked === null ? <NewField taken={taken} keeps={keeps} onCreate={onCreate} onCancel={onCancel} /> : question}
+      {asked === null ? <NewField taken={taken} keeps={keeps} choose onCreate={(field, kind) => onCreate(field, kind ?? 'text')} onCancel={onCancel} /> : question}
     </div>
   )
 }

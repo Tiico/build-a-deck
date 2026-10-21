@@ -78,7 +78,7 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   type Ink = { font: string; sides: number }
   const inkOf = (i: number): Ink => {
     const cell = table.querySelector(`tbody tr > *:nth-child(${i + 1})`) as HTMLElement | null
-    const drawer = (cell?.querySelector('input:not([type=checkbox])') as HTMLElement | null) ?? cell
+    const drawer = (cell?.querySelector('input:not([type=checkbox]):not([type=file])') as HTMLElement | null) ?? cell
     if (!drawer) return { font: '12px system-ui, sans-serif', sides: 23 }
     const ink = getComputedStyle(drawer)
     // The drawer's own padding, plus the two pixels a caret standing after the last character needs.
@@ -312,7 +312,10 @@ export function markValues(box: Element): void {
       else body.removeAttribute('data-more')
       continue
     }
-    const field = cell.querySelector('input:not([type=checkbox])') as HTMLInputElement | null
+    // A picture cell's file input is the way to a file and hidden off the page, not a value: read
+    // as the cell's field it always ran past its own box, and every picture cell said it was cut
+    // (#1085). Such a cell is measured as the box it is.
+    const field = cell.querySelector('input:not([type=checkbox]):not([type=file])') as HTMLInputElement | null
     const runs = field ? field.scrollWidth > field.clientWidth : cell.scrollWidth > cell.clientWidth
     if (runs) cell.setAttribute('data-cut', 'true')
     else cell.removeAttribute('data-cut')

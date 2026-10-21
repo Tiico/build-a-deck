@@ -129,6 +129,13 @@ export const ProjectDoc = z.object({
   // dokumentdata som `columns` och `palette`: den sparas, versioneras och följer med
   // projektet precis som de.
   prose: z.record(z.string(), z.boolean()).optional(),
+  // Vilka kolumner som är bildkolumner, där designern har sagt det (#1085). Samma regel som
+  // `prose`: ett bildlager i mallen föreslår, och det som står här väger över — `true` när hon
+  // gjorde kolumnen till bild, `false` när hon valde text eller prosa för en kolumn mallen ritar
+  // som bild. Bredvid `prose` och inte i stället för det, så att varje dokument och varje
+  // `setProse` i loggen läser tillbaka som det alltid gjort, och så att en kolumn som var prosa
+  // och gjordes till bild är prosa igen när den blir text.
+  images: z.record(z.string(), z.boolean()).optional(),
   rules: RuleDoc.optional(),
   fonts: z.record(z.string(), ProjectFont).optional(),
   theme: ProjectTheme.optional(),

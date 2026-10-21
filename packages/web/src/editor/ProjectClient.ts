@@ -4,7 +4,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -671,8 +671,9 @@ export class ProjectClient {
 
   // `bind` binds an element to the column in the same edit, which is what the canvas door needs:
   // one thing the designer did, one version, one step back (B4).
-  addField(field: string, bind?: { face: string; id: string; group?: string | null }): void {
-    this.edit({ v: 'addField', field, ...(bind ? { bind } : {}) })
+  // `kind` is what the table's door made the column as (#1085), written in the same edit.
+  addField(field: string, bind?: { face: string; id: string; group?: string | null }, kind?: ColumnKind): void {
+    this.edit({ v: 'addField', field, ...(bind ? { bind } : {}), ...(kind ? { kind } : {}) })
   }
 
   // Where a column stands (#46). `before` is the column it comes to stand in front of, and null
@@ -688,10 +689,10 @@ export class ProjectClient {
     this.edit({ v: 'renameField', from, to })
   }
 
-  // Vad kolumnen skrivs som (L43, #362). `null` lämnar tillbaka frågan till rutans höjd, och är
-  // därmed inte ett tredje läge utan frånvaron av ett val.
-  setProse(field: string, prose: boolean | null): void {
-    this.edit({ v: 'setProse', field, prose })
+  // Vad kolumnen är: text, prosa eller bild (#1085). `null` lämnar tillbaka frågan till mallen, och
+  // är därmed inte ett fjärde läge utan frånvaron av ett val.
+  setColumnKind(field: string, kind: ColumnKind | null): void {
+    this.edit({ v: 'setColumnKind', field, kind })
   }
 
   removeField(field: string): void {

@@ -79,7 +79,7 @@ for (const width of [1280, 1024]) {
     expect(heights.length).toBeGreaterThan(6)
     expect(heights.every((height) => height === 44)).toBe(true)
     expect(await door.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
-    await expect(door.getByRole('button', { name: 'Följ höjden igen, body' })).toBeVisible()
+    await expect(door.getByRole('button', { name: 'Följ mallen igen, body' })).toBeVisible()
     await expect(door.getByText(/Höjden föreslår/)).toHaveCount(0)
     const ask = door.getByRole('button', { name: 'Hjälp om kolumnerna' })
     await ask.click()
@@ -94,8 +94,8 @@ for (const width of [1280, 1024]) {
     await expect(door).toHaveCount(0)
     await page.getByRole('button', { name: 'Kolumner', exact: true }).click()
     // Reset remains an action in the row, not a control buried in the help.
-    await door.getByRole('button', { name: 'Följ höjden igen, body' }).click()
-    await expect(door.getByRole('button', { name: 'Följ höjden igen, body' })).toHaveCount(0)
+    await door.getByRole('button', { name: 'Följ mallen igen, body' }).click()
+    await expect(door.getByRole('button', { name: 'Följ mallen igen, body' })).toHaveCount(0)
     await expect(door.getByRole('button', { name: 'Prosa, body' })).toHaveAttribute('aria-pressed', 'true')
     // Validation must still have room after ordinary rows become single-line controls.
     await door.getByRole('button', { name: 'Byt namn på kolumnen body' }).click()

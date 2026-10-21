@@ -662,11 +662,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
         onRemoveRow={(cardRef) => client.removeRow(cardRef)}
         onReplaceRows={(rows) => client.replaceRows(rows)}
-        onAddField={(field) => client.addField(field)}
+        onAddField={(field, kind) => client.addField(field, undefined, kind)}
         onRemoveField={(field) => client.removeField(field)}
         onMoveField={(field, before) => client.moveField(field, before)}
         onRenameField={(from, to) => client.renameField(from, to)}
-        onProse={(field, prose) => client.setProse(field, prose)}
+        onColumnKind={(field, kind) => client.setColumnKind(field, kind)}
       />
     ),
     // The three tabs whose work has no foot of its own are given one (#698, L67): the line what

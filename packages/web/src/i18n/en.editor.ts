@@ -436,18 +436,22 @@ export const enEditor = {
   'table.body.italic': 'Italic',
   'table.body.list': 'Bullet list',
   'table.body.head': '{field} · {cardRef}',
-  // The column's mark in the table head (L43, #362, variant C). The height suggests, the
-  // designer decides. The difference between suggestion and choice is carried in form — dotted
-  // against filled — and a dotted underline does not exist for a screen reader, so the mark's
-  // name carries the same difference in words.
-  'table.prose.is.prose.height': '{field} is written as prose, the height suggested it',
-  'table.prose.is.prose.choice': '{field} is written as prose, you chose',
-  'table.prose.is.plain.height': '{field} is written as plain text, the height suggested it',
-  'table.prose.is.plain.choice': '{field} is written as plain text, you chose',
-  'table.prose.turn.named': '{turn}, {field}',
-  'table.prose.as.prose': 'Prose',
-  'table.prose.as.plain': 'Text',
-  'table.prose.follow': 'Follow the height again',
+  // The column's switch in the door behind ＋ (#1085, variant B; before that L43 and #615). «The
+  // template suggests, the designer decides»: a tall box suggests prose and a picture layer
+  // suggests a picture.
+  'table.kind.is.text.template': '{field} is text, the template suggested it',
+  'table.kind.is.text.choice': '{field} is text, you chose',
+  'table.kind.is.prose.template': '{field} is prose, the template suggested it',
+  'table.kind.is.prose.choice': '{field} is prose, you chose',
+  'table.kind.is.image.template': '{field} is a picture, the template suggested it',
+  'table.kind.is.image.choice': '{field} is a picture, you chose',
+  'table.kind.turn.named': '{turn}, {field}',
+  'table.kind.as.text': 'Text',
+  'table.kind.as.prose': 'Prose',
+  'table.kind.as.image': 'Picture',
+  'table.kind.follow': 'Follow the template again',
+  'table.kind.kept.one': '{n} card has text in {field}. It stays, and comes back if you choose Text again.',
+  'table.kind.kept.other': '{n} cards have text in {field}. It stays, and comes back if you choose Text again.',
   'table.icon.hint': 'Insert an icon — or type {',
   'table.import': 'Import CSV…',
   'table.export': 'Download CSV',
@@ -598,9 +602,9 @@ export const enEditor = {
   'editor.drag.cancelled': 'The drag was cancelled',
 
   'table.columns.help.topic': 'columns',
-  'table.columns.help.prose': 'Prose gives you multiple lines and text formatting. Text is a plain text field.',
-  'table.columns.help.auto': 'A dashed selection follows the template’s text box. Your own choice stays until you reset it with the arrow beside the switch.',
-  'table.columns.help.manage': 'Press a column name to rename it. Locked columns are required by the game. Link images to columns in Template.',
+  'table.columns.help.prose': 'Text is a plain text field. Prose gives you multiple lines and text formatting. Picture takes pictures in the cells.',
+  'table.columns.help.auto': 'A dashed selection follows the template: a tall text box suggests prose and a picture layer a picture. Your own choice stays until you reset it with the arrow beside the switch.',
+  'table.columns.help.manage': 'Press a column name to rename it. Locked columns are required by the game. Where a column shows on the card is set in Template.',
   'table.columns': 'Columns',
   'table.column.moved': '{field} is column {at} of {of}',
   'table.column.width.said': '{field} is {px} px wide',
@@ -613,6 +617,10 @@ export const enEditor = {
   'table.field.new': 'New field',
   'table.field.name': 'Name',
   'table.field.create': 'Add',
+  'table.field.kind': 'Type',
+  'table.field.kind.text': 'A line of text or a number.',
+  'table.field.kind.prose': 'Several lines, bold and lists in the cell.',
+  'table.field.kind.image': 'The cells take pictures at once. The card shows them when a picture layer in Template points here.',
   'table.field.needsName': 'A field needs a name.',
   'table.field.needsCards': 'A field is a column on the cards. Add a card first.',
   'table.field.taken': 'There is already a field called {field}.',

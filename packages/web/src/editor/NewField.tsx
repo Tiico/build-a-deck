@@ -1,4 +1,6 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
+import type { ColumnKind } from '@byd/server/doc'
+import { KINDS } from './KindSwitch.js'
 import { clashOf, suggestFieldKey, type FieldKind } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useT } from '../i18n/index.js'
@@ -13,11 +15,17 @@ export type NewFieldProps = {
   // it never has to ask. A door that says nothing is a door that can keep what it makes.
   keeps?: boolean
   // What the new column is for, where the door knows it — the canvas's picture element asks for a
-  // picture column — which is only what the suggested name is made from. The table's own door does
-  // not ask (#479, beslut 2026-09-27, variant B): a column is a picture column where the template
-  // draws it as one, and the door says so in a line instead of offering a choice that did nothing.
+  // picture column — which is only what the suggested name is made from.
   kind?: FieldKind
-  onCreate(field: string): void
+  // Whether the form asks what the column is (#1085, beslut 2026-10-21, variant B): the table's
+  // door does, with the same three the switch on every row has, so a picture column takes
+  // pictures the moment it is made instead of after a visit to the template. The canvas's door
+  // does not: the element it is opened from already says what the column is drawn as.
+  //
+  // It once did, and was taken away (#479, variant B, 2026-09-27), because the choice only changed
+  // the suggested name; it now writes what the column is.
+  choose?: boolean
+  onCreate(field: string, kind?: ColumnKind): void
   onCancel(): void
 }
 
@@ -25,9 +33,19 @@ export type NewFieldProps = {
 // template's binding opens it where the designer noticed the field was missing. It is the same
 // component either way, so the designer never has to leave what she is doing to make a field
 // possible.
-export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewFieldProps) {
+export function NewField({ taken, keeps = true, kind, choose = false, onCreate, onCancel }: NewFieldProps) {
   const t = useT()
+  const [made, setMade] = useState<ColumnKind>('text')
   const [name, setName] = useState(() => suggestFieldKey(kind ?? 'text', taken))
+  // The name follows the kind until the designer has written one of her own (#1085): `bild1` for
+  // a picture, and never over a word she typed.
+  const [typed, setTyped] = useState(false)
+  const kindLabel = useId()
+  const makeAs = (as: ColumnKind) => {
+    setMade(as)
+    if (!typed) setName(suggestFieldKey(as === 'image' ? 'image' : 'text', taken))
+    setRefused(null)
+  }
   const [refused, setRefused] = useState<string | null>(null)
   const submit = () => {
     const field = name.trim()
@@ -38,7 +56,8 @@ export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewF
     if (field === '') return setRefused(t('table.field.needsName'))
     const clash = clashOf(field, taken, t)
     if (clash !== null) return setRefused(t('table.field.taken', { field: clash }))
-    onCreate(field)
+    if (choose) onCreate(field, made)
+    else onCreate(field)
   }
   // The form hangs under the table's head and is the way to make a column, so a form off the foot
   // of the window is the very thing that falls away (#229).
@@ -73,10 +92,46 @@ export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewF
           value={name}
           onChange={(event) => {
             setName(event.target.value)
+            setTyped(true)
             setRefused(null)
           }}
         />
       </label>
+      {choose && (
+        <div className="byd-newfield-kind">
+          <span id={kindLabel}>{t('table.field.kind')}</span>
+          <span className="byd-newfield-kinds" role="group" aria-labelledby={kindLabel}>
+            {KINDS.map((as) => (
+              <button
+                key={as}
+                type="button"
+                // One of a set, so drawn in the language every such set speaks (`.byd-choice`): a
+                // chosen kind is marked, not filled.
+                className="byd-choice"
+                aria-pressed={made === as}
+                // One stop in the form's tab order, with the arrows between the three, as every row
+                // of the door above it is (#388). After the name and not before it: the way up from
+                // the name to the list is the one #388 counted, and it stays as short as it was.
+                tabIndex={made === as ? 0 : -1}
+                onClick={() => makeAs(as)}
+                onKeyDown={(event) => {
+                  const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
+                  if (step === 0) return
+                  event.preventDefault()
+                  const to = (KINDS.indexOf(as) + step + KINDS.length) % KINDS.length
+                  const next = KINDS[to]
+                  if (next === undefined) return
+                  makeAs(next)
+                  ;(event.currentTarget.parentElement?.children[to] as HTMLElement | undefined)?.focus()
+                }}
+              >
+                {t(`table.kind.as.${as}`)}
+              </button>
+            ))}
+          </span>
+          <small>{t(`table.field.kind.${made}`)}</small>
+        </div>
+      )}
       {refused !== null && <p role="alert">{refused}</p>}
       <div className="byd-newfield-do">
         <button type="submit" className="byd-secondary">{t('table.field.create')}</button>

@@ -63,6 +63,7 @@ const DOC = record(
     palette: map(leaf),
     pictures: map(leaf),
     prose: map(leaf),
+    images: map(leaf),
     fonts: map(leaf),
     rules: record({ title: leaf, blocks: list(leaf), source: leaf }, ['title', 'blocks']),
     theme: leaf,
@@ -494,11 +495,12 @@ export function cellColumn(at: unknown): string | null {
 const isCell = (at: Path): boolean => cellColumn(at) !== null
 
 // De kolumner en del hör till eller nämner, med värdet den har: en cell står i sin kolumn, ett
-// prosaval gäller sin, och mallen nämner kolumner där den binder, villkorar och grupperar.
+// prosaval och ett bildval (#1085) gäller sin, och mallen nämner kolumner där den binder,
+// villkorar och grupperar.
 function columnsNamed(at: Path, value: unknown): string[] {
   const column = cellColumn(at)
   if (column !== null) return [column]
-  if (at[0] === 'prose' && at.length === 2) return [at[1] ?? '']
+  if ((at[0] === 'prose' || at[0] === 'images') && at.length === 2) return [at[1] ?? '']
   if (at[0] !== 'template') return []
   const out: string[] = []
   const scan = (v: unknown, key: string | undefined): void => {

@@ -2213,12 +2213,21 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    `dropping.css`, tillsammans med bibliotekets och guidens (#291). */
 .byd-data-drop > img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
 .byd-data-drop > span { width: 60px; height: 40px; display: grid; place-items: center; border: 1px dashed #4a5163; border-radius: 5px; color: var(--byd-editor-quiet); font-size: 10px; text-align: center; }
+/* Text från när kolumnen var text (#1085): ingen bild och inte ritad som en, men inte borta. Den
+   står i bildens ruta, överstruken och dämpad, och kommer tillbaka när kolumnen blir text igen. */
+.byd-data-drop > .byd-data-kept { width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); font-size: 11px; }
 /* The word on it is `Välj`, which is four letters wide: as a box drawn round its own text the
    picker came to 40 across, and a thumb has no more to aim at than the word is wide (#50, #193).
    So it keeps the floor in both directions rather than only the one the editor's tap rule gives
    every label, and centres its word in the box that floor makes. */
-.byd-data-file { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--byd-tap); border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
-.byd-data-drop > button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+/* One line, so the column is measured on the label as it stands: «Ladda upp» broke over two, the
+   column was sized on the broken label, and then cut what it had sized (#1085). Named twice so a
+   button in the table's cells keeps it: `.byd-data button` strips every button there back to a
+   word, and outweighed the class alone. */
+.byd-data-file, .byd-data .byd-data-file { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--byd-tap); border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+/* The × that clears a picture, and only it: written as every button in the cell, the rule outweighed
+   `.byd-data-file` and drew «Välj» as a bare 16 px word with no box (#1085). */
+.byd-data-drop > button:not(.byd-data-file) { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 /* The deck's pictures, once each (E1). The strip is a section of the panel and not a tail of the
    crown, so it stands clear of the crown's line on the same rung the crown lays over it — and on
    the same rung the two blocks that share this stack, the comparison line and the bulk row, are
@@ -2866,6 +2875,10 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 /* The form is no longer the box: it stands inside one, so it gives up its own frame and its own
    place on the page and keeps only its rows. */
 .byd-columns .byd-newfield { flex: 0 0 auto; position: static; width: auto; padding: 8px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
+/* Och den tar aldrig sin egen höjd ur rummet: formuläret placerar sig som en egen ruta när det står
+   för sig själv, och i dörren blev det rummet en maxhöjd som klippte «Lägg till» när typvalet gjorde
+   formuläret högre (#1085). Det är listan som ger vika i dörren, aldrig formuläret. */
+.byd-columns .byd-newfield { max-height: none; overflow: visible; }
 /* The list scrolls and the form under it does not move: a deck of twenty columns would otherwise
    hang the door off the bottom of the window, and the thing that fell off it is the way to make
    the twenty-first. */
@@ -2900,22 +2913,34 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* Ringen inne i ×:et, som brickans (L61): ×:et står mot listans högra kant, och listan rullar och
    klipper det som sticker ut — ringen ritades utan sin högra sida (#1061). */
 .byd-columns .byd-data-dropfield:focus-visible { outline-offset: -3px; }
-/* Växeln i dörren (L43, #615): två knappar med hela träffytan, och vilken som är tryckt bär
-   upphovet i form — streckad när höjden föreslog, ifylld när designern valde. Orden står i
-   gruppens namn för den som inte ser kanten (L12). */
-.byd-columns .byd-prose-switch { flex: 0 0 auto; display: inline-flex; border-radius: 8px; background: #12141a; box-shadow: inset 0 0 0 1px #2f333d; }
-.byd-columns .byd-prose-switch > button { min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
-.byd-columns .byd-prose-switch > button:hover { color: #dce3f2; }
-.byd-columns .byd-prose-switch > button[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
-.byd-columns .byd-prose-switch[data-from='height'] > button[aria-pressed='true'] { background: transparent; color: #9ec4e8; box-shadow: none; outline: 1px dashed #46597a; outline-offset: -4px; }
-.byd-columns .byd-prose-switch > button:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 0; }
+/* Växeln i dörren (#1085, variant B; förut L43 och #615): text, prosa och bild, tre knappar med
+   hela träffytan, och vilken som är tryckt bär upphovet i form — streckad när mallen föreslog,
+   ifylld när designern valde. Orden står i gruppens namn för den som inte ser kanten (L12). Samma
+   växel står i formuläret för en ny kolumn, där ingenting är föreslaget. */
+.byd-columns .byd-kind-switch { flex: 0 0 auto; display: inline-flex; border-radius: 8px; background: #12141a; box-shadow: inset 0 0 0 1px #2f333d; }
+.byd-columns .byd-kind-switch > button { min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; cursor: pointer; }
+.byd-columns .byd-kind-switch > button:hover { color: #dce3f2; }
+.byd-columns .byd-kind-switch > button[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
+.byd-columns .byd-kind-switch[data-from='template'] > button[aria-pressed='true'] { background: transparent; color: #9ec4e8; box-shadow: none; outline: 1px dashed #46597a; outline-offset: -4px; }
+.byd-columns .byd-kind-switch > button:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 0; }
+/* I formuläret står typen under namnet och tar formulärets bredd, med en rad under om vad valet
+   gör (#1085): att en bildkolumn tar emot bilder direkt är just det som inte syntes förut. Tre
+   val bland flera, i det språk varje sådan uppsättning talar (`.byd-choice`). */
+.byd-newfield-kind { display: grid; gap: var(--byd-s1); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-quiet); }
+.byd-newfield-kinds { display: flex; gap: var(--byd-s1); }
+.byd-columns .byd-newfield-kinds > button { flex: 1 1 0; min-height: var(--byd-tap); justify-content: center; text-align: center; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.byd-newfield-kind small { font-size: 11px; line-height: 1.35; text-transform: none; letter-spacing: 0; }
+/* Text som står kvar i en kolumn som blivit bild (#1085): en rad för sig, som namnets vägran, så
+   att växeln står kvar hel. Den enda förklaring en rad bär; resten står i dörrens hjälp. */
+.byd-columns-list li:has(> .byd-columns-note) { flex-wrap: wrap; }
+.byd-columns-note { flex: 1 0 100%; margin: 0; padding: 0 0 var(--byd-s1) var(--byd-s2); color: var(--byd-editor-quiet); font-size: 11px; line-height: 1.35; font-weight: 400; }
 /* Shared help above the list; reset stays on the control row. */
 .byd-columns-head { flex: 0 0 auto; justify-content: space-between; min-height: var(--byd-tap); }
 .byd-columns-head strong { font-size: 12px; }
-.byd-prose-reset { flex: 0 0 var(--byd-tap); }
-.byd-columns .byd-prose-follow { display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; cursor: pointer; }
-.byd-columns .byd-prose-follow .byd-glyph { width: 16px; height: 16px; }
-.byd-columns .byd-prose-follow:hover, .byd-columns .byd-prose-follow:focus-visible { color: #fff; }
+.byd-kind-reset { flex: 0 0 var(--byd-tap); }
+.byd-columns .byd-kind-follow { display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; cursor: pointer; }
+.byd-columns .byd-kind-follow .byd-glyph { width: 16px; height: 16px; }
+.byd-columns .byd-kind-follow:hover, .byd-columns .byd-kind-follow:focus-visible { color: #fff; }
 /* Kolumnens fråga står i dörren, i formulärets ställe längst ned (#1061, beställarens val B): där
    ×:et trycktes, i toppskiktet, så att ingenting kan ligga över den. Listan behåller höjden den
    hade när ×:et trycktes och kan inte ta formulärets plats, så raden står still under pekaren.
@@ -4299,7 +4324,7 @@ img[data-arriving] { opacity: 0; }
   .byd-canvas-tools, .byd-backs, .byd-drag-handle, .byd-point-mid, .byd-point, .byd-point-handle, .byd-canvas-reset,
   .byd-props-picture .byd-secondary, .byd-props-straighten, .byd-fonts li[data-font] button, .byd-fonts-catalog, .byd-fonts-upload, .byd-newfield,
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
-  .byd-data-add, .byd-data-bodytools, .byd-prose-switch, .byd-prose-follow, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
+  .byd-data-add, .byd-data-bodytools, .byd-kind-switch, .byd-kind-follow, .byd-newfield-kinds, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
   .byd-theme-tiles, .byd-theme-reset, .byd-theme-show,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,

@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kolumnens typ — prototyp</title>
+<!--
+  PROTOTYP, #1085. Kastas när varianten är vald och byggd. Importerar ingenting från packages/.
+  Färger och mått avlästa från packages/web/src/editor/editor.css och från den byggda editorns
+  Tabell med dörren öppen vid 1280 (docs/ux-audits/2026-10-20-dorren-och-fragan/prototyper/img).
+  Varianter: knapparna överst, ←/→ utanför fält, eller ?v=nu|a|b|c. Inget sparas; «Börja om» nollställer.
+-->
+<style>
+  :root {
+    --bg: #1b1d23; --panel: #171a23; --chrome: #23262e; --line: #2f333d; --line-row: #262a33;
+    --ink: #dce3f2; --ink-2: #e6ecfa; --quiet: #868ea3; --quiet-2: #9aa3b8;
+    --primary: #1f6fd0; --primary-mark: #3c8ce7; --prose: #9ec4e8; --pic: #c9b2f0; --warn: #f0b64a;
+    --tap: 44px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--chrome); color: var(--ink); font: 13px system-ui, -apple-system, sans-serif; }
+  button { font: inherit; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+
+  /* ── Prototypens rad: inte en del av designen ─────────────────────────────────────────────── */
+  .protorad { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 11.5px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; flex: 1 1 480px; }
+  .switch { display: flex; gap: 4px; background: #1f1b12; border-radius: 8px; padding: 3px; }
+  .switch button { min-height: 32px; border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: #ffd98a; font-weight: 700; cursor: pointer; }
+  .switch button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; }
+  .protorad .om { min-height: 32px; border: 1px solid #4a4230; border-radius: 6px; padding: 0 10px; background: transparent; color: #ffd98a; cursor: pointer; }
+
+  /* ── Editorns huvud ───────────────────────────────────────────────────────────────────────── */
+  header.app { display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  header.app .spel { color: var(--quiet-2); }
+  header.app strong { color: #fff; font-size: 15px; }
+  .tabs { display: flex; gap: 2px; margin-left: 24px; background: var(--bg); border-radius: 8px; padding: 3px; }
+  .tabs span { padding: 12px 10px; color: var(--quiet-2); font-weight: 600; }
+  .tabs span[aria-current] { color: #fff; box-shadow: inset 0 -3px 0 var(--primary-mark); }
+  .tabs span[data-pulse] { color: #fff; background: #2b3446; border-radius: 6px; }
+
+  main { padding: 16px; }
+  .sok { display: flex; gap: 8px; margin-bottom: 8px; }
+  .sok div { flex: 1; height: 44px; display: flex; align-items: center; padding: 0 14px; border: 1px solid #3b414e; border-radius: 8px; background: var(--bg); color: var(--quiet); }
+  .sok span { width: 62px; display: flex; align-items: center; justify-content: center; border: 1px solid #3b414e; border-radius: 8px; color: var(--ink); font-weight: 600; }
+  .wrap { position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); overflow: hidden; }
+  .scroll { overflow-x: auto; }
+
+  table { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  th { position: relative; text-align: left; padding: 0 10px; height: 78px; color: var(--quiet-2); font-weight: 600; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--bg); }
+  td { padding: 0 10px; height: 52px; border-bottom: 1px solid var(--line-row); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+  td.id { font-family: ui-monospace, Menlo, monospace; color: var(--ink); font-size: 12px; }
+  td.antal { text-align: left; }
+  th.check, td.check { width: 44px; padding: 0 12px; }
+  .box { display: inline-block; width: 18px; height: 18px; border: 1px solid #4a5163; border-radius: 3px; background: #2a2e38; vertical-align: middle; }
+  th.door { width: 64px; padding: 0 10px; text-align: right; }
+  .plus { width: 44px; height: 44px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #c3cbdd; font-size: 20px; cursor: pointer; }
+  .plus[aria-expanded='true'] { border-color: #3b414e; background: var(--panel); color: #fff; }
+  .sort .pil { color: var(--quiet); margin-left: 4px; }
+  .sort .pilcrow { margin-left: 3px; color: var(--prose); font-weight: 400; }
+  .sort .bildmark { margin-left: 4px; color: var(--pic); font-weight: 400; }
+  td.ny { background: rgb(60 140 231 / 7%); }
+  td .tom { color: #4d5466; }
+
+  /* Bildcellen, som i dag när mallen ritar kolumnen som bild */
+  td.bild { padding: 4px 8px; }
+  .drop { display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 6px; border: 1px dashed #3b414e; border-radius: 6px; color: var(--quiet); font-size: 11.5px; }
+  .drop .thumb { width: 30px; height: 30px; border-radius: 4px; flex: none; display: grid; place-items: center; color: #1b1d23; font-weight: 800; font-size: 11px; }
+  .drop .sp { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .drop button { min-height: 30px; border: 1px solid #3b414e; border-radius: 6px; padding: 0 8px; background: #23262e; color: var(--ink); font-size: 11.5px; cursor: pointer; }
+  .drop .kvar { color: #6d7588; text-decoration: line-through; }
+
+  /* ── Dörren ───────────────────────────────────────────────────────────────────────────────── */
+  .dorr { display: none; position: absolute; top: 72px; right: 8px; z-index: 6; width: 366px; max-height: calc(100vh - 210px); overflow: auto; padding: 12px 12px 12px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
+  .dorr[data-open] { display: block; }
+  .dorr .huvud { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .dorr .huvud strong { color: var(--ink-2); }
+  .help { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #4a5163; color: var(--quiet-2); display: grid; place-items: center; font-size: 12px; }
+  .dorr ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .dorr li { display: grid; grid-template-columns: minmax(0,1fr) auto 44px; align-items: center; column-gap: 6px; min-height: 46px; border-radius: 6px; }
+  .dorr li[data-ny] { background: rgb(60 140 231 / 9%); }
+  .dorr li .namn { font-size: 12.5px; padding: 0 0 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dorr li .x { width: 44px; height: 44px; border: 0; background: transparent; color: var(--quiet); cursor: pointer; font-size: 14px; }
+  .dorr li .las { width: 44px; text-align: center; color: var(--quiet); font-size: 11px; }
+  .dorr li .under { grid-column: 1 / -1; padding: 0 0 8px; margin-top: -2px; color: var(--quiet-2); font-size: 11px; line-height: 1.45; }
+  .dorr li .under a { color: var(--prose); cursor: pointer; text-decoration: underline; }
+  .dorr li .under.varn { color: #f3d29a; }
+  .tagg { justify-self: end; padding: 3px 8px; border-radius: 10px; border: 1px solid #3b414e; color: var(--pic); font-size: 11px; font-weight: 600; }
+
+  /* Växeln, som ProseSwitch: streckad när mallen föreslog, ifylld när designern valde */
+  .seg { display: inline-flex; background: #12141a; border: 1px solid #2f333d; border-radius: 8px; padding: 2px; }
+  .seg button { min-height: 40px; min-width: 46px; border: 0; border-radius: 6px; padding: 0 8px; background: transparent; color: var(--quiet); font-size: 11.5px; font-weight: 600; cursor: pointer; }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
+  .seg[data-from='mall'] button[aria-pressed='true'] { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px #46597a; outline: 1px dashed #46597a; outline-offset: -4px; }
+
+  /* Formuläret vid dörrens fot */
+  form { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+  form label { display: grid; gap: 6px; color: var(--quiet-2); font-size: 12px; }
+  form input { height: 40px; border: 1px solid #3b414e; border-radius: 8px; background: var(--bg); color: var(--ink); padding: 0 10px; font: inherit; }
+  form .typ { display: grid; gap: 6px; color: var(--quiet-2); font-size: 12px; }
+  form .typ .seg { display: flex; }
+  form .typ .seg button { flex: 1; min-height: 44px; }
+  form .typ small { color: var(--quiet); font-size: 11px; line-height: 1.45; }
+  form .gor { display: flex; gap: 8px; }
+  form .gor button, form .skapa button { min-height: 44px; border-radius: 8px; padding: 0 14px; cursor: pointer; font-weight: 600; }
+  .sekundar { border: 1px solid #4a5d84; background: #243150; color: #e6ecfa; }
+  .tyst { border: 1px solid transparent; background: transparent; color: var(--quiet-2); }
+  form .skapa { display: grid; gap: 6px; color: var(--quiet-2); font-size: 12px; }
+  form .skapa div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  form .skapa button { padding: 0 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  form .skapa button i { font-style: normal; opacity: .75; }
+  form p[role=alert] { margin: 0; color: #ffb3ad; font-size: 12px; }
+
+  .notis { max-width: 1240px; margin: 14px auto 0; color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+  .notis b { color: var(--ink-2); }
+  .notis h2 { font-size: 13px; color: var(--ink-2); margin: 18px 0 6px; }
+  .notis ul { margin: 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <b>Prototyp · kolumnens typ (#1085)</b>
+  <div class="switch" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A · Typen i formuläret</button>
+    <button type="button" data-v="b">B · Typen på raden</button>
+    <button type="button" data-v="c">C · Tre knappar</button>
+  </div>
+  <button type="button" class="om" id="om">Börja om</button>
+  <p id="hjalp"></p>
+</div>
+
+<header class="app">
+  <span class="spel">Mina spel</span><strong>Sal's Saloon</strong>
+  <nav class="tabs"><span>Kortvägg</span><span id="flik-mall">Mall</span><span aria-current="page">Tabell</span><span>Speltema</span><span>Media</span><span>Regler</span><span>Bord</span></nav>
+</header>
+
+<main>
+  <div class="sok"><div>Sök i alla fält, eller typ: …</div><span>CSV ▾</span></div>
+  <div class="wrap">
+    <div class="scroll"><table id="tabell"><colgroup id="cols"></colgroup><thead><tr id="huvud"></tr></thead><tbody id="kropp"></tbody></table></div>
+    <div class="dorr" id="dorr" role="group" aria-label="Kolumner"></div>
+  </div>
+  <div class="notis" id="notis"></div>
+</main>
+
+<script>
+// Kolumnerna och vad var och en är. `from`: 'mall' = mallen föreslog (ingen post i dokumentet),
+// 'choice' = designern valde. I «Nu» finns ingen post för bild: bara mallen gör en bildkolumn.
+const START = () => [
+  { key: 'id', sys: true, w: 150 },
+  { key: 'Antal', sys: true, w: 70 },
+  { key: 'art', kind: 'image', from: 'mall', drawn: true, w: 210 },
+  { key: 'typ', kind: 'text', from: 'mall', drawn: true, w: 96 },
+  { key: 'Titel', kind: 'text', from: 'mall', drawn: true, w: 130 },
+  { key: 'body', kind: 'prose', from: 'mall', drawn: true, w: 330 },
+  { key: 'raritet', kind: 'text', from: 'choice', drawn: true, w: 90 },
+]
+const ROWS = [
+  { id: 'juice-em-up', Antal: 1, art: '#e8a54b', typ: 'Playcard', Titel: 'Juice ’em up', body: 'Välj två spelare. De blandar en shot till varann', raritet: 'Diamant' },
+  { id: 'sals-saloon', Antal: 2, art: '#7dd3a0', typ: 'Location', Titel: "Sal's Saloon", body: 'Saloonen öppnar! Lägg upp ett shopkort per spelare som går in', raritet: 'Guld' },
+  { id: 'dustydice-casino', Antal: 2, art: '', typ: 'Location', Titel: 'DustyDice Casino', body: 'Välkommen till kasinot! Alla annonserar sin insats', raritet: 'Guld' },
+  { id: 'free-for-all', Antal: 1, art: '#c9b2f0', typ: 'Effect', Titel: 'Free for all', body: 'Era stöldgods är i fara! Så länge effekten ligger', raritet: 'Special' },
+  { id: 'duel-koppar', Antal: 4, art: '#9ec4e8', typ: 'Playcard', Titel: 'Duel', body: 'Utmana en spelare på duell. Förloraren dricker 3', raritet: 'Koppar' },
+  { id: 'duel-silver', Antal: 4, art: '#9ec4e8', typ: 'Playcard', Titel: 'Duel', body: 'Utmana en spelare på duell. Förloraren dricker 5', raritet: 'Silver' },
+  { id: 'duel-guld', Antal: 2, art: '', typ: 'Playcard', Titel: 'Duel', body: 'Utmana en spelare på duell. Förloraren dricker 7', raritet: 'Guld' },
+  { id: 'saddle-pals', Antal: 1, art: '#f08a8a', typ: 'Playcard', Titel: 'Saddle Pals', body: 'Välj en annan spelare. Ni är allierade resten av spelet', raritet: 'Diamant' },
+  { id: 'standoff', Antal: 1, art: '', typ: 'Event', Titel: 'Standoff', body: 'Dela upp er i två lag efter hur ni sitter', raritet: 'Diamant' },
+]
+const ORD = { text: 'Text', prose: 'Prosa', image: 'Bild' }
+const FORSLAG = { text: 'fält', prose: 'fält', image: 'bild' }
+const HJALP = {
+  nu: 'Dagens dörr (L4, #479 variant B): formuläret frågar bara efter ett namn. «Lägg till» ger alltid en textkolumn; den blir bildkolumn först när ett bildlager i Mall binds till den. Prova: lägg till «bild1» — cellerna blir textfält.',
+  a: 'A · Typen i formuläret: Text | Prosa | Bild står överst i formuläret och byter namnförslaget (fält1 → bild1). Valet görs en gång; befintliga kolumner behåller dagens Prosa|Text-växel, och en bildkolumn bär bara en bricka.',
+  b: 'B · Typen på raden: varje kolumns rad får Text | Prosa | Bild — dagens prosaväxel med ett tredje läge — och formuläret samma växel. Mallen föreslår (streckat), designern avgör (ifyllt). Prova att göra «typ» till Bild: texten står kvar och kommer tillbaka.',
+  c: 'C · Tre knappar: som guiden — namnet först, sedan «+ Text», «+ Prosa», «+ Bild» som själva skapa-knapparna. Ett klick mindre; befintliga kolumner som i dag.',
+}
+let v = new URLSearchParams(location.search).get('v') || 'b'
+let cols, rows, open, kind, name, typed, refused, fresh, warned
+function reset() {
+  cols = START(); rows = ROWS.map((r) => ({ ...r })); open = true; kind = 'text'; typed = false; refused = null; fresh = null; warned = {}
+  name = suggest()
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const taken = () => cols.map((c) => c.key.toLowerCase())
+function suggest() { const base = FORSLAG[v === 'nu' ? 'text' : kind]; let n = 1; while (taken().includes(base + n)) n++; return base + n }
+// Vad kolumnen *är* i tabellen. I «Nu» bara mallens ord; i A–C väger designerns val över.
+const isImage = (c) => !c.sys && c.kind === 'image'
+const isProse = (c) => !c.sys && c.kind === 'prose'
+
+function head() {
+  const cells = ['<th class="check"><span class="box"></span></th>']
+  for (const c of cols) {
+    const mark = isProse(c) ? '<span class="pilcrow">¶</span>' : isImage(c) && v !== 'nu' ? '<span class="bildmark" title="Bildkolumn">▣</span>' : ''
+    cells.push(`<th><span class="sort">${esc(c.key)}<span class="pil">↕</span>${mark}</span></th>`)
+  }
+  cells.push(`<th class="door"><button type="button" class="plus" aria-label="Kolumner" aria-expanded="${open}" data-act="dorr">${open ? '×' : '+'}</button></th>`)
+  return cells.join('')
+}
+function colgroup() { return '<col style="width:44px">' + cols.map((c) => `<col style="width:${c.w}px">`).join('') + '<col style="width:64px">' }
+
+function imageCell(r, c) {
+  const val = r[c.key] ?? ''
+  const pic = typeof val === 'string' && val.startsWith('#')
+  if (pic) return `<div class="drop"><span class="thumb" style="background:${val}">${esc(r.id.slice(0, 2).toUpperCase())}</span><span class="sp"></span><button type="button">Byt</button><button type="button">Ladda upp</button><button type="button" aria-label="Ta bort bild">×</button></div>`
+  // Text som står kvar i en kolumn som gjorts om till bild: syns som det den är, inte som en bild.
+  const kept = val !== '' ? `<span class="sp kvar" title="Står kvar som text">${esc(val)}</span>` : '<span class="sp">släpp en bild här</span>'
+  return `<div class="drop">${kept}<button type="button">Välj</button><button type="button">Ladda upp</button></div>`
+}
+function body() {
+  return rows.map((r) => `<tr><td class="check"><span class="box"></span></td>${cols.map((c) => {
+    const ny = c.key === fresh ? ' ny' : ''
+    if (c.key === 'id') return `<td class="id">${esc(r.id)}</td>`
+    if (isImage(c)) return `<td class="bild${ny}">${imageCell(r, c)}</td>`
+    const val = r[c.key] ?? ''
+    return `<td class="${ny.trim()}">${val === '' ? '<span class="tom">—</span>' : esc(val)}</td>`
+  }).join('')}<td></td></tr>`).join('')
+}
+
+function seg(c, scope) {
+  const opts = ['text', 'prose', 'image']
+  return `<div class="seg" role="group" aria-label="${esc(c.key)} är" data-from="${c.from}">${opts.map((k) => `<button type="button" aria-pressed="${c.kind === k}" data-act="${scope}" data-key="${esc(c.key)}" data-k="${k}">${ORD[k]}</button>`).join('')}</div>`
+}
+function proseSeg(c) {
+  return `<div class="seg" role="group" aria-label="${esc(c.key)} skrivs som" data-from="${c.from}"><button type="button" aria-pressed="${c.kind === 'prose'}" data-act="row" data-key="${esc(c.key)}" data-k="prose">Prosa</button><button type="button" aria-pressed="${c.kind === 'text'}" data-act="row" data-key="${esc(c.key)}" data-k="text">Text</button></div>`
+}
+
+function door() {
+  const items = cols.map((c) => {
+    if (c.sys) return `<li><span class="namn">${esc(c.key)}</span><span></span><span class="las" title="${esc(c.key)} är verktygets egen kolumn och kan inte tas bort">🔒</span></li>`
+    let ctl = ''
+    if (v === 'b') ctl = seg(c, 'row')
+    else ctl = isImage(c) ? (v === 'nu' ? '<span></span>' : '<span class="tagg">Bild</span>') : proseSeg(c)
+    let under = ''
+    if (v !== 'nu' && !c.drawn) under = `<span class="under">Inte på kortet än. ${isImage(c) ? 'Lägg ett bildlager' : 'Lägg ett textlager'} i <a data-act="mall">Mall</a> när du vill visa den.</span>`
+    if (v === 'b' && warned[c.key]) under = `<span class="under varn">${warned[c.key]} kort har text i ${esc(c.key)}. Den står kvar och kommer tillbaka om du väljer Text igen.</span>` + under
+    return `<li ${c.key === fresh ? 'data-ny' : ''}><span class="namn">${esc(c.key)}</span>${ctl}<button type="button" class="x" aria-label="Ta bort fältet ${esc(c.key)}" data-act="ta-bort" data-key="${esc(c.key)}">×</button>${under}</li>`
+  }).join('')
+  const alert = refused ? `<p role="alert">${esc(refused)}</p>` : ''
+  const nameBox = `<label>Namn<input id="namn" value="${esc(name)}" autocomplete="off"></label>`
+  let form
+  if (v === 'nu') form = `${nameBox}${alert}<div class="gor"><button type="submit" class="sekundar">Lägg till</button><button type="button" class="tyst" data-act="stang">Avbryt</button></div>`
+  if (v === 'a' || v === 'b') form = `<div class="typ">Typ${seg({ key: 'Nya kolumnen', kind, from: 'choice' }, 'ny')}<small>${kind === 'image' ? 'Cellerna tar emot bilder direkt. Kortet visar dem när ett bildlager i Mall pekar hit.' : kind === 'prose' ? 'Flera rader, fetstil och listor i cellen.' : 'En rad text eller ett tal.'}</small></div>${nameBox}${alert}<div class="gor"><button type="submit" class="sekundar">Lägg till</button><button type="button" class="tyst" data-act="stang">Avbryt</button></div>`
+  if (v === 'c') form = `${nameBox}${alert}<div class="skapa">Lägg till som<div>${['text', 'prose', 'image'].map((k) => `<button type="button" class="sekundar" data-act="skapa" data-k="${k}"><i>+</i>${ORD[k]}</button>`).join('')}</div></div><div class="gor"><button type="button" class="tyst" data-act="stang">Avbryt</button></div>`
+  return `<div class="huvud"><strong>Kolumner</strong><span class="help">?</span></div><ul>${items}</ul><form id="form" aria-label="Nytt fält">${form}</form>`
+}
+
+function notis() {
+  const st = cols.filter((c) => !c.sys).map((c) => `<b>${esc(c.key)}</b>: ${v === 'nu' ? (c.kind === 'image' ? 'bild (mallen ritar den som bild)' : c.kind) : `${ORD[c.kind]} (${c.from === 'mall' ? 'mallen föreslog — ingen post i dokumentet' : 'designern valde — står i dokumentet'})`}${c.drawn ? '' : ' · inte på kortet'}`).join(' · ')
+  return `<h2>Dokumentet just nu</h2><p>${st}</p>
+  <h2>Gemensamt för A–C (förslag)</h2>
+  <ul>
+    <li>Typen lagras i dokumentet per kolumn, som <code>prose</code> gör i dag (L43): <b>mallen föreslår, designern avgör</b>. En kolumn utan val följer mallen, så varje befintlig lek läser tillbaka exakt som nu.</li>
+    <li>Ett nytt bildlager i Mall föreslår en bildkolumn före en textkolumn (och textlager tvärtom), så den nya kolumnen hittas direkt.</li>
+    <li>Ingen «Tal»: den gör ingenting i Tabell (sorteringen läser cellerna själv), och #479 tog bort just ett val som inte gjorde något.</li>
+    <li>Att välja typ är en redigering som vilken annan — en version (B4), och ångras med ⌘Z.</li>
+  </ul>`
+}
+
+function render(keepFocus) {
+  const active = keepFocus && document.activeElement?.id === 'namn'
+  const sel = active ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null
+  document.getElementById('cols').innerHTML = colgroup()
+  document.getElementById('huvud').innerHTML = head()
+  document.getElementById('kropp').innerHTML = body()
+  const d = document.getElementById('dorr')
+  d.innerHTML = door(); d.toggleAttribute('data-open', open)
+  document.getElementById('hjalp').textContent = HJALP[v]
+  document.getElementById('notis').innerHTML = notis()
+  document.querySelectorAll('.switch button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)))
+  if (active) { const n = document.getElementById('namn'); n.focus(); n.setSelectionRange(...sel) }
+}
+
+function create(k) {
+  // I C väljs typen med själva knappen, så ett namnförslag ingen rört följer knappen.
+  if (v === 'c' && !typed) { kind = k; name = suggest() }
+  const field = name.trim()
+  if (field === '') { refused = 'Ett fält behöver ett namn.'; return render() }
+  if (taken().includes(field.toLowerCase())) { refused = `Det finns redan ett fält som heter ${field}.`; return render() }
+  const kindNow = v === 'nu' ? 'text' : k
+  cols.push({ key: field, kind: kindNow, from: 'choice', drawn: false, w: kindNow === 'image' ? 210 : kindNow === 'prose' ? 220 : 110 })
+  fresh = field; refused = null; typed = false; kind = 'text'; name = suggest(); render()
+  document.querySelector('.scroll').scrollLeft = 99999
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act],[data-v],#om')
+  if (!t) return
+  if (t.id === 'om') { reset(); render(); return }
+  if (t.dataset.v && t.closest('.switch')) { v = t.dataset.v; history.replaceState(null, '', `?v=${v}`); reset(); render(); return }
+  const act = t.dataset.act
+  if (act === 'dorr') { open = !open; render(); return }
+  if (act === 'stang') { open = false; render(); return }
+  if (act === 'ny') { kind = t.dataset.k; if (!typed) name = suggest(); refused = null; render(); return }
+  if (act === 'skapa') { create(t.dataset.k); return }
+  if (act === 'row') {
+    const c = cols.find((x) => x.key === t.dataset.key)
+    if (c.kind === t.dataset.k) return
+    const n = rows.filter((r) => (r[c.key] ?? '') !== '' && !String(r[c.key]).startsWith('#')).length
+    if (t.dataset.k === 'image' && n > 0) warned[c.key] = n
+    else delete warned[c.key]
+    c.kind = t.dataset.k; c.from = 'choice'; render(); return
+  }
+  if (act === 'ta-bort') { cols = cols.filter((c) => c.key !== t.dataset.key); if (fresh === t.dataset.key) fresh = null; name = typed ? name : suggest(); render(); return }
+  if (act === 'mall') { const m = document.getElementById('flik-mall'); m.setAttribute('data-pulse', ''); setTimeout(() => m.removeAttribute('data-pulse'), 700); return }
+})
+document.addEventListener('submit', (e) => { e.preventDefault(); create(kind) })
+document.addEventListener('input', (e) => { if (e.target.id === 'namn') { name = e.target.value; typed = true; refused = null } })
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const order = ['nu', 'a', 'b', 'c']
+  v = order[(order.indexOf(v) + (e.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length]
+  history.replaceState(null, '', `?v=${v}`); reset(); render()
+})
+reset(); render()
+</script>
+</body>
+</html>

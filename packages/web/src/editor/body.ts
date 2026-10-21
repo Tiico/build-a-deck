@@ -1,5 +1,6 @@
 import { PT_TO_MM, DEFAULT_LINE_HEIGHT, parseBody, type InlineNode } from '@byd/template'
 import type { ProjectDoc } from './types.js'
+import { imageFieldsOf } from './assets.js'
 
 // Body-cellen i Data (L39, #324). Redigeraren är ett lager över #308:s delmängd: den skriver och
 // läser **samma sträng**, så CSV-rundturen och samtidig redigering (D3) ser ingen skillnad.
@@ -64,11 +65,15 @@ export function bodyFieldsOf(doc: ProjectDoc): string[] {
 // Vad kolumnen **är** (L43, #362). Höjden föreslår, designern avgör: ett uttryckligt val i
 // dokumentet väger över förslaget, och en kolumn utan val följer höjden — vilket är varför varje
 // lek som fanns före #362 beter sig precis som den gjorde.
+//
+// En bildkolumn är aldrig prosa (#1085): prosavalet står kvar under den, så att kolumnen är vad den
+// var när den blir text igen, men en bild har ingen text att skriva.
 export function proseFieldsOf(doc: ProjectDoc): string[] {
   const suggested = bodyFieldsOf(doc)
   const chosen = doc.prose ?? {}
+  const images = imageFieldsOf(doc)
   const every = [...suggested, ...Object.keys(chosen).filter((f) => !suggested.includes(f))]
-  return every.filter((f) => chosen[f] ?? true)
+  return every.filter((f) => (chosen[f] ?? true) && !images.includes(f))
 }
 
 // Vad designern själv har sagt om kolumnen, och `null` när hon inte har sagt något. Skillnaden

@@ -69,6 +69,9 @@ export function checkedName(name: string): string {
 
 export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points' | 'fill'
 
+// Vad en kolumn är (#1085): en rad text, prosa med stycken och listor, eller en bild.
+export type ColumnKind = 'text' | 'prose' | 'image'
+
 export type EditIntent =
   | { v: 'rename'; name: string }
   // The deck (L4)
@@ -85,7 +88,10 @@ export type EditIntent =
   // Sending the column and the binding separately would be two versions and two steps back, and
   // the first step back would leave a state nobody asked for — the new column standing in the
   // table with the element bound to the field it had before.
-  | { v: 'addField'; field: string; bind?: { face: string; id: string; group?: string | null } }
+  // `kind` is what the column is made as (#1085): the table's door asks, and a column made as a
+  // picture takes pictures at once instead of waiting for the template to draw it as one. Text is
+  // what a column the template does not draw already is, so it writes nothing.
+  | { v: 'addField'; field: string; bind?: { face: string; id: string; group?: string | null }; kind?: ColumnKind }
   | { v: 'removeField'; field: string }
   // Kolumnen under ett annat namn. Nyckeln är designerns (#27, #308): det är hon som skriver över
   // det ord verktyget föreslår, och ett ord hon valde tidigt är ett ord hon kan vilja byta. Det
@@ -100,6 +106,11 @@ export type EditIntent =
   // frågan till höjden. Att «följer höjden» är frånvaro och inte ett tredje värde är vad som gör
   // att varje lek skriven före valet beter sig precis som den gjorde.
   | { v: 'setProse'; field: string; prose: boolean | null }
+  // Vad kolumnen är: text, prosa eller bild (#1085). Mallen föreslår och det här är designerns
+  // svar, skrivet i `images` och `prose` i en och samma redigering, så att ett val är en version
+  // och ett steg tillbaka. `null` lämnar tillbaka frågan till mallen. `setProse` står kvar för
+  // loggarna som skrevs före; den rör bara prosan, som den alltid gjort.
+  | { v: 'setColumnKind'; field: string; kind: ColumnKind | null }
   // Where a column stands in the table (#46). The order is the document's and not the reader's:
   // everyone with the project open sees it, the CSV export writes it, and a step back takes it
   // back — which a view in one browser could do none of. `before` is the column it comes to
@@ -339,7 +350,8 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'addField': {
       if (intent.field === ANTAL) throw new Error(`field ${ANTAL} is the deck's own`)
       if (columnsOf(doc).includes(intent.field)) throw new Error(`field ${intent.field} already exists`)
-      const written = { ...doc, rows: doc.rows.map((r) => ({ ...r, fields: { ...r.fields, [intent.field]: '' } })) }
+      const added = { ...doc, rows: doc.rows.map((r) => ({ ...r, fields: { ...r.fields, [intent.field]: '' } })) }
+      const written = intent.kind && intent.kind !== 'text' ? withKind(added, intent.field, intent.kind) : added
       if (!intent.bind) return written
       // The element that went looking for the column is bound to it here rather than by a second
       // edit, and by the verb that already knows how to write a binding — into the base or into
@@ -377,14 +389,18 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // Och valet om prosa (L43, #362) går med den. En post som blev kvar under en nyckel
       // ingenting svarar på ärvs av nästa kolumn som råkar få samma namn, och den kolumnen har
       // aldrig fått ett val — vilket är precis den tysthet #362 handlar om, spegelvänd.
-      return withProse(
-        {
-          ...doc,
-          rows: doc.rows.map((r) => ({ ...r, fields: without(r.fields, intent.field) })),
-          template: { ...doc.template, faces },
-          ...(order ? { columns: order } : {}),
-        },
-        without(doc.prose ?? {}, intent.field),
+      // Bildvalet (#1085) av samma skäl.
+      return withImages(
+        withProse(
+          {
+            ...doc,
+            rows: doc.rows.map((r) => ({ ...r, fields: without(r.fields, intent.field) })),
+            template: { ...doc.template, faces },
+            ...(order ? { columns: order } : {}),
+          },
+          without(doc.prose ?? {}, intent.field),
+        ),
+        without(doc.images ?? {}, intent.field),
       )
     }
 
@@ -418,6 +434,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
         template: { ...doc.template, faces },
         ...(doc.columns ? { columns: doc.columns.map((f) => (f === intent.from ? intent.to : f)) } : {}),
         ...(doc.prose ? { prose: renamedKey(doc.prose, intent.from, intent.to) } : {}),
+        ...(doc.images ? { images: renamedKey(doc.images, intent.from, intent.to) } : {}),
       }
     }
 
@@ -426,6 +443,13 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       if (!columnsOf(doc).includes(intent.field)) throw new Error(`no field ${intent.field}`)
       if (intent.prose === null) return withProse(doc, without(doc.prose ?? {}, intent.field))
       return withProse(doc, { ...(doc.prose ?? {}), [intent.field]: intent.prose })
+    }
+
+    case 'setColumnKind': {
+      if (intent.field === ANTAL) throw new Error(`field ${ANTAL} is the deck's own`)
+      if (!columnsOf(doc).includes(intent.field)) throw new Error(`no field ${intent.field}`)
+      if (intent.kind === null) return withImages(withProse(doc, without(doc.prose ?? {}, intent.field)), without(doc.images ?? {}, intent.field))
+      return withKind(doc, intent.field, intent.kind)
     }
 
     // A column moved to another place in the table (#46). What is written down is the whole
@@ -964,6 +988,22 @@ function withProse(doc: ProjectDoc, prose: Record<string, boolean>): ProjectDoc 
   if (Object.keys(prose).length > 0) return { ...doc, prose }
   const { prose: _none, ...rest } = doc
   return rest
+}
+
+// Bildvalet (#1085) skrivs och tas bort som prosavalet: en tom post är ingen post.
+function withImages(doc: ProjectDoc, images: Record<string, boolean>): ProjectDoc {
+  if (Object.keys(images).length > 0) return { ...doc, images }
+  const { images: _none, ...rest } = doc
+  return rest
+}
+
+// Kolumnen gjord till det designern valde (#1085). En bild säger bara att den är bild, och
+// prosavalet står kvar under den: blir kolumnen text igen är den vad den var. Text och prosa är
+// ett nej till bild — också för en kolumn som mallen ritar som bild, där det är just förslaget
+// som vägs över — och ett svar om prosan.
+function withKind(doc: ProjectDoc, field: string, kind: ColumnKind): ProjectDoc {
+  const images = withImages(doc, { ...(doc.images ?? {}), [field]: kind === 'image' })
+  return kind === 'image' ? images : withProse(images, { ...(doc.prose ?? {}), [field]: kind === 'prose' })
 }
 
 // En post med en nyckel omdöpt och ordningen kvar. `Object.fromEntries` av en avbildning

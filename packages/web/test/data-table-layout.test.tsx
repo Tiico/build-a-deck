@@ -61,7 +61,7 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
       onMoveField={() => undefined}
       onRenameField={(from, to) => setDoc((current) => applyEdit(current, { v: 'renameField', from, to }))}
-      onProse={(field, prose) => setDoc((current) => applyEdit(current, { v: 'setProse', field, prose }))}
+      onColumnKind={(field, kind) => setDoc((current) => applyEdit(current, { v: 'setColumnKind', field, kind }))}
     />
   )
 }
@@ -129,7 +129,7 @@ async function measure({ html, deck }: Table, extra = ''): Promise<Head> {
         scroll: box(document.querySelector('.byd-data-scroll'))!,
         firstRow: box(document.querySelector('.byd-data tbody tr'))!,
         renames: [...document.querySelectorAll('.byd-columns button.byd-columns-name')].map((el) => ({ field: el.closest('li')!.getAttribute('data-col')!, box: box(el)! })),
-        switches: [...document.querySelectorAll('.byd-columns .byd-prose-switch button, .byd-columns .byd-prose-follow')].map((el) => ({ name: el.getAttribute('aria-label')!, box: box(el)! })),
+        switches: [...document.querySelectorAll('.byd-columns-list .byd-kind-switch button, .byd-columns-list .byd-kind-follow')].map((el) => ({ name: el.getAttribute('aria-label')!, box: box(el)! })),
         tap: parseFloat(getComputedStyle(document.querySelector('.byd-data-scroll')!).getPropertyValue('--byd-tap')),
         columns: heads.map((th, i) => ({
           head: named(th),
@@ -195,11 +195,12 @@ describe("the head's own door for its columns (#32, #46)", () => {
   }, 60_000)
 
   // What a column is written as moved out of the head and into the door (#615), and the reason it
-  // could: a row of the list has room for two whole targets beside the name and the ×, where the
-  // fold-out under a heading was the only place the old switch reached 44 px at all.
-  it('gives the prose switch in every row whole targets, and leaves the name its own', async () => {
+  // could: a row of the list has room for whole targets beside the name and the ×, where the
+  // fold-out under a heading was the only place the old switch reached 44 px at all. It is three
+  // now — text, prose, picture (#1085) — and the name keeps a whole target beside them.
+  it('gives the kind switch in every row whole targets, and leaves the name its own', async () => {
     const open = await measure(await markup(true))
-    expect(open.switches.map((s) => s.name)).toEqual(['Prosa, Titel', 'Text, Titel', 'Prosa, body', 'Text, body'])
+    expect(open.switches.map((s) => s.name)).toEqual(['Text, Titel', 'Prosa, Titel', 'Bild, Titel', 'Text, body', 'Prosa, body', 'Bild, body'])
     for (const { name, box } of open.switches) {
       expect({ name, tall: box.h >= open.tap, wide: box.w >= open.tap }).toEqual({ name, tall: true, wide: true })
     }
@@ -750,12 +751,12 @@ async function measureFoot({ html, deck }: Table): Promise<{ height: number; too
   }
 }
 
-// «Följ höjden igen» in the column door (#739): a 44 px target whose words were 10 px, underlined,
+// «Följ mallen igen» in the column door (#739): a 44 px target whose words were 10 px, underlined,
 // 6 px over the next column's name, in a door whose other small text — the prose switch beside
 // it — is 11. Since #674 it is a ↶ on its own column's row rather than words on a line under it:
 // drawn at least at the door's small size, and wholly inside the row it belongs to, so nothing of
 // it can be read as the next column's.
-describe('the way back to the height in the column door (#739)', () => {
+describe('the way back to the template in the column door (#739, #1085)', () => {
   it("is drawn at least as large as the door's other small text, inside its own column's row", async () => {
     const user = userEvent.setup()
     const doc = projectDoc()
@@ -768,18 +769,18 @@ describe('the way back to the height in the column door (#739)', () => {
     try {
       await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
       const read = await page.evaluate(() => {
-        const follow = document.querySelector<HTMLElement>('.byd-columns .byd-prose-follow')!
+        const follow = document.querySelector<HTMLElement>('.byd-columns .byd-kind-follow')!
         const next = follow.closest('li')!.nextElementSibling!.querySelector('.byd-columns-name')!
         return {
           named: follow.getAttribute('aria-label'),
           size: parseFloat(getComputedStyle(follow).fontSize),
-          small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-prose-switch > button')!).fontSize),
+          small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-kind-switch > button')!).fontSize),
           own: (({ top, bottom }) => ({ top, bottom }))(follow.closest('li')!.getBoundingClientRect()),
           box: (({ top, bottom }) => ({ top, bottom }))(follow.getBoundingClientRect()),
           next: next.getBoundingClientRect().top,
         }
       })
-      expect(read.named).toBe('Följ höjden igen, Titel')
+      expect(read.named).toBe('Följ mallen igen, Titel')
       expect(read.small).toBeGreaterThan(0)
       expect(read.size).toBeGreaterThanOrEqual(read.small)
       expect(read.box.top).toBeGreaterThanOrEqual(read.own.top)
@@ -810,11 +811,11 @@ describe('the column door ends every row in one column (#674)', () => {
       const read = await page.evaluate(() => {
         const right = (el: Element | null) => (el ? Math.round(el.getBoundingClientRect().right) : null)
         const rows = [...document.querySelectorAll('.byd-columns-list li')]
-        const follow = document.querySelector('.byd-columns .byd-prose-follow')!
+        const follow = document.querySelector('.byd-columns .byd-kind-follow')!
         const row = follow.closest('li')!
         return {
           ends: rows.map((li) => right(li.querySelector('.byd-data-dropfield, .byd-columns-system'))),
-          switchRight: right(row.querySelector('.byd-prose-switch')),
+          switchRight: right(row.querySelector('.byd-kind-switch')),
           followLeft: Math.round(follow.getBoundingClientRect().left),
           followRight: right(follow),
           removeLeft: Math.round(row.querySelector('.byd-data-dropfield')!.getBoundingClientRect().left),
@@ -898,11 +899,72 @@ describe("the column door's note on the tool's own columns (#858)", () => {
       const read = await page.evaluate(() => ({
         notes: document.querySelectorAll('.byd-columns-system').length,
         size: parseFloat(getComputedStyle(document.querySelector('.byd-columns-system')!).fontSize),
-        small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-prose-switch > button')!).fontSize),
+        small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-kind-switch > button')!).fontSize),
       }))
       expect(read.notes).toBeGreaterThan(0)
       expect(read.small).toBeGreaterThan(0)
       expect(read.size).toBeGreaterThanOrEqual(read.small)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// A picture cell's own buttons (#1085). The rule for the × that clears a picture,
+// `.byd-data-drop > button`, matched «Välj» as well and outweighed its own class, so the library's
+// button was drawn as a bare word in 16 px with no box — and «Ladda upp» broke over two lines, so
+// the column was measured on the broken label and cut what it had measured. Every picture column
+// showed it; a column made a picture in the table showed it first.
+describe('a picture cell’s buttons are buttons (#1085)', () => {
+  async function pictures(): Promise<Table> {
+    const doc = projectDoc()
+    doc.rows = doc.rows.map((row) => ({ ...row, fields: { ...row.fields, bild1: '' } }))
+    doc.images = { bild1: true }
+    const { container, unmount } = render(
+      <DataTable
+        doc={doc}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        onAddField={() => undefined}
+        onRemoveField={() => undefined}
+        onMoveField={() => undefined}
+        assetBase="http://api.local"
+        onUpload={async () => 'e'.repeat(64)}
+      />,
+    )
+    const html = container.innerHTML
+    unmount()
+    return { html, deck: deckValues(doc) }
+  }
+
+  it('draws «Välj» in the box every file button has, and keeps «Ladda upp» on one line uncut', async () => {
+    const table = await pictures()
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      await page.setContent(shellOf(table.html, ''), { waitUntil: 'load' })
+      const seen = await page.evaluate(({ deck, fit }) => {
+        new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
+        const cell = document.querySelector('td.byd-data-image[data-col="bild1"]')!
+        const choose = cell.querySelector<HTMLElement>('button.byd-data-file')!
+        const upload = cell.querySelector<HTMLElement>('label.byd-data-file')!
+        const how = getComputedStyle(choose)
+        // The lines the label's own words stand on, read off the words and not off the box, which
+        // keeps the 44 px floor whatever its words do.
+        const words = document.createRange()
+        words.selectNodeContents([...upload.childNodes].find((node) => node.nodeType === Node.TEXT_NODE)!)
+        return {
+          border: how.borderTopWidth,
+          size: how.fontSize,
+          sameBox: how.backgroundColor === getComputedStyle(upload).backgroundColor,
+          uploadLines: new Set([...words.getClientRects()].map((r) => Math.round(r.top))).size,
+          cut: [...document.querySelectorAll('td.byd-data-image[data-col="bild1"]')].filter((td) => td.hasAttribute('data-cut')).length,
+        }
+      }, { deck: table.deck, fit: FIT })
+      expect(seen).toEqual({ border: '1px', size: '12px', sameBox: true, uploadLines: 1, cut: 0 })
     } finally {
       await page.close()
     }

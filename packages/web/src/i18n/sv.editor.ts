@@ -483,25 +483,31 @@ export const svEditor = {
   // Vad huvudet säger: fältet, och kortet det gäller. Fältets namn är designerns eget ord och
   // står som hon skrev det (A4).
   'table.body.head': '{field} · {cardRef}',
-  // Kolumnens växel i dörren bakom ＋ (L43, ändrat i #615). «Höjden föreslår, designern avgör»:
-  // rutans höjd i mallen föreslår vilken kolumn som skrivs som prosa, och designern avgör.
+  // Kolumnens växel i dörren bakom ＋ (#1085, variant B; förut L43 och #615). «Mallen föreslår,
+  // designern avgör»: en hög ruta i mallen föreslår prosa och ett bildlager föreslår bild, och
+  // designern avgör.
   //
   // Skillnaden mellan förval och val bärs i form — streckad mot ifylld — och en streckad kant
   // finns inte för en skärmläsare. Så växelns *namn* bär samma skillnad i ord.
-  // Det är fyra meningar och inte två halvor som sätts ihop: ett tillstånd och ett upphov hör
-  // ihop i en mening, och ett språk som fogar dem på annat håll ska kunna skriva om hela raden.
-  'table.prose.is.prose.height': '{field} skrivs som prosa, höjden föreslog',
-  'table.prose.is.prose.choice': '{field} skrivs som prosa, du valde',
-  'table.prose.is.plain.height': '{field} skrivs som vanlig text, höjden föreslog',
-  'table.prose.is.plain.choice': '{field} skrivs som vanlig text, du valde',
-  // Och orsaken: rutan mallen ritar, mot en rad av dess egen grad. Två rader är vad ett stycke
-  // eller en punkt behöver för att synas (L39).
-  // Växelns två knappar, och knappen som lämnar tillbaka frågan till höjden — den står bara där
+  // Det är sex meningar och inte halvor som sätts ihop: ett tillstånd och ett upphov hör ihop i en
+  // mening, och ett språk som fogar dem på annat håll ska kunna skriva om hela raden.
+  'table.kind.is.text.template': '{field} är text, mallen föreslog',
+  'table.kind.is.text.choice': '{field} är text, du valde',
+  'table.kind.is.prose.template': '{field} är prosa, mallen föreslog',
+  'table.kind.is.prose.choice': '{field} är prosa, du valde',
+  'table.kind.is.image.template': '{field} är bild, mallen föreslog',
+  'table.kind.is.image.choice': '{field} är bild, du valde',
+  // Växelns tre knappar, och knappen som lämnar tillbaka frågan till mallen — den står bara där
   // det finns ett val att lämna. Var och en bär kolumnen i sitt namn (#557).
-  'table.prose.turn.named': '{turn}, {field}',
-  'table.prose.as.prose': 'Prosa',
-  'table.prose.as.plain': 'Text',
-  'table.prose.follow': 'Följ höjden igen',
+  'table.kind.turn.named': '{turn}, {field}',
+  'table.kind.as.text': 'Text',
+  'table.kind.as.prose': 'Prosa',
+  'table.kind.as.image': 'Bild',
+  'table.kind.follow': 'Följ mallen igen',
+  // Under raden (#1085). Text i en kolumn som blivit bild är inte borta: den syns överstruken i
+  // cellen och kommer tillbaka med Text.
+  'table.kind.kept.one': '{n} kort har text i {field}. Den står kvar och kommer tillbaka om du väljer Text igen.',
+  'table.kind.kept.other': '{n} kort har text i {field}. Den står kvar och kommer tillbaka om du väljer Text igen.',
   'table.icon.hint': 'Sätt in en ikon — eller skriv {',
   // De två står bredvid varandra i samma ram, men den ena stannar och frågar efter en fil medan
   // den andra lämnar ifrån sig en direkt. Orden säger vilken som är vilken: tre punkter är den
@@ -669,9 +675,9 @@ export const svEditor = {
   'editor.drag.cancelled': 'Draget avbröts',
 
   'table.columns.help.topic': 'kolumnerna',
-  'table.columns.help.prose': 'Prosa ger flera rader och textformatering. Text är ett vanligt textfält.',
-  'table.columns.help.auto': 'En streckad markering följer mallens textruta. Ett eget val gäller tills du återställer det med pilen bredvid växeln.',
-  'table.columns.help.manage': 'Tryck på ett kolumnnamn för att byta det. Låsta kolumner behövs av spelet. Bilder kopplas till kolumner i Mall.',
+  'table.columns.help.prose': 'Text är ett vanligt textfält. Prosa ger flera rader och textformatering. Bild tar emot bilder i cellerna.',
+  'table.columns.help.auto': 'En streckad markering följer mallen: en hög textruta föreslår prosa och ett bildlager bild. Ett eget val gäller tills du återställer det med pilen bredvid växeln.',
+  'table.columns.help.manage': 'Tryck på ett kolumnnamn för att byta det. Låsta kolumner behövs av spelet. Var en kolumn syns på kortet bestäms i Mall.',
   'table.columns': 'Kolumner',
   'table.column.moved': '{field} är kolumn {at} av {of}',
   'table.column.width.said': '{field} är {px} px bred',
@@ -690,6 +696,11 @@ export const svEditor = {
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
   'table.field.create': 'Lägg till',
+  // Vad en ny kolumn görs som (#1085): samma tre som växeln på raden, och en rad om vad valet gör.
+  'table.field.kind': 'Typ',
+  'table.field.kind.text': 'En rad text eller ett tal.',
+  'table.field.kind.prose': 'Flera rader, fetstil och listor i cellen.',
+  'table.field.kind.image': 'Cellerna tar emot bilder direkt. Kortet visar dem när ett bildlager i Mall pekar hit.',
   'table.field.needsName': 'Ett fält behöver ett namn.',
   'table.field.needsCards': 'Ett fält är en kolumn på korten. Lägg till ett kort först.',
   'table.field.taken': 'Det finns redan ett fält som heter {field}.',
