@@ -108,6 +108,10 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
   const adapter = ai.providers[opened.provider]
   const started = Date.now()
   let outcome: AskOutcome = 'ok'
+  // What the provider answered when it turned the question away, for the log alone (#1088): the
+  // designer is told in her own word, and the word for an answer nobody could use is a line that
+  // broke, so the status is what tells a 400 about the request apart from a socket that died.
+  let status: number | null = null
   const stop = new AbortController()
   // Typed by assertion: the closures below set it, which narrowing at the declaration cannot see.
   let ended = null as 'cancelled' | 'timeout' | null
@@ -151,6 +155,7 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
     if (ended) outcome = ended
   } catch (err) {
     outcome = ended ?? (err instanceof AiProviderError ? err.kind : 'network')
+    if (!ended && err instanceof AiProviderError) status = err.status
   } finally {
     clearTimeout(timer)
     clearInterval(beat)
@@ -159,7 +164,7 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
   }
   if (outcome !== 'ok' && outcome !== 'cancelled') send({ t: 'failed', kind: outcome })
   res.end()
-  console.log(JSON.stringify({ msg: 'ai', account, provider: opened.provider, ms: Date.now() - started, outcome }))
+  console.log(JSON.stringify({ msg: 'ai', account, provider: opened.provider, ms: Date.now() - started, outcome, ...(status === null ? {} : { status }) }))
 }
 
 // The question as the provider is asked it: the proposal it refines with the cards it changes, the

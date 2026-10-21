@@ -1581,7 +1581,7 @@ Den avvisar med skäl ett fält spelet inte har, ett bildfält, samma fält två
 Ett bildfält krävs aldrig och får aldrig skrivas: konsten är designerns egen, och det är den här beslutspunktens förbud.
 Att korten skiljer sig från lekens är modellens sak genom kontexten; översättaren dömer inte om det.
 Förslaget översätts mot spelet som det står varje gång det ritas och igen när det godtas, så att ett kort en medredigerare lägger till under tiden aldrig får sitt id taget.
-Anthropic svarar med ett strikt verktyg vars indata strömmar medan den skrivs (`eager_input_streaming`), och OpenAI med strikt JSON där prosan står i `message` bredvid förslaget eller `null`; modellen väljer själv mellan ord och förslag, och ett svar i ord strömmar som förut.
+Anthropic svarar med ett verktyg vars indata strömmar medan den skrivs (`eager_input_streaming`) — strikt till 2026-10-21, se #1088 nedan — och OpenAI med strikt JSON där prosan står i `message` bredvid förslaget eller `null`; modellen väljer själv mellan ord och förslag, och ett svar i ord strömmar som förut.
 Eftersom indatan då inte prövas av leverantören läses varje del med zod-schemat ändå.
 Delarna läses av en egen inkrementell läsare (`json-parts.ts`) som lämnar ett kort när dess klammer stänger och lämnar OpenAI:s prosa medan den växer, i en sida kod där varje del tolkas av `JSON.parse`; de små strömmande läsarna som finns gör det ena eller det andra, inte båda.
 Proxyn skickar `part` för varje del och `done` sist, med `broken` när förslaget kapades innan det var helt, och ett kapat förslag är oanvändbart.
@@ -1733,6 +1733,15 @@ Marginalens list är importens form (#131) i väggens två streck, i en violett 
 Boken går inte att skriva i medan förslaget ligger där, som när en fil ligger i den, och raden över den säger «AI-hjälpens förslag: 1 tillägg i regelboken» med «Dölj förslaget», som Tabell (#1003).
 Ett förslag med bara regeltext tar designern till Regler från vilken flik som helst; ett som också har kort visas på väggen som förut, och regeltexten har en egen länk, «Visa i regelboken», under sin post.
 Godtagandet är en sammansatt redigering med ett steg tillbaka, och ett spel utan regelbok får en, med spelets namn som titel.
+
+Ändrat 2026-10-21 (#1088): Anthropics verktyg är inte längre strikt.
+Anthropic kompilerar ett strikt schema bara under sina publicerade gränser, och den som tyngde var 16 egenskaper av unionstyp (`anyOf` eller en typlista) sammanlagt.
+Förslaget hade två vid #1004; mallen (#1005) tog det till 87 och regeltexten (#1006) till 90, eftersom varje egenskap ett element inte har är `null`.
+Över gränsen svarar Anthropic 400 «Schema is too complex for compilation» innan modellen säger ett ord, och från #1005 fram till den här ändringen besvarades ingen fråga med en Anthropic-nyckel.
+Ett strikt verktyg gav ändå bara halva garantin: med `eager_input_streaming` prövar leverantören inte indatan medan den strömmar, och editorn läser varje del med zod-schemat oavsett.
+Två vägar valdes bort: att skriva om mall- och regelschemat under 16 unioner, vilket är en omskrivning av #1005 och #1006, och att dela förslaget i ett strikt verktyg för kort och ett fritt för resten, vilket gör ett förslag till två verktygsanrop som delströmningen och förfiningen måste foga ihop.
+Schemat står kvar som det skrivs ur zod-schemat, med varje egenskap krävd och `null` för det ett element inte har, och OpenAI hålls fortfarande strikt till det; dess gränser (5 000 egenskaper, tio nivåer) rymmer schemats sex.
+Den falska Anthropic i sviterna håller nu ett strikt verktyg till samma gränser och svarar 400 som den riktiga, och loggraden `ai` bär leverantörens status när ett svar uteblev, eftersom ett 400 om vår egen begäran annars syns som en linje som brast.
 Den falska leverantörens `[regler]` lägger ett avsnitt efter bokens sista block som nämner spelets första zon med dess id, och `[regler-trasig]` samma avsnitt med `[[zon:finns-inte]]`.
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):

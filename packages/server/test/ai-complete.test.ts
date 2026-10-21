@@ -160,7 +160,7 @@ describe('what each provider is sent', () => {
 
 // A structured answer (#1002): the request carries the proposal's schema, and the model chooses —
 // prose, or a proposal whose parts stream one at a time, each the moment it is whole. Anthropic
-// answers a proposal as a strict tool's input, OpenAI as strict JSON whose prose is inside it.
+// answers a proposal as a tool's input, OpenAI as strict JSON whose prose is inside it.
 const SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object' } } }, required: ['cards'], additionalProperties: false }
 const proposing = (question: string): AiRequest => ({
   ...request(question),
@@ -229,10 +229,10 @@ for (const [name, make, key] of [
 }
 
 describe('what each provider is sent for a structured answer', () => {
-  it('Anthropic: the schema as a strict tool whose input streams as it is written, and the model left to choose', async () => {
+  it('Anthropic: the schema as a tool whose input streams as it is written, not strict, and the model left to choose', async () => {
     await stream(anthropicAdapter({ baseUrl: `${base}/anthropic` }), 'sk-ant-good', 'Hej')
     const body = fake.calls.at(-1)!.body as Record<string, unknown>
-    expect(body['tools']).toEqual([{ name: 'propose', description: 'Propose changes to the game.', input_schema: SCHEMA, strict: true, eager_input_streaming: true }])
+    expect(body['tools']).toEqual([{ name: 'propose', description: 'Propose changes to the game.', input_schema: SCHEMA, eager_input_streaming: true }])
     expect(body['tool_choice']).toEqual({ type: 'auto' })
   })
 

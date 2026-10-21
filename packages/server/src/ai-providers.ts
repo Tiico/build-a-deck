@@ -255,12 +255,14 @@ export function anthropicAdapter(opts: AdapterOptions = {}): AiProviderAdapter {
         ],
         messages: request.messages.map((m) => ({ role: m.role, content: m.text })),
         // A proposal is the input of a tool the model may call or leave (`auto`; these models refuse a
-        // forced one). Strict, so the input keeps to the schema; streamed as it is written rather
-        // than held back until each parameter is whole, which is what lets a card show the moment its
-        // brace closes — and why the editor reads every part with the zod schema all the same.
+        // forced one), streamed as it is written rather than held back until each parameter is whole,
+        // which is what lets a card show the moment its brace closes. Not strict (#1088): Anthropic
+        // compiles a strict schema only below 16 properties of a union type, and the proposal has
+        // ninety — a strict tool turned every question away with a 400. The input is not checked on
+        // the way either while it streams, and the editor reads every part with the zod schema.
         ...(request.proposal
           ? {
-              tools: [{ name: request.proposal.name, description: request.proposal.description, input_schema: request.proposal.schema, strict: true, eager_input_streaming: true }],
+              tools: [{ name: request.proposal.name, description: request.proposal.description, input_schema: request.proposal.schema, eager_input_streaming: true }],
               tool_choice: { type: 'auto' },
             }
           : {}),
