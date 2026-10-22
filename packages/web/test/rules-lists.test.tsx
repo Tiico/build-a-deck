@@ -166,7 +166,7 @@ describe('the help of the rules tab', () => {
     const user = userEvent.setup()
     await openBook()
     await user.click(screen.getByRole('button', { name: 'Hjälp om reglerna' }))
-    expect(await screen.findByText(/punktlista eller en numrerad lista.*«- » eller «1\. »/)).toBeTruthy()
+    expect(await screen.findByText(/punktlista eller en numrerad lista.*«- » eller «1\.»/)).toBeTruthy()
   })
 })
 
