@@ -42,7 +42,7 @@ test('an editor opened on work nobody saved says so, and the table it starts has
 
   // Starting a table saves first, so the table has the seats the editor shows.
   const primary = again.locator('.byd-editor-primary:not(.byd-editor-caret)')
-  await expect(primary).toHaveText('Start a table')
+  await expect(primary).toHaveAccessibleName('Start a table')
   await primary.click()
   await expect(primary).toHaveAccessibleName('Update the table')
   expect(await seats()).toEqual({ rev: 2, seats: 3 })
