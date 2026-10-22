@@ -19,3 +19,14 @@ describe('the mark (#1082)', () => {
     expect(readFileSync(join(PUBLIC, 'favicon.svg'), 'utf8'), 'favicon.svg is not the mark: pnpm --filter @byd/web exec tsx scripts/brand-icons.ts').toBe(faviconSvg())
   })
 })
+
+// The login mail (#1098, beslut C «Bordet») carries the hand on its wood band, and a mail cannot
+// draw it: Gmail strips <svg>, and no mail client rotates a rect. So the hand is also a PNG the
+// site serves, drawn by the script from the same drawing, at twice the 64 px the mail shows it at.
+describe('the mark in the mail (#1098)', () => {
+  it('is served as mark-128.png: a 128 × 128 PNG written by the script', () => {
+    const png = readFileSync(join(PUBLIC, 'mark-128.png'))
+    expect(png.subarray(0, 8).toString('hex'), 'mark-128.png is not a PNG: pnpm --filter @byd/web exec tsx scripts/brand-icons.ts').toBe('89504e470d0a1a0a')
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([128, 128])
+  })
+})
