@@ -50,7 +50,7 @@ export type PictureLibraryDialogProps = {
   // under, by the same path Media takes — so the picture lands in the library and the window then
   // holds it. Only an opener that can take one offers it; Data's windows stay what they were.
   onUpload?: ((file: File) => Promise<string>) | undefined
-  // The way out of a picture (L72): the card, or the marked cards, cleared of the one they hold.
+  // The way out of a picture (L75): the card, or the marked cards, cleared of the one they hold.
   // Offered only where something holds a picture, since there is nothing to clear otherwise, and
   // only by an opener whose target can be cleared.
   onClear?: (() => void) | undefined

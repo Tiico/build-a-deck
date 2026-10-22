@@ -155,7 +155,7 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     return Math.ceil(Math.max(widest, line) + parseFloat(own.paddingLeft) + parseFloat(own.paddingRight))
   }
 
-  // An image cell is the one cell that is not a value: Bildrutan (L72), a tile the browser can
+  // An image cell is the one cell that is not a value: Bildrutan (L75), a tile the browser can
   // already size, in a slot that is the drop surface. So it is measured as a box and not against
   // a font.
   const imageNeed = (i: number): number => {
