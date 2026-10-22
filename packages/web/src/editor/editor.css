@@ -2152,6 +2152,9 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-font-catalog-hits li button:disabled { color: var(--byd-editor-catalog-ink); border-color: var(--byd-editor-catalog-mark); cursor: default; }
 .byd-font-catalog-said { margin: 0; padding: var(--byd-s4) var(--byd-s3); font-size: 12px; text-align: center; color: var(--byd-editor-quiet); }
 .byd-font-catalog-said[role='alert'] { color: var(--byd-editor-unsaved-ink); }
+/* Deckster's own symbols stand at once, and the two libraries come in behind them (#1087): until they
+   do, one quiet line above the hits says so, and the hits below it are the ones there are. */
+.byd-icon-catalog-awaited { flex: none; margin: 0; padding: var(--byd-s2) var(--byd-s3) 0; font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-font-catalog footer { flex: none; display: flex; gap: 10px; align-items: center; padding: var(--byd-s2) var(--byd-s3); border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-font-catalog-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 .byd-font-catalog-kinds small { opacity: 0.7; font-variant-numeric: tabular-nums; }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { isSymbolName } from '@byd/template'
 import { useLang, useT, type Key } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
-import { loadIconCatalog, searchIcons, type CatalogIcon, type IconSource } from './icon-catalog.js'
+import { decksterIcons, loadIconCatalog, searchIcons, type CatalogIcon, type IconSource } from './icon-catalog.js'
 import { useFocusTrap } from './focusTrap.js'
 import { INK } from './symbols.js'
 import { cleanSvg } from './svg-clean.js'
@@ -13,7 +13,9 @@ import type { ProjectCredit } from '@byd/server'
 // opened for one thing — the layer's icon, or its icon for one value of a column — and says which.
 //
 // Nothing about the libraries is loaded before this component mounts, and it is mounted only by the
-// designer pressing for it: the catalog is behind `loadIconCatalog`'s dynamic import.
+// designer pressing for it: the catalog is behind `loadIconCatalog`'s dynamic import. Deckster's own
+// symbols are in the editor already and stand at once, as they do in Speltema's library; the two
+// libraries come in behind them, and until they do the sheet says so above the hits.
 
 // A page of hits. Seven to a row in the sheet under the card at 1280, nine rows: enough to find
 // a sword among swords, and few enough that the samples cost nothing to draw.
@@ -59,7 +61,7 @@ const fileUrl = (svg: string): string => `data:image/svg+xml;utf8,${encodeURICom
 export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }: IconCatalogProps) {
   const t = useT()
   const { lang } = useLang()
-  const [all, setAll] = useState<CatalogIcon[] | null>(null)
+  const [catalog, setCatalog] = useState<CatalogIcon[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [refused, setRefused] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -83,7 +85,7 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
   useEffect(() => {
     let standing = true
     loadIconCatalog(lang).then(
-      (icons) => standing && setAll(icons),
+      (icons) => standing && setCatalog(icons),
       () => standing && setFailed(true),
     )
     return () => {
@@ -96,7 +98,11 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
     const q = query.trim().toLowerCase()
     return inGame.filter((g) => q === '' || g.name.toLowerCase().includes(q))
   }, [inGame, query])
-  const hits = useMemo(() => (shelf === 'spelet' || !all ? [] : searchIcons(all, { query, source: shelf }, lang)), [all, query, shelf, lang])
+  const all = useMemo(() => catalog ?? decksterIcons(lang), [catalog, lang])
+  const hits = useMemo(() => (shelf === 'spelet' ? [] : searchIcons(all, { query, source: shelf }, lang)), [all, query, shelf, lang])
+  // The two libraries' own shelves have nothing to show until they are in; «Alla» has Deckster's.
+  const library = shelf === 'game-icons' || shelf === 'lucide' ? shelf : null
+  const awaited = catalog === null && !failed
   const count = shelf === 'spelet' ? gameHits.length : hits.length
   const ink = colour ?? INK
 
@@ -105,14 +111,14 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
     void onChoose(choice).catch((err: unknown) => setRefused(saidOr(err, t('icons.catalog.refused', { name }))))
   }
 
-  const shelfCount = (s: Shelf): number | null => (s === 'spelet' ? inGame.length : all === null ? null : s === 'alla' ? all.length : all.filter((i) => i.source === s).length)
+  const shelfCount = (s: Shelf): number | null => (s === 'spelet' ? inGame.length : s !== 'deckster' && catalog === null ? null : s === 'alla' ? all.length : all.filter((i) => i.source === s).length)
 
   return (
     <div className="byd-font-catalog byd-icon-catalog" role="dialog" aria-modal="true" aria-label={t('icons.catalog.title')} ref={sheet}>
       <header>
         <label className="byd-font-catalog-search">
           <span className="byd-offscreen">{t('icons.catalog.title')}</span>
-          <input ref={search} type="search" value={query} placeholder={t('icons.catalog.search', { count: (all?.length ?? 0).toLocaleString(lang) })} onChange={(e) => setQuery(e.target.value)} />
+          <input ref={search} type="search" value={query} placeholder={t('icons.catalog.search', { count: all.length.toLocaleString(lang) })} onChange={(e) => setQuery(e.target.value)} />
         </label>
         <div className="byd-icon-catalog-actions">
           <label className="byd-font-catalog-close byd-icon-catalog-upload">
@@ -185,15 +191,21 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
           </div>
         </fieldset>
       )}
-      {failed ? (
+      {awaited && shelf === 'alla' && (
+        <p className="byd-icon-catalog-awaited" role="status">
+          {t('icons.catalog.loading')}
+        </p>
+      )}
+      {failed && (shelf === 'alla' || library) && (
         <p className="byd-font-catalog-said" role="alert">
           {t('icons.catalog.failed')}
         </p>
-      ) : all === null && shelf !== 'spelet' ? (
+      )}
+      {library && awaited ? (
         <p className="byd-font-catalog-said" role="status">
-          {t('icons.catalog.loading')}
+          {t('icons.catalog.loading.shelf', { library: t(`icons.catalog.source.${library}`) })}
         </p>
-      ) : count === 0 ? (
+      ) : library && failed ? null : count === 0 ? (
         <p className="byd-font-catalog-said">{t('icons.catalog.none')}</p>
       ) : (
         <ul className="byd-icon-catalog-hits" aria-label={t('icons.catalog.hits')}>
@@ -225,7 +237,7 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
       )}
       <footer>
         <span>{t('icons.catalog.foot')}</span>
-        <span className="byd-font-catalog-count">{count === 0 || failed ? '' : t('icons.catalog.count', { shown: String(Math.min(PAGE, count)), all: count.toLocaleString(lang) })}</span>
+        <span className="byd-font-catalog-count">{count === 0 ? '' : t('icons.catalog.count', { shown: String(Math.min(PAGE, count)), all: count.toLocaleString(lang) })}</span>
       </footer>
     </div>
   )
