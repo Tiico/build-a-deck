@@ -17,6 +17,7 @@ import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/session.js'
 import { SeatLine } from './SeatLine.js'
 import { LastMove } from './LastMove.js'
+import { NotesColumn } from './NotesColumn.js'
 import { HandFan } from './HandFan.js'
 import { HandColumn } from './HandColumn.js'
 import { HandSpread } from './HandSpread.js'
@@ -209,6 +210,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         </div>
       </header>
       <main className="byd-online-play" data-hand={column ? 'column' : 'band'}>
+        {/* The table's notepad (#1131, beslut B · Spalten) at the felt's inline start, across from
+            the hand. Open from the start in a landscape window and folded in a portrait one, where
+            the felt is bound by its width and every pixel of the column would come off the cards. */}
+        <NotesColumn view={view} activity={activity} seat={seat} send={(...intents) => client.send(...intents)} defaultOpen={column} />
         <div className="byd-online-felt">
           <TableRenderer
             ref={table}

@@ -149,3 +149,39 @@
   padding: 6px 12px; border-radius: 999px; border: 1px solid var(--seat); background: rgba(16, 13, 11, 0.92);
   color: #f3e9d6; font-size: 13px; font-weight: 700; white-space: nowrap;
 }
+
+/* The table's notepad (#1131, beslut B · Spalten): a column at the felt's inline start, across from
+   the hand. In a landscape window it is a column of the row and takes width the felt mostly did not
+   use; folded it is a rail one target wide. In a portrait window the row is a stack, and the column
+   lies over the felt's corner instead of taking a row of height from it. */
+/* The column's own boxes measure their width with their padding: a field of `width: 100%` ran
+   out past the column's edge, and a row's text box into its × (#1131). */
+.byd-notes, .byd-notes * { box-sizing: border-box; }
+.byd-notes { --byd-notes-table: #e8e2d8; flex: none; display: flex; flex-direction: column; width: 60px; min-height: 0; background: #120f0d; border-inline-end: 1px solid #2a221c; color: #e8e2d8; }
+.byd-notes[data-open] { width: 300px; }
+.byd-online-play[data-hand='band'] > .byd-notes { position: absolute; z-index: 3; inset-block: 0; inset-inline-start: 0; }
+.byd-online-play[data-hand='band'] > .byd-notes:not([data-open]) { inset-block-end: auto; background: transparent; border: 0; }
+.byd-notes-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px; }
+.byd-notes-head h2 { margin: 0; font-size: 14px; color: #fff; }
+.byd-notes-toggle { position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font-size: 16px; }
+.byd-notes-toggle[aria-expanded='true'] { box-shadow: inset 0 -3px 0 #ffd98a; }
+/* Somebody else wrote while the column was folded: a dot, and the button's name says it too. */
+.byd-notes-toggle[data-unseen]::after { content: ''; position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: #ffd98a; box-shadow: 0 0 0 2px #1d1815; }
+.byd-notes-empty { margin: 8px 16px; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
+.byd-notes-list { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; margin: 0; padding: 0 8px; list-style: none; }
+.byd-note { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: start; margin-bottom: 6px; border-radius: 10px; border-inline-start: 3px solid var(--note-seat); background: #1b1714; }
+.byd-note input[type='checkbox'] { width: 20px; height: 20px; margin: 12px; accent-color: #ffd98a; }
+.byd-note-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 4px 0 8px; }
+.byd-note-text { min-height: 36px; margin: 0; padding: 6px 4px; border: 0; border-radius: 6px; background: transparent; color: #f2ece2; font: inherit; font-size: 14px; line-height: 1.4; text-align: start; overflow-wrap: anywhere; white-space: pre-wrap; cursor: text; }
+.byd-note-text:hover { background: #241e1a; }
+textarea.byd-note-text { width: 100%; resize: vertical; background: #120f0d; box-shadow: inset 0 0 0 1px #3a2f26; }
+.byd-note[data-done] .byd-note-text { color: #8a8f9c; text-decoration: line-through; }
+.byd-note-by { display: inline-flex; align-items: center; gap: 6px; padding-inline-start: 4px; color: #b8c0d2; font-size: 12px; }
+.byd-note-by::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--note-seat); }
+.byd-note-remove { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #8a8f9c; font-size: 14px; }
+.byd-note-remove:hover { background: #241e1a; color: #f2ece2; }
+.byd-notes-new { flex: none; padding: 8px; border-top: 1px solid #2a221c; }
+.byd-notes-new input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #3a2f26; border-radius: 10px; background: #1b1714; color: #f2ece2; font: inherit; font-size: 14px; }
+.byd-notes-new input::placeholder { color: #8a8f9c; }
+.byd-notes-said { flex: none; margin: 0 8px 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid #c8913a; background: #2a2015; color: #ffd98a; font-size: 13px; }
+.byd-notes-toggle:focus-visible, .byd-note input:focus-visible, .byd-note-text:focus-visible, .byd-note-remove:focus-visible, .byd-notes-new input:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }

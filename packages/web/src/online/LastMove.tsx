@@ -14,7 +14,8 @@ import { useT } from '../i18n/index.js'
 // twice.
 export function LastMove({ view, activity, seat }: { view: Snapshot; activity: readonly Activity[]; seat: string }) {
   const t = useT()
-  const line = sayable(activity).reverse().find((l) => l.by !== seat)
+  // A row of the notepad is not a move (#1131): the notepad's own column shows it as it is written.
+  const line = sayable(activity).reverse().find((l) => l.by !== seat && !l.intent.v.startsWith('note.'))
   const now = useNow(line !== undefined)
   if (!line) return null
   const index = line.by === null ? -1 : view.seats.findIndex((s) => s.id === line.by)

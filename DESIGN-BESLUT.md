@@ -2227,6 +2227,10 @@ Prototypen: `docs/ux-audits/2026-10-17-handen/prototyper/767/`.
 Ingen inbyggd låda med generiska tärningar, kuber eller lappar.
 Behöver gruppen en markör mitt i ett test lägger designern till den via versionsbyte enligt C7 — vilket är precis den insikten loggen bör fånga.
 
+Preciserat 2026-10-22 (#1131): bordets anteckningsblock (K28) är inte en sådan lapp.
+Det ligger inte på filten, går inte att flytta, vända eller räkna med, och är sessionens och inte spelets — som platserna.
+K5 handlar om föremål i spelet; blocket är det papper sällskapet för vid sidan av.
+
 ### K6. Närvaro: markörer, peka-gest, tillskrivna rörelser
 
 Varje anslutnings markör syns på `table`-vyn i platsens färg med namn, och tonar bort vid stillhet.
@@ -4013,6 +4017,33 @@ B:s adress på observatörens filt går att lägga till senare utan att tråden 
 Följdkrav:
 Trycket är dold information och bevisas på råa frames (D4): `packages/server/test/wire.test.ts` visar att Ada och observatören får `text` och att Bo, Cy, Di och bordet aldrig får den för ett dolt kort.
 `packages/template/test/printed.test.ts` håller läsningen av mallen, `packages/engine/test/printed-text.test.ts` härledningen, och `packages/web/test/held-card.test.tsx`, `tv-chrome.test.tsx`, `observer-page.test.tsx` och `observer-viewport.test.tsx` läsvyn, listorna och 44 px vid 320, 390 och 1280.
+
+### K28. Bordets anteckningsblock: en spalt på /online, rader med vem som skrev dem (prototypat och beslutat 2026-10-22, #1131)
+
+Sällskap som spelar dator till dator behöver ett gemensamt ställe för det spelet låter dem hålla i huvudet: poäng som inte bor på ett kort, vems tur det var att blanda, en regelfråga till efter partiet.
+Tre former prototypades mot `/online` (`docs/ux-audits/2026-10-22-anteckningsblocket/prototyper/`): **A, Lådan** — en gemensam fritext bakom en knapp i huvudet; **B, Spalten** — rader till vänster om filten; **C, Lappen** — ett gult block bredvid bordet.
+
+**Valet blev B, och bara på `/online` i första leveransen.**
+Rader i stället för en gemensam text, eftersom två som skriver samtidigt då aldrig skriver över varandra (D3): en rad skrivs om hel, och den omskrivning som landar sist är raden.
+Varje rad bär sin skribents platsfärg och namn, kan bockas av (struken, kvar) och tas bort, och skrivs om där den står; Enter sparar, Escape ångrar.
+Spalten står vid filtens inline-början, mitt emot handen, och fälls ihop till en list ett tryckmål bred; listen får en prick och namnet «Anteckningar, nytt från någon annan» när någon annan skrivit sedan den fälldes.
+Öppen eller ihopfälld minns webbläsaren, som en tittares egen bekvämlighet; utan svar avgör fönstrets form, öppen i liggande och ihopfälld i stående, där spalten ligger över filtens hörn i stället för att ta en rad höjd.
+
+Kostnaden är mätt och accepterad: öppen tar spalten kortbredd på filten, 40 → 33 px vid 1280×800 (−18 %), 46 → 40 vid 1440×900, och ingenting vid 1920×1080, där filten är höjdbunden ändå.
+Ihopfälld kostar den ingenting. A kostade ingen filt i vila men täckte en tredjedel av den när den var öppen och visade aldrig vem som skrev; C låg närmast det K5 sa nej till.
+
+**Blocket är sessionens, inte spelets.**
+Fyra sessionsverb — `note.add`, `note.edit`, `note.check`, `note.remove` — och inget fysiskt; en rad heter `n<seq>` efter raden i loggen som skrev den, så den behöver ingen slump (D4).
+Raderna är inte spel: de räknas inte som drag, gör inte bordet påbörjat, och Ångra går förbi dem till det egna draget.
+En tillbakaspolning, ett Ångra och en ny uppställning återställer bordet och lämnar blocket som det står, för det skrevs om sällskapet och inte om korten.
+Blocket rymmer hundra rader på högst 280 tecken, samma tak som en flaggas kommentar, och följer med i projektionen hel som en `notes`-patch när en rad ändras. Inget i det är dolt: blocket är rummets.
+Observatören läser det men skriver inte, som hon bara får flagga.
+«Senast:» i huvudet hoppar över raderna, eftersom spalten själv visar dem; skärmläsarens aktivitet säger dem med vad de säger.
+
+Följdkrav:
+Korpusen anonymiserar radernas text som den gör en flaggas (DRIFT §7), och `scripted-notepad.json` bär blocket genom ett ångra och en tillbakaspolning.
+Grindar: `packages/engine/test/notes.test.ts`, `packages/web/test/online-notes.test.tsx` och `packages/e2e/test/online-notes.spec.ts`, där två datorer skriver, bockar och skriver om i samma block.
+Utanför den här leveransen: blocket på bordsskärmen, TV:n och telefonen, och raderna i designerns «Resultat» (G3). Datan bär redan allt de skulle läsa.
 
 ## L. Editorn (grillad 2026-09-06)
 

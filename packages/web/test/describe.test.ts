@@ -210,3 +210,23 @@ describe('a pile made on the felt, in the log (#714)', () => {
     expect(describeActivity(splitBeside(1), table(null), en)).toBe('Ada laid 1 card beside Draghög')
   })
 })
+
+// The table's notepad (#1131): a row is told with what it says, in the activity a screen reader is
+// given; ticking and taking away a row name the row by what it said, when the reader still has it.
+describe('the log tells what was written on the notepad (#1131)', () => {
+  const at = '2026-10-22T00:00:00.000Z'
+  const withNote = { ...table(null), notes: [{ id: 'n3', by: 'A', text: 'Bo har en extra tur', done: false }] } as Snapshot
+  const line = (intent: Activity['intent'], by: string | null = 'A') => ({ seq: 9, by, at, intent }) as Activity
+  it('says a written and a rewritten row with what it says', () => {
+    expect(describeActivity(line({ v: 'note.add', text: 'Poäng: Ada 7' }), withNote, sv)).toBe('Ada antecknade: Poäng: Ada 7')
+    expect(describeActivity(line({ v: 'note.edit', note: 'n3', text: 'Bo har två turer' }), withNote, sv)).toBe('Ada skrev om en anteckning: Bo har två turer')
+    expect(describeActivity(line({ v: 'note.add', text: 'Score: Ada 7' }), withNote, en)).toBe('Ada noted: Score: Ada 7')
+  })
+  it('says a ticked, unticked and removed row by what it says, while the reader has it', () => {
+    expect(describeActivity(line({ v: 'note.check', note: 'n3', done: true }), withNote, sv)).toBe('Ada bockade av: Bo har en extra tur')
+    expect(describeActivity(line({ v: 'note.check', note: 'n3', done: false }), withNote, sv)).toBe('Ada tog bort bocken vid: Bo har en extra tur')
+    expect(describeActivity(line({ v: 'note.remove', note: 'n3' }), withNote, sv)).toBe('Ada strök: Bo har en extra tur')
+    expect(describeActivity(line({ v: 'note.remove', note: 'n9' }), withNote, sv)).toBe('Ada strök en anteckning')
+    expect(describeActivity(line({ v: 'note.remove', note: 'n9' }, null), withNote, en)).toBe('The table removed a note')
+  })
+})

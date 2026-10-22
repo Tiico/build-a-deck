@@ -305,6 +305,14 @@ export const svPlay = {
   'activity.flag': '{who} flaggade',
   'activity.flag.note': '{who} flaggade: {note}',
   'activity.flag.observer': '{name} (observatör)',
+  'activity.note.add': '{who} antecknade: {text}',
+  'activity.note.edit': '{who} skrev om en anteckning: {text}',
+  'activity.note.check': '{who} bockade av: {text}',
+  'activity.note.uncheck': '{who} tog bort bocken vid: {text}',
+  'activity.note.checked': '{who} bockade av en anteckning',
+  'activity.note.unchecked': '{who} tog bort en bock',
+  'activity.note.remove': '{who} strök: {text}',
+  'activity.note.removed': '{who} strök en anteckning',
   // Flera rader i samma andetag blir en mening i den artiga live-regionen (D5). Singularformen
   // är ingen sammanfattning alls: en ensam rad sägs som den mening den är.
   'activity.others.one': '{latest}',
@@ -507,6 +515,18 @@ export const svPlay = {
 
   // Helt online (C2): bordet och handen i samma fönster.
   'online.showall': 'Visa alla',
+  'notes.title': 'Anteckningar',
+  'notes.unseen': 'Anteckningar, nytt från någon annan',
+  'notes.empty': 'Inget antecknat än. Det ni skriver här ser alla vid bordet, och det ligger kvar till nästa gång.',
+  'notes.new': 'Ny anteckning',
+  'notes.new.placeholder': 'Skriv en anteckning och tryck Enter',
+  'notes.done': 'Klar: {text}',
+  'notes.edit': 'Ändra: {text}',
+  'notes.remove': 'Ta bort: {text}',
+  'notes.remove.title': 'Ta bort',
+  'notes.refused.full': 'Blocket är fullt: hundra rader. Ta bort en innan du skriver en ny.',
+  'notes.refused.gone': 'Raden finns inte längre: någon tog bort den.',
+  'notes.refused.other': 'Bordet tog inte emot raden. Försök igen.',
   'online.observers.one': '{names} tittar på',
   'online.observers.other': '{names} tittar på',
 
