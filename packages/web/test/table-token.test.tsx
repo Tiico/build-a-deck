@@ -317,7 +317,7 @@ describe('saying a counter’s value outright (C4, #67)', () => {
 })
 
 // The hand and the keyboard offer one and the same list on a chip (L12, #67). Today the panel
-// offered a chip the card's verbs — `Vänd · Vrid 90° · Avslöja · Titta` — because the two lists
+// offered a chip the card's verbs — `Vänd · Rotera 90° · Avslöja · Titta` — because the two lists
 // were two lists. Both are read here, from the rendered ring and the rendered panel, and held to
 // be the same in both languages the tool speaks.
 describe.each<Lang>(['sv', 'en'])('the ring and the keyboard panel read one list, in %s', (lang) => {

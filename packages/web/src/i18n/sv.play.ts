@@ -92,7 +92,7 @@ export const svPlay = {
   // Ringen av verb runt fingret (C).
   'ring.flip': 'Vänd',
   'ring.look': 'Titta',
-  'ring.rotate': 'Vrid',
+  'ring.rotate': 'Rotera',
   'ring.reveal': 'Avslöja',
   'ring.move': 'Flytta…',
   'ring.shuffle': 'Blanda',
@@ -204,7 +204,7 @@ export const svPlay = {
   // har egna.
   'kbd.hidden': 'Dolt kort',
   'kbd.card': '{name}, kort i {zone}',
-  'kbd.card.rotated': '{name}, kort i {zone}, vridet',
+  'kbd.card.rotated': '{name}, kort i {zone}, roterat',
   // En räknare är inte ett kort (C4), och ordlistan ger begreppet sitt eget ord (A4). Värdet står
   // med i meningen därför att det är det enda brickan visar — talet är hela poängen med en
   // räknare, och på filten ryms inte ens namnet i den (se `TOKEN_NAME_PX`).
@@ -221,7 +221,7 @@ export const svPlay = {
   'kbd.enter': '{label}. Enter öppnar handlingar.',
   'kbd.hand.mine': '{name}, i min hand',
   'kbd.hand.mine.marked': '{name}, i min hand, markerat',
-  'kbd.verb.rotate': 'Vrid 90°',
+  'kbd.verb.rotate': 'Rotera 90°',
   'kbd.verb.lookTop': 'Titta på översta',
   'kbd.verb.lookBottom': 'Titta på understa',
   'kbd.verb.toHand': 'Dra 1 till min hand',
@@ -270,7 +270,7 @@ export const svPlay = {
   'activity.hand.my': 'din hand',
   'activity.you': 'Du',
   'activity.hand.other': '{name:s} hand',
-  'activity.rotate': '{who} vred ett kort',
+  'activity.rotate': '{who} roterade ett kort',
   'activity.flip': '{who} vände ett kort',
   'activity.flip.named': '{who} vände {card}',
   'activity.stack': '{who} lade ett kort på ett annat',

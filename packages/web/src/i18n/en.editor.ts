@@ -910,7 +910,7 @@ export const enEditor = {
   'canvas.props.straight': 'Straighten the point',
   'canvas.props.straightAll': 'Straighten all',
   'canvas.props.corners': 'Corners',
-  'canvas.props.rotation': 'Turn',
+  'canvas.props.rotation': 'Rotation',
   'canvas.props.innerRatio': 'Point depth',
   'canvas.props.radius': 'Corner radius (mm)',
   'canvas.props.stroke': 'Line colour',

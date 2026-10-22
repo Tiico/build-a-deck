@@ -14,4 +14,22 @@ describe('the play words (#714)', () => {
     expect(translate('sv', 'player.hand.empty', { pile: 'Kortlek' })).toBe('Du har inga kort. Dra ett kort från Kortlek.')
     expect(translate('sv', 'rewind.ask.body', { pile: 'Kortlek', where: 'före ”x”' })).toBe('Bordet visar hur det såg ut före ”x”. Kortlek blandas om.')
   })
+
+  // A quarter turn and turning a card over are two physical acts, and «Turn» named both: the ring
+  // said «Turn» for the one and the phone «Turn up» for the other (#1134). The beställare chose
+  // Rotate and Rotera; «Vrid» beside «Vänd» was one letter-shape from the same word.
+  it('names a quarter turn with a word that never names turning a card over', () => {
+    expect((['ring.rotate', 'kbd.verb.rotate', 'kbd.card.rotated', 'activity.rotate'] as const).map((key) => translate('en', key, { name: 'wizard', zone: 'Play', who: 'Ada' }))).toEqual([
+      'Rotate',
+      'Rotate 90°',
+      'wizard, card in Play, rotated',
+      'Ada rotated a card',
+    ])
+    expect((['ring.rotate', 'kbd.verb.rotate', 'kbd.card.rotated', 'activity.rotate'] as const).map((key) => translate('sv', key, { name: 'wizard', zone: 'Spelyta', who: 'Ada' }))).toEqual([
+      'Rotera',
+      'Rotera 90°',
+      'wizard, kort i Spelyta, roterat',
+      'Ada roterade ett kort',
+    ])
+  })
 })

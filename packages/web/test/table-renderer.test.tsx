@@ -592,7 +592,7 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerUp(card, client(-390, -240))
     const ring = document.querySelector('[data-radial]')!
     // A face-up card has nothing left to reveal, so the ring does not offer it (#719).
-    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta'])
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Rotera', 'Titta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
     expect(document.querySelector('[data-radial]')).toBeNull()
   })
