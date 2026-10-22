@@ -174,6 +174,10 @@ for (const size of SIZES) {
                 if (await rail.isVisible()) await rail.click()
                 await expect(panel).toBeVisible()
               } else await expect(panel).toHaveCount(0)
+              // Huvudet är inte färdigt förrän socketen har sagt vem som är inne: utan den väntan
+              // mättes huvudet 28 px smalare än det blev en stund senare, och notisen fick skulden
+              // för att den egna initialen kom fram (#1104, grinden under last).
+              await expect(page.locator('.byd-editor > header .byd-editor-here i')).toHaveCount(1)
               const before = await headerNow(page)
               const workBefore = await page.locator('.byd-editor > main').evaluate((m) => Math.round(m.getBoundingClientRect().top))
 
