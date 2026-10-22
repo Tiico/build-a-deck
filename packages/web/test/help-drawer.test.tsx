@@ -131,6 +131,19 @@ describe('closing the box', () => {
     expect(box()).toBeNull()
     expect(ask().getAttribute('aria-expanded')).toBe('false')
   })
+
+  // `fireEvent` moves no focus, and a real press does: down on the question mark took the focus
+  // out of the box, the box closed on losing it, and the click found it closed and opened it again.
+  it('stays closed after a real click on the question mark, and hands the focus back to it', async () => {
+    const user = userEvent.setup()
+    mount()
+    await user.click(ask())
+    await appears()
+    await user.click(ask())
+    expect(box()).toBeNull()
+    expect(ask().getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(ask())
+  })
 })
 
 // The reading itself is `placement.test.ts`; this is the wiring — that the box asks where the room
