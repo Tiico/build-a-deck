@@ -60,6 +60,14 @@ describe.each(ENVIRONMENTS)('a test held to its budget in own time, under %s', (
     expect(failureMessages.join('\n')).toMatch(/Test spent (1\.\d|[2-9]\.\d) s of its own time, past its budget of 0\.6 s/)
   })
 
+  // A test past its budget is past its budget, whatever the machine did after (#1114): the ceiling
+  // going first on a busy machine is no reason to tell it the machine held it and it did not hang.
+  it('gives the budget’s verdict, not the ceiling’s, when its own time was past the budget before the ceiling went', () => {
+    const { status, failureMessages } = outcome(environment, 'spends its own time past its budget and is then held past the ceiling')
+    expect(status).toBe('failed')
+    expect(failureMessages.join('\n')).toMatch(/^Error: Test spent (1\.\d|[2-9]\.\d) s of its own time, past its budget of 0\.6 s\. Wall clock [3-9]\.\d s, of which the worker was held [2-9]\.\d s/)
+  })
+
   it('says at the ceiling that it was the machine and not the test, with both clocks', () => {
     const { status, failureMessages } = outcome(environment, 'held by the machine past the ceiling')
     expect(status).toBe('failed')
