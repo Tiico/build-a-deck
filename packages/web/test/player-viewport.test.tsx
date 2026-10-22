@@ -417,13 +417,21 @@ describe("the seat's control row at 375px (#31)", () => {
       expect(new Set(three.map((c) => c.top)).size).toBe(1)
       expect(Math.max(...three.map((c) => c.right))).toBeLessThanOrEqual(375)
 
-      // The control, and the reason the variant was chosen: a fourth control in the same row —
-      // here the rulebook's own button, which every game with rules brings (B7) — lands on a
-      // second line. The single line above is therefore a row that fits, not a measurement that
-      // cannot tell the difference.
+      // With the three drawn as icons (L73, led 3) the rulebook's own button, which every game with
+      // rules brings (B7), fits beside them too. The control, and the reason the measurement is
+      // trusted: a control the row cannot hold lands on a second line, so the single line above is
+      // a row that fits and not a measurement that cannot tell the difference.
       const four = await row(<RuleShelf rules={null} placement="phone" />)
       expect(four).toHaveLength(4)
-      expect(new Set(four.map((c) => c.top)).size).toBe(2)
+      expect(new Set(four.map((c) => c.top)).size).toBe(1)
+      const five = await row(
+        <>
+          <RuleShelf rules={null} placement="phone" />
+          <button type="button" style={{ width: 160 }}>bred</button>
+        </>,
+      )
+      expect(five).toHaveLength(5)
+      expect(new Set(five.map((c) => c.top)).size).toBe(2)
     } finally {
       await page.close()
     }

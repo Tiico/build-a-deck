@@ -81,8 +81,9 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
         return {
           loose,
           parts: parts.length,
-          // Each part after the first leads with its own dot, so the dot wraps with it.
-          led: parts.slice(1).map((part) => getComputedStyle(part, '::before').content),
+          // Each word after the first leads with its own dot, so the dot wraps with it; an icon
+          // (L73, led 3) stands on its own target and needs none.
+          led: parts.slice(1).map((part) => ({ icon: !!part.querySelector('.byd-glyph'), content: getComputedStyle(part, '::before').content })),
           lines: new Set(parts.map((part) => { const r = part.getBoundingClientRect(); return Math.round((r.top + r.bottom) / 2) })).size,
           // A part that starts a line after the first brings its dot to the front of it: «· Språk» (#728).
           starting: parts.slice(1).filter((part) => part.getBoundingClientRect().left <= parts[0]!.getBoundingClientRect().left + 1).length,
@@ -96,7 +97,7 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
       expect(account.starting).toBe(0)
       // The address gives way rather than the line, but stays long enough to say whose account it is.
       expect(account.address).toBeGreaterThanOrEqual(4)
-      for (const content of account.led) expect(content).toMatch(/^"·"/)
+      for (const { icon, content } of account.led) expect(content).toMatch(icon ? /^none$/ : /^"·"/)
     } finally {
       await page.close()
     }

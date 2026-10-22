@@ -62,6 +62,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    reader could see. A short word, so the target is given its 44 px of width as well as of height
    (UX-KONTROLLER). */
 .byd-who a.byd-who-profile { min-width: 44px; box-sizing: border-box; justify-content: center; }
+/* Profile and sign-out are icons (L73, led 3): a thumb target each, no dot before them, and the
+   word on the pointer and in the DOM out of sight. */
+.byd-who > span.byd-who-icon::before { content: none; }
+.byd-who > span.byd-who-icon a { min-width: 44px; justify-content: center; }
+.byd-who a .byd-glyph { width: 18px; height: 18px; }
 /* The sentence a brand new account reads before it presses anything (UX-16). */
 .byd-home-empty { margin: 0; max-width: 72ch; color: #9aa3b8; font-size: 14px; line-height: 1.6; text-wrap: pretty; }
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
@@ -149,7 +154,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 
 /* Taking a game out and bringing it back (G5, #529, beslut B): a window over the list that says
    what it is about first, and the way to it in the header beside the account. */
-.byd-home-import { margin-left: auto; min-height: 44px; border-radius: 12px; padding: 8px 16px; font-family: inherit; font-size: 15px; cursor: pointer; }
+.byd-home-import { margin-left: 4px; min-height: 44px; min-width: 44px; border-radius: 12px; padding: 0; display: inline-grid; place-items: center; font-family: inherit; font-size: 15px; cursor: pointer; }
+.byd-home-import .byd-glyph { width: 18px; height: 18px; }
 .byd-home-game > .byd-game-menu { right: 8px; top: 34px; }
 
 /* Where a beta tester turns, and the version she quotes back (#757, prototyp A): a quiet line last

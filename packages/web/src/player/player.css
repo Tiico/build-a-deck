@@ -354,20 +354,19 @@ html:has(.byd-phone-foot:not(:empty)) { scroll-padding-bottom: 73px; }
 .byd-foot-play { flex: 1 1 0; min-width: 0; background: var(--byd-accent); color: var(--byd-on-accent); }
 .byd-foot-more { flex: 0 0 auto; background: var(--byd-control); color: var(--byd-ink); }
 .byd-foot-play:disabled, .byd-foot-more:disabled { opacity: 0.5; }
+/* «Visa alla · n» is the grid and the count (L73, led 3); the whole name is the button's. */
+.byd-hand-all { display: inline-flex; align-items: center; gap: 4px; }
+.byd-hand-all .byd-glyph { width: 18px; height: 18px; }
 .byd-phone-foot:has(.byd-foot-more) .byd-rules-open { flex: 0 0 auto; padding: 0 12px; }
 @media (max-width: 359px) {
   .byd-phone-foot:has(.byd-foot-more) .byd-rules-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
-/* The head at 320 keeps one row (#716, L62, beslut H1): «Ångra» and «Flagga» are drawn as their
-   icons, each still a whole thumb target and still named by its word (the button's text and its
-   title), so the way out no longer falls to a row of its own. From 375 down, where the words stop
-   fitting: «Lämna…» (L73) is 30 px wider than «Ut…» was, and at 375 the three words no longer share
-   a line beside the name (`player-viewport.test.tsx`); at 390 they do. */
-@media (max-width: 375px) {
-  .byd-player > header .byd-undo, .byd-player > header .byd-flag { font-size: 0; gap: 0; padding: 0; width: 44px; }
-  .byd-player > header .byd-undo .byd-glyph, .byd-player > header .byd-flag .byd-glyph { width: 18px; height: 18px; }
-}
+/* The row's three are icons at every width (L73, led 3; under 375 px since #716, L62): each a
+   whole thumb target named by its word, which stays in the DOM out of sight and on the pointer as
+   the title. The head at 320 keeps one row, and so does the head at 375 with «Lämna…». */
+.byd-player > header .byd-undo, .byd-player > header .byd-flag, .byd-player > header .byd-exit { gap: 0; padding: 0; width: 44px; }
+.byd-player > header .byd-undo .byd-glyph, .byd-player > header .byd-flag .byd-glyph, .byd-player > header .byd-exit .byd-glyph { width: 18px; height: 18px; }
 
 /* A phone on its side (#716, L62, beslut A, prototyp 716): the portrait column stretched out showed
    no whole card of the hand without scrolling. In a low, wide window the head runs over two

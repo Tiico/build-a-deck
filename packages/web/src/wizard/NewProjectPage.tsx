@@ -23,7 +23,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
-import { CloseGlyph } from '../glyphs.js'
+import { ArrowGlyph, CloseGlyph  } from '../glyphs.js'
 import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
@@ -763,8 +763,15 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           {/* The steps are a tablist, so they can be walked with the arrows; these two are the
               same move said the way a form says it, for someone who reads the page in order. */}
           <nav className="byd-wizard-steps" aria-label={t('wizard.stepnav')}>
-            <button type="button" disabled={at === 0} onClick={() => walk(-1)}>{t('wizard.prev')}</button>
-            <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} onClick={() => walk(1)}>{t('wizard.next')}</button>
+            {/* Arrows (L73, led 3), each named by its word out of sight and on hover. */}
+            <button type="button" disabled={at === 0} title={t('wizard.prev')} onClick={() => walk(-1)}>
+              <ArrowGlyph to="left" />
+              <span className="byd-offscreen">{t('wizard.prev')}</span>
+            </button>
+            <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} title={t('wizard.next')} onClick={() => walk(1)}>
+              <ArrowGlyph to="right" />
+              <span className="byd-offscreen">{t('wizard.next')}</span>
+            </button>
           </nav>
         </main>
       )}

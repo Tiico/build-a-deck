@@ -28,7 +28,8 @@
 /* Bordets egna skärmar läses från andra sidan bordet: rummets golv (K26, #925). */
 .byd-table .byd-felt-refusal { font-size: 24px; }
 
-/* Det som senast hände står kvar i hörnet, spegelbilden av «Starta om» och «?». */
+/* Det som senast hände står kvar i hörnet, spegelbilden av «Starta om» och «?». Klockan står
+   där «Senast:» stod (L73, led 3); ordet finns kvar för den som hör raden. */
 .byd-table-last {
   position: fixed; left: 16px; bottom: 16px; z-index: 3; margin: 0; box-sizing: border-box;
   padding: 8px 16px; border-radius: 14px;
@@ -36,7 +37,7 @@
   font: 400 24px/1.25 var(--byd-felt-font, system-ui, sans-serif);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
-.byd-table-last > b { color: #a9a294; }
+.byd-table-last > .byd-glyph { width: 20px; height: 20px; margin-right: 4px; color: #a9a294; vertical-align: -3px; }
 .byd-table-last > span { color: #a9a294; white-space: nowrap; }
 
 /* Menyn som växer ur «⋯»: högerkanten i knappens, så både «Starta om» bredvid och linsens «+»
