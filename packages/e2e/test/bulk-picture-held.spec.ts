@@ -25,7 +25,7 @@ function withPictureColumn(): ProjectDoc {
   return doc
 }
 
-// A card that holds a picture offers to replace it; one that holds none offers to choose (L72).
+// A card that holds a picture offers to replace it; one that holds none offers to choose (L73).
 const holdsOne = (page: Page, cardRef: string) => page.getByRole('button', { name: `Byt bild för ${cardRef}` })
 
 test('a picture chosen from the library for the marked cards is held in the row until its button is pressed', async ({ page }, testInfo) => {
@@ -34,7 +34,7 @@ test('a picture chosen from the library for the marked cards is held in the row 
   await page.goto(project.editorUrl)
   await page.locator('#byd-editor-tab-table').click()
   // The game gets a picture the way the playtest gave it one: a file into a card's own cell —
-  // dropped on its tile, since L72.
+  // dropped on its tile, since L73.
   await dropOn(page.getByRole('group', { name: 'Bild för kort-1' }), { name: 'drake.png', mimeType: 'image/png', buffer: PIXEL })
   await expect(holdsOne(page, 'kort-1')).toBeVisible()
 
@@ -46,7 +46,7 @@ test('a picture chosen from the library for the marked cards is held in the row 
   const setButton = row.getByRole('button', { name: 'Sätt bild på 2 kort' })
   await expect(setButton).toBeDisabled()
 
-  // The row's tile (L72): named «Välj …» while the row is empty and «Byt …» once it holds a
+  // The row's tile (L73): named «Välj …» while the row is empty and «Byt …» once it holds a
   // picture, so it is found by its slot and not by its name.
   const opener = row.getByRole('group', { name: 'Bild för de markerade korten' }).getByRole('button')
   await expect(opener).toHaveAccessibleName('Välj bild för de markerade korten')

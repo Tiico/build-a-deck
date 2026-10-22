@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { AssetImage } from './AssetImage.js'
 import { DropSays, dropSurface } from './dropping.js'
 
-// Bildrutan (L72): the one way a card's picture is shown and changed in Tabell. The cell and the
+// Bildrutan (L73): the one way a card's picture is shown and changed in Tabell. The cell and the
 // marked cards' field used to build the same thing by hand twice — a thumbnail, a drop surface,
 // «Välj», «Ladda upp» and a × — and the prototype in `docs/ux-audits/2026-10-22-bildrutan.md`
 // chose the form where the tile is the whole control (variant A).

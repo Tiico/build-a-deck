@@ -484,11 +484,11 @@ describe.each(WIDTHS)('the written rulebook, at %ipx', (width) => {
   }, 90_000)
 })
 
-// The card table's file picker and its picture tiles (#193, L72), held to the two rules every
+// The card table's file picker and its picture tiles (#193, L73), held to the two rules every
 // control in the editor is held to: a target a thumb can hit, and paint that does not wait for a
 // pointer. They are counted as well as measured, because a drawer that never opened or a deck that
 // lost its image column would report a clean tab — which is the shape of guard this repo keeps
-// finding it needs. The cells held a picker each until L72; now each holds one tile, a button.
+// finding it needs. The cells held a picker each until L73; now each holds one tile, a button.
 describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) => {
   it('paints every file picker in it without waiting for a pointer to rest on it', async () => {
     const measured = await measure(
@@ -505,7 +505,7 @@ describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) =>
         }),
       cardFiles,
     )
-    // The import's. The cells' pickers went with L72, and the action row's with them.
+    // The import's. The cells' pickers went with L73, and the action row's with them.
     expect(measured).toEqual({ 'Tabell · filer': { pickers: 1, unpainted: [] } })
   }, 90_000)
 
@@ -514,7 +514,7 @@ describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) =>
     expect(measured).toEqual({ 'Tabell · filer': { pickers: 1, faults: [] } })
   }, 90_000)
 
-  it('draws one tile in each card’s image cell and in the action row, at the tap floor in both directions (L72)', async () => {
+  it('draws one tile in each card’s image cell and in the action row, at the tap floor in both directions (L73)', async () => {
     const measured = await measure(width, (page) => page.$$eval('.byd-table-wrap button.byd-picture-tile', (els) => ({
       tiles: els.length,
       small: els.map((el) => el.getBoundingClientRect()).filter((r) => r.width < 44 || r.height < 44).map((r) => `${Math.round(r.width)}×${Math.round(r.height)}`),

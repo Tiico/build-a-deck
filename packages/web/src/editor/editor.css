@@ -2235,7 +2235,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    80 px: in a `cost` column of 64 the field was drawn sixteen pixels into `antal`. So the floor
    goes, and with it the last thing in the cell that had an opinion about the column. */
 .byd-data td input:not([type='checkbox']) { min-width: 0; }
-/* Bildrutan (L72): one tile that is the whole control, in a picture cell and in the marked
+/* Bildrutan (L73): one tile that is the whole control, in a picture cell and in the marked
    cards' field. The tile is 66 × 44 — the tap floor in both directions, as the «Välj» it replaced
    kept it (#50, #193) — and a 3:2 window on the picture, the library tile's ratio. The slot
    around it is the drop surface (#291); the mark it lights is `dropping.css`'s. The cell gives

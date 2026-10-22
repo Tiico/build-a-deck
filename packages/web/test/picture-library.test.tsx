@@ -136,7 +136,7 @@ describe('the library dialog writes nothing until it is told to (#296)', () => {
 // the library yet can be uploaded from here, and the upload lands in Media like every other —
 // which is what keeps Media the one place pictures live. Only an opener that can upload offers
 // it, so Data's windows are exactly what they were.
-describe('clearing from the library window (L72)', () => {
+describe('clearing from the library window (L73)', () => {
   it('offers to clear only where something holds a picture and the opener can clear it, says how many, and clears on the press', async () => {
     const user = userEvent.setup()
     open({ replacing: 1 })

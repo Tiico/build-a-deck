@@ -3,7 +3,7 @@ import type { Locator } from '@playwright/test'
 /**
  * A file let go over a slot, as a hand would let it go: a real `drop` with the file in the
  * transfer, which is the path a picture takes into a card's cell without the library window
- * (#291, L72). The bytes travel as base64 because the transfer is built inside the page.
+ * (#291, L73). The bytes travel as base64 because the transfer is built inside the page.
  */
 export async function dropOn(slot: Locator, file: { name: string; mimeType: string; buffer: Buffer }): Promise<void> {
   const transfer = await slot.evaluateHandle(

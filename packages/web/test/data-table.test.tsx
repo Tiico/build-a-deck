@@ -138,7 +138,7 @@ describe('image cells (E1)', () => {
     return doc
   }
 
-  it('shows an image field as one tile that is the whole control, named by what a press does, and clears on Backspace (L72)', async () => {
+  it('shows an image field as one tile that is the whole control, named by what a press does, and clears on Backspace (L73)', async () => {
     const doc = withArt()
     const onCell = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => 'd'.repeat(64)} />)

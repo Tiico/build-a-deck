@@ -3,7 +3,7 @@
 // «Välj bild för de markerade korten» open the same window. For a cell the window writes the same
 // asset reference the picture already has; for the marked cards it hands that reference to the
 // action row, whose «Sätt bild på N kort» writes every marked card in one change (#1099). Since
-// L72 the window is also the way to a file from a cell, and the way out of a cell's picture.
+// L73 the window is also the way to a file from a cell, and the way out of a cell's picture.
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -72,7 +72,7 @@ describe('a picture cell opens the library (#296)', () => {
     expect(document.activeElement).toBe(opener)
   })
 
-  it('takes a file through the window — into the library under its name, and onto the card by the window\'s own button (L72)', async () => {
+  it('takes a file through the window — into the library under its name, and onto the card by the window\'s own button (L73)', async () => {
     const user = userEvent.setup()
     const onCell = vi.fn()
     const NY = 'd'.repeat(64)
@@ -92,7 +92,7 @@ describe('a picture cell opens the library (#296)', () => {
     expect(onCell).toHaveBeenCalledWith('knight', 'art', `asset:${NY}`)
   })
 
-  it('clears the card from the window\'s foot, and only where the card holds a picture (L72)', async () => {
+  it('clears the card from the window\'s foot, and only where the card holds a picture (L73)', async () => {
     const user = userEvent.setup()
     const onCell = vi.fn()
     renderTable(deckWithArt(), { onCell })
@@ -183,7 +183,7 @@ describe('the marked cards open the library (#296)', () => {
     expect(onReplaceRows).toHaveBeenCalledTimes(1)
   })
 
-  it('offers no clear for the marked cards, whose window only chooses (#1099, L72)', async () => {
+  it('offers no clear for the marked cards, whose window only chooses (#1099, L73)', async () => {
     const user = userEvent.setup()
     renderTable(deckWithArt())
     mark('dragon')
