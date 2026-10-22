@@ -78,6 +78,7 @@ export function Help({ topic, children, id }: HelpProps) {
     if (focusBack) ask.current?.focus()
   }
   useEffect(() => (arrived || fetching ? undefined : afterPaint(() => void fetchBox())), [])
+  const inside = { id: boxId, topic, ask, onClose: close, children }
   return (
     <span className="byd-help">
       <button
@@ -98,16 +99,17 @@ export function Help({ topic, children, id }: HelpProps) {
       >
         <span aria-hidden="true">?</span>
       </button>
-      {Box && (
-        // Nothing stands in the box's place while it is on its way: a box is what a press asked
-        // for, and half a box — a bordered empty panel — would be a worse answer than the moment
-        // of nothing that the fetch actually is.
-        <Suspense fallback={null}>
-          <Box id={boxId} topic={topic} ask={ask} onClose={close}>
-            {children}
-          </Box>
-        </Suspense>
-      )}
+      {Box &&
+        (Box === LazyHelpBox ? (
+          // Nothing stands in the box's place while it is on its way: a box is what a press asked
+          // for, and half a box — a bordered empty panel — would be a worse answer than the moment
+          // of nothing that the fetch actually is.
+          <Suspense fallback={null}>
+            <LazyHelpBox {...inside} />
+          </Suspense>
+        ) : (
+          <Box {...inside} />
+        ))}
     </span>
   )
 }
