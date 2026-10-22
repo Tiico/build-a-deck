@@ -72,7 +72,7 @@ describe('väntrummet på /online (L75, #1130)', () => {
     const panel = await room()
     const starts = () => document.querySelectorAll<HTMLButtonElement>('[data-table-start]')
     await waitFor(() => expect(starts()).toHaveLength(1))
-    const start = within(panel).getByRole('button', { name: /Starta spelet/ })
+    const start = within(panel).getByRole<HTMLButtonElement>('button', { name: /Starta spelet/ })
     expect(starts()[0]).toBe(start)
     await waitFor(() => expect(start.textContent).toBe('Starta speletladdar kort · 0/4'))
     expect(start.disabled).toBe(true)

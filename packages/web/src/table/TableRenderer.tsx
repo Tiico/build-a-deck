@@ -34,7 +34,7 @@ import { Lifted } from './Lifted.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handRoom, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt } from './labels.js'
 import { placeNames, placePlates, type PlateAt } from './freeSide.js'
-import { useT, type Key, type T } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
 
 // Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
 // hög gör, så den är lika stor i förhållande till korten på varje skärm.
