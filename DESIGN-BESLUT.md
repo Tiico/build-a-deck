@@ -215,7 +215,11 @@ Följdkrav:
 - En delad länk visar handen bredvid namnet på bordets mörka, 1200 × 630, som prototypen ritade den (#1084).
   `scripts/brand-icons.ts` ritar `og-image.png` med landningssidans egen rad, och servern skriver `PUBLIC_ORIGIN` framför bildens sökväg (DRIFT §13).
   `packages/e2e/test/app-icon.spec.ts` läser taggarna i sidan servern skickar och bildens pixlar.
-- TV:ns sidospalt bär också handen, men den prototypas på den riktiga spalten innan den byggs (#1084).
+- Rummets TV bär handen och namnet på en egen rad överst i sidospalten, ovanför spelets namn och skild från det med en linje (#1084, beställarens beslut B 2026-10-22).
+  Spalten står bredvid filten, så raden tar sin höjd från inspektionskortet och aldrig från filten: kortet mättes till 168 px i stället för 235 vid 1280 × 800, och det var kostnaden som valdes.
+  Handen bredvid adressen (A) och en tyst signatur längst ned (C) valdes bort.
+  Observatörens skärm är inte rummets och står utan raden.
+  Grinden är `packages/e2e/test/surfaces/tv-brand.spec.ts`, och prototypen står i #1084.
 - UI-ikonerna är en egen fråga (#1083): märket är produktens ansikte, glyferna är kontrollernas hand.
 
 Prototypen: `docs/ux-audits/2026-10-21-deckster-ikoner/prototyper/deckster/` (`?v=B`).
