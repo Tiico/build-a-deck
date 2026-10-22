@@ -4,6 +4,7 @@ import { handName } from './handName.js'
 import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 import { versionWord } from '../i18n/version.js'
+import { dieKind } from '../components.js'
 
 // The lines worth saying. A card played to a public zone is one envelope with a move and a flip,
 // and said as its flip it never said where the card went (#560 P-12): the flip of a card the same
@@ -39,8 +40,8 @@ export function sayable(lines: readonly Activity[]): Said[] {
 function thrown(rolls: readonly { component: string; value: number }[], view: Snapshot): string {
   const kinds = new Map<string, number[]>()
   for (const r of rolls) {
-    const type = view.components.find((c) => c.id === r.component)?.type.id ?? ''
-    const kind = /^die\.(d\d+)$/.exec(type)?.[1] ?? 'd?'
+    const die = view.components.find((c) => c.id === r.component)
+    const kind = (die && dieKind(die)) ?? 'd?'
     kinds.set(kind, [...(kinds.get(kind) ?? []), r.value])
   }
   const told = [...kinds].map(([kind, values]) => `${values.length > 1 ? values.length : ''}${kind}: ${values.join(' + ')}`).join(', ')

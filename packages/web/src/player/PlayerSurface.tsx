@@ -8,8 +8,9 @@ import { forTheRoom } from '../table/presence.js'
 import { FootPlay, HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
-import { isCounter } from '../components.js'
+import { isPiece } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
+import { DicePill, DiceSheet, diceOf } from './Dice.js'
 import { standingRewind } from '../table/rewind.js'
 import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
@@ -109,6 +110,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const drawn = useRefusal('phone')
   const [refusedPile, setRefusedPile] = useState<string | null>(null)
   const [toast, setToast] = useToast()
+  // The dice's sheet (K28, #1138), opened from its pill among the counters.
+  const [rolling, setRolling] = useState(false)
 
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   const chosen = chosenId === '' ? undefined : hand.find(c => c.id === chosenId) ?? hand[0]
@@ -217,7 +220,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   }
   // The row as it is drawn now, so a card that moved while it was held leaves the walk with it.
   const rowOf = (row: 'hand' | 'mine' | { zone: string }): VisibleComponentState[] =>
-    row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isCounter(c))
+    row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isPiece(c))
   // The card read in the hand is the card chosen (#507, beslut A): what the foot plays is what she
   // last read, so reading and choosing are one press and never two that can disagree.
   const hold = (card: VisibleComponentState, row: 'hand' | 'mine' | { zone: string }) => {
@@ -266,7 +269,11 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
       </header>
       <div className="byd-behind" {...behind}>
-        <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
+        <CountersRow
+          view={view}
+          onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })}
+          extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
+        />
       </div>
       <main className="byd-phone-main" {...behind}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -401,6 +408,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           refusedZone={refusedZone}
         />
       )}
+      {rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
       <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} />
     </>
   )
