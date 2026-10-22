@@ -483,6 +483,7 @@ export const enEditor = {
   'table.compare.noCards': 'No card differs — the difference is in {where}.',
   'table.compare.template': 'Open Template',
   'table.compare.and': ' and ',
+  'table.compare.only': 'Only changed cards',
   'table.proposal': 'The AI help’s proposal',
   'table.proposal.hide': 'Hide the proposal',
   'table.search': 'Search every field',

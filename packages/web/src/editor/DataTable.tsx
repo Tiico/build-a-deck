@@ -629,6 +629,22 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const changeOf = (cardRef: string) => diff?.rows.find((r) => r.cardRef === cardRef)
   const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
+  // Only the cards that differ (#1104): three hundred rows held against a version where five
+  // moved is three hundred rows to scroll past. The choice belongs to the comparison it was made
+  // in: stopping it, or opening another, starts from every card. The reset is made in the render
+  // that sees the comparison change, not in an effect after it, so no frame shows the old choice
+  // against the new comparison. A proposal is a comparison too (#1003), with its own cards that
+  // differ, and the same comparison shown twice is two comparisons.
+  const heldAgainst: string | number | null = proposal ? 'proposal' : (compareWith?.rev ?? null)
+  const [onlyDiffIn, setOnlyDiffIn] = useState(heldAgainst)
+  const [onlyDiffPressed, setOnlyDiffPressed] = useState(false)
+  if (onlyDiffIn !== heldAgainst) {
+    setOnlyDiffIn(heldAgainst)
+    setOnlyDiffPressed(false)
+  }
+  const onlyDiff = heldAgainst !== null && onlyDiffPressed
+  const differs = (cardRef: string): boolean => (proposal ? proposal.changed.has(cardRef) : changeOf(cardRef) !== undefined)
+  const anyDiffers = proposal ? proposal.changed.size > 0 || proposal.added.size > 0 : (diff?.rows.length ?? 0) > 0
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
   // Kolumnerna som skrivs som prosa och därför kan visa ett stycke eller en punkt (L39). De
   // ritas som den form de bär i stället för som tecknen som bär den. Vilka de är föreslås av
@@ -1215,7 +1231,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const shownRef = useRef<ProjectDoc['rows']>([])
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
-    : filterRows(sortRows(doc.rows, sort), columns, asked, pinned)
+    : filterRows(sortRows(doc.rows, sort), columns, asked, pinned).filter((row) => !onlyDiff || row.id === pinned || differs(row.id))
+  // Whether anything is asked of the deck at all: the search, a column's chips, or the comparison's own ask.
+  const asking = isFiltering(asked) || onlyDiff
   // The cards gone since the version compared with, asked the same filter as every card (#479).
   shownRef.current = shown
   // The row the hand stands in, which is the only row with tab stops (#575, beslut 2026-09-29):
@@ -1458,6 +1476,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {proposal && (
         <p className="byd-data-compare" role="status" data-proposal="">
           {t('table.proposal')}: <Summary diff={diffProjects(doc, proposal.doc)} />{' '}
+          {anyDiffers && (
+            <button type="button" aria-pressed={onlyDiff} onClick={() => setOnlyDiffPressed(!onlyDiff)}>
+              {t('table.compare.only')}
+            </button>
+          )}
           {onHideProposal && (
             <button type="button" onClick={onHideProposal}>
               {t('table.proposal.hide')}
@@ -1469,6 +1492,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
           {compareWith.label ? ` · ${compareWith.label}` : ''}: <CompareSummary diff={diff} />{' '}
+          {anyDiffers && (
+            <button type="button" aria-pressed={onlyDiff} onClick={() => setOnlyDiffPressed(!onlyDiff)}>
+              {t('table.compare.only')}
+            </button>
+          )}
           {onOpenTemplate && noCardDiffers(diff) && diff.template && (
             <button type="button" onClick={onOpenTemplate}>
               {t('table.compare.template')}
@@ -1944,11 +1972,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       </table>
       </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
-      {shown.length === 0 && isFiltering(asked) && <p className="byd-data-empty">{t('table.empty')}</p>}
+      {shown.length === 0 && asking && <p className="byd-data-empty">{t('table.empty')}</p>}
       <button type="button" id="byd-data-add" ref={addCardRef} className="byd-data-add" onClick={() => {
           const cardRef = nextRef()
           onAddRow(cardRef)
-          setPinned(isFiltering(asked) ? cardRef : null)
+          setPinned(asking ? cardRef : null)
           setArriving(cardRef)
         }}>
         {t('table.addCard')}

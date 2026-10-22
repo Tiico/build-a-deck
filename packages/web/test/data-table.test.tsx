@@ -529,6 +529,51 @@ describe('comparing with an older version in the table (B4)', () => {
     expect(screen.queryByText(/Jämför med/)).toBeNull()
     expect(screen.getAllByRole('row').slice(1).map((r) => r.getAttribute('data-change'))).toEqual([null, null, null])
   })
+
+  // Three hundred rows held against a version where five moved is three hundred rows to rull past
+  // (#1104). The band offers to show only the cards that differ: the changed, the added and the
+  // gone — and the search still asks its own question of those.
+  describe('showing only the cards that differ (#1104)', () => {
+    const compare = (props: Partial<Parameters<typeof DataTable>[0]> = {}) =>
+      render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} compareWith={{ rev: 1, doc: older() }} {...props} />)
+    const refs = () => screen.getAllByRole('row').slice(1).map((r) => r.getAttribute('data-card-ref'))
+    const toggle = () => within(document.querySelector('.byd-data-compare') as HTMLElement).getByRole('button', { name: 'Bara ändrade kort' })
+
+    it('hides the rows that did not move, and counts what is left against the whole deck', () => {
+      compare()
+      expect(toggle().getAttribute('aria-pressed')).toBe('false')
+      fireEvent.click(toggle())
+      expect(toggle().getAttribute('aria-pressed')).toBe('true')
+      expect(refs()).toEqual(['dragon', 'wizard', 'troll'])
+      expect(screen.getByText(/2 av 3 kort · 1 borttaget/)).toBeTruthy()
+      fireEvent.click(toggle())
+      expect(refs()).toEqual(['dragon', 'knight', 'wizard', 'troll'])
+    })
+
+    it('is a condition beside the search, not instead of it', () => {
+      compare()
+      fireEvent.click(toggle())
+      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Drak' } })
+      expect(refs()).toEqual(['dragon'])
+    })
+
+    it('is not offered when no card differs', () => {
+      compare({ doc: projectDoc(), compareWith: { rev: 1, doc: projectDoc() } })
+      expect(screen.queryByRole('button', { name: 'Bara ändrade kort' })).toBeNull()
+    })
+
+    it('lets go of the rows when the comparison is stopped', () => {
+      const view = compare({ onStopCompare: () => undefined })
+      fireEvent.click(toggle())
+      expect(refs()).toEqual(['dragon', 'wizard', 'troll'])
+      view.rerender(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
+      expect(refs()).toEqual(['dragon', 'knight', 'wizard'])
+      // And a comparison opened later starts with every card, as the first one did.
+      view.rerender(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} compareWith={{ rev: 2, doc: older() }} />)
+      expect(refs()).toEqual(['dragon', 'knight', 'wizard', 'troll'])
+      expect(toggle().getAttribute('aria-pressed')).toBe('false')
+    })
+  })
 })
 
 // The meaning a symbol is written in (E4). The syntax teaches itself: typing the bar after a
