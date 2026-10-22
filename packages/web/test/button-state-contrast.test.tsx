@@ -323,8 +323,9 @@ describe.each([
     // pair #315 is about has to be in the list, in the state it is about, or nothing below counts.
     const refused = measured.filter((one) => one.what.includes(' refused —')).map((one) => one.what)
     // The game in the fixture has no table, so the filled action is the header's start (#417). It
-    // is the same button in the same role, and it is the one the pair below is about.
-    expect(refused.filter((one) => one.includes('«Starta bord»')).length).toBeGreaterThan(0)
+    // is the same button in the same role, and it is the one the pair below is about. At the desk's
+    // 1280 it says its errand short, «Starta» (#1078), and that is the run of text that is read.
+    expect(refused.filter((one) => one.includes('«Starta»')).length).toBeGreaterThan(0)
     expect(refused.filter((one) => one.includes('«Spara»')).length).toBeGreaterThan(0)
     // A label measured against the browser's own canvas is a label nobody drew a ground under.
     expect(measured.filter((one) => !one.grounded).map((one) => one.what)).toEqual([])
