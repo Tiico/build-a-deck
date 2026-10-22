@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 1144 — dropdown-knappens öppna läge</title>
+<style>
+  /* ── Frågan (#1144) ─────────────────────────────────────────────────────────────────────
+     Åtta knappar i editorn öppnar en meny under sig och bär en chevron som pekar nedåt både
+     stängd och öppen, så ingenting säger att ett tryck till stänger menyn. Hur ska en öppen
+     dropdown-knapp se ut?
+
+     Varje bild är den BYGGDA editorn (scripts/prototype/run.ts-riggen, provleken Sal's Saloon,
+     1280 × 800, 2× upplösning) med varianten injicerad som en stilmall i den riktiga sidan. Inget
+     är ritat för hand. Tryck på en bild för att se trycket: den växlar mellan stängd och öppen.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root { color-scheme: dark; --panel: #1b1d23; --line: #2f333d; --quiet: #9aa3b8; --mark: #6ea8ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111318; color: #dce3f2; font: 14px/1.5 system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 15px; color: #fff; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rad button { min-height: 36px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+  main { display: grid; gap: 16px; padding: 16px; max-width: 1100px; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; font-size: 14px; color: #fff; }
+  .ruta p { margin: 0 0 6px; color: #c9d1e3; }
+  .fall { display: grid; gap: 6px; }
+  .par { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+  figure { margin: 0; display: grid; gap: 4px; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+  figcaption { color: var(--quiet); font-size: 12px; }
+  button.bild { padding: 0; border: 0; background: none; cursor: pointer; }
+  button.bild:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>#1144 — Hur ser en öppen dropdown-knapp ut?</h1>
+  <div class="rad" role="group" aria-label="Variant">
+    <button type="button" data-v="idag">I dag</button>
+    <button type="button" data-v="A">A · chevronen vänds</button>
+    <button type="button" data-v="B" class="rek">B · vänds och trycks ned (rekommenderad)</button>
+    <button type="button" data-v="C">C · blir × och trycks ned</button>
+  </div>
+</header>
+<main>
+  <section class="ruta">
+    <h2 id="namn"></h2>
+    <p id="text"></p>
+  </section>
+  <section class="ruta fall" data-fall="huvudet">
+    <h2>Editorns huvud — «Uppdatera ⌄» / «Starta bord ⌄»</h2>
+    <div class="par"></div>
+  </section>
+  <section class="ruta fall" data-fall="kronan">
+    <h2>Kortväggens krona — «Visning: Normal syn ⌄»</h2>
+    <div class="par"></div>
+  </section>
+  <section class="ruta fall" data-fall="mallen">
+    <h2>Mallens kortgrupper — «Bas (alla) · 77 kort ⌄»</h2>
+    <div class="par"></div>
+  </section>
+  <section class="ruta">
+    <h2>Klick utanför</h2>
+    <p>Oberoende av varianten: «Uppdatera ⌄»-menyn stänger i dag inte alls vid ett klick utanför, och Bord-flikens radmeny och mallens kortgruppsmeny stänger bara när fokus flyttas — ett klick på något som inte tar fokus lämnar dem öppna. Alla åtta stängs vid ett tryck utanför, som kronans lådor och pillrets meny redan gör.</p>
+  </section>
+</main>
+<script>
+  const TEXT = {
+    idag: ['I dag', 'Chevronen pekar nedåt både stängd och öppen. Några knappar får en blå kant när de är öppna, andra ingenting alls.'],
+    A: ['A · chevronen vänds', 'Chevronen vrids ett halvt varv (150 ms, direkt med «minska rörelse») och pekar uppåt medan menyn står öppen. Knappen i övrigt som i dag.'],
+    B: ['B · vänds och trycks ned', 'Som A, och knappen ritas nedtryckt medan menyn står — en mörkare grund och en inre skugga, som kolumndörrens handtag (L-beslutet #695). Två tecken i stället för ett: formen säger åt vilket håll, grunden säger att knappen hålls.'],
+    C: ['C · blir × och trycks ned', 'Chevronen byts mot ett × medan menyn står, och knappen ritas nedtryckt. Det tydligaste «tryck här för att stänga», samma språk som kolumndörren (＋ blir ×). Men × läses också som «ta bort» — i kronan står det bredvid ett värde.'],
+  }
+  const params = new URLSearchParams(location.search)
+  let v = params.get('v') || 'B'
+  const draw = () => {
+    for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === v))
+    document.getElementById('namn').textContent = TEXT[v][0]
+    document.getElementById('text').textContent = TEXT[v][1]
+    for (const fall of document.querySelectorAll('[data-fall]')) {
+      const id = fall.dataset.fall
+      const par = fall.querySelector('.par')
+      par.replaceChildren()
+      for (const [s, ord] of [['stangd', 'Stängd'], ['oppen', 'Öppen']]) {
+        const fig = document.createElement('figure')
+        const knapp = document.createElement('button')
+        knapp.type = 'button'
+        knapp.className = 'bild'
+        knapp.setAttribute('aria-label', `${ord} — tryck för att växla`)
+        const img = document.createElement('img')
+        img.alt = `${id}, variant ${v}, ${ord.toLowerCase()}`
+        img.src = `img/${id}-${v}-${s}.png`
+        img.width = 0
+        img.onload = () => { img.width = img.naturalWidth / 2 }
+        let läge = s
+        knapp.onclick = () => {
+          läge = läge === 'stangd' ? 'oppen' : 'stangd'
+          img.src = `img/${id}-${v}-${läge}.png`
+          cap.textContent = läge === 'stangd' ? 'Stängd' : 'Öppen'
+        }
+        knapp.append(img)
+        const cap = document.createElement('figcaption')
+        cap.textContent = ord
+        fig.append(knapp, cap)
+        par.append(fig)
+      }
+    }
+    params.set('v', v)
+    history.replaceState(null, '', `?${params}`)
+  }
+  for (const b of document.querySelectorAll('[data-v]')) b.onclick = () => { v = b.dataset.v; draw() }
+  draw()
+</script>
+</body>
+</html>
