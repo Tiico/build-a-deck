@@ -30,7 +30,8 @@ const KEY = 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefN1n2'
 
 // De längsta meningarna notisen säger, ur editorns egna ord: sparningen som inte fick något svar
 // (den längsta av alla), ångrans och gör oms vägran med de längsta «vad», #1072:s kolumn som är
-// borta, #993:s avvisade ändring, och de korta om ikonen och bordet.
+// borta, #993:s avvisade ändring, en ikon vars fil inte kom fram och tagits bort igen (#1093: ikonverktyget
+// lägger inte längre en ikon själv, så den som inte kunde läggas på kortet sägs inte), och den korta om bordet.
 const said = (words: Record<string, string>) => {
   const fill = (key: string, values: Record<string, string> = {}) => words[key]!.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? '')
   return [
@@ -40,7 +41,7 @@ const said = (words: Record<string, string>) => {
     fill('redo.refused', { what: words['undo.what.font']! }),
     fill('undo.dropped.one', { fields: fill('undo.dropped.field', { field: 'stämning' }) }),
     fill('editor.edit.refused'),
-    fill('symbols.place.failed', { name: 'svärd' }),
+    fill('upload.undone', { what: fill('upload.undone.symbol', { name: 'svärd' }), why: words['upload.failed']! }),
     fill('editor.table.error.update'),
   ]
 }

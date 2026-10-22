@@ -6,6 +6,7 @@ import type { RuleDoc } from '@byd/server'
 import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { loadIconCatalog } from '../src/editor/icon-catalog.js'
+import { translate, type T } from '../src/i18n/index.js'
 import { startServer, type Running } from './fixture.js'
 import { assetTypeDeclaring } from '@byd/protocol'
 import { columnsOf } from '@byd/server/doc'
@@ -679,58 +680,54 @@ describe('an icon taken in from the libraries (#1087)', () => {
     expect(await client.useIcon(catalog.find((i) => i.id === 'deckster:skold')!)).toBe('sköld')
     expect(client.doc.credits?.['sköld']).toEqual({ licence: 'CC0-1.0', by: 'Deckster', source: 'skold' })
   })
-})
 
-// The icon placed from the tool row (#33): the symbol has to be in the game before an element can
-// show it, and the designer asked for both with one press. So it is one edit — and the licence
-// travels with it exactly as it does when a symbol is taken in from Speltema (E4, L57).
-describe('an icon placed on the card (#33, E4)', () => {
-  it('takes the symbol in and places the element as one edit, and a second placing is a second element and not a second symbol', async () => {
-    const created = await run.projects.create(run.projectId, projectDoc())
+  const swedish: T = (key, params) => translate('sv', key, params)
+
+  // Choosing an icon for a layer is one thing the designer did (#1093): the icon taken in and the
+  // layer shown with it share a doing, so one Ctrl+Z takes both back and leaves the layer it was.
+  it('takes an icon in and binds a layer to it as one step back, when both carry the same doing', async () => {
+    const doc = projectDoc()
+    doc.template.faces['front']!.base.push({ kind: 'icons', id: 'icon-1', x: 27.5, y: 40, w: 8, h: 8, bind: { literal: '' }, iconMm: 8, gapMm: 0 })
+    const created = await run.projects.create(run.projectId, doc)
     const client = await openClient(created.id)
-    const svard = LIBRARY.find((s) => s.id === 'svard')!
+    const swords = (await loadIconCatalog('sv')).find((i) => i.id === 'game-icons:crossed-swords')!
 
-    expect(await client.placeIcon(svard, 'front', null)).toBe('icon-1')
-    expect(client.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
-    expect(client.doc.credits?.['svärd']).toEqual({ licence: svard.licence, by: svard.by, source: svard.id })
-    // Bound to the name and not to a column: this icon is the card's, not the row's.
-    expect(client.doc.template.faces['front']?.base.at(-1)).toMatchObject({ kind: 'icons', id: 'icon-1', bind: { literal: 'svärd' } })
+    // The layer is bound as soon as the set names the icon, with the bytes still in the air (#310).
+    const { name, stored } = await client.chooseIcon(swords, swedish, 'icon-choice-1')
+    client.patchElement('front', 'icon-1', { bind: { literal: name } }, null, 'icon-choice-1')
+    await stored
+    expect(client.doc.template.faces['front']?.base.at(-1)).toMatchObject({ bind: { literal: 'crossed-swords' } })
 
-    // One edit, so one step back takes the element and the symbol together (B4).
-    expect(client.undo()).toBe('undo.what.template')
-    expect(client.doc.icons['svärd']).toBeUndefined()
-    expect(client.doc.template.faces['front']?.base.some((e) => e.id === 'icon-1')).toBe(false)
-    client.redo()
-    expect(client.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
-
-    // The same symbol again is a second element showing the one entry the game has, not a second
-    // entry under a name of its own — the bytes are the same bytes, and so is the licence.
-    expect(await client.placeIcon(svard, 'front', null)).toBe('icon-2')
-    expect(Object.keys(client.doc.icons)).toEqual(['svärd'])
+    client.undo()
+    expect(client.doc.icons['crossed-swords']).toBeUndefined()
+    expect(client.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id: 'icon-1', bind: { literal: '' } })
+    expect(client.canUndo).toBe(false)
   })
 
-  // Uploading the bytes takes as long as the network takes, and the face is what the free id is
-  // worked out from. Two presses that overlap — or somebody else in the game adding an element
-  // while the upload is in flight (D3) — both read the face as it was before either landed, and
-  // both mint `icon-1`. The second is refused by the template, and because `edit` applies before
-  // it records, the whole placement is thrown away and the designer is told an error instead of
-  // being handed the icon she asked for.
-  it('gives each of two placements that overlap an element of its own', async () => {
-    const created = await run.projects.create(run.projectId, projectDoc())
+  // Should the bytes never arrive, the choice is taken back whole: the doing is still the open one,
+  // so it is called off with the layer's binding in it, and no card is left naming an icon the set
+  // no longer has (#1093, #344).
+  it('takes the choice back whole when the bytes never arrive', async () => {
+    const doc = projectDoc()
+    doc.template.faces['front']!.base.push({ kind: 'icons', id: 'icon-1', x: 27.5, y: 40, w: 8, h: 8, bind: { literal: '' }, iconMm: 8, gapMm: 0 })
+    const created = await run.projects.create(run.projectId, doc)
     const client = await openClient(created.id)
-    const svard = LIBRARY.find((s) => s.id === 'svard')!
-    const skold = LIBRARY.find((s) => s.id === 'skold')!
-
-    const [first, second] = await Promise.all([client.placeIcon(svard, 'front', null), client.placeIcon(skold, 'front', null)])
-
-    expect(new Set([first, second])).toEqual(new Set(['icon-1', 'icon-2']))
-    const ids = client.doc.template.faces['front']!.base.map((e) => e.id)
-    expect(ids).toContain(first)
-    expect(ids).toContain(second)
-    // Both symbols came into the game with their elements, and each element shows its own.
-    expect(Object.keys(client.doc.icons).sort()).toEqual(['sköld', 'svärd'])
-    const shows = (id: string) => client.doc.template.faces['front']!.base.find((e) => e.id === id) as { bind: { literal: string } }
-    expect(new Set([shows(first).bind.literal, shows(second).bind.literal])).toEqual(new Set(['svärd', 'sköld']))
+    const swords = (await loadIconCatalog('sv')).find((i) => i.id === 'game-icons:crossed-swords')!
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') return new Response('nope', { status: 500 })
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      const { name, stored } = await client.chooseIcon(swords, swedish, 'icon-choice-2')
+      client.patchElement('front', 'icon-1', { bind: { literal: name } }, null, 'icon-choice-2')
+      await expect(stored).rejects.toThrow(/kunde inte laddas upp och har tagits bort igen/)
+    } finally {
+      globalThis.fetch = real
+    }
+    expect(client.doc.icons['crossed-swords']).toBeUndefined()
+    expect(client.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id: 'icon-1', bind: { literal: '' } })
+    expect(client.canUndo).toBe(false)
   })
 })
 
@@ -1261,14 +1258,9 @@ describe('a click in the symbol library does not wait for the network (#310, E4)
     const again = await watching(() => client.useSymbol(svard))
     expect(again.out).toBe('svärd')
     expect(again.calls).toEqual([])
-
-    // And placing it on a card is a template edit and nothing more: the symbol is in the set.
-    const placed = await watching(() => client.placeIcon(svard, 'front', null))
-    expect(placed.calls).toEqual([])
-    expect(client.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id: placed.out, bind: { literal: 'svärd' } })
   })
 
-  it('places a symbol the game has never seen without waiting for its bytes to land', async () => {
+  it('takes in a symbol the game has never seen without waiting for its bytes to land', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const skold = LIBRARY.find((s) => s.id === 'skold')!
@@ -1284,17 +1276,15 @@ describe('a click in the symbol library does not wait for the network (#310, E4)
       return real(input, init)
     }) as typeof fetch
     try {
-      const placing = client.placeIcon(skold, 'front', null)
-      // The symbol is in the game and on the card while the bytes are still in the air.
+      const taking = client.useSymbol(skold)
+      // The symbol is in the game while the bytes are still in the air.
       await vi.waitFor(() => expect(client.doc.icons['sköld']).toMatch(/^asset:[0-9a-f]{64}$/))
-      expect(client.doc.template.faces['front']?.base.some((e) => e.kind === 'icons')).toBe(true)
       land()
-      const id = await placing
+      expect(await taking).toBe('sköld')
       // And the ref the document took is the one the service ends up holding: the name of an
       // asset is the hash of its bytes, so what was worked out here is what came back.
       const served = await fetch(`${run.http}/assets/${client.doc.icons['sköld']!.slice('asset:'.length)}`)
       expect(await served.text()).toBe(skold.svg)
-      expect(client.doc.template.faces['front']?.base.some((e) => e.id === id)).toBe(true)
     } finally {
       globalThis.fetch = real
     }
@@ -1315,13 +1305,12 @@ describe('a click in the symbol library does not wait for the network (#310, E4)
       return real(input, init)
     }) as typeof fetch
     try {
-      await expect(client.placeIcon(skold, 'front', null)).rejects.toThrow()
+      await expect(client.useSymbol(skold)).rejects.toThrow()
     } finally {
       globalThis.fetch = real
     }
     expect(client.doc.icons['sköld']).toBeUndefined()
-    expect(client.doc.template.faces['front']?.base.some((e) => e.kind === 'icons')).toBe(false)
-    expect(client.doc.template.faces['front']?.base.map((e) => e.id)).toEqual(before.template.faces['front']?.base.map((e) => e.id))
+    expect(client.doc.template).toEqual(before.template)
     // Nothing that happened: the way back is not a row in the history either.
     expect(client.canUndo).toBe(false)
   })
@@ -1672,13 +1661,6 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
       said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
     {
-      what: 'a symbol placed on a card',
-      take: (client: ProjectClient) => client.placeIcon(skold, 'front', null),
-      holds: (client: ProjectClient) => client.doc.icons['sköld'] !== undefined || (client.doc.template.faces['front']?.base ?? []).some((e) => e.kind === 'icons'),
-      then: (client: ProjectClient) => client.addPicture(picture()),
-      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
-    },
-    {
       what: 'a typeface',
       take: (client: ProjectClient) => client.useFont(typeface()),
       holds: (client: ProjectClient) => client.doc.fonts?.['Rubrikserif'] !== undefined,
@@ -1861,7 +1843,7 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
 
     const line = slowLine()
     try {
-      const placing = client.placeIcon(skold, 'front', null)
+      const placing = client.useSymbol(skold)
       await vi.waitFor(() => expect(line.held.length).toBe(1))
       const using = client.useFont(typeface())
       await vi.waitFor(() => expect(line.held.length).toBe(2))
@@ -1873,11 +1855,11 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
       line.hangUp()
     }
 
-    // Three steps, and they are the three the designer took: the typeface, the placement, the
-    // cell. The taking-back of the placement is not among them.
+    // Three steps, and they are the three the designer took: the typeface, the symbol, the cell.
+    // The taking-back of the symbol is not among them.
     const steps: (string | null)[] = []
     while (client.canUndo) steps.push(client.undo())
-    expect(steps).toEqual(['undo.what.font', 'undo.what.template', 'undo.what.deck'])
+    expect(steps).toEqual(['undo.what.font', 'undo.what.symbols', 'undo.what.deck'])
     expect(client.doc).toEqual(projectDoc())
     expect(before.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
   })
@@ -1924,7 +1906,7 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
 
     const line = slowLine()
     try {
-      const placing = client.placeIcon(skold, 'front', null)
+      const placing = client.useSymbol(skold)
       await vi.waitFor(() => expect(line.held.length).toBe(1))
       const using = client.useFont(typeface())
       await vi.waitFor(() => expect(line.held.length).toBe(2))
@@ -1940,11 +1922,11 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
     expect(client.canRedo).toBe(false)
     const back: (string | null)[] = []
     while (client.canUndo) back.push(client.undo())
-    expect(back).toEqual(['undo.what.font', 'undo.what.template', 'undo.what.deck'])
+    expect(back).toEqual(['undo.what.font', 'undo.what.symbols', 'undo.what.deck'])
     expect(client.canRedo).toBe(true)
     const forward: (string | null)[] = []
     while (client.canRedo) forward.push(client.redo())
-    expect(forward).toEqual(['undo.what.deck', 'undo.what.template', 'undo.what.font'])
+    expect(forward).toEqual(['undo.what.deck', 'undo.what.symbols', 'undo.what.font'])
     expect(client.canUndo).toBe(true)
   })
 
@@ -1958,7 +1940,7 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
 
     const line = slowLine()
     try {
-      const placing = client.placeIcon(skold, 'front', null)
+      const placing = client.useSymbol(skold)
       await vi.waitFor(() => expect(line.held.length).toBe(1))
       const using = client.useFont(typeface())
       await vi.waitFor(() => expect(line.held.length).toBe(2))
@@ -1973,7 +1955,7 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
     expect(client.doc.icons['sköld']).toBeUndefined()
     expect(client.undo()).toBe('undo.what.font')
     expect(client.doc.icons['sköld']).toBeUndefined()
-    expect(client.undo()).toBe('undo.what.template')
+    expect(client.undo()).toBe('undo.what.symbols')
     expect(client.doc.icons['sköld']).toBeUndefined()
   })
 })

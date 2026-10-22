@@ -12,7 +12,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { HomePage } from '../src/account/HomePage.js'
 import { LoginCard } from '../src/account/LoginCard.js'
@@ -361,13 +361,14 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         await chooseTheme('Skogssaga')
         out['Speltema, ett tema valt'] = document.querySelector('.byd-editor')!.outerHTML
       }
-      // The symbol library is a door too: the rail's Ikon tool opens it, and until it is open
-      // nothing in the walk has ever seen an option of it drawn.
+      // The icon libraries are a door too: the rail's Ikon tool opens their sheet under the card
+      // (#1093), and until it is open nothing in the walk has ever seen its buttons drawn.
       if (tab.textContent?.trim() === 'Mall') {
-        fireEvent.click(screen.getByRole('combobox', { name: 'Ikon' }))
-        if (!document.querySelector('.byd-symbol-list [role="option"][aria-selected="true"]')) throw new Error('the rail never opened the symbol library')
+        fireEvent.click(within(screen.getByRole('toolbar', { name: 'Verktyg' })).getByRole('button', { name: 'Ikon' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Sök i ikonbiblioteken' })
+        await within(sheet).findAllByRole('button', { name: / · Deckster · / })
         out['Mall, ikonbiblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
-        fireEvent.click(screen.getByRole('combobox', { name: 'Ikon' }))
+        fireEvent.click(within(sheet).getByRole('button', { name: 'Stäng' }))
       }
     }
     return out

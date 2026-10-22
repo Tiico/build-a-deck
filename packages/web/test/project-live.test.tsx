@@ -231,34 +231,34 @@ describe('a socket that breaks (D3)', () => {
   })
 })
 
-// Placing an icon is one intent carrying two things (#33), and until now only the editor's own
-// copy of the document had been asked whether that worked. A service that dropped the `icon` half
-// would leave the card looking right in the editor that placed it and wrong for everyone else,
-// until the next reload told the designer so.
-describe('an icon placed, through the actor (#33, E4, D3)', () => {
+// Choosing an icon for a layer is the icon taken into the game's set and the layer bound to it
+// (#1093), and until it is asked of a second editor only the first one's copy of the document says
+// that both arrived. A service that dropped either half would leave the card right in the editor
+// that chose it and wrong for everyone else, until the next reload told the designer so.
+describe('an icon chosen for a layer, through the actor (#1093, E4, D3)', () => {
   it('reaches the other editor and the store with both halves', async () => {
-    await run.projects.create(run.projectId, projectDoc())
+    const doc = projectDoc()
+    doc.template.faces['front']!.base.push({ kind: 'icons', id: 'icon-1', x: 27.5, y: 40, w: 8, h: 8, bind: { literal: '' }, iconMm: 8, gapMm: 0 })
+    await run.projects.create(run.projectId, doc)
     const ada = await open()
     const bo = await open()
     await greeted(ada, bo)
     const svard = LIBRARY.find((s) => s.id === 'svard')!
 
-    const id = await ada.placeIcon(svard, 'front', null)
+    const name = await ada.useSymbol(svard)
+    ada.patchElement('front', 'icon-1', { bind: { literal: name } })
 
-    // The other editor was told, by the actor, about both halves of the one intent — the symbol in
-    // the game's set and the element that shows it. Neither is worked out from the other, and both
-    // are waited for together, so a half that never lands fails on the half it is.
     await eventually(() => {
       expect(bo.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
       expect(bo.doc.credits?.['svärd']?.source).toBe('svard')
-      expect(bo.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id, kind: 'icons', bind: { literal: 'svärd' } })
+      expect(bo.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id: 'icon-1', kind: 'icons', bind: { literal: 'svärd' } })
     })
 
     // And so was the store, once it was saved.
     expect(await bo.save()).toEqual({ ok: true, rev: 2 })
     const stored = await run.projects.load(run.projectId)
     expect(stored?.icons['svärd']).toBe(bo.doc.icons['svärd'])
-    expect(stored?.template.faces['front']?.base.some((e) => e.id === id)).toBe(true)
+    expect(stored?.template.faces['front']?.base.at(-1)).toMatchObject({ bind: { literal: 'svärd' } })
     ada.close()
     bo.close()
   })

@@ -63,14 +63,18 @@ function everyAddress(): string[] {
 }
 
 describe('a symbol and a typeface wait for their bytes (#959)', () => {
-  it('draws a symbol placed on the card only once its bytes have arrived', async () => {
+  it('draws a symbol chosen for the card only once its bytes have arrived', async () => {
     await open(projectDoc(), 'Mall')
     const tools = await screen.findByRole('toolbar', { name: 'Verktyg' })
     const release = holdUploads()
 
-    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
-    fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
-    // The element is on the card at once (#310), and its symbol draws nothing yet.
+    // The tool places the layer and opens the libraries under the card for it (#1093).
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Sök i ikonbiblioteken' })
+    fireEvent.change(within(sheet).getByRole('searchbox'), { target: { value: 'svärd' } })
+    fireEvent.click(await within(sheet).findByRole('button', { name: /^svärd · Deckster/ }))
+    // The layer shows it at once (#310), and its symbol draws nothing yet — on the card, and in
+    // the panel's «Ikon och färg» beside it.
     await waitFor(() => expect(document.querySelector('#canvas [data-element="icon-1"] .byd-icon')).toBeTruthy())
     expect(asked()).toEqual([])
     // Nor does the game's set of symbols ask for it, in Speltema.

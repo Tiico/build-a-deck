@@ -108,22 +108,38 @@ let held = 0
  * caller sends the file unchanged in every one of those cases.
  */
 export async function encodedCopy(file: string, type: string, accept: string | undefined): Promise<Cached | null> {
+  const stats = await stat(file)
+  return encoded(`${stats.mtimeMs} ${stats.size} ${file}`, stats.size, () => readFile(file), type, accept)
+}
+
+/**
+ * The same for bytes the server made rather than found: a page with the public origin written into
+ * it (#1084). `identity` says which bytes these are, and has to change whenever they do — the file
+ * they were made from and what was written into it — because the answer is kept for as long as the
+ * file is.
+ */
+export async function encodedBytes(identity: string, raw: Buffer, type: string, accept: string | undefined): Promise<Cached | null> {
+  return encoded(identity, raw.length, async () => raw, type, accept)
+}
+
+async function encoded(identity: string, size: number, read: () => Promise<Buffer>, type: string, accept: string | undefined): Promise<Cached | null> {
   const encoding = negotiate(accept)
   if (!encoding || !compressible(type)) return null
-  const stats = await stat(file)
-  if (stats.size < FLOOR_BYTES || stats.size > FILE_MAX_BYTES) return null
+  if (size < FLOOR_BYTES || size > FILE_MAX_BYTES) return null
   // Separated by a character no path, size or clock reading contains, and written as a printable
   // one: a NUL in a source file makes grep call the whole file binary and skip it (#111's cousin,
   // `packages/web/test/sources-are-greppable.test.ts`).
-  const key = `${encoding} ${stats.mtimeMs} ${stats.size} ${file}`
+  const key = `${encoding} ${identity}`
   const known = cache.get(key)
   if (known) return known
-  const making = compress(file, encoding).catch(() => {
-    // A compression that fails is a file that goes out as it is, not a request that fails. It is
-    // also not remembered as a failure: the next request tries again.
-    cache.delete(key)
-    return null
-  })
+  const making = read()
+    .then((raw) => compress(raw, encoding))
+    .catch(() => {
+      // A compression that fails is a file that goes out as it is, not a request that fails. It is
+      // also not remembered as a failure: the next request tries again.
+      cache.delete(key)
+      return null
+    })
   cache.set(key, making)
   const made = await making
   // The accounting is done once the bytes exist, and the entry is dropped rather than the cache
@@ -135,8 +151,7 @@ export async function encodedCopy(file: string, type: string, accept: string | u
   return made
 }
 
-async function compress(file: string, encoding: Encoding): Promise<Cached | null> {
-  const raw = await readFile(file)
+async function compress(raw: Buffer, encoding: Encoding): Promise<Cached | null> {
   const bytes =
     encoding === 'br'
       ? await brotliAsync(raw, {
