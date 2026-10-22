@@ -2374,6 +2374,7 @@ function SeatPlate({ view, seat, color, left, top, t, at }: { view: Snapshot; se
       data-edge={edge}
       data-box={`${box.l} ${box.t} ${box.r} ${box.b}`}
       {...(at?.form === 'badge' ? { 'data-form': 'badge' } : {})}
+      {...(view.turn?.seat === seat.id ? { 'data-turn': '' } : {})}
       style={{ ...(placed ?? home), ['--seat' as string]: color }}
     >
       <b>

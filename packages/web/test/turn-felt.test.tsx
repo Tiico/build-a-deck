@@ -107,9 +107,10 @@ describe('turen på filten', () => {
     expect(screen.queryByText(/tur/)).toBeNull()
   })
 
-  it('tänder kanten på TV:n också', () => {
+  it('tänder kanten och platsens skylt på TV:n också', () => {
     render(<TableRenderer view={table('C').view(null)} mode="tv" scale={1} forTheRoom />)
     expect(document.querySelector('[data-turn-band="C"]')).toBeTruthy()
+    expect([...document.querySelectorAll('[data-seat-plate][data-turn]')].map((p) => p.getAttribute('data-seat-plate'))).toEqual(['C'])
   })
 })
 

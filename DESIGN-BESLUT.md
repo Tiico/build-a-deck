@@ -4051,6 +4051,7 @@ Turen är ingen hemlighet (B6), så alla vyer får samma värde, och den ändras
 
 **Filten visar turen vid platsens kant.**
 Filtens kant lyser i platsens färg vid den plats som har turen, i varje läge: `/online`, bordsskärmen och TV:n.
+På TV:n, där platsen bär en skylt i stället för ett namn på kanten, får skylten en ring i platsens färg.
 Platsens namn säger «Adas tur» och hur länge turen pågått, räknat från `at`; nästa plats bär märket «nästa».
 Är det din tur står «Din tur» och knappen «Klar → Cy» vid din egen kant i stället för ditt namn, och fönstrets titel börjar med «● Din tur».
 På bordets delade skärm, där ingen plats är ens egen, står «Klar → Cy» i namnet hos den som har turen, eftersom den som har turen sitter vid den skärmen.

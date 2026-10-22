@@ -516,7 +516,8 @@
    den står kvar så länge turen gör och lyser lite längre ut. Namnet bär sin klocka, och nästa
    plats säger att den är nästa; den som har turen vid sin egen filt får «Klar» i namnet. */
 .byd-turn-band { box-shadow: 0 0 0 1px var(--byd-felt-chalk), 0 0 22px 4px var(--seat, #666); }
-.byd-seat-name[data-turn] { display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 0 2px var(--byd-felt-chalk), 0 0 16px var(--seat, #666); }
+/* Above the band, which lies at the same edge and would otherwise cross the name at the far side. */
+.byd-seat-name[data-turn] { z-index: 2; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 0 2px var(--byd-felt-chalk), 0 0 16px var(--seat, #666); }
 .byd-seat-name[data-turn]:has(.byd-turn-done) { padding: 4px 4px 4px 12px; }
 .byd-turn-clock { font-weight: 700; opacity: 0.75; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .byd-turn-next { margin-left: 6px; font-size: 10px; font-weight: 700; opacity: 0.75; letter-spacing: 0; }
@@ -1344,6 +1345,8 @@
   padding: 6px 12px 6px 6px; border-left: 4px solid var(--seat); border-radius: 12px;
   background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 var(--byd-felt-font, system-ui, sans-serif); white-space: nowrap; pointer-events: none;
 }
+/* The seat whose turn it is (K28), ringed in its own colour, beside the band at its edge. */
+.byd-seat-plate[data-turn] { box-shadow: 0 0 0 2px var(--seat), 0 0 18px var(--seat); }
 .byd-seat-plate > b { display: inline-flex; align-items: center; gap: 10px; color: #fff; }
 .byd-seat-plate > b > i { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
 /* A seat at the side stands its words one under the other: a wide plate there reached the piles. */
