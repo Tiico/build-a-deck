@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Verktygets svenska: vanlig ton, och ikoner i stället för ord</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-22: «Texterna vi använder genom tjänsten när vi kör på svenska är väldigt
+     överdrivna och ibland svåra att förstå, håll lite mer normal svensk ton och föredra ikoner
+     över text inline i applikationen.»
+     Två frågor, en växlare:
+       1. Hur låter en vanlig svensk ton på verktygets egna ytor?            → ?v=B
+       2. Vilka ord på kontroller blir ikoner, och var står ordet kvar?        → ?v=C | ?v=D
+     Varje skärm är ritad för hand med ytans egna färger och mått (player.css, table.css,
+     editor.css, wizard.css, account.css, status.css), och varje sträng i A är katalogens egen
+     (sv.*.ts). Ikonerna är #1083:s hand: 16-rutnät, 1,6 rund linje, currentColor. De som inte
+     finns bland #1083:s tjugo är ritade här i samma hand och märkta «ny».
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: sticky; top: 0; z-index: 5; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .matt { flex: 1 1 100%; display: flex; gap: var(--s4); font-size: 12px; color: #c8b98d; flex-wrap: wrap; }
+  .protorad .matt u { font-variant-numeric: tabular-nums; }
+  main { flex: 1 1 auto; display: grid; gap: 24px; padding: 20px 16px 60px; background: #15171c; justify-content: start; }
+  main[data-jamfor] { grid-template-columns: repeat(2, max-content); }
+  .skarm { display: grid; gap: 6px; align-content: start; }
+  .skarm > .etikett { color: var(--quiet-2); font-size: 11px; }
+  .skarm > .etikett b { color: #e6ecfa; }
+  .sida { outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+
+  /* ── Kontrollerna: ett ord, en glyf, och varianten avgör vad som syns ───────────────────────
+     data-rank: ord = ordet står alltid; prim = ikon bara i D; sek = ikon i C och D.
+     data-med = glyf bredvid ordet redan i dag (ångra, flagga) eller när ordet står kvar. */
+  .k { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .k .g { flex: none; width: 16px; height: 16px; display: none; }
+  .k[data-med] .g { display: block; }
+  .vy[data-v='C'] .k[data-rank='sek'] .g, .vy[data-v='D'] .k[data-rank='sek'] .g, .vy[data-v='D'] .k[data-rank='prim'] .g, .vy[data-v='C'] .k[data-visa] .g, .vy[data-v='D'] .k[data-visa] .g { display: block; }
+  .vy[data-v='C'] .k[data-rank='sek'] .w, .vy[data-v='D'] .k[data-rank='sek'] .w, .vy[data-v='D'] .k[data-rank='prim'] .w { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .vy[data-v='C'] .k[data-rank='sek'], .vy[data-v='D'] .k[data-rank='sek'], .vy[data-v='D'] .k[data-rank='prim'] { gap: 0; }
+  .vy[data-v='C'] button.k[data-rank='sek'], .vy[data-v='D'] button.k[data-rank='sek'], .vy[data-v='D'] button.k[data-rank='prim'] { padding-left: 0 !important; padding-right: 0 !important; width: 44px; justify-content: center; }
+  .vy[data-v='C'] .k[data-rank='sek'] .g, .vy[data-v='D'] .k[data-rank='sek'] .g, .vy[data-v='D'] .k[data-rank='prim'] .g { width: 18px; height: 18px; }
+  .k .w2 { display: none; }
+  .vy[data-v='C'] .k[data-rank='sek'] .w2, .vy[data-v='D'] .k[data-rank='sek'] .w2, .vy[data-v='D'] .k[data-rank='prim'] .w2 { display: inline; }
+  .vy[data-v='C'] .k[data-rank='sek']:has(.w2), .vy[data-v='D'] .k:has(.w2) { gap: 4px; width: auto !important; padding: 0 10px !important; }
+  .k { position: relative; }
+  .ny { position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: #ffd98a; font-size: 0; }
+  .vy:not([data-v='C']):not([data-v='D']) .ny, .vy[data-v='C'] .k[data-rank='prim'] .ny { display: none; }
+
+  /* ── Telefonen (player.css) ──────────────────────────────────────────────────────────────── */
+  .tel { width: 375px; min-height: 640px; background: #14161c; color: #eee; font: 14px system-ui, sans-serif; display: flex; flex-direction: column; --ctrl: #242938; --muted: #9aa3b8; --quiet: #7d8597; --accent: #7dd3a0; }
+  .tel > header { display: flex; align-items: center; justify-content: flex-end; gap: 6px 10px; padding: 6px 16px; min-height: 52px; border-bottom: 1px solid #262a35; font-size: 13px; color: var(--muted); }
+  .tel .vem { flex: 1 1 0; min-width: 4em; display: grid; line-height: 1.2; }
+  .tel .vem strong { color: #fff; font-size: 15px; }
+  .tel .vem span { font-size: 12px; }
+  .tel header button, .tel .fot button, .tel .ark button, .tel .sekt button.k { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--ctrl); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .tel header button:disabled { opacity: .35; }
+  .tel .raknare { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
+  .tel .raknare > div { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; background: #1b1e27; border-radius: 14px; overflow: hidden; }
+  .tel .raknare button { min-height: 44px; border: 0; background: var(--ctrl); color: #fff; font-size: 18px; font-weight: 800; }
+  .tel .raknare b { display: block; text-align: center; font-size: 18px; color: #fff; }
+  .tel .raknare span { display: block; text-align: center; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .tel .sekt { padding: 10px 16px 0; }
+  .tel h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 600; }
+  .tel h2 .k { margin-left: auto; letter-spacing: 0; text-transform: none; color: #cfd6e4; font-size: 12px; font-weight: 600; }
+  .tel .tom { color: var(--quiet); font-size: 12px; margin: 4px 0; }
+  .tel .kort { display: flex; gap: 10px; }
+  .tel .kort > div { width: 84px; }
+  .tel .kort i { display: block; aspect-ratio: 63/88; border-radius: 10px; background: hsl(var(--h) 40% 86%); color: #1c1c1c; font: 600 11px/1.2 system-ui; padding: 6px; font-style: normal; }
+  .tel .kort i[data-vald] { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .tel .kort strong { display: block; font-size: 12px; font-weight: 600; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tel .valt { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+  .tel .flytt { display: flex; gap: 8px; margin-top: 8px; }
+  .tel .flytt button { flex: 1; background: transparent; border: 1px solid #6f7a90; color: #dce3f2; font-weight: 600; }
+  .tel .fot { margin-top: auto; display: flex; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid #262a35; }
+  .tel .fot .spela { flex: 1 1 0; background: var(--accent); color: #0b2a18; font-size: 14px; }
+  .tel .fot .regler { flex: 0 0 auto; }
+  .tel .toast { margin: 10px 16px 0; padding: 8px 12px; border-radius: 10px; background: #1b1e27; color: #cfd6e4; font-size: 13px; width: max-content; }
+  .tel .ark { margin: 12px 10px 0; padding: 14px; border-radius: 16px 16px 0 0; background: #1b1e27; display: grid; gap: 6px; }
+  .tel .ark h3 { margin: 0 0 8px; font-size: 16px; color: #fff; }
+  .tel .ark button { width: 100%; padding: 14px; border-radius: 12px; font-size: 15px; }
+  .tel .ark button[data-kind='no'] { background: #3a2a2d; color: #ff9a9a; }
+  .tel .ark button.stanna { background: transparent; border: 1px solid #6f7a90; color: #dce3f2; }
+  .tel .ark p { margin: 2px 2px 8px; font-size: 13px; color: var(--muted); }
+  /* Gå med (join) */
+  .tel.join { background: #0f1117; }
+  .tel.join h1 { margin: 20px 16px 4px; font-size: 20px; color: #fff; }
+  .tel.join p { margin: 0 16px 12px; color: var(--muted); }
+  .tel.join label { display: block; margin: 0 16px 4px; font-size: 12px; color: var(--muted); }
+  .tel.join input { display: block; width: calc(100% - 32px); margin: 0 16px 12px; min-height: 44px; border: 1px solid #2c3242; border-radius: 10px; background: #14161c; color: #fff; padding: 0 12px; font: inherit; }
+  .tel.join .prim { margin: 0 16px; width: calc(100% - 32px); min-height: 44px; border: 0; border-radius: 12px; background: var(--accent); color: #0b2a18; font: 700 14px system-ui; }
+  .tel.join .sek { margin: 8px 16px 0; width: calc(100% - 32px); min-height: 44px; border: 1px solid #6f7a90; border-radius: 12px; background: transparent; color: #dce3f2; font: 600 13px system-ui; }
+  .tel.join .platser { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 16px 12px; }
+  .tel.join .platser button { min-height: 44px; border: 1px solid #2c3242; border-radius: 12px; background: #1b1e27; color: #fff; font: 700 13px system-ui; display: flex; align-items: center; gap: 8px; padding: 0 10px; }
+  .tel.join .platser button[aria-pressed='true'] { border-color: var(--accent); }
+  .tel.join .platser i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; color: #0d0f14; font-size: 11px; font-weight: 800; }
+  .tel.join .platser span { color: var(--muted); font-weight: 400; }
+  .tel.join .gast { margin: 14px 16px 0; font-size: 12px; color: var(--quiet); }
+  .tel.join hr { border: 0; border-top: 1px solid #262a35; margin: 16px 0; }
+
+  /* ── TV:n (table.css, felt-after.css) ────────────────────────────────────────────────────── */
+  .tv { width: 1000px; height: 562px; background: #0d0f14; color: #f3e9d6; font: 14px system-ui, sans-serif; display: grid; grid-template-rows: 56px 1fr; }
+  .tv > header { display: flex; align-items: center; gap: 16px; padding: 0 20px; border-bottom: 1px solid #1f2430; }
+  .tv header strong { font-size: 18px; color: #fff; }
+  .tv .adress { margin-left: auto; display: flex; align-items: center; gap: 10px; color: #a9a294; font-size: 13px; }
+  .tv .adress b { color: #fff; font-size: 16px; letter-spacing: .04em; }
+  .tv .qr { width: 32px; height: 32px; background: repeating-conic-gradient(#fff 0 25%, #0d0f14 0 50%) 0 0 / 8px 8px; border: 2px solid #fff; }
+  .tv .ring { width: 22px; height: 22px; border: 1px solid #a9a294; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  .tv .ritar { display: inline-flex; align-items: center; gap: 6px; color: #f0b64a; font-size: 13px; }
+  .tv .kropp { display: grid; grid-template-columns: 1fr 260px; min-height: 0; }
+  .tv .filt { position: relative; margin: 14px; border-radius: 14px; background: radial-gradient(ellipse at 50% 40%, #2a6a44, #1f4a30 70%); }
+  .tv .hog { position: absolute; width: 70px; height: 98px; border-radius: 6px; background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); box-shadow: 0 2px 0 #1c2a4a, 0 4px 0 #1c2a4a; }
+  .tv .hog + .namn, .tv .kortet + .namn { position: absolute; font-size: 12px; color: #f3e9d6; }
+  .tv .antal { position: absolute; top: -10px; right: -10px; background: #f0b64a; color: #1c1c1c; border-radius: 999px; min-width: 22px; height: 22px; display: grid; place-items: center; font-weight: 800; font-size: 12px; }
+  .tv .kortet { position: absolute; width: 70px; height: 98px; border-radius: 6px; background: #f6efe0; color: #1c1c1c; font: 600 11px system-ui; padding: 6px; }
+  .tv .bricka { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; }
+  .tv .bricka button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #f0b64a; color: #1c1c1c; font: 700 14px system-ui; }
+  .tv .bricka button:disabled { background: #2d2f35; color: #9b968e; }
+  .tv .bricka small { color: #f3e9d6; font-size: 12px; background: #171a23; padding: 3px 8px; border-radius: 6px; }
+  .tv .horn { position: absolute; left: 14px; bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .tv .horn .senast { display: inline-flex; align-items: center; gap: 6px; background: #171a23; color: #f3e9d6; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  .tv .horn .senast b { color: #a9a294; font-weight: 600; }
+  .tv .horn .senast span { color: #a9a294; }
+  .tv .horn button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 1px solid #f3e9d6; border-radius: 10px; background: #171a23; color: #f3e9d6; font: 600 13px system-ui; }
+  .tv .horn button.mer { padding: 0; width: 44px; display: inline-grid; place-items: center; }
+  .tv .horn button.mer .g { width: 18px; height: 18px; display: block; }
+  .tv .meny { position: absolute; left: 14px; bottom: 70px; width: 300px; background: #171a23; border: 1px solid #f3e9d6; border-radius: 12px; overflow: hidden; }
+  .tv .meny button { width: 100%; min-height: 48px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 8px 14px; border: 0; background: transparent; color: #f3e9d6; font: 600 15px system-ui; text-align: left; }
+  .tv .meny button small { font-weight: 400; font-size: 13px; color: #c9c0ad; }
+  .tv .meny button .rad { display: inline-flex; align-items: center; gap: 8px; }
+  .tv .meny .g { width: 16px; height: 16px; display: none; }
+  .vy[data-v='C'] .tv .meny .g, .vy[data-v='D'] .tv .meny .g { display: block; }
+  .tv aside { padding: 14px 16px 14px 0; display: grid; align-content: start; gap: 14px; font-size: 13px; }
+  .tv aside h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a9a294; font-weight: 600; }
+  .tv aside ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .tv aside li { display: flex; align-items: center; gap: 8px; }
+  .tv aside li i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; color: #0d0f14; font-size: 10px; font-weight: 800; }
+  .tv aside li span { color: #a9a294; margin-left: auto; }
+  .tv aside .tomt { color: #a9a294; }
+  .tv .fraga { position: absolute; right: 20px; top: 20px; width: 360px; background: #171a23; border: 1px solid #f3e9d6; border-radius: 14px; padding: 16px; }
+  .tv .fraga strong { display: block; font-size: 17px; color: #fff; margin-bottom: 6px; }
+  .tv .fraga p { margin: 0 0 12px; color: #c9c0ad; line-height: 1.45; }
+  .tv .fraga .knappar { display: flex; gap: 8px; justify-content: flex-end; }
+  .tv .fraga button { min-height: 44px; padding: 0 14px; border: 1px solid #f3e9d6; border-radius: 10px; background: transparent; color: #f3e9d6; font: 600 13px system-ui; }
+  .tv .fraga button.prim { background: #f0b64a; border-color: #f0b64a; color: #1c1c1c; font-weight: 700; }
+
+  /* ── Tillstånden (status.css) ─────────────────────────────────────────────────────────────── */
+  .status { width: 1000px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 14px; background: #14161c; font: 14px/1.5 system-ui, sans-serif; }
+  .status .ruta { border-radius: 12px; padding: 14px; display: grid; gap: 8px; align-content: start; border-left: 4px solid var(--edge); background: var(--bg); color: var(--ink); }
+  .status .ruta small { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+  .status .ruta h3 { margin: 0; font-size: 17px; }
+  .status .ruta p { margin: 0; }
+  .status .ruta .ned { font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; }
+  .status .ruta .knappar { display: flex; gap: 8px; margin-top: 4px; }
+  .status .ruta button { min-height: 44px; padding: 0 14px; border: 1px solid #7d879f; border-radius: 10px; background: #242938; color: #eef1f8; font: 600 13px system-ui; }
+  .status .ruta button.prim { background: #7dd3a0; border-color: #7dd3a0; color: #0b2a18; font-weight: 700; }
+  .status .ruta.var { font-size: 11px; color: #868ea3; background: transparent; border: 0; padding: 0 4px; }
+  .status .ruta .yta { font-size: 11px; opacity: .7; }
+
+  /* ── Editorn (editor.css) ─────────────────────────────────────────────────────────────────── */
+  .ed { width: 1100px; min-height: 420px; background: #23262e; color: #dce3f2; font: 13px system-ui, sans-serif; display: flex; flex-direction: column; }
+  .ed .huvud { min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; white-space: nowrap; }
+  .ed .huvud .hem { color: #c3cbdd; font-weight: 600; text-decoration: none; }
+  .ed .huvud strong { color: #fff; font-size: 15px; }
+  .ed .huvud .rev { min-height: 44px; display: inline-flex; align-items: center; padding: 4px; color: #868ea3; }
+  .ed .huvud .sparat { color: #9aa3b8; }
+  .ed .huvud .sparat[data-osparat] { color: #f0b64a; font-weight: 700; }
+  .ed .huvud .sparat .g { display: none; width: 16px; height: 16px; }
+  .vy[data-v='C'] .ed .huvud .sparat .g, .vy[data-v='D'] .ed .huvud .sparat .g { display: block; }
+  .vy[data-v='C'] .ed .huvud .sparat .w, .vy[data-v='D'] .ed .huvud .sparat .w { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .ed .huvud .spacer { flex: 1; }
+  .ed .huvud button { min-height: 44px; min-width: 44px; border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+  .ed .huvud button.prim { background: #1f6fd0; border-color: #1f6fd0; }
+  .ed .huvud button.dorr { background: transparent; border: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px 4px 4px; border-radius: 20px; }
+  .ed .huvud .who { width: 24px; height: 24px; font-size: 11px; }
+  .ed .huvud .who + .who { margin-left: -8px; background: #7dd3a0; }
+  .ed .huvud .dorr b { color: #9aa3b8; font: 600 11px system-ui; margin-left: 2px; }
+  .ed .huvud .dorr .w { color: #e6ecfa; font: 700 13px system-ui; margin-left: 4px; }
+  .ed .huvud button.mer { padding: 0; width: 44px; background: transparent; border: 0; display: inline-grid; place-items: center; }
+  .ed .huvud button.mer .g { display: block; width: 18px; height: 18px; }
+  .ed .notis { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: #2a2418; color: #ffe4b0; border-bottom: 1px solid #3b3222; }
+  .ed .notis .g { width: 16px; height: 16px; color: #ffd98a; flex: none; display: block; }
+  .ed .notis button { margin-left: auto; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: #ffd98a; display: inline-grid; place-items: center; }
+  .ed .notis button .g { width: 16px; height: 16px; }
+  .ed .flikar { display: flex; gap: 2px; padding: 8px 16px 0; border-bottom: 1px solid #2f333d; }
+  .ed .flikar button { min-height: 44px; border: 0; border-radius: 6px 6px 0 0; padding: 0 12px; background: transparent; color: #9aa3b8; font: inherit; font-weight: 600; }
+  .ed .flikar button[aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 0 #3c8ce7; }
+  .ed .krona { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid #2f333d; color: #9aa3b8; }
+  .ed .krona .lada { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; }
+  .ed .krona .lada span { color: #9aa3b8; }
+  .ed .krona .piller { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #2f333d; border-radius: 999px; padding: 2px; }
+  .ed .krona .piller button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: #1b1d23; color: #fff; display: grid; place-items: center; }
+  .ed .krona .piller button .g { display: block; width: 14px; height: 14px; }
+  .ed .krona input { margin-left: auto; min-height: 36px; width: 220px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; padding: 0 10px; font: inherit; }
+  .ed .vagg { flex: 1; display: grid; place-items: center; padding: 30px; text-align: center; }
+  .ed .vagg h3 { margin: 0 0 6px; color: #fff; font-size: 17px; }
+  .ed .vagg p { margin: 0 0 12px; color: #9aa3b8; max-width: 440px; }
+  .ed .vagg button { min-height: 44px; padding: 0 14px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #dce3f2; font: 600 13px system-ui; }
+  .ed .fot { display: flex; gap: 16px; padding: 8px 16px; border-top: 1px solid #2f333d; color: #9aa3b8; font-size: 12px; }
+  .ed .roll { padding: 8px 16px; background: #1b1d23; color: #9aa3b8; font-size: 12px; border-top: 1px solid #2f333d; }
+
+  /* ── Guidad start (wizard.css) ───────────────────────────────────────────────────────────── */
+  .guide { width: 900px; }
+  .guide .byd-wizard > header h1 { font-size: 24px; }
+  .guide .steg { display: flex; gap: 8px; padding: 12px 24px 0; }
+  .guide .steg span { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px 0 6px; border: 1px solid #cbcabe; border-radius: 999px; font-weight: 600; font-size: 13px; }
+  .guide .steg span[aria-current] { border-color: transparent; box-shadow: inset 0 -3px 0 #b8461f; border-radius: 6px; }
+  .guide .ruta { margin: 14px 24px 0; padding: 12px 14px; border: 1px solid #d9d8cc; border-radius: 10px; background: #eeece4; font-size: 13px; }
+  .guide .ruta b { color: #1e2620; }
+  .guide section { padding: 16px 24px 0; }
+  .guide section h2 { margin-bottom: 6px; }
+  .guide .falt { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .guide .falt label { display: block; font-size: 12px; color: #5c6459; margin-bottom: 4px; }
+  .guide .stegare { display: inline-flex; align-items: center; gap: 8px; }
+  .guide .stegare button { width: 44px; padding: 0; display: inline-grid; place-items: center; }
+  .guide .stegare button .g { display: block; width: 16px; height: 16px; }
+  .guide .stegare b { min-width: 2ch; text-align: center; font-size: 16px; }
+  .guide .rad { display: flex; align-items: center; gap: 10px; min-height: 44px; border-bottom: 1px solid #d9d8cc; font-size: 13px; }
+  .guide .rad .typ { color: #5c6459; width: 50px; }
+  .guide .rad .boxar { margin-left: auto; display: flex; gap: 12px; color: #5c6459; font-size: 12px; }
+  .guide .rad .boxar label { display: inline-flex; align-items: center; gap: 4px; }
+  .guide .rad .boxar input { width: 16px; height: 16px; min-height: 0; margin: 0; accent-color: #b8461f; }
+  .guide .knappar { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .guide .knappar .k .g { width: 14px; height: 14px; }
+  .guide .korten { display: flex; gap: 10px; margin-top: 8px; }
+  .guide .korten > div { width: 120px; aspect-ratio: 63/88; border: 1px solid #cbcabe; border-radius: 8px; background: #fff; padding: 8px; font-size: 12px; }
+  .guide .korten > div[data-vald] { outline: 2px solid #b8461f; }
+  .guide .korten > div b { display: block; font-family: Georgia, serif; font-size: 14px; margin-bottom: 4px; }
+  .guide footer { margin-top: 16px; padding: 14px 24px 18px; border-top: 1px solid #d9d8cc; display: flex; align-items: center; gap: 16px; background: rgb(255 255 255 / 60%); }
+  .guide footer p { flex: 1; margin: 0; }
+  .guide .nav { display: flex; justify-content: space-between; padding: 10px 24px 14px; border-top: 1px solid #d9d8cc; }
+  .guide .nav .k .g { width: 16px; height: 16px; }
+  .guide .blank { margin: 14px 24px 0; padding: 12px 14px; border: 1px dashed #cbcabe; border-radius: 10px; display: flex; align-items: center; gap: 12px; }
+  .guide .blank h3 { margin: 0; font-size: 14px; }
+  .guide .blank p { margin: 2px 0 0; }
+  .guide .blank button { margin-left: auto; }
+
+  /* ── Mina spel och inloggningen (account.css) ────────────────────────────────────────────── */
+  .hem { width: 1000px; background: #0f1117; color: #e6ecfa; font: 14px system-ui, sans-serif; padding: 16px 20px 20px; display: grid; gap: 16px; }
+  .hem header { display: flex; align-items: center; gap: 12px; }
+  .hem header h1 { margin: 0; font-size: 22px; color: #fff; }
+  .hem header .rad { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #9aa3b8; font-size: 13px; }
+  .hem header .rad .k, .hem .kodrad button, .hem .kort button, .hem .spelat button, .hem .login button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 1px solid #6f7a90; border-radius: 10px; background: transparent; color: #dce3f2; font: 600 13px system-ui; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .hem .prim { background: #7dd3a0 !important; border-color: #7dd3a0 !important; color: #0b2a18 !important; font-weight: 700 !important; }
+  .hem .kodrad { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #262b38; border-radius: 12px; background: #171a23; }
+  .hem .kodrad input { min-height: 44px; width: 120px; border: 1px solid #2c3242; border-radius: 10px; background: #14161c; color: #fff; padding: 0 10px; font: 700 16px system-ui; letter-spacing: .1em; }
+  .hem h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa3b8; font-weight: 600; }
+  .hem .pagar { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid #3f7a55; border-radius: 12px; background: #171a23; }
+  .hem .pagar b { color: #fff; }
+  .hem .pagar span { color: #9aa3b8; }
+  .hem .pagar button { margin-left: auto; }
+  .hem .rutnat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .hem .kort { position: relative; padding: 14px; border: 1px solid #262b38; border-radius: 12px; background: #171a23; min-height: 120px; display: grid; align-content: start; gap: 4px; }
+  .hem .kort b { color: #fff; font-size: 15px; }
+  .hem .kort span { color: #9aa3b8; font-size: 12px; }
+  .hem .kort .mer { position: absolute; right: 8px; top: 8px; border: 0; padding: 0; width: 44px; display: inline-grid; place-items: center; }
+  .hem .kort .mer .g { display: block; width: 18px; height: 18px; }
+  .hem .kort.ny { border-style: dashed; place-items: center; }
+  .hem .kort.ny button { border: 0; font-size: 15px; }
+  .hem .meny { margin-top: 8px; width: 200px; background: #1d212b; border: 1px solid #3a4152; border-radius: 10px; padding: 4px; display: grid; }
+  .hem .meny button { justify-content: flex-start; border: 0; min-height: 40px; }
+  .hem .meny .g { width: 16px; height: 16px; display: none; }
+  .vy[data-v='C'] .hem .meny .g, .vy[data-v='D'] .hem .meny .g { display: block; }
+  .hem .spelat { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid #262b38; border-radius: 12px; background: #171a23; }
+  .hem .spelat b { color: #fff; }
+  .hem .spelat span { color: #9aa3b8; font-size: 13px; }
+  .hem .spelat button { margin-left: auto; }
+  .hem .tva { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hem .fraga, .hem .login { padding: 14px; border: 1px solid #262b38; border-radius: 12px; background: #171a23; display: grid; gap: 8px; align-content: start; }
+  .hem .fraga strong, .hem .login strong { color: #fff; font-size: 16px; }
+  .hem .fraga p, .hem .login p { margin: 0; color: #c9d1e3; line-height: 1.45; }
+  .hem .login p.tyst { color: #9aa3b8; font-size: 13px; }
+  .hem .fraga .knappar { display: flex; gap: 8px; justify-content: flex-end; }
+  .hem .fraga button { min-height: 44px; padding: 0 14px; border: 1px solid #6f7a90; border-radius: 10px; background: transparent; color: #dce3f2; font: 600 13px system-ui; }
+  .hem .fraga button.farlig { background: #3a2a2d; border-color: #3a2a2d; color: #ff9a9a; }
+</style>
+</head>
+<body data-v="A">
+<header class="protorad">
+  <div class="fraga">
+    <p><b>Prototyp — Verktygets svenska: vanlig ton, och ikoner i stället för ord</b> · PROTOTYP, slängs när beslutet står i DESIGN-BESLUT.md</p>
+    <p>Varje sträng i A är katalogens egen. B skriver om den i vanlig svenska. C och D ritar kontroller som ikoner i #1083:s hand; ordet står kvar som tooltip och tillgängligt namn. Pilarna ← → byter variant.</p>
+  </div>
+  <div class="vaxlare" id="v" role="group" aria-label="Variant"></div>
+  <p class="anteckning" id="anteckning"></p>
+  <div class="flikar" id="s" role="group" aria-label="Skärm"></div>
+  <div class="flikar"><button id="jamfor" aria-pressed="false">Jämför med i dag</button></div>
+  <div class="matt" id="matt"></div>
+</header>
+<main id="scen"></main>
+<script>
+// ── Ikonerna: #1083:s tjugo, och de nya i samma hand ──────────────────────────────────────────
+const P = {
+  undo: 'M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7',
+  flag: 'M3.5 14V2.5M3.5 3h8.25l-1.75 3 1.75 3H3.5',
+  close: 'M4 4l8 8M12 4l-8 8',
+  check: 'M3 8.5l3.25 3.25L13 5',
+  down: 'M4 6l4 4 4-4',
+  chevronRight: 'M6 4l4 4-4 4',
+  left: 'M13 8H3M7 4 3 8l4 4',
+  right: 'M3 8h10M9 4l4 4-4 4',
+  sort: 'M5 6l3-3 3 3M5 10l3 3 3-3',
+  pencil: 'M10.5 2.75l2.75 2.75L6 12.75l-3.25.5.5-3.25z',
+  refresh: 'M13 8a5 5 0 1 1-1.46-3.54M13 2.75V5.5h-2.75',
+  lock: 'M5.5 7.5V5.5a2.5 2.5 0 0 1 5 0v2M4.5 7.5h7a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1z',
+  book: 'M8 4.5C6.5 3.25 4.5 3 2.5 3.25v9c2-.25 4 0 5.5 1.25 1.5-1.25 3.5-1.5 5.5-1.25v-9C11.5 3 9.5 3.25 8 4.5zM8 4.5v9',
+  play: 'M5 3.5v9l7.5-4.5z',
+  erase: 'M6 3.5h7a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6L2 8zM8 6.25l3.5 3.5M11.5 6.25 8 9.75',
+  warn: 'M8 7.25v4M8 4.75v.01',
+  minus: 'M3 8h10',
+  plus: 'M3 8h10M8 3v10',
+  // Nya i samma hand (16-rutnät, 1,6 rund linje):
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+  clock: 'M8 4.75V8l2.25 1.5',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  import: 'M8 2.5v8.25M4.75 7.5 8 10.75l3.25-3.25M3 13.5h10',
+  export: 'M8 10.75V2.5M4.75 5.75 8 2.5l3.25 3.25M3 13.5h10',
+  grid: 'M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z',
+  copy: 'M5.5 5.5h7v7h-7zM3.5 10.5v-7h7',
+  trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9M6.75 7v4.25M9.25 7v4.25',
+  flip: 'M3.5 5.5h9M10 3l2.5 2.5L10 8M12.5 10.5h-9M6 8 3.5 10.5 6 13',
+  up: 'M8 13V3M4.75 6.25 8 3l3.25 3.25',
+  eye: 'M1.75 8s2.25-4.25 6.25-4.25S14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8z',
+  share: 'M5.3 7.1l3.4-2M5.3 8.9l3.4 2',
+  restart: 'M3 8a5 5 0 1 0 1.46-3.54M3 2.75V5.5h2.75',
+}
+const CIRCLES = { clock: [[8, 8, 5.5]], person: [[8, 5.25, 2.5]], warn: [[8, 8, 6]], eye: [[8, 8, 2]], share: [[10.25, 4.25, 1.75], [3.75, 8, 1.75], [10.25, 11.75, 1.75]] }
+const DOTS = { more: [[3.5, 8], [8, 8], [12.5, 8]], grip: [[6, 4], [10, 4], [6, 8], [10, 8], [6, 12], [10, 12]] }
+const NYA = new Set(['exit', 'clock', 'person', 'import', 'export', 'grid', 'copy', 'trash', 'flip', 'up', 'eye', 'share', 'restart'])
+function g(name) {
+  const d = P[name] ?? ''
+  const fill = name === 'play' ? 'currentColor' : 'none'
+  const c = (CIRCLES[name] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')
+  const dots = (DOTS[name] ?? []).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="currentColor" stroke="none"/>`).join('')
+  return `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="${fill}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d ? `<path d="${d}"/>` : ''}${c}${dots}</svg>`
+}
+// En kontroll: ordet (i A och B, och som tooltip och tillgängligt namn), glyfen (i C och D).
+// rank: ord | prim | sek. med: glyfen syns bredvid ordet redan i dag. visa: glyf bredvid ordet i C.
+function k(tag, name, word, { rank = 'sek', med = false, visa = false, cls = '', attrs = '', kort = '' } = {}) {
+  const ny = NYA.has(name) ? '<span class="ny" title="Ny ikon, ritad i samma hand som #1083:s">ny</span>' : ''
+  const w2 = kort ? `<span class="w2">${kort}</span>` : ''
+  return `<${tag} class="k ${cls}" data-rank="${rank}" ${med ? 'data-med' : ''} ${visa ? 'data-visa' : ''} title="${word}" aria-label="${word}" ${attrs}>${g(name)}<span class="w">${word}</span>${w2}${ny}</${tag}>`
+}
+
+// ── Varianterna ───────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A — i dag', not: '<b>I dag.</b> Katalogens egna ord: bordet <i>dukar</i>, telefonen <i>hämtar en hand</i>, «Din plats är inte längre din», «Ögonblicket är flaggat», «Ge spelet en flygande start». 276 strängar är två meningar eller längre, 35 bär tankstreck, och 31 säger «vi».' },
+  B: { namn: 'B — vanlig svenska', not: '<b>Vanlig svenska, samma kontroller.</b> Tillstånd sägs som andra appar säger dem (Laddar…, Ingen anslutning, Försök igen). En mening per besked, följden bakom «?». Inget «vi», inga bilder för tillstånd, inga tankstreck. <span class="plus">+ begripligt med en gång, kortare rader</span> <span class="minus">− mindre egen röst</span>' },
+  C: { namn: 'C — vanlig svenska + ikoner på sekundära kontroller · rekommenderas', not: '<b>B, och återkommande kontroller ritas som ikoner</b> i #1083:s hand: ångra, flagga, lämna, mer, stäng, föregående/nästa, profil, logga ut, importera, visa alla, senast. Ordet står kvar som tooltip och tillgängligt namn, och på varje primärknapp. <span class="plus">+ lugnare rader, plats för namnet</span> <span class="minus">− nya ikoner att lära: lämna, importera</span>' },
+  D: { namn: 'D — ikoner även på primärknapparna', not: '<b>C, och även första handlingen ritas som ikon:</b> Spara, Starta bord, Spela…, Sätt dig, Skapa spelet. <span class="plus">+ minst text</span> <span class="minus">− en ny spelare vet inte vad ▶ gör; L13:s första handling tappar sitt ord</span>' },
+}
+let v = (new URLSearchParams(location.search).get('v') || 'C').toUpperCase()
+if (!V[v]) v = 'C'
+let s = new URLSearchParams(location.search).get('s') || 'telefonen'
+let jamfor = new URLSearchParams(location.search).get('j') === '1'
+// Strängen för varianten: A säger katalogens ord, B, C och D den vanliga svenskan.
+const T = (a, b) => (v === 'A' ? a : b)
+
+// ── Skärmarna ─────────────────────────────────────────────────────────────────────────────────
+const S = {}
+S.telefonen = () => `
+<div class="sida tel">
+  <header>
+    <div class="vem"><strong>Ada</strong><span>Plats B · Skogens herrar</span></div>
+    ${k('button', 'undo', 'Ångra', { med: true })}
+    ${k('button', 'flag', 'Flagga', { med: true })}
+    ${k('button', 'exit', T('Ut…', 'Lämna…'))}
+  </header>
+  <div class="raknare">
+    <div><button>−</button><div><b>3</b><span>Poäng</span></div><button>+</button></div>
+    <div><button>−</button><div><b>12</b><span>Liv</span></div><button>+</button></div>
+  </div>
+  <div class="sekt">
+    <h2>${T('Framför dig · 1', 'Framför dig · 1')}</h2>
+    <div class="kort"><div><i style="--h:30">Björnen</i><strong>Björnen</strong></div></div>
+    <p class="tom">${T('Inget framför dig. Spela ett kort hit från handen.', 'Inget här ännu. Spela ett kort från handen.')}</p>
+  </div>
+  <div class="sekt">
+    <h2>${T('Dina kort', 'Dina kort')} ${k('a', 'grid', T('Visa alla · 7', 'Visa alla · 7'), { attrs: 'href="#"', kort: '7' })}</h2>
+    <div class="kort">
+      <div><i style="--h:120" data-vald>Guldfynd</i><strong>Guldfynd</strong></div>
+      <div><i style="--h:200">Skogsvandring</i><strong>Skogsvandring</strong></div>
+      <div><i style="--h:330">Vargen</i><strong>Vargen</strong></div>
+    </div>
+    <p class="valt">${T('Valt: Guldfynd', 'Valt: Guldfynd')}</p>
+    <div class="flytt">
+      ${k('button', 'left', T('Flytta vänster', 'Flytta vänster'))}
+      ${k('button', 'right', T('Flytta höger', 'Flytta höger'))}
+    </div>
+  </div>
+  <div class="toast">${T('Ögonblicket är flaggat', 'Flaggat')}</div>
+  <div class="ark">
+    <h3>${T('På väg ut?', 'Lämna bordet?')}</h3>
+    <button>${T('Lämna bordet', 'Lämna bordet')}</button>
+    <p>${T('Din plats blir ledig och korten i din hand går tillbaka till Draghög. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.', 'Din plats blir ledig och dina kort läggs tillbaka i Draghög. De andra kan spela vidare.')}</p>
+    <button data-kind="no">${T('Avsluta bordet för alla', 'Avsluta för alla')}</button>
+    <p>${T('Ingen kan spela vidare, och alla får enkäten på sin telefon. Vi frågar en gång till innan det sker.', 'Spelet avslutas för alla och enkäten skickas ut. Du får bekräfta först.')}</p>
+    <button class="stanna">${T('Stanna kvar', 'Avbryt')}</button>
+  </div>
+  <div class="fot">
+    ${k('button', 'play', T('Spela…', 'Spela…'), { rank: 'prim', cls: 'spela' })}
+    ${k('button', 'book', T('Regler', 'Regler'), { rank: 'ord', visa: true, cls: 'regler' })}
+  </div>
+</div>`
+
+S.gamed = () => `
+<div class="sida tel join">
+  <h1>${T('Gå in vid ett bord', 'Gå med i ett bord')}</h1>
+  <p>${T('Skriv rumskoden som står på bordets skärm.', 'Skriv rumskoden som visas på TV:n.')}</p>
+  <label>${T('Rumskod', 'Rumskod')}</label>
+  <input value="ABCD">
+  <button class="prim">${T('Fortsätt', 'Fortsätt')}</button>
+  <hr>
+  <p>${T('Du är på väg in i', 'Du går med i')} <b style="color:#fff">Skogens herrar</b> · ${T('Rum ABCD', 'Rum ABCD')}</p>
+  <h1 style="font-size:16px">${T('Platser vid bordet', 'Platser')}</h1>
+  <p>${T('Tryck på en ledig plats', 'Välj en ledig plats')}</p>
+  <div class="platser">
+    <button><i style="background:#f0b64a">A</i>Ada</button>
+    <button aria-pressed="true"><i style="background:#7dd3a0">B</i><span>${T('ledig', 'ledig')}</span></button>
+    <button><i style="background:#9cc6ff">C</i>Bo</button>
+    <button><i style="background:#f49ac1">D</i><span>${T('ledig', 'ledig')}</span></button>
+  </div>
+  <label>${T('Ditt namn', 'Ditt namn')}</label>
+  <input placeholder="">
+  ${k('button', 'check', T('Sätt dig', 'Sätt dig'), { rank: 'prim', cls: 'prim' })}
+  <button class="sek">${T('Spela på den här skärmen (bordet och handen här)', 'Spela på den här skärmen')}</button>
+  <button class="sek">${T('Bara titta (ser allt, alla ser dig)', 'Titta utan att spela')}</button>
+  <p class="gast">${T('Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.', 'Namn, drag och enkätsvar sparas på bordet, inte på dig som person.')}</p>
+</div>`
+
+S.tv = () => `
+<div class="sida tv">
+  <header>
+    <strong>Skogens herrar</strong>
+    <span class="ritar">${k('span', 'refresh', T('Korten ritas', 'Laddar kort'))} 3 ${T('av', 'av')} 12</span>
+    <div class="adress">
+      <span>${T('öppna på telefonen', 'Öppna på telefonen')}</span><b>deckster.se/ABCD</b><span class="qr"></span><span class="ring">?</span>
+    </div>
+  </header>
+  <div class="kropp">
+    <div class="filt">
+      <div class="hog" style="left:60px;top:40px"><span class="antal">24</span></div><span class="namn" style="left:60px;top:144px">Draghög</span>
+      <div class="hog" style="left:60px;top:190px;background:#2f4068;opacity:.5"></div><span class="namn" style="left:60px;top:294px">Kasthög</span>
+      <div class="kortet" style="left:300px;top:120px">Björnen</div>
+      <div class="kortet" style="left:380px;top:135px;transform:rotate(6deg)">Guldfynd</div>
+      <div class="bricka">
+        ${k('button', 'play', T('Starta spelet', 'Starta spelet'), { rank: 'prim', attrs: 'disabled' })}
+        <small>${T('Går inte att starta just nu: korten ritas fortfarande', 'Kan inte starta än: korten laddas fortfarande')}</small>
+      </div>
+      <div class="horn">
+        <span class="senast">${k('span', 'clock', T('Senast:', 'Senast:'))} Ada ${T('flyttade', 'flyttade')} Björnen ${T('till', 'till')} Mitten <span>· ${T('nyss', 'nyss')}</span></span>
+        ${k('button', 'restart', T('Starta om', 'Starta om'), { rank: 'prim' })}
+        <button class="mer" title="${T('Mer för bordet', 'Mer')}" aria-label="${T('Mer för bordet', 'Mer')}">${g('more')}</button>
+        <button class="mer" aria-label="Hjälp"><span class="ring">?</span></button>
+      </div>
+      <div class="meny">
+        <button><span class="rad">${g('undo')}${T('Ångra bordets senaste drag', 'Ångra senaste draget')}</span></button>
+        <button><span class="rad">${g('exit')}${T('Avsluta bordet…', 'Avsluta bordet…')}</span><small>${T('Vi frågar en gång till.', 'Du får bekräfta först.')}</small></button>
+      </div>
+      <div class="fraga">
+        <strong>${T('Avsluta bordet?', 'Avsluta bordet?')}</strong>
+        <p>${T('Bordet stannar på version 3 och kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.', 'Spelet avslutas för alla och kan inte fortsätta. Alla spelare får enkäten på sin telefon.')}</p>
+        <div class="knappar"><button>${T('Inte än', 'Avbryt')}</button><button class="prim">${T('Avsluta för alla', 'Avsluta för alla')}</button></div>
+      </div>
+    </div>
+    <aside>
+      <div><h2>${T('Platser', 'Platser')}</h2>
+        <ul>
+          <li><i style="background:#f0b64a">A</i>Ada<span>${T('5 kort på hand', '5 kort')}</span></li>
+          <li><i style="background:#7dd3a0">B</i><span style="margin:0">${T('ledig', 'ledig')}</span></li>
+          <li><i style="background:#9cc6ff">C</i>Bo<span>${T('Inget ännu', 'Inga drag ännu')}</span></li>
+        </ul></div>
+      <div><h2>${T('Senast', 'Senaste draget')}</h2>
+        <p class="tomt" style="margin:0">${T('Inget hänt ännu. Det som spelas vid bordet hamnar här.', 'Inga drag ännu.')}</p></div>
+      <div><p class="tomt" style="margin:0">${T('Eva tittar på · ser allt', 'Eva tittar på')}</p></div>
+      <div><h2>${T('Korten ritas', 'Laddar kort')}</h2><p class="tomt" style="margin:0">${T('Korten står stilla', 'Laddningen har stannat')} · 3/12</p></div>
+    </aside>
+  </div>
+</div>`
+
+const ruta = (slag, yta, mark, h, p, extra = '', knappar = '') => {
+  const f = { vanta: ['#1f2637', '#dfe7f7', '#7f93c4'], borta: ['#232733', '#e3e8f4', '#8b97b3'], stangt: ['#3b3222', '#ffeccc', '#f0b64a'], brutet: ['#3d2632', '#ffe4ea', '#d98aa0'], bra: ['#1e3327', '#d8f5e5', '#7dd3a0'] }[slag]
+  return `<div class="ruta" style="--bg:${f[0]};--ink:${f[1]};--edge:${f[2]}"><small>${mark}</small><h3>${h}</h3><p>${p}</p>${extra ? `<p class="ned">${extra}</p>` : ''}${knappar ? `<div class="knappar">${knappar}</div>` : ''}<span class="yta">${yta}</span></div>`
+}
+S.status = () => `
+<div class="sida status">
+  ${ruta('brutet', 'telefonen · offline', T('Ingen kontakt', 'Ingen anslutning'), T('Vi når inte bordet', 'Ingen kontakt med bordet'), T('Kontrollera nätet på telefonen. Din plats står kvar så länge spelet pågår.', 'Kontrollera nätet. Din plats finns kvar.'), T('Nytt försök om 5 s · försök 2 av 5', 'Försöker igen om 5 s (2 av 5)'), `<button class="prim">${T('Försök nu', 'Försök igen')}</button>`)}
+  ${ruta('brutet', 'telefonen · frånkopplad, slutat försöka', T('Frånkopplad', 'Frånkopplad'), T('Du är frånkopplad', 'Anslutningen bröts'), T('Handen du ser är gammal och ingenting du gör nu kommer fram.', 'Det du ser kan vara inaktuellt.'), T('Vi har slutat försöka av oss själva. Tryck på Försök nu när nätet är tillbaka.', 'Försöker inte längre automatiskt. Tryck på Försök igen när nätet är tillbaka.'), `<button class="prim">${T('Försök nu', 'Försök igen')}</button>`)}
+  ${ruta('stangt', 'telefonen · borttagen av värden', T('Stängt', 'Borttagen'), T('Du är inte längre vid bordet', 'Du har tagits bort från bordet'), T('Värden tog bort dig från bordet. Korten du hade ligger tillbaka i leken.', 'Värden tog bort dig. Dina kort har lagts tillbaka i leken.'), '', `<button class="prim">${T('Gå in igen', 'Gå med igen')}</button>`)}
+  ${ruta('stangt', 'telefonen · platsen tagen', T('Stängt', 'Upptagen'), T('Din plats är inte längre din', 'Platsen är upptagen'), T('Någon annan sitter på platsen. Välj en ledig plats igen, eller läs QR-koden på TV:n.', 'Någon annan sitter på din plats. Välj en ledig plats, eller skanna QR-koden igen.'), '', `<button class="prim">${T('Välj plats igen', 'Välj plats')}</button>`)}
+  ${ruta('vanta', 'TV:n · laddar, sedan långsamt', T('Laddar', 'Laddar'), T('Dukar bordet…', 'Laddar bordet…'), T('Bordet hämtas.', ''), '', '')}
+  ${ruta('vanta', 'TV:n · det dröjer', T('Laddar', 'Laddar'), T('Bordet dröjer', 'Det tar längre tid än vanligt'), T('Vi väntar fortfarande på spelet. Ingen behöver göra något än.', 'Väntar fortfarande på servern.'), '', `<button>${T('Försök igen', 'Försök igen')}</button>`)}
+  ${ruta('brutet', 'editorn · band under huvudet', T('Ingen kontakt', 'Ingen anslutning'), T('Vi når inte servern', 'Ingen kontakt med servern'), T('Ändringarna du gjort ligger kvar här. Vi sparar så fort kontakten är tillbaka.', 'Dina ändringar finns kvar här och sparas när anslutningen är tillbaka.'), '', '')}
+  ${ruta('borta', 'hela sidan · länk som inte leder någonstans', T('Finns inte', 'Finns inte'), T('Vi hittar inte det du sökte', 'Sidan finns inte'), T('Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.', 'Länken leder till något som inte finns längre. Kontrollera adressen eller gå till Mina spel.'), '', `<button class="prim">${T('Till mina spel', 'Mina spel')}</button>`)}
+  ${ruta('bra', 'telefonen · uppkopplad igen', T('Uppkopplad', 'Ansluten'), T('Uppkopplad igen', 'Ansluten igen'), T('Din hand är uppdaterad.', 'Din hand är uppdaterad.'), '', '')}
+  ${ruta('brutet', 'filten · ett drag bordet sa nej till', T('Gick inte', 'Gick inte'), T('Draget gick inte igenom', 'Draget gick inte att göra'), T('Bordet tog inte emot draget. Försök igen om en stund.', 'Försök igen om en stund.'), '', '')}
+  ${ruta('vanta', 'telefonen · laddar', T('Laddar', 'Laddar'), T('Hämtar din hand…', 'Laddar din hand…'), T('Ett ögonblick.', ''), '', '')}
+  ${ruta('borta', 'editorn · spelet borttaget under arbetet', T('Finns inte', 'Finns inte'), T('Vi hittar inte spelet', 'Spelet finns inte'), T('Spelet kan vara borttaget, eller så blev det ett tecken fel i länken.', 'Spelet kan ha tagits bort, eller så är länken fel.'), '', `<button class="prim">${T('Till mina spel', 'Mina spel')}</button>`)}
+</div>`
+
+S.editor = () => `
+<div class="sida ed">
+  <div class="huvud">
+    ${k('a', 'left', T('Mina spel', 'Mina spel'), { cls: 'hem', attrs: 'href="#"' })}
+    <strong>Skogens herrar</strong>
+    <span class="rev">v3</span>
+    <span class="sparat" data-osparat>${g('warn')}<span class="w">${T('Osparat', 'Osparat')}</span></span>
+    <span class="spacer"></span>
+    ${k('button', 'check', T('Spara', 'Spara'), { rank: 'prim', cls: 'prim' })}
+    ${k('button', 'play', T('Starta bord', 'Starta bord'), { rank: 'prim' })}
+    <button class="dorr k" data-rank="ord" title="${T('Dela · vilka som har spelet, 2 inne', 'Dela: vilka som har spelet, 2 inne')}"><span class="who">A</span><span class="who">B</span><b>2 ${T('inne', 'inne')}</b><span class="w">${T('Dela', 'Dela')}</span></button>
+    <button class="mer" title="${T('Mer för spelet', 'Mer')}" aria-label="${T('Mer för spelet', 'Mer')}">${g('more')}</button>
+  </div>
+  <div class="notis">${g('warn')}<span>${T('Sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.', 'Det gick inte att spara. Dina ändringar finns kvar här. Försök igen.')}</span><button title="${T('Stäng meddelandet', 'Stäng')}" aria-label="${T('Stäng meddelandet', 'Stäng')}">${g('close')}</button></div>
+  <div class="flikar"><button aria-selected="true">${T('Kortvägg', 'Kortvägg')}</button><button>${T('Mall', 'Mall')}</button><button>${T('Tabell', 'Tabell')}</button><button>${T('Speltema', 'Speltema')}</button><button>${T('Media', 'Media')}</button><button>${T('Regler', 'Regler')}</button><button>${T('Bord', 'Bord')}</button></div>
+  <div class="krona">
+    <span class="lada"><span>${T('Ögon:', 'Visning:')}</span> ${T('Som du ser det', 'Normal syn')} ${g('down').replace('class="g"', 'class="g" style="display:block;width:12px;height:12px"')}</span>
+    <span class="lada"><span>${T('Grupperad efter:', 'Gruppera efter:')}</span> Typ ${g('down').replace('class="g"', 'class="g" style="display:block;width:12px;height:12px"')}</span>
+    <span class="piller"><button title="${T('Färre och större kort', 'Större kort')}">${g('minus')}</button><span>180 px</span><button title="${T('Fler kort per rad', 'Mindre kort')}">${g('plus')}</button></span>
+    <input placeholder="${T('Sök kort', 'Sök kort')}">
+  </div>
+  <div class="vagg"><div>
+    <h3>${T('Spelet har inga kort än', 'Inga kort ännu')}</h3>
+    <p>${T('Ett kort är en rad i Tabell, och mallen i Mall ritar det. Börja var du vill.', 'Lägg till kort i Tabell och rita mallen i Mall.')}</p>
+    ${k('button', 'right', T('Rita framsidan i Mall →', 'Öppna Mall'), { rank: 'ord', visa: true })}
+  </div></div>
+  <div class="fot"><span>0 ${T('kort', 'kort')}</span><span>${T('Inga anmärkningar', 'Inga anmärkningar')}</span><span>${T('Leken klarar kontrollen. Inget stoppar en order.', 'Leken går att beställa.')}</span></div>
+  <div class="roll">${T('Du är betraktare här: du kan läsa spelet och jämföra versioner, men inte ändra det.', 'Du kan se spelet men inte ändra det.')}</div>
+</div>`
+
+S.start = () => `
+<div class="sida guide"><div class="byd-wizard">
+  <header>
+    <div><span>${T('Guidad start', 'Nytt spel')}</span><h1>${T('Ge spelet en flygande start', 'Skapa ett nytt spel')}</h1></div>
+    <span>${T('3 enkla steg · cirka 3 min', 'Tre steg, ungefär tre minuter')}</span>
+  </header>
+  <div class="steg"><span aria-current="step"><i class="byd-wizard-step">1</i>${T('Spelet', 'Spelet')}</span><span><i class="byd-wizard-step">2</i>${T('Fälten', 'Fälten')}</span><span><i class="byd-wizard-step">3</i>${T('Korten', 'Korten')}</span></div>
+  <div class="ruta"><b>${T('Spelet sparas på ett konto.', 'Spelet sparas på ditt konto.')}</b> ${T('Du loggar in med e‑post när du skapar det, och det du skrivit här följer med.', 'Du loggar in med e-post när spelet skapas. Det du fyllt i här följer med.')}</div>
+  <section>
+    <h2>${T('Spelet', 'Spelet')} <button class="fraga-tecken">?</button></h2>
+    <div class="falt">
+      <div><label>${T('Spelets namn', 'Spelets namn')}</label><input value="Skogens herrar"></div>
+      <div><label>${T('Spelare', 'Antal spelare')}</label><div class="stegare"><button title="${T('En spelare färre', 'Färre')}">${g('minus')}</button><b>4</b><button title="${T('En spelare fler', 'Fler')}">${g('plus')}</button></div></div>
+    </div>
+  </section>
+  <div class="blank"><div><h3>${T('Utan guidad start', 'Börja från ett tomt spel')}</h3><p>${T('Bygg hellre allt själv?', 'Bara namnet och platserna följer med.')}</p></div><button>${T('Skapa ett tomt spel i editorn', 'Skapa tomt spel')}</button></div>
+  <section>
+    <h2>${T('Fält', 'Fält')} <button class="fraga-tecken">?</button></h2>
+    <p>${T('Varje fält blir direkt en kontroll på varje exempelkort.', 'Varje fält blir en ruta på korten.')}</p>
+    <div class="rad"><span class="typ">${T('Text', 'Text')}</span><b>Titel</b><span class="boxar"><label><input type="checkbox" checked> ${T('Visas på kortet', 'Visas på kortet')}</label><label><input type="checkbox"> ${T('Placeras i editorn', 'Placeras i editorn')}</label></span></div>
+    <div class="rad"><span class="typ">${T('Tal', 'Tal')}</span><b>Kostnad</b><span class="boxar"><label><input type="checkbox" checked> ${T('Visas på kortet', 'Visas på kortet')}</label></span></div>
+    <div class="knappar">${k('button', 'plus', T('+ Textfält', 'Textfält'), { rank: 'ord', visa: true })}${k('button', 'plus', T('+ Talfält', 'Talfält'), { rank: 'ord', visa: true })}${k('button', 'plus', T('+ Bildfält', 'Bildfält'), { rank: 'ord', visa: true })}</div>
+  </section>
+  <section>
+    <h2>${T('Gör några exempelkort', 'Lägg till några exempelkort')} <button class="fraga-tecken">?</button></h2>
+    <p>${T('Exempelkorten hjälper editorn att visa hur fälten faktiskt används.', 'Exempelkorten visar hur fälten används.')}</p>
+    <div class="korten"><div data-vald><b>Skogsvandring</b>Dra ett kort.</div><div><b>Guldfynd</b>Få 2 {mynt}.</div><div><b>Björnen</b>Gör 3 {svärd}.</div></div>
+    <div class="knappar">${k('button', 'plus', T('+ Nytt kort', 'Nytt kort'), { rank: 'ord', visa: true })}${k('button', 'trash', T('Ta bort valt kort', 'Ta bort kortet'))}</div>
+  </section>
+  <footer><p>${T('Resten av leken, CSV-import och finjusteringen av mallen gör du i editorn när spelet är skapat.', 'Resten av korten, CSV-import och mallen gör du i editorn.')}</p>${k('button', 'right', T('Skapa spelet och fortsätt i editorn →', 'Skapa spelet'), { rank: 'prim', cls: 'byd-primary' })}</footer>
+  <div class="nav">${k('button', 'left', T('← Föregående', 'Föregående'))}${k('button', 'right', T('Nästa →', 'Nästa'), { cls: 'byd-primary' })}</div>
+</div></div>`
+
+S.hem = () => `
+<div class="sida hem">
+  <header><h1>${T('Mina spel', 'Mina spel')}</h1>
+    <div class="rad"><span>ada@epost.se</span>${k('a', 'person', T('Profil', 'Profil'), { attrs: 'href="#"' })}${k('a', 'exit', T('logga ut', 'Logga ut'), { attrs: 'href="#"' })}${k('button', 'import', T('Importera spel…', 'Importera…'))}</div>
+  </header>
+  <div class="kodrad"><span>${T('Ska du spela? Skriv rumskoden', 'Har du en rumskod?')}</span><input value="ABCD">${k('button', 'right', T('Gå in', 'Gå med'), { rank: 'prim', cls: 'prim' })}</div>
+  <div><h2>${T('Pågår nu', 'Pågår nu')}</h2><div class="pagar"><b>Skogens herrar</b><span>Rum ABCD · version 3</span>${k('button', 'play', T('Öppna bordet', 'Öppna bordet'), { rank: 'prim', cls: 'prim' })}</div></div>
+  <div><h2>${T('Spel', 'Spel')}</h2><div class="rutnat">
+    <div class="kort"><b>Skogens herrar</b><span>v3 · ${T('senast i går', 'spelat i går')}</span><span>${T('Första kortet: Björnen', 'Första kortet: Björnen')}</span><button class="mer" title="${T('Fler val för Skogens herrar', 'Mer')}">${g('more')}</button>
+      <div class="meny">
+        <button class="k">${g('play')}${T('Öppna bordet ABCD', 'Öppna bordet ABCD')}</button>
+        <button class="k">${g('plus')}${T('Starta nytt bord', 'Starta nytt bord')}</button>
+        <button class="k">${g('pencil')}${T('Byt namn…', 'Byt namn…')}</button>
+        <button class="k">${g('copy')}${T('Dubblera', 'Duplicera')}</button>
+        <button class="k">${g('export')}${T('Exportera…', 'Exportera…')}</button>
+        <button class="k">${g('trash')}${T('Ta bort spelet', 'Ta bort')}</button>
+      </div></div>
+    <div class="kort"><b>Sal's Saloon</b><span>v1 · ${T('aldrig spelat', 'inte spelat')}</span><span>${T('inga kort än', 'Inga kort ännu')}</span><button class="mer">${g('more')}</button></div>
+    <div class="kort ny">${k('button', 'plus', T('＋ Nytt spel', 'Nytt spel'), { rank: 'ord', visa: true })}</div>
+  </div></div>
+  <div><h2>${T('Bord du spelat vid', 'Bord du har spelat vid')}</h2><div class="spelat"><b>Skogens herrar</b><span>${T('Version 2 · du var Ada', 'Version 2 · du spelade som Ada')}</span><span>${T('enkät obesvarad', 'Enkäten är inte besvarad')}</span>${k('button', 'right', T('Tillbaka till bordet', 'Öppna bordet'), { rank: 'ord', visa: true })}</div></div>
+  <div class="tva">
+    <div class="fraga"><strong>${T('Ta bort spelet', 'Ta bort spelet?')}</strong><p>${T('Ta bort Skogens herrar? Hela historien följer med, och det går inte att ångra.', 'Alla versioner och bord i Skogens herrar tas bort. Det går inte att ångra.')}</p><div class="knappar"><button>${T('Behåll', 'Avbryt')}</button><button class="farlig">${T('Ta bort', 'Ta bort')}</button></div></div>
+    <div class="login"><strong>${T('Kolla mejlen.', 'Kolla din mejl')}</strong><p>${T('Vi skickade en länk till ada@epost.se. Den fungerar i 15 minuter och bara en gång. Inget lösenord att komma ihåg.', 'Vi har skickat en inloggningslänk till ada@epost.se. Den gäller i 15 minuter.')}</p><p class="tyst">${T('Inget lösenord. Länken i mejlet loggar in dig; första gången skapar den ditt konto.', 'Du loggar in med länken i mejlet. Första gången skapas ditt konto.')}</p><p class="tyst">${T('Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.', 'Skapa ditt eget kortspel och speltesta det på skärmen. Tryck kommer senare.')}</p><p class="tyst">${T('Ska du bara spela? Skanna QR-koden på bordet — inget konto behövs.', 'Ska du bara spela? Skanna QR-koden på TV:n. Du behöver inget konto.')}</p></div>
+  </div>
+</div>`
+
+const SKARMAR = { telefonen: 'Telefonen', gamed: 'Gå med', tv: 'TV:n och bordsläget', status: 'Tillstånden', editor: 'Editorns huvud', start: 'Guidad start', hem: 'Mina spel' }
+
+// ── Ritningen ─────────────────────────────────────────────────────────────────────────────────
+function tecken(html) {
+  const d = document.createElement('div'); d.innerHTML = html
+  d.querySelectorAll('.ny, svg').forEach((e) => e.remove())
+  return d.textContent.replace(/\s+/g, ' ').trim().length
+}
+function rita() {
+  document.body.dataset.v = v
+  history.replaceState(null, '', `?v=${v}&s=${s}${jamfor ? '&j=1' : ''}`)
+  document.getElementById('anteckning').innerHTML = V[v].not
+  document.getElementById('v').innerHTML = Object.keys(V).map((x) => `<button aria-pressed="${x === v}" data-v="${x}" title="${V[x].namn}">${x}</button>`).join('') + `<span style="padding:0 10px;align-self:center;font-size:12px">${V[v].namn}</span>`
+  document.getElementById('s').innerHTML = Object.entries(SKARMAR).map(([id, namn]) => `<button aria-pressed="${id === s}" data-s="${id}">${namn}</button>`).join('')
+  document.getElementById('jamfor').setAttribute('aria-pressed', String(jamfor))
+  const main = document.getElementById('scen')
+  const nu = S[s]()
+  const varv = v
+  v = 'A'; document.body.dataset.v = 'A'
+  const idag = S[s]()
+  v = varv; document.body.dataset.v = varv
+  main.toggleAttribute('data-jamfor', jamfor && v !== 'A')
+  main.innerHTML = (jamfor && v !== 'A' ? `<div class="skarm"><div class="etikett"><b>A — i dag</b></div><div class="vy" data-v="A">${idag}</div></div>` : '') + `<div class="skarm"><div class="etikett"><b>${V[v].namn}</b> · ${SKARMAR[s]}</div><div class="vy" data-v="${v}">${nu}</div></div>`
+  const a = tecken(idag), b = tecken(nu)
+  document.getElementById('matt').innerHTML = `<span>Tecken på skärmen «${SKARMAR[s]}»: A <u>${a}</u> · ${v} <u>${b}</u> (${b < a ? '−' : '+'}${Math.round(Math.abs(1 - b / a) * 100)} %)</span><span>Ordet står kvar som tooltip och tillgängligt namn på varje ikon; peka på en.</span>`
+}
+document.getElementById('v').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) { v = b.dataset.v; rita() } })
+document.getElementById('s').addEventListener('click', (e) => { const b = e.target.closest('button[data-s]'); if (b) { s = b.dataset.s; rita() } })
+document.getElementById('jamfor').addEventListener('click', () => { jamfor = !jamfor; rita() })
+addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea')) return
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowLeft') { v = ks[(ks.indexOf(v) + ks.length - 1) % ks.length]; rita() }
+  if (e.key === 'ArrowRight') { v = ks[(ks.indexOf(v) + 1) % ks.length]; rita() }
+})
+rita()
+</script>
+</body>
+</html>
