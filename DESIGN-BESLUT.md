@@ -212,7 +212,10 @@ Följdkrav:
 
 - Ingen fil i `public/` ritas för hand. `pnpm --filter @byd/web exec tsx scripts/brand-icons.ts` skriver dem, och `packages/web/test/brand.test.ts` stoppar en `favicon.svg` som inte är ritningen.
 - `packages/e2e/test/app-icon.spec.ts` läser de serverade ikonernas pixlar: de tre kortens färger finns, och PNG:erna ligger på trä och inte på bordets mörka.
-- En delad länk (`og:image`) och TV:ns sidospalt bär också handen, men de kräver mer än ritningen (#1084).
+- En delad länk visar handen bredvid namnet på bordets mörka, 1200 × 630, som prototypen ritade den (#1084).
+  `scripts/brand-icons.ts` ritar `og-image.png` med landningssidans egen rad, och servern skriver `PUBLIC_ORIGIN` framför bildens sökväg (DRIFT §13).
+  `packages/e2e/test/app-icon.spec.ts` läser taggarna i sidan servern skickar och bildens pixlar.
+- TV:ns sidospalt bär också handen, men den prototypas på den riktiga spalten innan den byggs (#1084).
 - UI-ikonerna är en egen fråga (#1083): märket är produktens ansikte, glyferna är kontrollernas hand.
 
 Prototypen: `docs/ux-audits/2026-10-21-deckster-ikoner/prototyper/deckster/` (`?v=B`).

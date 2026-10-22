@@ -185,7 +185,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 - ✅ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012), och tre bord på 308 kort ryms sedan leken bär hashar i stället för bilder (DRIFT §4, #1028). Det tredje av tre bord som startas samtidigt väntar runt sex minuter på sina texturer; beställaren beslutade 2026-10-18 att mäta det i betan i stället för att bygga bort det.
 - ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).
 - ✅ Tjänsten heter Deckster och ligger på deckster.se (A5): namnet är bytt överallt en användare läser det, och produktionen flyttade 2026-10-22 från `deck.ockelberg.com`, som svarar 301 till den nya adressen med sökväg och query kvar (#1080).
-- ✅ Ett märke, handen (A6): tre kort i bärnsten, grönt och papper i fliken, på hemskärmen, på landningssidan och i inloggningskortet, ritade från en enda ritning (#1082); en delad länk och TV:ns sidospalt väntar (#1084).
+- ✅ Ett märke, handen (A6): tre kort i bärnsten, grönt och papper i fliken, på hemskärmen, på landningssidan och i inloggningskortet, ritade från en enda ritning (#1082), och i en delad länk (#1084); TV:ns sidospalt väntar på sin prototyp (#1084).
 - ⬜ En release från main med allt ovan, och tre till fem designers inbjudna med samtyckesfrågan.
 
 ## Fas 5 — Tryck
