@@ -63,7 +63,7 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
   }
   // An observer is seatless too, but she watches: the table's undo is the table's screen's (#682).
   const undo = history && !observer ? undoTarget(history.lines(), seat) : null
-  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended, played: state.played, version: state.version }
+  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended, played: state.played, version: state.version, notes: state.notes.map((n) => ({ ...n })) }
 }
 
 // Which edge of the table a seat sits at (K12), from where its hand lies relative to the middle
