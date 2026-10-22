@@ -70,3 +70,44 @@ test('every icon a browser is given draws the hand: amber, green and paper', asy
     }
   }
 })
+
+// A link shared in a chat — a login mail's, an invitation, a room code — shows the hand and the name
+// (#1084). A previewer reads the page the server sends without running it, so the tags are read off
+// the bytes as they arrive, and the picture is fetched at the address they give: the public origin's,
+// which the stack sets the way the box does.
+test('a shared link names Deckster and shows the hand, at the public origin', async ({ page, request, baseURL }) => {
+  for (const path of ['/', '/Q6RN2C']) {
+    const html = await (await request.get(path, { headers: { accept: 'text/html' } })).text()
+    const meta = (key: string): string | undefined => new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`).exec(html)?.[1]
+    expect({ path, title: meta('og:title'), site: meta('og:site_name'), card: meta('twitter:card') }).toEqual({ path, title: 'Deckster', site: 'Deckster', card: 'summary_large_image' })
+    expect({ path, description: (meta('og:description') ?? '').length > 20 }).toEqual({ path, description: true })
+    expect({ path, image: meta('og:image'), twitter: meta('twitter:image') }).toEqual({ path, image: `${baseURL}/og-image.png`, twitter: `${baseURL}/og-image.png` })
+    expect({ path, size: [meta('og:image:width'), meta('og:image:height')] }).toEqual({ path, size: ['1200', '630'] })
+  }
+  const picture = await request.get('/og-image.png')
+  expect(picture.headers()['content-type']).toBe('image/png')
+  await page.goto('/')
+  const seen = (await page.evaluate(`(async () => {
+    const img = new Image()
+    img.src = '/og-image.png'
+    await img.decode()
+    const c = document.createElement('canvas')
+    c.width = img.naturalWidth
+    c.height = img.naturalHeight
+    const g = c.getContext('2d')
+    g.drawImage(img, 0, 0)
+    const px = g.getImageData(0, 0, c.width, c.height).data
+    const near = (i, [r, gr, b]) => Math.abs(px[i] - r) + Math.abs(px[i + 1] - gr) + Math.abs(px[i + 2] - b) < 24 && px[i + 3] > 240
+    const share = (rgb) => { let n = 0; for (let i = 0; i < px.length; i += 4) if (near(i, rgb)) n++; return n / (px.length / 4) }
+    return {
+      size: [c.width, c.height],
+      amber: share([0xf0, 0xb6, 0x4a]), green: share([0x7d, 0xd3, 0xa0]), paper: share([0xf4, 0xea, 0xd8]),
+      ground: share([0x14, 0x16, 0x1c]),
+    }
+  })()`)) as { size: [number, number]; amber: number; green: number; paper: number; ground: number }
+  expect(seen.size).toEqual([1200, 630])
+  // The hand is a fifth of the picture's height and more: each card shows at least a two-hundredth.
+  for (const card of ['amber', 'green', 'paper'] as const) expect({ card, enough: seen[card] > 0.005 }).toEqual({ card, enough: true })
+  // On the table's dark, as the prototype drew it (#1082, `?v=B`).
+  expect(seen.ground).toBeGreaterThan(0.6)
+})

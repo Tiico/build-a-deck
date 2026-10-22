@@ -405,6 +405,14 @@ Grinden läser `Content-Encoding` på det blockerande arket mot en riktigt serve
 Bortfallet går rött, inte tyst grönt — varje väg till att inte mäta något (inget ark i dokumentet, ingen instans som svarar, ingen rubrik) är skriven som ett fel med en mening om vilken det var.
 En proxy framför lådan måste respektera `Vary: Accept-Encoding`, som svaren bär.
 
+Sidan är den enda fil som inte serveras som den ligger på disk (#1084).
+En förhandsvisare vill ha `og:image` som absolut adress, och appen känner sitt origin bara ur `PUBLIC_ORIGIN` (A5).
+`index.html` namnger därför bilden med sin sökväg, och servern skriver `PUBLIC_ORIGIN` framför när sidan går ut (`packages/server/src/share.ts`).
+Det är en gång per fil på disk och origin, inte en gång per förfrågan, så den komprimerade kopian görs fortfarande en gång per deploy.
+Förfrågans `Host` används aldrig: det är vad klienten sa, och en förhandsvisare sparar det den fick höra.
+Utan `PUBLIC_ORIGIN` står sökvägen kvar som bygget skrev den.
+Bara bildernas meta-taggar ändras, så inline-skripten som §14 hashar är orörda.
+
 ## 14. Innehållspolicyn (CSP) sätts av appen
 
 Byggt 2026-10-19 (#1008).
