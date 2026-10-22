@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anteckningsblocket · prototyp #1131</title>
+<!--
+  PROTOTYPE — throwaway (#1131). Tre varianter av ett gemensamt anteckningsblock på /online,
+  växlade med ?v=A|B|C (och pilarna ← →). ?tom=1 visar tomläget. Ingenting här importeras av appen;
+  filten är ritad efter skärmbilden docs/ux-audits/2026-09-28/distans-01-hover-180px-1280x800.png.
+-->
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: #17120f; color: #e8e2d8; font: 13px system-ui, sans-serif; overflow: hidden; }
+  button, input, textarea { font: inherit; color: inherit; }
+
+  /* --- prototypens egen rad: aldrig en del av förslaget ------------------------------------- */
+  .protorad { flex: none; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; }
+  .protorad .fraga { flex: 1 1 320px; min-width: 0; }
+  .protorad .matt { font-variant-numeric: tabular-nums; }
+  .protorad .matt u { text-decoration: none; color: #ffe9b8; font-weight: 700; }
+  .protorad button { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; cursor: pointer; }
+  .protorad button:hover { border-color: #ffd98a; }
+  .vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+  .protorad .vaxlare button { border: 0; min-height: 30px; min-width: 34px; font-weight: 700; }
+  .protorad .vaxlare button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .anteckning { flex: 1 1 100%; min-height: calc(3 * 1.5em + 14px); margin: 0; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; }
+  .protorad .plus { color: #b7dca0; } .protorad .minus { color: #f0a58a; }
+
+  /* --- /online som den är: huvudet, filten, handen i en kolumn till höger ---------------- */
+  .online { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .top { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #100d0b; border-bottom: 1px solid #2a221c; }
+  .me { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgba(20,22,28,.9); color: #9aa3b8; border-left: 4px solid #3c8ce7; }
+  .me strong { color: #fff; font-size: 15px; }
+  .knapp { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(36,41,56,.92); color: #fff; font-weight: 700; cursor: pointer; position: relative; }
+  .knapp.kant { background: #1d1815; border: 1px solid #3a2f26; color: #e8e2d8; }
+  .knapp[aria-expanded='true'] { box-shadow: inset 0 -3px 0 #ffd98a; }
+  .knapp:focus-visible, .rad button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+  .last { flex: 1 1 0; min-width: 0; margin-left: 8px; color: #9aa3b8; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .last b { color: #e8e2d8; font-weight: 500; } .last small { color: #7d8597; font-size: 12px; }
+  .prick { position: absolute; top: 7px; right: 7px; width: 9px; height: 9px; border-radius: 50%; background: var(--seat, #e5534b); box-shadow: 0 0 0 2px #242938; }
+
+  .play { flex: 1 1 auto; min-height: 0; display: flex; }
+  .feltrum { flex: 1 1 auto; min-width: 0; position: relative; display: grid; place-items: center; padding: 24px; overflow: hidden; }
+  .hand { flex: none; width: 136px; padding: 12px; display: flex; flex-direction: column; justify-content: center; gap: 0; }
+  .hand i { display: block; height: 60px; border-radius: 6px; background: #f2ead8; border: 2px solid #c9bea6; box-shadow: 0 2px 6px #0008; }
+  .hand i:last-child { height: 156px; }
+  .hand i::before { content: attr(data-n); display: block; height: 18px; padding: 2px 6px; border-radius: 4px 4px 0 0; background: var(--c, #7a4b17); color: #fff; font: 700 10px Georgia, serif; }
+
+  /* Träet och filten. Storleken räknas av fit() så att de håller 900:640, som bordet gör. */
+  .tra { position: relative; border-radius: 34px; background: linear-gradient(#8a5a35, #5d3a22); box-shadow: 0 12px 40px #000a; }
+  .filt { position: absolute; inset: 4%; border-radius: 22px; background: radial-gradient(ellipse at 50% 40%, #2f7a4b, #1d5a36 75%); }
+  .zon { position: absolute; border: 1.5px solid #ffffff38; border-radius: 10px; }
+  .kort { position: absolute; width: var(--kw); aspect-ratio: 63/88; border-radius: 4px; background: #f2ead8; border: 1px solid #c9bea6; box-shadow: 0 2px 4px #0007; }
+  .kort.rygg { background: repeating-linear-gradient(45deg, #2b3d78 0 3px, #34478a 3px 6px); border-color: #1a2650; }
+  .pill { position: absolute; transform: translate(-50%, -50%); padding: .5em 1em; border-radius: 999px; background: #0f2a1bdd; color: #fff; font: 700 calc(var(--kw) * .32) system-ui; white-space: nowrap; }
+  .namn { position: absolute; transform: translate(-50%, -50%); padding: 2px 9px; border-radius: 999px; color: #10131a; font: 800 calc(var(--kw) * .26) system-ui; }
+  .etikett { position: absolute; color: #ffffffb0; font: 700 calc(var(--kw) * .2) system-ui; letter-spacing: .06em; }
+
+  /* --- gemensamt för blocket ------------------------------------------------------------ */
+  .seat-ada { --seat: #e5534b; } .seat-bo { --seat: #3c8ce7; } .seat-cy { --seat: #3fb67a; } .seat-di { --seat: #e3b341; }
+  .vem { display: inline-flex; align-items: center; gap: 5px; color: #b8c0d2; font-size: 12px; }
+  .vem::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--seat); }
+  .skriver { color: #ffd98a; font-size: 12px; }
+  .skriver::after { content: '…'; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+
+  /* A — lådan bakom en knapp i huvudet, över filtens vänstra del */
+  .lada { position: absolute; z-index: 5; top: 12px; left: 12px; bottom: 12px; width: min(380px, 42%); display: flex; flex-direction: column; border-radius: 14px; background: #1b1714; border: 1px solid #3a2f26; box-shadow: 0 16px 48px #000c; }
+  .lada header { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 16px; border-bottom: 1px solid #2a221c; }
+  .lada h2 { margin: 0; font-size: 15px; color: #fff; }
+  .lada header .sub { color: #9aa3b8; font-size: 12px; }
+  .lada textarea { flex: 1; resize: none; margin: 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid #3a2f26; background: #120f0d; color: #f2ece2; font: 15px/1.55 system-ui; }
+  .lada footer { display: flex; justify-content: space-between; gap: 8px; padding: 0 16px 12px; color: #7d8597; font-size: 12px; }
+  .stang { margin-left: auto; min-width: 44px; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: #c8c0b4; font-size: 20px; cursor: pointer; }
+  .stang:hover { background: #2a221c; }
+
+  /* B — en spalt till vänster, med rader som bär vem som skrev dem */
+  .spalt { flex: none; width: 300px; display: flex; flex-direction: column; background: #120f0d; border-right: 1px solid #2a221c; }
+  .spalt[data-ihop] { width: 60px; }
+  .spalt header { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px; min-height: 60px; }
+  .spalt h2 { margin: 0; font-size: 14px; color: #fff; }
+  .spalt[data-ihop] header { padding: 8px; justify-content: center; }
+  .spalt[data-ihop] h2, .spalt[data-ihop] .lista, .spalt[data-ihop] form, .spalt[data-ihop] .tomt { display: none; }
+  .lista { flex: 1; overflow: auto; margin: 0; padding: 0 8px; list-style: none; }
+  .rad { display: grid; grid-template-columns: 44px 1fr 44px; align-items: start; border-radius: 10px; border-left: 3px solid var(--seat); margin-bottom: 6px; background: #1b1714; }
+  .rad input[type=checkbox] { width: 20px; height: 20px; margin: 12px; accent-color: #ffd98a; }
+  .rad .text { padding: 10px 0; min-width: 0; }
+  .rad .text p { margin: 0 0 3px; color: #f2ece2; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; outline: none; }
+  .rad[data-klar] .text p { color: #7d8597; text-decoration: line-through; }
+  .rad .ta-bort { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: #7d8597; font-size: 18px; cursor: pointer; border-radius: 10px; opacity: 0; }
+  .rad:hover .ta-bort, .rad:focus-within .ta-bort { opacity: 1; }
+  .spalt form { padding: 8px; border-top: 1px solid #2a221c; }
+  .spalt form input { width: 100%; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #3a2f26; background: #1b1714; color: #f2ece2; }
+  .spalt .skrivrad { min-height: 22px; padding: 0 16px 6px; }
+  .tomt { margin: 8px 16px; color: #9aa3b8; line-height: 1.5; }
+  .rail { display: grid; place-items: center; gap: 4px; }
+
+  /* C — lappen: ett block papper som ligger bredvid bordet, i filtens eget rum */
+  .lapp { position: absolute; z-index: 5; left: 16px; bottom: 16px; width: 220px; padding: 14px 16px 16px; border-radius: 3px 3px 14px 3px; background: linear-gradient(#fff6b8, #f8e98a); color: #2b2614; box-shadow: 0 10px 26px #000b, 0 1px 0 #fff inset; transform: rotate(-2deg); transform-origin: bottom left; cursor: text; transition: width .18s, transform .18s; }
+  .lapp[data-oppen] { width: 360px; transform: none; }
+  .lapp::before { content: ''; position: absolute; top: -9px; left: 50%; width: 80px; height: 20px; transform: translateX(-50%) rotate(1deg); background: #ffffff70; border: 1px solid #ffffff50; }
+  .lapp h2 { margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; font: 700 12px system-ui; letter-spacing: .08em; text-transform: uppercase; color: #6d6232; }
+  .lapp textarea { width: 100%; height: 150px; resize: none; border: 0; background: repeating-linear-gradient(transparent 0 25px, #d8c96a 25px 26px); padding: 0; color: #2b2614; font: 17px/26px "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive; outline: none; }
+  .lapp[data-oppen] textarea { height: 312px; }
+  .lapp .fot { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #6d6232; }
+  .lapp .fot .vem { color: #6d6232; }
+  .lapp .fot .skriver { color: #8a5a00; }
+</style>
+</head>
+<body>
+
+<div class="protorad" role="region" aria-label="Prototypens kontroller">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>PROTOTYP #1131 · Ett gemensamt anteckningsblock på /online.</b> Pilarna ← → byter variant (inte när ett fält har fokus).</p>
+    <p class="matt">Kort på filten: <u id="kw">–</u> px bredd · filtens rum: <u id="rum">–</u></p>
+  </div>
+  <button id="ada">Låt Ada skriva</button>
+  <button id="tom">Tomläget</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="online">
+  <div class="top">
+    <span class="me"><strong>Bo</strong> 6 kort</span>
+    <button class="knapp kant">Visa alla</button>
+    <span class="last">Senast: <b>Ada drog ett kort</b> <small>· för 12 s sedan</small></span>
+    <button class="knapp" id="oppnaA" hidden aria-expanded="false" aria-controls="lada">✎ Anteckningar<span class="prick seat-ada" id="prickA" hidden></span></button>
+    <button class="knapp">↶ Ångra</button>
+    <button class="knapp">⚑ Flagga</button>
+    <button class="knapp">Ut…</button>
+  </div>
+  <div class="play">
+    <aside class="spalt" id="spalt" hidden aria-label="Anteckningar">
+      <header>
+        <button class="knapp kant" id="ihop" aria-expanded="true" title="Fäll ihop anteckningarna">✎<span class="prick seat-ada" id="prickB" hidden></span></button>
+        <h2>Anteckningar</h2>
+      </header>
+      <p class="tomt" id="tomtB">Inget antecknat än. Det ni skriver här ser alla vid bordet, och det ligger kvar till nästa gång.</p>
+      <ul class="lista" id="lista"></ul>
+      <div class="skrivrad" id="skrivB"></div>
+      <form id="ny"><input id="nyText" placeholder="Skriv en anteckning och tryck Enter" aria-label="Ny anteckning" maxlength="280"></form>
+    </aside>
+
+    <div class="feltrum" id="feltrum">
+      <section class="lada" id="lada" hidden aria-label="Anteckningar">
+        <header>
+          <div><h2>Anteckningar</h2><span class="sub">Delas med alla vid bordet</span></div>
+          <button class="stang" id="stangA" aria-label="Stäng anteckningarna">×</button>
+        </header>
+        <textarea id="textA" aria-label="Anteckningar, delas med bordet" placeholder="Skriv det ni måste hålla koll på: poäng, vems tur det är, regelfrågor till efter partiet…"></textarea>
+        <footer><span id="vemA"></span><span id="skrivA"></span></footer>
+      </section>
+
+      <section class="lapp" id="lapp" hidden aria-label="Anteckningar">
+        <h2><span>Anteckningar</span><span id="skrivC"></span></h2>
+        <textarea id="textC" aria-label="Anteckningar, delas med bordet" placeholder="Skriv här – alla vid bordet ser det"></textarea>
+        <div class="fot"><span id="vemC"></span><span>syns för hela bordet</span></div>
+      </section>
+
+      <div class="tra" id="tra">
+        <div class="filt" id="filt"></div>
+      </div>
+    </div>
+
+    <div class="hand" aria-hidden="true">
+      <i data-n="Russian Roulette"></i><i data-n="Trap" style="--c:#4a2a3a"></i><i data-n="Last Train" style="--c:#2b4a7a"></i><i data-n="High Noon"></i><i data-n="Stolen Goods" style="--c:#6a4a2a"></i>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOTES = {
+  A: `<b>Variant A · Lådan.</b> En knapp i huvudet öppnar en låda över filtens vänstra del; en gemensam fritext, som en delad lapp.
+<span class="plus">+</span> Filten kostar ingenting när lådan är stängd, och en prick i knappens platsfärg säger att någon annan skrivit. <span class="plus">+</span> Fritext är enklast att förstå: man skriver som på papper.
+<span class="minus">−</span> Medan lådan är öppen täcker den en tredjedel av filten; man ser inte anteckningar och bord samtidigt. <span class="minus">−</span> Två som skriver samtidigt i en text: den som landar sist (D3), och ingen ser vem som skrev vad.`,
+  B: `<b>Variant B · Spalten.</b> En spalt till vänster med rader: varje anteckning bär sin skribents platsfärg, kan bockas av (struken, kvar) och tas bort. Enter lägger till.
+<span class="plus">+</span> Alltid synlig bredvid bordet. <span class="plus">+</span> Rader har inga skrivkrockar och säger vem; bra loggsignal för designern.
+<span class="minus">−</span> Mätt: kortet på filten 40 → 33 px vid 1280×800 (−18 %), 46 → 40 vid 1440×900 (−13 %), 57 → 57 vid 1920×1080 (gratis). Ihopfälld (✎) kostar den ingenting. <span class="minus">−</span> Rader är mer formulär än papper.`,
+  C: `<b>Variant C · Lappen.</b> Ett gult block som ligger i hörnet av bordets rum, utanför träet. Klicka för att lyfta det och skriva; klicka på filten för att lägga ner det.
+<span class="plus">+</span> Känns som det fysiska bordet: ett anteckningsblock bredvid spelet, alltid synligt, och det kunde stå på TV:n också. <span class="plus">+</span> Kostar ingen filt i vila.
+<span class="minus">−</span> Närmast det K5 sa nej till («inga lappar») och närmast att läsas som en spelkomponent. <span class="minus">−</span> Liten yta i vila; uppslaget täcker filtens hörn. Samma skrivkrock som A.`,
+}
+
+const START_TEXT = `Poäng: Ada 7 · Bo 4 · Cy 9 · Di 5
+Cy har en extra tur nästa runda (High Noon)
+Vems tur att blanda: Di
+
+Regelfråga till efteråt: får man spela Trap på sig själv?`
+const START_ROWS = [
+  { who: 'cy', text: 'Poäng: Ada 7 · Bo 4 · Cy 9 · Di 5' },
+  { who: 'ada', text: 'Cy har en extra tur nästa runda (High Noon)' },
+  { who: 'bo', text: 'Vems tur att blanda: Di', klar: true },
+  { who: 'di', text: 'Regelfråga till efteråt: får man spela Trap på sig själv?' },
+]
+const NAMN = { ada: 'Ada', bo: 'Bo', cy: 'Cy', di: 'Di' }
+
+const q = new URLSearchParams(location.search)
+let v = ['A', 'B', 'C'].includes(q.get('v')) ? q.get('v') : 'B'
+let tom = q.get('tom') === '1'
+let rows = []
+
+const $ = (id) => document.getElementById(id)
+
+function felt() {
+  const f = $('filt')
+  f.innerHTML = `
+    <div class="zon" style="left:26%;top:6%;width:9%;height:11%"></div>
+    <div class="zon" style="left:37%;top:6%;width:36%;height:11%"></div>
+    <span class="etikett" style="left:26%;top:19%">RÄKNARE A</span><span class="etikett" style="left:62%;top:19%">FRAMFÖR A</span>
+    <div class="zon" style="left:5%;top:20%;width:7%;height:14%"></div>
+    <div class="zon" style="left:5%;top:37%;width:7%;height:44%"></div>
+    <div class="zon" style="left:88%;top:20%;width:7%;height:14%"></div>
+    <div class="zon" style="left:88%;top:37%;width:7%;height:44%"></div>
+    <div class="zon" style="left:30%;top:63%;width:44%;height:14%"></div>
+    <div class="zon" style="left:30%;top:81%;width:9%;height:13%"></div>
+    <div class="zon" style="left:41%;top:81%;width:33%;height:13%"></div>
+    <span class="etikett" style="left:30%;top:77%">RÄKNARE B</span><span class="etikett" style="left:63%;top:77%">FRAMFÖR B</span>
+    <div class="kort" style="left:44%;top:7%"></div><div class="kort" style="left:52%;top:9%"></div><div class="kort" style="left:66%;top:5%"></div>
+    <div class="kort" style="left:39%;top:41%"></div><div class="kort rygg" style="left:58%;top:41%"></div>
+    <div class="kort" style="left:6.5%;top:66%"></div><div class="kort" style="left:89.5%;top:66%"></div>
+    <div class="kort" style="left:36%;top:64%"></div><div class="kort" style="left:45%;top:64%"></div><div class="kort" style="left:54%;top:64%"></div><div class="kort" style="left:63%;top:64%"></div>
+    <div class="kort" style="left:65%;top:82%"></div>
+    <span class="pill" style="left:27%;top:36%">Kasthög · 3</span><span class="pill" style="left:52%;top:36%">Kortlek · 109</span>
+    <span class="namn" style="left:50%;top:2%;background:#e5534b">Ada</span>
+    <span class="namn" style="left:2%;top:50%;background:#3fb67a">Cy</span>
+    <span class="namn" style="left:98%;top:50%;background:#e3b341">Di</span>
+    <span class="namn" style="left:50%;top:98%;background:#3c8ce7">Bo</span>`
+}
+
+function fit() {
+  const r = $('feltrum').getBoundingClientRect()
+  // Measured as if the prototype's own row were not there, since the real page has no such row.
+  const aw = r.width - 48, ah = r.height - 48
+  const bar = document.querySelector('.protorad').offsetHeight
+  const w = Math.max(100, Math.min(aw, ah * 900 / 640))
+  const t = $('tra')
+  t.style.width = w + 'px'
+  t.style.height = (w * 640 / 900) + 'px'
+  $('filt').style.setProperty('--kw', w * 0.92 * 0.045 + 'px')
+  const realH = ah + bar
+  const realW = Math.min(aw, realH * 900 / 640)
+  $('kw').textContent = (realW * 0.92 * 0.045).toFixed(0)
+  $('rum').textContent = `${Math.round(r.width)}×${Math.round(r.height + bar)} · ${aw / realH > 900 / 640 ? 'höjdbunden' : 'breddbunden'} (utan prototypraden)`
+}
+
+function renderRows() {
+  $('lista').innerHTML = ''
+  $('tomtB').hidden = rows.length > 0
+  rows.forEach((r, i) => {
+    const li = document.createElement('li')
+    li.className = `rad seat-${r.who}`
+    if (r.klar) li.dataset.klar = ''
+    li.innerHTML = `<input type="checkbox" ${r.klar ? 'checked' : ''} aria-label="Klar: ${r.text}">
+      <div class="text"><p contenteditable="plaintext-only" spellcheck="false"></p><span class="vem seat-${r.who}">${NAMN[r.who]}${r.klar ? ' · bockad' : ''}</span></div>
+      <button class="ta-bort" aria-label="Ta bort: ${r.text}">×</button>`
+    li.querySelector('p').textContent = r.text
+    li.querySelector('p').addEventListener('input', (e) => { r.text = e.target.textContent })
+    li.querySelector('input').addEventListener('change', (e) => { r.klar = e.target.checked; renderRows() })
+    li.querySelector('.ta-bort').addEventListener('click', () => { rows.splice(i, 1); renderRows() })
+    $('lista').append(li)
+  })
+}
+
+function reset() {
+  rows = tom ? [] : START_ROWS.map((r) => ({ ...r }))
+  $('textA').value = $('textC').value = tom ? '' : START_TEXT
+  $('vemA').innerHTML = $('vemC').innerHTML = tom ? '' : '<span class="vem seat-cy">Senast ändrat av Cy · för 2 min sedan</span>'
+  renderRows()
+}
+
+function show() {
+  document.querySelectorAll('.vaxlare button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)))
+  $('anteckning').innerHTML = NOTES[v].replace(/\n/g, '<br>')
+  $('oppnaA').hidden = v !== 'A'
+  $('lada').hidden = true
+  $('oppnaA').setAttribute('aria-expanded', 'false')
+  $('spalt').hidden = v !== 'B'
+  $('lapp').hidden = v !== 'C'
+  $('tom').textContent = tom ? 'Med anteckningar' : 'Tomläget'
+  const u = new URL(location.href); u.searchParams.set('v', v); tom ? u.searchParams.set('tom', '1') : u.searchParams.delete('tom')
+  history.replaceState(null, '', u)
+  fit()
+}
+
+// A
+$('oppnaA').addEventListener('click', () => {
+  const open = $('lada').hidden
+  $('lada').hidden = !open
+  $('oppnaA').setAttribute('aria-expanded', String(open))
+  if (open) { $('prickA').hidden = true; $('textA').focus() }
+})
+$('stangA').addEventListener('click', () => { $('lada').hidden = true; $('oppnaA').setAttribute('aria-expanded', 'false'); $('oppnaA').focus() })
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('lada').hidden) $('stangA').click() })
+
+// B
+$('ny').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const t = $('nyText').value.trim()
+  if (!t) return
+  rows.push({ who: 'bo', text: t }); $('nyText').value = ''; renderRows()
+  $('lista').scrollTop = 1e6
+})
+$('ihop').addEventListener('click', () => {
+  const s = $('spalt'); const ihop = !('ihop' in s.dataset)
+  ihop ? s.dataset.ihop = '' : delete s.dataset.ihop
+  $('ihop').setAttribute('aria-expanded', String(!ihop))
+  if (!ihop) $('prickB').hidden = true
+  fit()
+})
+
+// C
+$('lapp').addEventListener('click', () => { $('lapp').dataset.oppen = ''; $('textC').focus() })
+$('feltrum').addEventListener('pointerdown', (e) => { if (!$('lapp').contains(e.target)) delete $('lapp').dataset.oppen })
+
+// Ada skriver: det som en annan plats skulle göra, på varje variant.
+$('ada').addEventListener('click', () => {
+  const line = '\nAda: kom ihåg att Di fick två kort för mycket i förra rundan'
+  if (v === 'B') {
+    $('skrivB').innerHTML = '<span class="skriver vem seat-ada">Ada skriver</span>'
+    setTimeout(() => {
+      $('skrivB').innerHTML = ''
+      rows.push({ who: 'ada', text: 'Di fick två kort för mycket i förra rundan' }); renderRows(); $('lista').scrollTop = 1e6
+      if ('ihop' in $('spalt').dataset) $('prickB').hidden = false
+    }, 1400)
+    return
+  }
+  const ta = v === 'A' ? $('textA') : $('textC')
+  const sk = v === 'A' ? $('skrivA') : $('skrivC')
+  const vem = v === 'A' ? $('vemA') : $('vemC')
+  sk.innerHTML = '<span class="skriver">Ada skriver</span>'
+  let i = 0
+  const tick = setInterval(() => {
+    ta.value += line[i++]
+    if (i >= line.length) {
+      clearInterval(tick); sk.innerHTML = ''
+      vem.innerHTML = '<span class="vem seat-ada">Senast ändrat av Ada · nyss</span>'
+      if (v === 'A' && $('lada').hidden) $('prickA').hidden = false
+    }
+  }, 35)
+})
+
+$('tom').addEventListener('click', () => { tom = !tom; reset(); show() })
+document.querySelectorAll('.vaxlare button').forEach((b) => b.addEventListener('click', () => { v = b.dataset.v; show() }))
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  const all = ['A', 'B', 'C']
+  if (e.key === 'ArrowRight') { v = all[(all.indexOf(v) + 1) % 3]; show() }
+  if (e.key === 'ArrowLeft') { v = all[(all.indexOf(v) + 2) % 3]; show() }
+})
+addEventListener('resize', fit)
+
+felt(); reset(); show()
+</script>
+</body>
+</html>
