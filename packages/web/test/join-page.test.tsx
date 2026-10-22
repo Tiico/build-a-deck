@@ -44,7 +44,7 @@ describe('JoinPage', () => {
     render(<JoinPage />)
     const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
     expect(field.value).toBe(code)
-    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut. Fråga värden efter den nya.')
     expect(screen.queryByText(/avslutat|slut/)).toBeNull()
     expect(document.querySelector('[data-seat]')).toBeNull()
     host.close()
@@ -203,7 +203,7 @@ describe('coming back to the picker after leaving (#31)', () => {
     history.replaceState(null, '', `/join?code=${roomOf(id).code}&left=1&server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
     await screen.findByRole('button', { name: /Sätt dig/ })
-    expect(screen.getByText(/Din plats är ledig och handen ligger tillbaka i leken\./)).toBeTruthy()
+    expect(screen.getByText(/Din plats är ledig och dina kort ligger i leken\./)).toBeTruthy()
     expect(document.querySelector('[data-seat="A"]')!.getAttribute('aria-pressed')).toBe('true')
   })
 
@@ -228,11 +228,11 @@ describe('a code that does not resolve (DRIFT §9)', () => {
     // The focus is in the field, which carries the code and is described by why it led nowhere.
     await waitFor(() => expect(document.activeElement).toBe(field))
     expect(field.value).toBe('ZZZZZZ')
-    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.'))
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut. Fråga värden efter den nya.')
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut. Fråga värden efter den nya.'))
     expect(document.querySelector('.byd-code-says[role="alert"]')).toBeNull()
     // Choosing a seat again at the same code leads back to this very page (#555 A-14).
-    expect(screen.queryByRole('link', { name: 'Välj plats igen' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Välj plats' })).toBeNull()
   })
 })
 
@@ -246,7 +246,7 @@ describe('the picker to a screen reader (#555)', () => {
     const heading = screen.getByRole('heading', { level: 1 })
     expect(heading.textContent).toMatch(/^Rum [A-Z0-9]{6}$/)
     expect(main.contains(heading)).toBe(true)
-    const seats = screen.getByRole('group', { name: 'Platser vid bordet' })
+    const seats = screen.getByRole('group', { name: 'Platser' })
     expect(main.contains(seats)).toBe(true)
     expect(within(seats).getAllByRole('button').map((b) => b.getAttribute('data-seat'))).toEqual(['A', 'B'])
   })

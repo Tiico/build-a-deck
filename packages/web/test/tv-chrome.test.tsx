@@ -48,13 +48,13 @@ describe('the table screen’s own help (L32, #305)', () => {
         <div />
       </TvChrome>,
     )
-    const ask = screen.getByRole('button', { name: 'Hjälp om att ansluta' })
-    expect(screen.queryByRole('dialog', { name: 'Hjälp om att ansluta' })).toBeNull()
+    const ask = screen.getByRole('button', { name: 'Hjälp om att gå med' })
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om att gå med' })).toBeNull()
     fireEvent.pointerEnter(ask)
-    expect(screen.queryByRole('dialog', { name: 'Hjälp om att ansluta' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om att gå med' })).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'Hjälp om att ansluta' })).textContent).toMatch(/rumskoden/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om att gå med' })).textContent).toMatch(/rumskoden/i)
     // The code itself is what the room reads from across it, and it stays where it stands.
     expect(screen.getByText('KX7P')).toBeTruthy()
   })
@@ -68,7 +68,7 @@ describe('the table screen’s own help (L32, #305)', () => {
         <div />
       </TvChrome>,
     )
-    expect(screen.queryByRole('button', { name: 'Hjälp om att ansluta' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Hjälp om att gå med' })).toBeNull()
   })
 })
 
@@ -83,7 +83,7 @@ describe('the table screen after the end', () => {
     )
     expect(screen.queryByText('KX7P')).toBeNull()
     expect(screen.queryByRole('img', { name: /example\.test\/join/ })).toBeNull()
-    expect(screen.queryByText('öppna på telefonen')).toBeNull()
+    expect(screen.queryByText('Öppna på telefonen')).toBeNull()
     expect(screen.getByText('Bordet är avslutat')).toBeTruthy()
   })
 
@@ -95,10 +95,10 @@ describe('the table screen after the end', () => {
       </TvChrome>
     )
     const { rerender } = render(at(false))
-    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att ansluta' }))
-    await screen.findByRole('dialog', { name: 'Hjälp om att ansluta' })
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att gå med' }))
+    await screen.findByRole('dialog', { name: 'Hjälp om att gå med' })
     rerender(at(true))
-    expect(screen.queryByRole('dialog', { name: 'Hjälp om att ansluta' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om att gå med' })).toBeNull()
   })
 })
 
@@ -126,7 +126,7 @@ describe('the observer is never invisible (C8)', () => {
         <div />
       </TvChrome>,
     )
-    expect(screen.getByText(/Eva/).closest('[data-observers]')!.textContent).toMatch(/ser allt/)
+    expect(screen.getByText(/Eva/).closest('[data-observers]')!.textContent).toMatch(/ser alla kort/)
   })
 })
 
@@ -183,7 +183,7 @@ describe('the inspection panel (C)', () => {
         <div />
       </TvChrome>,
     )
-    const panel = () => screen.getByRole('region', { name: /inspektion/i })
+    const panel = () => screen.getByRole('region', { name: /^kortet$/i })
     expect(panel().textContent).toMatch(/peka på ett kort/)
 
     const card = snapshot.components.find((c) => c.id === faceUp)!
@@ -214,7 +214,7 @@ describe('the inspection panel fills itself (K8, C)', () => {
     const { view, log, faceUp } = buildScene()
     const snapshot = view(null)
     const lines = log.map(projectActivity)
-    const panel = () => screen.getByRole('region', { name: /inspektion/i })
+    const panel = () => screen.getByRole('region', { name: /^kortet$/i })
 
     const { rerender } = render(
       <TvChrome view={snapshot} activity={lines} roomCode="KX7P">
@@ -246,7 +246,7 @@ describe('the inspection panel fills itself (K8, C)', () => {
         <div />
       </TvChrome>,
     )
-    expect(screen.getByRole('region', { name: /inspektion/i }).textContent).toMatch(/peka på ett kort/)
+    expect(screen.getByRole('region', { name: /^kortet$/i }).textContent).toMatch(/peka på ett kort/)
   })
 })
 
@@ -259,17 +259,17 @@ describe('the feed before anything has happened (UX-16)', () => {
         <div />
       </TvChrome>,
     )
-    const said = screen.getByText(/Inget hänt ännu/)
-    expect(said.textContent).toBe('Inget hänt ännu. Det som spelas vid bordet hamnar här.')
+    const said = screen.getByText(/Inga drag ännu/)
+    expect(said.textContent).toBe('Inga drag ännu.')
     // Under the heading it belongs to, not floating somewhere else on the screen.
-    expect(said.closest('.byd-tv-feed')!.querySelector('h2')!.textContent).toBe('Senast')
+    expect(said.closest('.byd-tv-feed')!.querySelector('h2')!.textContent).toBe('Senaste dragen')
 
     rerender(
       <TvChrome view={snapshot} activity={log.map(projectActivity)} roomCode="KX7P">
         <div />
       </TvChrome>,
     )
-    expect(screen.queryByText(/Inget hänt ännu/)).toBeNull()
+    expect(screen.queryByText(/Inga drag ännu/)).toBeNull()
     expect(within(screen.getByRole('list', { name: /senast/i })).getAllByRole('listitem').length).toBeGreaterThan(0)
   })
 })

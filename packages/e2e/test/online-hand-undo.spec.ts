@@ -93,7 +93,7 @@ test.describe('a card lifted out of the hand on /online (#484)', () => {
     await expect(page.locator('[data-aimed]')).toHaveCount(0)
     // In the dark beside the table: back into the hand, said, and the ghost is the hand's card again.
     await page.mouse.move(12, WINDOW.height / 2, { steps: 6 })
-    await expect(page.getByText('Tillbaka i handen')).toBeVisible()
+    await expect(page.getByText('Tillbaka till handen')).toBeVisible()
     await expect(page.locator('.byd-seat-band')).toHaveCount(0)
     expect(Math.round((await ghost.boundingBox())!.width)).toBe(Math.round(bigGhost))
     await page.keyboard.press('Escape')

@@ -140,7 +140,7 @@ test.describe('the phone fetches the phone and not the whole app (#760)', () => 
     const hand = /\/assets\/PlayerPage-[^/]+\.js$/
     await page.route(hand, (route) => route.abort('internetdisconnected'))
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'We cannot reach the table' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'No contact with the table' })).toBeVisible()
     await page.unroute(hand)
     await page.getByRole('button', { name: 'Try again' }).click()
     await expect(page.locator('[data-page="player"]')).toBeVisible()

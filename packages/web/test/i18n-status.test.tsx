@@ -30,17 +30,17 @@ describe('the nine states in the reader\'s own language (A4)', () => {
         <NotFoundPage />
       </Language>,
     )
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('We cannot find what you asked for')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Page not found')
     // The control: a query that matches nothing passes trivially, so the Swedish sentence is
     // asserted to be gone rather than merely unlooked-for.
-    expect(document.body.textContent).not.toMatch(/hittar|Länken/)
+    expect(document.body.textContent).not.toMatch(/finns inte|Länken/)
     unmount()
     render(
       <Language lang="sv">
         <NotFoundPage />
       </Language>,
     )
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Vi hittar inte det du sökte')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sidan finns inte')
   })
 
   // Every one of the nine, in each of the four voices, with what a reader actually reads: the
@@ -72,7 +72,7 @@ describe('the nine states in the reader\'s own language (A4)', () => {
     expect(refusalText('session has ended')).toBe('Bordet är avslutat och tar inte emot fler drag.')
     expect(refusalText('validated undo.self but no target', english)).toMatch(/^The table did not/)
     expect(refusal('an observer can only flag', 'phone', english).text).toMatch(/observer/i)
-    expect(refusal('an observer can only flag', 'phone', english).heading).toBe('The move did not get through')
+    expect(refusal('an observer can only flag', 'phone', english).heading).toBe('The move could not be made')
   })
 
   // The sentence is one thing; getting it to the control that asked is another. A refusal that
@@ -105,8 +105,8 @@ describe('the nine states in the reader\'s own language (A4)', () => {
         <StatusNotice notice={notice} surface="card" asOf="19:04" countdown={{ seconds: 3, attempt: 2, attempts: 5 }} />
       </Language>,
     )
-    expect(screen.getByText('What you see is from 19:04 and may have changed since.')).toBeTruthy()
-    expect(screen.getByText(/Trying again in 3 s · attempt 2 of 5/)).toBeTruthy()
+    expect(screen.getByText('What you see is from 19:04 and may have changed.')).toBeTruthy()
+    expect(screen.getByText(/Trying again in 3 s \(attempt 2 of 5\)/)).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Det du ser|försök/)
   })
 
@@ -114,11 +114,11 @@ describe('the nine states in the reader\'s own language (A4)', () => {
   // Swedish however well the state is written. Every route that can reach one without a table
   // behind it is opened here with nothing in its address.
   it.each([
-    ['/table', () => <TablePage />, 'No link to a table'],
+    ['/table', () => <TablePage />, 'No table in the link'],
     // A guest's routes say it in the guest's words (#485): the host's «start a new table» is not hers.
-    ['/observe', () => <ObserverPage />, 'The table is not there'],
-    ['/online', () => <OnlinePage />, 'The table is not there'],
-    ['/play', () => <PlayerPage />, 'The table is not there'],
+    ['/observe', () => <ObserverPage />, 'Table not found'],
+    ['/online', () => <OnlinePage />, 'Table not found'],
+    ['/play', () => <PlayerPage />, 'Table not found'],
     // Without a code `/join` asks for one (#675), in the reader's language.
     ['/join', () => <JoinPage />, 'Join a table'],
   ])('opens %s with nothing in its address and says so in English', (path, page, heading) => {
@@ -155,8 +155,8 @@ describe('the nine states in the reader\'s own language (A4)', () => {
         <Connecting />
       </Language>,
     )
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Getting you connected…')
-    expect(screen.getByText('We are looking up your table.')).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Connecting…')
+    expect(screen.getByText('Connecting to your table.')).toBeTruthy()
   })
 
   // A tab is a place too. It is the one surface a reader finds their way back by without
@@ -174,7 +174,7 @@ describe('the nine states in the reader\'s own language (A4)', () => {
       </Language>,
     )
     expect(document.title).toBe('Your hand · Room 4KJ2 · Deckster')
-    expect(documentTitle('editor', { state: 'missing' }, english)).toBe('The game is not there · Deckster')
+    expect(documentTitle('editor', { state: 'missing' }, english)).toBe('Game not found · Deckster')
     expect(documentTitle('editor', { state: 'missing' })).toBe('Spelet finns inte · Deckster')
   })
 })

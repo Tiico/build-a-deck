@@ -96,7 +96,7 @@ describe('PlayerPage', () => {
     expect(box()).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'Hjälp om handen' })).textContent).toMatch(/tryck på ett kort för att läsa det/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om handen' })).textContent).toMatch(/tryck på ett kort för att läsa och välja det/i)
     // What the surface itself says stays on the surface: the box is not where the hint went.
     expect(screen.getByText(/Dina kort/)).toBeTruthy()
 
@@ -117,14 +117,14 @@ describe('PlayerPage', () => {
     await table.synced(1)
 
     expect(screen.queryByText(/Välj → läs → spela/)).toBeNull()
-    expect(screen.getByText(/Tom hand/)).toBeTruthy()
+    expect(screen.getByText(/Du har inga kort/)).toBeTruthy()
 
     await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
     expect(screen.queryByText('Tryck för att läsa · håll för att välja flera')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om handen' }))
     expect((await screen.findByRole('dialog', { name: 'Hjälp om handen' })).textContent).toContain('Håll för att välja flera.')
-    expect(screen.queryByText(/Tom hand/)).toBeNull()
+    expect(screen.queryByText(/Du har inga kort/)).toBeNull()
     table.close()
   })
 
@@ -387,7 +387,7 @@ describe('undo and rewind on the phone (B, C)', () => {
     // first, names the move and who decides, and «Avbryt» sends nothing.
     fireEvent.click(await screen.findByRole('button', { name: /Ångra/ }))
     const ask = await screen.findByRole('dialog', { name: 'Senaste draget är inte ditt' })
-    expect(ask.textContent).toContain('Bordet visar hur det såg ut före «Du drog 1 kort från Draghög till din hand», och Bo avgör.')
+    expect(ask.textContent).toContain('Bordet visar hur det såg ut före «Du drog 1 kort från Draghög till din hand». Bo avgör.')
     fireEvent.click(within(ask).getByRole('button', { name: 'Avbryt' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Senaste draget är inte ditt' })).toBeNull())
     expect((await run.store.read(id)).some((l) => l.intent.v === 'rewind.propose')).toBe(false)
@@ -507,7 +507,7 @@ describe('flagging a moment (G3)', () => {
     fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     const said = await screen.findByRole('status')
-    expect(said.textContent).toMatch(/Ögonblicket är flaggat/)
+    expect(said.textContent).toMatch(/Flaggat/)
     // In the page's own flow under the piles, not fixed over the counters (#715, beslut 2026-10-04):
     // the pill at the top hid a counter's name and value while it stood there.
     expect(said.closest('.byd-phone-main')).not.toBeNull()
@@ -526,8 +526,8 @@ describe('ending the session and the survey after it (C9, G3)', () => {
   it('asks first, then locks the log; the survey takes one question at a time and lands on the server, tied to the version', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
     expect(screen.getByText(/Avsluta bordet\?/)).toBeTruthy()
     expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
@@ -565,8 +565,8 @@ describe('saving the session to an account after the survey (G1, #690)', () => {
   it('offers the save only on the thanks, with the way back to this phone in it', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
     await screen.findByText(/Bordet är avslutat/)
     expect(screen.queryByRole('link', { name: 'Spara till ditt konto' })).toBeNull()
@@ -614,11 +614,11 @@ describe('leaving the table (#31)', () => {
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(3))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
-    const sheet = screen.getByRole('dialog', { name: 'På väg ut?' })
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
+    const sheet = screen.getByRole('dialog', { name: 'Lämna bordet?' })
     // Both exits stand in it, each under what it costs; asking is not yet answering.
-    expect(sheet.textContent).toMatch(/Din plats blir ledig och korten i din hand går tillbaka till Draghög\./)
-    expect(sheet.textContent).toMatch(/Tappar du nätet i stället står platsen kvar/)
+    expect(sheet.textContent).toMatch(/Din plats blir ledig och dina kort läggs tillbaka i Draghög\./)
+    expect(sheet.textContent).toMatch(/De andra kan spela vidare/)
     expect((await run.store.read(id)).some((l) => ['seat.release', 'session.end'].includes(l.intent.v))).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
@@ -634,7 +634,7 @@ describe('leaving the table (#31)', () => {
     const id = await createSession(run)
     const went: string[] = []
     await open(id, 'A', 'Ada', { onLeave: (url) => went.push(url) })
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
     await waitFor(() => expect(went).toHaveLength(1))
     const back = new URL(went[0] ?? '', 'http://x')
@@ -649,7 +649,7 @@ describe('leaving the table (#31)', () => {
   it('does not sit straight back down on the seat it just gave up', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada', { onLeave: () => undefined })
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)?.intent.v).toBe('seat.release'))
     // The page is still standing where the browser has not navigated away from it yet, and the
@@ -661,8 +661,8 @@ describe('leaving the table (#31)', () => {
   it('asks its own question before ending the table, so ending is one press further away than it was', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
     expect(screen.getByRole('dialog', { name: 'Avsluta bordet?' })).toBeTruthy()
     expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
@@ -672,10 +672,10 @@ describe('leaving the table (#31)', () => {
   it('hands the focus back to the control that opened it, whichever way the question was answered', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    const out = screen.getByRole('button', { name: 'Ut… ur bordet' })
+    const out = screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' })
     fireEvent.click(out)
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Stanna kvar' }))
-    fireEvent.keyDown(screen.getByRole('dialog', { name: 'På väg ut?' }), { key: 'Escape' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Lämna bordet?' }), { key: 'Escape' })
     await waitFor(() => expect(document.activeElement).toBe(out))
   })
 })
@@ -686,7 +686,7 @@ describe('being kicked (DRIFT §9)', () => {
     await open(id, 'A', 'Ada')
     const kicked = await fetch(`${run.http}/sessions/${id}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${roomOf(id).hostKey}` }, body: JSON.stringify({ seat: 'A' }) })
     expect(kicked.status).toBe(200)
-    expect(await screen.findByText(/Värden tog bort dig från bordet/)).toBeTruthy()
+    expect(await screen.findByText(/Värden tog bort dig/)).toBeTruthy()
     await new Promise((r) => setTimeout(r, 200))
     // A shut door is one of the nine states (#12): the phone says it as `forbidden` and stays
     // there, rather than reconnecting into the same answer.
@@ -699,11 +699,11 @@ describe('being kicked (DRIFT §9)', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     await fetch(`${run.http}/sessions/${id}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${roomOf(id).hostKey}` }, body: JSON.stringify({ seat: 'A' }) })
-    expect(await screen.findByRole('heading', { name: 'Du är inte längre vid bordet' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Du har tagits bort från bordet' })).toBeTruthy()
     const actions = () => [...document.querySelectorAll('[data-status-notice] a, [data-status-notice] button')].map((el) => ({ label: el.textContent, primary: el.hasAttribute('data-primary') }))
     expect(actions()[0]).toEqual({ label: 'Till startsidan', primary: true })
     // The code still opens the room, so the way back is there — as a link, not the first button.
-    await waitFor(() => expect(actions().filter((a) => a.label === 'Välj plats igen')).toEqual([{ label: 'Välj plats igen', primary: false }]))
+    await waitFor(() => expect(actions().filter((a) => a.label === 'Välj plats')).toEqual([{ label: 'Välj plats', primary: false }]))
   })
 })
 
@@ -754,16 +754,16 @@ describe('counters and the area in front of you (C4)', () => {
   it('sets a counter through the tool’s own keys, from a button with a name, and hands the focus back', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     await open(id, 'A', 'Ada')
-    const number = await screen.findByRole('button', { name: 'Liv: 20. Sätt värde' })
+    const number = await screen.findByRole('button', { name: 'Liv: 20. Ange värde' })
     number.focus()
     fireEvent.click(number)
-    const entry = await screen.findByRole('dialog', { name: 'Sätt värde för Liv' })
+    const entry = await screen.findByRole('dialog', { name: 'Ange värde för Liv' })
     fireEvent.click(within(entry).getByRole('button', { name: '7' }))
     fireEvent.click(within(entry).getByRole('button', { name: 'Byt tecken' }))
-    fireEvent.click(within(entry).getByRole('button', { name: 'Sätt värdet' }))
+    fireEvent.click(within(entry).getByRole('button', { name: 'Klar' }))
     await waitFor(() => expect(screen.getByText('-7', { selector: '[data-counter="Liv"] b' })).toBeTruthy())
     expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'setCounter', value: -7 } })
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Liv: -7. Sätt värde' })))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Liv: -7. Ange värde' })))
   })
 
   // The other half of #414. The area in front of a seat is public, so the cards in front of Bo
@@ -801,7 +801,7 @@ describe('counters and the area in front of you (C4)', () => {
     expect(fold2.querySelector('[data-zone-summary="draw"]')).toBeNull()
     expect(fold2.querySelector('[data-zone-summary="discard"]')).toBeNull()
     // Och fliken heter det den visar. «Bordet» var sant innan högarna gick ur den.
-    expect(fold2.querySelector('summary')?.textContent).toBe('Ytorna')
+    expect(fold2.querySelector('summary')?.textContent).toBe('Hela bordet')
     table.close()
   })
 
@@ -1106,7 +1106,7 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     expect(screen.getByRole('button', { name: 'Guld plus' }).closest('[inert]')).not.toBeNull()
     expect(document.querySelector('[data-hand-card]')!.closest('[inert]')).not.toBeNull()
     expect(document.querySelector('.byd-hint')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Ut… ur bordet' }).closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }).closest('[inert]')).not.toBeNull()
     // The survey, every control in it, and the way out of an ended table are not.
     expect(screen.getByRole('heading', { name: 'Bordet är avslutat' }).closest('[inert]')).toBeNull()
     expect(screen.getByRole('button', { name: '4' }).closest('[inert]')).toBeNull()

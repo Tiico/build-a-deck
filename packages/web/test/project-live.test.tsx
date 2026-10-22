@@ -303,9 +303,9 @@ describe('the editor when the line is gone (D3)', () => {
     expect(bar.getAttribute('data-surface')).toBe('bar')
     expect(bar.textContent).toMatch(/Ingen kontakt med servern/)
     expect(bar.textContent).toMatch(/från \d\d:\d\d/)
-    expect(bar.querySelector('button')?.textContent).toBe('Försök nu')
+    expect(bar.querySelector('button')?.textContent).toBe('Försök igen')
     // And when it is back it says so, once, in the model's words.
-    await eventually(() => expect(document.querySelector('[data-status-notice="resumed"]')?.textContent).toMatch(/Sparat och uppkopplat igen/))
+    await eventually(() => expect(document.querySelector('[data-status-notice="resumed"]')?.textContent).toMatch(/Sparat och anslutet igen/))
     await eventually(() => expect(document.querySelector('[data-status-notice]')).toBeNull())
   })
 })

@@ -97,8 +97,8 @@ describe('OnlinePage (C2): both roles in one window', () => {
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
     expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
   })
@@ -114,8 +114,8 @@ describe('OnlinePage (C2): both roles in one window', () => {
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-fan] [data-hand-card]')).toHaveLength(2))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
-    expect(screen.getByRole('dialog', { name: 'På väg ut?' }).textContent).toMatch(/Tappar du nätet i stället står platsen kvar/)
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
+    expect(screen.getByRole('dialog', { name: 'Lämna bordet?' }).textContent).toMatch(/De andra kan spela vidare/)
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'seat.release', seat: 'A' } }))
     await table.synced(3)
@@ -158,7 +158,7 @@ describe('/online on a phone says where the whole table is (C2, #484)', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada', {}, { w: 390, h: 844 })
     const fold = document.querySelector('[data-phone-table]')!
-    expect(fold.textContent).toMatch(/Hela bordet står på TV:n, eller på en skärm som rymmer det\./)
+    expect(fold.textContent).toMatch(/Hela bordet visas på TV:n eller på en större skärm\./)
   })
 })
 

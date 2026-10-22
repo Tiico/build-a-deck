@@ -20,7 +20,7 @@ describe('the way out of a page that does not exist (#475)', () => {
     history.replaceState(null, '', `/finns-inte?server=${encodeURIComponent(run.http)}`)
     render(<NotFoundPage />)
     expect(await screen.findByRole('link', { name: 'Till startsidan' })).toBeTruthy()
-    expect(screen.queryByRole('link', { name: 'Till mina spel' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Mina spel' })).toBeNull()
     // The sentence over the button says the same place the button goes (#728).
     expect(document.body.textContent).not.toMatch(/dina spel/)
     expect(document.body.textContent).toMatch(/gå till startsidan/)
@@ -30,7 +30,7 @@ describe('the way out of a page that does not exist (#475)', () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
     history.replaceState(null, '', `/finns-inte?server=${encodeURIComponent(run.http)}`)
     render(<NotFoundPage />)
-    const home = await screen.findByRole('link', { name: 'Till mina spel' })
+    const home = await screen.findByRole('link', { name: 'Mina spel' })
     expect(home.getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
   })
 })

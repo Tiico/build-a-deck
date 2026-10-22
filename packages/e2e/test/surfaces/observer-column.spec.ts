@@ -104,7 +104,7 @@ for (const device of [SMALL_TV, TV] as Device[]) {
 
       const rest = await read(page)
       // Inte tomt: en överlappsmätning på noll rutor är grön för evigt.
-      expect(rest.boxes.map((b) => b.text)).toEqual(expect.arrayContaining(['Inspektion', 'Platser', 'peka på ett kort', 'Ada']))
+      expect(rest.boxes.map((b) => b.text)).toEqual(expect.arrayContaining(['Kortet', 'Platser', 'peka på ett kort', 'Ada']))
       expect({ at, rest: overlaps(rest.boxes), clipped: rest.clipped, wrapped: rest.wrapped }).toEqual({ at, rest: [], clipped: [], wrapped: [] })
 
       await seats.first().getByRole('button').first().click()

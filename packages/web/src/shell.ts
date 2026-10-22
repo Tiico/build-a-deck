@@ -30,7 +30,7 @@ import type { Voice } from './status/notice.js'
 export const SHELL_RELOAD_AFTER_MS = 20_000
 
 // Which voice each address speaks in, as D5's routes speak: the table's two modes and the screens
-// that watch it say «Dukar bordet…», the hand «Hämtar din hand…», the editor «Öppnar spelet…».
+// that watch it say «Laddar bordet…», the hand «Laddar din hand…», the editor «Laddar spelet…».
 // Every other address — the seat picker, the start page, the wizard, a room code typed as an
 // address — says the app's «Hämtar…». The seat picker is the one place this parts from the app's
 // own voice (`voiceOf` in `App.tsx`): before a seat is chosen there is no hand to fetch.

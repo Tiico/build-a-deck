@@ -11,7 +11,7 @@ describe('the play words (#714)', () => {
   // A pile is called what its designer called it (B5): «Kortlek» on the felt, and not «draghögen»
   // in the sentences around it.
   it('names the pile a hand goes back to by its own name', () => {
-    expect(translate('sv', 'player.hand.empty', { pile: 'Kortlek' })).toBe('Tom hand. Dra ett kort ur Kortlek.')
+    expect(translate('sv', 'player.hand.empty', { pile: 'Kortlek' })).toBe('Du har inga kort. Dra ett kort från Kortlek.')
     expect(translate('sv', 'rewind.ask.body', { pile: 'Kortlek', where: 'före ”x”' })).toBe('Bordet visar hur det såg ut före ”x”. Kortlek blandas om.')
   })
 })

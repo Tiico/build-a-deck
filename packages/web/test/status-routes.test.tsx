@@ -117,7 +117,7 @@ describe('/join when the room does not exist (#675)', () => {
     const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
     expect(field.value).toBe('NOSUCH')
     const said = (await waitFor(() => document.getElementById(field.getAttribute('aria-describedby') ?? '')))?.textContent ?? ''
-    expect(said).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    expect(said).toBe('Koden finns inte eller har gått ut. Fråga värden efter den nya.')
     expect(said).not.toMatch(/unknown|expired|Error/)
   })
 
@@ -128,7 +128,7 @@ describe('/join when the room does not exist (#675)', () => {
 
   it('announces it assertively, because it is an answer to something someone asked for', async () => {
     await open(join, { session: 'no-such-room' })
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.'))
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut. Fråga värden efter den nya.'))
     expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
   })
 })
@@ -139,10 +139,10 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
     await open(live, { session: 's1', url: deaf.url })
     await waitFor(() => expect(noticeState()).toBe('offline'), { timeout: 4000 })
     const panel = notice() as HTMLElement
-    expect(panel.textContent).toMatch(/når inte|kontakt/i)
+    expect(panel.textContent).toMatch(/når inte|kontakt|anslutning/i)
     expect(within(panel).getByRole('button', { name: /försök/i })).toBeTruthy()
     expect(within(panel).getAllByRole('link').length).toBeGreaterThan(0)
-    await waitFor(() => expect(document.title).toBe('Ingen kontakt · Deckster'))
+    await waitFor(() => expect(document.title).toBe('Ingen anslutning · Deckster'))
     expect(deaf.stayedDeaf()).toBe(true)
     await deaf.stop()
   })
@@ -230,7 +230,7 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
     await open(live, { session: id, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.stop()
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/kontakt|frånkopplad|bröts/i))
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/kontakt|frånkopplad|bröts|anslutning/i))
   })
 })
 
@@ -244,7 +244,7 @@ describe.each(GUESTS)('$path for a guest who cannot get in', (live) => {
   const primaries = () => [...(notice()?.querySelectorAll('[data-primary]') ?? [])].map((el) => el.textContent)
   // The same door, named for who goes through it: a seat is picked again, an observer goes in again
   // with «Bara titta» (#560 P-24).
-  const back = live.route === 'observe' ? 'Gå in igen' : 'Välj plats igen'
+  const back = live.route === 'observe' ? 'Gå med igen' : 'Välj plats'
 
   it('offers the seat picker as the one way on when the door refuses the token, and never a login', async () => {
     const id = await createSession(run)
@@ -278,11 +278,11 @@ describe('the wait for the next automatic attempt', () => {
     await run.stop()
 
     await waitFor(() => expect(noticeState()).toBe('dropped'))
-    await waitFor(() => expect(notice()!.textContent).toMatch(/Nytt försök om \d s · försök 1 av 1/))
+    await waitFor(() => expect(notice()!.textContent).toMatch(/Försöker igen om \d s \(försök 1 av 1\)/))
     // The one attempt in the plan is made and fails: from here a person decides, and nothing
     // pretends to still be trying.
     await waitFor(() => expect(notice()!.textContent).not.toMatch(/Nytt försök/), { timeout: 4000 })
-    expect(within(notice() as HTMLElement).getByRole('button', { name: /försök nu/i })).toBeTruthy()
+    expect(within(notice() as HTMLElement).getByRole('button', { name: /försök igen/i })).toBeTruthy()
   })
 })
 
@@ -295,9 +295,9 @@ describe('the table screen once its plan is spent', () => {
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.stop()
     await waitFor(() => expect(noticeState()).toBe('dropped'))
-    await waitFor(() => expect(notice()!.textContent).toMatch(/Nytt försök om \d s(?! · försök)/), { timeout: 4000 })
-    expect(notice()!.textContent).not.toMatch(/slutat försöka/)
-    expect(within(notice() as HTMLElement).getByRole('button', { name: /försök nu/i })).toBeTruthy()
+    await waitFor(() => expect(notice()!.textContent).toMatch(/Försöker igen om \d s(?! \()/), { timeout: 4000 })
+    expect(notice()!.textContent).not.toMatch(/inte längre automatiskt/)
+    expect(within(notice() as HTMLElement).getByRole('button', { name: /försök igen/i })).toBeTruthy()
     await run.restart()
     await waitFor(() => expect(noticeState()).not.toBe('dropped'), { timeout: 5000 })
   })

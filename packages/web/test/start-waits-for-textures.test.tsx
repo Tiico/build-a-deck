@@ -53,15 +53,15 @@ const line = () => document.querySelector<HTMLElement>('.byd-tv-render')
 describe('starten väntar på korten (#765)', () => {
   it('säger i TV:ns spalt hur långt korten kommit och håller «Starta spelet» släckt tills alla är klara', async () => {
     await tvOfANewTable(60_000)
-    await waitFor(() => expect(line()?.textContent).toBe('Korten ritas0 av 4'))
+    await waitFor(() => expect(line()?.textContent).toBe('Laddar kort0 av 4'))
     expect(line()!.getAttribute('role')).toBe('status')
     expect(tile()!.disabled).toBe(true)
-    expect(tile()!.textContent).toBe('Starta speletkorten ritas · 0/4')
-    expect(tile()!.getAttribute('title')).toBe('Går inte att starta just nu: korten ritas fortfarande')
+    expect(tile()!.textContent).toBe('Starta speletladdar kort · 0/4')
+    expect(tile()!.getAttribute('title')).toBe('Kan inte starta än: korten laddas fortfarande')
 
     expect(await run.completeRenders(1)).toBe(1)
-    await waitFor(() => expect(line()?.textContent).toBe('Korten ritas1 av 4'))
-    expect(tile()!.textContent).toBe('Starta speletkorten ritas · 1/4')
+    await waitFor(() => expect(line()?.textContent).toBe('Laddar kort1 av 4'))
+    expect(tile()!.textContent).toBe('Starta speletladdar kort · 1/4')
 
     expect(await run.completeRenders()).toBe(3)
     await waitFor(() => expect(line()).toBeNull())
@@ -71,8 +71,8 @@ describe('starten väntar på korten (#765)', () => {
 
   it('blir «Starta ändå» när kön står still (#88), och den startar', async () => {
     await tvOfANewTable(300)
-    await waitFor(() => expect(tile()?.textContent).toBe('Starta ändåkorten står stilla · 0/4'))
-    expect(line()!.textContent).toBe('Korten står stilla0 av 4')
+    await waitFor(() => expect(tile()?.textContent).toBe('Starta ändåladdningen har stannat · 0/4'))
+    expect(line()!.textContent).toBe('Laddningen har stannat0 av 4')
     expect(tile()!.disabled).toBe(false)
     fireEvent.click(tile()!)
     // Något har hänt vid bordet: brickan lämnar filten och står som «Starta om» (#482).
@@ -84,7 +84,7 @@ describe('starten väntar på korten (#765)', () => {
     const made = await newTable()
     history.replaceState(null, '', `/online?session=${made.id}&seat=A&name=Ada&token=${await admit(run, made.id, 'A', 'Ada')}&code=${made.code}&server=${encodeURIComponent(run.url)}`)
     render(<OnlinePage timing={{ ...DEFAULT_TIMING, renderStalledAfterMs: 60_000 }} />)
-    await waitFor(() => expect(tile()?.textContent).toBe('Starta speletkorten ritas · 0/4'))
+    await waitFor(() => expect(tile()?.textContent).toBe('Starta speletladdar kort · 0/4'))
     expect(tile()!.disabled).toBe(true)
     expect(await run.completeRenders()).toBe(4)
     await waitFor(() => expect(tile()!.disabled).toBe(false))

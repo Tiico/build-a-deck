@@ -13,7 +13,7 @@ import { expect, test } from '../support/test.js'
 
 const SMALL_PHONE: Device = { name: 'small phone', viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true }
 const LAPTOP: Device = SMALL_TV
-const SAYS = 'Koden finns inte eller har gått ut — fråga värden efter den nya.'
+const SAYS = 'Koden finns inte eller har gått ut. Fråga värden efter den nya.'
 
 /** A table started from a game, so that the game has a name to say (L5). */
 async function namedTable(request: APIRequestContext, name: string): Promise<Table> {

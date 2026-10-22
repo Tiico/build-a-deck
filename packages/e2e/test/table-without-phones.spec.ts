@@ -100,10 +100,10 @@ test.describe('bordsläget utan telefoner (#682)', () => {
     await expect(page.locator('[data-table-last]')).toHaveText(/^Senast: Bordet .* · nyss$/)
     expect(await covers(page, '[data-table-last]'), 'hörnets rad täcker ingenting').toEqual([])
 
-    // Ångra bordets senaste drag: menyn säger vilket, och trycket tar tillbaka det.
-    const more = page.getByRole('button', { name: 'Mer för bordet' })
+    // Ångra senaste draget: menyn säger vilket, och trycket tar tillbaka det.
+    const more = page.getByRole('button', { name: 'Mer' })
     await more.click()
-    const undo = page.getByRole('menuitem', { name: /Ångra bordets senaste drag/ })
+    const undo = page.getByRole('menuitem', { name: /Ångra senaste draget/ })
     await expect(undo).toContainText('Bordet')
     await expect(undo).toBeFocused()
     await undo.click()
@@ -115,7 +115,7 @@ test.describe('bordsläget utan telefoner (#682)', () => {
     await more.click()
     await page.getByRole('menuitem', { name: /Avsluta bordet…/ }).click()
     const ask = page.getByRole('alertdialog', { name: 'Avsluta bordet?' })
-    await expect(ask.getByRole('button', { name: 'Inte än' })).toBeFocused()
+    await expect(ask.getByRole('button', { name: 'Avbryt' })).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(ask).toHaveCount(0)
     await expect(more).toBeFocused()
@@ -135,7 +135,7 @@ test.describe('bordsläget utan telefoner (#682)', () => {
     const { page } = await open({ name: 'laptop-1024', viewport: { width: 1024, height: 768 } }, `${table.tableUrl}&lang=sv`, { facesReady: true })
     await page.locator('[data-table-start]').click()
     await expect(page.getByRole('button', { name: 'Starta om' })).toBeVisible()
-    const more = page.getByRole('button', { name: 'Mer för bordet' })
+    const more = page.getByRole('button', { name: 'Mer' })
     await more.click()
     const menu = (await page.getByRole('menu').boundingBox())!
     const button = (await more.boundingBox())!
@@ -144,7 +144,7 @@ test.describe('bordsläget utan telefoner (#682)', () => {
     // Linsens «+» med sin ram, som är bredare än «?» den står över.
     const lens = page.locator('.byd-camera-controls')
     await expect(lens).toBeVisible()
-    for (const [name, other] of [['Snabbkommandon', page.getByRole('button', { name: /Snabbkommandon/ })], ['linsens «+»', lens], ['Starta om', page.getByRole('button', { name: 'Starta om' })]] as const) {
+    for (const [name, other] of [['Kortkommandon', page.getByRole('button', { name: /Kortkommandon/ })], ['linsens «+»', lens], ['Starta om', page.getByRole('button', { name: 'Starta om' })]] as const) {
       const b = (await other.first().boundingBox())!
       const apart = b.x >= menu.x + menu.width || b.x + b.width <= menu.x || b.y >= menu.y + menu.height || b.y + b.height <= menu.y
       expect(apart, `${name} står fri från menyn`).toBe(true)
@@ -180,11 +180,11 @@ for (const surface of ['bordsläget', '/online'] as const) {
       const deck = page.locator('.byd-pile[data-zone="draw"]')
       await expect(deck).toHaveAttribute('data-count', '12')
       const top = centre((await deck.locator('.byd-pile-top').boundingBox())!)
-      await stopwatch(page, 'pointerup', '[data-felt-refusal]', 'Det går inte att lägga korten där.')
+      await stopwatch(page, 'pointerup', '[data-felt-refusal]', 'Korten kan inte läggas där.')
       await drag(page, top, { x: top.x + 40, y: top.y - 200 })
       expect(await seenAfter(page), 'avvisningen syns inom 300 ms').toBeLessThan(300)
       expect(refused).toBe(1)
-      await expect(page.locator('[data-status-live="assertive"]')).toHaveText('Det går inte att lägga korten där.')
+      await expect(page.locator('[data-status-live="assertive"]')).toHaveText('Korten kan inte läggas där.')
       await expect(deck).toHaveAttribute('data-count', '12')
       await expect(page.locator('.byd-card[data-component]')).toHaveCount(0)
       // Och inget «Bordet har inte svarat» fyra sekunder senare: bordet svarade.

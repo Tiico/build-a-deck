@@ -41,7 +41,7 @@ describe('the code row on the start page (#675)', () => {
     fireEvent.change(field, { target: { value: 'hej' } })
     expect(screen.queryByRole('alert')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Gå in' }))
-    expect(screen.getByRole('alert').textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    expect(screen.getByRole('alert').textContent).toBe('Koden finns inte eller har gått ut. Fråga värden efter den nya.')
     expect(went).toEqual([])
   })
 })

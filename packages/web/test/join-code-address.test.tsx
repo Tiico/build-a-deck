@@ -17,7 +17,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 
-const SAYS = 'Koden finns inte eller har gått ut — fråga värden efter den nya.'
+const SAYS = 'Koden finns inte eller har gått ut. Fråga värden efter den nya.'
 const at = (path: string) => history.replaceState(null, '', `${path}${path.includes('?') ? '&' : '?'}server=${encodeURIComponent(run.url)}`)
 
 describe('the room’s own address (#675)', () => {
@@ -35,7 +35,7 @@ describe('the room’s own address (#675)', () => {
     at(`/${roomOf(id).code}`)
     render(<JoinPage />)
     expect(await screen.findByRole('heading', { level: 1, name: "Sal's Saloon" })).toBeTruthy()
-    expect(screen.getByText('Du är på väg in i')).toBeTruthy()
+    expect(screen.getByText('Du går med i')).toBeTruthy()
     expect(screen.getByText(`Rum ${roomOf(id).code} · Plats A vald`)).toBeTruthy()
   })
 })
@@ -45,7 +45,7 @@ describe('/join without a code (#675)', () => {
     at('/join')
     const went: string[] = []
     render(<JoinPage onOpen={(url) => went.push(url)} />)
-    expect(await screen.findByRole('heading', { level: 1, name: 'Gå in vid ett bord' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Gå med i ett bord' })).toBeTruthy()
     const field = screen.getByLabelText('Rumskod')
     fireEvent.change(field, { target: { value: ' k7mq-2x ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Fortsätt' }))

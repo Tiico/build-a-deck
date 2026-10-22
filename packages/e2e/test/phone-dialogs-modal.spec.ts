@@ -21,7 +21,7 @@ test('the number lock and the reader are modal and keep Tab inside, and the help
   const page = ada.page
   await expect(page.locator('.byd-strip[data-hand] [data-hand-card]')).toHaveCount(3)
 
-  await page.getByRole('button', { name: /Set value|Sätt värde/ }).first().click()
+  await page.getByRole('button', { name: /Set value|Ange värde/ }).first().click()
   const lock = page.locator('.byd-set-value')
   await expect(lock).toHaveAttribute('aria-modal', 'true')
   await staysIn(page, lock, 20)

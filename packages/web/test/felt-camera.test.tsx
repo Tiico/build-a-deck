@@ -84,8 +84,8 @@ async function manualMarkup(main: { w: number; h: number }, fold: boolean): Prom
   const { container, unmount } = render(tv(<TableRenderer view={scene} mode="tv" camera="follow" size={main} glideMs={0} onAct={() => undefined} />))
   try {
     fireEvent.wheel(document.querySelector('.byd-table-frame')!, { deltaY: -900, clientX: main.w / 2, clientY: main.h / 2 })
-    if (fold) fireEvent.click(await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' }))
-    else await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' })
+    if (fold) fireEvent.click(await screen.findByRole('button', { name: 'Dölj kamerakontrollerna' }))
+    else await screen.findByRole('button', { name: 'Dölj kamerakontrollerna' })
     return container.innerHTML
   } finally {
     unmount()

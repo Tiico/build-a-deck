@@ -3,7 +3,7 @@ import { SMALL_TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
 // A seat whose link no longer holds, on /online (#484 fynd 8, D5). It was told what the table
-// screen is told — «Bordet hör till ett annat konto», with a login and «Till mina spel» — which is
+// screen is told — «Bordet tillhör ett annat konto», with a login and «Till mina spel» — which is
 // the host's door and no way back to a seat. /online is a seat like /play, so it is told what a
 // phone is told, and the first way out is the room's own picker, found by the code in the address.
 test.describe('a seat refused on /online (#484)', () => {
@@ -17,8 +17,8 @@ test.describe('a seat refused on /online (#484)', () => {
     url.searchParams.set('code', table.code)
     url.searchParams.set('lang', 'sv')
     const { page } = await open(SMALL_TV, `${url.pathname}${url.search}`)
-    await expect(page.getByRole('heading', { name: 'Din plats är inte längre din' })).toBeVisible()
-    const again = page.getByRole('link', { name: 'Välj plats igen' })
+    await expect(page.getByRole('heading', { name: 'Platsen är upptagen' })).toBeVisible()
+    const again = page.getByRole('link', { name: 'Välj plats' })
     await expect(again).toBeVisible()
     expect(await again.getAttribute('href')).toBe(`/join?code=${table.code}`)
   })

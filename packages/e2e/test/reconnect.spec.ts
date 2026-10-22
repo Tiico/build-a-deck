@@ -72,8 +72,8 @@ test('the TV goes on trying after its plan, and comes back when the network does
   await tv.line.cut()
   await expect(tv.page.locator('.byd-status-stale')).toBeVisible({ timeout: 30_000 })
   // Past the plan's four tries (0,5 + 2 + 4 + 8 s): still counting down, and not «slutat försöka».
-  await expect(tv.page.getByText(/Nytt försök om \d+ s$/)).toBeVisible({ timeout: 40_000 })
-  await expect(tv.page.getByText(/slutat försöka/)).toHaveCount(0)
+  await expect(tv.page.getByText(/Försöker igen om \d+ s$/)).toBeVisible({ timeout: 40_000 })
+  await expect(tv.page.getByText(/inte längre automatiskt/)).toHaveCount(0)
   tv.line.restore()
   await tv.page.evaluate("window.dispatchEvent(new Event('online'))")
   await expect(tv.page.locator('.byd-status-stale')).toHaveCount(0, { timeout: 10_000 })

@@ -30,7 +30,7 @@ describe('a texture the online fan is still waiting for (#10)', () => {
 
     expect(document.querySelector('[data-hand-card="c1"] [data-texture="pending"]')!.textContent).toContain('dragon')
     const hidden = document.querySelector('[data-hand-card="c2"] [data-texture="pending"]')!
-    expect(hidden.textContent).toMatch(/[Rr]enderas/)
+    expect(hidden.textContent).toMatch(/[Ll]addar/)
     expect(hidden.textContent).not.toMatch(/dragon/)
   })
 })

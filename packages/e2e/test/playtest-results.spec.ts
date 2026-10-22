@@ -41,7 +41,7 @@ test('the designer reads the phones’ answers and the flag in the Resultat view
   const sheet = ada.page.getByRole('dialog')
   await sheet.getByRole('textbox').fill('The dragon is too strong')
   await sheet.getByRole('button', { name: 'Flag' }).click()
-  await expect(ada.page.getByRole('status').filter({ hasText: 'The moment is flagged' }).first()).toBeVisible()
+  await expect(ada.page.getByRole('status').filter({ hasText: 'Flagged' }).first()).toBeVisible()
 
   await dealer.send([{ v: 'session.end' } as never])
   await answer(ada.page, ['4', '3', '2'], 'A shorter round')

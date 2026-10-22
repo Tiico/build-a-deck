@@ -252,8 +252,8 @@ describe('the camera (C5)', () => {
     const frame = document.querySelector('.byd-table-frame')!
     fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' }))
-    const back = await screen.findByRole('button', { name: 'Ta fram kamerakontrollerna' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Dölj kamerakontrollerna' }))
+    const back = await screen.findByRole('button', { name: 'Visa kamerakontrollerna' })
     expect(back.getAttribute('aria-expanded')).toBe('false')
     // Fälld bär den fortfarande vägen hem, och inget annat är borta.
     expect(screen.getByRole('button', { name: 'Visa hela bordet' })).toBeTruthy()
@@ -261,7 +261,7 @@ describe('the camera (C5)', () => {
     expect(screen.queryByRole('button', { name: 'Zooma ut' })).toBeNull()
 
     fireEvent.click(back)
-    const fold = await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' })
+    const fold = await screen.findByRole('button', { name: 'Dölj kamerakontrollerna' })
     expect(fold.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByRole('button', { name: 'Zooma in' })).toBeTruthy()
   })
@@ -346,14 +346,14 @@ describe('the camera (C5)', () => {
     fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
     const zoomed = (document.querySelector('[data-table]') as HTMLElement).style.width
     expect(zoomed).not.toBe(following)
-    fireEvent.click(await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' }))
-    await screen.findByRole('button', { name: 'Ta fram kamerakontrollerna' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Dölj kamerakontrollerna' }))
+    await screen.findByRole('button', { name: 'Visa kamerakontrollerna' })
     first.unmount()
 
     // Samma skärm igen: bilden och den undanfällda klungan står som de lämnades.
     render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} onAct={onAct} remember="s1" />)
     expect((document.querySelector('[data-table]') as HTMLElement).style.width).toBe(zoomed)
-    expect(await screen.findByRole('button', { name: 'Ta fram kamerakontrollerna' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Visa kamerakontrollerna' })).toBeTruthy()
     // Och ingenting av det har gått till bordet: en vy är ingen händelse.
     expect(onAct).not.toHaveBeenCalled()
   })
@@ -604,7 +604,7 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerDown(label, client(100, 100))
     fireEvent.pointerUp(label, client(100, 100))
     const ring = document.querySelector('[data-radial]')!
-    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta', 'Titta'])
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela i två', 'Vänd översta', 'Titta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
     expect(document.querySelector('[data-radial]')).toBeNull()
   })
@@ -620,7 +620,7 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerDown(label, client(-100, 100))
     fireEvent.pointerUp(label, client(-100, 100))
     let ring = document.querySelector('[data-radial]')!
-    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta'])
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela i två', 'Vänd översta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
 
     const card = document.querySelector(`[data-component="${faceDown}"]`)!
@@ -660,7 +660,7 @@ describe('direct manipulation (K1, K2, C)', () => {
     const label = document.querySelector('[data-zone="discard"] .byd-pile-count')!
     fireEvent.pointerDown(label, client(100, 100))
     fireEvent.pointerUp(label, client(100, 100))
-    fireEvent.click(screen.getByRole('button', { name: 'Dela på hälften' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dela i två' }))
 
     const split = sent.flat()[0] as { v: string; x: number }
     const discard = snapshot.zones.find((z) => z.id === 'discard')!
@@ -927,7 +927,7 @@ describe('textures that are not ready yet', () => {
     expect(up.textContent).toMatch(state.components[faceUp]!.cardRef)
 
     const down = document.querySelector(`[data-component="${faceDown}"] [data-texture="pending"]`)!
-    expect(down.textContent).toMatch(/[Rr]enderas/)
+    expect(down.textContent).toMatch(/[Ll]addar/)
     expect(down.textContent).not.toMatch(state.components[faceDown]!.cardRef)
   })
 })
@@ -1205,8 +1205,8 @@ describe('the gap between the drop and the patch (K1)', () => {
     fireEvent.pointerMove(placed(), client(300, 150))
     fireEvent.pointerUp(placed(), client(300, 150))
     await act(async () => undefined)
-    expect(document.querySelector('[data-felt-refusal]')?.textContent).toBe('Det går inte att lägga korten där.')
-    expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Det går inte att lägga korten där.')
+    expect(document.querySelector('[data-felt-refusal]')?.textContent).toBe('Korten kan inte läggas där.')
+    expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Korten kan inte läggas där.')
     expect({ left: placed().style.left, top: placed().style.top }).toEqual({ left: '100px', top: '50px' })
     // It gives way after four seconds (D5, #682): faded, and then gone, and nothing more is said.
     act(() => vi.advanceTimersByTime(4000))
@@ -1440,7 +1440,7 @@ describe('startbrickan på filten (#451)', () => {
     // Den säger vad starten gör, byggt av stegen (#482 fynd 2): bara designerns startåtgärder
     // körs igen, och det som ligger ute ligger kvar. Förut lovade den att korten gick tillbaka.
     expect(fraga.textContent).toContain('«Blanda» på Dragh')
-    expect(fraga.textContent).toMatch(/körs igen\. Korten som ligger ute ligger kvar där de är\./)
+    expect(fraga.textContent).toMatch(/körs igen\. Kort som redan ligger ute ligger kvar\./)
 
     // Och svaret som ingenting kostar är det frågan öppnar på.
     expect(document.activeElement?.textContent).toBe('Avbryt')
@@ -1521,7 +1521,7 @@ describe('startbrickan på filten (#451)', () => {
     render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={() => undefined} />)
     const b = tile() as HTMLButtonElement
     expect(b.disabled).toBe(true)
-    expect(b.title).toBe('Går inte att starta just nu: ingen sitter vid bordet än')
+    expect(b.title).toBe('Kan inte starta än: ingen sitter vid bordet än')
   })
 
   // Och när skälet är ett steg som frågar efter ett tal (#454). «Så många jag säger» frågar den
@@ -1542,6 +1542,6 @@ describe('startbrickan på filten (#451)', () => {
     render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={() => undefined} />)
     const b = tile() as HTMLButtonElement
     expect(b.disabled).toBe(true)
-    expect(b.title).toBe('Går inte att starta just nu: ett steg frågar efter ett tal')
+    expect(b.title).toBe('Kan inte starta än: ett steg behöver ett tal')
   })
 })

@@ -28,7 +28,7 @@ test.describe('Ångra after another seat’s move on /online (#747)', () => {
     await page.getByRole('button', { name: /Ångra/ }).click()
     const ask = page.getByRole('dialog', { name: 'Senaste draget är inte ditt' })
     await expect(ask).toBeVisible()
-    await expect(ask).toContainText('och Bo avgör.')
+    await expect(ask).toContainText('. Bo avgör.')
     await expect(ask.getByRole('button', { name: 'Avbryt' })).toBeFocused()
 
     await ask.getByRole('button', { name: 'Föreslå att spola tillbaka' }).click()

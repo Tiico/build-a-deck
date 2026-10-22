@@ -63,7 +63,7 @@ describe('ClaimPage', () => {
     render(<ClaimPage onNavigate={() => undefined} />)
     await waitFor(() => expect(document.querySelector('[data-status-notice="missing"]')?.textContent).toMatch(/gäller inte/))
     expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
-    expect(screen.getByRole('link', { name: 'Till mina spel' }).getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
+    expect(screen.getByRole('link', { name: 'Mina spel' }).getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
   })
 
   it('says a link without a token is not one, with a way to the start page for whoever is reading', async () => {

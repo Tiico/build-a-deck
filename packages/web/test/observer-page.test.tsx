@@ -54,7 +54,7 @@ describe('the observer’s own help (L32, #305)', () => {
     expect(box()).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'Hjälp om observatörsläget' })).textContent).toMatch(/aldrig röra ett kort/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om observatörsläget' })).textContent).toMatch(/inte röra korten/i)
     expect(screen.getByText(/Du är observatör/)).toBeTruthy()
 
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
@@ -74,7 +74,7 @@ describe('the observer inspects too (C8, K8)', () => {
     await screen.findByText(/Du är observatör/)
     await waitFor(() => expect(document.querySelector('.byd-card')).toBeTruthy())
 
-    const panel = screen.getByRole('region', { name: /inspektion/i })
+    const panel = screen.getByRole('region', { name: /^kortet$/i })
     expect(panel.textContent).toMatch(/peka på ett kort/)
     fireEvent.pointerEnter(document.querySelector('.byd-card')!)
     // She sees every face (C8), so the card names itself rather than saying it is hidden.
@@ -147,7 +147,7 @@ describe('the observer screen is not a screen to join from (K12)', () => {
     render(<ObserverPage />)
     await screen.findByText(/Du är observatör/)
     expect(screen.queryByText(id)).toBeNull()
-    expect(screen.queryByText(/öppna på telefonen/)).toBeNull()
+    expect(screen.queryByText(/Öppna på telefonen/)).toBeNull()
   })
 })
 
@@ -165,12 +165,12 @@ describe('the observer summons what is not the table (#6)', () => {
     const handle = document.querySelector('.byd-observer-handle')!
     // What she sees is said on the handle as well (#485, fynd 12): on a phone the column with her
     // own sentence is shut, and visibility is never something only the drawer says.
-    expect(handle.textContent).toMatch(/Eva tittar på · ser allt/)
+    expect(handle.textContent).toMatch(/Eva tittar på och ser alla kort/)
     expect(handle.querySelector('.byd-observer-flag')).toBeTruthy()
     // Nothing floats over the table any more: the banner is a row of the layout.
     expect(document.querySelector('.byd-observer-banner')).toBeNull()
 
-    const more = screen.getByRole('button', { name: /Senast och platser/ })
+    const more = screen.getByRole('button', { name: /Senaste dragen och platser/ })
     expect(document.querySelector('[data-page="observe"]')!.getAttribute('data-drawer')).toBe('shut')
     expect(more.getAttribute('aria-expanded')).toBe('false')
     await user.click(more)
@@ -179,9 +179,9 @@ describe('the observer summons what is not the table (#6)', () => {
     // What it opened is the column the table already talks in, with her own sentence at the top
     // of it — one copy of each, not a second one summoned beside the first.
     const aside = document.querySelector('[data-tv] > aside')!
-    expect(aside.querySelector('.byd-observer-note')!.textContent).toMatch(/du ser allas händer/)
+    expect(aside.querySelector('.byd-observer-note')!.textContent).toMatch(/ser allas kort/)
     expect(document.querySelectorAll('.byd-observer-note')).toHaveLength(1)
-    expect(screen.getByRole('region', { name: /inspektion/i })).toBeTruthy()
+    expect(screen.getByRole('region', { name: /^kortet$/i })).toBeTruthy()
 
     // A drawer, not a dialog: it takes no focus, traps none, and closes the way it opened.
     expect(document.activeElement).toBe(more)
@@ -198,12 +198,12 @@ describe('the observer has no seat to leave (#31)', () => {
     history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     expect(await screen.findByText(/Du är observatör/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Ut…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Lämna…' })).toBeNull()
     expect(screen.queryByText(/Lämna bordet/)).toBeNull()
     // The question mark is one of them since #305: the help is a control she keeps, not a way out.
     // The rows of «Platser» open lists to read (#551) and are no way out either. This table has no
     // rulebook, so there is no «Regler» either (#709): that knob comes only with a book.
-    expect(screen.getAllByRole('button').filter((b) => !b.closest('.byd-tv-seats')).map((b) => b.textContent)).toEqual(['?', expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
+    expect(screen.getAllByRole('button').filter((b) => !b.closest('.byd-tv-seats')).map((b) => b.textContent)).toEqual(['?', expect.stringMatching(/Senaste dragen och platser/), expect.stringMatching(/Flagga/)])
   })
 })
 
@@ -219,13 +219,13 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     render(<ObserverPage />)
     await screen.findByText(/Du är observatör/)
     await waitFor(() => expect(document.querySelector('.byd-card')).toBeTruthy())
-    expect(screen.getByRole('button', { name: /Senast och platser/ }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('button', { name: /Senaste dragen och platser/ }).closest('[inert]')).toBeNull()
 
     await table.send({ v: 'session.end' })
     await screen.findByText(/Bordet är avslutat/)
     expect(document.querySelector('.byd-card')!.closest('[inert]')).not.toBeNull()
-    expect(screen.getByRole('button', { name: /Senast och platser/ }).closest('[inert]')).not.toBeNull()
-    expect(screen.getByRole('region', { name: /inspektion/i }).closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /Senaste dragen och platser/ }).closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('region', { name: /^kortet$/i }).closest('[inert]')).not.toBeNull()
     expect(screen.getByRole('heading', { name: 'Bordet är avslutat' }).closest('[inert]')).toBeNull()
     expect(screen.getByRole('button', { name: '4' }).closest('[inert]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Nästa' }).closest('[inert]')).toBeNull()
@@ -311,7 +311,7 @@ describe('the observer is shown and told what the table is', () => {
     render(<ObserverPage />)
     fireEvent.click(await screen.findByRole('button', { name: /Flagga/ }))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
-    expect((await screen.findByText('Ögonblicket är flaggat')).closest('[role="status"]')).not.toBeNull()
+    expect((await screen.findByText('Flaggat')).closest('[role="status"]')).not.toBeNull()
   })
 })
 
@@ -324,8 +324,8 @@ describe('an observer whose link does not hold (#560 P-24)', () => {
     history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=not-a-token&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     const heading = await screen.findByRole('heading', { name: /länk/i })
-    expect(heading.textContent).toBe('Länken till observatören gäller inte längre')
-    expect(document.body.textContent).not.toMatch(/Din plats|Välj plats igen|platsen/)
+    expect(heading.textContent).toBe('Observatörslänken gäller inte längre')
+    expect(document.body.textContent).not.toMatch(/Din plats|Välj plats|platsen är/)
     expect(screen.getByText(/be testledaren om en ny länk/i)).toBeTruthy()
   })
 })

@@ -103,9 +103,10 @@ Skiljetecken: punkt i hela meningar, också i live-regioner, där en uppläsning
 Ingen punkt i fragment: knappar, etiketter, flikar, rubriker.
 Det går att låsa: en knapps eller etiketts text slutar inte på punkt.
 
-Rösterna i `status/notice.ts` är avsiktliga och plattas inte ut: bordet dukar, telefonen hämtar en hand, editorn öppnar spelet.
-Det är samma tillstånd sagt i den yta läsaren står i, och det är hela poängen med dem.
-Vad ordlistan tar bort är de oavsiktliga varianterna — fyra olika sätt att säga att något laddas.
+Rösterna i `status/notice.ts` var avsiktliga och plattades inte ut: bordet dukade, telefonen hämtade en hand, editorn öppnade spelet.
+*Reviderat 2026-10-22 (L73, #1101, beställarens beslut):* rösterna plattas ut.
+Ett tillstånd sägs likadant på alla ytor, med ytans substantiv — bordet, handen, spelet — och samma verb: «Laddar bordet…», «Laddar din hand…», «Laddar spelet…».
+Vad ordlistan tar bort är fortfarande de oavsiktliga varianterna — fyra olika sätt att säga att något laddas — och sedan L73 också bilderna.
 
 Utanför ordlistan står spelets egna ord: fältnamn, symbolnamn, zonnamn, kortnamn, och allt en formgivare skrivit.
 Gränsen är A4:s egen: verktyget talar läsarens språk, spelet sitt eget.
@@ -7463,3 +7464,47 @@ Hela katalogen och varje symbol verktyget laddar upp klarar vakten oförändrade
 En inläst fil visas som filen och som den form kortet kommer att måla, och rutan säger rakt ut att det vita i filen blir färg och inte ett hål.
 Namnet föreslås ur filnamnet, och en upphovsrad sparas bara när både licens och upphovsperson är ifyllda, som för ett uppladdat typsnitt (L27).
 En fil som inte går att använda sägs med designerns ord och inte med vaktens engelska (A4).
+
+### L73. Verktyget talar vanlig svenska, och sekundära kontroller bär ikoner (prototypat och beslutat 2026-10-22, #1101)
+
+Beställaren 2026-10-22: «Texterna vi använder genom tjänsten när vi kör på svenska är väldigt överdrivna och ibland svåra att förstå, håll lite mer normal svensk ton och föredra ikoner över text inline i applikationen.»
+
+Katalogen (`packages/web/src/i18n/sv.*.ts`, 2 613 nycklar) talade med en egen, litterär röst, och A4:s ordlista skyddade den uttryckligen.
+Inventeringen: 276 strängar var två meningar eller längre, 35 bar tankstreck och 31 sade «vi» om verktyget.
+Tillstånd sades som bilder («Dukar bordet…», «Bordet dröjer», «Hämtar din hand…», «Korten står stilla»), besked med inversioner och egna formuleringar («Din plats är inte längre din», «Ögonblicket är flaggat», «Ge spelet en flygande start», «På väg ut?»), och verktyget hade egna namn på saker en läsare inte har ord för (Ögon, hoppspalten, kronan, etapper, Bordets lyft, «2 inne»).
+De flesta kontroller bar ett ord där andra verktyg bär en ikon: «Ångra», «Flagga» och «Ut…» i telefonens rad, «Senast:» i bordslägets hörn, «Profil · logga ut · Importera spel…» på Mina spel, «← Föregående / Nästa →» i guiden.
+
+Prototypen ([`docs/ux-audits/2026-10-22-svensk-ton/prototyper/index.html`](https://github.com/Tiico/build-a-deck/blob/a3f54dcba5bb0a30c2d8dc477f3a9a438cd63c55/docs/ux-audits/2026-10-22-svensk-ton/prototyper/index.html), `?v=A|B|C|D`) visade fyra varianter över sju skärmar med katalogens egna strängar: A i dag, B vanlig svenska med samma kontroller, C vanlig svenska och ikoner på sekundära kontroller, D ikoner även på primärknapparna.
+Teckenmängden sjönk 12–32 % per skärm i B.
+Beställaren valde **C**, att verktygets egna namn byts mot vanliga ord, och att spelarens ytor skrivs om först.
+
+**Vanlig svenska.**
+Tillstånd sägs som andra verktyg säger dem: Laddar…, Ansluter…, Ingen anslutning, Försök igen, Det gick inte att spara.
+Inga bilder för tillstånd.
+En mening per besked, högst två; följder och förklaringar står bakom L32:s frågetecken, inte i beskedet.
+Verktyget säger inte «vi» om sig självt: «Det gick inte att spara», inte «Vi kunde inte spara».
+«Vi» står kvar bara där någon faktiskt gjort något, som «Vi har skickat en länk».
+Rak ordföljd och vanliga ord: «Platsen är upptagen», inte «Din plats är inte längre din».
+Punkt eller komma i ett besked, aldrig tankstreck.
+Knappar är verb i vanliga ord — Avbryt, Stäng, Spara, Ta bort, Lämna, Nästa — och ellips bara där en dialog följer.
+Rösterna per yta (A4) ersätts av ett substantiv per yta med samma verb: «Laddar bordet…», «Laddar din hand…», «Laddar spelet…».
+Engelskan skrivs om där den ärvt den svenska bilden («Setting the table…», «Your seat is no longer yours») och hålls till samma form.
+
+**Verktygets egna namn byts mot vanliga ord.**
+Ögon, hoppspalten, kronan, etapper, Bordets lyft och «n inne» är beslutade namn, och varje byte skrivs in här under den post som gav namnet, när bytet görs.
+
+**Ikoner på sekundära kontroller.**
+Återkommande kontroller vars verb känns igen utan att läsas ritas som ikoner i #1083:s hand: ångra, flagga, lämna, mer, stäng, föregående och nästa, profil, logga ut, importera, visa alla, senast.
+Ordet står kvar som tooltip och tillgängligt namn på varje ikon, på varje första handling (L13) och i varje meny.
+D valdes bort: en ny spelare vet inte vad ▶ gör, och L13:s första handling tappar sitt ord.
+Ikoner som inte finns bland #1083:s tjugo ritas i samma hand: lämna, importera, exportera, profil, klocka, rutnät, kopiera, papperskorg.
+
+**Grinden.** `packages/web/test/catalog-tone.test.ts` läser katalogen del för del: inget tankstreck, högst två meningar, inget «vi», och ingen av de bilder som gick ut, på svenska och engelska.
+Delarna läggs till i grinden i takt med att de skrivs om.
+
+**Byggt 2026-10-22 (#1101), led 1: spelarens ytor.**
+`sv.status.ts` och `sv.play.ts` är omskrivna nyckel för nyckel, och `en.status.ts` och `en.play.ts` mot dem: tillstånden, telefonen, TV:n, bordsläget, observatören och Gå med.
+«Ut…» heter «Lämna…», «På väg ut?» «Lämna bordet?», «Ögonblicket är flaggat» «Flaggat», «Dukar bordet…» «Laddar bordet…», «Korten ritas» «Laddar kort», «Mer för bordet» «Mer», «Inte än» och «Stanna kvar» «Avbryt».
+Ett bord som avslutats räknar drag, flaggor och spelare, inte «flaggade ögonblick» och «vid bordet».
+Telefonens rad vid 375 px: «Lämna…» är 30 px bredare än «Ut…», så L62:s ikonläge för Ångra och Flagga gäller från 375 px och inte bara under; vid 390 står orden kvar.
+Kvar till led 2 är editorn och kontot, och till led 3 ikonerna, ovanpå #1083.

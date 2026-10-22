@@ -31,6 +31,6 @@ test('ends the tables of a deleted game on every screen, and its code seats nobo
   await expect(newcomer.page.getByRole('button', { name: /^Ada/ })).toHaveCount(0)
   // And the owner's screen, opened again, says the game is gone — not that it is someone else's.
   await owner.page.goto(tv)
-  await expect(owner.page.getByRole('heading', { name: 'The game was deleted' })).toBeVisible()
+  await expect(owner.page.getByRole('heading', { name: 'The game has been deleted' })).toBeVisible()
   await expect(owner.page.getByText(/another account/)).toHaveCount(0)
 })
