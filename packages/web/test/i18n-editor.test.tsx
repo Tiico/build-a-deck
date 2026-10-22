@@ -6,6 +6,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { layerPick } from './layers.js'
+import { answerStart } from './start-answer.js'
 
 let run: Running
 beforeEach(async () => {
@@ -183,6 +184,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
   it('names the filled action for the job it will do, in English', async () => {
     await openEditor()
     fireEvent.click(screen.getByRole('button', { name: 'Start a table' }))
+    await answerStart('en')
     await screen.findByText(/New table started/)
     await run.completeRenders()
     expect(await screen.findByRole('button', { name: 'Update the table' })).toBeTruthy()

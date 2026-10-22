@@ -13,6 +13,7 @@ import { layerPick } from './layers.js'
 import { ProjectClient, setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 import { EditSocket } from './setup.js'
 import { SavedHeldBack } from './saved-held-back.js'
+import { answerStart } from './start-answer.js'
 
 let run: Running
 beforeEach(async () => {
@@ -264,6 +265,7 @@ describe('a column the actor refuses because a colleague named it first (#993)',
   it('is still said once a table started behind it is running', async () => {
     const line = await behindAda(async (user) => {
       await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+      await answerStart()
     })
     await screen.findByText(REFUSED)
     line.release()

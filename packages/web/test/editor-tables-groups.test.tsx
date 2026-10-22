@@ -12,6 +12,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 // Every table this list connects to, as it connects: the address carries the session, so what a
 // row costs the server is readable from the outside rather than from inside the component.
@@ -292,6 +293,7 @@ describe('a table started from the header (#704)', () => {
     await openTables()
     await screen.findByText(/Inget bord ännu/)
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     const id = await onlyTable()
     await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
     expect(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }).getAttribute('aria-expanded')).toBe('true')
@@ -304,6 +306,7 @@ describe('a table started from the header (#704)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     const id = await onlyTable()
     await screen.findByText(/Nytt bord startat på/)
     await user.click(screen.getByRole('tab', { name: 'Bord' }))

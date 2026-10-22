@@ -9,6 +9,7 @@ import { buildBlankProject } from '../src/wizard/build.js'
 import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
 import { layerNames, layerPick, layerRow, layerRows } from './layers.js'
 import { openAllSections } from './sections.js'
+import { answerStart } from './start-answer.js'
 
 // The panel folds (#478); this file is about the controls in it, so every section stands open.
 beforeEach(openAllSections)
@@ -149,6 +150,7 @@ describe('the header says which of its two jobs the filled button will do (#417)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     await screen.findByText(/nytt bord startat/i)
     await run.completeRenders()
     expect(await screen.findByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
@@ -180,6 +182,7 @@ describe('the header says which of its two jobs the filled button will do (#417)
     })
     try {
       fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+      await answerStart()
       const busy = await screen.findByRole('button', { name: 'Startar bordet…' })
       expect(busy.getAttribute('aria-busy')).toBe('true')
       expect(busy.getAttribute('aria-disabled')).toBe('true')

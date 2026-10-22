@@ -1,0 +1,20 @@
+/* «Hur sitter ni?» (L75, #1130): the window a game's name is changed in, a little wider, with the
+   two answers side by side as cards. The chosen card carries the editor's own mark — the blue
+   line the editor draws round what is being looked at — and the radio itself stays the browser's
+   own, so what is chosen is said twice: by the dot and by the line. */
+.byd-game-dialog.byd-start { width: min(640px, 100%); }
+.byd-start h2 { margin-bottom: 4px; }
+.byd-start form > .byd-muted { margin: 0 0 16px; }
+.byd-start-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.byd-start-choice { position: relative; display: grid; grid-template-columns: auto 1fr; align-content: start; column-gap: 8px; row-gap: 4px; padding: 16px; border: 1px solid #3b4358; border-radius: 12px; background: #11141c; cursor: pointer; }
+.byd-start-choice:hover { border-color: #6f7a90; }
+.byd-start-choice:has(input:checked) { border-color: var(--byd-editor-primary-mark); box-shadow: inset 0 0 0 1px var(--byd-editor-primary-mark); }
+.byd-start-choice:has(input:focus-visible) { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-start-choice input { margin: 0; width: 16px; height: 16px; align-self: center; accent-color: var(--byd-editor-primary-mark); }
+.byd-start-choice b { font-size: 15px; }
+.byd-start-choice span { grid-column: 2; color: #9aa3b8; font-size: 14px; line-height: 1.45; }
+.byd-start .byd-game-field { margin-top: 16px; }
+.byd-start .byd-game-dialog-actions { margin-top: 24px; }
+@media (max-width: 560px) {
+  .byd-start-choices { grid-template-columns: 1fr; }
+}

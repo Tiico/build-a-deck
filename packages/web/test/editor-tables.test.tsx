@@ -8,6 +8,7 @@ import { DEFAULT_EDITOR_TIMING, EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { asObserver, asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 let run: Running
 beforeEach(async () => {
@@ -399,6 +400,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     // One condition at a time, as `startFromEditor` below waits (#848): the table stands and its
     // cards are rendering — which is the start having reached the server, since it queues the
     // renders before it answers — and only then are they finished, and only then is the link
@@ -655,6 +657,7 @@ describe('«Uppdatera bordet» answers the press before the table does (#315)', 
     // A table to update. The first press starts one — and says so (#417); the update is the press
     // after it.
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     await screen.findByText(/laddar kort 0\/4/)
     await screen.findByRole('button', { name: 'Uppdatera bordet' })
 
@@ -706,6 +709,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     render(<EditorPage timing={timing} />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     return (await screen.findByText(/laddar kort 0\/4/)).closest('[role="status"]') as HTMLElement
   }
 

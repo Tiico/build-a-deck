@@ -143,6 +143,21 @@ export const svEditor = {
   'editor.table.rendering': 'laddar kort {done}/{total}',
   'editor.table.stalled': 'laddningen har stannat. Korten på bordet visar sin text tills den fortsätter',
   'editor.table.open': 'öppna bordet',
+  // Starta frågar hur ni sitter (L75, #1130): en gång, innan bordet finns. Svaret väljer vilken
+  // skärm värden får, inte ett läge för bordet (C2).
+  'editor.start.title': 'Starta ett bord',
+  'editor.start.how': 'Hur sitter ni?',
+  'editor.start.screen': 'Runt en skärm',
+  'editor.start.screen.body': 'Bordet på en TV eller stor skärm, var och en har handen i sin telefon.',
+  'editor.start.computer': 'Var och en vid sin dator',
+  'editor.start.computer.body': 'Alla ser bordet och sin egen hand i sitt eget fönster. Du skickar en länk.',
+  'editor.start.name': 'Ditt namn vid bordet',
+  'editor.start.go.screen': 'Starta',
+  'editor.start.go.computer': 'Starta och sätt dig',
+  // Ett nytt fönster som webbläsaren stoppade: vägen dit står kvar som en länk i bandet.
+  'editor.start.blocked': 'Webbläsaren öppnade inget nytt fönster:',
+  'editor.start.blocked.screen': 'Öppna bordets skärm',
+  'editor.start.blocked.computer': 'Sätt dig vid bordet',
   'editor.table.failed.one': '{n} kort kunde inte laddas',
   'editor.table.failed.other': '{n} kort kunde inte laddas',
   // Efter start (#523): kort vars minsta text en telefon inte kan visa i golvets storlek (K26).

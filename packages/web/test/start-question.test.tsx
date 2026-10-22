@@ -22,7 +22,7 @@ afterEach(async () => {
 // Fliken som öppnas i klicket, innan bordet finns, och får sin adress när starten har svarat. En
 // webbläsare som stoppar nya fönster svarar `null`.
 type Tab = { location: { href: string }; opener: unknown; closed: boolean; close(): void }
-function opening(blocked = false): { tab: Tab; open: ReturnType<typeof vi.spyOn> } {
+function opening(blocked = false) {
   const tab: Tab = {
     location: { href: 'about:blank' },
     opener: window,
