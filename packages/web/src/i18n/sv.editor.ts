@@ -546,6 +546,8 @@ export const svEditor = {
   'table.compare.noCards': 'Inga kort skiljer sig — skillnaden ligger i {where}.',
   'table.compare.template': 'Öppna Mall',
   'table.compare.and': ' och ',
+  // Växeln i bandet (#1104): namnet står still och trycket bär tillståndet (aria-pressed).
+  'table.compare.only': 'Bara ändrade kort',
   'table.proposal': 'AI-hjälpens förslag',
   'table.proposal.hide': 'Dölj förslaget',
   'table.search': 'Sök i alla fält',

@@ -310,6 +310,10 @@ Speltestet 2026-10-02 fann tre stavningar av samma begrepp: «rev 3» i huvudet,
 Slutskärmen talar spelets språk: «Bordet stannade på version 1. Enkäten finns hos varje spelare.», drag räknas som fysiska drag och inte loggrader, och de som satt kallas «vid bordet».
 `version-word.test.ts` håller formerna och läser båda katalogerna efter «rev» med platshållarnas namn bortskalade.
 
+Uppdaterat 2026-10-22 (#1104): bandet «Jämför med version N» har en växel «Bara ändrade kort».
+Trehundra rader hållna mot en version där fem rörde sig är trehundra rader att rulla förbi; intryckt visar tabellen bara de ändrade, de tillagda och de borttagna, och sökningen och kolumnfiltren är villkor ovanpå.
+Växeln erbjuds inte när inget kort skiljer sig (#702-bandet står kvar som det är), släpper raderna när jämförelsen avslutas eller byts, och gäller AI-hjälpens förslag i tabellen (#1003) på samma sätt, eftersom det är samma jämförelse.
+
 ### B5. Logikgräns: affordances plus deklarativ setup (fråga 5)
 
 Systemet kan manipulera — blanda, dra, vända, rotera, stapla, räkna, slå — och känner till spelets struktur: namngivna zoner, per-spelare-områden, startuppställning, drag- och kasthögar.
