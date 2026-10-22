@@ -164,7 +164,7 @@ const outside = (frame: Box, boxes: readonly Box[]) => boxes.filter((b) => b.x <
 describe('the ring of verbs (K14)', () => {
   const verbs = [
     { label: 'Vänd', run: () => undefined },
-    { label: 'Vrid', run: () => undefined },
+    { label: 'Rotera', run: () => undefined },
     { label: 'Titta', run: () => undefined },
     { label: 'Avslöja', run: () => undefined },
   ]

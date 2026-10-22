@@ -89,7 +89,7 @@ describe('Enter opens the address panel (#1, #2, variant C)', () => {
     const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
     expect(within(panel).getByRole('heading', { name: 'Gör' })).toBeTruthy()
     expect(within(panel).getByRole('button', { name: /^Vänd/ })).toBeTruthy()
-    expect(within(panel).getByRole('button', { name: /^Vrid 90°/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /^Rotera 90°/ })).toBeTruthy()
     expect(within(panel).getByRole('button', { name: /^Titta/ })).toBeTruthy()
     // The card is face-up already, so there is nothing left to reveal.
     expect(within(panel).getByRole('button', { name: /^Avslöja/ })).toHaveProperty('disabled', true)
@@ -129,7 +129,7 @@ describe('the panel says the verbs the pointer already says, and no new one', ()
     await user.click((await open(/^dragon, kort i Spelyta/)).getByRole('button', { name: /^Vänd/ }))
     await waitFor(async () => expect(await lastIntents(id, 1)).toEqual([{ v: 'flip', component: 'c0', face: 'back' }]))
 
-    await user.click((await open(/^knight, kort i Spelyta/)).getByRole('button', { name: /^Vrid 90°/ }))
+    await user.click((await open(/^knight, kort i Spelyta/)).getByRole('button', { name: /^Rotera 90°/ }))
     await waitFor(async () => expect(await lastIntents(id, 1)).toEqual([{ v: 'rotate', component: 'c1', rot: 90 }]))
 
     // The card that is face down again can be revealed; the one still face up cannot.
@@ -314,7 +314,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     // The panel is answered where it is read: the first verb takes the focus on the way in.
     await waitFor(() => expect(panel.getAllByRole('button')[0]).toBe(document.activeElement))
     expect(panel.getByRole('heading', { name: 'Gör' })).toBeTruthy()
-    for (const verb of ['Vänd', 'Vrid 90°', 'Avslöja', 'Titta']) expect(panel.queryByRole('button', { name: new RegExp(`^${verb}`) })).toBeNull()
+    for (const verb of ['Vänd', 'Rotera 90°', 'Avslöja', 'Titta']) expect(panel.queryByRole('button', { name: new RegExp(`^${verb}`) })).toBeNull()
     expect(panel.getByRole('button', { name: /^−1/ }).textContent).toBe('−1blir 19')
     expect(panel.getByRole('button', { name: /^\+1/ }).textContent).toBe('+1blir 21')
     expect(panel.getByRole('button', { name: /^Ange värde…/ })).toBeTruthy()
@@ -429,7 +429,7 @@ describe('the ring on a card on the felt offers «Flytta…» (#552)', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /^dragon, kort i Spelyta/ }))
     const ring = document.querySelector('[data-radial]')!
-    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta', 'Flytta…'])
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Rotera', 'Titta', 'Flytta…'])
 
     await user.click(within(ring as HTMLElement).getByRole('button', { name: 'Flytta…' }))
     const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
