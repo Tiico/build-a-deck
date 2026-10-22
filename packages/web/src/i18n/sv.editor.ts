@@ -1661,7 +1661,7 @@ export const svEditor = {
   'tables.loading': 'Laddar bord…',
   // Versionen ett nytt bord låser står här och inte i knappen (L31): en etikett som ska säga
   // både vad som händer och på vilken version slutar med att säga versionen högst.
-  'tables.lead': 'Bord för det här spelet. Ett nytt bord startar från den sparade versionen, version {n}.',
+  'tables.lead': 'Bord för det här spelet. Ett nytt bord startar från sparad version {n}.',
   'tables.help.topic': 'borden',
   'tables.help.life': 'Ett bord finns kvar även om alla kopplar ner. Det avslutas när någon avslutar det, eller automatiskt efter ett dygn.',
   // Meningen citerar knappen i huvudet som den står just nu (#417). Den hette förut "Uppdatera
