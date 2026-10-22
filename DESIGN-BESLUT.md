@@ -7577,7 +7577,6 @@ Foten (#757), som inbjudan aldrig haft, står sist som i inloggningsmejlet.
 Spelets namn och avsändarens adress är vad någon har skrivit, så de skrivs som text och aldrig som markup.
 `invite-mail.test.ts` håller banden, språket, handen, länken och foten, och `members.test.ts` håller att servern skickar det.
 
-Inbjudningsmejlet (#477) går fortfarande som text och får samma form i ett eget issue.
 
 ### L73. Verktyget talar vanlig svenska, och sekundära kontroller bär ikoner (prototypat och beslutat 2026-10-22, #1101)
 
