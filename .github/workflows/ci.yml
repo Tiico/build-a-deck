@@ -21,7 +21,8 @@ jobs:
   # The check is split into jobs that run side by side (#1125). As one job it took 35–40 minutes:
   # the e2e suite 19, the web suite 10, and up to 8 waiting on apt for Playwright's packages, all
   # in a row on a public repository whose runners cost nothing. `check` at the bottom is still the
-  # one answer a pull request gets.
+  # one answer a pull request gets. Playwright's own image was tried and measured with other fonts
+  # than the runner's (ci-browser.test.ts), so every job stays on the runner.
   static:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -37,12 +38,6 @@ jobs:
   unit:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # Playwright's own image carries Chromium and every package it needs. Installing them on the
-    # runner fetched 26 MB of apt at whatever the mirror felt like, up to eight minutes of it. The
-    # tag is held to the installed Playwright by ci-playwright-image.test.ts.
-    container: &browser
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
-      options: --ipc=host
     services: &postgres
       postgres:
         image: postgres:17-alpine
@@ -50,17 +45,19 @@ jobs:
           POSTGRES_DB: byd
           POSTGRES_USER: byd
           POSTGRES_PASSWORD: byd
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -h 127.0.0.1 -U byd -d byd"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
     env: &database
-      # Inside a container job a service is reached by its name, not through a published port.
-      DATABASE_URL: postgres://byd:byd@postgres:5432/byd
+      DATABASE_URL: postgres://byd:byd@127.0.0.1:5432/byd
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
+        with:
+          browser: true
       - run: pnpm -r --workspace-concurrency=1 --filter '!@byd/web' --filter '!@byd/e2e' test
 
   web:
@@ -70,12 +67,13 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
-    container: *browser
     services: *postgres
     env: *database
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
+        with:
+          browser: true
       - run: pnpm --filter @byd/web exec vitest run --shard=${{ matrix.shard }}/3
 
   e2e:
@@ -85,12 +83,13 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
-    container: *browser
     services: *postgres
     env: *database
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
+        with:
+          browser: true
       # Each shard builds and stands up its own stack; the build is seconds, the suite is minutes.
       - run: pnpm --filter @byd/e2e exec playwright test --shard=${{ matrix.shard }}/4
       # The config keeps a trace, a video and a screenshot of what failed, and nothing else. They
