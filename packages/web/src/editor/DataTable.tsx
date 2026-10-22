@@ -1728,7 +1728,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               {drawn.map((f) =>
                 imageFields.includes(f) && assetBase ? (
                   <td key={f} className="byd-data-image" data-col={f}>
-                    {/* Bildrutan (L72): the tile is the whole control, and the library behind it
+                    {/* Bildrutan (L75): the tile is the whole control, and the library behind it
                         takes a file and clears the card. A library picture dragged here is reused
                         without a new upload (E1); a file dropped here is uploaded into this cell
                         in the same step as the picture (#742). */}
@@ -2082,7 +2082,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 prose into a column the template draws as a picture. So the value takes the shape
                 of the column: a place to drop one of the deck's images, and nothing to type. */}
             {bulkIsImage && assetBase ? (
-              // The same Bildruta the cells hold (L72). Every way in hands the picture to the row —
+              // The same Bildruta the cells hold (L75). Every way in hands the picture to the row —
               // a drop, a file, and the library's «Välj bilden» alike (#1099) — and the row's own
               // button is the one press that writes, so the thumbnail is what says which image the
               // button is about.
@@ -2177,10 +2177,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             setLibrary(null)
           }}
           onClose={() => setLibrary(null)}
-          // The way to a file from a cell (L72): into the library under its name (#742), and onto
+          // The way to a file from a cell (L75): into the library under its name (#742), and onto
           // the card by the window's own button. Two steps back take the two things done.
           onUpload={onUpload ? (file) => onUpload(file) : undefined}
-          // The way out of a cell's picture (L72), from the window's foot. The marked cards'
+          // The way out of a cell's picture (L75), from the window's foot. The marked cards'
           // window only chooses (#1099) and so has nothing to clear.
           {...(library.kind === 'cell'
             ? {

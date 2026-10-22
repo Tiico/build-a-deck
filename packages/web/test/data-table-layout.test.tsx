@@ -910,12 +910,12 @@ describe("the column door's note on the tool's own columns (#858)", () => {
   }, 60_000)
 })
 
-// A picture cell's own control (#1085, L72). The cell used to hold three — «Välj», «Ladda upp»
+// A picture cell's own control (#1085, L75). The cell used to hold three — «Välj», «Ladda upp»
 // and a × — and the rule for the × matched «Välj» as well, so the library's button was drawn as
 // a bare word with no box, and «Ladda upp» broke over two lines and the column was cut on the
-// broken label. Since L72 the cell holds one control, the tile, drawn at the tap floor in both
+// broken label. Since L75 the cell holds one control, the tile, drawn at the tap floor in both
 // directions as the «Välj» it replaced kept it (#50, #193).
-describe('a picture cell’s tile is the whole control (#1085, L72)', () => {
+describe('a picture cell’s tile is the whole control (#1085, L75)', () => {
   async function pictures(): Promise<Table> {
     const doc = projectDoc()
     doc.rows = doc.rows.map((row) => ({ ...row, fields: { ...row.fields, bild1: '' } }))
