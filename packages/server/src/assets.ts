@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { croppedMotif, type Element, type Motif, type RuleDoc, type Template } from '@byd/template'
 import { ASSET_PREFIX, MemoryObjectStore, assetFromPostgres, assetKey, type ObjectStore } from '@byd/render'
 import type { Sql } from 'postgres'
-import type { Picture } from '@byd/protocol'
+import { svgRefusal, type Picture } from '@byd/protocol'
 import type { ProjectRow } from './projects.js'
 
 // The project's images (E1, DRIFT §4): uploaded once, named by the hash of their bytes, and
@@ -31,6 +31,19 @@ export type AssetStore = {
 
 export { ASSET_PREFIX, assetKey }
 export const assetHash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
+
+// Why a drawing's bytes may not be stored (#1087), asked by every door into the store: an upload
+// and an export brought back. They are read as UTF-8 and nothing else, strictly: bytes that are not
+// UTF-8 would be read by the browser as some other text than the one `svgRefusal` was asked about.
+export function svgBytesRefusal(bytes: Uint8Array): string | null {
+  let text: string
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    return 'it is not UTF-8 text'
+  }
+  return svgRefusal(text)
+}
 // A measurement as it arrives from outside (E1). Nothing here can check it against the bytes
 // without decoding them, so what is checked is that it could be of a picture at all: whole
 // pixels, a picture with extent, and a border that leaves some of the picture. An implausible

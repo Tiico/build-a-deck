@@ -309,6 +309,7 @@ export const enAccount = {
   'home.import.problem.asset-hash': 'The file {file} is not the file its name says.',
   'home.import.problem.asset-too-big': 'The file {file} is larger than an upload may be.',
   'home.import.problem.asset-format': 'The file {file} is not {type}.',
+  'home.import.problem.asset-unsafe': 'The drawing {file} holds something that is not safe to show.',
   'home.import.problem.asset-unknown': 'The game uses a picture or typeface that is neither in the zip nor here ({hash}).',
   'home.import.problem.unplayable': 'The latest version cannot be played: {message}',
   'home.import.problem.too-big': 'The file is larger than an import may be.',

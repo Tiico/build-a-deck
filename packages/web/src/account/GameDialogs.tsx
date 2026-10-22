@@ -155,7 +155,7 @@ type Importing ={ state: 'idle' } | { state: 'reading'; name: string } | { state
 
 // A refusal said in the reader's words (A4): the server names what is wrong, the catalogue says it.
 // A code this page does not know yet — a newer server — is said as a refusal with its code.
-const PROBLEMS = ['network', 'not-zip', 'no-manifest', 'not-json', 'not-export', 'newer-format', 'manifest', 'history', 'current-rev', 'asset-missing-file', 'asset-hash', 'asset-too-big', 'asset-format', 'asset-unknown', 'unplayable', 'too-big', 'refused'] as const
+const PROBLEMS = ['network', 'not-zip', 'no-manifest', 'not-json', 'not-export', 'newer-format', 'manifest', 'history', 'current-rev', 'asset-missing-file', 'asset-hash', 'asset-too-big', 'asset-format', 'asset-unsafe', 'asset-unknown', 'unplayable', 'too-big', 'refused'] as const
 const problemKey = (code: string): Key | null => ((PROBLEMS as readonly string[]).includes(code) ? (`home.import.problem.${code}` as Key) : null)
 
 export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { http: string; onClose(): void; onImported(id: string): Promise<void>; onOpen(id: string): void; nameOf(id: string): string | undefined }) {

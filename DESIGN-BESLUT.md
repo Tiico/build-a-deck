@@ -7450,3 +7450,16 @@ Kategorierna (Resurser, Handlingar, Tillstånd, Platshållare) gällde bara Deck
 Decksters symboler står direkt, och de två biblioteken kommer in bakom katalogens dynamiska import när panelen öppnas.
 En bricka ur game-icons eller Lucide skriver upphovspersonen bredvid licensen.
 Klammerns «Hela biblioteket» i Tabell och ikonverktyget i Mall erbjuder fortfarande Decksters egna 20; de följer efter i #1093.
+
+**Byggt 2026-10-22 (#1087), led 4: egen SVG.**
+En tillgång namnges av sina bytes hash, som räknas ut i webbläsaren före uppladdningen, så servern får bara ta emot eller vägra bytes och aldrig skriva om dem.
+Därför rensar webbläsaren och servern vaktar, mot samma lista.
+`svgRefusal` i `packages/protocol` är listan: tillåtna element och attribut, inga skript, ingen `foreignObject`, inga händelsehanterare, ingen referens utom `#fragment` och inget `url(` utom `url(#id)`.
+Den vägrar också doctype och entiteter, andra kodningar än UTF-8 och omvända snedstreck i ett värde, eftersom en CSS-escape kan stava `url(` utan bokstäverna.
+`cleanSvg` i editorn tar bort det listan inte tar med webbläsarens egen tolk och frågar sedan `svgRefusal` om resultatet, så svaret designern får är vaktens.
+`POST /assets` frågar `svgRefusal` om varje SVG och svarar 422 med skälet; en importerad export hålls mot samma vakt.
+Hela katalogen och varje symbol verktyget laddar upp klarar vakten oförändrade, och det hålls i ett test.
+«Ladda upp SVG …» står bredvid «Stäng» i arket.
+En inläst fil visas som filen och som den form kortet kommer att måla, och rutan säger rakt ut att det vita i filen blir färg och inte ett hål.
+Namnet föreslås ur filnamnet, och en upphovsrad sparas bara när både licens och upphovsperson är ifyllda, som för ett uppladdat typsnitt (L27).
+En fil som inte går att använda sägs med designerns ord och inte med vaktens engelska (A4).

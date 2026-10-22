@@ -768,4 +768,33 @@ describe('a game imported from the start page', () => {
       spy.mockRestore()
     }
   })
+
+  // A drawing in a zip is held to the upload gate (#1087), and the refusal is said in the reader's
+  // words: the gate's reason is English for the log, so the window says what it means instead.
+  it('says which drawing in the zip is not safe to draw', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.includes('/projects/import')) {
+        const problems = [{ code: 'asset-unsafe', values: { hash: 'a'.repeat(64), file: 'assets/sköld.svg', reason: 'onload is an event handler' } }]
+        return new Response(JSON.stringify({ error: 'not an export that can be read', problems }), { status: 422, headers: { 'content-type': 'application/json' } })
+      }
+      return real(input, init)
+    })
+    try {
+      render(<HomePage onNavigate={() => undefined} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Importera spel…' }))
+      const dialog = await screen.findByRole('dialog')
+      fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [new File(['PK'], 'Skogens herrar rev-1.zip', { type: 'application/zip' })] } })
+      const refusal = await within(dialog).findByRole('alert')
+      expect(refusal.textContent).toMatch(/Ritningen assets\/sköld\.svg innehåller något som inte är säkert att visa\./)
+      expect(refusal.textContent).not.toMatch(/onload/)
+    } finally {
+      spy.mockRestore()
+    }
+  })
 })

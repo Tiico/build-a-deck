@@ -26,7 +26,7 @@ import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, norm
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
-import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
+import { MotifBody, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiProviders } from './ai-providers.js'
@@ -1063,6 +1063,18 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
     if (format?.kind !== kind) {
       json(res, 415, { error: `the bytes are not ${assetFormatsNamed(kind)}` })
       return true
+    }
+    // A drawing is a document that runs (#1087), so opening with `<svg` is not enough: the whole
+    // of it is read against the allowlist the editor cleaned it to. The file is refused rather
+    // than cleaned here, because the document names these bytes by their hash and a cleaned copy
+    // would be stored under a name nothing refers to. 422 rather than 415: the bytes are an SVG,
+    // and it is what the SVG holds that is refused.
+    if (format.type === 'image/svg+xml') {
+      const reason = svgBytesRefusal(bytes)
+      if (reason) {
+        json(res, 422, { error: `the SVG is not safe to draw: ${reason}` })
+        return true
+      }
     }
     const hash = await assets.put(bytes, format.type)
     json(res, 201, { hash })

@@ -2156,6 +2156,22 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-font-catalog-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 .byd-font-catalog-kinds small { opacity: 0.7; font-variant-numeric: tabular-nums; }
 .byd-icon-catalog-target { margin-left: auto; align-self: center; font-size: 11px; color: var(--byd-editor-quiet); }
+/* A drawing of the designer's own (#1087): the upload stands beside the close as a second button
+   of the same weight, and a file read in stands above the hits — the file and the shape the card
+   will paint side by side, then its name and its licence, as an uploaded typeface is asked (L27). */
+.byd-icon-catalog-actions { display: flex; gap: var(--byd-s2); }
+.byd-icon-catalog-upload { display: inline-flex; align-items: center; cursor: pointer; }
+.byd-icon-catalog-upload:focus-within { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
+.byd-icon-own { flex: none; display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: var(--byd-s3); align-items: start; margin: var(--byd-s2); padding: var(--byd-s3); border: 1px dashed var(--byd-editor-line); border-radius: 10px; background: var(--byd-editor-part-bg); }
+.byd-icon-own legend { padding: 0 var(--byd-s1); font-size: 12px; font-weight: 700; color: #fff; }
+.byd-icon-own-proof { display: grid; justify-items: center; gap: var(--byd-s1); font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-icon-own-proof .byd-icon-paper { width: 64px; height: 64px; }
+.byd-icon-own-proof img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.byd-icon-own-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--byd-s2); min-width: 0; }
+.byd-icon-own-form label { display: grid; gap: 3px; font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-icon-own-form input { min-height: 32px; box-sizing: border-box; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s2); }
+.byd-icon-own-form p { grid-column: 1 / -1; margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--byd-editor-quiet); }
+.byd-icon-own-do { grid-column: 1 / -1; display: flex; gap: var(--byd-s2); }
 .byd-icon-catalog-hits { flex: 1 1 auto; min-height: 0; overflow: auto; list-style: none; margin: 0; padding: var(--byd-s2); display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; align-content: start; }
 .byd-icon-catalog-hits button { width: 100%; display: grid; justify-items: center; gap: 4px; border: 1px solid var(--byd-editor-line); border-radius: 10px; padding: var(--byd-s2) var(--byd-s1); background: var(--byd-editor-part-bg); color: var(--byd-editor-home-ink); font: inherit; cursor: pointer; min-width: 0; text-align: center; }
 .byd-icon-catalog-hits button:hover, .byd-icon-catalog-hits button:focus-visible { border-color: var(--byd-editor-primary-mark); }

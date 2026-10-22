@@ -173,6 +173,44 @@ describe('assets over HTTP', () => {
     expect((await refused.json()) as { error: string }).toEqual({ error: 'the bytes are not SVG' })
   })
 
+  // A designer's own drawing is cleaned in the editor before its hash is taken (#1087), so what
+  // arrives here is either already clean or did not come from the editor. Either way the gate
+  // asks the same allowlist and refuses; it never cleans, because the document names these bytes.
+  it('refuses a drawing that runs, fetches or does not parse, says why, and stores nothing of it (#1087)', async () => {
+    const refusals = [
+      ['<svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.cookie)</script></svg>', '<script> is not an element a drawing may hold'],
+      ['<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>', 'onload is an event handler'],
+      ['<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><p>x</p></foreignObject></svg>', '<foreignObject> is not an element a drawing may hold'],
+      ['<svg xmlns="http://www.w3.org/2000/svg"><use href="https://example.test/a.svg#s"/></svg>', 'href points outside the drawing'],
+      // The doctype a drawing program writes. One with entities inside it never gets this far: the
+      // sniff stops at its first `>` and calls the file no SVG at all.
+      ['<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg"/>', 'it holds a doctype or a declaration'],
+      ['<svg xmlns="http://www.w3.org/2000/svg"><g></svg>', '</svg> closes <g>'],
+    ] as const
+    for (const [svg, reason] of refusals) {
+      // Bytes, not a Blob: what is checked is what a browser would have sent off the disk.
+      const bytes = new TextEncoder().encode(svg)
+      const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: bytes })
+      expect(res.status, svg).toBe(422)
+      expect((await res.json()) as { error: string }, svg).toEqual({ error: `the SVG is not safe to draw: ${reason}` })
+      expect((await fetch(`${run.http}/assets/${assetHash(bytes)}`)).status, svg).toBe(404)
+    }
+    // Bytes that are not UTF-8 would be read by a browser as other text than the gate read.
+    const latin1 = new Uint8Array([...new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><title>'), 0xe5, ...new TextEncoder().encode('</title></svg>')])
+    const notUtf8 = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: latin1 })
+    expect(notUtf8.status).toBe(422)
+    expect((await notUtf8.json()) as { error: string }).toEqual({ error: 'the SVG is not safe to draw: it is not UTF-8 text' })
+  })
+
+  it('takes a clean drawing exactly as it came, so the hash the editor worked out is the one it gets (#1087)', async () => {
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" color="#1c1c1c"><path fill="currentColor" d="M1 2z"/></svg>')
+    const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: svg })
+    expect(res.status).toBe(201)
+    const { hash } = (await res.json()) as { hash: string }
+    expect(hash).toBe(assetHash(svg))
+    expect(new Uint8Array(await (await fetch(`${run.http}/assets/${hash}`)).arrayBuffer())).toEqual(svg)
+  })
+
   it('keeps a row’s picture as its hash in the table’s deck, and the render worker draws it from the store (#1028)', async () => {
     const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
     const { hash } = (await up.json()) as { hash: string }
