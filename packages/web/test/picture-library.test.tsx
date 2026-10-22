@@ -6,7 +6,7 @@
 // pictures, `onApply(hash)`, `onClose()` — so the template's fixed picture (#320) can open the
 // same window later without the table's state coming along.
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { PictureLibraryDialog, type LibraryPicture } from '../src/editor/PictureLibrary.js'
 import { Said } from '../src/i18n/said.js'
@@ -72,9 +72,9 @@ describe('the library dialog opens on the game’s pictures (#296)', () => {
     expect(tiles().map((b) => b.getAttribute('data-asset'))).toEqual([SKOG])
   })
 
-  it('says so when the game has no pictures at all, and points at the upload in Data', () => {
+  it('says so when the game has no pictures at all', () => {
     open({ pictures: [] })
-    expect(within(dialog()).getByText('Spelet har inga bilder ännu. Ladda upp en bild direkt i tabellen.')).toBeTruthy()
+    expect(within(dialog()).getByText('Spelet har inga bilder ännu.')).toBeTruthy()
     expect(within(dialog()).queryByRole('searchbox')).toBeNull()
     expect(apply().disabled).toBe(true)
   })
@@ -136,6 +136,26 @@ describe('the library dialog writes nothing until it is told to (#296)', () => {
 // the library yet can be uploaded from here, and the upload lands in Media like every other —
 // which is what keeps Media the one place pictures live. Only an opener that can upload offers
 // it, so Data's windows are exactly what they were.
+describe('clearing from the library window (L72)', () => {
+  it('offers to clear only where something holds a picture and the opener can clear it, says how many, and clears on the press', async () => {
+    const user = userEvent.setup()
+    open({ replacing: 1 })
+    expect(within(dialog()).queryByRole('button', { name: /^Ta bort bilden/ })).toBeNull()
+    cleanup()
+    const onClear = vi.fn()
+    const { onApply } = open({ replacing: 0, onClear })
+    expect(within(dialog()).queryByRole('button', { name: /^Ta bort bilden/ })).toBeNull()
+    cleanup()
+    open({ replacing: 1, onClear })
+    await user.click(within(dialog()).getByRole('button', { name: 'Ta bort bilden från kortet' }))
+    expect(onClear).toHaveBeenCalledTimes(1)
+    expect(onApply).not.toHaveBeenCalled()
+    cleanup()
+    open({ count: 3, replacing: 2, onClear })
+    expect(within(dialog()).getByRole('button', { name: 'Ta bort bilden från 3 kort' })).toBeTruthy()
+  })
+})
+
 describe('uploading from the library window (#320)', () => {
   it('offers no upload unless the opener can take one', () => {
     open()

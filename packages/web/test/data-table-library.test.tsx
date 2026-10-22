@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-// The library reached from Data (#296, variant B): a picture cell's «Välj» and the marked cards'
+// The library reached from Data (#296, variant B): a picture cell's tile and the marked cards'
 // «Välj bild för de markerade korten» open the same window. For a cell the window writes the same
 // asset reference the picture already has; for the marked cards it hands that reference to the
-// action row, whose «Sätt bild på N kort» writes every marked card in one change (#1099).
+// action row, whose «Sätt bild på N kort» writes every marked card in one change (#1099). Since
+// L72 the window is also the way to a file from a cell, and the way out of a cell's picture.
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
@@ -71,13 +72,42 @@ describe('a picture cell opens the library (#296)', () => {
     expect(document.activeElement).toBe(opener)
   })
 
-  it('keeps the upload straight into the cell beside it', () => {
+  it('takes a file through the window — into the library under its name, and onto the card by the window\'s own button (L72)', async () => {
+    const user = userEvent.setup()
     const onCell = vi.fn()
-    const onUpload = vi.fn(async () => 'd'.repeat(64))
-    renderTable(deckWithArt(), { onCell, onUpload })
+    const NY = 'd'.repeat(64)
+    const onUpload = vi.fn(async () => NY)
+    const doc = deckWithArt()
+    const view = renderTable(doc, { onCell, onUpload })
+    await user.click(within(row('knight')).getByRole('button', { name: 'Välj bild för knight' }))
     const file = new File(['png'], 'riddare.png', { type: 'image/png' })
-    fireEvent.change(within(row('knight')).getByLabelText('Ladda upp bild för knight'), { target: { files: [file] } })
-    expect(onUpload).toHaveBeenCalledWith(file, { cardRef: 'knight', field: 'art' })
+    fireEvent.change(within(dialog()).getByLabelText('Ladda upp'), { target: { files: [file] } })
+    // The library's upload and not the cell's: the picture lands in the game first, and the card
+    // is written by the press, so each step back takes one thing done.
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file))
+    expect(onCell).not.toHaveBeenCalled()
+    doc.pictures = { ...doc.pictures, [NY]: { name: 'riddare' } }
+    view.rerender(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    await user.click(within(dialog()).getByRole('button', { name: 'Använd bilden' }))
+    expect(onCell).toHaveBeenCalledWith('knight', 'art', `asset:${NY}`)
+  })
+
+  it('clears the card from the window\'s foot, and only where the card holds a picture (L72)', async () => {
+    const user = userEvent.setup()
+    const onCell = vi.fn()
+    renderTable(deckWithArt(), { onCell })
+    await user.click(within(row('knight')).getByRole('button', { name: 'Välj bild för knight' }))
+    expect(within(dialog()).queryByRole('button', { name: /^Ta bort bilden/ })).toBeNull()
+    await user.click(within(dialog()).getByRole('button', { name: 'Avbryt' }))
+
+    const opener = within(row('dragon')).getByRole('button', { name: 'Byt bild för dragon' })
+    await user.click(opener)
+    await user.click(within(dialog()).getByRole('button', { name: 'Ta bort bilden från kortet' }))
+    expect(onCell).toHaveBeenCalledTimes(1)
+    expect(onCell).toHaveBeenCalledWith('dragon', 'art', '')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByText('Bilden är borttagen från dragon.')).toBeTruthy()
+    expect(document.activeElement).toBe(opener)
   })
 
   it('changes nothing on Avbryt, on the × and on Escape, and hands the focus back each time', async () => {
@@ -140,16 +170,27 @@ describe('the marked cards open the library (#296)', () => {
     expect(within(bulk()).queryByRole('img', { name: 'Bild för de markerade korten' })).toBeNull()
   })
 
-  it('keeps the upload for the marked cards beside it', async () => {
+  it('takes a file dropped on the marked cards\' tile, and holds it until the button is pressed', async () => {
     const onReplaceRows = vi.fn()
     renderTable(deckWithArt(), { onReplaceRows, onUpload: async () => KARTA })
     mark('knight')
     // The column and the value are behind «Sätt fält» in the foot (#618).
     fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
-    fireEvent.change(within(bulk()).getByLabelText('Ladda upp bild för de markerade korten'), { target: { files: [new File(['png'], 'karta.png', { type: 'image/png' })] } })
+    fireEvent.drop(within(bulk()).getByRole('group', { name: 'Bild för de markerade korten' }), { dataTransfer: { getData: () => '', files: [new File(['png'], 'karta.png', { type: 'image/png' })] } })
     await screen.findByRole('img', { name: 'Bild för de markerade korten' })
     fireEvent.click(within(bulk()).getByRole('button', { name: 'Sätt bild på 1 kort' }))
     expect(onReplaceRows).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers no clear for the marked cards, whose window only chooses (#1099, L72)', async () => {
+    const user = userEvent.setup()
+    renderTable(deckWithArt())
+    mark('dragon')
+    mark('knight')
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
+    fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
+    await user.click(within(bulk()).getByRole('button', { name: 'Välj bild för de markerade korten' }))
+    expect(within(dialog()).queryByRole('button', { name: /^Ta bort bilden/ })).toBeNull()
   })
 })

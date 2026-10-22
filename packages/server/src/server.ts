@@ -25,6 +25,7 @@ import { playtestOf, type PlaytestSource } from './playtest.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
+import { inviteMail } from './invite-mail.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
@@ -1514,20 +1515,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const expiresAt = new Date(clock(opts).getTime() + INVITE_TTL_MS).toISOString()
     await projects.invite({ tokenHash: hash(token), project: gate.rec.id, email: body.email, role: body.role, ...(account ? { by: account.id } : {}), expiresAt })
     const where = opts.appOrigin ?? opts.publicOrigin ?? ''
-    // The game's own name is the game's, in every language.
-    await opts.mailer?.send(
-      lang === 'en'
-        ? {
-            to: body.email,
-            subject: `You are invited to ${gate.rec.name}`,
-            text: `Hello!\n\n${account?.email ?? 'Someone'} would like to share the game ${gate.rec.name} with you as a ${roleWord(body.role, 'en')}.\n\nClick to join: ${where}/invites/${token}\n\nThe link works for seven days and only once.`,
-          }
-        : {
-            to: body.email,
-            subject: `Du är inbjuden till ${gate.rec.name}`,
-            text: `Hej!\n\n${account?.email ?? 'Någon'} vill dela spelet ${gate.rec.name} med dig som ${roleWord(body.role)}.\n\nKlicka för att gå med: ${where}/invites/${token}\n\nLänken fungerar i sju dagar och bara en gång.`,
-          },
-    )
+    // In the login mail's bands (#1107, L72), with the foot it had never had (#757).
+    await opts.mailer?.send(inviteMail(body.email, { from: account?.email, game: gate.rec.name, role: body.role, link: `${where}/invites/${token}`, lang, contact: opts.contact }))
     json(res, 201, { ok: true })
     return true
   }

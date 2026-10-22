@@ -66,7 +66,14 @@ function inOwnTime(body: () => unknown, budget: number): Promise<void> {
         const account = watch.read()
         settle(ownTime(account) > budget ? { error: overBudget(account, budget) } : null)
       },
-      (error: unknown) => settle({ error: isCeiling(error) ? withAccount(error, watch.read(), budget) : error }),
+      (error: unknown) => {
+        if (!isCeiling(error)) return settle({ error })
+        // A test whose own time was already past its budget when the ceiling went gets the budget's
+        // verdict (#1114): a synchronous test is held to its budget only as it ends, and on a busy
+        // machine the ceiling can go first, which made it read as one the machine held.
+        const account = watch.read()
+        settle({ error: ownTime(account) > budget ? overBudget(account, budget) : withAccount(error, account, budget) })
+      },
     )
   })
 }

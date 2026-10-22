@@ -216,7 +216,12 @@ Följdkrav:
 - En delad länk visar handen bredvid namnet på bordets mörka, 1200 × 630, som prototypen ritade den (#1084).
   `scripts/brand-icons.ts` ritar `og-image.png` med landningssidans egen rad, och servern skriver `PUBLIC_ORIGIN` framför bildens sökväg (DRIFT §13).
   `packages/e2e/test/app-icon.spec.ts` läser taggarna i sidan servern skickar och bildens pixlar.
-- TV:ns sidospalt bär också handen, men den prototypas på den riktiga spalten innan den byggs (#1084).
+- Rummets TV bär handen och namnet på en egen rad överst i sidospalten, ovanför spelets namn och skild från det med en linje (#1084, beställarens beslut B 2026-10-22).
+  Spalten står bredvid filten, så raden tar sin höjd från inspektionskortet och aldrig från filten eller «Senast»: kortet mättes till 168 px i stället för 235 vid 1280 × 800, och det var kostnaden som valdes.
+  Där spalten har gott om plats står kortet på sin egen höjd och «Senast» tar resten, så där sänks kortets tak med radens 67 px; annars hade raden tagits ur listan, och på CI:s DejaVu med en observatör visade den bara en rad.
+  Handen bredvid adressen (A) och en tyst signatur längst ned (C) valdes bort.
+  Observatörens skärm är inte rummets och står utan raden.
+  Grinden är `packages/e2e/test/surfaces/tv-brand.spec.ts`, och prototypen står i #1084.
 - UI-ikonerna är en egen fråga (#1083): märket är produktens ansikte, glyferna är kontrollernas hand.
 
 Prototypen: `docs/ux-audits/2026-10-21-deckster-ikoner/prototyper/deckster/` (`?v=B`).
@@ -4598,6 +4603,12 @@ Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som 
 Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
 Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
 
+**Reviderat 2026-10-22: under 1440 säger primärknappen sitt ärende kort också utan bord (#1078, B).**
+«Starta bord» blir «Starta» och «Start a table» blir «Start», med hela namnet för skärmläsare, som «Uppdatera» gör med ett bord igång.
+Mätt på CI:s DejaVu vid 1280 på engelska utan bord tog «Share» (#727) och «Start a table» det rum spelets namn hade, och «Sal's Saloon» klipptes till 78 av 102 px.
+Två varianter avvisades: «Dela» utan ord upp till 1440, som tog bort #727:s ord i alla lägen mellan 1280 och 1439, och ett ord som ger vika bara när namnet inte ryms, som skulle försvinna för varje spel med långt namn eftersom långa namn klipps med flit.
+Prototypen står i #1078 och i grenen `proto/1078-huvudet`, och grinden är läget utan bord i `packages/e2e/test/surfaces/editor-header-fit.spec.ts`.
+
 **Reviderat 2026-10-06: bekräftelserna står i den öppna flikens fot, inte längst ner på skärmen (L67, #698).**
 
 **Reviderat 2026-10-03: under 1440 är «Osparat» en amber prick i bockens ruta (#668, A1).**
@@ -6641,6 +6652,47 @@ Luckan är erkänd: ett kort som bordsskärmen vänder ner framför någon har i
 Rutans namn och antal står kvar överst; ytorna står en per rad, så att korten får plats.
 En yta läsaren inte får se in i skickar inget kort alls (B6), så den ritar inget heller; det bevisas i `packages/e2e/test/private-area.spec.ts`.
 
+### L72. Bildrutan: en bild i Tabell är en bricka som är hela kontrollen (prototypat och beslutat 2026-10-22, #1105)
+
+Bilder i Tabell hanterades av tre ytor som var och en byggde upp samma sak för hand i `DataTable.tsx`: kortets bildcell, massredigeringens bildfält och bildremsan över tabellen.
+Guiden byggde en fjärde, biblioteket och Media var sin bricka.
+Alla höll samma delar — miniatyren, släppytan (#291), «Välj», «Ladda upp», ×, behållen text (#1085), bytes på väg (#907), läsläge (#489) — i var sin kopia med var sin stilregel.
+Cellen var tabellens bredaste för en bild på 60 px, och bar tre tabbstopp per rad: 924 i en lek på 308 kort.
+
+Frågan var inte om det skulle bli en komponent utan vilken form den skulle ha: var handlingarna står, hur mycket plats rutan tar i en rad, och vad den säger om bilden.
+Fem former prövades i [`docs/ux-audits/2026-10-22-bildrutan/prototyper/index.html`](docs/ux-audits/2026-10-22-bildrutan/prototyper/index.html), var och en i tabellen, i massredigeringsraden, i guiden och i en matris över varje tillstånd komponenten måste bära.
+Nu: som förut, samlat.
+A: brickan är en enda knapp som öppnar biblioteket.
+B: miniatyr och en menyknapp med tre val.
+C: ett fält kolumnen brett, med liten miniatyr, bildens namn och en pil.
+D: en stor bricka med ikonverktyg som tonar fram på hovring.
+
+Beställaren valde **A** 2026-10-22.
+
+- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och ett 3:2-fönster på bilden som bibliotekets bricka.
+  Tom är den en streckad bricka med ett +.
+  Knappen heter vad ett tryck gör: «Välj bild för {kort}» tom, «Byt bild för {kort}» med bild.
+- **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» i foten när kortet håller en bild.
+  Cellens eget «Ladda upp» och × tas bort.
+  Priset är att en fil och en borttagning är två tryck i stället för ett; vinsten är att cellen inte håller något annat än bilden, och att varje väg till en fil går genom samma dörr.
+  En fil genom rutan landar i biblioteket under sitt namn (#742) och på kortet genom rutans egen knapp, så varje steg tillbaka tar en sak som gjordes.
+- **Backsteg och Delete tömmer en fokuserad bricka,** som de tömmer vilket fält som helst.
+- **Draget tar hela rutan som förut (#291):** en biblioteksbild ur remsan återanvänds utan ny uppladdning (E1), och en fil som släpps laddas upp i cellen i samma steg som bilden (#742).
+  Rutan äger sitt eget svar på om draget står över den, så ett släpp aldrig kan ändra ett annat mål.
+- **Massredigeringens bildfält är samma komponent.** Varje väg in — ett släpp, en fil, bibliotekets «Välj bilden» (#1099) — lämnar bilden till raden, och radens egen knapp är det enda som skriver; rutan öppnad från raden har därför inget att ta bort.
+- **En läsares tabell (#489) ritar bilden och ingenting som kan ändra den:** ingen knapp och ingen släppyta, i komponenten och inte i en stilregel som gömmer knappar.
+- **Remsan över tabellen, bibliotekets och Medias brickor är en annan sak** — en bricka som *visar* en bild — och lämnas utanför.
+  Guiden har inget bibliotek och behåller sin filväljare.
+
+C förlorade på att miniatyren blir en ledtråd och kolumnen textkolumnbred; B på att varje handling blir två tryck bakom ett lager till; D på att raden växer till 72 px och på verktyg som bara syns på hovring, ett mönster editorn undvikit (L39).
+
+**Byggt 2026-10-22 (#1105).**
+`PictureSlot` i `packages/web/src/editor/PictureSlot.tsx` är komponenten: `label`, `choose`, `replace`, `alt`, `base`, `value`, `kept`, `onChoose`, `onPick`, `onFiles`, `onClear`, `reading`, `tabIndex`.
+`PictureLibraryDialog` får `onClear`, och Data ger den `onUpload`.
+Strängarna «släpp en bild här», «Välj», «Byt», «Ladda upp» och «Ladda upp bild för …» i cellen utgår; «Byt bild för {kort}», «Byt bild för de markerade korten», «Ta bort bilden från kortet» och «Bilden är borttagen från {kort}» kommer till.
+Bibliotekets tomma mening pekar inte längre på tabellen, eftersom uppladdningen står i rutan själv.
+Grindarna: `picture-slot.test.tsx`, `data-table.test.tsx`, `data-table-library.test.tsx`, `picture-library.test.tsx`, `data-table-layout.test.tsx` (brickan 66 × 44, en kontroll, kolumnen oklippt) och `packages/e2e/test/picture-upload-refused.spec.ts`, som nu släpper filen på brickan.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
@@ -7517,8 +7569,14 @@ Ett mejl är inte webben, och det ställer krav som sidorna inte har:
   Resend tar `html` bredvid `text`, och ett mejl utan `html` går som förut.
 - **Foten (#757) står sist i det vita bandet,** med tjänsten, sajten och kontakten, i läsarens språk (A4), och ingen .com någonstans (A5).
 
-Mejlet bor i `packages/server/src/login-mail.ts`, text och HTML tillsammans, och `auth.ts` exporterar det därifrån.
+Banden ritas i `packages/server/src/mail-bands.ts`, och varje brev har sina ord och sin textdel i en egen modul: inloggningen i `login-mail.ts`, som `auth.ts` exporterar, och inbjudan i `invite-mail.ts`.
 `login-mail.test.ts` håller banden, språket, handen, länken och foten; `brand.test.ts` håller att PNG:n är skriptets; `app-icon.spec.ts` läser dess pixlar som den serveras.
+Inbjudningsmejlet (#477) har samma form sedan #1107.
+Papperet säger vem som bjuder in, till vilket spel och som vad, knappen heter «Gå med» / «Join», och förhandstexten och den fina texten är de sju dagarna och den enda gången.
+Foten (#757), som inbjudan aldrig haft, står sist som i inloggningsmejlet.
+Spelets namn och avsändarens adress är vad någon har skrivit, så de skrivs som text och aldrig som markup.
+`invite-mail.test.ts` håller banden, språket, handen, länken och foten, och `members.test.ts` håller att servern skickar det.
+
 Inbjudningsmejlet (#477) går fortfarande som text och får samma form i ett eget issue.
 
 ### L73. Verktyget talar vanlig svenska, och sekundära kontroller bär ikoner (prototypat och beslutat 2026-10-22, #1101)

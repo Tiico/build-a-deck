@@ -55,6 +55,32 @@ for (const locale of ['sv-SE', 'en-GB']) {
   }
 }
 
+// With no table yet the header carries «Dela» and «Starta bord» in their place: at 1280 in English
+// «Share» and «Start a table» took the room «Sal's Saloon» had, and with CI's DejaVu the name was
+// cut to «Sal's S…» (#1078). Below 1440 the primary says its errand short here too, as «Uppdatera»
+// does once a table runs (#566), and its name stays whole (beslut B, 2026-10-22). «Dela» keeps its
+// word from 1280 (#727).
+for (const locale of ['sv-SE', 'en-GB']) {
+  for (const width of [1024, 1280, 1440]) {
+    test.describe(`the header with no table at ${width} in ${locale}`, () => {
+      test.use({ viewport: { width, height: 800 }, locale })
+
+      test('reads the game’s name and the primary whole, and says the errand short below 1440', async ({ page }) => {
+        await logIn(page.request)
+        const project = await makeProjectOf(page.request, spelkortDoc(4))
+        await page.goto(`${project.editorUrl}&lang=${locale.slice(0, 2)}`)
+        const primary = page.locator('.byd-editor > header .byd-editor-primary:not(.byd-editor-caret)')
+        await expect(primary).toHaveAttribute('data-table-kind', 'none')
+        expect(await headerCut(page)).toEqual([])
+        const sv = locale === 'sv-SE'
+        await expect(primary).toHaveAccessibleName(sv ? 'Starta bord' : 'Start a table')
+        expect((await primary.innerText()).trim()).toBe(width < 1440 ? (sv ? 'Starta' : 'Start') : sv ? 'Starta bord' : 'Start a table')
+        await expect(page.locator('.byd-editor > header .byd-editor-here-word')).toBeVisible({ visible: width >= 1280 })
+      })
+    })
+  }
+}
+
 // The save status changes its word as the work goes from saved to unsaved and back (#8), and every
 // control after it in the row stood where the word ended: at 1440 the tabs slid 12 px sideways in
 // Swedish and 23 px in English each time (#668). A tab that moves under the pointer between two

@@ -108,7 +108,7 @@ async function cardFiles(width: number): Promise<Record<string, string>> {
     // The column and the value are behind «Sätt fält» in the foot (#618).
     fireEvent.click(await screen.findByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(await screen.findByLabelText('Kolumn'), { target: { value: 'art' } })
-    await screen.findByLabelText('Ladda upp bild för de markerade korten')
+    await screen.findByRole('button', { name: 'Välj bild för de markerade korten' })
     return { 'Tabell · filer': document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()
@@ -484,10 +484,11 @@ describe.each(WIDTHS)('the written rulebook, at %ipx', (width) => {
   }, 90_000)
 })
 
-// The card table's three file pickers (#193), held to the two rules every control in the editor is
-// held to: a target a thumb can hit, and paint that does not wait for a pointer. They are counted
-// as well as measured, because a drawer that never opened or a deck that lost its image column
-// would report a clean tab — which is the shape of guard this repo keeps finding it needs.
+// The card table's file picker and its picture tiles (#193, L72), held to the two rules every
+// control in the editor is held to: a target a thumb can hit, and paint that does not wait for a
+// pointer. They are counted as well as measured, because a drawer that never opened or a deck that
+// lost its image column would report a clean tab — which is the shape of guard this repo keeps
+// finding it needs. The cells held a picker each until L72; now each holds one tile, a button.
 describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) => {
   it('paints every file picker in it without waiting for a pointer to rest on it', async () => {
     const measured = await measure(
@@ -504,13 +505,22 @@ describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) =>
         }),
       cardFiles,
     )
-    // The import, the action row's, and one in each of the three cards' image cells.
-    expect(measured).toEqual({ 'Tabell · filer': { pickers: 5, unpainted: [] } })
+    // The import's. The cells' pickers went with L72, and the action row's with them.
+    expect(measured).toEqual({ 'Tabell · filer': { pickers: 1, unpainted: [] } })
   }, 90_000)
 
   it('names every file picker in it, hands each the pointer through its label, and rings them on focus', async () => {
     const measured = await measure(width, (page) => page.$$eval(".byd-table-wrap input[type='file']", filePickerFaults), cardFiles)
-    expect(measured).toEqual({ 'Tabell · filer': { pickers: 5, faults: [] } })
+    expect(measured).toEqual({ 'Tabell · filer': { pickers: 1, faults: [] } })
+  }, 90_000)
+
+  it('draws one tile in each card’s image cell and in the action row, at the tap floor in both directions (L72)', async () => {
+    const measured = await measure(width, (page) => page.$$eval('.byd-table-wrap button.byd-picture-tile', (els) => ({
+      tiles: els.length,
+      small: els.map((el) => el.getBoundingClientRect()).filter((r) => r.width < 44 || r.height < 44).map((r) => `${Math.round(r.width)}×${Math.round(r.height)}`),
+    })), cardFiles)
+    // One in each of the three cards' image cells, and the marked cards' one in the action row.
+    expect(measured).toEqual({ 'Tabell · filer': { tiles: 4, small: [] } })
   }, 90_000)
 })
 
@@ -520,7 +530,7 @@ describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) =>
 describe('the card table with a picture in it, at 768px with text as wide as on Linux (#695)', () => {
   it('hands each file picker the pointer through its label', async () => {
     const measured = await measure(768, (page) => page.$$eval(".byd-table-wrap input[type='file']", filePickerFaults), cardFiles, 'body, body * { font-family: Verdana, sans-serif !important; }')
-    expect(measured).toEqual({ 'Tabell · filer': { pickers: 5, faults: [] } })
+    expect(measured).toEqual({ 'Tabell · filer': { pickers: 1, faults: [] } })
   }, 90_000)
 })
 
