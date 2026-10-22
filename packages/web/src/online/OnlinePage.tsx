@@ -88,7 +88,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // A seat whose line is gone is offered the room's seat picker before the way home (#484 fynd 14).
   const said = links.rescan && live.notice ? { ...live, notice: towardSeat(live.notice, t) } : live
   const game = useSessionName(http, sessionId, !params.get('code'))
-  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game })
+  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game, turn: seat !== null && view?.turn?.seat === seat && !view.ended })
   // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
   const room = useRoom()
   const presence = usePresence(client, view)

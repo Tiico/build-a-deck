@@ -4053,12 +4053,14 @@ Turen är ingen hemlighet (B6), så alla vyer får samma värde, och den ändras
 Filtens kant lyser i platsens färg vid den plats som har turen, i varje läge: `/online`, bordsskärmen och TV:n.
 Platsens namn säger «Adas tur» och hur länge turen pågått, räknat från `at`; nästa plats bär märket «nästa».
 Är det din tur står «Din tur» och knappen «Klar → Cy» vid din egen kant i stället för ditt namn, och fönstrets titel börjar med «● Din tur».
+På bordets delade skärm, där ingen plats är ens egen, står «Klar → Cy» i namnet hos den som har turen, eftersom den som har turen sitter vid den skärmen.
 Titeln är det enda som syns utanför sidan; det är ingen notis, och K7 står kvar.
 Där filten går att spela ger ett klick på en annan upptagen plats namn turen dit.
 Raden «Senast» står kvar, och `turn.give` läses där som «Ada gav turen till Bo».
 
 **Telefonen bär brickan.**
-I telefonens huvud står «Din tur» och «Klar → Cy» när det är spelarens tur, och «Adas tur» annars.
+Under telefonens huvud står en egen rad: «Din tur» och «Klar → Cy» när det är spelarens tur, och «Adas tur» annars.
+Huvudet självt har inte plats: vid 390 px bär det namnet, hjälpen och tre knappar på 44 px, och en bricka och en knapp till där hade tagit namnet.
 Det är den bricka landningssidan redan visade.
 
 De avvisade varianterna var A, spåret, och C, turraden.

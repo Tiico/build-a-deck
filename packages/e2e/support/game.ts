@@ -10,6 +10,8 @@ export type Game = {
   cards?: number
   copies?: number
   name?: string
+  /** Whether the game goes in turns, and which way (K28). Left out, it does not. */
+  turns?: 'clockwise' | 'counterclockwise'
 }
 
 // A card with a title and a body and nothing else. The template is deliberately plain: a journey
@@ -55,7 +57,7 @@ export function gameDoc(game: Game = {}): ProjectDoc {
     })),
     icons: {},
     fonts: { 'sans-serif': { stack: 'sans-serif', asset: `asset:${'a'.repeat(64)}` } },
-    setup,
+    setup: game.turns ? { ...setup, turns: game.turns } : setup,
   }
 }
 

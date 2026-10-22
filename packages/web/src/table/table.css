@@ -512,6 +512,21 @@
    lika starka och den senare vinner — och det den säger just nu, att den här handen tar emot, är
    det färskare av de två. */
 .byd-seat-name[data-taking] { box-shadow: 0 0 0 2px var(--byd-felt-chalk), 0 0 14px var(--seat, #666); }
+/* Vems tur det är (K28). Kanten är `.byd-seat-band` ovan, samma två band i samma uppmätta par, men
+   den står kvar så länge turen gör och lyser lite längre ut. Namnet bär sin klocka, och nästa
+   plats säger att den är nästa; den som har turen vid sin egen filt får «Klar» i namnet. */
+.byd-turn-band { box-shadow: 0 0 0 1px var(--byd-felt-chalk), 0 0 22px 4px var(--seat, #666); }
+.byd-seat-name[data-turn] { display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 0 2px var(--byd-felt-chalk), 0 0 16px var(--seat, #666); }
+.byd-seat-name[data-turn]:has(.byd-turn-done) { padding: 4px 4px 4px 12px; }
+.byd-turn-clock { font-weight: 700; opacity: 0.75; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.byd-turn-next { margin-left: 6px; font-size: 10px; font-weight: 700; opacity: 0.75; letter-spacing: 0; }
+.byd-turn-give { all: unset; cursor: pointer; }
+.byd-turn-give:focus-visible { outline: 2px solid var(--byd-felt-chalk); outline-offset: 4px; }
+.byd-turn-done {
+  min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--byd-seat-ink); color: #fff; font: inherit; letter-spacing: 0;
+}
+.byd-turn-done:focus-visible { outline: 2px solid var(--byd-felt-chalk); outline-offset: 2px; }
 /* The felt that knows who is looking reads for them (#418, decision B of 2026-09-22). The turn
    above keeps C5's exception where its reason still holds — a screen lying on a table with
    people round it, where the name is a place card — and everywhere else the name is upright,

@@ -305,6 +305,15 @@ export const svPlay = {
   'activity.flag': '{who} flaggade',
   'activity.flag.note': '{who} flaggade: {note}',
   'activity.flag.observer': '{name} (observatör)',
+  'activity.turn.give': '{who} gav turen till {to}',
+  'activity.turn.take': '{who} tog turen',
+  // Vems tur det är (K28): vid platsens namn på filten och i telefonens huvud.
+  'turn.of': '{name:s} tur',
+  'turn.mine': 'Din tur',
+  'turn.done': 'Klar → {name}',
+  'turn.next': 'nästa',
+  'turn.give': 'Ge turen till {name}',
+  'turn.take': 'Ta turen',
   // Flera rader i samma andetag blir en mening i den artiga live-regionen (D5). Singularformen
   // är ingen sammanfattning alls: en ensam rad sägs som den mening den är.
   'activity.others.one': '{latest}',

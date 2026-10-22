@@ -46,7 +46,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // A viewer's link opened here (#753): a token with no seat is someone who came in to watch, and
   // the table behind it is up. The way on is the observer's page, with the link exactly as it is.
   const watching = sessionId !== null && !seat && token !== undefined
-  usePageTitle({ state: watching ? null : sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game, part: watching ? t('status.watching.phone.heading') : view?.ended ? t('title.play.ended') : null })
+  usePageTitle({ state: watching ? null : sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game, part: watching ? t('status.watching.phone.heading') : view?.ended ? t('title.play.ended') : null, turn: !!seat && view?.turn?.seat === seat && !view.ended })
   const faces = url.replace(/^ws/, 'http')
 
   const marks = useHandMarks()
