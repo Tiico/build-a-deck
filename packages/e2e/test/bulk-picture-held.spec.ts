@@ -46,7 +46,10 @@ test('a picture chosen from the library for the marked cards is held in the row 
   const setButton = row.getByRole('button', { name: 'Sätt bild på 2 kort' })
   await expect(setButton).toBeDisabled()
 
-  const opener = row.getByRole('button', { name: 'Välj bild för de markerade korten' })
+  // The row's tile (L72): named «Välj …» while the row is empty and «Byt …» once it holds a
+  // picture, so it is found by its slot and not by its name.
+  const opener = row.getByRole('group', { name: 'Bild för de markerade korten' }).getByRole('button')
+  await expect(opener).toHaveAccessibleName('Välj bild för de markerade korten')
   await opener.click()
   const dialog = page.getByRole('dialog', { name: 'Bilder i spelet' })
   await expect(dialog.getByText('2 markerade kort, bildfältet bild')).toBeVisible()
