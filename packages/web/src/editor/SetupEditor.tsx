@@ -499,6 +499,22 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
         </div>
       </section>
+      <section>
+        {/* Whether the game goes in turns (K28): one of three, each a version and a step back. */}
+        <div className="byd-help-row">
+          <h2 id="byd-setup-turns">{t('setup.turns')}</h2>
+          <Help topic={t('setup.turns.help.topic')}>
+            <p>{t('setup.turns.help')}</p>
+          </Help>
+        </div>
+        <div className="byd-setup-turns" role="group" aria-labelledby="byd-setup-turns">
+          {([null, 'clockwise', 'counterclockwise'] as const).map((turns) => (
+            <button key={turns ?? 'none'} type="button" className="byd-choice" aria-pressed={(setup.turns ?? null) === turns} disabled={!client.mayEdit} onClick={() => (setup.turns ?? null) !== turns && client.setTurns(turns)}>
+              {t(turns === null ? 'setup.turns.none' : `setup.turns.${turns}`)}
+            </button>
+          ))}
+        </div>
+      </section>
     </aside>
   )
 }

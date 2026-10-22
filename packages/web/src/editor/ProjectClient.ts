@@ -794,6 +794,11 @@ export class ProjectClient {
     this.edit({ v: 'setDeck', id })
   }
 
+  // Whether the game goes in turns, and which way round the table (K28); `null` is none.
+  setTurns(turns: 'clockwise' | 'counterclockwise' | null): void {
+    this.edit({ v: 'setTurns', turns })
+  }
+
   // `gesture` is the token of the one thing the designer is doing, when what she is doing arrives
   // in pieces (L14): a zone dragged across the felt is a patch per frame of the pointer, and a
   // name typed into the panel beside it is one per keystroke.

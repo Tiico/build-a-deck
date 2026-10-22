@@ -1457,6 +1457,12 @@ export const svEditor = {
   'setup.counter.add': '＋ Räknare',
   'setup.counters.help': 'En eller två räknare ligger bredvid varandra framför platsen. Med tre eller fler staplas de i en hög som öppnas vid namn.',
   'setup.counters.help.topic': 'räknarna',
+  'setup.turns': 'Turordning',
+  'setup.turns.none': 'Ingen',
+  'setup.turns.clockwise': 'Medurs',
+  'setup.turns.counterclockwise': 'Moturs',
+  'setup.turns.help': 'Filten visar vems tur det är, och «Klar» skickar turen vidare runt bordet. Ingen hindras: vem som helst kan ge turen till en annan plats. Ett spel där alla spelar samtidigt klarar sig utan.',
+  'setup.turns.help.topic': 'turordningen',
   'setup.addSeatArea': '＋ Yta per plats',
   'setup.addSeatCounters': '＋ Räknarzon per plats',
   // Under rubriken «Vid platserna» säger rubriken redan «per plats» (#711), och de två ryms då på en rad.

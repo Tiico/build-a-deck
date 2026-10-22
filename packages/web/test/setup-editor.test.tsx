@@ -215,6 +215,25 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
   })
 })
 
+// Om spelet går i tur är designerns svar (K28): ett av tre i receptets spalt, som en version och
+// ett steg tillbaka var, och ett spel utan svar går inte i tur.
+describe('the setup editor (K28): the turn order', () => {
+  it('chooses none, clockwise or counterclockwise, and the choice is the document\'s', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const order = screen.getByRole('group', { name: 'Turordning' })
+    expect(within(order).getByRole('button', { name: 'Ingen' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(order).getByRole('button', { name: 'Medurs' }))
+    expect(within(order).getByRole('button', { name: 'Medurs' }).getAttribute('aria-pressed')).toBe('true')
+    await spara()
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.setup.turns).toBe('clockwise'))
+
+    fireEvent.click(within(order).getByRole('button', { name: 'Ingen' }))
+    await spara()
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.setup).not.toHaveProperty('turns'))
+  })
+})
+
 // Arket bredvid bordet är telefonens, och telefonens ark är en plats (C4): en annan plats egna yta
 // står aldrig på det, och en zon som bara håller räknare är ingen plats att spela ett kort till.
 // Förhandsvisningen räknade upp varje plats "Framför mig" och varje räknarzon, alltså ett ark
