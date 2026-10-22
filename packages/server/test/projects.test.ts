@@ -433,6 +433,47 @@ describe('the tables a project has (#19)', () => {
     foreign.close()
   })
 
+  // The host who sits at her own table from a distance (L75, #1130) is the one who sends the room's
+  // address on, so her seat is told the code as the table's screen is — and told the new one when
+  // she presses «Ny kod». The host key stays the table screen's: her login is her key. A guest's
+  // seat at the same table still hears neither.
+  it('tells the owner\'s own seat the room code and its rotation, without the host key, and still no guest', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId, code, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; code: string; hostKey: string }
+    const heard = (ws: WebSocket) => {
+      const all: { t: string; code?: string; hostKey?: string }[] = []
+      const raw: string[] = []
+      ws.on('message', (m) => {
+        raw.push(m.toString())
+        all.push(JSON.parse(m.toString()) as { t: string })
+      })
+      return { all, raw }
+    }
+    const host = new WebSocket(`${run.base}/sessions/${sessionId}?seat=A&owner=1`, { headers: { cookie, origin: 'http://test.local' } })
+    const hostHeard = heard(host)
+    const until = async (ok: () => boolean) => {
+      for (let i = 0; i < 100 && !ok(); i++) await new Promise((r) => setTimeout(r, 20))
+      expect(ok()).toBe(true)
+    }
+    await until(() => hostHeard.all.some((m) => m.t === 'room' && m.code === code))
+    expect(hostHeard.all.find((m) => m.t === 'room')).not.toHaveProperty('hostKey')
+
+    const { token } = (await (await fetch(`${run.http}/rooms/${code}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Bo', seat: 'B' }) })).json()) as { token: string }
+    const guest = new WebSocket(`${run.base}/sessions/${sessionId}?seat=B&token=${token}`)
+    const guestHeard = heard(guest)
+    await until(() => guestHeard.all.some((m) => m.t === 'snapshot'))
+
+    const rotated = (await (await json('POST', `/sessions/${sessionId}/code`, {})).json()) as { code: string; hostKey: string }
+    await until(() => hostHeard.all.some((m) => m.t === 'room' && m.code === rotated.code))
+    expect(hostHeard.raw.join('\n')).not.toContain(rotated.hostKey)
+    expect(hostHeard.raw.join('\n')).not.toContain(hostKey)
+    await new Promise((r) => setTimeout(r, 30))
+    expect(guestHeard.all.some((m) => m.t === 'room')).toBe(false)
+    expect(guestHeard.raw.join('\n')).not.toContain(rotated.code)
+    host.close()
+    guest.close()
+  })
+
   // The owner who opens her table's screen without its key (#748) is known by her login: the
   // server already knows who she is, so the address need not say `owner=1` for the table to open.
   // She gets the table's own view — what the host key gives — and nobody else's cookie does.

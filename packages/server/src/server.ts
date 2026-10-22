@@ -660,7 +660,8 @@ async function fileAt(path: string): Promise<string | null> {
 type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean }
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
-type Admitted = { seat: string | null; observer?: string; lobby?: true }
+// `host` marks the project owner's own seat or watch (L75): not the table's screen, but hers.
+type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
@@ -673,9 +674,9 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
     if (ask.role === 'observer') {
       const name = ask.name?.trim()
-      return name && name.length <= 64 ? { seat: null, observer: name } : { refused: 'an observer needs a name of at most 64 characters' }
+      return name && name.length <= 64 ? { seat: null, observer: name, host: true } : { refused: 'an observer needs a name of at most 64 characters' }
     }
-    return { seat: ask.seat }
+    return ask.seat === null ? { seat: null } : { seat: ask.seat, host: true }
   }
   // The table's own view (DRIFT §9): the host key opens it, and so does the login of whoever may
   // open the game's tables (#748) — the server already knows who she is, so an owner who arrives
@@ -886,14 +887,15 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
   // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro
   // tick costs nothing and hangs up on nobody mid-sentence — the actor has already taken the
   // subscriber off the table, so the wait carries no frames of its own.
-  const sub: Subscriber = { seat, id: randomUUID(), send, close: () => setImmediate(() => ws.close(4003, 'gone')), ...(who.observer !== undefined ? { observer: who.observer } : {}), ...(who.lobby ? { lobby: true } : {}) }
+  const sub: Subscriber = { seat, id: randomUUID(), send, close: () => setImmediate(() => ws.close(4003, 'gone')), ...(who.observer !== undefined ? { observer: who.observer } : {}), ...(who.lobby ? { lobby: true } : {}), ...(who.host ? { host: true } : {}) }
   actor.subscribe(sub)
   // A connection keeps the code alive for another few hours (DRIFT §9); the host's screen is
   // told the code, since it is what the room is joined by.
   if (session.code) {
     const expiresAt = codeExpiry(clock(opts))
     await opts.store.setCode(sessionId, session.code, expiresAt)
-    if (seat === null && who.observer === undefined && !who.lobby) send({ t: 'room', code: session.code, expiresAt })
+    // So is the owner's own seat (L75): she sends the address on from wherever she sits.
+    if ((seat === null && who.observer === undefined && !who.lobby) || who.host) send({ t: 'room', code: session.code, expiresAt })
   }
   ws.on('close', () => actor.unsubscribe(sub))
 

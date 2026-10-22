@@ -33,7 +33,7 @@ export const SNAPSHOT_ACTIVITY = 50
 
 // `observer` (C8) names a watcher: seatless, sees everything, may only flag. `lobby` (DRIFT §9)
 // is the join page: sees the seats, may do nothing.
-export type Subscriber = { seat: SeatId | null; id: string; observer?: string; lobby?: true; send(message: ServerMessage): void; close?(): void }
+export type Subscriber = { seat: SeatId | null; id: string; observer?: string; lobby?: true; host?: true; send(message: ServerMessage): void; close?(): void }
 
 export class TableActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -149,9 +149,15 @@ export class TableActor {
   }
 
   // To the host's own screens only (DRIFT §9): the table role, not seats, observers or lobbies.
+  // The owner's own seat or watch (L75) hears the room too, but never the host key: her login is
+  // her key, and a key is not sent where it is not needed.
   tellTable(message: ServerMessage): void {
     for (const sub of this.subscribers.keys()) {
       if (sub.seat === null && sub.observer === undefined && !sub.lobby) sub.send(message)
+      else if (sub.host && message.t === 'room') {
+        const { hostKey: _key, ...room } = message
+        sub.send(room)
+      }
     }
   }
 
