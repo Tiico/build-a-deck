@@ -151,7 +151,7 @@
 .byd-join-table button {
   display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 5px 14px; min-width: var(--byd-seat-w); min-height: var(--byd-seat-h); border-radius: 999px; white-space: nowrap;
-  border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); line-height: 1.05;
+  border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-family: inherit; line-height: 1.05;
 }
 /* The letter leads and the word follows, so the two lines are told apart by weight and size and
    not by a rule between them. The word keeps a little of the seat's colour showing through it,
@@ -259,7 +259,9 @@
    with the page or from a press. */
 .byd-join [role='alert'], .byd-code-says { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
 .byd-join input[aria-invalid='true'], .byd-code-row > input[aria-invalid='true'] { border-color: #e05a4f; }
-.byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
+/* A button does not inherit the page's face: left to itself it was drawn in the browser's own
+   (Arial on a Mac) under a heading and a field in `system-ui`, two typefaces in one column. */
+.byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-family: inherit; font-size: 18px; font-weight: 800; }
 /* Refused is a state of a role and not a role of its own. The page no longer opens in it — a way
    on that waits for a name stands open and answers when it is pressed (#416, variant B) — but a
    seat somebody else took shuts the two ways into one, and that is a control that has to *look*
