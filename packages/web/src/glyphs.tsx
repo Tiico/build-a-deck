@@ -235,3 +235,49 @@ export function KindGlyph({ kind }: { kind: Element['kind'] }) {
     </Glyph>
   )
 }
+
+// The five the secondary controls needed beyond the twenty (L73, #1101, led 3), in the same hand.
+// The way out of a table and out of an account: a door with the arrow leaving it.
+export function ExitGlyph() {
+  return (
+    <Glyph name="exit">
+      <Line d="M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75" />
+    </Glyph>
+  )
+}
+
+// When the last move happened: a clock, read before the sentence it times.
+export function ClockGlyph() {
+  return (
+    <Glyph name="clock">
+      <Line d="M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11M8 4.75V8l2.25 1.5" />
+    </Glyph>
+  )
+}
+
+// The account's own page: a person.
+export function PersonGlyph() {
+  return (
+    <Glyph name="person">
+      <Line d="M8 2.75a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25" />
+    </Glyph>
+  )
+}
+
+// A file coming in: the arrow lands on the shelf.
+export function ImportGlyph() {
+  return (
+    <Glyph name="import">
+      <Line d="M8 2.5v8.25M4.75 7.5 8 10.75l3.25-3.25M3 13.5h10" />
+    </Glyph>
+  )
+}
+
+// The whole hand laid out: four cards in a grid.
+export function GridGlyph() {
+  return (
+    <Glyph name="grid">
+      <Line d="M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z" />
+    </Glyph>
+  )
+}

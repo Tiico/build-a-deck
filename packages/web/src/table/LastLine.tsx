@@ -3,6 +3,7 @@ import type { Activity, Snapshot } from '@byd/protocol'
 import { describeActivity, sayable } from './describe.js'
 import { useT, type T } from '../i18n/index.js'
 import { useAfterSheet } from './after.js'
+import { ClockGlyph } from '../glyphs.js'
 
 // The corner of the felt's own screen (#682, beställarens beslut: raden E). The table screen had
 // no feed — the TV's SENAST is the TV's — so what had just happened at the table, a shuffle or a
@@ -53,7 +54,8 @@ export function LastLine({ activity, view }: { activity: readonly Activity[]; vi
   if (!last || at === null || !dressed) return null
   return (
     <p className="byd-table-last" data-table-last="" style={room === null ? undefined : { maxWidth: room }}>
-      <b>{t('table.last')}</b> {describeActivity(last, view, t)} <span>· {ago(now - at, t)}</span>
+      <ClockGlyph />
+      <span className="byd-offscreen">{t('table.last')}</span> {describeActivity(last, view, t)} <span>· {ago(now - at, t)}</span>
     </p>
   )
 }
