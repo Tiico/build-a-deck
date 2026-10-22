@@ -103,7 +103,7 @@ async function shares(document_: string): Promise<Record<string, Share>> {
 // and the editor's stylesheet around it, which is the whole point of measuring it rather than the
 // compiled output on its own.
 function editorDocument(): string {
-  const { container, unmount } = render(<CardPreview id="byd-card-ord" face={face} row={{}} icons={{}} />)
+  const { container, unmount } = render(<CardPreview id="byd-card-ord" face={face} row={{}} icons={{}} palette={undefined} />)
   const html = container.innerHTML
   unmount()
   return `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#fff}${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head><body><div class="byd-editor">${html}</div></body></html>`

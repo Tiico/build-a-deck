@@ -1014,6 +1014,7 @@ function Felt({
                   scale={fit.px(1) / CSS_MM_PX}
                   assetBase={assetBase}
                   motifs={motifs}
+                  palette={doc.palette}
                 />
               )
             : undefined

@@ -474,6 +474,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             scale={zoom.scale}
             assetBase={assetBase}
             motifs={motifs}
+            palette={doc.palette}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
             onMeasured={onMeasured}
@@ -2879,7 +2880,7 @@ function BackGallery({ open: openFromStart, takeFocus, onFocused, onPick }: { op
         {BACKS.map((back) => (
           <button key={back.id} type="button" onClick={(event) => onPick({ name: t(back.name), base: back.base(t) }, event.currentTarget)}>
             <span className="byd-backs-card">
-              <CardPreview id={`byd-back-${back.id}`} face={{ base: back.base(t), variants: {} }} row={{}} icons={{}} scale={0.26} />
+              <CardPreview id={`byd-back-${back.id}`} face={{ base: back.base(t), variants: {} }} row={{}} icons={{}} palette={undefined} scale={0.26} />
             </span>
             <span>{t(back.name)}</span>
           </button>

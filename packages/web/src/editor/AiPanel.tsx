@@ -189,6 +189,16 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
 
   // An answer still coming when the editor closes is hung up on, not left running at the provider.
   useEffect(() => () => asking.current?.asking.cancel(), [])
+  // And a proposal it laid on the wall is taken off with it: nothing else can take it off, and a
+  // wall left drawing a game that is not the game disagrees with Mall, which draws the real one (E2).
+  const onWall = useRef({ shown: false, onShowOnWall })
+  onWall.current = { shown: wallTurn !== null, onShowOnWall }
+  useEffect(
+    () => () => {
+      if (onWall.current.shown) onWall.current.onShowOnWall?.(null)
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!handTo) return

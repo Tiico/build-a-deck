@@ -35,8 +35,10 @@ export type CardPreviewProps = {
   // is fitted as a file, as every picture was before there was anything to measure.
   motifs?: Record<string, Motif> | undefined
   // What the game's meanings are painted in (E4): a symbol written `{namn|roll}` reaches the card
-  // as its own shape with this colour behind it.
-  palette?: Record<string, string> | undefined
+  // as its own shape with this colour behind it. Asked of every caller, not offered: a surface that
+  // left it out drew the game's symbols uncoloured while the wall painted them, so Mall and
+  // Kortväggen showed two different cards from one game (E2). A card with no game behind it says so.
+  palette: Record<string, string> | undefined
 }
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
