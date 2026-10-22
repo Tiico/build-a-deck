@@ -9,7 +9,8 @@ import { expect, test } from '../../support/test.js'
 // fallback face costs against this Mac's (memory: felt measurements must not pin Mac pixels).
 //
 // What the address costs is paid by INSPEKTION, the card panel under it, which the prototype
-// measured at 227 px at 1280 × 800 for this variant against 265 before it.
+// measured at 227 px at 1280 × 800 for this variant against 265 before it. Deckster's hand above
+// the game's name is paid for the same way (#1084).
 const BOX = 'deck.ockelberg.com'
 
 for (const device of [SMALL_TV, TV]) {
@@ -43,7 +44,9 @@ for (const device of [SMALL_TV, TV]) {
     expect(fit.codeLine, `the code and the square (${Math.round(fit.codeLine)} px) in ${fit.room} px`).toBeLessThanOrEqual(fit.room - 8)
     expect(fit.sameLine, 'the square stands beside the code').toBe(true)
     console.log(`${device.viewport.width}: host ${Math.round(fit.host)} px, code line ${Math.round(fit.codeLine)} px, column ${fit.room} px, INSPEKTION ${Math.round(fit.inspect)} px`)
-    // INSPEKTION keeps the room the prototype measured for it, give or take a face's line height.
-    if (device === SMALL_TV) expect(fit.inspect, 'INSPEKTION at 1280 × 800').toBeGreaterThanOrEqual(215)
+    // INSPEKTION keeps the room the prototype measured for it, give or take a face's line height:
+    // 227 px for the address, less the line Deckster's hand stands on above the game's name, which
+    // #1084's prototype measured at 168 px (beslut B 2026-10-22, the cost chosen with it).
+    if (device === SMALL_TV) expect(fit.inspect, 'INSPEKTION at 1280 × 800').toBeGreaterThanOrEqual(156)
   })
 }

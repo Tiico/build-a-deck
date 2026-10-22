@@ -9,6 +9,7 @@ import { seatColor } from '../src/table/seatColor.js'
 import { SHOW_MS, type Shown } from '../src/table/presence.js'
 import { useShowing } from '../src/table/useShowing.js'
 import { buildScene, registry } from './scene.js'
+import { HAND } from '../src/brand/mark.js'
 
 describe('TvChrome (C as the TV surroundings)', () => {
   it('shows the room code, a dock with every seat and its hand count, and the recent activity in words', () => {
@@ -524,5 +525,34 @@ describe('which shown card the TV draws (#508)', () => {
     const down = table.components.find((c) => c.cardRef === null)!
     const { result } = renderHook(() => useShowing(table, from(down.id, 1000)))
     expect(result.current.showing).toBeNull()
+  })
+})
+
+// Deckster's hand on the room's television (#1084, beslut B 2026-10-22): the mark and the name on a
+// line of their own at the top of the column, above the game's name. The column is the felt's
+// neighbour, so the line costs the card being looked at its height and never the felt. The
+// observer's screen is not the room's and goes without it.
+describe('the room’s television wears Deckster’s hand (#1084)', () => {
+  it('stands the hand and the name above the game’s name, on the room’s screen only', () => {
+    const { view, log } = buildScene()
+    const { container, rerender } = render(
+      <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P" title="Sal's Saloon" room>
+        <div />
+      </TvChrome>,
+    )
+    const brand = container.querySelector('[data-tv] > aside > [data-brand]')
+    expect(brand?.textContent).toBe('Deckster')
+    // The favicon's own cards, amber, green and paper, from the one drawing (A6).
+    expect([...(brand?.querySelectorAll('svg rect') ?? [])].map((r) => r.getAttribute('fill'))).toEqual([HAND.amber, HAND.green, HAND.paper])
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading.textContent).toMatch(/^Sal's Saloon/)
+    expect(brand!.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    rerender(
+      <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P" title="Sal's Saloon">
+        <div />
+      </TvChrome>,
+    )
+    expect(container.querySelector('[data-brand]')).toBeNull()
   })
 })
