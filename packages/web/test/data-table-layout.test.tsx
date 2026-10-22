@@ -965,7 +965,7 @@ describe('a picture cell’s tile is the whole control (#1085, L75)', () => {
     }
   }, 60_000)
 
-  // The marked cards' field is the same Bildruta (L72), and it has to be the same on the screen:
+  // The marked cards' field is the same Bildruta (L75), and it has to be the same on the screen:
   // measured on the built app it was drawn as one of the foot's buttons instead — a solid edge
   // with the foot's radius, a 12 px bold «+» in ink, and a held picture 40 px wide inside a tile
   // of 66 — because the rule for every button in the action row outweighed the tile's own.
