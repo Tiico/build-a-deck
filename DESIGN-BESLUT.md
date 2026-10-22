@@ -6652,7 +6652,7 @@ Luckan är erkänd: ett kort som bordsskärmen vänder ner framför någon har i
 Rutans namn och antal står kvar överst; ytorna står en per rad, så att korten får plats.
 En yta läsaren inte får se in i skickar inget kort alls (B6), så den ritar inget heller; det bevisas i `packages/e2e/test/private-area.spec.ts`.
 
-### L72. Bildrutan: en bild i Tabell är en bricka som är hela kontrollen (prototypat och beslutat 2026-10-22, #1105)
+### L75. Bildrutan: en bild i Tabell är en bricka som är hela kontrollen (prototypat och beslutat 2026-10-22, #1105)
 
 Bilder i Tabell hanterades av tre ytor som var och en byggde upp samma sak för hand i `DataTable.tsx`: kortets bildcell, massredigeringens bildfält och bildremsan över tabellen.
 Guiden byggde en fjärde, biblioteket och Media var sin bricka.

@@ -9,7 +9,7 @@ import { DESK } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 
-// A picture uploaded from a card's own cell, the way the playtest did it (#742) — since L72 by
+// A picture uploaded from a card's own cell, the way the playtest did it (#742) — since L75 by
 // dropping the file on the cell's tile, which is the one way a file reaches a cell without the
 // library window.
 //
@@ -62,7 +62,7 @@ async function openTable(page: Page) {
 
 test.describe('a picture uploaded from a card cell (#742)', () => {
   test('offers only the four formats the gate takes', async ({ page }) => {
-    // The picker is the library window's (L72), opened from the tile.
+    // The picker is the library window's (L75), opened from the tile.
     const slot = await openTable(page)
     await slot.getByRole('button', { name: 'Välj bild för kort-1' }).click()
     const upload = page.getByRole('dialog', { name: 'Bilder i spelet' }).getByLabel('Ladda upp')
