@@ -19,7 +19,7 @@ describe('the felt as controls (#2, variant C)', () => {
     const labels = feltLabels(snapshot)
     render(<TableRenderer view={snapshot} mode="table" scale={2} keyboard={stops(labels, null)} />)
 
-    expect(screen.getByRole('button', { name: 'wizard, kort i Spelyta, vridet. Enter öppnar handlingar.' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'wizard, kort i Spelyta, roterat. Enter öppnar handlingar.' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dolt kort, kort i Spelyta. Enter öppnar handlingar.' })).toBeTruthy()
     // A pile is one stop, as it is one thing to the eye (#572): its name, how much is in it, and
     // what lies on top — a hidden pile's top is said to be hidden and no more (B6).
