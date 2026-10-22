@@ -566,6 +566,7 @@ export const enEditor = {
   'library.replacing.other': '{n} of the cards already have a picture, which will be replaced.',
   'library.use': 'Use the picture',
   'library.use.many': 'Use on {n} cards',
+  'library.pick': 'Choose the picture',
   'library.close': 'Close',
   'library.target.card': 'The card {cardRef}, picture field {field}',
   'library.target.cards': '{n} marked cards, picture field {field}',

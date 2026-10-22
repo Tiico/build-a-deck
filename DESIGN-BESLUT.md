@@ -5421,6 +5421,13 @@ Massändringen är ett enda ångrasteg genom samma radlista som varje annan mass
 Media behåller bibliotek, uppladdning, beskärning och förhandsvisning; uppladdningen direkt i Data står kvar under sitt eget namn «Ladda upp», och dragsläppets förbättringar hör till #291.
 Dialogen är en komponent för sig med ett litet gränssnitt — mål, bilder, `onApply(hash)`, `onClose()` — så att mallens fasta bild (#320) kan öppna samma fönster.
 
+Reviderat 2026-10-22 (#1099, beställarens rapport): **i massändringen väljer dialogen och raden skriver.**
+Handlingsraden för de markerade korten har tre vägar in för en bild (E1): släpp en av spelets bilder, ladda upp en fil, eller öppna biblioteket.
+De två första lade bilden i raden och väntade på «Sätt bild på N kort»; biblioteket skrev korten direkt med «Använd på N kort», så raden stod tom med sin knapp inaktiv medan korten redan var ändrade — bilden sattes när den valdes och inte när knappen trycktes.
+Nu handlar dialogen bilden till raden som varje annan väg in, och radens knapp är det enda som skriver; dialogens knapp säger «Välj bilden», eftersom en knapp som inte skriver inte får lova det.
+Resultatbeskedet i remsan över tabellen sägs därför av radens knapp, och massändringen är samma enda ångrasteg som förut.
+För en enskild bildcell skriver dialogen som förut med «Använd bilden»: där finns ingen rad som håller något, och cellen är redan målet.
+
 Reviderat 2026-09-20 (#295, beställaren valde A): **förhandsvisningen i Media visar den kortsida som faktiskt ritar bilden, på ett kort valt bland dem som använder den.**
 
 Variant A, vald efter en klickbar A/B/C-prototyp: kortväljaren står överst, därunder två tydligt märkta sidval, Fram och Bak, och under dem ett enda stort kort; sidminiatyrer och två kortsidor samtidigt byggs inte.

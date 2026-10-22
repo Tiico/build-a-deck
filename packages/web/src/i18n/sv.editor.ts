@@ -630,6 +630,7 @@ export const svEditor = {
   'library.replacing.other': '{n} av korten har redan en bild som byts ut.',
   'library.use': 'Använd bilden',
   'library.use.many': 'Använd på {n} kort',
+  'library.pick': 'Välj bilden',
   'library.close': 'Stäng',
   'library.target.card': 'Kortet {cardRef}, bildfältet {field}',
   'library.target.cards': '{n} markerade kort, bildfältet {field}',
