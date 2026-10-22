@@ -196,8 +196,9 @@ describe('the chosen card moves along the strip without a drag (#552)', () => {
     const right = within(actions).getByRole('button', { name: 'Flytta höger' })
     expect(left.getAttribute('aria-disabled')).toBe('true')
     // The arrows are drawn for the eye; a reader hears the words alone.
-    expect(left.textContent).toBe('← Flytta vänster')
-    expect(right.textContent).toBe('Flytta höger →')
+    const drawn = (b: HTMLElement) => [b.textContent?.trim(), [...b.querySelectorAll('svg[data-glyph]')].map((g) => g.getAttribute('data-glyph'))]
+    expect(drawn(left)).toEqual(['Flytta vänster', ['arrow-left']])
+    expect(drawn(right)).toEqual(['Flytta höger', ['arrow-right']])
 
     right.focus()
     await user.keyboard('{Enter}')

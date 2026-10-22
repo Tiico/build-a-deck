@@ -2,6 +2,7 @@ import { useId, useRef, useState, type PointerEvent as ReactPointerEvent, type K
 import type { AssetCrop } from '@byd/protocol'
 import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
+import { ArrowGlyph } from '../glyphs.js'
 
 // The window a picture is looked at through, cut where the picture lives (#222, L22, beslut 2).
 //
@@ -32,11 +33,11 @@ const LEAST = 0.1
 const tidy = (v: number): number => Math.round(v * 1e4) / 1e4
 
 // The pad's four arrows, as the keys they stand for, what each is called and what it draws.
-const PAD: readonly (readonly [string, Key, string])[] = [
-  ['ArrowUp', 'media.crop.pad.up', '↑'],
-  ['ArrowLeft', 'media.crop.pad.left', '←'],
-  ['ArrowRight', 'media.crop.pad.right', '→'],
-  ['ArrowDown', 'media.crop.pad.down', '↓'],
+const PAD: readonly (readonly [string, Key, 'up' | 'left' | 'right' | 'down'])[] = [
+  ['ArrowUp', 'media.crop.pad.up', 'up'],
+  ['ArrowLeft', 'media.crop.pad.left', 'left'],
+  ['ArrowRight', 'media.crop.pad.right', 'right'],
+  ['ArrowDown', 'media.crop.pad.down', 'down'],
 ]
 
 export type Corner = 'nw' | 'ne' | 'sw' | 'se'
@@ -190,9 +191,9 @@ export function Crop({ url, ratio, crop, onChange, handle, status }: CropProps) 
           of arrows, and «Mindre» and «Större» round its middle. No zoom (L33). Each press is one
           settled change, as a key press is, and a press that changes nothing changes nothing. */}
       <div className="byd-crop-pad" role="group" aria-label={t('media.crop.pad')}>
-        {PAD.map(([key, name, glyph]) => (
+        {PAD.map(([key, name, to]) => (
           <button key={key} type="button" data-pad={key} aria-label={t(name)} onClick={(event) => press(moved(crop, key, event.shiftKey, null))}>
-            <span aria-hidden="true">{glyph}</span>
+            <ArrowGlyph to={to} />
           </button>
         ))}
         <button type="button" aria-label={t('media.crop.pad.smaller.name')} onClick={(event) => press(scaled(crop, -STEP * (event.shiftKey ? SHIFT : 1)))}>

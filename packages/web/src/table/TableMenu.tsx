@@ -5,6 +5,7 @@ import { Question } from '../editor/Question.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { describeActivity, sayable } from './describe.js'
 import { useT } from '../i18n/index.js'
+import { MoreGlyph } from '../glyphs.js'
 
 // «⋯» in the corner of the felt's own screen, between «Starta om» and «?» (#682, beställarens beslut
 // 2026-10-17: C). A group that plays straight on the felt (K14) had no way to take back a wrong
@@ -81,7 +82,7 @@ export function TableMenu({ view, activity, version, send }: { view: Snapshot; a
         aria-controls={open ? id : undefined}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        ⋯
+        <MoreGlyph />
       </button>
       {open && (
         <div className="byd-table-more-menu" role="menu" id={id} aria-label={t('table.more')} ref={menu} onKeyDown={keys}>

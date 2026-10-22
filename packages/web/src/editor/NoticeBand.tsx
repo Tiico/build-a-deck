@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useT } from '../i18n/index.js'
+import { CloseGlyph, WarningGlyph } from '../glyphs.js'
 
 /**
  * What could not happen, in a band first under the header (#1073, beställarens val B 2026-10-21).
@@ -28,16 +29,12 @@ export function NoticeBand({ text, onClose }: { text: string; onClose(): void })
   }, [])
   return (
     <div ref={band} className="byd-editor-notice-band">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M12 3 2 21h20L12 3z" />
-        <path d="M12 10v5" />
-        <path d="M12 18h.01" />
-      </svg>
+      <WarningGlyph />
       <span role="alert" className="byd-editor-notice">
         {text}
       </span>
       <button type="button" className="byd-editor-notice-close" aria-label={t('editor.notice.close')} onClick={onClose}>
-        <span aria-hidden="true">×</span>
+        <CloseGlyph />
       </button>
     </div>
   )

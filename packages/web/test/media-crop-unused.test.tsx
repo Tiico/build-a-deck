@@ -74,6 +74,7 @@ describe('a picture no card uses is still measured (#222, beslut 4)', () => {
 
     expect(status.getAttribute('data-state')).toBe('saving')
     await waitFor(() => expect(status.getAttribute('data-state')).toBe('saved'))
-    expect(status.textContent).toBe('✓ Beskuren · visar 90 %')
+    expect(status.textContent).toBe('Beskuren · visar 90 %')
+    expect(status.querySelector('svg[data-glyph]')?.getAttribute('data-glyph')).toBe('check')
   })
 })

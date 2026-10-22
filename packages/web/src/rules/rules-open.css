@@ -66,4 +66,5 @@
 [data-tv][data-room] .byd-rules-open { padding: 8px 16px; font-size: 24px; }
 .byd-rules-drawer[data-placement='phone'] .byd-rules-open { border-radius: 8px; padding: 6px 10px; font-size: 12px; }
 /* The word and the book are the button's picture; a press on them is the button's (#484). */
-.byd-rules-word, .byd-rules-book { pointer-events: none; }
+.byd-rules-word, .byd-rules-open > .byd-glyph { pointer-events: none; }
+.byd-rules-open > .byd-glyph { width: 20px; height: 20px; }

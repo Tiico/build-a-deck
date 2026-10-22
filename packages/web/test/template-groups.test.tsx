@@ -124,7 +124,8 @@ describe('grouping the deck by a column (#13)', () => {
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     // The button carries the open group and its count on its own, and the list behind it carries
     // every group with the same two things (#129).
-    expect(groupButton().textContent).toBe('Bas (alla) · 3 kort▾')
+    expect(groupButton().textContent).toBe('Bas (alla) · 3 kort')
+    expect(groupButton().querySelector('svg[data-glyph]')?.getAttribute('data-glyph')).toBe('chevron-down')
     expect((await openGroups(user)).map((t) => t.textContent)).toEqual(['Bas (alla)3 kort', 'typ = varelse1 kort', 'typ = fälla2 kort'])
 
     // The rule is the group: it lives on the template, not on a list of cards.
@@ -244,7 +245,7 @@ describe('grouping the deck by a column (#13)', () => {
     await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
     expect(screen.queryByRole('menu', { name: /kortgrupper/i })).toBeNull()
     expect(document.activeElement).toBe(groupButton())
-    expect(groupButton().textContent).toBe('typ = fälla · 2 kort▾')
+    expect(groupButton().textContent).toBe('typ = fälla · 2 kort')
     expect(screen.getByText('2 kort med typ = fälla')).toBeTruthy()
 
     const again = await openGroups(user)

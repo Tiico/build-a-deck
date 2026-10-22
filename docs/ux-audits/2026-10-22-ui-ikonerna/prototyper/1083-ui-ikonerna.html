@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-ikonerna — prototyp</title>
+<!-- PROTOTYP, #1083. Två händer för appens UI-ikoner bredvid dagens tecken: A den egna (glyphs.tsx,
+     ritad i #1082:s prototyp) och B Lucides former i samma vikt. Kastas när en hand är vald och byggd. -->
+<script src="lucide.js"></script>
+<style>
+:root { --ink: #e6ecfa; --quiet: #8e97ab; --line: #343846; --amber: #ffd98a; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px 16px 96px; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+h1 { font-size: 16px; margin: 0 0 4px; } p { color: var(--quiet); max-width: 860px; line-height: 1.55; }
+table { border-collapse: collapse; margin: 12px 0 24px; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 12px; text-align: left; vertical-align: middle; }
+th { font-size: 11px; color: var(--quiet); text-transform: uppercase; letter-spacing: .08em; }
+td.idag { font-size: 16px; width: 64px; }
+td.hand svg { width: 16px; height: 16px; margin-right: 14px; vertical-align: middle; }
+td.hand svg.stor { width: 32px; height: 32px; }
+td.var { color: var(--quiet); font-size: 12px; }
+td.hand.vald { background: #1d2333; }
+.ytor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 1180px; }
+.yta { border-radius: 10px; padding: 12px 14px; }
+.yta b { display: block; font-size: 12px; margin-bottom: 8px; }
+.yta .rad { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 6px 0; }
+.yta .rad i { font-style: normal; font-size: 11px; opacity: .7; width: 18px; }
+.yta svg { width: 16px; height: 16px; }
+.vaxlare { position: fixed; top: 8px; right: 16px; z-index: 9; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: var(--amber); color: #1f1b12; font-weight: 700; box-shadow: 0 10px 30px #0009; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: var(--amber); font: inherit; }
+.vaxlare span { padding: 0 10px; min-width: 330px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<h1>UI-ikonerna i en hand (#1083)</h1>
+<p>Varje ikon ritas i dag som ett tecken i maskinens typsnitt eller som en lös SVG på sitt eget rutnät, och tecknen är en annan hand på Linux än på en Mac. <b>A</b> är den egna handen: glyphs.tsx 16-rutnät och 1,6 rund linje, ritad i #1082:s prototyp. <b>B</b> är Lucides former, som redan finns i repot sedan #1087. De är tecknade på 24-rutnät och linjen är satt till 2,4, vilket ger samma vikt vid 16 px. Den valda handen markeras i tabellen och ritas på de fyra ytorna nedan. Bytet görs med pilarna uppe till höger eller med ← →.</p>
+<table id="ikoner"></table>
+<div class="ytor" id="ytor"></div>
+<div class="vaxlare" role="group" aria-label="Prototypens växlare"><button type="button" id="bak" aria-label="Föregående">←</button><span id="namn"></span><button type="button" id="fram" aria-label="Nästa">→</button></div>
+<script>
+const S = (d, extra = '') => `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>${extra}</svg>`
+const prick = (pts) => pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.25" fill="currentColor"/>`).join('')
+const IK = [
+  ['Ångra', '↶', 'M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7', 'finns: HookGlyph'],
+  ['Flagga', '⚑', 'M3.5 14V2.5M3.5 3h8.25l-1.75 3 1.75 3H3.5', 'finns, men editor.css ritar ⚑'],
+  ['Stäng', '×', 'M4 4l8 8M12 4l-8 8', 'NoticeBand, HelpBox, FilterField'],
+  ['Klart', '✓', 'M3 8.5l3.25 3.25L13 5', 'StepPill, editor.css, Media'],
+  ['Fäll ut', '▾', 'M4 6l4 4 4-4', 'TemplateCanvas, SharePanel, Crown'],
+  ['Fäll in', '▸', 'M6 4l4 4-4 4', 'table.css, ColumnFilter'],
+  ['Tillbaka', '←', 'M13 8H3M7 4 3 8l4 4', 'editorns väg hem'],
+  ['Vidare', '→', 'M3 8h10M9 4l4 4-4 4', 'landningssidans pille'],
+  ['Sortera', '↕', 'M5 6l3-3 3 3M5 10l3 3 3-3', 'DataTable'],
+  ['Redigera', '✎', 'M10.5 2.75l2.75 2.75L6 12.75l-3.25.5.5-3.25z', ''],
+  ['Sparar', '⟳', 'M13 8a5 5 0 1 1-1.46-3.54M13 2.75V5.5h-2.75', 'MediaPanel'],
+  ['Dra', '⠿', '', 'LayerList', prick([[6, 4], [10, 4], [6, 8], [10, 8], [6, 12], [10, 12]])],
+  ['Mer', '⋯', '', '', prick([[3.5, 8], [8, 8], [12.5, 8]])],
+  ['Låst', '<svg viewBox="0 0 12 12" width="12" height="12"><rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="currentColor"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>', 'M5.5 7.5V5.5a2.5 2.5 0 0 1 5 0v2M4.5 7.5h7a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1z', 'ColumnDoor 12-rutnät, LayerList 1,5'],
+  ['Regler', '<svg viewBox="0 0 20 20" width="16" height="16"><path d="M10 5C8 3.5 5 3.3 3 3.6v11c2-.3 5 0 7 1.4 2-1.4 5-1.7 7-1.4v-11c-2-.3-5-.1-7 1.4zM10 5v11" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>', 'M8 4.5C6.5 3.25 4.5 3 2.5 3.25v9c2-.25 4 0 5.5 1.25 1.5-1.25 3.5-1.5 5.5-1.25v-9C11.5 3 9.5 3.25 8 4.5zM8 4.5v9', 'RuleDrawer 20-rutnät, EditorPage 1,4'],
+  ['Spela', '<svg viewBox="0 0 14 14" width="14" height="14"><path d="M3 2v10l9-5z" fill="currentColor"/></svg>', 'M5 3.5v9l7.5-4.5z', 'TablesTab 14-rutnät, fylld'],
+  ['Sudda', '⌫', 'M6 3.5h7a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6L2 8zM8 6.25l3.5 3.5M11.5 6.25 8 9.75', 'CounterEntry'],
+  ['Notis', '<svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>', 'M8 7.25v4M8 4.75v.01', 'NoticeBand 24-rutnät, linje 2', '<circle cx="8" cy="8" r="5.75" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+]
+
+IK.push(['Minus', '−', 'M3 8h10', 'finns: MinusGlyph'], ['Plus', '+', 'M3 8h10M8 3v10', 'finns: PlusGlyph'])
+const L = (name) => { const hit = window.LUCIDE[name]; return hit ? `<svg viewBox="0 0 24 24" aria-hidden="true">${hit[1]}</svg>` : '' }
+const V = { A: 'A — den egna handen (glyphs.tsx) · rekommenderas', B: 'B — Lucides former i samma vikt' }
+let v = (new URLSearchParams(location.search).get('v') || 'A').toUpperCase()
+function rita() {
+  document.getElementById('namn').textContent = V[v]
+  history.replaceState(null, '', '?v=' + v)
+  document.getElementById('ikoner').innerHTML = '<tr><th>Betydelse</th><th>I dag</th><th>A · egen hand, 16 och 32 px</th><th>B · Lucide, 16 och 32 px</th><th>Var</th></tr>' + IK.map(([n, idag, d, var_, extra = '']) => {
+    const a = S(d, extra), b = L(n)
+    return `<tr><td>${n}</td><td class="idag">${idag}</td><td class="hand ${v === 'A' ? 'vald' : ''}">${a}${a.replace('<svg', '<svg class="stor"')}</td><td class="hand ${v === 'B' ? 'vald' : ''}">${b}${b.replace('<svg', '<svg class="stor"')}</td><td class="var">${var_}${window.LUCIDE[n] ? ` · lucide:${window.LUCIDE[n][0]}` : ''}</td></tr>`
+  }).join('')
+  const rad = (k) => IK.map(([n, , d, , extra = '']) => (k === 'A' ? S(d, extra) : L(n))).join('')
+  const idag = IK.map(([, i]) => `<span style="font-size:15px">${i}</span>`).join('')
+  document.getElementById('ytor').innerHTML = [['Editorns huvud', '#23262e', '#c3cbdd'], ['Filten', '#1f4a30', '#f3e9d6'], ['Telefonen', '#14161c', '#e6ecfa'], ['Wizardens papper', '#f4ead8', '#1c1c1c']]
+    .map(([t, bg, ink]) => `<div class="yta" style="background:${bg};color:${ink}"><b>${t}</b><div class="rad"><i>nu</i>${idag}</div><div class="rad"><i>${v}</i>${rad(v)}</div></div>`).join('')
+}
+const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1) })
+rita()
+</script>
+</body>
+</html>

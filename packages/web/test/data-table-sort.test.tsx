@@ -106,13 +106,13 @@ describe('DataTable sorting (a view, #15)', () => {
 
     fireEvent.click(kostnad)
     expect(headerOf(kostnad).getAttribute('aria-sort')).toBe('ascending')
-    expect(headerOf(kostnad).textContent).toContain('↑')
+    expect(headerOf(kostnad).querySelector('svg[data-glyph]')?.getAttribute('data-glyph')).toBe('sort-ascending')
     expect(headerOf(screen.getByRole('button', { name: /^Titel/ })).getAttribute('aria-sort')).toBe('none')
     expect(screen.getByRole('status').textContent).toBe('Sorterad på kostnad, stigande.')
 
     fireEvent.click(kostnad)
     expect(headerOf(kostnad).getAttribute('aria-sort')).toBe('descending')
-    expect(headerOf(kostnad).textContent).toContain('↓')
+    expect(headerOf(kostnad).querySelector('svg[data-glyph]')?.getAttribute('data-glyph')).toBe('sort-descending')
     expect(screen.getByRole('status').textContent).toBe('Sorterad på kostnad, fallande.')
 
     fireEvent.click(kostnad)
@@ -165,7 +165,7 @@ type User = ReturnType<typeof userEvent.setup>
 // Every control in the head, in the order the keyboard reaches them: each column's sort, and —
 // for a column the designer made — the × that takes it away again beside it (#32).
 const headerButtons = () => screen.getAllByRole('columnheader').flatMap((th) => within(th).queryAllByRole('button'))
-const nameOf = (button: HTMLElement) => button.getAttribute('aria-label') ?? button.textContent?.replace(/\s*[↕↑↓]\s*¶?\s*$/, '').trim()
+const nameOf = (button: HTMLElement) => button.getAttribute('aria-label') ?? button.textContent?.replace(/\s*¶?\s*$/, '').trim()
 
 async function tabTo(user: User, target: HTMLElement) {
   for (let i = 0; i < 20 && document.activeElement !== target; i++) await user.tab()

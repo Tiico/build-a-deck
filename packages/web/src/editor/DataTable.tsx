@@ -43,6 +43,7 @@ import { useGesture } from './gesture.js'
 import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
 import { FootSaid } from './said.js'
+import { ChevronGlyph, CloseGlyph, PlusGlyph, SortGlyph } from '../glyphs.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -1620,7 +1621,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               {/* The handle says how the door shuts (#610): the × that closes it while it stands.
                   Its name is the door's either way, and `aria-expanded` says which it is. */}
               <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => (adding ? shutDoor() : setAdding(true))}>
-                {adding ? '×' : '+'}
+                {adding ? <CloseGlyph /> : <PlusGlyph />}
               </button>
               {adding && (
                 <ColumnDoor
@@ -1931,7 +1932,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   {...stop(cardRef)}
                   aria-label={t('table.removeRow', { cardRef })}
                 >
-                  ×
+                  <CloseGlyph />
                 </button>
               </td>
             </tr>
@@ -2009,10 +2010,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             const names = gone.map((field) => fieldLabel(field, t)).join(', ')
             return (
               <button key={side} type="button" className="byd-data-outside" data-side={side} aria-label={`${count}: ${names}`} onClick={() => bring(side === 'left' ? -1 : 1)}>
-                {side === 'left' && <span aria-hidden="true">‹</span>}
+                {side === 'left' && <ChevronGlyph to="left" />}
                 <span>{count}</span>
                 <span className="byd-data-outside-names">: {names}</span>
-                {side === 'right' && <span aria-hidden="true">›</span>}
+                {side === 'right' && <ChevronGlyph to="right" />}
               </button>
             )
           })}
@@ -2063,7 +2064,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             {/* The column and the value stand behind a box (#618): the foot is one row, and a
                 select and a field would make it two. */}
             <button type="button" ref={setBox} className="byd-data-set" aria-expanded={setting} onClick={() => setSetting(!setting)}>
-              {t('table.bulk.set.box')} <span aria-hidden="true">▾</span>
+              {t('table.bulk.set.box')} <ChevronGlyph to="down" />
             </button>
             {setting && (
               <Lifted handle={setBox} label={t(chosen.length === 1 ? 'table.bulk.set.label.one' : 'table.bulk.set.label.other', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
@@ -2305,7 +2306,8 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter
           answer(dir)
         }}
       >
-        {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
+        {label}
+        <SortGlyph by={active === 'ascending' || active === 'descending' ? active : 'none'} />
         {/* Tyst för skärmläsaren: orden — vad kolumnen skrivs som och vem som sade det — står i
             dörren, och ett ¶ i rubrikens namn vore en symbol utan mening (L12). */}
         {prose && (

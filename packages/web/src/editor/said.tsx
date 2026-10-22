@@ -1,4 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react'
+import { CheckGlyph } from '../glyphs.js'
 
 // What just happened, for the place a tab says it (#698, beslut B 2026-10-06). The editor holds it
 // and says it to a reader through the app's polite channel; this is only what is drawn. It is
@@ -20,7 +21,12 @@ export function FootSaid({ children }: { children?: ReactNode }) {
   const text = useContext(Standing)
   return (
     <>
-      {text !== null && <span className="byd-editor-confirm">{text}</span>}
+      {text !== null && (
+        <span className="byd-editor-confirm">
+          <CheckGlyph />
+          {text}
+        </span>
+      )}
       {children !== undefined && (
         <div className="byd-foot-quiet" hidden={text !== null}>
           {children}

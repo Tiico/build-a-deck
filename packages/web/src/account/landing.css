@@ -48,8 +48,8 @@
 .byd-landing-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 999px; font-size: 16px; line-height: 1; text-decoration: none; white-space: nowrap; box-sizing: border-box; }
 .byd-landing-btn.byd-primary { box-shadow: 0 8px 24px rgba(125, 211, 160, 0.25); }
 /* The arrow is the pill's drawing and not a word: it is never read out, and never part of the name. */
-.byd-landing-btn.byd-primary::after { content: '→' / ''; transition: translate 0.2s; }
-.byd-landing-btn.byd-primary:hover::after { translate: 3px 0; }
+.byd-landing-btn.byd-primary > .byd-glyph { transition: translate 0.2s; }
+.byd-landing-btn.byd-primary:hover > .byd-glyph { translate: 3px 0; }
 
 .byd-landing-hero { max-width: 1320px; margin: 0 auto; padding: var(--byd-landing-gutter); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; min-height: min(760px, calc(100vh - 84px)); }
 .byd-landing-eyebrow { color: var(--byd-landing-amber); font-weight: 700; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 16px; }

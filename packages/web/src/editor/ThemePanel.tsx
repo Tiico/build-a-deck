@@ -19,6 +19,7 @@ import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
 import { useSay } from '../status/StatusLive.js'
+import { CloseGlyph } from '../glyphs.js'
 
 // Speltema (L57, #630), in Symbolers ställe. The game's identity used to stand in three places:
 // the meanings and the icon set under a library on Symboler, and the typefaces in Mall's panel,
@@ -446,7 +447,7 @@ function ProjectSet({ doc, client, assetBase }: ThemePanelProps) {
               <small>{credit ? `${credit.licence} · ${credit.by}` : t('symbols.own')}</small>
               <small>{n === 0 && painted[name] ? t(paintedSaid(painted[name])) : t(n === 1 ? 'wall.cards.one' : 'wall.cards.other', { n })}</small>
               <button type="button" aria-label={t('symbols.remove', { name })} onClick={() => ask(name, doc.rows.filter((r) => iconsIn(r.fields, bare).has(name)).map((r) => r.id))}>
-                ×
+                <CloseGlyph />
               </button>
             </li>
           )
@@ -662,7 +663,7 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
                   {shown !== null && <code>{example(role)}</code>}
                 </span>
                 <button type="button" aria-label={t('symbols.colours.remove', { role })} onClick={() => ask(role, doc.rows.filter((r) => (rolesUsed([r])[role] ?? 0) > 0).map((r) => r.id))}>
-                  ×
+                  <CloseGlyph />
                 </button>
               </li>
             )

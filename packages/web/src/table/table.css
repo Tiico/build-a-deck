@@ -812,8 +812,7 @@
   color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
 /* Which way it opens, said on the row and not only by the list appearing under it. */
-[data-tv] button.byd-tv-place::after { content: '▸'; color: #9aa3b8; font-size: 18px; }
-[data-tv] button.byd-tv-place[aria-expanded='true']::after { content: '▾'; }
+[data-tv] button.byd-tv-place > .byd-glyph { width: 18px; height: 18px; color: #9aa3b8; }
 /* A zone's row has no initial to show, so its words take the first column's room too. */
 [data-tv] .byd-tv-seats ul[data-zones] .byd-tv-place { grid-template-columns: 1fr; }
 [data-tv] .byd-tv-seats ul[data-zones] button.byd-tv-place { grid-template-columns: 1fr auto; }
@@ -1070,9 +1069,6 @@
 /* Regelboken i kolumnens huvud är TV:ns knapp (#709), men TV:n pekas inte på och hennes skärm gör
    det: på skrivbordet och telefonen är den en tumme stor som allt annat hon trycker på (L12). */
 .byd-observer .byd-rules-open { min-height: var(--byd-tap); min-width: var(--byd-tap); }
-/* Which way the drawer goes, said on the button rather than only in its colour. */
-.byd-observer-more::after { content: ' ▲'; }
-[data-drawer='open'] .byd-observer-more::after { content: ' ▼'; }
 /* Her own sentence stands at the top of the column the table talks in. */
 .byd-observer-note { margin: 0; padding: 12px 16px; border-radius: 12px; background: #2a2417; color: #ffd98a; font-weight: 650; line-height: 1.4; border: 1px solid #3a3220; }
 /* Below the desk the table is the whole screen and the column is a drawer under it — under, never

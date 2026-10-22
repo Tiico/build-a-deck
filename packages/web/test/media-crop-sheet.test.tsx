@@ -191,13 +191,15 @@ describe('the keyboard cuts the window as the pointer does (#297, L33)', () => {
 describe('the status says where the crop stands, in three states and in both places (#297, L33)', () => {
   const status = () => within(sheet()).getByRole('status')
   const mark = () => tile().closest('li')!.querySelector('.byd-media-mark')
+  // The mark is drawn and the words are said (#1083): which glyph stands beside them, and the words.
+  const reads = (el: Element | null) => el && [el.querySelector('svg[data-glyph]')?.getAttribute('data-glyph'), el.textContent]
 
   it('says «Hela bilden» without colour when no crop is stored, and wears no mark on the tile', () => {
     render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
     expect(mark()).toBeNull()
     fireEvent.click(tile())
     expect(status().getAttribute('data-state')).toBe('whole')
-    expect(status().textContent).toBe('▢ Hela bilden')
+    expect(reads(status())).toEqual(['frame', 'Hela bilden'])
   })
 
   it('turns amber the moment the window is cut, and stays amber while the client still holds the edit', () => {
@@ -209,7 +211,7 @@ describe('the status says where the crop stands, in three states and in both pla
     fireEvent.pointerDown(corner('Nedre högra hörnet'), { clientX: 100, clientY: 100, pointerId: 1 })
     fireEvent.pointerMove(corner('Nedre högra hörnet'), { clientX: 60, clientY: 80, pointerId: 1 })
     expect(status().getAttribute('data-state')).toBe('saving')
-    expect(status().textContent).toBe('⟳ Ändrad — sparas …')
+    expect(reads(status())).toEqual(['refresh', 'Ändrad — sparas …'])
     fireEvent.pointerUp(corner('Nedre högra hörnet'), { clientX: 60, clientY: 80, pointerId: 1 })
 
     // The document has the window now, and the edit is still on its way.
@@ -217,13 +219,14 @@ describe('the status says where the crop stands, in three states and in both pla
     rerender(<MediaPanel doc={cut} assetBase={BASE} motifs={motifs} onCrop={() => undefined} saving={[SKOG]} />)
     expect(status().getAttribute('data-state')).toBe('saving')
     expect(mark()?.getAttribute('data-state')).toBe('saving')
+    expect(reads(mark())).toEqual(['refresh', 'Sparas …'])
 
     // The actor has echoed it: green, with the share of the picture the window shows.
     rerender(<MediaPanel doc={cut} assetBase={BASE} motifs={motifs} onCrop={() => undefined} saving={[]} />)
     expect(status().getAttribute('data-state')).toBe('saved')
-    expect(status().textContent).toBe('✓ Beskuren · visar 81 %')
+    expect(reads(status())).toEqual(['check', 'Beskuren · visar 81 %'])
     expect(mark()?.getAttribute('data-state')).toBe('saved')
-    expect(mark()?.textContent).toBe('▣ Beskuren')
+    expect(reads(mark())).toEqual(['frame-cropped', 'Beskuren'])
   })
 
   it('goes back to «Hela bilden», and the tile loses its mark, when the crop is taken away', () => {
@@ -231,7 +234,7 @@ describe('the status says where the crop stands, in three states and in both pla
     const doc = deckWithArt()
     doc.pictures![SKOG] = { name: 'skog.png', crop: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 } }
     const { rerender } = render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} saving={[]} />)
-    expect(mark()?.textContent).toBe('▣ Beskuren')
+    expect(reads(mark())).toEqual(['frame-cropped', 'Beskuren'])
     fireEvent.click(tile())
     expect(status().getAttribute('data-state')).toBe('saved')
 

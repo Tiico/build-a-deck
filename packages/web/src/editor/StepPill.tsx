@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Lifted } from './Lifted.js'
+import { CheckGlyph, ChevronGlyph, MinusGlyph, PlusGlyph } from '../glyphs.js'
 
 // One control for «how big is the thing I am looking at drawn» (#619): `[−][164 % ▾][+]`.
 //
@@ -49,7 +50,7 @@ export function StepPill({ label, value, said, note, less, more, onStep, held, c
   return (
     <div className="byd-pill" role="group" aria-label={label}>
       <button type="button" className="byd-pill-step" aria-label={less} {...refused} onClick={() => step(-1)}>
-        <span aria-hidden="true">&#x2212;</span>
+        <MinusGlyph />
       </button>
       {choices ? (
         <Measure value={value} said={said} note={note} onStep={onStep} choices={choices} />
@@ -59,7 +60,7 @@ export function StepPill({ label, value, said, note, less, more, onStep, held, c
         </output>
       )}
       <button type="button" className="byd-pill-step" aria-label={more} {...refused} onClick={() => step(1)}>
-        <span aria-hidden="true">+</span>
+        <PlusGlyph />
       </button>
       {held && (
         <span id={why} className="byd-offscreen">
@@ -109,7 +110,7 @@ function Measure({ value, said, note, onStep, choices }: MeasureProps) {
         <span className="byd-pill-number">
           {value}
           <span className="byd-pill-caret" aria-hidden="true">
-            ▾
+            <ChevronGlyph to="down" />
           </span>
         </span>
         {note && (
@@ -124,7 +125,7 @@ function Measure({ value, said, note, onStep, choices }: MeasureProps) {
             <button key={choice.id} type="button" className="byd-pill-choice" role="menuitemradio" aria-checked={choice.checked} data-choice={choice.id} onClick={() => pick(choice)}>
               {choice.label}
               {/* Said by `aria-checked`; the mark is for the eye. */}
-              {choice.checked && <span aria-hidden="true">✓</span>}
+              {choice.checked && <CheckGlyph />}
             </button>
           ))}
         </Lifted>

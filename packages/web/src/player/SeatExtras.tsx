@@ -8,6 +8,7 @@ import { targetsOf, type Placement } from './PlaySheet.js'
 import { isCounter } from '../components.js'
 import type { RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
+import { MinusGlyph, PlusGlyph } from '../glyphs.js'
 
 // What a seat owns beside its hand (C4, prototype A): its counters as a row of pills under the
 // head, and the cards in front of it in a collapsible strip below the hand.
@@ -41,7 +42,7 @@ export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleC
       {counters.map((c) => (
         <div key={c.id} className="byd-counter" data-counter={c.cardRef ?? c.id}>
           <button type="button" aria-label={t('player.counter.minus', { name: c.cardRef ?? '' })} onClick={() => onSet(c, (c.counter ?? 0) - 1)}>
-            −
+            <MinusGlyph />
           </button>
           <button
             type="button"
@@ -57,7 +58,7 @@ export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleC
             <span>{c.cardRef}</span>
           </button>
           <button type="button" aria-label={t('player.counter.plus', { name: c.cardRef ?? '' })} onClick={() => onSet(c, (c.counter ?? 0) + 1)}>
-            +
+            <PlusGlyph />
           </button>
         </div>
       ))}

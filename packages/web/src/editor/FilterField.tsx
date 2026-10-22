@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useT } from '../i18n/index.js'
+import { CloseGlyph } from '../glyphs.js'
 
 // The search field, and in it what the column doors have chosen (#617, variant A).
 //
@@ -77,7 +78,7 @@ export function FilterField({
               input.current?.focus()
             }}
           >
-            <span aria-hidden="true">×</span>
+            <CloseGlyph />
           </button>
         </span>
       ))}

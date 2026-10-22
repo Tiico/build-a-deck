@@ -3,6 +3,7 @@ import type { RenderedRules } from '@byd/template'
 import { RuleBlockView } from './RuleDrawer.js'
 import { findRules } from './search.js'
 import { useT } from '../i18n/index.js'
+import { CloseGlyph } from '../glyphs.js'
 import './rules.css'
 
 // Luckans insida, i en modul för sig (#346). Den enda som hämtar `rules.css`, och den hämtas
@@ -42,7 +43,7 @@ export function RulePanel({ rules, assets, query, onQuery, onClose, body }: Rule
       <div className="byd-rules-ask">
         <input type="search" aria-label={t('rules.drawer.ask')} placeholder={t('rules.drawer.ask')} value={query} onChange={(e) => onQuery(e.target.value)} />
         <button type="button" aria-label={t('rules.drawer.close')} onClick={onClose}>
-          ×
+          <CloseGlyph />
         </button>
       </div>
       <div className="byd-rules-body" ref={body}>

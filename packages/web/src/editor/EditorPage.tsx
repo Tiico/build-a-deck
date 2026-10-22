@@ -46,7 +46,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
-import { HookGlyph } from '../glyphs.js'
+import { ArrowGlyph, BookGlyph, CheckGlyph, CloseGlyph, HookGlyph } from '../glyphs.js'
 import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
 import { versionWord } from '../i18n/version.js'
@@ -761,7 +761,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             leave()
           }}
         >
-          <span className="byd-editor-home-arrow" aria-hidden="true">←</span>
+          <span className="byd-editor-home-arrow" aria-hidden="true">
+            <ArrowGlyph to="left" />
+          </span>
           <span className="byd-editor-home-word">{t('editor.home')}</span>
         </a>
         {/* The game's name is the page's heading (#762): one copy, the one that is drawn. */}
@@ -792,7 +794,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             one fixed box, and the mark is hidden so the status says exactly the word (#668, A1). */}
         <span className="byd-editor-saved" role="status" data-unsaved={unsaved} data-saved-word={t('editor.saved')} data-unsaved-word={t('editor.unsaved')}>
           <span className="byd-editor-saved-word">{t(unsaved ? 'editor.unsaved' : 'editor.saved')}</span>
-          <span className="byd-editor-saved-mark" aria-hidden="true" />
+          <span className="byd-editor-saved-mark" aria-hidden="true">
+            {!unsaved && <CheckGlyph />}
+          </span>
         </span>
         {client.mayEdit && <StepButtons client={client} onConfirm={confirmation.confirm} />}
         {/* The modes are the header's on a desk; below one they are the stage strip at the
@@ -966,10 +970,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           panels point to it, so a keyboard entering one hears the reason too (L12). */}
       {!client.mayEdit && (
         <div className="byd-editor-readonly" id="byd-editor-reading" role="note" aria-label={t('editor.reading')} data-role-note>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-            <path d="M1.5 3.5c2-1 4.5-1 6.5.5 2-1.5 4.5-1.5 6.5-.5v9c-2-1-4.5-1-6.5.5-2-1.5-4.5-1.5-6.5-.5z" />
-            <path d="M8 4v9" />
-          </svg>
+          <BookGlyph />
           <div>
             <b>{t('editor.reading')}</b> — {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
             <small>{t('editor.reading.ask')}</small>
@@ -1279,7 +1280,7 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop
                 aria-expanded={asking?.seat === s.id}
                 onClick={() => setAsking({ seat: s.id, name: s.name ?? '', at })}
               >
-                <span aria-hidden="true">×</span>
+                <CloseGlyph />
               </button>
             </li>
           )
