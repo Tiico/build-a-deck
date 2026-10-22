@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
-import { Texture } from '../table/Texture.js'
+import { HandFace, TURNED_GROUND } from './HandFace.js'
 import { useRoving } from '../editor/roving.js'
-import { cardWord, handLabel } from '../table/keyboard.js'
+import { handLabel } from '../table/keyboard.js'
 import { useT, type T } from '../i18n/index.js'
 import { returnPile } from '../table/handName.js'
 import { HOLD_MS, begin, cancel, end, move, timeout, type Tracking } from './gesture.js'
@@ -25,6 +25,10 @@ export type HandStripProps = {
   onReorder?: ((card: VisibleComponentState, position: number) => void) | undefined
   // Whether the strip holds more than it shows (#767): the page offers the whole hand then.
   onOverflow?: ((overflows: boolean) => void) | undefined
+  // The cards turned over in the hand, which are played face down (#1133), and F on a card turning
+  // it, as F turns a card on the felt.
+  turned?: ReadonlySet<string> | undefined
+  onTurn?: ((card: VisibleComponentState) => void) | undefined
 }
 
 // The seat's own hand as a horizontal strip of big, readable cards (K4).
@@ -34,7 +38,7 @@ export type HandStripProps = {
 // is marked, and it is one tab stop with the arrows inside — the editor's roving tabindex, not a
 // second one written here. Space marks and unmarks, Enter opens the address panel. The gestures
 // K4 retains drag to play and hold to mark; the chosen phone A uses tap to select.
-export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces, onReorder, onOverflow }: HandStripProps) {
+export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces, onReorder, onOverflow, turned, onTurn }: HandStripProps) {
   const t = useT()
   // The hand read from the bottom up (#415, decision B of 2026-09-22). A drawn card lands on
   // top of the zone, which is index 0 of the projection's order, so reading the order
@@ -199,6 +203,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     <div className="byd-strip" data-hand ref={strip}>
       {hand.map((c) => {
         const item = roving.itemProps(c.id)
+        const faceDown = turned?.has(c.id) === true
         return (
           <button
             key={c.id}
@@ -206,11 +211,12 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
             className="byd-strip-card"
             data-hand-card={c.id}
             data-selected={selected.has(c.id) ? 'true' : 'false'}
+            {...(faceDown ? { 'data-turned': 'true' } : {})}
             {...(lifting === c.id ? { 'data-lifting': 'true' } : {})}
             {...(carrying?.id === c.id ? { 'data-carried': 'true' } : {})}
-            aria-label={handLabel(c, selected.has(c.id), t)}
+            aria-label={handLabel(c, selected.has(c.id), t, faceDown)}
             aria-pressed={selected.has(c.id)}
-            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(carrying?.id === c.id ? { translate: `${carrying.dx}px 0` } : {}) }}
+            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(faceDown ? TURNED_GROUND : {}), ...(carrying?.id === c.id ? { translate: `${carrying.dx}px 0` } : {}) }}
             tabIndex={item.tabIndex}
             ref={item.ref}
             onFocus={() => {
@@ -241,6 +247,11 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
                 onOpen(c)
                 return
               }
+              if ((e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault()
+                onTurn(c)
+                return
+              }
               item.onKeyDown(e)
             }}
             onClick={e => { if (e.detail === 0) onTap(c) }}
@@ -258,8 +269,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
               tracking.current = null
             }}
           >
-            <Texture faces={faces} c={c} />
-            <strong aria-hidden="true">{cardWord(c)}</strong>
+            <HandFace faces={faces} c={c} turned={faceDown} Word="strong" />
           </button>
         )
       })}

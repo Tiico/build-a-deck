@@ -2520,6 +2520,20 @@ Det är vad handen gör fysiskt, och det är en affordance, inte en regel — ko
 Följdkrav:
 Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
+Reviderat 2026-10-22 (#1133, beställarens beslut A efter prototyp): **det andra valet är att vända kortet i handen.**
+Ett kort man vänt i handen spelas nedvänt vart det än går, också till en publik zon, och ett kort man inte vänt följer regeln ovan.
+Tre former prototypades i `docs/ux-audits/2026-10-22-vanda-i-handen/prototyper/`: vänd i handen, en växel «Uppvänt | Nedvänt» vid spelningen, och en kryssruta i arket.
+Valet blev den första, eftersom det är det beställaren bad om och eftersom handen då visar hur kortet kommer att landa innan det landar.
+
+- «Vänd» och «Vänd upp» är ett verb på kortet: under det lyfta kortet på telefonen, i adresspanelen bakom Enter eller ett tryck i `/online`s hand, och som F på ett kort i remsan, solfjädern och spalten, som F vänder ett kort på filten.
+- Ett vänt kort visar sin baksida i handen med pillret «nedvänt · namn», samma form som ett eget nedvänt kort framför en (#483), i remsan, solfjädern, spalten, «Visa alla» och spöket som bärs ut på filten (K24).
+- Spelknappen under kortet och i foten säger «… · nedvänt», och raden under handen «Valt: … · spelas nedvänt».
+- Vändningen skickar ingenting och står inte i loggen. Ingen annan ser åt vilket håll ett kort i ens hand ligger, så den är skärmens minne (`player/turned.ts`), sparat per bord och plats i webbläsaren. Ett kort som lämnar handen glöms, så ett kort som kommer tillbaka kommer uppvänt som alla kort.
+- Handkortets `face` i motorn kunde inte bära valet: ett kort draget ur en nedvänd hög ligger som `back` i handen, och ägaren ser framsidan ändå.
+- Spelningen vänder kortet nedåt medan det fortfarande ligger i handen (`flip` före `move` i samma kuvert), så det ligger aldrig uppvänt i en publik zon. `faceDown` i `player/play.ts` är regeln för varje väg en hand spelar på: knapparna, arket, dragningen ut på filten och adresspanelen.
+- Lagt framför sig själv följer en `peek` med, som när man vänder ner ett eget kort där (#483): ägaren vet vilket kort det är, rummet vet att ett kort ligger där. Lagt någon annanstans följer ingen kunskap med (B6).
+- Grindar: `packages/web/test/turned-in-hand.test.ts` (motorn och projektionen), `player-page.test.tsx` och `online-keyboard.test.tsx` (ytorna), och `packages/e2e/test/turned-in-hand.spec.ts`, som läser de råa ramarna.
+
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
 QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9; från 2026-10-06 rummets egen adress `/KOD`, se revideringen nedan).

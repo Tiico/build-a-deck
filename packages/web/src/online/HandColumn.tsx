@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
-import { Texture } from '../table/Texture.js'
+import { HandFace, TURNED_GROUND } from '../player/HandFace.js'
 import { Lifted } from '../table/Lifted.js'
 import { liftBox } from '../table/lift.js'
 import { useSmallestPt } from '../table/smallest.js'
 import { useRoving } from '../editor/roving.js'
-import { cardWord, handLabel } from '../table/keyboard.js'
+import { handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { COLUMN_STYLE } from './fan.js'
 import { HandGhost, useHandDrag, type HandDragOptions, type HandPlay } from './handDrag.js'
@@ -23,6 +23,9 @@ export type HandColumnProps = {
   // felt's own card size while it is over the table (#484).
   onCarry?: HandDragOptions['onCarry']
   aim?: { size: { w: number } | null } | undefined
+  // The cards turned over in the hand, played face down, and F on a card turning it (#1133).
+  turned?: ReadonlySet<string> | undefined
+  onTurn?: ((card: VisibleComponentState) => void) | undefined
   // The address panel, the same one the felt opens (#2, #24): Enter on a card, or a second press.
   onOpen(card: VisibleComponentState): void
 }
@@ -48,7 +51,7 @@ export type HandColumnProps = {
 // know: every card but the last sits in a box one step tall that may shrink, and none of them
 // below `FAN_MIN_PX`. A hand that no longer fits at that scrolls in its own box, and the page
 // never does (L10).
-export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen }: HandColumnProps) {
+export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen, turned, onTurn }: HandColumnProps) {
   const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'vertical' })
@@ -117,8 +120,9 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
                 className="byd-hand-face byd-col-card"
                 data-hand-card={c.id}
                 data-lifted={drag?.id === c.id ? 'true' : undefined}
-                aria-label={handLabel(c, false, t)}
-                style={{ ['--hue' as string]: hue(c.cardRef ?? '') }}
+                aria-label={handLabel(c, false, t, turned?.has(c.id) === true)}
+                data-turned={turned?.has(c.id) === true ? 'true' : undefined}
+                style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true ? TURNED_GROUND : {}) }}
                 tabIndex={item.tabIndex}
                 ref={item.ref}
                 onFocus={(e) => {
@@ -132,6 +136,11 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     onOpen(c)
+                    return
+                  }
+                  if ((e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                    onTurn(c)
                     return
                   }
                   item.onKeyDown(e)
@@ -150,8 +159,7 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
                   setPointed((p) => (p?.id === c.id ? null : p))
                 }}
               >
-                <Texture faces={faces} c={c} />
-                <span aria-hidden="true">{cardWord(c)}</span>
+                <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
               </button>
             </div>
           )
@@ -161,7 +169,7 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
           the column is still a child: the last card's slot is sized by `:last-child`, and with one of
           these after it the slot shrank to a step, the column re-centred 45 px lower, and the card
           under a pointer that had not moved became its neighbour. */}
-      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} />}
+      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} turned={turned?.has(lifted.id) === true} />}
       {reading && readCard && <Lifted c={readCard} box={liftBox(edges(reading.at), { w: window.innerWidth, h: window.innerHeight }, readingPt)} faces={faces} onAsk={() => open(readCard)} />}
       {drag && <DragDoor onCancel={cancel} />}
     </>
