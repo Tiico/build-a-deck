@@ -14,7 +14,7 @@ import { HomePage } from '../src/account/HomePage.js'
 import { ROW, helpAnchor, helpPlacement } from '../src/editor/HelpDrawer.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
-import { startServer, type Running } from './fixture.js'
+import { admit, createSession, startServer, type Running } from './fixture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -199,6 +199,51 @@ describe('the game tiles at 1280 px (#725)', () => {
         await page.locator(sel).hover()
         expect({ [sel]: await look(sel) }).not.toEqual({ [sel]: rest })
       }
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// «Bord du har spelat vid» (G1): the tile had no padding of its own since the game tiles moved theirs
+// onto the link inside them, so the seat, the words and «idag» stood against its edge.
+describe('the tables sat at, at 390 and 1280 px', () => {
+  it.each([390, 1280])('keeps what a played tile says inside the room a game tile gives (%i px)', async (width) => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'played@example.com' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })).status).toBe(200)
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const { container } = render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByText('Bord du har spelat vid')
+    await screen.findByText('Skogens herrar')
+    const page = await browser.newPage({ viewport: { width, height: 800 } })
+    try {
+      await page.setContent(document_(container.innerHTML), { waitUntil: 'load' })
+      const inset = await page.evaluate(`(() => {
+        const gap = (tile, inner) => {
+          const t = tile.getBoundingClientRect()
+          const r = [...inner].map((el) => el.getBoundingClientRect()).filter((b) => b.width > 0)
+          return {
+            left: Math.min(...r.map((b) => b.left)) - t.left,
+            top: Math.min(...r.map((b) => b.top)) - t.top,
+            right: t.right - Math.max(...r.map((b) => b.right)),
+          }
+        }
+        const game = document.querySelector('[data-project]')
+        const played = document.querySelector('[data-played]')
+        return { game: gap(game, game.querySelectorAll('.byd-home-open > *')), played: gap(played, played.querySelectorAll('.byd-home-played-top > *, .byd-home-played > :not(.byd-home-played-top)')) }
+      })()`)
+      const { game, played } = inset as { game: { left: number; top: number }; played: { left: number; top: number; right: number } }
+      expect(game.left).toBeGreaterThanOrEqual(16)
+      expect(played.left).toBeCloseTo(game.left, 0)
+      expect(played.top).toBeCloseTo(game.top, 0)
+      expect(played.right).toBeGreaterThanOrEqual(16)
     } finally {
       await page.close()
     }
