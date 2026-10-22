@@ -1,0 +1,169 @@
+<!doctype html>
+<!-- PROTOTYP (#1139). Kastas när varianten är vald. ?v=A|B|C, ←/→ byter. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tärningar i fliken Bord — prototyp #1139</title>
+<style>
+:root { --bg: #14161c; --panel: #1a1d25; --ink: #e6ecfa; --quiet: #8b93a7; --line: #343a48; --btn: #232733; --blue: #2f7de1; --die: #f3e9d6; --die-ink: #1c1c1c; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px system-ui, sans-serif; }
+body { padding: 16px 16px 96px; }
+.rubrik { max-width: 1280px; margin: 0 0 10px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; }
+.anteckning { max-width: 1280px; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.editor { width: 1000px; display: grid; grid-template-columns: 320px 1fr; gap: 16px; background: var(--bg); outline: 1px solid #2a2d36; border-radius: 8px; padding: 16px; }
+.kol { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+h4 { margin: 8px 0 0; font-size: 13px; letter-spacing: .12em; color: var(--quiet); display: flex; align-items: center; gap: 8px; }
+h4 .q { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; font-size: 12px; letter-spacing: 0; }
+.rad { display: flex; gap: 8px; align-items: center; }
+input, select { background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; height: 40px; padding: 0 10px; font: inherit; }
+select { padding-right: 6px; }
+button { font: inherit; color: var(--ink); background: var(--btn); border: 1px solid var(--line); border-radius: 8px; min-height: 40px; padding: 0 12px; cursor: pointer; font-weight: 600; }
+button.x { width: 40px; padding: 0; background: transparent; border-color: transparent; color: var(--quiet); }
+button.x:hover { border-color: var(--line); color: var(--ink); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.zon { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.zon .ikon { width: 16px; height: 12px; border: 1px dashed var(--quiet); border-radius: 2px; }
+.zon .fast { margin-left: auto; font-size: 11px; letter-spacing: .1em; color: var(--quiet); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+.zon .chip { font-size: 12px; color: var(--ink); background: #2a2f3c; border-radius: 999px; padding: 2px 8px; }
+.stegare { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stegare button { border: 0; border-radius: 0; min-height: 36px; width: 36px; padding: 0; }
+.stegare span { min-width: 30px; display: grid; place-items: center; font-variant-numeric: tabular-nums; font-weight: 700; }
+.felt { position: relative; background: #0f1117; border-radius: 12px; min-height: 560px; }
+.felt .plate { position: absolute; left: 30px; top: 70px; right: 30px; bottom: 70px; background: #171a23; border-radius: 12px; border: 1px solid #22262f; }
+.felt .z { position: absolute; border: 1.5px dashed #c9b27a88; border-radius: 6px; }
+.felt .z span { position: absolute; left: 6px; top: 4px; font-size: 11px; color: var(--quiet); }
+.felt .z.lys { border-color: #f0b64a; background: #f0b64a14; }
+.die { position: absolute; }
+.die svg { display: block; overflow: visible; }
+.die .v { font: 700 1px system-ui; fill: var(--die-ink); text-anchor: middle; dominant-baseline: central; }
+.typer { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.typ .stegare button { width: 28px; }
+.typ .stegare span { min-width: 22px; }
+.typ { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.typ.har { border-color: #f0b64a; }
+.typ b { font-size: 13px; }
+.sats { display: flex; flex-wrap: wrap; gap: 6px; }
+.sats button { min-height: 32px; font-size: 13px; }
+.panel { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--panel); display: flex; flex-direction: column; gap: 8px; }
+.mening { line-height: 2.4; }
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>Prototyp #1139 · Tärningar i fliken Bord.</b> Tre sätt för designern att lägga tärningar i spelets setup (K5). Bordet till höger är förhandsvisningen. Den visar var tärningarna hamnar och uppdateras när du ändrar. Utseendet på tärningarna är det beslutade (A från #1129).</div>
+<div class="anteckning" id="anteckning"></div>
+<div class="editor"><div class="kol" id="kol"></div><div class="felt" id="felt"></div></div>
+<nav class="vaxlare" aria-label="Prototypväxlare">
+  <button id="prev" aria-label="Föregående">←</button>
+  <button data-v="A" aria-pressed="true">A · En rad per tärning</button>
+  <button data-v="B" aria-pressed="false">B · Räknare per sort</button>
+  <button data-v="C" aria-pressed="false">C · Tärningar bor i ytan</button>
+  <button id="next" aria-label="Nästa">→</button>
+</nav>
+<script>
+const KINDS = [4, 6, 8, 10, 12, 20]
+const AREAS = [{ id: 'table', name: 'Spelyta', x: 190, y: 170, w: 300, h: 110 }, { id: 'saloon', name: "Sal's Saloon", x: 150, y: 330, w: 380, h: 60 }]
+let dice = [{ faces: 6, zone: 'table' }, { faces: 6, zone: 'table' }]
+let open = 'table', lit = null
+const qs = new URLSearchParams(location.search)
+let V = ['A', 'B', 'C'].includes(qs.get('v')) ? qs.get('v') : 'A'
+const $ = (s) => document.querySelector(s)
+const NOTES = {
+  A: `<b>A — En rad per tärning, som räknarna.</b> Under RÄKNARE står rubriken TÄRNINGAR. Varje tärning är en rad med sorten och ytan i två väljare och ett kryss. «+ Tärning» lägger till en d6 i samma yta som raden ovanför.
+  <br><span class="plus">+ Samma form som räknarna precis ovanför, så det finns inget nytt att lära sig.</span> <span class="minus">− 5d6 blir fem likadana rader.</span>`,
+  B: `<b>B — En räknare per sort.</b> TÄRNINGAR visar sex rutor, en per sort, med silhuetten och ett − n + under. En väljare säger i vilken yta alla tärningar ligger, och snabbknapparna «2d6» och «d20» lägger till vanliga uppsättningar.
+  <br><span class="plus">+ 5d6 är ett tal, och hela utbudet syns på en gång.</span> <span class="minus">− Alla tärningar hamnar i samma yta. Sex rutor tar mest höjd även när spelet inte har några tärningar.</span>`,
+  C: `<b>C — Tärningarna hör till ytan.</b> Man öppnar en yta i listan PÅ BORDET, och i dess panel står en mening: «I ytan ligger [2] [d6] +». Raden i listan visar ett chip, «2d6», så att man ser vilken yta som har tärningar. Panelen ligger där ytans andra inställningar redan finns (K21-meningarna).
+  <br><span class="plus">+ Tärningarna ligger där de faktiskt hamnar, och olika ytor kan ha olika tärningar.</span> <span class="minus">− Man hittar inte tärningarna om man inte vet att de bor i en yta. Ingen rubrik säger «Tärningar».</span>`,
+}
+function poly(points) { return points.map((p) => p.join(',')).join(' ') }
+function ngon(k, r, rot = -90, cx = 50, cy = 50) { return Array.from({ length: k }, (_, i) => { const a = (rot + (360 / k) * i) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)] }) }
+function sil(n) {
+  const f = 'var(--die)', st = 'stroke="#b9ad97" stroke-width="2" stroke-linejoin="round"'
+  switch (n) {
+    case 4: return [`<polygon points="${poly(ngon(3, 50, -90, 50, 58))}" fill="${f}" ${st}/>`, 64, 30]
+    case 6: return [`<rect x="8" y="8" width="84" height="84" rx="12" fill="${f}" ${st}/>`, 50, 46]
+    case 8: return [`<polygon points="${poly(ngon(6, 50, -90))}" fill="#ddd2bd" ${st}/><polygon points="${poly(ngon(3, 50, -90))}" fill="${f}" ${st}/>`, 56, 30]
+    case 10: return [`<polygon points="50,2 92,46 50,98 8,46" fill="#ddd2bd" ${st}/><polygon points="50,14 80,48 50,70 20,48" fill="${f}" ${st}/>`, 48, 28]
+    case 12: return [`<polygon points="${poly(ngon(10, 50, -90))}" fill="#ddd2bd" ${st}/><polygon points="${poly(ngon(5, 34, -90))}" fill="${f}" ${st}/>`, 52, 30]
+    case 20: return [`<polygon points="${poly(ngon(6, 50, -90))}" fill="#ddd2bd" ${st}/><polygon points="${poly(ngon(3, 28, -90, 50, 54))}" fill="${f}" ${st}/>`, 58, 22]
+  }
+}
+const svg = (n, px, v = n) => { const [s, ty, fs] = sil(n); return `<svg width="${px}" height="${px}" viewBox="0 0 100 100">${s}<text class="v" x="50" y="${ty}" style="font-size:${fs}px">${v}</text></svg>` }
+const sel = (opts, cur, attr) => `<select ${attr}>${opts.map(([v, l]) => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${l}</option>`).join('')}</select>`
+const kindOpts = KINDS.map((n) => [n, 'd' + n]), areaOpts = AREAS.map((a) => [a.id, a.name])
+const summary = (list) => { const by = {}; list.forEach((d) => by[d.faces] = (by[d.faces] ?? 0) + 1); return KINDS.filter((n) => by[n]).map((n) => `${by[n] > 1 ? by[n] : ''}d${n}`).join(' + ') }
+const counters = `<h4>RÄKNARE <span class="q">?</span></h4><div class="rad"><input value="Guld" style="width:130px"> från <input value="0" style="width:60px"><button class="x">×</button></div><div><button>+ Räknare</button></div>`
+const players = `<h4>SPELARE <span class="q">?</span></h4><div class="rad"><div class="stegare"><button>−</button><span>4</span><button>+</button></div><span style="color:var(--quiet)">1–8</span></div>`
+
+function renderKol() {
+  const k = $('#kol')
+  let html = players + counters
+  if (V === 'A') {
+    html += `<h4>TÄRNINGAR <span class="q">?</span></h4>` + dice.map((d, i) => `<div class="rad" data-i="${i}">${svg(d.faces, 30, d.faces)}${sel(kindOpts, d.faces, `data-kind="${i}" aria-label="Sort"`)} i ${sel(areaOpts, d.zone, `data-zone="${i}" aria-label="Yta"`)}<button class="x" data-del="${i}" aria-label="Ta bort tärningen">×</button></div>`).join('') +
+      `<div><button id="add">+ Tärning</button></div>` + zoneList(false)
+  } else if (V === 'B') {
+    const zone = dice[0]?.zone ?? 'table'
+    html += `<h4>TÄRNINGAR <span class="q">?</span></h4><div class="typer">${KINDS.map((n) => { const c = dice.filter((d) => d.faces === n).length; return `<div class="typ ${c ? 'har' : ''}">${svg(n, 34, n)}<b>d${n}</b><div class="stegare"><button data-minus="${n}" aria-label="En d${n} färre">−</button><span>${c}</span><button data-plus="${n}" aria-label="En d${n} till">+</button></div></div>` }).join('')}</div>
+      <div class="rad">ligger i ${sel(areaOpts, zone, 'id="allzone" aria-label="Yta"')}</div>
+      <div class="sats"><span style="color:var(--quiet);align-self:center">Lägg till:</span><button data-set="6,6">2d6</button><button data-set="20">d20</button><button data-set="6,6,6,6,6">5d6</button></div>` + zoneList(false)
+  } else {
+    html += zoneList(true)
+  }
+  k.innerHTML = html
+  k.querySelectorAll('[data-kind]').forEach((s) => s.onchange = () => { dice[+s.dataset.kind].faces = +s.value; render() })
+  k.querySelectorAll('[data-zone]').forEach((s) => s.onchange = () => { dice[+s.dataset.zone].zone = s.value; render() })
+  k.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { dice.splice(+b.dataset.del, 1); render() })
+  const add = $('#add'); if (add) add.onclick = () => { dice.push({ faces: 6, zone: dice.at(-1)?.zone ?? 'table' }); render() }
+  k.querySelectorAll('[data-plus]').forEach((b) => b.onclick = () => { dice.push({ faces: +b.dataset.plus, zone: dice[0]?.zone ?? 'table' }); render() })
+  k.querySelectorAll('[data-minus]').forEach((b) => b.onclick = () => { const i = dice.findLastIndex((d) => d.faces === +b.dataset.minus); if (i >= 0) dice.splice(i, 1); render() })
+  const az = $('#allzone'); if (az) az.onchange = () => { dice.forEach((d) => d.zone = az.value); render() }
+  k.querySelectorAll('[data-set]').forEach((b) => b.onclick = () => { b.dataset.set.split(',').forEach((n) => dice.push({ faces: +n, zone: dice[0]?.zone ?? 'table' })); render() })
+  k.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { open = open === b.dataset.open ? null : b.dataset.open; render() })
+  k.querySelectorAll('[data-zinc]').forEach((b) => b.onclick = () => { const [z, n, delta] = b.dataset.zinc.split(':'); if (+delta > 0) dice.push({ faces: +n, zone: z }); else { const i = dice.findLastIndex((d) => d.zone === z && d.faces === +n); if (i >= 0) dice.splice(i, 1) } render() })
+  k.querySelectorAll('[data-zadd]').forEach((s) => s.onchange = () => { if (s.value) dice.push({ faces: +s.value, zone: s.dataset.zadd }); render() })
+  k.querySelectorAll('[data-hover]').forEach((el) => { el.onmouseenter = () => { lit = el.dataset.hover; renderFelt() }; el.onmouseleave = () => { lit = null; renderFelt() } })
+}
+function zoneList(withDice) {
+  const rows = [['Spelyta', 'table', 'FAST'], ['Kortlek', null, 'FAST'], ['Kasthög', null, '×'], ["Sal's Saloon", 'saloon', '×']]
+  return `<h4>PÅ BORDET</h4>` + rows.map(([name, id, tag]) => {
+    const here = id ? dice.filter((d) => d.zone === id) : []
+    const chip = here.length ? `<span class="chip">${summary(here)}</span>` : ''
+    const isOpen = withDice && id && open === id
+    const row = `<div class="zon" data-hover="${id ?? ''}"><span class="ikon"></span>${withDice && id ? `<button data-open="${id}" aria-expanded="${isOpen}" style="min-height:32px;padding:0 8px;background:transparent;border-color:transparent">${isOpen ? '▾' : '▸'} ${name}</button>` : name} ${chip}<span class="fast">${tag}</span></div>`
+    if (!isOpen) return row
+    const kinds = KINDS.filter((n) => here.some((d) => d.faces === n))
+    return row + `<div class="panel"><div style="color:var(--quiet);font-size:12px">Vad som ligger i ${name} när spelet börjar</div>
+      ${kinds.map((n) => { const c = here.filter((d) => d.faces === n).length; return `<div class="rad mening">I ytan ligger <div class="stegare"><button data-zinc="${id}:${n}:-1" aria-label="En färre">−</button><span>${c}</span><button data-zinc="${id}:${n}:1" aria-label="En till">+</button></div> ${svg(n, 26, n)} <b>d${n}</b></div>` }).join('')}
+      <div class="rad">${sel([['', '+ Tärning…'], ...kindOpts], '', `data-zadd="${id}" aria-label="Lägg till en tärning"`)}</div></div>`
+  }).join('') + `<div class="rad"><button>+ Yta</button><button>+ Hög</button></div>`
+}
+function renderFelt() {
+  const f = $('#felt')
+  let html = `<div class="plate"></div>` + AREAS.map((a) => `<div class="z ${lit === a.id ? 'lys' : ''}" style="left:${a.x}px;top:${a.y}px;width:${a.w}px;height:${a.h}px"><span>${a.name}</span></div>`).join('') +
+    `<div class="z" style="left:220px;top:300px;width:44px;height:0;border:0"></div>`
+  for (const a of AREAS) {
+    const here = dice.filter((d) => d.zone === a.id)
+    const pitch = 40, perRow = Math.max(1, Math.floor(a.w / pitch)), rows = Math.ceil(here.length / perRow)
+    here.forEach((d, i) => { const row = Math.floor(i / perRow), inRow = Math.min(perRow, here.length - row * perRow); const x = a.x + a.w / 2 - inRow * pitch / 2 + (i % perRow) * pitch + 4; const y = a.y + a.h / 2 - rows * pitch / 2 + row * pitch + 4; html += `<div class="die" style="left:${x}px;top:${y}px">${svg(d.faces, 32, 1)}</div>` })
+  }
+  html += `<div style="position:absolute;left:16px;bottom:14px;color:var(--quiet);font-size:12px">${dice.length ? 'På bordet: ' + summary(dice) : 'Spelet har inga tärningar'}</div>`
+  f.innerHTML = html
+}
+function render() { $('#anteckning').innerHTML = NOTES[V]; document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === V))); renderKol(); renderFelt() }
+function go(v) { V = v; const u = new URL(location); u.searchParams.set('v', v); history.replaceState(null, '', u); render() }
+document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.onclick = () => go(b.dataset.v))
+const order = ['A', 'B', 'C']
+$('#prev').onclick = () => go(order[(order.indexOf(V) + 2) % 3])
+$('#next').onclick = () => go(order[(order.indexOf(V) + 1) % 3])
+addEventListener('keydown', (e) => { if (e.target.closest('input,textarea,select,[contenteditable]')) return; if (e.key === 'ArrowLeft') $('#prev').click(); if (e.key === 'ArrowRight') $('#next').click() })
+render()
+</script>
+</body>
+</html>
