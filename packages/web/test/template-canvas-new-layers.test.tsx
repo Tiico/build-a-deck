@@ -55,7 +55,6 @@ function Desk({ start, onAdd, onPatch = vi.fn() }: { start: ProjectDoc; onAdd(el
         return next
       })
     },
-    onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
     onLock: vi.fn(),
     onRename: vi.fn(),

@@ -212,7 +212,10 @@ Följdkrav:
 
 - Ingen fil i `public/` ritas för hand. `pnpm --filter @byd/web exec tsx scripts/brand-icons.ts` skriver dem, och `packages/web/test/brand.test.ts` stoppar en `favicon.svg` som inte är ritningen.
 - `packages/e2e/test/app-icon.spec.ts` läser de serverade ikonernas pixlar: de tre kortens färger finns, och PNG:erna ligger på trä och inte på bordets mörka.
-- En delad länk (`og:image`) och TV:ns sidospalt bär också handen, men de kräver mer än ritningen (#1084).
+- En delad länk visar handen bredvid namnet på bordets mörka, 1200 × 630, som prototypen ritade den (#1084).
+  `scripts/brand-icons.ts` ritar `og-image.png` med landningssidans egen rad, och servern skriver `PUBLIC_ORIGIN` framför bildens sökväg (DRIFT §13).
+  `packages/e2e/test/app-icon.spec.ts` läser taggarna i sidan servern skickar och bildens pixlar.
+- TV:ns sidospalt bär också handen, men den prototypas på den riktiga spalten innan den byggs (#1084).
 - UI-ikonerna är en egen fråga (#1083): märket är produktens ansikte, glyferna är kontrollernas hand.
 
 Prototypen: `docs/ux-audits/2026-10-21-deckster-ikoner/prototyper/deckster/` (`?v=B`).
@@ -7465,3 +7468,13 @@ Hela katalogen och varje symbol verktyget laddar upp klarar vakten oförändrade
 En inläst fil visas som filen och som den form kortet kommer att måla, och rutan säger rakt ut att det vita i filen blir färg och inte ett hål.
 Namnet föreslås ur filnamnet, och en upphovsrad sparas bara när både licens och upphovsperson är ifyllda, som för ett uppladdat typsnitt (L27).
 En fil som inte går att använda sägs med designerns ord och inte med vaktens engelska (A4).
+
+**Byggt 2026-10-22 (#1093, beställarens beslut): klammern och ikonverktyget söker i katalogen.**
+Ikonverktyget i Mall lägger ett ikonlager utan ikon, markerat, och öppnar bibliotekets ark under kortet för «alla kort».
+Det är samma väg som panelens «Ikon och färg», och den lilla listan med Decksters 20 symboler som hängde vid verktygsraden är borta, så det finns en väg till en ikon i stället för två.
+Att välja ikonen är en sak designern gör: ikonen som tas in och lagret som binds till den bär samma gest och kommer tillbaka med ett Ctrl+Z (B4); att lägga lagret var en egen sak och är nästa steg tillbaka.
+Lagret binds så fort spelets uppsättning har ikonens namn, och bytes följer efter, som en placerad symbol alltid gjort (#310); kommer de inte fram är gesten fortfarande den öppna och tas tillbaka hel, med bindningen i sig, så ett kort pekar aldrig på en ikon som tagits tillbaka.
+Hyllorna i arken är val i verktygets `.byd-choice`-form och inte den primära fyllningen, som bara bär handlingen som lägger ut arbetet på bordet; typsnittskatalogens kategorier hade samma fel och fick samma rättning.
+Klammerns «Hela biblioteket» i Tabell söker i katalogen och laddar den när klick två trycks, aldrig när `{` skrivs (L27).
+Före det står Decksters egna, och ett spel utan ikoner öppnar som förut på dem, nu med vägen till hela katalogen under.
+Det öppnade biblioteket visar 60 träffar; namnet efter klammern är det som smalnar av, som i arket.
