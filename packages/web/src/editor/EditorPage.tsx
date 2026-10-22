@@ -46,7 +46,6 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
-import { symbolName } from './symbols.js'
 import { HookGlyph } from '../glyphs.js'
 import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
@@ -132,6 +131,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // new notice, so a save cannot put away a word it never stood in front of.
   const [notice, setNotice] = useState<{ text: string } | null>(null)
   const say = useCallback((text: string) => setNotice({ text }), [])
+  // An icon chosen for a layer is bound at once and its bytes follow (#1093). Should they not arrive
+  // the choice has been taken back whole, and the notice says so where every upload's failure is said.
+  const iconSettled = ({ name, stored }: { name: string; stored: Promise<void> }): string => {
+    void stored.catch((err: unknown) => say(saidOr(err, t('icons.catalog.refused', { name }))))
+    return name
+  }
   const putAway = (standing: { text: string } | null) => setNotice((now) => (now === standing ? null : now))
   const confirmation = useConfirmation()
   // How many questions stand right now (#698). While one does, what just happened is not drawn:
@@ -611,7 +616,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
-        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => say(saidOr(err, t('symbols.place.failed', { name: symbolName(symbol, t) }))))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
         // Locking a layer and naming it are edits to the element (L15), so they go the way every
         // other change to an element goes — through the base, which is where the layer lives even
@@ -632,8 +636,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // A text layer's «Fler typsnitt…» (#634): the family comes into the game the way Speltema
         // brings it, and the canvas sets the layer in whatever it came to be called.
         {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
-        {...(client.mayEdit ? { onCatalogIcon: (icon: CatalogIcon) => client.useIcon(icon, undefined, t) } : {})}
-        {...(client.mayEdit ? { onOwnIcon: (own: OwnIcon) => client.useOwnIcon(own.svg, own.name, own.credit, t) } : {})}
+        {...(client.mayEdit ? { onCatalogIcon: async (icon: CatalogIcon, gesture: string) => iconSettled(await client.chooseIcon(icon, t, gesture)) } : {})}
+        {...(client.mayEdit ? { onOwnIcon: async (own: OwnIcon, gesture: string) => iconSettled(await client.chooseOwnIcon(own.svg, own.name, own.credit, t, gesture)) } : {})}
         // The template's own picture is uploaded by the path Media takes (#320), so it lands there.
         onAddPicture={(file) => client.addPicture(file, t)}
         group={group}
@@ -652,7 +656,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         project={projectId ?? undefined}
         assetBase={http}
         onUpload={(file, onto) => client.addPicture(file, t, onto)}
-        onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
+        onSymbol={(icon) => client.useIcon(icon, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
         // An AI proposal shown in the table (#1003), through the same comparison in its own words —

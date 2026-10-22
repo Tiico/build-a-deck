@@ -16,7 +16,7 @@ import { contrastRatio } from '@byd/template'
 import { DataTable } from '../src/editor/DataTable.js'
 import { revealThemeSection, ThemePanel } from '../src/editor/ThemePanel.js'
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
-import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
+import type { CatalogIcon } from '../src/editor/icon-catalog.js'
 import { projectDoc } from './project-doc.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -27,7 +27,7 @@ const PALETTE = { fara: '#8f2d20', vinst: '#2f6136' }
 function pickerMarkup(): string {
   const doc = { ...projectDoc(), palette: PALETTE }
   const { container, unmount } = render(
-    <DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />,
+    <DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (i: CatalogIcon) => i.name)} />,
   )
   try {
     // `title` and not `body`: a body column is a writing surface (L39, #324) and has no value

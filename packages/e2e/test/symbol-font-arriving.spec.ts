@@ -59,7 +59,7 @@ async function holdUploads(page: Page): Promise<{ release: () => void; asked: st
   return { release, asked }
 }
 
-test('a symbol placed on the card is drawn once its bytes arrive, and not asked for before', async ({ page }) => {
+test('a symbol chosen for the card is drawn once its bytes arrive, and not asked for before', async ({ page }) => {
   await logIn(page.request)
   const project = await makeProjectOf(page.request, gameDoc({ name: 'Symbolleken', cards: 3 }))
   await page.goto(project.editorUrl)
@@ -68,8 +68,11 @@ test('a symbol placed on the card is drawn once its bytes arrive, and not asked 
   await expect(tools).toBeVisible()
   const { release, asked } = await holdUploads(page)
 
-  await tools.getByRole('combobox', { name: 'Ikon' }).click()
-  await page.getByRole('listbox', { name: 'Symboler' }).getByRole('option', { name: /svärd/ }).click()
+  // The tool places the layer and opens the libraries under the card for it (#1093).
+  await tools.getByRole('button', { name: 'Ikon', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: 'Sök i ikonbiblioteken' })
+  await sheet.getByRole('searchbox').fill('svärd')
+  await sheet.getByRole('button', { name: /^svärd · Deckster/ }).click()
   const icon = page.locator('#canvas [data-element="icon-1"] img.byd-icon')
   await expect(icon).toBeAttached()
   // Whatever it was drawn from has been tried by now, so a request for the bytes would be seen.

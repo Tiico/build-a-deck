@@ -1,6 +1,6 @@
 import type { ProjectDoc } from './types.js'
-import { LIBRARY, searchSymbols, symbolName, symbolWords, type GameSymbol } from './symbols.js'
-import type { T } from '../i18n/index.js'
+import { creditOf, searchIcons, type CatalogIcon } from './icon-catalog.js'
+import type { Lang } from '../i18n/index.js'
 
 // What the brace in a table cell proposes, and in which order (L57, #631).
 //
@@ -23,8 +23,9 @@ export type BracePick =
   | { kind: 'written'; name: string; role: string | null; count: number }
   // One of the game's icons, by the name card text writes it with.
   | { kind: 'icon'; name: string }
-  // A library symbol; `inGame` when the game already has it.
-  | { kind: 'library'; symbol: GameSymbol; inGame: boolean }
+  // An icon from the library — Deckster's own or the catalog's (#1093) — and whether the game
+  // already has it.
+  | { kind: 'library'; icon: CatalogIcon; inGame: boolean }
   // The way into the library, and the way back out of it.
   | { kind: 'more' }
   | { kind: 'back' }
@@ -36,8 +37,12 @@ export type BraceSection = { part: BracePart; picks: BracePick[] }
 
 // How many of the deck's tokens are offered: the handful written most, not an index of the deck.
 const WRITTEN = 5
-// How many library matches a search shows. The library opened as such shows all of it.
+// How many library matches a search shows.
 const FOUND = 8
+// How many the library opened as such shows. Deckster's own are twenty, all of them; the catalog is
+// six thousand, and a box that drew them all would be a list nobody reads past the top of — the
+// name typed after the brace is what narrows it, as in the sheet (L71).
+const SHELF = 60
 
 type Doc = Pick<ProjectDoc, 'rows' | 'icons' | 'palette' | 'credits'>
 
@@ -74,28 +79,31 @@ export function writtenInDeck(doc: Doc, iconFields: readonly string[]): Extract<
     .map((w) => ({ kind: 'written', ...w }))
 }
 
-// The library symbol a game icon was taken from, when it was taken from the library (E4).
-const sourceOf = (doc: Doc, name: string): GameSymbol | undefined => {
+// The library icon a game icon was taken from, when it was taken from the library (E4).
+const sourceOf = (doc: Doc, name: string, library: readonly CatalogIcon[]): CatalogIcon | undefined => {
   const source = doc.credits?.[name]?.source
-  return source ? LIBRARY.find((s) => s.id === source) : undefined
+  return source ? library.find((i) => creditOf(i).source === source) : undefined
 }
 
-// Whether the game already has this library symbol: taken from it, or under its very name.
-const inGame = (doc: Doc, symbol: GameSymbol, t: T): boolean =>
-  Boolean(doc.icons[symbolName(symbol, t)]) || Object.values(doc.credits ?? {}).some((c) => c.source === symbol.id)
+// Whether the game already has this library icon: taken from it, or under its very name.
+const inGame = (doc: Doc, icon: CatalogIcon): boolean => Boolean(doc.icons[icon.name]) || Object.values(doc.credits ?? {}).some((c) => c.source === creditOf(icon).source)
 
-// What the brace offers for what has been typed since it. `library` is whether the second click
-// has been taken. An empty result is a brace with nothing to offer, which draws no box at all.
-export function braceSections(doc: Doc, query: string, library: boolean, iconFields: readonly string[], t: T): BraceSection[] {
+// What the brace offers for what has been typed since it. `open` is whether the second click has
+// been taken, and `library` what the library holds right now: Deckster's own until the catalog has
+// come in behind that click (#1093, L27). An empty result is a brace with nothing to offer, which
+// draws no box at all.
+export function braceSections(doc: Doc, query: string, open: boolean, iconFields: readonly string[], library: readonly CatalogIcon[], lang: Lang): BraceSection[] {
   const q = query.trim().toLowerCase()
   const icons = Object.keys(doc.icons)
-  const libraryPick = (symbol: GameSymbol): BracePick => ({ kind: 'library', symbol, inGame: inGame(doc, symbol, t) })
-  if (icons.length === 0) return nonEmpty([{ part: 'library', picks: searchSymbols(query, null, t).slice(0, FOUND).map(libraryPick) }])
-  if (library) return nonEmpty([{ part: 'library', picks: searchSymbols(query, null, t).map(libraryPick) }], { kind: 'back' })
+  const libraryPick = (icon: CatalogIcon): BracePick => ({ kind: 'library', icon, inGame: inGame(doc, icon) })
+  const found = () => searchIcons(library, { query, source: 'alla' }, lang)
+  if (open) return nonEmpty([{ part: 'library', picks: found().slice(0, SHELF).map(libraryPick) }], icons.length === 0 ? undefined : { kind: 'back' })
+  // A game with no icons opens on the library, as it always did, with the whole catalog a click on.
+  if (icons.length === 0) return nonEmpty([{ part: 'library', picks: found().slice(0, FOUND).map(libraryPick) }], { kind: 'more' })
   const matches = (name: string) => {
     if (!q || name.toLowerCase().includes(q)) return true
-    const source = sourceOf(doc, name)
-    return source ? symbolWords(source, t).some((w) => w.includes(q)) : false
+    const source = sourceOf(doc, name, library)
+    return source ? source.words.some((w) => w.includes(q)) : false
   }
   return nonEmpty(
     [
@@ -103,7 +111,7 @@ export function braceSections(doc: Doc, query: string, library: boolean, iconFie
       // game's icons that match are the game's answer to it.
       { part: 'written', picks: q ? [] : writtenInDeck(doc, iconFields) },
       { part: 'icons', picks: icons.filter(matches).map((name) => ({ kind: 'icon', name })) },
-      { part: 'found', picks: q ? searchSymbols(query, null, t).filter((s) => !inGame(doc, s, t)).slice(0, FOUND).map(libraryPick) : [] },
+      { part: 'found', picks: q ? found().filter((i) => !inGame(doc, i)).slice(0, FOUND).map(libraryPick) : [] },
     ],
     { kind: 'more' },
   )
@@ -132,4 +140,4 @@ export const bracePicks = (sections: readonly BraceSection[]): BracePick[] => se
 
 // What tells one pick from the next within its part, for React and for the option's id.
 export const pickKeyOf = (pick: BracePick): string =>
-  pick.kind === 'written' ? `${pick.name}|${pick.role ?? ''}` : pick.kind === 'icon' ? pick.name : pick.kind === 'library' ? pick.symbol.id : pick.kind
+  pick.kind === 'written' ? `${pick.name}|${pick.role ?? ''}` : pick.kind === 'icon' ? pick.name : pick.kind === 'library' ? pick.icon.id : pick.kind

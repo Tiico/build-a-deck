@@ -31,7 +31,6 @@ function open(back: Element[] | null = null) {
       onReplaceFace={onReplaceFace}
       onRemove={vi.fn()}
       onAdd={vi.fn()}
-      onPlaceIcon={vi.fn()}
       onReorder={vi.fn()}
       onLock={vi.fn()}
       onRename={vi.fn()}
@@ -118,7 +117,6 @@ describe('the ready-made backs folded under the back (#736)', () => {
           onReplaceFace={(base) => setDoc((d) => ({ ...d, template: { ...d.template, faces: { ...d.template.faces, back: { base, variants: {} } } } }))}
           onRemove={vi.fn()}
           onAdd={vi.fn()}
-          onPlaceIcon={vi.fn()}
           onReorder={vi.fn()}
           onLock={vi.fn()}
           onRename={vi.fn()}

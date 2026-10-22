@@ -95,7 +95,6 @@ const surfaces: Record<string, { draw: (doc: ProjectDoc) => ReactElement; before
         onCallOff={noop}
         onRemove={noop}
         onAdd={noop}
-        onPlaceIcon={noop}
         onReorder={noop}
         onLock={noop}
         onRename={noop}

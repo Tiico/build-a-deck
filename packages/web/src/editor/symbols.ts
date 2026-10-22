@@ -56,17 +56,9 @@ export const LIBRARY: GameSymbol[] = [
 ]
 
 
-// What the search field finds: name, keywords or category, whichever the designer typed.
-// The words a symbol is read and searched under, in the reader's own language (A4).
+// The words a symbol is read under, in the reader's own language (A4). Searching the library is
+// the icon catalog's (`searchIcons`, #1093), which reads these same keys.
 export const symbolName = (symbol: GameSymbol, t: T = swedish): string => t(symbol.name)
-export const symbolWords = (symbol: GameSymbol, t: T = swedish): string[] => t(symbol.keywords).split(',').map((w) => w.trim().toLowerCase())
-
-export function searchSymbols(query: string, category: string | null, t: T = swedish): GameSymbol[] {
-  const q = query.trim().toLowerCase()
-  return LIBRARY.filter((s) => (category ? s.category === category : true)).filter(
-    (s) => !q || symbolName(s, t).toLowerCase().includes(q) || symbolWords(s, t).some((k) => k.includes(q)) || t(s.category).toLowerCase().includes(q),
-  )
-}
 
 // A name the project's icon set does not already use.
 export function freeIconName(wanted: string, taken: Record<string, string>): string {

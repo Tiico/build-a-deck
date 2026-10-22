@@ -1,11 +1,11 @@
 import { useRef, type ReactNode } from 'react'
-import { INK, symbolName, symbolPreview } from './symbols.js'
+import { INK } from './symbols.js'
 import { RoleList, type Meaning } from './SymbolList.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { placedProps, usePlacement } from './placement.js'
 import { PickList } from './picking.js'
 import { pickKeyOf, type BracePart, type BracePick, type BraceSection } from './brace.js'
-import { useT, type Key } from '../i18n/index.js'
+import { useLang, useT, type Key } from '../i18n/index.js'
 
 // The box a symbol and its meaning are chosen in, at the brace in a cell (L34, #302; L57, #631).
 //
@@ -49,8 +49,9 @@ export type SymbolBoxProps = {
   palette: Record<string, string> | undefined
   // The game's icons as pictures, by name.
   icons: Record<string, string>
-  // How many symbols the library holds, said on the way into it.
-  libraryCount: number
+  // How many icons the whole library holds, said on the way into it once it is known: the catalog
+  // is counted when it has come in, and until then the way in names no number (#1093).
+  libraryCount: number | null
   // The list ids the cell points at with `aria-activedescendant`.
   listId(part: BracePart): string
   meaningsId: string
@@ -72,6 +73,7 @@ const HEADS: Record<Exclude<BracePart, 'more'>, { label: Key; hint?: Key }> = {
 
 export function SymbolBox({ sections, active, picked, meanings, meaningActive, paper, palette, icons, libraryCount, listId, meaningsId, className, writes, token, onPick, onPickMeaning }: SymbolBoxProps) {
   const t = useT()
+  const { lang } = useLang()
   const box = useRef<HTMLDivElement>(null)
   // The box opens where there is room for it (#229), as every list of this kind does. It is the
   // box that is placed and not the lists inside it, because the parts, the meanings and the foot
@@ -85,8 +87,8 @@ export function SymbolBox({ sections, active, picked, meanings, meaningActive, p
   // A library symbol is not in the game yet, so the sample's icon set is the symbol itself under
   // the name it will get — the same name the string in the foot is written with.
   const sample = (symbol: Pickable, role: string | null) => {
-    const name = symbol.kind === 'icon' ? symbol.name : symbolName(symbol.symbol, t)
-    const url = symbol.kind === 'icon' ? icons[symbol.name] : symbolPreview(symbol.symbol)
+    const name = symbol.kind === 'icon' ? symbol.name : symbol.icon.name
+    const url = symbol.kind === 'icon' ? icons[symbol.name] : `data:image/svg+xml;utf8,${encodeURIComponent(symbol.icon.svg)}`
     return <SymbolSample written={`{${name}${role === null ? '' : `|${role}`}}`} symbols={{ icons: url ? { [name]: url } : {}, palette }} paper={paper} />
   }
   const isPicked = (pick: BracePick) => picked !== null && pick.kind === picked.kind && pickKeyOf(pick) === pickKeyOf(picked)
@@ -111,12 +113,12 @@ export function SymbolBox({ sections, active, picked, meanings, meaningActive, p
         return (
           <>
             {sample(pick, inked)}
-            <span>{symbolName(pick.symbol, t)}</span>
-            <small>{pick.inGame ? t('table.brace.inGame') : t(pick.symbol.category)}</small>
+            <span>{pick.icon.name}</span>
+            <small>{pick.inGame ? t('table.brace.inGame') : t(`icons.catalog.source.${pick.icon.source}` as Key)}</small>
           </>
         )
       case 'more':
-        return t('table.brace.more', { n: libraryCount })
+        return libraryCount === null ? t('table.brace.more.all') : t('table.brace.more', { n: libraryCount.toLocaleString(lang) })
       case 'back':
         return t('table.brace.back')
     }
@@ -144,7 +146,7 @@ export function SymbolBox({ sections, active, picked, meanings, meaningActive, p
           label={t(head.label)}
           options={section.picks}
           keyOf={pickKeyOf}
-          attrs={(pick) => (pick.kind === 'icon' ? { 'data-symbol': pick.name } : pick.kind === 'library' ? { 'data-symbol': symbolName(pick.symbol, t) } : {})}
+          attrs={(pick) => (pick.kind === 'icon' ? { 'data-symbol': pick.name } : pick.kind === 'library' ? { 'data-symbol': pick.icon.name } : {})}
           active={picked ? section.picks.findIndex(isPicked) : active - start}
           onPick={onPick}
         >
