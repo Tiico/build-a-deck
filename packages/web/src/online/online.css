@@ -149,3 +149,27 @@
   padding: 6px 12px; border-radius: 999px; border: 1px solid var(--seat); background: rgba(16, 13, 11, 0.92);
   color: #f3e9d6; font-size: 13px; font-weight: 700; white-space: nowrap;
 }
+
+/* The waiting room (L75, #1130, prototype B step 3): over the felt until something has happened at
+   the table. It lies in the felt's row and not in the felt's own plane, so it is upright and flat
+   whatever way the table is turned for this seat, and it covers only its own box — the felt around
+   it is still the felt. Its start is the felt's tile (K25) in the room's width. */
+.byd-waiting { position: absolute; z-index: 40; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box; width: min(500px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; padding: 16px; border: 1px solid #2a2f3d; border-radius: 12px; background: #171a23; color: #e8e2d8; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); }
+.byd-waiting h2 { margin: 0; color: #fff; font-size: 17px; line-height: 1.3; }
+.byd-waiting > p { margin: 4px 0 0; color: #b4bccc; font-size: 14px; line-height: 1.4; }
+.byd-waiting-address { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.byd-waiting-address code { min-width: 0; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #3a4052; border-radius: 8px; background: #0f1117; color: #b4bccc; font: 600 17px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; user-select: all; }
+.byd-waiting-address b { color: #fff; }
+.byd-waiting-copy { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid #3a4052; border-radius: 8px; background: #20242f; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+.byd-waiting-copy:hover { border-color: #6f7a90; }
+.byd-waiting-copy[data-copied] { border-color: #3aa76d; color: #bfe8cf; }
+.byd-waiting-copy .byd-glyph { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.byd-waiting > .byd-waiting-said { margin: 0; color: #ffd98a; font-size: 13px; }
+.byd-waiting > .byd-waiting-said:not(:empty) { margin-top: 8px; }
+.byd-waiting-seats { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid #2a2f3d; display: grid; gap: 8px; }
+.byd-waiting-seats li { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
+.byd-waiting-seats i { color: #9aa3b8; }
+.byd-waiting-badge { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--seat); color: #0d0f14; font-size: 12px; font-weight: 800; }
+.byd-waiting-seats li[data-free] .byd-waiting-badge { background: transparent; color: var(--seat); box-shadow: inset 0 0 0 2px var(--seat); }
+.byd-waiting button:focus-visible { outline: 3px solid var(--byd-kbd-ring, #9cc6ff); outline-offset: 2px; }
+.byd-waiting .byd-waiting-start { position: static; transform: none; width: 100%; min-height: 52px; margin-top: 16px; font-size: 16px; box-shadow: none; }

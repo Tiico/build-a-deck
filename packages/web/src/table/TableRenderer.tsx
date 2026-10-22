@@ -23,7 +23,8 @@ import { besideDrop, type Box } from './besideDrop.js'
 import { loadAfterSheet } from './after.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
-import { compileStart, startsAt } from './actions.js'
+import { startsAt } from './actions.js'
+import { StartButton, startOf, useStartFocus, whyKey } from './StartButton.js'
 import { Question } from '../editor/Question.js'
 import { DragDoor } from '../editor/DragDoor.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
@@ -55,12 +56,6 @@ const START_MM = { w: 260, h: 72, below: 101 }
 const PILL_BELOW_PX = 52
 const PILL_AIR_PX = 12
 const BAND_END_MM = 230
-
-// Varför starten inte går att köra, i ringens egna ord: det är samma maskin som svarar, så det
-// ska vara samma mening. Ett steg som frågar efter ett tal har ingen att fråga i det ögonblick
-// spelet ska börja, och säger det i stället för att gissa ett tal.
-const whyKey = (made: { ok: false; why: string } | { ok: false; asks: string } | { ok: true }): Key =>
-  ('why' in made ? `ring.action.why.${made.why}` : 'ring.action.why.asks') as Key
 
 // Kamerans hörn kommer när vyn blir egen (#325, #346:s väg). Klungan finns bara medan kameran är
 // manuell, vilket den inte är när sidan målas — så dess stilmall, `camera-hand.css`, reser i den
@@ -225,6 +220,9 @@ export type TableRendererProps = {
   // seen — dealing cards without faces is what it waits against, as the editor's link does (L5).
   // A queue that stands still (#88) opens it again as «Starta ändå». Null when nothing is pending.
   startWait?: { done: number; total: number; stalled: boolean } | null | undefined
+  // False while something else draws the very same start over the felt — the waiting room on
+  // /online (L75, #1130) — so the table never shows «Starta spelet» twice.
+  startTile?: boolean
   // What the screen adds to the corner, between «Starta om» and «?»: the felt's own screen puts its
   // «⋯» there (#682). The corner lays them out on one row, so none of them is placed on its own.
   more?: ReactNode | undefined
@@ -323,7 +321,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, more }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -666,7 +664,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   //
   // En filt där ingen hög bär en startåtgärd ritar ingen bricka alls — samma regel som K14 ger
   // ringen: en ring utan verb öppnas inte, och ett kommando utan något att göra är samma fel.
-  const start = onAct && startsAt(view).length > 0 ? compileStart(view) : null
+  const start = onAct ? startOf(view) : null
   // Where the start tile's top edge stands, in the felt's pixels (K25, #721).
   const startTop = (): number => {
     const middle = floor.geometry.y + floor.geometry.h / 2
@@ -683,16 +681,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // något faktiskt hänt vid bordet; `view.played` är den uppgiften, och den räknar inte den som
   // bara satt sig (#452).
   const [askingStart, setAskingStart] = useState(false)
-  // «Starta spelet» gives way to «Starta om» in the corner once the start has run, and the tile that
-  // was pressed is gone from under the focus (#761, K16: the first stop that is left, never
-  // nothing). The focus is carried to the tile that took its place, the same control by another name.
-  const startHadFocus = useRef(false)
-  useEffect(() => {
-    if (!view.played || !startHadFocus.current) return
-    startHadFocus.current = false
-    const at = document.activeElement
-    if (at === null || at === document.body) document.querySelector<HTMLElement>('.byd-table-restart')?.focus()
-  }, [view.played])
+  // The focus follows a pressed tile to «Starta om» (#761), as it does from the waiting room's.
+  const startFocus = useStartFocus(view.played)
   // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
   // surface that supplies none keeps the stand-in weave `table.css` draws.
   const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
@@ -1672,32 +1662,20 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {/* On the felt until something has happened at the table (K25); after that the tile would
               lie over the cards played where it stood, so it leaves for the corner (beslut
               2026-09-27, #482 fynd 3 C). */}
-          {start && !view.played && (
-            <button
-              type="button"
+          {start && !view.played && startTile && (
+            <StartButton
+              view={view}
+              startWait={startWait}
               className="byd-table-start"
-              data-table-start={!start.ok ? 'why' : startWait === null ? 'ready' : startWait.stalled ? 'anyway' : 'wait'}
-              disabled={!start.ok || (startWait !== null && !startWait.stalled)}
-              title={!start.ok ? t('start.blocked', { why: t(whyKey(start)) }) : startWait !== null && !startWait.stalled ? t('start.blocked', { why: t('start.wait.why') }) : undefined}
               style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: startTop(), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
-              onClick={(e) => {
-                if (!start.ok || (startWait !== null && !startWait.stalled)) return
+              onStart={(intents, hadFocus) => {
                 if (view.played) setAskingStart(true)
                 else {
-                  startHadFocus.current = e.currentTarget === document.activeElement
-                  onAct?.(start.intents)
+                  startFocus(hadFocus)
+                  onAct?.(intents)
                 }
               }}
-            >
-              {startWait === null ? (
-                t('start.tile')
-              ) : (
-                <>
-                  {t(startWait.stalled ? 'start.anyway' : 'start.tile')}
-                  <small>{t(startWait.stalled ? 'start.stalled' : 'start.wait', { done: startWait.done, total: startWait.total })}</small>
-                </>
-              )}
-            </button>
+            />
           )}
           {overlay?.({ px, left, top, scale })}
         </div>

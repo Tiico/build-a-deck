@@ -507,6 +507,17 @@ export const svPlay = {
 
   // Helt online (C2): bordet och handen i samma fönster.
   'online.showall': 'Visa alla',
+  // Väntrummet över filten tills något har hänt vid bordet (L75, #1130).
+  'online.wait.heading': 'Väntar på spelare · {n} av {of}',
+  'online.wait.text': 'Skicka länken till dem som ska spela. Bordet startar när du säger till.',
+  'online.wait.address': 'Rummets adress',
+  'online.wait.copy': 'Kopiera länk',
+  'online.wait.copied': 'Kopierad',
+  'online.wait.copy.failed': 'Gick inte att kopiera. Adressen är markerad, så kopiera den själv.',
+  'online.wait.seats': 'Platserna',
+  'online.wait.free': 'väntar…',
+  'online.wait.me': '{name} (du)',
+  'online.wait.begin': 'Börja spela',
   'online.observers.one': '{names} tittar på',
   'online.observers.other': '{names} tittar på',
 
