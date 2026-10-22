@@ -591,6 +591,7 @@ export const enEditor = {
   'table.brace.found.hint': 'taken into the game',
   'table.brace.inGame': 'in the game',
   'table.brace.library': 'The library',
+  'table.brace.more.all': 'The whole library ›',
   'table.brace.more': 'The whole library ({n}) ›',
   'table.brace.back': '‹ The game’s icons',
   'table.removeRow': 'remove {cardRef}',
@@ -720,7 +721,6 @@ export const enEditor = {
   'canvas.reset': 'Back to the base',
   'canvas.faceSwitch': 'Card side',
   'canvas.tools': 'Tools',
-  'canvas.symbols': 'Symbols',
   'canvas.tool.text': 'Text',
   'canvas.tool.image': 'Image',
   // The icon as a tool on the canvas (#33): one icon, against the row that reads a column.
@@ -1096,7 +1096,6 @@ export const enEditor = {
   // What a handling in the editor says when it failed and nobody put the reason in words (#812):
   // one whole sentence per handling, never the server's, the network's or the document's own.
   'symbols.take.failed': 'The symbol {name} could not be taken in. Try again.',
-  'symbols.place.failed': 'The icon {name} could not be placed on the card. Try again.',
   'fonts.upload.failed': 'The typeface could not be uploaded. Try again.',
   'icons.own.upload': 'Upload an SVG …',
   'icons.own.title': 'Your own icon',

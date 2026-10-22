@@ -41,6 +41,18 @@ describe('searching the icon catalog (#1087)', () => {
     expect(await ids('love', 'en')).toContain('lucide:heart')
   })
 
+  // Deckster's own symbols are searched as they always were (E4, A4): by name and by what they are
+  // for, in any case, in the reader's own words — and not in another language's.
+  it('finds the symbols drawn for the project by name and by what they are for, in the reader’s words', async () => {
+    expect(await ids('sköld', 'sv', 'deckster')).toEqual(['deckster:skold'])
+    expect(await ids('försvar', 'sv', 'deckster')).toEqual(['deckster:skold'])
+    expect(await ids('SKÖL', 'sv', 'deckster')).toEqual(['deckster:skold'])
+    expect(await ids('shield', 'en', 'deckster')).toEqual(['deckster:skold'])
+    expect(await ids('defence', 'en', 'deckster')).toEqual(['deckster:skold'])
+    expect(await ids('sköld', 'en', 'deckster')).toEqual([])
+    expect(await ids('ingenting alls', 'sv')).toEqual([])
+  })
+
   it('narrows to one library when one is chosen, and asks every word to match', async () => {
     expect((await ids('heart', 'en', 'lucide')).every((id) => id.startsWith('lucide:'))).toBe(true)
     expect(await ids('crossed swords', 'en')).toContain('game-icons:crossed-swords')

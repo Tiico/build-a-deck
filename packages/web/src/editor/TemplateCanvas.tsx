@@ -5,7 +5,7 @@ import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, PX_PER_MM, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
+import { arrowMove, iconElement, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, PX_PER_MM, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
 import { StepPill } from './StepPill.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
@@ -13,8 +13,8 @@ import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, ha
 import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, paintOf, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
-import { AssetImage } from './AssetImage.js'
-import { assetRef, drawnImageFieldsOf, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
+import { Arriving, AssetImage } from './AssetImage.js'
+import { assetRef, drawnImageFieldsOf, holdIcons, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { fieldLabel, fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
@@ -31,8 +31,6 @@ import { IconCatalog, type IconChoice, type OwnIcon } from './IconCatalog.js'
 import type { CatalogIcon } from './icon-catalog.js'
 import { IconLook, type IconTarget } from './IconLook.js'
 import { groundOf } from './palette.js'
-import { LIBRARY, type GameSymbol } from './symbols.js'
-import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import { useT, type Key, type T, useLang } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { useSay } from '../status/StatusLive.js'
@@ -79,7 +77,6 @@ export type TemplateCanvasProps = {
   // upload its bytes — so the canvas says which symbol was chosen and the client does both halves
   // as one edit. Two edits would be two versions and two steps back (B4), and the step in between
   // would be an element on the card pointing at an icon the game does not have.
-  onPlaceIcon(symbol: GameSymbol): void
   // Where a layer ends up in the face's base list, which is the order the card is drawn in.
   onReorder(id: string, to: number): void
   // Locking a layer, and what the designer calls it (L15). Both are edits to the element like
@@ -109,9 +106,9 @@ export type TemplateCanvasProps = {
   // An icon taken out of the libraries for the chosen icon layer (#1087, L71): copied in as the
   // game's own asset with its credit, and the canvas told the name it came to have in the set.
   // Absent, the layer's panel offers the game's own icons and nothing more.
-  onCatalogIcon?: ((icon: CatalogIcon) => Promise<string>) | undefined
+  onCatalogIcon?: ((icon: CatalogIcon, gesture: string) => Promise<string>) | undefined
   // A drawing of the designer's own from the same sheet (#1087), cleaned there and taken in here.
-  onOwnIcon?: ((icon: OwnIcon) => Promise<string>) | undefined
+  onOwnIcon?: ((icon: OwnIcon, gesture: string) => Promise<string>) | undefined
   // A picture brought in from the designer's own disk for the template's own picture (#320), by
   // the very path Media takes: it lands in the library, and the element is then bound to it.
   // Uploading is the client's work, so the canvas asks and is told the hash the bytes were
@@ -125,7 +122,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, reading = false }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, reading = false }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -149,6 +146,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // card is compiled again for every re-render of the canvas, which is every pointer move of a drag
   // (E1, B3); and held by the whole document, for every cell typed into elsewhere (#667).
   const icons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
+  // The game's icons as the panel and the libraries' sheet draw them (#1093): one whose bytes are
+  // still on their way is drawn as nothing yet, as the card draws it (#959), so neither surface
+  // asks the service for a file before it has landed.
+  const arriving = useContext(Arriving)
+  const shownIcons = useMemo(() => holdIcons(icons, arriving), [icons, arriving])
   const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, assetBase), [doc.template, doc.fonts, assetBase])
   // The game's pictures as the library window lists them (#320), for the image element that is
   // bound to one of them rather than to a column.
@@ -249,21 +251,26 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // the chosen icon layer. It is the typeface catalog's sheet under the card, and stands where that
   // one stands; it goes when the chosen layer is no longer an icon layer.
   const [iconFor, setIconFor] = useState<IconTarget | null>(null)
+  // Choosing an icon is one doing: the icon taken into the game and the layer shown with it share
+  // a token, so they come back with one Ctrl+Z (B4, #1093).
+  const choosingIcon = useGesture('icon-choice')
   const iconLayer = iconFor && el?.kind === 'icons' ? el : null
   const closeIcons = () => setIconFor(null)
   const iconSheet = iconLayer && iconFor && (
     <IconCatalog
-      inGame={Object.keys(doc.icons).map((name) => ({ name, src: icons[name] ?? '' }))}
+      inGame={Object.keys(doc.icons).map((name) => ({ name, src: shownIcons[name] ?? '' }))}
       colour={paintOf(iconLayer.color, iconFor.kind === 'value' && 'field' in iconLayer.bind ? { [iconLayer.bind.field]: iconFor.value } : {})}
       paper={groundOf(doc, face)}
       target={iconFor.kind === 'value' && 'field' in iconLayer.bind ? t('icons.catalog.for.value', { field: fieldLabel(iconLayer.bind.field, t), value: iconFor.value }) : t(iconFor.kind === 'else' ? 'icons.catalog.for.else' : 'icons.catalog.for.all')}
       onChoose={async (choice: IconChoice) => {
-        const name = 'inGame' in choice ? choice.inGame : 'own' in choice ? (onOwnIcon ? await onOwnIcon(choice.own) : null) : onCatalogIcon ? await onCatalogIcon(choice.icon) : null
+        const doing = choosingIcon.begin()
+        const name = 'inGame' in choice ? choice.inGame : 'own' in choice ? (onOwnIcon ? await onOwnIcon(choice.own, doing) : null) : onCatalogIcon ? await onCatalogIcon(choice.icon, doing) : null
         if (name === null) return
         const pick = iconLayer.pick ?? { map: {} }
         patch(
           iconLayer.id,
           iconFor.kind === 'fixed' ? { bind: { literal: name } } : iconFor.kind === 'else' ? { pick: { ...pick, else: name } } : { pick: { ...pick, map: { ...pick.map, [iconFor.value]: name } } },
+          doing,
         )
         closeIcons()
       }}
@@ -322,6 +329,14 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
     // pictures open at once: choosing one is the next thing the designer does with it.
     if (kind === 'image' && field === undefined) setChoosingFor(element.id)
   }
+  // The icon tool (#33, #1093): an icon layer with no icon yet, selected, and the libraries' sheet
+  // open under the card for every card it is drawn on — choosing is the next thing to do with it.
+  const placeIcon = () => {
+    const element = iconElement('', { taken: idsOnFace(faceTemplate), card: CARD_STANDARD_63x88.physical })
+    onAdd(element)
+    onSelectElement(element.id)
+    setIconFor({ kind: 'fixed' })
+  }
 
   // One panel or all four: a stage draws exactly what it is named after, so nothing is mounted
   // twice and nothing a tab does not point at is left in the tab order.
@@ -352,7 +367,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           <FaceSwitch faces={Object.keys(doc.template.faces)} face={face} onSelect={onSelectFace} />
         </div>
       )}
-      {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={onPlaceIcon} />}
+      {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={placeIcon} />}
       {shows('layers') && (
       // Two columns stand beside the canvas, so each says which it is (#762).
       <aside className="byd-canvas-layers" aria-label={t('editor.stage.layers')}>
@@ -474,6 +489,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             scale={zoom.scale}
             assetBase={assetBase}
             motifs={motifs}
+            palette={doc.palette}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
             onMeasured={onMeasured}
@@ -583,7 +599,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             taken={takenNames(doc)}
             fonts={doc}
             onMoreFonts={onCatalogFont && !reading ? () => setCatalogOpen(true) : undefined}
-            srcOf={(name) => icons[name]}
+            srcOf={(name) => shownIcons[name]}
             paper={groundOf(doc, face)}
             onChooseIcon={reading ? undefined : setIconFor}
             valuesIn={(field) => valuesIn(doc, field)}
@@ -1547,106 +1563,23 @@ export function FaceSwitch({ faces, face, names = FACE_NAMES, onSelect }: { face
 // moving inside it (APG), the same roving tabindex the tablist and the layer list already use, so
 // the way to the card is never four presses of Tab longer than it has to be.
 //
-// The icon is the one tool that asks something before it places anything (#33): every other kind
-// has a default it can be given, and an icon has no default that is not somebody's guess. So the
-// library opens where the icon will stand, rather than two tabs away in Speltema.
-const TOOL_SYMBOLS = 'byd-tool-symbols'
-
-function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPlaceIcon(symbol: GameSymbol): void }) {
+// The icon is the one tool whose element is nothing without a question answered (#33): every other
+// kind has a default it can be given, and an icon has no default that is not somebody's guess. It
+// places an empty icon layer and the canvas opens the libraries' sheet under the card for it
+// (#1093, beslut 2026-10-22), the one way to an icon the panel already takes (L71) — a small list
+// of the twenty symbols drawn for the project used to hang off the rail instead.
+function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPlaceIcon(): void }) {
   const t = useT()
-  const { itemProps, focus } = useRoving({ ids: TOOLS.map((tool) => tool.id), selected: null, orientation: 'vertical' })
-  const [picking, setPicking] = useState(false)
-  // Which symbol the arrow keys are on. The focus never leaves the tool while the library is
-  // open — the cell picker keeps it in the cell being typed into for the same reason — so this is
-  // where "which one" lives, exactly as it does there.
-  const [choice, setChoice] = useState(0)
-  // The way out of the library, and back to the tool it was opened from (#8). Closing it unmounts
-  // whatever was focused inside it, so without this the focus falls to `<body>` and a rail reached
-  // with the keyboard has to be reached again from the top.
-  const close = () => {
-    setPicking(false)
-    setChoice(0)
-    focus('icon')
-  }
-  // Which symbol the arrows are on, when the library is open at all.
-  const under = LIBRARY[choice]
-  const pick = (symbol: GameSymbol) => {
-    setPicking(false)
-    setChoice(0)
-    onPlaceIcon(symbol)
-  }
+  const { itemProps } = useRoving({ ids: TOOLS.map((tool) => tool.id), selected: null, orientation: 'vertical' })
   return (
     // A toolbar, not a column beside the work: an aside's own role may not be overridden (#762).
-    <div
-      className="byd-canvas-tools"
-      role="toolbar"
-      aria-label={t('canvas.tools')}
-      aria-orientation="vertical"
-      // Escape, wherever in the rail it was pressed. The tool below answers it first when that is
-      // where the focus is; this is the same way out for a press that arrived anywhere else.
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape' || !picking || event.defaultPrevented) return
-        event.preventDefault()
-        close()
-      }}
-      // The focus gone out of the rail altogether takes the library with it. A list hanging beside
-      // a tool nobody is on is a list about nothing, and it hangs over the canvas being worked on.
-      // Nothing inside the library can trigger this: the options give the focus straight back.
-      onBlur={(event) => {
-        if (!picking || event.currentTarget.contains(event.relatedTarget)) return
-        setPicking(false)
-        setChoice(0)
-      }}
-    >
-      {TOOLS.map((tool) => {
-        const roving = itemProps(tool.id)
-        const button = (
-          <button
-            key={tool.id}
-            type="button"
-            // The icon tool is the library's combobox, as the cell's brace is (#556): a screen
-            // reader reads `aria-activedescendant` on a combobox, and on a button it reads nothing.
-            {...(tool.id === 'icon' ? { role: 'combobox', 'aria-label': t(tool.name), 'aria-haspopup': 'listbox' as const, 'aria-expanded': picking, ...(picking && under ? { 'aria-controls': TOOL_SYMBOLS, 'aria-activedescendant': symbolOptionId(TOOL_SYMBOLS, under) } : {}) } : {})}
-            // Another tool is another element, and the library was opened for this one: leaving it
-            // floating over the rail while a text box lands on the card is a list about nothing.
-            onClick={() => {
-              if (tool.id === 'icon') return setPicking((open) => !open)
-              setPicking(false)
-              setChoice(0)
-              onAdd(tool.id)
-            }}
-            {...roving}
-            // While the library is open the arrows are the list's, not the rail's. Otherwise they
-            // walk to the next tool with the list still hanging over it — which is the rail
-            // answering a key that was meant for the library.
-            onKeyDown={(event) => {
-              const act = tool.id === 'icon' && picking ? symbolListKey(event.key, LIBRARY.length, choice) : null
-              if (!act) return roving.onKeyDown(event)
-              event.preventDefault()
-              if (act === 'close') return close()
-              if (act === 'pick') return void (under && pick(under))
-              setChoice(act.active)
-            }}
-          >
-            <span aria-hidden="true">{tool.glyph}</span>
-            {t(tool.name)}
-          </button>
-        )
-        if (tool.id !== 'icon') return button
-        // The library hangs off the tool it was opened from and not off the rail, so it opens
-        // beside the button that was pressed rather than two rows above it. That is what the
-        // wrapper is for and all it is for.
-        return (
-          <div key={tool.id} className="byd-canvas-tool-icon">
-            {button}
-            {/* The same library Speltema fills and the brace in a cell opens (E4), and
-                the same component: one library seen the same way wherever it is offered. Choosing
-                here is choosing an icon and placing it at once — one thing the designer did, so
-                one edit and one step back (B4, #32). */}
-            {picking && <SymbolList id={TOOL_SYMBOLS} className="byd-canvas-symbols" symbols={LIBRARY} active={choice} label={t('canvas.symbols')} onPick={pick} />}
-          </div>
-        )
-      })}
+    <div className="byd-canvas-tools" role="toolbar" aria-label={t('canvas.tools')} aria-orientation="vertical">
+      {TOOLS.map((tool) => (
+        <button key={tool.id} type="button" onClick={() => (tool.id === 'icon' ? onPlaceIcon() : onAdd(tool.id))} {...itemProps(tool.id)}>
+          <span aria-hidden="true">{tool.glyph}</span>
+          {t(tool.name)}
+        </button>
+      ))}
     </div>
   )
 }
@@ -2879,7 +2812,7 @@ function BackGallery({ open: openFromStart, takeFocus, onFocused, onPick }: { op
         {BACKS.map((back) => (
           <button key={back.id} type="button" onClick={(event) => onPick({ name: t(back.name), base: back.base(t) }, event.currentTarget)}>
             <span className="byd-backs-card">
-              <CardPreview id={`byd-back-${back.id}`} face={{ base: back.base(t), variants: {} }} row={{}} icons={{}} scale={0.26} />
+              <CardPreview id={`byd-back-${back.id}`} face={{ base: back.base(t), variants: {} }} row={{}} icons={{}} palette={undefined} scale={0.26} />
             </span>
             <span>{t(back.name)}</span>
           </button>

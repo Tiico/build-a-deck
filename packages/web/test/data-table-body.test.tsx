@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
-import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
+import type { CatalogIcon } from '../src/editor/icon-catalog.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -150,7 +150,7 @@ describe('vägen till verktygen med tangentbordet (#397, L39)', () => {
 describe('symbollistan i body-cellen (E4)', () => {
   it('öppnas vid klammern, smalnar av med namnet, och skriver symbolen in i texten', async () => {
     const onCell = vi.fn()
-    table(withBody('Flygande.'), { onCell, onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
+    table(withBody('Flygande.'), { onCell, onSymbol: vi.fn(async (i: CatalogIcon) => i.name) })
     const cell = screen.getByLabelText('dragon body')
     fireEvent.focusIn(cell)
     expect(screen.queryByRole('listbox')).toBeNull()
@@ -171,7 +171,7 @@ describe('symbollistan i body-cellen (E4)', () => {
   // texten efter Escape. Bara ett val skriver, och där markören stod.
   it('öppnas av knappen utan att något skrivs, och Escape lämnar texten orörd (#693)', async () => {
     const onCell = vi.fn()
-    table(withBody('Flygande.'), { onCell, onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
+    table(withBody('Flygande.'), { onCell, onSymbol: vi.fn(async (i: CatalogIcon) => i.name) })
     const cell = screen.getByLabelText('dragon body')
     fireEvent.focusIn(cell)
     const knapp = within(screen.getByRole('toolbar', { name: 'Formatera' })).getByRole('button', { name: 'Sätt in en ikon' })
@@ -198,7 +198,7 @@ describe('symbollistan i body-cellen (E4)', () => {
   })
 
   it('lämnar en stängd klammer och en siffra i klammer i fred', () => {
-    table(withBody('Flygande.'), { onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
+    table(withBody('Flygande.'), { onSymbol: vi.fn(async (i: CatalogIcon) => i.name) })
     const cell = screen.getByLabelText('dragon body')
     fireEvent.focusIn(cell)
 
@@ -222,7 +222,7 @@ describe('samma ruta i body-cellen som i en vanlig cell (L34)', () => {
 
   it('öppnar rutan ur en skrivyta med exakt samma märkning som ur ett fält', () => {
     const doc = medBetydelser('Flygande.')
-    table(doc, { onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
+    table(doc, { onSymbol: vi.fn(async (i: CatalogIcon) => i.name) })
 
     // Ur det vanliga fältet: klammern och namnet skrivs som i vilken cell som helst.
     const field = screen.getByLabelText('dragon title') as HTMLInputElement
@@ -239,7 +239,7 @@ describe('samma ruta i body-cellen som i en vanlig cell (L34)', () => {
 
   it('tar betydelsen i skrivytan och skriver samma sträng som fältet skriver', async () => {
     const onCell = vi.fn()
-    table(medBetydelser('Flygande.'), { onCell, onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
+    table(medBetydelser('Flygande.'), { onCell, onSymbol: vi.fn(async (i: CatalogIcon) => i.name) })
     const cell = screen.getByLabelText('dragon body')
     fireEvent.focusIn(cell)
     skriv(cell, 'Skada {sköl')
@@ -259,7 +259,7 @@ describe('samma ruta i body-cellen som i en vanlig cell (L34)', () => {
 
   it('går från symbolen till betydelsen på tangenterna, med skrivytan pekande på den som är aktiv', async () => {
     const onCell = vi.fn()
-    table(medBetydelser('Flygande.'), { onCell, onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
+    table(medBetydelser('Flygande.'), { onCell, onSymbol: vi.fn(async (i: CatalogIcon) => i.name) })
     const cell = screen.getByLabelText('dragon body')
     fireEvent.focusIn(cell)
     skriv(cell, 'Skada {sköl')

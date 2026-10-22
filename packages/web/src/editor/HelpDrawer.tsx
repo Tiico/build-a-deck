@@ -1,4 +1,5 @@
-import { Suspense, lazy, useId, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import type { HelpBoxProps } from './HelpBox.js'
 import { useT } from '../i18n/index.js'
 import '../help.css'
 
@@ -30,7 +31,29 @@ import '../help.css'
 // det vägdes mot filtens ansikte. Samma frågetecken på inloggningen, starten och guiden la hela
 // mönstret i det ark första målningen väntar på. Ringen är målad innan någon tryckt och står kvar
 // där; lådan står bakom ett tryck ingen gjort och reser när det görs.
-const HelpBox = lazy(() => import('./HelpBox.js').then((m) => ({ default: m.HelpBox })))
+//
+// Men den reser när sidan har målats, inte när trycket kommer. Hämtad först vid trycket var lådan
+// nära en sekund sen på en kall cache, och ett frågetecken som inte svarar läses som trasigt.
+// Efter målningen väger den ingenting mot det första målningen väntar på — arket står fortfarande
+// i en egen fil (grindat i `felt-font.spec.ts`) — och när någon trycker finns den redan.
+type BoxComponent = ComponentType<HelpBoxProps>
+let arrived: BoxComponent | null = null
+let fetching: Promise<{ default: BoxComponent }> | null = null
+const fetchBox = () =>
+  (fetching ??= import('./HelpBox.js').then((m) => {
+    arrived = m.HelpBox
+    return { default: m.HelpBox }
+  }))
+const LazyHelpBox = lazy(fetchBox)
+// `requestIdleCallback` finns inte i Safari; en tidsfrist efter laddningen gör samma sak där.
+const afterPaint = (run: () => void) => {
+  if (typeof requestIdleCallback === 'function') {
+    const idle = requestIdleCallback(run, { timeout: 2000 })
+    return () => cancelIdleCallback(idle)
+  }
+  const later = setTimeout(run, 200)
+  return () => clearTimeout(later)
+}
 
 export type HelpProps = {
   // What the box is about, in the reader's language, as it is said in the question mark's name
@@ -42,29 +65,51 @@ export type HelpProps = {
 
 export function Help({ topic, children, id }: HelpProps) {
   const t = useT()
-  const [open, setOpen] = useState(false)
+  // The box that is open, or nothing. Which one — the module itself, or the lazy wrapper that
+  // waits for it — is settled when it opens, so that its arriving midway cannot swap the one for
+  // the other and mount the box a second time under the reader.
+  const [Box, setBox] = useState<BoxComponent | null>(null)
+  const open = Box !== null
   const ask = useRef<HTMLButtonElement>(null)
   const auto = useId()
   const boxId = `${id ?? auto}-help`
   const close = (focusBack: boolean) => {
-    setOpen(false)
+    setBox(null)
     if (focusBack) ask.current?.focus()
   }
+  useEffect(() => (arrived || fetching ? undefined : afterPaint(() => void fetchBox())), [])
+  const inside = { id: boxId, topic, ask, onClose: close, children }
   return (
     <span className="byd-help">
-      <button ref={ask} type="button" className="byd-help-ask" aria-label={t('help.about', { topic })} aria-expanded={open} aria-controls={open ? boxId : undefined} onClick={() => (open ? close(true) : setOpen(true))}>
+      <button
+        ref={ask}
+        type="button"
+        className="byd-help-ask"
+        aria-label={t('help.about', { topic })}
+        aria-expanded={open}
+        aria-controls={open ? boxId : undefined}
+        // A press on the question mark of an open box leaves the focus in the box. Down on it
+        // used to take the focus out, the box closed on losing it, and the click that followed
+        // found it closed and opened it again: a flicker, and a box that would not go away. The
+        // click is what closes it, and it hands the focus to the question mark itself.
+        onMouseDown={(event) => {
+          if (open) event.preventDefault()
+        }}
+        onClick={() => (open ? close(true) : setBox(() => arrived ?? LazyHelpBox))}
+      >
         <span aria-hidden="true">?</span>
       </button>
-      {open && (
-        // Nothing stands in the box's place while it is on its way: a box is what a press asked
-        // for, and half a box — a bordered empty panel — would be a worse answer than the moment
-        // of nothing that the fetch actually is.
-        <Suspense fallback={null}>
-          <HelpBox id={boxId} topic={topic} ask={ask} onClose={close}>
-            {children}
-          </HelpBox>
-        </Suspense>
-      )}
+      {Box &&
+        (Box === LazyHelpBox ? (
+          // Nothing stands in the box's place while it is on its way: a box is what a press asked
+          // for, and half a box — a bordered empty panel — would be a worse answer than the moment
+          // of nothing that the fetch actually is.
+          <Suspense fallback={null}>
+            <LazyHelpBox {...inside} />
+          </Suspense>
+        ) : (
+          <Box {...inside} />
+        ))}
     </span>
   )
 }

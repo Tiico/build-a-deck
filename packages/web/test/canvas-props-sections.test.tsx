@@ -27,7 +27,6 @@ function open(selected: string | null = 'frame', onOpenFonts: () => void = vi.fn
       onReplaceFace={vi.fn()}
       onRemove={vi.fn()}
       onAdd={vi.fn()}
-      onPlaceIcon={vi.fn()}
       onReorder={vi.fn()}
       onLock={vi.fn()}
       onRename={vi.fn()}

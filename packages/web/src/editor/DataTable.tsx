@@ -16,7 +16,7 @@ import { proseChoiceOf, proseFieldsOf } from './body.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
-import { LIBRARY, symbolName, type GameSymbol } from './symbols.js'
+import { decksterIcons, loadIconCatalog, type CatalogIcon } from './icon-catalog.js'
 import { RoleList, roleOptionId, symbolListKey } from './SymbolList.js'
 import { SymbolBox, meaningsOf, type Pickable } from './SymbolBox.js'
 import { braceSections, bracePicks, partAt, pickKeyOf, type BracePart, type BracePick } from './brace.js'
@@ -37,7 +37,7 @@ import { useMarked } from './marked.js'
 import { groupColumn } from './groups.js'
 import { Question } from './Question.js'
 import { Help } from './HelpDrawer.js'
-import { useT, type T } from '../i18n/index.js'
+import { useLang, useT, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { lineKey } from './lineKeys.js'
@@ -95,7 +95,7 @@ export type DataTableProps = {
   onUpload?: ((file: File, onto?: { cardRef: string; field: string }) => Promise<string>) | undefined
   // Taking a symbol into the game from where it is written (E4): returns the name it got in the
   // project's icon set. Without it, a brace in a cell is just a brace.
-  onSymbol?: ((symbol: GameSymbol) => Promise<string>) | undefined
+  onSymbol?: ((icon: CatalogIcon) => Promise<string>) | undefined
   // An older version to hold the table against (B4): what moved is shown in the cells, and the
   // cards that came or went are shown as rows.
   compareWith?: { rev: number; label?: string | undefined; doc: ProjectDoc } | undefined
@@ -296,9 +296,22 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // (L57), and it stays open while the name is narrowed, until the box closes or the way back is
   // taken.
   const [libraryOpen, setLibraryOpen] = useState(false)
+  // The library behind the second click (#1093, L71): Deckster's own symbols at once, and the whole
+  // icon catalog once that click has asked for it — never on the brace itself (L27).
+  const { lang } = useLang()
+  const [catalog, setCatalog] = useState<CatalogIcon[] | null>(null)
+  useEffect(() => {
+    if (!libraryOpen || catalog !== null) return
+    let standing = true
+    void loadIconCatalog(lang).then((icons) => standing && setCatalog(icons))
+    return () => {
+      standing = false
+    }
+  }, [libraryOpen, catalog, lang])
+  const shelfIcons = useMemo(() => catalog ?? decksterIcons(lang), [catalog, lang])
   // What the brace offers, in the order it offers it (L57): the deck's own tokens, the game's
   // icons, and the library behind them. One run to the keys across all the parts.
-  const sections = brace && brace.role === null ? braceSections(doc, brace.query, libraryOpen, iconFieldsOf(doc), t) : []
+  const sections = brace && brace.role === null ? braceSections(doc, brace.query, libraryOpen, iconFieldsOf(doc), shelfIcons, lang) : []
   const matches = bracePicks(sections)
   // The game's meanings as the box offers them, «utan betydelse» first — and none at all when the
   // game has named none, which is what makes the meaning step not exist rather than be skipped.
@@ -411,7 +424,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       onCell(open.cardRef, open.field, written)
     }
     if (symbol.kind === 'icon') write(symbol.name)
-    else void onSymbol(symbol.symbol).then(write)
+    else void onSymbol(symbol.icon).then(write)
   }
   // A pick in the box. A token the deck already writes carries its meaning and goes in at once. A
   // symbol is inserted at once when the game has no meanings, and otherwise held while the meaning
@@ -430,7 +443,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // What the box will write, said in the box as the product's own syntax. The name is the one
   // the symbol gets in the game, which is what `takeSymbol` writes.
   const nameOf = (pick: BracePick | null | undefined): string | null =>
-    !pick ? null : pick.kind === 'written' || pick.kind === 'icon' ? pick.name : pick.kind === 'library' ? symbolName(pick.symbol, t) : null
+    !pick ? null : pick.kind === 'written' || pick.kind === 'icon' ? pick.name : pick.kind === 'library' ? pick.icon.name : null
   const writtenName = nameOf(active)
   const writtenRole = active?.kind === 'written' ? active.role : (activeMeaning?.role ?? null)
   const writes = brace && writtenName !== null ? token(writtenName, writtenRole, iconFieldsOf(doc).includes(brace.field)) : ''
@@ -609,7 +622,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             paper={paper}
             palette={doc.palette}
             icons={gameIcons}
-            libraryCount={LIBRARY.length}
+            libraryCount={catalog?.length ?? null}
             writes={writes}
             token={(name, role) => token(name, role, iconFieldsOf(doc).includes(open.field))}
             onPick={choose}
