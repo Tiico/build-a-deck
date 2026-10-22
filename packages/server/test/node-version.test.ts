@@ -26,13 +26,22 @@ const root = (name: string) => readFileSync(new URL(`../../../${name}`, import.m
 // The major, out of whatever shape the file writes it in: `>=26`, `26`, `26-alpine`.
 const major = (said: string): string | null => /(\d+)/.exec(said)?.[1] ?? null
 
+// The Node CI runs: the composite action's, and any the workflow writes itself, which must agree.
+function ciNode(): string | null {
+  const said = ['.github/actions/setup/action.yml', '.github/workflows/ci.yml']
+    .flatMap((file) => [...root(file).matchAll(/^\s*node-version:\s*(\S+)/gm)].map((m) => major(m[1]!)))
+  return said.length > 0 && new Set(said).size === 1 ? said[0]! : null
+}
+
 // Every place the repo says which Node it is, and how each of them spells it.
 function versions(): Record<string, string | null> {
   const dockerfile = [...root('Dockerfile').matchAll(/^FROM node:(\S+)/gm)].map((m) => m[1]!)
   return {
     'package.json engines.node': major(/"engines"\s*:\s*\{[^}]*?"node"\s*:\s*"([^"]+)"/s.exec(root('package.json'))?.[1] ?? ''),
     '.nvmrc': major(root('.nvmrc')),
-    'ci.yml node-version': major(/^\s*node-version:\s*(\S+)/m.exec(root('.github/workflows/ci.yml'))?.[1] ?? ''),
+    // CI's jobs all set up through one composite action (#1125), so that is where CI says it; and
+    // the workflow itself must not say a second number beside it.
+    'ci node-version': ciNode(),
     // Both stages of the image, folded together: two different Nodes in one build is the same
     // drift as two different files saying two things.
     'Dockerfile FROM node': dockerfile.length > 0 && new Set(dockerfile.map(major)).size === 1 ? major(dockerfile[0]!) : null,
@@ -42,7 +51,7 @@ function versions(): Record<string, string | null> {
 describe('the Node the repo runs on (#138)', () => {
   it('is the same number wherever the repo says it', () => {
     const said = versions()
-    const agreed = said['ci.yml node-version']
+    const agreed = said['ci node-version']
     // Named against CI's, because CI's is the one that is actually true: it is the version the
     // gate runs, and every other file is a claim about it.
     expect(said).toEqual(Object.fromEntries(Object.keys(said).map((where) => [where, agreed])))

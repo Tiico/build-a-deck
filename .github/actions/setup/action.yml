@@ -1,0 +1,47 @@
+# What every CI job that runs the repo's code starts with (#1125): pnpm, the Node the repo runs on,
+# the locked dependencies, and Chromium for the jobs that launch one. One place, because the
+# number below is one of the four that node-version.test.ts holds together (#138), and four jobs
+# each writing it is four more.
+name: setup
+description: pnpm, Node, the locked dependencies and, when asked, Chromium
+inputs:
+  browser:
+    description: Install Chromium and the system packages it needs
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+      with:
+        version: 11.24.0
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 26
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+
+    # Chromium downloads in seconds; the apt packages `--with-deps` adds beside it (fonts, xvfb,
+    # a newer libnss3) came at 57 kB/s from the runner's mirror and took up to eight minutes. They
+    # are kept between runs, keyed to the runner image and the Playwright that asks for them. The
+    # runner itself stays: the surfaces are measured against its fonts (ci-browser.test.ts).
+    - if: inputs.browser == 'true'
+      shell: bash
+      run: |
+        echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99byd-keep >/dev/null
+        sudo rm -f /etc/apt/apt.conf.d/docker-clean
+        pw=$(node -p "require('./packages/render/node_modules/playwright/package.json').version")
+        echo "BYD_APT_KEY=playwright-apt-$ImageOS-$ImageVersion-$pw" >> "$GITHUB_ENV"
+    - if: inputs.browser == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/byd-apt
+        key: ${{ env.BYD_APT_KEY }}
+    - if: inputs.browser == 'true'
+      shell: bash
+      working-directory: packages/render
+      run: |
+        mkdir -p ~/.cache/byd-apt
+        sudo cp ~/.cache/byd-apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+        pnpm exec playwright install --with-deps chromium
+        cp /var/cache/apt/archives/*.deb ~/.cache/byd-apt/ 2>/dev/null || true

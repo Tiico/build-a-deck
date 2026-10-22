@@ -8,9 +8,13 @@ import { expect, test } from '../../support/test.js'
 test.describe('the latest lines on a television (#482)', () => {
   test.use({ viewport: TV.viewport })
 
+  // Measured at the table the room sees once the cards are drawn. Nothing in the suite renders
+  // them (`render.ts`), and while they wait the floor carries «Laddar kort» and the feed has room
+  // for one line; this passed only when a journey that starts a renderer happened to run first
+  // and leave the recipe's cards done in the shared database, which a shard does not promise (#1125).
   test('shows only whole lines, and nothing lies over them', async ({ tableOf, open, host, request }) => {
     const table = await tableOf({ players: 4, cards: 12, copies: 2 })
-    const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+    const tv = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
     const dealer = await host(table)
     for (let i = 0; i < 12; i++) await dealer.send([{ v: 'draw', from: 'draw', to: 'discard', count: 1 }])
     const watcher = await join(request, table, { name: 'Tittaren' })
