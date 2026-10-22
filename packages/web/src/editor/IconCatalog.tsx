@@ -127,7 +127,7 @@ export function IconCatalog({ inGame, colour, paper, target, onChoose, onClose }
           {SHELVES.map((s) => {
             const n = shelfCount(s)
             return (
-              <button key={s} type="button" aria-pressed={s === shelf} onClick={() => setShelf(s)}>
+              <button key={s} type="button" className="byd-choice" aria-pressed={s === shelf} onClick={() => setShelf(s)}>
                 {t(`icons.catalog.source.${s}` as Key)}
                 {n !== null && <small> {n.toLocaleString(lang)}</small>}
               </button>

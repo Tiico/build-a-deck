@@ -120,7 +120,6 @@ describe('the card on the canvas is not compiled again for nothing', () => {
         onPatch={() => undefined} onCallOff={() => undefined}
         onRemove={() => undefined}
         onAdd={() => undefined}
-        onPlaceIcon={() => undefined}
         onReorder={() => undefined}
         onLock={() => undefined}
         onRename={() => undefined}

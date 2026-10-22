@@ -30,7 +30,6 @@ function canvas(over: Partial<TemplateCanvasProps> & { wrap?: Lang } = {}) {
     onCallOff: vi.fn(),
     onRemove: vi.fn(),
     onAdd: vi.fn(),
-    onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
     onLock: vi.fn(),
     onRename: vi.fn(),

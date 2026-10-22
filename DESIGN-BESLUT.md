@@ -7468,3 +7468,13 @@ Hela katalogen och varje symbol verktyget laddar upp klarar vakten oförändrade
 En inläst fil visas som filen och som den form kortet kommer att måla, och rutan säger rakt ut att det vita i filen blir färg och inte ett hål.
 Namnet föreslås ur filnamnet, och en upphovsrad sparas bara när både licens och upphovsperson är ifyllda, som för ett uppladdat typsnitt (L27).
 En fil som inte går att använda sägs med designerns ord och inte med vaktens engelska (A4).
+
+**Byggt 2026-10-22 (#1093, beställarens beslut): klammern och ikonverktyget söker i katalogen.**
+Ikonverktyget i Mall lägger ett ikonlager utan ikon, markerat, och öppnar bibliotekets ark under kortet för «alla kort».
+Det är samma väg som panelens «Ikon och färg», och den lilla listan med Decksters 20 symboler som hängde vid verktygsraden är borta, så det finns en väg till en ikon i stället för två.
+Att välja ikonen är en sak designern gör: ikonen som tas in och lagret som binds till den bär samma gest och kommer tillbaka med ett Ctrl+Z (B4); att lägga lagret var en egen sak och är nästa steg tillbaka.
+Lagret binds så fort spelets uppsättning har ikonens namn, och bytes följer efter, som en placerad symbol alltid gjort (#310); kommer de inte fram är gesten fortfarande den öppna och tas tillbaka hel, med bindningen i sig, så ett kort pekar aldrig på en ikon som tagits tillbaka.
+Hyllorna i arken är val i verktygets `.byd-choice`-form och inte den primära fyllningen, som bara bär handlingen som lägger ut arbetet på bordet; typsnittskatalogens kategorier hade samma fel och fick samma rättning.
+Klammerns «Hela biblioteket» i Tabell söker i katalogen och laddar den när klick två trycks, aldrig när `{` skrivs (L27).
+Före det står Decksters egna, och ett spel utan ikoner öppnar som förut på dem, nu med vägen till hela katalogen under.
+Det öppnade biblioteket visar 60 träffar; namnet efter klammern är det som smalnar av, som i arket.

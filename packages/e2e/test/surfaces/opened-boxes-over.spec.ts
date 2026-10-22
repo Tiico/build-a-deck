@@ -98,10 +98,11 @@ test('the arrows walk the whole list, and bring the row they are on into it with
   await cell.click()
   await cell.pressSequentially('{')
   const options = page.getByRole('group', { name: 'Infoga symbol' }).getByRole('option')
-  await expect(options).toHaveCount(8)
+  // Eight of the symbols drawn for the project, and the way into the whole library under them (#1093).
+  await expect(options).toHaveCount(9)
   const before = await scroll.evaluate((el) => el.scrollTop)
 
-  for (let i = 0; i < 7; i++) await cell.press('ArrowDown')
+  for (let i = 0; i < 8; i++) await cell.press('ArrowDown')
   const last = options.last()
   await expect(last).toHaveAttribute('aria-selected', 'true')
   await expect(last).toBeInViewport({ ratio: 1 })
@@ -168,14 +169,4 @@ test('the rulebook’s [[ list opens over the book it is written in', async ({ p
   await field.pressSequentially(' [[')
   await liftedWhereItStood(page.locator('.byd-rules-refs'))
   await expect(field).toBeFocused()
-})
-
-test('the icon tool opens the library beside it, over the canvas', async ({ page }) => {
-  await logIn(page.request)
-  const project = await makeProject(page.request, { name: 'Skogens herrar', cards: 4 })
-  await page.goto(project.editorUrl)
-  await expect(page.getByText('Skogens herrar').first()).toBeVisible()
-  await page.locator('#byd-editor-tab-template').click()
-  await page.locator('.byd-canvas-tool-icon > button').click()
-  await liftedWhereItStood(page.locator('.byd-canvas-symbols'))
 })
