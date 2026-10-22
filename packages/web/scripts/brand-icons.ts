@@ -46,6 +46,8 @@ try {
   const favicon = faviconSvg()
   writeFileSync(join(PUBLIC, 'favicon.svg'), favicon)
   writeFileSync(join(PUBLIC, 'favicon.ico'), ico(await draw(favicon, 32)))
+  // The login mail's hand (#1098): the tab's free hand at 128 px, shown at 64 in the wood band.
+  writeFileSync(join(PUBLIC, 'mark-128.png'), await draw(favicon, 128))
   const app = appIconSvg()
   for (const [file, size] of [['apple-touch-icon.png', 180], ['icon-192.png', 192], ['icon-512.png', 512]] as const) {
     writeFileSync(join(PUBLIC, file), await draw(app, size))

@@ -186,6 +186,31 @@ describe('a proposal of changed cards', () => {
     expect(within(panel()).getByRole('button', { name: 'Visa i tabellen' }).getAttribute('aria-pressed')).toBe('false')
   })
 
+  // A proposal is a comparison too (#1104): the band offers only the cards it changes or adds.
+  it('can show only the cards the proposal changes or adds', async () => {
+    await changeTwo()
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Visa i tabellen' }))
+    const strip = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('.byd-data-compare')
+      expect(found).not.toBeNull()
+      return found!
+    })
+    const only = within(strip).getByRole('button', { name: 'Bara ändrade kort' })
+    fireEvent.click(only)
+    expect(only.getAttribute('aria-pressed')).toBe('true')
+    const refs = () => [...document.querySelectorAll('tbody tr[data-card-ref]')].map((r) => r.getAttribute('data-card-ref'))
+    expect(refs()).not.toContain('wizard')
+    expect(refs()).toContain('dragon')
+    expect(document.querySelector('tr[data-change="added"]')).not.toBeNull()
+    // Hidden and shown again, the proposal starts from every card.
+    fireEvent.click(within(strip).getByRole('button', { name: 'Dölj förslaget' }))
+    await waitFor(() => expect(document.querySelector('.byd-data-compare')).toBeNull())
+    expect(refs()).toContain('wizard')
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Visa i tabellen' }))
+    await waitFor(() => expect(document.querySelector('.byd-data-compare')).not.toBeNull())
+    expect(refs()).toContain('wizard')
+  })
+
   it('is accepted as one edit of plain cell edits, and taken back in one step', async () => {
     await changeTwo()
     fireEvent.click(within(panel()).getByRole('button', { name: 'Godta alla' }))

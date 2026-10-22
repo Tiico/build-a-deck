@@ -253,3 +253,22 @@ describe('the app image carries everything the web build reads', () => {
     }
   })
 })
+
+// The HTML part reaches the provider (#1098): Resend takes `html` beside `text`, and a mail without
+// one is sent as text alone, as every mail was before.
+describe('the Resend mailer sends the HTML part (#1098)', () => {
+  it('posts html when the mail has one, and leaves it out when it has none', async () => {
+    const calls: unknown[] = []
+    const fetchMock = async (_url: string, init: { body: string }) => {
+      calls.push(JSON.parse(init.body))
+      return new Response('{}', { status: 200 })
+    }
+    const mailer = new ResendMailer('key', 'Deckster <login@deck.example>', fetchMock as unknown as typeof fetch)
+    await mailer.send({ to: 'a@b.se', subject: 's', text: 't', html: '<p>h</p>' })
+    await mailer.send({ to: 'a@b.se', subject: 's', text: 't' })
+    expect(calls).toEqual([
+      { from: 'Deckster <login@deck.example>', to: ['a@b.se'], subject: 's', text: 't', html: '<p>h</p>' },
+      { from: 'Deckster <login@deck.example>', to: ['a@b.se'], subject: 's', text: 't' },
+    ])
+  })
+})
