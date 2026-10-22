@@ -18,41 +18,100 @@ permissions:
   packages: write
 
 jobs:
-  check:
+  # The check is split into jobs that run side by side (#1125). As one job it took 35–40 minutes:
+  # the e2e suite 19, the web suite 10, and up to 8 waiting on apt for Playwright's packages, all
+  # in a row on a public repository whose runners cost nothing. `check` at the bottom is still the
+  # one answer a pull request gets.
+  static:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    services:
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: replay corpus is the gate
+        run: pnpm --filter @byd/engine exec vitest run test/corpus.test.ts
+
+  # Every suite but the two large ones, in the order `pnpm test` runs them.
+  unit:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Playwright's own image carries Chromium and every package it needs. Installing them on the
+    # runner fetched 26 MB of apt at whatever the mirror felt like, up to eight minutes of it. The
+    # tag is held to the installed Playwright by ci-playwright-image.test.ts.
+    container: &browser
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    services: &postgres
       postgres:
         image: postgres:17-alpine
         env:
           POSTGRES_DB: byd
           POSTGRES_USER: byd
           POSTGRES_PASSWORD: byd
-        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -h 127.0.0.1 -U byd -d byd"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+    env: &database
+      # Inside a container job a service is reached by its name, not through a published port.
+      DATABASE_URL: postgres://byd:byd@postgres:5432/byd
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: ./.github/actions/setup
+      - run: pnpm -r --workspace-concurrency=1 --filter '!@byd/web' --filter '!@byd/e2e' test
+
+  web:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    container: *browser
+    services: *postgres
+    env: *database
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @byd/web exec vitest run --shard=${{ matrix.shard }}/3
+
+  e2e:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    container: *browser
+    services: *postgres
+    env: *database
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # Each shard builds and stands up its own stack; the build is seconds, the suite is minutes.
+      - run: pnpm --filter @byd/e2e exec playwright test --shard=${{ matrix.shard }}/4
+      # The config keeps a trace, a video and a screenshot of what failed, and nothing else. They
+      # are only worth keeping if they leave the runner.
+      - if: failure()
+        uses: actions/upload-artifact@v5
         with:
-          version: 11.24.0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-        working-directory: packages/render
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-        env:
-          DATABASE_URL: postgres://byd:byd@127.0.0.1:5432/byd
-      - name: replay corpus is the gate
-        run: pnpm --filter @byd/engine exec vitest run test/corpus.test.ts
+          name: e2e-${{ matrix.shard }}
+          path: packages/e2e/test-results
+          retention-days: 14
+
+  # The one answer: red if any part of the check is, and skipped with them on a tag.
+  check:
+    if: always() && github.event_name == 'pull_request'
+    needs: [static, unit, web, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: |
+          echo "static=${{ needs.static.result }} unit=${{ needs.unit.result }} web=${{ needs.web.result }} e2e=${{ needs.e2e.result }}"
+          exit 1
 
   images:
     # A tag is cut from a commit that was already green as a pull request, so this does not

@@ -1,0 +1,17 @@
+# What every CI job that runs the repo's code starts with (#1125): pnpm, the Node the repo runs on,
+# and the locked dependencies. One place, because the number below is one of the four that
+# node-version.test.ts holds together (#138), and four jobs each writing it is four more.
+name: setup
+description: pnpm, Node and the locked dependencies
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+      with:
+        version: 11.24.0
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 26
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash
