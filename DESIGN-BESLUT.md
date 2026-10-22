@@ -7627,9 +7627,13 @@ Verktygets egna namn är bytta mot vanliga ord: Ögon heter Visning (och «Som d
 Att sparka en spelare heter att ta bort den från bordet, en symbol läggs till i stället för att tas in, kort laddas i stället för att renderas också i editorn, och häftet skapas i stället för att renderas.
 Guidad start heter «Skapa ett nytt spel» med «Tre steg, ungefär tre minuter», dörren till ett tomt spel «Börja från ett tomt spel», och knappen «Skapa spelet».
 Kontot säger «Kolla din mejl», «Har du en rumskod?» och «Gå med», och nyckeln testas i stället för att prövas.
-Kvar till led 3 är ikonerna, ovanpå #1083.
-
-Inbjudningsmejlet (#477) går fortfarande som text och får samma form i ett eget issue.
+**Byggt 2026-10-22 (#1101), led 3: ikonerna, ovanpå #1083.**
+Telefonens rad ritar Ångra, Flagga och Lämna som ikoner vid alla bredder, inte bara under 375 px (L62): ordet står kvar i knappen utom synhåll och som tooltip, och Lämna bär hela sitt namn «Lämna… eller avsluta bordet».
+Bordslägets hörn ritar en klocka där «Senast:» stod, och ordet finns kvar för den som hör raden.
+Guidens två steg är pilar, Mina spels Profil, Logga ut och Importera är en person, en dörr och en pil till hyllan, och handens «Visa alla · n» är ett rutnät och talet med hela namnet på knappen.
+De fem ikonerna som inte fanns bland #1083:s tjugo (dörren ut, klockan, personen, importen, rutnätet) är ritade i samma hand i `glyphs.tsx`.
+Första handlingarna och menyerna behåller sitt ord.
+`icon-controls.test.ts` håller formen: ritningen, ordet i DOM:en, ordet på pekaren, och inget synligt ord.
 
 ### L74. UI-ikonerna ritas i en hand: glyphs.tsx, 16-rutnät och 1,6 rund linje (prototypat och beslutat 2026-10-22, #1083)
 

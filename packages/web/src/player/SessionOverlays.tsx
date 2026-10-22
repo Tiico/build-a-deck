@@ -10,7 +10,7 @@ import { useHasRulebook } from '../rules/sessionRules.js'
 import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
 import { returnPile } from '../table/handName.js'
-import { FlagGlyph, HookGlyph } from '../glyphs.js'
+import { ExitGlyph, FlagGlyph, HookGlyph } from '../glyphs.js'
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
 export function refusedText(reason: string, t: T): string {
@@ -232,17 +232,19 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
   }
   return (
     <>
-      {/* The word stays the button's name and its title: under 375 px only the icon is drawn (#716, L62). */}
+      {/* Icons at every width (L73, led 3; before that only under 375 px, #716, L62): the word stays
+          the button's name, out of sight in the DOM and on the pointer as its title. */}
       <button className="byd-undo" aria-disabled={off} onClick={tapUndo} title={t('session.undo')}>
         <HookGlyph />
-        {t('session.undo')}
+        <span className="byd-offscreen">{t('session.undo')}</span>
       </button>
       <button className="byd-flag" disabled={view.ended} onClick={raise('flag')} title={t('session.flag')}>
         <FlagGlyph />
-        {t('session.flag')}
+        <span className="byd-offscreen">{t('session.flag')}</span>
       </button>
-      <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} disabled={view.ended} onClick={raise('exit')}>
-        {t('session.exit')}
+      <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} title={t('session.exit')} disabled={view.ended} onClick={raise('exit')}>
+        <ExitGlyph />
+        <span className="byd-offscreen">{t('session.exit')}</span>
       </button>
     </>
   )

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { projectActivity } from '@byd/engine'
@@ -60,11 +60,12 @@ describe('the phone’s row (L73, led 3)', () => {
 })
 
 describe('the felt’s own corner (L73, led 3)', () => {
-  it('draws the time of the last move with a clock, and keeps «Senast:» for the reader who hears it', () => {
+  it('draws the time of the last move with a clock, and keeps «Senast:» for the reader who hears it', async () => {
     const { view, log } = buildScene()
     render(<LastLine view={view(null)} activity={log.map(projectActivity)} />)
+    // The corner is drawn once the felt's second sheet has arrived (`useAfterSheet`).
+    await waitFor(() => expect(document.querySelector('[data-table-last]')).not.toBeNull())
     const line = document.querySelector('[data-table-last]') as HTMLElement
-    expect(line).not.toBeNull()
     expect(line.querySelector('svg.byd-glyph')).not.toBeNull()
     expect(line.querySelector('.byd-offscreen')?.textContent).toBe('Senast:')
     expect(line.querySelector('b')).toBeNull()

@@ -18,7 +18,7 @@ import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Lang, type T } from '../i18n/index.js'
-import { MoreGlyph } from '../glyphs.js'
+import { ExitGlyph, ImportGlyph, MoreGlyph, PersonGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { versionWord } from '../i18n/version.js'
@@ -176,18 +176,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           <h1 ref={heading} tabIndex={-1}>
             {t('home.title')}
           </h1>
-          <button type="button" className="byd-secondary byd-home-import" onClick={() => setImporting(true)}>
-            {t('home.import.open')}
-          </button>
           {/* The dots between the parts are drawn by the stylesheet at the start of the part they
               lead, so a wrapped line never ends on one (#555). */}
           <span className="byd-who">
             <span title={email}>{email}</span>
             {/* The way to the profile (#999, #998 variant A): a word in the line, where the language
                 picker stood before it moved there. */}
-            <span>
+            <span className="byd-who-icon">
               <a
                 className="byd-who-profile"
+                title={t('home.profile')}
                 href={`/profile${suffixed()}`}
                 onClick={(e) => {
                   if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
@@ -195,21 +193,28 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   onNavigate(`/profile${suffixed()}`)
                 }}
               >
-                {t('home.profile')}
+                <PersonGlyph />
+                <span className="byd-offscreen">{t('home.profile')}</span>
               </a>
             </span>
-            <span>
+            <span className="byd-who-icon">
               <a
                 href="/login"
+                title={t('home.logout')}
                 onClick={(e) => {
                   e.preventDefault()
                   void logout(http).then(() => setEmail(null))
                 }}
               >
-                {t('home.logout')}
+                <ExitGlyph />
+                <span className="byd-offscreen">{t('home.logout')}</span>
               </a>
             </span>
           </span>
+          <button type="button" className="byd-secondary byd-home-import" title={t('home.import.open')} onClick={() => setImporting(true)}>
+            <ImportGlyph />
+            <span className="byd-offscreen">{t('home.import.open')}</span>
+          </button>
         </header>
         {notice && (
           <p className="byd-home-notice" role="alert">

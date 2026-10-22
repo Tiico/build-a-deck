@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { GridGlyph } from '../glyphs.js'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -271,8 +272,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h1>{t('player.hand.title')}</h1>
           {overflows && (
-            <button type="button" ref={showAll} className="byd-foot-more" style={{ marginLeft: 'auto' }} aria-expanded={spread ? 'true' : 'false'} onClick={() => setSpread(true)}>
-              {t('player.hand.all', { n: hand.length })}
+            <button type="button" ref={showAll} className="byd-foot-more byd-hand-all" style={{ marginLeft: 'auto' }} aria-expanded={spread ? 'true' : 'false'} aria-label={t('player.hand.all', { n: hand.length })} title={t('player.hand.all', { n: hand.length })} onClick={() => setSpread(true)}>
+              <GridGlyph />
+              {hand.length}
             </button>
           )}
         </div>
