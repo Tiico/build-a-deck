@@ -5,7 +5,8 @@
 // already there — the card table's own marking (#17) — and what was missing was the library and
 // the connection. Since #296 the connection stands in Data itself: the marked cards open the
 // library as a window over the table, so the picture reaches them without a walk to Media and
-// back. The marking is still the deck's, and the library still writes every marked card at once.
+// back. The marking is still the deck's; the library hands the picture to the action row, and
+// the row's «Sätt bild på N kort» writes every marked card at once (#1099).
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -53,7 +54,10 @@ async function putOnMarked(user: ReturnType<typeof userEvent.setup>): Promise<vo
   fireEvent.change(within(bulk).getByLabelText('Kolumn'), { target: { value: 'art' } })
   await user.click(within(bulk).getByRole('button', { name: 'Välj bild för de markerade korten' }))
   await user.click(within(dialog()).getByRole('button', { name: 'Bild på dragon' }))
-  await user.click(within(dialog()).getByRole('button', { name: 'Använd på 2 kort' }))
+  await user.click(within(dialog()).getByRole('button', { name: 'Välj bilden' }))
+  // The window chose; the row holds the picture, and nothing is written until its button is pressed.
+  expect(screen.queryByAltText('knight art')).toBeNull()
+  await user.click(within(bulk).getByRole('button', { name: 'Sätt bild på 2 kort' }))
 }
 
 describe('a picture on a selection of cards in one step (#222, L22, #296)', () => {

@@ -2079,7 +2079,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               >
                 {bulkImage ? <AssetImage base={assetBase} hash={bulkImage} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
                 {bulkOver && <DropSays />}
-                {/* The library (#296): a picture the game already has, onto every marked card. */}
+                {/* The library (#296): a picture the game already has, into the row — and onto
+                    every marked card when the button is pressed, like a dropped or uploaded one
+                    (#1099). */}
                 <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
                   {t('table.image.choose')}
                 </button>
@@ -2110,6 +2112,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               onClick={() => {
                 if (bulkWrites === null) return
                 onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
+                // A picture set is said where the pictures are, as the library's own press used
+                // to say it (#296): the row is far from the cells it wrote.
+                if (bulkIsImage && bulkImage !== null) {
+                  const name = pictureName(bulkImage)
+                  setSaid(name === undefined ? t('table.library.done.other.unnamed', { n: chosen.length }) : t('table.library.done.other', { name, n: chosen.length }))
+                }
                 setBulkValue('')
                 setBulkImage(null)
               }}
@@ -2144,18 +2152,19 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           replacing={library.kind === 'cell' ? (isAssetRef(doc.rows.find((r) => r.id === library.cardRef)?.fields[library.field]) ? 1 : 0) : chosen.filter((r) => isAssetRef(r.fields[library.field])).length}
           pictures={pictures}
           assetBase={assetBase}
+          {...(library.kind === 'marked' ? { use: t('library.pick') } : {})}
           onApply={(hash) => {
-            // One change either way (L4, B4): a cell is one edit, and the marked cards are one
-            // list of rows — the same door every other bulk change goes through, so a step back
-            // takes all of them back at once.
             if (library.kind === 'cell') {
+              // A cell is one edit (L4, B4), made here.
               onCell(library.cardRef, library.field, assetRef(hash))
               const name = pictureName(hash)
               setSaid(name === undefined ? t('table.library.done.one.unnamed', { cardRef: library.cardRef }) : t('table.library.done.one', { name, cardRef: library.cardRef }))
             } else {
-              onReplaceRows(setColumn(doc.rows, chosenIds, library.field, assetRef(hash)))
-              const name = pictureName(hash)
-              setSaid(name === undefined ? t('table.library.done.other.unnamed', { n: chosen.length }) : t('table.library.done.other', { name, n: chosen.length }))
+              // The marked cards are written by the row's own button and not from here (#1099):
+              // the window chooses, the row holds, and «Sätt bild på N kort» is the one press
+              // that writes — the same as for a picture dropped on the row or uploaded into it,
+              // and one list of rows, so a step back takes all of them back at once.
+              setBulkImage(hash)
             }
             setLibrary(null)
           }}

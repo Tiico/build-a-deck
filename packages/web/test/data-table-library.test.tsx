@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // The library reached from Data (#296, variant B): a picture cell's «Välj» and the marked cards'
-// «Välj bild för de markerade korten» open the same window, and the window writes the same asset
-// reference the picture already has — into one cell, or into every marked card in one change.
+// «Välj bild för de markerade korten» open the same window. For a cell the window writes the same
+// asset reference the picture already has; for the marked cards it hands that reference to the
+// action row, whose «Sätt bild på N kort» writes every marked card in one change (#1099).
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -100,7 +101,7 @@ describe('the marked cards open the library (#296)', () => {
   const mark = (cardRef: string) => fireEvent.click(screen.getByLabelText(`markera ${cardRef}`))
   const bulk = () => screen.getByRole('toolbar', { name: 'Markerade kort' })
 
-  it('opens on the marked cards and the column, warns how many pictures go, and writes every marked card in one change', async () => {
+  it('opens on the marked cards and the column, warns how many pictures go, and hands the picture to the row, whose button writes every marked card in one change (#1099)', async () => {
     const user = userEvent.setup()
     const onReplaceRows = vi.fn()
     renderTable(deckWithArt(), { onReplaceRows })
@@ -115,7 +116,18 @@ describe('the marked cards open the library (#296)', () => {
     await user.click(tile('karta'))
     // dragon already has a picture, knight has none.
     expect(within(dialog()).getByText('1 av korten har redan en bild som byts ut.')).toBeTruthy()
-    await user.click(within(dialog()).getByRole('button', { name: 'Använd på 2 kort' }))
+    // The window's button says what it does here: it chooses, it does not write.
+    expect(within(dialog()).queryByRole('button', { name: /^Använd/ })).toBeNull()
+    await user.click(within(dialog()).getByRole('button', { name: 'Välj bilden' }))
+
+    // The row holds the picture and the cards are untouched until its button is pressed.
+    expect(onReplaceRows).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(opener)
+    expect(within(bulk()).getByRole('img', { name: 'Bild för de markerade korten' })).toBeTruthy()
+    const set = within(bulk()).getByRole('button', { name: 'Sätt bild på 2 kort' }) as HTMLButtonElement
+    expect(set.disabled).toBe(false)
+    await user.click(set)
 
     expect(onReplaceRows).toHaveBeenCalledTimes(1)
     expect(onReplaceRows.mock.calls[0]![0].map((r: { id: string; fields: Record<string, unknown> }) => [r.id, r.fields['art']])).toEqual([
@@ -123,9 +135,9 @@ describe('the marked cards open the library (#296)', () => {
       ['knight', `asset:${KARTA}`],
       ['wizard', undefined],
     ])
-    expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText('Bilden karta ligger nu på 2 kort.')).toBeTruthy()
-    expect(document.activeElement).toBe(opener)
+    // The row lets the picture go once it is set (E1).
+    expect(within(bulk()).queryByRole('img', { name: 'Bild för de markerade korten' })).toBeNull()
   })
 
   it('keeps the upload for the marked cards beside it', async () => {
