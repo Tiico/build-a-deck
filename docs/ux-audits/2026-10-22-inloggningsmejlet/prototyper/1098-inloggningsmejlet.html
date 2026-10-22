@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 1098 — inloggningsmejlet (#1098)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Inloggningsmejlet (#1098) ──────────────────────────────────────────────────────────
+     Mejlet går i dag som ren text (loginMail i packages/server/src/auth.ts). Hur ska det se ut
+     som HTML-mejl? Varje variant är riktig mejl-HTML: tabeller, inline-stil, inga <svg>, inga
+     webbtypsnitt, märket som <img>, och ritas i en klient som är ritad här (Gmail på skrivbord,
+     en mörk klient, Gmail i telefonen). «Bilder av» visar mejlet som en klient visar det innan
+     läsaren tillåtit bilder: alt-texten i en ram. Gmails inversion av ljusa mejl på Android ritas inte.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root { --panel: #1b1d23; --line: #2f333d; --quiet-2: #9aa3b8; --primary-mark: #6ea8ff; }
+  body { display: flex; flex-direction: column; min-height: 100vh; padding: 0; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; padding: 16px; align-content: start; }
+  @media (max-width: 1100px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; display: grid; justify-items: center; width: 100%; align-content: start; gap: 8px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .ruta ul { margin: 0; padding-left: 18px; color: #c9d1e3; line-height: 1.5; }
+  .ruta code { color: #ffe9b8; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; color: #c9d1e3; }
+  .tal b { text-align: right; color: #fff; }
+
+  /* ── Klienten ─────────────────────────────────────────────────────────────────────────── */
+  .klient { border: 1px solid #3a3f4b; border-radius: 12px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,.5); font: 14px/1.4 -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  .klient img { outline: 0; display: inline-block; }
+  /* proto.css ritar ramar på varje tabell; mejlets tabeller är layout, utan ram. */
+  .klient table { border-collapse: separate; border-spacing: 0; margin: 0; font-size: inherit; }
+  .klient td, .klient th { border: 0; padding: 0; text-align: inherit; }
+  .klient td[align="center"] { text-align: center; }
+  .klient[data-klient='gmail'] { width: 100%; max-width: 860px; background: #fff; color: #202124; }
+  .klient[data-klient='mork'] { width: 100%; max-width: 860px; background: #1e1f22; color: #e8eaed; }
+  .klient[data-klient='telefon'] { width: 375px; background: #fff; color: #202124; border-radius: 36px; border: 10px solid #111; }
+  .k-topp { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid rgba(128,128,128,.25); font-size: 13px; }
+  .k-topp .ikoner { margin-left: auto; display: flex; gap: 14px; opacity: .55; }
+  .k-topp .ikoner span { width: 16px; height: 16px; border-radius: 3px; border: 2px solid currentColor; display: inline-block; }
+  .k-amne { padding: 18px 22px 6px; font-size: 22px; font-weight: 400; }
+  .k-fran { display: flex; align-items: center; gap: 12px; padding: 8px 22px 16px; font-size: 13px; }
+  .k-fran .avatar { width: 40px; height: 40px; border-radius: 50%; background: #7dd3a0; color: #0b2a18; display: grid; place-items: center; font-weight: 700; font-size: 17px; }
+  .k-fran .namn { font-weight: 700; } .k-fran .adr { opacity: .65; font-weight: 400; }
+  .k-fran .till { opacity: .65; }
+  .k-fran .tid { margin-left: auto; opacity: .65; }
+  .k-kropp { padding: 0 22px 28px; }
+  .klient[data-klient='telefon'] .k-amne { font-size: 18px; padding: 14px 16px 4px; }
+  .klient[data-klient='telefon'] .k-fran { padding: 6px 16px 12px; }
+  .klient[data-klient='telefon'] .k-kropp { padding: 0 0 20px; }
+  .klient[data-klient='telefon'] .k-topp { padding: 10px 14px; }
+  .statusrad { display: flex; justify-content: space-between; padding: 8px 20px 0; font-size: 12px; font-weight: 600; }
+  /* Mejlets eget rum: klientens läsyta, med mejlets egen bakgrund (bgcolor) i den. */
+  .mejl { }
+
+  /* Bilder av: klienten visar alt-texten i en ram i bildens mått, som Gmail gör. */
+  .altruta { display: inline-grid; place-items: center; box-sizing: border-box; border: 1px solid rgba(128,128,128,.6); color: inherit; font: 11px/1.2 Arial, sans-serif; text-align: center; padding: 2px; overflow: hidden; vertical-align: middle; }
+
+  .tangent { font: 11px ui-monospace, Menlo, monospace; color: #c9d1e3; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 1098 — inloggningsmejlet som HTML (#1098) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · riktig mejl-HTML i en ritad klient</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="klienter"><span>Klient</span></div>
+  <div class="rad" id="sprak"><span>Språk</span></div>
+  <div class="rad" id="bilder"><span>Bilder</span></div>
+  <div class="rad" id="kontakt"><span>Kontakt</span></div>
+</div>
+<div class="scen">
+  <div class="bild">
+    <div class="klient" id="klient"></div>
+    <p id="bildtext"></p>
+  </div>
+  <div class="sido">
+    <div class="ruta"><h2 id="r-namn"></h2><p id="r-regel"></p></div>
+    <div class="ruta"><h2>Vad det kostar</h2><p id="r-pris"></p></div>
+    <div class="ruta"><h2>Mejlets villkor</h2><ul id="r-villkor"></ul></div>
+    <div class="ruta"><h2>Gemensamt för A–C</h2>
+      <ul>
+        <li>Tabeller och inline-stil; inga webbtypsnitt, ingen <code>&lt;svg&gt;</code>, ingen <code>transform</code>. Märket är en PNG av <code>mark.ts</code> ritning.</li>
+        <li>Textdelen (dagens brev) står kvar som <code>text</code> bredvid <code>html</code>; <code>login-mail.test.ts</code> håller den.</li>
+        <li>Länken står utskriven också, inte bara bakom knappen: den som inte kan klicka, och den som vill se vart den går.</li>
+        <li>Förhandstexten (preheader) är raden om 15 minuter, så inkorgens andra rad säger något.</li>
+        <li>Foten från #757: Deckster, sajten och kontakten, i läsarens språk (A4). Ingen .com (A5).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script>
+// PROTOTYP — kastas (#1098).
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'b'
+let klient = q.get('klient') ?? 'gmail'
+let sprak = q.get('sprak') ?? 'sv'
+let bilder = q.get('bilder') ?? 'pa'
+let kontakt = q.get('kontakt') ?? 'med'
+
+const TOKEN = 'k7Qp2vX9mN4rT1yB6wZ0cL8hJ3sD5fG2aE9uV4xK1nM'
+const SAJT = 'https://deckster.se'
+const LANK = `${SAJT}/auth/verify?token=${TOKEN}`
+const FONT = `-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`
+
+const T = {
+  sv: {
+    amne: 'Logga in på Deckster', pre: 'Länken fungerar i 15 minuter och bara en gång.',
+    hej: 'Hej!', lead: 'Här är din länk till Deckster. Den loggar in dig; första gången skapar den ditt konto.',
+    knapp: 'Logga in på Deckster', knappKort: 'Logga in',
+    fin: 'Länken fungerar i 15 minuter och bara en gång. Har du inte bett om den kan du ignorera det här mejlet.',
+    lankrad: 'Fungerar inte knappen? Klistra in länken i webbläsaren:',
+    kontakt: 'Kontakt', till: 'till mig', nu: `Hej!\n\nKlicka för att logga in: ${LANK}\n\nLänken fungerar i 15 minuter och bara en gång. Har du inte bett om den kan du ignorera det här mejlet.`,
+    valkommen: 'Du är på väg in.', bordet: 'Ett klick, så står du vid bordet.',
+  },
+  en: {
+    amne: 'Sign in to Deckster', pre: 'The link works for 15 minutes and only once.',
+    hej: 'Hello!', lead: 'Here is your link to Deckster. It signs you in; the first time, it creates your account.',
+    knapp: 'Sign in to Deckster', knappKort: 'Sign in',
+    fin: 'The link works for 15 minutes and only once. If you did not ask for it, you can ignore this mail.',
+    lankrad: 'Button not working? Paste the link into your browser:',
+    kontakt: 'Contact', till: 'to me', nu: `Hello!\n\nClick to sign in: ${LANK}\n\nThe link works for 15 minutes and only once. If you did not ask for it, you can ignore this mail.`,
+    valkommen: 'You are on your way in.', bordet: 'One click, and you are at the table.',
+  },
+}
+const KONTAKT = 'hej@deckster.se'
+
+// Foten (#757) i text, som i dag.
+const fotText = (t) => `\n\n— \nDeckster · ${SAJT}${kontakt === 'med' ? `\n${t.kontakt}: ${KONTAKT}` : ''}`
+
+// ── Varianterna: riktig mejl-HTML som strängar ─────────────────────────────────────────────
+const img = (src, w, h, alt, extra = '') => `<img src="${src}" width="${w}" height="${h}" alt="${alt}" style="display:block;border:0;${extra}">`
+const pre = (t) => `<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#fff;opacity:0">${t.pre}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
+const fot = (t, ink, lank, stil = '') => `<p style="margin:0;font:13px/1.6 ${FONT};color:${ink};${stil}">Deckster · <a href="${SAJT}" style="color:${lank};text-decoration:none">${SAJT.replace('https://', '')}</a>${kontakt === 'med' ? `<br>${t.kontakt}: <a href="mailto:${KONTAKT}" style="color:${lank};text-decoration:none">${KONTAKT}</a>` : ''}</p>`
+const lankrad = (t, ink, lank) => `<p style="margin:0;font:13px/1.6 ${FONT};color:${ink}">${t.lankrad}<br><a href="${LANK}" style="color:${lank};word-break:break-all">${LANK}</a></p>`
+
+const VARIANTER = [
+  {
+    id: 'nu', namn: 'Nu · Ren text',
+    regel: 'Mejlet går som ren text (`text` till Resend, inget `html`). Klienten ritar det i sitt eget typsnitt, gör länken klickbar och visar den rå. Foten från #757 står sist.',
+    pris: 'Inget märke, inget namn förrän i foten, ingen knapp. Länken är 76 tecken token och bryts i telefonen. Det första brevet en skapare får ser ut som ett systemmeddelande, och det är det enda brevet många får av Deckster. I gengäld: inget kan gå sönder i någon klient, och mörkt läge är klientens.',
+    villkor: ['Ingen bild att blockera.', 'Mörkt läge: klientens egen färg, alltid rätt.', 'Ingen förhandstext: inkorgen visar «Hej! Klicka för att logga in: https://…».'],
+    bg: null,
+    html: (t) => `<pre style="margin:0;white-space:pre-wrap;word-break:break-word;font:14px/1.5 ${FONT}">${(t.nu + fotText(t)).replace(LANK, `<a href="${LANK}" style="color:#1a0dab">${LANK}</a>`)}</pre>`,
+  },
+  {
+    id: 'a', namn: 'A · Kortet',
+    regel: 'Inloggningskortet (`.byd-login`) som brev: ett mörkt kort (#171a23, 20 px radie) mitt på klientens vita, med handen och namnet som rubrik, hälsningen, en fylld grön pillerknapp — det enda fyllda i vyn, som knappspråket (#44) säger — den fina texten och den utskrivna länken. Foten står under kortet, på klientens mark, som kontaktraden står under kortet i appen.',
+    pris: 'Mejlet ser ut som produkten, och den som just skrev sin adress i kortet känner igen det. Men ett mörkt kort i en ljus inkorg är ett främmande block, och i en mörk klient försvinner kortets kant mot klientens mörka. Grönt på mörkt (knappen) är 9,6:1; den ljusa texten i kortet bär hela läsbarheten, så Gmails inversion på Android kan vända kortet vitt och knappen blek. Mest att rita: tre tabeller.',
+    villkor: ['Bilder av: handen blir en tom ram på 40 px i kortets hörn; namnet står kvar i text.', 'Mörk klient: kortet smälter in, foten under kortet läses på klientens färg.', 'Telefon: kortet tar hela bredden, 24 px inre marginal.'],
+    bg: '#ffffff',
+    html: (t) => `${pre(t)}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff"><tr><td align="center" style="padding:24px 12px">
+  <table role="presentation" align="center" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;margin:0 auto;background:#171a23;border-radius:20px"><tr><td style="padding:32px;text-align:left">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+      <td style="padding-right:12px;vertical-align:middle">${img('img/hand.png', 40, 40, '')}</td>
+      <td style="vertical-align:middle;font:700 26px/1 ${FONT};color:#ffffff">Deckster</td>
+    </tr></table>
+    <p style="margin:22px 0 0;font:700 17px/1.4 ${FONT};color:#ffffff">${t.hej}</p>
+    <p style="margin:6px 0 0;font:15px/1.55 ${FONT};color:#cdd4e4">${t.lead}</p>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:22px 0 0"><tr><td style="border-radius:999px;background:#7dd3a0">
+      <a href="${LANK}" style="display:inline-block;padding:14px 24px;font:700 16px/1 ${FONT};color:#0b2a18;text-decoration:none;border-radius:999px">${t.knapp} →</a>
+    </td></tr></table>
+    <p style="margin:22px 0 0;font:13px/1.6 ${FONT};color:#9aa3b8">${t.fin}</p>
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid #262a35">${lankrad(t, '#9aa3b8', '#9cc3ff')}</div>
+  </td></tr></table>
+  <div style="max-width:480px;margin:18px auto 0;text-align:left">${fot(t, '#6b7280', '#6b7280')}</div>
+</td></tr></table>`,
+  },
+  {
+    id: 'b', namn: 'B · Brevet', rek: true,
+    regel: 'Ett brev, inte en skärm: ingen ruta, ingen mörk yta. Ett brevhuvud med handen liten och namnet som ordmärke, en tunn linje, hälsningen stor, två meningar, en knapp i bläcksvart (wizardens nästan svarta, #44) på klientens eget vita, den fina texten, och länken utskriven under. Foten står efter en linje, som en underskrift. 560 px brett, 17 px brödtext.',
+    pris: 'Det lugnaste att läsa och det som går sönder minst: ingen bakgrund att invertera, ingen kant att tappa, och i mörk klient läses det som ett vitt brev, vilket det är. Priset är att det syns mindre: inget grönt, inget trä, inget av bordet. Handen bär märket ensam på 28 px, och med bilder av är brevhuvudet bara ordet Deckster — som är det A5 säger att en läsare ska se.',
+    villkor: ['Bilder av: en ram på 28 px före ordmärket; brevet är helt utan den.', 'Mörk klient: klienten visar mejlets vita (bgcolor satt), eller inverterar till ljus text på mörkt, och båda läses.', 'Telefon: en spalt, 20 px marginal; knappen blir 100 % bred.'],
+    bg: '#ffffff',
+    html: (t) => `${pre(t)}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff"><tr><td align="center" style="padding:28px 20px">
+  <table role="presentation" align="center" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;margin:0 auto;text-align:left"><tr><td>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-bottom:1px solid #e5e2d8;width:100%"><tr>
+      <td style="padding:0 0 14px;vertical-align:middle;width:28px">${img('img/hand.png', 28, 28, '')}</td>
+      <td style="padding:0 0 14px 10px;vertical-align:middle;font:700 17px/1 ${FONT};color:#1f1b12;letter-spacing:-.01em">Deckster</td>
+    </tr></table>
+    <h1 style="margin:34px 0 10px;font:800 30px/1.1 ${FONT};color:#1f1b12;letter-spacing:-.02em">${t.hej}</h1>
+    <p style="margin:0;font:17px/1.55 ${FONT};color:#2c2922">${t.lead}</p>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:26px 0 0;width:${klient === 'telefon' ? '100%' : 'auto'}"><tr><td align="center" style="border-radius:10px;background:#1f1b12">
+      <a href="${LANK}" style="display:block;padding:15px 26px;font:700 16px/1 ${FONT};color:#f4ead8;text-decoration:none;border-radius:10px">${t.knappKort}</a>
+    </td></tr></table>
+    <p style="margin:26px 0 0;font:14px/1.6 ${FONT};color:#5b574c">${t.fin}</p>
+    <div style="margin-top:14px">${lankrad(t, '#5b574c', '#1a0dab')}</div>
+    <div style="margin-top:36px;padding-top:16px;border-top:1px solid #e5e2d8">${fot(t, '#7a7568', '#5b574c')}</div>
+  </td></tr></table>
+</td></tr></table>`,
+  },
+  {
+    id: 'c', namn: 'C · Bordet',
+    regel: 'Landningssidans rum som brev, i tre band: ett band av trä (#17120f med radiell gradient där det finns) med handen på 64 px och namnet i krita; ett band av papper (#f4ead8, kortens eget) med hälsningen, meningen om bordet, en bärnstensgul knapp (landningssidans amber, bläck på) och den fina texten; och ett sista band med länken och foten på vitt. Mejlet är produktens ansikte från sidan som fick läsaren att skriva sin adress.',
+    pris: 'Det mest Deckster av de tre, och det enda som tar med trä och amber. Men det är tre färgade band i en inkorg: ett mejl som ser ut som marknadsföring, och det här är ett brev med en nyckel. Med bilder av blir träbandet ett mörkt fält med en ram, och Gmails inversion på Android kan vända trä och papper åt varsitt håll. Amber på papper (knappens kant mot papperet) är 1,3:1 — knappen hålls isär av sin form, inte sin färg. Mest att hålla i tre klienter.',
+    villkor: ['Bilder av: träbandet står kvar som färg med en ram på 64 px i mitten och namnet under.', 'Mörk klient: träet smälter in, papperet lyser; bandens kanter bär formen.', 'Telefon: banden tar hela bredden; knappen blir 100 % bred.'],
+    bg: '#ffffff',
+    html: (t) => `${pre(t)}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff"><tr><td align="center" style="padding:${klient === 'telefon' ? '0' : '24px 12px'}">
+  <table role="presentation" align="center" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;margin:0 auto;border-radius:${klient === 'telefon' ? '0' : '18px'};overflow:hidden">
+    <tr><td align="center" bgcolor="#17120f" style="padding:34px 24px 28px;background:#17120f;background-image:radial-gradient(120% 80% at 70% 10%, #2f2722 0%, #17120f 55%, #0d0b0a 100%)">
+      ${img('img/hand.png', 64, 64, '', 'margin:0 auto')}
+      <p style="margin:12px 0 0;font:800 24px/1 ${FONT};color:#f3e9d6;letter-spacing:-.01em">Deckster</p>
+    </td></tr>
+    <tr><td bgcolor="#f4ead8" style="padding:30px 28px 32px;background:#f4ead8;text-align:left">
+      <h1 style="margin:0 0 8px;font:800 26px/1.15 ${FONT};color:#1f1b12;letter-spacing:-.02em">${t.valkommen}</h1>
+      <p style="margin:0;font:16px/1.55 ${FONT};color:#3a3528">${t.lead}</p>
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0;width:${klient === 'telefon' ? '100%' : 'auto'}"><tr><td align="center" style="border-radius:999px;background:#f0b64a">
+        <a href="${LANK}" style="display:block;padding:15px 26px;font:700 16px/1 ${FONT};color:#1f1b12;text-decoration:none;border-radius:999px">${t.knapp} →</a>
+      </td></tr></table>
+      <p style="margin:22px 0 0;font:13px/1.6 ${FONT};color:#5b574c">${t.fin}</p>
+    </td></tr>
+    <tr><td style="padding:20px 28px 24px;background:#ffffff;text-align:left;border:1px solid #e5e2d8;border-top:0;border-radius:0 0 ${klient === 'telefon' ? '0 0' : '18px 18px'}">
+      ${lankrad(t, '#5b574c', '#1a0dab')}
+      <div style="margin-top:16px">${fot(t, '#7a7568', '#5b574c')}</div>
+    </td></tr>
+  </table>
+</td></tr></table>`,
+  },
+]
+const KLIENTER = [{ id: 'gmail', namn: 'Gmail, skrivbord' }, { id: 'mork', namn: 'Mörk klient, skrivbord' }, { id: 'telefon', namn: 'Gmail, telefon 375' }]
+const SPRAK = [{ id: 'sv', namn: 'Svenska' }, { id: 'en', namn: 'English' }]
+const BILDER = [{ id: 'pa', namn: 'Visade' }, { id: 'av', namn: 'Blockerade' }]
+const KONTAKTER = [{ id: 'med', namn: 'Satt på lådan' }, { id: 'utan', namn: 'Inte satt' }]
+
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((x) => x.remove())
+  for (const x of lista) {
+    const btn = document.createElement('button')
+    btn.textContent = x.namn
+    if (x.rek) btn.classList.add('rek')
+    btn.setAttribute('aria-pressed', String(x.id === nu))
+    btn.onclick = () => val(x.id)
+    rot.appendChild(btn)
+  }
+}
+
+function klientHtml(t, mejl, bg) {
+  const mork = klient === 'mork'
+  const topp = klient === 'telefon'
+    ? `<div class="statusrad"><span>12:20</span><span>●●● ▮</span></div><div class="k-topp"><span>←</span><span class="ikoner"><span></span><span></span><span></span></span></div>`
+    : `<div class="k-topp"><span>←</span><span class="ikoner"><span></span><span></span><span></span><span></span></span></div>`
+  const fran = `<div class="k-fran"><div class="avatar">D</div><div><div class="namn">Deckster <span class="adr">&lt;login@deckster.se&gt;</span></div><div class="till">${t.till} ▾</div></div><div class="tid">12:20</div></div>`
+  // Mejlets egen bakgrund står i klientens läsyta; ett mejl utan bakgrund tar klientens.
+  const kropp = `<div class="k-kropp"><div class="mejl" style="background:${bg ?? (mork ? '#1e1f22' : '#fff')};color:${bg ? '#202124' : (mork ? '#e8eaed' : '#202124')};${klient === 'telefon' ? '' : 'border-radius:8px'}">${mejl}</div></div>`
+  return `${topp}<div class="k-amne">${t.amne}</div>${fran}${kropp}`
+}
+
+function blockeraBilder(rot) {
+  for (const im of rot.querySelectorAll('img')) {
+    const ruta = document.createElement('span')
+    ruta.className = 'altruta'
+    ruta.style.width = im.getAttribute('width') + 'px'
+    ruta.style.height = im.getAttribute('height') + 'px'
+    const m = im.getAttribute('style') ?? ''
+    if (m.includes('margin:0 auto')) ruta.style.margin = '0 auto'
+    if (m.includes('display:block')) ruta.style.display = 'grid'
+    ruta.textContent = im.alt || ''
+    im.replaceWith(ruta)
+  }
+}
+
+function rita() {
+  const vv = VARIANTER.find((x) => x.id === v) ?? VARIANTER[1]
+  const t = T[sprak]
+  const k = document.getElementById('klient')
+  k.dataset.klient = klient
+  k.innerHTML = klientHtml(t, vv.html(t), vv.bg)
+  if (bilder === 'av') blockeraBilder(k)
+  document.getElementById('bildtext').textContent = `${vv.namn} · ${KLIENTER.find((x) => x.id === klient).namn} · ${SPRAK.find((x) => x.id === sprak).namn} · bilder ${bilder === 'pa' ? 'visade' : 'blockerade'} · kontakt ${kontakt === 'med' ? 'satt' : 'inte satt'}`
+  document.getElementById('r-namn').textContent = vv.namn + (vv.rek ? ' — rekommenderad' : '')
+  document.getElementById('r-regel').textContent = vv.regel
+  document.getElementById('r-pris').textContent = vv.pris
+  document.getElementById('r-villkor').innerHTML = vv.villkor.map((x) => `<li>${x}</li>`).join('')
+  knappar(document.getElementById('varianter'), VARIANTER, v, (x) => { v = x; rita() })
+  knappar(document.getElementById('klienter'), KLIENTER, klient, (x) => { klient = x; rita() })
+  knappar(document.getElementById('sprak'), SPRAK, sprak, (x) => { sprak = x; rita() })
+  knappar(document.getElementById('bilder'), BILDER, bilder, (x) => { bilder = x; rita() })
+  knappar(document.getElementById('kontakt'), KONTAKTER, kontakt, (x) => { kontakt = x; rita() })
+  const qs = new URLSearchParams({ v, klient, sprak, bilder, kontakt })
+  history.replaceState(null, '', `?${qs}`)
+}
+document.addEventListener('keydown', (e) => {
+  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  if (e.key === 'ArrowRight') { v = VARIANTER[(i + 1) % VARIANTER.length].id; rita() }
+  if (e.key === 'ArrowLeft') { v = VARIANTER[(i - 1 + VARIANTER.length) % VARIANTER.length].id; rita() }
+})
+rita()
+</script>
+</body>
+</html>
