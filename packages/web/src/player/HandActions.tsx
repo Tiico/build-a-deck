@@ -3,6 +3,7 @@ import type { RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import { cardName } from '../table/keyboard.js'
 import { targetsOf, type Placement } from './PlaySheet.js'
+import { ArrowGlyph } from '../glyphs.js'
 
 // Every destination belongs to the setup. The full address sheet remains available for zones
 // without explicit shortcuts and for the floor; no role is inferred from an id or a label.
@@ -51,10 +52,10 @@ export function HandActions({ view, cards, pending, onPlay, onMore, refusal, ref
         // so the focus that carried the card there is not dropped to the page (`aria-disabled`).
         <div className="byd-hand-order">
           <button type="button" aria-disabled={order.at === 0 ? true : undefined} onClick={() => order.at > 0 && order.onStep(-1)}>
-            <span aria-hidden="true">←</span> {t('player.hand.left')}
+            <ArrowGlyph to="left" /> {t('player.hand.left')}
           </button>
           <button type="button" aria-disabled={order.at === order.of - 1 ? true : undefined} onClick={() => order.at < order.of - 1 && order.onStep(1)}>
-            {t('player.hand.right')} <span aria-hidden="true">→</span>
+            {t('player.hand.right')} <ArrowGlyph to="right" />
           </button>
         </div>
       )}

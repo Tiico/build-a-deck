@@ -7575,3 +7575,24 @@ Papperet säger vem som bjuder in, till vilket spel och som vad, knappen heter �
 Foten (#757), som inbjudan aldrig haft, står sist som i inloggningsmejlet.
 Spelets namn och avsändarens adress är vad någon har skrivit, så de skrivs som text och aldrig som markup.
 `invite-mail.test.ts` håller banden, språket, handen, länken och foten, och `members.test.ts` håller att servern skickar det.
+
+Inbjudningsmejlet (#477) går fortfarande som text och får samma form i ett eget issue.
+
+### L74. UI-ikonerna ritas i en hand: glyphs.tsx, 16-rutnät och 1,6 rund linje (prototypat och beslutat 2026-10-22, #1083)
+
+Ett tecken som ritas som ikon tecknas av maskinens typsnitt, och ✓, ⚑ och ▾ är därför en annan hand på Linux än på en Mac.
+Utöver de fyra glyferna i `glyphs.tsx` ritades ~20 ikoner som tecken och nio som lösa SVG:er, på 12-, 14-, 20- och 24-rutnät och med linjer från 1,2 till 2.
+Två händer prövades i [`docs/ux-audits/2026-10-22-ui-ikonerna/prototyper/1083-ui-ikonerna.html`](docs/ux-audits/2026-10-22-ui-ikonerna/prototyper/1083-ui-ikonerna.html): den egna (A) och Lucides former i samma vikt (B), som finns i repot sedan L71.
+Valet blev **A**.
+Den egna handen är skarpast vid den storlek den används i, eftersom linjerna ligger på 16-rutnätet, och den är redan hand för ångra, flagga, minus och plus.
+Lucide hade gett 1 900 färdiga ikoner, men skalade från 24 till 16, med kanterna mellan pixlarna och pennan, låset och sudda tyngre.
+
+**Byggt 2026-10-22 (#1083).**
+De 20 betydelserna i prototypens tabell är komponenter i `glyphs.tsx`: stäng, klart, fäll ut och in, pilar, sortera, redigera, sparar, dra, mer, låst, regler, spela, sudda och notis, utöver de fyra som fanns.
+Varje tecken som var en ikon och varje lös SVG i gränssnittet ritas nu med dem.
+Ett tecken som läses som text står kvar: en förändring «4 → 5», ett mått «63 × 88 mm», en räkning «×2» och ett tecken inne i ett översatt namn, som «Hela biblioteket ›».
+`glyph-hand.test.ts` håller att inget tecken används som ikon i `packages/web/src` och att varje inbyggd SVG utanför `glyphs.tsx` har ett skäl; undantagen står uppräknade med skäl i testet.
+Verktygsradens fem märken och skrubbernas sju är ikoner som tabellen inte ritade, och de är uppföljningar och inte text.
+En glyf tar aldrig emot pekaren (`pointer-events: none`): trycket, och varje fråga om vad som står under en punkt, landar på kontrollen den är ritad i.
+Det upptäcktes när tabellens träffytetester läste glyfens `<path>` i stället för ×-knappen.
+En glyf är 1 em i fyrkant, och där en rad var mätt till tecknet den ersatte ger den tillbaka luften runt sin teckning: kronans och tabellfotens chevroner och tabellrubrikens sorteringspil står med negativ marginal på rutnätets tomma fjärdedelar, så kronan står kvar på en rad bredvid AI-panelen vid 1280 i ett brett typsnitt (#130), fotens tysta rad bryts inte vid 1024 på Linux (#618) och en sifferkolumn är inte bredare än en siffra (#46).

@@ -8,6 +8,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { clockWord } from './when.js'
 import { versionWord } from '../i18n/version.js'
+import { FlagGlyph } from '../glyphs.js'
 
 // «Resultat» (#1010, beställarens val 2026-10-18): what the playtests said, read version by
 // version. It is the Bord tab's second view and not a tab of its own — the answers belong to the
@@ -403,6 +404,7 @@ function Flags({ tables, version, lang }: { tables: readonly PlaytestTable[]; ve
           {flags.map(({ f, table: x }, i) => (
             <li key={i}>
               <span className="byd-results-when">
+                <FlagGlyph />
                 {t('results.flag.when', { n: f.move, of: x.moves })}
                 <span> · {clockWord(f.at, lang)}</span>
               </span>

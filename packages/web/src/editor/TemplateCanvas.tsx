@@ -39,6 +39,7 @@ import { OversetMarks } from './OversetMarks.js'
 import { useCut } from './overset.js'
 import { placeholderOf, PLACEHOLDER_WORDS, THIN_PX, type Placeholder, type PlaceholderCase } from './placeholder.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
+import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
 
 export type TemplateCanvasProps = {
   // Which of the four panels to draw, or nothing at all for the desk's four columns (L10). Below
@@ -1377,7 +1378,7 @@ function GroupMenu({ doc, column, groups, group, onSelect }: { doc: ProjectDoc; 
         onClick={() => setOpen((was) => !was)}
       >
         {says}
-        <span aria-hidden="true">▾</span>
+        <ChevronGlyph to="down" />
       </button>
       {open && (
         <div
@@ -1678,7 +1679,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
                     not, and the difference is only sayable with a way back. */}
                 {rule.map[value] !== undefined && (
                   <button type="button" aria-label={t('canvas.props.fill.clear', { value })} onClick={() => write(Object.fromEntries(Object.entries(rule.map).filter(([k]) => k !== value)))}>
-                    ×
+                    <CloseGlyph />
                   </button>
                 )}
               </li>
@@ -2668,7 +2669,7 @@ function TuningDoor({ el, onPatch }: { el: TextEl; onPatch(patch: Partial<Elemen
   return (
     <>
       <button type="button" className="byd-props-disclose" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span aria-hidden="true">{open ? '▾' : '▸'}</span> {t('canvas.props.tune')}
+        <ChevronGlyph to={open ? 'down' : 'right'} /> {t('canvas.props.tune')}
       </button>
       {open && (
         <div className="byd-props-paint">
@@ -2733,7 +2734,7 @@ function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(
           {/* The triangle is a picture of what `aria-expanded` already says. Drawn with CSS
               `content` it joined the button's name and the control was read out as "▸ Anpassa",
               so it is a hidden span: seen by the eye, skipped by the name. */}
-          <span aria-hidden="true">{open ? '▾' : '▸'}</span> {t('canvas.shadow.custom')}
+          <ChevronGlyph to={open ? 'down' : 'right'} /> {t('canvas.shadow.custom')}
         </button>
       )}
       {shadow && open && (

@@ -42,6 +42,7 @@ import { SetupOverview } from '../rules/SetupOverview.js'
 // and nothing else. The tab draws the same setup in the editable book, so it fetches the sheet
 // itself; otherwise its buttons stood in the browser's Arial until «Som på bordet» had been opened
 // once (#481). The editor is a chunk of its own, so this costs the table's first frame nothing.
+import { ArrowGlyph, PencilGlyph } from '../glyphs.js'
 import '../rules/rules.css'
 import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
 import { rulesWords, type RuleEntry, type RulesView } from './proposals.js'
@@ -611,7 +612,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
                       // beside it is the way in, and a click on it opens it for a pointer as before.
                       <>
                         <button type="button" className="byd-rules-pen byd-block-door" aria-label={t('rules.block.edit', { block: called.get(b.id)?.self ?? '' })} onClick={() => open(b.id)}>
-                          <span aria-hidden="true">✎</span>
+                          <PencilGlyph />
                         </button>
                         <div className="byd-rules-writable" onClick={() => open(b.id)}>
                           <Block block={b} source={source} assetBase={assetBase} />
@@ -1025,7 +1026,7 @@ function Toc({
       {first !== undefined && onFind && silent && (
         <button type="button" className="byd-rules-silent" onClick={() => onFind(first)}>
           {t(silent.length === 1 ? 'rules.toc.silent.one' : 'rules.toc.silent.other', { n: silent.length })}
-          <span aria-hidden="true">→</span>
+          <ArrowGlyph to="right" />
         </button>
       )}
       {onAdd && (

@@ -6,6 +6,7 @@ import { SetupOverview } from './SetupOverview.js'
 import { sessionRules } from './sessionRules.js'
 import { useT } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
+import { BookGlyph } from '../glyphs.js'
 import './rules-open.css'
 
 // What a reference the game lost is said as, in the reader's language (#708 added counters).
@@ -96,11 +97,7 @@ export function RuleShelf({ rules, assets, placement, startOpen, body, live }: R
         <button type="button" ref={knob} className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
           {/* A book on the phone, which stands alone where the bar at the foot is too narrow for the
               word beside the plays it carries (#484 fynd 11); the word stays the button's name. */}
-          {placement === 'phone' && (
-            <svg className="byd-rules-book" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
-              <path d="M3 4.5C5.5 3.5 8 3.8 10 5.2c2-1.4 4.5-1.7 7-.7V16c-2.5-1-5-.7-7 .7-2-1.4-4.5-1.7-7-.7Z M10 5.2V16.7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-            </svg>
-          )}
+          {placement === 'phone' && <BookGlyph />}
           <span className="byd-rules-word">{open ? t('rules.drawer.close') : t('rules.drawer.open')}</span>
         </button>
         {open && (

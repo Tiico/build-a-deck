@@ -404,20 +404,21 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
 // and says nothing new to a reader who hears it: its name is still the door's, and whether the
 // door stands is what `aria-expanded` has always said.
 describe('the handle of the column door (#610)', () => {
-  it('shows × while the door stands and ＋ when it is shut, under one name', async () => {
+  it('shows × while the door stands and + when it is shut, under one name', async () => {
     const user = userEvent.setup()
     render(<Editing />)
     const handle = screen.getByRole('button', { name: 'Kolumner' })
-    expect(handle.textContent).toBe('+')
+    const drawn = () => handle.querySelector('svg[data-glyph]')?.getAttribute('data-glyph')
+    expect(drawn()).toBe('plus')
 
     await user.click(handle)
     expect(screen.getByRole('group', { name: 'Kolumner' })).toBeTruthy()
     expect(handle.getAttribute('aria-expanded')).toBe('true')
-    expect(handle.textContent).toBe('×')
+    expect(drawn()).toBe('close')
 
     await user.click(handle)
     expect(screen.queryByRole('group', { name: 'Kolumner' })).toBeNull()
     expect(handle.getAttribute('aria-expanded')).toBe('false')
-    expect(handle.textContent).toBe('+')
+    expect(drawn()).toBe('plus')
   })
 })

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
+import { ChevronGlyph } from '../glyphs.js'
 
 // The crown a tab panel wears (#128, #130, variant B). One mechanism on several surfaces — the card
 // wall and the card table, and the symbol library until it became Speltema's sheet (L57) — and not
@@ -81,7 +82,7 @@ export function CrownBox({ name, state, count, short, open, onToggle, boxRef, en
       ) : (
         said
       )}
-      <span aria-hidden="true">▾</span>
+      <ChevronGlyph to="down" />
     </button>
   )
 }

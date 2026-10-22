@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefO
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 import { ROW, explainsOf, helpAnchor, helpPlacement, type HelpPlacement } from './help-place.js'
+import { CloseGlyph } from '../glyphs.js'
 import '../help-box.css'
 
 // The inside of the help pattern: the box itself, and the stylesheet that draws it (L32, #303).
@@ -72,7 +73,7 @@ export function HelpBox({ id, topic, ask, onClose, children }: HelpBoxProps) {
         {topic}
       </b>
       <button ref={cross} type="button" className="byd-help-close" aria-label={t('help.close')} onClick={() => latest.current(true)}>
-        <span aria-hidden="true">×</span>
+        <CloseGlyph />
       </button>
       {children}
     </div>

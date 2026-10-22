@@ -23,6 +23,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
+import { CloseGlyph } from '../glyphs.js'
 import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
@@ -612,7 +613,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             />
           )}
           <small>{t(mappedByStarterFrame(field.key) ? 'wizard.field.in-frame' : 'wizard.field.in-editor')}</small>
-          {field.key !== 'title' && <button type="button" aria-label={t('wizard.field.remove', { label: field.label })} onClick={() => removeField(field.key)}>×</button>}
+          {field.key !== 'title' && <button type="button" aria-label={t('wizard.field.remove', { label: field.label })} onClick={() => removeField(field.key)}><CloseGlyph /></button>}
           {problems[field.key] && <p className="byd-wizard-field-says" id={`byd-wizard-field-says-${field.key}`}>{problems[field.key]}</p>}
         </div>)}</div>
         <div className="byd-wizard-add-fields"><button type="button" onClick={() => addField('text')}>{t('wizard.add.text')}</button><button type="button" onClick={() => addField('number')}>{t('wizard.add.number')}</button><button type="button" onClick={() => addField('image')}>{t('wizard.add.image')}</button></div>

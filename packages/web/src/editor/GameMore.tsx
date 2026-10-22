@@ -3,6 +3,7 @@ import { GameMenu } from '../account/GameMenu.js'
 import { duplicateProject } from '../account/api.js'
 import { useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
+import { MoreGlyph } from '../glyphs.js'
 
 // The dialogs are drawn on a press, so they are fetched on one (#366, L40), as on the start page:
 // the editor's route asks for its own sheet and the book's, and the dialogs' only when one opens.
@@ -58,7 +59,7 @@ export function GameMore({ http, game, more: given, onShare, onRename, onSaid, o
   return (
     <span className="byd-editor-more">
       <button ref={more} type="button" aria-label={t('home.menu.more', { name: game.name })} aria-expanded={open} onClick={() => setOpen(!open)}>
-        ⋯
+        <MoreGlyph />
       </button>
       {open && (
         <GameMenu

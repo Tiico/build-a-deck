@@ -4,6 +4,7 @@ import { useT, type T } from '../i18n/index.js'
 import { ANTAL, titleOfRow } from '@byd/server/doc'
 import { fieldLabel } from './fields.js'
 import { FootSaid } from './said.js'
+import { ChevronGlyph } from '../glyphs.js'
 
 type Card = ProjectDoc['rows'][number]
 
@@ -67,14 +68,14 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
   return (
     <div className="byd-card-row" role="group" aria-label={t('canvas.card.row')} ref={box}>
       <button type="button" aria-label={t('canvas.card.prev')} disabled={at <= 0} onClick={() => step(-1)}>
-        ‹
+        <ChevronGlyph to="left" />
       </button>
       <button ref={name} type="button" className="byd-card-row-name" aria-haspopup="listbox" aria-expanded={open} onClick={() => (open ? close(true) : setOpen(true))}>
         <span>{title}</span>
-        <small>{t('canvas.card.of', { n: at + 1, of: cards.length })} ▾</small>
+        <small>{t('canvas.card.of', { n: at + 1, of: cards.length })} <ChevronGlyph to="down" /></small>
       </button>
       <button type="button" aria-label={t('canvas.card.next')} disabled={at < 0 || at >= cards.length - 1} onClick={() => step(1)}>
-        ›
+        <ChevronGlyph to="right" />
       </button>
       {/* What just happened stands in the values' place for its moment (#698, beslut B): the
           canvas' foot is the template's, and the values are its quiet line. */}

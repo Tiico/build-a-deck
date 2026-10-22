@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
+import { ChevronGlyph } from '../glyphs.js'
 import '../table/table.css'
 import '../player/player.css'
 import { TableRenderer } from '../table/TableRenderer.js'
@@ -174,7 +175,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           <p>{t('observer.help.survey')}</p>
         </Help>
         <button type="button" className="byd-observer-more" aria-expanded={drawer} onClick={() => setDrawer((open) => !open)}>
-          {t('observer.more')}
+          {t('observer.more')} <ChevronGlyph to={drawer ? 'down' : 'up'} />
         </button>
         <button type="button" className="byd-observer-flag" disabled={view.ended} onClick={() => setSheet(true)}>
           {t('session.flag')}

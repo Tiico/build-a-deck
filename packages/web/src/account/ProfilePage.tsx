@@ -8,6 +8,7 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useT } from '../i18n/index.js'
+import { ArrowGlyph } from '../glyphs.js'
 import './account.css'
 import './profile.css'
 
@@ -80,7 +81,7 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
     <main className="byd-account byd-account-wide" data-page="profile">
       <div className="byd-profile">
         <a className="byd-profile-back" href={back} onClick={go(back)}>
-          <span aria-hidden="true">←</span>
+          <ArrowGlyph to="left" />
           {game ? t('profile.back.game', { game: game.name }) : t('profile.back.home')}
         </a>
         <header className="byd-profile-head">

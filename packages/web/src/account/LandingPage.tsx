@@ -8,6 +8,7 @@ import { CodeRow } from './CodeRow.js'
 import { markPitchSeen } from './pitch.js'
 import { loginUrl } from './session.js'
 import { LANDING_BACK, LANDING_FACE, landingCards, type LandingCard } from './landingDeck.js'
+import { ArrowGlyph } from '../glyphs.js'
 import './landing.css'
 
 // `/` for whoever is not logged in (#1009, beställarens beslut 2026-10-18, variant A «Bordet»): what
@@ -57,6 +58,7 @@ export function LandingPage({ http, server, onNavigate }: { http: string; server
             <div className="byd-landing-ctas">
               <a className="byd-landing-btn byd-primary" href={login} data-landing-door="build">
                 {t('landing.build')}
+                <ArrowGlyph to="right" />
               </a>
               <span className="byd-landing-fine">{t('landing.fine')}</span>
             </div>
@@ -138,6 +140,7 @@ export function LandingPage({ http, server, onNavigate }: { http: string; server
           </div>
           <a className="byd-landing-btn byd-primary" href={login} data-landing-door="end">
             {t('landing.end.go')}
+            <ArrowGlyph to="right" />
           </a>
         </section>
       </main>

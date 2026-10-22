@@ -4,6 +4,7 @@ import { AssetImage } from './AssetImage.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
+import { CloseGlyph } from '../glyphs.js'
 
 // The library dialog (#296, variant B, chosen by the requester 2026-09-20). The game's pictures
 // in one large, centred window, opened from a picture cell or from the marked cards in Data, so
@@ -100,7 +101,7 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
             </label>
           )}
           <button type="button" className="byd-library-close" aria-label={t('library.close')} onClick={onClose}>
-            ×
+            <CloseGlyph />
           </button>
         </header>
         <p className="byd-library-target">{target}</p>

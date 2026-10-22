@@ -18,6 +18,7 @@ import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Lang, type T } from '../i18n/index.js'
+import { MoreGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { versionWord } from '../i18n/version.js'
@@ -318,7 +319,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     aria-expanded={menu === p.id}
                     onClick={() => setMenu(menu === p.id ? null : p.id)}
                   >
-                    ⋯
+                    <MoreGlyph />
                   </button>
                 )}
                 {menu === p.id && (
