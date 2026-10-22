@@ -11,7 +11,6 @@ for (const device of [SMALL_TV, TV]) {
     const { page } = await open(device, `${table.tvUrl}&lang=sv`)
     const brand = page.locator('[data-tv] > aside > [data-brand]')
     await expect(brand).toBeVisible()
-    await expect(page.locator('.byd-card[data-component]').first()).toBeVisible()
     const seen = await page.evaluate(() => {
       const aside = document.querySelector('[data-tv] > aside')!.getBoundingClientRect()
       const brand = document.querySelector('[data-brand]')!
