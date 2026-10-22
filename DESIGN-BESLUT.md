@@ -7527,6 +7527,10 @@ Ett mejl är inte webben, och det ställer krav som sidorna inte har:
   Resend tar `html` bredvid `text`, och ett mejl utan `html` går som förut.
 - **Foten (#757) står sist i det vita bandet,** med tjänsten, sajten och kontakten, i läsarens språk (A4), och ingen .com någonstans (A5).
 
-Mejlet bor i `packages/server/src/login-mail.ts`, text och HTML tillsammans, och `auth.ts` exporterar det därifrån.
+Banden ritas i `packages/server/src/mail-bands.ts`, och varje brev har sina ord och sin textdel i en egen modul: inloggningen i `login-mail.ts`, som `auth.ts` exporterar, och inbjudan i `invite-mail.ts`.
 `login-mail.test.ts` håller banden, språket, handen, länken och foten; `brand.test.ts` håller att PNG:n är skriptets; `app-icon.spec.ts` läser dess pixlar som den serveras.
-Inbjudningsmejlet (#477) går fortfarande som text och får samma form i ett eget issue.
+Inbjudningsmejlet (#477) har samma form sedan #1107.
+Papperet säger vem som bjuder in, till vilket spel och som vad, knappen heter «Gå med» / «Join», och förhandstexten och den fina texten är de sju dagarna och den enda gången.
+Foten (#757), som inbjudan aldrig haft, står sist som i inloggningsmejlet.
+Spelets namn och avsändarens adress är vad någon har skrivit, så de skrivs som text och aldrig som markup.
+`invite-mail.test.ts` håller banden, språket, handen, länken och foten, och `members.test.ts` håller att servern skickar det.

@@ -93,6 +93,11 @@ describe('an invitation to a project (D3)', () => {
     const swedish = run.mail.sent.at(-1)!
     expect(swedish.subject).toBe('Du är inbjuden till Skogens herrar')
     expect(swedish.text).toContain('som betraktare')
+    // In the login mail's bands (#1107, L72): the button joins by the same link the text gives.
+    const joining = /\/invites\/[A-Za-z0-9_-]+/.exec(swedish.text)?.[0] ?? ''
+    expect(joining).not.toBe('')
+    expect(swedish.html).toMatch(new RegExp(`<a href="[^"]*${joining}"[^>]*>Gå med &rarr;</a>`))
+    expect(english.html).toContain('>Join &rarr;</a>')
   })
 
   it('is mailed to an address, and joins the project to whoever follows it', async () => {
