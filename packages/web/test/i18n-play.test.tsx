@@ -29,7 +29,7 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     )
     // Above the room's address (#675): the words follow the reader, the address does not.
     expect(screen.getByText(/open on your phone/i)).toBeTruthy()
-    expect(screen.getByRole('region', { name: /inspection/i })).toBeTruthy()
+    expect(screen.getByRole('region', { name: /^the card$/i })).toBeTruthy()
 
     // The panel holds the card the last line was about (K8), so its waiting words are read where
     // there is nothing to hold: a table nobody has touched.
@@ -84,23 +84,23 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     unmount()
 
     const flag = english(<FlagSheet onFlag={() => undefined} onClose={() => undefined} />)
-    expect(screen.getByRole('dialog', { name: 'Flag this moment' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Flag what happened' })).toBeTruthy()
     expect(screen.getByPlaceholderText(/What happened/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
     flag.unmount()
 
     const end = english(<EndSheet version="v1" onEnd={() => undefined} onClose={() => undefined} />)
     expect(screen.getByRole('dialog', { name: 'End the table?' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Not yet' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
     end.unmount()
 
     // The way out (#31), in English: both exits named, and both consequences said — including the
     // one the whole wording exists for, that losing the connection is not this.
     english(<ExitSheet pile="Draghög" onLeave={() => undefined} onEnd={() => undefined} onClose={() => undefined} />)
-    const exit = screen.getByRole('dialog', { name: 'On your way out?' })
-    expect(within(exit).getAllByRole('button').map((b) => b.textContent)).toEqual(['Leave the table', 'End the table for everyone', 'Stay'])
-    expect(exit.textContent).toMatch(/Lose the connection instead and your seat stands/)
-    expect(exit.textContent).toMatch(/We ask once more before that happens/)
+    const exit = screen.getByRole('dialog', { name: 'Leave the table?' })
+    expect(within(exit).getAllByRole('button').map((b) => b.textContent)).toEqual(['Leave the table', 'End for everyone', 'Cancel'])
+    expect(exit.textContent).toMatch(/The others can play on/)
+    expect(exit.textContent).toMatch(/You will be asked to confirm/)
   })
 
   // The phone's row is read by two senses at once. The eye gets three controls that fit on one
@@ -113,15 +113,15 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     const row = <SessionButtons client={idle} view={view('A')} sheet={null} onSheet={() => undefined} />
 
     const sv = swedish(row)
-    const svExit = screen.getByRole('button', { name: 'Ut… ur bordet' })
-    expect(svExit.textContent).toBe('Ut…')
+    const svExit = screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' })
+    expect(svExit.textContent).toBe('Lämna…')
     drawnBeside(screen.getByRole('button', { name: 'Ångra' }), 'Ångra')
     drawnBeside(screen.getByRole('button', { name: 'Flagga' }), 'Flagga')
     sv.unmount()
 
     english(row)
-    const enExit = screen.getByRole('button', { name: 'Exit… the table' })
-    expect(enExit.textContent).toBe('Exit…')
+    const enExit = screen.getByRole('button', { name: 'Leave… or end the table' })
+    expect(enExit.textContent).toBe('Leave…')
     drawnBeside(screen.getByRole('button', { name: 'Undo' }), 'Undo')
     drawnBeside(screen.getByRole('button', { name: 'Flag' }), 'Flag')
   })

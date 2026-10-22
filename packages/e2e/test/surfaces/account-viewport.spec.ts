@@ -100,7 +100,7 @@ test.describe('the card on a game in "Mina spel" (#231)', () => {
 
     // A game with no cards says so in the very same box, so the row stands even.
     const empty = page.locator('.byd-home-card[data-empty]')
-    await expect(empty).toHaveText('inga kort än')
+    await expect(empty).toHaveText('inga kort ännu')
     const emptyBox = (await empty.boundingBox())!
     expect(emptyBox.height).toBeCloseTo(box.height, 1)
     expect(emptyBox.width).toBeCloseTo(box.width, 1)
@@ -165,7 +165,7 @@ test.describe('taking a game away on a phone (#475)', () => {
 
     await page.getByRole('button', { name: 'Ta bort spelet' }).tap()
     const question = page.getByRole('alertdialog', { name: 'Ta bort spelet' })
-    await expect(question.getByRole('button', { name: 'Behåll' })).toBeFocused()
+    await expect(question.getByRole('button', { name: 'Avbryt' })).toBeFocused()
     await expect(question).toBeInViewport({ ratio: 1 })
     expect(await tooSmall(page)).toEqual([])
     expect(await sideways(page)).toBe(0)
@@ -202,7 +202,7 @@ test.describe('"Mina spel" on a phone (#475)', () => {
 
 // A table the account sat at (#475): the way back to it was a 19 px line of text, and the seat's
 // letter was a coloured disc with nothing to say which seat it was.
-test.describe('"Bord du spelat vid" (#475)', () => {
+test.describe('"Bord du har spelat vid" (#475)', () => {
   test.use({ viewport: { width: 390, height: 844 }, locale: LANG, hasTouch: true, isMobile: true })
 
   test('gives the way back to the table a fingertip, and names the seat', async ({ page }) => {
@@ -213,7 +213,7 @@ test.describe('"Bord du spelat vid" (#475)', () => {
     const claimed = await page.request.post('/guests/claim', { data: { token: admission.token } })
     expect(claimed.ok()).toBe(true)
     await page.goto('/')
-    await expect(page.getByText('Bord du spelat vid')).toBeVisible()
+    await expect(page.getByText('Bord du har spelat vid')).toBeVisible()
     await expect(page.getByRole('img', { name: `Plats ${seat}` })).toBeVisible()
     expect(await tooSmall(page)).toEqual([])
   })

@@ -512,7 +512,7 @@ describe('comparing with an older version in the table (B4)', () => {
       />,
     )
     const band = document.querySelector('.byd-data-compare')!
-    expect(band.textContent).toContain('Jämför med version 2 · Första milstolpen: Inga kort skiljer sig — skillnaden ligger i mallen.')
+    expect(band.textContent).toContain('Jämför med version 2 · Första milstolpen: Inga kort skiljer sig. Skillnaden ligger i mallen.')
     fireEvent.click(within(band as HTMLElement).getByRole('button', { name: 'Öppna Mall' }))
     expect(opened).toHaveBeenCalledOnce()
   })
@@ -523,7 +523,7 @@ describe('comparing with an older version in the table (B4)', () => {
     before.template.faces['front']!.base.pop()
     before.rules = { blocks: [] } as unknown as NonNullable<typeof before.rules>
     render(<DataTable doc={projectDoc()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} compareWith={{ rev: 1, doc: before }} />)
-    expect(document.querySelector('.byd-data-compare')!.textContent).toContain('Inga kort skiljer sig — skillnaden ligger i mallen och reglerna.')
+    expect(document.querySelector('.byd-data-compare')!.textContent).toContain('Inga kort skiljer sig. Skillnaden ligger i mallen och reglerna.')
     // Without a way to the template there is nothing to offer.
     expect(screen.queryByRole('button', { name: 'Öppna Mall' })).toBeNull()
   })

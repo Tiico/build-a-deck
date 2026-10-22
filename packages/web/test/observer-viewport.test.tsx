@@ -49,7 +49,7 @@ async function markup(size: Size, box: Size | null = null, opened = false): Prom
       await waitFor(() => expect(feltIsFitted()).toBe(true))
       // Her column called in, and Ada's hand opened in it (#551): the list as she reads it.
       if (opened) {
-        fireEvent.click(screen.getByRole('button', { name: /Senast och platser/ }))
+        fireEvent.click(screen.getByRole('button', { name: /Senaste dragen och platser/ }))
         fireEvent.click(await screen.findByRole('button', { name: /^A.*kort på hand/ }))
         await screen.findAllByRole('button', { name: /, i Adas hand$/ })
       }

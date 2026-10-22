@@ -84,7 +84,7 @@ for (const width of [1280, 1024]) {
     const ask = door.getByRole('button', { name: 'Hjälp om kolumnerna' })
     await ask.click()
     const help = page.getByRole('dialog', { name: 'Hjälp om kolumnerna' })
-    await expect(help).toContainText('Prosa ger flera rader och textformatering.')
+    await expect(help).toContainText('Prosa ger flera rader och formatering')
     expect(await onTop(help.getByRole('button', { name: 'Stäng hjälpen' }))).toBe(true)
     await page.keyboard.press('Escape')
     await expect(help).toHaveCount(0)

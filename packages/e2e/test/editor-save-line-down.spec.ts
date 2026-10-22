@@ -41,7 +41,7 @@ test('a save the line goes under says so in the editor’s words, and the next s
   await page.locator('.byd-editor-save').click()
 
   const notice = page.locator('.byd-editor-notice')
-  await expect(notice).toHaveText('Sparningen fick inget svar från servern. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.')
+  await expect(notice).toHaveText('Servern svarade inte, så det gick inte att spara. Dina ändringar finns kvar här, så försök igen.')
   await expect(notice).not.toContainText('Bordet')
   await expect(status).toHaveText('Osparat')
 

@@ -50,7 +50,7 @@ const SHELL = `
       <div class="byd-wall-view">
         <div class="byd-crown">
           <input type="search" class="byd-crown-search" aria-label="Sök i alla fält" data-stop="the wall's search" />
-          <button class="byd-crown-box" aria-expanded="false" data-stop="the eyes box">Ögon: Som du ser det ▾</button>
+          <button class="byd-crown-box" aria-expanded="false" data-stop="the eyes box">Ögon: Normal syn ▾</button>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the guides box">Guider (0) ▾</button>
           <div class="byd-pill" role="group"><button class="byd-pill-step" data-stop="packing the wall closer">−</button><output class="byd-pill-value">150 px</output><button class="byd-pill-step" data-stop="larger cards">+</button></div>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the grouping box">Grupperad efter: typ ▾</button>
@@ -58,7 +58,7 @@ const SHELL = `
         </div>
         <div class="byd-wall-work" data-fold="open">
           <nav class="byd-wall-jump" aria-label="Grupper i leken">
-            <div class="byd-wall-jump-head"><h2>Leken</h2><button class="byd-wall-fold" aria-expanded="true" aria-label="Fäll ihop hoppspalten" data-stop="folding the jump column"><span aria-hidden="true">&#x27E8;</span></button></div>
+            <div class="byd-wall-jump-head"><h2>Leken</h2><button class="byd-wall-fold" aria-expanded="true" aria-label="Fäll ihop gruppspalten" data-stop="folding the jump column"><span aria-hidden="true">&#x27E8;</span></button></div>
             <div class="byd-wall-jump-scroll">
               <button data-jump="varelse" aria-current="true" data-stop="the band the wall is standing in"><span>varelse</span><small>132</small></button>
               <button data-jump="fälla" aria-current="false" tabindex="-1"><span>fälla</span><small>8</small></button>
@@ -479,7 +479,7 @@ const STRIP = `
         <div class="byd-crown"></div>
         <div class="byd-wall-work" data-fold="folded">
           <nav class="byd-wall-rail" aria-label="Grupper i leken, hopfälld">
-            <button type="button" class="byd-wall-fold" aria-expanded="false" aria-label="Fäll ut hoppspalten"><span aria-hidden="true">&#x27E9;</span></button>
+            <button type="button" class="byd-wall-fold" aria-expanded="false" aria-label="Fäll ut gruppspalten"><span aria-hidden="true">&#x27E9;</span></button>
             <div class="byd-wall-rail-scroll">${TILES.map(
               ([name, n], i) =>
                 `<button type="button" data-tile="${name}" aria-current="${i === 0}" aria-label="${name}, ${n} kort" style="flex-grow:${n}">${n}</button>`,

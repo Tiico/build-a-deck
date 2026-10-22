@@ -235,7 +235,7 @@ describe('following an invitation (D3)', () => {
     // line of red with nothing to press and the focus on <body>.
     await waitFor(() => expect(document.querySelector('[data-status-notice="missing"]')?.textContent).toMatch(/använd eller har gått ut/))
     expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
-    expect(screen.getByRole('link', { name: 'Till mina spel' }).getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
+    expect(screen.getByRole('link', { name: 'Mina spel' }).getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
     await new Promise((r) => setTimeout(r, 200))
     expect(document.querySelector('[data-status-notice="missing"]')).toBeTruthy()
     expect(asked.mock.calls.filter(([u]) => String(u).includes('/invites/spent'))).toHaveLength(1)

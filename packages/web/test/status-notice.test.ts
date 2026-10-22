@@ -107,7 +107,7 @@ describe('each route says the same state in its own words', () => {
       const going = noticeFor('dropped', voice)
       const spent = noticeFor('dropped', voice, undefined, { spent: true })
       expect(spent.text).not.toMatch(/försöker igen/i)
-      expect(spent.text).toMatch(/Försök nu/)
+      expect(spent.text).toMatch(/Försök igen/)
       expect(spent.heading).toBe(going.heading)
     }
     expect(noticeFor('dropped', 'phone').text).toMatch(/försöker igen/i)
@@ -118,7 +118,7 @@ describe('each route says the same state in its own words', () => {
 // about an intent, not a message to a person, so it never reaches the screen as it stands.
 describe('a refusal in the reader s language', () => {
   it.each([
-    ['not connected', /uppkopplad/i],
+    ['not connected', /inte ansluten/i],
     ['connection lost', /anslutningen bröts/i],
     ['session has ended', /avslutat/i],
     ['an observer can only flag', /observatör/i],
@@ -152,7 +152,7 @@ describe('a seat’s way back when its line is gone (#484)', () => {
     expect(kinds(towardSeat(noticeFor('dropped', 'table')))).toEqual(['retry', 'rescan', 'home'])
     expect(kinds(towardSeat(noticeFor('offline', 'table')))).toEqual(['retry', 'rescan', 'home'])
     expect(kinds(towardSeat(noticeFor('connecting', 'table')))).toEqual([])
-    expect(towardSeat(noticeFor('dropped', 'table')).actions.find((a) => a.kind === 'rescan')?.label).toBe('Välj plats igen')
+    expect(towardSeat(noticeFor('dropped', 'table')).actions.find((a) => a.kind === 'rescan')?.label).toBe('Välj plats')
   })
 })
 

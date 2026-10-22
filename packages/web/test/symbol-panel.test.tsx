@@ -52,8 +52,8 @@ describe('the symbol library in the editor (E4)', () => {
     // drew it beside its licence, because the print hand-off has to name the person (E4).
     fireEvent.click(within(shelves).getByRole('button', { name: /^Game Icons/ }))
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'svärd' } })
-    expect((await screen.findByRole('button', { name: 'Ta in crossed-swords' })).textContent).toContain('CC-BY-3.0 · Lorc')
-    expect(screen.queryByRole('button', { name: 'Ta in sköld' })).toBeNull()
+    expect((await screen.findByRole('button', { name: 'Lägg till crossed-swords' })).textContent).toContain('CC-BY-3.0 · Lorc')
+    expect(screen.queryByRole('button', { name: 'Lägg till sköld' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'ingenting alls' } })
     expect(screen.getByText(/Inget med det namnet/)).toBeTruthy()
   })

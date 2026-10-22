@@ -36,12 +36,12 @@ describe('cards that could not be rendered are announced once for the screen', (
     }
     expect(container.querySelectorAll('[data-texture="failed"]')).toHaveLength(2)
     expect(container.querySelectorAll('[role="status"]')).toHaveLength(1)
-    expect(container.querySelector('[role="status"]')!.textContent).toBe('2 kort kunde inte renderas')
+    expect(container.querySelector('[role="status"]')!.textContent).toBe('2 kort kunde inte laddas')
 
     act(() => {
       fireEvent.click(screen.getAllByRole('button', { name: /försök igen/i })[0]!)
     })
-    expect(container.querySelector('[role="status"]')!.textContent).toBe('1 kort kunde inte renderas')
+    expect(container.querySelector('[role="status"]')!.textContent).toBe('1 kort kunde inte laddas')
     vi.useRealTimers()
   })
 

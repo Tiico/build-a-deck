@@ -147,7 +147,7 @@ describe('a proposal of changed cards', () => {
     expect(lines.textContent).toContain('kostnad: 3 → 2')
     expect(dragon.contains(lines)).toBe(false)
     expect(dragon.querySelector('[data-copies]')).not.toBeNull()
-    expect(dragon.getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake — Titel: Drake → Drake II, kostnad: 3 → 2')
+    expect(dragon.getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake, Titel: Drake → Drake II, kostnad: 3 → 2')
     expect(dragon.querySelector('.byd-preview')!.textContent).toContain('Drake II')
     // The wall makes room for the marks while a proposal stands on it.
     expect(document.querySelector('.byd-wall-deck')!.hasAttribute('data-proposing')).toBe(true)
@@ -325,7 +325,7 @@ describe('a changed cell named as the table names its column (#1037)', () => {
     await waitFor(() => expect(document.querySelectorAll('.byd-wall-card[data-changed]')).toHaveLength(1))
     const lines = [...wallCard('dragon').closest('.byd-wall-cell')!.querySelectorAll('.byd-wall-changes li')].map((li) => li.textContent)
     expect(lines).toEqual(['Titel: Drake → Drake II', 'kostnad: 3 → 2'])
-    expect(wallCard('dragon').getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake — Titel: Drake → Drake II, kostnad: 3 → 2')
+    expect(wallCard('dragon').getAttribute('aria-label')).toBe('Ändrat i förslaget: Drake, Titel: Drake → Drake II, kostnad: 3 → 2')
     toTab('table')
     expect(screen.getByRole('columnheader', { name: /^Titel/ })).toBeTruthy()
   })

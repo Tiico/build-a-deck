@@ -57,7 +57,7 @@ describe('the foot of the login card (#757)', () => {
 describe('what a guest leaves behind, said where she saves (#757)', () => {
   // Saving is offered once the answers are sent (#690), so the sentence stands there, and goes with
   // the offer once the answers are saved.
-  const KEPT = 'Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.'
+  const KEPT = 'Ditt namn, dina drag och dina enkätsvar sparas på bordet, inte på dig som person.'
   it('says what is kept, tied to the table and not to her, beside «Spara till ditt konto»', () => {
     sessionStorage.setItem('byd.survey.sent.t1', '1')
     render(<Survey who="Ada" version="rev-1" saveUrl="/save" remember="t1" onSubmit={async () => undefined} />)

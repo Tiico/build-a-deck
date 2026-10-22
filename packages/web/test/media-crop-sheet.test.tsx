@@ -211,7 +211,7 @@ describe('the status says where the crop stands, in three states and in both pla
     fireEvent.pointerDown(corner('Nedre högra hörnet'), { clientX: 100, clientY: 100, pointerId: 1 })
     fireEvent.pointerMove(corner('Nedre högra hörnet'), { clientX: 60, clientY: 80, pointerId: 1 })
     expect(status().getAttribute('data-state')).toBe('saving')
-    expect(reads(status())).toEqual(['refresh', 'Ändrad — sparas …'])
+    expect(reads(status())).toEqual(['refresh', 'Sparar…'])
     fireEvent.pointerUp(corner('Nedre högra hörnet'), { clientX: 60, clientY: 80, pointerId: 1 })
 
     // The document has the window now, and the edit is still on its way.

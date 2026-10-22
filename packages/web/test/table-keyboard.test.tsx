@@ -317,7 +317,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     for (const verb of ['Vänd', 'Vrid 90°', 'Avslöja', 'Titta']) expect(panel.queryByRole('button', { name: new RegExp(`^${verb}`) })).toBeNull()
     expect(panel.getByRole('button', { name: /^−1/ }).textContent).toBe('−1blir 19')
     expect(panel.getByRole('button', { name: /^\+1/ }).textContent).toBe('+1blir 21')
-    expect(panel.getByRole('button', { name: /^Sätt värde…/ })).toBeTruthy()
+    expect(panel.getByRole('button', { name: /^Ange värde…/ })).toBeTruthy()
 
     await user.click(panel.getByRole('button', { name: /^\+1/ }))
     const stepped = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 21/ })
@@ -328,11 +328,11 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
   // "Sätt värde…" opens the same sheet the ring opens, and the number said there is what goes out.
   it('says a value outright on the sheet, and hands the focus back to the chip', async () => {
     const { user, panel } = await openOnLiv()
-    await user.click(panel.getByRole('button', { name: /^Sätt värde…/ }))
-    const sheet = await screen.findByRole('dialog', { name: 'Sätt värde för Liv' })
+    await user.click(panel.getByRole('button', { name: /^Ange värde…/ }))
+    const sheet = await screen.findByRole('dialog', { name: 'Ange värde för Liv' })
     await waitFor(() => expect(sheet.contains(document.activeElement)).toBe(true))
     await user.click(within(sheet).getByRole('button', { name: '7' }))
-    await user.click(within(sheet).getByRole('button', { name: 'Sätt värdet' }))
+    await user.click(within(sheet).getByRole('button', { name: 'Klar' }))
     const set = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 7/ })
     expect(screen.queryByRole('dialog')).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(set))

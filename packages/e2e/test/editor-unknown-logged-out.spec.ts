@@ -20,5 +20,5 @@ test('sends nobody logged in to the login card, whether or not the game exists',
 
   // Logged in, the editor may say there is no such game: the account is known.
   await page.goto('/editor?project=finns-inte')
-  await expect(page.locator('[data-status-notice]').getByRole('heading')).toHaveText(/Vi hittar inte spelet|find (the|that) game/i)
+  await expect(page.locator('[data-status-notice]').getByRole('heading')).toHaveText(/Spelet finns inte|Game not found/i)
 })

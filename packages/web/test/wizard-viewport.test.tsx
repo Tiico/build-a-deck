@@ -30,7 +30,7 @@ async function surfaces(width: number): Promise<Record<string, string>> {
   history.replaceState(null, '', '/new')
   const { unmount } = render(<NewProjectPage />)
   try {
-    await screen.findByText(/Ge spelet en flygande start/)
+    await screen.findByText(/Skapa ett nytt spel/)
     const steps = () => [...document.querySelectorAll<HTMLElement>('[role="tablist"][aria-label="Steg"] [role="tab"]')]
     if (steps().length === 0) return { 'hela sidan': document.querySelector('.byd-wizard')!.outerHTML }
     const out: Record<string, string> = {}

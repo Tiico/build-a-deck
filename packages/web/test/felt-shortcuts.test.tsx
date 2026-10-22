@@ -307,13 +307,13 @@ describe('the discreet help (#224)', () => {
     const { view } = buildScene()
     render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={vi.fn()} />)
 
-    const opener = screen.getByRole('button', { name: 'Snabbkommandon på bordet' })
+    const opener = screen.getByRole('button', { name: 'Kortkommandon på bordet' })
     expect(opener.textContent).toBe('?')
     expect(opener.getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByRole('dialog')).toBeNull()
 
     fireEvent.click(opener)
-    const help = screen.getByRole('dialog', { name: 'Snabbkommandon på bordet' })
+    const help = screen.getByRole('dialog', { name: 'Kortkommandon på bordet' })
     // `F` stands with the two grips that mean the same thing (#258): one action, three ways to
     // ask for it, and one sentence — not the same sentence read three times.
     // It begins with the felt's own rule — a drag moves, a click asks — and with the way a
@@ -324,7 +324,7 @@ describe('the discreet help (#224)', () => {
     expect(help.textContent).not.toContain('hjulet')
     // And says what all three of them act on. A key has no target of its own the way a click has,
     // so the row that carries one has to name the pointer, as «Dra» and «Blanda» already do.
-    expect(help.textContent).toContain('Vänd kortet, eller högens översta, under pekaren')
+    expect(help.textContent).toContain('Vänd kortet, eller högens översta kort, under pekaren')
     expect(help.textContent).toContain('Blanda högen under pekaren')
     expect(opener.getAttribute('aria-expanded')).toBe('true')
   })
@@ -335,8 +335,8 @@ describe('the discreet help (#224)', () => {
     on('MacIntel')
     const { view } = buildScene()
     const { unmount } = render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={{ w: 1000, h: 500 }} glideMs={0} onAct={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Snabbkommandon på bordet' }))
-    const help = screen.getByRole('dialog', { name: 'Snabbkommandon på bordet' })
+    fireEvent.click(screen.getByRole('button', { name: 'Kortkommandon på bordet' }))
+    const help = screen.getByRole('dialog', { name: 'Kortkommandon på bordet' })
     expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual([
       'Dra',
       'Klick',
@@ -351,29 +351,29 @@ describe('the discreet help (#224)', () => {
       'Hjul',
       '+',
       '−',
-      'Mitten + drag',
-      'Space + drag',
+      'Mittenknapp + dra',
+      'Mellanslag + dra',
       'Skift + piltangent',
       'Esc',
       '?',
     ])
-    expect(help.textContent).toContain('Zooma in och ut kring pekaren; vyn står kvar')
-    expect(help.textContent).toContain('Panorera vyn')
+    expect(help.textContent).toContain('Zooma in och ut kring pekaren')
+    expect(help.textContent).toContain('Panorera')
     // Och Escape säger vad den numera också gör.
     expect(help.textContent).toContain('visa hela bordet')
     unmount()
 
     // Filten på `/online` har ingen kamera, och lovar därför ingen.
     render(<TableRenderer view={view(null)} mode="table" scale={1} onAct={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Snabbkommandon på bordet' }))
-    expect(screen.getByRole('dialog').textContent).not.toContain('Panorera vyn')
+    fireEvent.click(screen.getByRole('button', { name: 'Kortkommandon på bordet' }))
+    expect(screen.getByRole('dialog').textContent).not.toContain('Panorera')
   })
 
   it('says Ctrl where the command is Ctrl', () => {
     on('Win32')
     const { view } = buildScene()
     render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Snabbkommandon på bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Kortkommandon på bordet' }))
     expect([...screen.getByRole('dialog').querySelectorAll('kbd')].map((k) => k.textContent)).toContain('Ctrl + klick')
   })
 
@@ -388,7 +388,7 @@ describe('the help’s ways in and out (#133, #152, #224)', () => {
   const helpOn = () => {
     const { view } = buildScene()
     render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={vi.fn()} />)
-    return screen.getByRole('button', { name: 'Snabbkommandon på bordet' })
+    return screen.getByRole('button', { name: 'Kortkommandon på bordet' })
   }
 
   it('opens with `?`, is read where it stands, and Escape hands focus back to the button', () => {

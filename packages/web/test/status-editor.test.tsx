@@ -38,7 +38,7 @@ describe('a project that does not exist', () => {
     open(`project=nope&server=${encodeURIComponent(run.http)}`)
     await waitFor(() => expect(noticeState()).toBe('missing'))
     const said = notice()!.textContent ?? ''
-    expect(said).toMatch(/hittar inte spelet/i)
+    expect(said).toMatch(/spelet finns inte/i)
     expect(said).not.toMatch(/unknown project|could not load|Error/)
   })
 
@@ -87,7 +87,7 @@ describe('a project that belongs to someone else', () => {
       expect(panel.textContent).toMatch(/någon annan|inte tillgång/i)
       expect(within(panel).getByRole('link', { name: /logga in/i })).toBeTruthy()
       expect(within(panel).getByRole('link', { name: /mina spel/i })).toBeTruthy()
-      await waitFor(() => expect(document.title).toBe('Ingen tillgång · Deckster'))
+      await waitFor(() => expect(document.title).toBe('Ingen åtkomst · Deckster'))
     } finally {
       await owned.stop()
     }
@@ -99,9 +99,9 @@ describe('a server the editor cannot reach', () => {
     open(`project=p1&server=${encodeURIComponent('http://127.0.0.1:1')}`)
     await waitFor(() => expect(noticeState()).toBe('offline'), { timeout: 4000 })
     const panel = notice() as HTMLElement
-    expect(panel.textContent).toMatch(/når inte servern/i)
+    expect(panel.textContent).toMatch(/kontakt med servern/i)
     expect(within(panel).getByRole('button', { name: /försök igen/i })).toBeTruthy()
-    await waitFor(() => expect(document.title).toBe('Ingen kontakt · Deckster'))
+    await waitFor(() => expect(document.title).toBe('Ingen anslutning · Deckster'))
   })
 
   it('asks the server again in place when a person presses, and opens the game when it answers', async () => {
@@ -135,13 +135,13 @@ describe('a server that takes the call and never answers', () => {
       expect(noticeState()).toBe('loading')
       await act(() => vi.advanceTimersByTimeAsync(600))
       expect(noticeState()).toBe('slow')
-      expect(notice()!.textContent).toMatch(/spelet dröjer/i)
+      expect(notice()!.textContent).toMatch(/längre tid än vanligt/i)
       expect(within(notice() as HTMLElement).getByRole('button', { name: /försök igen/i })).toBeTruthy()
       expect(within(notice() as HTMLElement).getByRole('link', { name: /mina spel/i })).toBeTruthy()
       expect(document.title).toBe('Laddar · Deckster')
       await act(() => vi.advanceTimersByTimeAsync(HELD.connectTimeoutMs))
       expect(noticeState()).toBe('offline')
-      expect(document.title).toBe('Ingen kontakt · Deckster')
+      expect(document.title).toBe('Ingen anslutning · Deckster')
     } finally {
       vi.useRealTimers()
     }
@@ -208,7 +208,7 @@ describe('a project on its way in', () => {
     await run.projects.create(run.projectId, projectDoc())
     open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     expect(noticeState()).toBe('loading')
-    expect(notice()!.textContent).toMatch(/öppnar spelet/i)
+    expect(notice()!.textContent).toMatch(/laddar spelet/i)
     await screen.findByText('Skogens herrar')
   })
 

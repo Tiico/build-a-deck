@@ -43,7 +43,7 @@ test('a designer refines a proposal, sees the refined one replace it on the wall
 
   // The line under the proposal refines it now, and says that the proposal goes with it.
   const line = panel.getByRole('textbox', { name: 'Refine the proposal or ask something new' })
-  await expect(line).toHaveAttribute('placeholder', 'Refine the proposal — “make them milder”, “fewer cards”…')
+  await expect(line).toHaveAttribute('placeholder', 'Refine the proposal, for example “make them milder” or “fewer cards”')
   await expect(panel.locator('.byd-ai-chip').first()).toHaveText('the proposal')
   await line.fill('Make them pricier [förfina]')
   await line.press('Enter')

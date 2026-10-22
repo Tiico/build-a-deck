@@ -170,7 +170,7 @@ describe.each<TableMode>(['table', 'tv'])('a chip held or clicked, mode=%s (K14,
     act(() => vi.advanceTimersByTime(400))
     const ring = document.querySelector('[data-radial]')!
     expect(ring.getAttribute('data-radial')).toBe(id)
-    expect(ringButtons()).toEqual(['−1', '+1', 'Sätt värde…'])
+    expect(ringButtons()).toEqual(['−1', '+1', 'Ange värde…'])
     // The chip's name is never drawn on the felt at any screen measured (`TOKEN_NAME_PX` 34 against
     // a chip of 10–34 px), and a chip lifted into a ring loses the one thing that said whose it
     // was: where it lay. The hub says both, with the value.
@@ -247,7 +247,7 @@ describe('saying a counter’s value outright (C4, #67)', () => {
     render(<TableRenderer view={v} mode={mode} scale={1} onAct={onAct} />)
     fireEvent.pointerDown(chipOf(id), client(108, 228))
     fireEvent.pointerUp(chipOf(id), client(108, 228))
-    fireEvent.click(screen.getByRole('button', { name: 'Sätt värde…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ange värde…' }))
     return { id, onAct }
   }
 
@@ -256,7 +256,7 @@ describe('saying a counter’s value outright (C4, #67)', () => {
     expect(document.querySelector('[data-radial]')).toBeNull()
     const sheet = entryOf(id)!
     expect(sheet.getAttribute('role')).toBe('dialog')
-    expect(sheet.getAttribute('aria-label')).toBe('Sätt värde för Liv')
+    expect(sheet.getAttribute('aria-label')).toBe('Ange värde för Liv')
     expect(sheet.textContent).toContain('Adas räknare')
     // It opens on the value the chip has, and the first key said replaces it rather than trailing
     // it: nobody who wants 5 wants 205.
@@ -275,7 +275,7 @@ describe('saying a counter’s value outright (C4, #67)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sudda' }))
     expect(shown()).toBe('2')
     fireEvent.click(screen.getByRole('button', { name: '7' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Sätt värdet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
     expect(onAct).toHaveBeenCalledTimes(1)
     expect(onAct).toHaveBeenLastCalledWith([{ v: 'setCounter', component: id, value: 27 }])
     expect(entryOf(id)).toBeNull()
@@ -297,7 +297,7 @@ describe('saying a counter’s value outright (C4, #67)', () => {
 
     fireEvent.pointerDown(chipOf(id), client(108, 228))
     fireEvent.pointerUp(chipOf(id), client(108, 228))
-    fireEvent.click(screen.getByRole('button', { name: 'Sätt värde…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ange värde…' }))
     fireEvent.keyDown(entryOf(id)!, { key: '9' })
     fireEvent.keyDown(entryOf(id)!, { key: 'Escape' })
     expect(entryOf(id)).toBeNull()
@@ -309,7 +309,7 @@ describe('saying a counter’s value outright (C4, #67)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sudda' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sudda' }))
     expect(shown()).toBe('')
-    expect((screen.getByRole('button', { name: 'Sätt värdet' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Klar' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
     expect(entryOf(id)).toBeNull()
     expect(onAct).not.toHaveBeenCalled()
@@ -412,7 +412,7 @@ describe('a seat with a third counter (C4, K18, #89)', () => {
     // Choosing one opens that counter's own ring, which is `counterActs` and nothing else — the
     // same three the keyboard's panel offers, so the two lists cannot drift apart (#67).
     fireEvent.click([...document.querySelectorAll('[data-radial] button')].find((b) => b.textContent === 'Liv 20')!)
-    expect(ringButtons()).toEqual(['−1', '+1', 'Sätt värde…'])
+    expect(ringButtons()).toEqual(['−1', '+1', 'Ange värde…'])
     const liv = chips.find((c) => c.cardRef === 'Liv')!
     fireEvent.click([...document.querySelectorAll('[data-radial] button')].find((b) => b.textContent === '+1')!)
     expect(onAct).toHaveBeenCalledWith([{ v: 'setCounter', component: liv.id, value: 21 }])

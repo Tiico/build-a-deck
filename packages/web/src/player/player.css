@@ -361,9 +361,10 @@ html:has(.byd-phone-foot:not(:empty)) { scroll-padding-bottom: 73px; }
 
 /* The head at 320 keeps one row (#716, L62, beslut H1): «Ångra» and «Flagga» are drawn as their
    icons, each still a whole thumb target and still named by its word (the button's text and its
-   title), so «Ut…» no longer falls to a row of its own. Below 375, where the words stop fitting: at
-   375 the row holds them (`player-viewport.test.tsx`), at 360 it already did not. */
-@media (max-width: 374px) {
+   title), so the way out no longer falls to a row of its own. From 375 down, where the words stop
+   fitting: «Lämna…» (L73) is 30 px wider than «Ut…» was, and at 375 the three words no longer share
+   a line beside the name (`player-viewport.test.tsx`); at 390 they do. */
+@media (max-width: 375px) {
   .byd-player > header .byd-undo, .byd-player > header .byd-flag { font-size: 0; gap: 0; padding: 0; width: 44px; }
   .byd-player > header .byd-undo .byd-glyph, .byd-player > header .byd-flag .byd-glyph { width: 18px; height: 18px; }
 }

@@ -270,8 +270,8 @@ describe('the same box on the phone, the distance view and the table screen (#30
     const { unmount } = render(<TablePage />)
     try {
       await waitFor(() => expect(document.querySelector('.byd-tv-join')).not.toBeNull())
-      fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att ansluta' }))
-      await screen.findByRole('dialog', { name: 'Hjälp om att ansluta' })
+      fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att gå med' }))
+      await screen.findByRole('dialog', { name: 'Hjälp om att gå med' })
       return document.querySelector('.byd-table')!.outerHTML
     } finally {
       unmount()

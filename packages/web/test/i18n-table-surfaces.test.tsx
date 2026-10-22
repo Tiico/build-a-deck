@@ -83,7 +83,7 @@ describe('the keyboard on the felt in the reader\'s own language', () => {
     expect(screen.getByRole('heading', { name: 'Move the whole pile to', level: 3 })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Move the top card to', level: 3 })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Shuffle/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^Split in half/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Split in two/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Free placement/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy()
     // The one address a keyboard cannot say is still a row, and it says why in English too.

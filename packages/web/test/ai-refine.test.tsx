@@ -65,7 +65,7 @@ describe('the line under a waiting proposal', () => {
     await within(panel()).findByRole('button', { name: 'Godta alla' })
     // The line says what it does now, and that the proposal goes with what is written in it.
     const line = screen.getByRole('textbox', { name: 'Förfina förslaget eller fråga något nytt' })
-    expect(line.getAttribute('placeholder')).toBe('Förfina förslaget — «gör dem mildare», «färre kort»…')
+    expect(line.getAttribute('placeholder')).toBe('Förfina förslaget, till exempel «gör dem mildare» eller «färre kort»')
     expect(within(panel()).getByRole('button', { name: 'Förfina' })).toBeTruthy()
     expect(panel().querySelector('.byd-ai-chip')!.textContent).toBe('förslaget')
     refine('Gör dem dyrare [förfina]')
@@ -200,7 +200,7 @@ describe('the line under a waiting proposal', () => {
     const help = screen.getByRole('complementary', { name: 'AI help' })
     await within(help).findByRole('button', { name: 'Accept all' })
     const line = screen.getByRole('textbox', { name: 'Refine the proposal or ask something new' })
-    expect(line.getAttribute('placeholder')).toBe('Refine the proposal — “make them milder”, “fewer cards”…')
+    expect(line.getAttribute('placeholder')).toBe('Refine the proposal, for example “make them milder” or “fewer cards”')
     expect(help.querySelector('.byd-ai-chip')!.textContent).toBe('the proposal')
     const button = within(help).getByRole('button', { name: 'Refine' })
     expect(button.classList.contains('byd-secondary')).toBe(true)

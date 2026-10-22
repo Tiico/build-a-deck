@@ -26,10 +26,10 @@ describe('the start page when the service cannot be reached', () => {
     open('http://127.0.0.1:1')
     await waitFor(() => expect(notice()?.getAttribute('data-status-notice')).toBe('offline'), { timeout: 4000 })
     const panel = notice() as HTMLElement
-    expect(panel.textContent).toMatch(/når inte/i)
+    expect(panel.textContent).toMatch(/ingen kontakt|ingen anslutning/i)
     expect(panel.textContent).not.toMatch(/fetch failed|Error|could not/i)
     expect(within(panel).getByRole('button', { name: /försök igen/i })).toBeTruthy()
-    await waitFor(() => expect(document.title).toBe('Ingen kontakt · Deckster'))
+    await waitFor(() => expect(document.title).toBe('Ingen anslutning · Deckster'))
   })
 
   it('says it is loading before it says anything else', () => {

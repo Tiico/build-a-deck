@@ -75,7 +75,7 @@ async function inTheme(page: Page): Promise<boolean> {
 
 const tile = (page: Page, name: string) => page.getByRole('button', { name: `Välj temat ${name}` })
 const show = (page: Page) => page.getByRole('button', { name: 'Visa kortet i Skogssaga' })
-const fetching = (page: Page, name: string) => page.locator('.byd-wizard-preview').getByText(`Hämtar typsnitten för ${name} …`)
+const fetching = (page: Page, name: string) => page.locator('.byd-wizard-preview').getByText(`Laddar typsnitten för ${name}…`)
 
 for (const [width, height] of [[1280, 800], [1024, 768], [768, 1024]] as const) {
   test.describe(`at ${width} × ${height}`, () => {
@@ -201,8 +201,8 @@ test.describe('the box over step 1', () => {
   test('says the game is kept on an account when logged out', async ({ page }) => {
     await page.goto('/new', { waitUntil: 'load' })
     const box = page.locator('.byd-wizard-handoff')
-    await expect(box).toHaveText('Spelet sparas på ett konto. Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.')
-    await expect(box.locator('strong')).toHaveText('Spelet sparas på ett konto.')
+    await expect(box).toHaveText('Spelet sparas på ditt konto. Du loggar in med e‑post när spelet skapas, och det du fyllt i här följer med.')
+    await expect(box.locator('strong')).toHaveText('Spelet sparas på ditt konto.')
     expect(await page.locator('.byd-wizard').innerText()).not.toMatch(/wizard/i)
   })
 

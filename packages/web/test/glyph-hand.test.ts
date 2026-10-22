@@ -117,10 +117,8 @@ const ALLOWED: Allowed[] = [
   ]),
   ...(
     [
-      ['src/i18n/sv.account.ts', ['← Föregående', 'Nästa →', 'i editorn →']],
-      ['src/i18n/en.account.ts', ['← Previous', 'Next →', 'in the editor →']],
-      ['src/i18n/sv.editor.ts', ['i Mall →', 'typsnittet i Speltema ›', 'i Tabell ›', '({n}) ›', 'biblioteket ›', '‹ Spelets', 'finns i Speltema ›']],
-      ['src/i18n/en.editor.ts', ['in Template →', 'font under Theme ›', 'in Data ›', '({n}) ›', 'library ›', '‹ The game', 'are under Theme ›']],
+      ['src/i18n/sv.editor.ts', ['typsnittet i Speltema ›', 'i Tabell ›', '({n}) ›', 'biblioteket ›', '‹ Spelets', 'finns i Speltema ›']],
+      ['src/i18n/en.editor.ts', ['font under Theme ›', 'in Data ›', '({n}) ›', 'library ›', '‹ The game', 'are under Theme ›']],
     ] as const
   ).flatMap(([file, names]) => names.map((name) => ({ file, char: [...name].find((c) => ICONS.includes(c))!, in: name, why: NAMED }))),
   // Icons that are not among the twenty the table drew, and so have no drawing in the hand yet.

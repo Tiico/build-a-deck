@@ -286,12 +286,12 @@ const shuffleOnly = (when?: ZoneAction['when']): ZoneAction => ({ id: 'a1', labe
 
 describe('raden under ratten när «så många jag säger» och starten möts', () => {
   it.each([
-    ['sv', asking(), 'Inte vid spelstart: ett steg frågar efter ett tal.'],
-    ['en', asking(), 'Not at game start: a step asks for a number.'],
-    ['sv', plain('start'), 'Inget steg kan fråga efter ett tal: åtgärden körs vid spelstart.'],
-    ['en', plain('start'), 'No step can ask for a number: the action runs at game start.'],
-    ['sv', plain('both'), 'Inget steg kan fråga efter ett tal: åtgärden körs vid spelstart.'],
-    ['en', plain('both'), 'No step can ask for a number: the action runs at game start.'],
+    ['sv', asking(), 'Inte vid spelstart: ett steg behöver ett tal.'],
+    ['en', asking(), 'Not at game start: a step needs a number.'],
+    ['sv', plain('start'), 'Ett steg kan inte be om ett tal när åtgärden körs vid spelstart.'],
+    ['en', plain('start'), 'A step cannot ask for a number when the action runs at game start.'],
+    ['sv', plain('both'), 'Ett steg kan inte be om ett tal när åtgärden körs vid spelstart.'],
+    ['en', plain('both'), 'A step cannot ask for a number when the action runs at game start.'],
   ] as const)('säger på %s vad som hindrar valet', (lang, action, said) => {
     expect(whyLine(lang, action)).toBe(said)
   })
@@ -303,8 +303,8 @@ describe('raden under ratten när «så många jag säger» och starten möts', 
   // Ett dokument som redan bär kombinationen — en import kan bära en — får meningen om steget, för
   // det är den som säger varför ratten inte erbjuder det läge åtgärden faktiskt står i.
   it.each([
-    ['sv', 'Inte vid spelstart: ett steg frågar efter ett tal.'],
-    ['en', 'Not at game start: a step asks for a number.'],
+    ['sv', 'Inte vid spelstart: ett steg behöver ett tal.'],
+    ['en', 'Not at game start: a step needs a number.'],
   ] as const)('säger på %s vilket av hållen som gäller när dokumentet bär båda', (lang, said) => {
     expect(whyLine(lang, asking('start'))).toBe(said)
   })
@@ -312,8 +312,8 @@ describe('raden under ratten när «så många jag säger» och starten möts', 
   // Ett `ask`-steg säger sitt också i en åtgärd som bara körs på begäran, för det är där raden
   // hör hemma: den är skälet att de två lägena i ratten står avstängda, och ratten står där.
   it.each([
-    ['sv', 'Inte vid spelstart: ett steg frågar efter ett tal.'],
-    ['en', 'Not at game start: a step asks for a number.'],
+    ['sv', 'Inte vid spelstart: ett steg behöver ett tal.'],
+    ['en', 'Not at game start: a step needs a number.'],
   ] as const)('säger på %s samma sak om en åtgärd som bara körs på begäran', (lang, said) => {
     expect(whyLine(lang, asking('request'))).toBe(said)
   })

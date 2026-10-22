@@ -86,12 +86,12 @@ describe('a step that opens (#732)', () => {
     const scrolled = () => { top = 101 }
 
     scrolled()
-    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa' }))
     expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Fälten')
     expect(top).toBe(0)
 
     scrolled()
-    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa' }))
     expect(top).toBe(0)
 
     scrolled()
@@ -189,8 +189,8 @@ describe('the focus in the wizard (#476)', () => {
     cleanup()
 
     wizardAt(390)
-    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
-    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa' }))
     expect(document.activeElement).not.toBe(document.body)
     expect(screen.getByRole('tabpanel').contains(document.activeElement)).toBe(true)
   })
@@ -226,12 +226,12 @@ describe('the names of the fields (#476)', () => {
     expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Fältet behöver ett namn.')
 
     await user.type(cost, 'antal')
-    expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('«antal» är verktygets eget namn.')
+    expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('«antal» är ett reserverat namn.')
     await user.clear(cost)
     await user.type(cost, 'titel')
-    expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('«titel» är verktygets eget namn.')
+    expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('«titel» är ett reserverat namn.')
 
-    await user.click(screen.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ }))
+    await user.click(screen.getByRole('button', { name: /Skapa spelet/ }))
     expect(document.activeElement).toBe(cost)
     expect(gone).toEqual([])
 

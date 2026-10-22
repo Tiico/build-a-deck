@@ -72,8 +72,8 @@ describe('the faces in the header, to a screen reader (#556)', () => {
     await openEditor()
     const other = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Lo' })
     try {
-      const here = await screen.findByRole('button', { name: 'Dela · vilka som har spelet, 2 inne' })
-      expect(here.textContent).toContain('2 inne')
+      const here = await screen.findByRole('button', { name: 'Dela: vilka som har spelet, 2 online' })
+      expect(here.textContent).toContain('2 online')
     } finally {
       other.close()
     }

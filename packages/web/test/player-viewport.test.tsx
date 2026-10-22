@@ -107,7 +107,7 @@ const idle = { send: async () => undefined, activity: [] } as unknown as Paramet
 function surfaces(view: Snapshot) {
   const overlays = (v: Snapshot) => (
     <div className="byd-player">
-      <SessionOverlays client={idle} view={v} seat="A" sheet={null} onSheet={noop} onLeft={noop} toast="Ögonblicket är flaggat" onToast={noop} version="v1" />
+      <SessionOverlays client={idle} view={v} seat="A" sheet={null} onSheet={noop} onLeft={noop} toast="Flaggat" onToast={noop} version="v1" />
     </div>
   )
   const proposal = { id: 'p1', toSeq: 1, by: 'B', confirmed: [] as string[], waiting: ['A'] }
@@ -412,7 +412,7 @@ describe("the seat's control row at 375px (#31)", () => {
     }
     try {
       const three = await row()
-      expect(three.map((c) => c.label)).toEqual(['Ångra', 'Flagga', 'Ut…'])
+      expect(three.map((c) => c.label)).toEqual(['Ångra', 'Flagga', 'Lämna…'])
       // One line: every control shares a top edge, and none is pushed off the screen.
       expect(new Set(three.map((c) => c.top)).size).toBe(1)
       expect(Math.max(...three.map((c) => c.right))).toBeLessThanOrEqual(375)

@@ -43,7 +43,7 @@ test.describe('a table opened without its key (#748)', () => {
     await expect(notice.getByRole('heading', { level: 1 })).toHaveText('The table belongs to another account')
     await expect(notice.getByText(someone)).toBeVisible()
     await expect(notice.getByRole('link', { name: 'Sign in' })).toHaveCount(0)
-    await expect(notice.getByRole('link', { name: 'To my games' })).toBeVisible()
+    await expect(notice.getByRole('link', { name: 'My games' })).toBeVisible()
 
     // «Byt konto» signs her out first, so the sign-in page asks for an address instead of sending
     // her straight back here as the account she was already in.

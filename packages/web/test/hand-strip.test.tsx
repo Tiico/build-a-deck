@@ -114,7 +114,7 @@ describe('a texture the phone is still waiting for (#10)', () => {
 
     expect(document.querySelector(`[data-hand-card="${mine.id}"] [data-texture="pending"]`)!.textContent).toContain('dragon')
     const opaque = document.querySelector(`[data-hand-card="${notMine.id}"] [data-texture="pending"]`)!
-    expect(opaque.textContent).toMatch(/[Rr]enderas/)
+    expect(opaque.textContent).toMatch(/[Ll]addar/)
     expect(opaque.textContent).not.toMatch(/knight/)
   })
 })
@@ -160,10 +160,10 @@ describe('a hand with nothing in it (UX-16)', () => {
     const props = { selected: new Set<string>(), onTap: () => undefined, onHold: () => undefined, onLift: () => undefined, onOpen: () => undefined }
     const { rerender } = render(<HandStrip view={empty} {...props} />)
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0)
-    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Dra ett kort ur Draghög.')
+    expect(screen.getByText(/Du har inga kort/).textContent).toBe('Du har inga kort. Dra ett kort från Draghög.')
 
     rerender(<HandStrip view={dealt} {...props} />)
-    expect(screen.queryByText(/Tom hand/)).toBeNull()
+    expect(screen.queryByText(/Du har inga kort/)).toBeNull()
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2)
   })
 
@@ -181,7 +181,7 @@ describe('a hand with nothing in it (UX-16)', () => {
     }
     const props = { selected: new Set<string>(), onTap: () => undefined, onHold: () => undefined, onLift: () => undefined, onOpen: () => undefined }
     render(<HandStrip view={nothing} {...props} />)
-    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Det finns inga kort att dra.')
+    expect(screen.getByText(/Du har inga kort/).textContent).toBe('Du har inga kort, och det finns inga att dra.')
   })
 })
 

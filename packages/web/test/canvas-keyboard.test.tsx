@@ -349,6 +349,6 @@ describe('the help text under the layer list (#144)', () => {
     // move is still said there, which is what #144 was about.
     expect(screen.queryByText('Dra för att ändra ordningen.')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om lagerlistan' }))
-    expect((await screen.findByRole('dialog', { name: 'Hjälp om lagerlistan' })).textContent).toContain('Elementet flyttas från duken: Enter går in i flyttläge, pilarna nudgar.')
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om lagerlistan' })).textContent).toContain('Elementet flyttas från duken: Enter startar flyttläge, och pilarna flyttar.')
   })
 })

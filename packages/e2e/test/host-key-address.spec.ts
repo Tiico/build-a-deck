@@ -55,7 +55,7 @@ test.describe('a new code takes the host key with it (#820)', () => {
 
     // The address that leaked opens nothing now.
     const leaked = await open(TV, `${table.tvUrl}&lang=sv`)
-    await expect(leaked.page.locator('[data-status-notice]').getByRole('heading', { level: 1 })).toHaveText('Bordet behöver värdens länk eller ägarens inloggning')
+    await expect(leaked.page.locator('[data-status-notice]').getByRole('heading', { level: 1 })).toHaveText('Bordet kräver värdens länk eller ägarens inloggning')
     await expect(leaked.page.getByText(code)).toHaveCount(0)
   })
 })

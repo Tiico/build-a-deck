@@ -80,7 +80,7 @@ for (const { zoom, width, height } of LOW) {
     test('keeps the template, and never scrolls sideways', async ({ page }) => {
       await openEditor(page)
       await expect(page.locator('#byd-editor-tab-canvas')).toHaveCount(1)
-      await expect(page.getByText(/Mallen ritas inte på telefon/)).toHaveCount(0)
+      await expect(page.getByText(/Mallen går inte att redigera på en skärm smalare/)).toHaveCount(0)
       expect(await sideways(page)).toBeLessThanOrEqual(0)
     })
 
@@ -270,7 +270,7 @@ test.describe('the editor on a phone', () => {
     await page.goto(project.editorUrl)
     await expect(page.locator('.byd-editor')).toHaveAttribute('data-room', 'phone')
     expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true)
-    await expect(page.getByText(/Mallen ritas inte på telefon/)).toBeVisible()
+    await expect(page.getByText(/Mallen går inte att redigera på en skärm smalare/)).toBeVisible()
     await expect(page.locator('#byd-editor-tab-canvas')).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollHeight - document.documentElement.clientHeight)).toBeLessThanOrEqual(0)
   })

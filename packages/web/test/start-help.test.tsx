@@ -16,9 +16,9 @@ import { LoginCard } from '../src/account/LoginCard.js'
 
 // What the product does during the beta, and that print is on its way (#743): ordering is phase 5,
 // and a line that promised it sent a beta tester looking for something that was not there.
-const PITCH = /Skapa ditt kortspel och speltesta det på skärmen — tryck kommer\./
-const NO_PASSWORD = /Länken i mejlet loggar in dig/
-const GUEST = /Skanna QR-koden på bordet/
+const PITCH = /Skapa ditt eget kortspel och speltesta det på skärmen\. Tryck kommer senare\./
+const NO_PASSWORD = /Du loggar in med länken i mejlet/
+const GUEST = /Skanna QR-koden på TV:n/
 
 const login = (lead?: string) => render(<LoginCard http="http://server.local" next="/" onNavigate={() => undefined} lead={lead} />)
 const ask = () => screen.getByRole('button', { name: 'Hjälp om inloggningen' })
@@ -62,7 +62,7 @@ describe('the login card', () => {
   // 2026-10-06): the first visit says that the same address both logs in and makes the account.
   it('tells the first visit that the link in the mail makes the account too', () => {
     login()
-    expect(screen.getByText('Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.')).toBeTruthy()
+    expect(screen.getByText('Logga in eller skapa konto med din e‑post. Du får en länk i mejlet.')).toBeTruthy()
     expect(screen.queryByText('Logga in för att komma till dina spel.')).toBeNull()
     cleanup()
     login()
@@ -128,11 +128,11 @@ describe('the login card', () => {
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
 
-const HANDOFF = /Layout, hela leken och CSV-verktyg väntar i editorn/
+const HANDOFF = /Layout, resten av korten och CSV-import gör du i editorn/
 const BLANK = /utan kort, fält eller mall/
-const FIELDS = /Varje fält blir direkt en kontroll/
-const CARDS = /hjälper editorn att visa hur fälten faktiskt används/
-const FOOTER = /CSV-import och finjusteringen av mallen/
+const FIELDS = /Varje fält blir en ruta/
+const CARDS = /visar hur fälten används/
+const FOOTER = /CSV-import och mallen gör du i editorn/
 
 const wizard = (width: number) => {
   atWidth(width)
@@ -161,7 +161,7 @@ describe('the guided start on a desk, where the three steps stand together', () 
     expect(asks()).toHaveLength(3)
     atHeading('spelet', /Spelet/)
     atHeading('fälten', /Fält/)
-    atHeading('korten', /Gör några exempelkort/)
+    atHeading('korten', /Lägg till några exempelkort/)
   })
 
   it('moves the handoff and the blank game’s explanation behind the first step’s question mark', async () => {
@@ -169,9 +169,9 @@ describe('the guided start on a desk, where the three steps stand together', () 
     expect(screen.queryByText(HANDOFF)).toBeNull()
     expect(screen.queryByText(BLANK)).toBeNull()
     // Kept: the blank door is still named, its title and its button, and a short question.
-    expect(screen.getByText('Utan guidad start')).toBeTruthy()
-    expect(screen.getByText('Bygg hellre allt själv?')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })).toBeTruthy()
+    expect(screen.getByText('Börja från ett tomt spel')).toBeTruthy()
+    expect(screen.getByText('Bara namnet och antalet spelare följer med.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Skapa tomt spel' })).toBeTruthy()
     const box = await askOn('spelet')
     expect(box.textContent).toMatch(HANDOFF)
     expect(box.textContent).toMatch(BLANK)
@@ -219,8 +219,8 @@ describe('the guided start on a phone, one step at a time', () => {
 describe('the pitch during the beta', () => {
   it('promises no ordering in Swedish or English', async () => {
     const { translate } = await import('../src/i18n/index.js')
-    expect(translate('sv', 'login.pitch')).toBe('Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.')
-    expect(translate('en', 'login.pitch')).toBe('Build your own card game and playtest it on screen — print is coming.')
+    expect(translate('sv', 'login.pitch')).toBe('Skapa ditt eget kortspel och speltesta det på skärmen. Tryck kommer senare.')
+    expect(translate('en', 'login.pitch')).toBe('Build your own card game and playtest it on screen. Print is coming later.')
     for (const lang of ['sv', 'en'] as const) expect(translate(lang, 'login.pitch')).not.toMatch(/beställ|order/i)
   })
 })

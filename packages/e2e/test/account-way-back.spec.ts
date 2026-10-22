@@ -4,7 +4,7 @@ import { expect, test } from '../support/test.js'
 
 // The way back after «Spara till ditt konto» (#690, beslut 2026-10-06). The save is offered once the
 // survey is sent; the login comes back to the phone through `next=`; the claim and its way back
-// replace history rather than add to it, so Back never claims again; and «Tillbaka till bordet» on
+// replace history rather than add to it, so Back never claims again; and «Öppna bordet» on
 // the start page takes the guest to her own seat and hand rather than to the picker.
 
 test('saving after the survey comes back to the phone, and Back lands on the page before the claim', async ({ player, host, tableOf }) => {
@@ -17,7 +17,7 @@ test('saving after the survey comes back to the phone, and Back lands on the pag
   await expect(page.locator('.byd-survey')).toBeVisible()
 
   // Not offered while the survey is being answered: before, the guest who saved first came back
-  // to a start page that said «enkät obesvarad» and had no way to the survey.
+  // to a start page that said «enkät inte besvarad» and had no way to the survey.
   const save = page.getByRole('link', { name: 'Save to your account' })
   await expect(save).toHaveCount(0)
   for (const n of ['4', '3', '2']) {
@@ -49,7 +49,7 @@ test('saving after the survey comes back to the phone, and Back lands on the pag
   await expect(page.getByText('Thank you, Ada.')).toBeVisible()
 })
 
-test('«Back to the table» takes the guest to her own seat and hand, not to the picker', async ({ request, open, host, tableOf }) => {
+test('«Open the table» takes the guest to her own seat and hand, not to the picker', async ({ request, open, host, tableOf }) => {
   const table = await tableOf({ players: 2, counters: [], cards: 6, copies: 1 })
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 3 }])
@@ -61,7 +61,7 @@ test('«Back to the table» takes the guest to her own seat and hand, not to the
   await logIn(desk.page.request)
   expect((await desk.page.request.post('/guests/claim', { data: { token: seat.token } })).status()).toBe(200)
   await desk.page.goto('/')
-  await desk.page.getByRole('link', { name: 'Back to the table' }).click()
+  await desk.page.getByRole('link', { name: 'Open the table' }).click()
 
   // Her seat and her hand, on the screen a laptop is suggested: no picker, no name to type again.
   await expect(desk.page.locator('[data-hand-card]')).toHaveCount(3)

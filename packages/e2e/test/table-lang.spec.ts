@@ -9,9 +9,9 @@ test('TV:n minns språket den öppnades på, också utan ?lang= nästa gång (#7
   const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
   const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
   await expect(page.locator('html')).toHaveAttribute('lang', 'sv')
-  await expect(page.getByText(/Inget hänt ännu/)).toBeVisible()
+  await expect(page.getByText(/Inga drag ännu/)).toBeVisible()
 
   await page.goto(table.tvUrl)
   await expect(page.locator('html')).toHaveAttribute('lang', 'sv')
-  await expect(page.getByText(/Inget hänt ännu/)).toBeVisible()
+  await expect(page.getByText(/Inga drag ännu/)).toBeVisible()
 })

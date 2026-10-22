@@ -85,7 +85,7 @@ for (const [width, height] of WIDTHS) {
     await page.getByRole('button', { name: /^Färger och betydelser/ }).click()
     await page.getByRole('button', { name: /^Spelets ikoner/ }).click()
     await page.getByRole('button', { name: /Ur biblioteket/ }).click()
-    await page.getByRole('button', { name: /Ta in sköld/ }).click()
+    await page.getByRole('button', { name: /Lägg till sköld/ }).click()
     await expect(page.locator('.byd-symbols-set').getByText('{sköld}')).toBeVisible()
     const rows = await page.$$eval('.byd-symbols-colours li', (lis) =>
       lis.map((li) => {

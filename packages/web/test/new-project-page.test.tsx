@@ -81,7 +81,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     ])
 
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Exempel' } })
-    fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
     await waitFor(() => expect(gone).toHaveLength(1))
     const stored = await run.projects.load(new URL(gone[0]!, 'http://x').searchParams.get('project')!)
     expect(stored?.rows.map((r) => r.fields['antal'])).toEqual([2, 2, 2])
@@ -107,7 +107,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     // One door per paragraph in the help, each led by its own name.
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
     const box = await screen.findByRole('dialog', { name: 'Hjälp om spelet' })
-    expect([...box.querySelectorAll('p')].map((p) => p.textContent!.split(':')[0])).toEqual(['Guidad start', 'Utan guidad start'])
+    expect([...box.querySelectorAll('p')].map((p) => p.textContent!.split(':')[0])).toEqual(['Guidad start', 'Tomt spel'])
   })
 
   it('lets the designer choose an image for an image field and previews it', async () => {
@@ -139,7 +139,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
     fireEvent.change(screen.getByLabelText('kort 4 Titel'), { target: { value: 'Riddare' } })
 
-    fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
     await waitFor(() => expect(gone).toHaveLength(1))
     const url = new URL(gone[0]!, 'http://x')
     expect(url.pathname).toBe('/editor')
@@ -168,7 +168,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     for (const sheet of page.querySelectorAll('style')) sheet.remove()
     expect(page.textContent).not.toMatch(/wizard/i)
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
-    expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/csv-verktyg väntar i editorn/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/csv-import gör du i editorn/i)
     expect(screen.queryByRole('button', { name: /öppna bordet/i })).toBeNull()
   })
 
@@ -178,7 +178,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
   it('does not proceed without a name, and says so instead of standing locked', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
-    const next = screen.getByRole('button', { name: /fortsätt i editorn/i }) as HTMLButtonElement
+    const next = screen.getByRole('button', { name: /skapa spelet/i }) as HTMLButtonElement
     expect(next.disabled).toBe(false)
     fireEvent.click(next)
     expect(gone).toEqual([])
@@ -270,7 +270,7 @@ describe('a game without the guided start (L42)', () => {
     // Two seats more than the two it starts at, a step at a time.
     fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
     fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa tomt spel' }))
 
     await waitFor(() => expect(gone).toHaveLength(1))
     const url = new URL(gone[0]!, 'http://x')
@@ -293,7 +293,7 @@ describe('a game without the guided start (L42)', () => {
     open((url) => gone.push(url))
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
-    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
+    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' })
     fireEvent.click(blank)
 
     // The question travels behind a cut of its own (L40), so it is there once its chunk has come.
@@ -320,7 +320,7 @@ describe('a game without the guided start (L42)', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa tomt spel' }))
     expect(screen.queryByRole('alertdialog')).toBeNull()
     await waitFor(() => expect(gone).toHaveLength(1))
   })
@@ -328,7 +328,7 @@ describe('a game without the guided start (L42)', () => {
   it('asks for the name the same way the guided door does, instead of standing locked', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
-    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }) as HTMLButtonElement
+    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' }) as HTMLButtonElement
     expect(blank.disabled).toBe(false)
     fireEvent.click(blank)
     expect(gone).toEqual([])
@@ -337,11 +337,11 @@ describe('a game without the guided start (L42)', () => {
 
   it('says what it leaves out, and is the second action beside the guided way (L13)', async () => {
     open(() => undefined)
-    expect(screen.getByText('Utan guidad start')).toBeTruthy()
-    expect(screen.getByText('Bygg hellre allt själv?')).toBeTruthy()
+    expect(screen.getByText('Börja från ett tomt spel')).toBeTruthy()
+    expect(screen.getByText('Bara namnet och antalet spelare följer med.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
     expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/utan kort, fält eller mall/i)
-    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
+    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' })
     expect(blank.classList.contains('byd-secondary')).toBe(true)
     expect(blank.classList.contains('byd-primary')).toBe(false)
   })
@@ -393,7 +393,7 @@ describe('the draft in the wizard (#476)', () => {
     try {
       fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
       const header = document.querySelector('.byd-wizard > header') as HTMLElement
-      expect((await within(header).findByRole('alert')).textContent).toBe('Utkastet sparas inte längre i den här fliken — webbläsaren har inte plats för det. Laddar du om sidan eller stänger fliken försvinner det som står här.')
+      expect((await within(header).findByRole('alert')).textContent).toBe('Utkastet kan inte längre sparas i webbläsaren, som har slut på lagringsutrymme. Om du laddar om sidan eller stänger fliken försvinner det du skrivit.')
       expect(sessionStorage.getItem('byd.pending-wizard')).toBeNull()
     } finally {
       full.mockRestore()
@@ -441,7 +441,7 @@ describe('the way back from the wizard (#476)', () => {
 // browser's own «Failed to fetch», never that nothing had been made, and left the focus where it
 // was. It now says so in the catalogue's words, with what to do, and takes the focus to it.
 describe('when the game could not be made (#476)', () => {
-  const create = () => fireEvent.click(screen.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ }))
+  const create = () => fireEvent.click(screen.getByRole('button', { name: /Skapa spelet/ }))
 
   it('says the game was not made and what to do when the service answers with an error', async () => {
     const real = globalThis.fetch
@@ -468,9 +468,9 @@ describe('when the game could not be made (#476)', () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent('http://127.0.0.1:1')}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
-    fireEvent.click(screen.getByRole('button', { name: /Fortsätt i editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Skapa spelet/i }))
     const said = await screen.findByRole('alert')
-    expect(said.textContent).toBe('Spelet skapades inte. Vi når inte tjänsten; kontrollera anslutningen och försök igen.')
+    expect(said.textContent).toBe('Spelet skapades inte. Ingen kontakt med tjänsten. Kontrollera anslutningen och försök igen.')
     expect(said.textContent).not.toMatch(/fetch|Error/i)
   })
 })
@@ -483,7 +483,7 @@ describe('a file that is not a picture the game can hold (#476)', () => {
     open(() => undefined)
     const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
     fireEvent.change(input, { target: { files: [new File(['hej'], 'drake.png', { type: 'image/png' })] } })
-    expect((await screen.findByRole('alert')).textContent).toBe('Det där är ingen bild. Välj en PNG, JPEG, GIF eller WebP.')
+    expect((await screen.findByRole('alert')).textContent).toBe('Filen är ingen bild. Välj en PNG, JPEG, GIF eller WebP.')
     expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
   })
 
@@ -551,7 +551,7 @@ describe('the live card after the fields are named (#476)', () => {
 // after three minutes of filling in (#691, beslut 2026-10-06). It says so early, in the box at the
 // top that once said «Wizarden är startpunkten» (#687), and whoever is logged in gets no box at all.
 describe('the account the game is kept on (#691, #687)', () => {
-  const SAVED = 'Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.'
+  const SAVED = 'Du loggar in med e‑post när spelet skapas, och det du fyllt i här följer med.'
   beforeEach(async () => {
     await run.stop()
     run = await startServer({ auth: true, authBypass: true })
@@ -560,8 +560,8 @@ describe('the account the game is kept on (#691, #687)', () => {
   it('says early, to whoever is logged out, that the game is kept on an account', async () => {
     open(() => undefined)
     const box = (await screen.findByText(SAVED, { exact: false })).closest('.byd-wizard-handoff')
-    expect(box?.textContent).toBe(`Spelet sparas på ett konto. ${SAVED}`)
-    expect(box?.querySelector('strong')?.textContent).toBe('Spelet sparas på ett konto.')
+    expect(box?.textContent).toBe(`Spelet sparas på ditt konto. ${SAVED}`)
+    expect(box?.querySelector('strong')?.textContent).toBe('Spelet sparas på ditt konto.')
   })
 
   it('says nothing about it to whoever is logged in', async () => {

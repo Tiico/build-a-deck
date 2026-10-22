@@ -56,7 +56,7 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
     expect(await screen.findByText('Drakhona')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
-    await screen.findByText(/renderar kort/i)
+    await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&host=[A-Za-z0-9_-]{20,}&mode=tv/)
@@ -156,7 +156,7 @@ describe('the header says which of its two jobs the filled button will do (#417)
     // And the table one already has is not the only one a game may have: the second way, «Nytt
     // bord», is what starts another from here on — in the caret's menu (beslut 2026-09-27, #477).
     expect(screen.queryByRole('button', { name: 'Nytt bord' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Fler vägar till bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Fler sätt att öppna bordet' }))
     expect(await screen.findByRole('button', { name: 'Nytt bord' })).toBeTruthy()
   })
 
@@ -198,7 +198,7 @@ describe('the table follows the editor (C7, L5)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
-    await screen.findByText(/renderar kort/i)
+    await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     const sessionId = new URL(link.href).searchParams.get('session')!
@@ -211,7 +211,7 @@ describe('the table follows the editor (C7, L5)', () => {
     expect(screen.getAllByRole('link', { name: /öppna bordet/i })).toHaveLength(1)
 
     // «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477 fynd 4).
-    fireEvent.click(screen.getByRole('button', { name: 'Fler vägar till bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Fler sätt att öppna bordet' }))
     fireEvent.click(await screen.findByRole('button', { name: /nytt bord/i }))
     await screen.findByText(/nytt bord startat/i)
     const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
@@ -226,14 +226,14 @@ describe('a table opens only once its cards can be seen (L5)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
-    expect(await screen.findByText(/renderar kort 0\/4/i)).toBeTruthy()
+    expect(await screen.findByText(/laddar kort 0\/4/i)).toBeTruthy()
     expect(screen.queryByRole('link', { name: /öppna bordet/i })).toBeNull()
     expect(await run.completeRenders()).toBe(4)
     expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
-    expect(screen.queryByText(/renderar kort/i)).toBeNull()
+    expect(screen.queryByText(/laddar kort/i)).toBeNull()
   })
   // Opening the editor on a table whose cards were rendered long ago (#765): the band stood on
-  // «renderar kort 0/…» — three dots for a number — until the first answer came. What the page
+  // «laddar kort 0/…» — three dots for a number — until the first answer came. What the page
   // does not know yet it does not say; once it knows, it says what is true.
   it('says nothing about rendering on a table it has not heard from yet, and never «0/…» (#765)', async () => {
     await run.projects.create(run.projectId, projectDoc())
@@ -255,13 +255,13 @@ describe('a table opens only once its cards can be seen (L5)', () => {
       render(<EditorPage />)
       await screen.findByText(/Bordet kör version 1/)
       const band = document.querySelector('.byd-editor-table-link')!
-      expect(band.textContent).not.toMatch(/renderar kort/i)
+      expect(band.textContent).not.toMatch(/laddar kort/i)
       expect(band.textContent).not.toContain('…')
       // Nor a dash that points at nothing.
       expect(band.textContent).not.toMatch(/—\s*·/)
       release()
       expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
-      expect(screen.queryByText(/renderar kort/i)).toBeNull()
+      expect(screen.queryByText(/laddar kort/i)).toBeNull()
     } finally {
       release()
       spy.mockRestore()
@@ -297,7 +297,7 @@ describe('the cards a phone cannot read, said once the table is up (#523)', () =
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
-    await screen.findByText(/renderar kort/i)
+    await screen.findByText(/laddar kort/i)
   }
 
   it('counts the cards whose text a 320 px phone shows under the floor, and opens the wall at the phone’s eye', async () => {
@@ -308,7 +308,7 @@ describe('the cards a phone cannot read, said once the table is up (#523)', () =
     // The table is up all the same: a remark stops nothing.
     expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Visa på kortväggen' }))
-    expect((await screen.findByRole('button', { name: /^Ögon/ })).textContent).toContain('Telefonens läsvy')
+    expect((await screen.findByRole('button', { name: /^Visning/ })).textContent).toContain('Telefonens läsvy')
   })
 
   it('says nothing when every card reads', async () => {
@@ -326,7 +326,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
-    await screen.findByText(/renderar kort/i)
+    await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     const sessionId = new URL(link.href).searchParams.get('session')!
@@ -334,10 +334,10 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
-    expect(await screen.findByText(/renderar kort 3\/4/i)).toBeTruthy()
+    expect(await screen.findByText(/laddar kort 3\/4/i)).toBeTruthy()
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual([])
     expect(await run.completeRenders()).toBe(1)
-    await screen.findByText(/bordet uppdaterat på version 2/i)
+    await screen.findByText(/bordet uppdaterat till version 2/i)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
   })
@@ -351,7 +351,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
-    await screen.findByText(/renderar kort/i)
+    await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     const sessionId = new URL(link.href).searchParams.get('session')!
@@ -359,18 +359,18 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
-    expect(await screen.findByText(/renderar kort 3\/4/i)).toBeTruthy()
+    expect(await screen.findByText(/laddar kort 3\/4/i)).toBeTruthy()
     expect(await run.failRenders()).toBe(1)
 
-    expect(await screen.findByText('1 kort kunde inte renderas. Bordet står kvar på sin gamla version.')).toBeTruthy()
+    expect(await screen.findByText('1 kort kunde inte laddas. Bordet är kvar på sin gamla version.')).toBeTruthy()
     // The row is a green "it worked" banner the rest of the time; a blocked update is not that.
     expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(true)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual([])
 
     fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))
-    await screen.findByText(/renderar kort 3\/4/i)
+    await screen.findByText(/laddar kort 3\/4/i)
     await run.completeRenders()
-    await screen.findByText(/bordet uppdaterat på version 2/i)
+    await screen.findByText(/bordet uppdaterat till version 2/i)
     expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(false)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
   })
@@ -587,15 +587,15 @@ describe('the host\'s controls (DRIFT §9)', () => {
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
     // × asks first (#679, beställarens beslut C): a kick costs a player's hand mid-game, and a
     // miss on the chip beside it cost another's. The question opens on «Avbryt».
-    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
-    const ask = await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })
-    expect(ask.textContent).toContain('Korten i Adas hand går tillbaka i leken, och telefonen lämnar bordet.')
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort Ada' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Ta bort Ada från bordet?' })
+    expect(ask.textContent).toContain('Adas kort läggs tillbaka i leken och telefonen kopplas bort.')
     expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Avbryt' }))
     fireEvent.click(within(ask).getByRole('button', { name: 'Avbryt' }))
     expect(ada.refused).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Sparka Ada' }))
-    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka Ada' }))
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Sparka Ada' })).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Ta bort Ada från bordet?' })).getByRole('button', { name: 'Ta bort Ada' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ta bort Ada' })).toBeNull())
     await waitFor(() => expect(ada.refused).toBe('kicked'))
     // The code stays: a plain kick does not close the door, and the question said so by offering both.
     expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).toBe(first)
@@ -603,7 +603,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     // «Ny kod» asks too, and says what stops working; the answer is said in the band.
     fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
     const swap = await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })
-    expect(swap.textContent).toContain(`${first} på TV:n och i det du skickat slutar gälla`)
+    expect(swap.textContent).toContain(`Koden ${first} slutar gälla på TV:n och i länkar du skickat`)
     fireEvent.click(within(swap).getByRole('button', { name: 'Byt kod' }))
     await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
     expect(document.querySelector('[data-code-said]')?.textContent).toMatch(new RegExp(`^Ny rumskod [A-Z2-9]{6}\\. ${first} gäller inte längre\\.$`))
@@ -625,8 +625,8 @@ describe('the host\'s controls (DRIFT §9)', () => {
     const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
-    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
-    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka och byt kod' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Ta bort Ada från bordet?' })).getByRole('button', { name: 'Ta bort och byt kod' }))
     await waitFor(() => expect(ada.refused).toBe('kicked'))
     await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
   })
@@ -667,8 +667,8 @@ describe('the host\'s controls (DRIFT §9)', () => {
     const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
-    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
-    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka Ada' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Ta bort Ada från bordet?' })).getByRole('button', { name: 'Ta bort Ada' }))
     await waitFor(() => expect(ada.refused).toBe('kicked'))
   })
 })
@@ -715,8 +715,8 @@ describe('the wall of a game with nothing in it (#476)', () => {
 
   it('says the game has no cards, where they are made, and does not call an empty deck checked', async () => {
     await blank()
-    expect(wall().getByRole('heading', { name: 'Spelet har inga kort än' })).toBeTruthy()
-    expect(wall().getByText('Ett kort är en rad i Tabell, och mallen i Mall ritar det. Börja var du vill.')).toBeTruthy()
+    expect(wall().getByRole('heading', { name: 'Inga kort ännu' })).toBeTruthy()
+    expect(wall().getByText('Lägg till kort i Tabell och rita mallen i Mall.')).toBeTruthy()
     expect(screen.queryByText('Inga anmärkningar')).toBeNull()
   })
 
@@ -725,8 +725,8 @@ describe('the wall of a game with nothing in it (#476)', () => {
     await blank()
     await user.click(wall().getByRole('button', { name: '+ Nytt kort' }))
     await waitFor(() => expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(1))
-    expect(wall().getByText('Korten har ingen framsida än: mallen är tom.')).toBeTruthy()
-    await user.click(wall().getByRole('button', { name: 'Rita framsidan i Mall →' }))
+    expect(wall().getByText('Mallen är tom, så korten har ingen framsida ännu.')).toBeTruthy()
+    await user.click(wall().getByRole('button', { name: 'Öppna Mall' }))
     expect(screen.getByRole('tab', { name: /mall/i }).getAttribute('aria-selected')).toBe('true')
   })
 })
@@ -745,7 +745,7 @@ describe('the wall remembers where it was left (#477)', () => {
       render(<EditorPage />)
       await screen.findByText('Skogens herrar')
       fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: 'Drake' } })
-      fireEvent.click(screen.getByRole('button', { name: /^Ögon/ }))
+      fireEvent.click(screen.getByRole('button', { name: /^Visning/ }))
       fireEvent.click(screen.getByRole('button', { name: 'Gråskala' }))
       const deck = document.querySelector('[data-wall]') as HTMLElement
       deck.scrollTop = 240

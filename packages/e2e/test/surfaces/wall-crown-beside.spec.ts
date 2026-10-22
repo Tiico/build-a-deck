@@ -212,19 +212,19 @@ for (const locale of ['sv-SE', 'en-GB']) {
 
 // And in every eye (#1047). The box says the eye the deck is read with, and where the crown is
 // narrow it says only that (#477, variant B) — so the row's width is the eye's word as much as the
-// deck's grouping. #1045 measured the row in «Som du ser det» only; the reading views (#512) are
-// the eye's longest words, «TV:ns «Visa för alla»» and «The phone’s reading view», and a row that
+// deck's grouping. #1045 measured the row in «Normal syn» only; the reading views (#512) are
+// the eye's longest words, «TV:ns visning» and «The phone’s reading view», and a row that
 // stands in the first eye and breaks in the TV's is a row the designer sees jump as they choose.
 // Measured grouped, where the grouping box says its column, and ungrouped, where it says that
 // nothing groups the wall: the two fullest rows #1045 found.
 const EYE_WORDS: Record<string, { eyes: string; eyeNames: readonly string[] }> = {
   'sv-SE': {
-    eyes: 'Ögon',
-    eyeNames: ['Som du ser det', 'Deuteranopi', 'Protanopi', 'Tritanopi', 'Gråskala', 'Telefonens läsvy', 'Bordets lyft', 'TV:ns «Visa för alla»'],
+    eyes: 'Visning',
+    eyeNames: ['Normal syn', 'Deuteranopi', 'Protanopi', 'Tritanopi', 'Gråskala', 'Telefonens läsvy', 'Bordets läsvy', 'TV:ns visning'],
   },
   'en-GB': {
-    eyes: 'Eyes',
-    eyeNames: ['As you see it', 'Deuteranopia', 'Protanopia', 'Tritanopia', 'Greyscale', 'The phone’s reading view', 'The table’s lift', 'The TV’s “Show everyone”'],
+    eyes: 'View',
+    eyeNames: ['Normal vision', 'Deuteranopia', 'Protanopia', 'Tritanopia', 'Greyscale', 'The phone’s reading view', 'The table’s reading view', 'The TV’s view'],
   },
 }
 for (const locale of ['sv-SE', 'en-GB']) {

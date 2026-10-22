@@ -79,8 +79,8 @@ describe('the editor\'s newer surfaces in the reader\'s own language (A4)', () =
 
   it('says what a phone does not offer, and names the stages, in English', async () => {
     await openEditor(400)
-    expect(screen.getByText(/The template is not drawn on a phone/)).toBeTruthy()
-    const strip = screen.getByRole('tablist', { name: 'Editor stages' })
+    expect(screen.getByText(/The template cannot be edited on a screen narrower/)).toBeTruthy()
+    const strip = screen.getByRole('tablist', { name: 'The editor’s panels' })
     expect([...strip.querySelectorAll('[role="tab"]')].map((b) => b.textContent)).toEqual(['Card wall', 'Data', 'Theme', 'Media', 'Rules', 'Tables'])
   })
 

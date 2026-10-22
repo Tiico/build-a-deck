@@ -32,7 +32,7 @@ describe('a texture that is still being rendered', () => {
 
     const hidden = render(<Texture faces={FACES} c={faceDown} />)
     const fallback = hidden.container.querySelector('[data-texture="pending"]')!
-    expect(fallback.textContent).toMatch(/[Rr]enderas/)
+    expect(fallback.textContent).toMatch(/[Ll]addar/)
     expect(fallback.textContent).not.toMatch(/wizard/)
   })
 
@@ -40,7 +40,7 @@ describe('a texture that is still being rendered', () => {
   // and never about the machinery: no "textur", no "hash", no "job".
   it('speaks about the card, in whole Swedish sentences', () => {
     const waiting = render(<Texture faces={FACES} c={faceUp} />)
-    expect(waiting.container.querySelector('[data-texture="pending"] i')!.textContent).toBe('Kortet renderas…')
+    expect(waiting.container.querySelector('[data-texture="pending"] i')!.textContent).toBe('Laddar kortet…')
 
     vi.useFakeTimers()
     const lost = render(<Texture faces={FACES} c={faceUp} />)

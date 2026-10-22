@@ -52,7 +52,7 @@ test('a designer asks for a template, sees it on the wall with its warnings, acc
   await expect(wallCard('kort-1').locator('[data-element="coin"]')).toBeVisible()
   await expect(wallCard('kort-3').locator('[data-element="coin"]')).toHaveCount(0)
   await expect(page.locator('.byd-wall-cell:has([data-card-ref="kort-1"]) .byd-wall-changes')).toContainText('kraft: — → 1')
-  await expect(wallCard('kort-3')).toHaveAccessibleName(`Changed in the proposal: ${cardTitle(2)} — drawn with the proposed template`)
+  await expect(wallCard('kort-3')).toHaveAccessibleName(`Changed in the proposal: ${cardTitle(2)}, drawn with the proposed template`)
   // The wall's own check reads the deck as the proposal draws it, and its report says the small text.
   await crownCheck.click()
   await expect(page.locator('.byd-wall-view').getByText('text too small').first()).toBeVisible()
@@ -90,6 +90,6 @@ test('a designer asks for a template, sees it on the wall with its warnings, acc
   await field.press('Enter')
   const refused = panel.getByRole('alert').filter({ hasText: 'The proposal could not be used' })
   await expect(refused).toContainText('The template’s layer “title” lies outside the card.')
-  await expect(refused).toContainText('It was the AI’s answer that could not be used, not your game.')
+  await expect(refused).toContainText('The answer from the AI could not be used. Nothing in the game changed.')
   expect(edits()).toHaveLength(2)
 })

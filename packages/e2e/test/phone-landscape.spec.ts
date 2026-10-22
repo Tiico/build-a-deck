@@ -50,7 +50,7 @@ test(`the head of the hand keeps one row at ${width} (#716)`, async ({ tableOf, 
   expect(head.height).toBeLessThanOrEqual(60)
   await expect(page.getByRole('button', { name: 'Ångra' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Flagga' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /^Ut…/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Lämna…/ })).toBeVisible()
   for (const name of ['Ångra', 'Flagga']) {
     const b = (await page.getByRole('button', { name }).boundingBox())!
     expect({ [name]: b.width >= 44 && b.height >= 44 }).toEqual({ [name]: true })

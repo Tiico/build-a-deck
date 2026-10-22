@@ -45,7 +45,7 @@ describe('the editor’s ⋯ (#738)', () => {
     await ownGame()
     await openEditor()
     const menu = openMenu()
-    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Dubblera', 'Exportera…', 'Ta bort spelet']))
+    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Duplicera', 'Exportera…', 'Ta bort spelet']))
   })
 
   it('renames the game, and the heading and the tab follow', async () => {
@@ -82,8 +82,8 @@ describe('the editor’s ⋯ (#738)', () => {
   it('duplicates the game into «Mina spel» and says so', async () => {
     await ownGame()
     await openEditor()
-    fireEvent.click(within(openMenu()).getByRole('button', { name: 'Dubblera' }))
-    await screen.findByText('«Skogens herrar (kopia)» ligger nu i Mina spel.')
+    fireEvent.click(within(openMenu()).getByRole('button', { name: 'Duplicera' }))
+    await screen.findByText('«Skogens herrar (kopia)» finns nu i Mina spel.')
     const mine = (await (await fetch(`${run.http}/projects`, { credentials: 'include' })).json()) as { name: string }[]
     expect(mine.map((p) => p.name).sort()).toEqual(['Skogens herrar', 'Skogens herrar (kopia)'])
   })
@@ -94,9 +94,9 @@ describe('the editor’s ⋯ (#738)', () => {
     await openEditor(went)
     fireEvent.click(within(openMenu()).getByRole('button', { name: 'Ta bort spelet' }))
     const question = await screen.findByRole('alertdialog', { name: 'Ta bort spelet' })
-    expect(question.textContent).toMatch(/Ta bort Skogens herrar\? Hela historien följer med/)
+    expect(question.textContent).toMatch(/Ta bort Skogens herrar\? Alla versioner och bord tas bort/)
     // The question opens on the answer that loses nothing.
-    await waitFor(() => expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Behåll' })))
+    await waitFor(() => expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Avbryt' })))
     fireEvent.click(within(question).getByRole('button', { name: 'Ta bort' }))
     await waitFor(() => expect(went).toHaveBeenCalledWith(`/?server=${encodeURIComponent(run.http)}`))
     expect((await fetch(`${run.http}/projects/${run.projectId}`, { credentials: 'include' })).status).toBe(404)
@@ -112,7 +112,7 @@ describe('the editor’s ⋯ (#738)', () => {
     await openEditor(went)
     fireEvent.click(within(openMenu()).getByRole('button', { name: 'Ta bort spelet' }))
     const question = await screen.findByRole('alertdialog', { name: 'Ta bort spelet' })
-    fireEvent.click(within(question).getByRole('button', { name: 'Behåll' }))
+    fireEvent.click(within(question).getByRole('button', { name: 'Avbryt' }))
     expect(screen.queryByRole('alertdialog', { name: 'Ta bort spelet' })).toBeNull()
     expect(went).not.toHaveBeenCalled()
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' })))
@@ -128,6 +128,6 @@ describe('the editor’s ⋯ (#738)', () => {
     // Until the server has said who this is, the editor assumes the game is everyone's (D3); the
     // menu that is open follows the answer.
     const menu = openMenu()
-    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Dubblera', 'Exportera…']))
+    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Duplicera', 'Exportera…']))
   })
 })

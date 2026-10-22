@@ -280,7 +280,7 @@ async function wizardViews(width: number): Promise<Record<string, string>> {
   history.replaceState(null, '', '/new')
   const { unmount } = render(<NewProjectPage />)
   try {
-    await screen.findByText(/Ge spelet en flygande start/)
+    await screen.findByText(/Skapa ett nytt spel/)
     const steps = () => [...document.querySelectorAll<HTMLElement>('[role="tablist"][aria-label="Steg"] [role="tab"]')]
     if (steps().length === 0) return { 'hela sidan': document.querySelector('.byd-wizard')!.outerHTML }
     const out: Record<string, string> = {}
@@ -298,7 +298,7 @@ async function wizardViews(width: number): Promise<Record<string, string>> {
 describe('the guided start', () => {
   it('wears the primary fill on nothing but the action that finishes it', async () => {
     const measured = await inChromium(read('src/wizard/wizard.css'), 1280, await wizardViews(1280), wearingThePrimary('.byd-wizard'))
-    expect(measured).toEqual({ 'hela sidan': ['Skapa spelet och fortsätt i editorn →'] })
+    expect(measured).toEqual({ 'hela sidan': ['Skapa spelet'] })
   }, 90_000)
 })
 
@@ -397,10 +397,10 @@ async function playerViews(): Promise<Record<string, string>> {
     const out: Record<string, string> = {}
     // The way out is one of the three controls every seat has, and the sheet behind it is what
     // the page looks like while it is being asked (#31).
-    fireEvent.click(await screen.findByRole('button', { name: /Ut…/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Lämna…/ }))
     await screen.findByRole('button', { name: 'Lämna bordet' })
     out['vägen ut'] = container.innerHTML
-    fireEvent.click(screen.getByRole('button', { name: 'Stanna kvar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
 
     // The survey stands beside the room, not in it (UX-38, #83), so the view is the whole mount.
     await host.send({ v: 'session.end' })
@@ -494,14 +494,14 @@ async function tableViews(): Promise<Record<string, string>> {
     // The hand's door: a click that never became a drag opens the ring (K14).
     fireEvent.pointerDown(chip, { clientX: 640, clientY: 400, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerUp(chip, { clientX: 640, clientY: 400, pointerId: 1, isPrimary: true, button: 0 })
-    await screen.findByRole('button', { name: 'Sätt värde…' })
+    await screen.findByRole('button', { name: 'Ange värde…' })
     out['ringen på en bricka'] = container.innerHTML
     fireEvent.keyDown(window, { key: 'Escape' })
     // The keyboard's door to the same sheet (K16).
     chip.focus()
     fireEvent.keyDown(chip, { key: 'Enter' })
-    fireEvent.click(await screen.findByRole('button', { name: /^Sätt värde…/ }))
-    await screen.findByRole('dialog', { name: 'Sätt värde för Liv' })
+    fireEvent.click(await screen.findByRole('button', { name: /^Ange värde…/ }))
+    await screen.findByRole('dialog', { name: 'Ange värde för Liv' })
     out['sätt värde'] = container.innerHTML
     return out
   } finally {
@@ -512,7 +512,7 @@ async function tableViews(): Promise<Record<string, string>> {
 describe('the table screen', () => {
   it('wears the primary fill on nothing but the action that keeps the value said', async () => {
     const measured = await inChromium(TABLE_CSS, 1280, await tableViews(), wearingThePrimary('.byd-table'))
-    expect(measured).toEqual({ 'ringen på en bricka': [], 'sätt värde': ['Sätt värdet'] })
+    expect(measured).toEqual({ 'ringen på en bricka': [], 'sätt värde': ['Klar'] })
   }, 90_000)
 })
 
@@ -757,7 +757,7 @@ async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<stri
     const chip = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A/ })
     fireEvent.pointerDown(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerUp(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
-    await screen.findByRole('button', { name: 'Sätt värde…' })
+    await screen.findByRole('button', { name: 'Ange värde…' })
     return { [mode === 'table' ? 'bordsläge' : 'tv-läge']: container.innerHTML }
   } finally {
     unmount()
@@ -1030,7 +1030,7 @@ describe('the editor', () => {
     const measured = await inChromium(read('src/editor/editor.css'), 1280, views, wearingThePrimary('.byd-editor'))
     // The caret is not a second action: it is the same button's other half, and a split control
     // drawn in two colours would read as two things to press rather than one with a menu.
-    expect(measured).toEqual(Object.fromEntries(EDITOR_VIEWS.map((name) => [name, ['Starta bord', 'Fler vägar till bordet']])))
+    expect(measured).toEqual(Object.fromEntries(EDITOR_VIEWS.map((name) => [name, ['Starta bord', 'Fler sätt att öppna bordet']])))
   }, 120_000)
 })
 

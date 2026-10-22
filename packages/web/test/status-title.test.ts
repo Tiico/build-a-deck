@@ -107,8 +107,8 @@ describe('the title while something is wrong', () => {
     // The glossary calls the surface people play on `bordet` (A4); the tab had kept `rummet`.
     ['missing', 'play', 'Bordet finns inte · Deckster'],
     ['missing', 'home', 'Sidan finns inte · Deckster'],
-    ['forbidden', 'editor', 'Ingen tillgång · Deckster'],
-    ['offline', 'play', 'Ingen kontakt · Deckster'],
+    ['forbidden', 'editor', 'Ingen åtkomst · Deckster'],
+    ['offline', 'play', 'Ingen anslutning · Deckster'],
     ['dropped', 'play', 'Frånkopplad · Deckster'],
   ] as const)('says %s on %s', (state, route, expected) => {
     expect(documentTitle(route, { state, room: '4KJ2', game: 'Skogens herrar' })).toBe(expected)

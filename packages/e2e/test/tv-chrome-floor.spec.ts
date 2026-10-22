@@ -88,10 +88,10 @@ test.describe('the television chrome that opens (#684)', () => {
     await player(table, { name: 'Ada', seat: 'A' })
     const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
     const line = page.locator('.byd-tv-render')
-    await expect(line).toHaveText(/^Korten ritas\d+ av \d+$/)
+    await expect(line).toHaveText(/^Laddar kort\d+ av \d+$/)
     expect(await underFloor(page, '.byd-tv-render')).toEqual([])
     await expect(page.locator('[data-table-start]')).toBeDisabled()
-    await expect(page.locator('[data-table-start]')).toHaveText(/^Starta speletkorten ritas · \d+\/\d+$/)
+    await expect(page.locator('[data-table-start]')).toHaveText(/^Starta speletladdar kort · \d+\/\d+$/)
   })
 
   test('opens the way in’s help at the floor', async ({ tableOf, open }) => {

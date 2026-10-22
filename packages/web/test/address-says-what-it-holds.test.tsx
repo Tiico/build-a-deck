@@ -15,11 +15,11 @@ describe('/editor without a project', () => {
   it('says the link holds no game and sends the reader to their games, without guessing at a typo', () => {
     history.replaceState(null, '', '/editor')
     render(<EditorPage />)
-    expect(screen.getByRole('heading', { name: 'Ingen länk till ett spel' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Inget spel i länken' })).toBeTruthy()
     const said = notice()!.textContent ?? ''
     expect(said).toMatch(/Mina spel/)
     expect(said).not.toMatch(/tecken fel|borttaget/)
-    expect(within(notice()!).getByRole('link', { name: 'Till mina spel' })).toBeTruthy()
+    expect(within(notice()!).getByRole('link', { name: 'Mina spel' })).toBeTruthy()
   })
 })
 
@@ -35,16 +35,16 @@ describe('the live routes', () => {
   it('/table without a session says the link holds no table, not that one has ended', () => {
     history.replaceState(null, '', `/table?server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    expect(screen.getByRole('heading', { name: 'Ingen länk till ett bord' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Inget bord i länken' })).toBeTruthy()
     expect(notice()!.textContent).not.toMatch(/slut|gäller inte längre/)
   })
 
   it('/table with a session the server has never heard of says the table is not there, not that it has ended', async () => {
     history.replaceState(null, '', `/table?session=no-such-room&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    expect(await screen.findByRole('heading', { name: 'Vi hittar inte bordet' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Bordet finns inte' })).toBeTruthy()
     const said = notice()!.textContent ?? ''
-    expect(said).toMatch(/Länken pekar på ett bord som inte finns/)
+    expect(said).toMatch(/Länken leder till ett bord som inte finns/)
     expect(said).not.toMatch(/slut|gäller inte längre/)
   })
 
@@ -54,9 +54,9 @@ describe('the live routes', () => {
     const q = new URLSearchParams({ session: id, token, code: roomOf(id).code, name: 'Eva', server: run.url })
     history.replaceState(null, '', `/play?${q.toString()}`)
     render(<PlayerPage />)
-    expect(screen.getByRole('heading', { name: 'Du tittar bara' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Du kan bara titta' })).toBeTruthy()
     expect(notice()!.textContent).not.toMatch(/finns inte|avslutats/)
-    const out = within(notice()!).getByRole('link', { name: 'Till observatören' })
+    const out = within(notice()!).getByRole('link', { name: 'Öppna som observatör' })
     const href = new URL(out.getAttribute('href')!, location.origin)
     expect(href.pathname).toBe('/observe')
     expect(Object.fromEntries(href.searchParams)).toEqual(Object.fromEntries(q))
