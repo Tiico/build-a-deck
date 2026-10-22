@@ -78,10 +78,17 @@ export function resolveAssetFace(face: FaceTemplate, base: string, early: Readon
 // understands and a browser does not. The renderer is handed resolved icons on the server side
 // too; this is the same resolution on the editor's side, so the card the designer looks at draws
 // the symbols rather than three broken images.
+//
+// The bytes go through the server (`assetBytesUrl`), as a typeface's do, because a symbol given a
+// colour is drawn as a CSS mask (#1087), and a mask is fetched in CORS mode. Redirected to the
+// object store, whose answer carries no `access-control-allow-origin`, the mask never loaded, and a
+// mask that never loads hides the whole icon: it went transparent the moment it was painted. Any
+// symbol may be painted by any layer or meaning, so the whole set is read this way; a symbol is a
+// few kilobytes, `immutable`, and read once per browser (DRIFT §4).
 export function previewIcons(doc: Pick<ProjectDoc, 'icons'>, assetBase: string | undefined): Record<string, string> {
   if (!assetBase) return doc.icons
   const out: Record<string, string> = {}
-  for (const [name, url] of Object.entries(doc.icons)) out[name] = isAssetRef(url) ? assetUrl(assetBase, url.slice(ASSET_PREFIX.length)) : url
+  for (const [name, url] of Object.entries(doc.icons)) out[name] = isAssetRef(url) ? assetBytesUrl(assetBase, url.slice(ASSET_PREFIX.length)) : url
   return out
 }
 
