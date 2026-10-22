@@ -26,9 +26,9 @@ function ngon(k: number, r: number, cx = 50, cy = 50): [number, number][] {
 function shapeOf(faces: number): Shape {
   switch (faces) {
     case 4:
-      return { outline: <polygon points={points(ngon(3, 50, 50, 58))} fill="var(--byd-die)" {...EDGE} />, top: 64, size: 30 }
+      return { outline: <polygon points={points(ngon(3, 50, 50, 58))} fill="var(--byd-die)" {...EDGE} />, top: 66, size: 40 }
     case 6:
-      return { outline: <rect x={8} y={8} width={84} height={84} rx={12} fill="var(--byd-die)" {...EDGE} />, top: 50, size: 46 }
+      return { outline: <rect x={8} y={8} width={84} height={84} rx={12} fill="var(--byd-die)" {...EDGE} />, top: 51, size: 56 }
     case 8:
       return {
         outline: (
@@ -37,8 +37,8 @@ function shapeOf(faces: number): Shape {
             <polygon points={points(ngon(3, 50))} fill="var(--byd-die)" {...EDGE} />
           </>
         ),
-        top: 56,
-        size: 30,
+        top: 58,
+        size: 40,
       }
     case 10:
       return {
@@ -48,8 +48,8 @@ function shapeOf(faces: number): Shape {
             <polygon points="50,14 80,48 50,70 20,48" fill="var(--byd-die)" {...EDGE} />
           </>
         ),
-        top: 48,
-        size: 28,
+        top: 47,
+        size: 38,
       }
     case 12:
       return {
@@ -59,8 +59,8 @@ function shapeOf(faces: number): Shape {
             <polygon points={points(ngon(5, 34))} fill="var(--byd-die)" {...EDGE} />
           </>
         ),
-        top: 52,
-        size: 30,
+        top: 53,
+        size: 42,
       }
     default: {
       // The d20, and any die with sides the felt has no outline for: a hexagon with the top face's
@@ -78,8 +78,8 @@ function shapeOf(faces: number): Shape {
             <polygon points={points(face)} fill="var(--byd-die)" {...EDGE} />
           </>
         ),
-        top: 58,
-        size: 22,
+        top: 57,
+        size: 36,
       }
     }
   }
@@ -172,8 +172,7 @@ export function DieFace({ faces, value, roll, still }: { faces: number; value: n
   const shape = shapeOf(faces)
   const jumping = useJumping(faces, roll, still)
   const figure = String(jumping ?? value)
-  // A figure of two digits on a small top face is set smaller, so it stays inside the face.
-  const size = figure.length > 1 && faces < 10 ? shape.size * 0.8 : shape.size
+  const size = figure.length > 1 ? shape.size * 0.85 : shape.size
   return (
     <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
       <circle className="byd-die-ring" cx={50} cy={52} r={58} />
