@@ -32,6 +32,21 @@ export function cases(): void {
     }
   })
 
+  // #1114: the loop above on a machine with three neighbours' suites running spent 1.1 s of its
+  // own and 6.8 s of wall clock, so the ceiling went before the guard had said anything. Written
+  // here as both halves, in that order: own time past the budget, then the machine holding it past
+  // the ceiling.
+  it('spends its own time past its budget and is then held past the ceiling', () => {
+    const mark = FIXTURE_BUDGET + 400
+    const started = performance.now()
+    const from = process.cpuUsage()
+    for (;;) {
+      const used = process.cpuUsage(from)
+      if ((used.user + used.system) / 1000 > mark && performance.now() - started > mark) break
+    }
+    holdWorker(FIXTURE_CEILING + 500)
+  })
+
   it('held by the machine past the ceiling', () => {
     holdWorker(FIXTURE_CEILING + 500)
   })
