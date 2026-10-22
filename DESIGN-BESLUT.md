@@ -7485,3 +7485,33 @@ Hyllorna i arken är val i verktygets `.byd-choice`-form och inte den primära f
 Klammerns «Hela biblioteket» i Tabell söker i katalogen och laddar den när klick två trycks, aldrig när `{` skrivs (L27).
 Före det står Decksters egna, och ett spel utan ikoner öppnar som förut på dem, nu med vägen till hela katalogen under.
 Det öppnade biblioteket visar 60 träffar; namnet efter klammern är det som smalnar av, som i arket.
+
+### L72. Inloggningsmejlet är bordet: tre band, trä, papper och vitt (prototypat och beslutat 2026-10-22, #1098)
+
+Inloggningsmejlet gick som ren text: «Hej! Klicka för att logga in: https://…», raden om 15 minuter och foten från #757.
+Det är det första brevet en skapare får av Deckster, och för många det enda, och det såg ut som ett systemmeddelande.
+
+Fyra former prövades i [`docs/ux-audits/2026-10-22-inloggningsmejlet/prototyper/1098-inloggningsmejlet.html`](docs/ux-audits/2026-10-22-inloggningsmejlet/prototyper/1098-inloggningsmejlet.html), som riktig mejl-HTML i en ritad klient: Gmail på skrivbord, en mörk klient och telefonen, på svenska och engelska, med bilderna visade och blockerade.
+Nuläget stod bredvid.
+A var inloggningskortet som brev: ett mörkt kort med handen, namnet och en grön pillerknapp.
+B var ett brev utan ruta: ett litet brevhuvud, hälsningen stor, en bläcksvart knapp och foten som underskrift.
+C var landningssidans rum i tre band: trä med handen och namnet i krita, papper med hälsningen och en bärnstensgul knapp, och vitt med länken utskriven och foten.
+Agenten rekommenderade B, som det lugnaste och det som går sönder minst.
+Beställaren valde **C**: mejlet är produktens ansikte från den sida som fick läsaren att skriva sin adress, och det enda av de tre som tar med trä och amber.
+
+Ett mejl är inte webben, och det ställer krav som sidorna inte har:
+
+- **Tabeller och inline-stil, inget typsnitt laddas, ingen `<svg>` och ingen `transform`.** Gmail tar bort `<svg>`, och ingen klient roterar ett kort.
+  Handen är därför också en PNG, `mark-128.png`, som `scripts/brand-icons.ts` skriver ur den enda ritningen (A6) och som sajten serverar; mejlet visar den i 64 px från `PUBLIC_ORIGIN`.
+- **Mejlet är helt utan bilder.** Många klienter visar inga bilder förrän läsaren tillåtit dem, så namnet står i text bredvid handen, och allt läsaren behöver är text.
+  Utan `PUBLIC_ORIGIN` (länken är en sökväg) visas ingen hand alls, hellre än en bild som pekar på ingenting.
+- **Länken står utskriven under knappen,** för den som inte kan klicka och den som vill se vart den går.
+  `&` i länken är en entitet i HTML, både i attributet och i den synliga raden.
+- **Förhandstexten är raden om 15 minuter,** så inkorgens andra rad säger något.
+- **Textdelen står kvar** som `text` bredvid `html`: läsare utan HTML får dagens brev, och det är den delen `login-mail.test.ts` alltid hållit.
+  Resend tar `html` bredvid `text`, och ett mejl utan `html` går som förut.
+- **Foten (#757) står sist i det vita bandet,** med tjänsten, sajten och kontakten, i läsarens språk (A4), och ingen .com någonstans (A5).
+
+Mejlet bor i `packages/server/src/login-mail.ts`, text och HTML tillsammans, och `auth.ts` exporterar det därifrån.
+`login-mail.test.ts` håller banden, språket, handen, länken och foten; `brand.test.ts` håller att PNG:n är skriptets; `app-icon.spec.ts` läser dess pixlar som den serveras.
+Inbjudningsmejlet (#477) går fortfarande som text och får samma form i ett eget issue.
