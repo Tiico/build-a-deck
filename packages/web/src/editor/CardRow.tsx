@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import type { Element, FaceTemplate, ProjectDoc } from './types.js'
 import { useT, type T } from '../i18n/index.js'
 import { ANTAL, titleOfRow } from '@byd/server/doc'
 import { fieldLabel } from './fields.js'
 import { FootSaid } from './said.js'
 import { ChevronGlyph } from '../glyphs.js'
+import { usePressAway } from '../doors.js'
 
 type Card = ProjectDoc['rows'][number]
 
@@ -37,14 +38,7 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
     close(true)
   }
   // A press outside the list closes it where the reader is (L32).
-  useEffect(() => {
-    if (!open) return
-    const away = (event: PointerEvent) => {
-      if (!box.current?.contains(event.target as Node)) close(false)
-    }
-    document.addEventListener('pointerdown', away)
-    return () => document.removeEventListener('pointerdown', away)
-  }, [open])
+  usePressAway(open, () => [box.current], () => close(false))
   const keys = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
@@ -70,7 +64,7 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
       <button type="button" aria-label={t('canvas.card.prev')} disabled={at <= 0} onClick={() => step(-1)}>
         <ChevronGlyph to="left" />
       </button>
-      <button ref={name} type="button" className="byd-card-row-name" aria-haspopup="listbox" aria-expanded={open} onClick={() => (open ? close(true) : setOpen(true))}>
+      <button ref={name} type="button" className="byd-card-row-name" aria-haspopup="listbox" aria-expanded={open} data-drop onClick={() => (open ? close(true) : setOpen(true))}>
         <span>{title}</span>
         <small>{t('canvas.card.of', { n: at + 1, of: cards.length })} <ChevronGlyph to="down" /></small>
       </button>

@@ -7674,3 +7674,19 @@ Verktygsradens fem märken och skrubbernas sju är ikoner som tabellen inte rita
 En glyf tar aldrig emot pekaren (`pointer-events: none`): trycket, och varje fråga om vad som står under en punkt, landar på kontrollen den är ritad i.
 Det upptäcktes när tabellens träffytetester läste glyfens `<path>` i stället för ×-knappen.
 En glyf är 1 em i fyrkant, och där en rad var mätt till tecknet den ersatte ger den tillbaka luften runt sin teckning: kronans och tabellfotens chevroner och tabellrubrikens sorteringspil står med negativ marginal på rutnätets tomma fjärdedelar, så kronan står kvar på en rad bredvid AI-panelen vid 1280 i ett brett typsnitt (#130), fotens tysta rad bryts inte vid 1024 på Linux (#618) och en sifferkolumn är inte bredare än en siffra (#46).
+
+### L76. En dropdown-knapp säger att den är öppen, och ett tryck utanför stänger (prototypat och beslutat 2026-10-22, #1144)
+
+Åtta knappar i editorn öppnar en meny eller låda under sig, och alla åtta pekade sin chevron nedåt både stängd och öppen.
+Ingenting sade alltså att ett tryck till stänger menyn, och tre av dem stängde inte heller vid ett tryck utanför: bordsmenyn i huvudet («Uppdatera ⌄», «Starta bord ⌄») stod kvar genom allt utom Escape och sin egen pil, och radmenyn i Bord-fliken och mallens kortgruppsmeny stängde bara när fokus flyttades — ett tryck på dukens rutmönster flyttar inget fokus.
+Tre utseenden prövades på den byggda editorn i [`docs/ux-audits/2026-10-22-dropdown-knappar/prototyper/1144-dropdown-knappar.html`](docs/ux-audits/2026-10-22-dropdown-knappar/prototyper/1144-dropdown-knappar.html): chevronen vänds (A), chevronen vänds och knappen trycks ned (B), och chevronen blir × och knappen trycks ned (C).
+Valet blev **B**.
+Formen säger åt vilket håll menyn går, grunden säger att knappen hålls, och den nedtryckta grunden är samma som kolumndörrens handtag (#695).
+C:s × läses som «ta bort» när det står bredvid ett värde i kronan.
+
+**Byggt 2026-10-22 (#1144).**
+En dropdown-knapp är en knapp med `data-drop` och `aria-expanded`; en regel i `editor.css` vrider dess `chevron-down` ett halvt varv (150 ms, direkt med «minska rörelse») och lägger en mörkare grund och en inre skugga över det knappens roll målar, medan menyn står.
+`drop-buttons.test.ts` håller att varje `<ChevronGlyph to="down" />` i `packages/web/src` sitter i en sådan knapp; en chevron som vänder sig själv efter sitt läge är en fällning och läses inte.
+Ett tryck utanför stänger alla åtta: `usePressAway` i `doors.ts` är den gemensamma vägen, och fokus lämnas där pekaren satte det, som #133 säger.
+`drop-buttons.spec.ts` mäter det öppna läget och trycket på rutmönstret i den byggda appen.
+Disclosure-knapparna, som redan vänder sin chevron från höger till ned, och ⋯-knapparna, som redan får editorns mörka grund när de är öppna (#791), är oförändrade.
