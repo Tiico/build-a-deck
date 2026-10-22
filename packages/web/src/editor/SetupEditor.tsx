@@ -10,7 +10,7 @@ import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
 import { Stepper } from '../Stepper.js'
-import { MAX_PLAYERS, counterId, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, counterId, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Die, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -499,7 +499,155 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
         </div>
       </section>
+      <DicePanel client={client} setup={setup} />
     </aside>
+  )
+}
+
+// The kinds a die can be (K28): the registry's six, by their sides.
+const DIE_FACES = [4, 6, 8, 10, 12, 20] as const satisfies readonly Die['faces'][]
+// Where a die can lie (#1139), as the zone picker's values: `zone:<id>` for an area every seat
+// shares, `role:<role>` for an area each seat has. Hands and piles are no place for a die.
+type DiePlace = { value: string; name: string }
+function diePlaces(setup: Setup): { table: DiePlace[]; seats: DiePlace[] } {
+  const table = setup.zones.filter((z) => z.kind === 'area' && z.owner === undefined).map((z) => ({ value: `zone:${z.id}`, name: z.name }))
+  const seats = rowsOf(setup.zones).flatMap((row) => (row.kind === 'family' && row.family.first.kind === 'area' ? [{ value: `role:${row.family.role}`, name: row.family.name }] : []))
+  return { table, seats }
+}
+const placeOf = (die: Die): string => (die.role !== undefined ? `role:${die.role}` : `zone:${die.zone ?? ''}`)
+// A die moved to another place keeps what its count meant: «per spelare» in a seat's area is
+// «per spelare» on the table too, and a seat's area has no other meaning to carry back.
+function movedTo(die: Die, value: string): Die {
+  const { zone: _zone, role: _role, perSeat, ...rest } = die
+  if (value.startsWith('role:')) return { ...rest, role: value.slice('role:'.length) }
+  const seated = die.role !== undefined || perSeat === true
+  return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) }
+}
+
+// The game's dice (#1139, beställarens beslut A med dynamiskt antal), under the counters and
+// written like them: one row per line of `setup.dice`, the whole list one edit (B4).
+function DicePanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
+  const t = useT()
+  const dice = client.dice
+  const places = diePlaces(setup)
+  const known = new Set([...places.table, ...places.seats].map((p) => p.value))
+  const write = (next: Die[]) => client.setDice(next)
+  // A new die is a d6 where the one above it lies, or on the felt when it is the first.
+  const add = () => {
+    const above = dice.at(-1)
+    const floor = places.table.find((p) => p.value === `zone:${setup.floor}`) ?? places.table[0]
+    const at = above && known.has(placeOf(above)) ? placeOf(above) : floor?.value
+    if (!at) return
+    write([...dice, movedTo({ faces: 6, count: 1, zone: '' }, at)])
+  }
+  return (
+    <section>
+      <div className="byd-setup-counters">
+        <div className="byd-help-row">
+          <h2>{t('setup.dice')}</h2>
+          <Help topic={t('setup.dice.help.topic')}>
+            <p>{t('setup.dice.help')}</p>
+          </Help>
+        </div>
+        {dice.map((die, i) => (
+          <DieRow
+            key={i}
+            die={die}
+            n={i + 1}
+            places={places}
+            gone={!known.has(placeOf(die))}
+            reading={!client.mayEdit}
+            onChange={(next) => write(dice.map((d, j) => (j === i ? next : d)))}
+            onRemove={() => write(dice.filter((_, j) => j !== i))}
+          />
+        ))}
+        <button type="button" onClick={add}>
+          {t('setup.die.add')}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function DieRow({ die, n, places, gone, reading, onChange, onRemove }: { die: Die; n: number; places: { table: DiePlace[]; seats: DiePlace[] }; gone: boolean; reading: boolean; onChange(die: Die): void; onRemove(): void }) {
+  const t = useT()
+  const note = useId()
+  const count = useNumberDraft({ value: die.count, min: 1, max: 20, onCommit: (value) => onChange({ ...die, count: Math.trunc(value) }) })
+  const place = placeOf(die)
+  return (
+    <>
+      <div className="byd-setup-counter byd-setup-die">
+        <input
+          aria-label={t('setup.die.count', { n })}
+          type="number"
+          min={1}
+          max={20}
+          value={count.value}
+          readOnly={reading}
+          onChange={count.onChange}
+          onBlur={count.onBlur}
+          onKeyDown={(e) => {
+            count.onKey(e)
+          }}
+        />
+        <select aria-label={t('setup.die.kind', { n })} value={die.faces} disabled={reading} onChange={(e) => onChange({ ...die, faces: Number(e.target.value) as Die['faces'] })}>
+          {DIE_FACES.map((faces) => (
+            <option key={faces} value={faces}>
+              {t('setup.die.faces', { n: faces })}
+            </option>
+          ))}
+        </select>
+        {die.role !== undefined ? (
+          <span>{t('setup.die.perSeat')}</span>
+        ) : (
+          <select aria-label={t('setup.die.mode', { n })} value={die.perSeat ? 'perSeat' : 'total'} disabled={reading} onChange={(e) => onChange(e.target.value === 'perSeat' ? { ...die, perSeat: true } : (({ perSeat: _p, ...rest }) => rest)(die))}>
+            <option value="perSeat">{t('setup.die.perSeat')}</option>
+            <option value="total">{t('setup.die.total')}</option>
+          </select>
+        )}
+        <span className="byd-setup-die-where">
+          <span>{t('setup.die.in')}</span>
+          <select
+            aria-label={t('setup.die.place', { n })}
+            value={gone ? '' : place}
+            disabled={reading}
+            aria-invalid={gone ? true : undefined}
+            aria-describedby={gone ? note : undefined}
+            onChange={(e) => onChange(movedTo(die, e.target.value))}
+          >
+            {gone && (
+              <option value="" disabled>
+                {t('setup.die.place.gone')}
+              </option>
+            )}
+            <optgroup label={t('setup.group.table')}>
+              {places.table.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.name}
+                </option>
+              ))}
+            </optgroup>
+            {places.seats.length > 0 && (
+              <optgroup label={t('setup.group.seats')}>
+                {places.seats.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </span>
+        <button type="button" aria-label={t('setup.die.remove', { n })} onClick={onRemove}>
+          <CloseGlyph />
+        </button>
+      </div>
+      {gone && (
+        <p id={note} className="byd-setup-note" role="status">
+          {t('setup.die.homeless', { n })}
+        </p>
+      )}
+    </>
   )
 }
 

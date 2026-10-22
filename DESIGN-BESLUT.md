@@ -4026,6 +4026,8 @@ Värdet är det enda resultat en rad berättar, eftersom en tärning på bordet 
 Tärningarna hör till spelets setup (K5).
 En rad i setupen säger sort, antal och var: en yta alla delar, eller en yta varje plats har.
 En yta per plats ger varje plats sitt antal i sin egen yta, och «per spelare» på en delad yta ger antalet gånger platserna där (#1139).
+I fliken Bord är det en rad per tärning under räknarna, och hela listan är en redigering (`setDice`), så en ändring är ett steg tillbaka.
+En rad vars yta tas bort står kvar med ett besked, som räknarna utan räknarzon, och ligger på bordet igen när ytan kommer tillbaka.
 Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
 
 Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysiska skalan, eftersom en d6 på 16 mm blir 19 px på filten.
