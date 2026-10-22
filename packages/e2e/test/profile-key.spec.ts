@@ -24,7 +24,7 @@ test('a designer saves her key, sees it described, chooses a model and removes i
         const style = getComputedStyle(a)
         return { weight: style.fontWeight, colour: style.color, size: style.fontSize }
       })
-  expect(await looks('Profile')).toEqual(await looks('log out'))
+  expect(await looks('Profile')).toEqual(await looks('Sign out'))
   await page.locator('.byd-who').getByRole('link', { name: 'Profile' }).click()
   await expect(page).toHaveURL(/\/profile$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Profile' })).toBeVisible()

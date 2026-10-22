@@ -69,6 +69,6 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   await field.press('Enter')
   const refused = panel.getByRole('alert').filter({ hasText: 'The proposal could not be used' })
   await expect(refused).toContainText('Rule text 1 (“Att dra kort”) names the zone “finns-inte”, which the game does not have.')
-  await expect(refused).toContainText('It was the AI’s answer that could not be used, not your game.')
+  await expect(refused).toContainText('The answer from the AI could not be used. Nothing in the game changed.')
   expect(edits()).toHaveLength(2)
 })
