@@ -83,7 +83,7 @@ test.describe('spelstarten vid ett riktigt bord', () => {
     await tile.click()
     const fraga = screen.page.getByRole('alertdialog')
     await expect(fraga).toBeVisible()
-    await expect(fraga).toHaveText(/«Ge alla en starthand» på Draghög körs igen\. Korten som ligger ute ligger kvar där de är\./)
+    await expect(fraga).toHaveText(/«Ge alla en starthand» på Draghög körs igen\. Kort som redan ligger ute ligger kvar\./)
 
     // Avbryt lämnar bordet orört.
     await fraga.getByRole('button', { name: 'Avbryt' }).click()

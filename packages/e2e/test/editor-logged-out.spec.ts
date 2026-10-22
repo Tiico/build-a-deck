@@ -28,7 +28,7 @@ test('says the editor is logged out, keeps the work, and stops knocking', async 
   const notice = page.locator('[data-status-notice]')
   await expect(notice).toBeVisible()
   // Logged out is not «someone else's game»: it says what happened and the way back in.
-  await expect(notice.getByRole('heading')).toHaveText(/logged out|utloggad/i)
+  await expect(notice.getByRole('heading')).toHaveText(/signed out|utloggad/i)
   await expect(notice.getByRole('link', { name: /Logga in|Sign in/ })).toBeVisible()
   // And the work is still on the page behind the message.
   await expect(page.locator('.byd-editor')).toBeVisible()
