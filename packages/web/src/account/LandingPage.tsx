@@ -247,7 +247,7 @@ function Card({ card, at, w, turn = 0 }: { card: LandingCard; at: Place; w?: num
   const id = useMemo(() => `byd-landing-${card.id}-${++drawn}`, [card.id])
   return (
     <span className="byd-landing-card" data-at={at} style={{ '--turn': `${turn}deg`, ...(w ? { '--byd-landing-card-w': w } : {}) } as CSSProperties}>
-      <CardPreview id={id} face={LANDING_FACE} row={card.row} icons={NO_ICONS} />
+      <CardPreview id={id} face={LANDING_FACE} row={card.row} icons={NO_ICONS} palette={undefined} />
     </span>
   )
 }
@@ -256,7 +256,7 @@ function Back({ at, w, style }: { at: Place; w?: number; style?: CSSProperties }
   const id = useMemo(() => `byd-landing-back-${++drawn}`, [])
   return (
     <span className="byd-landing-card" data-at={at} style={{ ...style, ...(w ? { '--byd-landing-card-w': w } : {}) } as CSSProperties}>
-      <CardPreview id={id} face={LANDING_BACK} row={NO_ROW} icons={NO_ICONS} />
+      <CardPreview id={id} face={LANDING_BACK} row={NO_ROW} icons={NO_ICONS} palette={undefined} />
     </span>
   )
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { applyEdit } from '@byd/server/doc'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -44,6 +44,40 @@ async function openEditor(lang: Lang = 'sv'): Promise<void> {
   await screen.findByRole('heading', { level: 1, name: 'Skogens herrar' })
   await screen.findByRole('complementary', { name: lang === 'en' ? 'AI help' : 'AI-hjälp' })
 }
+// A window whose width can change under the editor, answering the media queries it watches.
+function resizable(start: number): { to: (width: number) => void; restore: () => void } {
+  const before = window.matchMedia
+  let width = start
+  const lists: { query: string; listeners: Set<() => void> }[] = []
+  const matches = (query: string) => {
+    const min = /min-width:\s*(\d+)px/.exec(query)
+    return min ? width >= Number(min[1]) : false
+  }
+  window.matchMedia = ((query: string) => {
+    const list = { query, listeners: new Set<() => void>() }
+    lists.push(list)
+    return {
+      get matches() {
+        return matches(query)
+      },
+      media: query,
+      addEventListener: (_: string, fn: () => void) => list.listeners.add(fn),
+      removeEventListener: (_: string, fn: () => void) => list.listeners.delete(fn),
+    } as unknown as MediaQueryList
+  }) as typeof window.matchMedia
+  return {
+    to: (next) => {
+      width = next
+      act(() => {
+        for (const list of lists) for (const fn of list.listeners) fn()
+      })
+    },
+    restore: () => {
+      window.matchMedia = before
+    },
+  }
+}
+
 const panel = () => screen.getByRole('complementary', { name: 'AI-hjälp' })
 const ask = (question: string) => {
   const field = screen.getByRole('textbox', { name: 'Fråga om spelet' })
@@ -135,6 +169,30 @@ describe('a proposal of new cards', () => {
     // Discarded, they leave the wall with it.
     fireEvent.click(within(panel()).getByRole('button', { name: 'Kasta' }))
     await waitFor(() => expect(document.querySelectorAll('.byd-wall-card[data-proposed]')).toHaveLength(0))
+  })
+
+  // The panel owns what it lays on the wall. When the panel goes — the window narrowed past the desk,
+  // the key gone — nothing is left to take the proposal off, so the wall went on drawing a game that
+  // is not the game while Mall drew the real one, until the page was left.
+  it('takes its ghosts off the wall when the panel itself goes', async () => {
+    const width = resizable(1440)
+    try {
+      await ownGame()
+      await openEditor()
+      ask('Två kort [kort:2]')
+      fireEvent.click(await within(panel()).findByRole('button', { name: 'Visa på väggen' }))
+      await waitFor(() => expect(document.querySelectorAll('.byd-wall-card[data-proposed]')).toHaveLength(2))
+
+      width.to(800)
+      await waitFor(() => expect(screen.queryByRole('complementary', { name: 'AI-hjälp' })).toBeNull())
+      width.to(1440)
+      await screen.findByRole('complementary', { name: 'AI-hjälp' })
+
+      expect(document.querySelectorAll('.byd-wall-card:not([data-proposed])')).toHaveLength(3)
+      expect(document.querySelectorAll('.byd-wall-card[data-proposed]')).toHaveLength(0)
+    } finally {
+      width.restore()
+    }
   })
 
   it('keeps the view’s one filled button in the header: accepting is outlined (L13)', async () => {

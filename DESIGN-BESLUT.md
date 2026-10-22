@@ -1489,6 +1489,7 @@ Tre renderare glider isär, och den buggen upptäcks först när kunden håller 
 
 Följdkrav:
 Regeln är helig — renderas något någonsin av en andra kodväg är den förlorad.
+Samma kodväg kräver också samma indata: varje yta som ritar ett kort lämnar spelets palett till den enda renderaren, och `CardPreview` kräver den av varje anropare, så att en yta som glömmer den inte går att bygga — Mall ritade spelets betydelser ofärgade medan Kortväggen målade dem.
 CMYK löses som ett ICC-konverteringssteg efteråt.
 En Chromium-flotta måste driftas och kostar RAM.
 
@@ -1588,6 +1589,7 @@ Proxyn skickar `part` för varje del och `done` sist, med `broken` när förslag
 Taket för ett svar höjdes till 16 000 token så att några dussin kort ryms; ett svar kostar bara det det säger.
 Panelen ritar varje kort med `CardPreview` när det kommer, tre i bredd med sitt namn under, och inget kan godtas förrän förslaget är helt.
 «Visa på väggen» lägger korten bland lekens som spöken med streckad kant och «✦ Förslag» över överkanten; de står i väggens ordning och band men är inte i dokumentet och går inte att välja, och de försvinner när förslaget godtas, kastas eller panelen fälls ihop.
+De försvinner också när panelen själv går — fönstret smalnar under skrivbordet, nyckeln slutar gälla — eftersom ingen annan kan ta bort dem, och en vägg som ritar ett spel som inte är spelet säger emot Mall, som ritar det riktiga.
 «Godta alla» är en sammansatt redigering (D3) vars steg tillbaka heter «det godtagna förslaget», och «Kasta» ändrar ingenting.
 Ett förslag som inte går att använda sägs som «Förslaget gick inte att använda», med skälet i en mening som namnger kortet och fältet, att det var AI:ns svar och inte spelet som var fel, och «Försök igen».
 Den fysiska kontrollen körs på förslagets kort med det den enda renderaren mätte, och dess anmärkningar står i förslaget per slag och antal kort; de fäller det aldrig (E5).
