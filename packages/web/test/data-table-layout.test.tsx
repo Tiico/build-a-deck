@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { useState } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
 import { capture } from '@byd/render'
@@ -960,6 +960,87 @@ describe('a picture cell’s tile is the whole control (#1085, L72)', () => {
         }
       }, { deck: table.deck, fit: FIT })
       expect(seen).toEqual({ w: 66, h: 44, border: '1px', controls: 1, cut: 0 })
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+
+  // The marked cards' field is the same Bildruta (L72), and it has to be the same on the screen:
+  // measured on the built app it was drawn as one of the foot's buttons instead — a solid edge
+  // with the foot's radius, a 12 px bold «+» in ink, and a held picture 40 px wide inside a tile
+  // of 66 — because the rule for every button in the action row outweighed the tile's own.
+  // So the two tiles are compared, state by state, and the cell's is the one that says what a
+  // tile looks like.
+  it("draws the marked cards' tile as the cell's: the same edge, glyph and ink, and a held picture that fills it", async () => {
+    const HASH = 'c'.repeat(64)
+    const doc = projectDoc()
+    doc.rows = doc.rows.map((row, i) => ({ ...row, fields: { ...row.fields, bild1: i === 0 ? `asset:${HASH}` : '' } }))
+    doc.images = { bild1: true }
+    const { container, unmount } = render(
+      <DataTable
+        doc={doc}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        onAddField={() => undefined}
+        onRemoveField={() => undefined}
+        onMoveField={() => undefined}
+        assetBase="http://api.local"
+        onUpload={async () => HASH}
+      />,
+    )
+    fireEvent.click(screen.getByLabelText('markera knight'))
+    fireEvent.click(screen.getByLabelText('markera wizard'))
+    const bulk = screen.getByRole('toolbar', { name: 'Markerade kort' })
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
+    fireEvent.change(within(bulk).getByLabelText('Kolumn'), { target: { value: 'bild1' } })
+    const empty = container.innerHTML
+    fireEvent.drop(within(bulk).getByRole('group', { name: 'Bild för de markerade korten' }), { dataTransfer: { getData: (type: string) => (type === 'text/x-byd-asset' ? HASH : ''), files: [] } })
+    const held = container.innerHTML
+    unmount()
+
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      // A real pixel behind the picture's address: an image with no bytes is laid out as a broken
+      // one, by rules of its own, and that is not the picture the designer sees.
+      const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64')
+      await page.route('http://api.local/assets/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }))
+      const look = async (html: string, cell: string) => {
+        await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+        await page.waitForFunction(() => [...document.images].every((img) => img.complete && img.naturalWidth > 0))
+        return page.evaluate((cell) => {
+          const of = (tile: Element) => {
+            const cs = getComputedStyle(tile)
+            const r = tile.getBoundingClientRect()
+            const img = tile.querySelector('img')?.getBoundingClientRect()
+            return {
+              w: Math.round(r.width),
+              h: Math.round(r.height),
+              edge: `${cs.borderTopWidth} ${cs.borderTopStyle} ${cs.borderTopColor}`,
+              radius: cs.borderTopLeftRadius,
+              padding: cs.padding,
+              font: `${cs.fontSize} ${cs.fontWeight}`,
+              ink: cs.color,
+              ground: cs.backgroundColor,
+              picture: img ? { w: Math.round(img.width), h: Math.round(img.height) } : null,
+            }
+          }
+          return {
+            cell: of(document.querySelector(`td.byd-data-image[data-col="bild1"] [data-image-cell="${cell}"] button.byd-picture-tile`)!),
+            row: of(document.querySelector('.byd-data-set-box button.byd-picture-tile')!),
+          }
+        }, cell)
+      }
+      const before = await look(empty, 'knight')
+      expect(before.row).toEqual(before.cell)
+      expect(before.cell.picture).toBeNull()
+      const after = await look(held, 'dragon')
+      expect(after.row).toEqual(after.cell)
+      // The picture is the tile, less its edge: nothing of the tile's own around it.
+      expect(after.row.picture).toEqual({ w: after.row.w - 2, h: after.row.h - 2 })
     } finally {
       await page.close()
     }
