@@ -8,9 +8,6 @@ import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipe
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
-import { iconElement } from './canvas.js'
-import { idsOnFace } from './groups.js'
-import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import { creditOf, type CatalogIcon } from './icon-catalog.js'
 import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type Theme } from './themes.js'
@@ -924,7 +921,27 @@ export class ProjectClient {
     return this.takeIcon(svg, wanted, credit, t)
   }
 
+  // An icon chosen for a layer (#1093): the icon taken into the set and the layer bound to it are
+  // one thing the designer did, so the caller binds the layer under the same `gesture` — and binds
+  // it at once, because the name is known as soon as the set has it and the bytes follow, as a
+  // placed symbol's always did (#310). `stored` is the bytes arriving; should they not, the doing
+  // is still the open one and is called off whole, the layer's binding with it, so a card never
+  // names an icon the set has taken back.
+  async chooseIcon(icon: CatalogIcon, t: T, gesture: string): Promise<{ name: string; stored: Promise<void> }> {
+    return this.beginIcon(icon.svg, icon.name, creditOf(icon), t, gesture)
+  }
+
+  async chooseOwnIcon(svg: string, wanted: string, credit: ProjectCredit | undefined, t: T, gesture: string): Promise<{ name: string; stored: Promise<void> }> {
+    return this.beginIcon(svg, wanted, credit, t, gesture)
+  }
+
   private async takeIcon(svg: string, wanted: string, credit: ProjectCredit | undefined, t: T): Promise<string> {
+    const { name, stored } = await this.beginIcon(svg, wanted, credit, t)
+    await stored
+    return name
+  }
+
+  private async beginIcon(svg: string, wanted: string, credit: ProjectCredit | undefined, t: T, gesture?: string): Promise<{ name: string; stored: Promise<void> }> {
     this.mustBeAbleToEdit(t)
     const file = svgBytes({ svg })
     // The reference first, off the bytes themselves (#310). It is the name the service will give
@@ -932,77 +949,13 @@ export class ProjectClient {
     // answered without asking anybody: a symbol already in the set costs nothing on the wire.
     const ref = await assetRefOf(file.bytes)
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
-    if (already) return already[0]
+    if (already) return { name: already[0], stored: Promise.resolve() }
     const name = freeIconName(wanted, this.doc.icons)
-    const taking = this.newGesture('symbol')
+    const taking = gesture ?? this.newGesture('symbol')
     this.onTheirWay(ref)
     this.edit({ v: 'setIcon', name, url: ref, ...(credit ? { credit } : {}) }, taking)
-    await this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t)
-    return name
-  }
-
-  // An icon placed on the card from the tool row (#33). Two things have to be true afterwards —
-  // the game has the symbol, and the template has an element showing it — and the designer did
-  // one thing to ask for both, so they leave as one edit and come back with one Ctrl+Z (B4).
-  //
-  // The element is the `icons` element the canvas already had, bound to the name rather than to a
-  // column, so the one renderer draws it and packages/template needed nothing (L1).
-  async placeIcon(symbol: GameSymbol, face: string, group: string | null, t: T = swedish): Promise<string> {
-    this.mustBeAbleToEdit(t)
-    if (!this.doc.template.faces[face]) throw new Error(`template has no face ${face}`)
-    const file = svgBytes(symbol)
-    // The bytes' own name, before anything is read and before anything is sent (#310).
-    const ref = await assetRefOf(file.bytes)
-    // Everything the edit is worked out from is read after every wait, never before one. That
-    // rule was written for the upload, which took as long as the network took while the document
-    // moved underneath it — a second press, or somebody else in the game (D3). A face read
-    // before the wait would give this element the id the placement that landed first has already
-    // taken, and the template refuses it: `edit` applies before it records, so the whole
-    // placement would be lost. The wait is now a hash rather than a round trip, and the rule is
-    // unchanged and still what keeps two overlapping placements apart — it is simply that
-    // nothing at all is awaited between here and the edit below.
-    const faceTemplate = this.doc.template.faces[face]
-    if (!faceTemplate) throw new Error(`template has no face ${face}`)
-    // The same symbol twice is the same entry (E4), and then there is nothing to take in: the
-    // edit places the element alone and the icon set is left exactly as it was. Which is also
-    // why such a placement never touches the network at all — the bytes are already up there.
-    const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)?.[0]
-    const name = already ?? freeIconName(symbolName(symbol, t), this.doc.icons)
-    const element = iconElement(name, { taken: idsOnFace(faceTemplate), card: CARD_STANDARD_63x88.physical })
-    const placing = this.newGesture('symbol')
-    if (!already) this.onTheirWay(ref)
-    this.edit(
-      {
-        v: 'addElement',
-        face,
-        element,
-        group,
-        ...(already ? {} : { icon: { name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } } }),
-      },
-      placing,
-    )
-    // The element is on the card by now; the bytes follow it. Nothing waits for them but the
-    // answer to whether they arrived.
-    // Two things went in as one edit, so two come back out: the element, and the symbol the game
-    // did not have before. The order is the element first — a set without the symbol its card
-    // still shows is a card drawn with a hole in it, however few milliseconds it lasts.
-    if (!already)
-      await this.storeAsset(
-        blobOf(file),
-        'vector',
-        ref,
-        placing,
-        {
-          said: 'upload.undone.symbol',
-          name,
-          intents: [
-            { v: 'removeElement', face, id: element.id, group },
-            { v: 'removeIcon', name },
-          ],
-        },
-        t,
-      )
-    return element.id
+    const stored = this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t, gesture !== undefined)
+    return { name, stored }
   }
 
   // The bytes behind a symbol, a typeface or a picture that has just been put into the document,
@@ -1028,7 +981,10 @@ export class ProjectClient {
   //
   // The caller has said the bytes are on their way (`onTheirWay`) before the edit that placed them,
   // and they stop being so here, whichever way the sending ends.
-  private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, undoing: Undoing, t: T): Promise<void> {
+  // `shared` is a doing the caller opened and will go on with (#1093): an icon chosen for a layer is
+  // the icon taken in and then the layer bound to it, and closing the doing when the bytes land
+  // would split that into two steps back.
+  private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, undoing: Undoing, t: T, shared = false): Promise<void> {
     const landed = await this.uploadAsset(file, kind, t)
       .catch((err: unknown) => {
         throw this.takeBack(gesture, ref, undoing, err, t)
@@ -1039,7 +995,7 @@ export class ProjectClient {
       // rather than staying open for the rest of the session. Only if it is still the open one —
       // a designer who laid a hand on something while the bytes flew is in the middle of that,
       // and closing her gesture would split it into two steps back.
-      if (this.gesture === gesture) this.gesture = null
+      if (!shared && this.gesture === gesture) this.gesture = null
       return
     }
     throw this.takeBack(gesture, ref, undoing, new Said(t('upload.wrongName')), t)
@@ -1296,7 +1252,7 @@ export class ProjectClient {
   // A picture brought into the game from the library (#222, L22, beslut 5 och 6). Two things are
   // true afterwards — the service holds the bytes, and the game holds a picture — and the designer
   // did one thing to ask for both, so the second half is one edit: one version and one step back
-  // (B4), exactly as `placeIcon` is.
+  // (B4), exactly as an icon chosen for a layer is (`chooseIcon`).
   //
   // The game has to hold the picture in its own right, because nothing is drawn from it yet: a
   // library that only listed what was in use would lose an uploaded picture the moment it arrived,
@@ -1323,9 +1279,8 @@ export class ProjectClient {
     // the service will give them, so whether the game already has the picture is known here.
     const ref = await assetRefOfFile(file)
     const hash = ref.slice(ASSET_PREFIX.length)
-    // Read after every wait and never before one, for the reason `placeIcon` reads its face
-    // after: the document moves while anything is awaited. Nothing is awaited from here to the
-    // edit.
+    // Read after every wait and never before one: the document moves while anything is awaited —
+    // a second press, or somebody else in the game (D3). Nothing is awaited from here to the edit.
     // A picture the game already has is bytes the service already holds, under the name the library
     // already calls it: nothing is edited and the wire is never touched. The second file's name
     // used to be written over the first without a word (#481, L22 beslut 6).

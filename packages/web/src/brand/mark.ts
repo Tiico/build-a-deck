@@ -87,3 +87,20 @@ export function appIconSvg(): string {
   const wood = `<defs><radialGradient id="wood" cx="0.7" cy="0.1" r="1.1"><stop offset="0" stop-color="${WOOD[0]}"/><stop offset="0.55" stop-color="${WOOD[1]}"/><stop offset="1" stop-color="${WOOD[2]}"/></radialGradient></defs><rect width="64" height="64" fill="url(#wood)"/>`
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${wood}<g transform="translate(32 32) scale(${scale}) translate(${round(-cx)} ${round(-cy)})">${rects(WOOD_EDGE, round(EDGE_WIDTH / scale))}</g></svg>\n`
 }
+
+// What a shared link shows (#1084): the hand beside the name, on the table's dark, 1200 × 630, which
+// is the size every previewer asks for. Laid out as #1082's prototype laid it (`?v=B`, «En delad
+// länk»): the hand 300 high at the left, the name large beside it and a line under the name.
+// The words are given, not written here: the script passes the landing page's own.
+export const SHARE_IMAGE = { width: 1200, height: 630 } as const
+const escape = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+export function shareImageSvg(words: { name: string; line: string }): string {
+  const { width, height } = SHARE_IMAGE
+  const font = 'font-family="system-ui, -apple-system, \'Segoe UI\', sans-serif"'
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`
+    + `<rect width="${width}" height="${height}" fill="${HAND.edge}"/>`
+    + `<svg x="110" y="165" width="300" height="300" viewBox="${markViewBox()}">${rects(HAND.edge)}</svg>`
+    + `<text x="450" y="330" fill="#e8eaf0" ${font} font-weight="800" font-size="120" letter-spacing="-3">${escape(words.name)}</text>`
+    + `<text x="456" y="410" fill="#b7c0d6" ${font} font-size="40">${escape(words.line)}</text>`
+    + `</svg>\n`
+}

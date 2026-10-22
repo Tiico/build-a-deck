@@ -55,7 +55,6 @@ function Desk({ doc, card = 'dragon' }: { doc: ProjectDoc; card?: string }) {
     onCallOff: vi.fn(),
     onRemove: vi.fn(),
     onAdd: vi.fn(),
-    onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
     onLock: vi.fn(),
     onRename: vi.fn(),

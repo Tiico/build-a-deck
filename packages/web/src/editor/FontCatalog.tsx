@@ -88,7 +88,7 @@ export function FontCatalog({ words, inGame, forLayer = false, onChoose, onClose
         </button>
         <div className="byd-font-catalog-kinds" role="group" aria-label={t('fonts.catalog.category')}>
           {CATEGORIES.map((kind) => (
-            <button key={kind} type="button" aria-pressed={kind === category} onClick={() => setCategory(kind)}>
+            <button key={kind} type="button" className="byd-choice" aria-pressed={kind === category} onClick={() => setCategory(kind)}>
               {t(`fonts.catalog.category.${kind}` as 'fonts.catalog.category.alla')}
             </button>
           ))}

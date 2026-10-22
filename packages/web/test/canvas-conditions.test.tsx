@@ -39,7 +39,6 @@ function open(selected: string | null = 'if-drake', row = 'knight') {
       onReplaceFace={vi.fn()}
       onRemove={vi.fn()}
       onAdd={vi.fn()}
-      onPlaceIcon={vi.fn()}
       onReorder={vi.fn()}
       onLock={vi.fn()}
       onRename={onRename}
@@ -132,7 +131,7 @@ describe('one name for a condition layer (#699)', () => {
     const doc: ProjectDoc = projectDoc()
     const knight: Element = { kind: 'if', id: 'if-riddare', when: { field: 'title', equals: 'Riddare' }, children: [{ kind: 'shape', id: 'shield', shape: 'rect', x: 5, y: 5, w: 8, h: 8, fill: '#335577' }] }
     doc.template.faces['front']!.base.push(knight, BADGE)
-    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="if-drake" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onReplaceFace={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />)
+    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="if-drake" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onReplaceFace={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />)
     const drake = document.querySelector('[data-layer="if-drake"] .byd-layer-pick') as HTMLElement
     expect(drake.getAttribute('aria-label')).toBe('om Titel = Drake, 1 kort')
     drake.focus()
@@ -145,7 +144,7 @@ describe('one name for a condition layer (#699)', () => {
     const doc: ProjectDoc = projectDoc()
     const title = doc.template.faces['front']!.base.find((el) => el.id === 'title')!
     title.name = 'Rubriken'
-    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onReplaceFace={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />)
+    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onReplaceFace={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Egenskaper · Rubriken' })).toBeTruthy()
   })
 })
