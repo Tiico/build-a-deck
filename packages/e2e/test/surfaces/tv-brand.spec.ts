@@ -35,6 +35,20 @@ for (const device of [SMALL_TV, TV]) {
     // The hand is drawn at least as tall as the name beside it.
     expect(seen.mark[1]).toBeGreaterThanOrEqual(seen.px)
     expect({ aboveHead: seen.aboveHead, inColumn: seen.inColumn, besideFelt: seen.besideFelt }).toEqual({ aboveHead: true, inColumn: true, besideFelt: true })
+
+    // The line is paid for by the card being looked at, never by «Senast»: the latest lines are as
+    // tall with the line as they were without it. At 1920 the card was at its own height and the
+    // feed took what was over, so the line came out of the feed, and with CI's DejaVu and an
+    // observer's row it showed one line (tv-feed-rows).
+    const feed = () => page.evaluate(async () => {
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      return { feed: Math.round(document.querySelector('.byd-tv-feed')!.getBoundingClientRect().height), card: Math.round(document.querySelector('.byd-tv-inspect > div')!.getBoundingClientRect().height) }
+    })
+    const withLine = await feed()
+    await page.evaluate(() => document.querySelector('[data-brand]')!.remove())
+    const without = await feed()
+    expect(Math.abs(withLine.feed - without.feed), `«Senast» ${withLine.feed} px with the line, ${without.feed} px without`).toBeLessThanOrEqual(1)
+    expect(withLine.card, 'the card gives the line its height').toBeLessThan(without.card)
   })
 }
 

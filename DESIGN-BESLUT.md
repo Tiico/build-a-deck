@@ -216,7 +216,8 @@ Följdkrav:
   `scripts/brand-icons.ts` ritar `og-image.png` med landningssidans egen rad, och servern skriver `PUBLIC_ORIGIN` framför bildens sökväg (DRIFT §13).
   `packages/e2e/test/app-icon.spec.ts` läser taggarna i sidan servern skickar och bildens pixlar.
 - Rummets TV bär handen och namnet på en egen rad överst i sidospalten, ovanför spelets namn och skild från det med en linje (#1084, beställarens beslut B 2026-10-22).
-  Spalten står bredvid filten, så raden tar sin höjd från inspektionskortet och aldrig från filten: kortet mättes till 168 px i stället för 235 vid 1280 × 800, och det var kostnaden som valdes.
+  Spalten står bredvid filten, så raden tar sin höjd från inspektionskortet och aldrig från filten eller «Senast»: kortet mättes till 168 px i stället för 235 vid 1280 × 800, och det var kostnaden som valdes.
+  Där spalten har gott om plats står kortet på sin egen höjd och «Senast» tar resten, så där sänks kortets tak med radens 67 px; annars hade raden tagits ur listan, och på CI:s DejaVu med en observatör visade den bara en rad.
   Handen bredvid adressen (A) och en tyst signatur längst ned (C) valdes bort.
   Observatörens skärm är inte rummets och står utan raden.
   Grinden är `packages/e2e/test/surfaces/tv-brand.spec.ts`, och prototypen står i #1084.
