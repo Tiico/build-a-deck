@@ -278,7 +278,7 @@ En gratis extern pulskoll är tio minuters arbete om det behövs senare, och än
 
 Reviderat 2026-10-18, inför betan: **en extern pulskoll läggs till.**
 Med riktiga användare är ett avbrott som ingen märker det dyraste läget, och den enda signalen får inte vara en betadesigner som skriver.
-En gratis extern tjänst frågar `https://deck.ockelberg.com/health` med några minuters mellanrum och mejlar beställaren när svaret inte är 200 — `/health` svarar 503 när Postgres eller R2 inte svarar (§2), så samma koll fångar både fibern och stacken.
+En gratis extern tjänst frågar `https://deckster.se/health` med några minuters mellanrum och mejlar beställaren när svaret inte är 200 — `/health` svarar 503 när Postgres eller R2 inte svarar (§2), så samma koll fångar både fibern och stacken.
 Kontot i tjänsten är beställarens och ligger utanför repot; ingenting i stacken ändras.
 Det är fortfarande den enda övervakningen: inga mätvärden och ingen loggaggregering.
 

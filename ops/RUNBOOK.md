@@ -130,6 +130,7 @@ PUBLIC_ORIGIN=https://nytt.example
 ```
 
 Byt `MAIL_FROM` till det nya värdnamnet först när det är verifierat som avsändardomän hos Resend; före det kommer inget inloggningsmejl fram, och då kommer ingen in.
+Kontrollera också att `RESEND_API_KEY` får skicka från den nya domänen: en nyckel med *Sending access* kan vara låst till en enda domän, och då svarar Resend 403 «This API key is not authorized to send emails from …» trots att domänen är verifierad (#1080). Skapa i så fall en ny nyckel för den nya domänen, eller för alla.
 Kör `sudo ops/deploy.sh --force` efteråt, eftersom etiketterna bara läses när containern skapas.
 Den som var inloggad på det gamla värdnamnet loggar in en gång till: kakan hör till sitt origin.
 
@@ -250,7 +251,7 @@ Det som är provat varje gång `ops/restore-test.sh` körs är att bytesen i R2 
 | `{"msg":"deploy-unhealthy"}` | Stacken startade men `/health` svarade inte på en minut. `docker compose logs app` säger varför; oftast Postgres. |
 | `{"msg":"no-release"}` | Ingen `v*`-tagg nås från `origin/main`. Tagga. |
 | `/health` ger 503 med `assets` | R2-nycklarna är fel, bucketen finns inte, eller — vanligast — den ligger i en jurisdiktion och svarar bara på sin egen endpoint. Sätt `R2_ENDPOINT=https://<konto>.eu.r2.cloudflarestorage.com` för den europeiska. Texturer slutar visas; spelet i övrigt lever. |
-| Inloggningsmejlet kommer inte | Ingen `RESEND_API_KEY`, eller avsändardomänen är inte verifierad. Länken finns i `docker compose logs app`. |
+| Inloggningsmejlet kommer inte | Ingen `RESEND_API_KEY`, avsändardomänen är inte verifierad, eller nyckeln är låst till en annan domän än den i `MAIL_FROM`. Resends eget svar står på raden `mail failed` i `docker compose logs app`. |
 | `corpus` får 403 på en betadesigners bord | Kontots adress står inte i `BYD_CORPUS_ACCOUNTS`, kakan i `BYD_COOKIE` hör till en annan adress än `BYD_OPERATOR`, eller appen har inte startats om sedan raden skrevs. Det är bara exporten som öppnas; enkätsvaren och spelet ger 403 också med rätt rader. |
 | Inloggning loopar tillbaka till inloggningskortet | `PUBLIC_ORIGIN` matchar inte värdnamnet i webbläsaren, så kakan sätts på fel origin. |
 | Allt är nere och ingen vet | Lådan kan inte berätta att den är nere (DRIFT §8). Signalen är en användare som hör av sig. |
