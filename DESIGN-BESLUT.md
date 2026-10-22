@@ -7653,3 +7653,47 @@ Verktygsradens fem märken och skrubbernas sju är ikoner som tabellen inte rita
 En glyf tar aldrig emot pekaren (`pointer-events: none`): trycket, och varje fråga om vad som står under en punkt, landar på kontrollen den är ritad i.
 Det upptäcktes när tabellens träffytetester läste glyfens `<path>` i stället för ×-knappen.
 En glyf är 1 em i fyrkant, och där en rad var mätt till tecknet den ersatte ger den tillbaka luften runt sin teckning: kronans och tabellfotens chevroner och tabellrubrikens sorteringspil står med negativ marginal på rutnätets tomma fjärdedelar, så kronan står kvar på en rad bredvid AI-panelen vid 1280 i ett brett typsnitt (#130), fotens tysta rad bryts inte vid 1024 på Linux (#618) och en sifferkolumn är inte bredare än en siffra (#46).
+
+### L75. Distansspel börjar i ett väntrum: Starta frågar hur ni sitter (prototypat och beslutat 2026-10-22, #1130)
+
+Beställaren: «Det är väldigt otydligt hur man joinar och spelar där alla sitter på varsin dator.»
+Resan genomgicks i den byggda appen, som värd och som vän i två webbläsare ([`docs/ux-audits/2026-10-22-distansspel`](docs/ux-audits/2026-10-22-distansspel/README.md)).
+Efter Starta stod bara en rumskod, utan adress och utan något att skicka.
+Bordets skärm sa «Öppna på telefonen».
+Värdens egen väg till bordet låg bakom pilen bredvid Starta, och den satte värden vid bordet som «Designern» utan att fråga.
+Vid bordet på `/online` syntes varken koden eller adressen.
+Anslutningssidan erbjuder tre knappar utan att säga vad som skiljer de två första.
+
+Tre varianter prototypades i [`prototyper/index.html`](docs/ux-audits/2026-10-22-distansspel/prototyper/index.html): **A**, länken överallt; **B**, väntrummet; och **C**, en inbjudan per plats.
+Valet blev **B**.
+
+**Starta frågar en gång hur ni sitter.**
+Frågan har två svar: «Runt en skärm» (TV:n eller en stor skärm, med telefonerna som händer) och «Var och en vid sin dator».
+Det senare frågar efter värdens namn vid bordet och sätter värden direkt på en ledig plats på `/online`, under det namnet.
+Svaret och namnet minns till nästa gång.
+Frågan ställs bara när det inte finns något bord: «Uppdatera» och menyns andra vägar in är orörda.
+
+**Distansvyn börjar i ett väntrum.**
+Tills något har hänt vid bordet ligger ett väntrum över filten på `/online`.
+Det visar hur många platser som är tagna, rummets adress med en kopieringsknapp, platserna med vem som sitter var, och «Starta spelet».
+Platserna fylls medan man tittar.
+Väntrummet är samma bricka som filtens «Starta spelet» (K25) med adressen och platserna runt sig, inte en andra start: väntar korten, så väntar knappen på samma sätt.
+När spelet har startat går väntrummet.
+
+**Anslutningssidan på en dator har ett enda val.**
+Den säger «1 av 2 platser kvar», frågar efter namn och har ett enda «Gå med», som leder till `/online`.
+Telefonvägen står kvar som en länk under: «Sitter ni runt en TV? Använd telefonen som hand».
+«Bara titta» står kvar som länk.
+Prototypens «Vera bjuder in dig» byggs inte: ett bord vet inte vilken plats som är värdens, och sidan säger «Du går med i» som förut.
+
+Motivering:
+Det otydliga var inte att något saknades i distansvyn, utan att ingen yta frågade hur man sitter, så varje yta antog en TV.
+En fråga vid starten låter resten av vägen veta det.
+
+Förhållandet till C2:
+Frågan väljer vilken skärm *värden* får, inte ett läge för bordet.
+Sessionen är densamma och vyrollerna är desamma.
+Ett blandat bord, med en TV i rummet och någon på distans, fungerar som förut: den på distans öppnar samma adress, och TV:n nås genom menyn bredvid Starta.
+
+Följdkrav:
+Rummets adress är `värd/KOD` (#675) överallt där den visas för att skickas vidare, aldrig koden ensam.
