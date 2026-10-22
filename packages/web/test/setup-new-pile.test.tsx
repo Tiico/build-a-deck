@@ -125,7 +125,7 @@ describe('en filt utan ledig kortrygg säger det (#443)', () => {
     try {
       const before = drawn().length
       fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
-      const said = screen.getByText(/Ingen ledig filt för en ny hög/)
+      const said = screen.getByText(/ingen ledig plats på bordet för en ny hög/)
       expect(said.getAttribute('role')).toBe('status')
       // Och inget lades: en hög som inte fick plats får inte ha hamnat någonstans ändå.
       expect(drawn().length).toBe(before)

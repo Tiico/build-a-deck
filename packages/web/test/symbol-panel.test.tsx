@@ -29,7 +29,7 @@ async function openSymbols(): Promise<void> {
   fireEvent.click(screen.getByRole('button', { name: /^Spelets ikoner/ }))
   fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
 }
-const tile = (name: string) => screen.getByRole('button', { name: `Ta in ${name}` })
+const tile = (name: string) => screen.getByRole('button', { name: `Lägg till ${name}` })
 // A symbol the game has is named by what the tile shows (#558 F-15): «sköld, i spelet».
 const hadTile = (name: string) => screen.getByRole('button', { name: `${name}, i spelet` })
 
@@ -46,7 +46,7 @@ describe('the symbol library in the editor (E4)', () => {
     expect(within(shelves).getByRole('button', { name: /^Alla/ }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(within(shelves).getByRole('button', { name: /^Deckster/ }))
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'försvar' } })
-    expect(screen.getAllByRole('button', { name: /^Ta in / })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /^Lägg till / })).toHaveLength(1)
 
     // The two libraries come in once the panel has loaded them (L71), and a game icon says who
     // drew it beside its licence, because the print hand-off has to name the person (E4).
@@ -226,7 +226,7 @@ describe('the deck the symbol tab draws (#178)', () => {
     await run.projects.create(run.projectId, { ...doc, icons: { ...doc.icons, ensam: 'asset:ccc' } })
     await openSymbols()
     fireEvent.click(chip(/^ensam/))
-    await waitFor(() => expect(screen.getByText(/Inget kort säger den här än/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Inget kort använder den här ännu/)).toBeTruthy())
     expect(drawn()).toBe(0)
     // The offer is a way on and not a sentence: pressing it shows the deck.
     fireEvent.click(chip('Hela leken'))
@@ -324,10 +324,10 @@ describe('a symbol the template paints and no card says (#213)', () => {
     await openSymbols()
     await waitFor(() => expect(chip(/^svärd/)).toBeTruthy())
     expect(drawn()).toBe(0)
-    expect(screen.getByText(/Mallen målar den på varje kort den ritar/)).toBeTruthy()
+    expect(screen.getByText(/Mallen ritar den på alla kort/)).toBeTruthy()
     // And not the line for a symbol nobody has written yet, which would be an instruction to do
     // something the deck has already had done for it.
-    expect(screen.queryByText(/Inget kort säger den här än/)).toBeNull()
+    expect(screen.queryByText(/Inget kort använder den här ännu/)).toBeNull()
   })
 
   it('leaves a symbol the cards do say, and one nothing uses at all, exactly as they were', async () => {
@@ -346,7 +346,7 @@ describe('a symbol the template paints and no card says (#213)', () => {
     // zero and the line that says what to write.
     expect(inSet('ensam')).toContain('0 kort')
     fireEvent.click(chip(/^ensam/))
-    await waitFor(() => expect(screen.getByText(/Inget kort säger den här än/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Inget kort använder den här ännu/)).toBeTruthy())
     expect(drawn()).toBe(0)
   })
 
@@ -362,7 +362,7 @@ describe('a symbol the template paints and no card says (#213)', () => {
     expect(measure('krona')).toBe('målas ibland')
     expect(measure('svärd')).toBe('målas')
     fireEvent.click(chip(/^krona/))
-    await waitFor(() => expect(screen.getByText(/Mallen målar den på vissa kort/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Mallen ritar den på vissa kort/)).toBeTruthy())
     // And the symbol the base paints is still on every card, beside it in the same set.
     expect(inSet('svärd')).toContain('målas av mallen')
     expect(inSet('svärd')).not.toContain('vissa kort')

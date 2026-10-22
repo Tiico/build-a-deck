@@ -425,7 +425,7 @@ describe('a handle says its keys and where a nudge left the zone (#558)', () => 
     await openBord({ live: true })
     const handle = document.querySelector<HTMLElement>('[data-zone-handle="discard"]') ?? document.querySelectorAll<HTMLElement>('[data-zone-handle]')[1]!
     const keys = document.getElementById(handle.getAttribute('aria-describedby') ?? '')
-    expect(keys?.textContent).toMatch(/Piltangenterna/)
+    expect(keys?.textContent).toMatch(/Pilarna/)
     handle.focus()
     fireEvent.keyDown(handle, { key: 'ArrowRight' })
     const name = (handle.getAttribute('aria-label') ?? '').replace(/^Zon /, '').split(' · ')[0]!

@@ -72,7 +72,7 @@ describe('en filt utan ledig plats säger det (#440)', () => {
     try {
       const before = drawn().length
       fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
-      const said = screen.getByText(/Ingen ledig filt för en ny yta/)
+      const said = screen.getByText(/ingen ledig plats på bordet för en ny yta/)
       expect(said.getAttribute('role')).toBe('status')
       // Och inget lades: en yta som inte fick plats får inte ha hamnat någonstans ändå.
       expect(drawn().length).toBe(before)

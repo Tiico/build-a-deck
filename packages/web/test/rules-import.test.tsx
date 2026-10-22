@@ -437,7 +437,7 @@ describe('when the save behind the import collides with someone else (#131)', ()
     const said = await screen.findByRole('alert')
     // Both halves of it: which state the book is in, and the way out of that state. The word the
     // protocol uses for the collision is not a word anyone can act on, so it is not on the screen.
-    expect(said.textContent).toMatch(/inte sparad/i)
+    expect(said.textContent).toMatch(/kunde inte sparas/i)
     expect(said.textContent).toMatch(/ladda om/i)
     expect(said.textContent).not.toMatch(/conflict/i)
 
