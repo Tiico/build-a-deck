@@ -633,6 +633,10 @@
   display: grid; grid-template-columns: 1fr 360px; grid-template-rows: minmax(0, 1fr);
 }
 /* The game's own name, and the rulebook beside it rather than over the felt (#30). */
+/* Deckster's hand above the game's name on the room's television (#1084, beslut B): the line is the
+   product's and the heading under it the game's, so a rule parts them. The name is at K26's 24 px. */
+[data-tv] .byd-tv-brand { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #232733; color: #e8eaf0; font-size: 24px; font-weight: 800; letter-spacing: -0.3px; }
+[data-tv] .byd-tv-brand svg { width: 34px; height: 34px; flex: none; }
 [data-tv] .byd-tv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 [data-tv] .byd-tv-head h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
 [data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; white-space: nowrap; }

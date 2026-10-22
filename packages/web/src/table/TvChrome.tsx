@@ -13,6 +13,7 @@ import { useT } from '../i18n/index.js'
 import { useSmallestPt } from './smallest.js'
 import { readingWidth } from '../legibility.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
+import { DecksterMark } from '../brand/DecksterMark.js'
 
 // From how many seats a seat stands on one line in the column (#482 fynd 6).
 const DENSE_SEATS = 7
@@ -150,6 +151,16 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
       </main>
       <aside>
         {note}
+        {/* Deckster's hand on the room's television (#1084, beslut B 2026-10-22): the mark and the
+            name on a line of their own above the game's. The column is the felt's neighbour, so the
+            line costs the card being looked at its height and never the felt. The observer's screen
+            is not the room's and goes without it. */}
+        {room && (
+          <div className="byd-tv-brand" data-brand>
+            <DecksterMark />
+            <span>Deckster</span>
+          </div>
+        )}
         <div className="byd-tv-head">
           <h1>
             {title ?? t('play.table')}
