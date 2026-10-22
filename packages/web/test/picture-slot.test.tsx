@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Bildrutan (L72): the one way a picture is shown and changed in Tabell. The tile is the whole
+// Bildrutan (L75): the one way a picture is shown and changed in Tabell. The tile is the whole
 // control; what it takes dropped on it is what the cell took before (#291); and a reader's table
 // draws the picture and nothing that can change it (#489).
 import { describe, expect, it, vi } from 'vitest'
@@ -14,7 +14,7 @@ function slot(over: Partial<PictureSlotProps> = {}) {
   return { ...on, group: screen.getByRole('group', { name: 'Bild för knight' }) }
 }
 
-describe('Bildrutan (L72)', () => {
+describe('Bildrutan (L75)', () => {
   it('takes a library picture dropped on it by its hash, and hands dropped files on', () => {
     const { group, onPick, onFiles } = slot()
     fireEvent.drop(group, { dataTransfer: { getData: (type: string) => (type === 'text/x-byd-asset' ? HASH : ''), files: [] } })

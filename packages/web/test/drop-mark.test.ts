@@ -77,7 +77,7 @@ describe('dragmarkeringens token (#291)', () => {
     const own = join(SRC, 'editor', 'dropping.tsx')
     expect(sources.filter((path) => path !== own && /droppedOn/.test(read(path)))).toEqual([])
 
-    // De fyra bildytorna går alla genom den: bibliotekets bildyta, Bildrutan — som sedan L72 är
+    // De fyra bildytorna går alla genom den: bibliotekets bildyta, Bildrutan — som sedan L75 är
     // både cellens ruta och massredigeringens bildfält — och guidens bildfält.
     const surfaces = sources
       .filter((path) => /\.tsx$/.test(path) && path !== own)
