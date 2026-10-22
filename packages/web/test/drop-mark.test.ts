@@ -77,12 +77,12 @@ describe('dragmarkeringens token (#291)', () => {
     const own = join(SRC, 'editor', 'dropping.tsx')
     expect(sources.filter((path) => path !== own && /droppedOn/.test(read(path)))).toEqual([])
 
-    // De fyra bildytorna går alla genom den: bibliotekets bildyta, cellens ruta,
-    // massredigeringens och guidens bildfält.
+    // De fyra bildytorna går alla genom den: bibliotekets bildyta, Bildrutan — som sedan L72 är
+    // både cellens ruta och massredigeringens bildfält — och guidens bildfält.
     const surfaces = sources
       .filter((path) => /\.tsx$/.test(path) && path !== own)
       .flatMap((path) => [...read(path).matchAll(/dropSurface\(/g)].map(() => at(path)))
-    expect(surfaces.sort()).toEqual(['editor/DataTable.tsx', 'editor/DataTable.tsx', 'editor/MediaPanel.tsx', 'wizard/NewProjectPage.tsx'])
+    expect(surfaces.sort()).toEqual(['editor/MediaPanel.tsx', 'editor/PictureSlot.tsx', 'wizard/NewProjectPage.tsx'])
 
     // Och varje annan mottagare i trädet är uppräknad här. De tre som finns tar något annat än
     // bilder — en datafil (#292), en regelbok med sina bilder (#293), ett typsnitt (#294) — och

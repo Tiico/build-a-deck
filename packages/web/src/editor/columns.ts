@@ -155,11 +155,11 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     return Math.ceil(Math.max(widest, line) + parseFloat(own.paddingLeft) + parseFloat(own.paddingRight))
   }
 
-  // An image cell is the one cell that is not a value: a thumbnail with a place to drop, a button
-  // to choose and a × to clear, all of them boxes the browser can already size. So it is measured
-  // as a box and not against a font.
+  // An image cell is the one cell that is not a value: Bildrutan (L72), a tile the browser can
+  // already size, in a slot that is the drop surface. So it is measured as a box and not against
+  // a font.
   const imageNeed = (i: number): number => {
-    const cell = table.querySelector(`tbody tr > *:nth-child(${i + 1}) .byd-data-drop`) as HTMLElement | null
+    const cell = table.querySelector(`tbody tr > *:nth-child(${i + 1}) .byd-picture-slot`) as HTMLElement | null
     if (!cell) return 0
     let flow = 0
     for (const child of Array.from(cell.children) as HTMLElement[]) flow += Math.max(child.getBoundingClientRect().width, child.scrollWidth)
