@@ -45,6 +45,9 @@ export const ProjectSetup = z.object({
   // `id` is what a rule names it by (#708, B7), so a rule follows the counter when it is renamed.
   // A counter written before it had one is known by its name (`counterId`).
   counters: z.array(z.object({ id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(), name: z.string().min(1).max(24), start: z.number().int() })).optional(),
+  // Whether the game goes in turns, and which way round the table (K28). Absent is a game without
+  // turns, which is every game written before there were turns.
+  turns: z.enum(['clockwise', 'counterclockwise']).optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export type Cell = z.infer<typeof Cell>

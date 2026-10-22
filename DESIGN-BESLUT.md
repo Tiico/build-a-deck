@@ -4014,6 +4014,62 @@ Följdkrav:
 Trycket är dold information och bevisas på råa frames (D4): `packages/server/test/wire.test.ts` visar att Ada och observatören får `text` och att Bo, Cy, Di och bordet aldrig får den för ett dolt kort.
 `packages/template/test/printed.test.ts` håller läsningen av mallen, `packages/engine/test/printed-text.test.ts` härledningen, och `packages/web/test/held-card.test.tsx`, `tv-chrome.test.tsx`, `observer-page.test.tsx` och `observer-viewport.test.tsx` läsvyn, listorna och 44 px vid 320, 390 och 1280.
 
+### K28. Turen är en markör som skickas vidare, och den hindrar ingen (prototypat och beslutat 2026-10-22, #1141)
+
+Bordet hade inget begrepp om tur.
+Raden «Senast: Ada drog ett kort · 12 s» sa vem som rörde något senast, men inte om hen var klar eller vem bordet väntade på.
+På distans finns ingen röst (G2) och inget ljud (K7), så en paus vid bordet gick inte att läsa.
+Tre varianter prototypades på `/online` ([`index.html`](https://github.com/Tiico/build-a-deck/blob/4fba01fdcd61520cfee14b940076bc810ee92df7/docs/ux-audits/2026-10-22-turen/prototyper/index.html)); beställaren valde B, turen på filten.
+
+**Designern säger om spelet går i tur.**
+Fliken Bord har en rad «Turordning» med tre val: ingen, medurs och moturs.
+Svaret är spelets, står i `setup.turns` och följer med uppställningen till bordet, där `SetupDef.turns` är `'clockwise'`, `'counterclockwise'` eller saknas.
+Ett spel utan turordning får ingen markör, och verbet nedan avvisas där.
+Det är så spel med samtidiga drag slipper en markör som ingenting betyder.
+Bytet gäller nästa bord, som zonerna gör; ett pågående bord behåller den turordning det startade med.
+
+**Turen är ett sessionsverb.**
+`turn.give { seat }` ger turen till en plats.
+Det är en protokollmigrering, och den står här av det skälet.
+Verbet hör till sessionen och inte till handen, som `seat.claim`, så det sätter inte `played` (#452), räknas inte som ett drag i ångra och tillbakaspolning (B), och en tillbakaspolning lämnar turen där den står.
+Verbet tar alltid en plats och aldrig «nästa».
+Två som trycker «Klar → Cy» samtidigt ger då båda turen till Cy, i stället för att den andra tryckningen hoppar över Cy.
+Vem som helst vid bordet får skicka det, också bordets egen skärm: systemet hindrar aldrig (B5), och en glömd «Klar» rättas av den som märker den.
+Det avvisas bara där det inte kan betyda något: i ett spel utan turordning, och till en plats som saknas eller är ledig.
+
+**Vem som har turen följer av loggen.**
+`TableState.turn` är `{ seat, at }` eller `null`, där `at` är radens egen tid, så en omspelning hamnar på samma tur och samma klocka.
+När ingen har turen tar den första som sätter sig den.
+Lämnar den som har turen bordet går turen till nästa upptagna plats i turordningen, eller till ingen när bordet är tomt.
+Turordningen härleds i `project` ur var platsernas händer ligger runt golvets mitt, på samma sätt som `seatEdge` härleder kanten, och börjar vid uppställningens första plats.
+Med flera platser på samma kant (K18) går den längs kanten åt samma håll som runt bordet.
+
+**Projektionen bär turen.**
+`Snapshot.turn` är `null` för ett spel utan turordning, och annars `{ seat, at, order }`: vem som har turen, sedan när, och alla platser i turordningen.
+Nästa plats är den första upptagna platsen efter turen i `order`, och den räknas av `nextTurn` i `packages/engine` för varje yta.
+Turen är ingen hemlighet (B6), så alla vyer får samma värde, och den ändras med ett eget `turn`-op i patchen.
+
+**Filten visar turen vid platsens kant.**
+Filtens kant lyser i platsens färg vid den plats som har turen, i varje läge: `/online`, bordsskärmen och TV:n.
+Platsens namn säger «Adas tur» och hur länge turen pågått, räknat från `at`; nästa plats bär märket «nästa».
+Är det din tur står «Din tur» och knappen «Klar → Cy» vid din egen kant i stället för ditt namn, och fönstrets titel börjar med «● Din tur».
+Titeln är det enda som syns utanför sidan; det är ingen notis, och K7 står kvar.
+Där filten går att spela ger ett klick på en annan upptagen plats namn turen dit.
+Raden «Senast» står kvar, och `turn.give` läses där som «Ada gav turen till Bo».
+
+**Telefonen bär brickan.**
+I telefonens huvud står «Din tur» och «Klar → Cy» när det är spelarens tur, och «Adas tur» annars.
+Det är den bricka landningssidan redan visade.
+
+De avvisade varianterna var A, spåret, och C, turraden.
+A läste turerna ur loggen utan nytt tillstånd, men kunde bara säga vem som spelade sist och inte vem bordet väntade på.
+C ritade samma markör som en rad i huvudet; TV:n har inget huvud, och där hade raden kostat kortstorlek (K9).
+
+Följdkrav:
+`packages/engine/test/turn.test.ts` håller verbet, vem som tar turen och vart den går när platsen lämnas.
+`packages/server/test/wire.test.ts` visar att turen når varje vy i en patch.
+Webbens tester håller raden i Bord, kanten och knappen på filten och brickan på telefonen.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.

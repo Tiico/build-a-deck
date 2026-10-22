@@ -29,6 +29,7 @@ export function validateSetup(setup: SetupDef, registry: TypeRegistry): void {
   if (!floor) throw new Error(`floor ${setup.floor} is not a zone`)
   if (floor.kind !== 'area') throw new Error(`floor ${setup.floor} must be an area`)
   if (new Set(setup.seats).size !== setup.seats.length) throw new Error('duplicate seat ids')
+  if (setup.turns !== undefined && setup.turns !== 'clockwise' && setup.turns !== 'counterclockwise') throw new Error(`unknown turn order ${String(setup.turns)}`)
   for (const c of setup.components) {
     if (!zoneIds.has(c.zone)) throw new Error(`component ${c.cardRef} placed in unknown zone ${c.zone}`)
     const def = registry.get(c.type)
@@ -90,5 +91,5 @@ export function initialState(version: GameVersionId, setup: SetupDef, registry: 
   const { zones, components, nextId } = materialise(setup, 0)
   const seats: TableState['seats'] = {}
   for (const id of setup.seats) seats[id] = { id, name: null }
-  return { version, seq: 0, setup, zones, components, seats, nextId, ended: false, played: false, rewind: null }
+  return { version, seq: 0, setup, zones, components, seats, nextId, ended: false, played: false, rewind: null, turn: null }
 }

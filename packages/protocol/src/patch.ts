@@ -133,6 +133,13 @@ export type RewindProposal = z.infer<typeof RewindProposal>
 export const UndoMeaning = z.object({ toSeq: z.number().int().nonnegative(), contested: z.boolean() }).nullable()
 export type UndoMeaning = z.infer<typeof UndoMeaning>
 
+// Whose turn it is (K28), for a game that goes in turns; `null` for one that does not. `seat` is
+// who has the turn and `at` the time of the line that gave it, both `null` until somebody sits
+// down. `order` is every seat in turn order, wherever they sit. No secret (B6): every view gets
+// the same value.
+export const TurnView = z.object({ seat: SeatId.nullable(), at: z.string().nullable(), order: z.array(SeatId) }).nullable()
+export type TurnView = z.infer<typeof TurnView>
+
 export const Snapshot = z.object({
   seq: z.number().int().nonnegative(),
   seat: SeatId.nullable(),
@@ -156,6 +163,7 @@ export const Snapshot = z.object({
   // it. Every screen names it — a TV's title, the book a phone hands out (#677) — and it changes
   // in the very patch that carries the version.change line. No secret: it is the room's.
   version: GameVersionId,
+  turn: TurnView,
 })
 export type Snapshot = z.infer<typeof Snapshot>
 
@@ -170,6 +178,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('ended'), ended: z.boolean() }),
   z.object({ op: z.literal('played'), played: z.boolean() }),
   z.object({ op: z.literal('version'), version: GameVersionId }),
+  z.object({ op: z.literal('turn'), turn: TurnView }),
 ])
 export type Op = z.infer<typeof Op>
 

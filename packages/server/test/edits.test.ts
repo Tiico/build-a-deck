@@ -158,6 +158,14 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(() => applyEdit(doc, { v: 'setDeck', id: 'ingen' })).toThrow(/ingen/)
   })
 
+  it('says whether the game goes in turns and which way, and takes it back with null (K28)', () => {
+    const doc = after(base(), { v: 'setTurns', turns: 'clockwise' })
+    expect(doc.setup.turns).toBe('clockwise')
+    expect(after(doc, { v: 'setTurns', turns: 'counterclockwise' }).setup.turns).toBe('counterclockwise')
+    expect(after(doc, { v: 'setTurns', turns: null }).setup).not.toHaveProperty('turns')
+    expect(() => applyEdit(doc, { v: 'setTurns', turns: 'sideways' as never })).toThrow(/sideways/)
+  })
+
   it('writes the symbols and the rules, which travel with the document', () => {
     const doc = after(
       base(),

@@ -171,6 +171,9 @@ export type EditIntent =
   // a designer may call any pile the deck, and moving the role is what lets the pile the wizard
   // laid out be taken away like any other.
   | { v: 'setDeck'; id: string }
+  // Whether the game goes in turns, and which way round the table (K28). `null` is a game without
+  // turns, and takes the answer away rather than writing a third value.
+  | { v: 'setTurns'; turns: 'clockwise' | 'counterclockwise' | null }
   | { v: 'patchZone'; id: string; patch: ZonePatch }
   // The symbols (E4) and the rulebook (B7)
   | { v: 'setIcon'; name: string; url: string; credit?: ProjectCredit }
@@ -595,6 +598,14 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 
     // The deck moves to another pile, and the hands with it: a hand returns its cards to the deck,
     // so what `returnTo` names is the role and not the pile the recipe once laid out.
+    case 'setTurns': {
+      if (intent.turns === null) {
+        const { turns: _gone, ...rest } = doc.setup
+        return { ...doc, setup: rest }
+      }
+      if (intent.turns !== 'clockwise' && intent.turns !== 'counterclockwise') throw new Error(`no turn order ${String(intent.turns)}`)
+      return { ...doc, setup: { ...doc.setup, turns: intent.turns } }
+    }
     case 'setDeck': {
       const pile = doc.setup.zones.find((z) => z.id === intent.id)
       if (!pile) throw new Error(`no zone ${intent.id}`)
