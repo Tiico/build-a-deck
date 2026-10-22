@@ -162,6 +162,12 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
           onActivate: (key) => {
             const thing = things.find((t) => t.key === key)
             if (!thing) return
+            // A die opens no panel: Enter rolls it, as a click does (#1137, K28), and the focus
+            // stays on it so the next roll is the same key again.
+            if (thing.kind === 'die') {
+              run([{ v: 'roll', component: thing.id }])
+              return
+            }
             remember()
             setOpen({ thing, cards: [] })
           },

@@ -12,6 +12,7 @@ import { previewOf } from '../table/rewind.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { useShuffles } from '../table/shuffle.js'
+import { useRolls } from '../table/Die.js'
 import { FlagSheet } from '../player/SessionSheets.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
@@ -57,6 +58,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: code, game })
   // The shuffle, fanned for the observer as for the room (L35).
   const shuffles = useShuffles(activity, view !== null)
+  const rolls = useRolls(activity, view !== null)
   const [sheet, setSheet] = useState(false)
   // Whether the column beside the table is called in (#6, prototype B). The observer watches, so
   // the table is the whole screen and everything else is summoned; on a desk there is room for
@@ -153,7 +155,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
             in the same frame and with the same words. */}
         <RewindFrame view={view} activity={activity}>
-          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: (card: VisibleComponentState) => read(card) } : { watch: true })} shuffles={shuffles} />
+          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: (card: VisibleComponentState) => read(card) } : { watch: true })} shuffles={shuffles} rolls={rolls} />
         </RewindFrame>
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is

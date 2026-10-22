@@ -10,8 +10,9 @@ import { feltScale, fitScale, leaningSquare, lensReach, woodLayout, TOUCH_PX, TV
 import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, union, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
-import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
-import { isCounter, standIn } from '../components.js'
+import { CARD_MM, DIE_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
+import { dieFaces, dieKind, isCounter, isDie, standIn } from '../components.js'
+import { DieFace, type Roll } from './Die.js'
 import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
@@ -135,6 +136,9 @@ export type TableRendererProps = {
   // Which piles say, under themselves, that they were just shuffled (#718): the room's television
   // only, for three seconds a line. Played by the same lines as the fan.
   said?: readonly Shuffle[] | undefined
+  // Which dice were just rolled (#1137, K28): each tumbles on the spot, by the log line that says so.
+  // `useRolls` derives it, as `useShuffles` does the fans.
+  rolls?: readonly Roll[] | undefined
   onPresence?: ((p: Presence) => void) | undefined
   // Vem som får köra kameran på den här ytan (C5, #325). `follow` är TV:n: den ramar in det som
   // är i spel av sig själv, och vem som helst kan ta över vyn. `hand` är observatören: ingen
@@ -246,7 +250,7 @@ export const TOLD_MS = 4000
 const TOLD_FADE_MS = 600
 // What the plate gives way to: everything on the felt a player reads, and the screen's own chrome
 // laid over it. A zone's bare ground is not in it — text may lie over an empty area, never a card.
-const TOLD_AVOIDS = '.byd-card, .byd-pile-top, .byd-pile-caption, .byd-pile-name, .byd-seat-name, [data-seat-plate], .byd-hand-count, .byd-token, .byd-zone > span, .byd-felt-corner > *, .byd-camera-controls, .byd-table-plate > *, .byd-table-last, .byd-table-start'
+const TOLD_AVOIDS = '.byd-card, .byd-pile-top, .byd-pile-caption, .byd-pile-name, .byd-seat-name, [data-seat-plate], .byd-hand-count, .byd-token, .byd-die, .byd-zone > span, .byd-felt-corner > *, .byd-camera-controls, .byd-table-plate > *, .byd-table-last, .byd-table-start'
 const POINT_MS = 450
 const DRAG_MM = 4
 // How far the pointer must move off the point a drag let go at before resting on a card reads it.
@@ -323,7 +327,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, more }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, more }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -703,13 +707,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // The wood is the felt with its rim, turned as the felt is turned (C5); a frame not yet
   // measured leans nothing that can be known, and gets the flat answer.
   const leaning = mode === 'table' && size !== null && size.w > 0 && size.h > 0 ? woodLayout(rotate % 180 === 0 ? { w: floor.geometry.w, h: floor.geometry.h } : { w: floor.geometry.h, h: floor.geometry.w }, size, scale) : null
-  const hitOf = (centre: Point): number => {
-    if (!leaning) return Math.max(px(TOKEN_MM), TOUCH_PX)
+  const hitOf = (centre: Point, mm = TOKEN_MM): number => {
+    if (!leaning) return Math.max(px(mm), TOUCH_PX)
     const dx = px(centre.x - (floor.geometry.x + floor.geometry.w / 2))
     const dy = px(centre.y - (floor.geometry.y + floor.geometry.h / 2))
     const a = (rotate * Math.PI) / 180
     const onWood = { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) }
-    return Math.max(px(TOKEN_MM), leaningSquare(leaning, onWood, TOUCH_PX))
+    return Math.max(px(mm), leaningSquare(leaning, onWood, TOUCH_PX))
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
@@ -718,6 +722,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
   const shuffling = new Map(shuffles.map((s) => [s.pile, s.seq]))
   const told = new Map(said.map((s) => [s.pile, s.seq]))
+  const rolling = new Map(rolls.map((r) => [r.component, r]))
 
   // Pointer → table millimetres, fixed when a drag begins (the layout does not change under it).
   const mapper = (): ((cx: number, cy: number) => Point) | null => {
@@ -777,7 +782,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!map) return
     toTable.current = map
     const at = map(e.clientX, e.clientY)
-    const ids = target.kind === 'card' || target.kind === 'counter' ? [target.id] : target.kind === 'counterPile' ? target.ids : []
+    const ids = target.kind === 'card' || target.kind === 'counter' || target.kind === 'die' ? [target.id] : target.kind === 'counterPile' ? target.ids : []
     const origin: Drag['origin'] = {}
     for (const id of ids) {
       const c = byId.get(id)
@@ -789,8 +794,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const el = e.currentTarget as HTMLElement
     if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
     clearHold()
-    // A whole pile is dragged, never held.
-    if (target.kind === 'pile') return
+    // A whole pile is dragged, never held; and a die has one verb, which a click already says.
+    if (target.kind === 'pile' || target.kind === 'die') return
     const held = target
     const { clientX, clientY, pointerId } = e
     const edges = edgesOf(el)
@@ -834,6 +839,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     clicked.current = null
     if (!d || !onAct) return
     if (!d.started) {
+      // A die is not asked about: a click is a roll (#1137, K28), and the server decides the side.
+      if (asked && d.target.kind === 'die') {
+        send([{ v: 'roll', component: d.target.id }], asked)
+        return
+      }
       if (asked) {
         clicked.current = { target: d.target, at: Date.now() }
         if (!readFirst(d.target, edges ?? { left: asked.x, right: asked.x, top: asked.y, bottom: asked.y })) ask(d.target, asked.x, asked.y)
@@ -1554,6 +1564,30 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {loose.map((c) => {
             const a = absoluteOf(view, c)
             const m = shifted.has(c.id)
+            if (isDie(c)) {
+              // A die (#1137, K28): its kind's outline from above and the side that is up, drawn
+              // larger than life by the chip's own rule (`DIE_MM`). A die just rolled tumbles on the
+              // spot; under reduced motion it stands still in a ring of the colour of whoever rolled.
+              // The finger's target is the chip's: 44 px on the screen over a die that stays its size.
+              const roll = rolling.get(c.id)
+              const hit = onAct ? hitOf({ x: a.x + DIE_MM / 2, y: a.y + DIE_MM / 2 }, DIE_MM) : 0
+              return (
+                <div
+                  key={c.id}
+                  className="byd-die"
+                  data-die={c.id}
+                  data-kind={dieKind(c) ?? undefined}
+                  data-dragging={lifted.has(c.id) ? 'true' : undefined}
+                  data-rolling={roll ? (still ? 'ring' : 'tumble') : undefined}
+                  {...(onAct ? handlers({ kind: 'die', id: c.id }) : {})}
+                  {...keys(`die:${c.id}`)}
+                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)), width: px(DIE_MM), height: px(DIE_MM), ...(roll ? { ['--seat' as string]: colourOf(roll.seat) } : {}) }}
+                >
+                  <DieFace faces={dieFaces(c) ?? 6} value={c.counter ?? 1} roll={roll?.seq} still={still} />
+                  {hit > 0 && <i className="byd-token-hit" style={{ width: hit, height: hit, left: (px(DIE_MM) - hit) / 2, top: (px(DIE_MM) - hit) / 2 }} />}
+                </div>
+              )
+            }
             if (isCounter(c)) {
               // A token is a thing on the felt like any other, so it carries the keyboard's node
               // and the pointer's handles both. `thingsOn` has always counted it, and the single
@@ -1905,13 +1939,13 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
 
 // What a ring is drawn about, for the sake of a test that has to find it again.
 const ringName = (target: Ring['target']): string =>
-  target.kind === 'card' || target.kind === 'counter' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
+  target.kind === 'card' || target.kind === 'counter' || target.kind === 'die' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
 
 // The felt node a ring is opened on, keyed the way the keyboard layer knows it (`thingsOn`): where
 // focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip, and a
 // pile and its top card are one stop (#572, #723).
 const ringKey = (target: Ring['target']): string =>
-  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : `pile:${target.pile}`
+  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'die' ? `die:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : `pile:${target.pile}`
 
 // What the ring is called: the sentence the keyboard reader hears on the thing it was opened on.
 function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undefined {
@@ -1963,6 +1997,8 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
       ...(move ? [{ label: t('ring.move'), run: move }] : []),
     ]
   }
+  // A die is never asked about — a click rolls it — so a ring on one has nothing to offer.
+  if (target.kind === 'die') return []
   const z = view.zones.find((x) => x.id === target.pile)
   if (!z) return []
   const count = z.mode === 'count' ? z.count : z.order.length
