@@ -4602,6 +4602,12 @@ Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som 
 Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
 Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
 
+**Reviderat 2026-10-22: under 1440 säger primärknappen sitt ärende kort också utan bord (#1078, B).**
+«Starta bord» blir «Starta» och «Start a table» blir «Start», med hela namnet för skärmläsare, som «Uppdatera» gör med ett bord igång.
+Mätt på CI:s DejaVu vid 1280 på engelska utan bord tog «Share» (#727) och «Start a table» det rum spelets namn hade, och «Sal's Saloon» klipptes till 78 av 102 px.
+Två varianter avvisades: «Dela» utan ord upp till 1440, som tog bort #727:s ord i alla lägen mellan 1280 och 1439, och ett ord som ger vika bara när namnet inte ryms, som skulle försvinna för varje spel med långt namn eftersom långa namn klipps med flit.
+Prototypen står i #1078 och i grenen `proto/1078-huvudet`, och grinden är läget utan bord i `packages/e2e/test/surfaces/editor-header-fit.spec.ts`.
+
 **Reviderat 2026-10-06: bekräftelserna står i den öppna flikens fot, inte längst ner på skärmen (L67, #698).**
 
 **Reviderat 2026-10-03: under 1440 är «Osparat» en amber prick i bockens ruta (#668, A1).**

@@ -734,18 +734,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       aria-disabled={updating}
       aria-busy={updating}
       // Below 1440 the errand is said short (#566, beslut 2026-09-30): the step buttons took the room
-      // its last word stood in. The name is whole at every width, and begins with what is drawn.
-      {...(table ? { 'aria-label': t(tableAction) } : {})}
+      // its last word stood in. With no table yet too (#1078, beslut B 2026-10-22): «Start a table»
+      // and «Dela» took the room the game's name had at 1280. The name is whole at every width, and
+      // begins with what is drawn.
+      aria-label={t(tableAction)}
       onClick={() => void updateTable()}
     >
-      {table ? (
-        <>
-          <span className="byd-editor-primary-long">{t(tableAction)}</span>
-          <span className="byd-editor-primary-short" aria-hidden="true">{t(updating ? 'editor.updatingTable.short' : 'editor.updateTable.short')}</span>
-        </>
-      ) : (
-        t(tableAction)
-      )}
+      <span className="byd-editor-primary-long">{t(tableAction)}</span>
+      <span className="byd-editor-primary-short" aria-hidden="true">{t(`${tableAction}.short`)}</span>
     </button>
   )
 

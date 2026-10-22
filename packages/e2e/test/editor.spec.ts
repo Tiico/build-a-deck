@@ -88,7 +88,7 @@ test.describe('the header remembers the table (#477)', () => {
 
     await page.goto(project.editorUrl)
     const primary = page.locator('.byd-editor-primary:not(.byd-editor-caret)')
-    await expect(primary).toHaveText('Start a table')
+    await expect(primary).toHaveAccessibleName('Start a table')
     await primary.click()
     await expect(primary).toHaveAccessibleName('Update the table')
     expect(await tables()).toHaveLength(1)

@@ -124,6 +124,8 @@ export const svEditor = {
   // («Starta bord»), så samma handling heter samma sak var den än står.
   'editor.startTable': 'Starta bord',
   'editor.startingTable': 'Startar bordet…',
+  'editor.startTable.short': 'Starta',
+  'editor.startingTable.short': 'Startar…',
   'editor.updateTable': 'Uppdatera bordet',
   'editor.updateTable.short': 'Uppdatera',
   'editor.updatingTable.short': 'Uppdaterar…',
