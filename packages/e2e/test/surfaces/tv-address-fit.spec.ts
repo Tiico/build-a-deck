@@ -3,7 +3,8 @@ import { expect, test } from '../../support/test.js'
 
 // The room's address on the television (#675, beslut C 2026-10-06): the host on a line of its own
 // at 24 px and `/KOD` under it at 40. Here the host is the stack's, `127.0.0.1:port`; on the box it
-// is `deck.ockelberg.com`, which is longer, so the box's name is what is measured — written into
+// is `deckster.se` since A5, and before that `deck.ockelberg.com`. The longest name the box has
+// had is what is measured, so that a move to a longer host is not a surprise — written into
 // the line the page drew — and with a seventh more width again, which is what a Linux machine's
 // fallback face costs against this Mac's (memory: felt measurements must not pin Mac pixels).
 //

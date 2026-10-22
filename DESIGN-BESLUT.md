@@ -188,7 +188,7 @@ Den får aldrig stå i repot, inte ens som exempel: en länk, en avsändare elle
 
 Följdkrav:
 
-- Produktionen flyttar från `deck.ockelberg.com` när domänen är registrerad och ligger i Cloudflare (#1080): `PUBLIC_ORIGIN`, `BYD_HOSTNAME` och `MAIL_FROM` på lådan, deckster.se verifierad som avsändardomän hos Resend, och pulskollen omriktad (DRIFT §8).
+- Produktionen flyttade från `deck.ockelberg.com` till deckster.se 2026-10-22 (#1080): `PUBLIC_ORIGIN`, `BYD_HOSTNAME` och `MAIL_FROM` på lådan, deckster.se verifierad som avsändardomän hos Resend, en Resend-nyckel som får skicka från den, och pulskollen omriktad (DRIFT §8).
 - Den gamla adressen svarar 301 till deckster.se med sökväg och query kvar, så att utskickade inloggningslänkar, bokmärken och QR-koder fortsätter att fungera.
   Omdirigeringen ligger i proxyn, i överlägget `docker-compose.traefik-moved.yml` (DRIFT §2), inte i appen: appen känner ett enda origin, `PUBLIC_ORIGIN`, och inget domännamn är inskrivet i koden (K12).
 - Ikoner som redan lagts i ett spel behåller upphovsraden `build-your-deck`; den är spelets data, och bara nya får `Deckster`.
@@ -2622,7 +2622,7 @@ Den som satt i soffan hade ingen väg in utan kameran: TV:n sa koden men inte va
 Fyra varianter prototypades och mättes i det byggda appen (`docs/ux-audits/2026-10-06-vagen-in/`, borttagen när den hade svarat; mätningarna står i #675).
 Valet blev **C**.
 TV:n säger appens egen värd på en rad, 24 px, och `/KOD` på raden under, 40 px, med snedstrecket ritat av stilmallen så att det som läses av som koden är koden.
-Värden är skärmens eget origin (`location.host`): på lådan `PUBLIC_ORIGIN`:s värd, `deck.ockelberg.com`, och i en utvecklingsstack dess egen, så att ingen domän är inskriven i koden.
+Värden är skärmens eget origin (`location.host`): på lådan `PUBLIC_ORIGIN`:s värd, `deckster.se` (A5), och i en utvecklingsstack dess egen, så att ingen domän är inskriven i koden.
 `/<KOD>` är en ny toppnivåväg, på servern och i appens router, och den landar direkt i platsväljaren: från det TV:n säger till en plats är det en sidladdning och två tryck — «Gå» på tangentbordet och «Sätt dig».
 QR-rutan bär samma adress som orden bredvid den.
 Bordsläget säger `värd/KOD` på sin skylt, 20 px, och ritar ingen QR-ruta: ett bord alla sitter runt behöver bara adressen.
