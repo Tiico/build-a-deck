@@ -19,7 +19,7 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 // The template mode as the editor mounts it, in one of its panels, taken from a real mount.
 function markup(): string {
   const { container, unmount } = render(
-    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
+    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
   )
   const html = container.innerHTML
   unmount()
@@ -31,7 +31,7 @@ function markup(): string {
 async function markupWithForm(): Promise<string> {
   const user = userEvent.setup()
   const { container, unmount } = render(
-    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
+    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
   )
   const select = screen.getByLabelText('Visar fältet') as HTMLSelectElement
   await user.selectOptions(select, within(select).getByRole('option', { name: 'nytt fält…' }))
@@ -200,7 +200,7 @@ async function cardRowAt1024() {
   doc.rows[0]!.fields['title'] = 'Drakens förbannade vrede över kungariket'
   doc.rows[0]!.fields['body'] = 'Välj två andra spelare. De blandar en shot till varann och dricker den tillsammans.'
   const { container, unmount } = render(
-    <TemplateCanvas doc={doc} face="front" row="dragon" onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
+    <TemplateCanvas doc={doc} face="front" row="dragon" onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
   )
   const html = container.innerHTML
   unmount()
@@ -272,7 +272,7 @@ describe('the card row in the card’s column (#478)', () => {
 async function cardRowPage(doc: ReturnType<typeof projectDoc>, open: boolean) {
   const user = userEvent.setup()
   const { container, unmount } = render(
-    <TemplateCanvas doc={doc} face="front" row="dragon" onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
+    <TemplateCanvas doc={doc} face="front" row="dragon" onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
   )
   if (open) await user.click(container.querySelector('.byd-card-row-name')!)
   const html = container.innerHTML
@@ -368,7 +368,7 @@ async function conditionRows(deck: Deck, width: number, wide: boolean) {
   const doc = deck.doc()
   const { container, unmount } = render(
     <Language lang={deck.lang}>
-      <TemplateCanvas doc={doc} face="front" row={doc.rows[0]!.id} onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />
+      <TemplateCanvas doc={doc} face="front" row={doc.rows[0]!.id} onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />
     </Language>,
   )
   const html = container.innerHTML
@@ -445,7 +445,7 @@ describe('a card with nothing on it yet (#735)', () => {
     const doc = projectDoc()
     doc.template.faces.front = { base: [], variants: {} }
     const { container, unmount } = render(
-      <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
+      <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
     )
     const html = container.innerHTML
     unmount()

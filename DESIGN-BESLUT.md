@@ -212,7 +212,10 @@ Följdkrav:
 
 - Ingen fil i `public/` ritas för hand. `pnpm --filter @byd/web exec tsx scripts/brand-icons.ts` skriver dem, och `packages/web/test/brand.test.ts` stoppar en `favicon.svg` som inte är ritningen.
 - `packages/e2e/test/app-icon.spec.ts` läser de serverade ikonernas pixlar: de tre kortens färger finns, och PNG:erna ligger på trä och inte på bordets mörka.
-- En delad länk (`og:image`) och TV:ns sidospalt bär också handen, men de kräver mer än ritningen (#1084).
+- En delad länk visar handen bredvid namnet på bordets mörka, 1200 × 630, som prototypen ritade den (#1084).
+  `scripts/brand-icons.ts` ritar `og-image.png` med landningssidans egen rad, och servern skriver `PUBLIC_ORIGIN` framför bildens sökväg (DRIFT §13).
+  `packages/e2e/test/app-icon.spec.ts` läser taggarna i sidan servern skickar och bildens pixlar.
+- TV:ns sidospalt bär också handen, men den prototypas på den riktiga spalten innan den byggs (#1084).
 - UI-ikonerna är en egen fråga (#1083): märket är produktens ansikte, glyferna är kontrollernas hand.
 
 Prototypen: `docs/ux-audits/2026-10-21-deckster-ikoner/prototyper/deckster/` (`?v=B`).
@@ -5418,6 +5421,13 @@ Massändringen är ett enda ångrasteg genom samma radlista som varje annan mass
 Media behåller bibliotek, uppladdning, beskärning och förhandsvisning; uppladdningen direkt i Data står kvar under sitt eget namn «Ladda upp», och dragsläppets förbättringar hör till #291.
 Dialogen är en komponent för sig med ett litet gränssnitt — mål, bilder, `onApply(hash)`, `onClose()` — så att mallens fasta bild (#320) kan öppna samma fönster.
 
+Reviderat 2026-10-22 (#1099, beställarens rapport): **i massändringen väljer dialogen och raden skriver.**
+Handlingsraden för de markerade korten har tre vägar in för en bild (E1): släpp en av spelets bilder, ladda upp en fil, eller öppna biblioteket.
+De två första lade bilden i raden och väntade på «Sätt bild på N kort»; biblioteket skrev korten direkt med «Använd på N kort», så raden stod tom med sin knapp inaktiv medan korten redan var ändrade — bilden sattes när den valdes och inte när knappen trycktes.
+Nu handlar dialogen bilden till raden som varje annan väg in, och radens knapp är det enda som skriver; dialogens knapp säger «Välj bilden», eftersom en knapp som inte skriver inte får lova det.
+Resultatbeskedet i remsan över tabellen sägs därför av radens knapp, och massändringen är samma enda ångrasteg som förut.
+För en enskild bildcell skriver dialogen som förut med «Använd bilden»: där finns ingen rad som håller något, och cellen är redan målet.
+
 Reviderat 2026-09-20 (#295, beställaren valde A): **förhandsvisningen i Media visar den kortsida som faktiskt ritar bilden, på ett kort valt bland dem som använder den.**
 
 Variant A, vald efter en klickbar A/B/C-prototyp: kortväljaren står överst, därunder två tydligt märkta sidval, Fram och Bak, och under dem ett enda stort kort; sidminiatyrer och två kortsidor samtidigt byggs inte.
@@ -6646,14 +6656,14 @@ Beställaren valde **A** 2026-10-22.
 - **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och ett 3:2-fönster på bilden som bibliotekets bricka.
   Tom är den en streckad bricka med ett +.
   Knappen heter vad ett tryck gör: «Välj bild för {kort}» tom, «Byt bild för {kort}» med bild.
-- **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» — eller «… från N kort» — i foten när något håller en bild.
+- **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» i foten när kortet håller en bild.
   Cellens eget «Ladda upp» och × tas bort.
   Priset är att en fil och en borttagning är två tryck i stället för ett; vinsten är att cellen inte håller något annat än bilden, och att varje väg till en fil går genom samma dörr.
   En fil genom rutan landar i biblioteket under sitt namn (#742) och på kortet genom rutans egen knapp, så varje steg tillbaka tar en sak som gjordes.
 - **Backsteg och Delete tömmer en fokuserad bricka,** som de tömmer vilket fält som helst.
 - **Draget tar hela rutan som förut (#291):** en biblioteksbild ur remsan återanvänds utan ny uppladdning (E1), och en fil som släpps laddas upp i cellen i samma steg som bilden (#742).
   Rutan äger sitt eget svar på om draget står över den, så ett släpp aldrig kan ändra ett annat mål.
-- **Massredigeringens bildfält är samma komponent.** Biblioteket skriver de markerade korten självt; en bild som släpps eller laddas upp hålls av raden tills knappen trycks, som förut.
+- **Massredigeringens bildfält är samma komponent.** Varje väg in — ett släpp, en fil, bibliotekets «Välj bilden» (#1099) — lämnar bilden till raden, och radens egen knapp är det enda som skriver; rutan öppnad från raden har därför inget att ta bort.
 - **En läsares tabell (#489) ritar bilden och ingenting som kan ändra den:** ingen knapp och ingen släppyta, i komponenten och inte i en stilregel som gömmer knappar.
 - **Remsan över tabellen, bibliotekets och Medias brickor är en annan sak** — en bricka som *visar* en bild — och lämnas utanför.
   Guiden har inget bibliotek och behåller sin filväljare.
@@ -6663,7 +6673,7 @@ C förlorade på att miniatyren blir en ledtråd och kolumnen textkolumnbred; B 
 **Byggt 2026-10-22 (#1105).**
 `PictureSlot` i `packages/web/src/editor/PictureSlot.tsx` är komponenten: `label`, `choose`, `replace`, `alt`, `base`, `value`, `kept`, `onChoose`, `onPick`, `onFiles`, `onClear`, `reading`, `tabIndex`.
 `PictureLibraryDialog` får `onClear`, och Data ger den `onUpload`.
-Strängarna «släpp en bild här», «Välj», «Byt», «Ladda upp» och «Ladda upp bild för …» i cellen utgår; «Byt bild för {kort}», «Byt bild för de markerade korten», «Ta bort bilden från kortet», «Ta bort bilden från {n} kort» och «Bilden är borttagen från …» kommer till.
+Strängarna «släpp en bild här», «Välj», «Byt», «Ladda upp» och «Ladda upp bild för …» i cellen utgår; «Byt bild för {kort}», «Byt bild för de markerade korten», «Ta bort bilden från kortet» och «Bilden är borttagen från {kort}» kommer till.
 Bibliotekets tomma mening pekar inte längre på tabellen, eftersom uppladdningen står i rutan själv.
 Grindarna: `picture-slot.test.tsx`, `data-table.test.tsx`, `data-table-library.test.tsx`, `picture-library.test.tsx`, `data-table-layout.test.tsx` (brickan 66 × 44, en kontroll, kolumnen oklippt) och `packages/e2e/test/picture-upload-refused.spec.ts`, som nu släpper filen på brickan.
 
@@ -7506,3 +7516,13 @@ Hela katalogen och varje symbol verktyget laddar upp klarar vakten oförändrade
 En inläst fil visas som filen och som den form kortet kommer att måla, och rutan säger rakt ut att det vita i filen blir färg och inte ett hål.
 Namnet föreslås ur filnamnet, och en upphovsrad sparas bara när både licens och upphovsperson är ifyllda, som för ett uppladdat typsnitt (L27).
 En fil som inte går att använda sägs med designerns ord och inte med vaktens engelska (A4).
+
+**Byggt 2026-10-22 (#1093, beställarens beslut): klammern och ikonverktyget söker i katalogen.**
+Ikonverktyget i Mall lägger ett ikonlager utan ikon, markerat, och öppnar bibliotekets ark under kortet för «alla kort».
+Det är samma väg som panelens «Ikon och färg», och den lilla listan med Decksters 20 symboler som hängde vid verktygsraden är borta, så det finns en väg till en ikon i stället för två.
+Att välja ikonen är en sak designern gör: ikonen som tas in och lagret som binds till den bär samma gest och kommer tillbaka med ett Ctrl+Z (B4); att lägga lagret var en egen sak och är nästa steg tillbaka.
+Lagret binds så fort spelets uppsättning har ikonens namn, och bytes följer efter, som en placerad symbol alltid gjort (#310); kommer de inte fram är gesten fortfarande den öppna och tas tillbaka hel, med bindningen i sig, så ett kort pekar aldrig på en ikon som tagits tillbaka.
+Hyllorna i arken är val i verktygets `.byd-choice`-form och inte den primära fyllningen, som bara bär handlingen som lägger ut arbetet på bordet; typsnittskatalogens kategorier hade samma fel och fick samma rättning.
+Klammerns «Hela biblioteket» i Tabell söker i katalogen och laddar den när klick två trycks, aldrig när `{` skrivs (L27).
+Före det står Decksters egna, och ett spel utan ikoner öppnar som förut på dem, nu med vägen till hela katalogen under.
+Det öppnade biblioteket visar 60 träffar; namnet efter klammern är det som smalnar av, som i arket.

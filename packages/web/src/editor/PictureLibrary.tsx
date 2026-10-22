@@ -13,7 +13,9 @@ import { saidOr } from '../i18n/said.js'
 // hand and what the press will replace, and one explicit button — «Använd bilden», or «Använd på
 // N kort» — is the only thing that applies it. Avbryt, the × and Escape close it with nothing
 // changed. What it applies is a hash: the same asset reference the picture already has, so a
-// picture on ninety more cards is ninety cells and no upload (E1).
+// picture on ninety more cards is ninety cells and no upload (E1). Where the press hands the
+// picture on rather than writing it — the marked cards' action row holds it until its own button
+// is pressed (#1099) — the opener says what the button says, so that it never promises a write.
 //
 // It is a component of its own and not a corner of the table: a target sentence, the pictures,
 // how many things the press reaches and how many of them already hold a picture, and two
@@ -41,6 +43,9 @@ export type PictureLibraryDialogProps = {
   assetBase: string
   onApply(hash: string): void
   onClose(): void
+  // What the button says when the press does not write: the caller's words for what it does
+  // with the hash instead. Left out, the button counts what it writes.
+  use?: string | undefined
   // The way in from here (#320): a file the designer brings, answered with the hash it was filed
   // under, by the same path Media takes — so the picture lands in the library and the window then
   // holds it. Only an opener that can take one offers it; Data's windows stay what they were.
@@ -51,7 +56,7 @@ export type PictureLibraryDialogProps = {
   onClear?: (() => void) | undefined
 }
 
-export function PictureLibraryDialog({ target, count, replacing, pictures, assetBase, onApply, onClose, onUpload, onClear }: PictureLibraryDialogProps) {
+export function PictureLibraryDialog({ target, count, replacing, pictures, assetBase, onApply, onClose, onUpload, use, onClear }: PictureLibraryDialogProps) {
   const t = useT()
   const id = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -150,7 +155,7 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
             )}
           </div>
           <button type="button" className="byd-primary" disabled={!chosen} onClick={() => chosen && onApply(chosen.hash)}>
-            {count === 1 ? t('library.use') : t('library.use.many', { n: count })}
+            {use ?? (count === 1 ? t('library.use') : t('library.use.many', { n: count }))}
           </button>
           {onClear && replacing > 0 && (
             <button type="button" className="byd-secondary byd-library-clear" onClick={onClear}>

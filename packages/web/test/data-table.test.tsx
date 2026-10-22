@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
-import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
+import type { CatalogIcon } from '../src/editor/icon-catalog.js'
 import { groundOf } from '../src/editor/palette.js'
 
 describe('DataTable (B as a tab)', () => {
@@ -302,7 +302,7 @@ describe('the symbol picker at the brace (E4)', () => {
     const onCell = vi.fn()
     // The editor answers with the name the symbol has in the designer's own language, which is
     // what lands in the icon set and between the braces (E4, A4).
-    const onSymbol = vi.fn(async (s: GameSymbol) => symbolName(s))
+    const onSymbol = vi.fn(async (i: CatalogIcon) => i.name)
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={onSymbol} />)
     const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     return { cell, onCell, onSymbol }
@@ -322,7 +322,7 @@ describe('the symbol picker at the brace (E4)', () => {
 
     fireEvent.click(within(list).getAllByRole('option')[0]!)
     await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Flygande. {sköld}'))
-    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'skold' }))
+    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'deckster:skold' }))
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
@@ -416,9 +416,9 @@ describe('the symbol picker at the brace (E4)', () => {
     // And the ends of the list, which every other list in the editor answers (#235): eight matches
     // is five arrow presses to the one at the bottom, and a library narrowed by a letter or two is
     // very often longest exactly when the designer knows which end she wants.
-    const last = within(list).getAllByRole('option').length - 1
+    // The last stop is the way into the whole library (#1093), which stands after the list.
     fireEvent.keyDown(cell, { key: 'End' })
-    expect(within(list).getAllByRole('option')[last]!.getAttribute('aria-selected')).toBe('true')
+    expect(document.getElementById(cell.getAttribute('aria-activedescendant') ?? '')?.textContent).toMatch(/Hela biblioteket/)
     fireEvent.keyDown(cell, { key: 'Home' })
     expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
 
@@ -426,7 +426,7 @@ describe('the symbol picker at the brace (E4)', () => {
     await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', `{${names[0]}}`))
 
     type(cell, '{s')
-    expect(screen.getByRole('listbox')).toBeTruthy()
+    expect(screen.getAllByRole('listbox').length).toBeGreaterThan(0)
     fireEvent.keyDown(cell, { key: 'Escape' })
     expect(screen.queryByRole('listbox')).toBeNull()
   })
@@ -542,7 +542,7 @@ describe('the meaning picker after the bar (E4)', () => {
   const setup = (palette: Record<string, string> = { fara: '#8f2d20', kostnad: '#7a5c00', vinst: '#2f6136' }) => {
     const doc = { ...projectDoc(), palette }
     const onCell = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (i: CatalogIcon) => i.name)} />)
     const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     return { cell, onCell }
   }
@@ -590,7 +590,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
   const setup = (palette: Record<string, string> = { fara: '#8f2d20', vinst: '#2f6136' }, icons: Record<string, string> = {}) => {
     const doc = { ...projectDoc(), palette, icons }
     const onCell = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (i: CatalogIcon) => i.name)} />)
     const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     return { cell, onCell, doc }
   }
@@ -706,7 +706,7 @@ describe('the brace proposes from the game (L57)', () => {
       { id: 'wizard', fields: { title: 'Trollkarl', body: '{droppe|kostnad} och {hjärta}, {2} gånger.', antal: 1 } },
     ]
     const onCell = vi.fn()
-    const onSymbol = vi.fn(async (s: GameSymbol) => symbolName(s))
+    const onSymbol = vi.fn(async (i: CatalogIcon) => i.name)
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={onSymbol} />)
     const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     return { cell, onCell, onSymbol, doc }
@@ -754,7 +754,7 @@ describe('the brace proposes from the game (L57)', () => {
   it('opens the whole library as the second click, and a symbol taken from it comes into the game as before', async () => {
     const { cell, onCell, onSymbol } = setup()
     type(cell, 'Skada {')
-    fireEvent.click(screen.getByRole('option', { name: /Hela biblioteket \(\d+\) ›/ }))
+    fireEvent.click(screen.getByRole('option', { name: /Hela biblioteket/ }))
 
     const library = optionsOf('Symboler')
     expect(library.length).toBeGreaterThan(8)
@@ -765,7 +765,7 @@ describe('the brace proposes from the game (L57)', () => {
     fireEvent.click(optionsOf('Betydelser')[0]!)
 
     await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {måne}'))
-    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'mane' }))
+    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'deckster:mane' }))
   })
 
   it('walks all the parts on the keys: the deck’s tokens, the icons, the way into the library and back', async () => {
@@ -822,7 +822,29 @@ describe('the brace proposes from the game (L57)', () => {
     expect(optionsOf('Symboler').length).toBeGreaterThan(3)
     expect(screen.queryByRole('listbox', { name: 'Som leken skriver dem' })).toBeNull()
     expect(screen.queryByRole('listbox', { name: 'Spelets ikoner' })).toBeNull()
-    expect(screen.queryByRole('option', { name: /Hela biblioteket/ })).toBeNull()
+    // The symbols drawn for the project stand at once; the whole catalog is the second click
+    // there too (#1093), since a game with no icons is the game that needs it most.
+    expect(screen.getByRole('option', { name: /Hela biblioteket/ })).toBeTruthy()
+  })
+
+  // «Hela biblioteket» is the icon catalog (#1093, L71): Deckster's symbols, game-icons.net and
+  // Lucide, loaded on that click and not on the brace (L27). An icon from it is taken into the game
+  // with its credit and written under the name it gets there, as a symbol always was.
+  it('opens the whole catalog on the second click, and writes an icon from it under its name', async () => {
+    const { cell, onCell, onSymbol } = setup()
+    type(cell, 'Skada {')
+    fireEvent.click(screen.getByRole('option', { name: /Hela biblioteket/ }))
+    type(cell, 'Skada {svärd')
+    const swords = await waitFor(() => {
+      const found = optionsOf('Symboler').find((o) => o.getAttribute('data-symbol') === 'crossed-swords')
+      if (!found) throw new Error('the catalog has not come in yet')
+      return found
+    })
+    fireEvent.click(swords)
+    // The game has meanings, so the meaning is asked for before anything is taken in (L34).
+    fireEvent.click(within(screen.getByRole('listbox', { name: /Betydelse/ })).getAllByRole('option')[0]!)
+    await waitFor(() => expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'game-icons:crossed-swords' })))
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {crossed-swords}'))
   })
 })
 

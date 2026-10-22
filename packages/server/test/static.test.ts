@@ -16,9 +16,9 @@ afterEach(async () => {
   stop = null
 })
 
-async function serve(staticDir?: string, store = new MemoryLogStore(), appOrigin?: string, projects?: MemoryProjectStore) {
+async function serve(staticDir?: string, store = new MemoryLogStore(), appOrigin?: string, projects?: MemoryProjectStore, publicOrigin?: string) {
   const host = new TableHost(registry, store)
-  const server = createServer({ host, store, registry, ...(staticDir ? { staticDir } : {}), ...(appOrigin ? { appOrigin } : {}), ...(projects ? { projects } : {}) })
+  const server = createServer({ host, store, registry, ...(staticDir ? { staticDir } : {}), ...(appOrigin ? { appOrigin } : {}), ...(projects ? { projects } : {}), ...(publicOrigin ? { publicOrigin } : {}) })
   // Out of this package's block of the band, like every other server in this suite: a port asked
   // for as "any port at all" is one a neighbouring run can be handed at the same moment (#58, #289).
   const port = await listenInBand(server)
@@ -114,20 +114,55 @@ describe('health (DRIFT §2)', () => {
 // the felt would never show, and every one of which is a way to spend the box's CPU or its
 // bandwidth for nothing: bytes that are already compressed, a file too small to be worth a header,
 // and a client that asked for the thing as it is.
-describe('compressing what is served (DRIFT §13, #372)', () => {
-  /** One request with the bytes as they crossed: no decoding in the way, which is the point. */
-  const ask = (origin: string, path: string, headers: Record<string, string>): Promise<{ headers: Record<string, string | undefined>; bytes: Buffer }> =>
-    new Promise((resolve, reject) => {
-      const req = httpRequest(new URL(path, origin), { headers }, (res) => {
-        const chunks: Buffer[] = []
-        res.on('data', (c: Buffer) => chunks.push(c))
-        res.on('end', () => resolve({ headers: res.headers as Record<string, string | undefined>, bytes: Buffer.concat(chunks) }))
-        res.on('error', reject)
-      })
-      req.on('error', reject)
-      req.end()
+/** One request with the bytes as they crossed: no decoding in the way, which is the point. */
+const ask = (origin: string, path: string, headers: Record<string, string>): Promise<{ headers: Record<string, string | undefined>; bytes: Buffer }> =>
+  new Promise((resolve, reject) => {
+    const req = httpRequest(new URL(path, origin), { headers }, (res) => {
+      const chunks: Buffer[] = []
+      res.on('data', (c: Buffer) => chunks.push(c))
+      res.on('end', () => resolve({ headers: res.headers as Record<string, string | undefined>, bytes: Buffer.concat(chunks) }))
+      res.on('error', reject)
     })
+    req.on('error', reject)
+    req.end()
+  })
 
+// A link shared in a chat shows Deckster's hand (#1084). A previewer wants the picture at an
+// absolute address, and the app knows its origin only from PUBLIC_ORIGIN (A5, K12), so the page
+// names the picture by its path and the server writes the origin in front of it as it sends the
+// page — in every form the page goes out in.
+describe('a shared link (#1084)', () => {
+  // As the build writes it: the page names the picture by its path. Long enough to be compressed.
+  const page = `<!doctype html><html><head><title>Deckster</title><meta property="og:image" content="/og-image.png" /><meta name="twitter:image" content="/og-image.png" /></head><body>${'<!-- room -->'.repeat(120)}</body></html>`
+  const named = (html: string): string[] => [...html.matchAll(/<meta (?:property|name)="(?:og|twitter):image" content="([^"]*)"/g)].map((m) => m[1] as string)
+
+  it('names the picture at the public origin, on the landing page and on a room, plain and compressed', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'byd-og-'))
+    await writeFile(join(dir, 'index.html'), page)
+    const http = await serve(dir, new MemoryLogStore(), undefined, undefined, 'https://deckster.example')
+    for (const path of ['/', '/Q6RN2C']) {
+      const plain = await ask(http, path, {})
+      expect({ path, named: named(plain.bytes.toString()) }).toEqual({ path, named: ['https://deckster.example/og-image.png', 'https://deckster.example/og-image.png'] })
+      const br = await ask(http, path, { 'accept-encoding': 'br' })
+      expect(br.headers['content-encoding']).toBe('br')
+      expect({ path, named: named(brotliDecompressSync(br.bytes).toString()) }).toEqual({ path, named: ['https://deckster.example/og-image.png', 'https://deckster.example/og-image.png'] })
+      const gz = await ask(http, path, { 'accept-encoding': 'gzip' })
+      expect({ path, named: named(gunzipSync(gz.bytes).toString()) }).toEqual({ path, named: ['https://deckster.example/og-image.png', 'https://deckster.example/og-image.png'] })
+      expect(plain.headers['content-length'] ?? String(plain.bytes.length)).toBe(String(plain.bytes.length))
+    }
+  })
+
+  // Without a public origin there is no address to write, and the request's Host is not one to
+  // trust into a page a previewer keeps: the path stays as the build wrote it.
+  it('leaves the path alone when no public origin is configured', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'byd-og-'))
+    await writeFile(join(dir, 'index.html'), page)
+    const http = await serve(dir)
+    expect(named((await ask(http, '/', {})).bytes.toString())).toEqual(['/og-image.png', '/og-image.png'])
+  })
+})
+
+describe('compressing what is served (DRIFT §13, #372)', () => {
   // A stylesheet of the order the felt's own is, so the readings are about the same thing the
   // measurement in #366 was about rather than about a handful of bytes.
   const sheet = Array.from({ length: 400 }, (_, i) => `.byd-thing-${i}{--byd-gap:${i}px;padding:${i}px}`).join('\n')

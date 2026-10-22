@@ -550,7 +550,6 @@ export const enEditor = {
   'table.image.replaceFor': 'Replace the image for {cardRef}',
   'table.bulk.image.replace': 'Replace the image for the marked cards',
   'table.library.cleared.one': 'The picture is off {cardRef}.',
-  'table.library.cleared.other': 'The picture is off {n} cards.',
   'table.image.removeFor': 'Remove the image for {cardRef}',
   'library.search': 'Search pictures',
   'library.search.placeholder': 'Picture name',
@@ -569,6 +568,7 @@ export const enEditor = {
   'library.use.many': 'Use on {n} cards',
   'library.clear.one': 'Remove the picture from the card',
   'library.clear.other': 'Remove the picture from {n} cards',
+  'library.pick': 'Choose the picture',
   'library.close': 'Close',
   'library.target.card': 'The card {cardRef}, picture field {field}',
   'library.target.cards': '{n} marked cards, picture field {field}',
@@ -591,6 +591,7 @@ export const enEditor = {
   'table.brace.found.hint': 'taken into the game',
   'table.brace.inGame': 'in the game',
   'table.brace.library': 'The library',
+  'table.brace.more.all': 'The whole library ›',
   'table.brace.more': 'The whole library ({n}) ›',
   'table.brace.back': '‹ The game’s icons',
   'table.removeRow': 'remove {cardRef}',
@@ -720,7 +721,6 @@ export const enEditor = {
   'canvas.reset': 'Back to the base',
   'canvas.faceSwitch': 'Card side',
   'canvas.tools': 'Tools',
-  'canvas.symbols': 'Symbols',
   'canvas.tool.text': 'Text',
   'canvas.tool.image': 'Image',
   // The icon as a tool on the canvas (#33): one icon, against the row that reads a column.
@@ -1096,7 +1096,6 @@ export const enEditor = {
   // What a handling in the editor says when it failed and nobody put the reason in words (#812):
   // one whole sentence per handling, never the server's, the network's or the document's own.
   'symbols.take.failed': 'The symbol {name} could not be taken in. Try again.',
-  'symbols.place.failed': 'The icon {name} could not be placed on the card. Try again.',
   'fonts.upload.failed': 'The typeface could not be uploaded. Try again.',
   'icons.own.upload': 'Upload an SVG …',
   'icons.own.title': 'Your own icon',

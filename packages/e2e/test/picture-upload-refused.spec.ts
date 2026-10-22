@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import type { Locator, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { newElement } from '../../web/src/editor/canvas.js'
 import type { ProjectDoc } from '../../web/src/editor/types.js'
 import { logIn, makeProjectOf } from '../support/api.js'
+import { dropOn } from '../support/drop.js'
 import { DESK } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -57,17 +58,6 @@ async function openTable(page: Page) {
   const slot = page.getByRole('group', { name: 'Bild för kort-1' })
   await expect(slot).toBeAttached()
   return slot
-}
-
-// A file let go over the slot, as a hand would let it go: a real `drop` with the file in the
-// transfer, which is the path the cell's own upload takes (#291).
-async function dropOn(slot: Locator, file: { name: string; mimeType: string; buffer: Buffer }) {
-  const transfer = await slot.evaluateHandle((_, f) => {
-    const dt = new DataTransfer()
-    dt.items.add(new File([Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0))], f.name, { type: f.mimeType }))
-    return dt
-  }, { name: file.name, mimeType: file.mimeType, base64: file.buffer.toString('base64') })
-  await slot.dispatchEvent('drop', { dataTransfer: transfer })
 }
 
 test.describe('a picture uploaded from a card cell (#742)', () => {

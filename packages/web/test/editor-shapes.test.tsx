@@ -36,7 +36,6 @@ function open(over: Partial<Shape> = {}, opts: { face?: string } = {}) {
       onReplaceFace={onReplaceFace}
       onRemove={vi.fn()}
       onAdd={vi.fn()}
-      onPlaceIcon={vi.fn()}
       onReorder={vi.fn()}
       onLock={vi.fn()}
       onRename={vi.fn()}
@@ -339,7 +338,6 @@ describe('what the ready-made backs are called (A4, L17)', () => {
         onReplaceFace={vi.fn()}
         onRemove={vi.fn()}
         onAdd={vi.fn()}
-        onPlaceIcon={vi.fn()}
         onReorder={vi.fn()}
         onLock={vi.fn()}
         onRename={vi.fn()}

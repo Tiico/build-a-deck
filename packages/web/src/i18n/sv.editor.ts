@@ -613,7 +613,6 @@ export const svEditor = {
   'table.image.replaceFor': 'Byt bild för {cardRef}',
   'table.bulk.image.replace': 'Byt bild för de markerade korten',
   'table.library.cleared.one': 'Bilden är borttagen från {cardRef}.',
-  'table.library.cleared.other': 'Bilden är borttagen från {n} kort.',
   'table.image.removeFor': 'Ta bort bild för {cardRef}',
   'library.search': 'Sök bild',
   'library.search.placeholder': 'Bildens namn',
@@ -633,6 +632,7 @@ export const svEditor = {
   'library.use.many': 'Använd på {n} kort',
   'library.clear.one': 'Ta bort bilden från kortet',
   'library.clear.other': 'Ta bort bilden från {n} kort',
+  'library.pick': 'Välj bilden',
   'library.close': 'Stäng',
   'library.target.card': 'Kortet {cardRef}, bildfältet {field}',
   'library.target.cards': '{n} markerade kort, bildfältet {field}',
@@ -655,6 +655,7 @@ export const svEditor = {
   'table.brace.found.hint': 'tas in i spelet',
   'table.brace.inGame': 'i spelet',
   'table.brace.library': 'Biblioteket',
+  'table.brace.more.all': 'Hela biblioteket ›',
   'table.brace.more': 'Hela biblioteket ({n}) ›',
   'table.brace.back': '‹ Spelets ikoner',
   'table.removeRow': 'ta bort {cardRef}',
@@ -813,7 +814,6 @@ export const svEditor = {
   'canvas.reset': 'Återgå till basen',
   'canvas.faceSwitch': 'Kortsida',
   'canvas.tools': 'Verktyg',
-  'canvas.symbols': 'Symboler',
   'canvas.tool.text': 'Text',
   'canvas.tool.image': 'Bild',
   // Ikonen som verktyg på duken (#33). `ikon` är den enskilda bilden och `ikonrad` raden som
@@ -1206,7 +1206,6 @@ export const svEditor = {
   // Vad en handling i editorn säger när den inte gick och ingen satt ord på varför (#812): en hel
   // mening per handling, aldrig serverns, nätverkets eller dokumentets engelska.
   'symbols.take.failed': 'Symbolen {name} kunde inte tas in. Försök igen.',
-  'symbols.place.failed': 'Ikonen {name} kunde inte läggas på kortet. Försök igen.',
   'fonts.upload.failed': 'Typsnittet kunde inte laddas upp. Försök igen.',
   'icons.own.upload': 'Ladda upp SVG …',
   'icons.own.title': 'Egen ikon',

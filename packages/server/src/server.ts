@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
-import { compressible, encodedCopy } from './compress.js'
+import { compressible, encodedBytes, encodedCopy } from './compress.js'
+import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type ServerMessage } from '@byd/protocol'
@@ -547,7 +548,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
       const policy = (scriptHashes: readonly string[]) => pagePolicy({ scriptHashes, nonce: pageNonce(), socket: socketOrigin(req.headers.host, schemeOf(opts, req) === 'https'), objects: opts.objects?.origin ?? null })
-      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res, policy)) return
+      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res, policy, originOf(opts.publicOrigin))) return
     }
     json(res, 404, { error: 'not found' })
   } catch (err) {
@@ -603,7 +604,7 @@ const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '
 // following it asks for HTML and gets the app, which accepts the invitation with a POST to the
 // same path; anything else asking gets the API's answer.
 const PAGE_PATHS = [/^\/invites\/[A-Za-z0-9_-]+$/]
-async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse, policy: (scriptHashes: readonly string[]) => string): Promise<boolean> {
+async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse, policy: (scriptHashes: readonly string[]) => string, publicOrigin: string | null): Promise<boolean> {
   const page = PAGE_PATHS.some((p) => p.test(pathname)) && (wants ?? '').includes('text/html')
   // The API never falls back to the app, whatever is or is not mounted.
   if (!page && API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
@@ -625,6 +626,15 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   // must not hand an identity answer to a client that would have taken brotli — or the other way
   // about, which is worse.
   if (compressible(type)) head['vary'] = 'accept-encoding'
+  // A page names the picture a shared link shows at the public origin (#1084, share.ts).
+  if (type.startsWith('text/html') && publicOrigin) {
+    const page = await sharedPage(file, publicOrigin)
+    const encoded = await encodedBytes(page.identity, page.bytes, type, accept)
+    const bytes = encoded?.bytes ?? page.bytes
+    res.writeHead(200, { ...head, ...(encoded ? { 'content-encoding': encoded.encoding } : {}), 'content-length': String(bytes.length) })
+    res.end(bytes)
+    return true
+  }
   const encoded = await encodedCopy(file, type, accept)
   if (encoded) {
     res.writeHead(200, { ...head, 'content-encoding': encoded.encoding, 'content-length': String(encoded.bytes.length) })
