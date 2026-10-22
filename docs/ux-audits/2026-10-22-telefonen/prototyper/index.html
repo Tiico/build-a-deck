@@ -41,8 +41,9 @@
     #stage { padding: 0; display: block; }
     #info { display: none; }
     #frame { width: 100%; height: 100svh; border-radius: 0; padding: 0; box-shadow: none; transform: none !important; }
-    #phone { border-radius: 0; }
-    #switch { top: 6px; bottom: auto; left: auto; right: 6px; transform: none; padding: 2px; font-size: 12px; opacity: .92; }
+    /* Prototypens band tar en egen rad överst, så att det aldrig ligger över förslaget. */
+    #phone { border-radius: 0; height: calc(100% - 36px); margin-top: 36px; }
+    #switch { top: 3px; bottom: auto; left: 50%; transform: translateX(-50%); padding: 0 2px; font-size: 12px; }
     #switch button { min-width: 30px; min-height: 30px; font-size: 14px; }
     #switch .lbl { padding: 0 4px; }
     #switch .reset { display: none; }
@@ -58,16 +59,18 @@
   .seat-a { --seat: #e5534b; } .seat-b { --seat: #3c8ce7; } .seat-c { --seat: #3fb67a; } .seat-d { --seat: #e3b341; }
 
   /* ---------------- kortet, gemensamt för alla varianter ---------------- */
-  .card { --w: 120px; position: relative; width: var(--w); aspect-ratio: 63 / 88; flex: none; border-radius: calc(var(--w) * .06); background: #f4ead8; color: #1c1c1c; box-shadow: 0 2px 8px #0008; overflow: hidden; display: flex; flex-direction: column; font-size: calc(var(--w) * .085); }
+  .card { --w: 120px; position: relative; width: var(--w); aspect-ratio: 63 / 88; flex: none; border-radius: calc(var(--w) * .06); background: #f4ead8; color: #1c1c1c; box-shadow: 0 2px 8px #0008; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size; }
+  /* Allt i kortet mäts i kortets egen bredd, så samma kort går att rita i 22 px och i 300. */
+  .card > * { font-size: 8.5cqw; }
   .card .hd { display: flex; align-items: center; gap: .4em; padding: .45em .55em; background: hsl(var(--h) 45% 32%); color: #fff; font-weight: 800; font-family: Georgia, serif; }
   .card .hd b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.1em; }
   .card .cost { flex: none; width: 1.7em; height: 1.7em; border-radius: 50%; display: grid; place-items: center; background: #f0b64a; color: #2a1c05; font: 800 .95em system-ui; }
-  .card .art { flex: 1 1 auto; margin: .45em .55em 0; border-radius: .3em; background: radial-gradient(circle at 30% 30%, hsl(var(--h) 50% 72%), hsl(var(--h) 40% 42%)); display: grid; place-items: center; color: #fff9; font: 800 calc(var(--w) * .34) Georgia, serif; }
-  .card .ty { padding: .3em .55em 0; font-size: .78em; text-transform: uppercase; letter-spacing: .08em; color: #6b5f4c; font-weight: 700; }
+  .card .art { flex: 1 1 auto; margin: .45em .55em 0; border-radius: .3em; background: radial-gradient(circle at 30% 30%, hsl(var(--h) 50% 72%), hsl(var(--h) 40% 42%)); display: grid; place-items: center; color: #fff9; font: 800 34cqw Georgia, serif; }
+  .card .ty { padding: .3em .55em 0; font-size: 6.6cqw; text-transform: uppercase; letter-spacing: .08em; color: #6b5f4c; font-weight: 700; }
   .card .tx { padding: .15em .55em .6em; min-height: 3.2em; line-height: 1.25; }
   .card.back { background: repeating-linear-gradient(45deg, #2b3d78 0 4px, #34478a 4px 8px); border: 2px solid #1a2650; }
   .card.back > * { display: none; }
-  .card.down::after { content: 'nedvänt · bara du'; position: absolute; inset: auto 0 0 0; padding: .3em; background: #14161ce6; color: #ffd98a; font: 700 .8em system-ui; text-align: center; }
+  .card.down::after { content: 'nedvänt · bara du'; position: absolute; inset: auto 0 0 0; padding: .3em; background: #14161ce6; color: #ffd98a; font: 700 7.5cqw system-ui; text-align: center; }
   /* Små kort: bara namn och kostnad syns. */
   .card.mini .ty, .card.mini .tx { display: none; }
   .card.mini .art { margin-bottom: .45em; }
@@ -108,9 +111,9 @@
   .A-pile .card { --w: 22px; box-shadow: none; }
   .A-pile small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
   .A-pile.draw { border-color: #7dd3a066; color: var(--accent); }
-  .A-car { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; overflow-x: auto; scroll-snap-type: x mandatory; gap: 16px; padding: 8px calc(50% - 115px); scrollbar-width: none; }
+  .A-car { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; overflow-x: auto; scroll-snap-type: x mandatory; gap: 16px; padding: 8px calc(50% - 125px); scrollbar-width: none; }
   .A-car::-webkit-scrollbar { display: none; }
-  .A-car .card { --w: 230px; scroll-snap-align: center; transition: transform .2s, opacity .2s; }
+  .A-car .card { --w: 250px; scroll-snap-align: center; transition: transform .2s, opacity .2s; }
   .A-car .card:not(.on) { transform: scale(.88); opacity: .55; }
   .A-empty { flex: 1; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 24px; }
   .A-where { flex: none; text-align: center; color: var(--muted); font-size: 13px; height: 18px; font-variant-numeric: tabular-nums; }
@@ -143,7 +146,7 @@
   .B-draw { width: 100%; justify-content: center; margin-bottom: 12px; border: 1px dashed #7dd3a088; background: transparent; color: var(--accent); }
   .B-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .B-grid button { position: relative; padding: 0; border: 0; background: none; border-radius: 8px; }
-  .B-grid .card { --w: 100%; font-size: 9.5px; }
+  .B-grid .card { --w: 100%; }
   .B-grid button[aria-pressed='true'] .card { outline: 3px solid var(--warn); outline-offset: 2px; transform: translateY(-4px); }
   .B-grid .tick { position: absolute; top: -6px; right: -6px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; background: var(--warn); color: #2a2417; font-weight: 900; display: grid; place-items: center; font-size: 14px; }
   .B-bar { flex: none; padding: 10px 12px; background: var(--surface); border-top: 1px solid var(--line); animation: up .15s ease-out; }
@@ -190,13 +193,13 @@
   .C-head button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--control); color: var(--strong); font-size: 19px; }
   .C-head button:disabled { opacity: .35; }
   .C-board { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 12px 0; }
-  .C-tile { position: relative; min-height: 92px; border: 2px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; transition: border-color .12s, background .12s, transform .12s; }
+  .C-tile { position: relative; min-height: 112px; border: 2px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; transition: border-color .12s, background .12s, transform .12s; }
   .C-tile b { color: var(--strong); font-size: 15px; }
   .C-tile small { color: var(--muted); font-size: 12px; }
   .C-tile .cards { display: flex; gap: 4px; align-items: flex-end; }
-  .C-tile .card { --w: 30px; box-shadow: 0 1px 3px #0008; }
-  .C-tile.wide { grid-column: 1 / -1; min-height: 104px; }
-  .C-tile.wide .cards .card { --w: 46px; }
+  .C-tile .card { --w: 40px; box-shadow: 0 1px 3px #0008; }
+  .C-tile.wide { grid-column: 1 / -1; min-height: 132px; }
+  .C-tile.wide .cards .card { --w: 60px; }
   .C-tile .verb { position: absolute; right: 10px; top: 10px; font-size: 12px; font-weight: 800; color: var(--accent); }
   .C-tile.target { border-color: var(--warn); background: #2a2417; }
   .C-tile.target .verb { color: var(--warn); }
@@ -206,10 +209,10 @@
   .C-counter { flex: 1; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; border-radius: 14px; background: var(--surface); overflow: hidden; }
   .C-counter button { min-height: 44px; border: 0; background: var(--control); color: var(--strong); font-size: 20px; font-weight: 800; }
   .C-counter div { text-align: center; line-height: 1.1; } .C-counter b { font-size: 18px; color: var(--strong); font-variant-numeric: tabular-nums; } .C-counter span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .C-hint { flex: none; margin: auto 16px 0; padding: 10px 0 4px; text-align: center; color: var(--muted); font-size: 13px; min-height: 36px; }
+  .C-hint { flex: none; margin: 4px 16px auto; padding: 10px 0 4px; text-align: center; color: var(--muted); font-size: 13px; min-height: 36px; }
   .C-hint b { color: var(--warn); }
-  .C-fan { flex: none; position: relative; height: 270px; margin-bottom: env(safe-area-inset-bottom); touch-action: none; }
-  .C-fan .slot { position: absolute; bottom: -40px; left: 50%; transform-origin: 50% 160%; transition: transform .18s; touch-action: none; }
+  .C-fan { flex: none; position: relative; height: 250px; margin-bottom: env(safe-area-inset-bottom); touch-action: none; }
+  .C-fan .slot { position: absolute; bottom: 6px; left: 50%; transform-origin: 50% 100%; transition: transform .18s; touch-action: none; }
   .C-fan .slot .card { --w: 150px; }
   .C-fan .slot.sel { z-index: 20 !important; }
   .C-fan .slot.sel .card { outline: 3px solid var(--warn); outline-offset: 2px; }
@@ -394,7 +397,7 @@ const VARIANTS = {
       <div class="A-acts">
         <button class="btn primary" data-a="playA" data-d="mine">▲ Spela framför mig</button>
         <button class="btn" data-a="playA" data-d="discard">Kasta</button>
-        <button class="btn" data-a="playA" data-d="bottom">Underst</button>
+        <button class="btn" data-a="playA" data-d="bottom">Lägg underst</button>
         <button class="btn" data-a="moreA" aria-label="Fler sätt att spela">⋯</button>
       </div>
       <div class="A-strip">${S.hand.map((c, i) => `<button data-a="focus" data-i="${i}" aria-current="${i === f}" aria-label="${name(c)}">${card(c, 'mini')}</button>`).join('')}</div>`
@@ -474,8 +477,8 @@ const VARIANTS = {
     init: () => ({ tab: 'hand', sel: [] }),
     render() {
       V.sel = V.sel.filter(u => S.hand.some(c => c.u === u))
-      const tabs = [['hand', '🂠', 'Handen', S.hand.length], ['mine', '▲', 'Framför mig', S.mine.length], ['table', '◎', 'Bordet'], ['more', '≡', 'Mer']]
-      const title = { hand: 'Handen', mine: 'Framför mig', table: 'Bordet', more: 'Mer' }[V.tab]
+      const tabs = [['hand', '🂠', 'Handen', S.hand.length], ['mine', '▲', 'Framför mig', S.mine.length], ['table', '◎', 'Bordet'], ['menu', '≡', 'Mer']]
+      const title = { hand: 'Handen', mine: 'Framför mig', table: 'Bordet', menu: 'Mer' }[V.tab]
       return `
       <div class="B-head"><span class="dot"></span><h1>${title} <small>· Ada</small></h1><button class="B-undo" data-a="undo" ${past.length ? '' : 'disabled'}>↶ Ångra</button></div>
       <div class="B-body">${this[V.tab]()}</div>
@@ -503,6 +506,12 @@ const VARIANTS = {
         <button class="B-pile" data-a="readDiscard">${card(top, 'mini')}<span><b>Kasthögen</b><small style="color:var(--muted)">${S.discard.length} kort · överst ${top ? name(top) : '–'}</small></span><span class="go" style="color:var(--strong)">Läs</span></button></div>
         <div class="B-sec"><h2>Spelarna</h2>${S.others.map(o => `<div class="B-seat seat-${o.seat}"><span class="dot"></span><b>${o.name}</b><span class="cards">${o.mine.map(c => card(c, 'mini')).join('')}</span><span class="n">${o.hand} på handen<br>${o.mine.length} framför</span></div>`).join('')}</div>
         <div class="B-sec"><h2>Senaste dragen</h2><ul class="B-log">${S.log.slice(0, 8).map(l => `<li class="seat-${l.s}"><span class="dot"></span>${l.t}</li>`).join('')}</ul></div>`
+    },
+    menu() {
+      return `<div class="B-sec"><h2>Skogens herrar · v3</h2><div class="list" style="display:grid;gap:8px">
+        <button class="btn" data-a="rules"><span class="ic">§</span><span>Regler<span class="sub">Sök i regelboken</span></span></button>
+        <button class="btn" data-a="flag"><span class="ic">⚑</span><span>Flagga ögonblicket<span class="sub">Något var oklart – spelledaren ser det efteråt</span></span></button>
+        <button class="btn danger" data-a="leave"><span class="ic">⎋</span><span>Lämna bordet…</span></button></div></div>`
     },
     more() {
       if (V.tab !== 'hand') return ''
@@ -545,13 +554,13 @@ const VARIANTS = {
       const top = S.discard[S.discard.length - 1]
       const t = (k) => V.sel ? 'target' : ''
       const n = S.hand.length
-      const spread = Math.min(9, 48 / Math.max(1, n - 1))
-      const step = Math.min(44, 220 / Math.max(1, n - 1))
+      const spread = Math.min(4, 20 / Math.max(1, n - 1))
+      const step = Math.min(46, 180 / Math.max(1, n - 1))
       return `
       <div class="C-head"><div class="who"><span class="dot"></span>Ada <small>· ${n} kort</small></div><button data-a="undo" aria-label="Ångra" ${past.length ? '' : 'disabled'}>↶</button><button data-a="menu" aria-label="Meny">⋯</button></div>
       <div class="C-board">
         <button class="C-tile ${t()}" data-a="${V.sel ? 'to' : 'draw'}" data-tgt="bottom" data-drop="bottom">
-          <b>Leken</b><span class="verb">${V.sel ? 'Lägg underst' : 'Tryck: dra 1'}</span><span class="cards">${back('30px')}<small style="margin-left:6px">${S.deck} kort</small></span></button>
+          <b>Leken</b><span class="verb">${V.sel ? 'Lägg underst' : 'Tryck: dra 1'}</span><span class="cards">${back('40px')}<small style="margin-left:6px">${S.deck} kort</small></span></button>
         <button class="C-tile ${t()}" data-a="${V.sel ? 'to' : 'readDiscard'}" data-tgt="discard" data-drop="discard"><b>Kasthögen</b><span class="verb">${V.sel ? 'Kasta hit' : ''}</span><span class="cards">${card(top, 'mini')}<small style="margin-left:6px">${top ? name(top) : 'tom'}</small></span></button>
         <button class="C-tile wide ${t()}" data-a="${V.sel ? 'to' : 'mineSheetC'}" data-tgt="mine" data-drop="mine"><b>Framför mig · ${S.mine.length}</b><span class="verb">${V.sel ? 'Spela hit' : 'Öppna'}</span><span class="cards">${S.mine.map(c => card(c, 'mini')).join('') || '<small>Tomt – dra hit ett kort</small>'}</span></button>
       </div>
@@ -560,7 +569,7 @@ const VARIANTS = {
       <div class="C-fan" id="fan">${n ? S.hand.map((c, i) => {
         const off = i - (n - 1) / 2
         const sel = V.sel === c.u
-        return `<div class="slot ${sel ? 'sel' : ''}" data-u="${c.u}" style="z-index:${i};transform:translateX(calc(-50% + ${off * step}px)) translateY(${sel ? -46 : Math.abs(off) * 5}px) rotate(${off * spread}deg)">${card(c)}</div>`
+        return `<div class="slot ${sel ? 'sel' : ''}" data-u="${c.u}" style="z-index:${i};transform:translateX(calc(-50% + ${off * step}px)) translateY(${sel ? -40 : Math.abs(off) * 4}px) rotate(${off * spread}deg)">${card(c)}</div>`
       }).join('') : '<div class="C-empty">Handen är tom – tryck på Leken.</div>'}</div>
       ${V.sheet === 'mineC' ? this.mineSheet() : ''}`
     },
@@ -574,13 +583,13 @@ const VARIANTS = {
       const phone = document.getElementById('phone')
       fan.querySelectorAll('.slot').forEach(slot => {
         slot.onpointerdown = (e) => {
+          e.preventDefault()
           const u = +slot.dataset.u
           const sx = e.clientX, sy = e.clientY
           let ghost = null, hot = null
-          slot.setPointerCapture(e.pointerId)
           const scale = phone.getBoundingClientRect().width / phone.offsetWidth
           const local = (x, y) => { const r = phone.getBoundingClientRect(); return [(x - r.left) / scale, (y - r.top) / scale] }
-          slot.onpointermove = (m) => {
+          const move = (m) => {
             if (!ghost && Math.hypot(m.clientX - sx, m.clientY - sy) > 12) {
               ghost = document.createElement('div')
               ghost.className = 'C-ghost'
@@ -595,19 +604,26 @@ const VARIANTS = {
             ghost.style.left = x + 'px'; ghost.style.top = y + 'px'
             const under = document.elementFromPoint(m.clientX, m.clientY)?.closest('[data-drop]')
             if (hot && hot !== under) hot.classList.remove('hot')
-            hot = under; if (hot) hot.classList.add('hot')
+            hot = under || null; if (hot) hot.classList.add('hot')
           }
-          slot.onpointerup = () => {
-            slot.onpointermove = slot.onpointerup = null
+          const end = (ev) => {
+            removeEventListener('pointermove', move)
+            removeEventListener('pointerup', end)
+            removeEventListener('pointercancel', end)
+            phone.classList.remove('lifting')
             if (ghost) {
-              ghost.remove(); phone.classList.remove('lifting')
-              if (hot) { V.sel = null; play([u], hot.dataset.drop) } else draw()
-              return
+              ghost.remove()
+              if (ev.type === 'pointerup' && hot) { V.sel = null; play([u], hot.dataset.drop) }
+              return draw()
             }
+            if (ev.type !== 'pointerup') return draw()
             if (V.sel === u) V.read = S.hand.find(c => c.u === u)
             else V.sel = u
             draw()
           }
+          addEventListener('pointermove', move)
+          addEventListener('pointerup', end)
+          addEventListener('pointercancel', end)
         }
       })
     },
@@ -692,7 +708,7 @@ document.addEventListener('keydown', (e) => {
 })
 function fit() {
   const f = document.getElementById('frame')
-  if (innerWidth <= 760) { f.style.transform = ''; return }
+  if (innerWidth <= 760) { f.style.transform = ''; f.style.margin = ''; return }
   const s = Math.min(1, (innerHeight - 110) / 868)
   f.style.transform = `scale(${s})`
   f.style.margin = `${(868 * s - 868) / 2}px 0`
