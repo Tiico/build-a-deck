@@ -307,9 +307,11 @@ afterEach(async () => {
 }, 60_000)
 
 describe.each([
-  { room: 'at the desk', width: DESK, expected: DESK_VIEWS },
-  { room: 'below the desk', width: PHONE, expected: PHONE_VIEWS },
-])('every button the editor draws, $room', ({ width, expected }) => {
+  // At the desk's 1280 the start says its errand short, «Starta» (#1078); below the desk it is
+  // out of the header's row and says it whole.
+  { room: 'at the desk', width: DESK, expected: DESK_VIEWS, start: '«Starta»' },
+  { room: 'below the desk', width: PHONE, expected: PHONE_VIEWS, start: '«Starta bord»' },
+])('every button the editor draws, $room', ({ width, expected, start }) => {
   it('carries its label at AA at rest and in every state that repaints it', async () => {
     const views = await editorViews(width)
     expect(Object.keys(views).sort()).toEqual([...expected].sort())
@@ -323,9 +325,9 @@ describe.each([
     // pair #315 is about has to be in the list, in the state it is about, or nothing below counts.
     const refused = measured.filter((one) => one.what.includes(' refused —')).map((one) => one.what)
     // The game in the fixture has no table, so the filled action is the header's start (#417). It
-    // is the same button in the same role, and it is the one the pair below is about. At the desk's
-    // 1280 it says its errand short, «Starta» (#1078), and that is the run of text that is read.
-    expect(refused.filter((one) => one.includes('«Starta»')).length).toBeGreaterThan(0)
+    // is the same button in the same role, and it is the one the pair below is about, read by the
+    // words it draws at this width.
+    expect(refused.filter((one) => one.includes(start)).length).toBeGreaterThan(0)
     expect(refused.filter((one) => one.includes('«Spara»')).length).toBeGreaterThan(0)
     // A label measured against the browser's own canvas is a label nobody drew a ground under.
     expect(measured.filter((one) => !one.grounded).map((one) => one.what)).toEqual([])
