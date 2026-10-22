@@ -401,7 +401,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           refusedZone={refusedZone}
         />
       )}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} />
     </>
   )
 }

@@ -261,7 +261,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
       </main>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} faces={http} />
       </div>
       ) : (
         /* A window too small to carry a board gets the player's own surface instead (#99): the

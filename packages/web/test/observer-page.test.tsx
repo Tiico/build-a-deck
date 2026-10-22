@@ -36,6 +36,28 @@ describe('ObserverPage (C8)', () => {
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: null, intent: { v: 'flag', note: 'Ada tvekade', observer: 'Eva' } }))
     ada.close()
   })
+
+  // She sees every hand (C8), so she may point out a card in one (#1142).
+  it('points out a card in a hand and flags it, stamped with her name', async () => {
+    const id = await createSession(run)
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    const held = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>('[data-component]')
+      expect(el).not.toBeNull()
+      return el!
+    })
+    const card = held.getAttribute('data-component')!
+    fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    fireEvent.click(held)
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Flagga kortet' })).getByRole('button', { name: 'Flagga' }))
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: null, intent: { v: 'flag', component: card, observer: 'Eva' } }))
+    ada.close()
+  })
 })
 
 // The same box on the distance view (L32's addendum, #305): what she may do, and what the others

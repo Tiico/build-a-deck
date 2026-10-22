@@ -12,7 +12,7 @@ import { previewOf } from '../table/rewind.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { useShuffles } from '../table/shuffle.js'
-import { FlagSheet } from '../player/SessionSheets.js'
+import { FlagFlow } from '../player/FlagFlow.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
@@ -196,19 +196,16 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         </div>
       )}
       {sheet && (
-        <FlagSheet
+        <FlagFlow
+          client={client}
+          view={view}
+          faces={http}
           refusal={flagged}
-          onFlag={(note) => {
-            void flagged.watch(client.send({ v: 'flag', ...(note ? { note } : {}) })).then((result) => {
-              if (!result.ok) return
-              setSheet(false)
-              setToast(t('session.flagged'))
-            })
-          }}
-          onClose={() => {
-            flagged.clear()
+          onFlagged={() => {
             setSheet(false)
+            setToast(t('session.flagged'))
           }}
+          onClose={() => setSheet(false)}
         />
       )}
       </div>

@@ -3,7 +3,8 @@ import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
-import { FlagSheet, EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
+import { EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
+import { FlagFlow } from './FlagFlow.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
@@ -61,9 +62,11 @@ export type SessionOverlaysProps = {
   toast: string | null
   onToast(msg: string): void
   version: string | null
+  // Where the textures are served from, for the card a flag is about (#1142).
+  faces: string | undefined
 }
 
-export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -93,19 +96,16 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
     <>
       {toast && <div className="byd-toast" role="status">{toast}</div>}
       {sheet === 'flag' && (
-        <FlagSheet
+        <FlagFlow
+          client={client}
+          view={view}
+          faces={faces}
           refusal={flagged}
-          onFlag={(note) => {
-            void flagged.watch(client.send({ v: 'flag', ...(note ? { note } : {}) })).then((result) => {
-              if (!result.ok) return
-              onSheet(null)
-              onToast(t('session.flagged'))
-            })
-          }}
-          onClose={() => {
-            flagged.clear()
+          onFlagged={() => {
             onSheet(null)
+            onToast(t('session.flagged'))
           }}
+          onClose={() => onSheet(null)}
         />
       )}
       {sheet === 'propose' && view.undo?.contested && (
