@@ -111,3 +111,37 @@ describe('an ended table’s row and the Resultat view (#1010)', () => {
     expect(document.querySelector('[data-setup-editor]')).not.toBeNull()
   })
 })
+
+// A flag about a card (#1142, beställarens val 2026-10-22: «1 · miniatyren i raden»): the flag's row
+// carries the card as it lay — the texture of the version it was raised on — and a press lifts it,
+// with where it lay and whether the game draws it differently now.
+describe('a flag about a card in Resultat (#1142)', () => {
+  it('shows the card as it was in the flag’s row, and lifts it on a press', async () => {
+    const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+    const made = (await res.json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const ada = TableClient.connect(await asSeat(run, made.id, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await ada.send({ v: 'draw', from: 'draw', to: 'table', count: 1, face: 'front' })
+    const card = ada.view!.components.find((c) => c.zone === 'table')!
+    await ada.send({ v: 'flag', component: card.id, note: 'Draken är för stark' })
+    await ada.send({ v: 'session.end' })
+    ada.close()
+
+    const user = await openTables()
+    await user.click(screen.getByRole('button', { name: 'Resultat' }))
+    const thumb = await screen.findByRole('button', { name: `Visa ${card.title} som kortet såg ut` })
+    expect(thumb.querySelector('img')?.getAttribute('src')).toBe(`${run.http}/faces/${card.faces!['front']}`)
+    expect(screen.getByText(`${card.title} · Spelyta · oförändrat sedan`)).toBeTruthy()
+
+    await user.click(thumb)
+    const lifted = screen.getByRole('dialog', { name: `${card.title} som kortet såg ut` })
+    expect(lifted.querySelector('img.byd-texture')?.getAttribute('src')).toBe(`${run.http}/faces/${card.faces!['front']}`)
+    expect(lifted.textContent).toMatch(/när Ada flaggade/)
+    expect(lifted.textContent).toMatch(/«Draken är för stark»/)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(thumb)
+  })
+})
