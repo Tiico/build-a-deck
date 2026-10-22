@@ -201,7 +201,7 @@ describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
     const ask = screen.getByRole('button', { name: 'Hjälp om kolumnerna' })
     fireEvent.click(ask)
     const help = await screen.findByRole('dialog', { name: 'Hjälp om kolumnerna' })
-    expect(help.textContent).toContain('Prosa ger flera rader och textformatering.')
+    expect(help.textContent).toContain('Prosa ger flera rader och formatering')
     expect(help.textContent).toContain('Bild tar emot bilder i cellerna.')
     const user = userEvent.setup()
     await user.keyboard('{Escape}')

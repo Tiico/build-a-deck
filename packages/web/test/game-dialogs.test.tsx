@@ -56,7 +56,7 @@ describe('the export window says what went wrong in words (#542)', () => {
   for (const [status, words] of [
     [401, /logga in igen/i],
     [403, /bara ägaren och de som får redigera/i],
-    [503, /tryckfilerna kan inte ritas just nu/i],
+    [503, /tryckfilerna kan inte skapas just nu/i],
   ] as const) {
     it(`says what ${status} means rather than the number`, async () => {
       vi.stubGlobal('fetch', vi.fn(async () => reply(status, { error: 'x' })))

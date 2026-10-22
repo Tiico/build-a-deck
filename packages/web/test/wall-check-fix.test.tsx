@@ -76,7 +76,7 @@ describe('a check that offers its own remedy on the wall (#233)', () => {
     const doc = projectDoc()
     doc.fonts = undefined
     openChecks(doc, /typsnitt/, () => undefined)
-    await waitFor(() => expect(screen.getByText(/kan inte rättas åt dig/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/kan inte rättas automatiskt/)).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Rätta i mallen' })).toBeNull()
   })
 })

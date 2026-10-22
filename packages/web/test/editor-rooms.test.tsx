@@ -34,9 +34,9 @@ describe('the editor on a phone (L10)', () => {
     await editorAt(390)
     expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
     // Not a gap where the tools were: a sentence a designer can act on.
-    const said = screen.getByText(/Mallen ritas inte på telefon/)
+    const said = screen.getByText(/Mallen går inte att redigera/)
     expect(said.textContent).toMatch(/768/)
-    expect(said.textContent).toMatch(/Duken, verktygen, lagren och egenskaperna/)
+    expect(said.textContent).toMatch(/surfplatta eller dator/)
     // The two things the editor must never lose are in reach, not off the side of the screen.
     // Spelet har inget bord, så den fyllda knappen är den som startar ett (#417).
     expect(screen.getByRole('button', { name: 'Starta bord' })).toBeTruthy()
@@ -59,7 +59,7 @@ describe('the editor under a mouse, however narrow the window (L12)', () => {
     it(`keeps the template's stages at ${width} px, and does not say it is a phone`, async () => {
       await editorAt(width, 'fine')
       expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
-      expect(screen.queryByText(/Mallen ritas inte på telefon/)).toBeNull()
+      expect(screen.queryByText(/Mallen går inte att redigera/)).toBeNull()
       expect(document.querySelector('.byd-editor')!.getAttribute('data-room')).toBe('tablet')
     })
   }
@@ -68,7 +68,7 @@ describe('the editor under a mouse, however narrow the window (L12)', () => {
     await editorAt(390, 'coarse')
     expect(document.querySelector('.byd-editor')!.getAttribute('data-room')).toBe('phone')
     expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
-    expect(screen.getByText(/Mallen ritas inte på telefon/)).toBeTruthy()
+    expect(screen.getByText(/Mallen går inte att redigera/)).toBeTruthy()
   })
 })
 
@@ -127,7 +127,7 @@ describe('the editor on a desk (L10)', () => {
   it('is the editor it has always been: four modes in the header and the canvas in four columns', async () => {
     await editorAt(1280)
     expect(tabNames()).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
-    expect(screen.queryByText(/Mallen ritas inte på telefon/)).toBeNull()
+    expect(screen.queryByText(/Mallen går inte att redigera/)).toBeNull()
     await userEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     const canvas = document.querySelector('.byd-canvas')!
     expect(canvas.getAttribute('data-stage')).toBeNull()
