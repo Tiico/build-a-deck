@@ -4324,7 +4324,11 @@ Editorn har en knapp som startar ett bord från projektet eller skickar `version
 Knappen heter det jobb den står i begrepp att göra (#417, byggt 2026-09-21): utan bord heter den "Starta bord" ("Start a table"), och "Startar bordet…" medan starten är på väg; med ett bord heter den "Uppdatera bordet" som förut.
 "Nytt bord" står i pilens meny bredvid knappen, ovanför "Alla bord", vid alla bredder (beslut 2026-09-27, #477 fynd 4, prototyp 09 variant B).
 Den stod förut bredvid knappen i huvudet, och vid 1024 px var det "Uppdatera bordet" som fick ge plats: den klipptes till "Uppdatera bo".
-Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort, och det frågas inte om (samma beslut).
+Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort.
+Det frågades förut inte om (samma beslut), men ett tryck som menade det pågående bordet startade ett nytt med en ny kod, och gästerna vid det första såg ingenting.
+Sedan #1145 (beställarens beslut 2026-10-22, prototyp `docs/ux-audits/2026-10-22-andra-bordet/prototyper/`, variant A) frågar «Nytt bord», Bord-flikens «Starta nytt bord» och startsidans «Starta nytt bord» först, medan ett bord av spelet kör.
+Frågan är produktens `Question` som den är: den namnger det nyaste bordet som kör («Bordet KOD kör redan», eller «2 bord kör redan, senast KOD»), öppnar på «Öppna KOD», som öppnar bordets skärm i en ny flik, och «Starta ett nytt ändå» startar det andra bordet.
+Utan ett bord igång startar knappen direkt, som förut.
 Efter en omladdning plockar editorn upp det nyaste bordet som fortfarande kör, så att knappen uppdaterar det i stället för att starta ett andra (#477 fynd 1).
 Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bord hade en blå knapp som lovade en uppdatering och i stället startade en session med rumskod; meningen i Bord-fliken förklarade skillnaden på en annan flik i stället för att knappen sade rätt ord.
 Meningen citerar numera det namn knappen bär.
@@ -5758,6 +5762,7 @@ Knappen är en **andrahandsknapp** och kan inte bli något annat: den ljusa fyll
 **Den står först i kolumnen, över listan.**
 Det är det fliken finns till för; allt under den är bord som redan finns.
 Priset är erkänt: den som kom hit för att öppna ett pågående bord möter varje gång en knapp som startar ett nytt.
+Sedan #1145 kostar priset bara en fråga: medan ett bord kör frågar knappen först och öppnar på det bordet (L5).
 
 **Revisionen står inte i knappen.**
 Knappen säger bara «Starta nytt bord», med en play-ikon.
