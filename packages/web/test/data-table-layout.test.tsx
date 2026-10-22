@@ -910,12 +910,12 @@ describe("the column door's note on the tool's own columns (#858)", () => {
   }, 60_000)
 })
 
-// A picture cell's own buttons (#1085). The rule for the × that clears a picture,
-// `.byd-data-drop > button`, matched «Välj» as well and outweighed its own class, so the library's
-// button was drawn as a bare word in 16 px with no box — and «Ladda upp» broke over two lines, so
-// the column was measured on the broken label and cut what it had measured. Every picture column
-// showed it; a column made a picture in the table showed it first.
-describe('a picture cell’s buttons are buttons (#1085)', () => {
+// A picture cell's own control (#1085, L72). The cell used to hold three — «Välj», «Ladda upp»
+// and a × — and the rule for the × matched «Välj» as well, so the library's button was drawn as
+// a bare word with no box, and «Ladda upp» broke over two lines and the column was cut on the
+// broken label. Since L72 the cell holds one control, the tile, drawn at the tap floor in both
+// directions as the «Välj» it replaced kept it (#50, #193).
+describe('a picture cell’s tile is the whole control (#1085, L72)', () => {
   async function pictures(): Promise<Table> {
     const doc = projectDoc()
     doc.rows = doc.rows.map((row) => ({ ...row, fields: { ...row.fields, bild1: '' } }))
@@ -941,7 +941,7 @@ describe('a picture cell’s buttons are buttons (#1085)', () => {
     return { html, deck: deckValues(doc) }
   }
 
-  it('draws «Välj» in the box every file button has, and keeps «Ladda upp» on one line uncut', async () => {
+  it('draws one tile at the tap floor in both directions, as a box, and the column uncut', async () => {
     const table = await pictures()
     const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
     try {
@@ -949,22 +949,17 @@ describe('a picture cell’s buttons are buttons (#1085)', () => {
       const seen = await page.evaluate(({ deck, fit }) => {
         new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
         const cell = document.querySelector('td.byd-data-image[data-col="bild1"]')!
-        const choose = cell.querySelector<HTMLElement>('button.byd-data-file')!
-        const upload = cell.querySelector<HTMLElement>('label.byd-data-file')!
-        const how = getComputedStyle(choose)
-        // The lines the label's own words stand on, read off the words and not off the box, which
-        // keeps the 44 px floor whatever its words do.
-        const words = document.createRange()
-        words.selectNodeContents([...upload.childNodes].find((node) => node.nodeType === Node.TEXT_NODE)!)
+        const tile = cell.querySelector<HTMLElement>('button.byd-picture-tile')!
+        const box = tile.getBoundingClientRect()
         return {
-          border: how.borderTopWidth,
-          size: how.fontSize,
-          sameBox: how.backgroundColor === getComputedStyle(upload).backgroundColor,
-          uploadLines: new Set([...words.getClientRects()].map((r) => Math.round(r.top))).size,
+          w: Math.round(box.width),
+          h: Math.round(box.height),
+          border: getComputedStyle(tile).borderTopWidth,
+          controls: cell.querySelectorAll('button, input, label').length,
           cut: [...document.querySelectorAll('td.byd-data-image[data-col="bild1"]')].filter((td) => td.hasAttribute('data-cut')).length,
         }
       }, { deck: table.deck, fit: FIT })
-      expect(seen).toEqual({ border: '1px', size: '12px', sameBox: true, uploadLines: 1, cut: 0 })
+      expect(seen).toEqual({ w: 66, h: 44, border: '1px', controls: 1, cut: 0 })
     } finally {
       await page.close()
     }

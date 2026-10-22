@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Bildrutan, en komponent för bilder i Tabell</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ─────────────────────────────────────────────────────────────────────────────
+     Bilder i Tabell hanteras av tre ytor som var och en bygger upp samma sak för hand i
+     DataTable.tsx: kortets bildcell (rad 1691), massredigeringens bildfält (rad 2068) och
+     bildremsan över tabellen (rad 1436). Guiden (NewProjectPage.tsx 672) bygger en fjärde,
+     biblioteket och Media var sin bricka. Alla håller samma delar — en miniatyr via AssetImage,
+     dropSurface + DropSays, «Välj», «Ladda upp», ×, behållen text (#1085), bytes på väg (#907),
+     läsläge — men i var sin kopia med var sin stilregel.
+
+     Frågan är inte *om* det ska bli en komponent utan **vilken form komponenten ska ha**:
+     var står handlingarna (välj ur biblioteket, ladda upp, ta bort), hur mycket plats tar
+     rutan i en rad, och vad säger den om bilden. Varje variant visas i tabellen, i
+     massredigeringsraden, i guiden och i en matris över varje tillstånd komponenten måste bära.
+     Allt är ritat för hand med editorns egna värden (editor.css); inget är den byggda editorn.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root {
+    --panel: #1b1d23; --line: #2f333d; --quiet-2: #9aa3b8; --primary-mark: #6ea8ff; --good: #9be3b5;
+    --th: #20232d; --td-line: #2a2e39; --chosen: #2f3a55; --thumb-bg: #14161c; --empty-line: #4a5163;
+    --file-line: #3b414e; --file-ink: #dce3f2; --focus: #9cc6ff;
+    --drop-mark: #ffd98a; --drop-wash: rgba(255, 217, 138, 0.1);
+    --tap: 44px; --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
+    --paper: #f5f3eb; --paper-ink: #1e2620; --accent: #b8461f; --paper-line: #d6d1c2;
+  }
+  body { display: flex; flex-direction: column; height: 100vh; padding: 0; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .krona h1 small { color: var(--quiet-2); font-weight: 400; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px; align-content: start; }
+  @media (max-width: 1100px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .ytor { min-width: 0; display: grid; gap: 16px; align-content: start; }
+  .yta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .yta > h2 { margin: 0 0 8px; color: #fff; font-size: 13px; }
+  .yta > h2 small { color: var(--quiet-2); font-weight: 400; margin-left: 6px; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .ruta pre { margin: 0; padding: 8px 10px; border-radius: 6px; background: #14161c; color: #cfd8ea; font: 11.5px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .pris { color: #f0a58a; }
+  .pris b { color: #ffc2b0; }
+
+  /* ── Editorns Tabell, i de delar som rör rutan (editor.css 2233–2281) ───────────────── */
+  .remsa { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; color: var(--quiet); }
+  .remsa > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .remsa ul { display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .remsa li { display: grid; justify-items: center; gap: 2px; font-size: 10px; }
+  .remsa img { width: 56px; height: 38px; object-fit: cover; border-radius: 5px; background: var(--thumb-bg); cursor: grab; outline: 0; }
+  table.data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: var(--panel); font-size: 13px; margin: 0; }
+  table.data th { text-align: left; padding: 8px 10px; color: var(--quiet); font-weight: 600; border: 0; border-bottom: 1px solid #3b4358; background: var(--th); font-size: 12px; }
+  table.data td { padding: 0; border: 0; border-bottom: 1px solid var(--td-line); vertical-align: middle; }
+  table.data td.text { padding: 0 10px; color: var(--ink); }
+  table.data td.text input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; padding: 10px 0; }
+  table.data td.id { padding: 0 10px; color: #b7c0d6; font-variant-numeric: tabular-nums; }
+  table.data td.check { padding: 0 10px; }
+  table.data tr[aria-selected='true'] { background: var(--chosen); }
+  table.data td.bild { padding: 4px; }
+  .data .mark { display: block; width: 18px; height: 18px; border: 1px solid var(--file-line); border-radius: 4px; }
+  .lasn { color: var(--quiet-2); font-size: 11px; margin: 6px 0 0; }
+
+  /* ── Massredigeringsraden (editor.css 2544) och guiden (wizard.css) ─────────────────── */
+  .bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #262a36; color: #e6ecfa; font-size: 12px; }
+  .bulk .n { font-weight: 700; }
+  .bulk select { border: 1px solid var(--file-line); border-radius: 6px; background: #1b1d23; color: #dce3f2; font: inherit; padding: 4px 8px; min-height: 32px; }
+  .bulk .satt { border: 1px solid var(--file-line); border-radius: 6px; padding: 6px 10px; background: #1b1d23; color: #dce3f2; font: inherit; font-weight: 700; }
+  .guide { background: var(--paper); color: var(--paper-ink); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; max-width: 420px; }
+  .guide > span { font-size: 12px; font-weight: 600; }
+  .guide .bildruta { --thumb-bg: #e7e3d6; --empty-line: #b9b3a3; --file-line: #c9c3b2; --file-ink: var(--paper-ink); --panel: #fff; --quiet: #5b6058; --ink: var(--paper-ink); --focus: var(--accent); --drop-mark: var(--accent); --drop-wash: color-mix(in srgb, var(--accent), transparent 92%); --line: var(--paper-line); --td-line: var(--paper-line); --th: #fff; --chosen: #fff; }
+
+  /* ── Tillståndsmatrisen ─────────────────────────────────────────────────────────────── */
+  .matris { overflow-x: auto; }
+  table.m { border-collapse: collapse; font-size: 12px; margin: 0; }
+  table.m th { border: 1px solid var(--line); padding: 5px 8px; color: #fff; background: #1b1f2a; text-align: left; vertical-align: top; }
+  table.m th small { display: block; color: var(--quiet-2); font-weight: 400; }
+  table.m td { border: 1px solid var(--line); padding: 6px; vertical-align: middle; background: var(--panel); }
+  table.m td.lasn-cell { color: var(--quiet-2); }
+
+  /* ── Bildrutan — det som är gemensamt för varje variant ─────────────────────────────── */
+  .bildruta { position: relative; display: flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 4px; border: 1px dashed transparent; border-radius: 8px; color: var(--ink); font-size: 12px; }
+  .bildruta[data-over] { border-color: var(--drop-mark); background: var(--drop-wash); }
+  .bildruta .sager { color: var(--drop-mark); font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .bildruta .thumb { position: relative; flex: none; display: grid; place-items: center; width: 60px; height: 40px; border-radius: 5px; background: var(--thumb-bg); overflow: hidden; }
+  .bildruta .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .bildruta .thumb[data-arriving] img { opacity: 0; }
+  .bildruta .thumb[data-missing] img { visibility: hidden; }
+  .bildruta .thumb .ord { position: absolute; inset: 0; display: grid; place-items: center; padding: 2px; color: #c3cbdd; font-size: 10px; text-align: center; line-height: 1.2; }
+  .bildruta .tom { flex: none; display: grid; place-items: center; width: 60px; height: 40px; border: 1px dashed var(--empty-line); border-radius: 5px; color: var(--quiet); font-size: 10px; text-align: center; line-height: 1.2; }
+  .bildruta .kept { width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--quiet); font-size: 11px; text-decoration: line-through; }
+  .bildruta .fil { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--tap); min-height: 28px; border: 1px solid var(--file-line); border-radius: 6px; padding: 4px 8px; background: var(--panel); color: var(--file-ink); font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .bildruta .x { border: 0; background: transparent; color: #9aa3b8; font: inherit; font-size: 16px; cursor: pointer; min-width: 24px; min-height: 24px; }
+  .bildruta :focus-visible, .bildruta[data-focus] .fokus { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .bildruta[data-readonly] .fil, .bildruta[data-readonly] .x, .bildruta[data-readonly] .verktyg, .bildruta[data-readonly] .meny-knapp, .bildruta[data-readonly] .chev { display: none !important; }
+  .bildruta[data-readonly] .tom { border-style: solid; color: var(--empty-line); }
+  .bildruta[data-readonly] button { cursor: default; }
+
+  /* A · Brickan är hela kontrollen */
+  .bildruta[data-v='a'] { gap: 0; }
+  .bildruta[data-v='a'] .bricka { flex: none; display: grid; place-items: center; width: 60px; height: 40px; padding: 0; border: 1px dashed var(--empty-line); border-radius: 5px; background: transparent; color: var(--quiet); font: inherit; font-size: 16px; cursor: pointer; overflow: hidden; }
+  .bildruta[data-v='a'] .bricka[data-has] { border-style: solid; border-color: transparent; }
+  .bildruta[data-v='a'] .bricka .thumb { width: 100%; height: 100%; border-radius: 4px; }
+  .bildruta[data-v='a'] .bricka:hover { border-color: var(--quiet-2); }
+  .bildruta[data-v='a'] .bricka .kept { text-decoration: line-through; font-size: 10px; padding: 0 3px; width: auto; max-width: 56px; }
+  .bildruta[data-v='a'][data-readonly] .bricka { border-color: transparent; cursor: default; }
+
+  /* B · Bricka och en meny */
+  .bildruta[data-v='b'] .meny-knapp { gap: 4px; }
+  .bildruta[data-v='b'] .meny-knapp .chev { font-size: 9px; color: var(--quiet-2); }
+  .bildruta[data-v='b'] .meny { position: absolute; z-index: 5; top: calc(100% - 2px); left: 72px; min-width: 190px; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--file-line); border-radius: 8px; background: #23262f; box-shadow: 0 10px 30px rgba(0,0,0,.6); }
+  .bildruta[data-v='b'] .meny li { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px; border-radius: 6px; color: var(--file-ink); white-space: nowrap; cursor: pointer; }
+  .bildruta[data-v='b'] .meny li:hover { background: #2f3a55; }
+  .bildruta[data-v='b'] .meny li.huvud { color: var(--quiet-2); font-size: 11px; cursor: default; border-bottom: 1px solid var(--line); border-radius: 0; margin-bottom: 4px; }
+  .bildruta[data-v='b'] .meny li.huvud:hover { background: transparent; }
+  .bildruta[data-v='b'] .meny li.farlig { color: #ffb3a8; }
+  .bildruta[data-v='b'] .meny kbd { margin-left: auto; color: var(--quiet-2); font: 10px ui-monospace, Menlo, monospace; }
+
+  /* C · Rutan är ett fält */
+  .bildruta[data-v='c'] { padding: 0; min-height: 0; border: 0; display: block; }
+  .bildruta[data-v='c'] .falt { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 180px; min-height: 36px; padding: 3px 6px 3px 3px; border: 1px solid var(--file-line); border-radius: 6px; background: var(--thumb-bg); color: var(--ink); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+  .bildruta[data-v='c'][data-over] .falt { border-color: var(--drop-mark); background: var(--drop-wash); }
+  .bildruta[data-v='c'] .thumb { width: 42px; height: 28px; border-radius: 4px; background: #262a36; }
+  .bildruta[data-v='c'] .tom { width: 42px; height: 28px; font-size: 14px; }
+  .bildruta[data-v='c'] .namn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bildruta[data-v='c'] .namn.ingen { color: var(--quiet); }
+  .bildruta[data-v='c'] .namn.kept { width: auto; }
+  .bildruta[data-v='c'] .chev { flex: none; color: var(--quiet-2); font-size: 10px; }
+  .bildruta[data-v='c'] .x { position: absolute; right: 26px; top: 50%; transform: translateY(-50%); }
+  .bildruta[data-v='c'] .sager { position: absolute; right: 8px; top: -14px; }
+  .bildruta[data-v='c'][data-readonly] .falt { border-color: transparent; background: transparent; cursor: default; }
+
+  /* D · Stor bricka med verktyg på hovring och fokus */
+  .bildruta[data-v='d'] { padding: 2px; gap: 0; }
+  .bildruta[data-v='d'] .stor { position: relative; flex: none; width: 96px; height: 64px; border-radius: 6px; overflow: hidden; background: var(--thumb-bg); }
+  .bildruta[data-v='d'] .stor .thumb { width: 100%; height: 100%; border-radius: 0; }
+  .bildruta[data-v='d'] .stor .tom { width: 100%; height: 100%; border-radius: 6px; font-size: 11px; }
+  .bildruta[data-v='d'] .stor .kept { position: absolute; inset: 0; display: grid; place-items: center; width: auto; padding: 4px; }
+  .bildruta[data-v='d'] .verktyg { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 2px; padding: 2px; background: rgba(8, 10, 14, 0.78); opacity: 0; transition: opacity .12s; }
+  .bildruta[data-v='d']:hover .verktyg, .bildruta[data-v='d']:focus-within .verktyg, .bildruta[data-v='d'][data-focus] .verktyg, .bildruta[data-v='d'][data-touch] .verktyg { opacity: 1; }
+  .bildruta[data-v='d'] .verktyg button { display: grid; place-items: center; width: 28px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: #e6ecfa; font: inherit; font-size: 13px; cursor: pointer; }
+  .bildruta[data-v='d'] .verktyg button:hover { background: rgba(255,255,255,.14); }
+  .bildruta[data-v='d'] .verktyg .x { color: #ffb3a8; min-width: 0; min-height: 0; font-size: 15px; }
+  .bildruta[data-v='d'] .verktyg :focus-visible { outline-offset: -3px; }
+
+  /* Den mockade biblioteksrutan (#296) — bara för känslan av vägen. */
+  .veil { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0,0,0,.55); }
+  .lib { width: min(680px, 92vw); border: 1px solid var(--line); border-radius: 12px; background: #20232d; color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.7); }
+  .lib header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .lib h3 { margin: 0; font-size: 15px; color: #fff; flex: 1; }
+  .lib .mal { margin: 0; padding: 8px 14px; color: var(--quiet-2); font-size: 12px; }
+  .lib .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; padding: 4px 14px 12px; list-style: none; margin: 0; }
+  .lib .grid li { display: grid; gap: 4px; padding: 4px; border-radius: 8px; cursor: pointer; }
+  .lib .grid li[aria-pressed='true'] { outline: 2px solid var(--primary-mark); }
+  .lib .grid img { width: 100%; aspect-ratio: 3/2; object-fit: cover; border-radius: 6px; background: var(--thumb-bg); }
+  .lib .grid span { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lib .grid small { font-size: 11px; color: var(--quiet); }
+  .lib footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .lib footer .sagt { flex: 1 1 200px; color: var(--quiet-2); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .lib footer .sagt img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; }
+  .lib button { min-height: 36px; padding: 0 12px; border: 1px solid var(--file-line); border-radius: 8px; background: #1b1d23; color: var(--file-ink); font: inherit; font-weight: 700; cursor: pointer; }
+  .lib button.prim { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .lib button.farlig { color: #ffb3a8; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp — Bildrutan: en komponent för varje bild i Tabell <small>· ← → byter variant · klick på en ruta öppnar den mockade biblioteksrutan · handritad med editorns värden</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="lagen"><span>Läge</span>
+    <button type="button" data-lage="readonly" aria-pressed="false">Läsläge</button>
+    <button type="button" data-lage="touch" aria-pressed="false">Pekskärm (ingen hovring)</button>
+    <button type="button" data-lage="dense" aria-pressed="false">Tät lek (12 rader)</button>
+  </div>
+</div>
+<div class="scen">
+  <div class="ytor">
+    <div class="yta">
+      <h2>Tabell <small>bildremsan, fyra kort — K-01 har bild, K-02 är tom, K-03 bär behållen text (#1085), K-04:s byte är på väg (#907); K-02 är vald</small></h2>
+      <div id="tabell"></div>
+    </div>
+    <div class="yta">
+      <h2>Massredigeringen <small>tre kort markerade, bildkolumnen vald (E1)</small></h2>
+      <div id="bulk"></div>
+    </div>
+    <div class="yta">
+      <h2>Guiden <small>samma komponent på guidens papper (NewProjectPage)</small></h2>
+      <div id="guide"></div>
+    </div>
+    <div class="yta matris">
+      <h2>Varje tillstånd komponenten måste bära <small>samma ruta, åtta lägen</small></h2>
+      <table class="m" id="matris"></table>
+    </div>
+  </div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl pris"></p></div>
+    <div class="ruta"><h2>Mätt på den här varianten</h2><div class="tal" id="tal"></div><p class="forkl">Cellens mått är tabellcellen för K-01. Tabbstopp är fokuserbara element i en cell med bild. Klick räknas från vila till att handlingen är gjord, med biblioteksrutans egen knapp inräknad.</p></div>
+    <div class="ruta"><h2>Komponentens gränssnitt</h2><pre id="api"></pre><p class="forkl">Samma props i alla varianter; det som skiljer är formen. Remsan över tabellen, bibliotekets och Medias brickor är en annan sak — en bricka som <em>visar</em> en bild — och lämnas utanför den här frågan.</p></div>
+  </div>
+</div>
+
+<script>
+// ── Bilderna: inga filer, bara gradienter med ett motiv ─────────────────────────────────────
+const svg = (a, b, motif) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 60"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="90" height="60" fill="url(#g)"/>${motif}</svg>`)
+const BILDER = {
+  drake: { src: svg('#7a1f1f', '#e0603c', '<path d="M12 48 L30 18 L40 34 L52 10 L78 48 Z" fill="#ffd98a" opacity=".85"/><circle cx="66" cy="20" r="5" fill="#fff" opacity=".9"/>'), namn: 'drake-rod.png', kort: ['K-01', 'K-07', 'K-12'] },
+  riddare: { src: svg('#1f3a7a', '#3c8ae0', '<rect x="30" y="14" width="30" height="40" rx="6" fill="#e6ecfa" opacity=".85"/><rect x="38" y="24" width="14" height="4" fill="#1f3a7a"/>'), namn: 'riddare.jpg', kort: ['K-04'] },
+  trollkarl: { src: svg('#2f1f6e', '#8a5ce0', '<path d="M45 8 L62 46 L28 46 Z" fill="#ffd98a" opacity=".85"/><circle cx="45" cy="50" r="4" fill="#fff"/>'), namn: 'trollkarl.webp', kort: ['K-09', 'K-10'] },
+  skog: { src: svg('#1f4e2a', '#5cc06e', '<circle cx="30" cy="30" r="14" fill="#0e2e16" opacity=".8"/><circle cx="58" cy="26" r="11" fill="#0e2e16" opacity=".8"/>'), namn: undefined, kort: [] },
+}
+
+// ── Tillstånden en ruta kan stå i ──────────────────────────────────────────────────────────
+// `value` är hashen (här bildens nyckel), `kept` texten från när kolumnen var text (#1085),
+// `arriving` att bytena ännu reser (#907), `missing` att tjänsten svarade 404, `over` att ett
+// drag står över rutan, `focus` att tangentbordet står i rutan, `readonly` läsarens vy.
+const LAGEN = [
+  { id: 'tom', namn: 'Tom', st: {} },
+  { id: 'bild', namn: 'Med bild', st: { value: 'drake' } },
+  { id: 'kept', namn: 'Behållen text', sub: '#1085', st: { kept: 'en röd drake' } },
+  { id: 'over', namn: 'Drag över', sub: '#291', st: { value: 'drake', over: true } },
+  { id: 'arriving', namn: 'På väg', sub: '#907', st: { value: 'riddare', arriving: true } },
+  { id: 'missing', namn: 'Saknas', sub: 'L13', st: { value: 'trollkarl', missing: true } },
+  { id: 'focus', namn: 'Fokus', st: { value: 'drake', focus: true } },
+  { id: 'readonly', namn: 'Läsläge', sub: '#489', st: { value: 'drake', readonly: true } },
+]
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+// Miniatyren, gemensam för alla varianter: AssetImage:s tre lägen.
+function thumb(st, cls = 'thumb') {
+  const b = BILDER[st.value]
+  const flags = (st.arriving ? ' data-arriving' : '') + (st.missing ? ' data-missing' : '')
+  const ord = st.arriving ? '<span class="ord">laddas upp…</span>' : st.missing ? '<span class="ord">bilden saknas</span>' : ''
+  return `<span class="${cls}"${flags}><img src="${b.src}" alt="">${ord}</span>`
+}
+const namnAv = (st) => { const b = BILDER[st.value]; return b.namn ?? (b.kort.length ? `Bild på ${b.kort.join(', ')}` : 'Bild som inget kort använder') }
+const sager = (st) => (st.over ? '<span class="sager" aria-hidden="true">Tar emot en bild</span>' : '')
+const wrap = (v, st, inner, extra = '') => `<div class="bildruta" data-v="${v}" role="group" aria-label="${esc(st.label ?? 'Bild för K-01')}"${st.over ? ' data-over' : ''}${st.focus ? ' data-focus' : ''}${st.readonly ? ' data-readonly' : ''}${LAGE.touch ? ' data-touch' : ''} ${extra}>${inner}${sager(st)}</div>`
+
+// ── Varianterna ────────────────────────────────────────────────────────────────────────────
+const VARIANTER = [
+  {
+    id: 'nu', namn: 'Nu', regel: 'Som i dag, men som en komponent: miniatyr 60×40, «Välj»/«Byt» öppnar biblioteket, «Ladda upp» är filväljaren, × tar bort. Tre kontroller i varje cell, utskrivna i ord. Komponenten samlar bara det som redan finns på tre ställen.',
+    pris: 'Cellen är den bredaste i tabellen (≈230 px) för en kolumn som visar en 60 px bild. Tre tabbstopp per rad; i en lek med 308 kort är det 924 stopp i bildkolumnen. Ordet «Ladda upp» dubblerar en väg biblioteket redan har (L22).',
+    api: `<Bildruta
+  label="Bild för K-01"
+  value={hash | null}
+  kept={text | undefined}   // #1085
+  base={assetBase}
+  onPick={(hash) => …}      // ur biblioteket eller ett drag
+  onUpload={(file) => …}    // en fil, oneFile-regeln inuti
+  onClear={() => …}
+  readOnly={reading}
+/>`,
+    klick: { bibliotek: 2, upp: 2, bort: 1 },
+    rita(st) {
+      const has = !!st.value
+      const mitt = has ? thumb(st) : st.kept ? `<s class="kept">${esc(st.kept)}</s>` : '<span class="tom">släpp en bild här</span>'
+      return wrap('nu', st, `${mitt}<button type="button" class="fil fokus" data-open="lib">${has ? 'Byt' : 'Välj'}</button><label class="fil">Ladda upp<input type="file" hidden></label>${has ? '<button type="button" class="x" aria-label="Ta bort bild">×</button>' : ''}`)
+    },
+  },
+  {
+    id: 'a', namn: 'A · Brickan är hela kontrollen', rek: true, regel: 'Rutan är en enda knapp: miniatyren själv. Ett tryck öppnar biblioteket (#296), som redan har «Ladda upp» i sitt krön (L22) och här får «Ta bort från kortet» i foten när cellen hade en bild. Tom ruta är en streckad bricka med ett +. Backsteg/Delete i en fokuserad ruta tömmer den, som i vilket fält som helst. Draget tar hela rutan.',
+    pris: 'Att ta bort och att ladda upp är två tryck i stället för ett, båda via biblioteksrutan. Rutan säger inget i ord i vila — namnet på knappen är «Bild för K-01: drake-rod.png», men det hörs bara. Beslutet att biblioteket är enda vägen till en fil är nytt för Tabell (guiden har inget bibliotek och får då bara filväljaren).',
+    api: `<Bildruta … />            // samma props
+// Biblioteket får ett svar till:
+<PictureLibraryDialog … onClear={…} />   // «Ta bort från kortet»`,
+    klick: { bibliotek: 2, upp: 3, bort: 2 },
+    rita(st) {
+      const has = !!st.value
+      const inner = has ? thumb(st) : st.kept ? `<s class="kept">${esc(st.kept)}</s>` : '<span aria-hidden="true">+</span>'
+      const namn = has ? `Bild för K-01: ${namnAv(st)}. Byt eller ta bort` : st.kept ? `Bild för K-01, tom. Texten «${st.kept}» är behållen. Välj bild` : 'Bild för K-01, tom. Välj bild'
+      return wrap('a', st, `<button type="button" class="bricka fokus" data-open="lib"${has ? ' data-has' : ''} aria-label="${esc(namn)}">${inner}</button>`)
+    },
+  },
+  {
+    id: 'b', namn: 'B · Bricka och en meny', regel: 'Miniatyren visar, en knapp handlar: «Välj ▾»/«Byt ▾» öppnar en Lifted-meny (StepPills mönster) med «Ur biblioteket…», «Ladda upp fil…» och «Ta bort», med bildens namn som menyns huvud. En kontroll i cellen, tre handlingar bakom den, varje handling två tryck.',
+    pris: 'Varje handling är två tryck, också att ta bort. Menyn är ett lager till i en tabell som redan har symbollistan och kolumndörren som lager; i den täta leken står 308 menyknappar. Namnet syns bara när menyn är öppen.',
+    api: `<Bildruta … />            // samma props
+// Inuti: <Lifted role="menu"> med tre val; filväljaren är menyns andra rad.`,
+    klick: { bibliotek: 3, upp: 2, bort: 2 },
+    rita(st) {
+      const has = !!st.value
+      const mitt = has ? thumb(st) : st.kept ? `<s class="kept">${esc(st.kept)}</s>` : '<span class="tom">släpp en bild här</span>'
+      const meny = st.meny ? `<ul class="meny" role="menu"><li class="huvud">${has ? esc(namnAv(st)) : 'Ingen bild'}</li><li role="menuitem" data-open="lib">Ur biblioteket…</li><li role="menuitem">Ladda upp fil…</li>${has ? '<li role="menuitem" class="farlig">Ta bort<kbd>⌫</kbd></li>' : ''}</ul>` : ''
+      return wrap('b', st, `${mitt}<button type="button" class="fil fokus meny-knapp" data-open="meny" aria-haspopup="menu" aria-expanded="${!!st.meny}">${has ? 'Byt' : 'Välj'} <span class="chev">▼</span></button>${meny}`)
+    },
+  },
+  {
+    id: 'c', namn: 'C · Rutan är ett fält', regel: 'Bildkolumnen ser ut som de andra kolumnerna: ett fält kolumnen brett, med en liten miniatyr till vänster, bildens namn — det en formgivare känner igen en bild på (L22) — och en pil till höger. Fältet är en knapp som öppnar biblioteket; × står i fältets högra kant när det har en bild. Raden blir lika hög som en textrad. Draget tar fältet.',
+    pris: 'Miniatyren är 42×28 och därmed bara en ledtråd — motivet läses på namnet, inte på bilden. Fältet vill ha en minsta bredd (≈180 px) för att namnet ska bli läsbart, och bildkolumnen får därmed samma bredd som en textkolumn. Uppladdning bara via biblioteket (som A). En bild utan namn — de från före #742 — står som «Bild på K-01, K-07, K-12».',
+    api: `<Bildruta … name={doc.pictures?.[hash]?.name} />
+// name är det nya: rutan visar det, inte bara alt.`,
+    klick: { bibliotek: 2, upp: 3, bort: 1 },
+    rita(st) {
+      const has = !!st.value
+      const vänster = has ? thumb(st) : '<span class="tom" aria-hidden="true">+</span>'
+      const namn = has ? `<span class="namn">${esc(namnAv(st))}</span>` : st.kept ? `<s class="namn kept">${esc(st.kept)}</s>` : '<span class="namn ingen">Ingen bild</span>'
+      return wrap('c', st, `<button type="button" class="falt fokus" data-open="lib" aria-haspopup="dialog">${vänster}${namn}<span class="chev" aria-hidden="true">▼</span></button>${has ? '<button type="button" class="x" aria-label="Ta bort bild">×</button>' : ''}`)
+    },
+  },
+  {
+    id: 'd', namn: 'D · Stor bricka, verktyg på hovring', regel: 'En bricka på 96×64 — stor nog att se motivet på — med tre ikonknappar på en mörk list längs nederkanten: bibliotek, fil, ×. Listen tonar fram på hovring och när fokus står i rutan, och står framme hela tiden på pekskärm. Varje handling ett tryck; i vila bara bilden.',
+    pris: 'Raden blir 72 px hög mot 48 i dag: tabellen visar en tredjedel färre kort per skärm. Tre tabbstopp per rad som nu. Verktyg som bara syns på hovring är ett mönster editorn hittills undvikit (L39: «en rad som tonar fram vid fokus säger ingenting till den som ännu inte klickat»). Ikoner utan ord behöver tooltip och aria-label.',
+    api: `<Bildruta … />            // samma props; tre ikonknappar, aria-label var`,
+    klick: { bibliotek: 2, upp: 2, bort: 1 },
+    rita(st) {
+      const has = !!st.value
+      const mitt = has ? thumb(st) : st.kept ? `<s class="kept">${esc(st.kept)}</s>` : '<span class="tom">släpp en bild här</span>'
+      return wrap('d', st, `<span class="stor">${mitt}<span class="verktyg"><button type="button" class="fokus" data-open="lib" aria-label="Välj ur biblioteket" title="Ur biblioteket">▦</button><label title="Ladda upp fil"><button type="button" aria-label="Ladda upp fil">⇪</button></label>${has ? '<button type="button" class="x" aria-label="Ta bort bild" title="Ta bort">×</button>' : ''}</span></span>`)
+    },
+  },
+]
+
+// ── Scenen ─────────────────────────────────────────────────────────────────────────────────
+const LAGE = { readonly: false, touch: false, dense: false }
+const sp = new URLSearchParams(location.search)
+let aktiv = VARIANTER.find((v) => v.id === sp.get('variant')) ?? VARIANTER[1]
+let menyOppen = null
+
+const RADER = [
+  { id: 'K-01', namn: 'Röd drake', st: { value: 'drake' }, antal: 2 },
+  { id: 'K-02', namn: 'Tom ruta', st: {}, antal: 1, vald: true },
+  { id: 'K-03', namn: 'Från textkolumnen', st: { kept: 'en röd drake' }, antal: 3 },
+  { id: 'K-04', namn: 'Riddare', st: { value: 'riddare', arriving: true }, antal: 1 },
+]
+const TATA = Array.from({ length: 8 }, (_, i) => ({ id: `K-${String(i + 5).padStart(2, '0')}`, namn: ['Skog', 'Trollkarl', 'Drake', 'Riddare'][i % 4], st: { value: ['skog', 'trollkarl', 'drake', 'riddare'][i % 4] }, antal: (i % 3) + 1 }))
+
+function ruta(st, extra = {}) {
+  const s = { ...st, ...extra, readonly: st.readonly || LAGE.readonly }
+  if (menyOppen === (s.label ?? 'Bild för K-01')) s.meny = true
+  return aktiv.rita(s)
+}
+
+function ritaTabell() {
+  const rader = LAGE.dense ? [...RADER, ...TATA] : RADER
+  const iBruk = Object.entries(BILDER).filter(([, b]) => b.kort.length)
+  document.getElementById('tabell').innerHTML = `
+    <div class="remsa"><span>Bilder i spelet</span><ul aria-label="Bilder i spelet">${iBruk.map(([k, b]) => `<li data-asset="${k}"><img src="${b.src}" alt="Bild på ${b.kort.join(', ')}" draggable="true"><small>${b.kort.length} kort</small></li>`).join('')}</ul></div>
+    <table class="data"><thead><tr><th></th><th>id</th><th>namn</th><th>bild</th><th>antal</th></tr></thead><tbody>
+    ${rader.map((r) => `<tr aria-selected="${!!r.vald}"><td class="check"><span class="mark"></span></td><td class="id">${r.id}</td><td class="text"><input value="${esc(r.namn)}" aria-label="${r.id} namn"></td><td class="bild" data-row="${r.id}">${ruta(r.st, { label: `Bild för ${r.id}` })}</td><td class="text"><input value="${r.antal}" style="width:40px" aria-label="${r.id} antal"></td></tr>`).join('')}
+    </tbody></table>`
+}
+function ritaBulk() {
+  document.getElementById('bulk').innerHTML = `<div class="bulk"><span class="n">3 kort markerade</span><label>Fält <select><option>bild</option><option>namn</option><option>antal</option></select></label>${ruta({}, { label: 'Bild för de markerade korten' })}<button type="button" class="satt" disabled>Sätt på 3 kort</button></div>`
+}
+function ritaGuide() {
+  document.getElementById('guide').innerHTML = `<div class="guide byd-wizard"><span>Illustration <em style="font-weight:400;color:#5b6058">· Bild för kort 1</em></span>${ruta({ value: 'trollkarl' }, { label: 'Bild för Illustration' })}</div>`
+}
+function ritaMatris() {
+  document.getElementById('matris').innerHTML = `<thead><tr>${LAGEN.map((l) => `<th>${l.namn}${l.sub ? `<small>${l.sub}</small>` : ''}</th>`).join('')}</tr></thead><tbody><tr>${LAGEN.map((l) => `<td>${aktiv.rita({ ...l.st, label: `Bild för K-01 (${l.namn})` })}</td>`).join('')}</tr></tbody>`
+}
+function mat() {
+  const td = document.querySelector('td.bild[data-row="K-01"]')
+  const tr = td.closest('tr')
+  const stopp = td.querySelectorAll('button, input:not([hidden]), [tabindex="0"]').length
+  const tabell = document.querySelector('table.data')
+  const k = aktiv.klick
+  document.getElementById('tal').innerHTML = [
+    ['Cellens bredd (K-01)', `${Math.round(td.getBoundingClientRect().width)} px`],
+    ['Radens höjd', `${Math.round(tr.getBoundingClientRect().height)} px`],
+    ['Tabellens bredd', `${Math.round(tabell.getBoundingClientRect().width)} px`],
+    ['Tabbstopp per bildcell', `${stopp}`],
+    ['Tabbstopp i 308 kort', `${stopp * 308}`],
+    ['Klick: ur biblioteket', `${k.bibliotek}`],
+    ['Klick: ladda upp fil', `${k.upp}`],
+    ['Klick: ta bort', `${k.bort}`],
+    ['Namnet syns i vila', aktiv.id === 'c' ? 'ja' : 'nej'],
+  ].map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('')
+}
+function rita() {
+  ritaTabell(); ritaBulk(); ritaGuide(); ritaMatris()
+  document.getElementById('vnamn').textContent = aktiv.namn + (aktiv.rek ? ' · rekommenderad' : '')
+  document.getElementById('vregel').textContent = aktiv.regel
+  document.getElementById('vpris').innerHTML = '<b>Pris.</b> ' + esc(aktiv.pris)
+  document.getElementById('api').textContent = aktiv.api
+  document.querySelectorAll('#varianter button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === aktiv.id)))
+  document.querySelectorAll('#lagen button').forEach((b) => b.setAttribute('aria-pressed', String(LAGE[b.dataset.lage])))
+  requestAnimationFrame(mat)
+}
+function valj(v) {
+  aktiv = v; menyOppen = null
+  const u = new URL(location.href); u.searchParams.set('variant', v.id); history.replaceState(null, '', u)
+  rita()
+}
+const vrad = document.getElementById('varianter')
+VARIANTER.forEach((v) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.id = v.id; b.textContent = v.namn; if (v.rek) b.className = 'rek'; b.onclick = () => valj(v); vrad.appendChild(b) })
+document.querySelectorAll('#lagen button').forEach((b) => { b.onclick = () => { LAGE[b.dataset.lage] = !LAGE[b.dataset.lage]; rita() } })
+document.addEventListener('keydown', (e) => {
+  const t = e.target
+  if (t.matches('input, textarea, [contenteditable]')) return
+  if (e.key === 'Escape') { menyOppen = null; stangLib(); rita(); return }
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const i = VARIANTER.indexOf(aktiv)
+  valj(VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length])
+})
+// Öppna: menyn i B, biblioteket i alla andra.
+document.addEventListener('click', (e) => {
+  const o = e.target.closest('[data-open]')
+  if (!o) { if (menyOppen) { menyOppen = null; rita() } return }
+  const ruta = o.closest('.bildruta')
+  if (ruta?.hasAttribute('data-readonly')) return
+  if (o.dataset.open === 'meny') { menyOppen = menyOppen === ruta.getAttribute('aria-label') ? null : ruta.getAttribute('aria-label'); rita(); return }
+  menyOppen = null; rita()
+  oppnaLib(ruta?.getAttribute('aria-label') ?? 'Bild för K-01', !!ruta?.querySelector('.thumb'))
+})
+function oppnaLib(mal, hade) {
+  stangLib()
+  const v = document.createElement('div'); v.className = 'veil'; v.id = 'lib'
+  const bort = aktiv.id === 'a' && hade ? '<button type="button" class="farlig">Ta bort från kortet</button>' : ''
+  v.innerHTML = `<div class="lib" role="dialog" aria-modal="true" aria-label="Bilder i spelet"><header><h3>Bilder i spelet</h3><button type="button">Ladda upp</button><button type="button" aria-label="Stäng" data-close>×</button></header><p class="mal">${esc(mal)}</p><ul class="grid">${Object.entries(BILDER).map(([k, b]) => `<li data-pick="${k}" aria-pressed="false"><img src="${b.src}" alt=""><span>${b.namn ?? (b.kort.length ? `Bild på ${b.kort.join(', ')}` : 'Bild som inget kort använder')}</span><small>${b.kort.length ? `${b.kort.length} kort` : 'inget kort använder den'}</small></li>`).join('')}</ul><footer><div class="sagt"><span>Ingen bild vald ännu.</span></div>${bort}<button type="button" class="prim" disabled>Använd bilden</button><button type="button" data-close>Avbryt</button></footer></div>`
+  v.addEventListener('click', (e) => {
+    if (e.target === v || e.target.closest('[data-close]')) return stangLib()
+    const li = e.target.closest('[data-pick]')
+    if (li) {
+      v.querySelectorAll('[data-pick]').forEach((x) => x.setAttribute('aria-pressed', String(x === li)))
+      const b = BILDER[li.dataset.pick]
+      v.querySelector('.sagt').innerHTML = `<img src="${b.src}" alt=""><span>Vald bild: ${b.namn ?? 'Bild på ' + b.kort.join(', ')}</span>${hade ? '<em style="color:#f0b64a;font-style:normal">Kortets bild byts ut.</em>' : ''}`
+      v.querySelector('.prim').disabled = false
+    }
+    if (e.target.classList.contains('prim')) stangLib()
+  })
+  document.body.appendChild(v)
+  v.querySelector('[data-close]').focus()
+}
+function stangLib() { document.getElementById('lib')?.remove() }
+rita()
+</script>
+</body>
+</html>

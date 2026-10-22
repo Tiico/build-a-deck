@@ -6651,6 +6651,47 @@ Luckan är erkänd: ett kort som bordsskärmen vänder ner framför någon har i
 Rutans namn och antal står kvar överst; ytorna står en per rad, så att korten får plats.
 En yta läsaren inte får se in i skickar inget kort alls (B6), så den ritar inget heller; det bevisas i `packages/e2e/test/private-area.spec.ts`.
 
+### L72. Bildrutan: en bild i Tabell är en bricka som är hela kontrollen (prototypat och beslutat 2026-10-22, #1105)
+
+Bilder i Tabell hanterades av tre ytor som var och en byggde upp samma sak för hand i `DataTable.tsx`: kortets bildcell, massredigeringens bildfält och bildremsan över tabellen.
+Guiden byggde en fjärde, biblioteket och Media var sin bricka.
+Alla höll samma delar — miniatyren, släppytan (#291), «Välj», «Ladda upp», ×, behållen text (#1085), bytes på väg (#907), läsläge (#489) — i var sin kopia med var sin stilregel.
+Cellen var tabellens bredaste för en bild på 60 px, och bar tre tabbstopp per rad: 924 i en lek på 308 kort.
+
+Frågan var inte om det skulle bli en komponent utan vilken form den skulle ha: var handlingarna står, hur mycket plats rutan tar i en rad, och vad den säger om bilden.
+Fem former prövades i [`docs/ux-audits/2026-10-22-bildrutan/prototyper/index.html`](docs/ux-audits/2026-10-22-bildrutan/prototyper/index.html), var och en i tabellen, i massredigeringsraden, i guiden och i en matris över varje tillstånd komponenten måste bära.
+Nu: som förut, samlat.
+A: brickan är en enda knapp som öppnar biblioteket.
+B: miniatyr och en menyknapp med tre val.
+C: ett fält kolumnen brett, med liten miniatyr, bildens namn och en pil.
+D: en stor bricka med ikonverktyg som tonar fram på hovring.
+
+Beställaren valde **A** 2026-10-22.
+
+- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och ett 3:2-fönster på bilden som bibliotekets bricka.
+  Tom är den en streckad bricka med ett +.
+  Knappen heter vad ett tryck gör: «Välj bild för {kort}» tom, «Byt bild för {kort}» med bild.
+- **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» i foten när kortet håller en bild.
+  Cellens eget «Ladda upp» och × tas bort.
+  Priset är att en fil och en borttagning är två tryck i stället för ett; vinsten är att cellen inte håller något annat än bilden, och att varje väg till en fil går genom samma dörr.
+  En fil genom rutan landar i biblioteket under sitt namn (#742) och på kortet genom rutans egen knapp, så varje steg tillbaka tar en sak som gjordes.
+- **Backsteg och Delete tömmer en fokuserad bricka,** som de tömmer vilket fält som helst.
+- **Draget tar hela rutan som förut (#291):** en biblioteksbild ur remsan återanvänds utan ny uppladdning (E1), och en fil som släpps laddas upp i cellen i samma steg som bilden (#742).
+  Rutan äger sitt eget svar på om draget står över den, så ett släpp aldrig kan ändra ett annat mål.
+- **Massredigeringens bildfält är samma komponent.** Varje väg in — ett släpp, en fil, bibliotekets «Välj bilden» (#1099) — lämnar bilden till raden, och radens egen knapp är det enda som skriver; rutan öppnad från raden har därför inget att ta bort.
+- **En läsares tabell (#489) ritar bilden och ingenting som kan ändra den:** ingen knapp och ingen släppyta, i komponenten och inte i en stilregel som gömmer knappar.
+- **Remsan över tabellen, bibliotekets och Medias brickor är en annan sak** — en bricka som *visar* en bild — och lämnas utanför.
+  Guiden har inget bibliotek och behåller sin filväljare.
+
+C förlorade på att miniatyren blir en ledtråd och kolumnen textkolumnbred; B på att varje handling blir två tryck bakom ett lager till; D på att raden växer till 72 px och på verktyg som bara syns på hovring, ett mönster editorn undvikit (L39).
+
+**Byggt 2026-10-22 (#1105).**
+`PictureSlot` i `packages/web/src/editor/PictureSlot.tsx` är komponenten: `label`, `choose`, `replace`, `alt`, `base`, `value`, `kept`, `onChoose`, `onPick`, `onFiles`, `onClear`, `reading`, `tabIndex`.
+`PictureLibraryDialog` får `onClear`, och Data ger den `onUpload`.
+Strängarna «släpp en bild här», «Välj», «Byt», «Ladda upp» och «Ladda upp bild för …» i cellen utgår; «Byt bild för {kort}», «Byt bild för de markerade korten», «Ta bort bilden från kortet» och «Bilden är borttagen från {kort}» kommer till.
+Bibliotekets tomma mening pekar inte längre på tabellen, eftersom uppladdningen står i rutan själv.
+Grindarna: `picture-slot.test.tsx`, `data-table.test.tsx`, `data-table-library.test.tsx`, `picture-library.test.tsx`, `data-table-layout.test.tsx` (brickan 66 × 44, en kontroll, kolumnen oklippt) och `packages/e2e/test/picture-upload-refused.spec.ts`, som nu släpper filen på brickan.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:

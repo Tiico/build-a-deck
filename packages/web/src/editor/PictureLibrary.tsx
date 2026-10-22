@@ -50,9 +50,13 @@ export type PictureLibraryDialogProps = {
   // under, by the same path Media takes — so the picture lands in the library and the window then
   // holds it. Only an opener that can take one offers it; Data's windows stay what they were.
   onUpload?: ((file: File) => Promise<string>) | undefined
+  // The way out of a picture (L72): the card, or the marked cards, cleared of the one they hold.
+  // Offered only where something holds a picture, since there is nothing to clear otherwise, and
+  // only by an opener whose target can be cleared.
+  onClear?: (() => void) | undefined
 }
 
-export function PictureLibraryDialog({ target, count, replacing, pictures, assetBase, onApply, onClose, onUpload, use }: PictureLibraryDialogProps) {
+export function PictureLibraryDialog({ target, count, replacing, pictures, assetBase, onApply, onClose, onUpload, use, onClear }: PictureLibraryDialogProps) {
   const t = useT()
   const id = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -153,6 +157,11 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
           <button type="button" className="byd-primary" disabled={!chosen} onClick={() => chosen && onApply(chosen.hash)}>
             {use ?? (count === 1 ? t('library.use') : t('library.use.many', { n: count }))}
           </button>
+          {onClear && replacing > 0 && (
+            <button type="button" className="byd-secondary byd-library-clear" onClick={onClear}>
+              {count === 1 ? t('library.clear.one') : t('library.clear.other', { n: count })}
+            </button>
+          )}
           <button type="button" className="byd-secondary" onClick={onClose}>
             {t('editor.cancel')}
           </button>

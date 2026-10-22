@@ -104,7 +104,7 @@ describe('the library says what became of a picture (#481)', () => {
     })
 
     await user.click(screen.getByRole('tab', { name: 'Tabell' }))
-    fireEvent.change(await screen.findByLabelText('Ladda upp bild för knight'), { target: { files: [new File([SKOGSBRYN], 'skogsbryn.png', { type: 'image/png' })] } })
+    fireEvent.drop(await screen.findByRole('group', { name: 'Bild för knight' }), { dataTransfer: { getData: () => '', files: [new File([SKOGSBRYN], 'skogsbryn.png', { type: 'image/png' })] } })
     const cell = await screen.findByRole('img', { name: 'knight art' })
     expect(cell.getAttribute('src')).toBeNull()
     // Nor the card drawn from the cell, nor anything else on the page.
