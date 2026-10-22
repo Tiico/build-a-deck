@@ -501,7 +501,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         answer.seating === 'computer' && seat !== undefined
           ? onlineUrl(started.id, server, seat, true, t, lang, { name: answer.name, code: started.code })
           : tvUrl(started.id, server, started.hostKey, false, lang)
-      if (tab && !tab.closed) tab.location.href = href
+      // Whole, since a blank tab has no address of its own to read a path against.
+      if (tab && !tab.closed) tab.location.href = new URL(href, location.href).href
       else setUnopened({ seating: answer.seating, href })
     } finally {
       setUpdating(false)

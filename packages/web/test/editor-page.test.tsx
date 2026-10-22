@@ -57,6 +57,7 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
     expect(await screen.findByText('Drakhona')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -201,6 +202,7 @@ describe('the table follows the editor (C7, L5)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -229,6 +231,7 @@ describe('a table opens only once its cards can be seen (L5)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     expect(await screen.findByText(/laddar kort 0\/4/i)).toBeTruthy()
     expect(screen.queryByRole('link', { name: /öppna bordet/i })).toBeNull()
     expect(await run.completeRenders()).toBe(4)
@@ -300,6 +303,7 @@ describe('the cards a phone cannot read, said once the table is up (#523)', () =
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     await screen.findByText(/laddar kort/i)
   }
 
@@ -329,6 +333,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -354,6 +359,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -578,6 +584,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     const code = await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })
     const first = code.textContent ?? ''
     await run.completeRenders()
@@ -620,6 +627,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     const first = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -642,6 +650,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
     const first = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement

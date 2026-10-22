@@ -103,8 +103,8 @@ describe('Starta on a game without a table (L75)', () => {
     expect(open).toHaveBeenCalledTimes(1)
     expect(tab.opener).toBeNull()
     const code = (await screen.findByText((_, el) => el?.hasAttribute('data-room-code') ?? false)).textContent!
-    await waitFor(() => expect(tab.location.href).toMatch(/^\/online\?/))
-    const q = new URLSearchParams(tab.location.href.split('?')[1])
+    await waitFor(() => expect(tab.location.href).toMatch(new RegExp(`^${location.origin}/online\\?`)))
+    const q = new URL(tab.location.href).searchParams
     expect(q.get('seat')).toBe('A')
     expect(q.get('name')).toBe('Vera')
     expect(q.get('owner')).toBe('1')
@@ -124,8 +124,8 @@ describe('Starta on a game without a table (L75)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Starta' }))
 
     await screen.findByText((_, el) => el?.hasAttribute('data-room-code') ?? false)
-    await waitFor(() => expect(tab.location.href).toMatch(/^\/table\?/))
-    const q = new URLSearchParams(tab.location.href.split('?')[1])
+    await waitFor(() => expect(tab.location.href).toMatch(new RegExp(`^${location.origin}/table\\?`)))
+    const q = new URL(tab.location.href).searchParams
     expect(q.get('mode')).toBe('tv')
     expect(q.get('host')).toBeTruthy()
   })
