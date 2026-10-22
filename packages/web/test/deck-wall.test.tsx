@@ -166,7 +166,7 @@ describe('the physical checks on the wall (E5)', () => {
     expect(rows[0]!.textContent).toContain('för liten text')
     expect(rows[0]!.textContent).toContain('3 kort')
     expect(rows[0]!.getAttribute('data-severity')).toBe('error')
-    expect(screen.getByText(/stoppar en order/)).toBeTruthy()
+    expect(screen.getByText(/stoppar beställningen/)).toBeTruthy()
 
     fireEvent.click(within(rows[0]!).getByRole('button', { name: /för liten text/ }))
     expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(3)
@@ -214,11 +214,11 @@ describe('the physical checks on the wall (E5)', () => {
     expect(el.getAttribute('data-eye')).toBe('normal')
     // The box says which eye is chosen before it is opened, which is the whole price of putting
     // the eyes behind a door: a simulation left on unannounced is worse than none (E5).
-    expect(screen.getByRole('button', { name: /^Ögon/ }).textContent).toContain('Som du ser det')
-    openBox(/^Ögon/)
+    expect(screen.getByRole('button', { name: /^Visning/ }).textContent).toContain('Normal syn')
+    openBox(/^Visning/)
     fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
     expect(el.getAttribute('data-eye')).toBe('deuteranopia')
-    expect(screen.getByRole('button', { name: /^Ögon/ }).textContent).toContain('Deuteranopi')
+    expect(screen.getByRole('button', { name: /^Visning/ }).textContent).toContain('Deuteranopi')
     // The simulation is the same transform the check uses, as a filter over the real cards.
     expect(document.querySelector('#byd-eye-deuteranopia feColorMatrix')).toBeTruthy()
 
@@ -249,10 +249,10 @@ describe('the reading views among the eyes (K26, #512)', () => {
     doc.rows[1]!.fields['body'] = ''
     const el = wall(doc)
     expect(readOf('dragon')).toBeNull()
-    openBox(/^Ögon/)
+    openBox(/^Visning/)
     fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
     expect(el.style.getPropertyValue('--byd-wall-card')).toBe('294px')
-    expect(screen.getByRole('button', { name: /^Ögon/ }).textContent).toContain('Telefonens läsvy')
+    expect(screen.getByRole('button', { name: /^Visning/ }).textContent).toContain('Telefonens läsvy')
     // 9 pt body at 294 px is 14,8 px; 14 pt title is 23,0 px.
     expect(readOf('dragon')?.textContent).toBe('Minsta text 14,8 px')
     expect(readOf('knight')?.textContent).toBe('Minsta text 23,0 px')
@@ -260,26 +260,26 @@ describe('the reading views among the eyes (K26, #512)', () => {
   })
 
   // Där kronan är smal visar en låda bara sitt val (#477, variant B), och läsvyerna är ögonens
-  // längsta ord: bredvid AI-panelen vid 1280 bröt «TV:ns «Visa för alla»» raden (#1047). Det korta
+  // längsta ord: bredvid AI-panelen vid 1280 bröt «TV:ns visning» raden (#1047). Det korta
   // ordet är ytan som håller upp kortet; hela meningen står kvar som lådans namn och tooltip.
   it('gives each reading view the surface’s name as its short word, and keeps the whole one as the box’s name', () => {
     wall()
-    openBox(/^Ögon/)
+    openBox(/^Visning/)
     for (const [name, short] of [
       ['Telefonens läsvy', 'Telefonen'],
-      ['Bordets lyft', 'Bordet'],
-      ['TV:ns «Visa för alla»', 'TV:n'],
+      ['Bordets läsvy', 'Bordet'],
+      ['TV:ns visning', 'TV:n'],
     ] as const) {
       fireEvent.click(screen.getByRole('button', { name }))
-      const box = screen.getByRole('button', { name: /^Ögon/ })
-      expect(box.getAttribute('aria-label')).toBe(`Ögon: ${name}`)
-      expect(box.getAttribute('title')).toBe(`Ögon: ${name}`)
+      const box = screen.getByRole('button', { name: /^Visning/ })
+      expect(box.getAttribute('aria-label')).toBe(`Visning: ${name}`)
+      expect(box.getAttribute('title')).toBe(`Visning: ${name}`)
       expect(box.querySelector('.byd-crown-long')?.textContent).toBe(name)
       expect(box.querySelector('.byd-crown-short')?.textContent).toBe(short)
     }
     // An eye whose word already fits has no second one.
     fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
-    expect(screen.getByRole('button', { name: /^Ögon/ }).querySelector('.byd-crown-short')).toBeNull()
+    expect(screen.getByRole('button', { name: /^Visning/ }).querySelector('.byd-crown-short')).toBeNull()
   })
 
   it('says it in words when a card’s text falls under the floor, and not by colour alone', () => {
@@ -287,13 +287,13 @@ describe('the reading views among the eyes (K26, #512)', () => {
     const face = doc.template.faces['front']!
     face.base = face.base.map((e) => (e.kind === 'text' && e.id === 'body' ? { ...e, font: { ...e.font, sizePt: 6 } } : e))
     wall(doc)
-    openBox(/^Ögon/)
+    openBox(/^Visning/)
     fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
     expect(readOf('dragon')?.textContent).toBe('Minsta text 9,9 px · under golvet 12 px')
     expect(readOf('dragon')?.getAttribute('data-under')).toBe('true')
     // The television holds it up larger: 6 pt there is 22,6 px, still under its 24. The box stays
     // open while an eye is chosen, so the next one is one press away.
-    fireEvent.click(screen.getByRole('button', { name: /^TV:ns «Visa för alla»/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^TV:ns visning/ }))
     expect(readOf('dragon')?.textContent).toBe('Minsta text 22,6 px · under golvet 24 px')
     // The pill says the width in whole pixels, as every other width is said: the television's is
     // 671.5 px and was printed with thirteen decimals. And it is said once, on the pill — the foot
@@ -301,7 +301,7 @@ describe('the reading views among the eyes (K26, #512)', () => {
     expect(within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent).toBe('672 px')
     expect(document.querySelector('.byd-crown-foot')!.textContent).toContain('3 kort')
     expect(document.querySelector('.byd-crown-foot')!.textContent).not.toContain('px')
-    fireEvent.click(screen.getByRole('button', { name: /^Bordets lyft/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Bordets läsvy/ }))
     expect(readOf('dragon')?.textContent).toBe('Minsta text 11,5 px · under golvet 12 px')
   })
 })
@@ -347,7 +347,7 @@ describe('the density pill while a guide or a reading view holds the width (#701
   it('is aria-disabled in a reading view, says the view holds the width, and keeps the step', () => {
     localStorage.setItem('byd.wall.density', '3')
     const el = wall()
-    openBox(/^Ögon/)
+    openBox(/^Visning/)
     fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
     for (const step of steps()) {
       expect(step.getAttribute('aria-disabled')).toBe('true')
@@ -356,7 +356,7 @@ describe('the density pill while a guide or a reading view holds the width (#701
     fireEvent.click(steps()[0]!)
     fireEvent.click(steps()[0]!)
     expect(localStorage.getItem('byd.wall.density')).toBe('3')
-    fireEvent.click(screen.getByRole('button', { name: /^Som du ser det/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Normal syn/ }))
     expect(el.style.getPropertyValue('--byd-wall-card')).toBe('150px')
   })
 })

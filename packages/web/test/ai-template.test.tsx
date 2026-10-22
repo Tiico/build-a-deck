@@ -110,7 +110,7 @@ describe('a template proposal on the wall', () => {
     expect(wallCard('dragon').querySelector('[data-element="coin"]')).not.toBeNull()
     expect(wallCard('wizard').querySelector('[data-element="coin"]')).toBeNull()
     expect(wallCard('dragon').closest('.byd-wall-cell')!.querySelector('.byd-wall-changes')!.textContent).toContain('kraft: — → 1')
-    expect(wallCard('wizard').getAttribute('aria-label')).toBe('Ändrat i förslaget: Trollkarl — ritat med den föreslagna mallen')
+    expect(wallCard('wizard').getAttribute('aria-label')).toBe('Ändrat i förslaget: Trollkarl, ritat med den föreslagna mallen')
     expect(document.querySelector('.byd-wall-deck')!.hasAttribute('data-proposing')).toBe(true)
     expect(await logged()).toHaveLength(0)
     // Off the wall again, the deck is drawn with its own template.

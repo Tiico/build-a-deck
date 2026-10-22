@@ -74,8 +74,8 @@ describe('the placeholder on the template canvas (#802)', () => {
     render(<Desk doc={deck(picture('image-1', { literal: '' }))} />)
     const tag = tagOn('image-1')!
     expect(tag.lastElementChild!.textContent).toBe('Ingen bild vald')
-    expect(tag.title).toBe('Ingen bild vald — välj en i spelets bilder.')
-    expect(screen.getByRole('img', { name: 'Ingen bild vald — välj en i spelets bilder.' })).toBe(tag)
+    expect(tag.title).toBe('Ingen bild vald. Välj en bland spelets bilder.')
+    expect(screen.getByRole('img', { name: 'Ingen bild vald. Välj en bland spelets bilder.' })).toBe(tag)
     // The layer says it too, to whoever meets the layer rather than the tag.
     expect(box('image-1').getAttribute('aria-describedby')).toBe(tag.id)
   })
@@ -84,14 +84,14 @@ describe('the placeholder on the template canvas (#802)', () => {
     render(<Desk doc={deck(row('icons-1', { literal: '' }))} />)
     const tag = tagOn('icons-1')!
     expect(tag.lastElementChild!.textContent).toBe('Inga ikoner')
-    expect(tag.title).toBe('Inga ikoner ännu — välj en ikon, eller ett fält där korten skriver {namn}.')
+    expect(tag.title).toBe('Inga ikoner ännu. Välj en ikon, eller ett fält där korten skriver {namn}.')
     expect(box('icons-1').closest('[data-drag-layer]')).not.toBeNull()
   })
 
   it('says a picture bound to a column of words that the column is words, and the card draws the cell empty', () => {
     render(<Desk doc={deck(picture('image-2', { field: 'typ' }, { w: 40, h: 30 }))} />)
     expect(wordOn('image-2')).toBe('«typ» är text, inte bilder')
-    expect(tagOn('image-2')!.title).toBe('«typ» är text, inte bilder — välj en bildkolumn eller en fast bild.')
+    expect(tagOn('image-2')!.title).toBe('«typ» är text, inte bilder. Välj en bildkolumn eller en fast bild.')
     // No broken picture: the one compiler draws a cell of words as an empty cell.
     expect(card().querySelector('[data-element="image-2"]')!.innerHTML).toBe('')
   })
@@ -101,7 +101,7 @@ describe('the placeholder on the template canvas (#802)', () => {
     const { unmount } = render(<Desk doc={doc} card="knight" />)
     expect(wordOn('art')).toBe('«bild» är tom på det här kortet')
     expect(wordOn('marks')).toBe('«symboler» tom')
-    expect(tagOn('marks')!.title).toBe('«symboler» är tom på det här kortet — skriv {namn} i kolumnen.')
+    expect(tagOn('marks')!.title).toBe('«symboler» är tom på det här kortet. Skriv {namn} i kolumnen.')
     unmount()
 
     render(<Desk doc={doc} card="dragon" />)

@@ -227,7 +227,7 @@ describe('a proposal the game cannot take', () => {
     const alert = await within(panel()).findByRole('alert')
     expect(alert.textContent).toContain('Förslaget gick inte att använda')
     expect(alert.textContent).toContain('Kort 2 («Förslag 2») skriver i fältet «trolldom», som spelet inte har.')
-    expect(alert.textContent).toContain('Det var AI:ns svar som inte gick att använda, inte ditt spel. Ingenting ändrades.')
+    expect(alert.textContent).toContain('Svaret från AI:n gick inte att använda. Ingenting i spelet ändrades.')
     expect(within(panel()).queryByRole('button', { name: 'Godta alla' })).toBeNull()
     const before = run.ai!.fake.calls.length
     // Asked again once the answer has ended, as every failed answer is.

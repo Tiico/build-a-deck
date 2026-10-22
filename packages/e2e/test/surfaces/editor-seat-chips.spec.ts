@@ -26,7 +26,7 @@ async function eightAtTheTable(page: Page, host: Fixtures['host']) {
   await page.goto(project.editorUrl)
 }
 
-const kick = (locale: string, name: string) => (locale === 'sv-SE' ? `Sparka ${name}` : `Kick ${name}`)
+const kick = (locale: string, name: string) => (locale === 'sv-SE' ? `Ta bort ${name}` : `Remove ${name}`)
 
 for (const locale of ['sv-SE', 'en-GB']) {
   for (const width of [1024, 1280]) {
@@ -100,7 +100,7 @@ test.describe('the × of a seat, as painted (#849)', () => {
   test('lies wholly inside its chip, with no line of its own', async ({ page, host }) => {
     await eightAtTheTable(page, host)
     const strip = page.locator('.byd-editor-table-link')
-    await expect(strip.getByRole('button', { name: 'Sparka Hal', exact: true })).toBeVisible()
+    await expect(strip.getByRole('button', { name: 'Ta bort Hal', exact: true })).toBeVisible()
     await page.mouse.move(0, 0)
     const chips = strip.locator('[data-host-seat]')
     const colours = await chips.first().evaluate((chip) => ({
@@ -184,7 +184,7 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
   test('is reached by Tab, shows the ring, and hands the focus to the next seat when it goes', async ({ page, host }) => {
     await eightAtTheTable(page, host)
     const strip = page.locator('.byd-editor-table-link')
-    const ada = strip.locator('[data-host-seat]').getByRole('button', { name: 'Sparka Ada', exact: true })
+    const ada = strip.locator('[data-host-seat]').getByRole('button', { name: 'Ta bort Ada', exact: true })
     await expect(ada).toBeVisible()
     // From «Ny kod» the next stop is the first seat's ×: nothing between them takes a Tab.
     await strip.getByRole('button', { name: 'Ny kod' }).focus()
@@ -202,20 +202,20 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     // The × asks first (#679, beställarens beslut C), and the question opens on «Avbryt»: the
     // reflex that answers without reading keeps the player at the table.
     await page.keyboard.press('Enter')
-    const ask = page.getByRole('alertdialog', { name: 'Sparka Ada?' })
+    const ask = page.getByRole('alertdialog', { name: 'Ta bort Ada från bordet?' })
     await expect(ask).toBeVisible()
     await expect(ask.getByRole('button', { name: 'Avbryt' })).toBeFocused()
     await expect(ada).toHaveCount(1)
     // One Tab back is the kick that also changes the code, two is the kick alone.
     await page.keyboard.press('Shift+Tab')
-    await expect(ask.getByRole('button', { name: 'Sparka och byt kod' })).toBeFocused()
+    await expect(ask.getByRole('button', { name: 'Ta bort och byt kod' })).toBeFocused()
     await page.keyboard.press('Shift+Tab')
-    await expect(ask.getByRole('button', { name: 'Sparka Ada' })).toBeFocused()
+    await expect(ask.getByRole('button', { name: 'Ta bort Ada' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(ada).toHaveCount(0)
     // The pressed × went with its seat. The focus does not fall to the page, where the next Tab
     // would start over from the top (#477, fynd 6): it lands on the seat that took Ada's place.
-    await expect(strip.getByRole('button', { name: 'Sparka Bo', exact: true })).toBeFocused()
+    await expect(strip.getByRole('button', { name: 'Ta bort Bo', exact: true })).toBeFocused()
   })
 
   test('hands the focus to «Ny kod» when the last seat goes', async ({ page, host }) => {
@@ -227,7 +227,7 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     await dealer.send([{ v: 'seat.claim', seat: doc.setup.seats[0]!, name: 'Ada' } as never])
     await page.goto(project.editorUrl)
     const strip = page.locator('.byd-editor-table-link')
-    const ada = strip.locator('[data-host-seat]').getByRole('button', { name: 'Sparka Ada', exact: true })
+    const ada = strip.locator('[data-host-seat]').getByRole('button', { name: 'Ta bort Ada', exact: true })
     // Ada's chip first: the seat arrives on the line after the page, and a Tab pressed before it
     // stood went past where it was about to be (a flake under load).
     await expect(ada).toBeVisible()
@@ -235,7 +235,7 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     await page.keyboard.press('Tab')
     await expect(ada).toBeFocused()
     await page.keyboard.press('Enter')
-    await strip.getByRole('alertdialog', { name: 'Sparka Ada?' }).getByRole('button', { name: 'Sparka Ada' }).click()
+    await strip.getByRole('alertdialog', { name: 'Ta bort Ada från bordet?' }).getByRole('button', { name: 'Ta bort Ada' }).click()
     await expect(ada).toHaveCount(0)
     await expect(strip.getByRole('button', { name: 'Ny kod' })).toBeFocused()
   })

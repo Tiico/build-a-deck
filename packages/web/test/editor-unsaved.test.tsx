@@ -338,7 +338,7 @@ describe('a save that does not go through says it in the editor’s words (#1018
 
     await user.click(screen.getByRole('button', { name: 'Spara' }))
 
-    expect(await said()).toBe('Sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.')
+    expect(await said()).toBe('Det gick inte att spara. Dina ändringar finns kvar här, så försök igen.')
     expect(screen.getByRole('alert').textContent).not.toMatch(/bordet|draget/i)
     expect(screen.getByText('Osparat')).toBeDefined()
   })
@@ -352,7 +352,7 @@ describe('a save that does not go through says it in the editor’s words (#1018
 
     await user.click(screen.getByRole('button', { name: 'Spara' }))
 
-    expect(await said()).toBe('Sparningen fick inget svar från servern. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.')
+    expect(await said()).toBe('Servern svarade inte, så det gick inte att spara. Dina ändringar finns kvar här, så försök igen.')
     expect(screen.getByText('Osparat')).toBeDefined()
   })
 
@@ -368,7 +368,7 @@ describe('a save that does not go through says it in the editor’s words (#1018
 
     await user.click(screen.getByRole('button', { name: 'Spara' }))
 
-    expect(await said()).toBe('Sparningen fick inget svar från servern. Det du har ändrat ligger kvar i den här fliken, så det går bra att trycka «Spara» igen.')
+    expect(await said()).toBe('Servern svarade inte, så det gick inte att spara. Dina ändringar finns kvar här, så försök igen.')
     expect(screen.getByRole('button', { name: 'Spara' }).getAttribute('aria-disabled')).toBe('false')
     expect(screen.getByText('Osparat')).toBeDefined()
   })
@@ -387,7 +387,7 @@ describe('a save that does not go through says it in the editor’s words (#1018
 
       await user.click(screen.getByRole('button', { name: 'Spara' }))
 
-      expect(await said()).toBe('Du är inte inloggad längre, så sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken.')
+      expect(await said()).toBe('Du är utloggad, så det gick inte att spara. Dina ändringar finns kvar här.')
       expect(screen.getByText('Osparat')).toBeDefined()
     } finally {
       await owned.stop()
@@ -410,7 +410,7 @@ describe('a save that does not go through says it in the editor’s words (#1018
 
       await user.click(screen.getByRole('button', { name: 'Spara' }))
 
-      expect(await said()).toBe('Du har inte längre rätt att ändra spelet, så sparningen gick inte igenom. Det du har ändrat ligger kvar i den här fliken.')
+      expect(await said()).toBe('Du har inte längre rätt att ändra spelet, så det gick inte att spara. Dina ändringar finns kvar här.')
       expect(screen.getByText('Osparat')).toBeDefined()
     } finally {
       await owned.stop()
@@ -426,7 +426,7 @@ describe('a save that does not go through says it in the editor’s words (#1018
 
     await user.click(screen.getByRole('button', { name: 'Spara' }))
 
-    expect(await said()).toBe('Spelet finns inte längre. Det du har ändrat ligger kvar här.')
+    expect(await said()).toBe('Spelet finns inte längre. Dina ändringar finns kvar här.')
   })
 })
 

@@ -7563,4 +7563,11 @@ Delarna läggs till i grinden i takt med att de skrivs om.
 «Ut…» heter «Lämna…», «På väg ut?» «Lämna bordet?», «Ögonblicket är flaggat» «Flaggat», «Dukar bordet…» «Laddar bordet…», «Korten ritas» «Laddar kort», «Mer för bordet» «Mer», «Inte än» och «Stanna kvar» «Avbryt».
 Ett bord som avslutats räknar drag, flaggor och spelare, inte «flaggade ögonblick» och «vid bordet».
 Telefonens rad vid 375 px: «Lämna…» är 30 px bredare än «Ut…», så L62:s ikonläge för Ångra och Flagga gäller från 375 px och inte bara under; vid 390 står orden kvar.
-Kvar till led 2 är editorn och kontot, och till led 3 ikonerna, ovanpå #1083.
+
+**Byggt 2026-10-22 (#1101), led 2: editorn och kontot.**
+`sv.editor.ts` och `sv.account.ts` är omskrivna där de bar rösten, och `en.editor.ts` och `en.account.ts` mot dem; grinden läser nu alla fyra delar, med «Vi har skickat en inloggningslänk» som det enda «vi» som står kvar.
+Verktygets egna namn är bytta mot vanliga ord: Ögon heter Visning (och «Som du ser det» Normal syn), hoppspalten gruppspalten, etapperna paneler, Bordets lyft Bordets läsvy och TV:ns «Visa för alla» TV:ns visning, och «{n} inne» «{n} online» i huvudets dörr och i delningspanelen.
+Att sparka en spelare heter att ta bort den från bordet, en symbol läggs till i stället för att tas in, kort laddas i stället för att renderas också i editorn, och häftet skapas i stället för att renderas.
+Guidad start heter «Skapa ett nytt spel» med «Tre steg, ungefär tre minuter», dörren till ett tomt spel «Börja från ett tomt spel», och knappen «Skapa spelet».
+Kontot säger «Kolla din mejl», «Har du en rumskod?» och «Gå med», och nyckeln testas i stället för att prövas.
+Kvar till led 3 är ikonerna, ovanpå #1083.

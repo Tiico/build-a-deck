@@ -15,8 +15,8 @@ import { expect, test } from '../../support/test.js'
 const KEY = 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefC4C4'
 const WIDE = ".byd-wall-view * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }"
 const WORDS: Record<string, { in: string; out: string }> = {
-  'sv-SE': { in: 'Fäll ihop hoppspalten', out: 'Fäll ut hoppspalten' },
-  'en-GB': { in: 'Fold the jump column', out: 'Unfold the jump column' },
+  'sv-SE': { in: 'Fäll ihop gruppspalten', out: 'Fäll ut gruppspalten' },
+  'en-GB': { in: 'Fold the group column', out: 'Unfold the group column' },
 }
 
 function deck(types: readonly string[], cards: number) {

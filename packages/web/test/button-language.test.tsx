@@ -280,7 +280,7 @@ async function wizardViews(width: number): Promise<Record<string, string>> {
   history.replaceState(null, '', '/new')
   const { unmount } = render(<NewProjectPage />)
   try {
-    await screen.findByText(/Ge spelet en flygande start/)
+    await screen.findByText(/Skapa ett nytt spel/)
     const steps = () => [...document.querySelectorAll<HTMLElement>('[role="tablist"][aria-label="Steg"] [role="tab"]')]
     if (steps().length === 0) return { 'hela sidan': document.querySelector('.byd-wizard')!.outerHTML }
     const out: Record<string, string> = {}
@@ -298,7 +298,7 @@ async function wizardViews(width: number): Promise<Record<string, string>> {
 describe('the guided start', () => {
   it('wears the primary fill on nothing but the action that finishes it', async () => {
     const measured = await inChromium(read('src/wizard/wizard.css'), 1280, await wizardViews(1280), wearingThePrimary('.byd-wizard'))
-    expect(measured).toEqual({ 'hela sidan': ['Skapa spelet och fortsätt i editorn →'] })
+    expect(measured).toEqual({ 'hela sidan': ['Skapa spelet'] })
   }, 90_000)
 })
 
@@ -1030,7 +1030,7 @@ describe('the editor', () => {
     const measured = await inChromium(read('src/editor/editor.css'), 1280, views, wearingThePrimary('.byd-editor'))
     // The caret is not a second action: it is the same button's other half, and a split control
     // drawn in two colours would read as two things to press rather than one with a menu.
-    expect(measured).toEqual(Object.fromEntries(EDITOR_VIEWS.map((name) => [name, ['Starta bord', 'Fler vägar till bordet']])))
+    expect(measured).toEqual(Object.fromEntries(EDITOR_VIEWS.map((name) => [name, ['Starta bord', 'Fler sätt att öppna bordet']])))
   }, 120_000)
 })
 

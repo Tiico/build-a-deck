@@ -48,7 +48,7 @@ describe('the login card and HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
 
     await waitFor(() => expect(gone.at(-1)).toBe(home))
-    expect(screen.queryByText(/Kolla mejlen/)).toBeNull()
+    expect(screen.queryByText(/Kolla din mejl/)).toBeNull()
     expect(run.mail.sent).toHaveLength(0)
 
     cleanup()
@@ -79,7 +79,7 @@ describe('the login card and HomePage', () => {
     expect(email.hasAttribute('aria-label')).toBe(false)
     fireEvent.change(email, { target: { value: 'ada@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
-    expect(await screen.findByText(/Kolla mejlen/)).toBeTruthy()
+    expect(await screen.findByText(/Kolla din mejl/)).toBeTruthy()
     expect(run.mail.sent.at(-1)?.to).toBe('ada@example.com')
 
     await followMailedLink()
@@ -98,7 +98,7 @@ describe('the login card and HomePage', () => {
     fireEvent.click(screen.getByText(/Nytt spel/))
     expect(gone.at(-1)).toMatch(/^\/new\?/)
     // Logged out, the same page is the landing page again (#1009), with its door back to the login.
-    fireEvent.click(screen.getByText('logga ut'))
+    fireEvent.click(screen.getByText('Logga ut'))
     expect(await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Mina spel' }).getAttribute('href')).toMatch(/^\/login\?next=/)
   })
@@ -142,7 +142,7 @@ describe('pages that need an account send you to log in and back', () => {
     const gone: string[] = []
     render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Första försöket' } })
-    fireEvent.click(screen.getByRole('button', { name: /fortsätt i editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
     await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew/))
 
     const login = new URL(gone.at(-1)!, 'http://web.local')
@@ -169,7 +169,7 @@ describe('pages that need an account send you to log in and back', () => {
     const gone: string[] = []
     render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
-    fireEvent.click(screen.getByRole('button', { name: /fortsätt i editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
     await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew/))
     cleanup()
 
@@ -200,9 +200,9 @@ describe('the tables the account sat at (G1)', () => {
         <HomePage onNavigate={() => undefined} />
       </StatusLive>,
     )
-    expect(await screen.findByText('Bord du spelat vid')).toBeTruthy()
+    expect(await screen.findByText('Bord du har spelat vid')).toBeTruthy()
     const card = await waitFor(() => document.querySelector(`[data-played="${id}"]`)!)
-    expect(card.textContent).toContain('du var Ada')
+    expect(card.textContent).toContain('du spelade som Ada')
     expect(card.textContent).toContain('pågår')
     expect(document.querySelector('.byd-home-claimed')?.textContent).toMatch(/Sparat.*som Ada/)
     // The banner is drawn with its text, so the page's live region says it (4.1.3, #555).
@@ -212,7 +212,7 @@ describe('the tables the account sat at (G1)', () => {
     expect(new URLSearchParams(location.search).get('server')).toBe(run.http)
   })
 
-  // «Tillbaka till bordet» takes her to her own seat and hand (#690, beslut 2026-10-06): before, it
+  // «Öppna bordet» takes her to her own seat and hand (#690, beslut 2026-10-06): before, it
   // was the picker, where her seat stood taken under her own name and the name field was empty.
   it('takes the guest back to her own seat and hand, not to the picker', async () => {
     await run.stop()
@@ -225,7 +225,7 @@ describe('the tables the account sat at (G1)', () => {
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
     render(<HomePage onNavigate={(u) => gone.push(u)} />)
-    const back = await screen.findByRole('link', { name: 'Tillbaka till bordet' })
+    const back = await screen.findByRole('link', { name: 'Öppna bordet' })
     expect(back.closest(`[data-played="${id}"]`)).not.toBeNull()
     fireEvent.click(back)
     await waitFor(() => expect(gone).toHaveLength(1))
@@ -252,11 +252,11 @@ describe('the tables the account sat at (G1)', () => {
 
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     render(<HomePage onNavigate={() => undefined} />)
-    expect(await screen.findByText('Bord du spelat vid')).toBeTruthy()
+    expect(await screen.findByText('Bord du har spelat vid')).toBeTruthy()
     const card = await waitFor(() => document.querySelector(`[data-played="${made.id}"]`)!)
     expect(card.textContent).toContain('Borttaget spel')
     expect(card.textContent).not.toContain('pågår')
-    expect(within(card as HTMLElement).queryByRole('link', { name: 'Tillbaka till bordet' })).toBeNull()
+    expect(within(card as HTMLElement).queryByRole('link', { name: 'Öppna bordet' })).toBeNull()
   })
 })
 
@@ -296,7 +296,7 @@ describe('a game on the home page (G1)', () => {
     const place = document.querySelector(`[data-project="${run.otherProjectId}"] .byd-home-card`)!
     // The empty state is the card's own place, said deliberately — not a hole where a card failed.
     expect(place.hasAttribute('data-empty')).toBe(true)
-    expect(place.textContent).toBe('inga kort än')
+    expect(place.textContent).toBe('inga kort ännu')
     expect(place.querySelector('.byd-preview')).toBeNull()
   })
 
@@ -349,11 +349,11 @@ describe('a game on the home page (G1)', () => {
       await followMailedLink()
       history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
       render(<HomePage />)
-      expect(await screen.findByText('Hämtar dina spel…')).toBeTruthy()
+      expect(await screen.findByText('Laddar dina spel…')).toBeTruthy()
       expect(document.querySelector('.byd-home-game[data-new]')).toBeNull()
       land()
       await waitFor(() => expect(document.querySelector('.byd-home-game[data-new]')).toBeTruthy())
-      expect(screen.queryByText('Hämtar dina spel…')).toBeNull()
+      expect(screen.queryByText('Laddar dina spel…')).toBeNull()
     } finally {
       spy.mockRestore()
     }
@@ -382,12 +382,12 @@ describe('a game on the home page (G1)', () => {
     await waitFor(() => within(card()).getByRole('img', { name: 'Första kortet: Drake' }))
     const open = within(card()).getAllByRole('link')[0]!
     expect(open.getAttribute('href')).toMatch(/^\/editor\?/)
-    expect(screen.getByRole('link', { name: /^Skogens herrar v1 · aldrig spelat Första kortet: Drake$/ })).toBe(open)
+    expect(screen.getByRole('link', { name: /^Skogens herrar v1 · inte spelat Första kortet: Drake$/ })).toBe(open)
   })
 
   it('says it has never been played, and afterwards when it last was', async () => {
     await home()
-    expect(card().textContent).toContain('aldrig spelat')
+    expect(card().textContent).toContain('inte spelat')
 
     await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
     cleanup()
@@ -453,7 +453,7 @@ describe('a game on the home page (G1)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
     expect(screen.getByRole('alertdialog', { name: 'Ta bort spelet' }).textContent).toContain('Skogens herrar')
     // The question can be taken back.
-    fireEvent.click(screen.getByRole('button', { name: 'Behåll' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
     expect(card()).toBeTruthy()
 
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
@@ -511,7 +511,7 @@ describe('the game menu and the question on the home page (#475)', () => {
     fireEvent.click(more())
     fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
     const question = screen.getByRole('alertdialog', { name: 'Ta bort spelet' })
-    await waitFor(() => expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Behåll' })))
+    await waitFor(() => expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Avbryt' })))
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     expect(screen.queryByRole('alertdialog')).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(more()))
@@ -682,8 +682,8 @@ describe('the game menu follows the role (D3, #689)', () => {
   }
 
   it.each([
-    ['owner', ['Starta bord', 'Byt namn…', 'Dubblera', 'Exportera…', 'Ta bort spelet']],
-    ['editor', ['Starta bord', 'Byt namn…', 'Dubblera', 'Exportera…']],
+    ['owner', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…', 'Ta bort spelet']],
+    ['editor', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…']],
     ['tester', ['Starta bord']],
     ['viewer', []],
   ] as const)('offers the %s only what the role may do', async (role, offered) => {
@@ -731,9 +731,9 @@ describe('renaming and duplicating from «Mina spel» (#909)', () => {
   it('duplicates the game into a tile of its own, named as a copy, and says so', async () => {
     await home()
     fireEvent.click(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Dubblera' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Duplicera' }))
     await screen.findByText('Skogens herrar (kopia)', { selector: '.byd-home-game strong' })
-    await waitFor(() => expect(document.body.textContent).toContain('«Skogens herrar (kopia)» ligger nu i Mina spel.'))
+    await waitFor(() => expect(document.body.textContent).toContain('«Skogens herrar (kopia)» finns nu i Mina spel.'))
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
   })
 })
@@ -791,7 +791,7 @@ describe('a game imported from the start page', () => {
       const dialog = await screen.findByRole('dialog')
       fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [new File(['PK'], 'Skogens herrar rev-1.zip', { type: 'application/zip' })] } })
       const refusal = await within(dialog).findByRole('alert')
-      expect(refusal.textContent).toMatch(/Ritningen assets\/sköld\.svg innehåller något som inte är säkert att visa\./)
+      expect(refusal.textContent).toMatch(/Filen assets\/sköld\.svg innehåller något som inte är säkert att visa\./)
       expect(refusal.textContent).not.toMatch(/onload/)
     } finally {
       spy.mockRestore()

@@ -574,7 +574,7 @@ describe('ett steg som frågar efter ett tal, och spelstarten', () => {
     fireEvent.click(rowNamed(open(step(), '1'), 'så många jag säger'))
     expect(step().textContent).toMatch(/Ta så många jag säger från högen/)
 
-    expect(why()).toBe('Inte vid spelstart: ett steg frågar efter ett tal.')
+    expect(why()).toBe('Inte vid spelstart: ett steg behöver ett tal.')
     fireEvent.click(whenSlot())
     expect(whenBox()).toEqual([
       ['bara när någon ber om det', false],
@@ -590,7 +590,7 @@ describe('ett steg som frågar efter ett tal, och spelstarten', () => {
 
     fireEvent.click(whenSlot())
     fireEvent.click([...panel().querySelectorAll('.byd-slot-pop button')].find((b) => b.textContent === 'bara vid spelstart') as HTMLElement)
-    expect(why()).toBe('Inget steg kan fråga efter ett tal: åtgärden körs vid spelstart.')
+    expect(why()).toBe('Ett steg kan inte be om ett tal när åtgärden körs vid spelstart.')
 
     // Raden står kvar i rutan och är avstängd: en rad som försvinner säger att valet aldrig
     // funnits, och det som ska sägas är att det inte går just nu.

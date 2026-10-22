@@ -89,8 +89,8 @@ test.describe('the code is the address (#675)', () => {
   test('the start page has a code row on the landing page that takes the code to the picker', async ({ table, open }) => {
     for (const device of [PHONE, SMALL_PHONE]) {
       const { page } = await open(device, '/?lang=sv')
-      const field = page.getByLabel('Ska du spela? Skriv rumskoden')
-      const go = page.getByRole('button', { name: 'Gå in' })
+      const field = page.getByLabel('Har du en rumskod?')
+      const go = page.getByRole('button', { name: 'Gå med' })
       const maker = page.getByRole('link', { name: 'Mina spel' })
       // At 320 both doors are on the first screen: the player's field and its button, and the
       // maker's way to the login (#675, #1009).
@@ -104,7 +104,7 @@ test.describe('the code is the address (#675)', () => {
       await face.evaluate((tag) => (tag as Element).remove())
       if (device === PHONE) {
         await field.fill(table.code.toLowerCase())
-        await page.getByRole('button', { name: 'Gå in' }).click()
+        await page.getByRole('button', { name: 'Gå med' }).click()
         await page.waitForURL((url) => url.pathname === `/${table.code}`)
         await expect(page.locator('button[data-seat]').first()).toBeVisible()
       }

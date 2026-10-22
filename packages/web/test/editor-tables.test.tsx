@@ -56,7 +56,7 @@ async function onlyRow(): Promise<HTMLElement> {
 // Radens meny: de fem vägar som inte står framme (#176).
 async function openMenu(row: HTMLElement): Promise<HTMLElement> {
   const user = userEvent.setup()
-  await user.click(within(row).getByRole('button', { name: /Fler vägar in till bordet/ }))
+  await user.click(within(row).getByRole('button', { name: /Fler sätt att öppna (?!bordet)/ }))
   return within(row).getByRole('menu')
 }
 
@@ -96,14 +96,14 @@ describe('the Bord tab (#19)', () => {
 
   // The row says what the band says while the cards are still on their way (#765, beslut B): the
   // same words, so a designer who reads either reads one state.
-  it('says «renderar kort» with the count while the table’s cards are rendering, and nothing once they are done', async () => {
+  it('says «laddar kort» with the count while the table’s cards are rendering, and nothing once they are done', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await startTable()
     await openTables()
     const table = await onlyRow()
-    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('renderar kort 0/4'))
+    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('laddar kort 0/4'))
     expect(await run.completeRenders(3)).toBe(3)
-    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('renderar kort 3/4'))
+    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('laddar kort 3/4'))
     expect(await run.completeRenders()).toBe(1)
     await waitFor(() => expect(table.querySelector('.byd-tables-render')).toBeNull())
   })
@@ -244,7 +244,7 @@ describe('the name and the update of a row (#706)', () => {
     const code = roomOf(id).code
     expect((await within(row).findByText(code)).tagName).toBe('STRONG')
     expect(document.body.textContent).not.toContain(id.slice(0, 8))
-    expect(within(row).getByRole('button', { name: `Fler vägar in till bordet ${code}` })).toBeTruthy()
+    expect(within(row).getByRole('button', { name: `Fler sätt att öppna ${code}` })).toBeTruthy()
   })
 
   it('says a table started from the column by its code', async () => {
@@ -325,7 +325,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     const name = roomOf(id).code
     // Ending is not a way into the table and does not stand in the row: it is the last entry in
     // the row's menu, behind a line of its own (#176, C9).
-    const more = within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` })
+    const more = within(row).getByRole('button', { name: `Fler sätt att öppna ${name}` })
     await openMenu(row)
     const ask = within(row).getByRole('menuitem', { name: `Avsluta bordet ${name}` })
 
@@ -351,7 +351,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     // own there, opened for it and holding the focus.
     const endedList = await screen.findByRole('list', { name: 'Avslutade bord · 1' })
     row = within(endedList).getByRole('listitem')
-    await waitFor(() => expect(document.activeElement).toBe(within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` })))
+    await waitFor(() => expect(document.activeElement).toBe(within(row).getByRole('button', { name: `Fler sätt att öppna ${name}` })))
     expect(await within(row).findByText(/avslutat/)).toBeTruthy()
     // A table that is over is quieter than a live one on the screen too, not only in words.
     expect(row.getAttribute('data-ended')).toBe('true')
@@ -373,7 +373,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
-    await screen.findByRole('button', { name: 'Sparka Ada' })
+    await screen.findByRole('button', { name: 'Ta bort Ada' })
 
     const row = await onlyRow()
     await openMenu(row)
@@ -381,7 +381,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     await user.click(within(row).getByRole('button', { name: 'Ja, avsluta' }))
 
     await waitFor(() => expect(document.querySelector('.byd-editor-table-link')).toBeNull())
-    expect(screen.queryByRole('button', { name: 'Sparka Ada' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ta bort Ada' })).toBeNull()
     expect(document.querySelector('[data-room-code]')).toBeNull()
     const header = document.querySelector('header')!
     expect(within(header).getByRole('button', { name: 'Starta bord' })).toBeTruthy()
@@ -403,7 +403,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     // cards are rendering — which is the start having reached the server, since it queues the
     // renders before it answers — and only then are they finished, and only then is the link
     // waited for. Finishing them before the start had arrived left nothing to finish (#705).
-    await screen.findByText(/renderar kort/i)
+    await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     await screen.findByRole('link', { name: /öppna bordet/i })
 
@@ -573,7 +573,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
 
     const alert = await screen.findByRole('alert')
     // The server's own words are the developer's; the strip says it in a sentence of its own (#812).
-    expect(alert.textContent).toContain('Bordet kunde inte startas. Spelet och dess bord är orörda.')
+    expect(alert.textContent).toContain('Bordet kunde inte startas. Inget har ändrats.')
     expect(alert.textContent).not.toMatch(/could not|500/)
     const retry = within(alert).getByRole('button', { name: 'Försök igen' })
     await waitFor(() => expect(document.activeElement).toBe(retry))
@@ -606,7 +606,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     await screen.findByText('Skogens herrar')
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('wall')
 
-    const more = screen.getByRole('button', { name: 'Fler vägar till bordet' })
+    const more = screen.getByRole('button', { name: 'Fler sätt att öppna bordet' })
     expect(more.getAttribute('aria-expanded')).toBe('false')
     await user.click(more)
     expect(more.getAttribute('aria-expanded')).toBe('true')
@@ -655,7 +655,7 @@ describe('«Uppdatera bordet» answers the press before the table does (#315)', 
     // A table to update. The first press starts one — and says so (#417); the update is the press
     // after it.
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
-    await screen.findByText(/renderar kort 0\/4/)
+    await screen.findByText(/laddar kort 0\/4/)
     await screen.findByRole('button', { name: 'Uppdatera bordet' })
 
     // What actually switches the table under the players. Counted on the wire, because "one
@@ -706,24 +706,24 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     render(<EditorPage timing={timing} />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
-    return (await screen.findByText(/renderar kort 0\/4/)).closest('[role="status"]') as HTMLElement
+    return (await screen.findByText(/laddar kort 0\/4/)).closest('[role="status"]') as HTMLElement
   }
 
   it('after a while without progress it says the rendering is not moving, that the table shows the fallback text, and offers "Försök igen"', async () => {
     const line = await startFromEditor()
     // Nothing has failed, so there is no failure to report; the queue has simply not moved. The
     // count stays on the line, because it is what will show the rendering moving again.
-    expect(await within(line).findByText(/renderingen står stilla/)).toBeTruthy()
-    expect(line.textContent).toContain('reservtext')
+    expect(await within(line).findByText(/laddningen har stannat/)).toBeTruthy()
+    expect(line.textContent).toContain('visar sin text')
     expect(within(line).getByRole('button', { name: 'Försök igen' })).toBeTruthy()
-    expect(within(line).getByText(/renderar kort 0\/4/)).toBeTruthy()
+    expect(within(line).getByText(/laddar kort 0\/4/)).toBeTruthy()
     expect(line.hasAttribute('data-stalled')).toBe(true)
   })
 
   it('"Försök igen" asks the server to render once more, with the retry that puts a dead render back in the queue', async () => {
     const user = userEvent.setup()
     const line = await startFromEditor()
-    await within(line).findByText(/renderingen står stilla/)
+    await within(line).findByText(/laddningen har stannat/)
     const real = globalThis.fetch
     const seen: string[] = []
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
@@ -735,8 +735,8 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
       await waitFor(() => expect(seen.some((url) => url.endsWith('/prepare?retry=1'))).toBe(true))
       // Asking again is a fresh wait: the line stops saying "still" and says it again only once the
       // new patience has run out too.
-      expect(within(line).queryByText(/renderingen står stilla/)).toBeNull()
-      expect(await within(line).findByText(/renderingen står stilla/)).toBeTruthy()
+      expect(within(line).queryByText(/laddningen har stannat/)).toBeNull()
+      expect(await within(line).findByText(/laddningen har stannat/)).toBeTruthy()
     } finally {
       spy.mockRestore()
     }
@@ -744,19 +744,19 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
 
   it('a count that moves takes the message away, and the message comes back only when the count stands still again', async () => {
     const line = await startFromEditor()
-    await within(line).findByText(/renderingen står stilla/)
+    await within(line).findByText(/laddningen har stannat/)
     // One card lands: the count goes on from where it was, and the line has nothing to warn about.
     expect(await run.completeRenders(1)).toBe(1)
-    expect(await within(line).findByText(/renderar kort 1\/4/)).toBeTruthy()
-    expect(within(line).queryByText(/renderingen står stilla/)).toBeNull()
+    expect(await within(line).findByText(/laddar kort 1\/4/)).toBeTruthy()
+    expect(within(line).queryByText(/laddningen har stannat/)).toBeNull()
     expect(line.hasAttribute('data-stalled')).toBe(false)
     // Then nothing more comes, and the line says so again.
-    expect(await within(line).findByText(/renderingen står stilla/)).toBeTruthy()
-    expect(within(line).getByText(/renderar kort 1\/4/)).toBeTruthy()
+    expect(await within(line).findByText(/laddningen har stannat/)).toBeTruthy()
+    expect(within(line).getByText(/laddar kort 1\/4/)).toBeTruthy()
     // The rest lands: the link opens and the warning is gone for good.
     expect(await run.completeRenders()).toBe(3)
     expect(await within(line).findByRole('link', { name: 'öppna bordet' })).toBeTruthy()
-    expect(within(line).queryByText(/renderingen står stilla/)).toBeNull()
+    expect(within(line).queryByText(/laddningen har stannat/)).toBeNull()
   })
 
   // An update to the version the table already runs changes nothing and writes nothing (#706): the
@@ -781,12 +781,12 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     await user.clear(screen.getByLabelText('dragon title'))
     await user.type(screen.getByLabelText('dragon title'), 'Drakhona')
     await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
-    await screen.findByText(/renderar kort 3\/4/)
-    expect(await screen.findByText(/renderingen står stilla/)).toBeTruthy()
+    await screen.findByText(/laddar kort 3\/4/)
+    expect(await screen.findByText(/laddningen har stannat/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Försök igen' })).toBeTruthy()
     // The last one lands: the table switches and the warning goes with the count.
     expect(await run.completeRenders()).toBe(1)
-    await screen.findByText(/Bordet uppdaterat på version 2/)
-    expect(screen.queryByText(/renderingen står stilla/)).toBeNull()
+    await screen.findByText(/Bordet uppdaterat till version 2/)
+    expect(screen.queryByText(/laddningen har stannat/)).toBeNull()
   })
 })

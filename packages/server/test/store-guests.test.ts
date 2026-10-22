@@ -108,7 +108,7 @@ describe('guest seat reservation', () => {
   })
 })
 
-// «Tillbaka till bordet» (#690): the account's live admission at a table gets a new token in place
+// «Öppna bordet» (#690): the account's live admission at a table gets a new token in place
 // of the old one, and keeps its seat, name and account. Shared by both stores.
 async function returnsClaimedAdmission(store: LogStore, id: string): Promise<void> {
   await store.createSession({ id, version: 'v1', setup: twoSeatSetup() })

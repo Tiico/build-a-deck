@@ -57,7 +57,7 @@ describe('Mall: the layer column (L32, the surface that measured the cost)', () 
     expect(box.textContent).toContain('Dra för att ändra ordningen.')
     expect(box.textContent).toMatch(/Håll Alt och tryck pil upp eller ner/)
     expect(box.textContent).toMatch(/F2 byter namn på lagret/)
-    expect(box.textContent).toMatch(/Enter går in i flyttläge/)
+    expect(box.textContent).toMatch(/Enter startar flyttläge/)
     // Kept: the empty properties panel still says where to go.
     expect(screen.getByText('Välj ett lager i lagerlistan, eller ett element på kortet.')).toBeTruthy()
   })
@@ -67,11 +67,11 @@ describe('Regler', () => {
   it('says what the tab is in one short line, and the rest behind the question mark', async () => {
     await openEditor('Regler')
     expect(screen.getByText('Reglerna hör till spelet.')).toBeTruthy()
-    absent(/versioneras med korten/)
+    absent(/sparas med varje version/)
     absent(/följer med när det byter namn/)
     const box = await opened('reglerna')
-    expect(box.textContent).toMatch(/versioneras med korten/)
-    expect(box.textContent).toMatch(/telefonen, TV:n och observatören/)
+    expect(box.textContent).toMatch(/sparas med varje version/)
+    expect(box.textContent).toMatch(/telefonen, TV:n och i observatörsvyn/)
     expect(box.textContent).toMatch(/följer med när det byter namn/)
   })
 })
@@ -82,9 +82,9 @@ describe('Bord: the list and the setup', () => {
     await waitFor(() => expect(document.querySelector('.byd-tables > .byd-tables-lead')).not.toBeNull())
     const lead = document.querySelector('.byd-tables > .byd-tables-lead')!
     expect(lead.textContent).toContain('version 1')
-    absent(/överlever att alla kopplar ner/)
+    absent(/finns kvar även om alla kopplar ner/)
     const box = await opened('borden')
-    expect(box.textContent).toMatch(/överlever att alla kopplar ner/)
+    expect(box.textContent).toMatch(/finns kvar även om alla kopplar ner/)
     expect(box.textContent).toMatch(/efter ett dygn/)
   })
 
@@ -98,7 +98,7 @@ describe('Bord: the list and the setup', () => {
     expect(box.textContent).toContain('Dra en zon på filten för att flytta den.')
     expect(box.textContent).toMatch(/hörnet för att ändra storlek/)
     expect(box.textContent).toMatch(/Delete tar bort den/)
-    expect(box.textContent).toMatch(/varje zon bordet har/)
+    expect(box.textContent).toMatch(/alla zoner på bordet/)
   })
 
   it('moves what a seat brings and what a third counter does, and keeps the chips that have nowhere to lie', async () => {
@@ -109,7 +109,7 @@ describe('Bord: the list and the setup', () => {
     absent(/En tredje staplar/)
     expect((await opened('platserna')).textContent).toMatch(/En plats som lämnar bordet tar sina zoner med sig/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
-    expect((await opened('räknarna')).textContent).toMatch(/En tredje staplar platsens brickor/)
+    expect((await opened('räknarna')).textContent).toMatch(/Med tre eller fler staplas de/)
     // Kept: the status about chips with no zone is a consequence, and the sample deck has seats
     // without a counters zone once a counter is added.
     fireEvent.click(screen.getByRole('button', { name: ADD_COUNTER }))
@@ -125,7 +125,7 @@ describe('Speltema', () => {
     absent(/En betydelse, en färg/)
     // The meanings' question mark stands in their head once the part is open (L57).
     fireEvent.click(screen.getByRole('button', { name: /^Färger och betydelser/ }))
-    expect((await opened('betydelserna')).textContent).toMatch(/målar om varje kort som säger den/)
+    expect((await opened('betydelserna')).textContent).toMatch(/slår igenom på alla kort som använder den/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     // Kept: an empty state that says what an unnamed meaning draws as.
     expect(screen.getByText(/En symbol utan betydelse ritas i bläck/)).toBeTruthy()
@@ -142,7 +142,7 @@ describe('Historik and Delning', () => {
     await openEditor()
     fireEvent.click(screen.getByRole('button', { name: /^v1$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
-    expect(within(panel).getByText('Den du tar tillbaka blir nästa version.')).toBeTruthy()
+    expect(within(panel).getByText('En version du tar tillbaka blir nästa version.')).toBeTruthy()
     absent(/Varje sparning är en version/)
     expect((await opened('historiken')).textContent).toMatch(/Varje sparning är en version/)
   })
@@ -152,7 +152,7 @@ describe('Historik and Delning', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dela · vilka som har spelet' }))
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     absent(/De som är inne nu står överst/)
-    expect((await opened('delningen')).textContent).toMatch(/Samma lista säger vem som får vara med/)
+    expect((await opened('delningen')).textContent).toMatch(/Listan visar också vilka som har tillgång/)
   })
 })
 
@@ -169,8 +169,8 @@ describe('Kortvägg: the checks', () => {
   it('keeps the count of faults and what cannot be mended, and moves whose a fault usually is', async () => {
     render(<DeckWall doc={tooSmall()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: /^Fysisk kontroll/ }))
-    expect(document.querySelector('.byd-wall-checks .byd-wall-lead')!.textContent).toMatch(/slags fel|Bara varningar/)
+    expect(document.querySelector('.byd-wall-checks .byd-wall-lead')!.textContent).toMatch(/typer av fel|Ett fel stoppar|Bara varningar/)
     absent(/En anmärkning är oftast mallens/)
-    expect((await opened('anmärkningarna')).textContent).toMatch(/syns på varje kort som ärver elementet/)
+    expect((await opened('anmärkningarna')).textContent).toMatch(/syns då på alla kort som använder elementet/)
   })
 })

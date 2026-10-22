@@ -33,7 +33,7 @@ const CHROME = (up: readonly string[]) => `
   <header><a class="byd-editor-home" href="#">Mina spel</a><strong>Skogens herrar</strong></header>
   ${up.join('\n  ')}
   <main><div role="tabpanel" tabindex="0">Kortväggen</div></main>
-  <div class="byd-editor-stagebar"><nav role="tablist" aria-label="Editorns etapper"><button role="tab">Kort</button></nav></div>
+  <div class="byd-editor-stagebar"><nav role="tablist" aria-label="Editorns paneler"><button role="tab">Kort</button></nav></div>
 </div>`
 
 // Every combination of strips there is, because the bug was not in any one of them: it was in

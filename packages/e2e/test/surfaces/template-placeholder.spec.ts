@@ -37,13 +37,13 @@ const tag = (page: Page, id: string) => page.locator(`[data-drag="${id}"] .byd-p
 
 test('says on the canvas what each empty layer lacks, and the card draws none of it', async ({ page }) => {
   await mall(page)
-  await expect(tag(page, 'image-1')).toHaveAccessibleName('Ingen bild vald — välj en i spelets bilder.')
+  await expect(tag(page, 'image-1')).toHaveAccessibleName('Ingen bild vald. Välj en bland spelets bilder.')
   await expect(tag(page, 'image-1')).toContainText('Ingen bild vald')
   await expect(tag(page, 'image-2')).toContainText('«typ» är text, inte bilder')
   await expect(tag(page, 'icons-1')).toContainText('Inga ikoner')
-  await expect(tag(page, 'icons-1')).toHaveAttribute('title', 'Inga ikoner ännu — välj en ikon, eller ett fält där korten skriver {namn}.')
+  await expect(tag(page, 'icons-1')).toHaveAttribute('title', 'Inga ikoner ännu. Välj en ikon, eller ett fält där korten skriver {namn}.')
   // The layer is described by its tag, so the keyboard that arrives on it hears why it is empty.
-  await expect(page.locator('[data-drag="image-2"]')).toHaveAccessibleDescription('«typ» är text, inte bilder — välj en bildkolumn eller en fast bild.')
+  await expect(page.locator('[data-drag="image-2"]')).toHaveAccessibleDescription('«typ» är text, inte bilder. Välj en bildkolumn eller en fast bild.')
 
   // The card is the compiler's, and it has neither the broken picture nor any of the words.
   const card = page.locator('.byd-canvas-stage [data-card]')

@@ -36,7 +36,7 @@ function open(query = ''): string[] {
 
 const keyBox = () => screen.getByRole('region', { name: /AI-nyckel/ })
 const paste = (key: string) => fireEvent.change(screen.getByLabelText('API-nyckel'), { target: { value: key } })
-const save = () => fireEvent.click(screen.getByRole('button', { name: 'Spara och pröva' }))
+const save = () => fireEvent.click(screen.getByRole('button', { name: 'Spara och testa' }))
 
 describe('the profile page', () => {
   it('asks a reader who is not logged in to log in, and comes back here after', async () => {
@@ -96,14 +96,14 @@ describe('the profile page', () => {
     expect(alert.textContent).toContain('Inget sparades.')
     expect(screen.getByLabelText('API-nyckel').getAttribute('aria-invalid')).toBe('true')
     expect((screen.getByLabelText('API-nyckel') as HTMLInputElement).value).toBe('sk-ant-bad-0000000000')
-    expect(screen.getByRole('button', { name: 'Spara och pröva' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Spara och testa' })).toBeTruthy()
   })
 
   it.each([
     ['sk-ant-broke-000000000', 'Kontot hos Anthropic saknar kredit'],
-    ['sk-ant-busy-0000000000', 'Anthropic ber dig vänta'],
+    ['sk-ant-busy-0000000000', 'Anthropic tar inte emot fler anrop just nu'],
     ['sk-ant-swamped-0000000', 'Anthropic är överbelastad just nu'],
-    ['sk-ant-hangup-00000000', 'Vi nådde inte Anthropic'],
+    ['sk-ant-hangup-00000000', 'Ingen kontakt med Anthropic'],
     ['sk ant has spaces', 'Det där ser inte ut som en nyckel'],
   ])('says %s in its own words', async (key, title) => {
     await loggedIn()
@@ -120,9 +120,9 @@ describe('the profile page', () => {
     await screen.findByRole('heading', { level: 1, name: 'Profil' })
     paste(KEY)
     save()
-    expect(screen.getByRole('button', { name: 'Prövar nyckeln…' }).getAttribute('aria-busy')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Testar nyckeln…' }).getAttribute('aria-busy')).toBe('true')
     const saved = await within(keyBox()).findByText(/nyckeln som slutar på/)
-    expect(saved.textContent).toMatch(/^Anthropic · nyckeln som slutar på …x7Qd · prövad i dag \d\d:\d\d$/)
+    expect(saved.textContent).toMatch(/^Anthropic · nyckeln som slutar på …x7Qd · testad i dag \d\d:\d\d$/)
     expect(document.body.textContent).not.toContain(KEY.slice(0, 20))
     const model = (await screen.findByLabelText('Modell')) as HTMLSelectElement
     await waitFor(() => expect(model.options.length).toBe(3))
@@ -238,7 +238,7 @@ describe('the way in from Mina spel', () => {
     )
     await screen.findByText('Mina spel')
     const line = document.querySelector('.byd-who')!
-    expect([...line.children].map((part) => part.textContent)).toEqual(['ada@example.com', 'Profil', 'logga ut'])
+    expect([...line.children].map((part) => part.textContent)).toEqual(['ada@example.com', 'Profil', 'Logga ut'])
     expect(within(line as HTMLElement).queryByRole('combobox')).toBeNull()
     const profile = within(line as HTMLElement).getByRole('link', { name: 'Profil' })
     expect(profile.getAttribute('href')).toBe(`/profile?server=${encodeURIComponent(run.http)}`)

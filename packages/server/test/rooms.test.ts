@@ -393,7 +393,7 @@ describe('claiming a guest session to an account (G1)', () => {
     await ada.close()
   })
 
-  // «Tillbaka till bordet» takes the guest to her own seat and hand (#690, beslut 2026-10-06), not
+  // «Öppna bordet» takes the guest to her own seat and hand (#690, beslut 2026-10-06), not
   // to the picker as a newcomer: the account that claimed the admission is handed a fresh token for
   // the same seat. Only the token is new, so the seat, the name and the history stay hers; the old
   // token is the one it replaces, as a bearer secret should be when it moves to another screen.

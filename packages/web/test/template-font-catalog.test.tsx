@@ -180,14 +180,14 @@ describe('a catalog that does not answer (L27)', () => {
 
   it('says why the family she pressed is not in the project', async () => {
     const onCatalogFont = vi.fn(async () => {
-      throw new Said('Katalogen svarade inte. Familjen kunde inte hämtas hem.')
+      throw new Said('Katalogen svarade inte, så typsnittet kunde inte hämtas.')
     })
     canvas({ onCatalogFont })
     fireEvent.click(screen.getByRole('button', { name: /sök i google fonts/i }))
     await screen.findByRole('list', { name: /träffar/i })
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'cinzel' } })
     fireEvent.click(await screen.findByRole('button', { name: /lägg till cinzel$/i }))
-    expect((await screen.findByRole('alert')).textContent).toMatch(/kunde inte hämtas hem/i)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/kunde inte hämtas/i)
   })
 
   // What the document or the network throws is English for the developer (#812, A4).

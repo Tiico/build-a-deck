@@ -124,6 +124,6 @@ describe('the line the card leads with, chosen by the way in (#691)', () => {
   it('tells a first visit that the link in the mail makes the account', async () => {
     localStorage.clear()
     await card('/')
-    expect(screen.getByText('Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.')).toBeTruthy()
+    expect(screen.getByText('Logga in eller skapa konto med din e‑post. Du får en länk i mejlet.')).toBeTruthy()
   })
 })

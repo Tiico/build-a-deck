@@ -48,9 +48,9 @@ describe('the landing page at / (#1009)', () => {
   it('keeps the player’s door: the code row takes the code to the room’s own address', async () => {
     const went: string[] = []
     render(<HomePage onNavigate={(url) => went.push(url)} />)
-    const field = await screen.findByLabelText('Ska du spela? Skriv rumskoden')
+    const field = await screen.findByLabelText('Har du en rumskod?')
     fireEvent.change(field, { target: { value: 'k7mq2x' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Gå in' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gå med' }))
     const url = new URL(went[0] ?? '', 'http://x')
     expect(url.pathname).toBe('/K7MQ2X')
     expect(url.searchParams.get('server')).toBe(run.http)
@@ -58,7 +58,7 @@ describe('the landing page at / (#1009)', () => {
 
   it('draws its cards with the one renderer, and says the table once as a picture', async () => {
     render(<HomePage onNavigate={() => undefined} />)
-    const scene = await screen.findByRole('img', { name: /Ett dukat bord/ })
+    const scene = await screen.findByRole('img', { name: /Ett spelbord/ })
     // Every card on the page is a CardPreview: the compiler's markup, scoped to its own id.
     const cards = document.querySelectorAll('.byd-landing-card')
     expect(cards.length).toBeGreaterThan(10)

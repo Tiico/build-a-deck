@@ -207,7 +207,7 @@ function guide(): string {
 function guideRefused(): string {
   history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
   const { container, unmount } = render(<NewProjectPage />)
-  fireEvent.click(screen.getByRole('button', { name: /fortsätt i editorn/i }))
+  fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
   const html = container.innerHTML
   unmount()
   return html

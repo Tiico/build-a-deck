@@ -49,7 +49,7 @@ async function surfaces(width: number): Promise<Record<string, string>> {
   try {
     await screen.findByText('Skogens herrar')
     const out: Record<string, string> = {}
-    const tabs = () => [...document.querySelectorAll<HTMLElement>('[role="tablist"][aria-label="Editorlägen"] [role="tab"], [role="tablist"][aria-label="Editorns etapper"] [role="tab"]')]
+    const tabs = () => [...document.querySelectorAll<HTMLElement>('[role="tablist"][aria-label="Editorlägen"] [role="tab"], [role="tablist"][aria-label="Editorns paneler"] [role="tab"]')]
     for (let i = 0; i < tabs().length; i++) {
       const tab = tabs()[i]!
       const name = tab.textContent?.trim() ?? String(i)
@@ -201,7 +201,7 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
     await screen.findByRole('link', { name: /Spela härifrån/ })
     // The other five are in the row's menu, and a menu that is shut is five targets nobody has
     // ever measured — which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
-    fireEvent.click(screen.getByRole('button', { name: /Fler vägar in till bordet/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Fler sätt att öppna (?!bordet)/ }))
     return { Bord: document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()

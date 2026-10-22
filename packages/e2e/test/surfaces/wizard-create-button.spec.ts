@@ -19,7 +19,7 @@ test('stands still while the game is being made and after it could not be', asyn
   })
   await page.goto('/new')
   await page.getByLabel('Spelets namn').fill('Skogens herrar')
-  const button = page.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ })
+  const button = page.getByRole('button', { name: /Skapa spelet/ })
   const before = (await button.boundingBox())!
 
   await button.click()

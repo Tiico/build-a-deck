@@ -107,7 +107,7 @@ describe('the library, opened from Spelets ikoner (L57, E4)', () => {
     fireEvent.click(opener)
     const library = await screen.findByRole('region', { name: 'Symbolbibliotek' })
     await waitFor(() => expect(document.activeElement).toBe(within(library).getByRole('searchbox', { name: 'Sök symbol' })))
-    fireEvent.click(within(library).getByRole('button', { name: 'Ta in sköld' }))
+    fireEvent.click(within(library).getByRole('button', { name: 'Lägg till sköld' }))
     const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
     await waitFor(() => expect(within(set).getByText('{sköld}')).toBeTruthy())
     expect(within(set).getByText(/CC0-1\.0/)).toBeTruthy()
@@ -138,9 +138,9 @@ describe('the library, opened from Spelets ikoner (L57, E4)', () => {
       fireEvent.click(head(/^Spelets ikoner/))
       fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
       const library = await screen.findByRole('region', { name: 'Symbolbibliotek' })
-      fireEvent.click(within(library).getByRole('button', { name: 'Ta in sköld' }))
+      fireEvent.click(within(library).getByRole('button', { name: 'Lägg till sköld' }))
       const alert = await within(library).findByRole('alert')
-      expect(alert.textContent).toBe('Symbolen sköld kunde inte tas in. Försök igen.')
+      expect(alert.textContent).toBe('Symbolen sköld kunde inte läggas till. Försök igen.')
     } finally {
       spy.mockRestore()
     }

@@ -20,10 +20,10 @@ describe('the code row on the start page (#675)', () => {
   it('stands on the landing page, and takes the typed code to the room’s own address', async () => {
     const went: string[] = []
     render(<HomePage onNavigate={(url) => went.push(url)} />)
-    const field = await screen.findByLabelText('Ska du spela? Skriv rumskoden')
+    const field = await screen.findByLabelText('Har du en rumskod?')
     expect(field.closest('[data-landing]')).not.toBeNull()
     fireEvent.change(field, { target: { value: 'k7mq2x' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Gå in' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gå med' }))
     expect(went).toHaveLength(1)
     const url = new URL(went[0] ?? '', 'http://x')
     expect(url.pathname).toBe('/K7MQ2X')
@@ -33,14 +33,14 @@ describe('the code row on the start page (#675)', () => {
   it('says what is missing, and what cannot be a code, without going anywhere', async () => {
     const went: string[] = []
     render(<HomePage onNavigate={(url) => went.push(url)} />)
-    const field = await screen.findByLabelText('Ska du spela? Skriv rumskoden')
-    fireEvent.click(screen.getByRole('button', { name: 'Gå in' }))
+    const field = await screen.findByLabelText('Har du en rumskod?')
+    fireEvent.click(screen.getByRole('button', { name: 'Gå med' }))
     expect(screen.getByRole('alert').textContent).toBe('Skriv rumskoden först.')
     expect(field.getAttribute('aria-invalid')).toBe('true')
     expect(document.activeElement).toBe(field)
     fireEvent.change(field, { target: { value: 'hej' } })
     expect(screen.queryByRole('alert')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Gå in' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gå med' }))
     expect(screen.getByRole('alert').textContent).toBe('Koden finns inte eller har gått ut. Fråga värden efter den nya.')
     expect(went).toEqual([])
   })

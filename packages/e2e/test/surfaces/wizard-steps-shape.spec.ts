@@ -24,10 +24,10 @@ test.describe('a step walked to at 768 × 1024', () => {
       await expect.poll(top).toBeGreaterThan(0)
     }
 
-    await page.getByRole('button', { name: 'Nästa →' }).click()
+    await page.getByRole('button', { name: 'Nästa' }).click()
     await expect(page.getByRole('tab', { name: '2 · Fälten' })).toHaveAttribute('aria-selected', 'true')
     await toBottom()
-    await page.getByRole('button', { name: 'Nästa →' }).click()
+    await page.getByRole('button', { name: 'Nästa' }).click()
     await expect(page.getByRole('tab', { name: '3 · Korten' })).toHaveAttribute('aria-selected', 'true')
     expect(await top()).toBe(0)
     await expect(page.locator('#byd-wizard-h3')).toBeInViewport({ ratio: 1 })
@@ -66,7 +66,7 @@ test.describe('a card s tab at 1280 × 800', () => {
   })
 })
 
-// The locked «← Föregående» on step 1 (#416) has its fill taken away and keeps its line — a form
+// The locked «Föregående» on step 1 (#416) has its fill taken away and keeps its line — a form
 // measured against the paper. On the strip the two moves stand on, white at 70 %, the fill was the
 // strip's own colour, so the locked button looked like an active secondary one with greyer words.
 // The locked form is measured against the strip now as well: an active button's fill must stand
@@ -149,7 +149,7 @@ test.describe('the locked «Föregående» at 768 × 1024', () => {
     // And the same button active, one step on: its fill stands out from the strip at least as much
     // as a field's white does from the paper, so the fill's absence is what says it is locked.
     await page.mouse.move(0, 0)
-    await page.getByRole('button', { name: 'Nästa →' }).click()
+    await page.getByRole('button', { name: 'Nästa' }).click()
     await expect(back).toBeEnabled()
     const [groundOn, active] = await paintedAt(page, points.slice(0, 2))
     expect(contrast(active!, groundOn!)).toBeGreaterThanOrEqual(reference - 0.01)

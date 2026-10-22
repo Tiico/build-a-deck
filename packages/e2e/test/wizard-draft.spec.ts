@@ -76,7 +76,7 @@ test('makes the game with its 5 MB picture on the way back from a login (#686)',
   await expect(page.getByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeVisible()
   await page.getByRole('button', { name: '+ Nytt kort' }).click()
   await page.getByLabel('kort 4 Titel').fill('Drake 4')
-  await page.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ }).click()
+  await page.getByRole('button', { name: /Skapa spelet/ }).click()
   await expect(page).toHaveURL(/\/login\?/)
   expect(new URL(page.url()).searchParams.get('next') ?? '').toContain('resume=1')
 

@@ -1333,7 +1333,7 @@ describe('a click in the symbol library does not wait for the network (#310, E4)
       return real(input, init)
     }) as typeof fetch
     try {
-      await expect(client.useSymbol(skold)).rejects.toThrow(/annat namn/)
+      await expect(client.useSymbol(skold)).rejects.toThrow(/fel namn/)
     } finally {
       globalThis.fetch = real
     }
@@ -1599,7 +1599,7 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
       return real(input, init)
     }) as typeof fetch
     try {
-      await expect(take(client)).rejects.toThrow(/annat namn/)
+      await expect(take(client)).rejects.toThrow(/fel namn/)
     } finally {
       globalThis.fetch = real
     }

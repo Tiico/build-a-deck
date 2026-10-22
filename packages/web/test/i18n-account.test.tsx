@@ -26,10 +26,10 @@ describe('the login card (G1) in the reader\'s own language', () => {
     expect(screen.getByRole('button', { name: 'Send sign-in link' })).toBeTruthy()
     expect(screen.getByLabelText('Email')).toBeTruthy()
     // A first visit (#691): the same link logs in and makes the account.
-    expect(screen.getByText(/Log in or create an account with your email/)).toBeTruthy()
+    expect(screen.getByText(/Sign in or create an account with your email/)).toBeTruthy()
     // The guest's way in is behind the question mark (L36), in the same language.
     fireEvent.click(screen.getByRole('button', { name: 'Help about logging in' }))
-    expect((await screen.findByRole('dialog', { name: 'Help about logging in' })).textContent).toMatch(/no account needed/)
+    expect((await screen.findByRole('dialog', { name: 'Help about logging in' })).textContent).toMatch(/you need no account/)
     // The reader can put the page back into Swedish from where they are standing.
     expect(screen.getByRole('combobox', { name: /språk|language/i })).toBeTruthy()
     expect(screen.queryByText(/Skicka inloggningslänk/)).toBeNull()
@@ -80,9 +80,9 @@ describe('the guided start (L6) in the reader\'s own language', () => {
     expect(screen.getByText('Guided start')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ Text field' })).toBeTruthy()
     expect(screen.getByText('Look')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Create the game and continue in the editor/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Create an empty game in the editor' })).toBeTruthy()
-    expect(screen.getByText('Without the guided start')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Create the game/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Create an empty game' })).toBeTruthy()
+    expect(screen.getByText('Start from an empty game')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Classic' })).toBeTruthy()
     // The example card the wizard seeds is a word the designer reads and writes over, like the
     // field names it suggests, so it starts in the language they are building the game in.

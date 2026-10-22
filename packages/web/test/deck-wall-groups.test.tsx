@@ -214,8 +214,8 @@ describe('the jump column folds to a strip (#179)', () => {
     expect(document.querySelectorAll('.byd-wall-fold')).toHaveLength(1)
     expect(fold().tagName).toBe('BUTTON')
     expect(fold().getAttribute('aria-expanded')).toBe('true')
-    expect(fold().getAttribute('aria-label')).toBe('Fäll ihop hoppspalten')
-    expect(fold().getAttribute('title')).toBe('Fäll ihop hoppspalten')
+    expect(fold().getAttribute('aria-label')).toBe('Fäll ihop gruppspalten')
+    expect(fold().getAttribute('title')).toBe('Fäll ihop gruppspalten')
     expect(open()).not.toBeNull()
     expect(rail()).toBeNull()
     // In the column's own head, beside its name, and nowhere in the crown.
@@ -229,7 +229,7 @@ describe('the jump column folds to a strip (#179)', () => {
     fireEvent.click(fold())
     expect(document.querySelectorAll('.byd-wall-fold')).toHaveLength(1)
     expect(fold().getAttribute('aria-expanded')).toBe('false')
-    expect(fold().getAttribute('aria-label')).toBe('Fäll ut hoppspalten')
+    expect(fold().getAttribute('aria-label')).toBe('Fäll ut gruppspalten')
     expect(open()).toBeNull()
     expect(rail()).not.toBeNull()
     // At the top of the strip, over the tiles, and not one of them.
@@ -392,7 +392,7 @@ describe('the crown’s older tools over a grouped wall (E5, #128)', () => {
     wall(doc)
 
     expect(deck().getAttribute('data-eye')).toBe('normal')
-    fireEvent.click(box(/^Ögon/))
+    fireEvent.click(box(/^Visning/))
     fireEvent.click([...document.querySelectorAll('.byd-crown-drawer button')].find((b) => b.textContent === 'Deuteranopi')!)
     expect(deck().getAttribute('data-eye')).toBe('deuteranopia')
 

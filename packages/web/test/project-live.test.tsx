@@ -171,7 +171,7 @@ describe('who else is in the editor (D3)', () => {
 
     const bo = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Bo' })
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(2))
-    expect(door.textContent).toContain('2 inne')
+    expect(door.textContent).toContain('2 online')
     bo.close()
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(1))
   })

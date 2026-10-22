@@ -164,7 +164,7 @@ describe('when the provider says no', () => {
   it.each([
     ['sk-ant-bad-00000000000000', 'Hej', 'Anthropic godtog inte nyckeln', 'Byt nyckel på profilen'],
     ['sk-ant-broke-000000000000', 'Hej', 'Kontot hos Anthropic saknar kredit', null],
-    ['sk-ant-busy-0000000000000', 'Hej', 'Anthropic ber dig vänta', 'Försök igen'],
+    ['sk-ant-busy-0000000000000', 'Hej', 'Anthropic tar inte emot fler anrop just nu', 'Försök igen'],
     ['sk-ant-swamped-0000000000', 'Hej', 'Anthropic är överbelastad just nu', 'Försök igen'],
     ['sk-ant-hangup-00000000000', 'Hej', 'Svaret från Anthropic kom inte fram', 'Försök igen'],
     [KEY, 'Elakt [refuse]', 'Anthropic ville inte svara', null],

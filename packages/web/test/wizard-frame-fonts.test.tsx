@@ -55,7 +55,7 @@ async function madeWith(frame: string, theme?: string): Promise<ProjectDoc> {
     fireEvent.change(screen.getByLabelText(`kort ${i + 1} Titel`), { target: { value: kort.title } })
     fireEvent.change(screen.getByLabelText(`kort ${i + 1} Regeltext`), { target: { value: kort.body } })
   }
-  fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
+  fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
   await waitFor(() => expect(gone).toHaveLength(1))
   const id = new URL(gone[0] ?? '', 'http://x').searchParams.get('project') ?? ''
   const stored = await run.projects.load(id)
@@ -198,7 +198,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
     await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Oswald";src:url\("https:\/\/fonts\.gstatic\.com\/s\/oswald\/latin\.woff2"\)/))
     expect(drawn()).toMatch(/@font-face\{font-family:"Roboto Condensed";src:url\("https:\/\/fonts\.gstatic\.com\/s\/roboto-condensed\/latin\.woff2"\)/)
     await waitFor(() => expect(preview().hasAttribute('data-unseen')).toBe(false))
-    expect(preview().textContent).not.toContain('Hämtar typsnitten')
+    expect(preview().textContent).not.toContain('Laddar typsnitten')
   })
 
   // A catalogue that does not answer is said on the card, with the way to ask again — never a
@@ -214,7 +214,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
       history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
       render(<NewProjectPage onNavigate={() => undefined} />)
       fireEvent.click(screen.getByRole('button', { name: 'Välj temat Krönika' }))
-      expect(await screen.findByText('Katalogen svarade inte, så kortet står inte i temats typsnitt.')).toBeTruthy()
+      expect(await screen.findByText('Katalogen svarade inte, så kortet visas inte i temats typsnitt.')).toBeTruthy()
       expect(preview().hasAttribute('data-unseen')).toBe(true)
       expect(screen.getByRole('button', { name: 'Visa kortet i Krönika' })).toBeTruthy()
     } finally {

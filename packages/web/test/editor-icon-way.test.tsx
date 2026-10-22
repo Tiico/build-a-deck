@@ -205,7 +205,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
       const open = await sheet()
       fireEvent.change(within(open).getByRole('searchbox'), { target: { value: 'svärd' } })
       fireEvent.click(await within(open).findByRole('button', { name: /^crossed-swords · Game Icons/ }))
-      expect((await within(open).findByRole('alert')).textContent).toBe('Ikonen crossed-swords kunde inte tas in. Försök igen.')
+      expect((await within(open).findByRole('alert')).textContent).toBe('Ikonen crossed-swords kunde inte läggas till. Försök igen.')
     } finally {
       spy.mockRestore()
     }

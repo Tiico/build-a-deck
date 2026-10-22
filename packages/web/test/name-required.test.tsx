@@ -107,7 +107,7 @@ describe('wizarden med tomt namn (#416)', () => {
     const gone: string[] = []
     guide(gone)
 
-    const create = screen.getByRole('button', { name: /fortsätt i editorn/i }) as HTMLButtonElement
+    const create = screen.getByRole('button', { name: /skapa spelet/i }) as HTMLButtonElement
     expect(create.disabled).toBe(false)
     fireEvent.click(create)
 
@@ -126,7 +126,7 @@ describe('wizarden med tomt namn (#416)', () => {
     const gone: string[] = []
     guide(gone)
 
-    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }) as HTMLButtonElement
+    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' }) as HTMLButtonElement
     expect(blank.disabled).toBe(false)
     fireEvent.click(blank)
 
@@ -151,7 +151,7 @@ describe('wizarden med tomt namn (#416)', () => {
     guide(gone)
 
     fireEvent.click(screen.getByRole('tab', { name: '3 · Korten' }))
-    const create = await screen.findByRole('button', { name: /fortsätt i editorn/i })
+    const create = await screen.findByRole('button', { name: /skapa spelet/i })
     fireEvent.click(create)
 
     await waitFor(() => expect(document.activeElement).toBe(gameField()))

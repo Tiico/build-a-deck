@@ -53,11 +53,11 @@ describe('the empty rules tab is the book’s disposition (#131)', () => {
     // that the rules are versioned with the cards and where the players reach them — is the
     // help behind the question mark beside it (L32, #303).
     expect(screen.getByText('Reglerna hör till spelet.')).toBeTruthy()
-    expect(screen.queryByText(/versioneras med korten/)).toBeNull()
+    expect(screen.queryByText(/sparas med varje version/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om reglerna' }))
     const help = await screen.findByRole('dialog', { name: 'Hjälp om reglerna' })
-    expect(help.textContent).toMatch(/versioneras med korten/)
-    expect(help.textContent).toMatch(/telefonen, TV:n och observatören/)
+    expect(help.textContent).toMatch(/sparas med varje version/)
+    expect(help.textContent).toMatch(/telefonen, TV:n och i observatörsvyn/)
   })
 })
 

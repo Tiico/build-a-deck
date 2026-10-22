@@ -40,12 +40,12 @@ describe('the editor in the reader\'s own language (A4)', () => {
 
     // The wall's crown (#128): a box says its name and what is chosen inside it, in the reader's
     // language, and what it opens is in that language too.
-    expect(screen.getByRole('button', { name: 'Eyes: As you see it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View: Normal vision' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Guides (0)' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Physical check/ })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /^Eyes:/ }))
-    expect(screen.getByRole('group', { name: 'Eyes' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'As you see it' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^View:/ }))
+    expect(screen.getByRole('group', { name: 'View' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Normal vision' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Greyscale' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /^Guides/ }))
     expect(screen.getByLabelText(/trim and safe margin/i)).toBeTruthy()
@@ -64,7 +64,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(within(bleed).getByText('short of the bleed')).toBeTruthy()
     expect(within(bleed).getByText('3 cards')).toBeTruthy()
     expect(within(bleed).getByText('error')).toBeTruthy()
-    expect(screen.getByText('One kind of error stops an order.')).toBeTruthy()
+    expect(screen.getByText('One error stops the order.')).toBeTruthy()
   })
 
   it('says the data table in English and keeps the designer\'s own column names', async () => {
@@ -138,7 +138,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy()
     // The library is the tool's own, so its symbols are named in the reader's language — and a
     // symbol taken from here is called that in the game from then on.
-    expect(screen.getByRole('button', { name: 'Take in sword' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add sword' })).toBeTruthy()
     expect(within(screen.getByRole('group', { name: 'Library' })).getByRole('button', { name: /^Game Icons/ })).toBeTruthy()
   })
 
@@ -188,7 +188,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(await screen.findByRole('button', { name: 'Update the table' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Start a table' })).toBeNull()
     // «New table» is in the caret's menu (beslut 2026-09-27, #477 fynd 4).
-    fireEvent.click(screen.getByRole('button', { name: 'More ways to the table' }))
+    fireEvent.click(screen.getByRole('button', { name: 'More ways to open the table' }))
     expect(await screen.findByRole('button', { name: 'New table' })).toBeTruthy()
   })
 
