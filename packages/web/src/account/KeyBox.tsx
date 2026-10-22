@@ -4,6 +4,7 @@ import { useSay } from '../status/StatusLive.js'
 import { readerLocale, useLang, useT, type Key, type T } from '../i18n/index.js'
 import { marked } from './marked.js'
 import { AI_PROVIDER_LIST, KEY_PAGES, PROVIDER_NAMES, chooseAiModel, listAiModels, modelNameOf, removeAiKey, saveAiKey, type AiKey, type AiModel, type AiProvider, type KeyRefusal } from './ai-key.js'
+import { CheckGlyph } from '../glyphs.js'
 
 // The key box (#999), built from the prototype the beställare chose (#940's key box on #998's page,
 // variant A): the provider, the key pasted once, «Prövar nyckeln…», why the provider said no, the
@@ -94,7 +95,7 @@ export function KeyBox({ http, initial, wayBack }: { http: string; initial: AiKe
         </h2>
         <p className="byd-profile-saved">
           <span className="byd-profile-tick" aria-hidden="true">
-            ✓
+            <CheckGlyph />
           </span>
           <span>
             {marked(t('profile.key.saved'), { provider: <strong>{savedName}</strong>, last4: <code>…{saved.last4}</code> })}

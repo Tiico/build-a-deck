@@ -6,6 +6,7 @@ import { useLang, useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
+import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
 
 // Who has the game (D3), from the prototype: the people in the editor's header are the door.
 // Who is here now and who may be here at all is one question, so one list answers it — the
@@ -126,7 +127,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
           <p>{t('share.help')}</p>
         </Help>
         <button ref={cross} type="button" aria-label={t('share.close')} onClick={onClose}>
-          ×
+          <CloseGlyph />
         </button>
       </header>
       {error && <p role="alert">{error}</p>}
@@ -193,7 +194,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
         <div className="byd-share-waiting">
           <button ref={waitingRef} type="button" aria-expanded={showWaiting} onClick={() => setShowWaiting((on) => !on)}>
             {t(waiting.length === 1 ? 'share.waiting.one' : 'share.waiting.other', { n: waiting.length })}
-            <span aria-hidden="true">{showWaiting ? '▾' : '▸'}</span>
+            <ChevronGlyph to={showWaiting ? 'down' : 'right'} />
           </button>
           {showWaiting && (
             <ul>

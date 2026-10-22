@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 import { CAMERA_STEP } from './camera.js'
+import { ChevronGlyph, MinusGlyph, PlusGlyph } from '../glyphs.js'
 import './camera-hand.css'
 
 // Kamerans hörn, hämtat först när vyn är egen (#325, #346:s väg).
@@ -55,13 +56,13 @@ export function CameraControls({ level, folded, onFold, onZoom, onWhole, focusIn
       {!folded && (
         <>
           <button type="button" className="byd-camera-step" aria-label={t('camera.zoom.out')} onClick={() => onZoom(CAMERA_STEP)}>
-            −
+            <MinusGlyph />
           </button>
           {/* Nivån är en avläsning och ingen kontroll, men den är det enda som säger hur långt
               in vyn står — och det är vad «egen vy» betyder i siffror. */}
           <span className="byd-camera-level">{t('camera.level', { n: level })}</span>
           <button type="button" ref={stepIn} className="byd-camera-step" aria-label={t('camera.zoom.in')} onClick={() => onZoom(1 / CAMERA_STEP)}>
-            +
+            <PlusGlyph />
           </button>
         </>
       )}
@@ -75,7 +76,7 @@ export function CameraControls({ level, folded, onFold, onZoom, onWhole, focusIn
         aria-label={t(folded ? 'camera.unfold' : 'camera.fold')}
         onClick={() => onFold(!folded)}
       >
-        <span aria-hidden="true">{folded ? '‹' : '›'}</span>
+        <ChevronGlyph to={folded ? 'left' : 'right'} />
       </button>
     </div>
   )
@@ -93,7 +94,7 @@ export function LensEntry({ onZoom, focusIn = false }: { onZoom(): void; focusIn
   return (
     <div className="byd-camera-controls" data-lens-entry role="group" aria-label={t('camera.controls')}>
       <button type="button" ref={step} className="byd-camera-step" aria-label={t('camera.zoom.in')} onClick={onZoom}>
-        +
+        <PlusGlyph />
       </button>
     </div>
   )

@@ -199,3 +199,12 @@
 /* The ring inside the ×, so it lies over neither the word beside it nor the next chip, and
    follows the chip's round end. */
 .byd-chip > button:focus-visible { outline-offset: -3px; }
+
+/* ── The glyph (#1083): every icon in one hand, on the text's centre line ────────────────────
+   `glyphs.tsx` draws each icon 1em square, the size of the character it stands in for. An SVG
+   sits on the baseline where a character's ink is centred on the x-height, so on a line of text
+   it is lowered by an eighth to stand where the character stood; in a flex row the alignment is
+   the row's and this does nothing. A surface that wants another size says so on its own rule. */
+/* A glyph is the control's drawing and never a target of its own (#1083): the press, and every
+   question about what stands under a point, land on the control it is drawn in. */
+.byd-glyph { flex: none; vertical-align: -0.125em; pointer-events: none; }

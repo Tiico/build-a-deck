@@ -6,6 +6,7 @@ import { byDay, historyRow, type HistoryRow } from './historyRow.js'
 import { translate, useLang, useT, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
+import { CloseGlyph } from '../glyphs.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
 // without a language provider does: the panel hands over its own `t` (A4).
@@ -99,7 +100,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
       <header>
         <h2>{t('history.title')}</h2>
         <button ref={cross} type="button" aria-label={t('history.close')} onClick={onClose}>
-          ×
+          <CloseGlyph />
         </button>
       </header>
       {error && <p role="alert">{error}</p>}

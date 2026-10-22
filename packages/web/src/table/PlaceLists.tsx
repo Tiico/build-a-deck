@@ -5,6 +5,7 @@ import { seatColor } from './seatColor.js'
 import { cardName, countOf } from './keyboard.js'
 import { handName } from './handName.js'
 import { useT, type T } from '../i18n/index.js'
+import { ChevronGlyph } from '../glyphs.js'
 
 // A card opened from a list, with the rest of that list to walk (#507): what the reader is handed.
 export type ReadCard = (card: VisibleComponentState, row: VisibleComponentState[]) => void
@@ -41,6 +42,7 @@ export function PlaceLists({ view, activity, dense, onRead }: { view: Snapshot; 
         ) : (
           <button type="button" className="byd-tv-place" aria-label={said} aria-expanded={!shut} aria-controls={list} onClick={() => toggle(key)}>
             {head}
+            <ChevronGlyph to={shut ? 'right' : 'down'} />
           </button>
         )}
         {cards.length > 0 && onRead && (

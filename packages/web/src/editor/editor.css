@@ -197,7 +197,7 @@
   .byd-editor > header > .byd-editor-saved { position: relative; display: inline-grid; place-items: center; flex: none; width: var(--byd-saved-box); height: var(--byd-saved-box); }
   .byd-editor > header > .byd-editor-saved > .byd-editor-saved-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .byd-editor > header > .byd-editor-saved > .byd-editor-saved-mark { display: block; }
-  .byd-editor > header > .byd-editor-saved[data-unsaved='false'] > .byd-editor-saved-mark::before { content: '✓'; font-size: 16px; font-weight: 400; line-height: 1; }
+  .byd-editor > header > .byd-editor-saved > .byd-editor-saved-mark > .byd-glyph { display: block; width: 16px; height: 16px; }
   .byd-editor > header > .byd-editor-saved[data-unsaved='true'] > .byd-editor-saved-mark { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
   .byd-editor-primary-long { display: none; }
   .byd-editor-primary-short { display: inline; }
@@ -352,7 +352,7 @@
 /* The reading band (#489, beslut C efter prototyp 35): the amber the role line always had, with a
    heading and the way on. */
 .byd-editor-readonly { flex: none; display: flex; align-items: center; gap: var(--byd-s3); margin: 0; padding: var(--byd-s3) var(--byd-s4); background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.4; }
-.byd-editor-readonly > svg { width: 18px; height: 18px; flex: none; color: #ffd98a; }
+.byd-editor-readonly > .byd-glyph { width: 18px; height: 18px; color: #ffd98a; }
 .byd-editor-readonly b { color: #ffd98a; }
 .byd-editor-readonly small { display: block; color: #e0cfa3; font-size: 12px; }
 .byd-editor-reading-said { margin-left: auto; color: #ffd98a; font-weight: 700; font-size: 12px; white-space: nowrap; }
@@ -401,7 +401,7 @@
    nobody has followed yet. Dashed, as the prototype had it, because they are not members. */
 .byd-share-waiting { margin-top: var(--byd-s2); }
 .byd-share-waiting > button { display: flex; align-items: center; gap: var(--byd-s2); width: 100%; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #2f333d; border-radius: 8px; background: transparent; color: #c8cfdc; font: 12px system-ui; text-align: left; cursor: pointer; }
-.byd-share-waiting > button > span { margin-left: auto; }
+.byd-share-waiting > button > .byd-glyph { margin-left: auto; }
 .byd-share-waiting > button[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); }
 .byd-share-waiting ul { margin: var(--byd-s2) 0 0; }
 .byd-share-waiting li { background: transparent; border: 1px dashed #3b4358; }
@@ -421,7 +421,7 @@
    in one line. It is a door and no role (L13, #791): no fill and no line, and its ring is drawn
    inside it so the window's edge never clips it. */
 .byd-editor-notice-band { flex: none; display: flex; align-items: center; gap: var(--byd-s3); margin: 0; padding: 0 var(--byd-s1) 0 var(--byd-s4); background: var(--byd-editor-notice-bg); border-bottom: 1px solid #4a4230; color: var(--byd-editor-notice-ink); font-size: 13px; line-height: 1.45; }
-.byd-editor-notice-band > svg { flex: none; width: 18px; height: 18px; color: var(--byd-editor-notice-mark); }
+.byd-editor-notice-band > .byd-glyph { width: 18px; height: 18px; color: var(--byd-editor-notice-mark); }
 .byd-editor-notice { flex: 1; min-width: 0; padding: var(--byd-s2) 0; text-wrap: pretty; }
 .byd-editor-notice-close { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--byd-editor-notice-mark); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .byd-editor-notice-close:hover { background: #3a3222; }
@@ -432,7 +432,7 @@
    nothing and takes no height from the work: it is one line of the foot's own size, and the quiet
    line it stands in for is not drawn while it stands. Green and ticked, because nothing is wrong. */
 .byd-editor-confirm { flex: 0 1 auto; min-width: 0; color: var(--byd-editor-confirm-ink); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.byd-editor-confirm::before { content: '✓ ' / ''; }
+.byd-editor-confirm > .byd-glyph { margin-right: var(--byd-s1); }
 .byd-card-row .byd-editor-confirm { flex: 1 1 auto; }
 .byd-foot-quiet { display: contents; }
 .byd-foot-quiet[hidden] { display: none; }
@@ -879,7 +879,8 @@
 /* En zonfamilj (#175): en rad för samma zon vid var sin plats, med trekanten som fäller ut dem.
    Trekanten är ritad och inte skriven, så att radens namn är zonen och antalet och inget mer.
    Platserna står indragna under den, som en innehållsförteckning gör med sina underrubriker. */
-.byd-setup-name i.byd-setup-caret { width: 0; height: 0; border: 5px solid transparent; border-right: 0; border-left-color: #c7cede; border-radius: 0; box-shadow: none; transition: transform 120ms; }
+.byd-setup-name i.byd-setup-caret { display: grid; place-items: center; width: 5px; height: 10px; border: 0; border-radius: 0; box-shadow: none; color: #c7cede; transition: transform 120ms; }
+.byd-setup-caret > .byd-glyph { width: 14px; height: 14px; }
 .byd-setup-zones li[data-open='true'] > .byd-setup-row i.byd-setup-caret { transform: rotate(90deg); }
 /* Avvikelsen är en upplysning och inte ett fel: den syns, men den larmar inte. Den byter både färg
    och ram, alltså är dess ram en andra ram och bär samma 3:1 som formens egen — `#4a412a` mätte
@@ -1039,6 +1040,16 @@
   cursor: pointer;
 }
 .byd-crown-box[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
+/* A chevron after words (#1083) is drawn on the middle half of its 16 grid, and the rows that carry
+   one have no room for the air either side of it: the crown and the table's foot were measured to the
+   ▾, › and ↕ they replaced (#130, wall-crown-beside; #618, table-antal-rail; #46, data-table-widths),
+   and a 1em glyph there is a crown on two rows beside the AI panel, a foot whose quiet line breaks at
+   1024 on Linux, and a column of numbers wider than a number. The
+   drawing and its weight stay; only the empty quarter each side gives its room back. */
+.byd-crown-box > .byd-glyph[data-glyph='chevron-down'],
+.byd-data-set > .byd-glyph[data-glyph='chevron-down'],
+.byd-data-outside > .byd-glyph[data-glyph^='chevron-'],
+.byd-data thead th button > .byd-glyph[data-glyph^='sort-'] { margin-inline: -0.25em; }
 /* The book and its pictures are over the control that takes them (#293). Färgen är
    dragmarkeringens token (#291, L22) — samma ton på varje mottagande yta, och nu på ett ställe
    — medan formen är kontrollens egen: a ring rather than a fill, så att märket går att läsa som
@@ -1647,7 +1658,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 }
 .byd-pill-choice:hover { background: #262a33; }
 .byd-pill-choice[aria-checked='true'] { color: var(--byd-chosen-ink); font-weight: 700; }
-.byd-pill-choice[aria-checked='true'] > span { color: var(--byd-editor-primary-mark); }
+.byd-pill-choice[aria-checked='true'] > .byd-glyph { color: var(--byd-editor-primary-mark); }
 /* The crown over the desk (#13, #129): one row, at every width and on every deck. Which column
    makes the groups, which group is open, whether the properties are folded away, and which face is
    being edited — four controls, and the last of them keeps its own right edge. It is a row and not
@@ -1823,7 +1834,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-layers [role='row']:hover .byd-layer-lock, .byd-layers [role='row'][aria-selected='true'] .byd-layer-lock { color: var(--byd-editor-source-ink); }
 /* Locked is a colour of its own and a shut padlock: the shape says it where the colour cannot. */
 .byd-layer-lock[aria-pressed='true'], .byd-layers [role='row']:hover .byd-layer-lock[aria-pressed='true'] { color: var(--byd-editor-locked-ink); }
-.byd-layer-kind { flex: none; width: 16px; height: 16px; color: var(--byd-editor-source-ink); }
+.byd-layer-pick > .byd-glyph, .byd-layer-inside .byd-glyph { flex: none; width: 16px; height: 16px; color: var(--byd-editor-source-ink); }
 .byd-layer-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* A condition nobody has named is written whole and breaks over the lines it needs (#699, variant
    D, revising #569's cut at the start): six conditions on one column differ only in their value
@@ -1837,7 +1848,8 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-layer-field[data-head] { display: block; }
 .byd-layer-count { white-space: nowrap; font-size: 11px; color: var(--byd-editor-source-ink); }
 .byd-layer-shows { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: normal; font-size: 11px; color: var(--byd-editor-source-ink); }
-.byd-layer-grip { color: #454c5c; font-size: 12px; text-align: center; cursor: grab; }
+.byd-layer-grip { display: grid; place-items: center; color: #454c5c; cursor: grab; }
+.byd-layer-grip .byd-glyph { width: 14px; height: 14px; }
 .byd-layer-rename { width: 100%; min-height: var(--byd-tap); box-sizing: border-box; background: #0f1115; border: 1px solid var(--byd-editor-primary-mark); border-radius: 6px; color: #fff; font: inherit; font-size: 13px; padding: 0 8px; }
 /* Why nothing moved (L15), read beside the card that did not move. */
 /* The question a layer is given before it goes (#143, L9), under the card it draws on. Red and
@@ -2500,10 +2512,10 @@ button.byd-picture-tile:hover, .byd-data button.byd-picture-tile:hover { border-
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
 .byd-data-empty { margin: 16px 0 0; color: var(--byd-editor-count-ink); }
 .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
-.byd-data th button span { color: var(--byd-editor-quiet); }
+.byd-data th button :is(span, .byd-glyph) { color: var(--byd-editor-quiet); }
 .byd-data th button:hover { color: #dce3f2; }
 .byd-data th button[data-active='true'] { color: #dce3f2; }
-.byd-data th button[data-active='true'] span { color: #7dd3a0; }
+.byd-data th button[data-active='true'] :is(span, .byd-glyph) { color: #7dd3a0; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
 /* The quiet things on a chosen row are read on its lighter ground (#557): the label over an open
    cell and its tools. The id stands on the rail now (#609) and is read in the rail's own ink. */
@@ -2618,7 +2630,7 @@ button.byd-picture-tile:hover, .byd-data button.byd-picture-tile:hover { border-
 /* The rail's headings are read on the head's rail in the same ink, save while one is what the
    table is sorted by, when it is the green every sorting heading is. */
 .byd-data thead :is(th[data-col='id'], th[data-col='antal']) > button:not([data-active='true'], :hover),
-.byd-data thead :is(th[data-col='id'], th[data-col='antal']) > button:not([data-active='true']) span { color: var(--byd-editor-data-rail-ink); }
+.byd-data thead :is(th[data-col='id'], th[data-col='antal']) > button:not([data-active='true']) :is(span, .byd-glyph) { color: var(--byd-editor-data-rail-ink); }
 /* A marked row's id keeps its own ink, which is declared later and weighs the same. */
 .byd-data tbody tr .byd-data-id { color: var(--byd-editor-data-rail-ink); }
 /* The head's own two, so the corner where the row that stands still upward crosses the columns
@@ -2975,7 +2987,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-data th .byd-columns-ask button { padding: var(--byd-s1) var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; color: var(--byd-editor-bulk-ink); font-weight: 700; white-space: nowrap; }
 .byd-data th .byd-columns-ask button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
 .byd-columns-system { flex: 0 0 var(--byd-tap); display: flex; align-items: center; justify-content: center; color: var(--byd-editor-quiet); }
-.byd-columns-system svg { flex: 0 0 auto; }
+.byd-columns-system > .byd-glyph { width: 16px; height: 16px; }
 .byd-newfield {
   position: absolute;
   top: 100%;
@@ -3236,7 +3248,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-tables-new { justify-self: start; display: inline-flex; align-items: center; gap: var(--byd-s1); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; cursor: pointer; }
 .byd-tables-new:disabled { cursor: default; }
 .byd-tables-new-icon { display: inline-flex; }
-.byd-tables-new-icon > svg { display: block; }
+.byd-tables-new-icon > .byd-glyph { display: block; width: 16px; height: 16px; }
 /* The wait is the icon turning, not only the words swapping. `a11y.css` already cuts every
    animation to one frame under `reduce`; said here as well so that the rule is the icon's own
    and not a side effect, and so that it can be read off this sheet. */
@@ -3535,6 +3547,7 @@ img[data-arriving] { opacity: 0; }
    two tones are the status pill's, so the tile and the sheet say the same thing in the same colour. */
 .byd-media-mark { position: absolute; top: 4px; right: 4px; z-index: 1; padding: 0 var(--byd-s2); border-radius: 999px; background: rgba(18, 20, 26, 0.93); color: #9ed39e; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; line-height: 16px; }
 .byd-media-mark[data-state='saving'] { color: #ffd98a; }
+.byd-media-mark > .byd-glyph { margin-right: var(--byd-s1); }
 /* The sheet (#297, L33, C · Arket): the picture in hand, the window being cut, and the card that
    window lands on — a real compile and not a second drawing of a card. It lies over the library,
    as the one layer the panel has, in the same dress as the library window (#296). It scrolls by
@@ -3554,7 +3567,6 @@ img[data-arriving] { opacity: 0; }
 /* Three states and not two (L33): no colour for the whole picture, amber for a window the actor
    has not confirmed, green for one it has. The middle one is the point. */
 .byd-crop-status { display: inline-flex; align-items: center; gap: var(--byd-s2); margin: 0; min-height: 26px; padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 999px; font-size: 11.5px; letter-spacing: 0.3px; color: var(--byd-editor-quiet); }
-.byd-crop-status i { font-style: normal; }
 .byd-crop-status[data-state='saving'] { background: #2a2417; border-color: #4a4230; color: #ffd98a; font-weight: 700; }
 .byd-crop-status[data-state='saved'] { background: #16281f; border-color: #2c4a38; color: #9ed39e; font-weight: 700; }
 .byd-media-crop-lead { margin: 0; font-size: 12px; color: var(--byd-editor-quiet); }
@@ -4039,7 +4051,6 @@ img[data-arriving] { opacity: 0; }
   text-decoration: underline;
   cursor: pointer;
 }
-.byd-props-disclose span { text-decoration: none; }
 
 /* The ready-made backs (L17), under the layers they are made of and folded while the back has
    some (#736, beslut A). The head is the gallery's door: a box the column's width with the fold's
@@ -4320,8 +4331,7 @@ img[data-arriving] { opacity: 0; }
    its arrow is a sign drawn where the grip is, pointing right while shut and down while open, and
    what is in it stands under the row, set in from the row it belongs to. */
 .byd-layer-folder { display: grid; place-items: center; align-self: stretch; color: #9aa3b8; }
-.byd-layer-folder::before { content: ''; width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
-.byd-layer-folder[data-open='true']::before { transform: rotate(45deg); }
+.byd-layer-folder .byd-glyph { width: 14px; height: 14px; }
 .byd-layer-inside { margin: 0; padding: 0 0 var(--byd-s1) var(--byd-s5); list-style: none; display: grid; gap: var(--byd-s1); color: #c7cede; font-size: 12px; }
 .byd-layer-inside li { display: flex; align-items: center; gap: var(--byd-s2); }
 .byd-layers [role='gridcell']:has(> .byd-layer-inside) { flex-wrap: wrap; }
@@ -4618,7 +4628,7 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-results-flags li { display: grid; gap: 2px; padding: var(--byd-s2) 0; border-top: 1px solid var(--byd-editor-line); font-size: 13px; line-height: 1.45; }
 .byd-results-flags p { margin: 0; color: var(--byd-tables-ink); }
 .byd-results-when { color: var(--byd-editor-narrow-ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.byd-results-when::before { content: '⚑ '; }
+.byd-results-when > .byd-glyph { margin-right: var(--byd-s1); }
 .byd-results-when span { color: var(--byd-tables-quiet); font-weight: 400; }
 
 /* The first column is as wide as the setup's at each width, so the switch stands still. */

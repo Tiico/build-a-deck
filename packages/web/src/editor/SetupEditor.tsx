@@ -25,6 +25,7 @@ import { CARD_MM } from '../table/drop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { FootSaid } from './said.js'
+import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
 
 // The setup editor (B5, K2). The table is the designer's: the recipe laid the first one out and
 // then let go, so what stands here stands here because they left it standing. The list on the left
@@ -395,7 +396,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
           <section className="byd-setup-sheet">
             <button type="button" className="byd-setup-fold" aria-expanded={sheetShown} aria-controls={SHEET_PREVIEW_ID} onClick={() => setSheetShown((was) => !was)}>
               <span className="byd-setup-caret" aria-hidden="true">
-                ▸
+                <ChevronGlyph to="right" />
               </span>
               {t(sheetShown ? 'setup.sheet.hide' : 'setup.sheet.show')}
             </button>
@@ -488,7 +489,7 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
               <span>{t('setup.counter.from')}</span>
               <input aria-label={t('setup.counter.start', { n: i + 1 })} type="number" value={c.start} readOnly={!client.mayEdit} {...typing.visit} onChange={(e) => setCounter(i, { start: Math.trunc(Number(e.target.value) || 0) })} />
               <button type="button" aria-label={t('setup.counter.remove', { n: i + 1 })} onClick={() => turn({ counters: recipe.counters.filter((_, j) => j !== i) })}>
-                ×
+                <CloseGlyph />
               </button>
             </div>
           ))}
@@ -654,7 +655,9 @@ function FamilyRow({ family, setup, open, onOpen, children }: { family: Family; 
     <li data-zone-family={family.role} data-open={open ? 'true' : undefined}>
       <div className="byd-setup-row">
         <button type="button" className="byd-setup-name" aria-expanded={open} onClick={onOpen} {...(allFixed ? { 'aria-describedby': whyId } : {})}>
-          <i className="byd-setup-caret" aria-hidden="true" />
+          <i className="byd-setup-caret" aria-hidden="true">
+            <ChevronGlyph to="right" />
+          </i>
           <i aria-hidden="true" data-kind={family.first.kind} />
           {/* Mellanrummen är läsordningen och inte layouten: raden är en flexrad, som inte ritar
               tomrum, men namnet den läses upp med sätts ihop av texten i knappen — utan dem säger
@@ -721,7 +724,7 @@ function ZoneRow({
         </button>
         {why === null ? (
           <button type="button" className="byd-setup-x" aria-label={t('setup.remove.of', { name: zone.name })} onClick={() => onRemove(zone)}>
-            ×
+            <CloseGlyph />
           </button>
         ) : (
           <>

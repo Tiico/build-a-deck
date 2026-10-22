@@ -7,6 +7,7 @@ import { cardName, cardWord } from '../table/keyboard.js'
 import { useSmallestPt } from '../table/smallest.js'
 import { cycleTab } from '../table/cycleTab.js'
 import { readingWidth } from '../legibility.js'
+import { ChevronGlyph } from '../glyphs.js'
 
 // How far a thumb goes across the card before it is a step to the next one and not a tap.
 const SWIPE_PX = 40
@@ -128,14 +129,14 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
       <div className="byd-inspect-walk" onPointerDown={keep}>
         {walkable && (
           <button type="button" className="byd-inspect-step" aria-label={t('player.read.prev')} disabled={at <= 0} onClick={() => step(-1)}>
-            ‹
+            <ChevronGlyph to="left" />
           </button>
         )}
         {walkable && <span className="byd-inspect-at">{t('player.read.at', { n: at + 1, of: row.length })}</span>}
         <button className="byd-inspect-close" type="button" autoFocus onClick={onClose}>{t('kbd.panel.close')}</button>
         {walkable && (
           <button type="button" className="byd-inspect-step" aria-label={t('player.read.next')} disabled={at < 0 || at >= row.length - 1} onClick={() => step(1)}>
-            ›
+            <ChevronGlyph to="right" />
           </button>
         )}
       </div>

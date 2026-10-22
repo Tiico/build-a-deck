@@ -16,6 +16,7 @@ import { useFocusTrap } from './focusTrap.js'
 import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
+import { CheckGlyph, FrameGlyph, RefreshGlyph } from '../glyphs.js'
 
 // The media library (#222, L22, prototype A · egen flik). Every picture the game holds, in one
 // place, so that finding one and tidying one are the same errand. The card table shows the
@@ -420,6 +421,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                     has not yet confirmed the window. */}
                 {(cropped || saving.includes(hash)) && (
                   <small id={`${said}-${hash}-mark`} className="byd-media-mark" data-state={saving.includes(hash) ? 'saving' : 'saved'}>
+                    {saving.includes(hash) ? <RefreshGlyph /> : <FrameGlyph cropped />}
                     {saving.includes(hash) ? t('media.crop.mark.saving') : t('media.crop.mark')}
                   </small>
                 )}
@@ -497,7 +499,7 @@ function namedCards(cards: readonly string[], t: ReturnType<typeof useT>): strin
 }
 
 // What each state of the crop is marked with, beside its words (L33).
-const STATUS_MARK = { whole: '▢', saving: '⟳', saved: '✓' } as const
+const STATUS_MARK = { whole: <FrameGlyph />, saving: <RefreshGlyph />, saved: <CheckGlyph /> } as const
 const sameCrop = (a: AssetCrop, b: AssetCrop): boolean => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h
 
 // The sides in the words that fit beside one large card (#295): the same control the template's
@@ -622,7 +624,8 @@ function Cropping({
           status={
             <div className="byd-media-crop-row">
               <p role="status" className="byd-crop-status" data-state={state}>
-                <i aria-hidden="true">{STATUS_MARK[state]}</i> {state === 'saved' ? t('media.crop.status.saved', { p: Math.round(crop.w * crop.h * 100) }) : t(state === 'saving' ? 'media.crop.status.saving' : 'media.crop.status.whole')}
+                {STATUS_MARK[state]}
+                {state === 'saved' ? t('media.crop.status.saved', { p: Math.round(crop.w * crop.h * 100) }) : t(state === 'saving' ? 'media.crop.status.saving' : 'media.crop.status.whole')}
               </p>
               <button
                 type="button"

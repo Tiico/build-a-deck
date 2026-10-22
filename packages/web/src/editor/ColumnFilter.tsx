@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Lifted } from './Lifted.js'
 import { useT } from '../i18n/index.js'
+import { ChevronGlyph } from '../glyphs.js'
 
 // A column's filter, in the column's own head (#617, variant A).
 //
@@ -43,7 +44,7 @@ export function ColumnFilter({ label, values, chosen, onToggle, open, onOpen }: 
         onClick={() => onOpen(!open)}
       >
         {/* The count takes the glyph's place, so the handle never changes width (#617). */}
-        <span aria-hidden="true">{chosen.length > 0 ? chosen.length : '▾'}</span>
+        {chosen.length > 0 ? <span aria-hidden="true">{chosen.length}</span> : <ChevronGlyph to="down" />}
       </button>
       {open && (
         <Lifted handle={handle} label={t('table.filterOn', { field: label })} className="byd-column-filter-door" onClose={() => onOpen(false)}>

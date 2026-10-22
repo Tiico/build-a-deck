@@ -3,6 +3,7 @@ import { ASSET_PREFIX, isAssetRef } from './assets.js'
 import type { Element } from './types.js'
 import { useT } from '../i18n/index.js'
 import { useSay } from '../status/StatusLive.js'
+import { ChevronGlyph, GripGlyph, KindGlyph, LockGlyph } from '../glyphs.js'
 
 export type LayerListProps = {
   // Top-most first, the way the list is read.
@@ -195,7 +196,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                 {...withMove(el.id, at, cellProps(el.id, 'lock'))}
                 onClick={() => onLock?.(el.id, !locked)}
               >
-                <LockGlyph closed={locked} />
+                <LockGlyph open={!locked} />
               </button>
             </span>
             <span role="gridcell" className="byd-layer-cell">
@@ -274,11 +275,13 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
             {/* The grip, and on a folder the folder's arrow in its place (#699): only a sign, since
                 choosing the layer is what opens it, and still the grip on a list that can be dragged. */}
             {folder ? (
-              <span className={onReorder ? 'byd-layer-grip byd-layer-folder' : 'byd-layer-folder'} data-open={unfold ? 'true' : 'false'} aria-hidden="true" />
+              <span className={onReorder ? 'byd-layer-grip byd-layer-folder' : 'byd-layer-folder'} data-open={unfold ? 'true' : 'false'} aria-hidden="true">
+                <ChevronGlyph to={unfold ? 'down' : 'right'} />
+              </span>
             ) : (
               onReorder && (
                 <span className="byd-layer-grip" aria-hidden="true">
-                  ⠿
+                  <GripGlyph />
                 </span>
               )
             )}
@@ -390,41 +393,4 @@ function useCells(ids: string[], selected: string | null) {
     },
   })
   return { cellProps, focus }
-}
-
-// The glyph that says what kind of layer it is, drawn rather than written: the word for the kind
-// is the first thing a 220 px panel runs out of room for, and a shape is quicker to recognise
-// than its name anyway.
-function KindGlyph({ kind }: { kind: Element['kind'] }) {
-  return (
-    <svg className="byd-layer-kind" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      {kind === 'text' && <path d="M3 3h10v2.2M8 3v10M5.6 13h4.8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />}
-      {kind === 'image' && (
-        <>
-          <rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
-          <path d="M3.4 11.2 6.6 7.8l2 2.2 1.8-1.8 2.2 3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        </>
-      )}
-      {kind === 'icons' && (
-        <>
-          <circle cx="4" cy="8" r="1.8" fill="currentColor" />
-          <circle cx="8" cy="8" r="1.8" fill="currentColor" />
-          <circle cx="12" cy="8" r="1.8" fill="currentColor" />
-        </>
-      )}
-      {kind === 'shape' && <rect x="2.6" y="3.6" width="10.8" height="8.8" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.6" />}
-      {(kind === 'group' || kind === 'if') && <path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />}
-    </svg>
-  )
-}
-
-// Open or shut, and the difference is the whole state: a padlock that only changes colour says
-// nothing to anyone who cannot see the colour.
-function LockGlyph({ closed }: { closed: boolean }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <rect x="3.5" y="7" width="9" height="6.5" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d={closed ? 'M5.6 7V5.2a2.4 2.4 0 0 1 4.8 0V7' : 'M5.6 7V5.2a2.4 2.4 0 0 1 4.6-.8'} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
 }

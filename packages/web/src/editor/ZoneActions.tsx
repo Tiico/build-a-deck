@@ -9,6 +9,7 @@ import { ownerOf } from './zone-name.js'
 import { useDoor } from '../doors.js'
 import { useNumberDraft } from './number-draft.js'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { CloseGlyph } from '../glyphs.js'
 
 // Authoring what a pile starts with and what it can be asked for, as sentences (prototyped
 // 2026-09-15).
@@ -154,7 +155,7 @@ export function ZoneActions({ doc, zone, onPatch, onClose, reading = false }: Zo
             gömma vägen ut en skärmhöjd ovanför det som läses. */}
         <header>
           <button type="button" aria-label={t('setup.actions.close')} onClick={onClose}>
-            ×
+            <CloseGlyph />
           </button>
         </header>
         <div className="byd-zone-actions-body">
@@ -254,7 +255,7 @@ export function ZoneActions({ doc, zone, onPatch, onClose, reading = false }: Zo
                           else drop(a)
                         }}
                       >
-                        ×
+                        <CloseGlyph />
                       </button>
                     </li>
                   ))}

@@ -5,6 +5,7 @@ import { useGesture } from './gesture.js'
 import { fieldLabel } from './fields.js'
 import { INK } from './symbols.js'
 import type { Element } from './types.js'
+import { CloseGlyph } from '../glyphs.js'
 
 type Icons = Extract<Element, { kind: 'icons' }>
 
@@ -88,7 +89,7 @@ export function IconLook({ el, fields, valuesIn, srcOf, paper, onPatch, onChoose
       )}
       {clear && name !== undefined && (
         <button type="button" className="byd-icon-look-clear" aria-label={t('canvas.props.icon.clear', { target: label })} onClick={clear}>
-          ×
+          <CloseGlyph />
         </button>
       )}
     </li>

@@ -8,6 +8,7 @@ import { useRoving } from './roving.js'
 import { clashOf, fieldLabel } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useT } from '../i18n/index.js'
+import { CloseGlyph, LockGlyph } from '../glyphs.js'
 
 export type ColumnDoorProps = {
   // The head's last cell: the ＋ that opens the door and the door itself, which is what the
@@ -320,15 +321,12 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
                         onRemove(field)
                       }}
                     >
-                      ×
+                      <CloseGlyph />
                     </button>
                   ) : (
                     // The lock replaces an unavailable action; its accessible name explains why.
                     <span className="byd-columns-system" role="img" aria-label={t('table.field.system', { field: fieldLabel(field, t) })} title={t('table.field.system', { field: fieldLabel(field, t) })}>
-                      <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-                        <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-                        <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
-                      </svg>
+                      <LockGlyph />
                     </span>
                   )}
                 </>

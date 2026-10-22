@@ -16,6 +16,7 @@ import { lastMoveWords } from './when.js'
 import { versionWord } from '../i18n/version.js'
 import { rowSummary } from './playtestReading.js'
 import type { PlaytestTable } from '@byd/server/doc'
+import { ChevronGlyph, PlayGlyph } from '../glyphs.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -145,9 +146,7 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
           table, and the handler refuses a second start itself. */}
       <button type="button" className="byd-tables-new byd-secondary" aria-disabled={starting} aria-busy={starting} onClick={() => void startTable()}>
         <span className="byd-tables-new-icon">
-          <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" focusable="false">
-            <path d="M3 1.5 12 7l-9 5.5z" fill="currentColor" />
-          </svg>
+          <PlayGlyph />
         </span>
         {starting ? t('tables.starting') : t('tables.new')}
       </button>
@@ -261,7 +260,7 @@ function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, on
     <section className="byd-tables-group" data-group={group.id}>
       <button id={headingId} type="button" className="byd-tables-fold" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((was) => !was)}>
         <span className="byd-tables-caret" aria-hidden="true">
-          ▸
+          <ChevronGlyph to="right" />
         </span>
         {group.heading}
       </button>
@@ -324,7 +323,7 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
       }}
     >
       <button ref={caret} type="button" className="byd-editor-primary byd-primary byd-editor-caret" aria-label={t('tables.more')} aria-expanded={open} onClick={() => setOpen((on) => !on)}>
-        ▾
+        <ChevronGlyph to="down" />
       </button>
       {open && (
         <div className="byd-editor-ways" role="group" aria-label={t('tables.group')}>
@@ -595,7 +594,7 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
         aria-label={t('tables.more.of', { table })}
         onClick={() => setOpen((was) => !was)}
       >
-        <span aria-hidden="true">▾</span>
+        <ChevronGlyph to="down" />
       </button>
       {open && (
         <div

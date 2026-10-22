@@ -3,6 +3,7 @@ import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { ownerOf } from './keyboard.js'
 import { cycleTab } from './cycleTab.js'
 import { useT } from '../i18n/index.js'
+import { EraseGlyph } from '../glyphs.js'
 
 // "Sätt värde…" (C4, #67): a counter's value said outright. The phone's `CountersRow` asks with
 // `prompt()`, and the table screen cannot answer that — it is a TV with a finger on it and no
@@ -110,7 +111,7 @@ export function CounterEntry({ view, c, onSet, onClose }: CounterEntryProps) {
             0
           </button>
           <button type="button" aria-label={t('counter.entry.erase')} onClick={erase}>
-            ⌫
+            <EraseGlyph />
           </button>
         </div>
         <div className="byd-set-value-foot">

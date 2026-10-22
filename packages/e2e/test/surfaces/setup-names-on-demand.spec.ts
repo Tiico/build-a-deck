@@ -57,7 +57,9 @@ test.describe('the Bord tab names a zone when asked (#581)', () => {
     await bord(page, 1024)
     const home = page.getByRole('link', { name: 'Mina spel' })
     await expect(home).toBeVisible()
-    expect(await home.evaluate((el) => (el as HTMLElement).innerText.trim())).toBe('←')
+    // The arrow is drawn in the one hand (#1083), so under 1280 the link shows no words at all.
+    expect(await home.evaluate((el) => (el as HTMLElement).innerText.trim())).toBe('')
+    expect(await home.locator('[data-glyph="arrow-left"]').isVisible()).toBe(true)
     await page.setViewportSize({ width: 1280, height: 768 })
     expect(await home.evaluate((el) => (el as HTMLElement).innerText.trim())).toBe('Mina spel')
   })
