@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { newElement } from '../../web/src/editor/canvas.js'
 import type { ProjectDoc } from '../../web/src/editor/types.js'
@@ -8,7 +8,9 @@ import { DESK } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 
-// A picture uploaded from a card's own cell, the way the playtest did it (#742).
+// A picture uploaded from a card's own cell, the way the playtest did it (#742) — since L72 by
+// dropping the file on the cell's tile, which is the one way a file reaches a cell without the
+// library window.
 //
 // Three things were wrong on that path. The picture came into the library with no name, so Media
 // called it «Bild på kort-1» while the same file uploaded from Media kept its own (L22). The picker
@@ -52,42 +54,56 @@ async function openTable(page: Page) {
   const tab = page.locator('#byd-editor-tab-table')
   await tab.click()
   await expect(tab).toHaveAttribute('aria-selected', 'true')
-  const upload = page.getByLabel('Ladda upp bild för kort-1')
-  await expect(upload).toBeAttached()
-  return upload
+  const slot = page.getByRole('group', { name: 'Bild för kort-1' })
+  await expect(slot).toBeAttached()
+  return slot
+}
+
+// A file let go over the slot, as a hand would let it go: a real `drop` with the file in the
+// transfer, which is the path the cell's own upload takes (#291).
+async function dropOn(slot: Locator, file: { name: string; mimeType: string; buffer: Buffer }) {
+  const transfer = await slot.evaluateHandle((_, f) => {
+    const dt = new DataTransfer()
+    dt.items.add(new File([Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0))], f.name, { type: f.mimeType }))
+    return dt
+  }, { name: file.name, mimeType: file.mimeType, base64: file.buffer.toString('base64') })
+  await slot.dispatchEvent('drop', { dataTransfer: transfer })
 }
 
 test.describe('a picture uploaded from a card cell (#742)', () => {
   test('offers only the four formats the gate takes', async ({ page }) => {
-    const upload = await openTable(page)
+    // The picker is the library window's (L72), opened from the tile.
+    const slot = await openTable(page)
+    await slot.getByRole('button', { name: 'Välj bild för kort-1' }).click()
+    const upload = page.getByRole('dialog', { name: 'Bilder i spelet' }).getByLabel('Ladda upp')
     expect(await upload.getAttribute('accept')).toBe('image/png,image/jpeg,image/gif,image/webp')
   })
 
   test('refuses a 9 MB file and an SVG at once, without a POST and without a console error', async ({ page }) => {
-    const upload = await openTable(page)
+    const slot = await openTable(page)
     const seen = watch(page)
     // Where the table says what became of an upload: the strip above it, where the pictures are.
     const said = page.locator('.byd-data-images [role="alert"]')
 
     const heavy = Buffer.alloc(9 * 1024 * 1024)
     PIXEL.copy(heavy)
-    await upload.setInputFiles({ name: 'stor.png', mimeType: 'image/png', buffer: heavy })
+    await dropOn(slot, { name: 'stor.png', mimeType: 'image/png', buffer: heavy })
     await expect(said).toHaveText('Bilden stor.png kunde inte laddas upp: filen är för stor (max 8 MB)')
 
-    await upload.setInputFiles({ name: 'logga.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') })
+    await dropOn(slot, { name: 'logga.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') })
     await expect(said).toHaveText('Bilden logga.svg kunde inte laddas upp: filen är inte PNG, JPEG, GIF eller WebP')
 
     expect(seen.posts).toEqual([])
     expect(seen.errors).toEqual([])
     // And the card was not touched: nothing is drawn from bytes that never came.
-    await expect(page.getByRole('button', { name: 'Ta bort bild för kort-1' })).toHaveCount(0)
+    await expect(slot.getByRole('button', { name: 'Välj bild för kort-1' })).toBeVisible()
   })
 
   test('brings the picture into the library under its file name, and the tile says it', async ({ page }) => {
-    const upload = await openTable(page)
+    const slot = await openTable(page)
     const seen = watch(page)
-    await upload.setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: PIXEL })
-    await expect(page.getByRole('button', { name: 'Ta bort bild för kort-1' })).toBeVisible()
+    await dropOn(slot, { name: 'drake.png', mimeType: 'image/png', buffer: PIXEL })
+    await expect(slot.getByRole('button', { name: 'Byt bild för kort-1' })).toBeVisible()
     // Non-vacuity: this upload did go over the wire, so the refusals above were the browser's.
     expect(seen.posts).toHaveLength(1)
 
@@ -104,7 +120,7 @@ test.describe('a picture uploaded from a card cell (#742)', () => {
   // them anyway, got a 404, and went on showing a broken picture after the bytes came (#907) — the
   // tile saying the picture could not be fetched. Held on the wire here, so the order is certain.
   test('draws a picture uploaded from a cell once its bytes arrive, wherever it was looked at before they did', async ({ page }) => {
-    const upload = await openTable(page)
+    const slot = await openTable(page)
     let release!: () => void
     const held = new Promise<void>((resolve) => (release = resolve))
     await page.route(
@@ -117,9 +133,11 @@ test.describe('a picture uploaded from a card cell (#742)', () => {
     // Bytes of this test's own: the store is content-addressed and shared by the whole run, so the
     // pixel another test already sent would be there to fetch however long these are held.
     const own = Buffer.concat([PIXEL, Buffer.from(randomUUID())])
-    await upload.setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: own })
-    await expect(page.getByRole('button', { name: 'Ta bort bild för kort-1' })).toBeVisible()
-    const cell = page.getByRole('img', { name: 'kort-1 bild' })
+    await dropOn(slot, { name: 'drake.png', mimeType: 'image/png', buffer: own })
+    await expect(slot.getByRole('button', { name: 'Byt bild för kort-1' })).toBeVisible()
+    // Inside the tile, which is a button, so the picture is found as the element it is and not by
+    // a role a button's children do not carry.
+    const cell = slot.locator('img[alt="kort-1 bild"]')
     await expect(cell).toBeAttached()
 
     await page.locator('#byd-editor-tab-media').click()

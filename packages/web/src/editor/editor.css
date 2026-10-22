@@ -2247,28 +2247,21 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    80 px: in a `cost` column of 64 the field was drawn sixteen pixels into `antal`. So the floor
    goes, and with it the last thing in the cell that had an opinion about the column. */
 .byd-data td input:not([type='checkbox']) { min-width: 0; }
-/* Image cells (E1): a thumbnail with a place to drop, a button to choose, a × to clear. */
-.byd-data-image { padding: 4px !important; }
-.byd-data-drop { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px; border: 1px dashed transparent; border-radius: 8px; }
-/* Markeringen när ett drag står över rutan är dragmarkeringens token och ritas i
-   `dropping.css`, tillsammans med bibliotekets och guidens (#291). */
-.byd-data-drop > img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
-.byd-data-drop > span { width: 60px; height: 40px; display: grid; place-items: center; border: 1px dashed #4a5163; border-radius: 5px; color: var(--byd-editor-quiet); font-size: 10px; text-align: center; }
+/* Bildrutan (L72): one tile that is the whole control, in a picture cell and in the marked
+   cards' field. The tile is 66 × 44 — the tap floor in both directions, as the «Välj» it replaced
+   kept it (#50, #193) — and a 3:2 window on the picture, the library tile's ratio. The slot
+   around it is the drop surface (#291); the mark it lights is `dropping.css`'s. The cell gives
+   the slot its own four pixels and none of its own, so the row stays the height it was. */
+.byd-data-image { padding: 0 !important; }
+.byd-picture-slot { position: relative; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s1); border: 1px dashed transparent; border-radius: 8px; }
+.byd-picture-tile { display: grid; place-items: center; box-sizing: border-box; width: 66px; height: var(--byd-tap); padding: 0; border: 1px dashed #4a5163; border-radius: 5px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 16px; line-height: 1; overflow: hidden; }
+button.byd-picture-tile { cursor: pointer; }
+button.byd-picture-tile:hover { border-color: #9aa3b8; }
+.byd-picture-tile[data-has] { border-style: solid; border-color: transparent; background: #14161c; }
+.byd-picture-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* Text från när kolumnen var text (#1085): ingen bild och inte ritad som en, men inte borta. Den
-   står i bildens ruta, överstruken och dämpad, och kommer tillbaka när kolumnen blir text igen. */
-.byd-data-drop > .byd-data-kept { width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); font-size: 11px; }
-/* The word on it is `Välj`, which is four letters wide: as a box drawn round its own text the
-   picker came to 40 across, and a thumb has no more to aim at than the word is wide (#50, #193).
-   So it keeps the floor in both directions rather than only the one the editor's tap rule gives
-   every label, and centres its word in the box that floor makes. */
-/* One line, so the column is measured on the label as it stands: «Ladda upp» broke over two, the
-   column was sized on the broken label, and then cut what it had sized (#1085). Named twice so a
-   button in the table's cells keeps it: `.byd-data button` strips every button there back to a
-   word, and outweighed the class alone. */
-.byd-data-file, .byd-data .byd-data-file { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--byd-tap); border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
-/* The × that clears a picture, and only it: written as every button in the cell, the rule outweighed
-   `.byd-data-file` and drew «Välj» as a bare 16 px word with no box (#1085). */
-.byd-data-drop > button:not(.byd-data-file) { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+   står i rutan, överstruken och dämpad, och kommer tillbaka när kolumnen blir text igen. */
+.byd-picture-tile .byd-data-kept { max-width: 100%; padding: 0 var(--byd-s1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); font-size: 11px; }
 /* The deck's pictures, once each (E1). The strip is a section of the panel and not a tail of the
    crown, so it stands clear of the crown's line on the same rung the crown lays over it — and on
    the same rung the two blocks that share this stack, the comparison line and the bulk row, are
@@ -2578,11 +2571,6 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-data-bulk button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
 .byd-data-bulk button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
 .byd-data-bulk button[data-kind='quiet'] { border-color: transparent; color: var(--byd-editor-bulk-quiet); font-weight: 400; }
-/* The way to a file, standing in the action row instead of in a cell (#17 on E1). `.byd-data-file`
-   carries the table's own ground, which is the right ground under a row and the wrong one here:
-   on the row's lighter panel the same dark box reads as a hole punched through it, while every
-   other control there is drawn as an outline. So it takes the row's ground, like the rest. */
-.byd-data-bulk .byd-data-file { background: transparent; color: var(--byd-editor-bulk-ink); }
 /* In the foot the row is the foot's own: no band of its own, no margin, and buttons that keep the
    foot one row tall. The column and the value are behind «Sätt fält», in a box that lifts into
    the top layer (L55) and opens upward from the foot. */
@@ -2597,7 +2585,6 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-data-set-box select, .byd-data-set-box input { min-height: var(--byd-tap); padding: 4px 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: var(--byd-editor-filter-bg); color: var(--byd-editor-filter-ink); font: inherit; }
 .byd-data-set-box > button { min-height: var(--byd-tap); padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-editor-bulk-ink); font: inherit; font-weight: 700; cursor: pointer; }
 .byd-data-set-box > button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
-.byd-data-set-box .byd-data-file { background: transparent; color: var(--byd-editor-bulk-ink); }
 /* The checkbox column (#17): wide enough for a real hit target. The tick itself is the editor's
    one tick box (#45) and is drawn nowhere but there, so "marked" here and "marked" in the recipe
    are the same blue and the same square. */
@@ -4365,7 +4352,7 @@ img[data-arriving] { opacity: 0; }
   .byd-canvas-tools, .byd-backs, .byd-drag-handle, .byd-point-mid, .byd-point, .byd-point-handle, .byd-canvas-reset,
   .byd-props-picture .byd-secondary, .byd-props-straighten, .byd-fonts li[data-font] button, .byd-fonts-catalog, .byd-fonts-upload, .byd-newfield,
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
-  .byd-data-add, .byd-data-bodytools, .byd-kind-switch, .byd-kind-follow, .byd-newfield-kinds, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
+  .byd-data-add, .byd-data-bodytools, .byd-kind-switch, .byd-kind-follow, .byd-newfield-kinds,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
   .byd-theme-tiles, .byd-theme-reset, .byd-theme-show,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,

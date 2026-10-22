@@ -138,25 +138,29 @@ describe('image cells (E1)', () => {
     return doc
   }
 
-  it('shows an image field as a thumbnail from the server, uploads a chosen file into the cell, and clears it', async () => {
+  it('shows an image field as one tile that is the whole control, named by what a press does, and clears on Backspace (L72)', async () => {
     const doc = withArt()
     const onCell = vi.fn()
-    const onUpload = vi.fn(async () => 'd'.repeat(64))
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => 'd'.repeat(64)} />)
     const rows = screen.getAllByRole('row').slice(1)
     const thumb = within(rows[0]!).getByRole('img', { name: 'dragon art' }) as HTMLImageElement
     expect(thumb.src).toBe(`http://api.local/assets/${HASH}`)
     // A card without an image has a place for one, not a broken picture.
     expect(within(rows[1]!).queryByRole('img')).toBeNull()
 
-    const file = new File(['png'], 'riddare.png', { type: 'image/png' })
-    fireEvent.change(within(rows[1]!).getByLabelText('Ladda upp bild för knight'), { target: { files: [file] } })
-    // The upload is handed the cell it came from, and writes it in the same step as the picture
-    // it brings into the game, under the file's name (#742) — so the table writes nothing itself.
-    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, { cardRef: 'knight', field: 'art' }))
-    expect(onCell).not.toHaveBeenCalled()
+    // One control per cell: the tile. It says what a press does — choose where there is nothing,
+    // replace where there is a picture — and nothing else in the cell is a control.
+    const cell = (row: HTMLElement) => within(row).getByRole('group', { name: /^Bild för / })
+    expect(within(cell(rows[1]!)).getByRole('button', { name: 'Välj bild för knight' })).toBeTruthy()
+    expect(cell(rows[1]!).querySelectorAll('button, input, label')).toHaveLength(1)
+    const tile = within(cell(rows[0]!)).getByRole('button', { name: 'Byt bild för dragon' })
+    expect(tile.contains(thumb)).toBe(true)
+    expect(cell(rows[0]!).querySelectorAll('button, input, label')).toHaveLength(1)
 
-    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Ta bort bild för dragon' }))
+    // Backspace on the tile clears it, as it clears any field; on an empty tile it is nothing.
+    fireEvent.keyDown(within(cell(rows[1]!)).getByRole('button', { name: 'Välj bild för knight' }), { key: 'Backspace' })
+    expect(onCell).not.toHaveBeenCalled()
+    fireEvent.keyDown(tile, { key: 'Backspace' })
     expect(onCell).toHaveBeenCalledWith('dragon', 'art', '')
   })
 
@@ -223,7 +227,7 @@ describe('an image on every marked card (#17, E1)', () => {
     ])
   })
 
-  it('uploads a chosen file once and puts that one image on every marked card', async () => {
+  it('uploads a file dropped on the marked cards\' tile once, and puts that one image on every marked card', async () => {
     const doc = withArt()
     const onReplaceRows = vi.fn()
     const onUpload = vi.fn(async () => OTHER)
@@ -235,7 +239,7 @@ describe('an image on every marked card (#17, E1)', () => {
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     const file = new File(['png'], 'skog.png', { type: 'image/png' })
-    fireEvent.change(within(bulk()).getByLabelText('Ladda upp bild för de markerade korten'), { target: { files: [file] } })
+    fireEvent.drop(within(bulk()).getByRole('group', { name: 'Bild för de markerade korten' }), { dataTransfer: { getData: () => '', files: [file] } })
     // The file becomes one asset, and the row is holding it before anything is written: the
     // thumbnail is what says which image the button is about.
     await waitFor(() => expect((within(bulk()).getByRole('img', { name: 'Bild för de markerade korten' }) as HTMLImageElement).src).toBe(`http://api.local/assets/${OTHER}`))

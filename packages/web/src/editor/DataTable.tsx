@@ -1,5 +1,4 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
-import { assetAccept } from '@byd/protocol'
 import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
@@ -14,8 +13,9 @@ import { AssetImage } from './AssetImage.js'
 import { ASSET_DRAG_TYPE, assetRef, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { proseChoiceOf, proseFieldsOf } from './body.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
-import { DropSays, dropSurface, oneFile } from './dropping.js'
+import { oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
+import { PictureSlot } from './PictureSlot.js'
 import { LIBRARY, symbolName, type GameSymbol } from './symbols.js'
 import { RoleList, roleOptionId, symbolListKey } from './SymbolList.js'
 import { SymbolBox, meaningsOf, type Pickable } from './SymbolBox.js'
@@ -276,8 +276,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const noteId = useId()
   const [importError, setImportError] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  // Which image cell a drag is over.
-  const [over, setOver] = useState<string | null>(null)
   // The symbol picker (E4): which cell has an open brace before the cursor, what has been typed
   // since it, and which symbol is under the arrow keys.
   // `role` is what stands after the bar, or null when no bar has been typed: the syntax itself
@@ -733,7 +731,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // sentence anyone can type. The hash is held until the button is pressed, exactly as the typed
   // value is.
   const [bulkImage, setBulkImage] = useState<string | null>(null)
-  const [bulkOver, setBulkOver] = useState(false)
   // Whether the head's last cell is showing the form that makes a column, and which column has
   // been asked about taking away (#32).
   const [adding, setAdding] = useState(false)
@@ -1690,48 +1687,26 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               {drawn.map((f) =>
                 imageFields.includes(f) && assetBase ? (
                   <td key={f} className="byd-data-image" data-col={f}>
-                    <div
-                      role="group"
-                      aria-label={t('table.imageFor', { cardRef })}
-                      data-image-cell={cardRef}
-                      {...dropSurface({
-                        className: 'byd-data-drop',
-                        // Cellen äger sitt eget svar på om draget står över den, så ett släpp
-                        // aldrig kan råka ändra ett annat mål (#291).
-                        over: over === `${cardRef}:${f}`,
-                        onOver: (on) => setOver(on ? `${cardRef}:${f}` : null),
-                        onFiles: (files) => void upload(cardRef, f, files),
-                        // En biblioteksbild återanvänds utan ny uppladdning (E1): den bär redan
-                        // sin hash, och att lägga upp den igen vore att göra en bild av två.
-                        onLibrary: (hash) => onCell(cardRef, f, assetRef(hash)),
-                      })}
-                    >
-                      {isAssetRef(row[f]) ? (
-                        <AssetImage base={assetBase} hash={String(row[f]).slice(ASSET_PREFIX.length)} alt={`${cardRef} ${f}`} />
-                      ) : isKeptText(row[f]) ? (
-                        // Text from when the column was text (#1085): not a picture and not drawn
-                        // as one, but not gone either — it comes back when the column is text again.
-                        <s className="byd-data-kept">{String(row[f])}</s>
-                      ) : (
-                        <span>{t('table.image.drop')}</span>
-                      )}
-                      {over === `${cardRef}:${f}` && <DropSays />}
-                      {/* The library (#296): a picture the game already has, into this cell.
-                          The upload beside it stays as it was — a file off the disk is the
-                          other way a picture reaches a card (#291 owns the drop). */}
-                      <button type="button" className="byd-data-file" {...stop(cardRef)} aria-label={t('table.image.chooseFor', { cardRef })} onClick={() => setLibrary({ kind: 'cell', cardRef, field: f })}>
-                        {isAssetRef(row[f]) ? t('table.image.replace') : t('table.image.choose')}
-                      </button>
-                      <label className="byd-data-file">
-                        {t('table.image.upload')}
-                        <input className="byd-offscreen" type="file" accept={assetAccept('image')} {...stop(cardRef)} aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
-                      </label>
-                      {isAssetRef(row[f]) && (
-                        <button type="button" {...stop(cardRef)} aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
-                          ×
-                        </button>
-                      )}
-                    </div>
+                    {/* Bildrutan (L72): the tile is the whole control, and the library behind it
+                        takes a file and clears the card. A library picture dragged here is reused
+                        without a new upload (E1); a file dropped here is uploaded into this cell
+                        in the same step as the picture (#742). */}
+                    <PictureSlot
+                      cellRef={cardRef}
+                      label={t('table.imageFor', { cardRef })}
+                      choose={t('table.image.chooseFor', { cardRef })}
+                      replace={t('table.image.replaceFor', { cardRef })}
+                      alt={`${cardRef} ${f}`}
+                      base={assetBase}
+                      value={isAssetRef(row[f]) ? String(row[f]).slice(ASSET_PREFIX.length) : null}
+                      kept={isKeptText(row[f]) ? String(row[f]) : undefined}
+                      onChoose={() => setLibrary({ kind: 'cell', cardRef, field: f })}
+                      onPick={(hash) => onCell(cardRef, f, assetRef(hash))}
+                      onFiles={(files) => void upload(cardRef, f, files)}
+                      onClear={() => onCell(cardRef, f, '')}
+                      reading={reading}
+                      {...stop(cardRef)}
+                    />
                   </td>
                 ) : bodyFields.includes(f) ? (
                   <BodyTd
@@ -2066,28 +2041,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 prose into a column the template draws as a picture. So the value takes the shape
                 of the column: a place to drop one of the deck's images, and nothing to type. */}
             {bulkIsImage && assetBase ? (
-              <div
-                role="group"
-                aria-label={t('table.bulk.image')}
-                {...dropSurface({
-                  className: 'byd-data-drop',
-                  over: bulkOver,
-                  onOver: setBulkOver,
-                  onFiles: (files) => void bulkUpload(files),
-                  onLibrary: setBulkImage,
-                })}
-              >
-                {bulkImage ? <AssetImage base={assetBase} hash={bulkImage} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
-                {bulkOver && <DropSays />}
-                {/* The library (#296): a picture the game already has, onto every marked card. */}
-                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
-                  {t('table.image.choose')}
-                </button>
-                <label className="byd-data-file">
-                  {t('table.image.upload')}
-                  <input className="byd-offscreen" type="file" accept={assetAccept('image')} aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
-                </label>
-              </div>
+              // The same Bildruta the cells hold (L72). The library applies to every marked card
+              // by itself; a picture dropped or uploaded here is held by the row until the button
+              // is pressed, so the thumbnail is what says which image the button is about.
+              <PictureSlot
+                label={t('table.bulk.image')}
+                choose={t('table.bulk.image.choose')}
+                replace={t('table.bulk.image.replace')}
+                alt={t('table.bulk.image')}
+                base={assetBase}
+                value={bulkImage}
+                onChoose={() => setLibrary({ kind: 'marked', field })}
+                onPick={setBulkImage}
+                onFiles={(files) => void bulkUpload(files)}
+                onClear={() => setBulkImage(null)}
+              />
             ) : (
               <input
                 type={field === ANTAL ? 'number' : 'text'}
@@ -2160,6 +2128,19 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             setLibrary(null)
           }}
           onClose={() => setLibrary(null)}
+          // The way to a file from a cell (L72): into the library under its name (#742), and onto
+          // the card by the window's own button. Two steps back take the two things done.
+          onUpload={onUpload ? (file) => onUpload(file) : undefined}
+          onClear={() => {
+            if (library.kind === 'cell') {
+              onCell(library.cardRef, library.field, '')
+              setSaid(t('table.library.cleared.one', { cardRef: library.cardRef }))
+            } else {
+              onReplaceRows(setColumn(doc.rows, chosenIds, library.field, ''))
+              setSaid(t('table.library.cleared.other', { n: chosen.length }))
+            }
+            setLibrary(null)
+          }}
         />
       )}
     </div>

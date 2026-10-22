@@ -24,4 +24,4 @@ Samma props i varje variant; remsan, bibliotekets och Medias brickor är en anna
 
 ## Beslut
 
-_Väntar på beställaren._
+Beställaren valde **A** 2026-10-22; skrivet som L72 i [DESIGN-BESLUT.md](../../DESIGN-BESLUT.md) och byggt i #1105.
