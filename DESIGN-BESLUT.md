@@ -4014,6 +4014,27 @@ Följdkrav:
 Trycket är dold information och bevisas på råa frames (D4): `packages/server/test/wire.test.ts` visar att Ada och observatören får `text` och att Bo, Cy, Di och bordet aldrig får den för ett dolt kort.
 `packages/template/test/printed.test.ts` håller läsningen av mallen, `packages/engine/test/printed-text.test.ts` härledningen, och `packages/web/test/held-card.test.tsx`, `tv-chrome.test.tsx`, `observer-page.test.tsx` och `observer-viewport.test.tsx` läsvyn, listorna och 44 px vid 320, 390 och 1280.
 
+### K28. Tärningar: d4–d20 som egna typer, slagna från bordet och telefonen (prototypat och beslutat 2026-10-22, #1129, #1139)
+
+Många spel behöver en tärning, och ROADMAP hade frågan om fler komponenttyper öppen (B1–B3).
+Tärningen är sex typer i registret, `die.d4`, `die.d6`, `die.d8`, `die.d10`, `die.d12` och `die.d20`, med siffror på sidorna och `rollable: { faces }`.
+Egna sidor med prickar eller symboler ingår inte i första versionen.
+Inget nytt verb behövs: `roll` stod redan i vokabuläret, värdet avgörs på servern och lagras som resultat i loggen (D4), och tärningens sida upp är dess `counter`.
+Ett slag med flera tärningar är ett kuvert (K3), och aktivitetsraden säger det en gång: «Ada slog 2d6: 3 + 5 = 8», med summan bara när fler än en tärning slogs.
+Värdet är det enda resultat en rad berättar, eftersom en tärning på bordet är offentlig (B6); en blandnings omnumrering stannar utanför varje vy.
+
+Tärningarna hör till spelets setup (K5).
+En rad i setupen säger sort, antal och var: en yta alla delar, eller en yta varje plats har.
+En yta per plats ger varje plats sitt antal i sin egen yta, och «per spelare» på en delad yta ger antalet gånger platserna där (#1139).
+Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
+
+Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysiska skalan, eftersom en d6 på 16 mm blir 19 px på filten.
+Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
+Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
+Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
+
+Prototyperna: [`index.html`](https://github.com/Tiico/build-a-deck/blob/3cff0957e3494cc3c096f59c8dd1e70a06101144/docs/ux-audits/2026-10-22-tarningar/prototyper/index.html) (bordet och telefonen, beslut A + B) och [`editor.html`](https://github.com/Tiico/build-a-deck/blob/5adb14f5544d2a9be04da4a3f8e78eb6150e93df/docs/ux-audits/2026-10-22-tarningar/prototyper/editor.html) (fliken Bord, beslut A med dynamiskt antal).
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.

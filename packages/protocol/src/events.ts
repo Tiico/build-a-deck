@@ -55,5 +55,7 @@ export type Applied = z.infer<typeof Applied>
 // A shuffle's outcome carries the re-keying, which says exactly where each card went.
 // `name` is who made it, by the name they sat under when it was written (#714): a seat's name changes
 // when it is left and taken again, and a history told in today's names changes under a round.
-export const Activity = Applied.omit({ outcome: true }).extend({ name: z.string().optional() })
+// A roll's value is the one outcome a line tells (#1136): the die lies face up on a public table, so
+// the number is as public as the roll. A shuffle's re-keying stays out of every view.
+export const Activity = Applied.omit({ outcome: true }).extend({ name: z.string().optional(), rolled: z.number().int().optional() })
 export type Activity = z.infer<typeof Activity>
