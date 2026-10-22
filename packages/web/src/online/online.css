@@ -157,8 +157,7 @@
 /* The column's own boxes measure their width with their padding: a field of `width: 100%` ran
    out past the column's edge, and a row's text box into its × (#1131). */
 .byd-notes, .byd-notes * { box-sizing: border-box; }
-.byd-notes { --byd-notes-table: #e8e2d8; flex: none; display: flex; flex-direction: column; width: 60px; min-height: 0; background: #120f0d; border-inline-end: 1px solid #2a221c; color: #e8e2d8; }
-.byd-notes[data-open] { width: 300px; }
+.byd-notes { --byd-notes-table: #e8e2d8; flex: none; display: flex; flex-direction: column; min-height: 0; background: #120f0d; border-inline-end: 1px solid #2a221c; color: #e8e2d8; }
 .byd-online-play[data-hand='band'] > .byd-notes { position: absolute; z-index: 3; inset-block: 0; inset-inline-start: 0; }
 .byd-online-play[data-hand='band'] > .byd-notes:not([data-open]) { inset-block-end: auto; background: transparent; border: 0; }
 .byd-notes-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px; }

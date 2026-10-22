@@ -15,25 +15,36 @@ import { seatColor } from '../table/seatColor.js'
 // other (D3): a row is rewritten whole, and the last rewrite to land is the row.
 const STORE = 'byd.online.notes'
 
+// The column's two widths, open and folded to its rail; the page reads them to ask what opening it
+// would cost the felt, so they are said here and not in the stylesheet.
+export const NOTES_OPEN_PX = 300
+export const NOTES_RAIL_PX = 60
+
 export type NotesColumnProps = {
   view: Snapshot
   activity: readonly Activity[]
   seat: string
   send(...intents: Intent[]): Promise<SendResult>
-  // Whether the column starts open when this browser has never been told (#1131): the window's
-  // shape decides it, because the felt pays for the column only where it is bound by its width.
+  // Whether the column stands open while this browser has never been told (#1131, beställarens
+  // beslut 2026-10-22): the page answers it from the felt — open only where a card keeps K9's floor
+  // with the column open — and may answer again once the felt has been measured.
   defaultOpen?: boolean
+  // Told whether the column stands open, so the page can ask the felt what the other state costs.
+  onOpen?: (open: boolean) => void
 }
 
-export function NotesColumn({ view, activity, seat, send, defaultOpen = true }: NotesColumnProps) {
+export function NotesColumn({ view, activity, seat, send, defaultOpen = true, onOpen }: NotesColumnProps) {
   const t = useT()
-  const [open, setOpen] = useState(() => remembered() ?? defaultOpen)
+  // What this browser was last told, which outranks the page's answer for as long as it stands.
+  const [chosen, setChosen] = useState(remembered)
+  const open = chosen ?? defaultOpen
   // The line this seat has seen the notepad up to: while it is open, everything; once it is folded,
   // what stood when it was folded.
   const [seen, setSeen] = useState(view.seq)
   useEffect(() => {
     if (open) setSeen(view.seq)
   }, [open, view.seq])
+  useEffect(() => onOpen?.(open), [open, onOpen])
   const unseen = !open && activity.some((l) => l.intent.v.startsWith('note.') && l.by !== seat && l.seq > seen)
   const [said, say] = useSaid()
   const sent = (intent: Intent) =>
@@ -44,13 +55,13 @@ export function NotesColumn({ view, activity, seat, send, defaultOpen = true }: 
 
   const toggle = () => {
     const next = !open
-    setOpen(next)
+    setChosen(next)
     if (!next) setSeen(view.seq)
     remember(next)
   }
 
   return (
-    <aside className="byd-notes" data-open={open || undefined} aria-label={t('notes.title')}>
+    <aside className="byd-notes" data-open={open || undefined} aria-label={t('notes.title')} style={{ width: open ? NOTES_OPEN_PX : NOTES_RAIL_PX }}>
       <header className="byd-notes-head">
         <button type="button" className="byd-notes-toggle" aria-expanded={open} aria-label={unseen ? t('notes.unseen') : t('notes.title')} title={t('notes.title')} data-unseen={unseen || undefined} onClick={toggle}>
           <PencilGlyph />

@@ -136,6 +136,21 @@ describe('anteckningsspalten (#1131)', () => {
     expect(screen.getByRole('button', { name: 'Anteckningar' }).getAttribute('aria-expanded')).toBe('false')
   })
 
+  // Hopfälld där den kostar (beställarens beslut 2026-10-22, K9): sidan säger om korten håller sitt
+  // golv med spalten öppen, och svaret kan komma efter att filten mätts — spalten följer det tills
+  // spelaren själv har valt, och då står valet.
+  it('följer sidans standardläge tills spelaren själv valt, och sedan valet', async () => {
+    const user = userEvent.setup()
+    const page = render(<NotesColumn view={view(ROWS)} activity={[]} seat="A" send={send} defaultOpen={false} />)
+    const toggle = () => screen.getByRole('button', { name: 'Anteckningar' })
+    expect(toggle().getAttribute('aria-expanded')).toBe('false')
+    page.rerender(<NotesColumn view={view(ROWS)} activity={[]} seat="A" send={send} defaultOpen={true} />)
+    expect(toggle().getAttribute('aria-expanded')).toBe('true')
+    await user.click(toggle())
+    page.rerender(<NotesColumn view={view(ROWS)} activity={[]} seat="A" send={send} defaultOpen={true} />)
+    expect(toggle().getAttribute('aria-expanded')).toBe('false')
+  })
+
   it('säger på den ihopfällda listen att någon annan har skrivit sedan man såg efter, och inte sina egna rader', async () => {
     const user = userEvent.setup()
     const page = mount(ROWS, [], 10)

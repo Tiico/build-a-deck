@@ -136,6 +136,8 @@ describe('the notepad on /online (#1131)', () => {
     await table.ready()
     await open(id, 'A', 'Ada')
     const column = screen.getByRole('complementary', { name: 'Anteckningar' })
+    // jsdom fits no felt, so nothing says the column can be spared: it stands folded until opened.
+    fireEvent.click(within(column).getByRole('button', { name: 'Anteckningar' }))
     const field = within(column).getByRole('textbox', { name: 'Ny anteckning' })
     fireEvent.change(field, { target: { value: 'Poäng: Ada 3' } })
     fireEvent.submit(field.closest('form')!)

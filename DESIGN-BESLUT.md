@@ -4027,9 +4027,11 @@ Tre former prototypades mot `/online` (`docs/ux-audits/2026-10-22-anteckningsblo
 Rader i stället för en gemensam text, eftersom två som skriver samtidigt då aldrig skriver över varandra (D3): en rad skrivs om hel, och den omskrivning som landar sist är raden.
 Varje rad bär sin skribents platsfärg och namn, kan bockas av (struken, kvar) och tas bort, och skrivs om där den står; Enter sparar, Escape ångrar.
 Spalten står vid filtens inline-början, mitt emot handen, och fälls ihop till en list ett tryckmål bred; listen får en prick och namnet «Anteckningar, nytt från någon annan» när någon annan skrivit sedan den fälldes.
-Öppen eller ihopfälld minns webbläsaren, som en tittares egen bekvämlighet; utan svar avgör fönstrets form, öppen i liggande och ihopfälld i stående, där spalten ligger över filtens hörn i stället för att ta en rad höjd.
-
-Kostnaden är mätt och accepterad: öppen tar spalten kortbredd på filten, 40 → 33 px vid 1280×800 (−18 %), 46 → 40 vid 1440×900, och ingenting vid 1920×1080, där filten är höjdbunden ändå.
+**Hopfälld där den kostar (beställarens beslut 2026-10-22).**
+Öppen tar spalten 240 px bredd av filten, och vid 1280×800 drog det korten under K9:s golv: 46 → 36 px på kortsidan, mätt i `online-felt.test.tsx`; 1440×900 gick 52 → 44, 1512×982 57 → 47, och 1920×1080 kostade ingenting, där filten är höjdbunden ändå.
+Utan eget val står spalten därför öppen bara där ett kort i vila håller 45 px med spalten öppen. Filten svarar själv på frågan (`onFit` i `TableRenderer`, med linsens mått, kortsidan gånger passningen), så gränsen är ingen brytpunkt i koden utan följer bordets form och antal platser.
+Ett eget val — öppna eller fäll ihop — minns webbläsaren som en tittares egen bekvämlighet och går före; den som öppnar spalten i ett litet fönster får mindre kort, och vet om det.
+I ett stående fönster ligger spalten över filtens hörn i stället för att ta en rad höjd, och öppnas aldrig utan att någon ber om det.
 Ihopfälld kostar den ingenting. A kostade ingen filt i vila men täckte en tredjedel av den när den var öppen och visade aldrig vem som skrev; C låg närmast det K5 sa nej till.
 
 **Blocket är sessionens, inte spelets.**
@@ -4042,7 +4044,7 @@ Observatören läser det men skriver inte, som hon bara får flagga.
 
 Följdkrav:
 Korpusen anonymiserar radernas text som den gör en flaggas (DRIFT §7), och `scripted-notepad.json` bär blocket genom ett ångra och en tillbakaspolning.
-Grindar: `packages/engine/test/notes.test.ts`, `packages/web/test/online-notes.test.tsx` och `packages/e2e/test/online-notes.spec.ts`, där två datorer skriver, bockar och skriver om i samma block.
+Grindar: `packages/engine/test/notes.test.ts`, `packages/web/test/online-notes.test.tsx`, `packages/e2e/test/online-notes.spec.ts`, där två datorer skriver, bockar och skriver om i samma block, och `packages/e2e/test/online-notes-k9.spec.ts`, som håller K9:s golv vid 1280, 1440, 1512 och 1920 i spaltens eget standardläge.
 Utanför den här leveransen: blocket på bordsskärmen, TV:n och telefonen, och raderna i designerns «Resultat» (G3). Datan bär redan allt de skulle läsa.
 
 ## L. Editorn (grillad 2026-09-06)
