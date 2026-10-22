@@ -642,6 +642,22 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const changeOf = (cardRef: string) => diff?.rows.find((r) => r.cardRef === cardRef)
   const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
+  // Only the cards that differ (#1104): three hundred rows held against a version where five
+  // moved is three hundred rows to scroll past. The choice belongs to the comparison it was made
+  // in: stopping it, or opening another, starts from every card. The reset is made in the render
+  // that sees the comparison change, not in an effect after it, so no frame shows the old choice
+  // against the new comparison. A proposal is a comparison too (#1003), with its own cards that
+  // differ, and the same comparison shown twice is two comparisons.
+  const heldAgainst: string | number | null = proposal ? 'proposal' : (compareWith?.rev ?? null)
+  const [onlyDiffIn, setOnlyDiffIn] = useState(heldAgainst)
+  const [onlyDiffPressed, setOnlyDiffPressed] = useState(false)
+  if (onlyDiffIn !== heldAgainst) {
+    setOnlyDiffIn(heldAgainst)
+    setOnlyDiffPressed(false)
+  }
+  const onlyDiff = heldAgainst !== null && onlyDiffPressed
+  const differs = (cardRef: string): boolean => (proposal ? proposal.changed.has(cardRef) : changeOf(cardRef) !== undefined)
+  const anyDiffers = proposal ? proposal.changed.size > 0 || proposal.added.size > 0 : (diff?.rows.length ?? 0) > 0
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
   // Kolumnerna som skrivs som prosa och därför kan visa ett stycke eller en punkt (L39). De
   // ritas som den form de bär i stället för som tecknen som bär den. Vilka de är föreslås av
@@ -1228,7 +1244,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const shownRef = useRef<ProjectDoc['rows']>([])
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
-    : filterRows(sortRows(doc.rows, sort), columns, asked, pinned)
+    : filterRows(sortRows(doc.rows, sort), columns, asked, pinned).filter((row) => !onlyDiff || row.id === pinned || differs(row.id))
+  // Whether anything is asked of the deck at all: the search, a column's chips, or the comparison's own ask.
+  const asking = isFiltering(asked) || onlyDiff
   // The cards gone since the version compared with, asked the same filter as every card (#479).
   shownRef.current = shown
   // The row the hand stands in, which is the only row with tab stops (#575, beslut 2026-09-29):
@@ -1471,6 +1489,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {proposal && (
         <p className="byd-data-compare" role="status" data-proposal="">
           {t('table.proposal')}: <Summary diff={diffProjects(doc, proposal.doc)} />{' '}
+          {anyDiffers && (
+            <button type="button" aria-pressed={onlyDiff} onClick={() => setOnlyDiffPressed(!onlyDiff)}>
+              {t('table.compare.only')}
+            </button>
+          )}
           {onHideProposal && (
             <button type="button" onClick={onHideProposal}>
               {t('table.proposal.hide')}
@@ -1482,6 +1505,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
           {compareWith.label ? ` · ${compareWith.label}` : ''}: <CompareSummary diff={diff} />{' '}
+          {anyDiffers && (
+            <button type="button" aria-pressed={onlyDiff} onClick={() => setOnlyDiffPressed(!onlyDiff)}>
+              {t('table.compare.only')}
+            </button>
+          )}
           {onOpenTemplate && noCardDiffers(diff) && diff.template && (
             <button type="button" onClick={onOpenTemplate}>
               {t('table.compare.template')}
@@ -1957,11 +1985,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       </table>
       </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
-      {shown.length === 0 && isFiltering(asked) && <p className="byd-data-empty">{t('table.empty')}</p>}
+      {shown.length === 0 && asking && <p className="byd-data-empty">{t('table.empty')}</p>}
       <button type="button" id="byd-data-add" ref={addCardRef} className="byd-data-add" onClick={() => {
           const cardRef = nextRef()
           onAddRow(cardRef)
-          setPinned(isFiltering(asked) ? cardRef : null)
+          setPinned(asking ? cardRef : null)
           setArriving(cardRef)
         }}>
         {t('table.addCard')}
@@ -2092,7 +2120,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               >
                 {bulkImage ? <AssetImage base={assetBase} hash={bulkImage} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
                 {bulkOver && <DropSays />}
-                {/* The library (#296): a picture the game already has, onto every marked card. */}
+                {/* The library (#296): a picture the game already has, into the row — and onto
+                    every marked card when the button is pressed, like a dropped or uploaded one
+                    (#1099). */}
                 <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
                   {t('table.image.choose')}
                 </button>
@@ -2123,6 +2153,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               onClick={() => {
                 if (bulkWrites === null) return
                 onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
+                // A picture set is said where the pictures are, as the library's own press used
+                // to say it (#296): the row is far from the cells it wrote.
+                if (bulkIsImage && bulkImage !== null) {
+                  const name = pictureName(bulkImage)
+                  setSaid(name === undefined ? t('table.library.done.other.unnamed', { n: chosen.length }) : t('table.library.done.other', { name, n: chosen.length }))
+                }
                 setBulkValue('')
                 setBulkImage(null)
               }}
@@ -2157,18 +2193,19 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           replacing={library.kind === 'cell' ? (isAssetRef(doc.rows.find((r) => r.id === library.cardRef)?.fields[library.field]) ? 1 : 0) : chosen.filter((r) => isAssetRef(r.fields[library.field])).length}
           pictures={pictures}
           assetBase={assetBase}
+          {...(library.kind === 'marked' ? { use: t('library.pick') } : {})}
           onApply={(hash) => {
-            // One change either way (L4, B4): a cell is one edit, and the marked cards are one
-            // list of rows — the same door every other bulk change goes through, so a step back
-            // takes all of them back at once.
             if (library.kind === 'cell') {
+              // A cell is one edit (L4, B4), made here.
               onCell(library.cardRef, library.field, assetRef(hash))
               const name = pictureName(hash)
               setSaid(name === undefined ? t('table.library.done.one.unnamed', { cardRef: library.cardRef }) : t('table.library.done.one', { name, cardRef: library.cardRef }))
             } else {
-              onReplaceRows(setColumn(doc.rows, chosenIds, library.field, assetRef(hash)))
-              const name = pictureName(hash)
-              setSaid(name === undefined ? t('table.library.done.other.unnamed', { n: chosen.length }) : t('table.library.done.other', { name, n: chosen.length }))
+              // The marked cards are written by the row's own button and not from here (#1099):
+              // the window chooses, the row holds, and «Sätt bild på N kort» is the one press
+              // that writes — the same as for a picture dropped on the row or uploaded into it,
+              // and one list of rows, so a step back takes all of them back at once.
+              setBulkImage(hash)
             }
             setLibrary(null)
           }}

@@ -311,6 +311,10 @@ Speltestet 2026-10-02 fann tre stavningar av samma begrepp: «rev 3» i huvudet,
 Slutskärmen talar spelets språk: «Bordet stannade på version 1. Enkäten finns hos varje spelare.», drag räknas som fysiska drag och inte loggrader, och de som satt kallas «vid bordet».
 `version-word.test.ts` håller formerna och läser båda katalogerna efter «rev» med platshållarnas namn bortskalade.
 
+Uppdaterat 2026-10-22 (#1104): bandet «Jämför med version N» har en växel «Bara ändrade kort».
+Trehundra rader hållna mot en version där fem rörde sig är trehundra rader att rulla förbi; intryckt visar tabellen bara de ändrade, de tillagda och de borttagna, och sökningen och kolumnfiltren är villkor ovanpå.
+Växeln erbjuds inte när inget kort skiljer sig (#702-bandet står kvar som det är), släpper raderna när jämförelsen avslutas eller byts, och gäller AI-hjälpens förslag i tabellen (#1003) på samma sätt, eftersom det är samma jämförelse.
+
 ### B5. Logikgräns: affordances plus deklarativ setup (fråga 5)
 
 Systemet kan manipulera — blanda, dra, vända, rotera, stapla, räkna, slå — och känner till spelets struktur: namngivna zoner, per-spelare-områden, startuppställning, drag- och kasthögar.
@@ -5422,6 +5426,13 @@ Massändringen är ett enda ångrasteg genom samma radlista som varje annan mass
 Media behåller bibliotek, uppladdning, beskärning och förhandsvisning; uppladdningen direkt i Data står kvar under sitt eget namn «Ladda upp», och dragsläppets förbättringar hör till #291.
 Dialogen är en komponent för sig med ett litet gränssnitt — mål, bilder, `onApply(hash)`, `onClose()` — så att mallens fasta bild (#320) kan öppna samma fönster.
 
+Reviderat 2026-10-22 (#1099, beställarens rapport): **i massändringen väljer dialogen och raden skriver.**
+Handlingsraden för de markerade korten har tre vägar in för en bild (E1): släpp en av spelets bilder, ladda upp en fil, eller öppna biblioteket.
+De två första lade bilden i raden och väntade på «Sätt bild på N kort»; biblioteket skrev korten direkt med «Använd på N kort», så raden stod tom med sin knapp inaktiv medan korten redan var ändrade — bilden sattes när den valdes och inte när knappen trycktes.
+Nu handlar dialogen bilden till raden som varje annan väg in, och radens knapp är det enda som skriver; dialogens knapp säger «Välj bilden», eftersom en knapp som inte skriver inte får lova det.
+Resultatbeskedet i remsan över tabellen sägs därför av radens knapp, och massändringen är samma enda ångrasteg som förut.
+För en enskild bildcell skriver dialogen som förut med «Använd bilden»: där finns ingen rad som håller något, och cellen är redan målet.
+
 Reviderat 2026-09-20 (#295, beställaren valde A): **förhandsvisningen i Media visar den kortsida som faktiskt ritar bilden, på ett kort valt bland dem som använder den.**
 
 Variant A, vald efter en klickbar A/B/C-prototyp: kortväljaren står överst, därunder två tydligt märkta sidval, Fram och Bak, och under dem ett enda stort kort; sidminiatyrer och två kortsidor samtidigt byggs inte.
@@ -7479,6 +7490,36 @@ Hyllorna i arken är val i verktygets `.byd-choice`-form och inte den primära f
 Klammerns «Hela biblioteket» i Tabell söker i katalogen och laddar den när klick två trycks, aldrig när `{` skrivs (L27).
 Före det står Decksters egna, och ett spel utan ikoner öppnar som förut på dem, nu med vägen till hela katalogen under.
 Det öppnade biblioteket visar 60 träffar; namnet efter klammern är det som smalnar av, som i arket.
+
+### L72. Inloggningsmejlet är bordet: tre band, trä, papper och vitt (prototypat och beslutat 2026-10-22, #1098)
+
+Inloggningsmejlet gick som ren text: «Hej! Klicka för att logga in: https://…», raden om 15 minuter och foten från #757.
+Det är det första brevet en skapare får av Deckster, och för många det enda, och det såg ut som ett systemmeddelande.
+
+Fyra former prövades i [`docs/ux-audits/2026-10-22-inloggningsmejlet/prototyper/1098-inloggningsmejlet.html`](docs/ux-audits/2026-10-22-inloggningsmejlet/prototyper/1098-inloggningsmejlet.html), som riktig mejl-HTML i en ritad klient: Gmail på skrivbord, en mörk klient och telefonen, på svenska och engelska, med bilderna visade och blockerade.
+Nuläget stod bredvid.
+A var inloggningskortet som brev: ett mörkt kort med handen, namnet och en grön pillerknapp.
+B var ett brev utan ruta: ett litet brevhuvud, hälsningen stor, en bläcksvart knapp och foten som underskrift.
+C var landningssidans rum i tre band: trä med handen och namnet i krita, papper med hälsningen och en bärnstensgul knapp, och vitt med länken utskriven och foten.
+Agenten rekommenderade B, som det lugnaste och det som går sönder minst.
+Beställaren valde **C**: mejlet är produktens ansikte från den sida som fick läsaren att skriva sin adress, och det enda av de tre som tar med trä och amber.
+
+Ett mejl är inte webben, och det ställer krav som sidorna inte har:
+
+- **Tabeller och inline-stil, inget typsnitt laddas, ingen `<svg>` och ingen `transform`.** Gmail tar bort `<svg>`, och ingen klient roterar ett kort.
+  Handen är därför också en PNG, `mark-128.png`, som `scripts/brand-icons.ts` skriver ur den enda ritningen (A6) och som sajten serverar; mejlet visar den i 64 px från `PUBLIC_ORIGIN`.
+- **Mejlet är helt utan bilder.** Många klienter visar inga bilder förrän läsaren tillåtit dem, så namnet står i text bredvid handen, och allt läsaren behöver är text.
+  Utan `PUBLIC_ORIGIN` (länken är en sökväg) visas ingen hand alls, hellre än en bild som pekar på ingenting.
+- **Länken står utskriven under knappen,** för den som inte kan klicka och den som vill se vart den går.
+  `&` i länken är en entitet i HTML, både i attributet och i den synliga raden.
+- **Förhandstexten är raden om 15 minuter,** så inkorgens andra rad säger något.
+- **Textdelen står kvar** som `text` bredvid `html`: läsare utan HTML får dagens brev, och det är den delen `login-mail.test.ts` alltid hållit.
+  Resend tar `html` bredvid `text`, och ett mejl utan `html` går som förut.
+- **Foten (#757) står sist i det vita bandet,** med tjänsten, sajten och kontakten, i läsarens språk (A4), och ingen .com någonstans (A5).
+
+Mejlet bor i `packages/server/src/login-mail.ts`, text och HTML tillsammans, och `auth.ts` exporterar det därifrån.
+`login-mail.test.ts` håller banden, språket, handen, länken och foten; `brand.test.ts` håller att PNG:n är skriptets; `app-icon.spec.ts` läser dess pixlar som den serveras.
+Inbjudningsmejlet (#477) går fortfarande som text och får samma form i ett eget issue.
 
 ### L73. Verktyget talar vanlig svenska, och sekundära kontroller bär ikoner (prototypat och beslutat 2026-10-22, #1101)
 

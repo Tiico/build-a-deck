@@ -18,7 +18,9 @@ export type AuthStore = {
   deleteSession(sessionHash: string): Promise<void>
 }
 
-export type Mail = { to: string; subject: string; text: string }
+// `text` is the part every reader gets; `html` (#1098) is the letter a client that draws HTML shows
+// instead, and a mail without one is sent as text alone.
+export type Mail = { to: string; subject: string; text: string; html?: string }
 export type Mailer = { send(mail: Mail): Promise<void> }
 
 export const TOKEN_TTL_MS = 15 * 60 * 1000
@@ -90,12 +92,12 @@ export class ConsoleMailer implements Mailer {
 
 // Resend (DRIFT §12): a home IP is blacklisted, so mail leaves through a provider.
 export class ResendMailer implements Mailer {
-  constructor(private readonly apiKey: string, readonly from: string) {}
+  constructor(private readonly apiKey: string, readonly from: string, private readonly fetcher: typeof fetch = fetch) {}
   async send(mail: Mail): Promise<void> {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await this.fetcher('https://api.resend.com/emails', {
       method: 'POST',
       headers: { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ from: this.from, to: [mail.to], subject: mail.subject, text: mail.text }),
+      body: JSON.stringify({ from: this.from, to: [mail.to], subject: mail.subject, text: mail.text, ...(mail.html ? { html: mail.html } : {}) }),
     })
     if (!res.ok) throw new Error(`mail failed: ${res.status} ${await res.text()}`)
   }
@@ -142,27 +144,5 @@ export function safeNext(next: string | undefined): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
 }
 
-// The mail's foot says who sent it (#757): the service, the site the link leads to, and the
-// contact when the box was given one.
-// A link that is a path on this site (no public origin was set) names no site, and the foot then
-// says the service alone rather than failing the login.
-const siteOf = (link: string): string | null => (URL.canParse(link) ? new URL(link).origin : null)
-const mailFoot = (link: string, contact: string | undefined, label: string): string => {
-  const site = siteOf(link)
-  return `\n\n— \nDeckster${site ? ` · ${site}` : ''}${contact ? `\n${label}: ${contact}` : ''}`
-}
-
-export function loginMail(to: string, link: string, lang: Lang = 'sv', contact?: string): Mail {
-  if (lang === 'en') {
-    return {
-      to,
-      subject: 'Sign in to Deckster',
-      text: `Hello!\n\nClick to sign in: ${link}\n\nThe link works for 15 minutes and only once. If you did not ask for it, you can ignore this mail.${mailFoot(link, contact, 'Contact')}`,
-    }
-  }
-  return {
-    to,
-    subject: 'Logga in på Deckster',
-    text: `Hej!\n\nKlicka för att logga in: ${link}\n\nLänken fungerar i 15 minuter och bara en gång. Har du inte bett om den kan du ignorera det här mejlet.${mailFoot(link, contact, 'Kontakt')}`,
-  }
-}
+// The mail itself, text and HTML, is `login-mail.ts`'s (#757, #1098).
+export { loginMail } from './login-mail.js'

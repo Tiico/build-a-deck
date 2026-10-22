@@ -2270,6 +2270,8 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 /* Held against an older version (B4): what moved, and the cards that came or went. */
 .byd-data-compare { margin: 0 0 8px; color: #cfd5e3; font-size: 12px; }
 .byd-data-compare button { margin-left: 4px; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+/* The band's toggle pressed (#1104), in the same ink the table's other pressed buttons wear. */
+.byd-data-compare button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-mark); color: var(--byd-editor-primary-ink); }
 .byd-data-was { display: block; padding: 0 8px; color: #f0b64a; font-size: 11px; }
 /* The tint is a layer over the cell's ground and not the ground itself (#609): written as the ground
    it made the pinned tick and id translucent, so a value scrolled in under them showed through, and

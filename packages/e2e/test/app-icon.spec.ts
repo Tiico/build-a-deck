@@ -9,6 +9,8 @@ test('serves the icon in every form a browser asks for, and the page names it', 
     ['/favicon.svg', 'image/svg+xml'],
     ['/favicon.ico', 'image/x-icon'],
     ['/apple-touch-icon.png', 'image/png'],
+    // The login mail's hand (#1098, L72), which a mail client fetches from the site.
+    ['/mark-128.png', 'image/png'],
     ['/manifest.webmanifest', 'application/manifest+json'],
   ] as const) {
     const res = await request.get(path)
@@ -37,6 +39,7 @@ test('every icon a browser is given draws the hand: amber, green and paper', asy
   await page.goto('/')
   for (const [path, size, ground] of [
     ['/favicon.ico', 32, 'none'],
+    ['/mark-128.png', 128, 'none'],
     ['/apple-touch-icon.png', 180, 'wood'],
     ['/icon-192.png', 192, 'wood'],
     ['/icon-512.png', 512, 'wood'],
