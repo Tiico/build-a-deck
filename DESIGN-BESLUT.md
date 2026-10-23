@@ -4122,6 +4122,11 @@ Med tangentbordet slår Enter eller Space en fokuserad tärning, och M öppnar �
 Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
 Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
 
+I en tryckt lek är en tärning en köpt standardtärning som partnern packar i lådan, och ingenting trycks på den (beställarens beslut 2026-10-23, #1140).
+Typen bär `print.stock: true`, och tryckexporten listar tärningarna som hårdvara efter sort och antal bredvid korten, aldrig som kort.
+Den som beställer kan lämna hårdvaran utanför (`POST /projects/:id/print` med `{ hardware: false }`), eftersom många partner inte packar tärningar.
+Vilka partner som gör det, och `manufacturableBy`, hör till partnerlagret (F2) och fylls när en partner är integrerad.
+
 Prototyperna: [`index.html`](https://github.com/Tiico/build-a-deck/blob/3cff0957e3494cc3c096f59c8dd1e70a06101144/docs/ux-audits/2026-10-22-tarningar/prototyper/index.html) (bordet och telefonen, beslut A + B) och [`editor.html`](https://github.com/Tiico/build-a-deck/blob/5adb14f5544d2a9be04da4a3f8e78eb6150e93df/docs/ux-audits/2026-10-22-tarningar/prototyper/editor.html) (fliken Bord, beslut A med dynamiskt antal).
 
 ### K29. Bordets anteckningsblock: en spalt på /online, rader med vem som skrev dem (prototypat och beslutat 2026-10-22, #1131)

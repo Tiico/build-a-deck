@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import type { Deck } from '../src/faces.js'
 import { printExportOf } from '../src/faces.js'
 
@@ -75,5 +75,35 @@ describe('the print export (#14)', () => {
 
     expect(printed.jobs.every((job) => job.kind.kind === 'pdf' && job.priority === 'print' && job.requestedAt === 123)).toBe(true)
     expect(printed.jobs.every((job) => job.compiled.html.includes('data-bleed="3"'))).toBe(true)
+  })
+
+  // A die in a printed game is a stock die the partner puts in the box, not something printed
+  // (#1140, beställarens beslut): it is listed beside the cards as hardware, counted by kind, and
+  // whoever orders may leave the hardware out, since many partners will not pack it.
+  describe('dice (#1140)', () => {
+    const die = (faces: number) => {
+      const def = DICE.find((d) => d.id === `die.d${faces}`)!
+      return { type: { id: def.id, version: def.version }, cardRef: `d${faces}`, zone: 'table', face: 'front', counter: 1 }
+    }
+    const withDice: SetupDef = { ...setup, components: [...setup.components, die(6), die(20), die(6)] }
+
+    it('marks every die as a stock item, not printed matter', () => {
+      expect(DICE.map((d) => d.print.stock)).toEqual(DICE.map(() => true))
+      expect(CARD_STANDARD_63x88.print.stock).toBeUndefined()
+    })
+
+    it('lists the dice as hardware by kind, in the order the game first names them, and prints none of them', () => {
+      const printed = printExportOf(deck, withDice, registry, 123)
+      expect(printed.cards.map((card) => card.cardRef)).toEqual(['trap', 'dragon', 'trap'])
+      expect(printed.hardware).toEqual([
+        { type: 'die.d6', count: 2 },
+        { type: 'die.d20', count: 1 },
+      ])
+    })
+
+    it('leaves the hardware out when asked, and a game without dice has none', () => {
+      expect(printExportOf(deck, withDice, registry, 123, { hardware: false }).hardware).toEqual([])
+      expect(printExportOf(deck, setup, registry, 123).hardware).toEqual([])
+    })
   })
 })

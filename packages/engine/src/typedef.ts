@@ -40,6 +40,9 @@ export const ComponentTypeDef = z.object({
     dpi: z.number().int().positive(),
     colorProfile: z.string().min(1),
     minPtByScript: z.record(z.string(), z.number().positive()),
+    // A stock item the partner buys and packs rather than prints (#1140): a die in a printed game
+    // is a standard die in the box. It goes to print as hardware beside the cards, never as a card.
+    stock: z.literal(true).optional(),
   }),
   manufacturableBy: z.array(z.string().min(1)),
 })
@@ -129,7 +132,7 @@ const die = (faces: number, sizeMm: number): ComponentTypeDef => ({
   contentFace: 'front',
   behaviours: { stackable: false, shufflable: false, flippable: false, rollable: { faces }, counter: false },
   editorSchema: [],
-  print: { bleedMm: 0, safeMm: 0, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6 } },
+  print: { bleedMm: 0, safeMm: 0, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6 }, stock: true },
   manufacturableBy: [],
 })
 export const DICE: readonly ComponentTypeDef[] = [die(4, 18), die(6, 16), die(8, 18), die(10, 18), die(12, 20), die(20, 20)]

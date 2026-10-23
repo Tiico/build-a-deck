@@ -671,6 +671,25 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     expect(jobs.every((job) => job.kind.kind === 'pdf' && job.priority === 'print')).toBe(true)
   })
 
+  // A die goes to print as hardware the partner packs, never as a card (#1140), and whoever orders
+  // may leave the hardware out.
+  it('hands a print order its dice as hardware, and leaves them out when asked', async () => {
+    const base = groupedProject()
+    const area = base.setup.zones.find((z: { kind: string }) => z.kind === 'area')!
+    const body = { ...base, setup: { ...base.setup, dice: [{ faces: 6, count: 2, zone: area.id }, { faces: 20, count: 1, zone: area.id }] } }
+    const { id } = (await (await json('POST', '/projects', body)).json()) as { id: string }
+
+    const ordered = (await (await json('POST', `/projects/${id}/print`, {})).json()) as { cards: { cardRef: string }[]; hardware: { type: string; count: number }[] }
+    expect(ordered.cards.map((card) => card.cardRef)).toEqual(['dragon', 'trap'])
+    expect(ordered.hardware).toEqual([
+      { type: 'die.d6', count: 2 },
+      { type: 'die.d20', count: 1 },
+    ])
+    const without = (await (await json('POST', `/projects/${id}/print`, { hardware: false })).json()) as { hardware: unknown[] }
+    expect(without.hardware).toEqual([])
+    expect((await json('POST', `/projects/${id}/print`, { hardware: 'ja' })).status).toBe(400)
+  })
+
   it('keeps a project print export private to its owner', async () => {
     const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
     expect((await fetch(`${run.http}/projects/${id}/print`, { method: 'POST' })).status).toBe(401)
