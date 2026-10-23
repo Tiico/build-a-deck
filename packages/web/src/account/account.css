@@ -227,7 +227,9 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-asking button { min-height: 44px; border: 1px solid #4a3232; border-radius: 8px; padding: 6px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-home-asking button[data-kind='danger'] { background: #a12b2b; border-color: #a12b2b; }
 .byd-home-game[data-new] { padding: 16px; }
-.byd-home-notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; }
+.byd-home-notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; line-height: 1.5; }
+/* A met ceiling (#1198, variant A) leads with what did not happen, set off in white. */
+.byd-home-notice b { color: #fff; }
 
 /* The language switch (A4): on the login card, so a reader who cannot read the page can still change
    what it speaks. Signed in, it is on the profile page (#999). */

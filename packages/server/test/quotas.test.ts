@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_PLANS, growth, limitOf, plansFromEnv, plansLine } from '../src/quotas.js'
+import { DEFAULT_PLANS, growth, limitOf, ownerNameOf, plansFromEnv, plansLine } from '../src/quotas.js'
 
 // The tiers as configuration (A2, #1192, #1193): read once at start from `BYD_PLANS`, and without it
 // a single tier where nothing is limited — the beta's state, and the state a box lands in when the
@@ -69,5 +69,28 @@ describe('a measure growing', () => {
   it('never refuses what does not grow, even over the ceiling', () => {
     expect(growth('projects', 2, 5, 0)).toBeNull()
     expect(growth('projects', 2, 5, -1)).toBeNull()
+  })
+})
+
+// Whose ceiling a test leader or a co-editor met (#1198, beställarens beslut 3): the owner by name,
+// and never by address or tier. An account has no name of its own, so the name is the first word of
+// the address before the @ that reads as a name, with a capital; an address with none is no name.
+describe('the owner named on a ceiling someone else met', () => {
+  it('is the first word of the address that reads as a name, with a capital', () => {
+    expect(ownerNameOf('nicklas.ockelberg@example.com')).toBe('Nicklas')
+    expect(ownerNameOf('ockelberg@gmail.com')).toBe('Ockelberg')
+    expect(ownerNameOf('ada-3@example.com')).toBe('Ada')
+    expect(ownerNameOf('e2e-owner+1198@example.com')).toBe('Owner')
+    expect(ownerNameOf('åsa_lind@example.se')).toBe('Åsa')
+  })
+
+  it('is nothing when no word of the address reads as a name, so the sentence says «the game’s owner»', () => {
+    expect(ownerNameOf('x1@example.com')).toBeNull()
+    expect(ownerNameOf('12345@example.com')).toBeNull()
+    expect(ownerNameOf('a.b@example.com')).toBeNull()
+  })
+
+  it('never carries the rest of the address', () => {
+    for (const email of ['nicklas.ockelberg@example.com', 'ada-3@example.com', 'ockelberg@gmail.com']) expect(ownerNameOf(email)).not.toMatch(/[@.\-+_\d]|example|gmail/i)
   })
 })

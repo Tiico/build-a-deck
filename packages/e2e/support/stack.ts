@@ -112,6 +112,27 @@ export async function start(): Promise<Stack> {
 }
 
 /**
+ * A second server beside the stack's, on the same built app, database and object store, started with
+ * configuration of its own — for a journey about something the box is configured for and the run's
+ * server is not, such as the tiers in `BYD_PLANS` (#1198). It keeps a log of its own, so the run's
+ * server log, where the mail is read, is never written over.
+ */
+export async function serverWith(env: Record<string, string>): Promise<{ origin: string; stop: () => Promise<void> }> {
+  const dist = process.env['BYD_E2E_WEB_DIST']
+  if (!dist) throw new Error('serverWith runs inside the suite, where the stack has been started')
+  const database = process.env['BYD_E2E_DATABASE_URL']
+  const logFile = join(HERE, '..', '.stack', `server-${randomBytes(4).toString('hex')}.log`)
+  const server = await listen({ STATIC_DIR: dist, ...(database ? { DATABASE_URL: database } : {}), ...env }, logFile)
+  return {
+    origin: server.origin,
+    stop: async () => {
+      await server.stop()
+      rmSync(logFile, { force: true })
+    },
+  }
+}
+
+/**
  * The server, listening and answering `/health`.
  *
  * `AUTH_BYPASS` is on because the alternative is a mail round trip, and what a login link proves
@@ -122,9 +143,9 @@ export async function start(): Promise<Stack> {
  * A table that nobody is looking at is not swept out from under a test that is between two
  * pages, so both idle timers are pushed past any run.
  */
-async function listen(env: Record<string, string>): Promise<{ origin: string; stop: () => Promise<void> }> {
+async function listen(env: Record<string, string>, logFile = LOG): Promise<{ origin: string; stop: () => Promise<void> }> {
   let port = await free()
-  mkdirSync(join(LOG, '..'), { recursive: true })
+  mkdirSync(join(logFile, '..'), { recursive: true })
   for (let attempt = 0; attempt < 8; attempt++) {
     const origin = `http://127.0.0.1:${port}`
     // The links the server writes into mail are on its public origin, as they are on the box.
@@ -137,10 +158,10 @@ async function listen(env: Record<string, string>): Promise<{ origin: string; st
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     const log: string[] = []
-    writeFileSync(LOG, '')
+    writeFileSync(logFile, '')
     child.stdout.on('data', (b: Buffer) => {
       log.push(String(b))
-      appendFileSync(LOG, b)
+      appendFileSync(logFile, b)
     })
     child.stderr.on('data', (b: Buffer) => log.push(String(b)))
 

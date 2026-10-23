@@ -78,25 +78,26 @@
 .byd-profile-facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; }
 .byd-profile-facts dt { color: var(--byd-profile-quiet); }
 .byd-profile-facts dd { margin: 0; overflow-wrap: anywhere; }
-.byd-profile .byd-about { margin-top: 8px; }
 
-@media (max-width: 480px) {
-  .byd-profile-card { padding: 16px; }
-}
-
-/* The passkeys (#1180, beslut A): a row each — the key in its well, what it is and where it was
-   saved, and the bin at a thumb's size — with the question under the row it asks about. */
-.byd-passkeys { list-style: none; margin: 0; padding: 0; display: grid; }
-.byd-passkeys > li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--byd-profile-line); }
-.byd-passkeys > li:first-child { border-top: 0; }
-.byd-passkeys > li > .byd-profile-question { grid-column: 1 / -1; }
-.byd-passkey-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #232838; color: var(--byd-profile-soft); }
-.byd-passkey-icon > .byd-glyph { width: 18px; height: 18px; }
-.byd-passkey-text { display: grid; min-width: 0; }
-.byd-passkey-text b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.byd-passkey-text small { color: var(--byd-profile-quiet); font-size: 12px; line-height: 1.5; }
-.byd-passkey-text small.byd-passkey-here { color: var(--byd-profile-ok); font-weight: 650; }
-.byd-passkey-remove { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--byd-profile-quiet); cursor: pointer; }
-.byd-passkey-remove:hover { border-color: var(--byd-secondary-line); color: #fff; }
-.byd-passkey-remove > .byd-glyph { width: 18px; height: 18px; }
-.byd-passkey-add { gap: 8px; }
+/* What the account uses (#1198, variant A): a row per measure that has a ceiling — its name, a bar
+   and «used av limit» — and the cards of each game a step in under their own heading. One grid for
+   the whole list, which every row and the games' own list take their columns from (subgrid), so the
+   bars stand in one column whatever the numbers beside them say. The bar is the words again and is
+   not read out; it turns amber from four fifths and deeper amber when full. */
+.byd-usage { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 150px max-content; gap: 10px 16px; align-items: center; }
+.byd-usage .byd-usage { grid-column: 1 / -1; grid-template-columns: subgrid; }
+.byd-usage-row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
+.byd-usage-row > dt { color: #dce3f2; }
+.byd-usage-row > dt small { display: block; color: var(--byd-profile-quiet); font-size: 12px; }
+.byd-usage-row > dd { margin: 0; display: contents; }
+.byd-usage-n { color: var(--byd-profile-quiet); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.byd-usage-n[data-fill='full'] { color: #f0d48a; }
+.byd-usage-bar { display: block; height: 6px; border-radius: 3px; background: #262a35; overflow: hidden; }
+.byd-usage-bar > i { display: block; width: var(--byd-usage-p); height: 100%; border-radius: 3px; background: #7dd3a0; }
+.byd-usage-bar[data-fill='near'] > i { background: #e8c06a; }
+.byd-usage-bar[data-fill='full'] > i { background: #f0b64a; }
+/* Cards per game: the heading across the row, and each game under it, set in by its own padding. */
+.byd-usage-row[data-group] { row-gap: 8px; }
+.byd-usage-row[data-group] > dt { grid-column: 1 / -1; color: var(--byd-profile-quiet); font-size: 13px; }
+.byd-usage-row[data-group] > dd { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
+.byd-usage-row[data-game] > dt { padding-left: 16px; color: var(--byd-profile-soft); font-size: 13px; }

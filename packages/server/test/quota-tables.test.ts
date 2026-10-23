@@ -242,7 +242,7 @@ for (const backend of backends) {
 
     // The creator bears the cost of her own testers (A2): a test leader and a co-editor are held to
     // the owner's ceiling, never their own, and told it is the owner's without the owner's address or tier.
-    it('holds a test leader and a co-editor to the owner’s ceiling, and says so without saying who the owner is', async () => {
+    it('holds a test leader and a co-editor to the owner’s ceiling, and names the owner without her address or tier (#1198)', async () => {
       await open(tiers({ openTables: 1 }))
       const ada = await someone('ada')
       const bo = await someone('bo')
@@ -257,7 +257,7 @@ for (const backend of backends) {
         const refused = await startAt(who.cookie, project)
         expect(refused.status).toBe(402)
         const body = await refused.text()
-        expect(JSON.parse(body)).toEqual({ error: 'quota', quota: { measure: 'openTables', limit: 1, used: 1, bearer: 'owner' } })
+        expect(JSON.parse(body)).toEqual({ error: 'quota', quota: { measure: 'openTables', limit: 1, used: 1, bearer: 'owner', ownerName: 'Ada' } })
         expect(body).not.toContain('ada-')
         expect(body).not.toContain('free')
       }

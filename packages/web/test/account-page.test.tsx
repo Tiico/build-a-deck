@@ -98,10 +98,12 @@ describe('the login card and HomePage', () => {
     // The card's face is the way into the editor; the menu beside it is not (G1).
     fireEvent.click(document.querySelector(`[data-project="${run.projectId}"] .byd-home-open`)!)
     expect(gone.at(-1)).toMatch(new RegExp(`^/editor\\?project=${run.projectId}`))
-    // Both ways to a new game — the bar's and the dashed row's — lead to the guided start.
-    for (const make of screen.getAllByRole('link', { name: /Nytt spel/ })) {
+    // Both ways to a new game — the bar's and the dashed row's — lead to the guided start, once the
+    // account has been asked whether it holds one more (#1198).
+    const makes = screen.getAllByRole('link', { name: /Nytt spel/ })
+    for (const [at, make] of makes.entries()) {
       fireEvent.click(make)
-      expect(gone.at(-1)).toMatch(/^\/new\?/)
+      await waitFor(() => expect(gone.filter((url) => /^\/new\?/.test(url))).toHaveLength(at + 1))
     }
     // Logged out, the same page is the landing page again (#1009), with its door back to the login.
     fireEvent.click(screen.getByText('Logga ut'))

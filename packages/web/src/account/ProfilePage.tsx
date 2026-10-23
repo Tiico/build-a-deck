@@ -3,6 +3,7 @@ import { LoginCard } from './LoginCard.js'
 import { AboutLine } from './AboutLine.js'
 import { KeyBox, type WayBack } from './KeyBox.js'
 import { PasskeyBox } from './PasskeyBox.js'
+import { UsageCard } from './UsageCard.js'
 import { logout, myProjects, whoAmI } from './api.js'
 import { readAiKey, type AiKey } from './ai-key.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -14,7 +15,7 @@ import './account.css'
 import './profile.css'
 
 // /profile — the logged-in designer's own page (#999, #998 variant A): one column, the AI key first,
-// then the language and the account. An account has three things today, and one column is what three
+// then the passkeys, what the account uses once a ceiling is set (#1198), the language and the account. An account has three things today, and one column is what three
 // things need. The way in is a word in Mina spel's line, «e-post · Profil · logga ut», and the
 // language picker moved here from that line.
 //
@@ -91,6 +92,8 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
         </header>
         <KeyBox http={http} initial={loaded.key} wayBack={wayBack} />
         <PasskeyBox http={http} />
+        {/* What the account uses (#1198, variant A), only once a ceiling is set. */}
+        <UsageCard http={http} />
         <section className="byd-profile-card" aria-labelledby="byd-profile-lang">
           <h2 id="byd-profile-lang">{t('profile.lang.title')}</h2>
           <div className="byd-profile-field">

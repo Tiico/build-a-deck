@@ -35,7 +35,7 @@ function holdUploads(): () => void {
   const held = new Promise<void>((resolve) => (release = resolve))
   const real = globalThis.fetch
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    if (init?.method === 'POST' && String(input).endsWith('/assets')) await held
+    if (init?.method === 'POST' && new URL(String(input)).pathname === '/assets') await held
     return real(input, init)
   })
   return release
