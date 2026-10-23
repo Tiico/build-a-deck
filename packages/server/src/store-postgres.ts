@@ -471,6 +471,21 @@ async function naming(tx: postgres.TransactionSql, id: string, hashes: readonly 
   await tx`insert into project_assets ${tx(hashes.map((hash) => ({ project_id: id, hash })))} on conflict do nothing`
 }
 
+// The edit log between saves (D3), written in whatever transaction the caller is in.
+async function logged(sql: postgres.Sql | postgres.TransactionSql, id: string, edits: readonly AppliedEdit[]): Promise<void> {
+  if (edits.length === 0) return
+  await sql`
+    insert into project_events ${sql(
+      edits.map((e) => ({ project_id: id, seq: e.seq, intent: sql.json(e.intent as never), by_account: e.by ?? null, created_at: e.at })),
+      'project_id',
+      'seq',
+      'intent',
+      'by_account',
+      'created_at',
+    )}
+  `
+}
+
 export class PostgresProjectStore implements ProjectStore {
   constructor(private readonly sql: postgres.Sql) {}
 
@@ -621,17 +636,7 @@ export class PostgresProjectStore implements ProjectStore {
 
   // The edit log between saves (D3): committed before an edit is applied, read back on load.
   async appendEdits(id: string, edits: AppliedEdit[]): Promise<void> {
-    if (edits.length === 0) return
-    await this.sql`
-      insert into project_events ${this.sql(
-        edits.map((e) => ({ project_id: id, seq: e.seq, intent: this.sql.json(e.intent as never), by_account: e.by ?? null, created_at: e.at })),
-        'project_id',
-        'seq',
-        'intent',
-        'by_account',
-        'created_at',
-      )}
-    `
+    await logged(this.sql, id, edits)
   }
 
   async readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]> {
@@ -641,7 +646,9 @@ export class PostgresProjectStore implements ProjectStore {
     return rows.map((r) => ({ seq: r.seq, at: r.created_at.toISOString(), ...(r.by_account ? { by: r.by_account } : {}), intent: r.intent }))
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  // One transaction: the edits, the version and what it names are written together after the
+  // ceiling is asked, or none of them is (#1233).
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = []): Promise<ProjectRecord | 'conflict' | 'missing'> {
     const hashes = assetHashesOf(doc)
     return this.sql.begin(async (tx) => {
       const [row] = await tx<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id} for update`
@@ -649,8 +656,12 @@ export class PostgresProjectStore implements ProjectStore {
       if (row.rev !== expectedRev) return 'conflict'
       // Read under the same lock as the write, so "nothing changed" cannot be decided against a
       // document somebody else has already replaced (B4).
-      if (stamp(row.doc) === stamp(doc)) return { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) }
+      if (stamp(row.doc) === stamp(doc)) {
+        await logged(tx, id, edits)
+        return { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) }
+      }
       await storing(tx, row.owner ?? undefined, ceilings?.storageBytes, hashes)
+      await logged(tx, id, edits)
       const rev = row.rev + 1
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
       // The history (B4) grows by one; nothing already in it is ever written again.
