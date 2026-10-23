@@ -5,7 +5,7 @@ import type { CardFace, CardPeek, Role } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
 import { Unauthorized, pageLang, withCredentials } from './session.js'
-import { QuotaReached, quotaOf } from './quota.js'
+import { QuotaReached, quotaOf, type Quota } from './quota.js'
 export { Unauthorized, claimGuest, claimUrl, loginUrl, logout, requestLink, whoAmI, withCredentials } from './session.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
@@ -152,6 +152,9 @@ export async function duplicateProject(http: string, project: string, t: T = swe
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/duplicate?${q.toString()}`, withCredentials({ method: 'POST' }))
   if (res.status === 401) throw new Unauthorized()
   if (res.status === 404) throw new Said(t('error.game.gone'))
+  // The copy is the account's own and is held to its own ceilings (#1193); the page says which (#1198).
+  const quota = await quotaOf(res)
+  if (quota) throw new QuotaReached(quota, t('error.duplicateGame.failed'))
   if (!res.ok) throw new Said(t('error.duplicateGame.failed'))
   return (await res.json()) as { id: string; name: string }
 }
@@ -216,11 +219,24 @@ export function zipName(disposition: string | null, fallback: string): string {
 // An export brought back as a new game (G5, #528). Why it could not be comes back as codes, which
 // the window says in the reader's words.
 export type ImportProblem = { code: string; values?: Record<string, string | number> }
-export async function importGame(http: string, file: Blob): Promise<{ ok: true; id: string } | { ok: false; problems: ImportProblem[] }> {
+// A ceiling the import met (#1193, #1198) is no problem of the zip's, and comes back as the ceiling.
+export async function importGame(http: string, file: Blob): Promise<{ ok: true; id: string } | { ok: false; problems: ImportProblem[] } | { ok: false; quota: Quota }> {
   const q = new URLSearchParams(pageLang())
   const res = await fetch(`${http}/projects/import?${q.toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }))
   if (res.status === 201) return { ok: true, id: ((await res.json()) as { id: string }).id }
   if (res.status === 413) return { ok: false, problems: [{ code: 'too-big' }] }
+  const quota = await quotaOf(res.clone())
+  if (quota) return { ok: false, quota }
   const body = (await res.json().catch(() => ({}))) as { problems?: ImportProblem[] }
   return { ok: false, problems: body.problems ?? [{ code: 'refused' }] }
+}
+
+// What the account uses and what it holds (#1193, #1198): per measure the use and the ceiling, `null`
+// for none, and cards per game for every game it owns. Null when it cannot be read — accounts off,
+// or no answer — which every surface reads as «nothing to say».
+export type Usage = { measures: Record<string, { used: number; limit: number | null; projects?: { id: string; used: number }[] }> }
+export async function myUsage(http: string): Promise<Usage | null> {
+  const res = await fetch(`${http}/me/usage`, withCredentials()).catch(() => null)
+  if (!res?.ok) return null
+  return (await res.json().catch(() => null)) as Usage | null
 }

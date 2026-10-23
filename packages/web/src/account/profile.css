@@ -78,6 +78,26 @@
 .byd-profile-facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; }
 .byd-profile-facts dt { color: var(--byd-profile-quiet); }
 .byd-profile-facts dd { margin: 0; overflow-wrap: anywhere; }
+
+/* What the account uses (#1198, variant A): a row per measure that has a ceiling — its name, a bar
+   and «used av limit» — and the cards of each game a step in under their own heading. The bar is the
+   words again and is not read out; it turns amber from four fifths and deeper amber when full. */
+.byd-usage { margin: 0; display: grid; gap: 10px; }
+.byd-usage-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px minmax(max-content, auto); gap: 16px; align-items: center; }
+.byd-usage-row > dt { color: #dce3f2; }
+.byd-usage-row > dt small { display: block; color: var(--byd-profile-quiet); font-size: 12px; }
+.byd-usage-row > dd { margin: 0; display: contents; }
+.byd-usage-n { color: var(--byd-profile-quiet); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.byd-usage-n[data-fill='full'] { color: #f0d48a; }
+.byd-usage-bar { display: block; height: 6px; border-radius: 3px; background: #262a35; overflow: hidden; }
+.byd-usage-bar > i { display: block; width: var(--byd-usage-p); height: 100%; border-radius: 3px; background: #7dd3a0; }
+.byd-usage-bar[data-fill='near'] > i { background: #e8c06a; }
+.byd-usage-bar[data-fill='full'] > i { background: #f0b64a; }
+/* Cards per game: the heading across the row, and each game under it, set in by its own padding. */
+.byd-usage-row[data-group] { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.byd-usage-row[data-group] > dt { color: var(--byd-profile-quiet); font-size: 13px; }
+.byd-usage-row[data-group] > dd { display: block; }
+.byd-usage-row[data-game] > dt { padding-left: 16px; color: var(--byd-profile-soft); font-size: 13px; }
 .byd-profile .byd-about { margin-top: 8px; }
 
 @media (max-width: 480px) {
