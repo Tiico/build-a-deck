@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
-import { compressible, encodedBytes, encodedCopy } from './compress.js'
+import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from './compress.js'
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
@@ -584,19 +584,6 @@ export function inlineDisposition(name: string): string {
 const FACE_LINK_TTL_S = 3600
 const FACE_LINK_SLACK_S = 600
 
-const MIME: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.ico': 'image/x-icon',
-  '.webmanifest': 'application/manifest+json',
-  '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8',
-}
-
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
@@ -615,7 +602,7 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const candidate = await fileAt(wanted)
   const file = candidate ?? (extname(wanted) === '' ? await fileAt(join(root, 'index.html')) : null)
   if (!file) return false
-  const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
+  const type = typeOf(file)
   const hashed = file.includes(`${sep}assets${sep}`)
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
   // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
@@ -634,6 +621,13 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
     const bytes = encoded?.bytes ?? page.bytes
     res.writeHead(200, { ...head, ...(encoded ? { 'content-encoding': encoded.encoding } : {}), 'content-length': String(bytes.length) })
     res.end(bytes)
+    return true
+  }
+  // What the build compressed goes out as the build made it, from disk (DRIFT §13).
+  const ready = await precompressed(file, type, accept)
+  if (ready) {
+    res.writeHead(200, { ...head, 'content-encoding': ready.encoding, 'content-length': String(ready.size) })
+    await new Promise<void>((resolve, reject) => createReadStream(ready.path).on('error', reject).on('end', () => resolve()).pipe(res))
     return true
   }
   const encoded = await encodedCopy(file, type, accept)

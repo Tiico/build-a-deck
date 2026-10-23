@@ -393,15 +393,22 @@ Fram till nu satte ingenting i repot rubriken alls.
 
 Två avvägningar, båda om att lådan är en delad maskin med fyra kärnor och ett minnestak på 512 MB för `app` (§1):
 
-Varje fil komprimeras **en gång per deploy, inte en gång per förfrågan** — den byggda webben är oföränderlig under imagens livstid, så svaret sparas första gången någon ber om det och varje senare förfrågan är byte som redan ligger i handen.
-Löpande CPU är alltså noll, och det är enda skälet till att brotlis dyraste nivå är försvarbar här.
-Komprimeringen körs utanför händelseloopen, så den förfrågan som betalar för den håller inte upp ett bords patchar.
+Varje fil komprimeras **en gång per bygge, inte en gång per förfrågan** — den byggda webben är oföränderlig under imagens livstid, så `vite build` skriver `app.css.br` och `app.css.gz` bredvid filen (`precompress` i `packages/server/src/compress.ts`), och lådan strömmar den kopian från disk.
+Lådan lägger alltså varken CPU eller minne på det, och det är enda skälet till att brotlis dyraste nivå är försvarbar.
+En kopia som är äldre än sin fil används inte, eftersom den är en kopia av filen som låg där före.
+
+Ändrat 2026-10-23 (#1087): fram till dess komprimerade lådan själv varje fil första gången någon bad om den och sparade svaret.
+Det höll så länge webben var under en megabyte text.
+Game-icons-chunken är 6,4 MB, och brotlis dyraste nivå över den tar 14 s på en ledig Mac och 72 s på en belastad maskin.
+Första designern efter en deploy väntade så länge med ikonarket öppet, och alla som frågade under tiden väntade på samma svar.
+Det lådan inte fått färdigt — en fil som skrivits under en körande server, sidan som servern själv skriver (#1084), en körning utan bygge — komprimeras fortfarande en gång och sparas, utanför händelseloopen, så den förfrågan som betalar för det håller inte upp ett bords patchar.
 
 **Dynamiska svar komprimeras inte.** De är kilobyte JSON, de skiljer sig åt mellan förfrågningar, och att komprimera dem vore precis den CPU per förfrågan som cachen ovan finns till för att slippa.
 Redan komprimerade byte — texturer, ikoner, en woff2 som någon gång hamnar bredvid appen — rörs inte heller, och filer under ett paket lämnas i fred eftersom rubriken kostar mer än vinsten.
 
 Följdkrav:
 Grinden läser `Content-Encoding` på det blockerande arket mot en riktigt serverad instans, aldrig mot en påhittad förfrågan: `packages/e2e/test/surfaces/blocking-sheet-encoding.spec.ts`, som också väger byten på tråden och avkodar dem tillbaka mot filen på disk.
+Samma fil håller att byggets största skript skickas som kopian bredvid det på disk, i båda kodningarna.
 Bortfallet går rött, inte tyst grönt — varje väg till att inte mäta något (inget ark i dokumentet, ingen instans som svarar, ingen rubrik) är skriven som ett fel med en mening om vilken det var.
 En proxy framför lådan måste respektera `Vary: Accept-Encoding`, som svaren bär.
 

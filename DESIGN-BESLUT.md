@@ -7553,6 +7553,7 @@ Går biblioteken inte att läsa in står felet ovanför Decksters träffar i st�
 Tre former prövades i en [prototyp](https://github.com/Tiico/build-a-deck/tree/df77d7b3/packages/web/prototype) med arkets riktiga CSS och bibliotek som hölls tills man släppte dem: raden ovanför (A), en streckad platshållarbricka i rutnätet (B) och beskedet på hyllorna och i foten (C).
 Valet blev **A**: B satte en bricka som inte går att trycka på bland dem som går, och C var lätt att missa längst ner till höger.
 `icon-libraries-late.spec.ts` håller bibliotekens chunkar på tråden och väljer svärdet medan de hålls.
+Att biblioteken dröjde en minut var lådans sak: den komprimerade game-icons-chunken på 6,4 MB med brotlis dyraste nivå vid första förfrågan, och nu gör bygget det i stället (DRIFT §13).
 
 ### L72. Inloggningsmejlet är bordet: tre band, trä, papper och vitt (prototypat och beslutat 2026-10-22, #1098)
 
