@@ -141,7 +141,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const startFocus = useStartFocus(view?.played === true)
   // Put away by hand, the room hands its start to the felt's tile, and the focus goes with it.
   useEffect(() => {
-    if (begun) document.querySelector<HTMLElement>('.byd-online-felt .byd-table-start, .byd-online-felt [tabindex="0"]')?.focus()
+    if (!begun) return
+    const felt = (selector: string) => document.querySelector<HTMLElement>(`.byd-online-felt ${selector}`)
+    ;(felt('.byd-table-start') ?? felt('[tabindex="0"]'))?.focus()
   }, [begun])
   // The room's code: the one the server tells this connection — the owner's own seat is told it,
   // and told the new one after «Ny kod» — or else the one a guest arrived with.
