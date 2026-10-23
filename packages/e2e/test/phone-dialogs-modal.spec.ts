@@ -19,8 +19,10 @@ test('the number lock and the reader are modal and keep Tab inside, and the help
   const dealer = await host(table)
   await dealer.send([{ v: 'deal', from: 'draw', to: ['hand:A'], each: 3 }])
   const page = ada.page
-  await expect(page.locator('.byd-strip[data-hand] [data-hand-card]')).toHaveCount(3)
+  await expect(page.locator('[data-hand] [data-hand-card]')).toHaveCount(3)
 
+  // The counters stand in «Framför mig» since #1147.
+  await page.getByRole('tab', { name: /^(In front of me|Framför mig)/ }).tap()
   await page.getByRole('button', { name: /Set value|Ange värde/ }).first().click()
   const lock = page.locator('.byd-set-value')
   await expect(lock).toHaveAttribute('aria-modal', 'true')
@@ -28,7 +30,9 @@ test('the number lock and the reader are modal and keep Tab inside, and the help
   await page.keyboard.press('Escape')
   await expect(lock).toHaveCount(0)
 
-  await page.locator('.byd-strip[data-hand] [data-hand-card]').first().tap()
+  await page.getByRole('tab', { name: /^(Hand|Handen)/ }).tap()
+  await page.locator('[data-hand] [data-hand-card]').first().tap()
+  await page.getByRole('button', { name: /^(Read large|Läs stort)$/ }).tap()
   const reader = page.locator('.byd-inspect')
   await expect(reader).toBeVisible()
   await page.waitForTimeout(400)
@@ -37,6 +41,8 @@ test('the number lock and the reader are modal and keep Tab inside, and the help
   await page.keyboard.press('Escape')
   await expect(reader).toHaveCount(0)
 
+  // The help stands in «Mer» since #1147.
+  await page.getByRole('tab', { name: /^(More|Mer)/ }).tap()
   await page.getByRole('button', { name: /^(Help about|Hjälp om) / }).first().click()
   await expect(page.getByRole('dialog', { name: /^(Help about|Hjälp om) / })).toBeVisible()
 })

@@ -34,7 +34,7 @@ test.describe('the area in front of a seat, on the opening table', () => {
     for (let n = 1; n <= 3; n++) {
       await ada.page.locator('[data-zone-draw="draw"]').click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
-      await ada.page.locator('.byd-hand-actions').getByRole('button', { name: 'Framför mig' }).click()
+      await ada.page.locator('[data-hand-bar]').getByRole('button', { name: 'Framför mig' }).click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
       // The television draws the cards themselves, face up. `playIntents` turns them over by
       // itself, because it already had the branch for a public target zone.
@@ -64,23 +64,26 @@ test.describe('the area in front of a seat, on the opening table', () => {
 
     await ada.page.locator('[data-zone-draw="draw"]').click()
     await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
-    await ada.page.locator('.byd-hand-actions').getByRole('button', { name: 'Framför mig' }).click()
+    await ada.page.locator('[data-hand-bar]').getByRole('button', { name: 'Framför mig' }).click()
     await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
 
     // Bo's browser has been sent the card, so Bo's screen says so. An area that is public on one
-    // screen and absent from another is the state this half of #414 was reopened about. It is in
-    // the fold that carries the whole table (C4), reached the way a person reaches it — and by
-    // the fold's own marker rather than its heading, which is a translation (A4).
-    await bo.page.locator('[data-phone-table] > summary').click()
+    // screen and absent from another is the state this half of #414 was reopened about. It is on
+    // the tab that carries the whole table (C4, #1147), reached the way a person reaches it — and
+    // by the tab's own marker rather than its name, which is a translation (A4).
+    await bo.page.locator('[data-tab="table"]').click()
     // The zone's name is the designer's and is never translated; the count beside it is the
     // reader's language, so it is read as the number it is and not as the sentence around it.
-    const tile = bo.page.locator('[data-phone-table] [data-zone-summary="mine:A"]')
+    const tile = bo.page.locator('[data-panel="table"] [data-zone-summary="mine:A"]')
     // The tile's own words, not those of the cards it now carries: its heading (#560 P-20).
     await expect(tile.getByRole('heading', { level: 2 })).toHaveText('Framför A')
     await expect(tile.locator(':scope > span')).toHaveText(/^1\b/)
-    // Reading it is not playing into it: the sheet offers Bo's own area and never Ada's (C4).
+    // Reading it is not playing into it: the bar offers Bo's own area and never Ada's (C4).
+    await bo.page.locator('[data-tab="hand"]').click()
+    await bo.page.locator('[data-zone-draw="draw"]').click()
+    await expect(bo.page.locator('[data-hand-bar] [data-zone="mine:B"]')).toHaveCount(1)
     await expect(bo.page.locator('[data-zone="mine:A"]')).toHaveCount(0)
-    await expect(bo.page.locator('[data-zone="mine:B"]')).toHaveCount(1)
+    await bo.page.locator('[data-tab="table"]').click()
 
     // And the card itself is read there, not only counted (#506 beslut 3, #507 beslut A): the
     // hand's tap holds it up, with its title, and with nothing on it that plays.
@@ -116,7 +119,7 @@ test.describe('an area the designer keeps private', () => {
     for (let n = 1; n <= 3; n++) {
       await ada.page.locator('[data-zone-draw="draw"]').click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
-      await ada.page.locator('.byd-hand-actions').getByRole('button', { name: 'Framför mig' }).click()
+      await ada.page.locator('[data-hand-bar]').getByRole('button', { name: 'Framför mig' }).click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
       // The felt says the new number, and says it on the television without anyone asking.
       await expect(mine.locator('[data-area-count]')).toHaveText(String(n))
@@ -135,9 +138,9 @@ test.describe('an area the designer keeps private', () => {
       expect(mentions(bo.wire.received(), card), `Bo was sent ${card}, which lies in Ada’s private area`).toHaveLength(0)
     }
     // Bo's overview leaves it out too: an area Bo may not look into is not a tile on Bo's phone,
-    // not even in the fold that carries the whole table.
-    await bo.page.locator('[data-phone-table] > summary').click()
-    await expect(bo.page.locator('[data-phone-table] [data-zone-summary="mine:B"]')).toHaveCount(1)
+    // not even on the tab that carries the whole table.
+    await bo.page.locator('[data-tab="table"]').click()
+    await expect(bo.page.locator('[data-panel="table"] [data-zone-summary="mine:B"]')).toHaveCount(1)
     await expect(bo.page.locator('[data-zone-summary="mine:A"]')).toHaveCount(0)
   })
 })

@@ -237,6 +237,8 @@ describe('the same box on the phone, the distance view and the table screen (#30
       await screen.findByText('Ada')
       await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 4 })
       await waitFor(() => expect(document.querySelectorAll('[data-hand-card]').length).toBe(4))
+      // The question mark stands in «Mer» since #1147.
+      fireEvent.click(screen.getByRole('tab', { name: /^Mer/ }))
       fireEvent.click(screen.getByRole('button', { name: 'Hjälp om handen' }))
       await screen.findByRole('dialog', { name: 'Hjälp om handen' })
       return document.querySelector('.byd-player')!.outerHTML
@@ -322,9 +324,11 @@ describe('the same box on the phone, the distance view and the table screen (#30
     }
   }
 
-  it('covers nothing the hand plays with, and stands inside the screen', async () => {
-    const { box, plays, under } = await laid(await phone(), '[data-hand-card], .byd-hand-actions button')
-    expect(plays.length).toBeGreaterThan(4)
+  // In «Mer» there is nothing to play with, so what it must leave free is the way out of «Mer»:
+  // the four tabs, and «Ångra» in the head.
+  it('covers neither the tabs nor «Ångra», and stands inside the screen', async () => {
+    const { box, plays, under } = await laid(await phone(), '[data-tab], .byd-undo')
+    expect(plays.length).toBe(5)
     expect(plays.filter((p) => overlaps(box, p.rect)).map((p) => p.what)).toEqual([])
     expect(inside(box, 390, 844)).toBe(true)
     // And nothing is drawn over it: a box under the hand strip is no help either.
