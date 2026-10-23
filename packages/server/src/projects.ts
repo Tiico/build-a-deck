@@ -191,7 +191,9 @@ const withoutFraming = <T>(doc: T): T => {
 // tables have been started from it and when one of them was last played at. `card` is the game's
 // own first card (G1, #231) — its id and its title, which is what the list needs to know that
 // there is a card at all and what to call it. What it takes to draw the card travels apart.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; role?: Role; card?: CardPeek | null }
+// `cards`, `players` and `savedAt` are what the workbench says of a game (#1204): the copies the
+// table deals (#1195), the seats it is set for, and when its newest version was saved.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; role?: Role; card?: CardPeek | null; cards?: number; players?: number; savedAt?: string | null }
 
 // A version in the history (B4): every save is one, and none of them is ever written again.
 // `label` is the name a designer gave the versions that meant something — a blind test, a print
