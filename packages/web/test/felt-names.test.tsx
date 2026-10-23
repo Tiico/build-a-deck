@@ -145,6 +145,8 @@ const WATCH = `<script>
   // sampled: a reading taken before the entry has been delivered says "never", and "never" would
   // make every comparison below true.
   window.__paint = new Promise((ok) => new PerformanceObserver((l, obs) => { const e = l.getEntries()[0]; if (e) { obs.disconnect(); ok(e.startTime) } }).observe({ type: 'paint', buffered: true }))
+  // Told to the host, which holds a face that is a round trip away until it hears it.
+  window.__paint.then(() => fetch('/first-frame'))
   window.__face = document.fonts.ready.then(() => performance.now())
   // The widths in the first frame the browser draws, read before it draws it.
   window.__painted = new Promise((ok) => requestAnimationFrame(() => ok(names())))
@@ -170,10 +172,19 @@ async function paintingWith(html: string, face: 'in the sheet' | 'a round trip a
       .replace('<script type="module" src="/src/main.tsx"></script>', '')
       .replace('</head>', `<style>${sheets.join('\n')}</style></head>`)
       .replace('<div id="root"></div>', `<div id="root" style="width:${FRAME.w}px;height:${FRAME.h}px">${html}</div>${WATCH}`)
+    // The round trip is held until the first frame has been painted, not for a while: a face late
+    // by the clock lands inside the first frame whenever that frame is slower than the clock, as
+    // it is on a loaded runner (run 39876986676), and then reads as on time.
+    let painted!: () => void
+    const firstFrame = new Promise<void>((ok) => (painted = ok))
     await page.route(`${HOST}/**`, async (route) => {
       const path = new URL(route.request().url()).pathname
+      if (path === '/first-frame') {
+        painted()
+        return route.fulfill({ status: 204 })
+      }
       if (!path.startsWith('/face/')) return route.fulfill({ contentType: 'text/html', body: shell })
-      await new Promise((ok) => setTimeout(ok, 150))
+      await firstFrame
       return route.fulfill({ contentType: 'font/woff2', body: readFileSync(join(import.meta.dirname, '..', 'src/fonts', path.slice('/face/'.length))) })
     })
     await page.goto(`${HOST}/`, { waitUntil: 'load' })
