@@ -88,7 +88,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
   const { client, fault, slow, retry } = useProjectClient(http, projectId, timing)
-  // This tab is the game's editor (#1217, L79): a table's way back finds it by this name and brings
+  // This tab is the game's editor (#1217, L80): a table's way back finds it by this name and brings
   // it out, rather than opening a second editor beside it.
   useEffect(() => {
     if (projectId) window.name = editorTab(projectId)

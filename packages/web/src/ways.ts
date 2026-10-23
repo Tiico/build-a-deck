@@ -1,4 +1,4 @@
-// The tabs a game opens in (#1217, L79), and the way back from a table to the game's editor.
+// The tabs a game opens in (#1217, L80), and the way back from a table to the game's editor.
 //
 // A table opens beside the editor, never over it (L5, L64): the designer edits in one tab and
 // watches the table in another. Every way in used to open a tab of its own, so a table opened

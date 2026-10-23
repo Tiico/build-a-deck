@@ -99,7 +99,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // project the way back leads to (#1217).
   const record = useSessionRecord(http, sessionId, owner || !params.get('code'))
   const game = params.get('code') ? null : (record?.name ?? null)
-  // The owner's ways to the game's editor (#1217, L79): in the head, in the exit sheet with the
+  // The owner's ways to the game's editor (#1217, L80): in the head, in the exit sheet with the
   // seat kept, under the thanks once the table has ended — and where giving the seat up leads.
   const server = params.get('server')
   const back = owner ? <EditorWayBack game={record} server={server} /> : null

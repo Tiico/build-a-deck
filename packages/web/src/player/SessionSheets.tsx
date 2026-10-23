@@ -120,7 +120,7 @@ export function ProposeSheet({ where, who, onPropose, onClose }: { where: string
 // seat, or everyone's table. Ending still asks its own question afterwards, so it is one press
 // further away than it was rather than one nearer.
 // `pile` is where the hand goes back to, by its own name (#714); null says «leken». `stay` is the
-// owner's third way (#1217, L79): to the game's editor with the seat kept, first because it is the
+// owner's third way (#1217, L80): to the game's editor with the seat kept, first because it is the
 // one that gives nothing up.
 export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle; stay?: ReactNode }) {
   const t = useT()

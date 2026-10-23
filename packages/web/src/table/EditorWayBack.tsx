@@ -2,7 +2,7 @@ import { ArrowGlyph } from '../glyphs.js'
 import { useT } from '../i18n/index.js'
 import { editorWay } from '../ways.js'
 
-// The owner's way from a table back to the game's editor (#1217, L79, prototype A): the game's
+// The owner's way from a table back to the game's editor (#1217, L80, prototype A): the game's
 // name with an arrow, on every screen the owner opens a table on. It names the editor's tab, so
 // it brings that tab out as it stands rather than opening a second editor (`ways.ts`).
 //

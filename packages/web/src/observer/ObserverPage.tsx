@@ -58,7 +58,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   const code = params.get('code')
   // The session record: the game's name for a tab given no room code (#759), and for the owner the
-  // project the way back to its editor leads to (#1217, L79).
+  // project the way back to its editor leads to (#1217, L80).
   const record = useSessionRecord(http, sessionId, owner || !code)
   const game = code ? null : (record?.name ?? null)
   const back = owner ? <EditorWayBack game={record} server={params.get('server')} /> : null

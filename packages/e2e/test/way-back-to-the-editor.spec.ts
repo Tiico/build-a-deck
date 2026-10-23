@@ -3,7 +3,7 @@ import { logIn, makeProject } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
-// Vägen tillbaka (#1217, L79), i den byggda appen: ett bord öppnas bredvid editorn, och bordets
+// Vägen tillbaka (#1217, L80), i den byggda appen: ett bord öppnas bredvid editorn, och bordets
 // «‹ spelet» tar fram editorns egen flik i stället för att öppna en ny. Ett bord som redan har en
 // flik öppnas i den. Båda är flikar som letar upp varandra med namn, vilket bara en riktig
 // webbläsare kan pröva — och som en flik öppnad med `noopener` aldrig hittar.

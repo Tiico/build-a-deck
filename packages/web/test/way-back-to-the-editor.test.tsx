@@ -8,7 +8,7 @@ import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { admit, createNamedSession, roomOf, startServer, type Running } from './fixture.js'
 import { atWindow } from './felt-frame.js'
 
-// Vägen tillbaka (#1217, L79, prototyp A): every screen the owner opens a table on leads back to
+// Vägen tillbaka (#1217, L80, prototyp A): every screen the owner opens a table on leads back to
 // the game's editor, by the editor's own tab, and no guest's screen does. Whether the tab is
 // brought out rather than a new one opened is the browser's to prove, and `way-back-to-the-
 // editor.spec.ts` in packages/e2e proves it; here is what each screen offers and where it leads.

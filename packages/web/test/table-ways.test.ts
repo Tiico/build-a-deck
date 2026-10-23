@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { editorTab, editorWay, tableTab } from '../src/ways.js'
 
-// Vägen tillbaka (#1217, L79): the editor's tab and every table's tabs are named, so a way in that
+// Vägen tillbaka (#1217, L80): the editor's tab and every table's tabs are named, so a way in that
 // already has a tab opens in it, and a table's way back finds the editor's tab instead of opening
 // another.
 describe('the tabs a game opens in (#1217)', () => {

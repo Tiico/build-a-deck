@@ -63,7 +63,7 @@ export type TvChromeProps = {
   // in, at K26's floor, with a thin bar, gone once every card can be seen. The column is free on a
   // television bound by its height, so the line costs the felt nothing.
   rendering?: { done: number; total: number; stalled: boolean } | null | undefined
-  // The owner's way back to the game's editor (#1217, L79): on the brand's line, at its end, so it
+  // The owner's way back to the game's editor (#1217, L80): on the brand's line, at its end, so it
   // costs the column no height on the room's television; alone on that line on the observer's.
   back?: ReactNode
   children: ReactNode

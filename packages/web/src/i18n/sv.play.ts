@@ -15,7 +15,7 @@ export const svPlay = {
   'play.table': 'Bordet',
   // Samma bord som granne på filten, där namnen står med liten bokstav.
   'play.peer.table': 'bordet',
-  // Ägarens väg från bordet tillbaka till spelets editor (#1217, L79): spelets namn syns, och det
+  // Ägarens väg från bordet tillbaka till spelets editor (#1217, L80): spelets namn syns, och det
   // en skärmläsare hör säger vart det leder.
   'way.editor.aria': 'Tillbaka till {game} i editorn',
 
