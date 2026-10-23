@@ -223,6 +223,9 @@ export type ProjectStore = {
   restore(id: string, versions: RestoredVersion[], owner?: string, limit?: Limit): Promise<ProjectRecord>
   // How many games an account owns (#1193): the measure `projects`, counted out of `owner`.
   owned(owner: string): Promise<number>
+  // The games an account owns, by id and in id order (#1195): the ones its cards per game are
+  // counted over. Never the ones shared with it, nor a game that belongs to nobody.
+  ownedIds(owner: string): Promise<string[]>
   load(id: string): Promise<ProjectRecord | null>
   list(owner: string): Promise<ProjectSummary[]>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
@@ -299,6 +302,10 @@ export class MemoryProjectStore implements ProjectStore {
 
   async owned(owner: string): Promise<number> {
     return this.count(owner)
+  }
+
+  async ownedIds(owner: string): Promise<string[]> {
+    return [...this.docs.values()].filter((rec) => rec.owner === owner).map((rec) => rec.id).sort()
   }
 
   private count(owner: string): number {

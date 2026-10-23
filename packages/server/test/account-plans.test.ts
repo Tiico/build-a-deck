@@ -101,8 +101,12 @@ for (const backend of backends) {
       await db.projects.create(`dee-2-${backend.name}`, game('Två'), dee.id)
       await db.plans.setPlan(dee.id, 'pro', 'operator')
       const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects }, tiers)
-      expect(report).toContainEqual({ email: 'dee@example.com', plan: 'pro', measures: { projects: { used: 2, limit: null } } })
-      expect(report).toContainEqual({ email: 'bo@example.com', plan: 'free', measures: { projects: { used: 0, limit: 2 } } })
+      // Cards per game, for every game the account owns (#1195): the log is replayed, since no
+      // actor runs in the operator's process.
+      const games = [`dee-1-${backend.name}`, `dee-2-${backend.name}`].sort()
+      const perGame = { used: 1, limit: null, projects: games.map((id) => ({ id, used: 1 })) }
+      expect(report).toContainEqual(expect.objectContaining({ email: 'dee@example.com', plan: 'pro', measures: expect.objectContaining({ projects: { used: 2, limit: null }, cardRowsPerProject: perGame, cardCopiesPerProject: perGame }) }))
+      expect(report).toContainEqual(expect.objectContaining({ email: 'bo@example.com', plan: 'free', measures: expect.objectContaining({ projects: { used: 0, limit: 2 }, cardRowsPerProject: { used: 0, limit: null, projects: [] } }) }))
       await db.plans.clearPlan(dee.id)
     })
   })
