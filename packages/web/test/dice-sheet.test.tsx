@@ -115,7 +115,7 @@ describe('the dice sheet (#1138)', () => {
     expect(within(sheet).getByRole('button', { name: 'Välj tärningar att slå' })).toBeTruthy()
   })
 
-  it('throws the chosen dice in one envelope and says what they came to, with the sum, in a live region', async () => {
+  it('throws the chosen dice in one envelope and shows what they came to, with the sum, without a second voice', async () => {
     sent = []
     const user = userEvent.setup()
     render(<Table values={[3, 5]} />)
@@ -126,7 +126,11 @@ describe('the dice sheet (#1138)', () => {
     await user.click(tiles[1]!)
     await user.click(within(sheet).getByRole('button', { name: 'Slå 2 tärningar' }))
     expect(sent).toEqual([[{ v: 'roll', component: 'a' }, { v: 'roll', component: 'b' }]])
-    await waitFor(() => expect(within(sheet).getByRole('status').textContent).toBe('Du slog 2d6: 3 + 5 = 8'))
+    await waitFor(() => expect(within(sheet).getByText('Du slog 2d6: 3 + 5 = 8')).toBeTruthy())
+    // The phone's activity channel already says one's own throw at once (`useActivityLive`), and
+    // everything that speaks on a screen speaks through StatusLive's two regions: a live region in
+    // the sheet would read the same sentence a second time.
+    expect(sheet.querySelectorAll('[role="status"], [role="alert"], [aria-live]')).toHaveLength(0)
     expect(within(sheet).getAllByRole('button', { name: /^d\d+, visar \d+$/ }).map((t) => t.getAttribute('aria-label'))).toEqual(['d6, visar 3', 'd6, visar 5', 'd20, visar 1'])
   })
 
