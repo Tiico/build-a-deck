@@ -6,7 +6,8 @@ import type { AssetStore } from '../src/assets.js'
 import type { ServerOptions } from '../src/server.js'
 import type { LogStore } from '../src/store.js'
 import type { ProjectStore } from '../src/projects.js'
-import type { AuthStore } from '../src/auth.js'
+import { COOKIE, SESSION_TTL_MS, hash, type AuthStore } from '../src/auth.js'
+import { newSecret } from '../src/rooms.js'
 import type { Corpus } from '../src/corpus.js'
 import type { Plans } from '../src/quotas.js'
 import type { AccountPlanStore } from '../src/account-plans.js'
@@ -149,6 +150,12 @@ export type Running = {
   host: TableHost
   projects: ProjectStore
   mail: MemoryMailer
+  /**
+   * What the raw door is knocked on with (#1194): the cookie of the run's own table bearer, an
+   * account the fixture seats straight in the auth store, so that no mail is sent and no login is
+   * counted against an address. Empty when the run has no accounts, where the door asks nobody.
+   */
+  bearer(): Promise<Record<string, string>>
   renderAll(): Promise<void>
   restart(): Promise<void>
   stop(): Promise<void>
@@ -167,7 +174,7 @@ const rooms = new Map<string, { code: string; hostKey: string }>()
 // of them cannot say so. `store`, `projects` and `auth` are the same for a door that asks who owns a
 // game and what that owner's address is (#1011): the answer comes out of a different query on the box.
 // `plans` and `accountPlans` are the tiers and who has which (#1193); without them nothing is limited.
-export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore } = {}): Promise<Running> {
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore | false; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore } = {}): Promise<Running> {
   const store = opts.store ?? new MemoryLogStore()
   const renders = new MemoryRenderStore(opts.objects)
   // A store of the test's own, for a test about what the server does while the store is answering.
@@ -175,9 +182,12 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
+  // Accounts are on unless a test says the server has none, as a server started without them has.
+  const auth = opts.auth === false ? null : (opts.auth ?? new MemoryAuthStore())
+  let bearer: Promise<Record<string, string>> | null = null
   // One store for the app and the worker, as the box has one table and one bucket for both (#1028).
   const assets = opts.assets ?? new MemoryAssetStore(opts.objects)
-  const server = createServer({ host, store, registry, renders, projects, assets, surveys: opts.surveys ?? new MemorySurveyStore(), auth: opts.auth ?? new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...authBypass })
+  const server = createServer({ host, store, registry, renders, projects, assets, surveys: opts.surveys ?? new MemorySurveyStore(), ...(auth ? { auth } : {}), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...authBypass })
   // Never hang up an idle connection from this end (#848): the `fetch` in this same process pools
   // it for its next request, and a worker held past Node's five seconds wakes with both due in one
   // turn. The client decides when a connection is done; `stop` closes this end.
@@ -190,6 +200,7 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
     host,
     projects,
     mail,
+    bearer: () => (bearer ??= auth ? seatBearer(auth) : Promise.resolve({})),
     // Runs a real Chromium over the queue, as the render container would.
     renderAll: async () => {
       const renderer = await Renderer.launch()
@@ -236,8 +247,21 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
         server.close(() => resolve())
       }),
   }
+  bearers.set(run.http, run.bearer)
   return run
 }
+
+// The table bearer's login, made the way `GET /auth/verify` makes one, without the mail.
+async function seatBearer(auth: AuthStore): Promise<Record<string, string>> {
+  const account = await auth.ensureAccount('bord@example.com')
+  const sid = newSecret()
+  await auth.createSession(hash(sid), account.id, new Date(Date.now() + SESSION_TTL_MS).toISOString())
+  return { cookie: `${COOKIE}=${sid}` }
+}
+// Each run's bearer by its address, for the helpers below that are handed only the address. A port
+// is reused by a later run, which then sets its own.
+const bearers = new Map<string, () => Promise<Record<string, string>>>()
+const bearerAt = async (http: string): Promise<Record<string, string>> => (await bearers.get(http)?.()) ?? {}
 
 export async function createSession(http: string, id = 's1'): Promise<string> {
   return (await createRoom(http, id)).id
@@ -247,7 +271,7 @@ export async function createSession(http: string, id = 's1'): Promise<string> {
 export async function createRoom(http: string, id = 's1'): Promise<{ id: string; code: string; hostKey: string }> {
   const res = await fetch(`${http}/sessions`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...(await bearerAt(http)) },
     body: JSON.stringify({ id, version: 'v1', setup: twoSeatSetup() }),
   })
   if (res.status !== 201) throw new Error(`create failed: ${res.status} ${await res.text()}`)

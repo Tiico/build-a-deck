@@ -2,7 +2,7 @@ import { createServer as createHttpServer, type Server } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { connect as connectSocket, createServer as createSocketServer, type Server as SocketServer, type Socket } from 'node:net'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '@byd/server'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore, COOKIE, SESSION_TTL_MS, hash } from '@byd/server'
 import { openingSetup, type Recipe } from '@byd/server/doc'
 import { MemoryRenderStore } from '@byd/render/queue'
 import { AiKeyVault, MemoryAiKeyStore } from '../../server/src/ai-keys.js'
@@ -438,9 +438,28 @@ export async function deafServer(): Promise<Deaf> {
 // Admission (DRIFT §9), by session id: what the fixture made each session with.
 const rooms = new Map<string, { code: string; hostKey: string }>()
 
+// The raw door opens nothing for nobody when accounts are on (#1194), so a fixture with accounts
+// knocks as an account of its own: seated straight in the auth store, the way `GET /auth/verify`
+// seats one, so that no mail is sent and the browser's own cookie is never touched.
+const bearers = new WeakMap<MemoryAuthStore, Promise<Record<string, string>>>()
+const bearerOf = (auth: MemoryAuthStore | undefined): Promise<Record<string, string>> => {
+  if (!auth) return Promise.resolve({})
+  let made = bearers.get(auth)
+  if (!made) {
+    made = (async () => {
+      const account = await auth.ensureAccount('bord@example.com')
+      const sid = randomBytes(32).toString('base64url')
+      await auth.createSession(hash(sid), account.id, new Date(Date.now() + SESSION_TTL_MS).toISOString())
+      return { cookie: `${COOKIE}=${sid}` }
+    })()
+    bearers.set(auth, made)
+  }
+  return made
+}
+
 // A session made through the server, so it has a code and a host key; `deck` optional.
 export async function createSession(run: Running, id = 's1', deck?: unknown, setup: SetupDef = twoSeatSetup()): Promise<string> {
-  const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, version: 'v1', setup, ...(deck ? { deck } : {}) }) })
+  const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json', ...(await bearerOf(run.auth)) }, body: JSON.stringify({ id, version: 'v1', setup, ...(deck ? { deck } : {}) }) })
   if (res.status !== 201) throw new Error(`create failed: ${res.status} ${await res.text()}`)
   const made = (await res.json()) as { id: string; code: string; hostKey: string }
   rooms.set(made.id, { code: made.code, hostKey: made.hostKey })

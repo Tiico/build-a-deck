@@ -20,12 +20,12 @@ const CODE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/
 
 describe('room codes', () => {
   it('a new session gets a six-character code without confusable characters, and a host key', async () => {
-    const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ version: 'v1', setup: twoSeatSetup() }) })
+    const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json', ...(await run.bearer()) }, body: JSON.stringify({ version: 'v1', setup: twoSeatSetup() }) })
     expect(res.status).toBe(201)
     const made = (await res.json()) as { id: string; code: string; hostKey: string }
     expect(made.code).toMatch(CODE)
     expect(made.hostKey.length).toBeGreaterThanOrEqual(32)
-    const again = (await (await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ version: 'v1', setup: twoSeatSetup() }) })).json()) as { code: string; hostKey: string }
+    const again = (await (await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json', ...(await run.bearer()) }, body: JSON.stringify({ version: 'v1', setup: twoSeatSetup() }) })).json()) as { code: string; hostKey: string }
     expect(again.code).not.toBe(made.code)
     expect(again.hostKey).not.toBe(made.hostKey)
   })

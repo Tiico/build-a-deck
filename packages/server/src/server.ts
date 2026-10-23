@@ -371,13 +371,22 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       }
       return json(res, 200, { ok: true, ...who, store: 'ok', ...(opts.objects ? { assets: 'ok' } : {}) })
     }
+    // The raw door: a table from any setup and deck, with no game behind it. The web app never
+    // uses it (a table is started from a game, below); the end-to-end suite and the seed script do.
+    // With accounts on it opens nothing for nobody (#1194): a table is always borne by an account,
+    // so that it can be counted against someone (A2), and so that nobody can put Chromium work on
+    // the box without being someone. Asked before the body is read, so a refusal writes nothing,
+    // starts no table and queues no texture. Without accounts (a server started without them) the
+    // door stands as it always did, and the table is borne by nobody.
     if (req.method === 'POST' && url.pathname === '/sessions') {
+      const bearer = opts.auth ? await accountOf(opts.auth, req) : null
+      if (opts.auth && !bearer) return json(res, 401, { error: 'log in first' })
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
       validateSetup(body.setup, opts.registry)
       const id = body.id ?? randomUUID()
       const deck: Deck | undefined = body.deck
       const room = admission(opts)
-      await opts.store.createSession({ id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...room.record })
+      await opts.store.createSession({ id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record })
       // Textures start rendering now rather than when the first screen connects.
       if (deck) await opts.host.get(id)
       return json(res, 201, { id, code: room.code, hostKey: room.hostKey })
@@ -1904,7 +1913,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const rec = gate.rec
     const id = randomUUID()
     const room = admission(opts)
-    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...room.record })
+    // Borne by the game's owner, whoever pressed (A2: the creator bears the cost of her own
+    // testers, #1194). A game from before accounts has no owner, and its table no bearer.
+    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record })
     await opts.host.get(id)
     json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
     return true
