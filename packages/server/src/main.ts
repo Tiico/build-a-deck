@@ -12,6 +12,21 @@ import { randomBytes } from 'node:crypto'
 import { AiKeyVault, MemoryAiKeyStore, masterKeyFrom, type AiKeyStore } from './ai-keys.js'
 import { providersFromEnv } from './ai-providers.js'
 import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore } from '@byd/render/queue'
+import { MemoryAccountPlanStore, plansAtStart, type AccountPlanStore } from './account-plans.js'
+import { plansFromEnv, plansLine } from './quotas.js'
+
+// The tiers stop the start when they cannot be read (#1192): an error must never quietly become
+// unlimited, nor quietly become closed. Said in the log, then out — before anything else is opened,
+// so a broken variable costs no database connection.
+const refusePlans = (e: unknown): never => {
+  console.error(JSON.stringify({ msg: 'plans', error: (e as Error).message }))
+  process.exit(1)
+}
+try {
+  plansFromEnv(process.env)
+} catch (e) {
+  refusePlans(e)
+}
 
 // Entry point for the container. Configuration is environment only.
 //   DATABASE_URL   — Postgres; without it the log lives in memory and dies with the process.
@@ -35,6 +50,11 @@ import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore
 //                    Postgres cannot be saved or opened and read as no key; in memory a key for
 //                    this process alone is made, since the keys die with the process anyway
 //   AI_ANTHROPIC_URL, AI_OPENAI_URL — where the providers are; only a test stack sets them
+//   BYD_PLANS      — the tiers and their ceilings (#1193, A2, DRIFT §12), JSON on one line:
+//                    {"default":"free","plans":{"free":{"projects":3},"pro":{}}}. A ceiling is a whole
+//                    number or null, and a measure a tier does not name is unlimited. Unset or empty,
+//                    nothing is limited — the beta's state. Set and unreadable, or missing a tier an
+//                    account has, the app does not start, and the log says why
 
 const port = Number(process.env['PORT'] ?? 8080)
 const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
@@ -51,6 +71,7 @@ let surveys: SurveyStore
 let auth: AuthStore
 let assets: AssetStore
 let aiKeys: AiKeyStore
+let accountPlans: AccountPlanStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -65,6 +86,7 @@ if (databaseUrl) {
   auth = pg.auth()
   assets = pg.assets(objects)
   aiKeys = pg.aiKeys()
+  accountPlans = pg.accountPlans()
   closeStore = async () => {
     await pg.close()
     await rq.close()
@@ -78,6 +100,7 @@ if (databaseUrl) {
   auth = new MemoryAuthStore()
   assets = new MemoryAssetStore()
   aiKeys = new MemoryAiKeyStore()
+  accountPlans = new MemoryAccountPlanStore()
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
@@ -101,7 +124,11 @@ console.log(JSON.stringify({ msg: 'ai-keys', sealing: master !== null, ...(maste
 // many are on it, so the box can be asked whether a change took; never who.
 const corpus = corpusFromEnv(process.env)
 if (corpus) console.log(JSON.stringify({ msg: 'corpus', accounts: corpus.accounts.length }))
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}) })
+// Read once, and held up against every tier an account has (#1193). The line says the tiers' names,
+// the default and whether any ceiling is set at all; never who has which (DRIFT §8).
+const plans = await plansAtStart(process.env, accountPlans).catch(refusePlans)
+console.log(JSON.stringify(plansLine(plans)))
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

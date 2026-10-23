@@ -365,6 +365,22 @@ Passkeys och OAuth återstår.
 ## 12. Vad som inte bor på lådan
 
 Betalning: Stripe.
+
+Nivåerna och deras tak bor inte heller i koden (#1193, A2, #1192): de är `BYD_PLANS` i lådans `.env`, JSON på en rad inom enkla citattecken, och stacken skickar variabeln till appen.
+
+```sh
+BYD_PLANS='{"default":"free","plans":{"free":{"projects":3},"pro":{}}}'
+```
+
+Ett tak är ett heltal eller `null`, och `null` är obegränsat; ett mått som en nivå inte nämner är obegränsat på den nivån.
+Utan variabeln är allt obegränsat, vilket är betans läge och det läge en glömd variabel ger, så att en deploy aldrig av misstag stänger ute en designer.
+Variabeln läses en gång när appen startar, som `BYD_CORPUS_ACCOUNTS` (§7), och starten skriver en rad med nivåernas namn, standarden och om något tak alls är satt, aldrig vem som har vilken nivå (§8).
+En variabel som inte är giltig JSON eller inte håller schemat stoppar starten, och så gör en nivå som något konto har men som variabeln saknar; loggen säger varför.
+Vilken nivå ett konto har står i tabellen `account_plans`, som Stripe skriver till när betalningen kopplas på; ett konto utan rad har standarden.
+I dag sätter operatören den över Tailscale (§10), med lådans egen `BYD_PLANS` så att en nivå lådan inte har aldrig skrivs:
+`pnpm --filter @byd/server plan set <adress> <nivå>` och `plan clear <adress>`.
+`pnpm --filter @byd/server usage` skriver varje kontos nivå, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
+
 E-post: Resend, Postmark eller motsvarande — en bostads-IP är i praktiken svartlistad.
 POD-partnerns API.
 Assets och backup: R2.

@@ -193,3 +193,14 @@ create table if not exists ai_keys (
   verified_at  timestamptz not null,
   updated_at   timestamptz not null default now()
 );
+
+-- Each account's tier (#1193, A2, #1192): written by the operator today (`pnpm --filter @byd/server
+-- plan`) and by Stripe later, so that paying is a way to change tier and not a new model. An account
+-- without a row has the default tier of `BYD_PLANS`; a tier named here that `BYD_PLANS` lacks stops
+-- the start. Which ceilings a tier has is configuration and never stored.
+create table if not exists account_plans (
+  account_id  bigint primary key references accounts(id) on delete cascade,
+  plan        text not null,
+  since       timestamptz not null default now(),
+  source      text not null check (source in ('operator', 'stripe'))
+);

@@ -94,6 +94,16 @@ Samtycket ges i inbjudningsmejlet; skriv in en adress först när ja:et finns d�
 Operatörens inloggning får då läsa exporten av bord i de kontonas spel (`pnpm --filter @byd/engine corpus` med operatörens kaka i `BYD_COOKIE`), och inget annat av deras.
 Appen läser raderna när den startar, så en ändring gäller efter `docker compose up -d app` eller nästa deploy.
 
+Nivåerna och deras tak (DRIFT §12, #1193) är `BYD_PLANS`, JSON på en rad inom enkla citattecken; utan raden är ingenting begränsat, vilket är betans läge.
+En rad som appen inte kan läsa, eller som saknar en nivå något konto har, stoppar starten, så läs `docker compose logs app` efter en ändring: raden `"msg":"plans"` säger vad som gäller eller vad som är fel.
+Ett kontos nivå sätts över Tailscale med samma `BYD_PLANS` som lådan har:
+
+```sh
+DATABASE_URL=postgres://… BYD_PLANS='…' pnpm --filter @byd/server plan set ada@example.com pro
+DATABASE_URL=postgres://… pnpm --filter @byd/server plan clear ada@example.com
+DATABASE_URL=postgres://… BYD_PLANS='…' pnpm --filter @byd/server usage
+```
+
 Koppla in deployen och kör den första gången:
 
 ```bash

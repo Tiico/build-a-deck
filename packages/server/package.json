@@ -10,7 +10,9 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "seed": "tsx scripts/seed.ts",
-    "seed:project": "tsx scripts/seed-project.ts"
+    "seed:project": "tsx scripts/seed-project.ts",
+    "plan": "tsx scripts/plan.ts",
+    "usage": "tsx scripts/usage.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",
