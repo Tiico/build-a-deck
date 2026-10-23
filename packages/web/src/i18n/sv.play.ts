@@ -290,7 +290,8 @@ export const svPlay = {
   'zone.pile.title': 'Hög i {area}',
   'activity.split.beside.other': '{who} delade av {n} kort från {zone} till en ny hög',
   // Bredvid varandra eller omlott blir ingen hög (#1203); en sökning säger inget tal den inte vet.
-  'activity.split.row': '{who} lade ut {n} kort bredvid {zone}',
+  'activity.split.row.one': '{who} lade ut {n} kort bredvid {zone}',
+  'activity.split.row.other': '{who} lade ut {n} kort bredvid {zone}',
   'activity.split.row.found': '{who} lade ut kort bredvid {zone}',
   'activity.shuffle': '{who} blandade {zone}',
   'activity.deal.one': '{who} delade ut {n} kort var till {to}',

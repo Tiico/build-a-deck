@@ -223,8 +223,9 @@ describe('vems zon en rad i rutan står för', () => {
     // kopior av en annan rad — 8 «Hand», 8 «Min hög», 3 «Bortlagda kort», 2 «Askhögen».
     expect(copies(bareNames(doc))).toBe(21)
     expect(copies(rows(box))).toBe(0)
-    // Och rutan visar dem allihop: zonerna plus högens och händernas tre egna rader.
-    expect(rows(box)).toHaveLength(bareNames(doc).length + 3)
+    // Och rutan visar dem allihop: zonerna plus högens fyra sidor och händernas två egna rader
+    // (#1203: «bredvid» är en rad per sida, eftersom steget väljer sin sida).
+    expect(rows(box)).toHaveLength(bareNames(doc).length + 6)
   })
 
   // Ordgränsregeln, som är skillnaden mot en `startsWith` någon annars hade skrivit.
