@@ -4,6 +4,7 @@ import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { stillRendering, useTextures, type Textures } from '../table/textures.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tvUrl } from './tableLinks.js'
+import { tableTab } from '../ways.js'
 import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useRoving } from './roving.js'
@@ -172,7 +173,7 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
           keep={{
             label: t('tables.another.open', { table: newestName }),
             onChoose: () => {
-              window.open(tvUrl(newest.id, server, undefined, true, lang), '_blank', 'noreferrer')
+              window.open(tvUrl(newest.id, server, undefined, true, lang), tableTab(newest.id, 'tv'))
               answered()
             },
           }}
@@ -404,7 +405,7 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
               keep={{
                 label: t('tables.another.open', { table: liveName }),
                 onChoose: () => {
-                  window.open(tvUrl(live.id, server, undefined, true, lang), '_blank', 'noreferrer')
+                  window.open(tvUrl(live.id, server, undefined, true, lang), tableTab(live.id, 'tv'))
                   close()
                 },
               }}
@@ -536,9 +537,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
   // not answered yet there is no seat to take; the word stays where it is rather than swapping
   // under the pointer, and the row's own lines say why it cannot be had.
   const ready = ended ? (
-    <Way href={tvUrl(table.id, server, undefined, true, lang)} label="tables.way.tv" table={name} ready />
+    <Way href={tvUrl(table.id, server, undefined, true, lang)} target={tableTab(table.id, 'tv')} label="tables.way.tv" table={name} ready />
   ) : free ? (
-    <Way href={onlineUrl(table.id, server, free, true, t, lang)} label="tables.way.play" table={name} ready />
+    <Way href={onlineUrl(table.id, server, free, true, t, lang)} target={tableTab(table.id, 'online')} label="tables.way.play" table={name} ready />
   ) : (
     <button type="button" className="byd-tables-ready" disabled>
       {t('tables.way.play')} <span className="byd-offscreen">{name}</span>
@@ -549,9 +550,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
   // no seat to take and nothing left to end, so its menu is the three that are still about
   // something.
   const ways: WayItem[] = [
-    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true, lang), label: 'tables.way.tv' as Key }]),
-    { id: 'table', href: tableModeUrl(table.id, server, true, lang), label: 'tables.way.tableMode' as Key },
-    { id: 'watch', href: observeUrl(table.id, server, true, t, lang), label: 'tables.way.watch' as Key },
+    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true, lang), target: tableTab(table.id, 'tv'), label: 'tables.way.tv' as Key }]),
+    { id: 'table', href: tableModeUrl(table.id, server, true, lang), target: tableTab(table.id, 'table'), label: 'tables.way.tableMode' as Key },
+    { id: 'watch', href: observeUrl(table.id, server, true, t, lang), target: tableTab(table.id, 'observe'), label: 'tables.way.watch' as Key },
     // A table that has ended lets nobody in, so it has no code to hold up (#706).
     ...(ended ? [] : [{ id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) }]),
     ...(ended ? [] : [{ id: 'end', label: 'tables.end' as Key, apart: true, press: () => setAsking(true) }]),
@@ -644,7 +645,7 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
 const STATE_WORD: Record<TableGroupId, Key> = { played: 'tables.state.played', untouched: 'tables.state.untouched', ended: 'tables.ended' }
 
 // One entry in the row's menu: a way into the table, or something the row does to itself.
-type WayItem = { id: string; label: Key; href?: string; press?(): void; expanded?: boolean; apart?: boolean }
+type WayItem = { id: string; label: Key; href?: string; target?: string; press?(): void; expanded?: boolean; apart?: boolean }
 
 // The five other ways, behind one press (#176). A real menu (APG): the button says what it opens
 // and whether it is open, the arrows move inside it, Enter and Space take the item under them —
@@ -735,7 +736,7 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
               },
             }
             const item = way.href ? (
-              <a key={way.id} {...props} href={way.href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(way.label), table })} onClick={() => setOpen(false)}>
+              <a key={way.id} {...props} href={way.href} target={way.target} aria-label={t('tables.way.aria', { label: t(way.label), table })} onClick={() => setOpen(false)}>
                 {t(way.label)}
               </a>
             ) : (
@@ -761,13 +762,16 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
 }
 
 // A way into a table opens beside the editor, never over it: the designer keeps her work open.
+// It opens in the table's own tab for that view (#1217, `ways.ts`), so the same way taken twice
+// brings that tab out instead of opening another. `target` absent is a page that is not a table's
+// — the phones' join page — which opens in a tab of its own as before.
 // The label on the screen is short; the name a screen reader hears says which table it leads to
-// and that a new tab opens, because these four words repeat once per table and the visible row
-// is what tells them apart for the eye.
-function Way({ href, label, table, ready = false }: { href: string; label: Key; table: string; ready?: boolean }) {
+// and where it opens, because these four words repeat once per table and the visible row is what
+// tells them apart for the eye.
+function Way({ href, target, label, table, ready = false }: { href: string; target?: string; label: Key; table: string; ready?: boolean }) {
   const t = useT()
   return (
-    <a href={href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(label), table })} className={ready ? 'byd-secondary' : undefined}>
+    <a href={href} {...(target ? { target } : { target: '_blank', rel: 'noreferrer' })} aria-label={t('tables.way.aria', { label: t(label), table })} className={ready ? 'byd-secondary' : undefined}>
       {t(label)}
     </a>
   )
