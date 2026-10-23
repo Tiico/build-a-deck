@@ -8,6 +8,7 @@ describe('which route a path is', () => {
     ['/', 'home'],
     ['/login', 'login'],
     ['/new', 'new'],
+    ['/new/guided', 'new'],
     ['/claim', 'claim'],
     ['/editor', 'editor'],
     ['/table', 'table'],

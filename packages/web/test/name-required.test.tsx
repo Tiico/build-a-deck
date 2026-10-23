@@ -15,7 +15,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { createSession, roomOf, startServer, type Running } from './fixture.js'
-import { atWidth } from './viewport.js'
 
 let run: Running
 beforeEach(async () => {
@@ -103,11 +102,12 @@ describe('wizarden med tomt namn (#416)', () => {
   }
   const gameField = () => screen.getByLabelText('Spelets namn')
 
+  // Sedan L79 står namnet på vägskälet, och det är dörrarna där som frågar efter det.
   it('svarar vid tryck på den guidade vägen: beskedet når läsaren, markören hamnar i fältet, och inget spel skapas', async () => {
     const gone: string[] = []
     guide(gone)
 
-    const create = screen.getByRole('button', { name: /skapa spelet/i }) as HTMLButtonElement
+    const create = screen.getByRole('button', { name: 'Guidad start' }) as HTMLButtonElement
     expect(create.disabled).toBe(false)
     fireEvent.click(create)
 
@@ -126,12 +126,12 @@ describe('wizarden med tomt namn (#416)', () => {
     const gone: string[] = []
     guide(gone)
 
-    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' }) as HTMLButtonElement
+    const blank = screen.getByRole('button', { name: 'Tomt spel' }) as HTMLButtonElement
     expect(blank.disabled).toBe(false)
     fireEvent.click(blank)
 
     await waitFor(() => expect(document.activeElement).toBe(gameField()))
-    // Två utgångar i var sin spalt, ett besked.
+    // Två dörrar, ett besked vid fältet.
     expect(screen.getAllByRole('alert')).toHaveLength(1)
     expect(screen.getByRole('alert').textContent).toMatch(/Spelet behöver ett namn först/)
     expect(gone).toEqual([])
@@ -140,23 +140,6 @@ describe('wizarden med tomt namn (#416)', () => {
     fireEvent.change(gameField(), { target: { value: 'Kråkkriget' } })
     expect(screen.queryByRole('alert')).toBeNull()
     expect(gameField().getAttribute('aria-invalid')).toBe('false')
-  })
-
-  // Under skrivbordsbredd är wizarden tre steg (L10), och namnet bor i det första medan den
-  // guidade utgången står i det tredje. Ett tryck som bara flyttar fokus skulle då sikta på ett
-  // fält som inte är målat: steget där villkoret hör hemma öppnas först.
-  it('öppnar steget där namnet bor när utgången trycks under skrivbordsbredd', async () => {
-    atWidth(390)
-    const gone: string[] = []
-    guide(gone)
-
-    fireEvent.click(screen.getByRole('tab', { name: '3 · Korten' }))
-    const create = await screen.findByRole('button', { name: /skapa spelet/i })
-    fireEvent.click(create)
-
-    await waitFor(() => expect(document.activeElement).toBe(gameField()))
-    expect(screen.getByRole('alert').textContent).toMatch(/Spelet behöver ett namn först/)
-    expect(gone).toEqual([])
   })
 
   it('låter etiketten förklara namnfältet utan exempel eller förifyllt värde', () => {

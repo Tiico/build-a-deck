@@ -11,7 +11,7 @@ import { newSecret } from '../src/rooms.js'
 import type { Corpus } from '../src/corpus.js'
 import type { Plans } from '../src/quotas.js'
 import type { AccountPlanStore } from '../src/account-plans.js'
-import { MemoryRenderStore, Renderer, runWorker, type ObjectStore } from '@byd/render'
+import { MemoryRenderStore, Renderer, runWorker, type ObjectStore, type RenderStore } from '@byd/render'
 import { WireClient } from './client.js'
 
 export const registry = new TypeRegistry(STANDARD_TYPES)
@@ -146,7 +146,7 @@ export type Running = {
   base: string
   http: string
   store: LogStore
-  renders: MemoryRenderStore
+  renders: RenderStore
   host: TableHost
   projects: ProjectStore
   mail: MemoryMailer
@@ -174,19 +174,22 @@ const rooms = new Map<string, { code: string; hostKey: string }>()
 // of them cannot say so. `store`, `projects` and `auth` are the same for a door that asks who owns a
 // game and what that owner's address is (#1011): the answer comes out of a different query on the box.
 // `plans` and `accountPlans` are the tiers and who has which (#1193); without them nothing is limited.
-export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore | false; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore; printProviders?: ServerOptions['printProviders'] } = {}): Promise<Running> {
+// `renders` is the render queue, for a test about who a rendering is counted against (#1197): the
+// render log is written by the queue, so the Postgres one has to be the one asked.
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore | false; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore; renders?: RenderStore; printProviders?: ServerOptions['printProviders'] } = {}): Promise<Running> {
   const store = opts.store ?? new MemoryLogStore()
-  const renders = new MemoryRenderStore(opts.objects)
+  const renders = opts.renders ?? new MemoryRenderStore(opts.objects)
+  // One store for the app and the worker, as the box has one table and one bucket for both (#1028).
+  const assets = opts.assets ?? new MemoryAssetStore(opts.objects)
   // A store of the test's own, for a test about what the server does while the store is answering.
-  const projects = opts.projects ?? new MemoryProjectStore()
+  // The memory one weighs the pictures its games name in the same asset store (#1197).
+  const projects = opts.projects ?? new MemoryProjectStore(assets)
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
   // Accounts are on unless a test says the server has none, as a server started without them has.
   const auth = opts.auth === false ? null : (opts.auth ?? new MemoryAuthStore())
   let bearer: Promise<Record<string, string>> | null = null
-  // One store for the app and the worker, as the box has one table and one bucket for both (#1028).
-  const assets = opts.assets ?? new MemoryAssetStore(opts.objects)
   const server = createServer({ host, store, registry, renders, projects, assets, surveys: opts.surveys ?? new MemorySurveyStore(), ...(auth ? { auth } : {}), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.printProviders ? { printProviders: opts.printProviders } : {}), ...authBypass })
   // Never hang up an idle connection from this end (#848): the `fetch` in this same process pools
   // it for its next request, and a worker held past Node's five seconds wakes with both due in one

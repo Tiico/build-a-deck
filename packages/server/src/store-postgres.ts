@@ -5,9 +5,9 @@ import type { ObjectStore } from '@byd/render'
 import { PHYSICAL_VERBS, type Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
-import { checkedHistory, liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
+import { checkedHistory, liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
-import { PostgresAssetStore } from './assets.js'
+import { PostgresAssetStore, assetHashesOf } from './assets.js'
 import { PostgresAiKeyStore } from './ai-keys.js'
 import { PostgresAccountPlanStore } from './account-plans.js'
 import { QuotaReached, growth, startThatFrees, tableGrowth, withFrees, type Limit, type TableCeilings, type TableUse } from './quotas.js'
@@ -437,28 +437,83 @@ async function within(tx: postgres.TransactionSql, owner: string | undefined, li
   if (met) throw new QuotaReached(met)
 }
 
+// What an account's games use (#1197): the sizes of the distinct assets the derived table says some
+// version of some game it owns names. A name no asset answers to weighs nothing.
+async function storedIn(sql: postgres.Sql | postgres.TransactionSql, owner: string): Promise<number> {
+  const [row] = await sql<{ n: string }[]>`
+    select coalesce(sum(a.size), 0)::text as n from assets a
+    where a.hash in (select pa.hash from project_assets pa join projects p on p.id = pa.project_id where p.owner = ${owner})
+  `
+  return Number(row?.n ?? 0)
+}
+
+// The ceiling on what an account's games name (#1197), held in the transaction that writes the
+// versions that name `hashes`, the way the ceiling on games is: under the account's own lock for
+// storage, so a second such write waits until the first has committed or rolled back and then
+// counts what the first left. What the account bears already costs nothing again.
+async function storing(tx: postgres.TransactionSql, owner: string | undefined, limit: Limit | undefined, hashes: readonly string[]): Promise<void> {
+  if (owner === undefined || limit === undefined || limit === null) return
+  await tx`select pg_advisory_xact_lock(hashtext('quota:storageBytes'), hashtext(${owner}))`
+  const used = await storedIn(tx, owner)
+  const [row] = hashes.length === 0 ? [{ n: '0' }] : await tx<{ n: string }[]>`
+    select coalesce(sum(a.size), 0)::text as n from assets a
+    where a.hash in ${tx(hashes as string[])}
+      and a.hash not in (select pa.hash from project_assets pa join projects p on p.id = pa.project_id where p.owner = ${owner})
+  `
+  const met = growth('storageBytes', limit, used, Number(row?.n ?? 0))
+  if (met) throw new QuotaReached(met)
+}
+
+// What a game's versions name, kept beside them (#1197): derived from the versions, never told
+// anything they do not say, and gone with the game. See `project_assets` in 001-init.sql.
+async function naming(tx: postgres.TransactionSql, id: string, hashes: readonly string[]): Promise<void> {
+  if (hashes.length === 0) return
+  await tx`insert into project_assets ${tx(hashes.map((hash) => ({ project_id: id, hash })))} on conflict do nothing`
+}
+
+// The edit log between saves (D3), written in whatever transaction the caller is in.
+async function logged(sql: postgres.Sql | postgres.TransactionSql, id: string, edits: readonly AppliedEdit[]): Promise<void> {
+  if (edits.length === 0) return
+  await sql`
+    insert into project_events ${sql(
+      edits.map((e) => ({ project_id: id, seq: e.seq, intent: sql.json(e.intent as never), by_account: e.by ?? null, created_at: e.at })),
+      'project_id',
+      'seq',
+      'intent',
+      'by_account',
+      'created_at',
+    )}
+  `
+}
+
 export class PostgresProjectStore implements ProjectStore {
   constructor(private readonly sql: postgres.Sql) {}
 
-  async create(id: string, doc: ProjectDoc, owner?: string, limit?: Limit): Promise<ProjectRecord> {
+  async create(id: string, doc: ProjectDoc, owner?: string, ceilings?: Ceilings): Promise<ProjectRecord> {
+    const hashes = assetHashesOf(doc)
     await this.sql.begin(async (tx) => {
-      await within(tx, owner, limit)
+      await within(tx, owner, ceilings?.projects)
+      await storing(tx, owner, ceilings?.storageBytes, hashes)
       await tx`insert into projects (id, rev, doc, owner) values (${id}, 1, ${tx.json(doc as never)}, ${owner ?? null})`
       await tx`insert into project_versions (project_id, rev, doc) values (${id}, 1, ${tx.json(doc as never)})`
+      await naming(tx, id, hashes)
     })
     return { ...doc, id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
   }
 
-  async restore(id: string, versions: RestoredVersion[], owner?: string, limit?: Limit): Promise<ProjectRecord> {
+  async restore(id: string, versions: RestoredVersion[], owner?: string, ceilings?: Ceilings): Promise<ProjectRecord> {
     const last = checkedHistory(versions)
+    const hashes = [...new Set(versions.flatMap((v) => assetHashesOf(v.doc)))]
     // One transaction: a history is brought back whole or not at all, and an id that is taken fails
     // on its primary key before anything is kept.
     await this.sql.begin(async (tx) => {
-      await within(tx, owner, limit)
+      await within(tx, owner, ceilings?.projects)
+      await storing(tx, owner, ceilings?.storageBytes, hashes)
       await tx`insert into projects (id, rev, doc, owner) values (${id}, ${last.rev}, ${tx.json(last.doc as never)}, ${owner ?? null})`
       for (const v of versions) {
         await tx`insert into project_versions (project_id, rev, doc, label, created_at) values (${id}, ${v.rev}, ${tx.json(v.doc as never)}, ${v.label ?? null}, ${v.at})`
       }
+      await naming(tx, id, hashes)
     })
     return { ...last.doc, id, rev: last.rev, ...(owner !== undefined ? { owner } : {}) }
   }
@@ -466,6 +521,19 @@ export class PostgresProjectStore implements ProjectStore {
   async owned(owner: string): Promise<number> {
     const [row] = await this.sql<{ n: number }[]>`select count(*)::int as n from projects where owner = ${owner}`
     return row?.n ?? 0
+  }
+
+  stored(owner: string): Promise<number> {
+    return storedIn(this.sql, owner)
+  }
+
+  async borne(owner: string, hashes: readonly string[]): Promise<Set<string>> {
+    if (hashes.length === 0) return new Set()
+    const rows = await this.sql<{ hash: string }[]>`
+      select distinct pa.hash from project_assets pa join projects p on p.id = pa.project_id
+      where p.owner = ${owner} and pa.hash in ${this.sql(hashes as string[])}
+    `
+    return new Set(rows.map((r) => r.hash))
   }
 
   async ownedIds(owner: string): Promise<string[]> {
@@ -568,17 +636,7 @@ export class PostgresProjectStore implements ProjectStore {
 
   // The edit log between saves (D3): committed before an edit is applied, read back on load.
   async appendEdits(id: string, edits: AppliedEdit[]): Promise<void> {
-    if (edits.length === 0) return
-    await this.sql`
-      insert into project_events ${this.sql(
-        edits.map((e) => ({ project_id: id, seq: e.seq, intent: this.sql.json(e.intent as never), by_account: e.by ?? null, created_at: e.at })),
-        'project_id',
-        'seq',
-        'intent',
-        'by_account',
-        'created_at',
-      )}
-    `
+    await logged(this.sql, id, edits)
   }
 
   async readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]> {
@@ -588,18 +646,27 @@ export class PostgresProjectStore implements ProjectStore {
     return rows.map((r) => ({ seq: r.seq, at: r.created_at.toISOString(), ...(r.by_account ? { by: r.by_account } : {}), intent: r.intent }))
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  // One transaction: the edits, the version and what it names are written together after the
+  // ceiling is asked, or none of them is (#1233).
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = []): Promise<ProjectRecord | 'conflict' | 'missing'> {
+    const hashes = assetHashesOf(doc)
     return this.sql.begin(async (tx) => {
       const [row] = await tx<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id} for update`
       if (!row) return 'missing'
       if (row.rev !== expectedRev) return 'conflict'
       // Read under the same lock as the write, so "nothing changed" cannot be decided against a
       // document somebody else has already replaced (B4).
-      if (stamp(row.doc) === stamp(doc)) return { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) }
+      if (stamp(row.doc) === stamp(doc)) {
+        await logged(tx, id, edits)
+        return { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) }
+      }
+      await storing(tx, row.owner ?? undefined, ceilings?.storageBytes, hashes)
+      await logged(tx, id, edits)
       const rev = row.rev + 1
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
       // The history (B4) grows by one; nothing already in it is ever written again.
       await tx`insert into project_versions (project_id, rev, doc, at_seq) values (${id}, ${rev}, ${tx.json(doc as never)}, ${atSeq ?? null})`
+      await naming(tx, id, hashes)
       return { ...doc, id, rev }
     })
   }

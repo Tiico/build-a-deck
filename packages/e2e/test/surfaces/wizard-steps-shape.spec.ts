@@ -1,19 +1,21 @@
 import type { Page } from '@playwright/test'
 import { logIn } from '../../support/api.js'
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 
 // Three things about the guide's shape the playtest of 2026-10-02 measured (#732), measured here
 // on the built app as it is painted.
 
-// A step that opens starts at its top. The three steps share one scrolling body, so at 768 a step
-// left scrolled to its bottom handed the next one the same distance: «Nästa» opened step 3 101 px
-// down, its heading above the edge and the card's top cut off — and «Föregående» back did the same.
+// A step that opens starts at its top. The guide's steps share one scrolling body, so at 768 a step
+// left scrolled to its bottom handed the next one the same distance: «Nästa» opened the cards 101 px
+// down, their heading above the edge and the card's top cut off — and «Föregående» back did the same.
 test.describe('a step walked to at 768 × 1024', () => {
   test.use({ viewport: { width: 768, height: 1024 }, locale: 'sv-SE' })
 
   test('opens at its top, forward and back', async ({ page }) => {
     await logIn(page.request)
     await page.goto('/new')
+    await throughTheDoor(page)
     const body = page.locator('.byd-wizard-body')
     const top = () => body.evaluate((el) => el.scrollTop)
     const toBottom = async () => {
@@ -24,17 +26,16 @@ test.describe('a step walked to at 768 × 1024', () => {
       await expect.poll(top).toBeGreaterThan(0)
     }
 
-    await page.getByRole('button', { name: 'Nästa' }).click()
-    await expect(page.getByRole('tab', { name: '2 · Fälten' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: '1 · Fälten' })).toHaveAttribute('aria-selected', 'true')
     await toBottom()
     await page.getByRole('button', { name: 'Nästa' }).click()
-    await expect(page.getByRole('tab', { name: '3 · Korten' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: '2 · Korten' })).toHaveAttribute('aria-selected', 'true')
     expect(await top()).toBe(0)
     await expect(page.locator('#byd-wizard-h3')).toBeInViewport({ ratio: 1 })
 
     await toBottom()
     await page.getByRole('button', { name: /Föregående/ }).click()
-    await expect(page.getByRole('tab', { name: '2 · Fälten' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: '1 · Fälten' })).toHaveAttribute('aria-selected', 'true')
     expect(await top()).toBe(0)
     await expect(page.locator('#byd-wizard-h2')).toBeInViewport({ ratio: 1 })
   })
@@ -49,6 +50,7 @@ test.describe('a card s tab at 1280 × 800', () => {
   test('cuts a long title short, at the width of 24 characters', async ({ page }) => {
     await logIn(page.request)
     await page.goto('/new')
+    await throughTheDoor(page)
     const long = 'Den gamla björnen som vaktade bron över Mörkälven i tusen år'
     await page.getByLabel('kort 1 Titel').fill(long)
     const tabs = page.locator('.byd-wizard-card-tabs > button[aria-pressed]')
@@ -66,7 +68,7 @@ test.describe('a card s tab at 1280 × 800', () => {
   })
 })
 
-// The locked «Föregående» on step 1 (#416) has its fill taken away and keeps its line — a form
+// The locked «Föregående» on the first step (#416) has its fill taken away and keeps its line — a form
 // measured against the paper. On the strip the two moves stand on, white at 70 %, the fill was the
 // strip's own colour, so the locked button looked like an active secondary one with greyer words.
 // The locked form is measured against the strip now as well: an active button's fill must stand
@@ -114,13 +116,14 @@ test.describe('the locked «Föregående» at 768 × 1024', () => {
   test('reads as locked on the strip it stands on, under the pointer too', async ({ page }) => {
     await logIn(page.request)
     await page.goto('/new')
+    await throughTheDoor(page)
     const back = page.getByRole('button', { name: /Föregående/ })
     await expect(back).toBeDisabled()
     await page.mouse.move(0, 0)
 
     const strip = (await page.locator('.byd-wizard-steps').boundingBox())!
-    const name = (await page.getByLabel('Spelets namn').boundingBox())!
-    const panel = (await page.locator('#byd-wizard-panel-spelet').boundingBox())!
+    const name = (await page.getByLabel('Kostnad namn').boundingBox())!
+    const panel = (await page.locator('#byd-wizard-panel-falten').boundingBox())!
     const box = (await back.boundingBox())!
     const mid = box.y + box.height / 2
     // The strip's own ground, its padding left of the button; the button's inside, clear of its

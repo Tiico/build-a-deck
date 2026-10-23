@@ -50,7 +50,7 @@ export class PostgresRenderStore implements RenderStore {
     await this.sql.end()
   }
 
-  async enqueue(req: RenderRequest): Promise<EnqueueResult> {
+  async enqueue(req: RenderRequest, bearer?: string): Promise<EnqueueResult> {
     return this.sql.begin(async (tx) => {
       const cached = await tx`select 1 from render_outputs where hash = ${req.hash}`
       if (cached.length > 0) return 'cached'
@@ -63,8 +63,15 @@ export class PostgresRenderStore implements RenderStore {
           set kind = excluded.kind, priority = excluded.priority, compiled = excluded.compiled,
               requested_at = excluded.requested_at, state = 'queued', error = null, started_at = null
       `
+      // In the transaction that queued the job (#1197), so a job is never queued unbilled nor billed unqueued.
+      if (bearer !== undefined) await tx`insert into render_log (account_id, hash, priority, requested_at) values (${bearer}, ${req.hash}, ${req.priority}, ${req.requestedAt})`
       return 'queued'
     })
+  }
+
+  async rendersBy(bearer: string, since: number): Promise<number> {
+    const [row] = await this.sql<{ n: number }[]>`select count(*)::int as n from render_log where account_id = ${bearer} and requested_at >= ${since}`
+    return row?.n ?? 0
   }
 
   async claim(now: number): Promise<ClaimedJob | null> {

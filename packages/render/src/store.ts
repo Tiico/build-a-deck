@@ -17,7 +17,15 @@ export type EnqueueResult = 'queued' | 'queued-already' | 'cached'
 export type Fit = { smallestPt: number | null }
 
 export type RenderStore = {
-  enqueue(req: RenderRequest): Promise<EnqueueResult>
+  // `bearer` is the account the rendering is counted against (#1197, A2): a page is content-addressed
+  // and the queue keeps no owner, so who caused a rendering can only be written down as it is
+  // queued. A job answered `queued` writes one line on the bearer in the render log, in the same
+  // step as the job; `cached` and `queued-already` cost nothing and write nothing. Without a bearer
+  // nobody is counted, as for a table from before accounts.
+  enqueue(req: RenderRequest, bearer?: string): Promise<EnqueueResult>
+  // How many jobs the bearer has had queued at or after `since` (ms, the clock of `requestedAt`):
+  // the measure `rendersPer30Days`, read out of the render log.
+  rendersBy(bearer: string, since: number): Promise<number>
   // The next job to run, marked running as of `now`; null when nothing is waiting.
   claim(now: number): Promise<ClaimedJob | null>
   complete(hash: string, output: Uint8Array, fit?: Fit): Promise<void>
@@ -57,15 +65,22 @@ export function contentTypeOf(kind: RenderKind | undefined): string {
 export class MemoryRenderStore implements RenderStore {
   private readonly jobs = new Map<string, RenderRequest & JobStatus>()
   private readonly outputs = new Map<string, Fit>()
+  // The render log (#1197): who bore each job that was queued, and when it was asked for.
+  private readonly log: { bearer: string; hash: string; at: number }[] = []
 
   constructor(private readonly objects: ObjectStore = new MemoryObjectStore()) {}
 
-  async enqueue(req: RenderRequest): Promise<EnqueueResult> {
+  async enqueue(req: RenderRequest, bearer?: string): Promise<EnqueueResult> {
     if (this.outputs.has(req.hash)) return 'cached'
     const existing = this.jobs.get(req.hash)
     if (existing && (existing.state === 'queued' || existing.state === 'running')) return 'queued-already'
     this.jobs.set(req.hash, { ...req, state: 'queued' })
+    if (bearer !== undefined) this.log.push({ bearer, hash: req.hash, at: req.requestedAt })
     return 'queued'
+  }
+
+  async rendersBy(bearer: string, since: number): Promise<number> {
+    return this.log.filter((line) => line.bearer === bearer && line.at >= since).length
   }
 
   async claim(now: number): Promise<ClaimedJob | null> {

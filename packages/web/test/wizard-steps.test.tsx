@@ -1,34 +1,39 @@
 // @vitest-environment jsdom
-// The starter flow below the desk (#4, L10): three steps with one job each, instead of one page
-// two and a half screens long where the frame is chosen half a metre from the card it changes.
+// The starter flow below the desk (#4, L10): steps with one job each, instead of one page two and
+// a half screens long where the frame is chosen half a metre from the card it changes. Since L79
+// (#1218) the name and the seats stand before the guide, at the crossroads, and the guide is two
+// steps: the fields and the cards.
 import { describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
+import { throughTheDoor } from './wizard-door.js'
 
-function wizardAt(width: number) {
+function crossroadsAt(width: number) {
   atWidth(width)
   history.replaceState(null, '', '/new')
   render(<NewProjectPage />)
 }
 
+function wizardAt(width: number) {
+  crossroadsAt(width)
+  throughTheDoor()
+}
+
 const tabNames = () => screen.queryAllByRole('tab').map((tab) => tab.textContent?.trim())
 
 describe('the wizard on a phone', () => {
-  it('is three steps, each with one thing to do', async () => {
+  it('is two steps, each with one thing to do', async () => {
     const user = userEvent.setup()
     wizardAt(390)
-    expect(tabNames()).toEqual(['1 · Spelet', '2 · Fälten', '3 · Korten'])
-    expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
-    expect(screen.queryByText('Utseende')).toBeNull()
-
-    await user.click(screen.getByRole('tab', { name: '2 · Fälten' }))
+    expect(tabNames()).toEqual(['1 · Fälten', '2 · Korten'])
     expect(screen.getByLabelText('Kostnad namn')).toBeTruthy()
     // The frame belongs with the fields it frames, not in another chapter.
     expect(screen.getByText('Utseende')).toBeTruthy()
+    expect(screen.queryByLabelText('kort 1 Titel')).toBeNull()
 
-    await user.click(screen.getByRole('tab', { name: '3 · Korten' }))
+    await user.click(screen.getByRole('tab', { name: '2 · Korten' }))
     // The card owns the top of its own step, beside nothing and under nothing.
     expect(document.querySelector('.byd-wizard-preview [data-card]')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Skapa spelet/ })).toBeTruthy()
@@ -42,8 +47,6 @@ describe('the wizard on a phone', () => {
     expect(back().disabled).toBe(true)
 
     await user.click(on())
-    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Fälten')
-    await user.click(on())
     expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Korten')
     expect(on().disabled).toBe(true)
     await user.click(back())
@@ -54,27 +57,29 @@ describe('the wizard on a phone', () => {
     const user = userEvent.setup()
     wizardAt(390)
     const tabs = screen.getAllByRole('tab')
-    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1'])
+    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1'])
     tabs[0]!.focus()
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(tabs[1])
     await user.keyboard('{Enter}')
-    expect(screen.getByRole('tabpanel')).toBe(document.getElementById('byd-wizard-panel-falten'))
+    expect(screen.getByRole('tabpanel')).toBe(document.getElementById('byd-wizard-panel-korten'))
   })
 
   it('keeps what has been typed when the step changes', async () => {
     const user = userEvent.setup()
     wizardAt(390)
-    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar')
-    await user.click(screen.getByRole('tab', { name: '3 · Korten' }))
-    await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
-    expect((screen.getByLabelText('Spelets namn') as HTMLInputElement).value).toBe('Skogens herrar')
+    const cost = screen.getByLabelText('Kostnad namn')
+    await user.clear(cost)
+    await user.type(cost, 'Pris')
+    await user.click(screen.getByRole('tab', { name: '2 · Korten' }))
+    await user.click(screen.getByRole('tab', { name: '1 · Fälten' }))
+    expect((screen.getByLabelText('Pris namn') as HTMLInputElement).value).toBe('Pris')
   })
 })
 
 // A step opens at its top (#732). The steps share one scrolling body, so a step left scrolled to
-// its bottom handed the next one the same distance: at 768 «Nästa» opened step 3 101 px down, its
-// heading above the edge and the card's top cut off — and «Föregående» back did the same.
+// its bottom handed the next one the same distance: at 768 «Nästa» opened the cards 101 px down,
+// their heading above the edge and the card's top cut off — and «Föregående» back did the same.
 describe('a step that opens (#732)', () => {
   it('starts at its top, whichever way it was walked to', async () => {
     const user = userEvent.setup()
@@ -87,11 +92,7 @@ describe('a step that opens (#732)', () => {
 
     scrolled()
     await user.click(screen.getByRole('button', { name: 'Nästa' }))
-    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Fälten')
-    expect(top).toBe(0)
-
-    scrolled()
-    await user.click(screen.getByRole('button', { name: 'Nästa' }))
+    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Korten')
     expect(top).toBe(0)
 
     scrolled()
@@ -99,12 +100,12 @@ describe('a step that opens (#732)', () => {
     expect(top).toBe(0)
 
     scrolled()
-    await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
+    await user.click(screen.getByRole('tab', { name: '2 · Korten' }))
     expect(top).toBe(0)
 
     // And a step that does not change leaves the scroll where the reader put it.
     scrolled()
-    await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
+    await user.click(screen.getByRole('tab', { name: '2 · Korten' }))
     expect(top).toBe(101)
   })
 })
@@ -113,20 +114,21 @@ describe('the wizard on a desk', () => {
   it('is the one page it has always been, with no steps to walk', () => {
     wizardAt(1280)
     expect(tabNames()).toEqual([])
-    expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
+    expect(screen.getByLabelText('Kostnad namn')).toBeTruthy()
+    expect(screen.getByLabelText('kort 1 Titel')).toBeTruthy()
     expect(screen.getByText('Utseende')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Skapa spelet/ })).toBeTruthy()
   })
 })
 
-// Landmarks and the preview (#555 A-9, A-10): the form is the page's main content, all three steps
-// of it, and the card beside it is one picture with one name rather than three nameless drawings.
+// Landmarks and the preview (#555 A-9, A-10): the form is the page's main content, both steps of
+// it, and the card beside it is one picture with one name rather than three nameless drawings.
 describe.each([1280, 390])('the wizard to a screen reader at %i px (#555)', (width) => {
   it('keeps every step inside main, and has nothing to call a side column', () => {
     wizardAt(width)
     const main = screen.getByRole('main')
     expect(screen.queryByRole('complementary')).toBeNull()
-    expect(main.contains(screen.getByLabelText('Spelets namn'))).toBe(true)
+    expect(main.contains(screen.getByLabelText('Kostnad namn'))).toBe(true)
     for (const panel of document.querySelectorAll('[role="tabpanel"]')) expect(main.contains(panel)).toBe(true)
     if (width === 1280) {
       expect(main.contains(screen.getByLabelText('Kostnad namn'))).toBe(true)
@@ -155,7 +157,7 @@ describe('the wizard\'s preview (#555)', () => {
 describe('the focus in the wizard (#476)', () => {
   it('starts in the name on a desk, and Enter there goes on to the fields', async () => {
     const user = userEvent.setup()
-    wizardAt(1280)
+    crossroadsAt(1280)
     expect(document.activeElement).toBe(screen.getByLabelText('Spelets namn'))
     await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar{Enter}')
     expect(document.activeElement).toBe(screen.getByLabelText('Kostnad namn'))
@@ -163,9 +165,9 @@ describe('the focus in the wizard (#476)', () => {
 
   it('goes on to the next step from the name on a phone', async () => {
     const user = userEvent.setup()
-    wizardAt(390)
+    crossroadsAt(390)
     await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar{Enter}')
-    expect(screen.getByRole('tab', { name: '2 · Fälten' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: '1 · Fälten' }).getAttribute('aria-selected')).toBe('true')
     expect(document.activeElement).toBe(screen.getByLabelText('Kostnad namn'))
   })
 
@@ -190,13 +192,12 @@ describe('the focus in the wizard (#476)', () => {
 
     wizardAt(390)
     await user.click(screen.getByRole('button', { name: 'Nästa' }))
-    await user.click(screen.getByRole('button', { name: 'Nästa' }))
     expect(document.activeElement).not.toBe(document.body)
     expect(screen.getByRole('tabpanel').contains(document.activeElement)).toBe(true)
   })
 })
 
-// The names in step 2 are the columns the game gets (#476, L44), so the ones the document cannot
+// The names in the fields' step are the columns the game gets (#476, L44), so the ones the document cannot
 // hold are stopped where they are written: none, one used twice, and the tool's own. The title is
 // the tool's column too, shown as «Titel» and not written over.
 describe('the names of the fields (#476)', () => {
@@ -213,7 +214,7 @@ describe('the names of the fields (#476)', () => {
     atWidth(1280)
     history.replaceState(null, '', '/new')
     render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
-    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar')
+    throughTheDoor()
     const cost = screen.getByLabelText('Kostnad namn')
 
     await user.clear(cost)

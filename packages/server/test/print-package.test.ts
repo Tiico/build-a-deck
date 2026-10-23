@@ -171,6 +171,9 @@ describe('the print package of a game', () => {
     expect(first.files.map((f) => f.name)).toEqual(first.order.files.map((f) => f.name))
     expect(first.rulebook?.name).toBe('regelhafte.pdf')
     expect(first.done).toBe(0)
+    // Every file asked for is borne by the game's owner, as the export's are (#1197, A2).
+    const owner = (await run.projects.load('p1'))?.owner ?? ''
+    expect(await run.renders.rendersBy(owner, 0)).toBe(first.total)
     // A file that is not drawn yet says so rather than handing over nothing.
     expect((await call('GET', `/projects/p1/print-package/files/${first.files[0]!.name}?provider=fake-multi-step`)).status).toBe(202)
 

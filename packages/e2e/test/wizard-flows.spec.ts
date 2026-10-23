@@ -1,30 +1,60 @@
 import { logIn } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
+import { throughTheDoor } from '../support/wizard.js'
 
 // Three of the guide's ways out, as the playtest of 2026-10-02 walked them (#732). Each is walked
 // the way a designer walks it, in the built app, with the words the playtest read.
 test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 
+// The crossroads before the guide (L79, #1218): the first door goes to the guide at its own address,
+// the browser's back goes to the crossroads with the name and seats as they were, and a reload of
+// the guide's address — served by the built app's fallback — opens the guide again.
+test('walks from the crossroads into the guide and back, by the browser s own buttons', async ({ page }) => {
+  await logIn(page.request)
+  await page.goto('/new')
+  await page.getByRole('button', { name: 'En spelare fler' }).click()
+  await throughTheDoor(page, 'Kråkkriget')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kråkkriget')
+  await expect(page.getByText('3 spelare')).toBeVisible()
+  await expect(page.getByLabel('Kostnad namn')).toBeFocused()
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\/new(\?|$)/)
+  await expect(page.getByLabel('Spelets namn')).toHaveValue('Kråkkriget')
+  await expect(page.getByRole('spinbutton', { name: /Antal spelare/ })).toHaveValue('3')
+
+  await page.goForward()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kråkkriget')
+  page.on('dialog', (dialog) => void dialog.accept())
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kråkkriget')
+  await expect(page).toHaveTitle('Nytt spel · Deckster')
+})
+
 // The door past the guided start (L42, L9): with a title written on card 1, «Skapa ett tomt spel i
 // editorn» made a game of no cards and no fields, without a word. It asks first now — the tool's
-// one question — and «Avbryt», the answer it opens on, leaves the guide as it was.
+// one question — and «Avbryt», the answer it opens on, leaves the guide as it was. Since L79 the
+// door is at the crossroads, so that is a designer who went into the guide and came back out.
 test('asks before the empty game leaves behind the cards that were filled in', async ({ page }) => {
   await logIn(page.request)
   await page.goto('/new')
-  await page.getByLabel('Spelets namn').fill('Kråkkriget')
+  await throughTheDoor(page, 'Kråkkriget')
   await page.getByLabel('kort 1 Titel').fill('Den gamla björnen')
-  const blank = page.getByRole('button', { name: 'Skapa tomt spel' })
+  await page.getByRole('button', { name: 'Ändra namn och spelare' }).click()
+  const blank = page.getByRole('button', { name: 'Tomt spel' })
   await blank.click()
 
   const asked = page.getByRole('alertdialog')
-  await expect(asked).toContainText('Korten och fälten du har gjort här följer inte med')
+  await expect(asked).toContainText('Korten och fälten du har gjort i guiden följer inte med')
   await expect(asked.getByRole('button', { name: 'Avbryt' })).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(asked).toHaveCount(0)
   await expect(blank).toBeFocused()
   await expect(page).toHaveURL(/\/new/)
+  await page.getByRole('button', { name: 'Guidad start' }).click()
   await expect(page.getByLabel('kort 1 Titel')).toHaveValue('Den gamla björnen')
+  await page.getByRole('button', { name: 'Ändra namn och spelare' }).click()
   expect(await (await page.request.get('/projects')).json()).toEqual([])
 
   await blank.click()
@@ -42,6 +72,7 @@ const NINE_MB = Buffer.concat([PIXEL, Buffer.alloc(9 * 1024 * 1024 - PIXEL.lengt
 test('takes the refusal away with the picture «Ta bort» removes', async ({ page }) => {
   await logIn(page.request)
   await page.goto('/new')
+  await throughTheDoor(page)
   const file = page.getByLabel('kort 1 Illustration')
   await file.setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: PIXEL })
   const picture = page.getByRole('img', { name: 'Förhandsvisning av Illustration' })
@@ -63,7 +94,7 @@ test('takes the refusal away with the picture «Ta bort» removes', async ({ pag
 test('opens the editor s table with the columns in the order the guide listed them', async ({ page }) => {
   await logIn(page.request)
   await page.goto('/new')
-  await page.getByLabel('Spelets namn').fill('Kolumnerna')
+  await throughTheDoor(page, 'Kolumnerna')
   await page.getByRole('button', { name: /Skapa spelet/ }).click()
   await expect(page).toHaveURL(/\/editor\?/)
   await page.locator('#byd-editor-tab-table').click()

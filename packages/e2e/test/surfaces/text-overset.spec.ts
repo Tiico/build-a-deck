@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
 
@@ -65,11 +66,11 @@ async function guide(page: Page, phone = false) {
   await google(page)
   await logIn(page.request)
   await page.goto('/new')
-  await page.getByLabel('Spelets namn').fill('Skogens herrar')
-  if (phone) await page.getByRole('tab', { name: '2 · Fälten' }).click()
+  await throughTheDoor(page)
+  if (phone) await page.getByRole('tab', { name: '1 · Fälten' }).click()
   await page.getByRole('button', { name: 'Klassisk', exact: true }).click()
   await page.getByRole('button', { name: 'Välj temat Krönika' }).click()
-  if (phone) await page.getByRole('tab', { name: '3 · Korten' }).click()
+  if (phone) await page.getByRole('tab', { name: '2 · Korten' }).click()
   await page.getByLabel('kort 1 Titel').fill('Skogsvandring')
   await page.getByLabel('kort 1 Regeltext').fill(LONG)
   await page.evaluate(() => document.fonts.ready.then(() => undefined))

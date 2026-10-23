@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate'
 import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
 import { ProjectDoc, checkedHistory, liftDoc } from './projects.js'
-import { assetHash, svgBytesRefusal } from './assets.js'
+import { assetHash, assetHashesOf, svgBytesRefusal } from './assets.js'
 import { PROJECT_NAME_MAX } from './edits.js'
 
 // Full export of a game (G5, #527): the designer's data, whole, in a format they can open without
@@ -80,26 +80,9 @@ export function exportSchema(): unknown {
   return z.toJSONSchema(ProjectExport, { io: 'input', unrepresentable: 'any' })
 }
 
-const ASSET_REF = /^asset:([0-9a-f]{64})$/
-
-// Every asset a document uses. It walks the whole document rather than knowing its fields, so a
-// place a picture can be put that is added later is exported without anyone remembering to: a
-// string that is an `asset:<hash>` reference is one, wherever it stands. A picture's own entry is
-// keyed by its bare hash, and it is only a use of the asset when that entry is in `pictures`.
-export function assetHashesOf(doc: unknown): string[] {
-  const found = new Set<string>()
-  const walk = (value: unknown): void => {
-    if (typeof value === 'string') {
-      const m = ASSET_REF.exec(value)
-      if (m?.[1]) found.add(m[1])
-    } else if (Array.isArray(value)) for (const v of value) walk(v)
-    else if (value && typeof value === 'object') for (const v of Object.values(value)) walk(v)
-  }
-  walk(doc)
-  const pictures = (doc as { pictures?: Record<string, unknown> } | null)?.pictures
-  for (const hash of Object.keys(pictures ?? {})) if (/^[0-9a-f]{64}$/.test(hash)) found.add(hash)
-  return [...found].sort()
-}
+// Every asset a document uses lives beside the asset store (#1197), since storage is counted out of
+// exactly what an export carries; it is said here too, where the export has always asked it.
+export { assetHashesOf }
 
 const EXTENSIONS: Record<string, string> = {
   'image/png': 'png',

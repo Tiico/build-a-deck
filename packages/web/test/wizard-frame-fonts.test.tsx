@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Element } from '@byd/template'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { FRAMES } from '../src/wizard/frames.js'
 import { deckIssues } from '../src/editor/checks.js'
 import type { ProjectDoc } from '../src/editor/types.js'
@@ -44,7 +45,7 @@ async function madeWith(frame: string, theme?: string): Promise<ProjectDoc> {
   const gone: string[] = []
   history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
   render(<NewProjectPage onNavigate={(url) => gone.push(url)} />)
-  fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+  throughTheDoor()
   fireEvent.click(screen.getByRole('button', { name: frame }))
   if (theme) fireEvent.click(screen.getByRole('button', { name: `Välj temat ${theme}` }))
   for (const [i, kort] of KORT.entries()) {
@@ -168,6 +169,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   it('asks the catalogue for nothing until a theme is pressed, a frame included, and offers to show the card in the preselection', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
+    throughTheDoor()
     fireEvent.click(screen.getByRole('button', { name: 'Minimal' }))
     await new Promise((r) => setTimeout(r, 50))
     expect(net.asked).toEqual([])
@@ -181,6 +183,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   it('presses the preselection from the card, fetches its faces, and shows the card', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
+    throughTheDoor()
     fireEvent.click(screen.getByRole('button', { name: 'Visa kortet i Skogssaga' }))
     await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Cinzel"/))
     await waitFor(() => expect(preview().hasAttribute('data-unseen')).toBe(false))
@@ -194,6 +197,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   it('draws the preview in the pressed theme s heading and body faces once they have been fetched', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
+    throughTheDoor()
     fireEvent.click(screen.getByRole('button', { name: 'Välj temat Retro' }))
     await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Oswald";src:url\("https:\/\/fonts\.gstatic\.com\/s\/oswald\/latin\.woff2"\)/))
     expect(drawn()).toMatch(/@font-face\{font-family:"Roboto Condensed";src:url\("https:\/\/fonts\.gstatic\.com\/s\/roboto-condensed\/latin\.woff2"\)/)
@@ -213,6 +217,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
     try {
       history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
       render(<NewProjectPage onNavigate={() => undefined} />)
+      throughTheDoor()
       fireEvent.click(screen.getByRole('button', { name: 'Välj temat Krönika' }))
       expect(await screen.findByText('Katalogen svarade inte, så kortet visas inte i temats typsnitt.')).toBeTruthy()
       expect(preview().hasAttribute('data-unseen')).toBe(true)
@@ -228,6 +233,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   it('paints a meaning in the pressed theme s colour, and changes it when the theme changes', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
+    throughTheDoor()
     fireEvent.change(screen.getByLabelText('kort 1 Regeltext'), { target: { value: 'Betala {mynt|kostnad}.' } })
     const ink = () => (preview().querySelector('.byd-ink') as HTMLElement | null)?.style.background
     await waitFor(() => expect(ink()).toBe('rgb(143, 45, 32)'))
