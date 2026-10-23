@@ -1964,6 +1964,13 @@ Preciserat 2026-10-23 (#1199, beställarens beslut efter researchen i issuet): *
 - Tryckfilerna görs efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()`, i stället för typens fasta 3 mm, av den enda renderaren (E2, #1207).
 - Byggs inte nu: order och spårning på servern, och tillverkningsflaggan i F3.
 
+Byggt 2026-10-23 (#1206): kontraktet, regiondirigeringen, fake-providern och kontraktssviten finns i paketet `packages/print`, och TUNN-SKIVA §4 beskriver dem som de är byggda.
+- `requirements(type)` är partnerns krav som data: snitt, utfall, raster i exakta pixelmått eller vektor, färgrymd, filnamnsform, partnerns ord för varje sida, och lagervaror som partnern packar.
+- `prepare(manifest)` ger det förberedda paketet utan att tala med partnern: filerna som ska ritas, korten med sina sidor som filer, lagervarorna, det som lämnades och varför, och partnerns steg som data.
+- `routeOrder` skickar en EU-destination bara till en provider vars alla fabriker ligger i EU, och svarar annars «inget EU-tryck».
+- Fake-providern klarar sviten i både TGC:s flerstegsform och QPMN:s form med en order, och dess pris är märkt som påhittat.
+- Ingen serverväg anropar ännu `submit` eller `track`, och inget i servern läser paketet; det gör #1207 och #1208.
+
 ### F3. Kostnadsbesked först i beställningsflödet (fråga 29)
 
 Ingen löpande prisvisning i editorn.

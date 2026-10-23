@@ -6,6 +6,7 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY packages/protocol/package.json packages/protocol/
 COPY packages/engine/package.json packages/engine/
+COPY packages/print/package.json packages/print/
 COPY packages/template/package.json packages/template/
 COPY packages/render/package.json packages/render/
 COPY packages/server/package.json packages/server/
