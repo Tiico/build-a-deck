@@ -242,6 +242,7 @@ Två prioriteter: bordstextur före tryck-PDF.
 En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 GB sedan 2026-09-11.
 Sidan namnger sina bilder och typsnitt med hash, och workern läser bytesen själv ur Postgres eller R2 (§4, #1028).
 Utdata i R2 under hash av mall, rad, typversion och fontset; ett jobb vars hash redan finns är en no-op.
+En partners tryckfil (#1207) har utfallet i den kompilerade sidan och pixlarna och formatet i jobbslaget, så samma kort i två partners krav är två renderingar och i samma krav en.
 En reaper återställer jobb vars `started_at` är äldre än en gräns, eftersom Chromium ibland hänger utan att dö.
 
 ## 7. Deploy: CI bygger, lådan hämtar

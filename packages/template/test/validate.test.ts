@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { contrastRatio, distance, simulate, validateCard, type Issue } from '../src/validate.js'
+import { contrastRatio, distance, remedyFor, simulate, validateCard, type Issue } from '../src/validate.js'
 import type { FitReport } from '../src/dom-fit.js'
 import type { Element, FaceTemplate } from '../src/model.js'
 
@@ -55,6 +55,22 @@ describe('physical validation (E5): what looks fine on a screen and fails in the
     expect(codes(check([bg(), text({ y: 86 })]))).toEqual(['outside-safe-area:error'])
     // A background drawn exactly to the trim leaves a white edge when the knife wanders.
     expect(codes(check([bg({ x: 0, y: 0, w: 63, h: 88 }), text()]))).toEqual(['short-of-bleed:error'])
+  })
+
+  // The bleed that is measured against is the one that will be printed (#1207). A background that
+  // reaches the type's 3 mm passes where no partner is asked, and is short for a partner that
+  // wants an eighth of an inch: the last 0,175 mm of its bleed would be paper.
+  it('measures the bleed against what will be printed, and 3 mm is not enough for 3,175', () => {
+    const at = (bleedMm?: number) => validateCard({ type: CARD_STANDARD_63x88, face: face([bg(), text()]), row: {}, fonts: PINNED, ...(bleedMm === undefined ? {} : { bleedMm }) })
+    expect(at()).toEqual([])
+    expect(at(3)).toEqual([])
+    const short = at(3.175)
+    expect(codes(short)).toEqual(['short-of-bleed:error'])
+    expect(short[0]?.values).toEqual({ bleedMm: 3.175 })
+    expect(at(1.5)).toEqual([])
+    // The remedy reaches the bleed the finding was measured against, not the type's.
+    const remedy = remedyFor(short[0]!, { type: CARD_STANDARD_63x88, face: face([bg(), text()]), row: {}, fonts: PINNED, bleedMm: 3.175 })
+    expect(remedy).toEqual({ element: 'bg', patch: { x: -3.175, y: -3.175, w: 69.35, h: 94.35 } })
   })
 
   it('calls a hairline what the press cannot hold', () => {

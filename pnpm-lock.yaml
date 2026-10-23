@@ -115,6 +115,9 @@ importers:
       '@byd/engine':
         specifier: workspace:*
         version: link:../engine
+      '@byd/print':
+        specifier: workspace:*
+        version: link:../print
       '@byd/protocol':
         specifier: workspace:*
         version: link:../protocol
