@@ -13,6 +13,7 @@ import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
 import type { Account, AuthStore } from './auth.js'
+import type { PasskeyRecord } from './passkeys.js'
 
 export class PostgresAuthStore implements AuthStore {
   constructor(private readonly sql: postgres.Sql) {}
@@ -48,7 +49,29 @@ export class PostgresAuthStore implements AuthStore {
   async deleteSession(sessionHash: string): Promise<void> {
     await this.sql`delete from auth_sessions where session_hash = ${sessionHash}`
   }
+  async addPasskey(p: PasskeyRecord): Promise<void> {
+    await this.sql`
+      insert into passkeys (id, account_id, public_key, counter, transports, aaguid, device, created_at, last_used_at)
+      values (${p.id}, ${p.accountId}, ${Buffer.from(p.publicKey)}, ${p.counter}, ${p.transports}, ${p.aaguid}, ${p.device}, ${p.createdAt}, ${p.lastUsedAt})
+    `
+  }
+  async passkey(id: string): Promise<PasskeyRecord | null> {
+    const [row] = await this.sql<PasskeyRow[]>`select * from passkeys where id = ${id}`
+    return row ? passkeyOf(row) : null
+  }
+  async passkeysOf(accountId: string): Promise<PasskeyRecord[]> {
+    return (await this.sql<PasskeyRow[]>`select * from passkeys where account_id = ${accountId} order by created_at desc, id`).map(passkeyOf)
+  }
+  async usePasskey(id: string, counter: number, at: string): Promise<void> {
+    await this.sql`update passkeys set counter = ${counter}, last_used_at = ${at} where id = ${id}`
+  }
+  async removePasskey(accountId: string, id: string): Promise<boolean> {
+    return (await this.sql`delete from passkeys where id = ${id} and account_id = ${accountId}`).count > 0
+  }
 }
+
+type PasskeyRow = { id: string; account_id: string; public_key: Buffer; counter: string | number; transports: string[]; aaguid: string; device: string; created_at: Date; last_used_at: Date | null }
+const passkeyOf = (r: PasskeyRow): PasskeyRecord => ({ id: r.id, accountId: String(r.account_id), publicKey: new Uint8Array(r.public_key), counter: Number(r.counter), transports: r.transports, aaguid: r.aaguid, device: r.device, createdAt: r.created_at.toISOString(), lastUsedAt: r.last_used_at?.toISOString() ?? null })
 import type { SurveyRecord, SurveyStore } from './surveys.js'
 
 export class PostgresSurveyStore implements SurveyStore {

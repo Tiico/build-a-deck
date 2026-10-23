@@ -34,6 +34,7 @@ import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } f
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
+import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -62,6 +63,8 @@ export type ServerOptions = {
   authBypass?: boolean
   // One per server: how many login links an address may get per hour.
   limiter?: LoginLimiter
+  // One per server: the passkey ceremonies' one-use challenges (#1180).
+  passkeyChallenges?: PasskeyChallenges
   // The clock, for tests: what codes and tokens expire against.
   now?: () => Date
   // The release this process is running, named in /health so the box can be asked what it is
@@ -229,7 +232,7 @@ const HEADERS_TIMEOUT_MS = KEEP_ALIVE_MS + 1_000
 // HTTP for the few things that are not a table (health, creating a session), and one
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
 export function createServer(given: ServerOptions): Server {
-  const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter(), ...(given.ai ? { ai: { limiter: new KeyTryLimiter(), ...given.ai } } : {}) }
+  const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter(), passkeyChallenges: given.passkeyChallenges ?? new PasskeyChallenges(), ...(given.ai ? { ai: { limiter: new KeyTryLimiter(), ...given.ai } } : {}) }
   const http = createHttpServer({ keepAliveTimeout: KEEP_ALIVE_MS, headersTimeout: HEADERS_TIMEOUT_MS }, (req, res) => {
     // A closing server lets go of a connection as soon as it goes quiet. Node hangs up the idle
     // ones when `close` is called, but one still answering then becomes idle a moment later and
@@ -2160,6 +2163,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     // in (G1), and a 401 is written in the browser's console as an error on each of those pages.
     return json(res, 200, { email: account?.email ?? null })
   }
+  if (url.pathname.startsWith('/auth/passkeys')) return routePasskeys(opts, auth, req, res, url)
   if (req.method === 'POST' && url.pathname === '/auth/logout') {
     const sid = req.headers.cookie?.match(new RegExp(`${COOKIE}=([^;]+)`))?.[1]
     if (sid) await auth.deleteSession(hash(sid))
@@ -2168,6 +2172,49 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     return
   }
   json(res, 404, { error: 'not found' })
+}
+
+// Passkeys (#1180): saving one needs the session the link made; logging in with one makes a
+// session as the link does. The ceremonies themselves are `passkeys.ts`'s.
+async function routePasskeys(opts: ServerOptions, auth: AuthStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const own = req.headers.host ? `${schemeOf(opts, req)}://${req.headers.host}` : null
+  const c: Ceremonies = { auth, challenges: opts.passkeyChallenges ?? new PasskeyChallenges(), site: siteOf([opts.appOrigin, opts.publicOrigin, own]), now: clock(opts) }
+  const answer = (a: Answer) => json(res, a.status, a.body)
+  // A page on another site may not start or finish a ceremony here: it could otherwise post its own
+  // account's signed answer and log a visitor into that account. Browsers always say where a POST
+  // comes from; a request without an origin is not a browser's.
+  if (req.method !== 'GET' && req.headers.origin && !browserOriginAllowed(opts, req)) return json(res, 403, { error: 'not from this site' })
+  if (req.method === 'POST' && url.pathname === '/auth/passkeys/login/options') return answer(await loginOptions(c))
+  if (req.method === 'POST' && url.pathname === '/auth/passkeys/login') {
+    const a = await passkeyLogin(c, await bodyOf(req))
+    if (!a.login) return answer(a)
+    res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': await createLoginSession(opts, auth, a.login.email) })
+    res.end(JSON.stringify(a.body))
+    return
+  }
+  const account = await accountOf(auth, req)
+  if (!account) return json(res, 401, { error: 'log in' })
+  if (req.method === 'POST' && url.pathname === '/auth/passkeys/register/options') return answer(await registrationOptions(c, account))
+  if (req.method === 'POST' && url.pathname === '/auth/passkeys/register') return answer(await register(c, account, await bodyOf(req), req.headers['user-agent']))
+  if (req.method === 'GET' && url.pathname === '/auth/passkeys') return json(res, 200, { passkeys: (await auth.passkeysOf(account.id)).map(viewOf) })
+  const one = /^\/auth\/passkeys\/([^/]+)$/.exec(url.pathname)
+  if (req.method === 'DELETE' && one) {
+    const removed = await auth.removePasskey(account.id, decodeURIComponent(one[1] ?? ''))
+    return json(res, removed ? 200 : 404, removed ? { ok: true } : { error: 'no such passkey' })
+  }
+  json(res, 404, { error: 'not found' })
+}
+
+// A body that is not JSON, or is larger than any passkey's answer, is a body that is not a passkey,
+// and the ceremony says so.
+const PASSKEY_BODY_MAX = 64 * 1024
+async function bodyOf(req: IncomingMessage): Promise<unknown> {
+  const bytes = await readBytes(req, PASSKEY_BODY_MAX)
+  try {
+    return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null
+  } catch {
+    return null
+  }
 }
 
 async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: string): Promise<string> {
