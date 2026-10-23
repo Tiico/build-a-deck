@@ -533,7 +533,7 @@ describe('a game on the home page (G1)', () => {
     fireEvent.click(open)
     const [href, target] = opened.mock.calls[0]!
     const url = new URL(String(href), 'http://x')
-    expect([url.pathname, url.searchParams.get('session'), url.searchParams.get('owner'), target]).toEqual(['/table', made.id, '1', '_blank'])
+    expect([url.pathname, url.searchParams.get('session'), url.searchParams.get('owner'), target]).toEqual(['/table', made.id, '1', `byd-tv-${made.id}`])
     opened.mockRestore()
     expect(screen.queryByRole('alertdialog', { name: 'Ett bord kör redan' })).toBeNull()
     expect(await listed()).toBe(1)
@@ -623,14 +623,19 @@ describe('the game menu and the question on the home page (#475)', () => {
     await waitFor(() => expect(document.activeElement).toBe(more()))
   })
 
-  it('keeps the focus on ⋯ after a table is started, and says the way to it opens a new tab', async () => {
+  it('keeps the focus on ⋯ after a table is started, and says the way to it opens in the table’s own tab', async () => {
     await home()
     fireEvent.click(more())
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
     await waitFor(() => expect(document.activeElement).toBe(more()))
-    // The way to it is the band in «Pågår nu» (#724), and says it opens a new tab.
-    const open = await screen.findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Skogens herrar \(öppnas i ny flik\)$/ })
-    expect(open.getAttribute('target')).toBe('_blank')
+    // The way to it is the band in «Pågår nu» (#724), and says it opens in the table's own tab:
+    // opened twice, the same tab (#1217).
+    const open = await screen.findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Skogens herrar \(öppnas i bordets egen flik\)$/ })
+    expect(open.getAttribute('target')).toMatch(/^byd-tv-/)
+    // And beside it the way to the game itself, in the editor (#1217).
+    const game = screen.getByRole('link', { name: 'Öppna Skogens herrar i editorn' })
+    expect(game.textContent).toBe('Öppna spelet')
+    expect(new URL(game.getAttribute('href')!, 'http://x').pathname).toBe('/editor')
     // Said in the page's own live region rather than by a region born with the words in it, which
     // screen readers do not reliably read (#555 A-8, WCAG 4.1.3).
     await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Bordet är igång\. Rumskoden är [A-Z0-9]{6}\.$/))

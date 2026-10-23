@@ -21,10 +21,11 @@ afterEach(async () => {
 
 // Fliken som öppnas i klicket, innan bordet finns, och får sin adress när starten har svarat. En
 // webbläsare som stoppar nya fönster svarar `null`.
-type Tab = { location: { href: string }; opener: unknown; closed: boolean; close(): void }
+type Tab = { location: { href: string }; name: string; opener: unknown; closed: boolean; close(): void }
 function opening(blocked = false) {
   const tab: Tab = {
     location: { href: 'about:blank' },
+    name: '',
     opener: window,
     closed: false,
     close() {
@@ -100,8 +101,9 @@ describe('Starta on a game without a table (L77)', () => {
     await user.click(go)
 
     // Fliken öppnas i klicket, där webbläsaren tillåter det, och får adressen när bordet finns.
+    // Den behåller sin öppnare (#1217): utan den hittar bordets väg tillbaka aldrig editorns flik.
     expect(open).toHaveBeenCalledTimes(1)
-    expect(tab.opener).toBeNull()
+    expect(tab.opener).toBe(window)
     const code = (await screen.findByText((_, el) => el?.hasAttribute('data-room-code') ?? false)).textContent!
     await waitFor(() => expect(tab.location.href).toMatch(new RegExp(`^${location.origin}/online\\?`)))
     const q = new URL(tab.location.href).searchParams
@@ -148,7 +150,8 @@ describe('Starta on a game without a table (L77)', () => {
     const link = await within(band).findByRole('link', { name: 'Sätt dig vid bordet' })
     expect(band.textContent).toContain('Webbläsaren öppnade inget nytt fönster')
     expect(link.getAttribute('href')).toMatch(/^\/online\?.*name=Vera/)
-    expect(link.getAttribute('target')).toBe('_blank')
+    // Bordets egen flik för platsen (#1217): ett andra tryck tar fram den i stället för en till.
+    expect(link.getAttribute('target')).toMatch(/^byd-online-/)
   })
 
   it('remembers the answer and the name for the next table', async () => {

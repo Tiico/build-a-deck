@@ -4631,7 +4631,7 @@ Den stod förut bredvid knappen i huvudet, och vid 1024 px var det "Uppdatera bo
 Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort.
 Det frågades förut inte om (samma beslut), men ett tryck som menade det pågående bordet startade ett nytt med en ny kod, och gästerna vid det första såg ingenting.
 Sedan #1145 (beställarens beslut 2026-10-22, prototyp `docs/ux-audits/2026-10-22-andra-bordet/prototyper/`, variant A) frågar «Nytt bord», Bord-flikens «Starta nytt bord» och startsidans «Starta nytt bord» först, medan ett bord av spelet kör.
-Frågan är produktens `Question` som den är: den namnger det nyaste bordet som kör («Bordet KOD kör redan», eller «2 bord kör redan, senast KOD»), öppnar på «Öppna KOD», som öppnar bordets skärm i en ny flik, och «Starta ett nytt ändå» startar det andra bordet.
+Frågan är produktens `Question` som den är: den namnger det nyaste bordet som kör («Bordet KOD kör redan», eller «2 bord kör redan, senast KOD»), öppnar på «Öppna KOD», som öppnar bordets skärm i dess egen flik (L80), och «Starta ett nytt ändå» startar det andra bordet.
 Utan ett bord igång startar knappen direkt, som förut.
 Efter en omladdning plockar editorn upp det nyaste bordet som fortfarande kör, så att knappen uppdaterar det i stället för att starta ett andra (#477 fynd 1).
 Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bord hade en blå knapp som lovade en uppdatering och i stället startade en session med rumskod; meningen i Bord-fliken förklarade skillnaden på en annan flik i stället för att knappen sade rätt ord.
@@ -7609,7 +7609,7 @@ Och ett andra tryck på «Starta bord» för att se koden igen startade ett andr
 
 **C och B tillsammans** (av tre: en rad på brickan, en uppdelad ⋯-meny, och en egen sektion överst).
 Överst på «Mina spel» står **«Pågår nu»**, med ett band per bord som pågår: spelets namn, rumskoden i kodens egen typ och «Öppna bordet».
-Länken öppnar bordets skärm som ägare (`owner=1`) i en ny flik, så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
+Länken öppnar bordets skärm som ägare (`owner=1`) i bordets egen flik (L80), så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
 Bandet ersätter bannern, och tillkännagivandet «Bordet är igång. Rumskoden är …» står kvar i sidans levande region.
 Spelets **⋯-meny** listar «Öppna bordet KOD» för varje bord som pågår, före en linje, och «Starta bord» blir då «Starta nytt bord».
 Menyn öppnar på sitt första val, länk eller knapp.
@@ -8090,3 +8090,29 @@ Samma adress gäller för den som är inloggad och den som kommer från landning
 Dörrarna får plats att säga vad de ger, i stället för att tomt spel står som ett block inne i guidens första steg.
 A:s dialog var ett klick snabbare men hade ingen Mina spel att öppnas över för den utloggade, så `/new` hade behövt samma steg en gång till.
 C lät det nya spelet födas där det skulle stå, men tog hela raden på telefonen och hade samma utloggade problem som A.
+
+### L80. Vägen tillbaka: varje bordsyta leder ägaren till editorns egen flik, och ett bord öppnas i sin flik (prototypat och beslutat 2026-10-23, #1217)
+
+Beställaren: många sidor saknade en tydlig väg tillbaka, särskilt mellan editorn och borden.
+Kartläggningen fann att TV-vyn, bordsläget och `/observe` inte länkade någonstans, att `/online` bara ledde ut genom att lämna platsen, och att varje väg in i ett bord öppnade en ny flik med `noopener`, också till ett bord som redan hade en.
+Tre varianter prövades mot dagens app i [`docs/ux-audits/2026-10-23-vagen-tillbaka/prototyper/index.html`](docs/ux-audits/2026-10-23-vagen-tillbaka/prototyper/index.html), med webbläsarens flikar ritade: tillbaka i ytan med parade flikar (A), samma flik (B) och Deckster-märket som meny (C).
+Valet blev **A**.
+B tog bort det L5 och L64 bygger på, att editorn och bordet går att se samtidigt medan man ändrar och uppdaterar.
+C gömde vägen tillbaka bakom ett märke som man måste veta är en knapp, och gjorde märket till en kontroll på TV:n.
+
+**Flikarna har namn.** Editorns flik heter efter spelet (`byd-editor-<projekt>`), och varje bordsyta efter sitt bord och sin vy (`byd-tv-<session>`, `byd-online-…`, `byd-table-…`, `byd-observe-…`), i `ways.ts`.
+En väg in som har en flik tar fram den i stället för att öppna en ny.
+Vägarna in öppnas därför med en öppnare: en flik i en egen grupp hittar aldrig ett namn, vilket en spik i Chromium visade innan något byggdes.
+Det är appens egna sidor på dess egen origin, så öppnaren når inget som inte redan gick att nå.
+Telefonernas anslutningssida är ingen bordsyta och öppnas som förut.
+
+**Ägarens väg tillbaka är spelets namn bakom en pil**, på TV:ns märkesrad, på bordslägets platta, först i `/online`-huvudet och överst i observatörens kolumn.
+Den leder till editorn på den adress Mina spel öppnar den på, med ett tomt fragment, så att editorns flik tas fram som den står i stället för att laddas om.
+Bara ägaren ser den, inloggad som ägare eller med värdnyckeln editorn startade bordet med; en gäst har samma sessionspost men editorn är inte hennes.
+På `/online` erbjuder lämnaarket ägaren «Till *spelet*, sitt kvar» först, och att lämna platsen leder till editorn i stället för Mina spel; ett avslutat bords enkät har samma väg vidare under tacket.
+
+Utanför borden fick «Pågår nu» på Mina spel «Öppna spelet» bredvid «Öppna bordet», och `/join` och `/login` en väg till startsidan under kortet.
+Statuslänkarna på bordsytorna säger servern som HTTP till Mina spel och inloggningen, och som bordets WebSocket till platsväljaren.
+
+`way-back-to-the-editor.spec.ts` går hela vägen i den byggda appen: TV:ns väg tillbaka tar fram editorns flik utan ny flik och utan omladdning, och «Spela härifrån» tryckt två gånger är en flik.
+`way-back-to-the-editor.test.tsx` visar var vägen står på varje yta, vart lämnandet leder och att en gäst inte får den.

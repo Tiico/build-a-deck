@@ -91,7 +91,9 @@ export const svAccount = {
   // Pågående bord på startsidan (#724): spel, rumskod och vägen till bordets skärm.
   'home.running.title': 'Pågår nu',
   'home.running.open': 'Öppna bordet',
-  'home.running.open.aria': 'Öppna bordet {code} i {name} (öppnas i ny flik)',
+  'home.running.game': 'Öppna spelet',
+  'home.running.game.aria': 'Öppna {name} i editorn',
+  'home.running.open.aria': 'Öppna bordet {code} i {name} (öppnas i bordets egen flik)',
   'home.menu.open': 'Öppna bordet {code}',
   'home.menu.start.new': 'Starta nytt bord',
   'home.started.open': 'Öppna bordet',

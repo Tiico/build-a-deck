@@ -33,6 +33,16 @@ describe('the login page (#475)', () => {
     expect(await screen.findByLabelText('E-post')).toBeTruthy()
     expect(gone).toEqual([])
   })
+
+  // The page had no way anywhere but in (#1217): under the card, the way to the start page.
+  it('leads home from under the card', async () => {
+    history.replaceState(null, '', `/login?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<LoginPage onNavigate={(u) => gone.push(u)} />)
+    const home = await screen.findByRole('link', { name: 'Till startsidan' })
+    expect(gone).toEqual([])
+    expect(home.getAttribute('href')).toBe(`/?${new URLSearchParams({ server: run.http }).toString()}`)
+  })
 })
 
 // The address the server would not take (#475): the field says it is the one at fault and which

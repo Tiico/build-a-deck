@@ -36,7 +36,9 @@ import { statusLinks, wayBack } from '../status/links.js'
 import { guestNotice, kickedNotice, refusalText, towardSeat } from '../status/notice.js'
 import { useRoomOpen } from '../status/useRoomOpen.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { useSessionName } from '../status/sessionName.js'
+import { useSessionRecord } from '../status/sessionName.js'
+import { EditorWayBack } from '../table/EditorWayBack.js'
+import { editorWay } from '../ways.js'
 import { useT } from '../i18n/index.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useStartFocus } from '../table/StartButton.js'
@@ -93,7 +95,24 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const roomOpen = useRoomOpen(http, params.get('code'), refused === 'kicked')
   // A seat whose line is gone is offered the room's seat picker before the way home (#484 fynd 14).
   const said = links.rescan && live.notice ? { ...live, notice: towardSeat(live.notice, t) } : live
-  const game = useSessionName(http, sessionId, !params.get('code'))
+  // The session record: the game's name for a tab given no room code (#759), and for the owner the
+  // project the way back leads to (#1217).
+  const record = useSessionRecord(http, sessionId, owner || !params.get('code'))
+  const game = params.get('code') ? null : (record?.name ?? null)
+  // The owner's ways to the game's editor (#1217, L80): in the head, in the exit sheet with the
+  // seat kept, under the thanks once the table has ended — and where giving the seat up leads.
+  const server = params.get('server')
+  const back = owner ? <EditorWayBack game={record} server={server} /> : null
+  const editor = owner && record?.project && record.name ? { ...editorWay(record.project, server), name: record.name } : null
+  const stay = editor ? (
+    <>
+      <a data-kind="stay" href={editor.href} target={editor.target}>
+        {t('exit.sheet.editor', { game: editor.name })}
+      </a>
+      <p>{t('exit.sheet.editor.body')}</p>
+    </>
+  ) : undefined
+  const left = () => onLeave(editor ? editor.href.replace(/#$/, '') : wayBack(links))
   usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game, turn: seat !== null && view?.turn?.seat === seat && !view.ended })
   // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
   const room = useRoom()
@@ -226,6 +245,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         {/* The page's heading, for a screen reader (#560 P-20): the seat's line says who, the felt says
             what, and neither is a heading. It opens the banner, so the landmarks hold everything (#762). */}
         <h1 className="byd-offscreen">{t('play.table')}</h1>
+        {back}
         <SeatLine name={me?.name ?? seat} hand={hand.length} observers={observers.map((o) => o.name)} t={t} />
         {hand.length > 0 && (
           <button type="button" className="byd-online-showall" ref={showAll} aria-expanded={spread ? 'true' : 'false'} onClick={() => setSpread(!spread)}>
@@ -318,7 +338,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
       </main>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} faces={http} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={left} toast={toast} onToast={setToast} version={version} faces={http} stay={stay} />
       </div>
       ) : (
         /* A window too small to carry a board gets the player's own surface instead (#99): the
@@ -338,13 +358,14 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             marks={marks}
             turnedHand={turned}
             openHand={kbd.openHand}
-            onLeft={() => onLeave(wayBack(links))}
+            onLeft={left}
+            stay={stay}
             away
           />
           {kbd.panel}
         </div>
       )}
-      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} token={token} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} />
+      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} token={token} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} onward={back} />
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
     </>
   )
