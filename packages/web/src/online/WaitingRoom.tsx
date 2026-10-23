@@ -36,19 +36,22 @@ export function WaitingRoom({ view, seat, code, server, startWait, onStart, onBe
   const taken = view.seats.filter((s) => s.name !== null).length
   const address = code ? roomAddress(code, server) : null
   const shown = useRef<HTMLElement>(null)
-  const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
+  // What became of the last copy, and of which code. A new code («Ny kod») is a new address: what
+  // was copied before is not what stands here now, so it is said only while that code stands. Read
+  // off the code rather than reset by an effect on it (#1221): such an effect also runs when the
+  // room is first drawn, and a press that came before it was undone by it unseen.
+  const [copied, setCopied] = useState<{ said: 'copied' | 'failed'; code: string } | null>(null)
+  const copy = copied !== null && copied.code === code ? copied.said : 'idle'
   useEffect(() => {
     if (copy !== 'copied') return
-    const back = setTimeout(() => setCopy('idle'), COPIED_MS)
+    const back = setTimeout(() => setCopied(null), COPIED_MS)
     return () => clearTimeout(back)
-  }, [copy])
-  // A new code («Ny kod») is a new address: what was copied before is not what stands here now.
-  useEffect(() => setCopy('idle'), [code])
+  }, [copy, copied])
   const copyLink = async () => {
-    if (!address) return
+    if (!address || !code) return
     try {
       await navigator.clipboard.writeText(address.url)
-      setCopy('copied')
+      setCopied({ said: 'copied', code })
     } catch {
       // A browser that refuses the clipboard still lets the reader copy it: the address is selected.
       const range = document.createRange()
@@ -56,7 +59,7 @@ export function WaitingRoom({ view, seat, code, server, startWait, onStart, onBe
       const selection = window.getSelection()
       selection?.removeAllRanges()
       selection?.addRange(range)
-      setCopy('failed')
+      setCopied({ said: 'failed', code })
     }
   }
   return (
