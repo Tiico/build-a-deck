@@ -151,7 +151,7 @@
 .byd-join-table button {
   display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 5px 14px; min-width: var(--byd-seat-w); min-height: var(--byd-seat-h); border-radius: 999px; white-space: nowrap;
-  border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); line-height: 1.05;
+  border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-family: inherit; line-height: 1.05;
 }
 /* The letter leads and the word follows, so the two lines are told apart by weight and size and
    not by a rule between them. The word keeps a little of the seat's colour showing through it,
@@ -259,7 +259,9 @@
    with the page or from a press. */
 .byd-join [role='alert'], .byd-code-says { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
 .byd-join input[aria-invalid='true'], .byd-code-row > input[aria-invalid='true'] { border-color: #e05a4f; }
-.byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
+/* A button does not inherit the page's face: left to itself it was drawn in the browser's own
+   (Arial on a Mac) under a heading and a field in `system-ui`, two typefaces in one column. */
+.byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-family: inherit; font-size: 18px; font-weight: 800; }
 /* Refused is a state of a role and not a role of its own. The page no longer opens in it — a way
    on that waits for a name stands open and answers when it is pressed (#416, variant B) — but a
    seat somebody else took shuts the two ways into one, and that is a control that has to *look*
@@ -309,9 +311,16 @@
   }
   .byd-join-page > :not(.byd-join-code) > header { text-align: center; }
 }
-/* On a laptop the suggestion is to play on this screen (#675, beslut 3): the sentence is the first
-   action, so it is read larger than the sentences under it, and «Sätt dig» beside it at the same
-   size, so the two ways to play read as a pair and «Bara titta» as the third. */
-.byd-join .byd-join-online.byd-primary,
-.byd-join .byd-join-sit { font-size: 16px; }
+/* On a laptop the page has one choice (L77, #1130): «Gå med», and under it the phone's way and only
+   watching as lines of text. They are buttons, since each buys a seat or a look before it goes
+   anywhere, drawn as links: a quiet blue, underlined, and a whole target tall (UX-KONTROLLER:
+   träffytor), so the 44 px between them is their own height and not a gap. The rule out-ranks
+   `.byd-join form button` (0,1,2), whose 18 px pill would otherwise be drawn round each. */
+.byd-join-links { display: grid; justify-items: center; }
+.byd-join form .byd-join-link {
+  min-height: 44px; padding: 0 12px; border: 0; background: none;
+  color: #9cc6ff; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.byd-join form .byd-join-link:hover { color: #fff; }
+.byd-join form .byd-join-link:disabled { color: #8a93a8; text-decoration: none; cursor: default; }
 

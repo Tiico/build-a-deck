@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distansspel – prototyp</title>
+<!-- PROTOTYP — slit och släng (2026-10-22). Tre sätt att göra det tydligt hur man bjuder in och
+     spelar när alla sitter vid varsin dator. Varje vy är en riktig skärmbild ur den byggda appen
+     (../*.png) med det som ändras ritat ovanpå i appens egna mått och färger. Ingenting här
+     importeras av appen. Växla variant med A/B/C eller ←/→, steg med 1/2/3. -->
+<style>
+:root { --ink:#e6ecfa; --quiet:#9aa3b8; --primary:#1f6fd0; --good:#7dd3a0; --line:#2f333d; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; background: #15171c; color: #ddd; font: 13px system-ui, sans-serif; overflow: hidden; }
+.protorad { flex: none; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+.protorad b { color: #ffe9b8; }
+.protorad button { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+.protorad button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; font-weight: 700; }
+.grupp { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+.grupp button { border: 0; }
+.anteckning { flex: 1 1 100%; min-height: calc(3 * 1.5em + 14px); margin: 0; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; }
+.anteckning .plus { color: #b7dca0; } .anteckning .minus { color: #f0a58a; }
+.scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; padding: 24px 12px 12px; overflow: hidden; }
+.ram { position: relative; }
+.ram > .etikett { position: absolute; left: 0; top: -4px; transform: translateY(-100%); color: var(--quiet); font-size: 11px; }
+.skarm { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; overflow: hidden; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); background-size: 1280px 800px; }
+.skarm > * { position: absolute; }
+
+/* --- appens egna former, ur editor.css / online.css / join.css ---------------------------- */
+.knapp { min-height: 44px; border: 1px solid #2f333d; border-radius: 8px; padding: 0 14px; background: #1b1d23; color: #fff; font: 700 13px system-ui; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.knapp.primar { background: var(--primary); border-color: var(--primary); }
+.knapp.kantad { background: transparent; border-color: #6f7a90; color: #dce3f2; font-weight: 600; }
+.knapp.liten { min-height: 36px; padding: 0 10px; }
+.adress { font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace; color: #fff; background: #10131a; border: 1px solid #3a4152; border-radius: 8px; padding: 0 12px; min-height: 44px; display: inline-flex; align-items: center; letter-spacing: .02em; }
+.adress i { font-style: normal; color: var(--quiet); }
+.kopierad { color: var(--good); font-weight: 700; }
+svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.band { left: 0; top: 57px; width: 1280px; height: 61px; background: #1f2a1f; border-bottom: 1px solid #2f333d; display: flex; align-items: center; gap: 12px; padding: 0 16px; color: #b7dca0; font-size: 13px; }
+.band strong { color: #fff; }
+.spacer { flex: 1; }
+
+.popover { background: #171a23; border: 1px solid #2f333d; border-radius: 12px; box-shadow: 0 16px 48px rgb(0 0 0 / 55%); padding: 16px; color: var(--ink); }
+.popover h3 { margin: 0 0 4px; font-size: 15px; }
+.popover p { margin: 0 0 12px; color: var(--quiet); line-height: 1.45; }
+.platser { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid #262b38; display: grid; gap: 8px; }
+.platser li { display: flex; align-items: center; gap: 10px; }
+.bricka { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #10131a; font: 800 12px system-ui; }
+.bricka.a { background: #e0584c; } .bricka.b { background: #3c8ce7; }
+.ledig { color: var(--quiet); font-style: italic; }
+
+.modal-bak { inset: 0; background: rgb(8 10 14 / 72%); display: grid; place-items: center; }
+.modal { width: 640px; background: #171a23; border: 1px solid #2f333d; border-radius: 16px; padding: 24px; color: var(--ink); box-shadow: 0 24px 64px rgb(0 0 0 / 60%); }
+.modal h2 { margin: 0 0 4px; font-size: 20px; }
+.modal > p { margin: 0 0 16px; color: var(--quiet); }
+.val { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.val button { text-align: left; border: 1px solid #3a4152; border-radius: 12px; background: #1b1f2a; color: var(--ink); padding: 16px; font: inherit; cursor: pointer; display: grid; gap: 6px; }
+.val button[aria-pressed='true'] { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.val b { font-size: 15px; }
+.val span { color: var(--quiet); line-height: 1.45; }
+.falt { display: grid; gap: 6px; margin-top: 16px; }
+.falt label { font-weight: 700; font-size: 12px; }
+.falt input { min-height: 44px; border: 1px solid #3a4152; border-radius: 8px; background: #10131a; color: #fff; padding: 0 12px; font: 15px system-ui; }
+
+/* anslutningssidan, ritad om från join.css */
+.join { inset: 0; background: #0f1117; display: grid; justify-items: center; align-content: start; padding-top: 32px; }
+.join-kort { width: 520px; background: #14161c; border: 1px solid #262a33; border-radius: 22px; padding: 32px; color: var(--ink); text-align: center; }
+.join-kort .ovan { color: var(--quiet); font-size: 13px; }
+.join-kort h1 { margin: 4px 0; font-size: 22px; }
+.join-kort .rum { color: var(--quiet); font-size: 12px; }
+.filt { margin: 20px auto 8px; width: 240px; height: 170px; border-radius: 22px; background: radial-gradient(#2e6b48, #163a27); border: 10px solid #4a3120; position: relative; }
+.filt .plats { position: absolute; left: 50%; transform: translateX(-50%); min-width: 76px; padding: 6px 10px; border-radius: 999px; font: 800 13px/1.1 system-ui; color: #10131a; }
+.filt .plats small { display: block; font-weight: 600; font-size: 11px; }
+.filt .plats.b { top: -26px; background: #3c8ce7; } .filt .plats.a { bottom: -26px; background: #e0584c; }
+.filt .plats.vald { outline: 3px solid #fff; }
+.join-kort .falt { text-align: left; margin-top: 32px; }
+.join-kort .falt input { border-color: #3c8ce7; }
+.join-kort .grön { width: 100%; min-height: 56px; border: 0; border-radius: 10px; background: #7dd3a0; color: #0e1a12; font: 700 16px system-ui; margin-top: 20px; cursor: pointer; }
+.join-kort .sek { width: 100%; min-height: 52px; border: 1px solid #5a6070; border-radius: 10px; background: transparent; color: #dce3f2; font: 700 15px system-ui; margin-top: 10px; cursor: pointer; }
+.join-kort .forklar { color: var(--quiet); font-size: 12px; margin: 4px 0 0; text-align: left; line-height: 1.45; }
+.join-kort .lank { margin-top: 18px; color: #9cc3f5; font-size: 13px; text-decoration: underline; }
+.inbjuden { margin: 16px 0 0; padding: 10px 12px; border-radius: 10px; background: #1b2433; color: #cfe0fb; text-align: left; line-height: 1.45; }
+
+/* distansvyns topprad och filtens namnskyltar, målade över skärmbilden */
+.lapp { background: #100d0b; }
+.chip { left: 16px; top: 8px; height: 44px; padding: 0 16px; border-radius: 22px; background: #13151a; border-left: 4px solid #3c8ce7; display: flex; align-items: center; gap: 10px; color: #fff; font: 700 15px system-ui; }
+.chip span { color: var(--quiet); font-weight: 500; font-size: 13px; }
+.senast { left: 185px; top: 14px; height: 32px; display: flex; align-items: center; gap: 4px; color: var(--quiet); font-size: 13px; }
+.senast b { color: #6aa8f0; font-weight: 500; }
+.skylt { padding: 3px 10px; border-radius: 999px; font: 800 11px system-ui; letter-spacing: .04em; color: #10131a; white-space: nowrap; }
+.skylt.b { background: #3c8ce7; border: 2px solid #0d0f15; } .skylt.a { background: #e0584c; }
+.skylt.tom { background: #1b1f2a; color: #dce3f2; border: 1.5px dashed #e0584c; font-weight: 700; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; padding: 5px 12px; font-size: 12px; letter-spacing: 0; }
+.vantrum { left: 390px; top: 250px; width: 500px; }
+.vantrum .rak { display: flex; gap: 8px; align-items: center; }
+.vantrum .stort { width: 100%; justify-content: center; margin-top: 16px; min-height: 52px; font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="grupp" role="group" aria-label="Variant">
+    <button data-v="A">A · Länken överallt</button>
+    <button data-v="B">B · Väntrummet</button>
+    <button data-v="C">C · Inbjudan per plats</button>
+  </div>
+  <div class="grupp" role="group" aria-label="Steg">
+    <button data-s="1">1 · Värden startar</button>
+    <button data-s="2">2 · Vännen öppnar länken</button>
+    <button data-s="3">3 · Vid bordet</button>
+    <button data-s="0">Idag</button>
+  </div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"><div class="ram" id="ram"><span class="etikett" id="etikett"></span><div class="skarm" id="skarm"></div></div></div>
+
+<script>
+const IKON = {
+  copy: '<svg class="i" viewBox="0 0 16 16"><path d="M5.5 5.5h7v7h-7zM3.5 10.5v-7h7"/></svg>',
+  play: '<svg class="i" viewBox="0 0 16 16"><path d="M5 3.5v9l7.5-4.5z"/></svg>',
+  person: '<svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="5.25" r="2.5"/><path d="M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25"/></svg>',
+  tv: '<svg class="i" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5h-11zM5.5 13.5h5"/></svg>',
+}
+const ADR = '<span class="adress"><i>deckster.se/</i>M7CG38</span>'
+const kopiera = (text = 'Kopiera länk') => `<button class="knapp liten" data-kopiera>${IKON.copy}<span>${text}</span></button>`
+
+// Distansvyns topprad med värdens riktiga namn — idag heter hon «Designern» utan att ha blivit tillfrågad.
+const varden = `
+  <div class="lapp" style="left:0;top:0;width:560px;height:60px"></div>
+  <div class="chip">Vera <span>0 kort</span></div>
+  <div class="senast">Senast: <b>Vera satte sig på plats B</b> · nyss</div>
+  <div class="skylt b" style="left:585px;top:698px;width:86px;height:29px;display:grid;place-items:center;font-size:12px">Vera</div>`
+// Ingen på plats A ännu: skylten överst täcks.
+const tomA = `<div style="left:596px;top:154px;width:66px;height:32px;background:rgb(26 65 42);filter:blur(2px);border-radius:8px"></div>
+  <div class="skylt" style="left:615px;top:159px;background:transparent;border:1.5px dashed #e0584c;color:#f0a59e">A</div>`
+
+const STEG = {
+  0: {
+    1: { bild: '2-efter-starta.png', etikett: 'Idag · editorn efter Starta', html: '' },
+    2: { bild: '5-vannen-anslutning.png', etikett: 'Idag · vännen öppnar 127.0.0.1:10156/M7CG38', html: '' },
+    3: { bild: '7-varden-online.png', etikett: 'Idag · värden på /online («Spela härifrån»)', html: '' },
+  },
+  A: {
+    1: { bild: '2-efter-starta.png', etikett: 'A · editorn efter Starta', html: `
+      <div class="band">
+        <span>Bordet är igång.</span><strong>Bjud in:</strong>${ADR}${kopiera()}
+        <span class="spacer"></span>
+        <button class="knapp primar">${IKON.play}Spela själv här</button>
+        <button class="knapp kantad">${IKON.tv}Visa på TV</button>
+      </div>` },
+    2: { etikett: 'A · vännen öppnar deckster.se/M7CG38 på sin dator', html: `
+      <div class="join"><div class="join-kort">
+        <div class="ovan">Du går med i</div><h1>Fredagskort</h1><div class="rum">Rum M7CG38 · Plats A vald</div>
+        <div class="filt"><div class="plats b">B<small>Vera</small></div><div class="plats a vald">A<small>ledig</small></div></div>
+        <div class="falt"><label>Ditt namn</label><input value="Kim"></div>
+        <button class="grön">Spela vid den här datorn</button>
+        <p class="forklar">Bordet och din hand i det här fönstret.</p>
+        <button class="sek">Använd telefonen som hand</button>
+        <p class="forklar">Bordet visas på en TV i rummet, handen i telefonen.</p>
+        <div class="lank">Bara titta</div>
+      </div></div>` },
+    3: { bild: '7-varden-online.png', etikett: 'A · värden vid bordet, «Bjud in» i toppraden', html: varden + tomA + `
+      <button class="knapp kantad" style="left:990px;top:8px">${IKON.person}Bjud in</button>
+      <div class="popover" style="left:760px;top:62px;width:460px">
+        <h3>Bjud in till bordet</h3>
+        <p>Skicka länken till dem som ska spela. De väljer plats och namn när de öppnar den.</p>
+        <div style="display:flex;gap:8px">${ADR}${kopiera()}</div>
+        <ul class="platser">
+          <li><span class="bricka a">A</span><span class="ledig">ledig</span></li>
+          <li><span class="bricka b">B</span><span>Vera (du)</span></li>
+        </ul>
+      </div>` },
+  },
+  B: {
+    1: { bild: '1-editorn.png', etikett: 'B · editorn, Starta frågar hur ni sitter', html: `
+      <div class="modal-bak"><div class="modal">
+        <h2>Starta ett bord</h2><p>Hur sitter ni?</p>
+        <div class="val">
+          <button aria-pressed="false"><b>Runt en skärm</b><span>Bordet på en TV eller stor skärm, var och en har handen i sin telefon.</span></button>
+          <button aria-pressed="true"><b>Var och en vid sin dator</b><span>Alla ser bordet och sin egen hand i sitt eget fönster. Du skickar en länk.</span></button>
+        </div>
+        <div class="falt"><label>Ditt namn vid bordet</label><input value="Vera"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+          <button class="knapp kantad">Avbryt</button><button class="knapp primar">${IKON.play}Starta och sätt dig</button>
+        </div>
+      </div></div>` },
+    2: { etikett: 'B · vännen öppnar länken – ett enda val', html: `
+      <div class="join"><div class="join-kort">
+        <div class="ovan">Vera bjuder in dig till</div><h1>Fredagskort</h1><div class="rum">1 av 2 platser kvar</div>
+        <div class="filt"><div class="plats b">B<small>Vera</small></div><div class="plats a vald">A<small>ledig</small></div></div>
+        <div class="falt"><label>Ditt namn</label><input value="Kim"></div>
+        <button class="grön">Gå med</button>
+        <div class="lank">Sitter ni runt en TV? Använd telefonen som hand</div>
+      </div></div>` },
+    3: { bild: '7-varden-online.png', etikett: 'B · värden landar i väntrummet på filten', html: varden + tomA + `
+      <div style="left:420px;top:280px;width:440px;height:80px;background:#2a6343;border-radius:40px;filter:blur(18px)"></div>
+      <div class="popover vantrum">
+        <h3>Väntar på spelare · 1 av 2</h3>
+        <p>Skicka länken till dem som ska spela. Bordet startar när du säger till.</p>
+        <div class="rak">${ADR}${kopiera()}</div>
+        <ul class="platser">
+          <li><span class="bricka a">A</span><span class="ledig">väntar…</span></li>
+          <li><span class="bricka b">B</span><span>Vera (du)</span></li>
+        </ul>
+        <button class="knapp primar stort">Starta spelet</button>
+      </div>` },
+  },
+  C: {
+    1: { bild: '2-efter-starta.png', etikett: 'C · editorn efter Starta, en länk per plats', html: `
+      <div class="band">
+        <span>Bordet är igång.</span><strong>Bjud in per plats:</strong>
+        <span class="bricka a">A</span><span class="ledig">ledig</span>${kopiera('Länk till A')}
+        <span class="bricka b">B</span><span class="ledig">ledig</span>${kopiera('Länk till B')}
+        <span class="spacer"></span>
+        <button class="knapp primar">${IKON.play}Sätt dig här</button>
+      </div>` },
+    2: { etikett: 'C · vännen öppnar deckster.se/M7CG38/A', html: `
+      <div class="join"><div class="join-kort">
+        <div class="ovan">Du går med i</div><h1>Fredagskort</h1>
+        <div class="filt"><div class="plats b">B<small>Vera</small></div><div class="plats a vald">A<small>din plats</small></div></div>
+        <p class="inbjuden">Vera har sparat plats A åt dig. Skriv ditt namn så sätter du dig.</p>
+        <div class="falt" style="margin-top:16px"><label>Ditt namn</label><input value="Kim"></div>
+        <button class="grön">Sätt dig på plats A</button>
+        <div class="lank">Annan plats · Bara titta</div>
+      </div></div>` },
+    3: { bild: '7-varden-online.png', etikett: 'C · värden vid bordet, den lediga platsens skylt bjuder in', html: varden + tomA + `
+      <div class="skylt tom" style="left:540px;top:152px" data-kopiera>${IKON.copy}<span>A · ledig — kopiera inbjudan</span></div>` },
+  },
+}
+
+const NOTER = {
+  0: '<b>Idag.</b> Efter Starta står bara en rumskod, utan adress. Bordets skärm säger «Öppna på telefonen». «Spela härifrån» ligger gömt i menyn bredvid Starta och sätter dig som «Designern» utan att fråga. Väl vid bordet finns ingenstans att se koden eller bjuda in fler. Anslutningssidan ger tre knappar utan att säga vad som skiljer dem.',
+  A: '<b>A · Länken överallt</b> (rekommenderas). Inga nya begrepp: adressen ersätter den nakna koden, med en kopieringsknapp, och står där värden redan tittar. Den finns i bandet efter Starta och bakom «Bjud in» i distansvyns topprad. «Spela själv här» blir en synlig knapp och frågar efter namn. Anslutningssidan förklarar sina två vägar med var sin rad. <span class="plus">+ Håller C2: inga spellägen, bara var länken syns.</span> <span class="minus">− Värden måste själv skicka länken och starta.</span>',
+  B: '<b>B · Väntrummet.</b> Starta frågar en gång hur ni sitter. Väljer man «var och en vid sin dator» sätts man vid bordet direkt, med ett väntrum på filten som visar länken och vilka som kommit. Anslutningssidan krymper till ett val. <span class="plus">+ Den tydligaste vägen för just distans.</span> <span class="minus">− Frågan är nästan ett spelläge, vilket C2 säger nej till. Ett blandat bord (TV + en på distans) blir ett val man måste ha förstått.</span>',
+  C: '<b>C · Inbjudan per plats.</b> Varje ledig plats har sin egen länk, i editorns band och på filtens tomma skylt. Vännen landar med platsen redan vald. <span class="plus">+ Ingen platsväljare för den inbjudna, och det syns vem som väntas.</span> <span class="minus">− Kräver platsadresser (deckster.se/KOD/A) i servern och anslutningen. Värden måste veta vem som ska sitta var, och kopiera en länk per person.</span>',
+}
+
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'A', s = q.get('s') ?? '1'
+const skarm = document.getElementById('skarm'), ram = document.getElementById('ram')
+function rita() {
+  const steg = STEG[s === '0' ? 0 : v][s === '0' ? Number(q.get('idag') ?? 1) : s]
+  skarm.style.backgroundImage = steg.bild ? `url(../${steg.bild})` : 'none'
+  skarm.innerHTML = steg.html
+  document.getElementById('etikett').textContent = steg.etikett
+  document.getElementById('anteckning').innerHTML = NOTER[s === '0' ? 0 : v]
+  document.querySelectorAll('[data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v && s !== '0')))
+  document.querySelectorAll('[data-s]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.s === s)))
+  skarm.querySelectorAll('[data-kopiera]').forEach((b) => b.addEventListener('click', () => { const t = b.querySelector('span'); t.textContent = 'Kopierad'; t.className = 'kopierad' }))
+  passa()
+  history.replaceState(null, '', `?v=${v}&s=${s}`)
+}
+function passa() {
+  const scen = document.getElementById('scen')
+  const k = Math.min(1, (scen.clientWidth - 24) / 1280, (scen.clientHeight - 36) / 800)
+  skarm.style.transform = `scale(${k})`
+  ram.style.width = 1280 * k + 'px'; ram.style.height = 800 * k + 'px'
+}
+let idag = 1
+document.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', () => { v = b.dataset.v; if (s === '0') s = '1'; rita() }))
+document.querySelectorAll('[data-s]').forEach((b) => b.addEventListener('click', () => {
+  if (b.dataset.s === '0') { idag = s === '0' ? idag % 3 + 1 : 1; q.set('idag', idag) }
+  s = b.dataset.s; rita()
+}))
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input')) return
+  const V = ['A', 'B', 'C']
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { v = V[(V.indexOf(v) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]; if (s === '0') s = '1'; rita() }
+  if (['1', '2', '3'].includes(e.key)) { s = e.key; rita() }
+})
+addEventListener('resize', passa)
+rita()
+</script>
+</body>
+</html>

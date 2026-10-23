@@ -558,6 +558,13 @@ export const svPlay = {
   'join.sit': 'Sätt dig',
   'join.sitting': 'Sätter dig…',
   'join.online': 'Spela på den här skärmen',
+  // En dator har ett enda val (L77): sidan säger hur många platser som är kvar, och «Gå med»
+  // spelar på den här skärmen. Telefonvägen står under, som en länk. «plats» eller «platser»
+  // följer bordets storlek, inte hur många som är kvar: «1 av 2 platser kvar».
+  'join.seats.left.one': '{n} av {total} plats kvar',
+  'join.seats.left.other': '{n} av {total} platser kvar',
+  'join.go': 'Gå med',
+  'join.phone': 'Sitter ni runt en TV? Använd telefonen som hand',
   // Att alla ser observatören står på ytan, inte bara i lådan (L32).
   'join.observe': 'Bara titta (du ser allt, alla ser dig)',
 
@@ -575,6 +582,18 @@ export const svPlay = {
   'notes.refused.full': 'Blocket är fullt: hundra rader. Ta bort en innan du skriver en ny.',
   'notes.refused.gone': 'Raden finns inte längre: någon tog bort den.',
   'notes.refused.other': 'Bordet tog inte emot raden. Försök igen.',
+  // Väntrummet över filten tills något har hänt vid bordet (L77, #1130).
+  'online.wait.heading': 'Väntar på spelare · {n} av {of}',
+  'online.wait.text': 'Skicka länken till dem som ska spela. Bordet startar när du säger till.',
+  'online.wait.address': 'Bordets adress',
+  'online.wait.copy': 'Kopiera länk',
+  'online.wait.copied': 'Kopierad',
+  'online.wait.copy.failed': 'Gick inte att kopiera. Adressen är markerad, så kopiera den själv.',
+  'online.wait.seats': 'Platserna',
+  'online.wait.free': 'väntar…',
+  'online.wait.me': '{name} (du)',
+  'online.wait.begin': 'Börja spela',
+  'online.wait.hide': 'Göm väntrummet',
   'online.observers.one': '{names} tittar på',
   'online.observers.other': '{names} tittar på',
 

@@ -212,19 +212,50 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   }
 
   // The suggested way in is the first button and the one Enter takes: «Sätt dig» on a phone, and
-  // playing on this screen on a laptop (#675, beslut 3), with the other as the second button.
+  // playing on this screen on a laptop (#675, beslut 3).
   const suggested = wide ? '/online' : '/play'
   const room = t('join.room', { code: code.toUpperCase() })
-  const seatLine = chosen ? t('join.seat.chosen', { seat: chosen }) : t(free.length === 0 ? 'join.seats.full' : 'join.seat.pick')
-  const sit = (
-    <button key="sit" type={wide ? 'button' : 'submit'} className={wide ? 'byd-join-sit byd-secondary' : 'byd-primary'} disabled={!chosen || lost} {...working(busy === '/play')} onClick={wide ? () => void go('/play', chosen) : undefined}>
-      {busy === '/play' ? t('join.sitting') : t('join.sit')}
+  // A phone says which seat is chosen; a laptop says how many are left (L77), because whoever
+  // opens a link at a desk is asking whether there is room for her. The picker shows the choice.
+  const total = view.seats.length
+  const seatLine = wide
+    ? free.length === 0
+      ? t('join.seats.full')
+      : t(total === 1 ? 'join.seats.left.one' : 'join.seats.left.other', { n: free.length, total })
+    : chosen
+      ? t('join.seat.chosen', { seat: chosen })
+      : t(free.length === 0 ? 'join.seats.full' : 'join.seat.pick')
+  const observe = (
+    <button type="button" className={wide ? 'byd-join-observe byd-join-link' : 'byd-join-observe byd-secondary'} {...working(busy === '/observe')} onClick={() => void go('/observe', null)}>
+      {t('join.observe')}
     </button>
   )
-  const here = (
-    <button key="here" type={wide ? 'submit' : 'button'} className={`byd-join-online ${wide ? 'byd-primary' : 'byd-secondary'}`} disabled={!chosen || lost} {...working(busy === '/online')} onClick={wide ? undefined : () => void go('/online', chosen)}>
-      {t('join.online')}
-    </button>
+  // A laptop has one choice (L77, #1130): «Gå med» plays on this screen, and the phone's way and
+  // only watching are the lines under it — still ways in, but not a second and a third button the
+  // reader has to tell apart before she has played at all. They are buttons drawn as links: each
+  // buys a seat or a look before it goes anywhere, so neither is an address.
+  const ways = wide ? (
+    <>
+      <button type="submit" className="byd-primary" disabled={!chosen || lost} {...working(busy === '/online')}>
+        {t('join.go')}
+      </button>
+      <div className="byd-join-links">
+        <button type="button" className="byd-join-link" disabled={!chosen || lost} {...working(busy === '/play')} onClick={() => void go('/play', chosen)}>
+          {t('join.phone')}
+        </button>
+        {observe}
+      </div>
+    </>
+  ) : (
+    <>
+      <button type="submit" className="byd-primary" disabled={!chosen || lost} {...working(busy === '/play')}>
+        {busy === '/play' ? t('join.sitting') : t('join.sit')}
+      </button>
+      <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || lost} {...working(busy === '/online')} onClick={() => void go('/online', chosen)}>
+        {t('join.online')}
+      </button>
+      {observe}
+    </>
   )
 
   return (
@@ -333,10 +364,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
             instead of finding it gone. Choosing again opens them. */}
         {/* While a way in is under way the pressed button says so and is `aria-disabled`, not
             `disabled`: it keeps its look and the focus, and the handler refuses the next press. */}
-        {wide ? [here, sit] : [sit, here]}
-        <button type="button" className="byd-join-observe byd-secondary" {...working(busy === '/observe')} onClick={() => void go('/observe', null)}>
-          {t('join.observe')}
-        </button>
+        {ways}
       </form>
       </main>
       <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />

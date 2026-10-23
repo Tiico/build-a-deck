@@ -1922,9 +1922,19 @@ Partnerns katalog är produkttaket — typregistryt kan aldrig innehålla något
 POD-styckpris är fem till tio gånger offsettryck, så stora upplagor lämnar plattformen ändå.
 Frakt, tull och reklamationer blir er supportbörda.
 
+Reviderat 2026-10-23 (#1199, beställarens beslut): **i betan, innan någon riktig partner finns, kan designern se och ladda ner tryckpaketet.**
+- Tryckpaketet är det som skulle ha skickats till tryckeriet: filerna per komponent i partnerns krav, manifestet och lagervarorna, förklarat så att en designer som aldrig beställt tryck förstår det (#1208).
+  Det tas fram av samma `PrintProvider`-väg som en riktig order (F2), med en fake-provider i partnerns ställe, så att det designern ser är det en partner skulle få.
+- När en riktig partner finns går tryck via plattformens partner, eller så kostar det att få ut tryckunderlaget (#1209).
+  «Ingen separat exportväg» gäller då igen, med avgiften som enda undantag.
+- Formen av avgiften beslutas med abonnemangen (A2).
+- Förhållandet till G5, vars export i dag bär tryck-PDF:er med utfall även på gratisnivån, avgörs i samma beslut; G5 ändras inte av det här.
+
 ### F2. Adapterlager mot flera partner (fråga 11)
 
-En intern `PrintProvider`-abstraktion: komponenttyp till partnerns SKU, tryckunderlagskrav, prissättning, orderläggning och spårning.
+Ett generellt stöd där nya tryckpartner läggs på som adaptrar utan att något annat ändras: en intern `PrintProvider`-abstraktion för komponenttyp till partnerns SKU, tryckunderlagskrav, prissättning, orderläggning och spårning.
+**EU-kunder går till EU-tryck.**
+En order till en EU-adress dirigeras bara till en partner som tillverkar i EU, och finns ingen sådan säger dirigeringen det i stället för att tyst välja en partner utanför EU.
 
 Motivering:
 Enda skyddet mot att en extern katalog fryser produkten.
@@ -1933,6 +1943,15 @@ Låter er dirigera EU-kunder till EU-tryck och US-kunder till US-tryck.
 Följdkrav:
 Gränssnittet måste designas mot minst två verkliga partner, annars formas det efter en enda leverantörs egenheter.
 Fraktkostnad till EU är avgörande för om prototypslingan över huvud taget används.
+
+Preciserat 2026-10-23 (#1199, beställarens beslut efter researchen i issuet): **stödet byggs nu, partnern väljs inte nu.**
+- Researchen fann två partner med order-API för en lek med olika framsida på varje kort, The Game Crafter (USA) och QPMN (Kina och Vietnam), och inget tryckeri med produktion i EU som har ett.
+  Ingen av dem väljs, och EU-kravet står kvar.
+- Gränssnittet formas efter båda: TGC:s flerstegsmodell med uppladdade filer, ett objektträd och en vagn, och QPMN:s enda order med bild-URL:er.
+  Det bär ett förberedelsesteg som tar fram partnerns tryckfiler utan att beställa något, regiondirigering för EU-kravet, och partnerns krav som data ur `requirements()` (#1206).
+- En fake-provider står i en riktig partners ställe, och en kontraktssvit som den klarar är den som varje framtida adapter ska klara (#1206).
+- Tryckfilerna görs efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()`, i stället för typens fasta 3 mm, av den enda renderaren (E2, #1207).
+- Byggs inte nu: order och spårning på servern, och tillverkningsflaggan i F3.
 
 ### F3. Kostnadsbesked först i beställningsflödet (fråga 29)
 
@@ -2184,6 +2203,8 @@ Beslutet att inte väga utvecklingskostnad tungt är uttalat och gäller genomg�
 
 Pelare ett och två — skapa och speltesta — byggs färdiga innan pelare tre påbörjas.
 Renderaren ger redan tryckfärdig PDF med utfall; `PrintProvider`-adaptern och partnervalet (F2) väntar tills det digitala är komplett.
+
+Preciserat 2026-10-23 (#1199): abstraktionen med en fake-provider och tryckfiler efter partnerns krav byggs i betan, eftersom tryckpaketet (F1) vilar på dem; partnervalet, ordern och spårningen väntar som förut.
 
 ---
 
@@ -7953,6 +7974,52 @@ En dropdown-knapp är en knapp med `data-drop` och `aria-expanded`; en regel i `
 Ett tryck utanför stänger alla åtta: `usePressAway` i `doors.ts` är den gemensamma vägen, och fokus lämnas där pekaren satte det, som #133 säger.
 `drop-buttons.spec.ts` mäter det öppna läget och trycket på rutmönstret i den byggda appen.
 Disclosure-knapparna, som redan vänder sin chevron från höger till ned, och ⋯-knapparna, som redan får editorns mörka grund när de är öppna (#791), är oförändrade.
+
+### L77. Distansspel börjar i ett väntrum: Starta frågar hur ni sitter (prototypat och beslutat 2026-10-22, #1130)
+
+Beställaren: «Det är väldigt otydligt hur man joinar och spelar där alla sitter på varsin dator.»
+Resan genomgicks i den byggda appen, som värd och som vän i två webbläsare ([`docs/ux-audits/2026-10-22-distansspel`](docs/ux-audits/2026-10-22-distansspel/README.md)).
+Efter Starta stod bara en rumskod, utan adress och utan något att skicka.
+Bordets skärm sa «Öppna på telefonen».
+Värdens egen väg till bordet låg bakom pilen bredvid Starta, och den satte värden vid bordet som «Designern» utan att fråga.
+Vid bordet på `/online` syntes varken koden eller adressen.
+Anslutningssidan erbjuder tre knappar utan att säga vad som skiljer de två första.
+
+Tre varianter prototypades i [`prototyper/index.html`](docs/ux-audits/2026-10-22-distansspel/prototyper/index.html): **A**, länken överallt; **B**, väntrummet; och **C**, en inbjudan per plats.
+Valet blev **B**.
+
+**Starta frågar en gång hur ni sitter.**
+Frågan har två svar: «Runt en skärm» (TV:n eller en stor skärm, med telefonerna som händer) och «Var och en vid sin dator».
+Det senare frågar efter värdens namn vid bordet och sätter värden direkt på en ledig plats på `/online`, under det namnet.
+Svaret och namnet minns till nästa gång.
+Frågan ställs bara när det inte finns något bord: «Uppdatera» och menyns andra vägar in är orörda.
+
+**Distansvyn börjar i ett väntrum.**
+Tills något har hänt vid bordet ligger ett väntrum över filten på `/online`.
+Det visar hur många platser som är tagna, bordets adress med en kopieringsknapp, platserna med vem som sitter var, och «Starta spelet».
+Platserna fylls medan man tittar.
+Väntrummet är samma bricka som filtens «Starta spelet» (K25) med adressen och platserna runt sig, inte en andra start: väntar korten, så väntar knappen på samma sätt.
+När spelet har startat går väntrummet.
+Väntrummet har ett × («Göm väntrummet»), som prototypen inte hade: rutan täcker båda högarna, och den som vill lägga fram något före starten måste kunna nå dem. Gömt står filtens egen «Starta spelet» kvar i dess ställe, och det är samma start.
+Väntrummet visas där filten visas; telefonens smala `/online` är orörd.
+
+**Anslutningssidan på en dator har ett enda val.**
+Den säger «1 av 2 platser kvar», frågar efter namn och har ett enda «Gå med», som leder till `/online`.
+Telefonvägen står kvar som en länk under: «Sitter ni runt en TV? Använd telefonen som hand».
+«Bara titta» står kvar som länk.
+Prototypens «Vera bjuder in dig» byggs inte: ett bord vet inte vilken plats som är värdens, och sidan säger «Du går med i» som förut.
+
+Motivering:
+Det otydliga var inte att något saknades i distansvyn, utan att ingen yta frågade hur man sitter, så varje yta antog en TV.
+En fråga vid starten låter resten av vägen veta det.
+
+Förhållandet till C2:
+Frågan väljer vilken skärm *värden* får, inte ett läge för bordet.
+Sessionen är densamma och vyrollerna är desamma.
+Ett blandat bord, med en TV i rummet och någon på distans, fungerar som förut: den på distans öppnar samma adress, och TV:n nås genom menyn bredvid Starta.
+
+Följdkrav:
+Rummets adress är `värd/KOD` (#675) överallt där den visas för att skickas vidare, aldrig koden ensam.
 
 ### L78. Passkeys efter länken: ett band på Mina spel, en knapp på kortet och ett kort på profilen (prototypat och beslutat 2026-10-23, #1180)
 
