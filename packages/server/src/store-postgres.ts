@@ -136,9 +136,9 @@ export class PostgresLogStore implements LogStore {
 
   async createSession(record: SessionRecord): Promise<void> {
     await this.sql`
-      insert into sessions (id, version, setup, deck, project, code, code_expires_at, host_key_hash)
+      insert into sessions (id, version, setup, deck, project, account_id, code, code_expires_at, host_key_hash)
       values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)}, ${record.deck ? this.sql.json(record.deck as never) : null}, ${record.project ?? null},
-              ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null})
+              ${record.accountId ?? null}, ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null})
     `
   }
 
@@ -158,8 +158,8 @@ export class PostgresLogStore implements LogStore {
 
   // Never the deck (#1012): see `SessionInfo`. It is `deckOf`'s, for the one reader that deals.
   async loadSession(id: string): Promise<SessionInfo | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
-      select id, version, setup, project, code, code_expires_at, host_key_hash from sessions where id = ${id}
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; account_id: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
+      select id, version, setup, project, account_id, code, code_expires_at, host_key_hash from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
@@ -168,6 +168,7 @@ export class PostgresLogStore implements LogStore {
       version: row.version,
       setup: row.setup,
       ...(row.project ? { project: row.project } : {}),
+      ...(row.account_id ? { accountId: row.account_id } : {}),
       ...(row.code ? { code: row.code } : {}),
       ...(row.code_expires_at ? { codeExpiresAt: row.code_expires_at.toISOString() } : {}),
       ...(row.host_key_hash ? { hostKeyHash: row.host_key_hash } : {}),

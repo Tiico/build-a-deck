@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import type { APIRequestContext } from '@playwright/test'
+import { request as playwrightRequest, type APIRequestContext, type APIResponse } from '@playwright/test'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
 import { gameDoc, type Game } from './game.js'
@@ -36,7 +36,7 @@ export type Admission = {
 
 /**
  * A table, made the way the editor makes one: a project document, turned into a setup and a deck
- * by the very functions the server uses, and posted to `/sessions`.
+ * by the very functions the server uses, and posted to `/sessions` by an account (`asBearer`).
  *
  * It is made over HTTP rather than by reaching into the server's own objects, because the server
  * is a process here and not a module — and because the response is what carries the host key and
@@ -53,9 +53,9 @@ export async function makeTable(request: APIRequestContext, game: Game = {}): Pr
  * an edge nothing else puts one on. `gameDoc` is the recipe and this is the exception to it.
  */
 export async function tableOf(request: APIRequestContext, setup: unknown, deck?: unknown): Promise<Table> {
-  const res = await request.post('/sessions', { data: { version: 'e2e', setup, ...(deck ? { deck } : {}) } })
-  if (res.status() !== 201) throw new Error(`the table was not created: ${res.status()} ${await res.text()}`)
-  const { id, code, hostKey } = (await res.json()) as { id: string; code: string; hostKey: string }
+  const res = await asBearer(request, (bearer) => bearer.post('/sessions', { data: { version: 'e2e', setup, ...(deck ? { deck } : {}) } }))
+  if (res.status !== 201) throw new Error(`the table was not created: ${res.status} ${res.text}`)
+  const { id, code, hostKey } = JSON.parse(res.text) as { id: string; code: string; hostKey: string }
   const seats = (setup as { seats?: string[] }).seats ?? []
   const host = encodeURIComponent(hostKey)
   return {
@@ -65,6 +65,37 @@ export async function tableOf(request: APIRequestContext, setup: unknown, deck?:
     seats,
     tableUrl: `/table?session=${encodeURIComponent(id)}&host=${host}&mode=table`,
     tvUrl: `/table?session=${encodeURIComponent(id)}&host=${host}&mode=tv`,
+  }
+}
+
+/**
+ * A request sent by the table's bearer (#1194).
+ *
+ * A table is always borne by an account, and the raw door opens nothing for nobody. A context that
+ * is logged in already bears the table itself, as it would in the product. One that is not is
+ * never logged in by this: the table is posted by an account of its own instead, logged in with
+ * `AUTH_BYPASS` like every other login in the suite, in an API context of its own that is thrown
+ * away afterwards — so a spec that made a table and then asks something as a stranger is still a
+ * stranger.
+ *
+ * That context is made from the stack's origin, which `request` does not say; it is the origin
+ * every context in the suite is pointed at (`playwright.config.ts`).
+ */
+async function asBearer(request: APIRequestContext, send: (bearer: APIRequestContext) => Promise<APIResponse>): Promise<{ status: number; text: string }> {
+  const me = (await (await request.get('/auth/me')).json()) as { email: string | null }
+  if (me.email !== null) {
+    const res = await send(request)
+    return { status: res.status(), text: await res.text() }
+  }
+  const origin = process.env['BYD_E2E_ORIGIN']
+  if (!origin) throw new Error('the stack did not say where it is; BYD_E2E_ORIGIN is unset')
+  const bearer = await playwrightRequest.newContext({ baseURL: origin })
+  try {
+    await logIn(bearer)
+    const res = await send(bearer)
+    return { status: res.status(), text: await res.text() }
+  } finally {
+    await bearer.dispose()
   }
 }
 

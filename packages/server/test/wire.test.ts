@@ -311,7 +311,7 @@ describe('textures (TUNN-SKIVA §5)', () => {
   it('serves a face only through its hash, which only a seat that may see the face ever receives', async () => {
     const res = await fetch(`${run.http}/sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
       body: JSON.stringify({ id: 'tex', version: 'v1', setup: twoSeatSetup(), deck }),
     })
     expect(res.status).toBe(201)
@@ -345,7 +345,7 @@ describe('textures (TUNN-SKIVA §5)', () => {
   it('gives a face-down pile a back on the wire and still nothing that says which card it is', async () => {
     const res = await fetch(`${run.http}/sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
       body: JSON.stringify({ id: 'tex-back', version: 'v1', setup: twoSeatSetup(), deck }),
     })
     expect(res.status).toBe(201)
@@ -378,7 +378,7 @@ describe('a face whose render died (#10)', () => {
   it('stays 500 however often it is fetched, and goes back in the queue when the player asks', async () => {
     const res = await fetch(`${run.http}/sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
       body: JSON.stringify({ id: 'dead', version: 'v1', setup: twoSeatSetup(), deck }),
     })
     expect(res.status).toBe(201)
@@ -416,7 +416,7 @@ describe('faces in R2 (DRIFT §4)', () => {
       },
     }
     run = await start({ objects: r2 })
-    const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'r2', version: 'v1', setup: twoSeatSetup(), deck }) })
+    const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json', ...(await run.bearer()) }, body: JSON.stringify({ id: 'r2', version: 'v1', setup: twoSeatSetup(), deck }) })
     expect(res.status).toBe(201)
     registerRoom('r2', (await res.json()) as { code: string; hostKey: string })
     const a = await connect('r2', 'A')
@@ -634,7 +634,7 @@ describe('the bottom card of a pile on the wire (K23)', () => {
   const open = async (id: string, face: 'front' | 'back') => {
     const res = await fetch(`${run.http}/sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
       body: JSON.stringify({ id, version: 'v1', setup: withBottom(face), deck }),
     })
     expect(res.status).toBe(201)
@@ -690,7 +690,7 @@ describe('a card is called by its title, and the title is hidden information (#4
   it('sends the title to the seat holding the card and to nobody else — verified on raw frames', async () => {
     const res = await fetch(`${run.http}/sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
       body: JSON.stringify({ id: 'titles', version: 'v1', setup: twoSeatSetup(), deck: titled }),
     })
     expect(res.status).toBe(201)
@@ -738,7 +738,7 @@ describe('the printed text is hidden information, like the title (#551, B6)', ()
   it('reaches Ada and the observer, and never Bo, Cy, Di or the table — verified on raw frames', async () => {
     const res = await fetch(`${run.http}/sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
       body: JSON.stringify({ id: 'printed', version: 'v1', setup: fourSeats(), deck: worded }),
     })
     expect(res.status).toBe(201)
@@ -776,7 +776,7 @@ describe('the turn on the wire', () => {
   it('reaches every view in a patch when it is given', async () => {
     const res = await fetch(`${run.http}/sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
       body: JSON.stringify({ id: 'turns', version: 'v1', setup: { ...twoSeatSetup(), turns: 'clockwise' } }),
     })
     const made = (await res.json()) as { id: string; code: string; hostKey: string }
