@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vägen tillbaka · prototyp</title>
+<!--
+  PROTOTYPE — throwaway. Vägen tillbaka mellan editorn och borden, växlad med ?v=0|A|B|C (och ← →).
+  0 är dagens app; A, B och C är tre förslag. Webbläsarens flikar är ritade överst, eftersom det är
+  där vägen tillbaka bor i dag: varje bord öppnas i en ny flik och ingen bordsyta länkar någonstans.
+  Ingenting här importeras av appen; ytorna är ritade efter skärmbilder av appen 2026-10-23.
+-->
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: #0b0c10; color: #e6e8ee; font: 13px system-ui, sans-serif; overflow: hidden; }
+  button, a { font: inherit; color: inherit; }
+  a { cursor: pointer; }
+
+  /* --- prototypens egen rad: aldrig en del av förslaget ---------------------------------- */
+  .protorad { flex: none; display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; }
+  .protorad .fraga { flex: 1 1 360px; min-width: 0; }
+  .protorad button { min-height: 30px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; cursor: pointer; }
+  .protorad button:hover { border-color: #ffd98a; }
+  .vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+  .protorad .vaxlare button { border: 0; min-width: 34px; font-weight: 700; }
+  .protorad .vaxlare button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .anteckning { flex: 1 1 100%; margin: 0; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; }
+  .protorad .plus { color: #b7dca0; } .protorad .minus { color: #f0a58a; }
+
+  /* --- webbläsaren ------------------------------------------------------------------------ */
+  .browser { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin: 12px 16px 16px; border-radius: 10px; overflow: hidden; border: 1px solid #2c2f3a; box-shadow: 0 10px 40px #000a; }
+  .tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 6px 8px 0; background: #1c1e25; overflow: hidden; }
+  .tab { flex: 0 1 210px; min-width: 70px; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 8px 8px 0 0; background: #262933; color: #a8adbb; font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; }
+  .tab span { overflow: hidden; text-overflow: ellipsis; }
+  .tab[aria-selected='true'] { background: #343845; color: #fff; }
+  .tab .x { margin-left: auto; opacity: .5; padding: 0 2px; }
+  .tab.ny { animation: ny .8s ease; }
+  @keyframes ny { from { background: #4b6bd8; } }
+  .tabcount { margin-left: auto; align-self: center; padding: 0 6px 6px; color: #7d8597; font-size: 11px; white-space: nowrap; }
+  .adress { flex: none; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; background: #343845; border-bottom: 1px solid #222; }
+  .adress button { width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: #a8adbb; cursor: pointer; }
+  .adress button:disabled { opacity: .3; cursor: default; }
+  .adress button:not(:disabled):hover { background: #454a59; }
+  .url { flex: 1; height: 24px; display: flex; align-items: center; padding: 0 10px; border-radius: 12px; background: #1c1e25; color: #a8adbb; font: 12px ui-monospace, monospace; white-space: nowrap; overflow: hidden; }
+  .sida { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
+
+  /* --- appens delar ------------------------------------------------------------------------ */
+  .knapp { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #3a3f4d; background: #1d2029; color: #e6e8ee; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .knapp:hover { border-color: #6b7286; }
+  .knapp.bla { background: #3b6fd8; border-color: #3b6fd8; color: #fff; }
+  .knapp.gron { background: #8fd19e; border-color: #8fd19e; color: #10261a; }
+  .knapp.liten { min-height: 30px; padding: 0 10px; font-size: 12px; }
+  .lank { color: #cfd5e4; text-decoration: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; }
+  .lank:hover { text-decoration: underline; }
+  .tillbaka { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px 0 8px; border-radius: 8px; border: 1px solid #3a3f4d; background: #1d2029; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .tillbaka:hover { border-color: #8fa8ff; }
+  .tillbaka .pil { font-size: 16px; line-height: 1; color: #8fa8ff; }
+  .tillbaka small { color: #8a90a0; font-weight: 400; }
+  .ny-markor { outline: 2px dashed #ffd98a; outline-offset: 3px; }
+
+  .mark { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: #fff; }
+  .mark i { display: inline-block; width: 14px; height: 18px; border-radius: 2px; background: #f2ead8; box-shadow: 4px -2px 0 -1px #8fd19e, 8px -4px 0 -2px #e7b45a; transform: rotate(-8deg); margin-right: 8px; }
+  button.mark { border: 1px solid transparent; background: transparent; padding: 4px 8px; border-radius: 8px; cursor: pointer; }
+  button.mark:hover, button.mark[aria-expanded='true'] { border-color: #3a3f4d; background: #1d2029; }
+  button.mark::after { content: '▾'; font-size: 10px; color: #8a90a0; margin-left: 2px; }
+
+  /* Mina spel */
+  .home { height: 100%; background: #111217; padding: 22px 15%; overflow: auto; }
+  .home header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .home h1 { margin: 0; font-size: 24px; }
+  .home .konto { margin-left: auto; color: #8a90a0; font-size: 12px; }
+  .etikett { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: #8a90a0; margin: 0 0 6px; }
+  .pagar { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; border-radius: 8px; background: #1d3325; margin-bottom: 14px; }
+  .pagar b { flex: 1; }
+  .kod { font: 700 13px ui-monospace, monospace; letter-spacing: .12em; }
+  .rutor { display: flex; gap: 12px; }
+  .ruta { width: 200px; padding: 10px; border-radius: 10px; background: #1b1d25; cursor: pointer; }
+  .ruta:hover { outline: 1px solid #3a3f4d; }
+  .ruta .bild { width: 64px; height: 84px; border-radius: 4px; background: #efe6d2; margin-bottom: 8px; }
+  .ruta small { color: #8a90a0; }
+  .ruta.tom { display: grid; place-items: center; color: #a8adbb; min-height: 150px; }
+
+  /* Editorn */
+  .editor { height: 100%; display: flex; flex-direction: column; background: #1a1d26; }
+  .ehead { flex: none; display: flex; align-items: center; gap: 12px; height: 54px; padding: 0 12px; background: #13151c; border-bottom: 1px solid #262a35; }
+  .ehead .namn { font-weight: 800; }
+  .flikar { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: #1d2029; }
+  .flikar span { padding: 6px 10px; border-radius: 6px; color: #a8adbb; font-weight: 600; font-size: 12px; }
+  .flikar span.vald { color: #fff; box-shadow: inset 0 -2px 0 #3b6fd8; }
+  .ehead .hoger { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .split { display: inline-flex; }
+  .split .knapp:first-child { border-radius: 8px 0 0 8px; }
+  .split .knapp:last-child { border-radius: 0 8px 8px 0; border-left: 1px solid #2c58b3; padding: 0 10px; }
+  .band { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #1d3325; color: #b9e6c4; font-size: 12px; }
+  .band .lank { color: #fff; text-decoration: underline; }
+  .vagg { flex: 1; padding: 16px; display: flex; gap: 14px; align-content: flex-start; flex-wrap: wrap; }
+  .vagg i { width: 120px; height: 168px; border-radius: 6px; background: #efe6d2; border: 3px solid #d9cdb2; }
+  .meny { position: absolute; z-index: 5; min-width: 250px; padding: 6px; border-radius: 10px; background: #1d2029; border: 1px solid #3a3f4d; box-shadow: 0 10px 30px #000c; }
+  .meny .rubrik { padding: 6px 8px 4px; font-size: 11px; color: #8a90a0; font-weight: 700; letter-spacing: .06em; }
+  .meny a, .meny button { display: flex; width: 100%; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; text-align: left; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .meny a:hover, .meny button:hover { background: #2a2e3a; }
+  .meny a.har { color: #8a90a0; font-weight: 400; }
+  .meny hr { border: 0; border-top: 1px solid #2c303c; margin: 4px 0; }
+  .meny .kod { margin-left: auto; color: #b9e6c4; }
+  .dialog { position: absolute; inset: 0; display: grid; place-items: center; background: #0008; z-index: 6; }
+  .dialog > div { width: 440px; padding: 18px; border-radius: 12px; background: #1d2029; border: 1px solid #3a3f4d; }
+  .dialog h2 { margin: 0 0 4px; font-size: 18px; }
+  .dialog .val { display: flex; gap: 10px; margin: 14px 0; }
+  .dialog label { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #3a3f4d; cursor: pointer; font-size: 12px; color: #a8adbb; }
+  .dialog label b { display: block; color: #fff; font-size: 13px; margin-bottom: 2px; }
+  .dialog label:has(input:checked) { border-color: #3b6fd8; box-shadow: inset 0 0 0 1px #3b6fd8; }
+  .dialog input { display: none; }
+  .dialog .knappar { display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* Filten */
+  .filt { position: absolute; inset: 0; display: grid; place-items: center; background: #0f1116; }
+  .filt .tra { width: min(78%, 900px); aspect-ratio: 16/10; border-radius: 26px; background: linear-gradient(#7a5032, #563620); padding: 2.4%; box-shadow: 0 10px 30px #000a; }
+  .filt .gront { width: 100%; height: 100%; border-radius: 16px; background: radial-gradient(ellipse at 50% 40%, #2f7a4b, #1d5a36 75%); display: grid; place-items: center; }
+  .filt .hogar { display: flex; gap: 40px; }
+  .filt .hogar i { width: 54px; height: 76px; border-radius: 4px; background: repeating-linear-gradient(45deg, #2b3d78 0 3px, #34478a 3px 6px); border: 1px solid #1a2650; }
+  .filt .hogar i + i { background: transparent; border: 1.5px dashed #ffffff55; }
+
+  /* TV */
+  .tv { height: 100%; display: flex; background: #12141a; }
+  .tv .yta { flex: 1; position: relative; }
+  .tv aside { flex: none; width: 260px; padding: 14px; background: #191b22; border-left: 1px solid #262a35; display: flex; flex-direction: column; gap: 10px; }
+  .tv aside h1 { margin: 0; font-size: 20px; } .tv aside h1 em { font-style: normal; font-weight: 400; color: #8a90a0; font-size: 16px; }
+  .tv .stor { font: 700 26px ui-monospace, monospace; letter-spacing: .12em; padding: 4px 8px; border-radius: 6px; background: #0f1116; }
+  .tv .grå { color: #8a90a0; font-size: 12px; }
+  .tv .rad { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .tv .rad .tillbaka { min-height: 30px; font-size: 12px; }
+
+  /* /online och /observe */
+  .online { height: 100%; display: flex; flex-direction: column; background: #111217; }
+  .otop { flex: none; display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 12px; border-bottom: 1px solid #222631; }
+  .seat { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: #1d2029; border-left: 4px solid #e06a5a; font-weight: 700; }
+  .seat small { color: #8a90a0; font-weight: 400; }
+  .otop .verktyg { margin-left: auto; display: flex; gap: 6px; }
+  .ikon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid #2c303c; background: #1d2029; cursor: pointer; }
+  .online .yta { flex: 1; position: relative; }
+  .ark { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; padding: 14px; background: #1d2029; border-top: 1px solid #3a3f4d; display: grid; gap: 8px; }
+  .ark .knapp { width: 100%; }
+  .ark p { margin: 0; color: #8a90a0; font-size: 12px; }
+  .observe .handtag { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; border-radius: 12px; background: #1d2029e6; border: 1px solid #2c303c; z-index: 3; }
+  .observe .topp { position: absolute; left: 12px; top: 12px; z-index: 3; }
+
+  .bubbla { position: absolute; z-index: 7; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #ffd98a; color: #2a2417; font-size: 12px; box-shadow: 0 6px 20px #000a; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button data-v="0">0</button><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button>
+  </div>
+  <div class="fraga">
+    <p><b id="vnamn"></b> <span id="vtext"></span></p>
+  </div>
+  <button id="omstart">Börja om</button>
+  <p class="anteckning" id="vanteckning"></p>
+</div>
+
+<div class="browser">
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="adress"><button id="bak" aria-label="Bakåt">←</button><button id="fram" aria-label="Framåt">→</button><div class="url" id="url"></div></div>
+  <div class="sida" id="sida"></div>
+</div>
+
+<script>
+const VARIANTER = {
+  '0': {
+    namn: '0 · Idag',
+    text: 'Varje väg in i ett bord öppnar en ny flik, och ingen bordsyta länkar någonstans. Prova: Starta bord → Runt en skärm, gå tillbaka till editorn och öppna bordet igen.',
+    anteckning: '<span class="minus">−</span> TV-vyn, /online och /observe har ingen väg till editorn eller Mina spel · <span class="minus">−</span> «Lämna bordet» på /online lämnar platsen och landar på Mina spel, inte i spelet · <span class="minus">−</span> varje «Öppna bordet» lägger till en flik till samma bord.',
+  },
+  A: {
+    namn: 'A · Tillbaka i ytan, flikarna parade',
+    text: 'Borden öppnas fortfarande bredvid editorn, men varje bordsyta har «‹ Navtest» som hoppar tillbaka till editorns flik i stället för att öppna en ny. Och ett bord som redan har en flik öppnas i den.',
+    anteckning: '<span class="plus">+</span> vägen tillbaka syns där man står och leder till spelet, inte bara till Mina spel · <span class="plus">+</span> «Uppdatera bordet» och bordet går fortfarande att ha sida vid sida · <span class="plus">+</span> flikarna slutar föröka sig (namngivna flikar: editorn heter efter spelet, bordet efter sin kod) · <span class="minus">−</span> en ny knapp på TV:n och i /online-huvudet · gäller bara ägaren: en gäst ser ingen editorlänk.',
+  },
+  B: {
+    namn: 'B · Samma flik',
+    text: 'Borden öppnas i samma flik som editorn. «‹ Navtest» och webbläsarens bakåtpil leder tillbaka. Det finns aldrig mer än en flik.',
+    anteckning: '<span class="plus">+</span> enklast tänkbara modell: bakåt är bakåt · <span class="plus">+</span> inga flikar att hålla reda på · <span class="minus">−</span> editorn och bordet går inte att se samtidigt, så slingan ändra → «Uppdatera bordet» → titta blir ett hopp fram och tillbaka · <span class="minus">−</span> river beslutet att bordet öppnas bredvid editorn (L5, L64) och TV:n i ett andra fönster.',
+  },
+  C: {
+    namn: 'C · Märket är menyn',
+    text: 'Deckster-märket står överst på varje yta och öppnar samma meny: Mina spel, spelet i editorn och spelets bord som pågår. Flikarna paras som i A.',
+    anteckning: '<span class="plus">+</span> en enda väg som ser likadan ut överallt, också på /join och /login · <span class="plus">+</span> menyn säger var man är och vad mer som är öppet · <span class="minus">−</span> vägen tillbaka är ett tryck längre och gömd bakom ett märke man måste veta är en knapp · <span class="minus">−</span> märket blir en kontroll på TV:n, som K13 säger inte har några.',
+  },
+}
+
+const SPEL = 'Navtest'
+const KOD = 'FQ3F23'
+let v = new URLSearchParams(location.search).get('v') ?? 'A'
+if (!VARIANTER[v]) v = 'A'
+let state
+
+function nollstall() {
+  state = {
+    tabs: [{ id: 1, name: null, hist: [{ yta: 'home' }], pos: 0, ny: false }],
+    active: 1, nextId: 2, bord: false, dialog: false, meny: null, ark: false, bubbla: null,
+  }
+}
+
+// --- flikar och historik -------------------------------------------------------------
+const tab = () => state.tabs.find((t) => t.id === state.active)
+const sida = (t = tab()) => t.hist[t.pos]
+
+function ga(yta, extra = {}) { // same tab
+  const t = tab()
+  t.hist = t.hist.slice(0, t.pos + 1)
+  t.hist.push({ yta, ...extra })
+  t.pos++
+  state.meny = null; state.ark = false; state.dialog = false
+  if (yta === 'editor') t.name = 'editor'
+  render()
+}
+function oppnaNy(yta, name) { // target=_blank, or a named target in A and C
+  state.meny = null; state.ark = false; state.dialog = false
+  if (name && v !== '0') {
+    const finns = state.tabs.find((t) => t.name === name)
+    if (finns) {
+      state.active = finns.id
+      if (sida(finns).yta !== yta) { finns.hist.push({ yta }); finns.pos = finns.hist.length - 1 }
+      state.bubbla = 'Fliken fanns redan: den togs fram i stället för att en ny öppnades.'
+      return render()
+    }
+  }
+  const t = { id: state.nextId++, name: v === '0' ? null : name, hist: [{ yta }], pos: 0, ny: true }
+  state.tabs.push(t)
+  state.active = t.id
+  render()
+}
+function tillEditorn() {
+  if (v === 'B') return ga('editor')
+  const ed = state.tabs.find((t) => t.name === 'editor')
+  if (ed) {
+    state.active = ed.id
+    if (sida(ed).yta !== 'editor') ga('editor')
+    else { state.bubbla = 'Editorns flik togs fram — inget laddades om, och bordets flik står kvar.'; render() }
+  } else {
+    // The editor's tab was closed: the link opens it again, named.
+    oppnaNy('editor', 'editor')
+  }
+}
+function tillBordet(yta) {
+  if (v === 'B') return ga(yta)
+  oppnaNy(yta, 'bord-' + KOD)
+}
+
+const URLS = {
+  home: '/',
+  editor: '/editor?project=42214b03…',
+  tv: '/table?session=f7aa…&mode=tv&owner=1',
+  online: '/online?session=f7aa…&seat=A&name=Designern&owner=1',
+  observe: '/observe?session=f7aa…&name=Designern&owner=1',
+}
+const TITEL = { home: 'Mina spel · Deckster', editor: SPEL + ' · Kortvägg · Deckster', tv: 'Bordet · Rum ' + KOD, online: 'Spela · ' + SPEL, observe: 'Titta på · ' + SPEL }
+
+// --- ytorna ---------------------------------------------------------------------------
+const nytt = (html) => (v === '0' ? '' : html)
+const markmeny = () => (v === 'C' ? `<button class="mark" data-do="meny" data-meny="mark" aria-expanded="${state.meny === 'mark'}"><i></i>Deckster</button>` : '')
+const tillbakaLank = (extra = '') => `<a class="tillbaka ny-markor" data-do="editor" ${extra}><span class="pil">‹</span>${SPEL}<small>${v === 'B' ? '' : ' · editorn'}</small></a>`
+
+function home() {
+  return `<div class="home">
+    <header>${v === 'C' ? markmeny() : ''}<h1>Mina spel</h1><span class="konto">nav-audit@example.test</span></header>
+    ${state.bord ? `<p class="etikett">PÅGÅR NU</p><div class="pagar"><b>${SPEL}</b><span class="kod">${KOD}</span>
+      ${nytt(`<a class="knapp liten ny-markor" data-do="editor">Öppna spelet</a>`)}
+      <a class="knapp gron liten" data-do="bord" data-yta="tv">Öppna bordet</a></div>` : ''}
+    <div class="rutor"><div class="ruta" data-do="editor"><div class="bild"></div><b>${SPEL}</b><br><small>v1 · ${state.bord ? '1 bord' : 'inget bord'}</small></div><div class="ruta tom">+ Nytt spel</div></div>
+  </div>`
+}
+
+function editor() {
+  const meny = state.meny === 'bord' ? `<div class="meny" style="right:12px; top:50px">
+      ${state.bord ? `<div class="rubrik">BORDET ${KOD} · V1</div>
+        <a data-do="bord" data-yta="tv">Öppna TV-vyn</a><a data-do="bord" data-yta="online">Spela härifrån</a><a data-do="bord" data-yta="observe">Titta på</a><hr>
+        <button>Nytt bord</button>` : '<div class="rubrik">INGET BORD ÄNNU</div>'}
+      <button>Alla bord</button></div>` : ''
+  const dialog = state.dialog ? `<div class="dialog"><div><h2>Starta ett bord</h2><span class="grå">Hur sitter ni?</span>
+      <div class="val"><label><input type="radio" name="hur" value="tv" checked><b>Runt en skärm</b>Bordet på en TV, handen i telefonen.</label>
+      <label><input type="radio" name="hur" value="online"><b>Var och en vid sin dator</b>Alla ser bordet i sitt eget fönster.</label></div>
+      <div class="knappar"><button class="knapp" data-do="stang">Avbryt</button><button class="knapp bla" data-do="starta">▷ Starta</button></div></div></div>` : ''
+  return `<div class="editor">
+    <div class="ehead">${markmeny()}<a class="lank" data-do="home">Mina spel</a><span class="namn">${SPEL}</span><span class="grå">v1 · Sparat</span>
+      <div class="flikar"><span class="vald">Kortvägg</span><span>Mall</span><span>Tabell</span><span>Speltema</span><span>Media</span><span>Regler</span><span>Bord</span></div>
+      <div class="hoger"><span class="knapp">Spara</span><span class="split"><button class="knapp bla" data-do="${state.bord ? 'uppdatera' : 'dialog'}">${state.bord ? 'Uppdatera bordet' : 'Starta bord'}</button><button class="knapp bla" data-do="meny" data-meny="bord" aria-label="Fler sätt att öppna bordet">▾</button></span></div>
+    </div>
+    ${state.bord ? `<div class="band">Bordet kör version 1 · rumskod <b class="kod">${KOD}</b> · <a class="lank" data-do="bord" data-yta="tv">Öppna bordets skärm</a></div>` : ''}
+    <div class="vagg"><i></i><i></i><i></i></div>${meny}${dialog}</div>`
+}
+
+function filt() { return `<div class="filt"><div class="tra"><div class="gront"><div class="hogar"><i></i><i></i></div></div></div></div>` }
+
+function tv() {
+  let topp = ''
+  if (v === 'A' || v === 'B') topp = `<div class="rad"><span class="mark"><i></i>Deckster</span>${tillbakaLank()}</div>`
+  else if (v === 'C') topp = `<div class="rad">${markmeny()}</div>`
+  else topp = `<span class="mark"><i></i>Deckster</span>`
+  return `<div class="tv"><div class="yta">${filt()}</div><aside>${topp}
+    <h1>${SPEL} <em>version 1</em></h1><span class="grå">Öppna på telefonen</span><span class="grå">deckster.se</span><span class="stor">/${KOD}</span>
+    <span class="etikett" style="margin-top:12px">SENASTE DRAGEN</span><span class="grå">Inga drag ännu.</span></aside></div>`
+}
+
+function online() {
+  const forsta = v === '0' ? '' : v === 'C' ? markmeny() : `<a class="tillbaka ny-markor" data-do="editor" title="Du sitter kvar vid bordet"><span class="pil">‹</span>${SPEL}</a>`
+  const ark = state.ark ? `<div class="ark"><b>Lämna bordet?</b>
+      <button class="knapp" data-do="lamna">Lämna bordet</button>
+      <p>Din plats blir ledig och dina kort läggs tillbaka i Draghög. ${v === '0' ? 'Du hamnar på Mina spel.' : `<span class="ny-markor">Du kommer tillbaka till ${SPEL} i editorn.</span>`}</p>
+      ${nytt(`<button class="knapp ny-markor" data-do="editor">Till ${SPEL} — sitt kvar vid bordet</button>`)}
+      <button class="knapp" style="color:#f0a58a">Avsluta för alla</button><button class="knapp" data-do="stang">Avbryt</button></div>` : ''
+  return `<div class="online"><div class="otop">${forsta}<span class="seat">Designern <small>0 kort</small></span>
+    <div class="verktyg"><span class="ikon">↶</span><span class="ikon">⚑</span><button class="ikon" data-do="ark" aria-label="Lämna… eller avsluta bordet">⇥</button></div></div>
+    <div class="yta">${filt()}</div>${ark}</div>`
+}
+
+function observe() {
+  const topp = v === '0' ? '' : `<div class="topp">${v === 'C' ? markmeny() : tillbakaLank()}</div>`
+  return `<div class="online observe"><div class="yta">${filt()}${topp}<div class="handtag"><span class="ikon">?</span><span class="ikon">☰</span><span class="ikon">⚑</span></div></div></div>`
+}
+
+function markMenyHtml() {
+  const har = sida().yta
+  const box = document.querySelector('button.mark')
+  if (!box) return ''
+  const r = box.getBoundingClientRect(), s = document.getElementById('sida').getBoundingClientRect()
+  return `<div class="meny" style="left:${Math.min(r.left - s.left, s.width - 270)}px; top:${r.bottom - s.top + 6}px">
+    <a data-do="home" class="${har === 'home' ? 'har' : ''}">Mina spel</a>
+    <a data-do="editor" class="${har === 'editor' ? 'har' : ''}">${SPEL} <span class="grå">· editorn</span></a>
+    ${state.bord ? `<hr><div class="rubrik">PÅGÅR NU</div><a data-do="bord" data-yta="tv" class="${har === 'tv' ? 'har' : ''}">Bordets skärm <span class="kod">${KOD}</span></a><a data-do="bord" data-yta="online" class="${har === 'online' ? 'har' : ''}">Spela härifrån <span class="kod">${KOD}</span></a>` : ''}
+    <hr><a>Profil</a></div>`
+}
+
+// --- rita -----------------------------------------------------------------------------
+function render() {
+  const y = sida().yta
+  document.getElementById('tabs').innerHTML = state.tabs.map((t) => `<div class="tab${t.ny ? ' ny' : ''}" role="tab" data-tab="${t.id}" aria-selected="${t.id === state.active}"><span>${TITEL[sida(t).yta]}</span><span class="x" data-stang="${t.id}">×</span></div>`).join('') + `<span class="tabcount">${state.tabs.length} ${state.tabs.length === 1 ? 'flik' : 'flikar'}</span>`
+  state.tabs.forEach((t) => (t.ny = false))
+  document.getElementById('url').textContent = 'deckster.se' + URLS[y]
+  document.getElementById('bak').disabled = tab().pos === 0
+  document.getElementById('fram').disabled = tab().pos >= tab().hist.length - 1
+  document.title = TITEL[y]
+  const s = document.getElementById('sida')
+  s.innerHTML = { home, editor, tv, online, observe }[y]()
+  if (state.meny === 'mark') s.insertAdjacentHTML('beforeend', markMenyHtml())
+  if (state.bubbla) { s.insertAdjacentHTML('beforeend', `<div class="bubbla" style="left:16px; bottom:16px">${state.bubbla}</div>`); state.bubbla = null }
+  document.querySelectorAll('.vaxlare button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)))
+  const V = VARIANTER[v]
+  document.getElementById('vnamn').textContent = V.namn
+  document.getElementById('vtext').textContent = V.text
+  document.getElementById('vanteckning').innerHTML = V.anteckning
+}
+
+document.addEventListener('click', (e) => {
+  const stang = e.target.closest('[data-stang]')
+  if (stang) {
+    if (state.tabs.length === 1) return
+    const id = Number(stang.dataset.stang)
+    state.tabs = state.tabs.filter((t) => t.id !== id)
+    if (state.active === id) state.active = state.tabs[state.tabs.length - 1].id
+    return render()
+  }
+  const tb = e.target.closest('[data-tab]')
+  if (tb) { state.active = Number(tb.dataset.tab); state.meny = null; return render() }
+  const vb = e.target.closest('.vaxlare button')
+  if (vb) return byt(vb.dataset.v)
+  const el = e.target.closest('[data-do]')
+  if (!el) { if (state.meny) { state.meny = null; render() } return }
+  e.preventDefault()
+  const d = el.dataset.do
+  if (d === 'home') ga('home')
+  else if (d === 'editor') { if (sida().yta === 'home') ga('editor'); else tillEditorn() }
+  else if (d === 'bord') tillBordet(el.dataset.yta)
+  else if (d === 'dialog') { state.dialog = true; render() }
+  else if (d === 'stang') { state.dialog = false; state.ark = false; render() }
+  else if (d === 'starta') { const hur = document.querySelector('input[name=hur]:checked').value; state.bord = true; state.dialog = false; tillBordet(hur) }
+  else if (d === 'uppdatera') { state.bubbla = 'Bordet uppdaterat till version 2.'; render() }
+  else if (d === 'meny') { state.meny = state.meny === el.dataset.meny ? null : el.dataset.meny; render() }
+  else if (d === 'ark') { state.ark = true; render() }
+  else if (d === 'lamna') { if (v === '0') ga('home'); else tillEditorn() }
+})
+document.getElementById('bak').onclick = () => { tab().pos--; state.meny = null; render() }
+document.getElementById('fram').onclick = () => { tab().pos++; state.meny = null; render() }
+document.getElementById('omstart').onclick = () => { nollstall(); render() }
+
+function byt(nv) {
+  v = nv
+  const u = new URL(location.href); u.searchParams.set('v', v); history.replaceState(null, '', u)
+  nollstall(); ga('editor'); state.tabs[0].hist = [{ yta: 'home' }, { yta: 'editor' }]; render()
+}
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  const keys = Object.keys(VARIANTER), i = keys.indexOf(v)
+  if (e.key === 'ArrowRight') byt(keys[(i + 1) % keys.length])
+  if (e.key === 'ArrowLeft') byt(keys[(i + keys.length - 1) % keys.length])
+})
+byt(v)
+</script>
+</body>
+</html>
