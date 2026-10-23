@@ -118,6 +118,9 @@ export const PLAYER_TEXT_PAIRS: readonly TextPair[] = [
   { what: 'the label on a destructive button', ink: '--byd-danger', on: '--byd-danger-bg', size: 'normal' },
   { what: 'a survey error', ink: '--byd-danger', on: '--byd-bg', size: 'normal' },
   { what: 'the survey scale labels', ink: '--byd-ink-quiet', on: '--byd-bg', size: 'normal' },
+  { what: "a die's value in the dice sheet", ink: '--byd-die-ink', on: '--byd-die', size: 'normal' },
+  { what: "a die's kind in its corner", ink: '--byd-die-kind', on: '--byd-die', size: 'normal' },
+  { what: 'what a throw came to', ink: '--byd-ink-strong', on: '--byd-surface', size: 'normal' },
 ]
 
 // A hand card's face is `hsl(<hue> <s> <l>)` with the hue from the card, so the ink has to read
