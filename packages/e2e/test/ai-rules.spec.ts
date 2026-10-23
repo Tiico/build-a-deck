@@ -9,7 +9,7 @@ import { expect, test } from '../support/test.js'
 // rendering draws the new blocks marked and the zone by its name. Accepting is one composite edit
 // over the editor's line, taken back with one step; and rule text naming a zone the game does not
 // have is refused with the reason, writing nothing. The provider is the stack's fake behind the
-// server's own proxy, whose `[regler]` and `[regler-trasig]` answer with such rule text.
+// server's own proxy, whose `[regler]`, `[regler-trasig]` and `[regler-markör]` answer with such rule text.
 const KEY = 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefR3gl'
 const GAME = 'Skogens regler'
 
@@ -71,4 +71,15 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   await expect(refused).toContainText('Rule text 1 (“Att dra kort”) names the zone “finns-inte”, which the game does not have.')
   await expect(refused).toContainText('The answer from the AI could not be used. Nothing in the game changed.')
   expect(edits()).toHaveLength(2)
+
+  // 6. A list under a kind word the book does not have, as a long answer from Anthropic's tool has
+  // come back (#1183), is read by its fields: a numbered list in the book, never a refusal.
+  await field.fill('Once more [regler-markör]')
+  await field.press('Enter')
+  const kinded = panel.getByRole('group', { name: 'Proposal · 1 addition to the rulebook' }).last()
+  await expect(kinded.getByRole('button', { name: 'Accept all' })).toBeVisible()
+  await expect(panel.getByRole('alert').filter({ hasText: 'ordered_placeholder' })).toHaveCount(0)
+  await kinded.getByRole('button', { name: 'Show in the rulebook' }).click()
+  await expect(book.locator('[data-ai="new"]')).toHaveCount(3)
+  await expect(book.locator('[data-ai="new"]').nth(2).locator('ol > li')).toHaveText(['Dra ett kort.', 'Spela ett kort eller passa.'])
 })

@@ -288,9 +288,10 @@ export type Translated = { ok: true; edits: EditIntent[]; parts: ProposalPart[] 
 export function translateProposal(doc: ProjectDoc, answer: unknown, leave: ReadonlySet<string> = new Set()): Translated {
   // An element of a kind the model does not have is said by its kind, which is the one thing the
   // schema's own refusal would not name.
-  const stranger = strangeElement(answer) ?? strangeRuleBlock(answer)
+  const kinded = ruleKindsByFields(answer)
+  const stranger = strangeElement(kinded) ?? strangeRuleBlock(kinded)
   if (stranger) return refused(stranger)
-  const read = Proposal.safeParse(answer)
+  const read = Proposal.safeParse(kinded)
   if (!read.success) return { ok: false, problem: { kind: 'shape' } }
   const parts: ProposalPart[] = []
   let left = false
@@ -952,6 +953,33 @@ function ruleTextFault(doc: ProjectDoc, names: Names, text: string): RulesFault 
   }
   for (const paragraph of parseInline(text, { refs: true })) walk(paragraph.children)
   return fault
+}
+
+// A rule block under a kind word the book does not have, read as the one kind its fields fit (#1183).
+// Anthropic's tool is not strict (#1088), and a long answer has come back with a list under the kind
+// «ordered_placeholder_removed_marker_do_not_use»; the kinds share no field but `text`, so the fields
+// say which block was meant. A block whose fields fit no kind keeps its word, and is refused by it.
+const RULE_FIELDS: readonly (readonly [string, readonly string[]])[] = [
+  ['heading', ['level', 'text']],
+  ['text', ['text']],
+  ['list', ['items', 'ordered']],
+]
+function ruleKindsByFields(answer: unknown): unknown {
+  const entries = (answer as { rules?: unknown } | null)?.rules
+  if (!Array.isArray(entries)) return answer
+  const kinded = (block: unknown): unknown => {
+    if (block === null || typeof block !== 'object') return block
+    const { kind, ...fields } = block as Record<string, unknown>
+    if (typeof kind !== 'string' || RULE_KINDS.includes(kind)) return block
+    const names = Object.keys(fields).sort().join()
+    const fit = RULE_FIELDS.find(([, own]) => own.join() === names)
+    return fit ? { kind: fit[0], ...fields } : block
+  }
+  const rules = entries.map((entry) => {
+    const blocks = (entry as { blocks?: unknown } | null)?.blocks
+    return Array.isArray(blocks) ? { ...(entry as object), blocks: blocks.map(kinded) } : entry
+  })
+  return { ...(answer as object), rules }
 }
 
 // A block of a kind the book does not have, anywhere in the proposed rule text, as the problem that
