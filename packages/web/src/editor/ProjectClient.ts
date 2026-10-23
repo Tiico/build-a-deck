@@ -4,7 +4,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -751,6 +751,11 @@ export class ProjectClient {
     this.edit({ v: 'setRecipe', recipe, ...(words ? { words } : {}) }, gesture)
   }
 
+  // The game's dice (K5, #1139), written whole like the counters: one change, one step back.
+  setDice(dice: Die[], gesture?: string): void {
+    this.edit({ v: 'setDice', dice }, gesture)
+  }
+
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
   // middle of the table until it is dragged somewhere. Returns its id.
   // A zone the designer adds is theirs, and it is named in the language they are working in
@@ -1426,6 +1431,11 @@ export class ProjectClient {
 
   // What the game's playtests said (#1010, G3): every table's answers, flags and people, and every
   // version's sums, counted by the server. Read by whoever may start the game's tables (#524).
+  // Where the textures a flag about a card was raised on are served from (#1142): the API itself.
+  get facesOrigin(): string {
+    return this.http
+  }
+
   async playtest(): Promise<Playtest> {
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/playtest`, withCredentials())
     if (res.status === 401) throw new Unauthorized()

@@ -14,6 +14,12 @@ import { LIFT_GAP, LIFT_SHARE } from './table/lift-share.js'
 
 const CARD_WIDTH_MM = CARD_STANDARD_63x88.physical.widthMm
 
+// K9:s golv för ett kort som kontroll på filten, i px på kortsidan: det dras, trycks och pekas på.
+// Det är ett mått på ramen och inte på texten, och står här för att det är talet sidorna 1–6 ställer
+// textgolven mot — ett kort i 45 px bär 2,1 px brödtext och läses därför bara genom läsgesten.
+// Produkten läser det sedan /online frågar om anteckningsspalten får stå öppen (#1131).
+export const CARD_CONTROL_PX = 45
+
 // Textens höjd i CSS-px när ett kort `cardMm` brett ritas `cardPx` brett: 8,5 pt brödtext blir
 // 0,048 × kortbredden och 12 pt titel 0,067 × kortbredden på ett 63 mm-kort.
 export const textPxOnCard = (sizePt: number, cardPx: number, cardMm: number = CARD_WIDTH_MM): number => (sizePt * PT_TO_MM * cardPx) / cardMm

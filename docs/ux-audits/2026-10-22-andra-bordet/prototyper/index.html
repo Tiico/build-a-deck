@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Andra bordet · prototyp #1145</title>
+<!--
+  PROTOTYPE — throwaway (#1145). Vad ett tryck på «Starta nytt bord» gör medan ett bord av spelet
+  redan kör, på de tre ställen där det i dag startar ett andra bord utan fråga: Bord-fliken,
+  pilmenyn i editorhuvudet och ⋯-menyn på startsidan. Växla variant med ?v=A|B|C (eller ← →),
+  ?bord=0 visar ett spel utan bord igång. Färger och mått är avskrivna från editor.css och
+  account.css; ingenting här importeras av appen.
+-->
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { background: #0f1117; color: #e6ecfa; font: 13px system-ui, sans-serif; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+
+  /* --- prototypens egen rad: aldrig en del av förslaget ------------------------------------- */
+  .protorad { position: sticky; top: 0; z-index: 50; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; flex: 1 1 420px; }
+  .protorad button { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; cursor: pointer; }
+  .vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+  .protorad .vaxlare button { border: 0; min-height: 30px; min-width: 34px; font-weight: 700; }
+  .protorad .vaxlare button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .logg { flex: 1 1 100%; margin: 0; min-height: 1.5em; color: #b7dca0; }
+
+  main { display: grid; gap: 28px; padding: 24px 16px 64px; max-width: 1280px; margin: 0 auto; }
+  section > h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #ffd98a; }
+  .yta { position: relative; border: 1px solid #262a35; border-radius: 12px; background: #13161d; overflow: visible; }
+
+  /* --- editorhuvudet ---------------------------------------------------------------------- */
+  .huvud { display: flex; align-items: center; gap: 8px; min-height: 60px; padding: 8px 16px; border-bottom: 1px solid #262a35; background: #13161d; border-radius: 12px 12px 0 0; }
+  .huvud .namn { font-weight: 700; font-size: 15px; }
+  .huvud .flikar { display: flex; gap: 2px; margin-left: 16px; }
+  .huvud .flikar span { padding: 6px 10px; border-radius: 6px; color: #9aa3b8; }
+  .huvud .flikar span[aria-current] { background: #242938; color: #fff; }
+  .huvud .spacer { flex: 1; }
+  .hknapp { min-height: 44px; min-width: 44px; border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; }
+  .primar { background: #ffd98a; border-color: #ffd98a; color: #1b1d23; }
+  .split { position: relative; display: inline-flex; }
+  .split .primar:first-child { border-radius: 8px 0 0 8px; }
+  .caret { border-radius: 0 8px 8px 0; border-left: 1px solid #c9a95e; padding: 0 10px; cursor: pointer; }
+  .caret[aria-expanded='true'] { box-shadow: inset 0 -3px 0 #1b1d23; }
+
+  .ways { position: absolute; right: 0; top: 52px; z-index: 20; width: 520px; max-width: 80vw; display: grid; gap: 10px; padding: 8px; border: 1px solid #3a4050; border-radius: 12px; background: #1b1e27; box-shadow: 0 16px 40px rgb(0 0 0 / 60%); }
+  .ways > button { justify-self: start; border: 1px solid #3b414e; border-radius: 8px; padding: 8px 12px; background: transparent; color: #e6ecfa; font-weight: 700; cursor: pointer; }
+  .ways ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+  /* En rad i bordslistan, som TableRow ritar den. */
+  .rad { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px; border: 1px solid #2c3140; border-radius: 10px; background: #171a22; }
+  .mini { height: 58px; border-radius: 8px; background: radial-gradient(ellipse at 50% 40%, #2f7a4b, #1d5a36 75%); box-shadow: inset 0 0 0 4px #6b4428; }
+  .rad .kod { font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 2px; }
+  .rad .rad-text { display: grid; gap: 2px; min-width: 0; }
+  .rad .live { color: #8fd6a6; font-size: 12px; }
+  .rad .quiet { color: #9aa3b8; font-size: 12px; }
+  .rad .oppna { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 8px; background: #242938; color: #e6ecfa; font-weight: 700; text-decoration: none; }
+  .rad.ny { animation: in .5s ease-out; }
+  @keyframes in { from { background: #1b2a22; } }
+
+  /* --- Bord-fliken -------------------------------------------------------------------------- */
+  .tabbody { display: grid; grid-template-columns: minmax(0, 1fr) 420px; min-height: 340px; }
+  .canvas { margin: 16px; border-radius: 10px; background: #0b0d12; display: grid; place-items: center; color: #3a4050; }
+  .canvas .tra { width: 82%; aspect-ratio: 900/640; border-radius: 28px; background: linear-gradient(#8a5a35, #5d3a22); padding: 3.5%; }
+  .canvas .filt { height: 100%; border-radius: 18px; background: radial-gradient(ellipse at 50% 40%, #2f7a4b, #1d5a36 75%); }
+  .kolumn { border-left: 1px solid #262a35; padding: 16px; display: grid; gap: 12px; align-content: start; }
+  .lead { margin: 0; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+  .ny-knapp { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #e6ecfa; font-weight: 700; cursor: pointer; }
+  .ny-knapp svg { width: 16px; height: 16px; }
+  .grupp h3 { margin: 0 0 6px; font-size: 12px; color: #9aa3b8; font-weight: 700; }
+
+  /* --- startsidan --------------------------------------------------------------------------- */
+  .start { padding: 20px 24px 28px; display: grid; gap: 16px; }
+  .start h1 { margin: 0; font-size: 22px; }
+  .start h2 { margin: 0; font-size: 15px; }
+  .running { display: grid; gap: 8px; }
+  .running-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 4px 4px 4px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
+  .running-row b { font-size: 15px; }
+  .running-row strong { font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 2px; }
+  .running-row a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; }
+  .brickor { display: grid; grid-template-columns: repeat(3, 220px); gap: 16px; }
+  .bricka { position: relative; display: grid; gap: 6px; padding: 12px; border: 1px solid #262a35; border-radius: 14px; background: #171a22; }
+  .bricka .kortet { height: 150px; border-radius: 8px; background: #f2ead8; border: 2px solid #c9bea6; }
+  .bricka.tom .kortet { background: #232733; border-color: #2c3140; }
+  .bricka strong { font-size: 14px; }
+  .bricka span { color: #9aa3b8; font-size: 12px; }
+  .more { position: absolute; right: 4px; top: 4px; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+  .more[aria-expanded='true'] { background: #262a35; color: #fff; }
+  .meny { position: absolute; left: calc(100% - 48px); top: 48px; z-index: 20; display: grid; min-width: 220px; padding: 6px; border: 1px solid #3a4050; border-radius: 10px; background: #1b1e27; box-shadow: 0 16px 40px rgb(0 0 0 / 60%); }
+  .meny > * { display: flex; align-items: center; min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: #e6ecfa; text-align: left; text-decoration: none; cursor: pointer; }
+  .meny > *:hover { background: #262a35; }
+  .meny hr { display: block; min-height: 0; height: 1px; padding: 0; margin: 4px 6px; border: 0; background: #2c3140; }
+
+  /* --- frågan: Question-remsan, i tre färgsättningar ---------------------------------------- */
+  .fraga { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; }
+  .fraga p { margin: 0 4px 0 0; font-weight: 700; flex: 1 1 260px; line-height: 1.45; }
+  .fraga p small { display: block; font-weight: 400; opacity: .85; }
+  .fraga button { min-height: 44px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; font-weight: 700; cursor: pointer; }
+  .fraga .kod { font: 700 1em ui-monospace, Menlo, monospace; letter-spacing: 1.5px; }
+
+  /* A — Question som den är i dag: frågans färg är den rosa för det som inte går att ångra, och
+     «Starta ändå» bär det röda. */
+  [data-v='A'] .fraga { background: #3d2632; color: #ffe4ea; border: 1px solid #7a3243; }
+  [data-v='A'] .fraga button { color: #ffe4ea; }
+  [data-v='A'] .fraga button[data-kind='keep'] { background: #2f6a4a; border-color: #2f6a4a; color: #fff; }
+  [data-v='A'] .fraga button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
+  /* B — samma remsa, men i bordets gröna, och «Starta ändå» är en vanlig andraknapp: ett andra
+     bord förstör inget, så frågan ska inte låta som en borttagning. */
+  [data-v='B'] .fraga { background: #1b2a22; color: #d8ffe8; border: 1px solid #2f6a4a; }
+  [data-v='B'] .fraga button { color: #d8ffe8; border-color: #3b5a48; }
+  [data-v='B'] .fraga button[data-kind='keep'] { background: #7dd3a0; border-color: #7dd3a0; color: #0f1117; }
+  /* home: startsidans egen remsa */
+  [data-v='A'] .start .fraga { background: #2a1b1b; color: #ffd8d8; border-color: #4a3232; }
+  [data-v='A'] .start .fraga button[data-kind='danger'] { background: #a12b2b; border-color: #a12b2b; }
+
+  /* C — ingen remsa: knappen spänns. Första trycket byter knappens ord och lägger «Öppna KOD»
+     bredvid; andra trycket inom fyra sekunder startar. */
+  .spand { border-color: #ffd98a !important; color: #ffd98a !important; background: #2a2417 !important; }
+  .bredvid { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 8px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; }
+  .armrad { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-set="A">A</button>
+    <button type="button" data-set="B">B</button>
+    <button type="button" data-set="C">C</button>
+  </div>
+  <button type="button" id="bordknapp"></button>
+  <button type="button" id="aterstall">Börja om</button>
+  <p id="beskrivning"></p>
+  <p class="logg" id="logg" aria-live="polite"></p>
+</div>
+
+<main id="main">
+  <section>
+    <h2>1 · Bord-fliken i editorn</h2>
+    <div class="yta">
+      <div class="huvud">
+        <span class="namn">Sal's Saloon</span>
+        <span class="flikar"><span>Kort</span><span>Data</span><span aria-current="page">Bord</span></span>
+        <span class="spacer"></span>
+        <button class="hknapp" type="button">Sparat</button>
+        <span class="split"><button class="hknapp primar huvudprimar" type="button">Uppdatera bordet</button><button class="hknapp primar caret" type="button" aria-label="Fler sätt till bordet" aria-expanded="false" disabled>▾</button></span>
+      </div>
+      <div class="tabbody">
+        <div class="canvas"><div class="tra"><div class="filt"></div></div></div>
+        <div class="kolumn" id="flik"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · Pilmenyn i editorhuvudet</h2>
+    <div class="yta">
+      <div class="huvud" id="meny-huvud">
+        <span class="namn">Sal's Saloon</span>
+        <span class="flikar"><span aria-current="page">Kort</span><span>Data</span><span>Bord</span></span>
+        <span class="spacer"></span>
+        <button class="hknapp" type="button">Sparat</button>
+        <span class="split" id="split"></span>
+      </div>
+      <div style="height: 300px"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3 · ⋯-menyn på startsidan</h2>
+    <div class="yta">
+      <div class="start" id="start"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>'
+  const BESKRIVNING = {
+    A: '<b>A · Frågan som den är.</b> Produktens Question-remsa oförändrad: den rosa färgen för det som inte går att ångra, «Starta ett nytt ändå» i rött. Fokus på «Öppna ABCD». Enter på väg förbi öppnar det pågående bordet.',
+    B: '<b>B · Frågan i bordets grönt (rekommenderas).</b> Samma remsa och samma ordning, men ett andra bord förstör ingenting, så den låter inte som en borttagning: grön som «Pågår nu», «Öppna ABCD» fylld, «Starta ett nytt ändå» en vanlig andraknapp. Kräver ett tredje utseende för Question (<code>tone="go"</code>).',
+    C: '<b>C · Knappen spänns.</b> Ingen remsa. Första trycket byter knappens ord till «ABCD kör redan · tryck igen för ett till» och lägger «Öppna ABCD» bredvid; ett andra tryck inom fyra sekunder startar. Minst yta, men det enda skyddet är att trycka två gånger, och en dubbelklickare går rakt igenom.',
+  }
+  const params = new URLSearchParams(location.search)
+  let v = ['A', 'B', 'C'].includes(params.get('v')) ? params.get('v') : 'B'
+  let running = params.get('bord') !== '0'
+  let tables, menyOppen, startMeny, fraga, spand, timer
+
+  const koder = ['QKTV', 'MZRB', 'HWDL', 'PCXN']
+  function aterstall() {
+    tables = running ? [{ kod: 'ABCD', rev: 12, spelare: 3, ny: false }] : []
+    menyOppen = false; startMeny = false; fraga = null; spand = null; clearTimeout(timer)
+  }
+  function logg(s) { document.getElementById('logg').textContent = s }
+  const nyast = () => tables[0]
+
+  function starta(var_) {
+    const kod = koder[(tables.length - 1 + koder.length) % koder.length]
+    tables.unshift({ kod: tables.length ? kod : 'ABCD', rev: 14, spelare: 0, ny: true })
+    fraga = null; spand = null; clearTimeout(timer)
+    logg(`${var_}: ett nytt bord startades — ${tables[0].kod}. ${tables.length > 1 ? `Nu kör ${tables.length} bord.` : ''}`)
+    render()
+  }
+  function oppna(var_) {
+    fraga = null; spand = null; clearTimeout(timer)
+    logg(`${var_}: öppnar bordet ${nyast().kod} i en ny flik. Inget nytt bord.`)
+    render()
+  }
+  function avbryt(var_, fokus) {
+    fraga = null; spand = null; clearTimeout(timer)
+    logg(`${var_}: avbrutet, inget hände.`)
+    render(); document.querySelector(fokus)?.focus()
+  }
+  // Trycket på «Starta nytt bord» var det än står.
+  function tryck(var_, fokus) {
+    if (tables.length === 0) return starta(var_)
+    if (v === 'C') {
+      if (spand === var_) return starta(var_)
+      spand = var_; clearTimeout(timer)
+      timer = setTimeout(() => { spand = null; render() }, 4000)
+      render(); document.querySelector(fokus)?.focus()
+      return
+    }
+    fraga = var_
+    render()
+    document.querySelector(`[data-fraga='${var_}'] [data-kind='keep']`)?.focus()
+  }
+
+  function fragaHtml(var_, fokus) {
+    const t = nyast(), fler = tables.length > 1
+    const vem = fler ? `${tables.length} bord kör redan, senast <span class="kod">${t.kod}</span>.` : `Bordet <span class="kod">${t.kod}</span> kör redan.`
+    return `<div class="fraga" role="alertdialog" aria-label="Ett bord kör redan" data-fraga="${var_}" data-fokus="${fokus}">
+      <p>${vem}<small>Ett nytt bord får en egen kod, och de som sitter vid ${t.kod} följer inte med.</small></p>
+      <button type="button" data-kind="keep" data-svar="oppna">Öppna ${t.kod}</button>
+      <button type="button" data-kind="${v === 'A' ? 'danger' : ''}" data-svar="starta">Starta ett nytt ändå</button>
+      <button type="button" data-svar="avbryt">Avbryt</button>
+    </div>`
+  }
+  function radHtml(t) {
+    return `<li class="rad${t.ny ? ' ny' : ''}"><span class="mini"></span>
+      <span class="rad-text"><span class="kod">${t.kod}</span><span class="live">${t.spelare ? `${t.spelare} spelar` : 'Ingen vid bordet än'}</span><span class="quiet">rev ${t.rev}</span></span>
+      <a class="oppna" href="#" onclick="return false">Öppna</a></li>`
+  }
+  function knapp(var_, klass, text, id) {
+    const s = spand === var_
+    const label = s ? `${nyast().kod} kör redan · tryck igen för ett till` : text
+    return `<span class="armrad"><button type="button" id="${id}" class="${klass}${s ? ' spand' : ''}" data-tryck="${var_}">${klass === 'ny-knapp' ? PLAY : ''}${label}</button>${s ? `<a class="bredvid" href="#" data-svar-c="${var_}">Öppna ${nyast().kod}</a>` : ''}</span>`
+  }
+
+  function render() {
+    document.body.dataset.v = v
+    document.getElementById('main').dataset.v = v
+    document.querySelectorAll('[data-set]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.set === v)))
+    document.getElementById('beskrivning').innerHTML = BESKRIVNING[v]
+    document.getElementById('bordknapp').textContent = running ? 'Visa: inget bord igång' : 'Visa: ett bord igång'
+
+    // 1 · Bord-fliken
+    const igang = tables.length > 0
+    document.querySelector('.huvudprimar').textContent = igang ? 'Uppdatera bordet' : 'Starta bord'
+    document.getElementById('flik').innerHTML = `
+      <p class="lead">Bord startas från den sparade versionen, rev 14.</p>
+      ${knapp('Bord-fliken', 'ny-knapp', 'Starta nytt bord', 'flik-ny')}
+      ${fraga === 'Bord-fliken' ? fragaHtml('Bord-fliken', '#flik-ny') : ''}
+      ${igang ? `<div class="grupp"><h3>Spelas nu (${tables.length})</h3><ul class="ways-list" style="list-style:none;margin:0;padding:0;display:grid;gap:6px">${tables.map(radHtml).join('')}</ul></div>` : '<p class="lead">Inget bord ännu. «Starta bord» startar ett från den sparade versionen.</p>'}`
+
+    // 2 · Pilmenyn
+    document.getElementById('split').innerHTML = `
+      <button class="hknapp primar" type="button">${igang ? 'Uppdatera bordet' : 'Starta bord'}</button><button class="hknapp primar caret" id="caret" type="button" aria-label="Fler sätt till bordet" aria-expanded="${menyOppen}">▾</button>
+      ${menyOppen ? `<div class="ways" role="group" aria-label="Bordet">
+        ${igang ? `<ul>${radHtml(nyast())}</ul>` : '<p class="lead">Inget bord ännu. «Starta bord» startar ett.</p>'}
+        ${fraga === 'Pilmenyn' ? fragaHtml('Pilmenyn', '#meny-ny') : igang ? knapp('Pilmenyn', 'ways-ny', 'Nytt bord', 'meny-ny').replace('class="ways-ny', 'style="justify-self:start;border:1px solid #3b414e;border-radius:8px;padding:8px 12px;background:transparent;color:#e6ecfa;font-weight:700;cursor:pointer" class="ways-ny') : ''}
+        <button type="button">Alla bord</button>
+      </div>` : ''}`
+
+    // 3 · Startsidan
+    document.getElementById('start').innerHTML = `
+      <h1>Dina spel</h1>
+      ${fraga === 'Startsidan' ? fragaHtml('Startsidan', '#more') : ''}
+      ${igang ? `<div class="running"><h2>Pågår nu</h2>${tables.map((t) => `<div class="running-row"><b>Sal's Saloon</b><strong>${t.kod}</strong><a href="#" onclick="return false">Öppna bordet</a></div>`).join('')}</div>` : ''}
+      <div class="brickor">
+        <div class="bricka"><span class="kortet"></span><strong>Sal's Saloon</strong><span>rev 14 · spelat 3 gånger</span>
+          <button class="more" id="more" type="button" aria-label="Mer för Sal's Saloon" aria-expanded="${startMeny}">⋯</button>
+          ${startMeny ? `<div class="meny" role="group" aria-label="Sal's Saloon">
+            ${tables.map((t) => `<a href="#" data-svar-meny="${t.kod}">Öppna bordet ${t.kod}</a>`).join('')}
+            ${v === 'C' && spand === 'Startsidan' ? knapp('Startsidan', '', '', 'start-ny') : `<button type="button" id="start-ny" data-tryck="Startsidan">${igang ? 'Starta nytt bord' : 'Starta bord'}</button>`}
+            <hr><button type="button">Byt namn</button><button type="button">Gör en kopia</button><button type="button">Exportera</button><button type="button">Ta bort</button>
+          </div>` : ''}
+        </div>
+        <div class="bricka tom"><span class="kortet"></span><strong>Kortfabriken</strong><span>rev 3 · aldrig spelat</span></div>
+      </div>`
+  }
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('button, a')
+    if (!el) { return }
+    if (el.dataset.set) { v = el.dataset.set; aterstall(); history.replaceState(null, '', `?v=${v}${running ? '' : '&bord=0'}`); render(); return }
+    if (el.id === 'bordknapp') { running = !running; aterstall(); history.replaceState(null, '', `?v=${v}${running ? '' : '&bord=0'}`); logg(''); render(); return }
+    if (el.id === 'aterstall') { aterstall(); logg(''); render(); return }
+    if (el.id === 'caret') { menyOppen = !menyOppen; fraga = fraga === 'Pilmenyn' ? null : fraga; render(); return }
+    if (el.id === 'more') { startMeny = !startMeny; render(); return }
+    if (el.dataset.svarMeny) { e.preventDefault(); startMeny = false; logg(`Startsidan: öppnar bordet ${el.dataset.svarMeny} i en ny flik.`); render(); return }
+    if (el.dataset.svarC) { e.preventDefault(); oppna(el.dataset.svarC); return }
+    if (el.dataset.tryck) {
+      const var_ = el.dataset.tryck
+      // Menyn stänger sig som i dag; på startsidan står frågan överst, där borttagningens fråga står.
+      if (var_ === 'Startsidan' && v !== 'C') startMeny = false
+      if (var_ === 'Startsidan' && v === 'C' && spand !== 'Startsidan' && tables.length) { tryck(var_, '#start-ny'); return }
+      if (var_ === 'Startsidan' && v === 'C') startMeny = false
+      return tryck(var_, var_ === 'Bord-fliken' ? '#flik-ny' : var_ === 'Pilmenyn' ? '#meny-ny' : '#start-ny')
+    }
+    const svar = el.dataset.svar, box = el.closest('[data-fraga]')
+    if (svar && box) {
+      const var_ = box.dataset.fraga
+      if (svar === 'oppna') oppna(var_)
+      if (svar === 'starta') starta(var_)
+      if (svar === 'avbryt') avbryt(var_, box.dataset.fokus)
+    }
+  })
+  document.addEventListener('keydown', (e) => {
+    const box = e.target.closest?.('[data-fraga]')
+    if (e.key === 'Escape' && box) return avbryt(box.dataset.fraga, box.dataset.fokus)
+    if (e.target.closest?.('button, a, input')) return
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      const i = ['A', 'B', 'C'].indexOf(v), n = (i + (e.key === 'ArrowRight' ? 1 : 2)) % 3
+      document.querySelector(`[data-set='${'ABC'[n]}']`).click()
+    }
+  })
+  aterstall(); render()
+</script>
+</body>
+</html>

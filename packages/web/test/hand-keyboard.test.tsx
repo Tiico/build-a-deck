@@ -77,7 +77,7 @@ describe('the phone calls a card by its title (#412, A4)', () => {
 
 // The keyboard offers a hand card what a thumb is offered, and nothing else (#483, fynd 12;
 // beställarens beslut A efter prototyp 33). The panel used to read the felt's verbs and places —
-// Vänd, Vrid, Avslöja, another seat's hand, «På {kort}» — which the touch sheet leaves out on
+// Vänd, Rotera, Avslöja, another seat's hand, «På {kort}» — which the touch sheet leaves out on
 // purpose (C4, L48), and put the deck's shortcut at the top where the sheet puts it underneath.
 describe('the panel behind Enter on the phone is the play sheet', () => {
   it('offers the same places the sheet does, in the same words, plus looking', async () => {
@@ -99,7 +99,7 @@ describe('the panel behind Enter on the phone is the play sheet', () => {
     const panel = await screen.findByRole('dialog', { name: /^Handlingar för/ })
     const inPanel = words(panel).filter((w) => !/^(Titta|Stäng)/.test(w))
     expect(inPanel).toEqual(offered.filter((w) => !/^(Stäng|Avbryt)/.test(w)))
-    expect(within(panel).queryByRole('button', { name: /^(Vänd|Vrid|Avslöja)/ })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /^(Vänd|Rotera|Avslöja)/ })).toBeNull()
     expect(within(panel).getByRole('button', { name: /^Titta/ })).toBeTruthy()
     table.close()
   })

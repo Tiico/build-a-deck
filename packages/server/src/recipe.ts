@@ -13,6 +13,8 @@ export type Zone = Setup['zones'][number]
 export type Geometry = Zone['geometry']
 export type Counter = NonNullable<Setup['counters']>[number]
 export type Recipe = { players: number; counters: Counter[] }
+// One line of the game's dice (K5, #1139): which kind, how many, and in which zone or seat role.
+export type Die = NonNullable<Setup['dice']>[number]
 
 export const SEAT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
 export const MAX_PLAYERS = SEAT_IDS.length
@@ -495,5 +497,22 @@ export function counterSpots(zone: Geometry, counters: number): { x: number; y: 
     // Whole millimetres in the log, as everything the table is told is.
     const at = alongX ? { x: along, y: deep } : { x: deep, y: along }
     return { x: Math.round(at.x), y: Math.round(at.y) }
+  })
+}
+
+// Where a zone's dice lie when the table is laid (#1136): a row across the middle of the zone, a
+// die's width and a gap apart, wrapping to the next row when the zone is too narrow for them all.
+// The felt draws a die larger than life (`DIE_MM` is what it reserves), so they are spaced for that.
+const DIE_MM = 30
+export function diceSpots(zone: Geometry, dice: number): { x: number; y: number }[] {
+  const pitch = DIE_MM * 1.3
+  const perRow = Math.max(1, Math.min(dice, Math.floor(zone.w / pitch)))
+  const rows = Math.ceil(dice / perRow)
+  return Array.from({ length: Math.max(0, dice) }, (_, i) => {
+    const row = Math.floor(i / perRow)
+    const inRow = Math.min(perRow, dice - row * perRow)
+    const x = zone.w / 2 - (inRow * pitch) / 2 + (i % perRow) * pitch + (pitch - DIE_MM) / 2
+    const y = zone.h / 2 - (rows * pitch) / 2 + row * pitch + (pitch - DIE_MM) / 2
+    return { x: Math.round(Math.max(0, Math.min(zone.w, x))), y: Math.round(Math.max(0, Math.min(zone.h, y))) }
   })
 }

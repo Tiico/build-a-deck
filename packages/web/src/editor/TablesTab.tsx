@@ -9,9 +9,11 @@ import { placedProps, usePlacement } from './placement.js'
 import { useRoving } from './roving.js'
 import { TableEnded, type ProjectClient, type TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
+import { anotherAsk } from './another.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
+import { usePressAway } from '../doors.js'
 import { lastMoveWords } from './when.js'
 import { versionWord } from '../i18n/version.js'
 import { rowSummary } from './playtestReading.js'
@@ -101,6 +103,18 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
   // re-render that disables the button, so the handler itself refuses while one start is in
   // flight (L31).
   const inFlight = useRef(false)
+  // A press while a table of the game runs asks first (#1145, beslut A): the button stands over
+  // that table, and whoever came to open it met a button that started another.
+  const { lang } = useLang()
+  const [another, setAnother] = useState(false)
+  const newButton = useRef<HTMLButtonElement>(null)
+  const running = (tables ?? []).filter((table) => !table.ended)
+  const newest = running[0]
+  const newestName = newest ? (newest.code ?? versionWord(newest.version, t, 'short')) : ''
+  const answered = () => {
+    setAnother(false)
+    newButton.current?.focus()
+  }
   const startTable = async () => {
     if (inFlight.current) return
     inFlight.current = true
@@ -144,12 +158,33 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
           that did nothing (jfr #215). */}
       {/* `aria-disabled` and not `disabled` (#480): the button keeps the focus while it starts the
           table, and the handler refuses a second start itself. */}
-      <button type="button" className="byd-tables-new byd-secondary" aria-disabled={starting} aria-busy={starting} onClick={() => void startTable()}>
+      <button ref={newButton} type="button" className="byd-tables-new byd-secondary" aria-disabled={starting} aria-busy={starting} onClick={() => (newest ? setAnother(true) : void startTable())}>
         <span className="byd-tables-new-icon">
           <PlayGlyph />
         </span>
         {starting ? t('tables.starting') : t('tables.new')}
       </button>
+      {another && newest && (
+        <Question
+          className="byd-tables-question"
+          label={t('tables.another.label')}
+          confirm={t('tables.another.start')}
+          keep={{
+            label: t('tables.another.open', { table: newestName }),
+            onChoose: () => {
+              window.open(tvUrl(newest.id, server, undefined, true, lang), '_blank', 'noreferrer')
+              answered()
+            },
+          }}
+          onCancel={answered}
+          onConfirm={() => {
+            answered()
+            void startTable()
+          }}
+        >
+          {anotherAsk(t, newestName, running.length)}
+        </Question>
+      )}
       {/* A table started from a deck with no cards has nothing to deal and nothing to draw (#751).
           The button stays — the deck may be filled in a minute — but the tab says so, and where
           cards are added. */}
@@ -298,6 +333,9 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
   // One row, so one QR at most; the shortcut holds its own because it is its own surface.
   const [qrOpen, setQrOpen] = useState(false)
   const caret = useRef<HTMLButtonElement>(null)
+  const split = useRef<HTMLSpanElement>(null)
+  // A press in the work closes it (#1144): it used to stand through anything but Escape and its caret.
+  usePressAway(open, () => [split.current], () => setOpen(false))
   useEffect(() => {
     if (!open) return
     let live = true
@@ -310,19 +348,41 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
     }
   }, [open, client])
 
+  // «Nytt bord» asks first while a table runs (#1145, beslut A), in the menu itself: it stood one
+  // line under the running table's row. Taking the question back puts «Nytt bord» where it was and
+  // the focus on it.
+  const { lang } = useLang()
+  const [another, setAnother] = useState(false)
+  const backToNew = useRef(false)
   const close = () => {
     setOpen(false)
+    setAnother(false)
     caret.current?.focus()
   }
   const newest = tables?.[0] ?? null
+  const running = (tables ?? []).filter((table) => !table.ended)
+  const live = running[0]
+  const liveName = live ? (live.code ?? versionWord(live.version, t, 'short')) : ''
   return (
     <span
+      ref={split}
       className="byd-editor-split"
       onKeyDown={(event) => {
         if (open && event.key === 'Escape') close()
       }}
     >
-      <button ref={caret} type="button" className="byd-editor-primary byd-primary byd-editor-caret" aria-label={t('tables.more')} aria-expanded={open} onClick={() => setOpen((on) => !on)}>
+      <button
+        ref={caret}
+        type="button"
+        className="byd-editor-primary byd-primary byd-editor-caret"
+        aria-label={t('tables.more')}
+        aria-expanded={open}
+        data-drop
+        onClick={() => {
+          setOpen((on) => !on)
+          setAnother(false)
+        }}
+      >
         <ChevronGlyph to="down" />
       </button>
       {open && (
@@ -336,17 +396,48 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
           ) : (
             <p>{t('tables.menu.none')}</p>
           )}
-          {onNewTable && (
-            <button
-              type="button"
-              className="byd-editor-ways-new"
-              onClick={() => {
+          {onNewTable && another && live ? (
+            <Question
+              className="byd-tables-question"
+              label={t('tables.another.label')}
+              confirm={t('tables.another.start')}
+              keep={{
+                label: t('tables.another.open', { table: liveName }),
+                onChoose: () => {
+                  window.open(tvUrl(live.id, server, undefined, true, lang), '_blank', 'noreferrer')
+                  close()
+                },
+              }}
+              onCancel={() => {
+                backToNew.current = true
+                setAnother(false)
+              }}
+              onConfirm={() => {
                 close()
                 onNewTable()
               }}
             >
-              {t('editor.newTable')}
-            </button>
+              {anotherAsk(t, liveName, running.length)}
+            </Question>
+          ) : (
+            onNewTable && (
+              <button
+                ref={(el) => {
+                  if (!el || !backToNew.current) return
+                  backToNew.current = false
+                  el.focus()
+                }}
+                type="button"
+                className="byd-editor-ways-new"
+                onClick={() => {
+                  if (live) return setAnother(true)
+                  close()
+                  onNewTable()
+                }}
+              >
+                {t('editor.newTable')}
+              </button>
+            )
           )}
           <button
             type="button"
@@ -570,6 +661,8 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
   // is room rather than always downward (#229).
   const menu = useRef<HTMLDivElement>(null)
   const place = usePlacement(open, menu)
+  // A press anywhere else closes it too (#1144): the blur below hears only a press that takes the focus.
+  usePressAway(open, () => [button.current, menu.current], () => setOpen(false))
   const { itemProps, focus } = useRoving({ ids: ways.map((w) => w.id), selected: null, orientation: 'vertical' })
   // The keys land inside the menu the moment it opens, so the first arrow moves within it rather
   // than from wherever the pointer last was. On opening only: the menu must not take the focus
@@ -590,6 +683,7 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
         className="byd-tables-more"
         aria-haspopup="menu"
         aria-expanded={open}
+        data-drop
         {...(open ? { 'aria-controls': menuId } : {})}
         aria-label={t('tables.more.of', { table })}
         onClick={() => setOpen((was) => !was)}

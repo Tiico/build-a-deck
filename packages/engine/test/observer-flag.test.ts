@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyPatch, diff, project } from '../src/index.js'
+import { applyPatch, diff, project, projectActivity } from '../src/index.js'
 import { Harness, inZone, registry, zoneView } from './fixture.js'
 
 describe('the observer (C8) sees everything', () => {
@@ -32,6 +32,31 @@ describe('flagging a moment (G3)', () => {
     h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     h.do('B', { v: 'flag', note: 'hm' })
     expect(h.view('A').undo).toEqual({ toSeq: 3, contested: false })
+  })
+})
+
+describe('flagging a card (#1142)', () => {
+  it('names a component the flagger can see, and only one she can see', () => {
+    const h = new Harness()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    const mine = h.zone('hand:A')[0]!
+    const hers = h.zone('hand:B')[0]!
+    const line = h.do('A', { v: 'flag', component: mine, note: 'Texten är för lång' })
+    expect(line.intent).toEqual({ v: 'flag', component: mine, note: 'Texten är för lång' })
+    // A card in another hand is not in A's view, and an id she was never given is not a card.
+    expect(h.try('A', { v: 'flag', component: hers })).toMatchObject({ ok: false })
+    expect(h.try('A', { v: 'flag', component: 'c999' })).toMatchObject({ ok: false })
+    // The table sees what lies open, and an observer sees every hand.
+    expect(h.try(null, { v: 'flag', component: hers })).toMatchObject({ ok: false })
+    expect(h.try(null, { v: 'flag', observer: 'Eva', component: hers }).ok).toBe(true)
+  })
+
+  it('keeps which card it was out of the activity every view is told', () => {
+    const h = new Harness()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const line = h.do('A', { v: 'flag', component: h.zone('hand:A')[0]!, note: 'hm' })
+    expect(projectActivity(line).intent).toEqual({ v: 'flag', note: 'hm' })
   })
 })
 

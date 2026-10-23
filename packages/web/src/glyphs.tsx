@@ -55,6 +55,16 @@ export function FlagGlyph() {
   )
 }
 
+// A die seen from above (#1138): the pill that opens the phone's dice says what it holds.
+export function DieGlyph() {
+  return (
+    <Glyph name="die">
+      <Line d="M4.25 2.5h7.5a1.75 1.75 0 0 1 1.75 1.75v7.5a1.75 1.75 0 0 1-1.75 1.75h-7.5a1.75 1.75 0 0 1-1.75-1.75v-7.5A1.75 1.75 0 0 1 4.25 2.5Z" />
+      <Dots at={[[5.75, 5.75], [8, 8], [10.25, 10.25]]} />
+    </Glyph>
+  )
+}
+
 // One less and one more (#620), drawn rather than typed for the same reason as the two above: a
 // font's minus sits on its own baseline and at its own weight, and beside the number it steps
 // it was a different hand on every machine.

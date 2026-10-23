@@ -4,19 +4,54 @@ import { handName } from './handName.js'
 import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 import { versionWord } from '../i18n/version.js'
+import { dieKind } from '../components.js'
 
 // The lines worth saying. A card played to a public zone is one envelope with a move and a flip,
 // and said as its flip it never said where the card went (#560 P-12): the flip of a card the same
 // envelope moved is folded into the move, whose sentence names both the card and the zone.
-export function sayable(lines: readonly Activity[]): Activity[] {
+//
+// One envelope of rolls is one throw (#1136): the dice leave the hand together, so the envelope is
+// said once, on its first roll, which carries what every die in it came to.
+export type Said = Activity & { rolls?: readonly { component: string; value: number }[] }
+export function sayable(lines: readonly Activity[]): Said[] {
   const moved = new Set(lines.flatMap((l) => (l.intent.v === 'move' ? [`${l.batch}\u0000${l.intent.component}`] : [])))
-  return lines.filter((l) => l.intent.v !== 'flip' || !moved.has(`${l.batch}\u0000${l.intent.component}`))
+  const throws = new Map<string, { component: string; value: number }[]>()
+  for (const l of lines) {
+    if (l.intent.v !== 'roll' || l.rolled === undefined) continue
+    throws.set(l.batch, [...(throws.get(l.batch) ?? []), { component: l.intent.component, value: l.rolled }])
+  }
+  const said: Said[] = []
+  for (const l of lines) {
+    if (l.intent.v === 'flip' && moved.has(`${l.batch}\u0000${l.intent.component}`)) continue
+    if (l.intent.v !== 'roll' || l.rolled === undefined) {
+      said.push(l)
+      continue
+    }
+    const rolls = throws.get(l.batch)
+    if (rolls === undefined) continue
+    said.push({ ...l, rolls })
+    throws.delete(l.batch)
+  }
+  return said
+}
+
+// What a throw came to, the way a table says it (#1136): the kinds in the order they were thrown,
+// «d4: 2, 2d6: 6 + 1», and the sum after them when more than one die was thrown.
+function thrown(rolls: readonly { component: string; value: number }[], view: Snapshot): string {
+  const kinds = new Map<string, number[]>()
+  for (const r of rolls) {
+    const die = view.components.find((c) => c.id === r.component)
+    const kind = (die && dieKind(die)) ?? 'd?'
+    kinds.set(kind, [...(kinds.get(kind) ?? []), r.value])
+  }
+  const told = [...kinds].map(([kind, values]) => `${values.length > 1 ? values.length : ''}${kind}: ${values.join(' + ')}`).join(', ')
+  return rolls.length > 1 ? `${told} = ${rolls.reduce((sum, r) => sum + r.value, 0)}` : told
 }
 
 // One line per log line, for the activity feed, in whichever language the reader is given (A4).
 // Names come from the view; zone names too, so "Draghög" rather than "draw" — a zone's name is
 // the designer's word and is never translated — except a hand, which is named by whoever sits there.
-export function describeActivity(line: Activity, view: Snapshot, t: T): string {
+export function describeActivity(line: Said, view: Snapshot, t: T): string {
   // The reader's own move is said to the reader (#714): «Du drog 1 … till din hand», in one person,
   // where it was «Ada drog 1 … till min hand».
   // And by the name the line was written under (#714), which outlives the seat being left.
@@ -66,8 +101,10 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
       const listed = to.length < 2 ? to.join('') : `${to.slice(0, -1).join(', ')} ${t('activity.and')} ${to[to.length - 1]}`
       return t(it.each === 1 ? 'activity.deal.one' : 'activity.deal.other', { who, n: it.each, to: listed })
     }
-    case 'roll':
-      return t('activity.roll', { who })
+    case 'roll': {
+      const rolls = line.rolls ?? (line.rolled === undefined ? undefined : [{ component: it.component, value: line.rolled }])
+      return rolls ? t('activity.roll.thrown', { who, thrown: thrown(rolls, view) }) : t('activity.roll', { who })
+    }
     case 'setCounter': {
       // By the counter's own name, as its chip on the felt says it (#714).
       const named = view.components.find((c) => c.id === it.component)?.cardRef
@@ -102,6 +139,22 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
     case 'flag': {
       const flagger = it.observer ? t('activity.flag.observer', { name: it.observer }) : who
       return it.note ? t('activity.flag.note', { who: flagger, note: it.note }) : t('activity.flag', { who: flagger })
+    }
+    // The notepad (#1131). A tick and a removal carry only the row's id, so the row is named by what
+    // it says while the reader still has it — and a removed row, which the reader no longer has once
+    // the patch has landed, is said without it.
+    case 'note.add':
+      return t('activity.note.add', { who, text: it.text })
+    case 'note.edit':
+      return t('activity.note.edit', { who, text: it.text })
+    case 'note.check': {
+      const text = view.notes.find((n) => n.id === it.note)?.text
+      if (text === undefined) return t(it.done ? 'activity.note.checked' : 'activity.note.unchecked', { who })
+      return t(it.done ? 'activity.note.check' : 'activity.note.uncheck', { who, text })
+    }
+    case 'note.remove': {
+      const text = view.notes.find((n) => n.id === it.note)?.text
+      return text === undefined ? t('activity.note.removed', { who }) : t('activity.note.remove', { who, text })
     }
   }
 }

@@ -103,7 +103,12 @@ export type TableState = {
   played: boolean
   // A rewind proposed and not yet confirmed (B).
   rewind: RewindProposal | null
+  // The table's notepad (#1131), in the order its rows were written. The session's and not the
+  // game's, like the seats: a rewind restores the table and leaves this as it stands.
+  notes: Note[]
 }
+
+export type Note = { id: string; by: SeatId | null; text: string; done: boolean }
 
 // The part of a state a rewind restores: the table itself. Seats, version and setup are the
 // session's, not the game's, and stay as they are.

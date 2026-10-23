@@ -210,3 +210,55 @@ describe('a pile made on the felt, in the log (#714)', () => {
     expect(describeActivity(splitBeside(1), table(null), en)).toBe('Ada laid 1 card beside Draghög')
   })
 })
+
+// The table's notepad (#1131): a row is told with what it says, in the activity a screen reader is
+// given; ticking and taking away a row name the row by what it said, when the reader still has it.
+describe('the log tells what was written on the notepad (#1131)', () => {
+  const at = '2026-10-22T00:00:00.000Z'
+  const withNote = { ...table(null), notes: [{ id: 'n3', by: 'A', text: 'Bo har en extra tur', done: false }] } as Snapshot
+  const line = (intent: Activity['intent'], by: string | null = 'A') => ({ seq: 9, by, at, intent }) as Activity
+  it('says a written and a rewritten row with what it says', () => {
+    expect(describeActivity(line({ v: 'note.add', text: 'Poäng: Ada 7' }), withNote, sv)).toBe('Ada antecknade: Poäng: Ada 7')
+    expect(describeActivity(line({ v: 'note.edit', note: 'n3', text: 'Bo har två turer' }), withNote, sv)).toBe('Ada skrev om en anteckning: Bo har två turer')
+    expect(describeActivity(line({ v: 'note.add', text: 'Score: Ada 7' }), withNote, en)).toBe('Ada noted: Score: Ada 7')
+  })
+  it('says a ticked, unticked and removed row by what it says, while the reader has it', () => {
+    expect(describeActivity(line({ v: 'note.check', note: 'n3', done: true }), withNote, sv)).toBe('Ada bockade av: Bo har en extra tur')
+    expect(describeActivity(line({ v: 'note.check', note: 'n3', done: false }), withNote, sv)).toBe('Ada tog bort bocken vid: Bo har en extra tur')
+    expect(describeActivity(line({ v: 'note.remove', note: 'n3' }), withNote, sv)).toBe('Ada strök: Bo har en extra tur')
+    expect(describeActivity(line({ v: 'note.remove', note: 'n9' }), withNote, sv)).toBe('Ada strök en anteckning')
+    expect(describeActivity(line({ v: 'note.remove', note: 'n9' }, null), withNote, en)).toBe('The table removed a note')
+  })
+})
+
+// A roll is told with what it came to (#1136): the die lies face up on a public table, so its
+// number is said. One envelope of rolls is one throw and one line, «2d6: 3 + 5 = 8».
+describe('the log says what a roll came to (#1136)', () => {
+  const withDice = (seat: string | null): Snapshot => {
+    const view = table(seat)
+    const die = (id: string, faces: number) => ({ id, type: { id: `die.d${faces}`, version: 1 }, zone: 'table', face: 'front', x: 0, y: 0, rot: 0, cardRef: `d${faces}` })
+    return { ...view, components: [die('a', 6), die('b', 6), die('c', 20), die('d', 4)] } as unknown as Snapshot
+  }
+  const roll = (component: string, rolled: number | undefined, batch = 'e1', seq = 1): Activity =>
+    ({ seq, batch, by: 'B', at: '2026-10-22T00:00:00.000Z', intent: { v: 'roll', component }, ...(rolled === undefined ? {} : { rolled }) }) as Activity
+
+  it('folds the rolls of one envelope into one line, grouped by kind, with the sum', () => {
+    const said = sayable([roll('a', 3), roll('b', 5)])
+    expect(said).toHaveLength(1)
+    expect(describeActivity(said[0]!, withDice(null), sv)).toBe('Bo slog 2d6: 3 + 5 = 8')
+    expect(describeActivity(said[0]!, withDice(null), en)).toBe('Bo rolled 2d6: 3 + 5 = 8')
+  })
+
+  it('says a single die without a sum, and kinds apart from each other', () => {
+    expect(describeActivity(sayable([roll('c', 14)])[0]!, withDice(null), sv)).toBe('Bo slog d20: 14')
+    expect(describeActivity(sayable([roll('d', 2), roll('a', 6), roll('b', 1)])[0]!, withDice('A'), sv)).toBe('Bo slog d4: 2, 2d6: 6 + 1 = 9')
+  })
+
+  it('keeps two throws two lines', () => {
+    expect(sayable([roll('a', 3, 'e1', 1), roll('a', 4, 'e2', 2)])).toHaveLength(2)
+  })
+
+  it('says a line written before the value was told as it always did', () => {
+    expect(describeActivity(roll('a', undefined), withDice(null), sv)).toBe('Bo slog en tärning')
+  })
+})
