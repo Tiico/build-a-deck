@@ -1312,7 +1312,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // felt's frame carries a `perspective`, and that makes it the box every `position: fixed` inside it
   // is placed in: on the table screen the frame is the window and it makes no difference, but under
   // the distance view's header a ring asked for at the pointer landed a header's height below it,
-  // and a lift ran off the bottom of the window (#509).
+  // and a lift ran off the bottom of the window (#509). The lift has since left the frame for the
+  // window's own layer, where the frame could not clip it or draw over it.
   const fixedAt = (x: number, y: number): Point => {
     const f = frame.current
     if (!f || typeof getComputedStyle === 'undefined' || getComputedStyle(f).perspective === 'none') return { x, y }
@@ -1826,20 +1827,22 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
         </>,
       )}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => send([{ v: 'setCounter', component: entry.id, value }], null)} onClose={() => setEntry(null)} />}
-      {reading && (
-        <Lifted
-          c={reading.c}
-          box={(() => {
-            const box = liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight }, readingPt)
-            const at = fixedAt(box.left, box.top)
-            return { ...box, left: at.x, top: at.y }
-          })()}
-          faces={faces}
-          // Around the card it lifts, which is what the ring is about, and not around the lift.
-          // A screen that watches has nothing to ask, so a press on what it reads puts it down.
-          onAsk={() => (onAct ? ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2) : putDown())}
-        />
-      )}
+      {reading &&
+        // Placed in the window and drawn in the window's own layer, not the frame's. In the frame it
+        // was clipped by whatever holds the felt — the distance view's row cut its top off under the
+        // header — and it could rise above nothing outside the felt's stacking context, so the
+        // table screen's plate was drawn across it. Its events still reach the frame through React.
+        createPortal(
+          <Lifted
+            c={reading.c}
+            box={liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight }, readingPt)}
+            faces={faces}
+            // Around the card it lifts, which is what the ring is about, and not around the lift.
+            // A screen that watches has nothing to ask, so a press on what it reads puts it down.
+            onAsk={() => (onAct ? ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2) : putDown())}
+          />,
+          document.body,
+        )}
       {answer && (
         // Hidden from a reader who has already been told in the live region (D5): it is the same
         // sentence, for the eyes.
