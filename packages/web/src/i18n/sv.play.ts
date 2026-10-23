@@ -213,6 +213,10 @@ export const svPlay = {
   // Namnet på en räknare är designerns (B5) och kan saknas i en vy som inte får se den. Ett korts
   // reservord är `Dolt kort`, och det skulle smuggla tillbaka `kort` i en brickas mening.
   'kbd.counter.unnamed': 'Räknare i {zone}, värde {n}',
+  // En tärning (#1137) heter sin sort, «d6», som vid ett bord, och sidan upp är det den visar. Enter slår
+  // den direkt i stället för att öppna en panel, så meningen säger det och inte «öppnar handlingar».
+  'kbd.die': '{kind}, visar {n}, i {zone}. Enter slår tärningen.',
+  'kbd.verb.roll': 'Slå',
   'kbd.pile.top': 'Översta kortet i {zone}: {name}',
   'kbd.pile.empty': '{zone}, tom',
   // En hög är ett stopp (#572): namnet, hur mycket som ligger i den, och vad som ligger överst.

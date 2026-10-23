@@ -8,6 +8,7 @@ import { useCardsPending } from '../table/textures.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { usePresence, useRecent } from '../table/usePresence.js'
 import { useShuffles } from '../table/shuffle.js'
+import { useRolls } from '../table/Die.js'
 import { previewOf } from '../table/rewind.js'
 import { seatColor } from '../table/seatColor.js'
 import { playIntents } from '../player/play.js'
@@ -98,6 +99,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const recent = useRecent(activity)
   // The shuffle fanned on the phone's felt too (L35): every screen that sees the pile plays it.
   const shuffles = useShuffles(activity, view !== null)
+  const rolls = useRolls(activity, view !== null)
   const table = useRef<TableHandle>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
   // The hand's second mode (#24): the fan at rest, the whole hand as a grid when it is asked for.
@@ -245,6 +247,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             pulses={presence.pulses}
             recent={recent}
             shuffles={shuffles}
+            rolls={rolls}
             onPresence={(p) => client.sendPresence(p)}
             startWait={startWait}
             onFit={setFelt}

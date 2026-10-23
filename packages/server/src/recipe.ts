@@ -503,7 +503,7 @@ export function counterSpots(zone: Geometry, counters: number): { x: number; y: 
 // Where a zone's dice lie when the table is laid (#1136): a row across the middle of the zone, a
 // die's width and a gap apart, wrapping to the next row when the zone is too narrow for them all.
 // The felt draws a die larger than life (`DIE_MM` is what it reserves), so they are spaced for that.
-const DIE_MM = 30
+export const DIE_MM = 30
 export function diceSpots(zone: Geometry, dice: number): { x: number; y: number }[] {
   const pitch = DIE_MM * 1.3
   const perRow = Math.max(1, Math.min(dice, Math.floor(zone.w / pitch)))

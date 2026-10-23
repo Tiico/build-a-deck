@@ -165,6 +165,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'kbd.card.rotated': '{name}, card in {zone}, rotated',
   'kbd.counter': '{name}, counter in {zone}, value {n}',
   'kbd.counter.unnamed': 'Counter in {zone}, value {n}',
+  'kbd.die': '{kind}, showing {n}, in {zone}. Enter rolls it.',
+  'kbd.verb.roll': 'Roll',
   'kbd.pile.top': 'Top card in {zone}: {name}',
   'kbd.pile.empty': '{zone}, empty',
   'kbd.pile.one': '{zone}, {n} card, top: {top}',
