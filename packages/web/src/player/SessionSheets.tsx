@@ -2,12 +2,32 @@ import { useRef, useState } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
+import type { VisibleComponentState } from '@byd/protocol'
+import { Texture } from '../table/Texture.js'
+import { cardName } from '../table/keyboard.js'
+import { CloseGlyph } from '../glyphs.js'
 
 // Flagging a moment (G3, prototype A): a sheet with an optional note. Sends at once.
-export function FlagSheet({ onFlag, onClose, refusal }: { onFlag(note: string | undefined): void; onClose(): void; refusal?: RefusalHandle }) {
+//
+// Or a card (#1142, beställarens val B): the sheet asks first whether the flag is about the moment
+// or a card, and «Ett kort…» hands the screen over to pointing one out (`FlagFlow`). The sheet comes
+// back with the card in it, and the note is the flow's, so it is still there when it does.
+export type FlagSheetCard = { card: VisibleComponentState; faces: string | undefined; onDrop(): void }
+
+export function FlagSheet({ onFlag, onClose, refusal, note: kept, onNote, about, onPoint }: {
+  onFlag(note: string | undefined): void
+  onClose(): void
+  refusal?: RefusalHandle | undefined
+  note?: string | undefined
+  onNote?: ((note: string) => void) | undefined
+  about?: FlagSheetCard | null | undefined
+  onPoint?: (() => void) | undefined
+}) {
   const t = useT()
   const box = useSheet(onClose)
-  const [note, setNote] = useState('')
+  const [own, setOwn] = useState('')
+  const note = kept ?? own
+  const setNote = onNote ?? setOwn
   return (
     <div className="byd-sheet-backdrop" onClick={onClose}>
       <div
@@ -18,8 +38,35 @@ export function FlagSheet({ onFlag, onClose, refusal }: { onFlag(note: string | 
         onClick={(e) => e.stopPropagation()}
         ref={box}
       >
-        <p className="byd-sheet-title" id="flag-sheet-title">{t('flag.sheet.title')}</p>
-        <p>{t('flag.sheet.body')}</p>
+        <p className="byd-sheet-title" id="flag-sheet-title">{t(about ? 'flag.sheet.title.card' : 'flag.sheet.title')}</p>
+        {!about && <p>{t('flag.sheet.body')}</p>}
+        {about ? (
+          <div className="byd-flag-about">
+            <span className="byd-flag-about-card">
+              <Texture faces={about.faces} c={about.card} />
+            </span>
+            <span className="byd-flag-about-words">
+              <b>{cardName(about.card, t)}</b>
+              {t('flag.sheet.card.seen')}
+            </span>
+            <button type="button" className="byd-flag-about-drop" onClick={about.onDrop} aria-label={t('flag.sheet.card.drop')} title={t('flag.sheet.card.drop')}>
+              <CloseGlyph />
+            </button>
+          </div>
+        ) : (
+          onPoint && (
+            <div className="byd-flag-what">
+              <button type="button" aria-pressed="true">
+                {t('flag.sheet.moment')}
+                <small>{t('flag.sheet.moment.sub')}</small>
+              </button>
+              <button type="button" onClick={onPoint}>
+                {t('flag.sheet.card')}
+                <small>{t('flag.sheet.card.sub')}</small>
+              </button>
+            </div>
+          )
+        )}
         <textarea placeholder={t('flag.sheet.note')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={280} data-first />
         <div className="byd-sheet-actions">
           <button type="button" data-kind="flag" onClick={() => onFlag(note.trim() || undefined)} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>

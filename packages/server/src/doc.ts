@@ -21,4 +21,4 @@ export { aiContextParts, type AiContextParts } from './ai-context.js'
 // `@byd/server/proposal`, so that only the editor's chunk carries the schema (`phone-bundle.spec.ts`).
 
 // What the Resultat view reads (#1010): the shape of the playtest the server counts, types only.
-export type { Distribution, Playtest, PlaytestAnswer, PlaytestFlag, PlaytestPerson, PlaytestQuestion, PlaytestTable, PlaytestVersion } from './playtest.js'
+export type { Distribution, Playtest, PlaytestAnswer, PlaytestCard, PlaytestFlag, PlaytestPerson, PlaytestQuestion, PlaytestTable, PlaytestVersion } from './playtest.js'

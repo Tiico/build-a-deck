@@ -1,5 +1,5 @@
-import { activityOf, movesOf } from '@byd/engine'
-import type { Applied } from '@byd/protocol'
+import { activityOf, canSeeFace, componentOf, initialState, movesOf, project, replay, zoneOf, type DeckFacts, type TypeRegistry } from '@byd/engine'
+import type { Applied, VisibleComponentState, ZoneKind } from '@byd/protocol'
 import type { GuestRecord, SessionRecord } from './store.js'
 import type { SurveyRecord } from './surveys.js'
 
@@ -19,8 +19,17 @@ export type PlaytestQuestion = (typeof QUESTIONS)[number]
 
 export type PlaytestPerson = { name: string; seat: string | null; observer: boolean }
 export type PlaytestAnswer = { who: string; seat: string | null; observer: boolean; at: string; answers: SurveyRecord['answers'] }
+// The card a flag is about (#1142), as it was at the flag: the component as an observer's view
+// had it — every face's texture in the version the flag was raised on — and what the flagger
+// herself saw of it, where it lay, and how the game's newest version draws the same row:
+// `changed` when its face is drawn differently, `gone` when the row is no longer there.
+export type PlaytestCard = VisibleComponentState & {
+  seen: 'front' | 'back'
+  place: { zone: string; kind: ZoneKind; owner: string | null }
+  now?: 'same' | 'changed' | 'gone'
+}
 // `who` is null for a flag the table itself raised: no seat, and no observer named.
-export type PlaytestFlag = { who: string | null; seat: string | null; observer: boolean; note: string; at: string; move: number; version: string }
+export type PlaytestFlag = { who: string | null; seat: string | null; observer: boolean; note: string; at: string; move: number; version: string; card?: PlaytestCard }
 export type PlaytestTable = {
   id: string
   // The room code the table is called by (#706), also once it has ended and admits nobody.
@@ -51,14 +60,17 @@ export type PlaytestVersion = {
 }
 export type Playtest = { tables: PlaytestTable[]; versions: PlaytestVersion[] }
 
-export type PlaytestSource = { id: string; session: SessionRecord; log: readonly Applied[]; surveys: readonly SurveyRecord[]; admissions: readonly GuestRecord[] }
+// `decks` is what each version the table played knew about its cards, for the flags about one.
+export type PlaytestSource = { id: string; session: SessionRecord; log: readonly Applied[]; surveys: readonly SurveyRecord[]; admissions: readonly GuestRecord[]; decks?: Record<string, DeckFacts> }
+// What a flag about a card is read with: the types, and the game's newest deck to hold it against.
+export type CardReading = { registry: TypeRegistry; now?: DeckFacts }
 
-export function playtestOf(sources: readonly PlaytestSource[]): Playtest {
-  const tables = sources.map(tableOf)
+export function playtestOf(sources: readonly PlaytestSource[], cards?: CardReading): Playtest {
+  const tables = sources.map((source) => tableOf(source, cards))
   return { tables, versions: versionsOf(tables) }
 }
 
-function tableOf({ id, session, log, surveys, admissions }: PlaytestSource): PlaytestTable {
+function tableOf({ id, session, log, surveys, admissions, decks }: PlaytestSource, cards?: CardReading): PlaytestTable {
   const moves = movesOf(log)
   const told = activityOf(log)
   const people: PlaytestPerson[] = []
@@ -70,16 +82,20 @@ function tableOf({ id, session, log, surveys, admissions }: PlaytestSource): Pla
   let version = session.version
   let endedAt: string | null = null
   const flags: PlaytestFlag[] = []
-  for (const line of told) {
+  // The name each line is told by, from the activity; the lines themselves are the log's own, since
+  // the activity leaves out which card a flag is about.
+  const names = new Map(told.map((l) => [l.seq, l.name]))
+  for (const line of log) {
     const intent = line.intent
     if (intent.v === 'seat.claim') meet(intent.name, intent.seat, false)
     else if (intent.v === 'version.change') version = intent.to
     else if (intent.v === 'session.end') endedAt = line.at
     else if (intent.v === 'flag') {
       const observer = line.by === null && intent.observer !== undefined
-      const who = line.by !== null ? (line.name ?? line.by) : (intent.observer ?? null)
+      const who = line.by !== null ? (names.get(line.seq) ?? line.by) : (intent.observer ?? null)
       const move = moves.filter((m) => m.seq < line.seq).length
-      flags.push({ who, seat: line.by, observer, note: intent.note ?? '', at: line.at, move, version })
+      const card = intent.component !== undefined && cards ? cardAt(session, log, line, intent.component, observer, cards, decks?.[version]) : undefined
+      flags.push({ who, seat: line.by, observer, note: intent.note ?? '', at: line.at, move, version, ...(card ? { card } : {}) })
       if (observer && who !== null) meet(who, null, true)
     }
   }
@@ -95,6 +111,26 @@ function tableOf({ id, session, log, surveys, admissions }: PlaytestSource): Pla
     people,
     answers: surveys.map((s) => ({ who: s.who, seat: s.seat, observer: s.observer === true, at: s.at, answers: s.answers })),
     flags,
+  }
+}
+
+// The card as the log has it just before the flag, which changes nothing on the table: the log is
+// replayed from the table's start, so the answer is the one any replay of it gives.
+function cardAt(session: SessionRecord, log: readonly Applied[], flag: Applied, id: string, observer: boolean, { registry, now }: CardReading, deck: DeckFacts | undefined): PlaytestCard | undefined {
+  const state = replay(initialState(session.version, session.setup, registry), registry, log.filter((l) => l.seq < flag.seq))
+  const seen = project(state, registry, null, deck, undefined, true).components.find((c) => c.id === id)
+  if (!seen) return undefined
+  const component = componentOf(state, id)
+  const zone = zoneOf(state, component.zone)
+  const owner = zone.owner === undefined ? null : (state.seats[zone.owner]?.name ?? zone.owner)
+  const content = registry.get(component.type).contentFace
+  const then = deck?.faces?.[component.cardRef]?.[content]
+  const later = now?.faces?.[component.cardRef]
+  return {
+    ...seen,
+    seen: canSeeFace(state, registry, component, flag.by, observer) ? 'front' : 'back',
+    place: { zone: zone.name, kind: zone.kind, owner },
+    ...(now && then !== undefined ? { now: later === undefined ? 'gone' : later[content] === then ? 'same' : 'changed' } : {}),
   }
 }
 
