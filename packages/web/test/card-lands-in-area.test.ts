@@ -426,8 +426,10 @@ describe.each([
 // Ett kort som läggs i en yta där en räknare eller en tärning redan ligger (#1202). Ytans svar
 // räknade brickan som ett kort: kortet gick ett steg längre in i fjädern, och eftersom brickan
 // ligger mitt på det första kortets plats (#1177) räknades också den platsen som upptagen, så
-// kortet hamnade två steg in i en yta utan ett enda kort. En bricka tar ingen plats i kortens
-// fjäder; var brickorna själva hamnar är oförändrat.
+// kortet hamnade två steg in i en yta utan ett enda kort — bredvid brickan, men av en slump.
+// Beställarens beslut i #1202: bredvid och aldrig över. Ett kort räknar bara kort, men hoppar över
+// en plats i fjädern där det skulle täcka en bricka, så att brickan syns och går att klicka på.
+// Var brickorna själva hamnar är oförändrat.
 describe('ett kort i en yta med en bricka i (#1202)', () => {
   type Seen = Snapshot['components'][number]
   // Bordet med kort på Ninas hand och brickor på golvet, Nina vid plats A.
@@ -464,34 +466,65 @@ describe('ett kort i en yta med en bricka i (#1202)', () => {
   const card = (c: Seen) => c.zone === 'hand:A' && !isPiece(c)
   const loose = (kind: 'counter' | 'die') => (c: Seen) => c.zone === 'table' && (kind === 'counter' ? isCounter(c) : isDie(c))
 
-  // Var första och andra kortet landar i en yta utan brickor: måttet.
-  function bare(): { x: number; y: number }[] {
-    const table = seated(2, [])
-    return [send(table, card), send(table, card)].map((c) => ({ x: c.x, y: c.y }))
+  // Rutan en komponent tar i ytan, i ytans egna millimetrar: en bricka efter sin egen storlek.
+  const rectOf = (c: Seen): Rect => {
+    const size = isDie(c) ? DIE_MM : isCounter(c) ? TOKEN_MM : null
+    return size === null ? { x: c.x, y: c.y, ...CARD_MM } : { x: c.x, y: c.y, w: size, h: size }
+  }
+  const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  const piecesIn = (view: Snapshot) => view.components.filter((c) => c.zone === 'mine:A' && isPiece(c))
+  // Fjäderns första steg där ett kort inte täcker någon av brickorna: där kortet ska ligga.
+  const firstClear = (view: Snapshot, y: number): number => {
+    const pieces = piecesIn(view).map(rectOf)
+    for (let k = 0; ; k++) if (pieces.every((p) => !overlaps({ x: k * HAND_STEP_MM, y, ...CARD_MM }, p))) return k * HAND_STEP_MM
   }
 
-  it.each(['counter', 'die'] as const)('lägger tangentbordets kort där det hade legat utan brickan, med en %s i ytan', (kind) => {
-    const table = seated(2, [kind])
-    // En räknare ensam i en yta stänger den för kort (C4), så den får sällskap av ett kort först.
-    const want = bare()[kind === 'counter' ? 1 : 0]
-    if (kind === 'counter') send(table, card)
+  it.each(['counter', 'die'] as const)('lägger kortet bredvid en ensam %s, på fjäderns första lediga steg', (kind) => {
+    const table = seated(1, [kind])
     send(table, loose(kind))
-    const laid = send(table, card)
-    expect({ x: laid.x, y: laid.y }).toEqual(want)
+    const view = table.view('A')
+    const laid = laidIn(view, 'mine:A')
+    if (!laid) throw new Error('ytan svarar inte')
+    const piece = piecesIn(view)[0]
+    if (!piece) throw new Error('brickan ligger inte i ytan')
+    // Inte tomt: brickan ligger på det första kortets plats, så det steget är inte ledigt.
+    expect(overlaps({ x: 0, y: laid.y, ...CARD_MM }, rectOf(piece))).toBe(true)
+    expect(overlaps({ x: laid.x, y: laid.y, ...CARD_MM }, rectOf(piece))).toBe(false)
+    expect(laid.x).toBe(firstClear(view, laid.y))
   })
 
-  it('lägger telefonens kort där det första kortet hade legat, med en tärning i ytan', () => {
+  it('lägger tangentbordets kort bredvid en tärning, inte över den', () => {
     const table = seated(1, ['die'])
-    send(table, loose('die'))
+    const die = send(table, loose('die'))
+    const laid = send(table, card)
+    expect(overlaps(rectOf(laid), rectOf(die))).toBe(false)
+    expect(laid.x).toBe(firstClear(table.view('A'), laid.y))
+  })
+
+  it.each(['counter', 'die'] as const)('lägger andra kortet bredvid både första kortet och en %s mellan dem', (kind) => {
+    const table = seated(2, [kind])
+    const first = send(table, card)
+    const piece = send(table, loose(kind))
+    const second = send(table, card)
+    expect(overlaps(rectOf(second), rectOf(piece))).toBe(false)
+    expect(Math.abs(second.x - first.x)).toBeGreaterThanOrEqual(HAND_STEP_MM / 2)
+    // Brickan själv ligger kvar där den lades.
+    expect(table.view('A').components.find((c) => c.id === piece.id)).toMatchObject({ x: piece.x, y: piece.y })
+  })
+
+  it('lägger telefonens kort bredvid en tärning, inte över den', () => {
+    const table = seated(1, ['die'])
+    const die = send(table, loose('die'))
     const view = table.view('A')
     const c = view.components.find(card)
     if (!c) throw new Error('inget kort på handen')
     table.run('A', ...playIntents(view, [c], 'mine:A'))
     const laid = table.view('A').components.find((x) => x.id === c.id)
-    expect(laid && { x: laid.x, y: laid.y }).toEqual(bare()[0])
+    if (!laid) throw new Error('kortet försvann')
+    expect(overlaps(rectOf(laid), rectOf(die))).toBe(false)
   })
 
-  it('lägger kortet överst, över brickan', () => {
+  it('lägger kortet överst i ytans ordning', () => {
     const table = seated(1, ['die'])
     const die = send(table, loose('die'))
     const laid = send(table, card)

@@ -4,12 +4,12 @@ import { DESK } from '../support/devices.js'
 import { expect, test, type Fixtures } from '../support/test.js'
 
 // A card sent with the keyboard to an area that already holds a die (#1202). The area's answer for
-// the next card counted the die as a card: the card went one place further along the fan, and
-// since the die lies in the middle of the first card's place (#1169) that place read as taken
-// too, so the card landed two steps in, in an area with no card in it. A die is not a card and
-// takes no place in the fan. (A chip alone does not do here: an area that holds nothing but chips
-// is not offered to a card at all, C4.) Every press is a real one, since element.focus() draws no
-// ring and skips the path a person without a mouse takes.
+// the next card counted the die as a card, and the card landed two steps in — beside the die, but
+// by chance. Counting only cards put the card right over the die, hiding it and taking its clicks.
+// The beställare's decision in #1202 is beside and never over: the card skips a place in the fan
+// where it would cover a counter or a die. (A chip alone does not do here: an area that holds
+// nothing but chips is not offered to a card at all, C4.) Every press is a real one, since
+// element.focus() draws no ring and skips the path a person without a mouse takes.
 
 type Box = { x: number; y: number; width: number; height: number }
 
@@ -38,19 +38,10 @@ async function sendToMine(page: Page, open = 'Enter'): Promise<void> {
   await expect(panel).toBeHidden()
 }
 
-// Where a box lies in the area, along its long axis and across its short one, as shares of the
-// area — so no pixel of any one machine is pinned.
-function within(box: Box, area: Box): { along: number; across: number } {
-  const wide = area.width >= area.height
-  return wide
-    ? { along: (box.x - area.x) / area.width, across: (box.y + box.height / 2 - area.y) / area.height }
-    : { along: (box.y - area.y) / area.height, across: (box.x + box.width / 2 - area.x) / area.width }
-}
-
 type Given = Pick<Fixtures, 'tableOf' | 'host' | 'open'> & { request: APIRequestContext }
 
-async function opened({ tableOf, host, open, request }: Given, die: boolean): Promise<Page> {
-  const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1, ...(die ? { dice: [{ faces: 6, count: 1, zone: 'table' }] } : {}) })
+async function opened({ tableOf, host, open, request }: Given): Promise<Page> {
+  const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1, dice: [{ faces: 6, count: 1, zone: 'table' }] })
   // One card loose on the floor, for the keyboard to send.
   await (await host(table)).send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
   const seat = await join(request, table, { name: 'Bo', seat: 'A' })
@@ -59,53 +50,51 @@ async function opened({ tableOf, host, open, request }: Given, die: boolean): Pr
   return page
 }
 
-// The card in the area once it has come to rest there, as shares of the area.
-async function cardIn(page: Page): Promise<{ along: number; across: number }> {
-  const card = page.locator('.byd-card[data-component]')
-  await expect(card).toHaveAttribute('aria-label', /Framför A/)
-  const area = page.locator('[data-area="mine:A"]')
+// A box once it has come to rest: the felt eases a thing to its new place.
+async function still(page: Page, selector: string): Promise<Box> {
+  const el = page.locator(selector)
   let last = ''
   let box: Box | null = null
-  // Until it stops moving: the felt eases a card to its new place.
   await expect
     .poll(async () => {
-      box = await card.boundingBox()
+      box = await el.boundingBox()
       const now = JSON.stringify(box)
-      const still = now === last
+      const same = now === last
       last = now
-      return still
+      return same
     })
     .toBe(true)
-  return within(box!, (await area.boundingBox())!)
+  return box!
 }
+
+const overlap = (a: Box, b: Box): boolean => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+const inside = (a: Box, b: Box): boolean => a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height
 
 test.describe('a card sent with the keyboard to an area that holds a die (#1202)', () => {
   test.use({ viewport: DESK.viewport })
 
-  test('lands where the first card lands in an empty area', async ({ tableOf, host, open, request }) => {
-    const given = { tableOf, host, open, request }
-    // The empty area, as the measure of where the first card goes.
-    const empty = await opened(given, false)
-    await arrowTo(empty, 'card:')
-    await sendToMine(empty)
-    const first = await cardIn(empty)
-
-    // The same area with a die in it first, sent there by the keyboard as well.
-    const page = await opened(given, true)
+  test('lies beside the die and not over it, and the die can still be rolled', async ({ tableOf, host, open, request }) => {
+    const page = await opened({ tableOf, host, open, request })
+    // The die into the area first, by the keyboard.
     await arrowTo(page, 'die:')
     await sendToMine(page, 'm')
     await expect(page.getByRole('status').filter({ hasText: /flyttade/ })).toHaveText(/^Du flyttade d6 till /)
-    // From the die to the card, by the arrows.
+    // From the die to the card, by the arrows, and the card into the same area.
     await arrowTo(page, 'card:')
     await sendToMine(page)
-    const beside = await cardIn(page)
+    await expect(page.locator('.byd-card[data-component]')).toHaveAttribute('aria-label', /Framför A/)
 
-    // Not vacuous: the first card lies at the start of the fan, centred across the area.
-    expect(first.along).toBeLessThan(0.1)
-    expect(Math.abs(first.across - 0.5)).toBeLessThan(0.05)
-    // And the card beside the die lies just there. One step of the fan is 26 of the area's
-    // 365 mm, about 0.07 of it, so a tenth of that tells the first place from the second.
-    expect(Math.abs(beside.along - first.along)).toBeLessThan(0.007)
-    expect(Math.abs(beside.across - first.across)).toBeLessThan(0.007)
+    const area = (await page.locator('[data-area="mine:A"]').boundingBox())!
+    const card = await still(page, '.byd-card[data-component]')
+    const die = await still(page, '.byd-die[data-kind="d6"]')
+    // Not vacuous: both lie wholly in the area.
+    expect(inside(card, area)).toBe(true)
+    expect(inside(die, area)).toBe(true)
+    // Beside and never over.
+    expect(overlap(card, die)).toBe(false)
+
+    // And a click still reaches the die: Playwright clicks only what the point actually hits.
+    await page.locator('.byd-die[data-kind="d6"]').click()
+    await expect(page.getByRole('status').filter({ hasText: /slog d6/ })).toHaveText(/^Du slog d6: [1-6]$/)
   })
 })
