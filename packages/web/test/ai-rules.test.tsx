@@ -4,11 +4,14 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { ProjectDoc } from '@byd/server'
 import { applyEdit } from '@byd/server/doc'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 import { tabId } from '../src/editor/EditorTabs.js'
 import { Language, type Lang } from '../src/i18n/index.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { SavedHeldBack } from './saved-held-back.js'
+import { EditSocket } from './setup.js'
 
 // Rule text as a proposal (#1006, #940 variant A): the designer asks for help with the rulebook and
 // gets blocks in the book's own kinds, placed where they stand. The panel says what they are, with
@@ -237,6 +240,48 @@ describe('rule text that cannot be used', () => {
     expect(proposal().textContent).toContain('Rättat en gång: Regeltext 1 («Att dra kort») nämner zonen «finns-inte», som spelet inte har.')
     fireEvent.click(within(panel()).getByRole('button', { name: 'Godta alla' }))
     await waitFor(async () => expect(await logged()).toHaveLength(1))
+  })
+})
+
+// The question is about the game she sees (#1215): the server reads its own copy of the document,
+// so an edit of hers still on the line when she asks — a step back taken just before — would leave
+// the AI answering about a book she no longer has, and the proposal would stand by a block that is
+// gone. The step back is held on its way out until the question has had every chance to overtake
+// it; the answer must still be about the book without the accepted rules.
+describe('a question asked while an edit of hers is still on its way', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  it('is asked about the game with that edit in it', async () => {
+    const line = new SavedHeldBack()
+    line.release()
+    setEditSocketImplementation(line.Line)
+    await askForRules()
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Godta alla' }))
+    await waitFor(async () => expect(await logged()).toHaveLength(1))
+    fireEvent.click(document.getElementById(tabId('rules'))!)
+    await waitFor(() => expect(book().textContent).toContain('Börja din tur'))
+    line.holdRequests()
+    fireEvent.click(screen.getByRole('button', { name: 'Ångra det godtagna förslaget' }))
+    await waitFor(() => expect(book().textContent).not.toContain('Börja din tur'))
+    const streams = run.ai!.fake.streams.length
+    ask('Igen [regler]')
+    // Long enough for a question that does not wait to reach the provider, and no longer.
+    for (let i = 0; i < 50 && run.ai!.fake.streams.length === streams; i++) await new Promise((resolve) => setTimeout(resolve, 10))
+    line.letOut()
+    const answered = await waitFor(() => {
+      const said = within(panel()).queryByRole('alert') ?? within(panel()).queryByRole('button', { name: 'Godta alla' })
+      expect(said).not.toBeNull()
+      return said!
+    })
+    expect(answered.textContent).toBe('Godta alla')
+    // Right the first time: a proposal about the old book would have been sent back to be corrected,
+    // a second question on her key, and said so under the proposal.
+    expect(within(panel()).getAllByRole('group', { name: /^Förslag/ }).at(-1)!.textContent).not.toContain('Rättat en gång')
+    expect(run.ai!.fake.streams.length).toBe(streams + 1)
+    fireEvent.click(answered)
+    await waitFor(async () => expect(await logged()).toHaveLength(3))
+    const third = (await logged())[2]!.intent
+    expect(third.v === 'compound' && third.edits.map((e) => (e.v === 'spliceRules' ? e.after : null))).toEqual(['b2'])
   })
 })
 

@@ -462,6 +462,29 @@ export class ProjectClient {
     this.connected = false
   }
 
+  // Once every edit this editor has made so far has reached the actor (#1215). The server reads its
+  // own copy of the game when it is asked about it, so a question waits for what the designer has
+  // already done to land: a step back still on the line had the AI answer about a book she no longer
+  // had. Only the edits made before the call are waited for, never the ones made after it. Over a
+  // line that is not open nothing lands, so nothing is waited for; and an actor that never answers
+  // is waited for no longer than a save is.
+  editsLanded(): Promise<void> {
+    const made = new Set(this.pending.map((waiting) => waiting.ask))
+    const there = () => !this.connected || !this.pending.some((waiting) => made.has(waiting.ask))
+    if (there()) return Promise.resolve()
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(backstop)
+        off()
+        resolve()
+      }
+      const backstop = setTimeout(done, SAVE_BACKSTOP_MS)
+      const off = this.subscribe(() => {
+        if (there()) done()
+      })
+    })
+  }
+
   subscribe(listener: ProjectListener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)

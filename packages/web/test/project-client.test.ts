@@ -231,6 +231,69 @@ describe('the end of a save over the line', () => {
   })
 })
 
+// A question to the AI is about the game the server holds (#1215), so it waits for the editor's own
+// edits to get there first — those made before it, and none made after.
+describe('waiting for the edits made so far to land', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  it('says so at once when nothing is on its way', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    await client.editsLanded()
+  })
+
+  it('waits for an edit still on the line, and not for one made after it was asked', async () => {
+    const line = new SavedHeldBack()
+    line.release()
+    setEditSocketImplementation(line.Line)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    line.holdRequests()
+    client.setCell('dragon', 'title', 'Drakhona')
+    let landed = false
+    const waiting = client.editsLanded().then(() => (landed = true))
+    // Let out first, then made: the second edit is on the line, unanswered, when the first lands.
+    line.letOut()
+    line.holdRequests()
+    client.setCell('knight', 'antal', '3')
+    await waiting
+    expect(landed).toBe(true)
+    expect(await run.projects.readEdits(run.projectId, 0)).toHaveLength(1)
+    line.letOut()
+  })
+
+  it('waits for nothing once the line has gone: an edit that cannot land is not waited for', async () => {
+    // A line that opens, takes the edit and goes, as a socket does when the network drops.
+    setEditSocketImplementation(class {
+      readyState = 1
+      onopen: (() => void) | null = null
+      onmessage: ((event: { data: unknown }) => void) | null = null
+      onclose: (() => void) | null = null
+      onerror: (() => void) | null = null
+      constructor() {
+        queueMicrotask(() => this.onopen?.())
+      }
+      send(): void {
+        this.readyState = 3
+        setTimeout(() => this.onclose?.(), 20)
+      }
+      close(): void {
+        this.readyState = 3
+      }
+    } as unknown as EditSocketCtor)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    client.setCell('dragon', 'title', 'Drakhona')
+    const began = performance.now()
+    await client.editsLanded()
+    expect(performance.now() - began).toBeLessThan(1_000)
+    expect(client.connected).toBe(false)
+  })
+})
+
 describe('refreshing a running table (C7, L5)', () => {
   it('saves unsaved edits, then pushes the current rev to the table as version.change', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
