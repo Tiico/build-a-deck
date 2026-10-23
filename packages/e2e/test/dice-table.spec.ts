@@ -1,4 +1,5 @@
 import { join } from '../support/api.js'
+import { pastTheWaitingRoom } from '../support/waiting.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -14,6 +15,8 @@ test.describe('a die rolled from the felt (#1137)', () => {
     const seat = await join(request, table, { name: 'Bo', seat: 'A' })
     const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
     const { page: tv } = await open(DESK, `${table.tvUrl}&lang=sv`)
+    // Nothing has happened at the table yet, so the waiting room lies over the dice (L77).
+    await pastTheWaitingRoom(page)
 
     const dice = page.locator('.byd-die[data-kind="d6"]')
     await expect(dice).toHaveCount(2)

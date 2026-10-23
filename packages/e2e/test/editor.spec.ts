@@ -1,6 +1,7 @@
 import { logIn, makeProject } from '../support/api.js'
 import { DESK, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
+import { answerStart } from '../support/start.js'
 
 // The designer's own way in: a game she owns, opened in the editor, and a table started from it
 // (L4, L5, D3).
@@ -90,6 +91,7 @@ test.describe('the header remembers the table (#477)', () => {
     const primary = page.locator('.byd-editor-primary:not(.byd-editor-caret)')
     await expect(primary).toHaveAccessibleName('Start a table')
     await primary.click()
+    await answerStart(page)
     await expect(primary).toHaveAccessibleName('Update the table')
     expect(await tables()).toHaveLength(1)
 
