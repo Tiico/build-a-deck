@@ -40,8 +40,19 @@ export type RenderStore = {
 const RANK: Record<Priority, number> = { texture: 0, print: 1 }
 
 export const outputKey = (hash: string): string => `renders/${hash}`
-export const contentTypeOf = (kind: RenderKind | undefined): string =>
-  kind?.kind === 'pdf' || kind?.kind === 'booklet' ? 'application/pdf' : kind?.kind === 'png' ? 'image/png' : 'application/octet-stream'
+export function contentTypeOf(kind: RenderKind | undefined): string {
+  switch (kind?.kind) {
+    case 'pdf':
+    case 'booklet':
+      return 'application/pdf'
+    case 'png':
+      return 'image/png'
+    case 'raster':
+      return kind.format === 'jpg' ? 'image/jpeg' : 'image/png'
+    default:
+      return 'application/octet-stream'
+  }
+}
 
 export class MemoryRenderStore implements RenderStore {
   private readonly jobs = new Map<string, RenderRequest & JobStatus>()

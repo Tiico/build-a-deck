@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@byd/engine": "workspace:*",
+    "@byd/print": "workspace:*",
     "@byd/protocol": "workspace:*",
     "@byd/render": "workspace:*",
     "@byd/template": "workspace:*",

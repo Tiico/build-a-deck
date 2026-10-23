@@ -23,8 +23,10 @@ export type CompileInput = {
   // of its own when it carries a file, so what renders is the file and not whatever the machine
   // happens to have. A family the project does not name is used as the CSS stack it already is.
   fonts?: Record<string, { stack: string; src?: string }>
-  // Print: extend the card by the type's bleed on every side and shift content accordingly.
-  bleed?: boolean
+  // Print: extend the card by a bleed on every side and shift content accordingly. `true` is the
+  // type's own bleed, which is what is printed where no partner is asked (G5's export); a number
+  // is the millimetres a partner's `requirements()` asks for (#1207).
+  bleed?: boolean | number
   // Text measurement (E6). Defaults to a glyph-width estimate; inject Chromium to measure for real.
   measure?: Measure
   // A selector prefix for every rule, so many cards (each fitted differently) can share a page.
@@ -44,9 +46,9 @@ export function compile(input: CompileInput): Compiled {
   const rules: string[] = []
   const css = { push: (rule: string) => rules.push(input.scope ? `${input.scope} ${rule}` : rule) }
   const { physical } = input.type
-  const bleed = input.bleed ? input.type.print.bleedMm : 0
+  const bleed = bleedOf(input)
 
-  css.push(`[data-card]{position:relative;width:${physical.widthMm + 2 * bleed}mm;height:${physical.heightMm + 2 * bleed}mm;overflow:hidden;}`)
+  css.push(`[data-card]{position:relative;width:${mm(physical.widthMm + 2 * bleed)};height:${mm(physical.heightMm + 2 * bleed)};overflow:hidden;}`)
   css.push(`[data-element]{position:absolute;box-sizing:border-box;margin:0;overflow:hidden;}`)
   // How the body's blocks sit (L2, #308). Everything they are laid out with is written in `em`,
   // so it follows the element's own font and size — which is not settled here: `fitInDocument`
@@ -114,6 +116,15 @@ export function renderInline(text: string, symbols: Symbols): string {
 }
 
 type Css = { push(rule: string): void }
+
+// The bleed in millimetres: the type's own for `true`, none for `false` or nothing.
+export function bleedOf(input: Pick<CompileInput, 'type' | 'bleed'>): number {
+  if (typeof input.bleed === 'number') {
+    if (!Number.isFinite(input.bleed) || input.bleed < 0) throw new Error(`a bleed is a length of zero or more millimetres, not ${input.bleed}`)
+    return input.bleed
+  }
+  return input.bleed ? input.type.print.bleedMm : 0
+}
 
 // A number as millimetres, without the float noise a division leaves behind.
 const mm = (v: number): string => `${Math.round(v * 1e4) / 1e4}mm`

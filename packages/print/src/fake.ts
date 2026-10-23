@@ -130,8 +130,10 @@ const CARD = { id: 'card.standard.63x88', version: 1 }
 const die = (faces: number) => ({ id: `die.d${faces}`, version: 1 })
 
 // The shape of The Game Crafter in #1199: uploads, an object tree and a cart, rasters in inches.
-// A poker deck is 2.5 × 3.5 in with an eighth of an inch of bleed, 825 × 1125 px at 300 dpi, and
-// the dice are parts it stocks.
+// TGC's poker deck is 2.5 × 3.5 in, 825 × 1125 px at 300 dpi with an eighth of an inch of bleed;
+// the fake prints our own 63 × 88 mm with that same eighth of an inch at 300 dpi, which is
+// 819 × 1114 px, because the platform draws a type at its own size and nothing scales a card to
+// a partner's (#1207, #1199 question 8). The dice are parts it stocks.
 export const MULTI_STEP_INCHES: FakeConfig = {
   id: 'fake-multi-step',
   label: 'Fake-tryckeri i flerstegsform (påhittat)',
@@ -141,10 +143,10 @@ export const MULTI_STEP_INCHES: FakeConfig = {
       kind: 'printed',
       type: CARD,
       sku: 'PokerDeck',
-      trim: { widthMm: 63.5, heightMm: 88.9 },
+      trim: { widthMm: 63, heightMm: 88 },
       bleedMm: 3.175,
       safeMm: 3.175,
-      file: { kind: 'raster', format: 'png', dpi: 300, widthPx: 825, heightPx: 1125 },
+      file: { kind: 'raster', format: 'png', dpi: 300, widthPx: 819, heightPx: 1114 },
       colorSpace: 'sRGB',
       fileName: '{cardRef}-{face}',
       sides: { front: 'face', back: 'back' },

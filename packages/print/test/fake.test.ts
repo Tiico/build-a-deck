@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CONTRACT_MANIFEST } from '../contract/suite.js'
-import { createFakeProvider, MULTI_STEP_INCHES, SINGLE_ORDER_MM, type OrderStep, type PrintManifest } from '../src/index.js'
+import { createFakeProvider, MULTI_STEP_INCHES, SINGLE_ORDER_MM, widestBleedMm, type FakeConfig, type OrderStep, type PrintManifest } from '../src/index.js'
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const actions = (steps: OrderStep[]) => steps.map((s) => s.action)
@@ -105,5 +105,24 @@ describe('fake-providerns order', () => {
     expect(log.length).toBeGreaterThan(0)
     expect(log.every((l) => l.startsWith('url '))).toBe(true)
     expect(await provider.track(ref)).toEqual({ state: 'unknown' })
+  })
+})
+
+// The bleed the physical checks (E5) hold a type to when no partner is chosen (#1207): the most any
+// registered provider asks for, so a card that passes passes every one of them; and nothing to
+// say when none prints the type, where the type's own bleed stands.
+describe('utfallet som kontrollen mäter mot', () => {
+  const thin: FakeConfig = { ...SINGLE_ORDER_MM, id: 'thin', catalog: SINGLE_ORDER_MM.catalog.map((r) => (r.kind === 'printed' ? { ...r, bleedMm: 1.5 } : r)) }
+
+  it('är det största utfall någon provider som trycker typen kräver', () => {
+    expect(widestBleedMm([createFakeProvider(thin), createFakeProvider(MULTI_STEP_INCHES)], CARD)).toBe(3.175)
+    expect(widestBleedMm([createFakeProvider(thin)], CARD)).toBe(1.5)
+  })
+
+  it('finns inte för en typ ingen trycker, och inte utan providers', () => {
+    expect(widestBleedMm([], CARD)).toBeUndefined()
+    // A die is packed, not printed: it has no bleed.
+    expect(widestBleedMm([createFakeProvider(MULTI_STEP_INCHES)], { id: 'die.d6', version: 1 })).toBeUndefined()
+    expect(widestBleedMm([createFakeProvider(SINGLE_ORDER_MM)], { id: 'die.d6', version: 1 })).toBeUndefined()
   })
 })

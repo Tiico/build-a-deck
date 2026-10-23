@@ -1983,6 +1983,14 @@ Byggt 2026-10-23 (#1206): kontraktet, regiondirigeringen, fake-providern och kon
 - Fake-providern klarar sviten i både TGC:s flerstegsform och QPMN:s form med en order, och dess pris är märkt som påhittat.
 - Ingen serverväg anropar ännu `submit` eller `track`, och inget i servern läser paketet; det gör #1207 och #1208.
 
+Byggt 2026-10-23 (#1207): tryckfilerna görs efter partnerns krav.
+- Kompilatorns utfall är en längd i millimeter ur `requirements()`; typens `print.bleedMm` står kvar där ingen partner frågas, i G5:s export och i `POST /projects/:id/print`.
+- Renderaren ritar ett raster i exakt de pixlar kravet anger, hela sidan med utfall, på samma väg som texturen: dokumentet zoomas tills kortet är så brett, passas in och fotograferas, och det som blir kvar av höjden, en bråkdel av en pixel, tas upp av att det ritade kortet sträcks lika mycket. Ingenting skalar filen efteråt.
+- Render-kön har jobbslaget `raster`, så samma kort i två partners krav är två renderingar och i samma krav en (DRIFT §6).
+- `GET /projects/:id/print-package?provider=` ger det en provider skulle få för versionen, ritar filerna och lämnar dem en och en med regelhäftet i vårt A5; inga providers är registrerade ännu, det gör tryckpaketet (#1208).
+- E5 mäter utfallet mot det som ska tryckas: mot den frågade providerns utfall, och när ingen är vald mot det största utfall någon registrerad provider kräver, så att ett spel som går igenom går igenom hos alla; typens eget där ingen trycker typen. En bakgrund som når 3 mm stoppas alltså hos en partner som vill ha 3,175 mm.
+- Kortet ritas i typens eget mått och skalas aldrig till en partners, och CMYK är inte byggt: en provider som begär något av dem får ett fel i stället för en tyst ersättning. CMYK tas till beställaren när en riktig partner är vald (E2:s ICC-steg).
+
 ### F3. Kostnadsbesked först i beställningsflödet (fråga 29)
 
 Ingen löpande prisvisning i editorn.
