@@ -471,7 +471,7 @@ export const enAccount = {
   'quota.rows.grow.owner.other': 'With {n} new cards {game} would have {total}, and {owner:s} account holds {limit} per game.',
   'quota.rows.way.you': 'Remove or merge cards to make room. More copies of a card always fit: change {copies}.',
   'quota.rows.way.owner': 'Remove or merge cards, or ask {owner}. More copies of a card always fit: change {copies}.',
-  'quota.rows.way.proposal': 'Choose at most {room} of the cards with «{choose}», or remove cards first.',
+  'quota.rows.way.proposal': 'Choose at most {room} of the cards with “{choose}”, or remove cards first.',
   'quota.rows.way.proposal.none': 'Remove cards first. Changed cards in a proposal add nothing and can always be accepted.',
   'quota.rows.born': 'A game on your account holds {limit} cards, and this one has more.',
   'quota.rows.born.way': 'Remove or merge cards in the original first.',
