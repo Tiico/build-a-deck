@@ -129,6 +129,22 @@ describe('image, icons and shape elements (L1)', () => {
     expect(at('cover')).toContain('object-fit:cover;}')
     expect(at(undefined)).toContain('object-fit:cover;}')
   })
+  // A picture with rounded corners (#1224): a frame whose line or plate is rounded has a picture
+  // rounded to match, or its square corners are drawn out over the curve. The box clips what it
+  // holds, so the corner is the box's own; a picture that says nothing compiles as it always did.
+  it('rounds a picture’s corners when it has a radius, and writes nothing for one without', () => {
+    const at = (radiusMm?: number) => {
+      const f: FaceTemplate = { base: [{ kind: 'image', id: 'art', x: 3, y: 3, w: 57, h: 40, bind: { field: 'art' }, ...(radiusMm === undefined ? {} : { radiusMm }) }], variants: {} }
+      return compile({ type: CARD_STANDARD_63x88, face: f, row: { art: 'https://x/a.png' }, icons }).css
+    }
+    expect(at(2.3)).toContain('[data-element="art"]{left:3mm;top:3mm;width:57mm;height:40mm;border-radius:2.3mm;}')
+    expect(at(undefined)).toContain('[data-element="art"]{left:3mm;top:3mm;width:57mm;height:40mm;}')
+    expect(at(0)).toBe(at(undefined))
+    const image = { kind: 'image', id: 'art', x: 3, y: 3, w: 57, h: 40, bind: { field: 'art' } }
+    expect(Element.parse({ ...image, radiusMm: 2.3 })).toMatchObject({ radiusMm: 2.3 })
+    expect(Element.safeParse({ ...image, radiusMm: -1 }).success).toBe(false)
+  })
+
   // A picture bound to a column of words (#802): «typ» holds «Playcard», and a cell that is not a
   // picture was drawn as `<img src="Playcard">`, which every browser shows as its broken-image
   // glyph — on the canvas, in print and on the table alike. Such a cell is drawn as an empty one,
