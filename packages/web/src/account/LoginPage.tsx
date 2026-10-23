@@ -6,6 +6,7 @@ import { safeNext } from './next.js'
 import { noticeFor } from '../status/notice.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useT } from '../i18n/index.js'
+import { ArrowGlyph } from '../glyphs.js'
 import './account.css'
 
 // /login?next=/editor?project=…&server=http://…
@@ -59,10 +60,17 @@ export function LoginPage({ onNavigate = go }: LoginPageProps) {
       : way.kind === 'resume'
         ? t('login.lead.resume')
         : undefined
+  const server = params.get('server')
+  const home = server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
   return (
     <main className="byd-account" data-page="login">
       {/* The card goes on the way the page does, so a login it makes is not a step Back returns to. */}
       <LoginCard http={http} next={next} lead={lead} onNavigate={onNavigate} />
+      {/* The page's way home (#1217): the start page, for whoever came here and is not staying. */}
+      <a className="byd-account-home" href={home}>
+        <ArrowGlyph to="left" />
+        {t('status.act.home.start')}
+      </a>
     </main>
   )
 }

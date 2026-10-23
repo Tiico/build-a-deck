@@ -616,6 +616,17 @@
   display: flex; gap: 18px; align-items: baseline; color: #f3e9d6;
 }
 .byd-table-plate > h1 { margin: 0; font-size: 13px; font-weight: 400; opacity: 0.7; }
+/* The owner's way back to the game's editor (#1217, L80): the game's name behind an arrow, quiet
+   until it is pointed at. It shrinks into an ellipsis before it pushes anything off its line. */
+.byd-editor-way {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; padding: 0 12px 0 8px;
+  border: 1px solid #3a3f4d; border-radius: 10px; color: #e8eaf0; font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.byd-editor-way > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.byd-editor-way svg { flex: none; color: #8fa8ff; }
+.byd-editor-way:hover { border-color: #8fa8ff; }
+.byd-editor-way:focus-visible { outline: 2px solid #9cc6ff; outline-offset: 2px; }
+.byd-table-plate > .byd-editor-way { align-self: center; font-size: 14px; color: #f3e9d6; border-color: #f3e9d64d; }
 /* The room's address (#675, beslut C): read from across the table, so larger than the game's name
    and at full ink, with the code in the face it has on the television (#937). Chrome on a Mac knows
    no `ui-monospace` and draws `monospace` in Courier, so Menlo is named between them. */
@@ -672,7 +683,12 @@
 /* Deckster's hand above the game's name on the room's television (#1084, beslut B): the line is the
    product's and the heading under it the game's, so a rule parts them. The name is at K26's 24 px. */
 [data-tv] .byd-tv-brand { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #232733; color: #e8eaf0; font-size: 24px; font-weight: 800; letter-spacing: -0.3px; }
-[data-tv] .byd-tv-brand svg { width: 34px; height: 34px; flex: none; }
+[data-tv] .byd-tv-brand > svg { width: 34px; height: 34px; flex: none; }
+/* On the brand's line the way back stands at its end, in the line's own size (K26). Its 46 px of
+   target reach 6 px past the mark's 34 on either side rather than making the line taller: the card
+   pays for this line's height (#1084), and a way back is no reason for it to pay more. */
+[data-tv] .byd-tv-brand > .byd-editor-way { margin: -6px 0 -6px auto; font-size: 18px; }
+[data-tv][data-room] .byd-tv-brand > .byd-editor-way { font-size: 24px; }
 /* The card pays for the line, not «Senast» (#1084, beslut B): where the column has room the card
    stands at its own 266 px and the feed takes what is over, so its height is lowered by the line's
    own — the mark's 34, the 14 under it, the rule's 1 and the column's gap of 18. Where the column is

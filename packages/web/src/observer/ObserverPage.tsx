@@ -23,7 +23,8 @@ import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
 import { asObserver, guestNotice, observerNotice } from '../status/notice.js'
-import { useSessionName } from '../status/sessionName.js'
+import { useSessionRecord } from '../status/sessionName.js'
+import { EditorWayBack } from '../table/EditorWayBack.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -56,7 +57,11 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   useActivityLive(conn.activity, conn.view, null)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   const code = params.get('code')
-  const game = useSessionName(http, sessionId, !code)
+  // The session record: the game's name for a tab given no room code (#759), and for the owner the
+  // project the way back to its editor leads to (#1217, L80).
+  const record = useSessionRecord(http, sessionId, owner || !code)
+  const game = code ? null : (record?.name ?? null)
+  const back = owner ? <EditorWayBack game={record} server={params.get('server')} /> : null
   usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: code, game })
   // The shuffle, fanned for the observer as for the room (L35).
   const shuffles = useShuffles(activity, view !== null)
@@ -148,6 +153,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         faces={http}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
+        back={back}
         onRead={read}
         // Regelboken där TV:n har den, bredvid spelets namn i kolumnens huvud (B7, #709): hjälpen
         // lovar den åt observatören, och hon läser bordet som TV:n gör. Under skrivbordet står
@@ -215,7 +221,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         </Suspense>
       )}
       </div>
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} />}
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} onward={back} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} />}
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: asObserver(guestNotice('missing', t), t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

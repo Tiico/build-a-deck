@@ -26,6 +26,7 @@ import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { onlineUrl, tvUrl } from './tableLinks.js'
+import { editorTab, tableTab } from '../ways.js'
 import { rememberStart, type Seating, type StartAnswer } from './startAnswer.js'
 import { Asking, Question } from './Question.js'
 import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
@@ -87,6 +88,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
   const { client, fault, slow, retry } = useProjectClient(http, projectId, timing)
+  // This tab is the game's editor (#1217, L80): a table's way back finds it by this name and brings
+  // it out, rather than opening a second editor beside it.
+  useEffect(() => {
+    if (projectId) window.name = editorTab(projectId)
+  }, [projectId])
   // Whether the designer has an AI key (#1001), asked beside the project so the panel is decided
   // before the work is drawn and nothing moves over once it is.
   const [aiKey, setAiKey] = useAiKey(http, projectId !== null)
@@ -247,7 +253,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // «Starta» on a game without a table asks how you sit first (L77), and the answer opens the
   // host's screen in a tab of its own. A browser that stops the tab leaves the way there in the band.
   const [askingStart, setAskingStart] = useState(false)
-  const [unopened, setUnopened] = useState<{ seating: Seating; href: string } | null>(null)
+  const [unopened, setUnopened] = useState<{ seating: Seating; href: string; target: string } | null>(null)
   // How many cards of the pending revision are lost for good. While this is set the table keeps
   // the version it has: a card without a face on the table is worse than a table left alone.
   const [lost, setLost] = useState<number | null>(null)
@@ -486,9 +492,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const startAs = async (answer: StartAnswer) => {
     setAskingStart(false)
     rememberStart(answer)
+    // It keeps its opener (#1217): a tab opened without one is in a group of its own and never
+    // finds the editor's tab by name, so the table's way back would open a second editor.
     const tab = window.open('', '_blank')
-    // What is opened is the host's own screen; it has no business reaching back into the editor.
-    if (tab) tab.opener = null
     if (updating) return tab?.close()
     setUpdating(true)
     try {
@@ -497,13 +503,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       const server = params.get('server')
       // A new table has every seat free, so the first free seat is the first seat (K12).
       const seat = client.doc.setup.seats[0]
-      const href =
-        answer.seating === 'computer' && seat !== undefined
-          ? onlineUrl(started.id, server, seat, true, t, lang, { name: answer.name, code: started.code })
-          : tvUrl(started.id, server, started.hostKey, false, lang)
-      // Whole, since a blank tab has no address of its own to read a path against.
-      if (tab && !tab.closed) tab.location.href = new URL(href, location.href).href
-      else setUnopened({ seating: answer.seating, href })
+      const seated = answer.seating === 'computer' && seat !== undefined
+      const href = seated ? onlineUrl(started.id, server, seat, true, t, lang, { name: answer.name, code: started.code }) : tvUrl(started.id, server, started.hostKey, false, lang)
+      const target = tableTab(started.id, seated ? 'online' : 'tv')
+      // Named for the table and its view now that the table is known, so the next way into the same
+      // view brings this tab out (#1217). Whole, since a blank tab has no address of its own to
+      // read a path against.
+      if (tab && !tab.closed) {
+        tab.name = target
+        tab.location.href = new URL(href, location.href).href
+      } else setUnopened({ seating: answer.seating, href, target })
     } finally {
       setUpdating(false)
     }
@@ -947,7 +956,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           ) : preparing ? (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined, lang)} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined, lang)} target={tableTab(table.id, 'tv')}>
               {t('editor.table.open')}
             </a>
           ) : textures ? (
@@ -971,7 +980,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {unopened && (
             <span data-unopened>
               {' '}· <span className="byd-editor-warning">{t('editor.start.blocked')}</span>{' '}
-              <a href={unopened.href} target="_blank" rel="noreferrer">
+              <a href={unopened.href} target={unopened.target}>
                 {t(unopened.seating === 'computer' ? 'editor.start.blocked.computer' : 'editor.start.blocked.screen')}
               </a>
             </span>

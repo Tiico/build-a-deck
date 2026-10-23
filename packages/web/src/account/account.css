@@ -14,6 +14,10 @@
   min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; box-sizing: border-box; background: var(--byd-account-bg); color: #e6e6e6; font-family: system-ui, sans-serif;
 }
 .byd-account-wide { align-content: start; }
+/* The login's way home (#1217), quiet under the card; the card stays the middle of the page. */
+.byd-account[data-page='login'] { align-content: center; gap: 8px; }
+.byd-account-home { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #9aa3b8; font-size: 14px; text-decoration: none; }
+.byd-account-home:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 .byd-muted { color: #9aa3b8; font-size: 14px; line-height: 1.5; margin: 0; }
 .byd-login { width: min(420px, 100%); background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
 .byd-login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; }
@@ -39,12 +43,43 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 @media (max-height: 640px) {
   .byd-code-row { row-gap: 6px; }
 }
-.byd-home { width: min(920px, 100%); display: grid; gap: 18px; }
-/* The account line goes under the heading when both will not fit on one line, rather than squeezing
-   "Mina spel" onto two (#475). */
-/* min-width: 0 so the account line can give way inside it rather than widen the page (#728). */
-.byd-home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; min-width: 0; }
-.byd-home h1 { margin: 0; font-size: 28px; }
+.byd-home h1 { margin: 0; font-size: 30px; }
+/* Arbetsbänken (#1204, beslut B): the page may be as wide as a desktop is, with the games in the
+   main column and what is happening — tables running, tables sat at, the code — in a column of its
+   own beside them. The main column spans every row of the side column, whose last row takes what
+   is left, so the side's parts stand together at the top whatever the main column's height. */
+.byd-home { width: min(1440px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto auto auto auto 1fr; gap: 24px 32px; align-items: start; }
+.byd-home > .byd-home-bar, .byd-home > .byd-about { grid-column: 1 / -1; }
+.byd-home-main { grid-column: 1; grid-row: 2 / -1; display: grid; gap: 18px; min-width: 0; }
+.byd-home-running, .byd-home-sat, .byd-home-door { grid-column: 2; min-width: 0; }
+.byd-home-door .byd-code-row { width: 100%; }
+/* The bar: the mark, then what is done to the page and the account. min-width: 0 so the account
+   line can give way inside it rather than widen the page (#728). */
+.byd-home-bar { display: flex; align-items: center; gap: 10px; min-width: 0; padding-bottom: 16px; border-bottom: 1px solid #262a35; }
+.byd-home-mark { display: inline-flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 700; font-size: 17px; white-space: nowrap; }
+.byd-home-logo { width: 30px; height: 30px; flex: none; }
+.byd-home-make { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+@media (max-width: 1200px) {
+  .byd-home { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
+}
+@media (max-width: 860px) {
+  /* One column, with what is running first: it is the thing a phone is most often opened for. */
+  .byd-home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 18px; }
+  .byd-home-main, .byd-home-running, .byd-home-sat, .byd-home-door { grid-column: 1; grid-row: auto; }
+  .byd-home-running { order: 1; }
+  .byd-home-main { order: 2; }
+  .byd-home-sat { order: 3; }
+  .byd-home-door { order: 4; }
+  .byd-home > .byd-about { order: 5; }
+}
+@media (max-width: 600px) {
+  /* On a phone the bar gives its room to the address (#728), and «＋ Nytt spel» is the dashed row's
+     under the games rather than a second one up here. */
+  .byd-home-mark > span, .byd-home-import-word, .byd-home-make { display: none; }
+  .byd-home-import { padding: 0; }
+  .byd-home-mark { margin-right: 0; }
+  .byd-home-bar .byd-who { margin-left: auto; }
+}
 /* One line, always: a part that wrapped brought its dot to the front of the next line, «· Språk»
    (#728). The address is what gives way, cut short with an ellipsis and whole in its title. */
 .byd-who { color: #9aa3b8; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; }
@@ -69,7 +104,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-who a .byd-glyph { width: 18px; height: 18px; }
 /* The sentence a brand new account reads before it presses anything (UX-16). */
 .byd-home-empty { margin: 0; max-width: 72ch; color: #9aa3b8; font-size: 14px; line-height: 1.6; text-wrap: pretty; }
-.byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.byd-home-all { display: grid; gap: 12px; }
 /* Every row of games is one height, and that height is a game's own (#231). It is what gives the
    "Nytt spel" tile its floor: on a shared row the row stretches it against its neighbours, and on
    a row of its own — which is what an account whose games fill the columns exactly has — the row
@@ -95,10 +131,10 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 /* An account with no games at all has no row of games to give the invitation its height, so the
    floor there is the card's own — the same one number, and not a measurement invented for this
    one case. With games on the page the row is taller and wins, as it should. */
-.byd-home-game[data-new] { border-style: dashed; place-items: center; color: #9aa3b8; min-height: var(--byd-home-card-h); }
+.byd-home-game[data-new] { border-style: dashed; place-items: center; place-content: center; color: #9aa3b8; min-height: var(--byd-home-card-h); }
 
 /* The tables the account sat at (G1, prototype A): a second grid, and the word after a claim. */
-.byd-home-h2 { margin: 12px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-home-h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
 .byd-home-claimed { padding: 12px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
 .byd-home-claimed b { color: #fff; }
 /* A game tile gives its 16 px to the link inside it (below); a played tile has no such link and
@@ -118,7 +154,39 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 
 /* A game's own actions on the home page (G1): the card opens the editor, the menu does the rest. */
 .byd-home-game { position: relative; padding: 0; }
-.byd-home-open { display: grid; gap: 8px; padding: 16px; color: #fff; text-decoration: none; }
+/* A row (#1204): the card to the left, what the game is to the right, and the ⋯ in the corner. */
+/* The words stand from the card's top edge, so a long name never moves its neighbours' (#725). */
+.byd-home-open { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 16px; padding: 12px 52px 12px 12px; color: #fff; text-decoration: none; }
+.byd-home-row { display: grid; gap: 3px; min-width: 0; padding-top: 6px; }
+.byd-home-row strong { overflow: hidden; text-overflow: ellipsis; }
+.byd-home-row .byd-muted { font-size: 13px; }
+.byd-home-live { justify-self: start; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: #1b2a22; color: #d8ffe8; font-size: 12px; font-weight: 600; }
+/* The hero (#1204, beslut B): the game last saved, its fan, and its two things to do. */
+.byd-home-hero > .byd-home-game { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 32px; padding: 28px; border-radius: 22px; background: radial-gradient(90% 120% at 0% 100%, #1d2a24, var(--byd-account-card-bg) 60%); }
+.byd-home-hero .byd-home-open { display: block; padding: 0; }
+.byd-home-fan { position: relative; display: block; padding: 8px 40px 0; }
+.byd-home-fan-back { position: absolute; top: 8px; left: 40px; filter: brightness(0.72); transform-origin: 50% 100%; }
+.byd-home-fan-back[data-back='0'] { transform: rotate(-9deg) translateX(-26px); }
+.byd-home-fan-back[data-back='1'] { transform: rotate(8deg) translateX(26px); filter: brightness(0.84); }
+.byd-home-fan .byd-home-card { position: relative; box-shadow: 0 10px 30px rgb(0 0 0 / 45%); }
+.byd-home-hero-text { display: grid; gap: 12px; min-width: 0; }
+.byd-home-hero-text > h2 { margin: 0; }
+.byd-home-hero-text > strong { font-size: 32px; line-height: 1.15; }
+.byd-home-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 4px 0; }
+.byd-home-stats > div { display: flex; flex-direction: column-reverse; gap: 2px; padding: 10px 12px; border-radius: 12px; background: rgb(15 17 23 / 55%); border: 1px solid #262a35; }
+.byd-home-stats dt { color: #9aa3b8; font-size: 12px; }
+.byd-home-stats dd { margin: 0; font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.byd-home-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.byd-home-hero-actions > :is(a, button) { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 12px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+@media (max-width: 1100px) {
+  .byd-home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .byd-home-hero > .byd-home-game { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 18px; padding: 18px; }
+  .byd-home-hero-text { justify-self: stretch; }
+  .byd-home-hero-text > strong { font-size: 26px; padding-right: 36px; }
+  .byd-home-hero-actions > :is(a, button) { flex: 1 1 auto; justify-content: center; }
+}
 /* What is in a tile stands from the top: a row made tall by a neighbour's long name stretched these
    rows instead, and the card and the name drifted apart by the difference (#725). */
 .byd-home-game, .byd-home-open { align-content: start; }
@@ -135,10 +203,19 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    and the way to its screen — on the green the table's code has always stood on. */
 .byd-home-running { display: grid; gap: 8px; }
 .byd-home-running > h2 { margin: 0; }
-.byd-home-running-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 4px 4px 4px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
+.byd-home-running-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px 12px; padding: 14px 16px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; }
 .byd-home-running-row b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.byd-home-running-row strong { font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 2px; }
-.byd-home-running-row a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; }
+.byd-home-running-row strong { justify-self: end; font: 700 22px ui-monospace, Menlo, monospace; letter-spacing: 4px; color: #fff; }
+.byd-home-running-row a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; text-align: center; }
+/* The way to the game is the row's second action (#1217): outlined, as L13 has every second one. */
+.byd-home-running-row a.byd-home-running-game { background: transparent; box-shadow: inset 0 0 0 1px #7dd3a088; color: #d8ffe8; }
+.byd-home-running-row a.byd-home-running-game:hover { box-shadow: inset 0 0 0 1px #7dd3a0; }
+/* The tables sat at, in the side column (#1204): one under another, each a short card of its own. */
+.byd-home-sat { display: grid; gap: 8px; }
+.byd-home-sat > h2 { margin: 0; }
+.byd-home-sat > .byd-home-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.byd-home-sat .byd-home-game.byd-home-played { gap: 4px; padding: 12px 16px; }
+.byd-home-sat .byd-home-played :is(.byd-home-survey, .byd-home-action) { margin-top: 4px; }
 .byd-home-started, .byd-home-asking { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; }
 .byd-home-started { background: #1b2a22; color: #d8ffe8; }
 .byd-home-started strong { font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 2px; }
@@ -161,7 +238,7 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 
 /* Taking a game out and bringing it back (G5, #529, beslut B): a window over the list that says
    what it is about first, and the way to it in the header beside the account. */
-.byd-home-import { margin-left: 4px; min-height: 44px; min-width: 44px; border-radius: 12px; padding: 0; display: inline-grid; place-items: center; font-family: inherit; font-size: 15px; cursor: pointer; }
+.byd-home-import { min-height: 44px; min-width: 44px; border-radius: 12px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
 .byd-home-import .byd-glyph { width: 18px; height: 18px; }
 .byd-home-game > .byd-game-menu { right: 8px; top: 34px; }
 
@@ -192,3 +269,4 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-passkey-offer-answers > button { min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
 .byd-passkey-done { display: flex; align-items: center; gap: 10px; margin: 0; }
 .byd-passkey-done > .byd-glyph { color: #7dd3a0; }
+.byd-home-hero .byd-home-more { right: 12px; top: 12px; }
