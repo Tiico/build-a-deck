@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { blocksView, type ActionKind, type Notice } from './notice.js'
 import { useT } from '../i18n/index.js'
 import { useAnnounce } from './StatusLive.js'
@@ -44,27 +44,33 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, c
   // The focus reads the heading it lands on, so the live region says only the rest (#555): both
   // said the heading, and it was read twice.
   useAnnounce(takesFocus ? { ...notice, heading: '' } : notice)
-  useEffect(() => {
+  // Every move of the focus is made in the commit that takes away what had it (#1244). From an
+  // effect it was a commit late, and in between the focus stood on <body>: a screen reader reads
+  // that as the page starting over, and the next Tab starts from the top.
+  useLayoutEffect(() => {
     if (takesFocus) headingRef.current?.focus()
   }, [takesFocus, notice.state])
   // «Försök igen» takes its own button away (#485): the next state is a wait with nothing to press,
   // and once the line is back the message goes too. The focus goes with neither: it stays on the
   // message while the message stands, and is handed to the view it lay over when it is gone.
   const retried = useRef(false)
+  const section = useRef<HTMLElement>(null)
   const lost = () => document.activeElement === null || document.activeElement === document.body
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (retried.current && lost()) headingRef.current?.focus()
   }, [notice.state])
-  useEffect(
-    () => () => {
-      if (!retried.current || !lost()) return
+  useLayoutEffect(() => {
+    const message = section.current
+    return () => {
+      // The message is still in the document while this runs, so the focus it holds is still in
+      // it: that is the focus about to be lost.
+      if (!retried.current || !(lost() || message?.contains(document.activeElement))) return
       const view = document.querySelector<HTMLElement>('[data-page]')
       if (!view) return
       if (!view.hasAttribute('tabindex')) view.tabIndex = -1
       view.focus({ preventScroll: true })
-    },
-    [],
-  )
+    }
+  }, [])
 
   const waiting = notice.state === 'loading' || notice.state === 'connecting' || notice.state === 'slow'
   const Heading = surface === 'page' ? 'h1' : 'h2'
@@ -73,7 +79,7 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, c
     // The room's sizes are a page's alone, so only a page says which room it stands in: the sheet
     // can then ask for `[data-room-screen]` without `[data-surface='page']` at every rule, bytes the
     // first frame's blocking sheet has no room for (felt-font.spec.ts).
-    <section className="byd-status" data-status-notice={notice.state} data-surface={surface} data-tone={notice.tone} {...(room && surface === 'page' ? { 'data-room-screen': room } : {})}>
+    <section ref={section} className="byd-status" data-status-notice={notice.state} data-surface={surface} data-tone={notice.tone} {...(room && surface === 'page' ? { 'data-room-screen': room } : {})}>
       <span className="byd-status-mark">{notice.mark}</span>
       <Heading ref={headingRef} tabIndex={-1}>
         {waiting && <span className="byd-status-spin" aria-hidden="true" />}

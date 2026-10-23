@@ -11,10 +11,13 @@
 // Chromium. Sedan räknas bildpunkterna i varje hörn. Ingenting här beror på ett typsnitt: i hörnen
 // står ingen text, kostnaden är tom så cirkeln uppe till höger ritas inte, och varje läge räknas fram
 // ur elementens egna rutor i sidan och ur mallens millimetrar, aldrig skrivet som en pixel.
+//
+// Samma mätning görs på ett spel som skapades före rättelsen (#1238), så som det lagrades och så
+// som det läses genom dörren: det är vad varje äldre version av ett sådant spel ritas som.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { chromium, type Browser, type Page } from 'playwright'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { compile, type Element } from '@byd/template'
+import { compile, liftTemplate, type Element } from '@byd/template'
 import { capture, hostDocument } from '@byd/render'
 import { columnOf, defaultFields, FRAMES } from '../src/wizard/frames.js'
 import { translate, type T } from '../src/i18n/index.js'
@@ -61,6 +64,23 @@ const shapeIn = (base: Element[], id: string): Shape => {
 }
 const PICTURED = FRAMES.filter((f) => front(f.id).some((e) => e.kind === 'image')).map((f) => f.id)
 
+// Ett spel som skapades före #1224 (#1238): ramen gav bilden fyrkantiga hörn och plattan under den
+// 2 mm, och så ligger den kvar i spelets dokument och i varje version av det. Den läses genom samma
+// dörr som allt lagrat läses genom (`liftTemplate`, via `liftDoc` på servern), och det är vad som
+// kommer ut genom dörren som ritas.
+const before1224 = (base: Element[]): Element[] =>
+  base.map((el) => {
+    if (el.kind === 'image' && el.id === 'art') {
+      const { radiusMm: _radius, ...square } = el
+      return square
+    }
+    return el.kind === 'shape' && el.id === 'artbg' ? { ...el, radiusMm: 2 } : el
+  })
+const READS = {
+  'a game made now': (frameId: string) => front(frameId),
+  'a game made before #1224, read through the door': (frameId: string) => liftTemplate({ base: before1224(front(frameId)), variants: {} }).base,
+}
+
 let browser: Browser
 let page: Page
 beforeAll(async () => {
@@ -73,11 +93,11 @@ afterAll(async () => {
 
 // Kortet som tryckpaketet ser det, fotograferat, och rutorna för de element som frågas efter, i
 // bildpunkter från kortets övre vänstra hörn.
-async function painted(frameId: string, ids: string[]): Promise<{ png: string; boxes: Record<string, Box> }> {
+async function painted(base: Element[], ids: string[]): Promise<{ png: string; boxes: Record<string, Box> }> {
   // The frame binds through the columns the game gets, which are the fields' labels (#476).
   const cells: Record<string, string> = { title: 'Sheriffen', body: '', cost: '', art: PICTURE }
   const row = Object.fromEntries(defaultFields(t).map((f) => [columnOf(f), cells[f.key] ?? '']))
-  const compiled = compile({ type: CARD_STANDARD_63x88, face: { base: front(frameId), variants: {} }, row, icons: {}, bleed: true })
+  const compiled = compile({ type: CARD_STANDARD_63x88, face: { base, variants: {} }, row, icons: {}, bleed: true })
   await page.setContent(hostDocument(compiled, SCALE), { waitUntil: 'load' })
   await page.evaluate(() => Promise.all(Array.from(document.images, (img) => img.decode())))
   // The boxes as the screen has them, which with the zoom on the document are its own pixels.
@@ -135,33 +155,45 @@ describe('a starter frame’s picture keeps inside the rounded corners round it 
     expect(PICTURED).toEqual(expect.arrayContaining(['classic', 'dark']))
   }, 60_000)
 
-  // Bilden målar ingenting utanför sin bildplattas rundade kontur, och fyller den ända fram till
-  // bågen: en tom ruta och en fylld har samma form.
-  for (const frameId of PICTURED) {
-    it(`paints the ${frameId} frame’s picture inside its plate’s rounded outline`, async () => {
-      const plate = shapeIn(front(frameId), 'artbg')
-      expect(plate.radiusMm ?? 0).toBeGreaterThan(0)
-      const { png, boxes } = await painted(frameId, ['artbg'])
-      const arcs = arcsOf(boxes['artbg']!, plate.radiusMm! * PX_PER_MM)
-      // Kontrollen: bilden är målad, och den fyller hörnen fram till bågen.
-      const inside = await count(png, arcs, () => 0, (a) => a.r - EDGE, ART, 24)
-      expect(inside.every((n) => n > 100), `the picture inside its corners: ${inside}`).toBe(true)
-      expect(await count(png, arcs, (a) => a.r + EDGE, () => FAR, ART, 24), 'the picture outside its plate’s corners').toEqual([0, 0, 0, 0])
-    }, 60_000)
+  for (const [read, faceOf] of Object.entries(READS)) {
+    describe(read, () => {
+      // Bilden målar ingenting utanför sin bildplattas rundade kontur, och fyller den ända fram till
+      // bågen: en tom ruta och en fylld har samma form.
+      for (const frameId of PICTURED) {
+        it(`paints the ${frameId} frame’s picture inside its plate’s rounded outline`, async () => {
+          const base = faceOf(frameId)
+          const plate = shapeIn(base, 'artbg')
+          expect(plate.radiusMm ?? 0).toBeGreaterThan(0)
+          const { png, boxes } = await painted(base, ['artbg'])
+          const arcs = arcsOf(boxes['artbg']!, plate.radiusMm! * PX_PER_MM)
+          // Kontrollen: bilden är målad, och den fyller hörnen fram till bågen.
+          const inside = await count(png, arcs, () => 0, (a) => a.r - EDGE, ART, 24)
+          expect(inside.every((n) => n > 100), `the picture inside its corners: ${inside}`).toBe(true)
+          expect(await count(png, arcs, (a) => a.r + EDGE, () => FAR, ART, 24), 'the picture outside its plate’s corners').toEqual([0, 0, 0, 0])
+        }, 60_000)
+      }
+
+      // Classic: bilden ligger innanför ramlinjens inre kant, och linjens hörn är målade i linjens
+      // färg och inte överskurna av bilden. Linjen ritas på en bana som är indragen med halva
+      // linjebredden (`shapeSvg`, så att linjens yttre kant ligger på rutan), och den banan har
+      // mallens radie; den inre kanten ligger alltså en halv linjebredd innanför banans bågar.
+      it('keeps the classic picture inside the frame line, and leaves the line’s corners painted', async () => {
+        const base = faceOf('classic')
+        const line = shapeIn(base, 'frame')
+        const s = line.strokeMm! * PX_PER_MM
+        const { png, boxes } = await painted(base, ['frame'])
+        const box = boxes['frame']!
+        const arcs = arcsOf({ x: box.x + s / 2, y: box.y + s / 2, w: box.w - s, h: box.h - s }, line.radiusMm! * PX_PER_MM)
+        expect(await count(png, arcs, (a) => a.r - s / 2 + EDGE, () => FAR, ART, 24), 'the picture past the inner edge of the frame line').toEqual([0, 0, 0, 0])
+        const onLine = await count(png, arcs, (a) => a.r - s / 4, (a) => a.r + s / 4, hex(line.stroke!), 40)
+        expect(onLine.every((n) => n > 50), `the line’s own colour on its corners: ${onLine}`).toBe(true)
+      }, 60_000)
+    })
   }
 
-  // Classic: bilden ligger innanför ramlinjens inre kant, och linjens hörn är målade i linjens färg
-  // och inte överskurna av bilden. Linjen ritas på en bana som är indragen med halva linjebredden
-  // (`shapeSvg`, så att linjens yttre kant ligger på rutan), och den banan har mallens radie; den
-  // inre kanten ligger alltså en halv linjebredd innanför banans bågar.
-  it('keeps the classic picture inside the frame line, and leaves the line’s corners painted', async () => {
-    const line = shapeIn(front('classic'), 'frame')
-    const s = line.strokeMm! * PX_PER_MM
-    const { png, boxes } = await painted('classic', ['frame'])
-    const box = boxes['frame']!
-    const arcs = arcsOf({ x: box.x + s / 2, y: box.y + s / 2, w: box.w - s, h: box.h - s }, line.radiusMm! * PX_PER_MM)
-    expect(await count(png, arcs, (a) => a.r - s / 2 + EDGE, () => FAR, ART, 24), 'the picture past the inner edge of the frame line').toEqual([0, 0, 0, 0])
-    const onLine = await count(png, arcs, (a) => a.r - s / 4, (a) => a.r + s / 4, hex(line.stroke!), 40)
-    expect(onLine.every((n) => n > 50), `the line’s own colour on its corners: ${onLine}`).toBe(true)
+  // Det gamla spelet ritas inte bara innanför bågen utan som ett nytt (#1238): det som kommer ut
+  // genom dörren är exakt vad ramen ger i dag.
+  it('reads a game made before #1224 as the frame makes it today', () => {
+    for (const frameId of PICTURED) expect(READS['a game made before #1224, read through the door'](frameId), frameId).toEqual(front(frameId))
   }, 60_000)
 })
