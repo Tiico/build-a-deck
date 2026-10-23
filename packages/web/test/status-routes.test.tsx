@@ -354,6 +354,21 @@ describe.each(LIVE)('$path when the line comes back', (live) => {
     expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('')
   })
 
+  // The message stands from «frånkopplad» to «uppkopplad igen» (#1244). The reader was told the
+  // line went, so the same message turns into the word that it is back. It used to leave the
+  // screen for a commit in between — the state was null until an effect had seen the line come
+  // back — and with it went the focus, which fell to <body>, and the layout under it.
+  it('keeps the message on the screen from the break to the word that the line is back', async () => {
+    const id = await createSession(run)
+    await open(live, { session: id, timing: SLOWER, real: true })
+    await waitFor(() => expect(noticeState()).toBeNull())
+    await run.restart()
+    await waitFor(() => expect(noticeState()).toBe('dropped'))
+    const message = notice()
+    await waitFor(() => expect(noticeState()).toBe('resumed'), { timeout: 4000 })
+    expect(notice()).toBe(message)
+  })
+
   it('writes nothing to the log twice on the way back', async () => {
     const id = await createSession(run)
     await open(live, { session: id, timing: SLOWER, real: true })
