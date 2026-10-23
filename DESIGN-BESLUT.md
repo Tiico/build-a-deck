@@ -5108,6 +5108,11 @@ Priset är att piltangenterna inte längre nudgar elementet medan fokus står i 
 Det går fortfarande att markera — pekaren väljer det, egenskaperna öppnas, och låset finns på samma rad — och det går att flytta upp och ner i ordningen: låset är en sak om kortet, inte om listan.
 Egenskapernas fyra mått går att läsa men inte att skriva i; typsnitt, färg och bindning står öppna, för att låsa ett lager är inte att frysa dess formgivning.
 Ett försök som inte leder någonstans säger varför, bredvid kortet som inte rörde sig — annars är ett lås omöjligt att skilja från en trasig editor.
+Lappen står på kortet vid lagret självt, under det när lagret står i kortets övre halva och över det i den nedre, i skärmens pixlar oavsett zoom (reviderat 2026-10-23, #1181).
+Den stod över dukens fot, ovanpå kortraden, från första klicket som bara valde lagret tills lagret låstes upp; beställaren valde variant B av fyra i prototypen (grenen `claude/prototyp-last-lager-lapp`).
+Ett försök är en dragning som rör sig mer än tre pixlar, Enter eller blanksteg på lagret, och Delete — inte ett tryck som bara väljer lagret.
+Lappen bär «Lås upp», som är dess svar, och en stängknapp; Escape tar den, och den går när ett annat lager väljs, eftersom den bara handlar om lagret i handen.
+Hänglåset i lagerlistan är guld också när lagret är valt.
 Låst ritas i guld och som ett stängt hänglås: formen säger det där färgen inte når.
 
 **Två egenskaper som mallen bär men kortet aldrig visar.**
