@@ -31,7 +31,9 @@ beforeAll(async () => {
   await promisify(execFile)(process.execPath, [VITEST, 'run', '--config', join(FIXTURE, 'vitest.config.ts'), '--reporter=json', `--outputFile=${out}`], { cwd: FIXTURE, env }).catch(() => undefined)
   const report = JSON.parse(readFileSync(out, 'utf8')) as Report
   outcomes = new Map(report.testResults.flatMap((file) => file.assertionResults.map((t) => [`${basename(file.name).split('.')[0]}: ${t.title}`, t])))
-}, 60_000)
+  // The nested run is a whole vitest start and twelve cases that hold their worker on purpose:
+  // 14 s on CI, but 65 s on a Mac shared with a dozen gate runs, so its ceiling is three minutes.
+}, 180_000)
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true })
 })
