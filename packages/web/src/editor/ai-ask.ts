@@ -29,14 +29,18 @@ export type AskRefine = { proposal: { cards: readonly unknown[]; changes: readon
 // `selected` is the cards the designer has selected, by id (#1003): the server reads them out of its
 // own copy of the game and sends them whole with the question. `refine` is the proposal the question
 // refines, if it refines one (#1004). `correct` is an answer to this same question whose proposal could
-// not be used, sent back once to be corrected (#1184), as the model wrote it.
-export function askAi(http: string, project: string, ask: { question: string; turns: readonly AskTurn[]; lang: 'sv' | 'en'; selected?: readonly string[]; refine?: AskRefine; correct?: { answer: unknown } }, onEvent: (event: AskEvent) => void): Asking {
+// not be used, sent back once to be corrected (#1184), as the model wrote it. `after` is what the
+// question waits for before it leaves: the editor's own edits landing with the server, which reads
+// the game off its own copy (#1215).
+export function askAi(http: string, project: string, ask: { question: string; turns: readonly AskTurn[]; lang: 'sv' | 'en'; selected?: readonly string[]; refine?: AskRefine; correct?: { answer: unknown } }, onEvent: (event: AskEvent) => void, after?: Promise<void>): Asking {
   let cancelled = false
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   const tell = (event: AskEvent) => {
     if (!cancelled) onEvent(event)
   }
   const finished = (async () => {
+    if (after) await after
+    if (cancelled) return
     let res: Response
     try {
       res = await fetch(`${http}/projects/${encodeURIComponent(project)}/ai/ask`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(ask) }))

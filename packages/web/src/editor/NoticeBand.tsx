@@ -14,7 +14,9 @@ import { CloseGlyph, WarningGlyph } from '../glyphs.js'
  * × stands outside it so that it is not read out as part of the sentence. The band stands until it
  * stops being true (#996), or until the designer closes it.
  */
-export function NoticeBand({ text, onClose }: { text: string; onClose(): void }) {
+// `lead` is what did not happen when a met ceiling is said (#1198, variant A): set off before the rest,
+// inside the same live region so it is read out with it.
+export function NoticeBand({ text, lead, onClose }: { text: string; lead?: string; onClose(): void }) {
   const t = useT()
   const band = useRef<HTMLDivElement>(null)
   // A band that goes while focus is on its × hands it to the work and never to nothing: the open
@@ -31,6 +33,8 @@ export function NoticeBand({ text, onClose }: { text: string; onClose(): void })
     <div ref={band} className="byd-editor-notice-band">
       <WarningGlyph />
       <span role="alert" className="byd-editor-notice">
+        {lead && <b>{lead}</b>}
+        {lead && ' '}
         {text}
       </span>
       <button type="button" className="byd-editor-notice-close" aria-label={t('editor.notice.close')} onClick={onClose}>

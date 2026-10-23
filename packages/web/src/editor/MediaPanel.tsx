@@ -16,6 +16,7 @@ import { useFocusTrap } from './focusTrap.js'
 import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
+import { QuotaSaid, type QuotaWords } from '../account/quota-words.js'
 import { CheckGlyph, FrameGlyph, RefreshGlyph } from '../glyphs.js'
 
 // The media library (#222, L22, prototype A · egen flik). Every picture the game holds, in one
@@ -73,7 +74,7 @@ export const NAMED_CARDS = 5
 
 // Vad en fil i en batch blev: en bild i spelet, eller ett skäl till att den inte blev det (#291).
 type Named = { name: string; named: boolean }
-type Result = (Named & { hash: string }) | (Named & { why: string })
+type Result = (Named & { hash: string }) | (Named & { why: string; words?: QuotaWords })
 
 // The focus target that is not a picture's own control: the way to add one.
 const ADD = '\u0000add'
@@ -167,7 +168,9 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   // A picture on its way in, and what the library says about how it went. The word is said in a
   // live region because an upload takes as long as a network takes: a designer who cannot see the
   // grid has nothing else to tell her that the picture arrived — or that it did not.
-  const [note, setNote] = useState<string | null>(null)
+  // A met ceiling on storage (#1198, variant A) is said here as well, in its parts: what was taken
+  // back set off, why, and under it that taking a picture away frees nothing.
+  const [note, setNote] = useState<string | QuotaWords | null>(null)
   // Pictures whose bytes the browser could not fetch, and how many times each has been asked for
   // (#481). A picture is in the document before its bytes travel (#339), so while a file is on
   // its way its tile is not broken but early: `uploading` tells the two apart, and a picture that
@@ -230,7 +233,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
         // said rather than thrown: an upload can fail on a dropped line or a file the gate
         // refuses, and an unhandled rejection is not a way to tell a designer that her picture
         // is too big.
-        landed.push({ ...said, why: saidOr(err, t('media.add.failed', { name: said.name })) })
+        landed.push({ ...said, why: saidOr(err, t('media.add.failed', { name: said.name })), ...(err instanceof QuotaSaid ? { words: err.words } : {}) })
       }
     }
     setUploading(false)
@@ -249,7 +252,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
         const had = doc.pictures?.[only.hash]
         if (had) setNote(t('media.add.already', { file: only.name, name: nameOf(only.hash, []) }))
         else setNote(only.named ? t('media.add.done', { name: only.name }) : t('media.add.done.unnamed'))
-      } else setNote(only.why)
+      } else setNote(only.words ?? only.why)
       return
     }
     const arrived = landed.filter((one) => 'hash' in one)
@@ -282,8 +285,13 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
           )}
         </div>
         {onAdd && (
-          <p className="byd-media-said" role="status">
-            {note ?? ''}
+          <p className="byd-media-said" role="status" {...(note !== null && typeof note !== 'string' ? { 'data-quota': '' } : {})}>
+            {note === null || typeof note === 'string' ? (note ?? '') : (
+              <>
+                <b>{note.what}</b> {note.why}
+                <small>{note.way}</small>
+              </>
+            )}
           </p>
         )}
         {/* Resultatet per fil (#291). En lyckad rad är en väg till sin bild och inte bara ett

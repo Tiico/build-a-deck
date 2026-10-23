@@ -2,7 +2,7 @@ import { applyEdit, checkNewName, decideEdit, type EditIntent } from './edits.js
 import { liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
 import { cardGrowth, type CardMeasure } from './quota-cards.js'
-import { QuotaReached, type Limit, type QuotaMet } from './quotas.js'
+import { QuotaReached, type Bearer, type Limit, type QuotaMet } from './quotas.js'
 
 // One actor owns one project (D3). A project is structurally the same as a table — shared state
 // several people change at once, which belongs in the history — so it gets the table's shape: a
@@ -37,9 +37,10 @@ export type EditorMessage =
   //
   // `quota` is the ceiling an edit (#1195) or a save (#1197) would have crossed (#1192), on a
   // refusal whose `why` is `quota`: the measure, the ceiling, what is used, and who bears it — `you`
-  // when the editor owns the game, `owner` when its owner does. An addition as `to` and `ask` were:
+  // when the editor owns the game, `owner` when its owner does, with `ownerName` when her address
+  // gives one (#1198) and never the address. An addition as `to` and `ask` were:
   // a page from before it reads the refusal by `why`, as it does any other.
-  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & { bearer: 'you' | 'owner' } }
+  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & Bearer }
 export type Presence = { id: string; name: string; role?: Role }
 // The ceiling an owner's games are held to on a card measure (#1195): asked of the owner's tier as
 // the edit is decided, so a tier changed while the game is open holds from the next edit.
