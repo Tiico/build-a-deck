@@ -412,7 +412,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'online.showall': 'Show all',
   'online.wait.heading': 'Waiting for players · {n} of {of}',
   'online.wait.text': 'Send the link to the people who will play. The table starts when you say so.',
-  'online.wait.address': 'The room\'s address',
+  'online.wait.address': 'The table\'s address',
   'online.wait.copy': 'Copy link',
   'online.wait.copied': 'Copied',
   'online.wait.copy.failed': 'Could not copy. The address is selected, so copy it yourself.',
@@ -420,6 +420,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'online.wait.free': 'waiting…',
   'online.wait.me': '{name} (you)',
   'online.wait.begin': 'Start playing',
+  'online.wait.hide': 'Hide the waiting room',
   'online.observers.one': '{names} is watching',
   'online.observers.other': '{names} are watching',
 

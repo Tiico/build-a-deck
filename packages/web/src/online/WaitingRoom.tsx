@@ -4,6 +4,7 @@ import { StartButton, startOf, type StartWait } from '../table/StartButton.js'
 import { roomAddress } from '../table/roomAddress.js'
 import { seatColor } from '../table/seatColor.js'
 import { useT } from '../i18n/index.js'
+import { CheckGlyph, CloseGlyph, CopyGlyph } from '../glyphs.js'
 
 // Distansvyn börjar i ett väntrum (L75, #1130, prototyp B steg 3). Tills något har hänt vid bordet
 // ligger det över filten: hur många platser som är tagna, rummets adress som `värd/KOD` med en
@@ -21,7 +22,9 @@ type Props = {
   server: string | null
   startWait: StartWait
   onStart(intents: Intent[], hadFocus: boolean): void
-  // A game with no start action has nothing to start: its button only puts the room away.
+  // A game with no start action has nothing to start: its button only puts the room away. The ×
+  // does the same in any game, for whoever wants the piles under it before the start: the start
+  // is then the felt's own tile, which is the same start (K25).
   onBegin(): void
 }
 
@@ -59,6 +62,9 @@ export function WaitingRoom({ view, seat, code, server, startWait, onStart, onBe
   return (
     <section className="byd-waiting" aria-labelledby={heading} data-waiting-room="">
       <h2 id={heading}>{t('online.wait.heading', { n: taken, of: view.seats.length })}</h2>
+      <button type="button" className="byd-waiting-hide" aria-label={t('online.wait.hide')} title={t('online.wait.hide')} onClick={onBegin}>
+        <CloseGlyph />
+      </button>
       <p>{t('online.wait.text')}</p>
       {address && code && (
         <div className="byd-waiting-address">
@@ -66,9 +72,7 @@ export function WaitingRoom({ view, seat, code, server, startWait, onStart, onBe
             {address.site}/<b>{code}</b>
           </code>
           <button type="button" className="byd-waiting-copy" data-copied={copy === 'copied' ? '' : undefined} onClick={() => void copyLink()}>
-            <svg className="byd-glyph" viewBox="0 0 24 24" aria-hidden="true">
-              {copy === 'copied' ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></>}
-            </svg>
+            {copy === 'copied' ? <CheckGlyph /> : <CopyGlyph />}
             {t(copy === 'copied' ? 'online.wait.copied' : 'online.wait.copy')}
           </button>
         </div>

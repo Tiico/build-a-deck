@@ -1,6 +1,7 @@
 import { join } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
+import { pastTheWaitingRoom } from '../support/waiting.js'
 
 // «Ångra» after somebody else's move on the distance view (#747, beställarens beslut A). It sent a
 // rewind proposal on the press: Bo was asked to decide on taking back the host's deal, and «Visa
@@ -16,6 +17,7 @@ test.describe('Ångra after another seat’s move on /online (#747)', () => {
     // Bo sits at the table, so he is the one who decides.
     await player(table, { name: 'Bo', seat: 'B' })
     const { page } = await open(DESK, `${ada.onlineUrl}&lang=sv`)
+    await pastTheWaitingRoom(page)
     await page.locator('.byd-pile[data-zone="draw"] .byd-pile-top').click()
     await page.getByRole('button', { name: 'Dra 1', exact: true }).click()
     await expect(page.locator('[data-hand-card]')).toHaveCount(1)

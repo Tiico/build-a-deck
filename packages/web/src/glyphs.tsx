@@ -92,6 +92,15 @@ export function CheckGlyph() {
   )
 }
 
+// A copy: one sheet laid over another (L75, the waiting room's «Kopiera länk»).
+export function CopyGlyph() {
+  return (
+    <Glyph name="copy">
+      <Line d="M6.5 5.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1zM10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
+    </Glyph>
+  )
+}
+
 // A chevron, pointing where what it opens goes: down for a box that unfolds under it and for
 // something open, right for something folded, and left and up for the two walks and the drawer
 // that the felt opens upward. The four are one drawing turned.

@@ -100,6 +100,19 @@ describe('väntrummet på /online (L75, #1130)', () => {
     expect(document.querySelector('[data-table-start]')).toBeNull()
   })
 
+  // Väntrummet ligger över högarna, och den som vill röra dem före starten ska kunna det: × lägger
+  // undan det, och filtens egen bricka står där i stället — samma start, nu på filten (K25).
+  it('läggs undan med × och lämnar starten åt filtens bricka, med fokus på den', async () => {
+    const made = await newTable()
+    await asGuest(made)
+    const panel = await room()
+    within(panel).getByRole('button', { name: 'Göm väntrummet' }).click()
+    await waitFor(() => expect(screen.queryByRole('region', { name: /Väntar på spelare/ })).toBeNull())
+    const tile = document.querySelector<HTMLButtonElement>('.byd-table-start[data-table-start]')
+    expect(tile).not.toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(tile))
+  })
+
   it('kopierar hela länken och säger «Kopierad», och markerar adressen när urklippet nekas', async () => {
     const made = await newTable()
     const written: string[] = []
