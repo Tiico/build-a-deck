@@ -103,7 +103,7 @@ describe('on a laptop (#675)', () => {
   const wide = (matches: boolean) =>
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('min-width: 1024px') ? matches : false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }))
 
-  // A laptop has one choice (L75, #1130): the page says how many seats are left, asks for a name
+  // A laptop has one choice (L77, #1130): the page says how many seats are left, asks for a name
   // and has a single «Gå med», which plays on this screen. The phone's way is a line under it, and
   // so is only watching — both still ways in, neither a second button beside the first.
   it('has one way in from 1024 px, «Gå med», and says how many seats are left', async () => {

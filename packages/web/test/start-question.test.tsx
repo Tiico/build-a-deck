@@ -6,7 +6,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 
-// Starta frågar hur ni sitter (L75, #1130): en gång, innan bordet finns, och svaret väljer vilken
+// Starta frågar hur ni sitter (L77, #1130): en gång, innan bordet finns, och svaret väljer vilken
 // skärm värden får — TV:n i ett rum, eller sin egen plats vid bordet på `/online`.
 
 let run: Running
@@ -49,7 +49,7 @@ async function tablesOfTheGame(): Promise<number> {
 
 const header = () => document.querySelector('header')!
 
-describe('Starta on a game without a table (L75)', () => {
+describe('Starta on a game without a table (L77)', () => {
   it('asks how you sit before anything starts, and Avbryt starts nothing and hands the keys back', async () => {
     const user = userEvent.setup()
     opening()

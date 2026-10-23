@@ -143,7 +143,7 @@ export const svEditor = {
   'editor.table.rendering': 'laddar kort {done}/{total}',
   'editor.table.stalled': 'laddningen har stannat. Korten på bordet visar sin text tills den fortsätter',
   'editor.table.open': 'öppna bordet',
-  // Starta frågar hur ni sitter (L75, #1130): en gång, innan bordet finns. Svaret väljer vilken
+  // Starta frågar hur ni sitter (L77, #1130): en gång, innan bordet finns. Svaret väljer vilken
   // skärm värden får, inte ett läge för bordet (C2).
   'editor.start.title': 'Starta ett bord',
   'editor.start.how': 'Hur sitter ni?',

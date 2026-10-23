@@ -52,7 +52,7 @@ import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
 import { versionWord } from '../i18n/version.js'
 
-// «Hur sitter ni?» (L75) is asked once per table, so its window comes when it is first asked for.
+// «Hur sitter ni?» (L77) is asked once per table, so its window comes when it is first asked for.
 const StartQuestion = lazy(() => import('./StartQuestion.js').then((m) => ({ default: m.StartQuestion })))
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
 
@@ -244,7 +244,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // be made twice. So the press is answered before the table is: the button says what it is
   // doing and takes nothing more, the way "Spara" has since #8.
   const [updating, setUpdating] = useState(false)
-  // «Starta» on a game without a table asks how you sit first (L75), and the answer opens the
+  // «Starta» on a game without a table asks how you sit first (L77), and the answer opens the
   // host's screen in a tab of its own. A browser that stops the tab leaves the way there in the band.
   const [askingStart, setAskingStart] = useState(false)
   const [unopened, setUnopened] = useState<{ seating: Seating; href: string } | null>(null)
@@ -480,7 +480,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       return null
     }
   }
-  // The answer to «Hur sitter ni?» (L75). The tab is opened here, in the press, before anything is
+  // The answer to «Hur sitter ni?» (L77). The tab is opened here, in the press, before anything is
   // awaited: a browser lets a page open a window only in the hand's own gesture, and the table's
   // address is not known until the start has answered. So the tab opens blank and is sent on.
   const startAs = async (answer: StartAnswer) => {

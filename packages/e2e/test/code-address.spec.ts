@@ -174,7 +174,7 @@ test.describe('the code is the address (#675)', () => {
     for (const answer of wire) expect(answer.body).not.toContain(table.session)
   })
 
-  // A laptop has one choice (L75, #1130): how many seats are left, a name, and «Gå med», which
+  // A laptop has one choice (L77, #1130): how many seats are left, a name, and «Gå med», which
   // sits her down at the table on this screen. The phone's way and only watching are links under it.
   test('a laptop is shown a card with the game’s name and one way in, «Gå med»', async ({ request, open }) => {
     const table = await namedTable(request, "Sal's Saloon")

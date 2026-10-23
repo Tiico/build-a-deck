@@ -215,7 +215,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   // playing on this screen on a laptop (#675, beslut 3).
   const suggested = wide ? '/online' : '/play'
   const room = t('join.room', { code: code.toUpperCase() })
-  // A phone says which seat is chosen; a laptop says how many are left (L75), because whoever
+  // A phone says which seat is chosen; a laptop says how many are left (L77), because whoever
   // opens a link at a desk is asking whether there is room for her. The picker shows the choice.
   const total = view.seats.length
   const seatLine = wide
@@ -230,7 +230,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
       {t('join.observe')}
     </button>
   )
-  // A laptop has one choice (L75, #1130): «Gå med» plays on this screen, and the phone's way and
+  // A laptop has one choice (L77, #1130): «Gå med» plays on this screen, and the phone's way and
   // only watching are the lines under it — still ways in, but not a second and a third button the
   // reader has to tell apart before she has played at all. They are buttons drawn as links: each
   // buys a seat or a look before it goes anywhere, so neither is an address.

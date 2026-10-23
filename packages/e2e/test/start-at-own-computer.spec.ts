@@ -2,7 +2,7 @@ import { logIn, makeProject } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
-// Starta frågar hur ni sitter (L75, #1130), i den byggda appen: värden trycker Starta i editorns
+// Starta frågar hur ni sitter (L77, #1130), i den byggda appen: värden trycker Starta i editorns
 // huvud, väljer «Var och en vid sin dator», skriver sitt namn och hamnar vid bordet på `/online`
 // i en egen flik — på första lediga plats, under det namnet, och inte som «Designern».
 //

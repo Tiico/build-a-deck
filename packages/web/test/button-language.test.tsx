@@ -139,7 +139,7 @@ async function joinViews(): Promise<Record<string, string>> {
   const table = TableClient.connect(await asTable(run, session))
   await table.ready()
   history.replaceState(null, '', `/join?code=${roomOf(session).code}&server=${encodeURIComponent(run.url)}`)
-  // Measured at 390, so mounted at 390: the page is a different page from 1024 (L75), and a walk
+  // Measured at 390, so mounted at 390: the page is a different page from 1024 (L77), and a walk
   // that runs after one at 1280 would otherwise mount the laptop's and measure it as the phone's.
   atWidth(390)
   const { container, unmount } = render(<JoinPage />)
@@ -238,7 +238,7 @@ describe('the seat picker', () => {
     expect(screenHere).toBe(watching)
   }, 90_000)
 
-  // A laptop has one choice (L75): «Gå med» is the one filled thing, and the two ways under it are
+  // A laptop has one choice (L77): «Gå med» is the one filled thing, and the two ways under it are
   // drawn as links and not as a second pair of pills.
   it('wears the primary fill on «Gå med» alone on a laptop', async () => {
     const session = await createSession(run, 's1', undefined, twoSeatSetup())

@@ -10,7 +10,7 @@ import './start-question.css'
 // As long as a name may be anywhere a seat is claimed (`seat.claim`).
 const NAME_MAX = 64
 
-// «Starta» on a game without a table asks how you sit (L75, #1130), once, before the table exists.
+// «Starta» on a game without a table asks how you sit (L77, #1130), once, before the table exists.
 //
 // The answer chooses which screen the host gets — the TV view for a room around one screen, or a
 // seat of her own at `/online` — and not a mode of the table (C2): the session is the same either

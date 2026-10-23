@@ -1,4 +1,4 @@
-// The answer to «Hur sitter ni?» (L75, #1130), and the memory of it. Apart from the question's
+// The answer to «Hur sitter ni?» (L77, #1130), and the memory of it. Apart from the question's
 // window so the editor can remember an answer without loading that window and its stylesheet
 // before anyone has pressed «Starta».
 export type Seating = 'screen' | 'computer'

@@ -311,7 +311,7 @@
   }
   .byd-join-page > :not(.byd-join-code) > header { text-align: center; }
 }
-/* On a laptop the page has one choice (L75, #1130): «Gå med», and under it the phone's way and only
+/* On a laptop the page has one choice (L77, #1130): «Gå med», and under it the phone's way and only
    watching as lines of text. They are buttons, since each buys a seat or a look before it goes
    anywhere, drawn as links: a quiet blue, underlined, and a whole target tall (UX-KONTROLLER:
    träffytor), so the 44 px between them is their own height and not a gap. The rule out-ranks

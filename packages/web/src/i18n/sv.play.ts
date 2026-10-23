@@ -538,7 +538,7 @@ export const svPlay = {
   'join.sit': 'Sätt dig',
   'join.sitting': 'Sätter dig…',
   'join.online': 'Spela på den här skärmen',
-  // En dator har ett enda val (L75): sidan säger hur många platser som är kvar, och «Gå med»
+  // En dator har ett enda val (L77): sidan säger hur många platser som är kvar, och «Gå med»
   // spelar på den här skärmen. Telefonvägen står under, som en länk. «plats» eller «platser»
   // följer bordets storlek, inte hur många som är kvar: «1 av 2 platser kvar».
   'join.seats.left.one': '{n} av {total} plats kvar',
