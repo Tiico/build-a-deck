@@ -75,6 +75,9 @@ services:
       # unset, no account reads another's tables.
       BYD_CORPUS_ACCOUNTS: ${BYD_CORPUS_ACCOUNTS:-}
       BYD_OPERATOR: ${BYD_OPERATOR:-}
+      # The tiers and their ceilings (#1193, A2, DRIFT §12), JSON on one line. Unset, nothing is
+      # limited — the beta's state; set and unreadable, the app does not start and its log says why.
+      BYD_PLANS: ${BYD_PLANS:-}
       # Assets in R2 (DRIFT §4): with credentials, textures are served as signed links. The
       # endpoint is the account's own unless the box says otherwise, which a bucket in a
       # jurisdiction — or a MinIO in development — requires.

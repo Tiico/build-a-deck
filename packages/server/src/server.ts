@@ -36,6 +36,8 @@ import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
+import { DEFAULT_PLANS, QuotaReached, growth, limitOf, type Limit, type Plans, type QuotaMet } from './quotas.js'
+import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -82,9 +84,24 @@ export type ServerOptions = {
   // their invitation, whose tables' exports the operator may read. Read from the box's settings
   // at start (`corpusFromEnv`); without it no account reads another's tables.
   corpus?: Corpus
+  // The tiers (#1193, A2): read from `BYD_PLANS` at start (`plansAtStart`), and without them the
+  // built-in standard, where nothing is limited. `accountPlans` says which tier each account has;
+  // without it every account has the default. Only with accounts on (`auth`) is anything asked:
+  // without accounts nobody bears anything.
+  plans?: Plans
+  accountPlans?: AccountPlanStore
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
+
+// The contract when a ceiling is met (#1192): 402, a code and the numbers, and nothing written.
+// `bearer` is `you` when the one asking bears the cost and `owner` when the game's owner does; the
+// owner's address and tier are never said to anyone else. 402 because no other door uses it: 401 and
+// 403 are login and role in the clients, 409 a taken seat or a conflict, and 429 rate limiting. The
+// client says it in the reader's words (A4), never as the status.
+function quotaRefused(res: ServerResponse, met: QuotaMet, bearer: 'you' | 'owner'): void {
+  json(res, 402, { error: 'quota', quota: { ...met, bearer } })
+}
 
 // A fresh code and host key for a new session (DRIFT §9); the key is shown once and kept hashed.
 function admission(opts: ServerOptions): { code: string; hostKey: string; record: { code: string; codeExpiresAt: string; hostKeyHash: string } } {
@@ -1234,6 +1251,30 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     return { rec, role }
   }
   const owned = (id: string) => allowed(id, canRead)
+  // The ceiling on the games the asking account owns (#1193): the measure `projects`, borne by
+  // whoever makes the game, since they own it — a duplicate or an import as much as a new one. Asked
+  // only with accounts on; without them nothing is borne, and undefined asks the store for nothing.
+  const plans = opts.plans ?? DEFAULT_PLANS
+  const gamesLimit = async (): Promise<Limit | undefined> => (account ? limitOf(plans, await planOf(opts.accountPlans, plans, account.id), 'projects') : undefined)
+  // A game written within that ceiling, or the 402 that says it was met. The store counts and writes
+  // in one step, so the last place under the ceiling goes to exactly one of two at once.
+  const within = async <T>(write: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await write()
+    } catch (e) {
+      if (!(e instanceof QuotaReached)) throw e
+      quotaRefused(res, e.quota, 'you')
+      return null
+    }
+  }
+  // What the account uses and its ceilings (#1193, #1192): its tier and, per measure that is built,
+  // the use and the ceiling, `null` for unlimited. How the web says it is slice 6 (#1198).
+  if (req.method === 'GET' && url.pathname === '/me/usage') {
+    if (!opts.auth) json(res, 404, { error: 'accounts are off' })
+    else if (!account) json(res, 401, { error: 'log in first' })
+    else json(res, 200, await usageOf({ projects, ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}) }, plans, account.id))
+    return true
+  }
   if (req.method === 'GET' && url.pathname === '/projects') {
     if (!account) {
       json(res, 401, { error: 'log in first' })
@@ -1308,6 +1349,15 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 422, { error: 'not an export that can be read', problems: missing })
       return true
     }
+    // The ceiling is asked before anything is written, the pictures too (#1193): a game refused
+    // leaves nothing behind. The restore below asks again in the step that writes the game, so two
+    // imports at the last place still give exactly one.
+    const limit = await gamesLimit()
+    const met = account && limit !== undefined ? growth('projects', limit, await projects.owned(account.id), 1) : null
+    if (met) {
+      quotaRefused(res, met, 'you')
+      return true
+    }
     if (opts.assets) {
       for (const [hash, asset] of read.assets) {
         if ((await opts.assets.put(asset.bytes, asset.contentType)) !== hash) throw new Error(`asset ${hash} stored under another name`)
@@ -1319,8 +1369,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const name = importedName(read.current.name, taken, langOf(url.searchParams.get('lang')))
     const versions = read.manifest.versions.map((v, i, all) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), doc: i === all.length - 1 ? { ...v.doc, name } : v.doc }))
     // The edit log is not exported, so how far it had come (`atSeq`) says nothing here.
-    const rec = await projects.restore(randomUUID(), versions, account?.id)
-    json(res, 201, { id: rec.id, rev: rec.rev })
+    const rec = await within(() => projects.restore(randomUUID(), versions, account?.id, limit))
+    if (rec) json(res, 201, { id: rec.id, rev: rec.rev })
     return true
   }
   if (req.method === 'POST' && url.pathname === '/projects') {
@@ -1332,8 +1382,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const { id: wanted, ...doc } = body
     checkedName(doc.name)
     validateSetup(setupFromProject(doc), opts.registry)
-    const rec = await projects.create(wanted ?? randomUUID(), doc, account?.id)
-    json(res, 201, { id: rec.id, rev: rec.rev })
+    const limit = await gamesLimit()
+    const rec = await within(() => projects.create(wanted ?? randomUUID(), doc, account?.id, limit))
+    if (rec) json(res, 201, { id: rec.id, rev: rec.rev })
     return true
   }
   // A question to the AI about the game (#1001, E4): whoever may edit the game asks, with her own
@@ -1792,8 +1843,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const doc = (await editors(opts, projects).live(gate.rec.id)) ?? saved
     const taken = account ? (await projects.list(account.id)).map((p) => p.name) : []
     const name = duplicatedName(doc.name, taken, langOf(url.searchParams.get('lang')))
-    const rec = await projects.create(randomUUID(), { ...structuredClone(doc), name }, account?.id)
-    json(res, 201, { id: rec.id, rev: rec.rev, name })
+    // The copy is the duplicating account's, and so is its place under the ceiling: a co-editor's
+    // copy is held to the co-editor's tier and never to the owner's (A2, #1192).
+    const limit = await gamesLimit()
+    const rec = await within(() => projects.create(randomUUID(), { ...structuredClone(doc), name }, account?.id, limit))
+    if (rec) json(res, 201, { id: rec.id, rev: rec.rev, name })
     return true
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)

@@ -14,6 +14,11 @@ export type AuthStore = {
   ensureAccount(email: string): Promise<Account>
   // The account behind an id, so a members list (D3) can show addresses rather than ids.
   accountById(id: string): Promise<Account | null>
+  // The account behind an address as the login stores it, without making one: the operator's
+  // scripts name accounts by address (DRIFT §10) and must never create one by naming it.
+  accountByEmail(email: string): Promise<Account | null>
+  // Every account, oldest first, for the operator's usage report (#1193).
+  listAccounts(): Promise<Account[]>
   createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void>
   sessionAccount(sessionHash: string, now: string): Promise<Account | null>
   deleteSession(sessionHash: string): Promise<void>
@@ -71,6 +76,12 @@ export class MemoryAuthStore implements AuthStore {
   }
   async accountById(id: string): Promise<Account | null> {
     return [...this.accounts.values()].find((a) => a.id === id) ?? null
+  }
+  async accountByEmail(email: string): Promise<Account | null> {
+    return this.accounts.get(email) ?? null
+  }
+  async listAccounts(): Promise<Account[]> {
+    return [...this.accounts.values()]
   }
   async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
     this.sessions.set(sessionHash, { accountId, expiresAt })

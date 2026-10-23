@@ -64,6 +64,13 @@ describe('the stack hands the app its configuration', () => {
     expect(env['BYD_CONTACT']).toBe('${BYD_CONTACT:-}')
   })
 
+  // The tiers (#1193, A2, DRIFT §12) are the box's to set; a name the stack does not pass leaves
+  // every ceiling unlimited however carefully BYD_PLANS was written in .env.
+  it('passes the tiers through, empty when unset', () => {
+    const env = serviceEnvironment(compose, 'app')
+    expect(env['BYD_PLANS']).toBe('${BYD_PLANS:-}')
+  })
+
   it('leaves room on a box that is not only ours', () => {
     // DRIFT §1 budgeted the whole 8 GB for this stack; the box it actually runs on was
     // already carrying its own containers and swapping. The three that are always up have

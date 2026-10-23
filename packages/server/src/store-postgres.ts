@@ -9,6 +9,8 @@ import { checkedHistory, liftDoc, stamp, type ProjectDoc, type ProjectRecord, ty
 import { peekCard } from './names.js'
 import { PostgresAssetStore } from './assets.js'
 import { PostgresAiKeyStore } from './ai-keys.js'
+import { PostgresAccountPlanStore } from './account-plans.js'
+import { QuotaReached, growth, type Limit } from './quotas.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
@@ -35,6 +37,14 @@ export class PostgresAuthStore implements AuthStore {
   async accountById(id: string): Promise<Account | null> {
     const [row] = await this.sql<{ id: string; email: string }[]>`select id, email from accounts where id = ${id}`
     return row ? { id: String(row.id), email: row.email } : null
+  }
+  async accountByEmail(email: string): Promise<Account | null> {
+    const [row] = await this.sql<{ id: string; email: string }[]>`select id, email from accounts where email = ${email}`
+    return row ? { id: String(row.id), email: row.email } : null
+  }
+  async listAccounts(): Promise<Account[]> {
+    const rows = await this.sql<{ id: string; email: string }[]>`select id, email from accounts order by id`
+    return rows.map((row) => ({ id: String(row.id), email: row.email }))
   }
   async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
     await this.sql`insert into auth_sessions (session_hash, account_id, expires_at) values (${sessionHash}, ${accountId}, ${expiresAt})`
@@ -134,6 +144,11 @@ export class PostgresLogStore implements LogStore {
 
   auth(): PostgresAuthStore {
     return new PostgresAuthStore(this.sql)
+  }
+
+  // Each account's tier (#1193, A2): the operator's today, Stripe's later.
+  accountPlans(): PostgresAccountPlanStore {
+    return new PostgresAccountPlanStore(this.sql)
   }
 
   // The designer's own AI key (#999): sealed, one per account.
@@ -367,28 +382,48 @@ export class PostgresLogStore implements LogStore {
   }
 }
 
+// The ceiling on the games an account owns (#1193), counted and held in the transaction that writes
+// the game. The lock is the account's for its games, taken only when there is a ceiling to hold, and
+// it serialises exactly the writes that could cross it: a second create for the same account waits
+// here until the first has committed or rolled back, and then counts what the first left. In the
+// two-key form, so it never shares a key with the single-key locks on tables.
+async function within(tx: postgres.TransactionSql, owner: string | undefined, limit: Limit | undefined): Promise<void> {
+  if (owner === undefined || limit === undefined || limit === null) return
+  await tx`select pg_advisory_xact_lock(hashtext('quota:projects'), hashtext(${owner}))`
+  const [row] = await tx<{ n: number }[]>`select count(*)::int as n from projects where owner = ${owner}`
+  const met = growth('projects', limit, row?.n ?? 0, 1)
+  if (met) throw new QuotaReached(met)
+}
+
 export class PostgresProjectStore implements ProjectStore {
   constructor(private readonly sql: postgres.Sql) {}
 
-  async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
+  async create(id: string, doc: ProjectDoc, owner?: string, limit?: Limit): Promise<ProjectRecord> {
     await this.sql.begin(async (tx) => {
+      await within(tx, owner, limit)
       await tx`insert into projects (id, rev, doc, owner) values (${id}, 1, ${tx.json(doc as never)}, ${owner ?? null})`
       await tx`insert into project_versions (project_id, rev, doc) values (${id}, 1, ${tx.json(doc as never)})`
     })
     return { ...doc, id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
   }
 
-  async restore(id: string, versions: RestoredVersion[], owner?: string): Promise<ProjectRecord> {
+  async restore(id: string, versions: RestoredVersion[], owner?: string, limit?: Limit): Promise<ProjectRecord> {
     const last = checkedHistory(versions)
     // One transaction: a history is brought back whole or not at all, and an id that is taken fails
     // on its primary key before anything is kept.
     await this.sql.begin(async (tx) => {
+      await within(tx, owner, limit)
       await tx`insert into projects (id, rev, doc, owner) values (${id}, ${last.rev}, ${tx.json(last.doc as never)}, ${owner ?? null})`
       for (const v of versions) {
         await tx`insert into project_versions (project_id, rev, doc, label, created_at) values (${id}, ${v.rev}, ${tx.json(v.doc as never)}, ${v.label ?? null}, ${v.at})`
       }
     })
     return { ...last.doc, id, rev: last.rev, ...(owner !== undefined ? { owner } : {}) }
+  }
+
+  async owned(owner: string): Promise<number> {
+    const [row] = await this.sql<{ n: number }[]>`select count(*)::int as n from projects where owner = ${owner}`
+    return row?.n ?? 0
   }
 
   async load(id: string): Promise<ProjectRecord | null> {

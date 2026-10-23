@@ -5,6 +5,7 @@ import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { Role } from './roles.js'
 import { peekCard, type CardPeek } from './names.js'
+import { QuotaReached, growth, type Limit } from './quotas.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -211,11 +212,17 @@ export function checkedHistory<T extends { rev: number }>(versions: readonly T[]
 }
 
 export type ProjectStore = {
-  create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord>
+  // `limit` is the owner's ceiling on the games it owns (#1193, A2): counted and written in one step,
+  // so two games asked for at the ceiling's last place give exactly one, and the other throws
+  // `QuotaReached` with nothing written. Absent or null is unlimited.
+  create(id: string, doc: ProjectDoc, owner?: string, limit?: Limit): Promise<ProjectRecord>
   // A new project with a history it already had (G5, #528): brought back from an export, each
   // version at its own revision, date and name. The revisions are one save after another from 1,
-  // as the history always is; an id that is taken is refused and nothing is written.
-  restore(id: string, versions: RestoredVersion[], owner?: string): Promise<ProjectRecord>
+  // as the history always is; an id that is taken is refused and nothing is written. `limit` as
+  // for `create`.
+  restore(id: string, versions: RestoredVersion[], owner?: string, limit?: Limit): Promise<ProjectRecord>
+  // How many games an account owns (#1193): the measure `projects`, counted out of `owner`.
+  owned(owner: string): Promise<number>
   load(id: string): Promise<ProjectRecord | null>
   list(owner: string): Promise<ProjectSummary[]>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
@@ -262,17 +269,20 @@ export class MemoryProjectStore implements ProjectStore {
   private readonly shared = new Map<string, Map<string, Role>>()
   private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean }>()
 
-  async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
+  // Counted and written with no wait between them, so no other request can come in between.
+  async create(id: string, doc: ProjectDoc, owner?: string, limit?: Limit): Promise<ProjectRecord> {
     if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
+    this.within(owner, limit)
     const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
     this.docs.set(id, rec)
     this.history.set(id, [{ rev: 1, at: new Date().toISOString(), doc: structuredClone(doc) }])
     return structuredClone(rec)
   }
 
-  async restore(id: string, versions: RestoredVersion[], owner?: string): Promise<ProjectRecord> {
+  async restore(id: string, versions: RestoredVersion[], owner?: string, limit?: Limit): Promise<ProjectRecord> {
     const last = checkedHistory(versions)
     if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
+    this.within(owner, limit)
     const rec: ProjectRecord = { ...structuredClone(last.doc), id, rev: last.rev, ...(owner !== undefined ? { owner } : {}) }
     this.docs.set(id, rec)
     this.history.set(
@@ -285,6 +295,22 @@ export class MemoryProjectStore implements ProjectStore {
   async load(id: string): Promise<ProjectRecord | null> {
     const rec = this.docs.get(id)
     return rec ? liftDoc(structuredClone(rec)) : null
+  }
+
+  async owned(owner: string): Promise<number> {
+    return this.count(owner)
+  }
+
+  private count(owner: string): number {
+    let n = 0
+    for (const rec of this.docs.values()) if (rec.owner === owner) n++
+    return n
+  }
+
+  private within(owner: string | undefined, limit: Limit | undefined): void {
+    if (owner === undefined || limit === undefined) return
+    const met = growth('projects', limit, this.count(owner), 1)
+    if (met) throw new QuotaReached(met)
   }
 
   // Every project the account can see: its own, and the ones shared with it.

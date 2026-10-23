@@ -149,7 +149,8 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 
 Målet är att kunna ta betalt och lämna ifrån sig allt.
 
-- ⬜ Abonnemang via Stripe: gratisnivå med tak på projekt, kort och sessioner, betalnivåer, kvoter (A2, DRIFT §12).
+- 🔶 Kvoter och mätning: nivåer som konfiguration, kontots nivå, tak på projekt, kort, bord och lagring, och förbrukningen läsbar för designern och operatören (A2, DRIFT §12, #1192). Nivåerna i `BYD_PLANS`, kontots nivå och spel som första mått är byggda (#1193); kort, bord, lagring, renderingar och hur ett nått tak sägs återstår (#1194–#1198).
+- ⬜ Abonnemang via Stripe: betalnivåerna och kassan, som skriver kontots nivå i `account_plans` (A2, DRIFT §12).
 - 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - 🔶 Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11). Passkeys är byggda (#1180, L78): bandet på Mina spel efter länken, knappen och förslaget på inloggningskortet och kortet på profilen, med mejlet som återställning; OAuth återstår.

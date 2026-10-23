@@ -39,6 +39,16 @@ Följdkrav:
 Kvoter och mätning måste finnas i domänmodellen från början.
 Skaparen bär kostnaden för sina egna testare.
 
+Byggt 2026-10-23 (#1193, skiva 1 av #1192): **nivåer som konfiguration, kontots nivå, och spel som första mått.**
+- En nivå är ett namn och ett tak per mått, och ett tak är ett heltal eller `null` för obegränsat. Nivåerna är `BYD_PLANS` (DRIFT §12), läst och validerad med zod när appen startar, aldrig siffror i koden. Utan variabeln är standarden en nivå, `free`, med `null` på varje tak, och det är betans läge.
+- En variabel som inte går att läsa stoppar starten, och så gör en nivå som `account_plans` nämner men variabeln saknar, så att ett fel aldrig tyst blir obegränsat eller stängt och en felstavning aldrig tyst flyttar en designer till standarden. Ett mått som en nivå inte nämner är obegränsat på den.
+- Kontots nivå står i `account_plans` (konto, nivå, sedan, källa `operator` eller `stripe`); ett konto utan rad har standarden. Operatören sätter och tar bort den med `plan`-skriptet, efter adress.
+- Måttet `projects` är spelen kontot äger, räknat ur `projects.owner`. Det prövas i `POST /projects`, `POST /projects/import` (innan något skrivs, bilderna med) och `POST /projects/:id/duplicate`, och kopian och importen bärs av den som gör dem, så en medredigerare prövas mot sitt eget tak.
+- Prövning och skrivning är ett steg i lagret: ett transaktionslås per konto i Postgres, och ingen väntan mellan räkning och skrivning i minnet. Två spel som begärs samtidigt vid sista platsen ger exakt ett.
+- Ett nått tak är 402 med `{ error: 'quota', quota: { measure, limit, used, bearer } }`, och ingenting skrivs. Ett konto över sitt tak läser, öppnar, ändrar, exporterar och tar bort som förut; bara att skapa ett spel till avvisas.
+- `GET /me/usage` svarar med nivån och varje byggt måtts förbrukning och tak, och `usage`-skriptet skriver samma sak för varje konto. Drift utan konton prövar inga tak.
+- Grindarna är `packages/server/test/quotas.test.ts`, `account-plans.test.ts`, `quota-projects.test.ts` och `plans-at-start.test.ts`, mot båda lagren.
+
 Byggt 2026-10-23 (#1194, skiva 2 av PRD #1192): ett bord bärs av ett konto.
 Bäraren står i sessionen (`sessions.account_id`, `accountId` i båda lagren), sätts när bordet startas och flyttas aldrig.
 Ett bord som startas ur ett spel bärs av spelets ägare, aldrig av den testledare eller medredigerare som tryckte (D3), och bäraren står kvar när spelet tas bort, så att ett borttaget spel inte nollställer det som räknats mot ägaren.
