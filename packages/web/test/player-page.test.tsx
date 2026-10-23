@@ -517,6 +517,7 @@ describe('flagging a card (#1142)', () => {
     const second = document.querySelectorAll<HTMLElement>('[data-hand-card]')[1]!
     const card = second.getAttribute('data-hand-card')!
 
+    tab(/^Mer/)
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     const sheet = await screen.findByRole('dialog')
     expect(within(sheet).getByRole('button', { name: /Det som händer/ }).getAttribute('aria-pressed')).toBe('true')
@@ -525,11 +526,15 @@ describe('flagging a card (#1142)', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('status', { name: 'Tryck på kortet det gäller' })).toBeTruthy()
 
+    // The hand is a tab away (#1147), and a tab still turns while a card is pointed out.
+    tab(/^Handen/)
+    expect(screen.getByRole('tab', { name: /^Handen/ }).getAttribute('aria-selected')).toBe('true')
     fireEvent.pointerDown(second)
     fireEvent.pointerUp(second)
     fireEvent.click(second)
-    // The tap pointed the card out: no card is held up to read, and the sheet is back with it.
+    // The tap pointed the card out: no card is marked or held up to read, and the sheet is back.
     expect(document.querySelector('.byd-inspect')).toBeNull()
+    expect(second.getAttribute('aria-pressed')).toBe('false')
     const back = screen.getByRole('dialog', { name: 'Flagga kortet' })
     expect(within(back).getByPlaceholderText(/Vad hände/)).toHaveProperty('value', 'Texten är för lång')
     expect(within(back).getByRole('button', { name: 'Ta bort kortet ur flaggan' })).toBeTruthy()
@@ -542,6 +547,7 @@ describe('flagging a card (#1142)', () => {
   it('goes back to the sheet when pointing is cancelled, and Escape cancels too', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
+    tab(/^Mer/)
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
