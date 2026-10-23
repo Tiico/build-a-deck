@@ -1,6 +1,6 @@
 import type { ZoneAction } from '@byd/protocol'
 import type { Geometry, Zone } from '@byd/server/doc'
-import { besidePile, CARD_MM } from '../table/drop.js'
+import { besidePile, cardOnFloor, CARD_MM } from '../table/drop.js'
 
 // Where an action lays its cards beside a pile, as the setup's felt draws it (L30, #316): a
 // card's outline, in table millimetres, at the point `besidePile` gives — the same point the
@@ -32,9 +32,13 @@ export function laidBeside(actions: readonly ZoneAction[] | undefined): 1 | 2 {
   return counts.length > 0 && counts.every((n) => n === 1) ? 1 : 2
 }
 
+// A step that names its own side lays nothing on the pile's (#1203), and a row or an overlap starts
+// with one lone card in its corner wherever it ends — that card is what the outline stands for.
 function laid(step: ZoneAction['steps'][number]): number[] {
-  if (step.v === 'split' && step.to.at === 'beside') return [step.count.of === 'number' ? step.count.n : 2]
-  if ((step.v === 'take' || step.v === 'movePile') && step.to.at === 'beside') return [2]
+  if (step.v === 'shuffle' || step.v === 'flipTop' || step.to.at !== 'beside' || step.to.side !== undefined) return []
+  if ((step.v === 'split' || step.v === 'take') && (step.to.lay === 'row' || step.to.lay === 'overlap')) return [1]
+  if (step.v === 'split') return [step.count.of === 'number' ? step.count.n : 2]
+  if (step.v === 'take' || step.v === 'movePile') return [2]
   return []
 }
 
@@ -47,21 +51,4 @@ export function landingOf(zone: Zone, floor: Geometry, side = zone.beside ?? 'le
 }
 
 // Whether a card at `box`, turned `rot` degrees about its own centre, lies wholly on the floor.
-// The turn matters: a card that clears the edge upright reaches past it lying on its side.
-function onFloor(box: { x: number; y: number }, rot: number, floor: Geometry): boolean {
-  const c = { x: box.x + CARD_MM.w / 2, y: box.y + CARD_MM.h / 2 }
-  const rad = (rot * Math.PI) / 180
-  const cos = Math.cos(rad)
-  const sin = Math.sin(rad)
-  return [-1, 1].every((sx) =>
-    [-1, 1].every((sy) => {
-      const dx = (sx * CARD_MM.w) / 2
-      const dy = (sy * CARD_MM.h) / 2
-      const x = c.x + dx * cos - dy * sin
-      const y = c.y + dx * sin + dy * cos
-      // A hair of slack for the sine of a turn that is a whole quarter, which is never quite zero.
-      const eps = 1e-6
-      return x >= floor.x - eps && x <= floor.x + floor.w + eps && y >= floor.y - eps && y <= floor.y + floor.h + eps
-    }),
-  )
-}
+const onFloor = (box: { x: number; y: number }, rot: number, floor: Geometry): boolean => cardOnFloor({ x: box.x + CARD_MM.w / 2, y: box.y + CARD_MM.h / 2 }, rot, floor)

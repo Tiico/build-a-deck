@@ -1,7 +1,8 @@
 import { applyEdit, checkNewName, decideEdit, type EditIntent } from './edits.js'
 import { stamp, type Ceilings, type ProjectDoc, type ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
-import { QuotaReached, type QuotaMet } from './quotas.js'
+import { cardGrowth, type CardMeasure } from './quota-cards.js'
+import { QuotaReached, type Limit, type QuotaMet } from './quotas.js'
 
 // One actor owns one project (D3). A project is structurally the same as a table — shared state
 // several people change at once, which belongs in the history — so it gets the table's shape: a
@@ -34,14 +35,18 @@ export type EditorMessage =
   // refusal without it the way it always did. `ask` is the number of the edit refused (#993), so
   // the editor takes that edit back and keeps every other one it has on the line.
   //
-  // `quota` is the ceiling a save would have crossed (#1192, #1197), with `why: 'quota'`: an addition
-  // as `to` and `ask` were, which a page from before it reads past. `bearer` is `you` when the one
-  // refused owns the game and `owner` when it is the game's owner who bears it.
+  // `quota` is the ceiling an edit (#1195) or a save (#1197) would have crossed (#1192), on a
+  // refusal whose `why` is `quota`: the measure, the ceiling, what is used, and who bears it — `you`
+  // when the editor owns the game, `owner` when its owner does. An addition as `to` and `ask` were:
+  // a page from before it reads the refusal by `why`, as it does any other.
   | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & { bearer: 'you' | 'owner' } }
 export type Presence = { id: string; name: string; role?: Role }
-// What a version that could not be made says: why, and the ceiling it met when that was why.
+// The ceiling an owner's games are held to on a card measure (#1195): asked of the owner's tier as
+// the edit is decided, so a tier changed while the game is open holds from the next edit.
+export type CardCeilings = (owner: string, measure: CardMeasure) => Promise<Limit>
 // The owner's ceilings a version is held to, asked for when the version is made (#1197).
 export type OwnerCeilings = () => Promise<Pick<Ceilings, 'storageBytes'>>
+// What a version that could not be made says: why, and the ceiling it met when that was why.
 export type Saved = { ok: true; rev: number } | { ok: false; reason: string; quota?: QuotaMet }
 
 export class ProjectActor {
@@ -56,6 +61,10 @@ export class ProjectActor {
     private rev: number,
     private at: number,
     private readonly store: ProjectStore,
+    // Who bears the game (A2), and what their tier allows of its cards. A game nobody owns — from
+    // before accounts — and a server without accounts hold no ceiling.
+    private readonly owner: string | undefined,
+    private readonly ceilings: CardCeilings | undefined,
   ) {}
 
   // The saved version, then everything that has happened since it.
@@ -77,9 +86,12 @@ export class ProjectActor {
   //
   // Passed over, never swallowed: the seq is named on stderr, which is the whole of what the box
   // can be asked (DRIFT §8), and it is the seq a bug report already carries.
-  static async load(id: string, store: ProjectStore): Promise<ProjectActor | null> {
+  //
+  // Replay asks no ceiling either (#1195): a ceiling is the live door's question, like every other
+  // check here, so a log over a ceiling set since it was written reads exactly as it was written.
+  static async load(id: string, store: ProjectStore, ceilings?: CardCeilings): Promise<ProjectActor | null> {
     const got = await replayed(id, store)
-    return got && new ProjectActor(id, got.doc, got.saved, got.rev, got.seq, store)
+    return got && new ProjectActor(id, got.doc, got.saved, got.rev, got.seq, store, got.owner, ceilings)
   }
 
   get doc(): ProjectDoc {
@@ -137,6 +149,12 @@ export class ProjectActor {
     // only the verb, so a stricter rule about new names never makes an old log read differently.
     checkNewName(this.current, intent)
     const next = applyEdit(this.current, intent)
+    // The owner's ceiling on the game's cards (#1195), asked of the edit as a whole — a compound
+    // edit, an import of rows, a document restored — before anything is committed, so an edit that
+    // would cross it is in no log and on no screen. Only growth is asked: shrinking always goes.
+    const { owner, ceilings } = this
+    const met = owner !== undefined && ceilings ? await cardGrowth(this.current, next, (measure) => ceilings(owner, measure)) : null
+    if (met) throw new QuotaReached(met)
     const entry: AppliedEdit = { seq: this.at + 1, at: new Date().toISOString(), ...(by ? { by } : {}), ...(from ? { from } : {}), intent }
     await this.store.appendEdits(this.id, [entry])
     this.current = next
@@ -146,18 +164,18 @@ export class ProjectActor {
   }
 
   // Saving makes a version of what stands now (B4), and marks how far the log had come, so a
-  // fresh actor knows which edits are already in it. `from` is the editor that asked. `ceilings`
-  // are the owner's (#1197): a version that names more than the owner has room for is not made,
-  // and says the ceiling it met; the log and what stands are as they were. They are asked for in
-  // the save's own turn of the queue, never before it, so a save takes its place behind exactly
+  // fresh actor knows which edits are already in it. `from` is the editor that asked. `storage`
+  // is the owner's ceiling on storage (#1197): a version that names more than the owner has room
+  // for is not made, and says the ceiling it met; the log and what stands are as they were. It is
+  // asked for in the save's own turn of the queue, never before it, so a save takes its place behind exactly
   // the edits sent before it, however long the question takes (#994).
-  async save(from?: string, ceilings?: OwnerCeilings): Promise<Saved> {
-    return this.serial(() => this.makeVersion(from, ceilings))
+  async save(from?: string, storage?: OwnerCeilings): Promise<Saved> {
+    return this.serial(() => this.makeVersion(from, storage))
   }
-  private async makeVersion(from?: string, ceilings?: OwnerCeilings): Promise<Saved> {
+  private async makeVersion(from?: string, storage?: OwnerCeilings): Promise<Saved> {
     let result: Awaited<ReturnType<ProjectStore['replace']>>
     try {
-      result = await this.store.replace(this.id, this.rev, this.current, this.at, ceilings ? await ceilings() : undefined)
+      result = await this.store.replace(this.id, this.rev, this.current, this.at, storage ? await storage() : undefined)
     } catch (e) {
       if (e instanceof QuotaReached) return { ok: false as const, reason: 'quota', quota: e.quota }
       throw e
@@ -177,15 +195,15 @@ export class ProjectActor {
   // of it, in one turn of the queue so that no edit can land between the two. It is written
   // against a rev, and a rev the project has left is a conflict, as it always was.
   //
-  // `ceilings` as for `save`. The door asks the ceiling on storage before it comes here (#1197), so
+  // `storage` as for `save`. The door asks the ceiling on storage before it comes here (#1197), so
   // a document refused for it never reaches the log; the version asks again in the step that
   // writes it, and only two writes racing for the owner's last bytes can leave the document in
   // the log and the version unmade.
-  async put(expectedRev: number, doc: ProjectDoc, by?: string, ceilings?: OwnerCeilings): Promise<Saved> {
+  async put(expectedRev: number, doc: ProjectDoc, by?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
       if (stamp(doc) !== stamp(this.current)) await this.commit({ v: 'restore', doc }, by)
-      return this.makeVersion(undefined, ceilings)
+      return this.makeVersion(undefined, storage)
     })
   }
 
@@ -215,7 +233,7 @@ export class ProjectActor {
 // What the log says the project is (D3): the saved version, then every edit since it. It is what
 // an actor is built from, and what is read of a project nobody has open (#909) — the log is the
 // truth, and a saved version is only how far it had come when someone last saved.
-async function replayed(id: string, store: ProjectStore): Promise<{ doc: ProjectDoc; saved: ProjectDoc; rev: number; seq: number } | null> {
+async function replayed(id: string, store: ProjectStore): Promise<{ doc: ProjectDoc; saved: ProjectDoc; rev: number; seq: number; owner: string | undefined } | null> {
   const rec = await store.load(id)
   if (!rec) return null
   const versions = await store.versions(id)
@@ -230,7 +248,7 @@ async function replayed(id: string, store: ProjectStore): Promise<{ doc: Project
       console.error(JSON.stringify({ msg: 'edit-skipped', project: id, seq: entry.seq, intent: entry.intent.v, error: err instanceof Error ? err.message : String(err) }))
     }
   }
-  return { doc, saved, rev: rec.rev, seq: tail.at(-1)?.seq ?? from }
+  return { doc, saved, rev: rec.rev, seq: tail.at(-1)?.seq ?? from, owner: rec.owner }
 }
 
 // The document without the record's own fields: what an editor holds and an edit applies to.
@@ -244,7 +262,11 @@ function stripped(rec: ProjectDoc & { id: string; rev: number; owner?: string })
 // One actor per project, in this process, exactly as one actor per table (D2, D3).
 export class ProjectHost {
   private readonly actors = new Map<string, Promise<ProjectActor | null>>()
-  constructor(private readonly store: ProjectStore) {}
+  // `ceilings`: what each owner's tier allows of a game's cards (#1195); without it nothing is held.
+  constructor(
+    private readonly store: ProjectStore,
+    private readonly ceilings?: CardCeilings,
+  ) {}
 
   async get(id: string): Promise<ProjectActor | null> {
     const existing = this.actors.get(id)
@@ -258,7 +280,7 @@ export class ProjectHost {
     // be handed to every later asker — one unreachable moment would close the project until the
     // process was restarted — and the asker that made the entry cannot clear it itself, because
     // it never comes back from the `await` to do so.
-    const loading = ProjectActor.load(id, this.store).catch((err: unknown) => {
+    const loading = ProjectActor.load(id, this.store, this.ceilings).catch((err: unknown) => {
       this.actors.delete(id)
       throw err
     })

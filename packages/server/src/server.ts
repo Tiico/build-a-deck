@@ -38,6 +38,7 @@ import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, regis
 import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, growth, limitOf, type Limit, type Measure, type Plans, type QuotaMet } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
+import { NO_CARDS, cardGrowth, type CardMeasure } from './quota-cards.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -868,7 +869,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
       // number its editor gave it (#993), when it gave one.
       let to: 'edit' | 'save' | undefined
       let ask: number | undefined
-      const refuse = (why: string) => send({ v: 'refused', why, ...(to ? { to } : {}), ...(ask === undefined ? {} : { ask }) })
+      const refuse = (why: string, quota?: QuotaMet) => send({ v: 'refused', why, ...(to ? { to } : {}), ...(ask === undefined ? {} : { ask }), ...(quota ? { quota: { ...quota, bearer: role === 'owner' ? 'you' : 'owner' } } : {}) })
       try {
         const raw: unknown = JSON.parse(data.toString())
         const msg = EditorRequest.parse(raw)
@@ -889,7 +890,11 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
         ask = msg.ask
         await actor.edit(msg.intent as EditIntent, account?.id, editor.id, ask)
       } catch (err) {
-        refuse(err instanceof Error ? err.message : String(err))
+        // The owner's ceiling on the game's cards (#1195): a refusal like any other, with the
+        // ceiling's numbers beside it. It is the owner's whoever edits, and only the owner is
+        // told it is their own.
+        if (err instanceof QuotaReached) refuse('quota', err.quota)
+        else refuse(err instanceof Error ? err.message : String(err))
         actor.resync(editor)
       }
     })()
@@ -906,12 +911,21 @@ function flightOf(opts: ServerOptions, caps: Partial<AiCaps> | undefined): AiFli
   return flight
 }
 
+// What an owner's tier allows of a game's cards (#1195): asked only with accounts on, since without
+// them nobody bears anything. The tier is read as the edit is decided, so one the operator changes
+// holds from the next edit, whoever has the game open.
+function cardCeilings(opts: ServerOptions): ((owner: string, measure: CardMeasure) => Promise<Limit>) | undefined {
+  if (!opts.auth) return undefined
+  const plans = opts.plans ?? DEFAULT_PLANS
+  return async (owner, measure) => limitOf(plans, await planOf(opts.accountPlans, plans, owner), measure)
+}
+
 // The editing actors of this server, made on first use so a server without projects has none.
 const HOSTS = new WeakMap<ServerOptions, ProjectHost>()
 function editors(opts: ServerOptions, projects: ProjectStore): ProjectHost {
   const existing = HOSTS.get(opts)
   if (existing) return existing
-  const host = new ProjectHost(projects)
+  const host = new ProjectHost(projects, cardCeilings(opts))
   HOSTS.set(opts, host)
   return host
 }
@@ -1335,12 +1349,22 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return null
     }
   }
+  // A new game's cards, held to the ceiling of whoever makes it (#1195): a game sent whole, an
+  // import and a duplicate grow from nothing, and are borne by the account that will own them.
+  const cardsMet = async (doc: Pick<ProjectDoc, 'rows'>): Promise<QuotaMet | null> => {
+    const ceilings = cardCeilings(opts)
+    return account && ceilings ? cardGrowth(NO_CARDS, doc, (measure) => ceilings(account.id, measure)) : null
+  }
   // What the account uses and its ceilings (#1193, #1192): its tier and, per measure that is built,
-  // the use and the ceiling, `null` for unlimited. How the web says it is slice 6 (#1198).
+  // the use and the ceiling, `null` for unlimited; cards per game for every game it owns, counted out
+  // of the game as it stands (#1195). How the web says it is slice 6 (#1198).
   if (req.method === 'GET' && url.pathname === '/me/usage') {
     if (!opts.auth) json(res, 404, { error: 'accounts are off' })
     else if (!account) json(res, 401, { error: 'log in first' })
-    else json(res, 200, await usageOf({ projects, ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.renders ? { renders: opts.renders } : {}) }, plans, account.id, clock(opts)))
+    else {
+      const host = editors(opts, projects)
+      json(res, 200, await usageOf({ projects, live: (id) => host.live(id), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.renders ? { renders: opts.renders } : {}) }, plans, account.id, clock(opts)))
+    }
     return true
   }
   if (req.method === 'GET' && url.pathname === '/projects') {
@@ -1422,8 +1446,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // imports at the last place still give exactly one.
     const limit = await gamesLimit()
     const met = account && limit !== undefined ? growth('projects', limit, await projects.owned(account.id), 1) : null
-    if (met) {
-      quotaRefused(res, met, 'you')
+    // And the cards of the version that becomes current, against the same account's ceiling (#1195).
+    const over = met ?? (await cardsMet(read.current))
+    if (over) {
+      quotaRefused(res, over, 'you')
       return true
     }
     // And so is the ceiling on storage (#1197): every picture any version names, weighed by the
@@ -1459,6 +1485,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const { id: wanted, ...doc } = body
     checkedName(doc.name)
     validateSetup(setupFromProject(doc), opts.registry)
+    const cards = await cardsMet(doc)
+    if (cards) {
+      quotaRefused(res, cards, 'you')
+      return true
+    }
     const ceilings = await ownCeilings()
     const rec = await within(() => projects.create(wanted ?? randomUUID(), doc, account?.id, ceilings))
     if (rec) json(res, 201, { id: rec.id, rev: rec.rev })
@@ -1525,7 +1556,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const actor = await editors(opts, projects).get(gate.rec.id)
-    const result = actor ? await actor.put(rev, doc, account?.id, () => storageCeiling(opts, gate.rec.owner)) : ({ ok: false, reason: 'unknown project' } as Saved)
+    // The owner's ceiling on the game's cards stands in the actor's decide step (#1195), so a
+    // document over it is refused before it is in the log, and no version is made of it. The
+    // ceiling on storage is asked again where the version is written (#1197).
+    let result: Saved
+    try {
+      result = actor ? await actor.put(rev, doc, account?.id, () => storageCeiling(opts, gate.rec.owner)) : { ok: false, reason: 'unknown project' }
+    } catch (e) {
+      if (!(e instanceof QuotaReached)) throw e
+      quotaRefused(res, e.quota, bearerOf(account, gate.rec.owner))
+      return true
+    }
     if (!result.ok && result.quota) quotaRefused(res, result.quota, bearerOf(account, gate.rec.owner))
     else if (!result.ok && result.reason === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
     else if (!result.ok) json(res, 404, { error: 'unknown project' })
@@ -1933,6 +1974,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const name = duplicatedName(doc.name, taken, langOf(url.searchParams.get('lang')))
     // The copy is the duplicating account's, and so is its place under the ceiling: a co-editor's
     // copy is held to the co-editor's tier and never to the owner's (A2, #1192).
+    const cards = await cardsMet(doc)
+    if (cards) {
+      quotaRefused(res, cards, 'you')
+      return true
+    }
     const ceilings = await ownCeilings()
     const rec = await within(() => projects.create(randomUUID(), { ...structuredClone(doc), name }, account?.id, ceilings))
     if (rec) json(res, 201, { id: rec.id, rev: rec.rev, name })

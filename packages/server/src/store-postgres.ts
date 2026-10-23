@@ -479,6 +479,11 @@ export class PostgresProjectStore implements ProjectStore {
     return new Set(rows.map((r) => r.hash))
   }
 
+  async ownedIds(owner: string): Promise<string[]> {
+    const rows = await this.sql<{ id: string }[]>`select id from projects where owner = ${owner} order by id collate "C"`
+    return rows.map((r) => r.id)
+  }
+
   async load(id: string): Promise<ProjectRecord | null> {
     const [row] = await this.sql<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id}`
     return row ? liftDoc({ ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) }) : null

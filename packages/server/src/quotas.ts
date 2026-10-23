@@ -21,7 +21,7 @@ import { z } from 'zod'
 export const MEASURES = ['projects', 'cardRowsPerProject', 'cardCopiesPerProject', 'openTables', 'tablesPer30Days', 'storageBytes', 'rendersPer30Days'] as const
 export type Measure = (typeof MEASURES)[number]
 // What `GET /me/usage` and the operator's usage script say: the measures the server counts today.
-export const BUILT_MEASURES = ['projects', 'storageBytes', 'rendersPer30Days'] as const satisfies readonly Measure[]
+export const BUILT_MEASURES = ['projects', 'cardRowsPerProject', 'cardCopiesPerProject', 'storageBytes', 'rendersPer30Days'] as const satisfies readonly Measure[]
 export type BuiltMeasure = (typeof BUILT_MEASURES)[number]
 
 // The window `rendersPer30Days` is counted over: rolling, so no day of the month is better than another.
