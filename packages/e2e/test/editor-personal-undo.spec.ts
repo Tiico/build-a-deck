@@ -1,7 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import type { ProjectDoc } from '@byd/server'
 import { DESK } from '../support/devices.js'
-import { RULES, twoEditors } from '../support/editors.js'
+import { RULES, openTogether, twoEditors } from '../support/editors.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 
@@ -72,8 +72,7 @@ const title = (doc: ProjectDoc, id: string) => doc.rows.find((r) => r.id === id)
 test('ångra tar tillbaka Adas kort och lämnar Bos stycke i Regler, och gör om lägger tillbaka kortet (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await writeCell(page, 'kort-1 title', ADA)
     await writeParagraph(game.bo, 'Första stycket.', BO)
@@ -104,8 +103,7 @@ test('ångra tar tillbaka Adas kort och lämnar Bos stycke i Regler, och gör om
 test('ångra i Regler tar tillbaka Adas stycke och lämnar Bos (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await writeParagraph(page, 'Första stycket.', ADA)
     await tab(game.bo, 'Regler')
@@ -125,8 +123,7 @@ test('ångra i Regler tar tillbaka Adas stycke och lämnar Bos (#1056)', async (
 test('ångra i Mall tar tillbaka Adas flytt och lämnar Bos kort (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await moveTitle(page, '9')
     await writeCell(game.bo, 'kort-2 title', BO)
@@ -150,8 +147,7 @@ test('ångra i Mall tar tillbaka Adas flytt och lämnar Bos kort (#1056)', async
 test('ångra vägrar med en mening när Bo har ändrat samma cell sedan dess, och skriver inte över honom (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await writeCell(page, 'kort-1 title', ADA)
     await tab(game.bo, 'Tabell')
@@ -177,8 +173,7 @@ test('ångra vägrar med en mening när Bo har ändrat samma cell sedan dess, oc
 test('ångra i Mall vägrar när Bo har flyttat samma lager sedan dess (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await moveTitle(page, '9')
     await tab(game.bo, 'Mall')
@@ -218,8 +213,7 @@ const card = (page: Page, id: string) => page.locator(`tr[data-card-ref="${id}"]
 test('ångra tar bort Adas nya kort fast Bo har lagt till en kolumn sedan, och Bos kolumn står kvar (#1069)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await addCard(page)
     await tab(game.bo, 'Tabell')
@@ -245,8 +239,7 @@ test('ångra tar bort Adas nya kort fast Bo har lagt till en kolumn sedan, och B
 test('ångra vägrar ta bort Adas nya kort när Bo har skrivit i det, i sin nya kolumn (#1069)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await addCard(page)
     await tab(game.bo, 'Tabell')
@@ -290,8 +283,7 @@ async function removeColumn(page: Page, name: string): Promise<void> {
 test('ångra lägger tillbaka Adas kort utan värdet i kolumnen Bo har tagit bort, och säger varför (#1072)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await removeCard(page, 'kort-1')
     await tab(game.bo, 'Tabell')
@@ -319,8 +311,7 @@ test('ångra lägger tillbaka Adas kort utan värdet i kolumnen Bo har tagit bor
 test('gör om lägger tillbaka Adas kopia utan värdet i kolumnen Bo har tagit bort, och säger varför (#1072)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     // En kopia av kort-1 är ett kort med ett värde i varje kolumn, lagt till i ett steg.
     await tab(page, 'Tabell')
@@ -373,8 +364,7 @@ const hasField = (doc: ProjectDoc, field: string) => doc.rows.some((r) => field 
 test('ångra vägrar ta tillbaka Adas namnbyte på en kolumn som Bo har tagit bort, och kolumnen kommer inte tillbaka (#1076)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page, KRAFT)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await renameColumn(page, 'kraft', 'styrka')
     await tab(game.bo, 'Tabell')
@@ -399,8 +389,7 @@ test('ångra vägrar ta tillbaka Adas namnbyte på en kolumn som Bo har tagit bo
 test('gör om vägrar lägga tillbaka Adas namnbyte när Bo har tagit bort kolumnen efter att hon ångrat (#1076)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page, KRAFT)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await renameColumn(page, 'kraft', 'styrka')
     await undo(page).click()
@@ -427,8 +416,7 @@ test('gör om vägrar lägga tillbaka Adas namnbyte när Bo har tagit bort kolum
 test('gör om vägrar när Bo har skrivit i cellen efter att Ada ångrat (#1056)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await page.goto(game.editorUrl)
-    await game.bo.goto(game.editorUrl)
+    await openTogether(page, game.bo, game.editorUrl)
 
     await writeCell(page, 'kort-1 title', ADA)
     await undo(page).click()
