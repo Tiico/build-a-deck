@@ -85,6 +85,8 @@
 }
 .byd-bar-plays .byd-bar-main, .byd-inspect-actions > .byd-bar-main { flex-grow: 1.4; background: var(--byd-accent); color: var(--byd-on-accent); }
 .byd-bar-plays > :last-child:not(.byd-bar-main) { flex: 0 0 auto; }
+/* At the narrowest phone a setup's first place stays one line («Framför mig» broke in two at 320). */
+@media (max-width: 359px) { .byd-bar-plays button { padding: 0 8px; font-size: 14px; } }
 .byd-bar-plays button:disabled, .byd-inspect-actions > button:disabled { opacity: .5; }
 /* Under a card held up the row is the reading width, three to a row at 320 (K26). */
 .byd-inspect-actions > button { min-height: 44px; padding: 0 8px; font-size: 14px; }
