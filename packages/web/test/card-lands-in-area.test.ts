@@ -403,7 +403,7 @@ describe.each([
     if (!c) throw new Error('ingenting ligger på filten')
     const thing: Thing =
       kind === 'counter'
-        ? { key: `counter:${c.id}`, kind: 'counter', id: c.id, name: 'Liv', zone: c.zone, value: 20 }
+        ? { key: `counter:${c.id}`, kind: 'counter', id: c.id, name: 'Liv', zone: c.zone, value: 20, owner: null }
         : { key: `die:${c.id}`, kind: 'die', id: c.id, name: 'd6', zone: c.zone, value: 1 }
     const place = placesFor(view, new Set([c.id]), c.zone).find((p) => p.zone === 'mine:A' && p.kind === 'area')
     if (!place) throw new Error('ytan framför Nina går inte att adressera')
