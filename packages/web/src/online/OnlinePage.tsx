@@ -13,6 +13,7 @@ import { seatColor } from '../table/seatColor.js'
 import { playIntents } from '../player/play.js'
 import { SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
 import { PlayerSurface, useHandMarks } from '../player/PlayerSurface.js'
+import { useSeatTurned } from '../player/turned.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/session.js'
 import { SeatLine } from './SeatLine.js'
@@ -104,6 +105,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const showAll = useRef<HTMLButtonElement>(null)
   const [toast, setToast] = useToast()
   const marks = useHandMarks()
+  const turned = useSeatTurned(sessionId, seat, view)
   const version = useSessionVersion(http, sessionId, view?.ended === true)
   // Whether this window gets a board at all (#99). Off a browser there is no window to ask, and a
   // missing answer must never take the board away — the same reading `column` below makes.
@@ -119,6 +121,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
       setSpread(false)
     },
     faces: http,
+    turned,
   })
   useActivityLive(activity, view, seat)
   // The start waits for the cards here too (#765, beslut B): a seat at a distance deals the same
@@ -168,7 +171,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     const dest = landing(clientX, clientY)
     if (!dest) return
     // A card the table refuses is said beside where it was let go, as a drop on the felt is (#682).
-    const sent = client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
+    const sent = client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }, 'top', turned.turned))
     table.current?.answer(sent, clientX, clientY)
   }
   // While it is carried the felt says where it will land (beslut C, prototyp 23): the zone or hand
@@ -243,15 +246,16 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             </p>
           )}
           {column ? (
-            <HandColumn cards={hand} faces={http} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandColumn cards={hand} faces={http} turned={turned.turned} onTurn={(c) => turned.toggle(c.id)} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           ) : (
-            <HandFan cards={hand} faces={http} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandFan cards={hand} faces={http} turned={turned.turned} onTurn={(c) => turned.toggle(c.id)} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           )}
         </div>
         {up && (
           <HandSpread
             cards={hand}
             faces={http}
+            turned={turned.turned}
             onOpen={(c) => kbd.openHand(c, [])}
             onClose={() => {
               setSpread(false)
@@ -279,6 +283,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             faces={http}
             version={version}
             marks={marks}
+            turnedHand={turned}
             openHand={kbd.openHand}
             onLeft={() => onLeave(wayBack(links))}
             away

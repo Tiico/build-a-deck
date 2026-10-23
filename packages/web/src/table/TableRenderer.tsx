@@ -1846,7 +1846,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           </button>
         )}
         {more}
-        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} named={forTheRoom} />}
+        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable, me !== null)} named={forTheRoom} />}
         </>,
       )}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => send([{ v: 'setCounter', component: entry.id, value }], null)} onClose={() => setEntry(null)} />}

@@ -1042,6 +1042,17 @@
   cursor: pointer;
 }
 .byd-crown-box[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
+/* A button that opens a menu under it (`data-drop`) says so while the menu stands (#1144,
+   beställarens val B): the chevron turns up and the button is drawn pressed, as the column door's
+   handle is (#695). Two signs and not one — the shape says which way, the ground says the button
+   is held — so a second press reads as the way shut. The ground is a shade over whatever the
+   button's own role paints, and `rotate` leaves the glyph's own `transform` alone. */
+[data-drop][aria-expanded='true'] { background-image: linear-gradient(rgb(0 0 0 / 28%), rgb(0 0 0 / 28%)); box-shadow: inset 0 2px 4px rgb(0 0 0 / 50%); }
+[data-drop] .byd-glyph[data-glyph='chevron-down'] { transition: rotate 150ms ease-out; }
+[data-drop][aria-expanded='true'] .byd-glyph[data-glyph='chevron-down'] { rotate: 180deg; }
+@media (prefers-reduced-motion: reduce) {
+  [data-drop] .byd-glyph[data-glyph='chevron-down'] { transition: none; }
+}
 /* A chevron after words (#1083) is drawn on the middle half of its 16 grid, and the rows that carry
    one have no room for the air either side of it: the crown and the table's foot were measured to the
    ▾, › and ↕ they replaced (#130, wall-crown-beside; #618, table-antal-rail; #46, data-table-widths),

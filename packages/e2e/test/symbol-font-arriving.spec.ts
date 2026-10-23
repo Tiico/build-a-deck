@@ -80,7 +80,7 @@ test('a symbol chosen for the card is drawn once its bytes arrive, and not asked
   expect(asked).toEqual([])
 
   release()
-  await expect(icon).toHaveAttribute('src', /\/assets\/[0-9a-f]{64}$/)
+  await expect(icon).toHaveAttribute('src', /\/assets\/[0-9a-f]{64}\/bytes$/)
   await expect.poll(() => icon.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true)
   expect(asked).toEqual([])
 })

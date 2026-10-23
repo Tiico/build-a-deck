@@ -3,6 +3,7 @@ import { playIntents } from './play.js'
 import { lazy, Suspense, useMemo } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { PlayerSurface, useHandMarks } from './PlayerSurface.js'
+import { useSeatTurned } from './turned.js'
 import { SeatSurvey, refusedText, useSessionVersion } from './SessionOverlays.js'
 import { useSitDown } from './useSitDown.js'
 import { claimUrl } from '../account/session.js'
@@ -50,11 +51,13 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const faces = url.replace(/^ws/, 'http')
 
   const marks = useHandMarks()
+  const turned = useSeatTurned(sessionId, seat, view)
   const version = useSessionVersion(faces, sessionId, view?.ended === true)
   // The phone has no felt, so the keyboard here is the hand and the address panel it opens (#1).
   const kbd = useFeltKeyboard(view, false, {
     act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
     onPlayed: marks.clear,
+    turned,
     faces,
     // Enter on a hand card offers what the play sheet offers, and nothing else (#483).
     handSheet: (now) => {
@@ -68,6 +71,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             zone,
             undefined,
             places.find((p) => p.zone === zone)?.at,
+            turned.turned,
           ),
       }
     },
@@ -104,6 +108,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           faces={faces}
           version={version}
           marks={marks}
+          turnedHand={turned}
           openHand={kbd.openHand}
           onLeft={() => onLeave(wayBack(links))}
         />

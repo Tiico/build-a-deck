@@ -10,9 +10,11 @@ import { ArrowGlyph } from '../glyphs.js'
 //
 // Reading is not one of them (#507, beslut A): a tap on the card holds it up, so «Läs valt kort»
 // was a second way to do what the first press already does, and it cost two presses to get there.
-export function HandActions({ view, cards, pending, onPlay, onMore, refusal, refusedZone, order }: {
+export function HandActions({ view, cards, pending, onPlay, onMore, refusal, refusedZone, order, down = false }: {
   view: Snapshot
   cards: VisibleComponentState[]
+  // The chosen cards are turned over in the hand and go face down wherever they go (#1133).
+  down?: boolean
   pending: boolean
   refusal?: RefusalHandle | undefined
   refusedZone?: string | null
@@ -26,7 +28,7 @@ export function HandActions({ view, cards, pending, onPlay, onMore, refusal, ref
   const targets = handTargets(view, t)
   return (
     <section className="byd-hand-actions" aria-label={t('player.hand.actions')}>
-      <p>{first ? t('player.hand.chosen', { name: cards.length === 1 ? cardName(first, t) : t('play.cards.other', { n: cards.length }) }) : t('player.hand.none')}</p>
+      <p>{first ? t(down ? 'player.hand.chosen.down' : 'player.hand.chosen', { name: cards.length === 1 ? cardName(first, t) : t('play.cards.other', { n: cards.length }) }) : t('player.hand.none')}</p>
       <div className="byd-hand-targets">
         {targets.map(target => (
           <button
@@ -75,9 +77,11 @@ export function handTargets(view: Snapshot, t: ReturnType<typeof useT>) {
 // beslut B, prototyp 28). At 320 × 568 the actions under the hand stood 219 px below the screen's
 // edge; the bar #483 put there for «Regler» is always in reach, so it carries the one press that
 // plays and the way to every other place. Nothing when no card is chosen.
-export function FootPlay({ view, cards, pending, onPlay, onMore, refusal, refusedZone }: {
+export function FootPlay({ view, cards, pending, onPlay, onMore, refusal, refusedZone, down = false }: {
   view: Snapshot
   cards: VisibleComponentState[]
+  // Played face down, because the card is turned over in the hand (#1133): the one press says so.
+  down?: boolean
   pending: boolean
   refusal?: RefusalHandle | undefined
   refusedZone?: string | null
@@ -92,7 +96,7 @@ export function FootPlay({ view, cards, pending, onPlay, onMore, refusal, refuse
     <>
       {target && (
         <button type="button" className="byd-foot-play" data-zone={target.id} {...(refusedZone === target.id ? refusal?.control : {})} disabled={pending} onClick={() => onPlay(target.id, target.at)}>
-          {target.label}
+          {down ? t('player.hand.down', { label: target.label }) : target.label}
         </button>
       )}
       <button type="button" className="byd-foot-more" disabled={pending} onClick={() => onMore(first)}>

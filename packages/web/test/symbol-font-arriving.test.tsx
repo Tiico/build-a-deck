@@ -91,7 +91,8 @@ describe('a symbol and a typeface wait for their bytes (#959)', () => {
     release()
     await waitFor(() => expect(listed.getAttribute('src')).toMatch(new RegExp(`^${run.http}/assets/[0-9a-f]{64}$`)))
     fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
-    await waitFor(() => expect(document.querySelector('#canvas [data-element="icon-1"] img.byd-icon')?.getAttribute('src')).toBe(listed.getAttribute('src')))
+    // The card reads the same file through the server, since a symbol on a card may be a mask (#1087).
+    await waitFor(() => expect(document.querySelector('#canvas [data-element="icon-1"] img.byd-icon')?.getAttribute('src')).toBe(`${listed.getAttribute('src')}/bytes`))
   })
 
   it('declares a typeface taken into the game only once its bytes have arrived', async () => {
