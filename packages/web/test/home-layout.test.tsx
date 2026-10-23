@@ -14,6 +14,7 @@ import { HomePage } from '../src/account/HomePage.js'
 import { ROW, helpAnchor, helpPlacement } from '../src/editor/HelpDrawer.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { Survey } from '../src/player/Survey.js'
+import { capture } from '@byd/render'
 import { projectDoc } from './project-doc.js'
 import { admit, createSession, startServer, type Running } from './fixture.js'
 
@@ -200,6 +201,87 @@ describe('the game tiles at 1280 px (#725)', () => {
         await page.locator(sel).hover()
         expect({ [sel]: await look(sel) }).not.toEqual({ [sel]: rest })
       }
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// «＋ Nytt spel» says what it does in the middle of its tile. #725 stood the game tiles' content from
+// the top, and the rule took the invitation along with it: on an account with no games the words
+// sat against the top of a card-tall tile. Read off the painted pixels, since a box can stand in
+// the middle while the words drawn in it do not.
+describe('the «＋ Nytt spel» tile', () => {
+  async function home(games: readonly string[]): Promise<string> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'nytt@example.com' }) })
+    for (const [i, name] of games.entries())
+      await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: `spel-${i}`, ...projectDoc(), name }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const { container } = render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByText(games[0] ?? 'Inget spel ännu.')
+    return container.innerHTML
+  }
+
+  it.each([
+    ['no games', 390, []],
+    ['no games', 1280, []],
+    ['a row of games', 1280, ['Skogens herrar', 'En mycket lång speltitel som bryts över tre rader i sin bricka']],
+  ] as const)('draws its words in the middle of the tile with %s at %i px', async (_, width, games) => {
+    const html = await home(games)
+    const page = await browser.newPage({ viewport: { width, height: 900 } })
+    try {
+      await page.setContent(document_(html), { waitUntil: 'load' })
+      await page.mouse.move(0, 0)
+      await page.locator('[data-new]').scrollIntoViewIfNeeded()
+      const shot = (await capture(page, {})).toString('base64')
+      const seen = await page.evaluate(async (shot) => {
+        const image = new Image()
+        image.src = `data:image/png;base64,${shot}`
+        await image.decode()
+        const canvas = document.createElement('canvas')
+        canvas.width = image.naturalWidth
+        canvas.height = image.naturalHeight
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(image, 0, 0)
+        const scale = image.naturalWidth / window.innerWidth
+        const tile = document.querySelector('[data-new]') as HTMLElement
+        const box = tile.getBoundingClientRect()
+        // Inside the dashed edge, so the edge is never taken for a letter.
+        const edge = (parseFloat(getComputedStyle(tile).borderTopWidth) + 2) * scale
+        const x0 = Math.ceil(box.left * scale + edge), x1 = Math.floor(box.right * scale - edge)
+        const y0 = Math.ceil(box.top * scale + edge), y1 = Math.floor(box.bottom * scale - edge)
+        const { data } = ctx.getImageData(x0, y0, x1 - x0, y1 - y0)
+        const w = x1 - x0
+        const sum = (i: number) => data[i]! + data[i + 1]! + data[i + 2]!
+        const ground = sum(0)
+        let top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity
+        for (let i = 0; i < data.length; i += 4) {
+          // A letter is much lighter than the ground it is written on; antialiasing at its rim is not.
+          if (sum(i) - ground < 120) continue
+          const px = (i / 4) % w, py = Math.floor(i / 4 / w)
+          top = Math.min(top, py); bottom = Math.max(bottom, py); left = Math.min(left, px); right = Math.max(right, px)
+        }
+        return {
+          inked: Number.isFinite(top),
+          // Space above the words against space below them, and left against right, in CSS px.
+          above: top / scale, below: (y1 - y0 - 1 - bottom) / scale,
+          before: left / scale, after: (w - 1 - right) / scale,
+          height: box.height,
+          em: parseFloat(getComputedStyle(tile).fontSize),
+        }
+      }, shot)
+      expect(seen.inked).toBe(true)
+      // The tile is a card tall, so the words standing at the top would leave a gap of most of it.
+      expect(seen.height).toBeGreaterThan(100)
+      // A glyph's ink is not its box: the plus's side bearing and the descender of «p» move the ink a
+      // few pixels off the middle of a box that stands exactly in the middle, by an amount the
+      // machine's font decides. Half a letter leaves room for that and is still far short of the top.
+      expect(Math.abs(seen.above - seen.below)).toBeLessThanOrEqual(seen.em / 2)
+      expect(Math.abs(seen.before - seen.after)).toBeLessThanOrEqual(seen.em / 2)
     } finally {
       await page.close()
     }

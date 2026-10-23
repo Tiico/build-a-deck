@@ -120,8 +120,9 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-game { position: relative; padding: 0; }
 .byd-home-open { display: grid; gap: 8px; padding: 16px; color: #fff; text-decoration: none; }
 /* What is in a tile stands from the top: a row made tall by a neighbour's long name stretched these
-   rows instead, and the card and the name drifted apart by the difference (#725). */
-.byd-home-game, .byd-home-open { align-content: start; }
+   rows instead, and the card and the name drifted apart by the difference (#725). «＋ Nytt spel» has
+   one line and no card to line up with, and keeps it in the middle of its tile. */
+.byd-home-game:not([data-new]), .byd-home-open { align-content: start; }
 /* The tile answers the pointer before it is pressed, as a card on the deck wall does (L28, #725):
    its edge and its ground lift a step. Only where there is a pointer to answer. */
 @media (hover: hover) {
