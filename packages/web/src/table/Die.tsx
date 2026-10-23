@@ -10,8 +10,12 @@ import { isStill } from './shuffle.js'
 // The outlines are the prototype's `silhouette(n)`: a d4 a triangle, a d6 a rounded square, a d8 a
 // hexagon with its top triangle, a d10 a kite, a d12 a decagon round a pentagon, and a d20 a
 // hexagon with its facets. `top` is where the figure stands, on the face that is up, and `size`
-// how large it is set: a d20's top face is the smallest of them.
-type Shape = { outline: ReactNode; top: number; size: number }
+// how large it is set. `two` is where and how large a side of two figures is set: wider than one,
+// and on a d20's triangle it has to stand lower, where the triangle is wide, and be smaller (#1170);
+// the d20's top face is drawn large so that even then it reads as large as a d12's (#1178). A die without it sets two figures at 0.85 of one,
+// which its face has room for.
+type Figure = { top: number; size: number }
+type Shape = Figure & { outline: ReactNode; two?: Figure }
 const EDGE = { stroke: '#b9ad97', strokeWidth: 2, strokeLinejoin: 'round' as const }
 const SIDE = '#ddd2bd'
 const points = (ps: readonly (readonly [number, number])[]) => ps.map((p) => `${round(p[0])},${round(p[1])}`).join(' ')
@@ -66,7 +70,7 @@ function shapeOf(faces: number): Shape {
       // The d20, and any die with sides the felt has no outline for: a hexagon with the top face's
       // triangle and the facets running out to the rim.
       const rim = ngon(6, 50)
-      const face = ngon(3, 28, 50, 54)
+      const face = ngon(3, 40, 50, 56)
       return {
         outline: (
           <>
@@ -78,8 +82,12 @@ function shapeOf(faces: number): Shape {
             <polygon points={points(face)} fill="var(--byd-die)" {...EDGE} />
           </>
         ),
-        top: 57,
-        size: 36,
+        // The triangle is narrow at its apex, so the figure is set low on it, its ink standing on
+        // the base with the edge line kept clear. The face is the large one beställaren chose (#1178,
+        // C): with the old, smaller face «17» had to be set a size below every other die's figure.
+        top: 58,
+        size: 42,
+        two: { top: 61.5, size: 32 },
       }
     }
   }
@@ -172,12 +180,12 @@ export function DieFace({ faces, value, roll, still }: { faces: number; value: n
   const shape = shapeOf(faces)
   const jumping = useJumping(faces, roll, still)
   const figure = String(jumping ?? value)
-  const size = figure.length > 1 ? shape.size * 0.85 : shape.size
+  const set: Figure = figure.length > 1 ? (shape.two ?? { top: shape.top, size: shape.size * 0.85 }) : shape
   return (
     <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
       <circle className="byd-die-ring" cx={50} cy={52} r={58} />
       {shape.outline}
-      <text data-die-value="" x={50} y={shape.top} fontSize={size}>
+      <text data-die-value="" x={50} y={set.top} fontSize={set.size}>
         {figure}
       </text>
     </svg>

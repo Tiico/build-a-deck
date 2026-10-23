@@ -56,7 +56,8 @@ export type FeltKeyboardOptions = {
 export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: FeltKeyboardOptions): FeltKeyboardHandle {
   const say = useSay()
   const t = useT()
-  const [open, setOpen] = useState<{ thing: Thing; cards: string[]; hand?: boolean } | null>(null)
+  // `moving`: the panel was opened to move the thing and nothing else — M on a die (#1169).
+  const [open, setOpen] = useState<{ thing: Thing; cards: string[]; hand?: boolean; moving?: boolean } | null>(null)
   const [looking, setLooking] = useState<VisibleComponentState | null>(null)
   // The chip whose value is being said outright (#67), opened from the panel's "Sätt värde…".
   const [setting, setSetting] = useState<VisibleComponentState | null>(null)
@@ -107,8 +108,13 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   // second one would be a second set of answers to «what does this key do here». What they act on
   // is what the pointer is standing on, which the renderer reports and this holds.
   const pointing = useRef<DragTarget | null>(null)
-  const latest = useRef({ view, run, open })
-  latest.current = { view, run, open }
+  // `moveDie` opens the panel on «Flytta till» alone, handing the focus back to the die it came from.
+  const moveDie = (thing: Thing) => {
+    remember()
+    setOpen({ thing, cards: [], moving: true })
+  }
+  const latest = useRef({ view, run, open, things, moveDie })
+  latest.current = { view, run, open, things, moveDie }
   useEffect(() => {
     if (!on) return
     const onKey = (event: KeyboardEvent) => {
@@ -124,6 +130,17 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
       const at = document.activeElement
       if (at instanceof HTMLElement && at !== document.body && !at.closest('.byd-table-frame')) return
       if (now.view === null) return
+      // M on a die with the keyboard's focus opens «Flytta till» (#1169, K16): Enter is the roll,
+      // so moving needed a key of its own, and M is no other key's on the felt. Only the focus
+      // says which die, never the pointer — a die the pointer rests on is not the one asked about.
+      if (event.key.toLowerCase() === 'm') {
+        const key = at instanceof HTMLElement ? at.closest<HTMLElement>('[data-kbd]')?.dataset.kbd : undefined
+        const die = now.things.find((t) => t.key === key && t.kind === 'die')
+        if (!die) return
+        event.preventDefault()
+        now.moveDie(die)
+        return
+      }
       const intents = shortcutIntents(now.view, event.key, pointing.current)
       if (!intents) return
       event.preventDefault()
@@ -184,6 +201,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
         view={view}
         thing={open.thing}
         cards={open.cards}
+        moving={open.moving}
         onClose={() => close()}
         onLook={(c) => {
           if (options.look && c.cardRef !== null) options.look(c)

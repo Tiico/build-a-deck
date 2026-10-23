@@ -798,6 +798,9 @@
 /* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
 .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
+/* The turn order is one of three (K30), the tool's `.byd-choice` in a row. */
+.byd-setup-turns-panel { min-width: 0; }
+.byd-setup-turns { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
 .byd-setup-adds { display: flex; flex-wrap: wrap; gap: 6px; }
 /* A counter is a name, «från», a number and ×. The row wraps rather than setting the column's
    width (#480): at 1024 it was 296 px of content in a 260 px track, and the whole column scrolled
@@ -807,8 +810,17 @@
    counters themselves are written in, at the width the column has. */
 .byd-setup-note { margin: 0; max-width: 260px; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 .byd-setup-counter button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
-/* A die's row (#1139) wraps like a counter's, but «i» never parts from the area it names. */
-.byd-setup-die-where { display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
+/* A die's row (#1139) is two lines on purpose, not a counter's row that happens to wrap: the count,
+   the kind, how the count is counted and × on the first, «i [yta]» on the second, starting under the
+   count and ending under ×. Left to wrap, «i» hung alone at the column's edge and × followed the
+   area instead of closing the row. */
+.byd-setup-counter.byd-setup-die { display: grid; justify-self: stretch; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: 'count kind mode x' 'where where where where'; }
+.byd-setup-die > input { grid-area: count; }
+.byd-setup-die > select:first-of-type { grid-area: kind; }
+.byd-setup-die > :is(span, select):nth-child(3) { grid-area: mode; justify-self: start; max-width: 100%; }
+.byd-setup-die > button { grid-area: x; }
+.byd-setup-die-where { grid-area: where; display: flex; gap: 6px; align-items: center; min-width: 0; }
+.byd-setup-die-where select { flex: 1 1 auto; }
 /* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
    counted on top of it every field on this tab stood 62 px tall. */
 .byd-setup input:not([type='checkbox']), .byd-setup select { box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
@@ -1847,7 +1859,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-layer-lock svg { width: 16px; height: 16px; }
 .byd-layers [role='row']:hover .byd-layer-lock, .byd-layers [role='row'][aria-selected='true'] .byd-layer-lock { color: var(--byd-editor-source-ink); }
 /* Locked is a colour of its own and a shut padlock: the shape says it where the colour cannot. */
-.byd-layer-lock[aria-pressed='true'], .byd-layers [role='row']:hover .byd-layer-lock[aria-pressed='true'] { color: var(--byd-editor-locked-ink); }
+.byd-layer-lock[aria-pressed='true'], .byd-layers [role='row']:is(:hover, [aria-selected='true']) .byd-layer-lock[aria-pressed='true'] { color: var(--byd-editor-locked-ink); }
 .byd-layer-pick > .byd-glyph, .byd-layer-inside .byd-glyph { flex: none; width: 16px; height: 16px; color: var(--byd-editor-source-ink); }
 .byd-layer-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* A condition nobody has named is written whole and breaks over the lines it needs (#699, variant
@@ -1888,8 +1900,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
   color: var(--byd-editor-ask-ink);
   font-size: 12px;
 }
-/* The locked layer's note stands in the same place for the same reason. */
-.byd-canvas-main > :is(.byd-canvas-question, .byd-canvas-locked) {
+.byd-canvas-main > .byd-canvas-question {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
   box-shadow: 0 -12px 28px rgb(0 0 0 / 0.45);
 }
@@ -1929,14 +1940,39 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-card-row-list li[aria-selected='true'] { font-weight: 700; }
 .byd-card-row-list li small { color: #9aa3b8; font-family: ui-monospace, Menlo, monospace; }
 .byd-card-row-none { color: #9aa3b8; cursor: default; }
+/* Why a locked layer did not move (L15), on the card beside it (#1181). The place is the layer's
+   edge in millimetres; the note is in the screen's pixels whatever the zoom, the way the word for
+   an element kept on the card is (.byd-drag-kept), so it reads the same at 50 % and at 400 %. */
+.byd-canvas-locked-at { position: absolute; width: 0; height: 0; z-index: 10003; }
 .byd-canvas-locked {
-  margin: 0;
-  padding: 8px 12px;
-  border-top: 1px solid #6b5a2c;
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--byd-s2);
+  width: max-content;
+  max-width: 340px;
+  padding: var(--byd-s1) var(--byd-s1) var(--byd-s1) var(--byd-s3);
+  border: 1px solid #6b5a2c;
+  border-radius: 8px;
   background: #2a2419;
   color: var(--byd-editor-locked-ink);
-  font-size: 12px;
+  font: 12px/1.35 system-ui, sans-serif;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.45);
+  transform-origin: 0 0;
+  transform: scale(calc(1 / var(--byd-canvas-scale, 1))) translate(-50%, 8px);
 }
+.byd-canvas-locked-at[data-above] .byd-canvas-locked { transform: scale(calc(1 / var(--byd-canvas-scale, 1))) translate(-50%, calc(-100% - 8px)); }
+/* The point that says which layer it is about, on the side the layer is. */
+.byd-canvas-locked::before { content: ''; position: absolute; left: calc(50% - 6px); top: -7px; border: 6px solid transparent; border-top: 0; border-bottom: 7px solid #6b5a2c; }
+.byd-canvas-locked-at[data-above] .byd-canvas-locked::before { top: auto; bottom: -7px; border-bottom: 0; border-top: 7px solid #6b5a2c; }
+.byd-canvas-locked > svg { flex: none; width: 14px; height: 14px; }
+.byd-canvas-locked p { flex: 1 1 auto; min-width: 0; margin: 0; }
+.byd-canvas-locked button { flex: none; min-height: 32px; padding: 0 var(--byd-s3); border: 1px solid #6b5a2c; border-radius: 6px; background: transparent; color: inherit; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+.byd-canvas-locked button:hover { background: #3a3120; }
+.byd-canvas-locked .byd-canvas-locked-close { display: grid; place-items: center; width: 32px; padding: 0; border-color: transparent; }
+.byd-canvas-locked-close svg { width: 14px; height: 14px; }
 /* A fill that follows a column (L16): the column over a row per value, each with its own colour
    well, and the fallback last. The whole rule takes the panel's width — it is a list that grows
    with the deck, not a pair of numbers. */
@@ -2166,6 +2202,9 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-font-catalog-hits li button:disabled { color: var(--byd-editor-catalog-ink); border-color: var(--byd-editor-catalog-mark); cursor: default; }
 .byd-font-catalog-said { margin: 0; padding: var(--byd-s4) var(--byd-s3); font-size: 12px; text-align: center; color: var(--byd-editor-quiet); }
 .byd-font-catalog-said[role='alert'] { color: var(--byd-editor-unsaved-ink); }
+/* Deckster's own symbols stand at once, and the two libraries come in behind them (#1087): until they
+   do, one quiet line above the hits says so, and the hits below it are the ones there are. */
+.byd-icon-catalog-awaited { flex: none; margin: 0; padding: var(--byd-s2) var(--byd-s3) 0; font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-font-catalog footer { flex: none; display: flex; gap: 10px; align-items: center; padding: var(--byd-s2) var(--byd-s3); border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-font-catalog-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 .byd-font-catalog-kinds small { opacity: 0.7; font-variant-numeric: tabular-nums; }
@@ -4464,6 +4503,14 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-turn { display: grid; gap: var(--byd-s2); }
 .byd-ai-said { justify-self: end; max-width: calc(100% - 40px); margin: 0; padding: var(--byd-s2) var(--byd-s3); border-radius: 12px 12px 2px 12px; background: #263049; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .byd-ai-reading { margin: 0; }
+/* The AI correcting a proposal that could not be used (#1184, variant A): no red, since there is
+   nothing yet for the designer to do — a line in the panel's light ink whose spark breathes, held
+   still for a reader who asks for less motion — and, under the corrected proposal, what was wrong. */
+.byd-ai-correcting { display: flex; align-items: center; gap: var(--byd-s2); margin: 0; color: #c3cbdd; }
+.byd-ai-correcting .byd-ai-spark { animation: byd-ai-breathe 1.2s ease-in-out infinite; }
+@keyframes byd-ai-breathe { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .byd-ai-correcting .byd-ai-spark { animation: none; } }
+.byd-ai-corrected { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.45; }
 .byd-ai-answer { line-height: 1.5; overflow-wrap: anywhere; }
 .byd-ai-answer p, .byd-ai-answer ul { margin: 0 0 var(--byd-s2); }
 .byd-ai-answer > :last-child { margin-bottom: 0; }

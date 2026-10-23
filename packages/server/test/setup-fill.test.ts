@@ -93,3 +93,13 @@ describe('draghögens blandning på väg till bordet', () => {
     expect(setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('actions')
   })
 })
+
+// Om spelet går i tur, och åt vilket håll (K30), är designerns svar i Bord och måste följa med
+// till bordet som spelas; ett spel som inte säger något går inte i tur.
+describe('turordningen', () => {
+  it('följer med till bordet, och ett spel utan turordning bär ingen', () => {
+    const withTurns = setupFromProject({ ...doc(base), setup: { ...doc(base).setup, turns: 'counterclockwise' } })
+    expect(withTurns.turns).toBe('counterclockwise')
+    expect(setupFromProject(doc(base))).not.toHaveProperty('turns')
+  })
+})

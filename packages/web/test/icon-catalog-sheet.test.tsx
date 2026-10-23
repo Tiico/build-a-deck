@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IconCatalog } from '../src/editor/IconCatalog.js'
 
+// The libraries arrive when `libraries.gate` lets them; every test but one finds it open.
+const libraries = vi.hoisted(() => ({ gate: Promise.resolve() }))
+vi.mock('../src/editor/icon-catalog.js', async (actual) => {
+  const real = await actual<typeof import('../src/editor/icon-catalog.js')>()
+  return { ...real, loadIconCatalog: async (lang: 'sv' | 'en') => (await libraries.gate, real.loadIconCatalog(lang)) }
+})
+
 // The icon libraries' sheet under the card (#1087, L71, beslut A): the typeface catalog's form, so
 // a library looks the same whether it holds families or icons. It searches in the designer's own
 // words, narrows to a library, and draws every hit on the card's paper in the colour the layer will
@@ -39,6 +46,38 @@ describe('the icon sheet (#1087)', () => {
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } })
     fireEvent.click(await screen.findByRole('button', { name: /^eldklot · I spelet$/ }))
     await waitFor(() => expect(onChoose).toHaveBeenCalledWith({ inGame: 'eldklot' }))
+  })
+
+  // Deckster's own symbols are in the editor already, and the two libraries are megabytes behind a
+  // dynamic import: the sheet does not keep the first waiting for the second. On a busy machine it
+  // stood on «Biblioteken läses in …» for a minute with the sword it was asked for in hand.
+  it('finds Deckster’s own symbols while the libraries are still loading, and says which are', async () => {
+    let arrive!: () => void
+    libraries.gate = new Promise<void>((resolve) => (arrive = resolve))
+    try {
+      const onChoose = open()
+      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'svärd' } })
+
+      const sword = await screen.findByRole('button', { name: /^svärd · Deckster · / })
+      expect(screen.getByRole('status').textContent).toBe('Game Icons och Lucide läses in …')
+      expect(screen.queryByRole('button', { name: / · Game Icons · / })).toBeNull()
+      // A library not yet in says so where its hits will stand, and has no count to give.
+      fireEvent.click(screen.getByRole('button', { name: 'Lucide' }))
+      expect(screen.getByRole('status').textContent).toBe('Lucide läses in …')
+      expect(screen.queryByRole('list', { name: 'Träffar' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /^Alla/ }))
+
+      arrive()
+      expect(await screen.findByRole('button', { name: /^crossed-swords · Game Icons · / })).toBeTruthy()
+      expect(screen.queryByRole('status')).toBeNull()
+      expect(within(screen.getByRole('list', { name: 'Träffar' })).getAllByRole('button')[0]?.getAttribute('aria-label')).toMatch(/^svärd · Deckster · /)
+
+      fireEvent.click(sword.isConnected ? sword : screen.getByRole('button', { name: /^svärd · Deckster · / }))
+      await waitFor(() => expect(onChoose).toHaveBeenCalledWith({ icon: expect.objectContaining({ id: 'deckster:svard' }) }))
+    } finally {
+      arrive()
+      libraries.gate = Promise.resolve()
+    }
   })
 
   // A designer's own drawing, in the same sheet (#1087, beslut 4): cleaned in the browser before

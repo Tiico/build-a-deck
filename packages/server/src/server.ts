@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
-import { compressible, encodedBytes, encodedCopy } from './compress.js'
+import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from './compress.js'
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
@@ -584,19 +584,6 @@ export function inlineDisposition(name: string): string {
 const FACE_LINK_TTL_S = 3600
 const FACE_LINK_SLACK_S = 600
 
-const MIME: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.ico': 'image/x-icon',
-  '.webmanifest': 'application/manifest+json',
-  '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8',
-}
-
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
@@ -615,7 +602,7 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const candidate = await fileAt(wanted)
   const file = candidate ?? (extname(wanted) === '' ? await fileAt(join(root, 'index.html')) : null)
   if (!file) return false
-  const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
+  const type = typeOf(file)
   const hashed = file.includes(`${sep}assets${sep}`)
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
   // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
@@ -634,6 +621,13 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
     const bytes = encoded?.bytes ?? page.bytes
     res.writeHead(200, { ...head, ...(encoded ? { 'content-encoding': encoded.encoding } : {}), 'content-length': String(bytes.length) })
     res.end(bytes)
+    return true
+  }
+  // What the build compressed goes out as the build made it, from disk (DRIFT §13).
+  const ready = await precompressed(file, type, accept)
+  if (ready) {
+    res.writeHead(200, { ...head, 'content-encoding': ready.encoding, 'content-length': String(ready.size) })
+    await new Promise<void>((resolve, reject) => createReadStream(ready.path).on('error', reject).on('end', () => resolve()).pipe(res))
     return true
   }
   const encoded = await encodedCopy(file, type, accept)
@@ -1669,6 +1663,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 503, { error: 'render queue unavailable' })
       return true
     }
+    // Whoever orders may leave the hardware out (#1140): many partners will not pack a die. An
+    // order with no body asks for everything, as every order did before.
+    const order = PrintBody.safeParse(parsedOrNull(await readBody(req)) ?? {})
+    if (!order.success) {
+      json(res, 400, { error: 'malformed' })
+      return true
+    }
     const rec = gate.rec
     // Physical validation (E5): warnings live in the editor, errors stop an order. A card that
     // would come back unreadable is cheaper to catch here than in five hundred printed copies.
@@ -1678,11 +1679,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 422, { project: rec.id, rev: rec.rev, errors })
       return true
     }
-    const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
+    const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime(), { hardware: order.data.hardware !== false })
     for (const job of printed.jobs) await opts.renders.enqueue(job)
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
-    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, credits: creditsOf(rec), warnings: found })
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
     return true
   }
   // The whole game for the designer to keep (G5, #527): POST asks for the print files to be made,
@@ -2059,6 +2060,7 @@ const frontsOf = (faces: Record<string, Record<string, string>>): Record<string,
 // closed set of words (`AiFailure`), and nothing is kept. PUT …/model chooses a model, null being the
 // provider's standard; GET …/models lists them anew; DELETE forgets the key.
 // A body that is not a key is refused without a word of what it held, and nothing here logs.
+const PrintBody = z.object({ hardware: z.boolean().optional() })
 const AiKeyBody = z.object({ provider: z.enum(AI_PROVIDERS), key: z.string().trim().min(8).max(512).regex(/^[\x21-\x7e]+$/) })
 const AiModelBody = z.object({ model: z.string().min(1).max(200).regex(/^[A-Za-z0-9._:/-]+$/).nullable() })
 const parsedOrNull = (text: string): unknown => {

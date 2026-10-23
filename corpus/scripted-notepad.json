@@ -972,7 +972,8 @@
           "text": "(anteckning)",
           "done": false
         }
-      ]
+      ],
+      "turn": null
     },
     "B": {
       "seq": 13,
@@ -1095,7 +1096,8 @@
           "text": "(anteckning)",
           "done": false
         }
-      ]
+      ],
+      "turn": null
     },
     "table": {
       "seq": 13,
@@ -1218,7 +1220,8 @@
           "text": "(anteckning)",
           "done": false
         }
-      ]
+      ],
+      "turn": null
     },
     "observer": {
       "seq": 13,
@@ -1483,7 +1486,8 @@
           "text": "(anteckning)",
           "done": false
         }
-      ]
+      ],
+      "turn": null
     }
   }
 }

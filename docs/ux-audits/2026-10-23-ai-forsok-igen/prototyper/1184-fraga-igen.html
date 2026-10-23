@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 1184 — AI:n rättar sitt förslag</title>
+<style>
+  /* ── Frågan (#1184) ─────────────────────────────────────────────────────────────────────
+     När ett AI-förslag inte går att använda ska panelen fråga AI:n en gång till, med felet
+     bifogat, innan den ger upp (beställaren 2026-10-23, i samband med #1183). Hur visar panelen
+     det andra försöket — och vad står kvar när det lyckas, eller inte gör det?
+
+     Panelen är ritad med editorns egna regler för AI-panelen (editor.css, «The AI panel beside the
+     work») och dess svenska texter; bara de nya raderna är nya. Stega genom förloppet med knapparna
+     till höger i huvudet. PROTOTYP — kastas när beslutet är fattat.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root {
+    color-scheme: dark;
+    --byd-editor-quiet: #868ea3; --byd-editor-line: #2f333d; --byd-editor-panel-bg: #171a23;
+    --byd-editor-home-ink: #c3cbdd; --byd-editor-saved-ink: #9aa3b8;
+    --byd-tap: 44px; --byd-s1: 4px; --byd-s2: 8px; --byd-s3: 12px; --byd-s4: 16px; --byd-s5: 24px;
+    --byd-secondary-line: #5b6274; --byd-secondary-ink: #e6ecfa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111318; color: #dce3f2; font: 14px/1.5 system-ui, sans-serif; }
+
+  /* Prototypens eget huvud: inte en del av designen. */
+  .proto { position: sticky; top: 0; z-index: 5; display: grid; gap: 8px; padding: 10px 16px; background: #0b0c10; border-bottom: 2px solid #f0b64a; }
+  .proto h1 { margin: 0; font-size: 14px; color: #fff; }
+  .proto .rader { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .proto .rad { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .proto .rad > span { color: #f0b64a; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .proto button { min-height: 34px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #dce3f2; font: inherit; font-size: 13px; cursor: pointer; }
+  .proto button[aria-pressed='true'] { background: #24507f; border-color: #6ea8ff; color: #fff; }
+  .proto button.rek { border-color: #3f7a55; }
+  .proto p { margin: 0; max-width: 1100px; color: #c9d1e3; font-size: 13px; }
+
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; display: flex; min-height: 480px; }
+  .verket { flex: 1 1 auto; padding: 24px; display: grid; place-items: start center; color: #6b7286; }
+  .bok { width: min(560px, 100%); padding: 28px 36px; border-radius: 10px; background: #f6f1e7; color: #2a2a2a; font-family: Georgia, serif; opacity: .55; }
+  .bok h2 { margin: 0 0 12px; font-size: 24px; } .bok h3 { margin: 16px 0 6px; font-size: 18px; } .bok p { margin: 0; }
+
+  /* ── Panelen, ur editor.css ─────────────────────────────────────────────────────────── */
+  .byd-ai { --byd-ai-mark: #c9a7ff; --byd-ai-ink: #e6ecfa; --byd-ai-fail-bg: #3d2632; --byd-ai-fail-ink: #ffe4ea; --byd-ai-fail-line: #a2778a; flex: 0 0 380px; width: 380px; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--byd-editor-line); background: var(--byd-editor-panel-bg); color: var(--byd-ai-ink); font-size: 13px; }
+  .byd-ai-spark { color: var(--byd-ai-mark); }
+  .byd-ai-quiet { color: var(--byd-editor-quiet); }
+  .byd-ai-head { flex: none; display: flex; align-items: center; gap: var(--byd-s1); min-height: 52px; padding: 0 var(--byd-s1) 0 var(--byd-s4); border-bottom: 1px solid var(--byd-editor-line); }
+  .byd-ai-head h2 { flex: 1 1 auto; margin: 0; font-size: 14px; font-weight: 750; white-space: nowrap; }
+  .byd-ai-who { color: var(--byd-editor-saved-ink); font-size: 12px; padding: 0 var(--byd-s2); }
+  .byd-ai-log { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--byd-s4); }
+  .byd-ai-turns { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--byd-s5); }
+  .byd-ai-turn { display: grid; gap: var(--byd-s2); }
+  .byd-ai-said { justify-self: end; max-width: calc(100% - 40px); margin: 0; padding: var(--byd-s2) var(--byd-s3); border-radius: 12px 12px 2px 12px; background: #263049; line-height: 1.45; white-space: pre-wrap; }
+  .byd-ai-answer { line-height: 1.5; }
+  .byd-ai-answer p { margin: 0 0 var(--byd-s2); }
+  .byd-ai-answer > :last-child { margin-bottom: 0; }
+  .byd-ai-fail { display: grid; gap: var(--byd-s1); padding: var(--byd-s2) var(--byd-s3); border-radius: 8px; background: var(--byd-ai-fail-bg); color: var(--byd-ai-fail-ink); line-height: 1.45; }
+  .byd-ai-fail button { --byd-secondary-line: var(--byd-ai-fail-line); --byd-secondary-ink: var(--byd-ai-fail-ink); }
+  .byd-ai-fail button, .byd-ai-decide button { justify-self: start; display: inline-flex; align-items: center; min-height: var(--byd-tap); margin-top: var(--byd-s1); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+  .byd-secondary { border: 1px solid var(--byd-secondary-line); background: transparent; color: var(--byd-secondary-ink); }
+  .byd-primary { border: 1px solid #1f6fd0; background: #1f6fd0; color: #fff; }
+  .byd-ai-proposal { display: grid; gap: var(--byd-s3); margin-top: var(--byd-s2); padding: var(--byd-s3); border: 1px dashed var(--byd-ai-mark); border-radius: 10px; background: #1b1e27; }
+  .byd-ai-proposal-head { margin: 0; }
+  .byd-ai-proposal-head strong { color: var(--byd-ai-mark); }
+  .byd-ai-decide { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
+  .byd-ai-decide button { margin-top: 0; padding: 0 var(--byd-s2); }
+  .byd-ai-rules { margin: 0; padding-left: var(--byd-s3); border-left: 3px dashed #6f4fb8; color: #c3cbdd; line-height: 1.45; }
+  .byd-ai-compose { flex: none; display: grid; gap: var(--byd-s2); padding: var(--byd-s3) var(--byd-s4) var(--byd-s4); border-top: 1px solid var(--byd-editor-line); }
+  .byd-ai-field { width: 100%; min-height: 64px; padding: var(--byd-s2) var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; font-size: 13px; resize: none; }
+  .byd-ai-row { display: flex; justify-content: flex-end; }
+  .byd-ai-send { min-width: 88px; min-height: var(--byd-tap); padding: 0 var(--byd-s4); border-radius: 8px; font: inherit; font-size: 13px; }
+
+  /* ── Det nya ─────────────────────────────────────────────────────────────────────────── */
+  @keyframes puls { 50% { opacity: .35; } }
+  .ny-arbetar { display: flex; align-items: center; gap: var(--byd-s2); margin: 0; color: #c3cbdd; }
+  .ny-arbetar .byd-ai-spark { animation: puls 1.2s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .ny-arbetar .byd-ai-spark { animation: none; } }
+  .ny-not { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.45; }
+  /* B: tjänstens egen tur, till vänster och streckad, så den aldrig läses som formgivarens. */
+  .ny-auto { justify-self: start; max-width: calc(100% - 40px); margin: 0; padding: var(--byd-s2) var(--byd-s3); border: 1px dashed #4a5370; border-radius: 12px 12px 12px 2px; color: #c3cbdd; line-height: 1.45; }
+  .ny-auto b { display: block; color: var(--byd-ai-mark); font-size: 12px; }
+  /* C: felrutan som väntar. */
+  .byd-ai-fail.ny-vantar { background: #2b2636; color: #ebe4ff; }
+  .ny-rattat { color: var(--byd-editor-quiet); font-weight: 400; }
+</style>
+</head>
+<body>
+<header class="proto">
+  <h1>#1184: Hur visar panelen att AI:n får rätta sitt förslag?</h1>
+  <div class="rader">
+    <div class="rad" role="group" aria-label="Variant">
+      <span>Variant</span>
+      <button type="button" data-v="idag">I dag</button>
+      <button type="button" data-v="A" class="rek">A · tyst rättning (rekommenderad)</button>
+      <button type="button" data-v="B">B · synlig följdtur</button>
+      <button type="button" data-v="C">C · felrutan väntar</button>
+    </div>
+    <div class="rad" role="group" aria-label="Läge">
+      <span>Läge</span>
+      <button type="button" data-s="1">1 · första svaret oanvändbart</button>
+      <button type="button" data-s="2">2 · det rättade går att använda</button>
+      <button type="button" data-s="3">3 · inte heller det rättade</button>
+    </div>
+  </div>
+  <p id="text"></p>
+</header>
+<div class="scen">
+  <div class="verket">
+    <div class="bok"><h2>Skogens herrar</h2><h3>Översikt</h3><p>Ett spel om skogen.</p><h3>En tur</h3><p>Dra ett kort.</p></div>
+  </div>
+  <aside class="byd-ai" aria-label="AI-hjälp">
+    <header class="byd-ai-head"><h2><span class="byd-ai-spark" aria-hidden="true">✦</span> AI-hjälp</h2><span class="byd-ai-who">Anthropic · Claude Sonnet 5.5</span></header>
+    <div class="byd-ai-log"><ol class="byd-ai-turns" id="turer"></ol></div>
+    <div class="byd-ai-compose">
+      <textarea class="byd-ai-field" placeholder="Fråga om korten, fälten, mallen eller reglerna…" aria-label="Fråga om spelet"></textarea>
+      <div class="byd-ai-row"><button type="button" class="byd-ai-send byd-secondary" id="skicka">Skicka</button></div>
+    </div>
+  </aside>
+</div>
+<script>
+  const FRAGA = 'Skriv om regelboken så att den förklarar hela turen: dra, spela, slänga, och vad som händer när leken tar slut.'
+  const PROSA = '<p>Här är regeltext till regelboken.</p>'
+  const FEL1 = 'Regeltext 2 («Att slänga») nämner zonen «slänghögen», som spelet inte har.'
+  const FEL2 = 'Regeltext 3 («När leken tar slut») står vid ett block i regelboken som inte finns längre.'
+  const said = (t) => `<p class="byd-ai-said">${t}</p>`
+  const fail = (fel, knapp = true, extra = '') => `<div class="byd-ai-fail" role="alert"><strong>Förslaget gick inte att använda</strong><span>${fel} Svaret från AI:n gick inte att använda. Ingenting i spelet ändrades.${extra}</span>${knapp ? '<button type="button" class="byd-secondary">Försök igen</button>' : ''}</div>`
+  const forslag = (not = '', rubrik = '') => `<div class="byd-ai-proposal" role="group" aria-label="Förslag"><p class="byd-ai-proposal-head"><strong>✦ Förslag</strong> · 3 tillägg i regelboken${rubrik}</p><p class="byd-ai-rules">Att dra kort · Att spela · Att slänga</p><div class="byd-ai-decide"><button type="button" class="byd-primary">Godta alla</button><button type="button" class="byd-secondary">Visa i regelboken</button><button type="button" class="byd-secondary">Välj delar…</button><button type="button" class="byd-secondary">Kasta</button></div>${not}</div>`
+  const arbetar = (t) => `<p class="ny-arbetar"><span class="byd-ai-spark" aria-hidden="true">✦</span> ${t}</p>`
+  const turn = (inner) => `<li class="byd-ai-turn">${inner}</li>`
+
+  const VARIANTER = {
+    idag: {
+      namn: 'I dag',
+      text: 'Felrutan med «Försök igen». Knappen ställer samma fråga en gång till, från början: modellen ser varken sitt trasiga svar eller felet, så nästa försök är bara ett nytt slumputfall. Inget automatiskt försök finns.',
+      1: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(FEL1)),
+      2: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(FEL1)),
+      3: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(FEL1)),
+    },
+    A: {
+      namn: 'A · tyst rättning',
+      text: 'Det oanvändbara förslaget visas aldrig. Under svaret står i stället en lugn rad i panelens färg medan AI:n får rätta sig: inget rött, eftersom ingenting har gått fel än som formgivaren behöver göra något åt. Lyckas det står förslaget som vanligt, med en tyst not om vad som rättades (pengar och tid på hennes nyckel ska inte vara osynliga). Misslyckas det kommer dagens felruta, med det sista felet och en mening om att AI:n redan försökt rätta det. Avbryt sitter där den alltid sitter, i skickaraden.',
+      1: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + arbetar('Förslaget höll inte. AI:n rättar det…')),
+      2: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + forslag(`<p class="ny-not">Rättat en gång: ${FEL1}</p>`)),
+      3: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(FEL2, true, ' AI:n hade redan fått rätta förslaget en gång.')),
+    },
+    B: {
+      namn: 'B · synlig följdtur',
+      text: 'Allt syns, som ett samtal: felrutan står kvar som i dag, men utan knapp, och under den skickar tjänsten själv en tur, streckad och till vänster så att den aldrig läses som formgivarens egen. Det rättade svaret kommer som en egen tur. Ärligast om vad som händer och vad det kostar, men panelen blir lång, och två röda rutor i rad om det misslyckas igen.',
+      1: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(FEL1, false)) + turn(`<p class="ny-auto"><b>✦ Skickat automatiskt</b>Förslaget gick inte att använda: ${FEL1} Rätta det.</p>` + arbetar('Läser spelet…')),
+      2: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(FEL1, false)) + turn(`<p class="ny-auto"><b>✦ Skickat automatiskt</b>Förslaget gick inte att använda: ${FEL1} Rätta det.</p>` + `<div class="byd-ai-answer"><p>Här är regeltexten igen, med kasthögen i stället.</p></div>` + forslag()),
+      3: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(FEL1, false)) + turn(`<p class="ny-auto"><b>✦ Skickat automatiskt</b>Förslaget gick inte att använda: ${FEL1} Rätta det.</p>` + `<div class="byd-ai-answer"><p>Här är regeltexten igen.</p></div>` + fail(FEL2)),
+    },
+    C: {
+      namn: 'C · felrutan väntar',
+      text: 'Felet visas direkt, men rutan säger samtidigt vad som händer: i stället för «Försök igen» står att AI:n får rätta det, i en lila ton i stället för den röda. Lyckas det ersätts rutan av förslaget, med «rättat» i förslagets rubrik. Misslyckas det blir rutan röd igen med båda felen. Formgivaren ser felet en stund även när det sedan rättas.',
+      1: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + `<div class="byd-ai-fail ny-vantar" role="status"><strong>Förslaget gick inte att använda</strong><span>${FEL1}</span>${arbetar('AI:n får rätta det en gång…')}</div>`),
+      2: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + forslag('', ' <span class="ny-rattat">· rättat</span>')),
+      3: () => turn(said(FRAGA) + `<div class="byd-ai-answer">${PROSA}</div>` + fail(`Först: ${FEL1} Sedan, i det rättade svaret: ${FEL2}`)),
+    },
+  }
+  const params = new URLSearchParams(location.search)
+  let v = VARIANTER[params.get('v')] ? params.get('v') : 'A'
+  let s = ['1', '2', '3'].includes(params.get('s')) ? params.get('s') : '1'
+  function rita() {
+    const variant = VARIANTER[v]
+    document.getElementById('turer').innerHTML = variant[s]()
+    document.getElementById('text').textContent = variant.text
+    document.getElementById('skicka').textContent = s === '1' && v !== 'idag' ? 'Avbryt' : 'Skicka'
+    for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === v))
+    for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s))
+    history.replaceState(null, '', `?v=${v}&s=${s}`)
+  }
+  for (const b of document.querySelectorAll('[data-v]')) b.addEventListener('click', () => { v = b.dataset.v; rita() })
+  for (const b of document.querySelectorAll('[data-s]')) b.addEventListener('click', () => { s = b.dataset.s; rita() })
+  addEventListener('keydown', (e) => {
+    if (e.target.closest('textarea')) return
+    const keys = Object.keys(VARIANTER)
+    if (e.key === 'ArrowRight') v = keys[(keys.indexOf(v) + 1) % keys.length]
+    else if (e.key === 'ArrowLeft') v = keys[(keys.indexOf(v) + keys.length - 1) % keys.length]
+    else if (['1', '2', '3'].includes(e.key)) s = e.key
+    else return
+    rita()
+  })
+  rita()
+</script>
+</body>
+</html>

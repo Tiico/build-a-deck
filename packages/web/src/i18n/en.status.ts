@@ -34,6 +34,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'title.prototype': 'Prototype',
   'title.unknown': 'Page not found',
   'title.room': 'Room {code}',
+  'title.turn': '● Your turn',
   'title.state.loading': 'Loading',
   'title.state.connecting': 'Connecting',
   'title.state.missing.game': 'Game not found',

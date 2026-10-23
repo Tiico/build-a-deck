@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
+import { DICE } from '@byd/engine'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
@@ -438,5 +439,76 @@ describe('the ring on a card on the felt offers «Flytta…» (#552)', () => {
     await user.click(within(panel).getByRole('button', { name: /^Marknad/ }))
     await waitFor(async () => expect((await lastIntents(id, 2))[0]).toMatchObject({ v: 'move', component: 'c0', to: 'market' }))
     other.close()
+  })
+})
+
+// A die from the keyboard (#1169, K16): Enter rolls it as a click does (K28), and M opens the same
+// «Flytta till» a card and a chip move by. A die lies on the felt and joins no pile (`zoneAt`
+// never drops one into a pile), so what it is offered is the felt's areas, and the focus goes with
+// it to wherever it was sent. The real keys, Tab and the arrows included, are pressed in
+// `packages/e2e/test/dice-table.spec.ts`.
+describe('M on a die (#1169, K16)', () => {
+  const openOnDie = async () => {
+    const setup = seatSetup()
+    const d6 = DICE.find((d) => d.id === 'die.d6')!
+    setup.components.push({ type: { id: d6.id, version: d6.version }, cardRef: 'd6', zone: 'table', face: 'front', counter: 4, x: 100, y: 0 })
+    const id = await createSession(run, 's1', undefined, setup)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(
+      <StatusLive>
+        <TablePage />
+      </StatusLive>,
+    )
+    const user = userEvent.setup()
+    const die = await screen.findByRole('button', { name: /^d6, visar 4, i Spelyta/ })
+    die.focus()
+    return { id, user, die }
+  }
+
+  it('is said in the die’s own name: Enter rolls it, M moves it', async () => {
+    const { die } = await openOnDie()
+    expect(die.getAttribute('aria-label')).toBe('d6, visar 4, i Spelyta. Enter slår tärningen, M flyttar den.')
+  })
+
+  it('opens «Flytta till» and nothing else, on the felt’s areas, and a place chosen sends a move with the focus following the die', async () => {
+    const { id, user } = await openOnDie()
+    await user.keyboard('m')
+    const box = await screen.findByRole('dialog', { name: 'Handlingar för d6' })
+    const panel = within(box)
+    // Moving is what M asks for: no «Gör», and the roll stays on Enter.
+    expect(panel.queryByRole('heading', { name: 'Gör' })).toBeNull()
+    expect(panel.queryByRole('button', { name: /^Slå/ })).toBeNull()
+    expect(panel.getByRole('heading', { name: 'Flytta till' })).toBeTruthy()
+    // The areas, and no pile or hand: a die joins no pile and is carried in no hand.
+    const offered = panel
+      .getAllByRole('button')
+      .filter((b) => !b.hasAttribute('disabled') && b.closest('[role="group"]'))
+      .map((b) => b.querySelector('span')?.textContent ?? '')
+    expect(offered).toContain('Framför A')
+    expect(offered).not.toContain('Draghög')
+    expect(offered).not.toContain('Kasthög')
+    expect(offered.filter((o) => /hand/i.test(o))).toEqual([])
+    // It is answered where it is read: the first place holds the focus.
+    await waitFor(() => expect(box.contains(document.activeElement)).toBe(true))
+
+    await user.click(panel.getByRole('button', { name: /^Framför A/ }))
+    await waitFor(async () => expect((await lastIntents(id, 1))[0]).toMatchObject({ v: 'move', to: 'mine:A' }))
+    // It lies in the area, clear of its edges, where a card laid there would lie: centred across
+    // the area's 90 mm and in the middle of the card's place along it — not on the area's corner,
+    // half over its edge, where a card's top-left corner would be.
+    const sent = (await lastIntents(id, 1))[0] as { x: number; y: number }
+    const DIE = 30
+    expect(sent.y).toBe((90 - DIE) / 2)
+    expect(sent.x).toBeGreaterThan(0)
+    expect(sent.x + DIE).toBeLessThan(380)
+    const moved = await screen.findByRole('button', { name: /^d6, visar 4, i Framför A/ })
+    await waitFor(() => expect(document.activeElement).toBe(moved))
+  })
+
+  it('still rolls on Enter, opening nothing', async () => {
+    const { id, user } = await openOnDie()
+    await user.keyboard('{Enter}')
+    await waitFor(async () => expect((await lastIntents(id, 1))[0]).toMatchObject({ v: 'roll' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

@@ -1791,6 +1791,19 @@ Schemat står kvar som det skrivs ur zod-schemat, med varje egenskap krävd och 
 Den falska Anthropic i sviterna håller nu ett strikt verktyg till samma gränser och svarar 400 som den riktiga, och loggraden `ai` bär leverantörens status när ett svar uteblev, eftersom ett 400 om vår egen begäran annars syns som en linje som brast.
 Den falska leverantörens `[regler]` lägger ett avsnitt efter bokens sista block som nämner spelets första zon med dess id, och `[regler-trasig]` samma avsnitt med `[[zon:finns-inte]]`.
 
+Ändrat 2026-10-23 (#1183, #1184): ett förslag som inte går att använda får AI:n rätta en gång, och ett regelblock läses på sina fält.
+Utan strikt verktyg kom ett långt Anthropic-svar tillbaka med en lista under slaget «ordered_placeholder_removed_marker_do_not_use», och hela förslaget kastades.
+Bokens tre blockslag delar inga fält utom `text`, så ett block under ett okänt slagsord läses som det enda slag vars fält det har exakt (#1183); ett block vars fält inte passar något slag avvisas som förut.
+Allt annat som gör ett förslag oanvändbart ger AI:n en chans att rätta (beställarens beslut 2026-10-23, prototypat i #1184, variant A, «tyst rättning»).
+Editorn skickar svaret tillbaka som det skrevs, `correct: { answer }`, och servern översätter det själv mot spelet och ger modellen felet i editorns egna termer, så det modellen får veta inte kan skilja sig från det editorn säger.
+Förfiningens väg duger inte, eftersom `refine.proposal` läses mot det strikta schemat och ett svar kan vara oanvändbart just för sin form.
+Det oanvändbara förslaget visas aldrig: ett förslag döms först när det kommit helt, och medan AI:n rättar står en lugn rad i panelens ljusa bläck, «Förslaget höll inte. AI:n rättar det…», utan rött eftersom designern inte har något att göra än.
+Det rättade förslaget står som vilket förslag som helst, med en tyst not under knapparna, «Rättat en gång: <felet>», eftersom en andra fråga på hennes nyckel inte ska vara osynlig.
+Går inte heller det rättade att använda kommer dagens felruta med det sista felet och «AI:n hade redan fått rätta förslaget en gång.»; ett svar rättas en gång, aldrig fler.
+Prosan från första svaret står kvar, och det rättningen säger runt sitt förslag sägs inte igen.
+Två varianter valdes bort: en synlig följdtur i samtalet, som gör panelen lång och ger två röda rutor i rad, och en felruta som väntar, som visar felet en stund även när det sedan rättas.
+Den falska leverantörens `[regler-markör]` svarar med listan under markörordet, och `[regler-rätta]` med det trasiga avsnittet tills det skickas tillbaka för rättning och det hela sedan.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.
@@ -4114,9 +4127,18 @@ En rad vars yta tas bort står kvar med ett besked, som räknarna utan räknarzo
 Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
 
 Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysiska skalan, eftersom en d6 på 16 mm blir 19 px på filten.
+*Reviderat 2026-10-23 (#1178, beställarens beslut C efter [prototyp](https://github.com/Tiico/build-a-deck/blob/c199f3792083e26786d1aaf1d6c87f03279d2611/docs/ux-audits/2026-10-22-tarningar/prototyper/d20.html)):* d20:ns toppyta ritas stor, en triangel med radien 40 av 50 i sexhörningen, så att ett tvåsiffrigt värde blir lika stort som d12:ans «12».
+Med den mindre toppytan måste «17» ritas en storlek mindre än alla andra tärningars siffror för att rymmas (#1170).
+`die-figure-fit.test.tsx` håller att varje värde ryms på sin toppyta, och att d20:ns tvåsiffriga värden är minst 0,85 av d12:ans höjd.
 Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
+Med tangentbordet slår Enter eller Space en fokuserad tärning, och M öppnar «Flytta till» med filtens ytor, så att tangentbordet når det pekaren når (K16; beställarens beslut 2026-10-23, #1169).
 Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
 Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
+
+I en tryckt lek är en tärning en köpt standardtärning som partnern packar i lådan, och ingenting trycks på den (beställarens beslut 2026-10-23, #1140).
+Typen bär `print.stock: true`, och tryckexporten listar tärningarna som hårdvara efter sort och antal bredvid korten, aldrig som kort.
+Den som beställer kan lämna hårdvaran utanför (`POST /projects/:id/print` med `{ hardware: false }`), eftersom många partner inte packar tärningar.
+Vilka partner som gör det, och `manufacturableBy`, hör till partnerlagret (F2) och fylls när en partner är integrerad.
 
 Prototyperna: [`index.html`](https://github.com/Tiico/build-a-deck/blob/3cff0957e3494cc3c096f59c8dd1e70a06101144/docs/ux-audits/2026-10-22-tarningar/prototyper/index.html) (bordet och telefonen, beslut A + B) och [`editor.html`](https://github.com/Tiico/build-a-deck/blob/5adb14f5544d2a9be04da4a3f8e78eb6150e93df/docs/ux-audits/2026-10-22-tarningar/prototyper/editor.html) (fliken Bord, beslut A med dynamiskt antal).
 
@@ -4148,6 +4170,66 @@ Följdkrav:
 Korpusen anonymiserar radernas text som den gör en flaggas (DRIFT §7), och `scripted-notepad.json` bär blocket genom ett ångra och en tillbakaspolning.
 Grindar: `packages/engine/test/notes.test.ts`, `packages/web/test/online-notes.test.tsx`, `packages/e2e/test/online-notes.spec.ts`, där två datorer skriver, bockar och skriver om i samma block, och `packages/e2e/test/online-notes-k9.spec.ts`, som håller K9:s golv vid 1280, 1440, 1512 och 1920 i spaltens eget standardläge.
 Utanför den här leveransen: blocket på bordsskärmen, TV:n och telefonen, och raderna i designerns «Resultat» (G3). Datan bär redan allt de skulle läsa.
+
+### K30. Turen är en markör som skickas vidare, och den hindrar ingen (prototypat och beslutat 2026-10-22, #1141)
+
+Bordet hade inget begrepp om tur.
+Raden «Senast: Ada drog ett kort · 12 s» sa vem som rörde något senast, men inte om hen var klar eller vem bordet väntade på.
+På distans finns ingen röst (G2) och inget ljud (K7), så en paus vid bordet gick inte att läsa.
+Tre varianter prototypades på `/online` ([`index.html`](https://github.com/Tiico/build-a-deck/blob/4fba01fdcd61520cfee14b940076bc810ee92df7/docs/ux-audits/2026-10-22-turen/prototyper/index.html)); beställaren valde B, turen på filten.
+
+**Designern säger om spelet går i tur.**
+Fliken Bord har en rad «Turordning» med tre val: ingen, medurs och moturs.
+Svaret är spelets, står i `setup.turns` och följer med uppställningen till bordet, där `SetupDef.turns` är `'clockwise'`, `'counterclockwise'` eller saknas.
+Ett spel utan turordning får ingen markör, och verbet nedan avvisas där.
+Det är så spel med samtidiga drag slipper en markör som ingenting betyder.
+Bytet gäller nästa bord, som zonerna gör; ett pågående bord behåller den turordning det startade med.
+
+**Turen är ett sessionsverb.**
+`turn.give { seat }` ger turen till en plats.
+Det är en protokollmigrering, och den står här av det skälet.
+Verbet hör till sessionen och inte till handen, som `seat.claim`, så det sätter inte `played` (#452), räknas inte som ett drag i ångra och tillbakaspolning (B), och en tillbakaspolning lämnar turen där den står.
+Verbet tar alltid en plats och aldrig «nästa».
+Två som trycker «Klar → Cy» samtidigt ger då båda turen till Cy, i stället för att den andra tryckningen hoppar över Cy.
+Vem som helst vid bordet får skicka det, också bordets egen skärm: systemet hindrar aldrig (B5), och en glömd «Klar» rättas av den som märker den.
+Det avvisas bara där det inte kan betyda något: i ett spel utan turordning, och till en plats som saknas eller är ledig.
+
+**Vem som har turen följer av loggen.**
+`TableState.turn` är `{ seat, at }` eller `null`, där `at` är radens egen tid, så en omspelning hamnar på samma tur och samma klocka.
+När ingen har turen tar den första som sätter sig den.
+Lämnar den som har turen bordet går turen till nästa upptagna plats i turordningen, eller till ingen när bordet är tomt.
+Turordningen härleds i `project` ur var platsernas händer ligger runt golvets mitt, på samma sätt som `seatEdge` härleder kanten, och börjar vid uppställningens första plats.
+Med flera platser på samma kant (K18) går den längs kanten åt samma håll som runt bordet.
+
+**Projektionen bär turen.**
+`Snapshot.turn` är `null` för ett spel utan turordning, och annars `{ seat, at, order }`: vem som har turen, sedan när, och alla platser i turordningen.
+Nästa plats är den första upptagna platsen efter turen i `order`, och den räknas av `nextTurn` i `packages/engine` för varje yta.
+Turen är ingen hemlighet (B6), så alla vyer får samma värde, och den ändras med ett eget `turn`-op i patchen.
+
+**Filten visar turen vid platsens kant.**
+Filtens kant lyser i platsens färg vid den plats som har turen, i varje läge: `/online`, bordsskärmen och TV:n.
+På TV:n, där platsen bär en skylt i stället för ett namn på kanten, får skylten en ring i platsens färg.
+Platsens namn säger «Adas tur» och hur länge turen pågått, räknat från `at`; nästa plats bär märket «nästa».
+Är det din tur står «Din tur» och knappen «Klar → Cy» vid din egen kant i stället för ditt namn, och fönstrets titel börjar med «● Din tur».
+Pilen i «Klar → Cy» är en ritad ikon och inget tecken (#1083), och knappen heter «Klar, ge turen till Cy» för den som hör den.
+På bordets delade skärm, där ingen plats är ens egen, står «Klar → Cy» i namnet hos den som har turen, eftersom den som har turen sitter vid den skärmen.
+Titeln är det enda som syns utanför sidan; det är ingen notis, och K7 står kvar.
+Där filten går att spela ger ett klick på en annan upptagen plats namn turen dit.
+Raden «Senast» står kvar, och `turn.give` läses där som «Ada gav turen till Bo».
+
+**Telefonen bär brickan.**
+Under telefonens huvud står en egen rad: «Din tur» och «Klar → Cy» när det är spelarens tur, och «Adas tur» annars.
+Raden står över telefonens flikar (#1147), så den syns på varje flik. Huvudet bär namnet och Ångra, och en bricka och en knapp där hade tagit namnets plats vid 390 px.
+Det är den bricka landningssidan redan visade.
+
+De avvisade varianterna var A, spåret, och C, turraden.
+A läste turerna ur loggen utan nytt tillstånd, men kunde bara säga vem som spelade sist och inte vem bordet väntade på.
+C ritade samma markör som en rad i huvudet; TV:n har inget huvud, och där hade raden kostat kortstorlek (K9).
+
+Följdkrav:
+`packages/engine/test/turn.test.ts` håller verbet, vem som tar turen och vart den går när platsen lämnas.
+`packages/server/test/wire.test.ts` visar att turen når varje vy i en patch.
+Webbens tester håller raden i Bord, kanten och knappen på filten och brickan på telefonen.
 
 ## L. Editorn (grillad 2026-09-06)
 
@@ -5047,6 +5129,11 @@ Priset är att piltangenterna inte längre nudgar elementet medan fokus står i 
 Det går fortfarande att markera — pekaren väljer det, egenskaperna öppnas, och låset finns på samma rad — och det går att flytta upp och ner i ordningen: låset är en sak om kortet, inte om listan.
 Egenskapernas fyra mått går att läsa men inte att skriva i; typsnitt, färg och bindning står öppna, för att låsa ett lager är inte att frysa dess formgivning.
 Ett försök som inte leder någonstans säger varför, bredvid kortet som inte rörde sig — annars är ett lås omöjligt att skilja från en trasig editor.
+Lappen står på kortet vid lagret självt, under det när lagret står i kortets övre halva och över det i den nedre, i skärmens pixlar oavsett zoom (reviderat 2026-10-23, #1181).
+Den stod över dukens fot, ovanpå kortraden, från första klicket som bara valde lagret tills lagret låstes upp; beställaren valde variant B av fyra i prototypen (grenen `claude/prototyp-last-lager-lapp`).
+Ett försök är en dragning som rör sig mer än tre pixlar, Enter eller blanksteg på lagret, och Delete — inte ett tryck som bara väljer lagret.
+Lappen bär «Lås upp», som är dess svar, och en stängknapp; Escape tar den, och den går när ett annat lager väljs, eftersom den bara handlar om lagret i handen.
+Hänglåset i lagerlistan är guld också när lagret är valt.
 Låst ritas i guld och som ett stängt hänglås: formen säger det där färgen inte når.
 
 **Två egenskaper som mallen bär men kortet aldrig visar.**
@@ -7684,6 +7771,18 @@ Hyllorna i arken är val i verktygets `.byd-choice`-form och inte den primära f
 Klammerns «Hela biblioteket» i Tabell söker i katalogen och laddar den när klick två trycks, aldrig när `{` skrivs (L27).
 Före det står Decksters egna, och ett spel utan ikoner öppnar som förut på dem, nu med vägen till hela katalogen under.
 Det öppnade biblioteket visar 60 träffar; namnet efter klammern är det som smalnar av, som i arket.
+
+**Byggt 2026-10-23 (prototypat och beslutat): arket under kortet väntar inte på biblioteken.**
+Arket i Mall visade ingenting förrän game-icons och Lucide var inlästa, flera MB bakom den dynamiska importen, fast Decksters egna symboler redan fanns i editorn.
+På en belastad maskin stod det en minut på «Biblioteken läses in …» med svärdet designern sökte i handen, och en E2E-resa föll på det.
+Nu står Decksters symboler direkt, som i Speltemats bibliotek, och biblioteken fyller på i samma rutnät när de kommer.
+Tills dess säger en tyst rad ovanför träffarna «Game Icons och Lucide läses in …».
+Står hyllan på Game Icons eller Lucide säger arket «Lucide läses in …» där träffarna ska stå, och de två hyllorna och Alla har inget antal förrän det finns ett.
+Går biblioteken inte att läsa in står felet ovanför Decksters träffar i stället för i deras ställe.
+Tre former prövades i en [prototyp](https://github.com/Tiico/build-a-deck/tree/df77d7b3/packages/web/prototype) med arkets riktiga CSS och bibliotek som hölls tills man släppte dem: raden ovanför (A), en streckad platshållarbricka i rutnätet (B) och beskedet på hyllorna och i foten (C).
+Valet blev **A**: B satte en bricka som inte går att trycka på bland dem som går, och C var lätt att missa längst ner till höger.
+`icon-libraries-late.spec.ts` håller bibliotekens chunkar på tråden och väljer svärdet medan de hålls.
+Att biblioteken dröjde en minut var lådans sak: den komprimerade game-icons-chunken på 6,4 MB med brotlis dyraste nivå vid första förfrågan, och nu gör bygget det i stället (DRIFT §13).
 
 ### L72. Inloggningsmejlet är bordet: tre band, trä, papper och vitt (prototypat och beslutat 2026-10-22, #1098)
 

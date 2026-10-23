@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vems tur · prototyp #1141</title>
+<!--
+  PROTOTYPE — throwaway (#1141). Tre sätt att visa vems tur det är på /online, växlade med ?v=A|B|C
+  (och pilarna ← →). A läser turerna ur loggen och har inget nytt tillstånd; B och C har en turmarkör
+  som skickas vidare med «Klar», ritad på filten (B) eller som en rad i huvudet (C). ?platser=8 ger
+  huvudet i C åtta platser. Ingenting här importeras av appen; filten och huvudet är ritade som i
+  docs/ux-audits/2026-10-22-anteckningsblocket/prototyper/index.html (#1131).
+-->
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: #17120f; color: #e8e2d8; font: 13px system-ui, sans-serif; overflow: hidden; }
+  button { font: inherit; color: inherit; }
+
+  /* --- prototypens egen rad: aldrig en del av förslaget ------------------------------------- */
+  .protorad { flex: none; display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; }
+  .protorad .fraga { flex: 1 1 320px; min-width: 0; }
+  .protorad button { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; cursor: pointer; }
+  .protorad button:hover { border-color: #ffd98a; }
+  .protorad .grupp { display: flex; align-items: center; gap: 4px; }
+  .vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+  .protorad .vaxlare button { border: 0; min-height: 30px; min-width: 34px; font-weight: 700; }
+  .protorad .vaxlare button[aria-pressed='true'], .protorad button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .anteckning { flex: 1 1 100%; margin: 0; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; }
+  .protorad .plus { color: #b7dca0; } .protorad .minus { color: #f0a58a; }
+  .protorad .eko { color: #ffe9b8; font-style: italic; }
+
+  /* --- /online som den är: huvudet, filten, handen i en kolumn till höger ---------------- */
+  .online { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .top { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #100d0b; border-bottom: 1px solid #2a221c; }
+  .me { flex: none; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgba(20,22,28,.9); color: #9aa3b8; border-left: 4px solid #3c8ce7; }
+  .me strong { color: #fff; font-size: 15px; }
+  .knapp { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(36,41,56,.92); color: #fff; font-weight: 700; cursor: pointer; }
+  .knapp.kant { background: #1d1815; border: 1px solid #3a2f26; color: #e8e2d8; }
+  .knapp:focus-visible, .namn:focus-visible, .klar:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+  .mitt { flex: 1 1 0; min-width: 0; margin-left: 8px; display: flex; align-items: center; gap: 6px; overflow: hidden; }
+  .last { min-width: 0; color: #9aa3b8; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .last b { color: #e8e2d8; font-weight: 500; } .last small { color: #7d8597; font-size: 12px; }
+
+  .play { flex: 1 1 auto; min-height: 0; display: flex; }
+  .feltrum { flex: 1 1 auto; min-width: 0; position: relative; display: grid; place-items: center; padding: 24px; overflow: hidden; }
+  .hand { flex: none; width: 136px; padding: 12px; display: flex; flex-direction: column; justify-content: center; }
+  .hand i { display: block; height: 60px; border-radius: 6px; background: #f2ead8; border: 2px solid #c9bea6; box-shadow: 0 2px 6px #0008; }
+  .hand i:last-child { height: 156px; }
+  .hand i::before { content: attr(data-n); display: block; height: 18px; padding: 2px 6px; border-radius: 4px 4px 0 0; background: var(--c, #7a4b17); color: #fff; font: 700 10px Georgia, serif; }
+
+  .tra { position: relative; border-radius: 34px; background: linear-gradient(#8a5a35, #5d3a22); box-shadow: 0 12px 40px #000a; }
+  .filt { position: absolute; inset: 4%; border-radius: 22px; background: radial-gradient(ellipse at 50% 40%, #2f7a4b, #1d5a36 75%); }
+  .zon { position: absolute; border: 1.5px solid #ffffff38; border-radius: 10px; }
+  .kort { position: absolute; width: var(--kw); aspect-ratio: 63/88; border-radius: 4px; background: #f2ead8; border: 1px solid #c9bea6; box-shadow: 0 2px 4px #0007; }
+  .kort.rygg { background: repeating-linear-gradient(45deg, #2b3d78 0 3px, #34478a 3px 6px); border-color: #1a2650; }
+  .kort.glod { box-shadow: 0 0 0 2px var(--seat), 0 0 16px var(--seat); }
+  .pill { position: absolute; transform: translate(-50%, -50%); padding: .5em 1em; border-radius: 999px; background: #0f2a1bdd; color: #fff; font: 700 calc(var(--kw) * .32) system-ui; white-space: nowrap; }
+  .etikett { position: absolute; color: #ffffffb0; font: 700 calc(var(--kw) * .2) system-ui; letter-spacing: .06em; }
+
+  .seat-ada { --seat: #e5534b; } .seat-bo { --seat: #3c8ce7; } .seat-cy { --seat: #3fb67a; } .seat-di { --seat: #e3b341; }
+  .seat-eli { --seat: #b07ce8; } .seat-fia { --seat: #e87cb8; } .seat-gus { --seat: #4cc3c9; } .seat-hal { --seat: #e8964c; }
+
+  /* Namnet vid platsens kant, som filten har det idag (K19). Varianterna lägger till på det. */
+  .namn { position: absolute; z-index: 3; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: .4em; padding: 2px 9px; border: 0; border-radius: 999px; background: var(--seat); color: #10131a; font: 800 calc(var(--kw) * .26) system-ui; white-space: nowrap; cursor: default; }
+  .namn small { font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; }
+
+  /* A — spåret: inget nytt tillstånd, bara loggens följder av samma plats */
+  .run { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px 0 8px; border-radius: 999px; background: #1d1815; border: 1px solid #3a2f26; color: #b8c0d2; font-size: 12px; white-space: nowrap; }
+  .run::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--seat); }
+  .run b { color: #e8e2d8; }
+  .run small { color: #7d8597; font-variant-numeric: tabular-nums; }
+  .run.nu { min-height: 44px; padding: 0 14px 0 10px; background: #241f1a; border-color: var(--seat); color: #e8e2d8; font-size: 14px; flex-shrink: 1; min-width: 0; overflow: hidden; }
+  .run.nu::before { width: 10px; height: 10px; }
+  .run.nu .vad { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: #b8c0d2; }
+  .run.nu small.tyst { color: #ffd98a; }
+  .run.gammal { opacity: .7; }
+  .namn.senast { box-shadow: 0 0 0 3px #10131a, 0 0 0 5px var(--seat); animation: puls 2s ease-in-out infinite; }
+  .namn.blek { filter: saturate(.35) brightness(.8); }
+  @keyframes puls { 50% { box-shadow: 0 0 0 3px #10131a, 0 0 0 5px var(--seat), 0 0 18px 6px var(--seat); } }
+
+  /* B — turen på filten: platsens kant av träet lyser, namnet säger tur och tid */
+  .turkant { position: absolute; z-index: 1; border-radius: 999px; background: var(--seat); box-shadow: 0 0 22px 4px var(--seat); }
+  .namn.tur { padding: 5px 14px; font-size: calc(var(--kw) * .34); box-shadow: 0 0 0 3px #10131a, 0 4px 18px #000a; }
+  .namn.nasta::after { content: 'nästa'; position: absolute; top: 100%; left: 50%; transform: translate(-50%, 3px); padding: 1px 7px; border-radius: 999px; background: #10131acc; color: #e8e2d8; font: 700 calc(var(--kw) * .2) system-ui; }
+  .namn.nasta.upp::after { top: auto; bottom: 100%; transform: translate(-50%, -3px); }
+  .namn.ge { cursor: pointer; }
+  .namn.ge:hover { box-shadow: 0 0 0 2px #10131a, 0 0 0 4px #ffffffaa; }
+  .egen { position: absolute; z-index: 4; left: 50%; top: 100%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; padding: 4px; border-radius: 999px; background: #10131a; box-shadow: 0 6px 22px #000c; }
+  .egen .du { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--seat); color: #10131a; font: 800 15px system-ui; }
+  .egen .du small { margin-left: 6px; font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; }
+  .klar { min-height: 44px; padding: 0 16px; border: 2px solid var(--seat); border-radius: 999px; background: transparent; color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; }
+  .klar:hover { background: #ffffff14; }
+
+  /* C — turraden i huvudet, i den plats «Senast» står idag */
+  .runda { flex: none; color: #7d8597; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .turrad { display: flex; align-items: center; gap: 2px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+  .turrad li { flex: none; display: flex; align-items: center; }
+  .turrad li + li::before { content: '›'; padding: 0 4px; color: #5d6270; font-size: 16px; }
+  .steg { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px 0 8px; border-radius: 999px; background: #1d1815; border: 1px solid #3a2f26; color: #b8c0d2; font-size: 12px; white-space: nowrap; }
+  .steg::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--seat); }
+  .steg.gjord { color: #7d8597; border-color: transparent; background: transparent; }
+  .steg.gjord::after { content: '✓'; color: #7d8597; }
+  .steg.aktiv { min-height: 44px; padding: 0 14px 0 4px; border: 0; background: var(--seat); color: #10131a; font-size: 14px; font-weight: 800; }
+  .steg.aktiv::before { width: 10px; height: 10px; margin-left: 8px; background: #10131a; }
+  .steg.aktiv small { font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; }
+  .steg.aktiv .vad { font-weight: 500; opacity: .8; }
+  .steg em { order: 2; font-style: normal; font-size: 10px; padding: 0 5px; border-radius: 999px; background: #ffffff1c; }
+  .steg.aktiv em { background: #10131a22; }
+  .turrad.tat .steg:not(.aktiv) { padding: 0 6px; gap: 4px; }
+  .turrad.tat .steg:not(.aktiv) .n { display: none; }
+  .turrad.tat .steg:not(.aktiv)::after { content: attr(data-i); }
+  .turrad.tat .steg.gjord::after { content: attr(data-i) ' ✓'; }
+  .turrad.tat li + li::before { padding: 0 1px; }
+  #klarC { background: var(--seat); color: #10131a; }
+  #klarC small { font-weight: 600; opacity: .75; }
+</style>
+</head>
+<body>
+
+<div class="protorad" role="region" aria-label="Prototypens kontroller">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>PROTOTYP #1141 · Vems tur är det?</b> Du sitter som <b>Bo</b> (nederst). Turen går medurs: Ada › Di › Bo › Cy. Pilarna ← → byter variant.</p>
+  </div>
+  <div class="grupp" role="group" aria-label="Låt en plats göra ett drag">
+    <span>Drag som:</span>
+    <button data-drag="ada">Ada</button><button data-drag="di">Di</button><button data-drag="bo">Bo</button><button data-drag="cy">Cy</button>
+  </div>
+  <button id="annanKlar">Di är klar</button>
+  <button id="spola">Spola 30 s</button>
+  <button id="atta" aria-pressed="false">8 platser</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="online">
+  <div class="top">
+    <span class="me seat-bo"><strong>Bo</strong> 5 kort</span>
+    <button class="knapp kant">Visa alla</button>
+    <div class="mitt" id="mitt"></div>
+    <button class="knapp" id="klarC" hidden></button>
+    <button class="knapp">↶ Ångra</button>
+    <button class="knapp">⚑ Flagga</button>
+    <button class="knapp">Ut…</button>
+  </div>
+  <div class="play">
+    <div class="feltrum" id="feltrum">
+      <div class="tra" id="tra">
+        <div class="turkant" id="turkant" hidden></div>
+        <div class="filt" id="filt"><div id="statik"></div><div id="namnen"></div>
+        <div class="egen seat-bo" id="egen" hidden>
+          <span class="du">Din tur<small id="egenKlocka"></small></span>
+          <button class="klar" id="klarB"></button>
+        </div>
+        </div>
+      </div>
+    </div>
+    <div class="hand" aria-hidden="true">
+      <i data-n="Russian Roulette"></i><i data-n="Trap" style="--c:#4a2a3a"></i><i data-n="Last Train" style="--c:#2b4a7a"></i><i data-n="High Noon"></i><i data-n="Stolen Goods" style="--c:#6a4a2a"></i>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOTES = {
+  A: `<b>Variant A · Spåret.</b> Inget nytt tillstånd och inget nytt verb. Loggen grupperas i följder av samma plats, och en följd är i praktiken en tur: «Di · 2 drag · 12 s» står först i huvudet, och de som spelade före står efter, blekare. Den som rörde något senast pulserar på filten.
+<span class="plus">+</span> Kostar ingenting i protokollet och bryter inte B5: bordet påstår ingenting om vems tur det <i>är</i>. <span class="plus">+</span> Fungerar för spel utan turordning också (samtidiga drag, realtid).
+<span class="minus">−</span> Det svarar på «vem spelade sist», inte på «vem väntar vi på». Spola 30 s: när Di slutat röra sig står det bara «tyst i 42 s», och då kan Di tänka eller vara klar. Det är just den paus som är svår att läsa på distans.`,
+  B: `<b>Variant B · Turen på filten.</b> En turmarkör: träets kant vid den spelande platsen lyser i platsens färg, namnet säger tid på turen, och nästa plats står märkt «nästa». När det blir din tur står «Din tur» och «Klar → Cy» vid din kant. Vem som helst kan ge turen till en annan plats genom att klicka dess namn; ingenting hindras (B5).
+<span class="plus">+</span> Svaret står där blicken redan är, och det bär över oförändrat till TV:n (kanten) och telefonen (brickan «Din tur», som landningssidan redan visar). <span class="plus">+</span> En tur blir ett avsnitt i loggen: bra signal för designern (hur länge varar en tur?).
+<span class="minus">−</span> Nytt sessionsverb (turn/pass): protokollmigrering och ett beslut. Designern måste säga i Bord att spelet går i tur. <span class="minus">−</span> Glömmer man trycka Klar ljuger markören; kanten står kvar hos Di tills någon flyttar den.`,
+  C: `<b>Variant C · Turraden.</b> Samma turmarkör som B, men som en rad i huvudet där «Senast» står idag: runda, ordningen, vem som är klar (✓), vem som spelar och vad hen gjorde senast. «Klar» står i huvudet när det är din tur. Filten rörs inte.
+<span class="plus">+</span> Hela ordningen syns på en gång, med rundan; bra för spel där «två till innan det är jag» spelar roll. <span class="plus">+</span> Kostar ingen höjd: raden ersätter «Senast» i samma rad. Prova «8 platser».
+<span class="minus">−</span> Huvudet är inte där blicken är när man spelar; det är en lista att läsa, inte ett bord att titta på. <span class="minus">−</span> TV:n har inget huvud: där kostar en rad kortstorlek (filten är höjdbunden). Samma nya verb och samma glömda Klar som B.`,
+}
+
+const NAMN = { ada: 'Ada', bo: 'Bo', cy: 'Cy', di: 'Di', eli: 'Eli', fia: 'Fia', gus: 'Gus', hal: 'Hal' }
+const ORDNING4 = ['ada', 'di', 'bo', 'cy']
+const ORDNING8 = ['ada', 'eli', 'di', 'fia', 'bo', 'gus', 'cy', 'hal']
+// Where each of the four seats sits on the felt, in % of the felt, and which edge of the wood is theirs.
+const PLATS = { ada: { x: 50, y: 2, kant: 'top' }, di: { x: 98, y: 50, kant: 'right' }, bo: { x: 50, y: 98, kant: 'bottom' }, cy: { x: 2, y: 50, kant: 'left' } }
+const DRAG = {
+  ada: ['drog ett kort', 'spelade Russian Roulette', 'lade Stolen Goods i Kasthög'],
+  di: ['drog ett kort', 'spelade High Noon', 'flyttade Trap till Framför D', 'vände Last Train'],
+  bo: ['drog ett kort', 'spelade Trap', 'lade Last Train i Kasthög'],
+  cy: ['drog ett kort', 'spelade Last Train', 'flyttade High Noon till Framför C'],
+}
+
+const q = new URLSearchParams(location.search)
+let v = ['A', 'B', 'C'].includes(q.get('v')) ? q.get('v') : 'B'
+let atta = q.get('platser') === '8'
+const $ = (id) => document.getElementById(id)
+
+let nu = Date.now()
+let logg, tur, turStart, runda
+function reset() {
+  nu = Date.now()
+  const s = (sek) => nu - sek * 1000
+  logg = [
+    { who: 'cy', text: 'drog ett kort', at: s(250) }, { who: 'cy', text: 'spelade Last Train', at: s(236) }, { who: 'cy', text: 'flyttade High Noon till Framför C', at: s(214) },
+    { who: 'ada', text: 'drog ett kort', at: s(120) }, { who: 'ada', text: 'spelade Russian Roulette', at: s(98) }, { who: 'ada', text: 'lade Stolen Goods i Kasthög', at: s(71) },
+    { who: 'di', text: 'drog ett kort', at: s(40) }, { who: 'di', text: 'spelade High Noon', at: s(12) },
+  ]
+  tur = 'di'; turStart = s(50); runda = 3
+}
+
+const ordning = () => (atta && v === 'C' ? ORDNING8 : ORDNING4)
+const nasta = (who) => { const o = ordning(); return o[(o.indexOf(who) + 1) % o.length] }
+const alder = (at) => { const sek = Math.max(0, Math.round((Date.now() - at) / 1000)); return sek < 60 ? `${sek} s` : `${Math.floor(sek / 60)} min` }
+const klocka = (at) => { const sek = Math.max(0, Math.round((Date.now() - at) / 1000)); return `${Math.floor(sek / 60)}:${String(sek % 60).padStart(2, '0')}` }
+const senast = (who) => [...logg].reverse().find((e) => e.who === who)
+
+function statik() {
+  $('statik').innerHTML = `
+    <div class="zon" style="left:26%;top:6%;width:9%;height:11%"></div>
+    <div class="zon" style="left:37%;top:6%;width:36%;height:11%"></div>
+    <span class="etikett" style="left:26%;top:19%">RÄKNARE A</span><span class="etikett" style="left:62%;top:19%">FRAMFÖR A</span>
+    <div class="zon" style="left:5%;top:20%;width:7%;height:14%"></div>
+    <div class="zon" style="left:5%;top:37%;width:7%;height:44%"></div>
+    <div class="zon" style="left:88%;top:20%;width:7%;height:14%"></div>
+    <div class="zon" style="left:88%;top:37%;width:7%;height:44%"></div>
+    <div class="zon" style="left:30%;top:63%;width:44%;height:14%"></div>
+    <div class="zon" style="left:30%;top:81%;width:9%;height:13%"></div>
+    <div class="zon" style="left:41%;top:81%;width:33%;height:13%"></div>
+    <span class="etikett" style="left:30%;top:77%">RÄKNARE B</span><span class="etikett" style="left:63%;top:77%">FRAMFÖR B</span>
+    <div class="kort" style="left:44%;top:7%"></div><div class="kort" style="left:52%;top:9%"></div><div class="kort" style="left:66%;top:5%"></div>
+    <div class="kort" style="left:39%;top:41%"></div><div class="kort rygg" style="left:58%;top:41%"></div>
+    <div class="kort" style="left:6.5%;top:66%"></div><div class="kort" id="diKort" style="left:89.5%;top:66%"></div>
+    <div class="kort" style="left:36%;top:64%"></div><div class="kort" style="left:45%;top:64%"></div><div class="kort" style="left:54%;top:64%"></div><div class="kort" style="left:63%;top:64%"></div>
+    <div class="kort" style="left:65%;top:82%"></div>
+    <span class="pill" style="left:27%;top:36%">Kasthög · 3</span><span class="pill" style="left:52%;top:36%">Kortlek · 109</span>`
+}
+
+function fit() {
+  const r = $('feltrum').getBoundingClientRect()
+  const aw = r.width - 48, ah = r.height - 48
+  const w = Math.max(100, Math.min(aw, ah * 900 / 640))
+  $('tra').style.width = w + 'px'
+  $('tra').style.height = (w * 640 / 900) + 'px'
+  $('tra').style.setProperty('--kw', w * 0.92 * 0.045 + 'px')
+}
+
+function namnlapp(who, extra = '', inner = NAMN[who]) {
+  const p = PLATS[who]
+  return `<button class="namn seat-${who} ${extra}" data-who="${who}" style="left:${p.x}%;top:${p.y}%">${inner}</button>`
+}
+
+// --- A: följderna ur loggen ---------------------------------------------------------------
+function foljder() {
+  const runs = []
+  for (const e of logg) {
+    const last = runs[runs.length - 1]
+    if (last && last.who === e.who) { last.n++; last.at = e.at; last.text = e.text } else runs.push({ who: e.who, n: 1, at: e.at, text: e.text })
+  }
+  return runs.reverse()
+}
+function renderA() {
+  const runs = foljder()
+  const [forsta, ...resten] = runs
+  const tyst = (Date.now() - forsta.at) / 1000 > 20
+  $('mitt').innerHTML = `<span class="run nu seat-${forsta.who}"><b>${NAMN[forsta.who]}</b><span class="vad">${forsta.n} drag · senast ${forsta.text}</span><small class="${tyst ? 'tyst' : ''}" data-age="${forsta.at}" data-tyst="${tyst ? 1 : ''}"></small></span>`
+    + resten.slice(0, 3).map((r, i) => `<span class="run seat-${r.who} ${i ? 'gammal' : ''}"><b>${NAMN[r.who]}</b> ${r.n} drag <small data-age="${r.at}"></small></span>`).join('')
+  const rank = runs.map((r) => r.who)
+  $('namnen').innerHTML = ORDNING4.map((who) => {
+    const i = rank.indexOf(who)
+    const s = senast(who)
+    return namnlapp(who, i === 0 ? 'senast' : i > 1 ? 'blek' : '', `${NAMN[who]}${s ? ` <small data-age="${s.at}"></small>` : ''}`)
+  }).join('')
+}
+
+// --- B: turmarkören på filten ---------------------------------------------------------------
+function renderB() {
+  const s = logg[logg.length - 1]
+  $('mitt').innerHTML = `<span class="last">Senast: <b>${NAMN[s.who]} ${s.text}</b> <small>· för <span data-age="${s.at}"></span> sedan</small></span>`
+  const n = nasta(tur)
+  $('namnen').innerHTML = ORDNING4.map((who) => {
+    if (who === tur && who === 'bo') return ''
+    if (who === tur) return namnlapp(who, 'tur', `${NAMN[who]}s tur <small data-clock="${turStart}"></small>`)
+    return namnlapp(who, `ge ${who === n ? 'nasta' : ''} ${who === 'bo' ? 'upp' : ''}`)
+  }).join('')
+  $('namnen').querySelectorAll('.namn.ge').forEach((b) => { b.title = `Ge turen till ${NAMN[b.dataset.who]}`; b.addEventListener('click', () => geTur(b.dataset.who)) })
+  const k = $('turkant'), kant = PLATS[tur].kant
+  k.hidden = false
+  k.className = `turkant seat-${tur}`
+  k.style.cssText = kant === 'top' ? 'left:22%;width:56%;top:.9%;height:2.2%' : kant === 'bottom' ? 'left:22%;width:56%;bottom:.9%;height:2.2%'
+    : kant === 'left' ? 'top:22%;height:56%;left:.6%;width:1.6%' : 'top:22%;height:56%;right:.6%;width:1.6%'
+  const egen = tur === 'bo'
+  $('egen').hidden = !egen
+  if (egen) { $('klarB').textContent = `Klar → ${NAMN[n]}`; $('egenKlocka').dataset.clock = turStart }
+  document.title = (egen ? '● Din tur · ' : '') + 'Vems tur · prototyp #1141'
+}
+
+// --- C: turraden i huvudet ------------------------------------------------------------------
+function renderC() {
+  const o = ordning()
+  const ti = o.indexOf(tur)
+  const s = senast(tur)
+  $('mitt').innerHTML = `<span class="runda">Runda ${runda}</span><ol class="turrad ${atta ? 'tat' : ''}">` + o.map((who, i) => {
+    const du = who === 'bo' ? ' <em>du</em>' : ''
+    if (i < ti) return `<li><span class="steg gjord seat-${who}" data-i="${NAMN[who][0]}"><span class="n">${NAMN[who]}</span>${du}</span></li>`
+    if (i === ti) return `<li><span class="steg aktiv seat-${who}">${who === 'bo' ? 'Din tur' : `${NAMN[who]}s tur`} <small data-clock="${turStart}"></small>${s && s.at > turStart ? `<span class="vad">· ${s.text}</span>` : ''}</span></li>`
+    return `<li><span class="steg seat-${who}" data-i="${NAMN[who][0]}"><span class="n">${NAMN[who]}</span>${du}</span></li>`
+  }).join('') + '</ol>'
+  $('namnen').innerHTML = ORDNING4.map((who) => namnlapp(who)).join('')
+  const egen = tur === 'bo'
+  $('klarC').hidden = !egen
+  $('klarC').className = 'knapp seat-bo'
+  $('klarC').innerHTML = `Klar <small>→ ${NAMN[nasta('bo')]}</small>`
+  document.title = (egen ? '● Din tur · ' : '') + 'Vems tur · prototyp #1141'
+}
+
+function tick() {
+  document.querySelectorAll('[data-age]').forEach((el) => { el.textContent = (el.dataset.tyst ? 'tyst i ' : '') + alder(+el.dataset.age) })
+  document.querySelectorAll('[data-clock]').forEach((el) => { el.textContent = klocka(+el.dataset.clock) })
+  if (v === 'A') {
+    const el = document.querySelector('.run.nu small')
+    const tyst = el && (Date.now() - +el.dataset.age) / 1000 > 20
+    if (el && tyst !== !!el.dataset.tyst) render()
+  }
+}
+
+function render() {
+  $('turkant').hidden = true
+  $('egen').hidden = true
+  $('klarC').hidden = true
+  document.title = 'Vems tur · prototyp #1141'
+  if (v === 'A') renderA(); else if (v === 'B') renderB(); else renderC()
+  const glod = $('diKort'); const last = logg[logg.length - 1]
+  glod.className = `kort seat-${last.who} ${Date.now() - last.at < 3000 ? 'glod' : ''}`
+  $('annanKlar').textContent = v === 'A' ? 'Di är klar (finns inte i A)' : tur === 'bo' ? 'Det är din tur: tryck Klar i bordet' : `${NAMN[tur]} är klar`
+  $('annanKlar').disabled = v !== 'A' && tur === 'bo'
+  $('atta').hidden = v !== 'C'
+  tick()
+}
+
+function geTur(who) {
+  tur = who; turStart = Date.now(); render()
+}
+function klar() {
+  const n = nasta(tur)
+  if (n === ordning()[0]) runda++
+  tur = n; turStart = Date.now(); render()
+}
+
+function show() {
+  document.querySelectorAll('.vaxlare button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)))
+  $('anteckning').innerHTML = NOTES[v].replace(/\n/g, '<br>')
+  $('atta').setAttribute('aria-pressed', String(atta))
+  if (!ordning().includes(tur)) tur = 'di'
+  const u = new URL(location.href); u.searchParams.set('v', v); atta ? u.searchParams.set('platser', '8') : u.searchParams.delete('platser')
+  history.replaceState(null, '', u)
+  fit(); render()
+}
+
+document.querySelectorAll('[data-drag]').forEach((b) => b.addEventListener('click', () => {
+  const who = b.dataset.drag
+  const done = logg.filter((e) => e.who === who).length
+  logg.push({ who, text: DRAG[who][done % DRAG[who].length], at: Date.now() })
+  render(); setTimeout(render, 3100)
+}))
+$('annanKlar').addEventListener('click', () => {
+  if (v === 'A') { $('anteckning').insertAdjacentHTML('beforeend', '<br><span class="eko">I A finns ingen Klar. Bordet ser bara att Di slutade röra sig.</span>'); return }
+  klar()
+})
+$('klarB').addEventListener('click', klar)
+$('klarC').addEventListener('click', klar)
+$('spola').addEventListener('click', () => {
+  for (const e of logg) e.at -= 30000
+  turStart -= 30000; render()
+})
+$('atta').addEventListener('click', () => { atta = !atta; show() })
+document.querySelectorAll('.vaxlare button').forEach((b) => b.addEventListener('click', () => { v = b.dataset.v; show() }))
+document.addEventListener('keydown', (e) => {
+  const all = ['A', 'B', 'C']
+  if (e.key === 'ArrowRight') { v = all[(all.indexOf(v) + 1) % 3]; show() }
+  if (e.key === 'ArrowLeft') { v = all[(all.indexOf(v) + 2) % 3]; show() }
+})
+addEventListener('resize', fit)
+setInterval(tick, 1000)
+
+statik(); reset(); show()
+</script>
+</body>
+</html>

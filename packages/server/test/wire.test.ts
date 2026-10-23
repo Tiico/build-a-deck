@@ -770,3 +770,27 @@ describe('the printed text is hidden information, like the title (#551, B6)', ()
     }
   }, 60_000)
 })
+
+// Whose turn it is (K30) is no secret: every view hears it in the same patch.
+describe('the turn on the wire', () => {
+  it('reaches every view in a patch when it is given', async () => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'turns', version: 'v1', setup: { ...twoSeatSetup(), turns: 'clockwise' } }),
+    })
+    const made = (await res.json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const a = await connect(made.id, 'A')
+    const b = await connect(made.id, 'B')
+    const table = await connect(made.id, null)
+    await a.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await b.send('B', { v: 'seat.claim', seat: 'B', name: 'Bo' })
+    await a.send('A', { v: 'turn.give', seat: 'B' })
+    for (const c of [a, b, table]) {
+      await c.synced(3)
+      expect(c.view?.turn).toMatchObject({ seat: 'B', order: ['A', 'B'] })
+      expect(c.messages.some((m) => m.t === 'patch' && m.patch.ops.some((op) => op.op === 'turn' && op.turn?.seat === 'B'))).toBe(true)
+    }
+  })
+})

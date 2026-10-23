@@ -3,7 +3,7 @@
 // the top face, a click or Enter that rolls it, a drag that moves it like anything else, and a
 // tumble played by the log line that says it was rolled — never by a guess at the value.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { DICE, TypeRegistry, initialState, project, STANDARD_TYPES, type SetupDef } from '@byd/engine'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { rollsAfter } from '../src/table/Die.js'
@@ -11,7 +11,7 @@ import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { feltLabels } from '../src/table/keyboard.js'
 import { dropIntents } from '../src/table/drop.js'
 import { describeActivity } from '../src/table/describe.js'
-import { translate, type Lang, type T } from '../src/i18n/index.js'
+import { Language, translate, type Lang, type T } from '../src/i18n/index.js'
 import { seatSetup } from './fixture.js'
 
 const registry = new TypeRegistry(STANDARD_TYPES)
@@ -145,11 +145,11 @@ describe('a card dropped on a die (#1137, K1)', () => {
   })
 })
 
-// What a reader is told a die is: its kind and the side that is up, where it lies, and that Enter
-// rolls it — and never that it is a card or a counter (A4).
+// What a reader is told a die is: its kind and the side that is up, where it lies, that Enter
+// rolls it and that M moves it (#1169) — and never that it is a card or a counter (A4).
 describe.each<[Lang, string]>([
-  ['sv', 'd20, visar 14, i Spelyta. Enter slår tärningen.'],
-  ['en', 'd20, showing 14, in Spelyta. Enter rolls it.'],
+  ['sv', 'd20, visar 14, i Spelyta. Enter slår tärningen, M flyttar den.'],
+  ['en', 'd20, showing 14, in Spelyta. Enter rolls it, M moves it.'],
 ])('what a reader is told a die is, in %s (#1137, A4)', (lang, said) => {
   it('says its kind, its value and that it can be rolled', () => {
     const v = table({ 20: 14 })
@@ -228,5 +228,25 @@ describe.each<TableMode>(['table', 'tv'])('a die under the pointer, mode=%s (#11
     fireEvent.pointerMove(dieOf(id), client(-125, -85))
     fireEvent.pointerUp(dieOf(id), client(-125, -85))
     expect(placeOf(dieOf(id))).toEqual(home)
+  })
+})
+
+// The felt's own help lists M where there are dice to move (#1169, K16), in the reader's language;
+// a table without dice keeps its list as it was (`felt-shortcuts.test.tsx`).
+describe.each<[Lang, string, string]>([
+  ['sv', 'Kortkommandon på bordet', 'Flytta tärningen som har fokus'],
+  ['en', 'Shortcuts on the table', 'Move the die that has the focus'],
+])('the felt’s help on a table with dice, in %s (#1169)', (lang, opener, said) => {
+  it('lists M as the key that moves the focused die', () => {
+    render(
+      <Language lang={lang}>
+        <TableRenderer view={table()} mode="tv" scale={1} onAct={vi.fn()} />
+      </Language>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: opener }))
+    const help = screen.getByRole('dialog', { name: opener })
+    // A row of its own: M and nothing else in the keys, and the sentence beside it.
+    const row = [...help.querySelectorAll('dt')].find((dt) => dt.textContent === 'M')
+    expect(row?.nextElementSibling?.textContent).toBe(said)
   })
 })

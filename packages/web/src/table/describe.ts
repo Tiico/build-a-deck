@@ -140,6 +140,10 @@ export function describeActivity(line: Said, view: Snapshot, t: T): string {
       const flagger = it.observer ? t('activity.flag.observer', { name: it.observer }) : who
       return it.note ? t('activity.flag.note', { who: flagger, note: it.note }) : t('activity.flag', { who: flagger })
     }
+    // Whose turn it is (K30): given on, or taken by the seat itself.
+    case 'turn.give':
+      if (it.seat === line.by) return t('activity.turn.take', { who })
+      return t('activity.turn.give', { who, to: view.seats.find((s) => s.id === it.seat)?.name ?? it.seat })
     // The notepad (#1131). A tick and a removal carry only the row's id, so the row is named by what
     // it says while the reader still has it — and a removed row, which the reader no longer has once
     // the patch has landed, is said without it.

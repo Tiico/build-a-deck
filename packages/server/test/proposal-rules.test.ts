@@ -111,6 +111,37 @@ describe('rule text proposed for the rulebook (#1006)', () => {
     expect(refused(answer)).toEqual({ kind: 'rules', section: 1, title: 'Att dra kort', fault: { kind: 'unknown-kind', type: 'table' } })
   })
 
+  // Anthropic's tool is not strict (#1088), and a long answer has come back with a list under the
+  // kind «ordered_placeholder_removed_marker_do_not_use» (#1183). The kinds share no field but
+  // `text`, so the fields say which block was meant whatever the kind word says.
+  it('reads a block under a kind word the book does not have as the one kind its fields fit', () => {
+    const marker = 'ordered_placeholder_removed_marker_do_not_use'
+    const read = translateProposal(
+      doc(),
+      rules({
+        after: 'b6',
+        blocks: [
+          { kind: marker, level: 2, text: 'Varje tur' },
+          { kind: marker, text: 'Gör så här.' },
+          { kind: marker, ordered: true, items: ['Dra.', 'Spela.'] },
+        ] as unknown as Block[],
+      }),
+    )
+    if (!read.ok) throw new Error(JSON.stringify(read.problem))
+    expect(read.edits[0]).toMatchObject({
+      blocks: [
+        { kind: 'heading', id: 'b7', level: 2, text: 'Varje tur' },
+        { kind: 'text', id: 'b8', text: 'Gör så här.' },
+        { kind: 'list', id: 'b9', ordered: true, items: ['Dra.', 'Spela.'] },
+      ],
+    })
+  })
+
+  it('still refuses a strange kind whose fields fit none of the book’s, or more than its own', () => {
+    expect(refused(rules({ after: 'b6', blocks: [{ kind: 'quote', text: 'Ja.', by: 'Någon' }] as unknown as Block[] }))).toMatchObject({ fault: { kind: 'unknown-kind', type: 'quote' } })
+    expect(refused(rules({ after: 'b6', blocks: [{ kind: 'x', ordered: true }] as unknown as Block[] }))).toMatchObject({ fault: { kind: 'unknown-kind', type: 'x' } })
+  })
+
   it('refuses a place in the book that is not there, and the same block replaced twice', () => {
     expect(refused(rules({ after: 'b9', blocks: section }))).toMatchObject({ fault: { kind: 'unknown-block', block: 'b9' } })
     expect(refused(rules({ replace: ['b9'], blocks: section }))).toMatchObject({ fault: { kind: 'unknown-block', block: 'b9' } })

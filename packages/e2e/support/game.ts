@@ -12,6 +12,8 @@ export type Game = {
   name?: string
   /** The game's dice, as the project document's `setup.dice` says them (K28, #1136). */
   dice?: ProjectDoc['setup']['dice']
+  /** Whether the game goes in turns, and which way (K30). Left out, it does not. */
+  turns?: 'clockwise' | 'counterclockwise'
 }
 
 // A card with a title and a body and nothing else. The template is deliberately plain: a journey
@@ -57,7 +59,7 @@ export function gameDoc(game: Game = {}): ProjectDoc {
     })),
     icons: {},
     fonts: { 'sans-serif': { stack: 'sans-serif', asset: `asset:${'a'.repeat(64)}` } },
-    setup: game.dice ? { ...setup, dice: game.dice } : setup,
+    setup: { ...setup, ...(game.dice ? { dice: game.dice } : {}), ...(game.turns ? { turns: game.turns } : {}) },
   }
 }
 

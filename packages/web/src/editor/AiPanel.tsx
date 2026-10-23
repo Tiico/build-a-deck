@@ -6,7 +6,8 @@ import { PROVIDER_NAMES, listAiModels, modelNameOf, readAiKey, type AiKey, type 
 import { askAi, type AskFailure, type AskRefine, type AskTurn, type Asking } from './ai-ask.js'
 import type { EditIntent } from '@byd/server/doc'
 import { AiProposal, acceptedOf, type Accepted, type ProposalVerdict } from './AiProposal.js'
-import { noParts, translated, withPart, type ProposalParts, type ShownProposal } from './proposals.js'
+import { hasParts, noParts, translated, withPart, type ProposalParts, type ShownProposal } from './proposals.js'
+import type { ProposalProblem } from '@byd/server/proposal'
 import { useMarked } from './marked.js'
 import { titleOfRow } from '@byd/server/doc'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
@@ -79,7 +80,10 @@ type TurnState = 'waiting' | 'streaming' | 'done' | 'cancelled' | 'failed'
 // turn whose refined proposal took this one's place (#1004).
 type TurnProposal = { parts: ProposalParts; broken: boolean; verdict: ProposalVerdict | null; accepted: Accepted; leave: ReadonlySet<string>; choosing: boolean; replacedBy?: number }
 // `refining` is the turn whose proposal a question refines, and what was sent of it (#1004).
-type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure; proposal?: TurnProposal; refining?: { of: number; ask: AskRefine } }
+// `correcting` is what was wrong with the proposal the answer first brought, while the AI corrects it
+// (#1184), and `corrected` the same once the corrected one has come: an answer is corrected once.
+type Turn = { id: number; question: string; answer: string; state: TurnState; failure?: AskFailure; proposal?: TurnProposal; refining?: { of: number; ask: AskRefine }; correcting?: ProposalProblem; corrected?: ProposalProblem }
+const uncorrecting = ({ correcting: _, ...turn }: Turn): Turn => turn
 const freshProposal = (): TurnProposal => ({ parts: noParts(), broken: false, verdict: null, accepted: { cards: 0, changed: 0 }, leave: new Set(), choosing: false })
 // Whether a turn's proposal waits for the designer: whole, usable against the game as it stands, and
 // neither accepted, discarded nor replaced.
@@ -249,7 +253,10 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
     onShowOnWall?.({ parts: now.proposal.parts, leave: now.proposal.leave })
   }, [replacing, turns, onShowOnWall])
 
-  const run = (id: number, question: string, before: readonly Turn[], refining?: Turn['refining']) => {
+  // `correct` is the first answer's proposal and what was wrong with it, when this run asks for it
+  // corrected (#1184): the prose already said stays, and what the correction says around its
+  // proposal is not said again.
+  const run = (id: number, question: string, before: readonly Turn[], refining?: Turn['refining'], correct?: { parts: ProposalParts; problem: ProposalProblem }) => {
     const history: AskTurn[] = before
       .filter((turn) => turn.state === 'done' && turn.answer.trim() !== '')
       .flatMap((turn): AskTurn[] => [
@@ -261,18 +268,32 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
       if (asking.current?.id === id) asking.current = null
       setBusy((now) => (now === id ? null : now))
     }
-    const call = askAi(http, project, { question, turns: history, lang, ...(selected.length > 0 ? { selected: selected.map((row) => row.id) } : {}), ...(refining ? { refine: refining.ask } : {}) }, (event) => {
-      if (event.t === 'text') update(id, (turn) => ({ ...turn, answer: turn.answer + event.text, state: 'streaming' }))
-      else if (event.t === 'part') {
+    // The proposal as it arrives, for judging when the answer ends whether it can be used: the
+    // events arrive outside any render.
+    let parts = noParts()
+    const call = askAi(http, project, { question, turns: history, lang, ...(selected.length > 0 ? { selected: selected.map((row) => row.id) } : {}), ...(refining ? { refine: refining.ask } : {}), ...(correct ? { correct: { answer: correct.parts } } : {}) }, (event) => {
+      if (event.t === 'text') {
+        if (!correct) update(id, (turn) => ({ ...turn, answer: turn.answer + event.text, state: 'streaming' }))
+      } else if (event.t === 'part') {
+        parts = withPart(parts, event.key, event.part)
         update(id, (turn) => {
           const had = turn.proposal ?? freshProposal()
           return { ...turn, state: 'streaming', proposal: { ...had, parts: withPart(had.parts, event.key, event.part) } }
         })
       } else if (event.t === 'done') {
-        setTurns((all) => settled(all, id, event.broken === true, docNow.current))
+        const read = event.broken === true || !hasParts(parts) ? null : translated(docNow.current, parts)
+        if (!correct && read && !read.ok) {
+          // A proposal that cannot be used is never shown: the AI is given it back once to correct.
+          const problem = read.problem
+          update(id, ({ proposal: _, ...turn }) => ({ ...turn, state: 'streaming', correcting: problem }))
+          done()
+          run(id, question, before, refining, { parts, problem })
+          return
+        }
+        setTurns((all) => settled(all, id, event.broken === true, docNow.current).map((turn) => (turn.id === id && correct ? { ...uncorrecting(turn), corrected: correct.problem } : turn)))
         done()
       } else {
-        update(id, (turn) => ({ ...turn, state: 'failed', failure: event.kind }))
+        update(id, (turn) => ({ ...uncorrecting(turn), state: 'failed', failure: event.kind }))
         done()
         if (event.kind === 'no-key') onKeyGone()
       }
@@ -483,6 +504,14 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
                   {answerOf(turn.answer)}
                   {turn.state === 'cancelled' && <p className="byd-ai-quiet">{t('ai.cancelled')}</p>}
                 </div>
+                {turn.correcting && turn.state === 'streaming' && (
+                  <p className="byd-ai-correcting">
+                    <span className="byd-ai-spark" aria-hidden="true">
+                      ✦
+                    </span>{' '}
+                    {t('ai.correcting')}
+                  </p>
+                )}
                 {turn.proposal && turn.state !== 'cancelled' && turn.state !== 'failed' && (
                   <AiProposal
                     id={String(turn.id)}
@@ -505,6 +534,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
                     onAcceptChosen={() => accept(turn, true)}
                     onDiscard={() => discard(turn)}
                     onAgain={busy === null ? () => again(turn) : undefined}
+                    corrected={turn.corrected}
                   />
                 )}
                 {turn.state === 'failed' && turn.failure && turn.failure !== 'no-key' && (

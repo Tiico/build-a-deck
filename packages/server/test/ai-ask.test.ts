@@ -222,6 +222,36 @@ describe('the cards the designer selected (#1003)', () => {
   })
 })
 
+// An answer whose proposal the editor could not use is asked for once more (#1184): the panel sends
+// the answer back as the model wrote it, and the server reads it against the game itself, so what the
+// model is told is wrong is what the editor would say — never a word the client chose.
+describe('a proposal that could not be used, sent back to be corrected (#1184)', () => {
+  const unusable = { cards: [{ fields: [{ field: 'title', value: 'Förslag 1' }, { field: 'antal', value: 1 }, { field: 'trolldom', value: 'Okänd' }] }], changes: [] }
+
+  it('goes before the question, whole, with what the editor finds wrong in it, while the game’s own context stays the same bytes', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    await ask(w, w.ada, 'Vad heter spelet?')
+    const plain = fake.calls.at(-1)!.body as { system: { text: string }[] }
+    const asked = await ask(w, w.ada, 'Två nya kort', { correct: { answer: unusable } })
+    expect(asked.events.at(-1)).toEqual({ t: 'done' })
+    const body = fake.calls.at(-1)!.body as { system: { text: string }[]; messages: { content: string }[] }
+    const said = body.messages.at(-1)!.content
+    expect(said).toMatch(/^## Proposal that could not be used\n/)
+    expect(said).toContain(JSON.stringify(unusable))
+    expect(said).toContain(JSON.stringify({ kind: 'unknown-field', field: 'trolldom', card: 1, title: 'Förslag 1' }))
+    expect(said.endsWith('## Question\nTvå nya kort')).toBe(true)
+    expect(body.system[1]!.text).toBe(plain.system[1]!.text)
+  })
+
+  it('is refused when it is not an answer the panel could have had', async () => {
+    const w = await world()
+    await w.vault.save(await idOf(w, 'ada@example.com'), 'anthropic', ADA_KEY)
+    expect((await ask(w, w.ada, 'Hej', { correct: {} })).status).toBe(400)
+    expect((await ask(w, w.ada, 'Hej', { correct: { answer: unusable, fault: 'påhittat' } })).status).toBe(400)
+  })
+})
+
 describe('a proposal being refined (#1004)', () => {
   const pending = {
     cards: [

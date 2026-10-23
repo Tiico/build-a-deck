@@ -19,6 +19,7 @@ import { Help } from '../editor/HelpDrawer.js'
 import { playIntents } from './play.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
+import { TurnBadge } from './TurnBadge.js'
 import { useRoving } from '../editor/roving.js'
 import type { TurnedHand } from './turned.js'
 
@@ -226,6 +227,11 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         </span>
         <UndoButton client={client} view={view} raise={raiseHead} />
       </header>
+      {/* Whose turn it is (K30), on a row of its own under the head and over every tab: the head
+          holds the name and Ångra, and a badge and a button there would take the name's room. */}
+      <div className="byd-turn-strip" {...behind}>
+        <TurnBadge view={view} seat={seat} onGive={(next) => void client.send({ v: 'turn.give', seat: next })} />
+      </div>
       <main className="byd-panels" {...behind}>
         <section {...panel('hand')}>
           {/* The piles first, because they are what fills a hand (#79), and the hand under them,

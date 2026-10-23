@@ -39,7 +39,7 @@ import { OversetMarks } from './OversetMarks.js'
 import { useCut } from './overset.js'
 import { placeholderOf, PLACEHOLDER_WORDS, THIN_PX, type Placeholder, type PlaceholderCase } from './placeholder.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
-import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
+import { ChevronGlyph, CloseGlyph, LockGlyph } from '../glyphs.js'
 import { usePressAway } from '../doors.js'
 
 export type TemplateCanvasProps = {
@@ -181,6 +181,30 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The refusal stands only while the layer it is about is still there and still locked: unlocking
   // it, or taking it away, is the answer to the message and takes the message with it.
   const refusedLayer = panel.find((l) => l.element.id === refused && l.element.locked)?.element
+  // And it is about the layer in hand (#1181): choosing another one is turning to something else,
+  // and a note about the first would stand on the card beside a layer nobody is looking at.
+  useEffect(() => {
+    if (selectedElement !== refused) setRefused(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- on a new choice only: the refusal itself chooses the layer it is about
+  }, [selectedElement])
+  // Escape puts it away from wherever the keyboard is, the way it puts away a menu.
+  useEffect(() => {
+    if (!refusedLayer) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      setRefused(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [refusedLayer])
+  // Put away by the designer, from the note itself: the hand goes back to the layer it was about,
+  // which is where it was before the note took it, and not to the top of the page.
+  const putAway = (unlock: boolean) => {
+    const id = refused
+    setRefused(null)
+    if (id && unlock) onLock(id, false)
+    if (id) document.querySelector<HTMLElement>(`[data-drag="${CSS.escape(id)}"]`)?.focus()
+  }
   const patch = (id: string, changed: Partial<Element>, gesture?: string) => onPatch(id, iconSized(panel.find((l) => l.element.id === id)?.element, changed), gesture)
   // Which layer is being asked about before it goes (#143, L9). A card asks before it is removed
   // and a column asks and says what it takes with it; an element is the largest of the three —
@@ -495,7 +519,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
             onMeasured={onMeasured}
-            overlay={<><DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} /><OversetMarks found={oversetOf(tabFace, rowData, cut)} scale={zoom.scale} zoomed /></>}
+            overlay={<><DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} refused={refusedLayer ? <LockedNote layer={refusedLayer} onPutAway={putAway} /> : null} refusedId={refusedLayer?.id ?? null} point={pointAt} onPoint={setPointAt} reading={reading} /><OversetMarks found={oversetOf(tabFace, rowData, cut)} scale={zoom.scale} zoomed /></>}
           />
         </section>
           <ZoomBand zoom={zoom} />
@@ -517,13 +541,6 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             there, and in the column where the card it draws on is. It lies over the canvas' foot
             rather than taking a row from the stage, so the card stands still while it is asked
             (#698): the fit follows the window, not a strip. */}
-        {/* Why a locked layer did not move (L15), under the card where the canvas's question
-            stands (#478): at the stage's foot it was cut by the stage it stood in. */}
-        {refusedLayer && (
-          <p className="byd-canvas-locked" role="alert">
-            {t('canvas.layer.isLocked', { name: layerTitle(refusedLayer, t) })}
-          </p>
-        )}
         {stage === null && sheet}
         {swapping && (
           <Question
@@ -804,7 +821,40 @@ const ARMS: readonly Arm[] = ['in', 'out']
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint, reading = false }: { boxes: BoxElement[]; row: Row; scale: number; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
+// How far a press on a locked layer travels before it is a pull and not a hand settling (#1181).
+const PULL_SLOP = 3
+
+// The note's place on the card: centred on the layer, under it when the layer stands in the
+// card's upper half and over it in the lower, so it opens across the card and not past its edge.
+function LockedAt({ box, children }: { box: BoxElement | undefined; children: ReactNode }) {
+  if (!box) return null
+  const above = box.y + box.h / 2 > CARD_STANDARD_63x88.physical.heightMm / 2
+  return (
+    <div className="byd-canvas-locked-at" {...(above ? { 'data-above': '' } : {})} style={{ left: `${box.x + box.w / 2}mm`, top: `${above ? box.y : box.y + box.h}mm` }}>
+      {children}
+    </div>
+  )
+}
+
+function LockedNote({ layer, onPutAway }: { layer: Element; onPutAway(unlock: boolean): void }) {
+  const t = useT()
+  return (
+    // The note stands on the stage, which takes a press anywhere in it for a press on nothing and
+    // lets the layer go; and on the card, whose layers read the keys. Neither is the note's.
+    <div className="byd-canvas-locked" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+      <LockGlyph open={false} />
+      <p role="alert">{t('canvas.layer.isLocked', { name: layerTitle(layer, t) })}</p>
+      <button type="button" onClick={() => onPutAway(true)}>
+        {t('canvas.layer.isLocked.unlock')}
+      </button>
+      <button type="button" className="byd-canvas-locked-close" aria-label={t('canvas.layer.isLocked.close')} onClick={() => onPutAway(false)}>
+        <CloseGlyph />
+      </button>
+    </div>
+  )
+}
+
+function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, refused, refusedId, point, onPoint, reading = false }: { boxes: BoxElement[]; row: Row; scale: number; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; refused: ReactNode; refusedId: string | null; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
@@ -816,6 +866,10 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
     return placeholder ? [[box.id, placeholder] as const] : []
   }))
   const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean; scroll: { x: number; y: number } }) | null>(null)
+  // A press on a locked layer, until it shows whether it was a pull (#1181). Pressing is how a
+  // layer is chosen, and a choice is not an attempt: the refusal is for a hand that went
+  // somewhere, and a press that stays where it landed only chooses.
+  const pressed = useRef<{ id: string; x: number; y: number } | null>(null)
   // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
   // of the same title are two things the designer did, and two steps back.
   const grabs = useGesture('grab')
@@ -952,7 +1006,11 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
     onSelect(box.id)
     // A locked layer is still a layer you can point at — pointing selects it, so its properties
     // can be read and its lock found — but the pointer never takes hold of it (L15).
-    if (box.locked) return onRefused(box.id)
+    if (box.locked) {
+      pressed.current = { id: box.id, x: event.clientX, y: event.clientY }
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+      return
+    }
     // Nor does it for a reader (#489): the band over the page has already said why, once.
     if (reading) return
     const rect = layer.current?.getBoundingClientRect()
@@ -977,6 +1035,11 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
   const move = (event: ReactPointerEvent<HTMLElement>) => {
     // The outline comes first: a grab that is about a point is never also about the element.
     if (shaping.current) return shapeMove(event)
+    const tried = pressed.current
+    if (tried && Math.hypot(event.clientX - tried.x, event.clientY - tried.y) >= PULL_SLOP) {
+      pressed.current = null
+      return onRefused(tried.id)
+    }
     const held = grab.current
     if (!held) return
     pointer.current = { x: event.clientX, y: event.clientY }
@@ -1038,6 +1101,7 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
     if (panning.current !== null) cancelAnimationFrame(panning.current)
     panning.current = null
     pointer.current = null
+    pressed.current = null
     setKept(null)
     grab.current = null
     shaping.current = null
@@ -1150,6 +1214,11 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
           </button>
         </div>
       ))}
+      {/* Why the layer did not move (L15), beside it on the card (#1181): where the hand and the
+          eye already are. It stood over the canvas' foot before and covered the card row there. It
+          is the layer's neighbour and not its child: the layer is a button, and a button holds no
+          buttons. */}
+      {refused && refusedId !== null && <LockedAt box={boxes.find((b) => b.id === refusedId)}>{refused}</LockedAt>}
       {[...boxes].reverse().map((box, fromTop) => (
         <div
           key={box.id}

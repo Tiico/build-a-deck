@@ -1,0 +1,281 @@
+<!doctype html>
+<!-- PROTOTYP (#1129). Kastas när varianten är vald. ?v=A|B|C, ←/→ byter. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tärningar — prototyp #1129</title>
+<style>
+:root {
+  --plate: #171a23; --edge: #0d0f14; --chalk: #f3e9d6; --chalk-off: #9b968e; --accent: #f0b64a; --on-accent: #1c1c1c;
+  --plate-off: #2d2f35; --font: 'Roboto Condensed', system-ui, sans-serif;
+  --die: #f3e9d6; --die-ink: #1c1c1c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #0b0c10; color: var(--chalk); font: 14px var(--font); }
+body { padding: 16px 16px 96px; }
+.rubrik { max-width: 1400px; margin: 0 0 10px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; }
+.anteckning { max-width: 1400px; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.scen { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.etikett { color: var(--chalk-off); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 6px; }
+
+/* ── TV ── */
+.tv { width: 1000px; height: 600px; background: var(--edge); border-radius: 10px; display: grid; grid-template-columns: 1fr 240px; overflow: hidden; outline: 1px solid #2a2d36; }
+.felt { position: relative; margin: 24px; background: var(--plate); border: 1px solid #22262f; border-radius: 12px; }
+.zon { position: absolute; border: 1px solid #3a3f4b; border-radius: 6px; }
+.zon .namn { position: absolute; left: 50%; transform: translateX(-50%); bottom: -24px; font-weight: 700; color: var(--chalk-off); white-space: nowrap; }
+.kort { position: absolute; width: 56px; height: 78px; border-radius: 5px; background: repeating-linear-gradient(45deg, #2f477e 0 4px, #29406f 4px 8px); border: 1px solid #4b5f8e; }
+.plats { position: absolute; display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 6px; background: #12141b; font-weight: 700; border-left: 3px solid var(--c); }
+.plats i { width: 24px; height: 24px; border-radius: 50%; background: var(--c); display: grid; place-items: center; font-style: normal; color: #fff; }
+.sida { padding: 18px 16px; border-left: 1px solid #1e2129; background: #101219; overflow: hidden; }
+.sida h3 { margin: 0 0 8px; font-size: 13px; color: var(--chalk-off); letter-spacing: .1em; }
+.senast { list-style: none; margin: 0; padding: 0; }
+.senast li { padding: 6px 0; border-bottom: 1px solid #1e2129; line-height: 1.35; font-size: 15px; }
+.senast li b { color: var(--c); }
+.senast li.ny { animation: ny 1.2s ease-out; }
+@keyframes ny { from { background: #f0b64a33; } to { background: transparent; } }
+
+/* tärning, gemensamt */
+.die { position: absolute; cursor: pointer; user-select: none; touch-action: manipulation; }
+.die svg { display: block; overflow: visible; }
+.die .v { font: 700 1px var(--font); fill: var(--die-ink); text-anchor: middle; dominant-baseline: central; font-variant-numeric: tabular-nums; }
+.die:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.die .ring { fill: none; stroke: var(--c, transparent); stroke-width: 0; transition: stroke-width .25s; }
+.die.slagen .ring { stroke-width: 4; }
+
+/* ── Telefon ── */
+.telefon { width: 375px; height: 760px; border-radius: 34px; background: #000; padding: 12px; outline: 1px solid #2a2d36; }
+.skarm { position: relative; width: 100%; height: 100%; border-radius: 24px; overflow: hidden; background: #14161c; display: flex; flex-direction: column; }
+.topp { padding: 14px 16px 8px; display: flex; justify-content: space-between; align-items: center; }
+.topp .vem { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 16px; }
+.topp .vem i { width: 26px; height: 26px; border-radius: 50%; background: #e05a4f; display: grid; place-items: center; font-style: normal; }
+.piller { display: flex; gap: 8px; padding: 4px 16px 10px; }
+.piller span { padding: 6px 12px; border-radius: 999px; background: var(--plate-off); font-weight: 700; }
+.handrubrik { padding: 6px 16px; color: var(--chalk-off); font-weight: 700; }
+.hand { display: flex; gap: 8px; padding: 0 16px 12px; overflow: hidden; }
+.hand div { flex: 0 0 112px; height: 156px; border-radius: 8px; background: var(--chalk); color: #1c1c1c; padding: 8px; font-weight: 700; }
+.knapp { min-height: 48px; border: 0; border-radius: 12px; font: 700 17px var(--font); cursor: pointer; padding: 0 18px; }
+.knapp.prim { background: var(--accent); color: var(--on-accent); }
+.knapp.sek { background: transparent; color: var(--chalk); border: 1px solid #4a4f5c; }
+.knapp:disabled { opacity: .45; cursor: default; }
+.knapp:focus-visible { outline: 3px solid var(--chalk); outline-offset: 2px; }
+.resultat { font-size: 15px; color: var(--chalk); min-height: 22px; }
+.resultat b { font-size: 20px; }
+
+/* ── växlare ── */
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; max-width: calc(100vw - 16px); }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+.vaxlare label { padding: 0 8px; display: flex; gap: 4px; align-items: center; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="rubrik" id="rubrik"></div>
+<div class="anteckning" id="anteckning"></div>
+<div class="scen">
+  <div><p class="etikett">Bordet (TV) · klicka på en tärning för att slå den som «Bordet»</p><div class="tv"><div class="felt" id="felt"></div><aside class="sida"><h3>SENAST</h3><ul class="senast" id="senast"></ul></aside></div></div>
+  <div><p class="etikett">Telefonen · plats A, Nicklas</p><div class="telefon"><div class="skarm" id="skarm"></div></div></div>
+</div>
+<nav class="vaxlare" aria-label="Prototypväxlare">
+  <button id="prev" aria-label="Föregående">←</button>
+  <button data-v="A" aria-pressed="true">A · Silhuetter + remsa</button>
+  <button data-v="B" aria-pressed="false">B · Brickor + ark</button>
+  <button data-v="C" aria-pressed="false">C · Tärningsbricka + spara</button>
+  <button id="next" aria-label="Nästa">→</button>
+  <label><input type="checkbox" id="rm"> reducerad rörelse</label>
+</nav>
+<script>
+const SEATS = { A: { name: 'Nicklas', c: '#e05a4f' }, B: { name: 'Sara', c: '#3c8ce7' }, T: { name: 'Bordet', c: '#f0b64a' } }
+const KINDS = [4, 6, 6, 8, 10, 12, 20]
+let dice = KINDS.map((n, i) => ({ id: 'd' + i, n, v: Math.ceil(n / 2) + (i % 2), held: false, sel: false }))
+const qs = new URLSearchParams(location.search)
+let V = ['A', 'B', 'C'].includes(qs.get('v')) ? qs.get('v') : 'A'
+const reduced = () => document.getElementById('rm').checked || matchMedia('(prefers-reduced-motion: reduce)').matches
+const rnd = (n) => 1 + Math.floor(Math.random() * n)
+const $ = (s, r = document) => r.querySelector(s)
+
+const NOTES = {
+  A: `<b>A — Silhuetter + remsa.</b> Varje sort ritas med sin egen silhuett uppifrån (d4 triangel, d6 kvadrat, d8 sexhörning med triangel, d10 drake, d12 femhörning, d20 sexhörning med fasetter), större än den fysiska skalan: en riktig d6 på 16 mm vore 19 px på filten. Ett slag får tärningarna att tumla på stället i 0,7 s, och värdet hoppar innan det stannar. Telefonen har en remsa «Tärningar» under handen. Tryck väljer, och knappen slår de valda i ett kuvert.
+  <br><span class="plus">+ Sorten syns utan text, så man ser direkt vad som ligger på bordet.</span> <span class="minus">− d8 och d20 liknar varandra på avstånd. Ingen summa visas. Remsan tar höjd från handen.</span>`,
+  B: `<b>B — Brickor + ark.</b> Alla tärningar är samma rundade bricka som räknarna (K18), med värdet stort och sorten («d20») i hörnet. Ett slag rör ingenting på filten: siffrorna flimrar i 0,5 s och brickan får en ring i platsens färg. Telefonen har en knapp «Tärningar · 7» bredvid räknarna, och den öppnar ett ark med stora rutor, «Välj alla» och «Slå». Arket visar summan.
+  <br><span class="plus">+ Lättast att läsa på avstånd och samma formspråk som räknarna. Handen får behålla sin höjd.</span> <span class="minus">− Sorten är text, och det ser inte ut som en tärning. Ett tryck mer på telefonen.</span>`,
+  C: `<b>C — Tärningsbricka + spara.</b> Tärningarna ligger i en egen zon på filten, en bricka. Ett slag kastar dem i brickan: de får nya platser och vinklar under 0,9 s, och en rad bredvid säger vem som slog, med summan. Telefonen speglar brickan. Tryck på en tärning <i>sparar</i> den, som i Yatzy, och «Slå» kastar resten.
+  <br><span class="plus">+ Känns mest som ett fysiskt kast och ger Yatzy-flödet gratis.</span> <span class="minus">− Brickan kostar plats på filten. «Spara» är ett läge som de flesta spel inte behöver, och det kräver att en sparad tärning ligger kvar mellan slagen (ett tillstånd i motorn).</span>`,
+}
+
+/* ── former ── */
+function poly(points) { return points.map((p) => p.join(',')).join(' ') }
+function ngon(k, r, rot = -90, cx = 50, cy = 50) { return Array.from({ length: k }, (_, i) => { const a = (rot + (360 / k) * i) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)] }) }
+function silhouette(n) {
+  const fill = 'var(--die)', st = 'stroke="#b9ad97" stroke-width="2" stroke-linejoin="round"'
+  switch (n) {
+    case 4: return { svg: `<polygon points="${poly(ngon(3, 50, -90, 50, 58))}" fill="${fill}" ${st}/>`, ty: 64, fs: 30 }
+    case 6: return { svg: `<rect x="8" y="8" width="84" height="84" rx="12" fill="${fill}" ${st}/>`, ty: 50, fs: 46 }
+    case 8: return { svg: `<polygon points="${poly(ngon(6, 50, -90))}" fill="#ddd2bd" ${st}/><polygon points="${poly(ngon(3, 50, -90))}" fill="${fill}" ${st}/>`, ty: 56, fs: 30 }
+    case 10: return { svg: `<polygon points="50,2 92,46 50,98 8,46" fill="#ddd2bd" ${st}/><polygon points="50,14 80,48 50,70 20,48" fill="${fill}" ${st}/>`, ty: 48, fs: 28 }
+    case 12: return { svg: `<polygon points="${poly(ngon(10, 50, -90))}" fill="#ddd2bd" ${st}/><polygon points="${poly(ngon(5, 34, -90))}" fill="${fill}" ${st}/>`, ty: 52, fs: 30 }
+    case 20: { const o = ngon(6, 50, -90), t = ngon(3, 28, -90, 50, 54); const facets = o.map((p, i) => `<line x1="${p[0]}" y1="${p[1]}" x2="${t[Math.floor(((i + 1) % 6) / 2)][0]}" y2="${t[Math.floor(((i + 1) % 6) / 2)][1]}" stroke="#b9ad97" stroke-width="1.5"/>`).join('')
+      return { svg: `<polygon points="${poly(o)}" fill="#ddd2bd" ${st}/>${facets}<polygon points="${poly(t)}" fill="${fill}" ${st}/>`, ty: 58, fs: 22 } }
+  }
+}
+function dieSvgA(d, px) {
+  const s = silhouette(d.n)
+  return `<svg width="${px}" height="${px}" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="52" r="58"/>${s.svg}<text class="v" x="50" y="${s.ty}" style="font-size:${s.fs}px">${d.v}</text>${d.n === 6 || d.n === 9 ? '' : ''}</svg>`
+}
+function dieSvgB(d, px) {
+  return `<svg width="${px}" height="${px}" viewBox="0 0 100 100"><rect class="ring" x="-6" y="-6" width="112" height="112" rx="24"/><rect x="2" y="2" width="96" height="96" rx="20" fill="var(--die)" stroke="#b9ad97" stroke-width="2"/><text x="12" y="20" style="font:700 15px var(--font);fill:#6d6558">d${d.n}</text><text class="v" x="50" y="58" style="font-size:${String(d.v).length > 1 ? 44 : 54}px">${d.v}</text></svg>`
+}
+
+/* ── bord ── */
+function feltBase() {
+  return `
+  <div class="zon" style="left:250px;top:24px;width:240px;height:90px"></div>
+  <div class="plats" style="--c:#3c8ce7;left:250px;top:124px"><i>B</i>Sara · 4 kort</div>
+  <div class="zon" style="left:250px;top:420px;width:240px;height:90px"></div>
+  <div class="plats" style="--c:#e05a4f;left:250px;top:382px"><i>A</i>Nicklas · 3 kort</div>
+  <div class="zon" style="left:60px;top:200px;width:72px;height:94px"><div class="kort" style="left:7px;top:7px"></div><div class="namn">Draghög</div></div>`
+}
+const POS = { A: [[160, 190], [238, 192], [316, 192], [394, 190], [472, 190], [550, 188], [628, 186]] }
+function renderFelt() {
+  const f = $('#felt')
+  if (V === 'A') {
+    f.innerHTML = feltBase() + dice.map((d, i) => `<div class="die" tabindex="0" role="button" data-id="${d.id}" aria-label="d${d.n}, visar ${d.v}" style="left:${POS.A[i][0]}px;top:${POS.A[i][1] + 40}px">${dieSvgA(d, 60)}</div>`).join('') + `<div class="namn" style="position:absolute;left:160px;top:318px;color:var(--chalk-off);font-weight:700">Lösa tärningar på Spelytan</div>`
+  } else if (V === 'B') {
+    f.innerHTML = feltBase() + dice.map((d, i) => `<div class="die" tabindex="0" role="button" data-id="${d.id}" aria-label="d${d.n}, visar ${d.v}" style="left:${170 + i * 72}px;top:228px">${dieSvgB(d, 56)}</div>`).join('')
+  } else {
+    if (!dice[0].tx) scatter(dice, false)
+    f.innerHTML = feltBase() + `<div class="zon" id="tray" style="left:440px;top:150px;width:200px;height:210px;border-style:solid;border-color:#5a5040;background:#1c1a16"><div class="namn">Tärningsbricka</div></div>
+      <div id="trayline" style="position:absolute;left:440px;top:388px;width:230px;font-size:16px;line-height:1.35"></div>` +
+      dice.map((d) => `<div class="die" tabindex="0" role="button" data-id="${d.id}" aria-label="d${d.n}, visar ${d.v}${d.held ? ', sparad' : ''}" style="left:${d.held ? 0 : 440 + d.tx}px;top:${d.held ? 0 : 150 + d.ty}px;transform:rotate(${d.tr}deg);transition:left .9s cubic-bezier(.2,.8,.3,1),top .9s cubic-bezier(.2,.8,.3,1),transform .9s;${d.held ? 'display:none' : ''}">${dieSvgA(d, 46)}</div>`).join('') +
+      heldOnFelt()
+  }
+  f.querySelectorAll('.die').forEach((el) => {
+    el.onclick = () => roll([el.dataset.id], 'T')
+    el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); roll([el.dataset.id], 'T') } }
+  })
+}
+function heldOnFelt() {
+  const held = dice.filter((d) => d.held)
+  if (!held.length) return ''
+  return `<div style="position:absolute;left:650px;top:156px;width:56px;display:flex;flex-direction:column;gap:6px;align-items:center"><span style="color:var(--chalk-off);font-weight:700;font-size:12px">SPARADE</span>${held.map((d) => `<div style="position:relative">${dieSvgA(d, 40)}</div>`).join('')}</div>`
+}
+function scatter(list, animate) {
+  const taken = []
+  for (const d of list) {
+    let x, y, tries = 0
+    do { x = 8 + Math.random() * 140; y = 8 + Math.random() * 150; tries++ } while (tries < 40 && taken.some(([a, b]) => Math.hypot(a - x, b - y) < 52))
+    taken.push([x, y]); d.tx = x; d.ty = y; d.tr = Math.round(Math.random() * 60 - 30)
+  }
+}
+
+/* ── slag ── */
+function summary(rolled) {
+  const by = {}
+  for (const d of rolled) (by[d.n] ??= []).push(d.v)
+  return Object.entries(by).map(([n, vs]) => `${vs.length > 1 ? vs.length : ''}d${n}: ${vs.join(' + ')}`).join(', ')
+}
+function roll(ids, who) {
+  const rolled = dice.filter((d) => ids.includes(d.id) && !d.held)
+  if (!rolled.length) return
+  for (const d of rolled) d.v = rnd(d.n) // servern avgör, loggen får värdet
+  if (V === 'C') scatter(rolled, true)
+  const sum = rolled.reduce((a, d) => a + d.v, 0)
+  const s = SEATS[who]
+  const showSum = V !== 'A' && rolled.length > 1
+  const line = `<b style="--c:${s.c}">${s.name}</b> slog ${summary(rolled)}${showSum ? ` = ${sum}` : ''}`
+  const li = document.createElement('li'); li.className = 'ny'; li.innerHTML = line
+  $('#senast').prepend(li)
+  renderFelt(); renderPhone({ rolled, sum, who })
+  const tl = $('#trayline'); if (tl) tl.innerHTML = line
+  animate(rolled, s.c)
+}
+function animate(rolled, colour) {
+  const els = rolled.map((d) => document.querySelectorAll(`[data-id="${d.id}"]`)).flatMap((n) => [...n])
+  for (const el of els) {
+    el.style.setProperty('--c', colour)
+    el.classList.add('slagen'); setTimeout(() => el.classList.remove('slagen'), 1600)
+  }
+  if (reduced()) return
+  const d0 = rolled.map((d) => d.v)
+  if (V === 'A') {
+    els.forEach((el) => el.animate([{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(200deg) scale(1.15)' }, { transform: 'rotate(340deg) scale(.95)' }, { transform: 'rotate(360deg) scale(1)' }], { duration: 700, easing: 'cubic-bezier(.3,.7,.4,1)' }))
+    flicker(rolled, 600, d0)
+  } else if (V === 'B') {
+    flicker(rolled, 500, d0)
+  } else {
+    flicker(rolled, 800, d0)
+    // startar inifrån brickans kant: läggs om efter en ram så att transitionen syns
+    const f = $('#felt'); f.querySelectorAll('#felt .die').forEach((el) => { if (!rolled.some((d) => d.id === el.dataset.id)) return; const L = el.style.left, T = el.style.top; el.style.transition = 'none'; el.style.left = '620px'; el.style.top = '330px'; requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = ''; el.style.left = L; el.style.top = T })) })
+  }
+}
+function flicker(rolled, ms, finals) {
+  const t0 = performance.now()
+  const step = (t) => {
+    const done = t - t0 >= ms
+    rolled.forEach((d, i) => document.querySelectorAll(`[data-id="${d.id}"] .v`).forEach((tx) => { tx.textContent = done ? finals[i] : rnd(d.n) }))
+    if (!done) setTimeout(() => requestAnimationFrame(step), 70)
+  }
+  requestAnimationFrame(step)
+}
+
+/* ── telefon ── */
+let sheetOpen = false
+function phoneTop() {
+  return `<div class="topp"><div class="vem"><i>A</i>Nicklas</div><span style="color:var(--chalk-off)">/ZT6RVK</span></div>`
+}
+const HAND = `<div class="handrubrik">Dina kort · 3</div><div class="hand"><div>Riddare</div><div>Borg</div><div>Drake</div></div>`
+function renderPhone(last) {
+  const s = $('#skarm')
+  const selected = dice.filter((d) => d.sel)
+  const res = last && last.who === 'A' ? `${summary(last.rolled)}${V !== 'A' && last.rolled.length > 1 ? ` = <b>${last.sum}</b>` : ''}` : ''
+  if (V === 'A') {
+    s.innerHTML = phoneTop() + `<div class="piller"><span>Liv 20</span><span>Guld 3</span></div>` + HAND +
+      `<div class="handrubrik">Tärningar på bordet · 7</div>
+       <div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 16px 12px">${dice.map((d) => `<div class="die" role="button" tabindex="0" aria-pressed="${d.sel}" data-id="${d.id}" data-pick style="position:relative;flex:0 0 auto;padding:4px;border-radius:10px;${d.sel ? 'background:#e05a4f33;outline:2px solid #e05a4f' : ''}">${dieSvgA(d, 44)}</div>`).join('')}</div>
+       <div style="padding:0 16px;display:flex;gap:10px;align-items:center"><button class="knapp prim" id="slå" ${selected.length ? '' : 'disabled'}>${selected.length ? `Slå ${selected.length === 1 ? 'tärningen' : selected.length + ' tärningar'}` : 'Välj tärningar att slå'}</button></div>
+       <div class="resultat" style="padding:10px 16px">${res ? 'Du slog ' + res : ''}</div>`
+  } else if (V === 'B') {
+    s.innerHTML = phoneTop() + `<div class="piller"><span>Liv 20</span><span>Guld 3</span><span style="background:#f0b64a;color:#1c1c1c">⚂ Tärningar · 7</span></div>` + HAND +
+      `<div style="padding:8px 16px;display:flex;gap:8px"><button class="knapp sek">Spela</button><button class="knapp sek">Vänd</button></div>` +
+      (sheetOpen ? `<div style="position:absolute;inset:auto 0 0 0;height:66%;background:#1d2029;border-radius:20px 20px 0 0;box-shadow:0 -10px 40px #000a;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="width:40px;height:4px;border-radius:2px;background:#4a4f5c;align-self:center"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">Tärningar</b><button class="knapp sek" id="alla" style="min-height:36px;font-size:14px">${selected.length === dice.length ? 'Välj ingen' : 'Välj alla'}</button></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;justify-items:center">${dice.map((d) => `<div class="die" role="button" tabindex="0" aria-pressed="${d.sel}" data-id="${d.id}" data-pick style="position:relative;padding:4px;border-radius:14px;${d.sel ? 'outline:3px solid #e05a4f;background:#e05a4f22' : ''}">${dieSvgB(d, 64)}</div>`).join('')}</div>
+        <div class="resultat">${res ? 'Du slog ' + res : '&nbsp;'}</div>
+        <button class="knapp prim" id="slå" style="margin-top:auto" ${selected.length ? '' : 'disabled'}>${selected.length ? `Slå ${selected.length === 1 ? 'tärningen' : selected.length + ' tärningar'}` : 'Välj tärningar att slå'}</button>
+        <button class="knapp sek" id="stäng">Stäng</button></div>` : '')
+    const opener = [...s.querySelectorAll('.piller span')].at(-1); opener.style.cursor = 'pointer'; opener.onclick = () => { sheetOpen = true; renderPhone(last) }
+    const close = $('#stäng', s); if (close) close.onclick = () => { sheetOpen = false; renderPhone(last) }
+    const all = $('#alla', s); if (all) all.onclick = () => { const v = selected.length !== dice.length; dice.forEach((d) => d.sel = v); renderPhone(last) }
+  } else {
+    const free = dice.filter((d) => !d.held)
+    s.innerHTML = phoneTop() + `<div class="piller"><span>Liv 20</span><span>Guld 3</span></div>` + HAND +
+      `<div class="handrubrik">Tärningsbrickan · tryck för att spara</div>
+       <div style="margin:0 16px;padding:10px;border-radius:12px;background:#1c1a16;border:1px solid #5a5040;display:flex;flex-wrap:wrap;gap:8px;min-height:120px">${dice.map((d) => `<div class="die" role="button" tabindex="0" aria-pressed="${d.held}" data-id="${d.id}" data-hold style="position:relative;padding:3px;border-radius:10px;${d.held ? 'outline:2px dashed #f0b64a;opacity:.6' : ''}">${dieSvgA(d, 50)}${d.held ? '<span style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:#f0b64a">SPARAD</span>' : ''}</div>`).join('')}</div>
+       <div class="resultat" style="padding:10px 16px">${res ? 'Du slog ' + res : '&nbsp;'}</div>
+       <div style="padding:0 16px"><button class="knapp prim" id="slå" style="width:100%" ${free.length ? '' : 'disabled'}>${free.length === dice.length ? 'Slå alla' : `Slå ${free.length} · spara ${dice.length - free.length}`}</button></div>`
+  }
+  s.querySelectorAll('[data-pick]').forEach((el) => el.onclick = () => { const d = dice.find((x) => x.id === el.dataset.id); d.sel = !d.sel; renderPhone(last) })
+  s.querySelectorAll('[data-hold]').forEach((el) => el.onclick = () => { const d = dice.find((x) => x.id === el.dataset.id); d.held = !d.held; renderFelt(); renderPhone(last) })
+  const b = $('#slå', s); if (b) b.onclick = () => roll(V === 'C' ? dice.filter((d) => !d.held).map((d) => d.id) : selected.map((d) => d.id), 'A')
+}
+
+function render() {
+  $('#rubrik').innerHTML = `<b>Prototyp #1129 · Tärningar.</b> Tre varianter av samma bord med d4, 2× d6, d8, d10, d12 och d20. Fråga: hur ritas en tärning uppifrån, hur ser ett slag ut, och var har telefonen tärningarna? Slumpen är bara lokal här; i produkten avgör servern och loggen får värdet.`
+  $('#anteckning').innerHTML = NOTES[V]
+  document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === V)))
+  dice.forEach((d) => { d.sel = false; d.held = false })
+  renderFelt(); renderPhone()
+}
+function go(v) { V = v; const u = new URL(location); u.searchParams.set('v', v); history.replaceState(null, '', u); sheetOpen = false; render() }
+document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.onclick = () => go(b.dataset.v))
+const order = ['A', 'B', 'C']
+$('#prev').onclick = () => go(order[(order.indexOf(V) + 2) % 3])
+$('#next').onclick = () => go(order[(order.indexOf(V) + 1) % 3])
+addEventListener('keydown', (e) => { if (e.target.closest('input,textarea,[contenteditable]')) return; if (e.key === 'ArrowLeft') $('#prev').click(); if (e.key === 'ArrowRight') $('#next').click() })
+render()
+</script>
+</body>
+</html>

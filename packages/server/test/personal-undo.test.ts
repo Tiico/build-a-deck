@@ -150,6 +150,7 @@ const EVERY: Record<EditIntent['v'], { mine: (doc: ProjectDoc) => EditIntent; th
   },
   insertZone: { mine: (doc) => ({ v: 'insertZone', zone: { ...doc.setup.zones.find((z) => z.id === 'discard')!, id: 'discard-2' } }) },
   setDeck: { mine: () => ({ v: 'setDeck', id: 'discard' }) },
+  setTurns: { mine: () => ({ v: 'setTurns', turns: 'clockwise' }) },
   patchZone: { mine: () => ({ v: 'patchZone', id: 'draw', patch: { name: 'Dragbunten', shortcut: null } }) },
   setIcon: { mine: () => ({ v: 'setIcon', name: 'mane', url: `asset:${HASH}`, credit: { licence: 'CC-BY', by: 'Bo' } }) },
   renameIcon: { mine: () => ({ v: 'renameIcon', from: 'sol', to: 'solen' }) },

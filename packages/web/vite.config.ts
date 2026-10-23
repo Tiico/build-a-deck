@@ -1,14 +1,34 @@
 /// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, transformWithEsbuild, type Plugin, type Rollup } from 'vite'
 import react from '@vitejs/plugin-react'
 import { CODE_ALPHABET, CODE_LENGTH, ROUTE_WORDS } from '../protocol/src/rooms.js'
 import { routesOf } from './scripts/route-table.js'
 import { reporting } from '../../test-support/report.js'
+import { precompress } from '../server/src/compress.js'
 import { TEST_CEILING } from '../../test-support/own-time.js'
 import { detectLang } from './src/i18n/detect.js'
 import { fillShell, shellMarkup, shellNoscript, shellTimes, shellWords, SHELL_ROOM_PATH, SHELL_STYLE, SHELL_VOICES } from './src/shell.js'
+
+// The box sends the build's own compressed copy of each file and makes none itself (DRIFT §13,
+// `packages/server/src/compress.ts`): brotli's best over the 6.4 MB game-icons chunk is 14 s of
+// CPU on an idle Mac and over a minute on a busy machine, which is the build's to spend once and
+// not the shared box's on its first request.
+function precompressed(): Plugin {
+  let outDir = ''
+  return {
+    name: 'byd-precompress',
+    apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir)
+    },
+    async closeBundle() {
+      await precompress(outDir)
+    },
+  }
+}
 
 // Each route's script and words are fetched when its address is opened (#760), and this keeps
 // that from costing a round trip. Left to itself the entry would have to arrive and run before it
@@ -135,7 +155,7 @@ function shell(): Plugin {
 
 export default defineConfig({
   // The shell first: the route preload stands after the language the shell puts on the document.
-  plugins: [react(), shell(), routePreload()],
+  plugins: [react(), shell(), routePreload(), precompressed()],
   // PORT lets a preview pick a free port when 5173 is taken; the default stays 5173.
   server: { port: Number(process.env['PORT'] ?? 5173), strictPort: true },
   // A licence is not a comment to be tidied away. The felt's face is baked into the stylesheet as

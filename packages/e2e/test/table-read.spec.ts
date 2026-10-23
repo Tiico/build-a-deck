@@ -120,3 +120,54 @@ test.describe('the felt under the distance view’s header (#509)', () => {
     expect(box.x + box.width).toBeLessThanOrEqual(LAPTOP.viewport.width)
   })
 })
+
+// A card along the felt's top edge is lifted to the window's top, and the whole lift must be seen
+// there. Its box said so all along; what the reader saw did not. On the distance view the lift
+// stood in the felt's row, which clips what leaves it, so its top was cut off under the header.
+// On the table screen the plate along the top was drawn over it: the felt is a stacking context of
+// its own (the tilt's `perspective`), and nothing in it rises above what lies over the felt. A box
+// cannot see either, so this asks the page what is painted along the lift's edges.
+test.describe('a card read at the top of the felt (#509)', () => {
+  const LAPTOP: Device = { name: 'laptop', viewport: { width: 1280, height: 800 } }
+  test.use({ viewport: LAPTOP.viewport })
+
+  for (const where of ['online', 'table'] as const) {
+    test(`is lifted whole and on top of everything on ${where === 'online' ? 'the distance view' : 'the table screen'}`, async ({ tableOf, open, host, request }) => {
+      const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
+      const dealer = await host(table)
+      await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
+      const seat = await join(request, table, { name: 'Ada', seat: 'A' })
+      const { page } = await open(LAPTOP, `${where === 'online' ? seat.onlineUrl : table.tableUrl}&lang=sv`)
+      const card = page.locator(`${where === 'online' ? '.byd-online-felt ' : ''}.byd-card[data-component]`).first()
+      await expect(card).toHaveAttribute('data-face', 'back')
+      await card.click()
+      await page.getByRole('button', { name: 'Vänd' }).click()
+      await expect(card).toHaveAttribute('data-face', 'front')
+      // To the felt's top edge, under the plate's end of it.
+      await dealer.send([{ v: 'move', component: (await card.getAttribute('data-component'))!, to: 'table', x: 40, y: 0 }])
+      await page.mouse.move(4, 790)
+      await expect.poll(async () => (await card.boundingBox())!.y).toBeLessThan(160)
+
+      const at = (await card.boundingBox())!
+      await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2)
+      const lift = page.locator('[data-lift]')
+      await expect(lift).toHaveCount(1)
+      const box = (await lift.boundingBox())!
+      expect(box.y).toBeLessThan(at.y)
+      // Every few pixels along all four edges, just inside them and clear of the rounded corners:
+      // the lift, and nothing else.
+      const hidden = await page.evaluate(`(() => {
+        const lift = document.querySelector('[data-lift]')
+        const r = lift.getBoundingClientRect()
+        const points = []
+        for (let x = r.left + 16; x <= r.right - 16; x += 8) points.push([x, r.top + 2], [x, r.bottom - 2])
+        for (let y = r.top + 16; y <= r.bottom - 16; y += 8) points.push([r.left + 2, y], [r.right - 2, y])
+        return points.filter(([x, y]) => {
+          const hit = document.elementFromPoint(x, y)
+          return !hit || !lift.contains(hit)
+        }).map(([x, y]) => [Math.round(x), Math.round(y), document.elementFromPoint(x, y)?.className ?? null])
+      })()`)
+      expect(hidden).toEqual([])
+    })
+  }
+})

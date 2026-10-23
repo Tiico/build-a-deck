@@ -58,6 +58,9 @@ export const ProjectSetup = z.object({
   // `id` is what a rule names it by (#708, B7), so a rule follows the counter when it is renamed.
   // A counter written before it had one is known by its name (`counterId`).
   counters: z.array(z.object({ id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(), name: z.string().min(1).max(24), start: z.number().int() })).optional(),
+  // Whether the game goes in turns, and which way round the table (K30). Absent is a game without
+  // turns, which is every game written before there were turns.
+  turns: z.enum(['clockwise', 'counterclockwise']).optional(),
   // The game's dice (K5, #1136): which kinds, how many, and where they lie when the table is laid.
   // A die is named by its sides, the way a table says it, and only the kinds the registry has
   // (`DICE`). Where is one of two things (#1139): `zone`, an area every seat shares, or `role`, an

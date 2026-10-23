@@ -182,6 +182,14 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       // flag probe for ids no view was given. The observer is seatless and sees every hand (C8).
       if (it.component !== undefined && !sees(state, registry, seat, it.component, seat === null && it.observer !== undefined)) return `no component ${it.component} in view`
       return null
+    case 'turn.give': {
+      // Refused only where it cannot mean anything (K30, B5): who gives it, and when, is never
+      // the table's to judge.
+      if (!state.setup.turns) return 'this game does not go in turns'
+      const s = state.seats[it.seat]
+      if (!s) return `unknown seat ${it.seat}`
+      return s.name === null ? `seat ${it.seat} is free` : null
+    }
     case 'note.add':
       if (state.notes.length >= NOTES_MAX) return `the notepad holds at most ${NOTES_MAX} notes`
       return noteText(it.text)
@@ -232,8 +240,9 @@ function validateRewind(state: TableState, env: Envelope, it: Intent, history: H
 }
 
 // The lines still in effect on the table: a restore takes everything after its target out of
-// the story, and neither talking about a rewind nor sitting down or leaving is play.
-const NOT_PLAY = new Set(['rewind.propose', 'rewind.reject', 'seat.claim', 'seat.release', 'flag', 'note.add', 'note.edit', 'note.check', 'note.remove'])
+// the story, and neither talking about a rewind, sitting down or leaving, passing the turn nor
+// writing in the notepad is play.
+const NOT_PLAY = new Set(['rewind.propose', 'rewind.reject', 'seat.claim', 'seat.release', 'flag', 'turn.give', 'note.add', 'note.edit', 'note.check', 'note.remove'])
 export function effectiveLines(log: readonly Applied[]): Applied[] {
   const out: Applied[] = []
   let cutoff = Infinity
