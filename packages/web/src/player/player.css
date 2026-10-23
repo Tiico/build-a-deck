@@ -54,7 +54,7 @@
    which only the open tab's panel scrolls — the head, the bar and the tabs stand still, and nothing
    lies over the panel to be scrolled out from under. */
 .byd-player:has(> .byd-tabs) { display: flex; flex-direction: column; height: 100svh; min-height: 0; box-sizing: border-box; }
-.byd-player > header, .byd-bar, .byd-tabs, .byd-phone-said, .byd-rewind-mine { flex: none; }
+.byd-player > header, .byd-turn-strip, .byd-bar, .byd-tabs, .byd-phone-said, .byd-rewind-mine { flex: none; }
 .byd-panels { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .byd-panel { display: grid; gap: 14px; align-content: start; padding: 14px 16px 20px; }
 /* A closed tab's panel is not drawn: the rule above would otherwise beat the browser's own `[hidden]`. */
@@ -124,6 +124,16 @@ html:has(.byd-player) { background: #14161c; }
 }
 .byd-player > header button:disabled, .byd-player > header button[aria-disabled='true'] { opacity: 0.35; }
 .byd-player > header .byd-glyph { width: 16px; height: 16px; flex: none; }
+
+/* Whose turn it is (K30): a row of its own under the head, which has no room for it at 390. The
+   holder's colour marks it; on one's own turn it is the seat's pill with «Klar» beside it. */
+.byd-turn-row { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-turn-badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--byd-ink-strong); }
+.byd-turn-badge::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--seat, #666); }
+.byd-turn-row[data-mine] .byd-turn-badge { min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--seat, #666); color: var(--byd-seat-ink, #0d0f14); }
+.byd-turn-row[data-mine] .byd-turn-badge::before { display: none; }
+.byd-turn-row .byd-turn-done { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 2px solid var(--seat, #666); border-radius: 999px; background: transparent; color: var(--byd-ink-strong); font: inherit; font-weight: 800; cursor: pointer; }
+.byd-turn-row .byd-turn-done .byd-glyph { width: 1em; height: 1em; }
 
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
 .byd-counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }

@@ -304,6 +304,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
             ),
           }}
         />
+        <TurnsPanel client={client} setup={setup} />
       </div>
       <div className="byd-setup-canvas">
         {lead}
@@ -677,6 +678,30 @@ function DieRow({ die, n, places, gone, reading, fresh, onFocused, onChange, onR
         </p>
       )}
     </>
+  )
+}
+
+// Whether the game goes in turns (K30): one of three, each a version and a step back. It is the
+// game's and not the zones', so it stands last in the column, under the lists, where it costs the
+// ways to add a zone none of the height they are read at (#711).
+function TurnsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
+  const t = useT()
+  return (
+    <section className="byd-setup-turns-panel">
+      <div className="byd-help-row">
+        <h2 id="byd-setup-turns">{t('setup.turns')}</h2>
+        <Help topic={t('setup.turns.help.topic')}>
+          <p>{t('setup.turns.help')}</p>
+        </Help>
+      </div>
+      <div className="byd-setup-turns" role="group" aria-labelledby="byd-setup-turns">
+        {([null, 'clockwise', 'counterclockwise'] as const).map((turns) => (
+          <button key={turns ?? 'none'} type="button" className="byd-choice" aria-pressed={(setup.turns ?? null) === turns} disabled={!client.mayEdit} onClick={() => (setup.turns ?? null) !== turns && client.setTurns(turns)}>
+            {t(turns === null ? 'setup.turns.none' : `setup.turns.${turns}`)}
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
 

@@ -67,7 +67,7 @@ const DOC = record(
     fonts: map(leaf),
     rules: record({ title: leaf, blocks: list(leaf), source: leaf }, ['title', 'blocks']),
     theme: leaf,
-    setup: record({ zones: list(props), seats: leaf, floor: leaf, deckZone: leaf, counters: leaf, dice: leaf }, ['zones', 'seats', 'floor', 'deckZone']),
+    setup: record({ zones: list(props), seats: leaf, floor: leaf, deckZone: leaf, counters: leaf, dice: leaf, turns: leaf }, ['zones', 'seats', 'floor', 'deckZone']),
   },
   ['name', 'template', 'rows', 'icons', 'setup'],
 )

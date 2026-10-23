@@ -31,7 +31,12 @@ if (!OUT) throw new Error('the stack did not say where the built web app is (BYD
 
 // Measured at 156.7 kB for `/play` and 115.4 kB for `/join` when the catalogue split landed (#760,
 // 2026-10-17); the alarm stands about 5 % above.
-const PHONE_JS_GZ = 165_000
+//
+// Raised to 167 kB by the beställare's decision (#1141, 2026-10-23). The room above the mark was
+// spent the way it was left for: features the phone draws. Dice on the phone (#1163) and the turn
+// row (K30), each under the line on its own branch, met on main at 165.8 kB. What the turn costs
+// on the phone, about 0.9 kB, is its schema on the wire, its words, the tab's title and the row.
+const PHONE_JS_GZ = 167_000
 const JOIN_JS_GZ = 122_000
 
 const assets = readdirSync(join(OUT, 'assets'))

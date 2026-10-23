@@ -120,6 +120,10 @@ export const SessionIntent = z.discriminatedUnion('v', [
   // card it was reaches the log and the designer, and no other view (`projectActivity`).
   z.object({ v: z.literal('flag'), note: z.string().max(280).optional(), observer: z.string().min(1).max(64).optional(), component: ComponentId.optional() }),
   z.object({ v: z.literal('session.end') }),
+  // Whose turn it is (K30): the turn goes to `seat`, given by anyone at the table and refused only
+  // where it cannot mean anything. Always a seat and never «the next one», so that two presses of
+  // «Klar → Cy» both give the turn to Cy rather than the second skipping past her.
+  z.object({ v: z.literal('turn.give'), seat: SeatId }),
   // The table's notepad (#1131): rows everyone at the table reads and writes, for what the game
   // makes them keep track of. A row is named by the line that wrote it, `n<seq>`, so its id needs
   // no randomness and replays as it was. Session verbs and not play: undo passes them by, and a

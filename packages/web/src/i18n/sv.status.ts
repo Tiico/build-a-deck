@@ -42,6 +42,8 @@ export const svStatus = {
   'title.prototype': 'Prototyp',
   'title.unknown': 'Sidan finns inte',
   'title.room': 'Rum {code}',
+  // Fliken säger att det är ens tur (K30): det enda som syns utanför sidan, och ingen notis (K7).
+  'title.turn': '● Din tur',
   // Tillståndet vinner över rutten så länge det finns ett, så att en flik i bakgrunden säger
   // sanningen. Ordet "fel" står aldrig här; det hör hemma i vyn och i live-regionen.
   'title.state.loading': 'Laddar',

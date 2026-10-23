@@ -515,7 +515,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": []
+      "notes": [],
+      "turn": null
     },
     "B": {
       "seq": 8,
@@ -685,7 +686,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": []
+      "notes": [],
+      "turn": null
     },
     "table": {
       "seq": 8,
@@ -858,7 +860,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": []
+      "notes": [],
+      "turn": null
     },
     "observer": {
       "seq": 8,
@@ -1128,7 +1131,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": []
+      "notes": [],
+      "turn": null
     }
   }
 }

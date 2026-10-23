@@ -313,6 +313,17 @@ export const svPlay = {
   'activity.flag': '{who} flaggade',
   'activity.flag.note': '{who} flaggade: {note}',
   'activity.flag.observer': '{name} (observatör)',
+  'activity.turn.give': '{who} gav turen till {to}',
+  'activity.turn.take': '{who} tog turen',
+  // Vems tur det är (K30): vid platsens namn på filten och i telefonens huvud.
+  'turn.of': '{name:s} tur',
+  'turn.mine': 'Din tur',
+  // Knappen visar «Klar», en pil och nästa plats namn; namnet för den som hör den säger hela meningen.
+  'turn.done': 'Klar',
+  'turn.done.aria': 'Klar, ge turen till {name}',
+  'turn.next': 'nästa',
+  'turn.give': 'Ge turen till {name}',
+  'turn.take': 'Ta turen',
   'activity.note.add': '{who} antecknade: {text}',
   'activity.note.edit': '{who} skrev om en anteckning: {text}',
   'activity.note.check': '{who} bockade av: {text}',

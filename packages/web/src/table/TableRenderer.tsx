@@ -35,6 +35,9 @@ import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, 
 import { gapAbove, nameAt } from './labels.js'
 import { placeNames, placePlates, type PlateAt } from './freeSide.js'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { nextTurn } from '@byd/engine'
+import { TurnClock } from './TurnClock.js'
+import { ArrowGlyph } from '../glyphs.js'
 
 // Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
 // hög gör, så den är lika stor i förhållande till korten på varje skärm.
@@ -736,6 +739,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
+  // Whose turn it is (K30), and who «Klar» passes it to. A seat's name gives the turn to that seat
+  // only where the felt can be played and somebody sits there (B5: nobody is stopped). «Klar» stands
+  // at the holder's own felt, and at a table's shared screen, where whoever holds the turn is at it.
+  const turn = view.turn
+  const nextUp = nextTurn(view)
+  const giveTurn = (seat: string) => void onAct?.([{ v: 'turn.give', seat }])
+  const turnOf = (seat: string | undefined): SeatTurn | undefined => {
+    if (!turn || seat === undefined) return undefined
+    const taken = view.seats.some((s) => s.id === seat && s.name !== null)
+    if (turn.seat === seat && turn.at !== null) return { holds: true, at: turn.at, ...(onAct && (me === seat || me === null) && nextUp !== null ? { done: { name: seatName(nextUp), give: () => giveTurn(nextUp) } } : {}) }
+    return { holds: false, next: seat === nextUp, ...(onAct && taken ? { give: () => giveTurn(seat) } : {}) }
+  }
   const colourOf = (seat: string | null) => (seat === null ? TABLE_GREY : seatColor(seatIndex(seat)))
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
   const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
@@ -1507,6 +1522,16 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               täcker — och den är därtill det enda som finns att se vid en hand som är fälld
               till sitt antal och ritar ingen fläkt alls (#77). Ritad före högarna och korten,
               så att den ligger under allt som spelas på den. */}
+          {/* The seat whose turn it is (K30): its own millimetres of the edge, as the band above, and
+              in every mode, so the television shows it as the felt on a laptop does. */}
+          {turn?.seat &&
+            hands
+              .filter((z) => z.owner === turn.seat)
+              .slice(0, 1)
+              .map((z) => {
+                const b = handBand(z, floor)
+                return <i key={`turn-${z.id}`} className="byd-seat-band byd-turn-band" data-turn-band={z.owner ?? ''} style={{ left: left(b.x), top: top(b.y), width: px(b.w), height: px(b.h), ['--seat' as string]: seatColor(seatIndex(z.owner)) }} />
+              })}
           {bound &&
             hands
               .filter((z) => z.id === bound.zone)
@@ -1683,7 +1708,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               // lying on a table, which is what C5's exception was about. Where it knows, or
               // where nobody sits at the edges at all, the name is read like the zone names
               // beside it. The seat tiles `A`–`D` are this same element and follow.
-              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} taking={bound?.zone === z.id} read={!(mode === 'table' && me === null)} left={left} top={top} />
+              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} taking={bound?.zone === z.id} read={!(mode === 'table' && me === null)} left={left} top={top} turn={turnOf(z.owner)} />
             ))}
           {peers.map((p) => {
             if (!p.drag) return null
@@ -2329,7 +2354,12 @@ const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 
 
 // Who sits at this edge (B): the name lies along the table's own border, turned toward the seat
 // that reads it — as a name card would on a real table. The count stays on the hand.
-function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; taking?: boolean | undefined; read: boolean; left: (mm: number) => number; top: (mm: number) => number }) {
+// What a seat's name says about the turn (K30): that it holds it and since when, with «Klar» for the
+// one who holds it at their own felt; or that it is next, and that pressing it gives it the turn.
+type SeatTurn = { holds: true; at: string; done?: { name: string; give(): void } } | { holds: false; next: boolean; give?: () => void }
+
+function SeatName({ zone, floor, name, color, mine, taking, read, left, top, turn }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; taking?: boolean | undefined; read: boolean; left: (mm: number) => number; top: (mm: number) => number; turn?: SeatTurn | undefined }) {
+  const t = useT()
   if (name === '') return null
   const edge = EDGES[edgeRotation(zone, floor)] ?? 'S'
   const alongX = left(zone.geometry.x + zone.geometry.w / 2)
@@ -2337,8 +2367,24 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
   const place =
     edge === 'S' ? { left: alongX, bottom: 6 } : edge === 'N' ? { left: alongX, top: 6 } : edge === 'W' ? { top: alongY, left: 6 } : { top: alongY, right: 6 }
   return (
-    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(read ? { 'data-read': '' } : {})} {...(mine ? { 'data-me': 'true' } : {})} {...(taking ? { 'data-taking': '' } : {})} style={{ ...place, ['--seat' as string]: color }}>
-      {name}
+    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(read ? { 'data-read': '' } : {})} {...(mine ? { 'data-me': 'true' } : {})} {...(taking ? { 'data-taking': '' } : {})} {...(turn?.holds ? { 'data-turn': '' } : {})} {...(turn && !turn.holds && turn.next ? { 'data-next': '' } : {})} style={{ ...place, ['--seat' as string]: color }}>
+      {turn?.holds ? (
+        <>
+          {mine ? t('turn.mine') : t('turn.of', { name })} <TurnClock at={turn.at} />
+          {turn.done && (
+            <button type="button" className="byd-turn-done" aria-label={t('turn.done.aria', { name: turn.done.name })} title={t('turn.done.aria', { name: turn.done.name })} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => (e.stopPropagation(), turn.done?.give())}>
+              {t('turn.done')} <ArrowGlyph to="right" /> {turn.done.name}
+            </button>
+          )}
+        </>
+      ) : turn?.give ? (
+        <button type="button" className="byd-turn-give" aria-label={mine ? t('turn.take') : t('turn.give', { name })} title={mine ? t('turn.take') : t('turn.give', { name })} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => (e.stopPropagation(), turn.give?.())}>
+          {name}
+        </button>
+      ) : (
+        name
+      )}
+      {turn && !turn.holds && turn.next && <small className="byd-turn-next">{t('turn.next')}</small>}
     </div>
   )
 }
@@ -2387,6 +2433,7 @@ function SeatPlate({ view, seat, color, left, top, t, at }: { view: Snapshot; se
       data-edge={edge}
       data-box={`${box.l} ${box.t} ${box.r} ${box.b}`}
       {...(at?.form === 'badge' ? { 'data-form': 'badge' } : {})}
+      {...(view.turn?.seat === seat.id ? { 'data-turn': '' } : {})}
       style={{ ...(placed ?? home), ['--seat' as string]: color }}
     >
       <b>
