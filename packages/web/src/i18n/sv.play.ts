@@ -176,6 +176,7 @@ export const svPlay = {
   'felt.key.turnInHand': 'Vänd ett kort i din hand, så spelas det nedvänt',
   'felt.key.draw': 'Dra översta kortet från högen under pekaren',
   'felt.key.shuffle': 'Blanda högen under pekaren',
+  'felt.key.moveDie': 'Flytta tärningen som har fokus',
   'felt.key.escape': 'Stäng ringen · avbryt draget',
   'felt.key.help': 'Visa den här listan',
 
@@ -215,7 +216,7 @@ export const svPlay = {
   'kbd.counter.unnamed': 'Räknare i {zone}, värde {n}',
   // En tärning (#1137) heter sin sort, «d6», som vid ett bord, och sidan upp är det den visar. Enter slår
   // den direkt i stället för att öppna en panel, så meningen säger det och inte «öppnar handlingar».
-  'kbd.die': '{kind}, visar {n}, i {zone}. Enter slår tärningen.',
+  'kbd.die': '{kind}, visar {n}, i {zone}. Enter slår tärningen, M flyttar den.',
   'kbd.verb.roll': 'Slå',
   'kbd.pile.top': 'Översta kortet i {zone}: {name}',
   'kbd.pile.empty': '{zone}, tom',

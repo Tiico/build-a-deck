@@ -38,6 +38,8 @@ export type ActionPanelProps = {
   // A card in this seat's own hand turns over there and is played face down (#1133): the panel's
   // «Vänd» is that turn, which sends nothing, and not a flip of a card nobody else can see.
   turn?: { on: boolean; toggle(): void } | undefined
+  // Opened to move the thing and nothing else: M on a die (#1169), whose one verb is Enter's.
+  moving?: boolean | undefined
 }
 
 export type HandSheet = {
@@ -45,14 +47,18 @@ export type HandSheet = {
   intentsFor(zone: string, moving: readonly string[]): Intent[]
 }
 
-export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey, sheet, turn }: ActionPanelProps) {
+export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey, sheet, turn, moving: moveOnly = false }: ActionPanelProps) {
   const t = useT()
   const moving = cards.length > 0 ? [...cards] : isLoose(thing) ? [thing.id] : []
   // A thing is never offered the place it already is: a card or a chip its own zone, a pile
   // itself — the table refuses "cannot split a pile onto itself", so the panel does not ask.
   const places: Place[] = sheet
     ? sheet.places.map((p) => ({ key: p.key, label: p.label, hint: p.hint, zone: p.zone, kind: 'area' }))
-    : placesFor(view, new Set(moving), isLoose(thing) ? thing.zone : thing.pile, t)
+    : placesFor(view, new Set(moving), isLoose(thing) ? thing.zone : thing.pile, t).filter(
+        // A die lies on the felt (K28): the pointer never drops one into a pile (`zoneAt`) and a
+        // hand holds cards, so its places are the areas and the cards lying in them.
+        (p) => thing.kind !== 'die' || p.kind === 'area' || p.kind === 'card',
+      )
   // Where the thing can be moved to, in one group per way of moving it. A pile is one stop since
   // #572, and it moves two ways: the whole pile, and — when there is one — the card on top of it.
   // Each group is named by its heading, so the same place said twice is said under what it does.
@@ -63,7 +69,7 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
   // of them says why it cannot run, when it cannot (K14) — and none of the tool's verbs switched
   // off in a row.
   const empty = pileZone !== undefined && topCount === 0
-  const own = (sheet ? verbsFor(view, thing, t).filter((a) => a.look !== undefined) : verbsFor(view, thing, t)).filter(
+  const own = moveOnly ? [] : (sheet ? verbsFor(view, thing, t).filter((a) => a.look !== undefined) : verbsFor(view, thing, t)).filter(
     (a) => !empty || a.intents !== null || a.key.startsWith('action:'),
   )
   // Where the felt's own panel offers «Vänd», a card in the hand turns there instead, in the same
