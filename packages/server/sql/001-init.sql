@@ -205,3 +205,20 @@ create table if not exists ai_keys (
   verified_at  timestamptz not null,
   updated_at   timestamptz not null default now()
 );
+
+-- Passkeys (#1180, DRIFT §11): a convenience beside the magic link. The public key and its counter
+-- are what a login is checked against; the AAGUID names the keychain it lives in and `device` the
+-- browser it was saved from, which is all the profile says about it. The private key never leaves
+-- the reader's device.
+create table if not exists passkeys (
+  id            text primary key,
+  account_id    bigint not null references accounts(id) on delete cascade,
+  public_key    bytea not null,
+  counter       bigint not null default 0,
+  transports    text[] not null default '{}',
+  aaguid        text not null,
+  device        text not null,
+  created_at    timestamptz not null default now(),
+  last_used_at  timestamptz
+);
+create index if not exists passkeys_account on passkeys (account_id);
