@@ -579,12 +579,14 @@ describe('a flag about a card (#1142)', () => {
     expect((await a.send('A', { v: 'flag', component: card, note: 'för lång text' })).t).toBe('ack')
     await b.waitFor((m) => m.t === 'activity' && m.lines.some((l) => l.intent.v === 'flag'))
     expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, note: 'för lång text' })
-    expect(b.frames.slice(before).join('\n')).not.toContain(card)
+    // Searched for as the JSON string it travels as: a bare `c0` is also somewhere inside the random
+    // id an observer is given in the roster, which failed this once a run in about every ten.
+    expect(b.frames.slice(before).join('\n')).not.toContain(JSON.stringify(card))
 
     // The observer's flag keeps its card too, stamped with her name.
     expect((await eva.send(null, { v: 'flag', component: card })).t).toBe('ack')
     expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, observer: 'Eva' })
-    expect(b.frames.slice(before).join('\n')).not.toContain(card)
+    expect(b.frames.slice(before).join('\n')).not.toContain(JSON.stringify(card))
   })
 })
 
