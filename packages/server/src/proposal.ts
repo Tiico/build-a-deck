@@ -716,7 +716,12 @@ function elementOf(doc: ProjectDoc, el: ProposedElement, before: Element | undef
         const bound = column(el.bind.field)
         if (bound) return { fault: bound }
       } else if (el.bind.literal !== '' && !knownPicture(doc, el.bind.literal)) return { fault: { kind: 'bad-template' } }
-      const kept = before?.kind === 'image' ? { ...(before.trim ? { trim: before.trim } : {}), ...(before.frame ? { frame: before.frame } : {}) } : {}
+      // What the model does not write about a picture it keeps: the motif fitting, and the rounded
+      // corners that follow the frame round it (#1224).
+      const kept =
+        before?.kind === 'image'
+          ? { ...(before.trim ? { trim: before.trim } : {}), ...(before.frame ? { frame: before.frame } : {}), ...(before.radiusMm !== undefined ? { radiusMm: before.radiusMm } : {}) }
+          : {}
       return { el: { kind: 'image', id: el.id, ...designer, x: el.x, y: el.y, w: el.w, h: el.h, bind: el.bind, ...(el.fit !== null ? { fit: el.fit } : {}), ...kept } }
     }
     case 'icons': {

@@ -21,6 +21,27 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   const doc = { ...gameDoc({ name: GAME, cards: 4 }), rules: { title: GAME, blocks: [{ kind: 'heading' as const, id: 'b1', level: 1 as const, text: 'Overview' }, { kind: 'text' as const, id: 'b2', text: 'A game about the forest.' }] } }
   const zone = doc.setup.zones[0]!
   const project = await makeProjectOf(page.request, doc)
+  // The step back in 4 is held on its way to the server, with whatever the editor says after it, for
+  // longer than the question in 5 takes to be answered twice (#1215). The server reads the game off
+  // its own copy, so a question that did not wait for the step to land was answered about the book
+  // with the accepted rules still in it, and refused as standing by a block that is gone.
+  let holding = false
+  await page.routeWebSocket(/\/projects\/[^/]+\/edit(\?|$)/, (ws) => {
+    const server = ws.connectToServer()
+    let held: (string | Buffer)[] | null = null
+    ws.onMessage((frame) => {
+      if (held) held.push(frame)
+      else if (holding && String(frame).includes('"v":"revert"')) {
+        holding = false
+        held = [frame]
+        setTimeout(() => {
+          for (const one of held ?? []) server.send(one)
+          held = null
+        }, 1_500)
+      } else server.send(frame)
+    })
+    server.onMessage((frame) => ws.send(frame))
+  })
   await page.goto(project.editorUrl)
   await expect(page.getByRole('heading', { level: 1, name: GAME })).toBeVisible()
   const panel = page.getByRole('complementary', { name: 'AI help' })
@@ -55,16 +76,15 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   await expect(book.locator('[data-ai]')).toHaveCount(0)
   await expect(book).toContainText(`Börja din tur med att dra ett kort från ${zone.name}.`)
 
-  // 4. Taken back with one step: the book as it was.
+  // 4. Taken back with one step: the book as it was. The step is on its way to the server, held, as
+  // the question below is asked; the wire sees a held frame only once it is let through, so what the
+  // step wrote is read after the question has been answered.
+  holding = true
   await page.getByRole('button', { name: 'Undo the accepted proposal' }).click()
   await expect(book).not.toContainText('Börja din tur')
-  expect(edits()).toHaveLength(2)
-  // A step back writes back only what the step changed (#1056), never the whole document.
-  expect(edits()[1]!.intent.v).toBe('revert')
-  // Only the rulebook is named: nothing else of the game is written back.
-  expect(edits()[1]!.intent.parts!.every((p) => p.at[0] === 'rules')).toBe(true)
 
   // 5. Rule text naming a zone the game does not have is refused, with the reason, and writes nothing.
+  // Asked at once after the step back, it is still about the book without the accepted rules.
   await field.fill('Again [regler-trasig]')
   await field.press('Enter')
   const refused = panel.getByRole('alert').filter({ hasText: 'The proposal could not be used' })
@@ -73,6 +93,10 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   // Refused only after the AI's one chance to correct it (#1184).
   await expect(refused).toContainText('The AI had already been given one chance to correct the proposal.')
   expect(edits()).toHaveLength(2)
+  // A step back writes back only what the step changed (#1056), never the whole document.
+  expect(edits()[1]!.intent.v).toBe('revert')
+  // Only the rulebook is named: nothing else of the game is written back.
+  expect(edits()[1]!.intent.parts!.every((p) => p.at[0] === 'rules')).toBe(true)
 
   // 6. A list under a kind word the book does not have, as a long answer from Anthropic's tool has
   // come back (#1183), is read by its fields: a numbered list in the book, never a refusal.

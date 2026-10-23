@@ -1127,6 +1127,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             showsIn={mode === 'table' ? 'table' : mode === 'rules' ? 'rules' : 'wall'}
             chosen={row}
             onAccept={(edits) => client.editTogether(edits, 'undo.what.proposal')}
+            editsLanded={() => client.editsLanded()}
           />
         )}
       </main>

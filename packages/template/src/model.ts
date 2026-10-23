@@ -59,6 +59,11 @@ export const ImageElement = z.object({
   // fits the whole picture inside the frame instead, and is the one that can leave the card's
   // paper showing between the picture and its own edges.
   fit: z.enum(['cover', 'contain', 'fill']).optional(),
+  // The frame's corners, rounded as a shape's are (#1224). A picture laid in a rounded line or on a
+  // rounded plate has to follow the curve, or its square corners are drawn out over it, on screen
+  // and as a visible edge in print. Optional, and nothing is written for a picture without it, so
+  // every template from before the field compiles byte for byte the same.
+  radiusMm: Mm.nonnegative().optional(),
   // Fit what is drawn rather than the file it arrived in (E1). A deck's art is one file per
   // card, and two files holding the same motif rarely hold it at the same size — one carries a
   // wide transparent border, the next almost none — so fitting files draws the motif a different
