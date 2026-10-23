@@ -96,7 +96,7 @@ function exportOf(carried: readonly Uint8Array[], named: readonly string[] = car
   })
 }
 
-type Quota = { error: string; quota: { measure: string; limit: number; used: number; bearer: string } }
+type Quota = { error: string; quota: { measure: string; limit: number; used: number; bearer: string; ownerName?: string } }
 
 for (const backend of backends) {
   describe.skipIf(backend.skip)(`storage, what the account's games use, in ${backend.name} (#1197)`, () => {
@@ -267,7 +267,7 @@ for (const backend of backends) {
         await db.projects.share(id, bo.id, 'editor')
         const res = await upload(bo.cookie, freshPicture(20), id)
         expect(res.status).toBe(402)
-        expect(((await res.json()) as Quota).quota).toEqual({ measure: 'storageBytes', limit: 250, used: 240, bearer: 'owner' })
+        expect(((await res.json()) as Quota).quota).toEqual({ measure: 'storageBytes', limit: 250, used: 240, bearer: 'owner', ownerName: 'Ada' })
       })
 
       it('an upload without a game writes as today, since no game names it yet', async () => {
@@ -316,7 +316,7 @@ for (const backend of backends) {
           await until((m) => m.v === 'edits')
           ws.send(JSON.stringify({ t: 'save' }))
           const refused = await until((m) => m.v === 'refused')
-          expect(refused).toEqual({ v: 'refused', why: 'quota', to: 'save', quota: { measure: 'storageBytes', limit: 250, used: 200, bearer: 'owner' } })
+          expect(refused).toEqual({ v: 'refused', why: 'quota', to: 'save', quota: { measure: 'storageBytes', limit: 250, used: 200, bearer: 'owner', ownerName: 'Ada' } })
           expect(await db.projects.versions(id)).toHaveLength(1)
         } finally {
           ws.close()
