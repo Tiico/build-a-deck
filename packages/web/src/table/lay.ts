@@ -1,4 +1,5 @@
 import type { Snapshot, ZoneView } from '@byd/protocol'
+import { isPiece } from '../components.js'
 import { CARD_MM } from './drop.js'
 import { FAN_MAX, HAND_STEP_MM } from './hand.js'
 
@@ -58,18 +59,30 @@ export type Laid = { x: number; y: number; index: number }
 // Vad ytan svarar om kortet som läggs i den som nummer `nth` i samma kuvert. Bara en yta svarar:
 // en hög och en hand lägger själva korten där de ska ligga, och `null` betyder att den här frågan
 // inte är ställd till den zonen.
-export function laidIn(view: Snapshot, zone: string, nth = 0): Laid | null {
+//
+// Fjädern är kortens (#1202). En räknare eller en tärning i ytan är ingen plats i den: räknad som
+// ett kort sköt den nästa kort ett steg in, och eftersom en bricka läggs mitt på första kortets
+// plats (#1177) räknades den platsen också som upptagen — kortet hamnade två steg in i en yta utan
+// ett enda kort. Ordningen är däremot allt som ligger i ytan, så `index` lägger kortet överst även
+// över brickorna. `piece` är frågan en bricka ställer om sin egen plats, och den räknar allt i ytan
+// som den alltid har gjort; var brickorna hamnar ändras inte här.
+export function laidIn(view: Snapshot, zone: string, nth = 0, piece = false): Laid | null {
   const z: ZoneView | undefined = view.zones.find((x) => x.id === zone)
   if (!z || z.kind !== 'area') return null
   const held = z.mode === 'order' ? z.order.length : z.count
   const i = held + nth
   const g = z.geometry
   const along = alongIsWidth(g)
+  const here = view.components.filter((c) => c.zone === zone)
+  const fanned = piece ? here : here.filter((c) => !isPiece(c))
+  // Hur långt fjädern har kommit: allt i ytan, utom brickorna när det är ett kort som läggs. En
+  // dold yta visar inte sina kort, men en bricka syns alltid, så de som syns dras från antalet.
+  const counted = piece ? held : held - (here.length - fanned.length)
   // Var längs fjädern korten redan ligger — ytans egna och de som kuvertet lagt före det här.
-  const taken = view.components.filter((c) => c.zone === zone).map((c) => (along ? c.x : c.y))
+  const taken = fanned.map((c) => (along ? c.x : c.y))
   let step = 0
   for (let k = 0; k <= nth; k++) {
-    step = freeStep(g, held + k, taken)
+    step = freeStep(g, counted + k, taken)
     taken.push(step)
   }
   return along ? { x: step, y: mm((g.h - CARD_MM.h) / 2), index: i } : { x: mm((g.w - CARD_MM.w) / 2), y: step, index: i }
