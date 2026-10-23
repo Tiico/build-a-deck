@@ -169,7 +169,7 @@ describe('Kortvägg: the checks', () => {
   it('keeps the count of faults and what cannot be mended, and moves whose a fault usually is', async () => {
     render(<DeckWall doc={tooSmall()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: /^Fysisk kontroll/ }))
-    expect(document.querySelector('.byd-wall-checks .byd-wall-lead')!.textContent).toMatch(/typer av fel|Ett fel stoppar|Bara varningar/)
+    expect(document.querySelector('.byd-wall-checks .byd-wall-lead')!.textContent).toMatch(/typer av fel|Ett fel måste|Bara varningar/)
     absent(/En anmärkning är oftast mallens/)
     expect((await opened('anmärkningarna')).textContent).toMatch(/syns då på alla kort som använder elementet/)
   })
