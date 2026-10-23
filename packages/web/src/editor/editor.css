@@ -4649,6 +4649,28 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-results-when > .byd-glyph { margin-right: var(--byd-s1); }
 .byd-results-when span { color: var(--byd-tables-quiet); font-weight: 400; }
 
+/* A flag about a card (#1142): the card as it was, beside the flag, and held up on a press. The
+   thumbnail is the card's own shape, so a texture still rendering keeps its box. */
+.byd-results-flags li[data-card] { grid-template-columns: 64px minmax(0, 1fr); column-gap: var(--byd-s3); }
+.byd-results-flags li[data-card] > :not(.byd-results-thumb) { grid-column: 2; }
+.byd-results-thumb { position: relative; grid-row: 1 / span 3; align-self: start; width: 64px; aspect-ratio: 63 / 88; padding: 0; border: 0; border-radius: 5px; background: #0f1115; overflow: hidden; cursor: zoom-in; box-shadow: 0 2px 8px #0008; }
+.byd-results-thumb .byd-texture, .byd-results-lift-card .byd-texture, .byd-results-lift-front-card .byd-texture { display: block; width: 100%; height: 100%; object-fit: contain; }
+.byd-results-thumb:focus-visible, .byd-results-lift-close:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
+.byd-results-flags p.byd-results-card-line { color: var(--byd-tables-quiet); font-size: 12px; }
+.byd-results-lift-ground { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: var(--byd-s4); background: #000b; }
+.byd-results-lift { display: grid; grid-template-columns: auto minmax(0, 280px); gap: var(--byd-s5); align-items: start; max-height: 100%; overflow: auto; padding: var(--byd-s5); border-radius: 16px; background: var(--byd-tables-bg); border: 1px solid var(--byd-editor-line); box-shadow: 0 30px 80px #000; color: var(--byd-tables-ink); }
+.byd-results-lift-card { position: relative; width: min(340px, 40vw); aspect-ratio: 63 / 88; border-radius: 10px; overflow: hidden; }
+.byd-results-lift-about { display: grid; gap: var(--byd-s2); align-content: start; font-size: 13px; }
+.byd-results-lift-about h3 { margin: 0; font-size: 17px; }
+.byd-results-lift-about p { margin: 0; }
+.byd-results-lift-about dl { display: grid; grid-template-columns: auto 1fr; gap: var(--byd-s1) var(--byd-s3); margin: 0; font-size: 12px; }
+.byd-results-lift-about dt { color: var(--byd-tables-quiet); }
+.byd-results-lift-about dd { margin: 0; }
+.byd-results-lift-about dd[data-now='changed'], .byd-results-lift-about dd[data-now='gone'] { color: var(--byd-editor-narrow-ink); }
+.byd-results-lift-front { display: grid; gap: var(--byd-s1); margin: 0; font-size: 12px; color: var(--byd-tables-quiet); }
+.byd-results-lift-front-card { position: relative; width: 120px; aspect-ratio: 63 / 88; border-radius: 6px; overflow: hidden; }
+.byd-results-lift-close { justify-self: start; min-height: var(--byd-tap); padding: 0 var(--byd-s4); border: 1px solid var(--byd-editor-line); border-radius: 8px; background: transparent; color: var(--byd-tables-ink); font: inherit; cursor: pointer; }
+
 /* The first column is as wide as the setup's at each width, so the switch stands still. */
 @media (min-width: 1024px) and (max-width: 1279px) {
   .byd-results { grid-template-columns: 260px minmax(0, 1fr); }

@@ -565,6 +565,29 @@ describe('the observer (C8): sees everything, is seen by everyone, touches nothi
   })
 })
 
+describe('a flag about a card (#1142)', () => {
+  it('reaches the log with the card, and no other connection learns which card it was', async () => {
+    const id = await createSession(run.http)
+    const a = await connect(id, 'A')
+    const b = await connect(id, 'B')
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const card = a.view!.components.find((c) => c.zone === 'hand:A')!.id
+    const eva = await connect(id, null, { role: 'observer', name: 'Eva' })
+    clients.push(eva)
+    const before = b.frames.length
+
+    expect((await a.send('A', { v: 'flag', component: card, note: 'för lång text' })).t).toBe('ack')
+    await b.waitFor((m) => m.t === 'activity' && m.lines.some((l) => l.intent.v === 'flag'))
+    expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, note: 'för lång text' })
+    expect(b.frames.slice(before).join('\n')).not.toContain(card)
+
+    // The observer's flag keeps its card too, stamped with her name.
+    expect((await eva.send(null, { v: 'flag', component: card })).t).toBe('ack')
+    expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, observer: 'Eva' })
+    expect(b.frames.slice(before).join('\n')).not.toContain(card)
+  })
+})
+
 // A seat that taps as the table comes up (#109). The socket is open before the door has finished
 // asking the store which session this is and whether this token buys a seat at it, and a frame
 // that arrives in that window had no `message` listener to be delivered to: it was emitted to

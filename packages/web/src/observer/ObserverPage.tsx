@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { ChevronGlyph } from '../glyphs.js'
 import '../table/table.css'
@@ -12,7 +12,6 @@ import { previewOf } from '../table/rewind.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { useShuffles } from '../table/shuffle.js'
-import { FlagSheet } from '../player/SessionSheets.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
@@ -30,6 +29,9 @@ import { Help } from '../editor/HelpDrawer.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
 import { useT } from '../i18n/index.js'
+
+// Flagging travels in a chunk of its own with its sheet, never in the first frame (#760, L20, #1142).
+const FlagFlow = lazy(() => import('../player/FlagFlow.js').then((m) => ({ default: m.FlagFlow })))
 
 // /observe?session=…&name=Eva&server=ws://…
 // The observer (C8): sees every hand and every hidden pile, is announced to everyone, and can
@@ -196,20 +198,19 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         </div>
       )}
       {sheet && (
-        <FlagSheet
-          refusal={flagged}
-          onFlag={(note) => {
-            void flagged.watch(client.send({ v: 'flag', ...(note ? { note } : {}) })).then((result) => {
-              if (!result.ok) return
+        <Suspense fallback={null}>
+          <FlagFlow
+            client={client}
+            view={view}
+            faces={http}
+            refusal={flagged}
+            onFlagged={() => {
               setSheet(false)
               setToast(t('session.flagged'))
-            })
-          }}
-          onClose={() => {
-            flagged.clear()
-            setSheet(false)
-          }}
-        />
+            }}
+            onClose={() => setSheet(false)}
+          />
+        </Suspense>
       )}
       </div>
       {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} />}

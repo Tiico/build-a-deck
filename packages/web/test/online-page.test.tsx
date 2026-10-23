@@ -95,12 +95,38 @@ describe('OnlinePage (C2): both roles in one window', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
     fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
     expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
+  })
+
+  // A flag about a card (#1142): pointing it out on the felt is a press that neither lifts it, opens
+  // its ring nor starts a drag, and the flag carries it.
+  it('points out a card on the felt with the next press, and flags it', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'table', count: 1, face: 'front' })
+    await open(id, 'A', 'Ada')
+    const felt = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>('[data-component]')
+      expect(el).not.toBeNull()
+      return el!
+    })
+    const card = felt.getAttribute('data-component')!
+    fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    fireEvent.pointerDown(felt, { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerUp(felt, { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.click(felt)
+    expect(document.querySelector('[role="menu"], .byd-ring')).toBeNull()
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Flagga kortet' })).getByRole('button', { name: 'Flagga' }))
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', component: card } }))
+    expect((await run.store.read(id)).filter((l) => l.intent.v !== 'flag' && l.intent.v !== 'seat.claim')).toHaveLength(1)
+    table.close()
   })
 
   // The same need and the same way out (#31): distance mode shares the phone's session controls,

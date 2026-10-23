@@ -2040,6 +2040,26 @@ Preciserat 2026-10-18 (#1021):
 - **Ett svar per plats och per observatör och bord, och ett andra svar ersätter det första.** Telefonen minns att den svarat bara i flikens egen lagring, och en telefon som glömt det frågar igen; att ta emot det nya svaret i stället för det gamla är vad den redan uttrycker, medan ett avslag skulle göra «Skicka» till ett fel för någon som inget fel gjort. Observatören känns igen på namnet hennes inträde köptes under, som «Bord du spelat vid» redan gör.
 - Unika nycklar i `surveys` håller det i Postgres; migreringen kortar befintliga dubbletter till det senaste svaret, det som ett ersättande svar hade lämnat kvar.
 
+Utvidgat 2026-10-22 (#1142, prototypat och beslutat): **en flagga kan gälla ett kort.**
+Beställaren ville att en spelare ska kunna flagga ett element i spelet, till exempel ett visst kort, och att designern ska se det exakta kortet som det såg ut.
+Tre sätt att peka ut kortet och tre sätt att visa det prövades i [`docs/ux-audits/2026-10-22-flagga-element/prototyper/index.html`](docs/ux-audits/2026-10-22-flagga-element/prototyper/index.html), med riktiga texturer ur provleken.
+Beställaren valde B och 1, och komponenter i första leveransen: högar och zoner flaggas inte än.
+
+- **Flaggan pekar efter frågan (B).** «Flagga» frågar först om det gäller det som händer eller ett kort.
+  «Ett kort…» lägger undan arket, och nästa tryck på ett kort pekar ut det och gör inget annat: det läser inte, spelar inte, lyfter inte och drar inte.
+  Inget som inte är ett kort svarar under tiden, utom en hopfälld rubrik som kortet kan ligga under.
+  Arket kommer tillbaka med kortet och med kommentaren som den lämnades.
+  Telefonen, distansvyn och observatören delar flödet (`FlagFlow`).
+- **`flag` får fältet `component`.** Det är inget nytt verb, men det är en protokolländring och står här av det skälet.
+  Motorn vägrar ett id som flaggarens vy inte har (`sees`, samma regel som `project`), så en flagga kan inte användas för att pröva dolda id:n.
+  Observatören ser varje hand (C8) och får peka ut kort i dem.
+- **Vilket kort en flagga gäller når bara loggen och designern.** `projectActivity` tar bort fältet ur raden som alla vyer får, eftersom en flagga på ett kort i den egna handen annars skulle avslöja för bordet vilket kort som oroade, i samma stund kortet spelas.
+  `wire.test.ts` läser de andra anslutningarnas råa frames och visar att id:t aldrig når dem.
+- **Resultat visar kortet som det låg (1).** Varje flaggrad bär en miniatyr av kortet, och ett tryck lyfter det med var det låg, när, i vilken version och hur spelet ritar det nu.
+  `GET /projects/:id/playtest` bär per flagga `card`: komponenten som en observatör såg den, med texturerna ur versionen flaggan restes på, vad flaggaren själv såg (`seen`), var den låg (`place`) och `now` — `same`, `changed` eller `gone` mot spelets senaste version.
+  Allt härleds på servern genom att spela upp loggen fram till flaggans rad, och texturerna är innehållsadresserade, så ett kort som skrivits om sedan visas ändå som spelaren hade det.
+  Låg kortet nedvänt för flaggaren visar miniatyren baksidan, och lyftet visar framsidan bredvid.
+
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
 Endast digitala sessioner registreras.
@@ -4395,7 +4415,11 @@ Editorn har en knapp som startar ett bord från projektet eller skickar `version
 Knappen heter det jobb den står i begrepp att göra (#417, byggt 2026-09-21): utan bord heter den "Starta bord" ("Start a table"), och "Startar bordet…" medan starten är på väg; med ett bord heter den "Uppdatera bordet" som förut.
 "Nytt bord" står i pilens meny bredvid knappen, ovanför "Alla bord", vid alla bredder (beslut 2026-09-27, #477 fynd 4, prototyp 09 variant B).
 Den stod förut bredvid knappen i huvudet, och vid 1024 px var det "Uppdatera bordet" som fick ge plats: den klipptes till "Uppdatera bo".
-Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort, och det frågas inte om (samma beslut).
+Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort.
+Det frågades förut inte om (samma beslut), men ett tryck som menade det pågående bordet startade ett nytt med en ny kod, och gästerna vid det första såg ingenting.
+Sedan #1145 (beställarens beslut 2026-10-22, prototyp `docs/ux-audits/2026-10-22-andra-bordet/prototyper/`, variant A) frågar «Nytt bord», Bord-flikens «Starta nytt bord» och startsidans «Starta nytt bord» först, medan ett bord av spelet kör.
+Frågan är produktens `Question` som den är: den namnger det nyaste bordet som kör («Bordet KOD kör redan», eller «2 bord kör redan, senast KOD»), öppnar på «Öppna KOD», som öppnar bordets skärm i en ny flik, och «Starta ett nytt ändå» startar det andra bordet.
+Utan ett bord igång startar knappen direkt, som förut.
 Efter en omladdning plockar editorn upp det nyaste bordet som fortfarande kör, så att knappen uppdaterar det i stället för att starta ett andra (#477 fynd 1).
 Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bord hade en blå knapp som lovade en uppdatering och i stället startade en session med rumskod; meningen i Bord-fliken förklarade skillnaden på en annan flik i stället för att knappen sade rätt ord.
 Meningen citerar numera det namn knappen bär.
@@ -5829,6 +5853,7 @@ Knappen är en **andrahandsknapp** och kan inte bli något annat: den ljusa fyll
 **Den står först i kolumnen, över listan.**
 Det är det fliken finns till för; allt under den är bord som redan finns.
 Priset är erkänt: den som kom hit för att öppna ett pågående bord möter varje gång en knapp som startar ett nytt.
+Sedan #1145 kostar priset bara en fråga: medan ett bord kör frågar knappen först och öppnar på det bordet (L5).
 
 **Revisionen står inte i knappen.**
 Knappen säger bara «Starta nytt bord», med en play-ikon.

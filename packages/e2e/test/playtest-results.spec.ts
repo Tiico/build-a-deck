@@ -37,6 +37,8 @@ test('the designer reads the phones’ answers and the flag in the Resultat view
   await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 } as never])
 
   // Ada flags a moment from her phone, with a word about it.
+  // The flag stands in «More» on the phone (#1147).
+  await ada.page.getByRole('tab', { name: /^More/ }).click()
   await ada.page.getByRole('button', { name: 'Flag' }).click()
   const sheet = ada.page.getByRole('dialog')
   await sheet.getByRole('textbox').fill('The dragon is too strong')
@@ -66,4 +68,56 @@ test('the designer reads the phones’ answers and the flag in the Resultat view
   const fun = desk.page.getByRole('table', { name: /How the answers fall per question for version 1/ }).getByRole('row', { name: /^Fun/ })
   await expect(fun.getByRole('cell').nth(1)).toContainText('1 answered 2')
   await expect(fun.getByRole('cell').nth(3)).toContainText('1 answered 4')
+})
+
+// A flag about a card (#1142, beställarens val 2026-10-22): from the phone, «Flagga», «Ett kort…»
+// and a tap on the card in the hand — which neither reads nor plays it — and the designer finds
+// the very card in the flag's row in Resultat, and lifts it.
+test('a card pointed out from the phone is the card in the flag’s row in Resultat', async ({ open, request, host }) => {
+  const desk = await open(DESK, '/')
+  await logIn(desk.page.request)
+  const doc = gameDoc({ name: 'Skogens herrar', players: 2, cards: 6 })
+  const project = await makeProjectOf(desk.page.request, doc)
+  const started = await startTable(desk.page.request, project.id)
+  const table = { ...started, seats: doc.setup.seats }
+  const ada = await open(PHONE, (await join(request, table, { name: 'Ada', seat: doc.setup.seats[0]! })).playUrl)
+  await expect(ada.page.getByText('Ada').first()).toBeVisible()
+  const dealer = await host(table)
+  await dealer.send([{ v: 'deal', from: 'draw', to: ['hand:A'], each: 2 } as never])
+  const cards = ada.page.locator('[data-hand] [data-hand-card]')
+  await expect(cards).toHaveCount(2)
+
+  // The flag stands in «More» on the phone (#1147).
+  await ada.page.getByRole('tab', { name: /^More/ }).click()
+  await ada.page.getByRole('button', { name: 'Flag' }).click()
+  await ada.page.getByRole('dialog').getByRole('textbox').fill('Too much text')
+  await ada.page.getByRole('button', { name: /A card/ }).click()
+  await expect(ada.page.getByRole('status', { name: 'Tap the card it is about' })).toBeVisible()
+  // The hand is a tab away, and a tab still turns while a card is pointed out.
+  await ada.page.getByRole('tab', { name: /^Hand/ }).click()
+  await cards.nth(1).tap()
+  await expect(ada.page.locator('.byd-inspect')).toHaveCount(0)
+  const sheet = ada.page.getByRole('dialog', { name: 'Flag the card' })
+  // The card in the sheet is the one tapped.
+  const title = (await sheet.locator('.byd-flag-about-words b').textContent())!
+  expect(await cards.nth(1).getAttribute('aria-label')).toContain(title)
+  await expect(sheet.getByRole('textbox')).toHaveValue('Too much text')
+  await sheet.getByRole('button', { name: 'Flag', exact: true }).click()
+  await expect(ada.page.getByRole('status').filter({ hasText: 'Flagged' }).first()).toBeVisible()
+  await expect(cards).toHaveCount(2)
+  await dealer.send([{ v: 'session.end' } as never])
+
+  await desk.page.goto(project.editorUrl)
+  await desk.page.getByRole('tab', { name: 'Tables' }).click()
+  await desk.page.getByRole('button', { name: 'Results' }).click()
+  const thumb = desk.page.getByRole('button', { name: `Show ${title} as the card was` })
+  await expect(thumb).toBeVisible()
+  await expect(desk.page.getByText(`${title} · in Ada’s hand · the same in the latest version`)).toBeVisible()
+  await thumb.click()
+  const lifted = desk.page.getByRole('dialog', { name: `${title} as the card was` })
+  await expect(lifted).toContainText('when Ada flagged it')
+  await expect(lifted).toContainText('«Too much text»')
+  await desk.page.keyboard.press('Escape')
+  await expect(lifted).toHaveCount(0)
+  await expect(thumb).toBeFocused()
 })

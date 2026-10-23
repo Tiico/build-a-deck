@@ -7,8 +7,9 @@ import { forTheRoom } from '../table/presence.js'
 import { CardPlays, HandBar } from './HandActions.js'
 import { HandGrid } from './HandGrid.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
-import { isCounter } from '../components.js'
+import { isPiece } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
+import { DicePill, DiceSheet, diceOf } from './Dice.js'
 import { standingRewind } from '../table/rewind.js'
 import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
@@ -119,6 +120,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const drawn = useRefusal('phone')
   const [refusedPile, setRefusedPile] = useState<string | null>(null)
   const [toast, setToast] = useToast()
+  // The dice's sheet (K28, #1138), opened from its pill among the counters.
+  const [rolling, setRolling] = useState(false)
 
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   // The marked cards in the order they were marked, which is the order they are played in.
@@ -198,7 +201,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   }
   // The row as it is drawn now, so a card that moved while it was held leaves the walk with it.
   const rowOf = (row: 'hand' | 'mine' | { zone: string }): VisibleComponentState[] =>
-    row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isCounter(c))
+    row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isPiece(c))
   const hold = (card: VisibleComponentState, row: 'hand' | 'mine' | { zone: string }) => setHeld({ card, row })
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
@@ -231,7 +234,13 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <HandGrid view={view} selected={marks.selected} faces={faces} onToggle={marks.toggle} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} turned={turned} onTurn={(c) => turnedHand.toggle(c.id)} />
         </section>
         <section {...panel('mine')}>
-          <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
+          {/* The counters, and the dice's pill among them (#1138): the things a seat keeps count
+              of and rolls, which a phone in the hand reaches without looking up. */}
+          <CountersRow
+            view={view}
+            onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })}
+            extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
+          />
           <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
           {quickSource !== 'hand' && <Refusal handle={quick} />}
         </section>
@@ -392,7 +401,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           refusedZone={refusedZone}
         />
       )}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} />
+      {rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} />
     </>
   )
 }

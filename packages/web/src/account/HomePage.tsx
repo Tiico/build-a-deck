@@ -9,6 +9,7 @@ import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
 import { duplicateProject, logout, myCards, myPlayed, myProjects, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { tvUrl } from '../editor/tableLinks.js'
+import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
 import { marked } from './marked.js'
@@ -80,7 +81,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       live = false
     }
   }, [askedAbout, http])
-  const runningList = (projects ?? []).flatMap((p) => (running[p.id] ?? []).map((table) => ({ ...table, name: p.name })))
+  // A game's running tables, newest first, as the server lists them.
+  const runningOf = (p: ProjectSummary) => running[p.id] ?? []
+  const runningList = (projects ?? []).flatMap((p) => runningOf(p).map((table) => ({ ...table, name: p.name })))
   // Landing here from the claim page (G1): which session was just saved. Said once (#475): the
   // address stops carrying it as soon as it has been read, so a reload does not say it again.
   const claimed = params.get('claimed')
@@ -102,6 +105,11 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // last table started from here was, so the code can be read off.
   const [menu, setMenu] = useState<string | null>(null)
   const [asking, setAsking] = useState<ProjectSummary | null>(null)
+  // A game whose «Starta nytt bord» was pressed while a table of it runs (#1145, beslut A): the
+  // press asks first, because it stood one line under «Öppna bordet KOD» and was taken for it.
+  const [another, setAnother] = useState<ProjectSummary | null>(null)
+  // The newest table of that game, which the question names and opens.
+  const anotherTable = another ? runningOf(another)[0] : undefined
   // Where the focus goes once whatever had it has gone away (#475): back to a game's ⋯ when its
   // menu or its question closes, or to the heading once the game itself is gone — never to
   // <body>, which is where a keyboard is left with no idea where it is.
@@ -113,6 +121,15 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     ;(refocus.to === HEADING ? heading.current : mores.current.get(refocus.to))?.focus()
   }, [refocus])
   const say = useSay()
+  // A table from a game's ⋯, said by its code once the server has it.
+  const start = (p: ProjectSummary) =>
+    void startTable(http, p.id, t).then(
+      (table) => {
+        say?.('polite', t('home.started', { code: table.code }))
+        setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
+      },
+      (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+    )
   useEffect(() => {
     setOffline(false)
     void whoAmI(http)
@@ -238,6 +255,32 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             ))}
           </section>
         )}
+        {another && anotherTable && (
+          <Question
+            className="byd-home-asking"
+            label={t('tables.another.label')}
+            confirm={t('tables.another.start')}
+            keep={{
+              label: t('tables.another.open', { table: anotherTable.code }),
+              onChoose: () => {
+                window.open(tvUrl(anotherTable.id, server, undefined, true, lang), '_blank', 'noreferrer')
+                setAnother(null)
+                setRefocus({ to: another.id })
+              },
+            }}
+            onCancel={() => {
+              setAnother(null)
+              setRefocus({ to: another.id })
+            }}
+            onConfirm={() => {
+              setAnother(null)
+              setRefocus({ to: another.id })
+              start(another)
+            }}
+          >
+            {anotherAsk(t, anotherTable.code, runningOf(another).length)}
+          </Question>
+        )}
         {asking && (
           <Question
             className="byd-home-asking"
@@ -338,7 +381,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   >
                     {/* The tables already running come first (#724, beslut B), so a second press to see the
                         code again opens the table it was for rather than starting another. */}
-                    {(running[p.id] ?? []).map((table) => (
+                    {runningOf(p).map((table) => (
                       <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
                         {t('home.menu.open', { code: table.code })}
                       </a>
@@ -348,17 +391,12 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         type="button"
                         onClick={() => {
                           setMenu(null)
+                          if (runningOf(p).length > 0) return setAnother(p)
                           setRefocus({ to: p.id })
-                          void startTable(http, p.id, t).then(
-                            (table) => {
-                              say?.('polite', t('home.started', { code: table.code }))
-                              setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
-                            },
-                            (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
-                          )
+                          start(p)
                         }}
                       >
-                        {t((running[p.id] ?? []).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
+                        {t(runningOf(p).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
                       </button>
                     )}
                     {/* The editor's own choices for the whole game (#738, #909): its name, a copy of
