@@ -580,7 +580,7 @@ describe('a flag about a card (#1142)', () => {
     await b.waitFor((m) => m.t === 'activity' && m.lines.some((l) => l.intent.v === 'flag'))
     expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, note: 'för lång text' })
     // Searched for as the JSON string it travels as: a bare `c0` is also somewhere inside the random
-    // id an observer is given in the roster, which failed this once a run in about every ten.
+    // id an observer is given in the roster, and CI failed on exactly that (#1165).
     expect(b.frames.slice(before).join('\n')).not.toContain(JSON.stringify(card))
 
     // The observer's flag keeps its card too, stamped with her name.
