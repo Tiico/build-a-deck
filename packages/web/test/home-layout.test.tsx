@@ -213,8 +213,9 @@ describe('the game tiles at 1280 px (#725)', () => {
 
 // «＋ Nytt spel» says what it does in the middle of its tile. #725 stood the game tiles' content from
 // the top, and the rule took the invitation along with it: on an account with no games the words
-// sat against the top of a card-tall tile. Read off the painted pixels, since a box can stand in
-// the middle while the words drawn in it do not.
+// sat against the top of a card-tall tile until #1204 centred them again, with nothing to hold them
+// there. Read off the painted pixels, since a box can stand in the middle while the words drawn in
+// it do not.
 describe('the «＋ Nytt spel» tile', () => {
   async function home(games: readonly string[]): Promise<string> {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'nytt@example.com' }) })
