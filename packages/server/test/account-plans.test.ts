@@ -105,11 +105,13 @@ for (const backend of backends) {
       await db.plans.setPlan(dee.id, 'pro', 'operator')
       const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, tiers)
       // Cards per game, for every game the account owns (#1195): the log is replayed, since no
-      // actor runs in the operator's process. And the tables the account bears (#1196).
+      // actor runs in the operator's process. And the tables the account bears (#1196), and its
+      // storage and renderings (#1197).
       const games = [`dee-1-${backend.name}`, `dee-2-${backend.name}`].sort()
       const perGame = { used: 1, limit: null, projects: games.map((id) => ({ id, used: 1 })) }
-      expect(report).toContainEqual(expect.objectContaining({ email: 'dee@example.com', plan: 'pro', measures: expect.objectContaining({ projects: { used: 2, limit: null }, cardRowsPerProject: perGame, cardCopiesPerProject: perGame, openTables: { used: 1, limit: null }, tablesPer30Days: { used: 1, limit: null } }) }))
-      expect(report).toContainEqual(expect.objectContaining({ email: 'bo@example.com', plan: 'free', measures: expect.objectContaining({ projects: { used: 0, limit: 2 }, cardRowsPerProject: { used: 0, limit: null, projects: [] }, openTables: { used: 0, limit: null }, tablesPer30Days: { used: 0, limit: null } }) }))
+      const none = { used: 0, limit: null }
+      expect(report).toContainEqual(expect.objectContaining({ email: 'dee@example.com', plan: 'pro', measures: expect.objectContaining({ projects: { used: 2, limit: null }, cardRowsPerProject: perGame, cardCopiesPerProject: perGame, openTables: { used: 1, limit: null }, tablesPer30Days: { used: 1, limit: null }, storageBytes: none, rendersPer30Days: none }) }))
+      expect(report).toContainEqual(expect.objectContaining({ email: 'bo@example.com', plan: 'free', measures: expect.objectContaining({ projects: { used: 0, limit: 2 }, cardRowsPerProject: { used: 0, limit: null, projects: [] }, openTables: { used: 0, limit: null }, tablesPer30Days: { used: 0, limit: null }, storageBytes: none, rendersPer30Days: none }) }))
       await db.plans.clearPlan(dee.id)
     })
   })

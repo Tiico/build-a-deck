@@ -19,6 +19,7 @@ import { LoginCard } from '../src/account/LoginCard.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
@@ -295,17 +296,19 @@ describe('the way in', () => {
   }, 90_000)
 })
 
-// The guided start, at the width it is worked at (L12). Every step the wizard has at that width,
-// because the one action that finishes it has to be the only filled thing on each of them.
+// The guided start, at the width it is worked at (L12): the crossroads before it (L79), and every
+// step the guide has at that width, because the one action that finishes it has to be the only
+// filled thing on each of them — and the crossroads, which finishes nothing, wears no fill at all.
 async function wizardViews(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', '/new')
   const { unmount } = render(<NewProjectPage />)
   try {
     await screen.findByText(/Skapa ett nytt spel/)
+    const out: Record<string, string> = { vägskälet: document.querySelector('.byd-wizard')!.outerHTML }
+    throughTheDoor()
     const steps = () => [...document.querySelectorAll<HTMLElement>('[role="tablist"][aria-label="Steg"] [role="tab"]')]
-    if (steps().length === 0) return { 'hela sidan': document.querySelector('.byd-wizard')!.outerHTML }
-    const out: Record<string, string> = {}
+    if (steps().length === 0) return { ...out, 'hela sidan': document.querySelector('.byd-wizard')!.outerHTML }
     for (let i = 0; i < steps().length; i++) {
       const step = steps()[i]!
       fireEvent.click(step)
@@ -320,7 +323,7 @@ async function wizardViews(width: number): Promise<Record<string, string>> {
 describe('the guided start', () => {
   it('wears the primary fill on nothing but the action that finishes it', async () => {
     const measured = await inChromium(read('src/wizard/wizard.css'), 1280, await wizardViews(1280), wearingThePrimary('.byd-wizard'))
-    expect(measured).toEqual({ 'hela sidan': ['Skapa spelet'] })
+    expect(measured).toEqual({ vägskälet: [], 'hela sidan': ['Skapa spelet'] })
   }, 90_000)
 })
 
@@ -1226,7 +1229,7 @@ ${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
     expect(walkedThrough).toEqual({
       'inloggningskortet, mina spel': ['inloggningskortet', 'landningssidan', 'mina spel'],
       'sätt dig vid bordet': ['innan namnet är skrivet', 'platsen är tagen', 'sätt dig vid bordet'],
-      'guidad start': ['hela sidan'],
+      'guidad start': ['hela sidan', 'vägskälet'],
       'editorn': [...EDITOR_VIEWS],
       'telefonen': ['enkäten', 'vägen ut'],
       'storbilden': ['enkäten på storbilden', 'frågan om att spola tillbaka'],

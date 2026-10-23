@@ -6,6 +6,7 @@ import { LoginCard } from '../src/account/LoginCard.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { SurveyPage } from '../src/account/SurveyPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
@@ -146,9 +147,10 @@ describe('pages that need an account send you to log in and back', () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
     render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Första försöket' } })
+    throughTheDoor('Första försöket')
     fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
-    await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew/))
+    // Back to the guide it was made from (L79), where the draft is sent on arrival.
+    await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew%2Fguided/))
 
     const login = new URL(gone.at(-1)!, 'http://web.local')
     const next = login.searchParams.get('next')!
@@ -173,7 +175,7 @@ describe('pages that need an account send you to log in and back', () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
     render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    throughTheDoor()
     fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
     await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew/))
     cleanup()

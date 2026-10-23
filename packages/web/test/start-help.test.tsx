@@ -127,6 +127,7 @@ describe('the login card', () => {
 // explanations as paragraphs.
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
+import { throughTheDoor } from './wizard-door.js'
 
 const HANDOFF = /Layout, resten av korten och CSV-import gör du i editorn/
 const BLANK = /utan kort, fält eller mall/
@@ -134,10 +135,16 @@ const FIELDS = /Varje fält blir en ruta/
 const CARDS = /visar hur fälten används/
 const FOOTER = /CSV-import och mallen gör du i editorn/
 
-const wizard = (width: number) => {
+// The crossroads before the guide (L79) has one question mark, at its question; the guide behind
+// its first door has one per step.
+const crossroads = (width: number) => {
   atWidth(width)
   history.replaceState(null, '', '/new')
   render(<NewProjectPage onNavigate={() => undefined} />)
+}
+const wizard = (width: number) => {
+  crossroads(width)
+  throughTheDoor()
 }
 const asks = () => screen.getAllByRole('button', { name: /^Hjälp om / })
 const askOn = async (topic: string) => {
@@ -151,27 +158,29 @@ const atHeading = (topic: string, heading: RegExp) => {
   expect(within(row as HTMLElement).getByRole('heading', { name: heading })).toBeTruthy()
 }
 
-describe('the guided start on a desk, where the three steps stand together', () => {
+describe('the guided start on a desk, where the two steps stand together', () => {
   beforeEach(() => {
     sessionStorage.clear()
   })
 
   it('has exactly one question mark per step, at the step’s heading', () => {
+    crossroads(1280)
+    expect(asks()).toHaveLength(1)
+    atHeading('spelet', /Hur vill du börja/)
+    cleanup()
     wizard(1280)
-    expect(asks()).toHaveLength(3)
-    atHeading('spelet', /Spelet/)
+    expect(asks()).toHaveLength(2)
     atHeading('fälten', /Fält/)
     atHeading('korten', /Lägg till några exempelkort/)
   })
 
-  it('moves the handoff and the blank game’s explanation behind the first step’s question mark', async () => {
-    wizard(1280)
+  it('moves the handoff and the blank game’s explanation behind the crossroads’ question mark', async () => {
+    crossroads(1280)
     expect(screen.queryByText(HANDOFF)).toBeNull()
     expect(screen.queryByText(BLANK)).toBeNull()
-    // Kept: the blank door is still named, its title and its button, and a short question.
-    expect(screen.getByText('Börja från ett tomt spel')).toBeTruthy()
-    expect(screen.getByText('Bara namnet och antalet spelare följer med.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Skapa tomt spel' })).toBeTruthy()
+    // Kept: the blank door is still named and says in a sentence what it gives.
+    expect(screen.getByRole('button', { name: 'Tomt spel' })).toBeTruthy()
+    expect(screen.getByText('Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.')).toBeTruthy()
     const box = await askOn('spelet')
     expect(box.textContent).toMatch(HANDOFF)
     expect(box.textContent).toMatch(BLANK)
@@ -189,7 +198,7 @@ describe('the guided start on a desk, where the three steps stand together', () 
     expect(help.textContent).toContain('Allt går att ändra i Speltema.')
   })
 
-  it('moves what the example cards are for and what comes after behind the third step’s question mark', async () => {
+  it('moves what the example cards are for and what comes after behind the cards’ question mark', async () => {
     wizard(1280)
     expect(screen.queryByText(CARDS)).toBeNull()
     expect(screen.queryByText(FOOTER)).toBeNull()
@@ -205,11 +214,8 @@ describe('the guided start on a phone, one step at a time', () => {
   it('shows one question mark on the open step, and it belongs to that step', async () => {
     wizard(390)
     expect(asks()).toHaveLength(1)
-    atHeading('spelet', /Spelet/)
-    fireEvent.click(screen.getByRole('tab', { name: '2 · Fälten' }))
-    expect(asks()).toHaveLength(1)
     atHeading('fälten', /Fält/)
-    fireEvent.click(screen.getByRole('tab', { name: '3 · Korten' }))
+    fireEvent.click(screen.getByRole('tab', { name: '2 · Korten' }))
     expect(asks()).toHaveLength(1)
     expect((await askOn('korten')).textContent).toMatch(FOOTER)
   })

@@ -392,6 +392,8 @@ Vilken nivå ett konto har står i tabellen `account_plans`, som Stripe skriver 
 I dag sätter operatören den över Tailscale (§10), med lådans egen `BYD_PLANS` så att en nivå lådan inte har aldrig skrivs:
 `pnpm --filter @byd/server plan set <adress> <nivå>` och `plan clear <adress>`.
 `pnpm --filter @byd/server usage` skriver varje kontos nivå, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
+Lagring (`storageBytes`, #1197) är det kontots spel nämner i någon version, räknat ur databasen; ett borttaget spel frigör sitt, men bytesen ligger kvar i R2 (§4).
+Renderingar (`rendersPer30Days`) läses ur renderköns logg `render_log` i samma databas, så skriptet behöver ingen annan anslutning.
 
 E-post: Resend, Postmark eller motsvarande — en bostads-IP är i praktiken svartlistad.
 POD-partnerns API.

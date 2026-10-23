@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 import { logIn } from '../../support/api.js'
 
 // Temats förval i den guidade starten (#687, beställarens beslut 2026-10-06, variant D).
@@ -85,14 +86,16 @@ for (const [width, height] of [[1280, 800], [1024, 768], [768, 1024]] as const) 
       const net = await google(page)
       await logIn(page.request)
       await page.goto('/new', { waitUntil: 'load' })
+      await throughTheDoor(page)
       const steps = width < 1024
-      // Below the desk the tiles are step 2 and the card step 3; the way to each is the step's tab.
-      if (steps) await page.getByRole('tab', { name: '2 · Fälten' }).click()
+      // Below the desk the tiles are the fields' step and the card the cards'; the way to each is
+      // the step's tab.
+      if (steps) await page.getByRole('tab', { name: '1 · Fälten' }).click()
       const skog = tile(page, 'Skogssaga')
       await expect(skog).toHaveAttribute('aria-pressed', 'false')
       await expect(skog).toHaveAccessibleDescription('Förval')
       await expect(page.locator('.byd-theme-tile[aria-pressed="true"]')).toHaveCount(0)
-      if (steps) await page.getByRole('tab', { name: '3 · Korten' }).click()
+      if (steps) await page.getByRole('tab', { name: '2 · Korten' }).click()
       await expect(show(page)).toBeVisible()
       await page.waitForTimeout(500)
       expect(net.asked, 'nothing is asked of Google before the designer acts (L27)').toEqual([])
@@ -103,7 +106,7 @@ for (const [width, height] of [[1280, 800], [1024, 768], [768, 1024]] as const) 
       await expect(show(page)).toHaveCount(0)
       expect(net.asked.some((url) => url.includes('Cinzel'))).toBe(true)
       expect(await page.evaluate(() => document.activeElement === document.body), 'the press does not leave the focus on <body>').toBe(false)
-      if (steps) await page.getByRole('tab', { name: '2 · Fälten' }).click()
+      if (steps) await page.getByRole('tab', { name: '1 · Fälten' }).click()
       await expect(skog).toHaveAttribute('aria-pressed', 'true')
       await expect(skog).not.toHaveAccessibleDescription('Förval')
     })
@@ -120,6 +123,7 @@ test.describe('at the desk', () => {
     const net = await google(page, { hold: true })
     await logIn(page.request)
     await page.goto('/new', { waitUntil: 'load' })
+    await throughTheDoor(page)
     await tile(page, 'Krönika').click()
     await expect.poll(() => net.asked.filter((url) => url.includes('gstatic')).length).toBeGreaterThan(0)
     await expect(fetching(page, 'Krönika')).toBeVisible()
@@ -139,14 +143,14 @@ test.describe('at the desk', () => {
     const net = await google(page)
     await logIn(page.request)
     await page.goto('/new', { waitUntil: 'load' })
-    await page.getByLabel('Spelets namn').fill('Krönikan')
+    await throughTheDoor(page, 'Krönikan')
     await tile(page, 'Krönika').click()
     await expect.poll(() => inTheme(page), { timeout: 15_000 }).toBe(true)
 
     page.on('dialog', (dialog) => void dialog.accept())
     const before = net.asked.length
     await page.reload({ waitUntil: 'load' })
-    await expect(page.getByLabel('Spelets namn')).toHaveValue('Krönikan')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Krönikan')
     await expect(tile(page, 'Krönika')).toHaveAttribute('aria-pressed', 'true')
     await expect(show(page)).toHaveCount(0)
     await expect.poll(() => inTheme(page), { timeout: 15_000 }).toBe(true)
@@ -159,10 +163,10 @@ test.describe('at the desk', () => {
     const net = await google(page)
     await logIn(page.request)
     await page.goto('/new', { waitUntil: 'load' })
-    await page.getByLabel('Spelets namn').fill('Skogens herrar')
+    await throughTheDoor(page)
     page.on('dialog', (dialog) => void dialog.accept())
     await page.reload({ waitUntil: 'load' })
-    await expect(page.getByLabel('Spelets namn')).toHaveValue('Skogens herrar')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar')
     await expect(tile(page, 'Skogssaga')).toHaveAttribute('aria-pressed', 'false')
     await expect(show(page)).toBeVisible()
     await page.waitForTimeout(500)
@@ -174,6 +178,7 @@ test.describe('at the desk', () => {
     await google(page)
     await logIn(page.request)
     await page.goto('/new', { waitUntil: 'load' })
+    await throughTheDoor(page)
     const ring = () => page.evaluate(() => {
       const el = document.activeElement as HTMLElement
       const style = getComputedStyle(el)
@@ -192,10 +197,10 @@ test.describe('at the desk', () => {
   })
 })
 
-// The box at the top of the guided start (beslutet, punkt 3): logged out it says the game is kept
+// The box at the top of the crossroads (beslutet, punkt 3; L79): logged out it says the game is kept
 // on an account (#691) — said here and only here — and logged in there is no box. The word
 // «wizard» is gone from the surface: it is «guidad start» everywhere.
-test.describe('the box over step 1', () => {
+test.describe('the box over the crossroads', () => {
   test.use({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
 
   test('says the game is kept on an account when logged out', async ({ page }) => {
