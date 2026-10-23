@@ -181,6 +181,28 @@ describe('one actor owns one project (D3)', () => {
     actor.subscribe({ id: 'c', name: 'Cilla', send: () => undefined })
     expect(actor.here.map((p) => p.name)).toEqual(['Bo', 'Cilla'])
   })
+
+  // Who is here is counted in people, not in tabs: one account with the game open twice is one.
+  // An editor with no account (a server without logins) is nobody else, so it counts on its own.
+  it('says each account once, however many editors it has open, until its last one leaves', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    const actor = (await ProjectActor.load('p1', store))!
+    const told: string[][] = []
+    const send = (m: EditorMessage) => {
+      if (m.v === 'here' || m.v === 'project') told.push(m.here.map((p) => p.name))
+    }
+    const first = actor.subscribe({ id: 'a1', name: 'Ada', account: 'ada', send })
+    actor.subscribe({ id: 'b', name: 'Bo', account: 'bo', send: () => undefined })
+    const second = actor.subscribe({ id: 'a2', name: 'Ada', account: 'ada', send: () => undefined })
+    actor.subscribe({ id: 'x', name: 'Någon', send: () => undefined })
+    actor.subscribe({ id: 'y', name: 'Någon', send: () => undefined })
+    expect(told.at(-1)).toEqual(['Ada', 'Bo', 'Någon', 'Någon'])
+    first()
+    expect(actor.here.map((p) => p.id)).toEqual(['b', 'a2', 'x', 'y'])
+    second()
+    expect(actor.here.map((p) => p.name)).toEqual(['Bo', 'Någon', 'Någon'])
+  })
 })
 
 // The log is the truth and it must always replay identically (CLAUDE.md, DRIFT §7). A verb whose

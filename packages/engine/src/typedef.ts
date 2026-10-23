@@ -16,7 +16,7 @@ export const ComponentTypeDef = z.object({
   id: z.string().min(1),
   version: z.number().int().nonnegative(),
   physical: z.object({
-    shape: z.enum(['rect', 'roundedRect', 'hex', 'circle']),
+    shape: z.enum(['rect', 'roundedRect', 'hex', 'circle', 'polyhedron']),
     widthMm: z.number().positive(),
     heightMm: z.number().positive(),
     thicknessMm: z.number().positive(),
@@ -116,5 +116,23 @@ export const TOKEN_COUNTER: ComponentTypeDef = {
   manufacturableBy: [],
 }
 
+// A die (#1136): one type per number of sides, as a table names them, with figures on the faces.
+// Its value is the side facing up, kept where a counter keeps its value, and `roll` is its verb;
+// the face it shows is the one face it has, since every side is equally public. The sizes are the
+// common game dice and only matter to print: the felt draws a die larger than life, as it does a
+// counter, because a 16 mm d6 would be a speck across a room.
+const die = (faces: number, sizeMm: number): ComponentTypeDef => ({
+  id: `die.d${faces}`,
+  version: 1,
+  physical: { shape: 'polyhedron', widthMm: sizeMm, heightMm: sizeMm, thicknessMm: sizeMm, material: 'acrylic' },
+  faces: ['front'],
+  contentFace: 'front',
+  behaviours: { stackable: false, shufflable: false, flippable: false, rollable: { faces }, counter: false },
+  editorSchema: [],
+  print: { bleedMm: 0, safeMm: 0, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6 } },
+  manufacturableBy: [],
+})
+export const DICE: readonly ComponentTypeDef[] = [die(4, 18), die(6, 16), die(8, 18), die(10, 18), die(12, 20), die(20, 20)]
+
 // What every table knows.
-export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER]
+export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE]

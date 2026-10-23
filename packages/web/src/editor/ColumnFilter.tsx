@@ -40,6 +40,7 @@ export function ColumnFilter({ label, values, chosen, onToggle, open, onOpen }: 
         aria-label={name}
         title={name}
         aria-expanded={open}
+        data-drop
         {...(chosen.length > 0 ? { 'data-on': chosen.length } : {})}
         onClick={() => onOpen(!open)}
       >

@@ -8,8 +8,8 @@ import { canSeeFace, canSeeZoneOrder, faceUpAtBottom, faceUpOnTop } from './visi
 // A log line as every view may see it. The outcome never leaves the server: a shuffle's
 // re-keying says exactly where each card went, which no one at a physical table knows.
 export function projectActivity(line: Applied): Activity {
-  const { schemaVersion, seq, batch, at, by, intent } = line
-  return { schemaVersion, seq, batch, at, by, intent }
+  const { schemaVersion, seq, batch, at, by, intent, outcome } = line
+  return { schemaVersion, seq, batch, at, by, intent, ...(outcome?.kind === 'roll' ? { rolled: outcome.value } : {}) }
 }
 
 // The log as every view may see it, each line told by the name its seat sat under when the line was

@@ -13,6 +13,7 @@ import { anotherAsk } from './another.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
+import { usePressAway } from '../doors.js'
 import { lastMoveWords } from './when.js'
 import { versionWord } from '../i18n/version.js'
 import { rowSummary } from './playtestReading.js'
@@ -332,6 +333,9 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
   // One row, so one QR at most; the shortcut holds its own because it is its own surface.
   const [qrOpen, setQrOpen] = useState(false)
   const caret = useRef<HTMLButtonElement>(null)
+  const split = useRef<HTMLSpanElement>(null)
+  // A press in the work closes it (#1144): it used to stand through anything but Escape and its caret.
+  usePressAway(open, () => [split.current], () => setOpen(false))
   useEffect(() => {
     if (!open) return
     let live = true
@@ -361,6 +365,7 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
   const liveName = live ? (live.code ?? versionWord(live.version, t, 'short')) : ''
   return (
     <span
+      ref={split}
       className="byd-editor-split"
       onKeyDown={(event) => {
         if (open && event.key === 'Escape') close()
@@ -372,6 +377,7 @@ export function TableMenu({ client, server, onShowTables, onNewTable }: { client
         className="byd-editor-primary byd-primary byd-editor-caret"
         aria-label={t('tables.more')}
         aria-expanded={open}
+        data-drop
         onClick={() => {
           setOpen((on) => !on)
           setAnother(false)
@@ -655,6 +661,8 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
   // is room rather than always downward (#229).
   const menu = useRef<HTMLDivElement>(null)
   const place = usePlacement(open, menu)
+  // A press anywhere else closes it too (#1144): the blur below hears only a press that takes the focus.
+  usePressAway(open, () => [button.current, menu.current], () => setOpen(false))
   const { itemProps, focus } = useRoving({ ids: ways.map((w) => w.id), selected: null, orientation: 'vertical' })
   // The keys land inside the menu the moment it opens, so the first arrow moves within it rather
   // than from wherever the pointer last was. On opening only: the menu must not take the focus
@@ -675,6 +683,7 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
         className="byd-tables-more"
         aria-haspopup="menu"
         aria-expanded={open}
+        data-drop
         {...(open ? { 'aria-controls': menuId } : {})}
         aria-label={t('tables.more.of', { table })}
         onClick={() => setOpen((was) => !was)}

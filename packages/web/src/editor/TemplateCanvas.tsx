@@ -40,6 +40,7 @@ import { useCut } from './overset.js'
 import { placeholderOf, PLACEHOLDER_WORDS, THIN_PX, type Placeholder, type PlaceholderCase } from './placeholder.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
+import { usePressAway } from '../doors.js'
 
 export type TemplateCanvasProps = {
   // Which of the four panels to draw, or nothing at all for the desk's four columns (L10). Below
@@ -1328,6 +1329,10 @@ function GroupMenu({ doc, column, groups, group, onSelect }: { doc: ProjectDoc; 
   const t = useT()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement | null>(null)
+  const crown = useRef<HTMLDivElement>(null)
+  // A press in the work closes it too (#1144): the canvas's checkerboard takes no focus, so the
+  // blur below never hears it.
+  usePressAway(open, () => [crown.current], () => setOpen(false))
   // The base is one of the choices and is not one of the groups, so it travels as the empty string
   // — the same stand-in the tabs used, and the same one `onSelect` turns back into nothing.
   const ids = ['', ...groups]
@@ -1357,6 +1362,7 @@ function GroupMenu({ doc, column, groups, group, onSelect }: { doc: ProjectDoc; 
   const says = `${label(group ?? '')} · ${cardsLabel(cards(group ?? ''), t)}`
   return (
     <div
+      ref={crown}
       className="byd-canvas-group"
       // The focus gone out of the crown takes the menu with it: a list of groups hanging over the
       // card nobody is on is a list about nothing.
@@ -1371,6 +1377,7 @@ function GroupMenu({ doc, column, groups, group, onSelect }: { doc: ProjectDoc; 
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        data-drop
         {...(open ? { 'aria-controls': GROUP_MENU } : {})}
         // The name says what the button is for as well as what it stands on: "Kortgrupper" and
         // then the open group, so a reader who arrives on it hears the question and the answer.

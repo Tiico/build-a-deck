@@ -2063,7 +2063,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
             {/* The column and the value stand behind a box (#618): the foot is one row, and a
                 select and a field would make it two. */}
-            <button type="button" ref={setBox} className="byd-data-set" aria-expanded={setting} onClick={() => setSetting(!setting)}>
+            <button type="button" ref={setBox} className="byd-data-set" aria-expanded={setting} data-drop onClick={() => setSetting(!setting)}>
               {t('table.bulk.set.box')} <ChevronGlyph to="down" />
             </button>
             {setting && (
