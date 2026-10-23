@@ -157,7 +157,7 @@ describe('the physical checks on the wall (E5)', () => {
     return document.querySelector('[data-wall]') as HTMLElement
   }
 
-  it('gathers the deck\'s faults by kind, says what stops an order, and marks the cards a fault touches', () => {
+  it('gathers the deck\'s faults by kind, says what keeps it from print, and marks the cards a fault touches', () => {
     wall()
     openBox(/^Fysisk kontroll/)
     const report = screen.getByRole('list', { name: 'Fysisk kontroll' })
@@ -166,7 +166,7 @@ describe('the physical checks on the wall (E5)', () => {
     expect(rows[0]!.textContent).toContain('för liten text')
     expect(rows[0]!.textContent).toContain('3 kort')
     expect(rows[0]!.getAttribute('data-severity')).toBe('error')
-    expect(screen.getByText(/stoppar beställningen/)).toBeTruthy()
+    expect(screen.getByText('Ett fel måste rättas innan leken är tryckfärdig.')).toBeTruthy()
 
     fireEvent.click(within(rows[0]!).getByRole('button', { name: /för liten text/ }))
     expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(3)
@@ -194,7 +194,7 @@ describe('the physical checks on the wall (E5)', () => {
     clean.template.faces['front']!.base = [paper, body]
     wall(clean)
     openBox(/^Fysisk kontroll/)
-    expect(screen.getByText(/klarar kontrollen/)).toBeTruthy()
+    expect(screen.getByText('Leken klarar kontrollen och är tryckfärdig.')).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Fysisk kontroll' })).toBeNull()
   })
 
