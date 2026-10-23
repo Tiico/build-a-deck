@@ -97,8 +97,11 @@ describe('the login card and HomePage', () => {
     // The card's face is the way into the editor; the menu beside it is not (G1).
     fireEvent.click(document.querySelector(`[data-project="${run.projectId}"] .byd-home-open`)!)
     expect(gone.at(-1)).toMatch(new RegExp(`^/editor\\?project=${run.projectId}`))
-    fireEvent.click(screen.getByText(/Nytt spel/))
-    expect(gone.at(-1)).toMatch(/^\/new\?/)
+    // Both ways to a new game — the bar's and the dashed row's — lead to the guided start.
+    for (const make of screen.getAllByRole('link', { name: /Nytt spel/ })) {
+      fireEvent.click(make)
+      expect(gone.at(-1)).toMatch(/^\/new\?/)
+    }
     // Logged out, the same page is the landing page again (#1009), with its door back to the login.
     fireEvent.click(screen.getByText('Logga ut'))
     expect(await screen.findByRole('heading', { level: 1, name: 'Bygg ditt kortspel. Spela det i kväll.' })).toBeTruthy()
@@ -321,11 +324,13 @@ describe('the tables the account sat at (G1)', () => {
 })
 
 describe('a game on the home page (G1)', () => {
-  // A logged-in account with one game, listed on the home page.
+  // A logged-in account with two games, listed on the home page: the one under test is a row, and
+  // the one saved after it leads the page (#1204).
   async function home(): Promise<void> {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     await followMailedLink()
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.otherProjectId, ...projectDoc(), name: 'Vinterspelet' }) })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     render(<HomePage />)
     await screen.findByText('Skogens herrar')
@@ -442,7 +447,7 @@ describe('a game on the home page (G1)', () => {
     await waitFor(() => within(card()).getByRole('img', { name: 'Första kortet: Drake' }))
     const open = within(card()).getAllByRole('link')[0]!
     expect(open.getAttribute('href')).toMatch(/^\/editor\?/)
-    expect(screen.getByRole('link', { name: /^Skogens herrar v1 · inte spelat Första kortet: Drake$/ })).toBe(open)
+    expect(screen.getByRole('link', { name: /^Skogens herrar v1 · \d+ kort · \d+ spelare inte spelat Första kortet: Drake$/ })).toBe(open)
   })
 
   it('says it has never been played, and afterwards when it last was', async () => {
@@ -456,13 +461,34 @@ describe('a game on the home page (G1)', () => {
     expect(card().textContent).toContain('1 bord')
   })
 
+  // Arbetsbänken (#1204, beslut B): the game saved last leads the page, large, with what it is and
+  // its two things to do on it rather than behind its ⋯, in front of a fan of its own cards.
+  it('leads with the game saved last, its two things to do on it, in front of a fan of its cards (#1204)', async () => {
+    await home()
+    const hero = screen.getByRole('region', { name: 'Fortsätt där du slutade' })
+    expect(within(hero).getByText('Vinterspelet')).toBeTruthy()
+    expect(within(hero).queryByText('Skogens herrar')).toBeNull()
+    expect(within(hero).getByText('Version 1 sparad i dag')).toBeTruthy()
+    expect(within(hero).getByText('spelare').closest('div')!.textContent).toMatch(/^spelare\d+$/)
+    expect(within(hero).getByRole('link', { name: 'Öppna editorn' }).getAttribute('href')).toBe(`/editor?project=${run.otherProjectId}&server=${encodeURIComponent(run.http)}`)
+    // The fan lands after the page: the game's own first card in front, two more of its cards behind.
+    await waitFor(() => expect(hero.querySelectorAll('.byd-home-fan-back')).toHaveLength(2))
+    await waitFor(() => within(hero).getByRole('img', { name: 'Första kortet: Drake' }))
+
+    fireEvent.click(within(hero).getByRole('button', { name: 'Starta bord' }))
+    // Once a table of it runs, the hero opens that table instead of starting another.
+    const open = await within(hero).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Vinterspelet \(öppnas i ny flik\)$/ })
+    expect(open.getAttribute('target')).toBe('_blank')
+    expect(within(hero).queryByRole('button', { name: 'Starta bord' })).toBeNull()
+  })
+
   // The table started is the first of «Pågår nu» (#724, beslut C + B): the room's code and the way
   // to its screen, where they stay after a reload — the banner that said it went with the page.
   const running = () => screen.queryByRole('region', { name: 'Pågår nu' })
   it('starts a table from the card and hands over the room code', async () => {
     await home()
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Val för Skogens herrar' })).getByRole('button', { name: 'Starta bord' }))
     const said = await waitFor(() => {
       expect(running()).not.toBeNull()
       return running()!
@@ -503,8 +529,9 @@ describe('a game on the home page (G1)', () => {
     const open = await screen.findByRole('link', { name: `Öppna bordet ${made.code}` })
     // The menu opens on its first choice, which is now the running table.
     await waitFor(() => expect(document.activeElement).toBe(open))
-    expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
+    const offered = screen.getByRole('group', { name: 'Val för Skogens herrar' })
+    expect(within(offered).getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
+    expect(within(offered).queryByRole('button', { name: 'Starta bord' })).toBeNull()
   })
 
   // «Starta nytt bord» stood one line under «Öppna bordet KOD», and a press that meant the one
@@ -593,7 +620,7 @@ describe('the game menu and the question on the home page (#475)', () => {
   it('opens the menu with the focus on its first choice, and Escape closes it back onto ⋯', async () => {
     await home()
     fireEvent.click(more())
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Starta bord' })))
+    await waitFor(() => expect(document.activeElement).toBe(within(menu()!).getByRole('button', { name: 'Starta bord' })))
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     expect(menu()).toBeNull()
     expect(document.activeElement).toBe(more())
@@ -607,8 +634,8 @@ describe('the game menu and the question on the home page (#475)', () => {
     expect(menu()).toBeNull()
 
     fireEvent.click(more())
-    const first = await screen.findByRole('button', { name: 'Starta bord' })
-    fireEvent.blur(first, { relatedTarget: screen.getByRole('link', { name: /Nytt spel/ }) })
+    const first = await waitFor(() => within(menu()!).getByRole('button', { name: 'Starta bord' }))
+    fireEvent.blur(first, { relatedTarget: screen.getAllByRole('link', { name: /Nytt spel/ })[0]! })
     expect(menu()).toBeNull()
   })
 
@@ -626,10 +653,10 @@ describe('the game menu and the question on the home page (#475)', () => {
   it('keeps the focus on ⋯ after a table is started, and says the way to it opens a new tab', async () => {
     await home()
     fireEvent.click(more())
-    fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
+    fireEvent.click(await waitFor(() => within(menu()!).getByRole('button', { name: 'Starta bord' })))
     await waitFor(() => expect(document.activeElement).toBe(more()))
     // The way to it is the band in «Pågår nu» (#724), and says it opens a new tab.
-    const open = await screen.findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Skogens herrar \(öppnas i ny flik\)$/ })
+    const open = await within(await screen.findByRole('region', { name: 'Pågår nu' })).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Skogens herrar \(öppnas i ny flik\)$/ })
     expect(open.getAttribute('target')).toBe('_blank')
     // Said in the page's own live region rather than by a region born with the words in it, which
     // screen readers do not reliably read (#555 A-8, WCAG 4.1.3).
@@ -840,7 +867,7 @@ describe('renaming and duplicating from «Mina spel» (#909)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Duplicera' }))
     await screen.findByText('Skogens herrar (kopia)', { selector: '.byd-home-game strong' })
     await waitFor(() => expect(document.body.textContent).toContain('«Skogens herrar (kopia)» finns nu i Mina spel.'))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' })))
   })
 })
 

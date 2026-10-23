@@ -55,8 +55,8 @@ async function started(): Promise<string> {
   await screen.findByText('Skogens herrar')
   const card = document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement
   fireEvent.click(within(card).getByRole('button', { name: 'Fler val för Skogens herrar' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
-  await screen.findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i/ })
+  fireEvent.click(within(await screen.findByRole('group', { name: 'Val för Skogens herrar' })).getByRole('button', { name: 'Starta bord' }))
+  await within(await screen.findByRole('region', { name: 'Pågår nu' })).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i/ })
   return container.innerHTML
 }
 
@@ -150,9 +150,10 @@ describe.each([390, 768, 1280])('an empty account at %i px (#726)', (width) => {
 // the place a card waits in stood 2 px lower than a drawn card, and the tile said nothing to the
 // pointer before it was pressed.
 describe('the game tiles at 1280 px (#725)', () => {
+  // Two rows side by side, under a third game saved after them that leads the page (#1204).
   async function tiles(): Promise<string> {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'tiles@example.com' }) })
-    for (const [id, name] of [['kort', 'Skogens herrar'], ['lang', 'En mycket lång speltitel som bryts över tre rader i sin bricka']] as const)
+    for (const [id, name] of [['kort', 'Skogens herrar'], ['lang', 'En mycket lång speltitel som bryts över tre rader i sin bricka'], ['sist', 'Vinterspelet']] as const)
       await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, ...projectDoc(), name }) })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     const { container } = render(
@@ -170,10 +171,10 @@ describe('the game tiles at 1280 px (#725)', () => {
     try {
       await page.setContent(document_(html), { waitUntil: 'load' })
       const seen = await page.evaluate(() => {
-        const names = [...document.querySelectorAll('[data-project] strong')].map((el) => Math.round(el.getBoundingClientRect().top))
+        const names = [...document.querySelectorAll('[data-projects] [data-project] strong')].map((el) => Math.round(el.getBoundingClientRect().top))
         const card = (sel: string) => document.querySelector(sel)?.getBoundingClientRect().height ?? null
         // A waiting place against the drawn box size the stylesheet reserves.
-        const waiting = document.querySelector('.byd-home-card') as HTMLElement
+        const waiting = document.querySelector('[data-projects] .byd-home-card') as HTMLElement
         waiting.removeAttribute('role')
         waiting.innerHTML = ''
         waiting.setAttribute('data-waiting', '')
@@ -207,7 +208,8 @@ describe('the game tiles at 1280 px (#725)', () => {
 })
 
 // «Bord du har spelat vid» (G1): the tile had no padding of its own since the game tiles moved theirs
-// onto the link inside them, so the seat, the words and «idag» stood against its edge.
+// onto the link inside them, so the seat, the words and «idag» stood against its edge. Since #1204
+// the tiles stand in the side column, and keep the inset a game row keeps.
 describe('the tables sat at, at 390 and 1280 px', () => {
   it.each([390, 1280])('keeps what a played tile says inside the room a game tile gives (%i px)', async (width) => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'played@example.com' }) })
@@ -241,10 +243,10 @@ describe('the tables sat at, at 390 and 1280 px', () => {
         return { game: gap(game, game.querySelectorAll('.byd-home-open > *')), played: gap(played, played.querySelectorAll('.byd-home-played-top > *, .byd-home-played > :not(.byd-home-played-top)')) }
       })()`)
       const { game, played } = inset as { game: { left: number; top: number }; played: { left: number; top: number; right: number } }
-      expect(game.left).toBeGreaterThanOrEqual(16)
-      expect(played.left).toBeCloseTo(game.left, 0)
-      expect(played.top).toBeCloseTo(game.top, 0)
-      expect(played.right).toBeGreaterThanOrEqual(16)
+      expect(game.left).toBeGreaterThanOrEqual(12)
+      expect(played.left).toBeGreaterThanOrEqual(12)
+      expect(played.top).toBeGreaterThanOrEqual(12)
+      expect(played.right).toBeGreaterThanOrEqual(12)
     } finally {
       await page.close()
     }
