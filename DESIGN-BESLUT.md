@@ -2540,6 +2540,20 @@ Det är vad handen gör fysiskt, och det är en affordance, inte en regel — ko
 Följdkrav:
 Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
+Reviderat 2026-10-22 (#1133, beställarens beslut A efter prototyp): **det andra valet är att vända kortet i handen.**
+Ett kort man vänt i handen spelas nedvänt vart det än går, också till en publik zon, och ett kort man inte vänt följer regeln ovan.
+Tre former prototypades i `docs/ux-audits/2026-10-22-vanda-i-handen/prototyper/`: vänd i handen, en växel «Uppvänt | Nedvänt» vid spelningen, och en kryssruta i arket.
+Valet blev den första, eftersom det är det beställaren bad om och eftersom handen då visar hur kortet kommer att landa innan det landar.
+
+- «Vänd» och «Vänd upp» är ett verb på kortet: under det lyfta kortet på telefonen, i adresspanelen bakom Enter eller ett tryck i `/online`s hand, och som F på ett kort i remsan, solfjädern och spalten, som F vänder ett kort på filten.
+- Ett vänt kort visar sin baksida i handen med pillret «nedvänt · namn», samma form som ett eget nedvänt kort framför en (#483), i remsan, solfjädern, spalten, «Visa alla» och spöket som bärs ut på filten (K24).
+- Spelknappen under kortet och i foten säger «… · nedvänt», och raden under handen «Valt: … · spelas nedvänt».
+- Vändningen skickar ingenting och står inte i loggen. Ingen annan ser åt vilket håll ett kort i ens hand ligger, så den är skärmens minne (`player/turned.ts`), sparat per bord och plats i webbläsaren. Ett kort som lämnar handen glöms, så ett kort som kommer tillbaka kommer uppvänt som alla kort.
+- Handkortets `face` i motorn kunde inte bära valet: ett kort draget ur en nedvänd hög ligger som `back` i handen, och ägaren ser framsidan ändå.
+- Spelningen vänder kortet nedåt medan det fortfarande ligger i handen (`flip` före `move` i samma kuvert), så det ligger aldrig uppvänt i en publik zon. `faceDown` i `player/play.ts` är regeln för varje väg en hand spelar på: knapparna, arket, dragningen ut på filten och adresspanelen.
+- Lagt framför sig själv följer en `peek` med, som när man vänder ner ett eget kort där (#483): ägaren vet vilket kort det är, rummet vet att ett kort ligger där. Lagt någon annanstans följer ingen kunskap med (B6).
+- Grindar: `packages/web/test/turned-in-hand.test.ts` (motorn och projektionen), `player-page.test.tsx` och `online-keyboard.test.tsx` (ytorna), och `packages/e2e/test/turned-in-hand.spec.ts`, som läser de råa ramarna.
+
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
 QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9; från 2026-10-06 rummets egen adress `/KOD`, se revideringen nedan).
@@ -4033,6 +4047,27 @@ B:s adress på observatörens filt går att lägga till senare utan att tråden 
 Följdkrav:
 Trycket är dold information och bevisas på råa frames (D4): `packages/server/test/wire.test.ts` visar att Ada och observatören får `text` och att Bo, Cy, Di och bordet aldrig får den för ett dolt kort.
 `packages/template/test/printed.test.ts` håller läsningen av mallen, `packages/engine/test/printed-text.test.ts` härledningen, och `packages/web/test/held-card.test.tsx`, `tv-chrome.test.tsx`, `observer-page.test.tsx` och `observer-viewport.test.tsx` läsvyn, listorna och 44 px vid 320, 390 och 1280.
+
+### K28. Tärningar: d4–d20 som egna typer, slagna från bordet och telefonen (prototypat och beslutat 2026-10-22, #1129, #1139)
+
+Många spel behöver en tärning, och ROADMAP hade frågan om fler komponenttyper öppen (B1–B3).
+Tärningen är sex typer i registret, `die.d4`, `die.d6`, `die.d8`, `die.d10`, `die.d12` och `die.d20`, med siffror på sidorna och `rollable: { faces }`.
+Egna sidor med prickar eller symboler ingår inte i första versionen.
+Inget nytt verb behövs: `roll` stod redan i vokabuläret, värdet avgörs på servern och lagras som resultat i loggen (D4), och tärningens sida upp är dess `counter`.
+Ett slag med flera tärningar är ett kuvert (K3), och aktivitetsraden säger det en gång: «Ada slog 2d6: 3 + 5 = 8», med summan bara när fler än en tärning slogs.
+Värdet är det enda resultat en rad berättar, eftersom en tärning på bordet är offentlig (B6); en blandnings omnumrering stannar utanför varje vy.
+
+Tärningarna hör till spelets setup (K5).
+En rad i setupen säger sort, antal och var: en yta alla delar, eller en yta varje plats har.
+En yta per plats ger varje plats sitt antal i sin egen yta, och «per spelare» på en delad yta ger antalet gånger platserna där (#1139).
+Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
+
+Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysiska skalan, eftersom en d6 på 16 mm blir 19 px på filten.
+Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
+Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
+Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
+
+Prototyperna: [`index.html`](https://github.com/Tiico/build-a-deck/blob/3cff0957e3494cc3c096f59c8dd1e70a06101144/docs/ux-audits/2026-10-22-tarningar/prototyper/index.html) (bordet och telefonen, beslut A + B) och [`editor.html`](https://github.com/Tiico/build-a-deck/blob/5adb14f5544d2a9be04da4a3f8e78eb6150e93df/docs/ux-audits/2026-10-22-tarningar/prototyper/editor.html) (fliken Bord, beslut A med dynamiskt antal).
 
 ## L. Editorn (grillad 2026-09-06)
 
@@ -7673,3 +7708,19 @@ Verktygsradens fem märken och skrubbernas sju är ikoner som tabellen inte rita
 En glyf tar aldrig emot pekaren (`pointer-events: none`): trycket, och varje fråga om vad som står under en punkt, landar på kontrollen den är ritad i.
 Det upptäcktes när tabellens träffytetester läste glyfens `<path>` i stället för ×-knappen.
 En glyf är 1 em i fyrkant, och där en rad var mätt till tecknet den ersatte ger den tillbaka luften runt sin teckning: kronans och tabellfotens chevroner och tabellrubrikens sorteringspil står med negativ marginal på rutnätets tomma fjärdedelar, så kronan står kvar på en rad bredvid AI-panelen vid 1280 i ett brett typsnitt (#130), fotens tysta rad bryts inte vid 1024 på Linux (#618) och en sifferkolumn är inte bredare än en siffra (#46).
+
+### L76. En dropdown-knapp säger att den är öppen, och ett tryck utanför stänger (prototypat och beslutat 2026-10-22, #1144)
+
+Åtta knappar i editorn öppnar en meny eller låda under sig, och alla åtta pekade sin chevron nedåt både stängd och öppen.
+Ingenting sade alltså att ett tryck till stänger menyn, och tre av dem stängde inte heller vid ett tryck utanför: bordsmenyn i huvudet («Uppdatera ⌄», «Starta bord ⌄») stod kvar genom allt utom Escape och sin egen pil, och radmenyn i Bord-fliken och mallens kortgruppsmeny stängde bara när fokus flyttades — ett tryck på dukens rutmönster flyttar inget fokus.
+Tre utseenden prövades på den byggda editorn i [`docs/ux-audits/2026-10-22-dropdown-knappar/prototyper/1144-dropdown-knappar.html`](docs/ux-audits/2026-10-22-dropdown-knappar/prototyper/1144-dropdown-knappar.html): chevronen vänds (A), chevronen vänds och knappen trycks ned (B), och chevronen blir × och knappen trycks ned (C).
+Valet blev **B**.
+Formen säger åt vilket håll menyn går, grunden säger att knappen hålls, och den nedtryckta grunden är samma som kolumndörrens handtag (#695).
+C:s × läses som «ta bort» när det står bredvid ett värde i kronan.
+
+**Byggt 2026-10-22 (#1144).**
+En dropdown-knapp är en knapp med `data-drop` och `aria-expanded`; en regel i `editor.css` vrider dess `chevron-down` ett halvt varv (150 ms, direkt med «minska rörelse») och lägger en mörkare grund och en inre skugga över det knappens roll målar, medan menyn står.
+`drop-buttons.test.ts` håller att varje `<ChevronGlyph to="down" />` i `packages/web/src` sitter i en sådan knapp; en chevron som vänder sig själv efter sitt läge är en fällning och läses inte.
+Ett tryck utanför stänger alla åtta: `usePressAway` i `doors.ts` är den gemensamma vägen, och fokus lämnas där pekaren satte det, som #133 säger.
+`drop-buttons.spec.ts` mäter det öppna läget och trycket på rutmönstret i den byggda appen.
+Disclosure-knapparna, som redan vänder sin chevron från höger till ned, och ⋯-knapparna, som redan får editorns mörka grund när de är öppna (#791), är oförändrade.

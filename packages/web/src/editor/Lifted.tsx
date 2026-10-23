@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
-import { useDoor } from '../doors.js'
+import { useDoor, usePressAway } from '../doors.js'
 import { placedProps, usePlacement } from './placement.js'
 
 // A box that opens under a button and stands over the work until it is closed (#617, #618).
@@ -47,20 +47,12 @@ export function Lifted({
   useEffect(() => {
     const first = box.current?.querySelector<HTMLElement>('input, select, button, [tabindex]:not([tabindex="-1"])')
     ;((opensOn && box.current?.querySelector<HTMLElement>(opensOn)) || first)?.focus()
-    const onPointerDown = (event: Event) => {
-      const target = event.target
-      if (!(target instanceof Element)) return
-      if (handle.current?.contains(target) || box.current?.contains(target)) return
-      // A dialog opened from inside the box — the picture library from «Välj bild» — stands over
-      // the box, not beside it: a press in it is still the box's business, and the control that
-      // opened the dialog has to be there to take the focus back when it closes (#8).
-      if (target.closest('[role="dialog"]')) return
-      latest.current.onClose()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only: the box must not take the focus back from what is done inside it
   }, [handle])
+  // A press in the work closes it; one in a dialog opened from inside it — the picture library
+  // from «Välj bild» — does not, since the control that opened the dialog has to be there to take
+  // the focus back when it closes (#8).
+  usePressAway(true, () => [handle.current, box.current], () => latest.current.onClose())
   return (
     <div
       ref={box}

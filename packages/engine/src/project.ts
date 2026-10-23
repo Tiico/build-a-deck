@@ -10,9 +10,9 @@ import { canSeeFace, canSeeZoneOrder, faceUpAtBottom, faceUpOnTop } from './visi
 // Nor does the card a flag is about (#1142): a flag on a card in your own hand would tell the table
 // which card worried you the moment it is played. The designer reads it from the log.
 export function projectActivity(line: Applied): Activity {
-  const { schemaVersion, seq, batch, at, by } = line
+  const { schemaVersion, seq, batch, at, by, outcome } = line
   const intent = line.intent.v === 'flag' && line.intent.component !== undefined ? withoutComponent(line.intent) : line.intent
-  return { schemaVersion, seq, batch, at, by, intent }
+  return { schemaVersion, seq, batch, at, by, intent, ...(outcome?.kind === 'roll' ? { rolled: outcome.value } : {}) }
 }
 
 const withoutComponent = ({ component: _, ...flag }: Extract<Applied['intent'], { v: 'flag' }>) => flag
