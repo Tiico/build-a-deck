@@ -242,7 +242,10 @@ html:has(.byd-player) { background: #14161c; }
 .byd-grid-at { position: absolute; z-index: 1; top: -9px; left: -9px; min-width: 24px; height: 24px; border-radius: 12px; display: grid; place-items: center; background: var(--byd-warn); color: var(--byd-warn-bg); font: 800 13px system-ui, sans-serif; font-style: normal; }
 .byd-grid-empty { margin: 4px 0; color: var(--byd-ink-quiet); font-size: 13px; }
 
-.byd-sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; align-content: end; z-index: 20; }
+/* A sheet is modal, so it stands over every panel the page lays over its felt: the waiting room
+   (40) covered the exit sheet's first choice on `/online` (#1217). Under the survey, which replaces
+   the page, and the card a drag carries. */
+.byd-sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; align-content: end; z-index: 42; }
 .byd-sheet { background: var(--byd-surface); border-radius: 20px 20px 0 0; padding: 18px 18px 30px; }
 .byd-sheet p { font-size: 13px; color: var(--byd-ink-muted); margin: 0 0 12px; }
 .byd-sheet p strong { color: var(--byd-ink-strong); }
@@ -336,6 +339,8 @@ html:has(.byd-player) { background: #14161c; }
 .byd-exit-choice { margin-top: 18px; }
 .byd-exit-choice button { width: 100%; padding: 14px; border: 0; border-radius: 12px; font-size: 15px; font-weight: 700; }
 .byd-exit-choice button[data-kind='leave'] { background: var(--byd-control); color: var(--byd-ink-strong); }
+/* The owner's way to the editor with the seat kept (#1217): a link, drawn as the sheet's choices are. */
+.byd-exit-choice a[data-kind='stay'] { display: block; box-sizing: border-box; width: 100%; padding: 14px; border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 15px; font-weight: 700; text-align: center; text-decoration: none; }
 .byd-exit-choice button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
 /* Closer to the exit it belongs to than to the next one, so which consequence is whose is read
    off the spacing and not worked out from the order. */

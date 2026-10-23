@@ -3,11 +3,15 @@ import type { StatusLinks } from './StatusNotice.js'
 
 // Where a way out leads from a live route. `server` is carried along because a development
 // front end talks to another origin, and a way home that drops it goes home to the wrong place.
+// A table's own address carries its server as WebSocket (`tableLinks.ts`). Mina spel and the
+// login speak HTTP to it and are told it as they speak it (#1217); the seat picker speaks the
+// table's own WebSocket and is told it as it was given.
 export function statusLinks(opts: { server?: string | null; code?: string | null }): StatusLinks {
+  const server = opts.server?.replace(/^ws/, 'http') ?? null
   const q = new URLSearchParams()
-  if (opts.server) q.set('server', opts.server)
+  if (server) q.set('server', server)
   const suffix = q.size > 0 ? `?${q.toString()}` : ''
-  const links: StatusLinks = { home: `/${suffix}`, login: loginUrl(location.pathname + location.search, opts.server ?? null) }
+  const links: StatusLinks = { home: `/${suffix}`, login: loginUrl(location.pathname + location.search, server) }
   // The way back to the seat picker is the room code (DRIFT §9), not the session: the code is
   // what buys a token, and a picker that cannot admit anyone is not a way out.
   if (opts.code) {

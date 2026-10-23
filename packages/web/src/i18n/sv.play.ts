@@ -15,6 +15,9 @@ export const svPlay = {
   'play.table': 'Bordet',
   // Samma bord som granne på filten, där namnen står med liten bokstav.
   'play.peer.table': 'bordet',
+  // Ägarens väg från bordet tillbaka till spelets editor (#1217, L79): spelets namn syns, och det
+  // en skärmläsare hör säger vart det leder.
+  'way.editor.aria': 'Tillbaka till {game} i editorn',
 
   // Ett korts bild medan den laddas, när den gått förlorad, och när någon ber om den igen (#10).
   'texture.pending': 'Laddar kortet…',
@@ -485,6 +488,9 @@ export const svPlay = {
   'exit.sheet.end': 'Avsluta för alla',
   'exit.sheet.end.body': 'Spelet avslutas för alla och enkäten skickas ut. Du får bekräfta först.',
   'exit.sheet.stay': 'Avbryt',
+  // Ägarens tredje väg (#1217): till editorn utan att lämna platsen.
+  'exit.sheet.editor': 'Till {game}, sitt kvar',
+  'exit.sheet.editor.body': 'Du behåller din plats och dina kort, och bordet står kvar i sin flik.',
 
   // Enkäten efter sessionen (G3).
   'survey.title': 'Bordet är avslutat',

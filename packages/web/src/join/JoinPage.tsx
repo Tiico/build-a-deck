@@ -13,6 +13,7 @@ import { noticeFor } from '../status/notice.js'
 import { useT } from '../i18n/index.js'
 import { useCodeField } from './codeField.js'
 import { useWide } from './wide.js'
+import { ArrowGlyph } from '../glyphs.js'
 import './join.css'
 
 // /KOD and /join?code=…&server=ws://…  — what the TV says and what its QR points at, and what a
@@ -367,8 +368,22 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
         {ways}
       </form>
       </main>
+      <HomeWay href={links.home} />
       <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
     </div>
+  )
+}
+
+// The page's way home (#1217): the picker and the code's form had none outside a fault, so a
+// person who came here by mistake had only the browser's own back. Quiet, under the card, since
+// what the page is for is the seat.
+function HomeWay({ href = '/' }: { href?: string | undefined }) {
+  const t = useT()
+  return (
+    <a className="byd-join-home" href={href}>
+      <ArrowGlyph to="left" />
+      {t('status.act.home.start')}
+    </a>
   )
 }
 
@@ -416,6 +431,7 @@ function CodeForm({ server, onOpen, typed, unknown }: { server: string | null; o
           </button>
         </form>
       </main>
+      <HomeWay href={statusLinks({ server }).home} />
     </div>
   )
 }

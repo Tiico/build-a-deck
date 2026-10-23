@@ -299,6 +299,10 @@
 .byd-join-lead { margin: 0; color: #9aa3b8; font-size: 15px; line-height: 1.5; }
 .byd-join-code input { text-align: center; }
 
+/* The page's way home (#1217), under the card and quiet beside the seat it is for. */
+.byd-join-home { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 8px 20px 20px; color: #9aa3b8; font-size: 14px; text-decoration: none; }
+.byd-join-home:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+
 /* A laptop opening the address sees a card and not a phone stretched across the screen (#675): the
    page as one column of 520 px, in the login card's form, on the account's darker ground. The card
    is the seat picker's own ground, so every contrast measured on the phone holds on it unchanged.

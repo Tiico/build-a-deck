@@ -63,6 +63,9 @@ export type TvChromeProps = {
   // in, at K26's floor, with a thin bar, gone once every card can be seen. The column is free on a
   // television bound by its height, so the line costs the felt nothing.
   rendering?: { done: number; total: number; stalled: boolean } | null | undefined
+  // The owner's way back to the game's editor (#1217, L79): on the brand's line, at its end, so it
+  // costs the column no height on the room's television; alone on that line on the observer's.
+  back?: ReactNode
   children: ReactNode
 }
 
@@ -78,7 +81,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, back, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
@@ -150,6 +153,8 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
         )}
       </main>
       <aside>
+        {/* The observer's screen has no brand's line, so the way back stands alone above her note. */}
+        {!room && back && <div className="byd-tv-brand">{back}</div>}
         {note}
         {/* Deckster's hand on the room's television (#1084, beslut B 2026-10-22): the mark and the
             name on a line of their own above the game's. The column is the felt's neighbour, so the
@@ -159,6 +164,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
           <div className="byd-tv-brand" data-brand>
             <DecksterMark />
             <span>Deckster</span>
+            {back}
           </div>
         )}
         <div className="byd-tv-head">
