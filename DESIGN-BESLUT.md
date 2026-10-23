@@ -7787,10 +7787,12 @@ Frågan ställs bara när det inte finns något bord: «Uppdatera» och menyns a
 
 **Distansvyn börjar i ett väntrum.**
 Tills något har hänt vid bordet ligger ett väntrum över filten på `/online`.
-Det visar hur många platser som är tagna, rummets adress med en kopieringsknapp, platserna med vem som sitter var, och «Starta spelet».
+Det visar hur många platser som är tagna, bordets adress med en kopieringsknapp, platserna med vem som sitter var, och «Starta spelet».
 Platserna fylls medan man tittar.
 Väntrummet är samma bricka som filtens «Starta spelet» (K25) med adressen och platserna runt sig, inte en andra start: väntar korten, så väntar knappen på samma sätt.
 När spelet har startat går väntrummet.
+Väntrummet har ett × («Göm väntrummet»), som prototypen inte hade: rutan täcker båda högarna, och den som vill lägga fram något före starten måste kunna nå dem. Gömt står filtens egen «Starta spelet» kvar i dess ställe, och det är samma start.
+Väntrummet visas där filten visas; telefonens smala `/online` är orörd.
 
 **Anslutningssidan på en dator har ett enda val.**
 Den säger «1 av 2 platser kvar», frågar efter namn och har ett enda «Gå med», som leder till `/online`.

@@ -32,12 +32,14 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { guestNotice, kickedNotice, towardSeat } from '../status/notice.js'
+import { guestNotice, kickedNotice, refusalText, towardSeat } from '../status/notice.js'
 import { useRoomOpen } from '../status/useRoomOpen.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useSessionName } from '../status/sessionName.js'
 import { useT } from '../i18n/index.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
+import { useStartFocus } from '../table/StartButton.js'
+import { WaitingRoom } from './WaitingRoom.js'
 
 // /online?session=…&seat=A&name=Ada&server=ws://…
 // Fully online (C2): both roles in one window. The table, the way round the window and the seat
@@ -142,6 +144,19 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
 
   // Distance mode has a seat like any other screen with one, and sits down the same way.
   useSitDown(client, view, seat, name)
+  // The waiting room (L77, #1130) lies over the felt until something has happened at the table. A
+  // game with no start has nothing to wait for but the people, and its room is put away by hand.
+  const [begun, setBegun] = useState(false)
+  const startFocus = useStartFocus(view?.played === true)
+  // Put away by hand, the room hands its start to the felt's tile, and the focus goes with it.
+  useEffect(() => {
+    if (!begun) return
+    const felt = (selector: string) => document.querySelector<HTMLElement>(`.byd-online-felt ${selector}`)
+    ;(felt('.byd-table-start') ?? felt('[tabindex="0"]'))?.focus()
+  }, [begun])
+  // The room's code: the one the server tells this connection — the owner's own seat is told it,
+  // and told the new one after «Ny kod» — or else the one a guest arrived with.
+  const code = conn.room?.code ?? params.get('code')
 
   if (!sessionId || !seat) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
@@ -158,6 +173,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   const shown = withoutHand(previewOf(view), seat)
   const playable = !view.rewind && !view.ended
+  const waiting = playable && !view.played && !begun
   const up = spread && hand.length > 0
   // Folded where it costs (beställarens beslut 2026-10-22, K29): open by default only where a card
   // at rest keeps K9's 45 px with the column open — measured by the felt's own fit, in the frame the
@@ -228,6 +244,23 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             the hand; open by default only where the felt can spare it (`notesByDefault`). */}
         <NotesColumn view={view} activity={activity} seat={seat} send={(...intents) => client.send(...intents)} defaultOpen={notesByDefault} onOpen={setNotesOpen} />
         <div className="byd-online-felt">
+          {waiting && (
+            <WaitingRoom
+              view={view}
+              seat={seat}
+              code={code}
+              server={params.get('server')}
+              startWait={startWait}
+              onStart={(intents, hadFocus) => {
+                startFocus(hadFocus)
+                // A start the table refuses is said, as the felt says a refused drop (#682).
+                void client.send(...intents).then((sent) => {
+                  if (!sent.ok) setToast(refusalText(sent.reason, t))
+                })
+              }}
+              onBegin={() => setBegun(true)}
+            />
+          )}
           <TableRenderer
             ref={table}
             view={shown}
@@ -247,7 +280,11 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             shuffles={shuffles}
             onPresence={(p) => client.sendPresence(p)}
             startWait={startWait}
+<<<<<<< HEAD
             onFit={setFelt}
+=======
+            startTile={!waiting}
+>>>>>>> origin/claude/1130-vantrum-online
           />
         </div>
         {/* One hand, one copy of it. While the grid stands the band is still drawn — dimmed,

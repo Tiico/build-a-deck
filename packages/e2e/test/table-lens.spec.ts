@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { join } from '../support/api.js'
 import { expect, test } from '../support/test.js'
+import { pastTheWaitingRoom } from '../support/waiting.js'
 
 // Bordsläget får samma lins som /online (#720, beställarens beslut 2026-10-06, C5). Speltestet
 // 2026-10-02 rullade hjulet över filten på /table?mode=table och ingenting hände — kortet är 48 × 65
@@ -52,6 +53,7 @@ for (const surface of ['bordsläget', '/online'] as const) {
       const url = surface === 'bordsläget' ? table.tableUrl : (await join(request, table, { name: 'Ada', seat: 'A' })).onlineUrl
       const { page } = await open({ name: 'tablet', viewport: { width: 1024, height: 768 }, hasTouch: true }, `${url}&lang=sv`)
       await expect(page.locator('.byd-table-frame[data-mode="table"]')).toBeVisible()
+      if (surface === '/online') await pastTheWaitingRoom(page)
       expect(await lens(page)).toBe(100)
       await pinchOut(page, await bareMiddle(page))
       await expect.poll(() => lens(page)).toBeGreaterThan(150)

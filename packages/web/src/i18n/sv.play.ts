@@ -550,6 +550,7 @@ export const svPlay = {
 
   // Helt online (C2): bordet och handen i samma fönster.
   'online.showall': 'Visa alla',
+<<<<<<< HEAD
   'notes.title': 'Anteckningar',
   'notes.unseen': 'Anteckningar, nytt från någon annan',
   'notes.empty': 'Inget antecknat än. Det ni skriver här ser alla vid bordet, och det ligger kvar till nästa gång.',
@@ -562,6 +563,20 @@ export const svPlay = {
   'notes.refused.full': 'Blocket är fullt: hundra rader. Ta bort en innan du skriver en ny.',
   'notes.refused.gone': 'Raden finns inte längre: någon tog bort den.',
   'notes.refused.other': 'Bordet tog inte emot raden. Försök igen.',
+=======
+  // Väntrummet över filten tills något har hänt vid bordet (L77, #1130).
+  'online.wait.heading': 'Väntar på spelare · {n} av {of}',
+  'online.wait.text': 'Skicka länken till dem som ska spela. Bordet startar när du säger till.',
+  'online.wait.address': 'Bordets adress',
+  'online.wait.copy': 'Kopiera länk',
+  'online.wait.copied': 'Kopierad',
+  'online.wait.copy.failed': 'Gick inte att kopiera. Adressen är markerad, så kopiera den själv.',
+  'online.wait.seats': 'Platserna',
+  'online.wait.free': 'väntar…',
+  'online.wait.me': '{name} (du)',
+  'online.wait.begin': 'Börja spela',
+  'online.wait.hide': 'Göm väntrummet',
+>>>>>>> origin/claude/1130-vantrum-online
   'online.observers.one': '{names} tittar på',
   'online.observers.other': '{names} tittar på',
 
