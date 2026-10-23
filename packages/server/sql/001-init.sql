@@ -194,6 +194,23 @@ create table if not exists ai_keys (
   updated_at   timestamptz not null default now()
 );
 
+-- Passkeys (#1180, DRIFT §11): a convenience beside the magic link. The public key and its counter
+-- are what a login is checked against; the AAGUID names the keychain it lives in and `device` the
+-- browser it was saved from, which is all the profile says about it. The private key never leaves
+-- the reader's device.
+create table if not exists passkeys (
+  id            text primary key,
+  account_id    bigint not null references accounts(id) on delete cascade,
+  public_key    bytea not null,
+  counter       bigint not null default 0,
+  transports    text[] not null default '{}',
+  aaguid        text not null,
+  device        text not null,
+  created_at    timestamptz not null default now(),
+  last_used_at  timestamptz
+);
+create index if not exists passkeys_account on passkeys (account_id);
+
 -- Each account's tier (#1193, A2, #1192): written by the operator today (`pnpm --filter @byd/server
 -- plan`) and by Stripe later, so that paying is a way to change tier and not a new model. An account
 -- without a row has the default tier of `BYD_PLANS`; a tier named here that `BYD_PLANS` lacks stops

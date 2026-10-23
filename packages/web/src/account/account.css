@@ -171,3 +171,24 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    it is in the sheet the first frame blocks on, which has no room to spare (felt-font.spec.ts). */
 .byd-about { margin-top: 24px; text-align: center; font-size: 12px; }
 .byd-about a { color: inherit; }
+/* Passkeys (#1180, beslut A). On the login card: «eller» between two rules, and the passkey's button
+   under the address, the card's second way in, drawn as its outline. */
+.byd-login-or { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 0; color: #9aa3b8; font-size: 13px; }
+.byd-login-or::before, .byd-login-or::after { content: ''; height: 1px; background: #262a35; }
+.byd-login-passkey { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+/* On Mina spel: the offer after the link, in the account's green as «Pågår nu» is, the one filled
+   button the save and «Inte nu» its outline on the green. The key stands beside the sentence; on a
+   narrow screen the answers go under both rather than the key taking a line of its own. */
+.byd-passkey-offer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; padding: 14px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; --byd-secondary-line: #5f8a70; --byd-secondary-ink: #d8ffe8; }
+.byd-passkey-offer > .byd-glyph { width: 22px; height: 22px; color: #7dd3a0; }
+.byd-passkey-offer > p { margin: 0; line-height: 1.5; }
+@media (max-width: 720px) {
+  .byd-passkey-offer { align-items: start; }
+  .byd-passkey-offer-answers { grid-column: 1 / -1; }
+}
+.byd-passkey-offer b { color: #fff; }
+.byd-passkey-failed { color: #ffb4c4; }
+.byd-passkey-offer-answers { display: flex; flex-wrap: wrap; gap: 8px; }
+.byd-passkey-offer-answers > button { min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
+.byd-passkey-done { display: flex; align-items: center; gap: 10px; margin: 0; }
+.byd-passkey-done > .byd-glyph { color: #7dd3a0; }
