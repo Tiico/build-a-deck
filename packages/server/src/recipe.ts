@@ -376,6 +376,16 @@ export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x
   // Ett bord utan filt är inget bord; då finns ingen golvyta att söka i och önskeplatsen är allt
   // som finns att säga.
   if (!floor) return rect(wish.x, wish.y, want.w, want.h)
+  // A pile is the card back it is drawn as and the band under it (`pileRoom`); `below` is how
+  // deep that band is for what is being placed.
+  return freeIn(floor, setup.zones.filter((z) => z.id !== setup.floor).map((z) => roomOf(z, below)), want, wish)
+}
+
+const roomOf = (z: Zone, below: number): Geometry => (z.kind === 'pile' ? pileRoom(z.geometry.x, z.geometry.y, below) : z.geometry)
+
+// The search behind `freeSpot`, inside any rectangle and around any rectangles: the floor and its
+// zones for a new zone, a zone and what stands in it for the dice laid there (#1136).
+function freeIn(within: Geometry, taken: Geometry[], want: { w: number; h: number }, wish: { x: number; y: number }): Geometry | null {
   // Hela millimetrar, som allt annat bordet får veta. Varje kant rundas **bort** från den zon den
   // kommer ur — en kant att lägga sig efter uppåt, en att lägga sig före nedåt — så avrundningen
   // aldrig kan äta av mellanrummet den räknade fram. En hög är det enda som ger halva millimetrar
@@ -385,11 +395,8 @@ export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x
     const edges = [Math.min(Math.max(at, first), last), first, last, ...after.map((v) => Math.ceil(v)), ...before.map((v) => Math.floor(v))]
     return [...new Set(edges)].filter((v) => v >= first && v <= last).sort((a, b) => a - b)
   }
-  // A pile is the card back it is drawn as and the band under it (`pileRoom`); `below` is how
-  // deep that band is for what is being placed.
-  const taken = setup.zones.filter((z) => z.id !== setup.floor).map((z) => (z.kind === 'pile' ? pileRoom(z.geometry.x, z.geometry.y, below) : z.geometry))
-  const xs = along(floor.x, floor.x + floor.w - want.w, wish.x, taken.map((t) => t.x + t.w), taken.map((t) => t.x - want.w))
-  const ys = along(floor.y, floor.y + floor.h - want.h, wish.y, taken.map((t) => t.y + t.h), taken.map((t) => t.y - want.h))
+  const xs = along(within.x, within.x + within.w - want.w, wish.x, taken.map((t) => t.x + t.w), taken.map((t) => t.x - want.w))
+  const ys = along(within.y, within.y + within.h - want.h, wish.y, taken.map((t) => t.y + t.h), taken.map((t) => t.y - want.h))
   if (xs.length === 0 || ys.length === 0) return null
   let best: Geometry | null = null
   let nearest = Infinity
@@ -498,19 +505,35 @@ export function counterSpots(zone: Geometry, counters: number): { x: number; y: 
   })
 }
 
-// Where a zone's dice lie when the table is laid (#1136): a row across the middle of the zone, a
-// die's width and a gap apart, wrapping to the next row when the zone is too narrow for them all.
+// Where a zone's dice lie when the table is laid (#1136): a row a die's width and a gap apart,
+// wrapping to the next row when the zone is too narrow for them all, in the zone's own millimetres.
 // The felt draws a die larger than life (`DIE_MM` is what it reserves), so they are spaced for that.
-const DIE_MM = 30
-export function diceSpots(zone: Geometry, dice: number): { x: number; y: number }[] {
+//
+// The row wants the middle of the zone, but on the floor the middle is where the draw pile and the
+// discard pile stand, and the dice lay on top of them (#1137's d4 on the draw pile). So the row
+// goes where `freeSpot` puts a new zone: the free stretch of the zone nearest its middle, clear of
+// every zone standing in it — a pile with its card back and the band its name and table-mode
+// handle hang in (#881). A zone that holds this one, as the floor holds every zone, stands around
+// it and not in it. Only when no such stretch exists does the row lie across the middle anyway.
+export const DIE_MM = 30
+export function diceSpots(zone: Geometry, dice: number, others: Zone[] = []): { x: number; y: number }[] {
   const pitch = DIE_MM * 1.3
   const perRow = Math.max(1, Math.min(dice, Math.floor(zone.w / pitch)))
   const rows = Math.ceil(dice / perRow)
+  const want = { w: perRow * pitch, h: rows * pitch }
+  const middle = { x: zone.x + zone.w / 2 - want.w / 2, y: zone.y + zone.h / 2 - want.h / 2 }
+  const holds = (g: Geometry): boolean => g.x <= zone.x && g.y <= zone.y && g.x + g.w >= zone.x + zone.w && g.y + g.h >= zone.y + zone.h
+  // A die keeps from its neighbours the gap two dice keep between them: half of it is the margin
+  // the row already has inside its pitch, the other half is grown onto what it lies beside.
+  const gap = (pitch - DIE_MM) / 2
+  const grown = (g: Geometry): Geometry => rect(g.x - gap, g.y - gap, g.w + 2 * gap, g.h + 2 * gap)
+  const taken = others.filter((z) => !holds(z.geometry)).map((z) => grown(roomOf(z, HANDLE_BELOW_MM)))
+  const block = freeIn(zone, taken, want, middle) ?? middle
   return Array.from({ length: Math.max(0, dice) }, (_, i) => {
     const row = Math.floor(i / perRow)
     const inRow = Math.min(perRow, dice - row * perRow)
-    const x = zone.w / 2 - (inRow * pitch) / 2 + (i % perRow) * pitch + (pitch - DIE_MM) / 2
-    const y = zone.h / 2 - (rows * pitch) / 2 + row * pitch + (pitch - DIE_MM) / 2
+    const x = block.x - zone.x + (want.w - inRow * pitch) / 2 + (i % perRow) * pitch + (pitch - DIE_MM) / 2
+    const y = block.y - zone.y + row * pitch + (pitch - DIE_MM) / 2
     return { x: Math.round(Math.max(0, Math.min(zone.w, x))), y: Math.round(Math.max(0, Math.min(zone.h, y))) }
   })
 }

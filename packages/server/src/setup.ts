@@ -31,7 +31,8 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     const spots = counterSpots(zone.geometry, counters.length)
     counters.forEach((c, i) => components.push({ type: token, cardRef: c.name, zone: zone.id, face: 'front', counter: c.start, ...(spots[i] ?? { x: 0, y: 0 }) }))
   }
-  // The game's dice (K5, #1136), side by side in the area each is put in, one side up. The side is
+  // The game's dice (K5, #1136), side by side in the area each is put in and clear of what stands
+  // in it (the floor's piles, #1137), one side up. The side is
   // the document's and not a roll: a table is laid the same way every time, and the first roll is
   // a line in the log like every other (D4). A die put in a zone that is gone lies nowhere.
   const byZone = new Map<string, number[]>()
@@ -43,7 +44,7 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
   for (const [zoneId, kinds] of byZone) {
     const zone = doc.setup.zones.find((z) => z.id === zoneId)
     if (!zone) continue
-    const spots = diceSpots(zone.geometry, kinds.length)
+    const spots = diceSpots(zone.geometry, kinds.length, doc.setup.zones.filter((z) => z.id !== zoneId))
     kinds.forEach((faces, i) => {
       const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === faces)
       const at = spots[i] ?? { x: 0, y: 0 }
