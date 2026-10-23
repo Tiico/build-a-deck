@@ -1673,6 +1673,13 @@ export const svEditor = {
   'tables.starting': 'Startar bordet…',
   'tables.started': 'Nytt bord startat: {table}.',
   'tables.new': 'Starta nytt bord',
+  // Frågan ett andra bord ställer (#1145, beslut A): på Bord-fliken, i pilens meny och på
+  // startsidan, med samma ord, och det säkra svaret öppnar bordet som redan kör.
+  'tables.another.label': 'Ett bord kör redan',
+  'tables.another.one': 'Bordet {table} kör redan. Ett nytt bord får en egen kod, och de som sitter vid {table} följer inte med.',
+  'tables.another.other': '{n} bord kör redan, senast {table}. Ett nytt bord får en egen kod, och de som sitter vid {table} följer inte med.',
+  'tables.another.open': 'Öppna {table}',
+  'tables.another.start': 'Starta ett nytt ändå',
   'tables.failed': 'Bordet kunde inte startas. Inget har ändrats.',
   'tables.retry': 'Försök igen',
   'tables.more': 'Fler sätt att öppna bordet',
