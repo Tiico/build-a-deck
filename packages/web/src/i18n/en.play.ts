@@ -276,7 +276,6 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'play.help.hand.topic': 'the hand',
   'play.help.hand.pick': 'Tap a card to read and select it. Hold to select several.',
   'play.help.hand.play': 'Drag a selected card upward to play it, or use the buttons under the hand.',
-  'play.help.hand.turn': 'Turn a card over in your hand, or press F on it, and it is played face down.',
   'play.help.hand.hidden': 'The others see how many cards you hold, but not which.',
 
   'player.hint.selected.one': '{n} selected',

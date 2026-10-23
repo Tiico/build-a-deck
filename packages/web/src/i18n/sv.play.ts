@@ -339,7 +339,6 @@ export const svPlay = {
   'play.help.hand.topic': 'handen',
   'play.help.hand.pick': 'Tryck på ett kort för att läsa och välja det. Håll för att välja flera.',
   'play.help.hand.play': 'Dra ett valt kort uppåt för att spela det, eller använd knapparna under handen.',
-  'play.help.hand.turn': 'Vänd ett kort i handen, eller tryck F på det, så spelas det nedvänt.',
   'play.help.hand.hidden': 'De andra ser hur många kort du har, men inte vilka.',
 
   // Telefonen: handen, det som ligger framför en, och räknarna.

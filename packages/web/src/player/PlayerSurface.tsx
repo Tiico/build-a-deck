@@ -267,7 +267,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <Help topic={t('play.help.hand.topic')}>
           <p>{t('play.help.hand.pick')}</p>
           <p>{t('play.help.hand.play')}</p>
-          <p>{t('play.help.hand.turn')}</p>
           <p>{t('play.help.hand.hidden')}</p>
         </Help>
         <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
