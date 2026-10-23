@@ -96,3 +96,55 @@ describe('the tool speaks plain Swedish (L73, #1101)', () => {
     expect(offenders({ 'login.sent.body': 'Vi har skickat en länk.', other: 'Vi har skickat en länk.' }, we).map((s) => s.split(':')[0])).toEqual(['other'])
   })
 })
+
+// Nothing can be ordered before phase 5 (#1223): print is phase 5, and the beta says outright that
+// it does not promise print (L36, revised, #743). The wall's check said the deck «går att beställa»
+// and that an error «stoppar beställningen», and the booklet «kunde inte beställas», all about an
+// order nobody can place. What the check vouches for is that the deck is print-ready, so that is
+// what it says; the booklet is made, not ordered.
+const ORDER_SV = /beställ/i
+const ORDER_EN = /\bordered\b|\bordering\b|\bstops? the order\b|\ban order\b|\bto order\b/i
+const ordersSv = (t: string) => ORDER_SV.test(t)
+const ordersEn = (t: string) => ORDER_EN.test(t)
+
+describe('promises no order before phase 5 (#1223)', () => {
+  for (const [part, [sv, en]] of Object.entries(PARTS)) {
+    it(`the ${part} part promises nothing that can be ordered`, () => {
+      expect(offenders(sv, ordersSv)).toEqual([])
+      expect(offenders(en, ordersEn)).toEqual([])
+    })
+  }
+
+  it('has the wall\'s check say the deck is print-ready, in both languages', () => {
+    expect(svEditor['wall.checks.ok']).toBe('Leken klarar kontrollen och är tryckfärdig.')
+    expect(svEditor['wall.checks.warningsOnly']).toBe('Bara varningar. Leken är tryckfärdig.')
+    expect(svEditor['wall.checks.errors.one']).toBe('Ett fel måste rättas innan leken är tryckfärdig.')
+    expect(svEditor['wall.checks.errors.other']).toBe('{n} typer av fel måste rättas innan leken är tryckfärdig.')
+    expect(enEditor['wall.checks.ok']).toBe('The deck passes the check and is print-ready.')
+    expect(enEditor['wall.checks.warningsOnly']).toBe('Only warnings. The deck is print-ready.')
+    expect(enEditor['wall.checks.errors.one']).toBe('One error must be mended before the deck is print-ready.')
+    expect(enEditor['wall.checks.errors.other']).toBe('{n} kinds of error must be mended before the deck is print-ready.')
+  })
+
+  // The control: the readings catch the promise as it stood, and let the order of a turn, a layer or
+  // a game be.
+  it('catches the old promise and lets the other order be', () => {
+    const sv = {
+      ok: 'Leken klarar kontrollen och går att beställa.',
+      stops: 'Ett fel stoppar beställningen.',
+      booklet: 'Häftet kunde inte beställas. Försök igen om en stund.',
+      turn: 'Turordning',
+    }
+    expect(offenders(sv, ordersSv).map((s) => s.split(':')[0])).toEqual(['ok', 'stops', 'booklet'])
+    const en = {
+      ok: 'The deck passes the check and can be ordered.',
+      stops: 'One error stops the order.',
+      booklet: 'The booklet could not be ordered. Try again in a moment.',
+      turn: 'Turn order',
+      layer: 'Drag to change the order.',
+      hidden: '{name}, {n} cards, order hidden',
+      game: 'in the order of the game, table by table',
+    }
+    expect(offenders(en, ordersEn).map((s) => s.split(':')[0])).toEqual(['ok', 'stops', 'booklet'])
+  })
+})

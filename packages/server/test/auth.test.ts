@@ -113,7 +113,7 @@ describe('projects belong to accounts (G1)', () => {
     // says what this account may do (D3), and names the card the home page draws on the game
     // (G1, #231) — its id and title, never what it takes to draw it.
     expect(await (await get('/projects', ada)).json()).toEqual([
-      { id: 'p1', name: 'Mitt spel', rev: 1, role: 'owner', tables: 0, lastPlayed: null, card: { id: 'a', title: 'A' } },
+      { id: 'p1', name: 'Mitt spel', rev: 1, role: 'owner', tables: 0, lastPlayed: null, card: { id: 'a', title: 'A' }, cards: 1, players: 2, savedAt: expect.any(String) },
     ])
     const bo = await login('bo@example.com')
     expect((await get('/projects/p1', bo)).status).toBe(403)

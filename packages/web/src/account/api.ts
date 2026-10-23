@@ -15,7 +15,8 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, when one
 // of them was last played at, and which of its own cards stands on it (#231) — `null` for a game
 // with no cards yet, which is the tile's deliberate empty state.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; card?: CardPeek | null; role?: 'owner' | 'editor' | 'tester' | 'viewer' }
+// `cards`, `players` and `savedAt` are what the workbench says of a game (#1204).
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; card?: CardPeek | null; role?: 'owner' | 'editor' | 'tester' | 'viewer'; cards?: number; players?: number; savedAt?: string | null }
 export async function myProjects(http: string): Promise<ProjectSummary[]> {
   const res = await fetch(`${http}/projects`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
@@ -31,6 +32,14 @@ export async function myCards(http: string): Promise<Record<string, CardFace | n
   if (res.status === 401) throw new Unauthorized()
   if (!res.ok) throw new Error(`could not read the cards: ${res.status}`)
   return (await res.json()) as Record<string, CardFace | null>
+}
+
+// The fan the page leads with (#1204, beslut B): three of one game's cards, asked for after the
+// list and the first cards, so the first screen never waits for it.
+export async function gameFan(http: string, project: string): Promise<CardFace[]> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/fan`, withCredentials())
+  if (!res.ok) throw new Error(`could not read the fan: ${res.status}`)
+  return (await res.json()) as CardFace[]
 }
 
 // Sharing a game (D3): who it is shared with, an invitation to an address, and taking it back.

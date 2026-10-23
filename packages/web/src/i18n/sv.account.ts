@@ -115,6 +115,23 @@ export const svAccount = {
   'home.help.new': '«+ Nytt spel» frågar efter namn och antal spelare och gör resten åt dig.',
 
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
+  // Arbetsbänken (#1204, beslut B).
+  'home.import.word': 'Importera',
+  'home.hero.title': 'Fortsätt där du slutade',
+  'home.hero.saved': 'Version {rev} sparad {when}',
+  'home.hero.edit': 'Öppna editorn',
+  'home.stat.cards': 'kort',
+  'home.stat.players': 'spelare',
+  'home.stat.tables': 'bord',
+  'home.stat.played': 'senast spelat',
+  'home.stat.never': 'aldrig',
+  'home.all.title': 'Övriga spel',
+  'home.row.facts': 'v{rev} · {cards} · {players}',
+  'home.row.cards.one': '{n} kort',
+  'home.row.cards.other': '{n} kort',
+  'home.row.players.one': '{n} spelare',
+  'home.row.players.other': '{n} spelare',
+  'home.row.live': 'Pågår · {code}',
   'home.card.line': 'v{rev} · {played}',
   'home.card.never': 'inte spelat',
   'home.card.nocards': 'inga kort ännu',

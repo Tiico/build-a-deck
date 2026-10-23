@@ -19,7 +19,7 @@ import { setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
-import { arrangementOf, namesOfProject, peekFace, type CardFace } from './names.js'
+import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
 import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
@@ -38,7 +38,7 @@ import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, regis
 import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, growth, limitOf, tableWindowFrom, type Limit, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
-import { NO_CARDS, cardGrowth, type CardMeasure } from './quota-cards.js'
+import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -1343,8 +1343,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       mine.map(async (p) => {
         const sessions = await opts.store.sessionsOf(p.id)
         const last = sessions.map((s) => s.lastAt).filter((at): at is string => at !== null)
-        const name = (await host.live(p.id))?.name ?? p.name
-        return { ...p, name, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
+        const live = await host.live(p.id)
+        // What the workbench says of a game (#1204) is the live document's, as the name is.
+        const about = live ? { cards: cardsUsed(live).cardCopiesPerProject, players: live.setup.seats.length } : {}
+        const savedAt = (await projects.versions(p.id))[0]?.at ?? null
+        return { ...p, name: live?.name ?? p.name, ...about, savedAt, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
       }),
     )
     json(res, 200, played)
@@ -1369,6 +1372,15 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       faces[p.id] = rec ? peekFace(rec) : null
     }
     json(res, 200, faces)
+    return true
+  }
+  // The fan the page leads with (#1204): three of one game's cards, asked for after the list and
+  // the first cards, so the first screen never waits for it.
+  const fan = /^\/projects\/([^/]+)\/fan$/.exec(url.pathname)
+  if (req.method === 'GET' && fan) {
+    const gate = await owned(decodeURIComponent(fan[1] ?? ''))
+    if (!('rec' in gate)) json(res, gate.status, { error: gate.error })
+    else json(res, 200, fanFaces((await editors(opts, projects).live(gate.rec.id)) ?? gate.rec))
     return true
   }
   // A game brought back from an export (G5, #528): a new project owned by whoever brings it, with
