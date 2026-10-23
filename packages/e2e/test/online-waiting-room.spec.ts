@@ -37,6 +37,16 @@ test.describe('väntrummet på /online (L77)', () => {
     const room = (page: typeof ada.page) => page.getByRole('region', { name: /Väntar på spelare/ })
     await expect(room(ada.page).getByRole('heading')).toHaveText('Väntar på spelare · 1 av 2')
     await expect(room(ada.page).locator('[data-address]')).toHaveText(`${new URL(baseURL ?? '').host}/${table.code}`)
+    // Den som kopierar adressen för hand får adressen och inget annat: utan radbrytning mellan
+    // värden och koden, som en flexruta ger när koden blir en rad för sig.
+    const selected = await ada.page.evaluate(`(() => {
+      const range = document.createRange()
+      range.selectNodeContents(document.querySelector('[data-address]'))
+      getSelection().removeAllRanges()
+      getSelection().addRange(range)
+      return getSelection().toString()
+    })()`)
+    expect(selected).toBe(`${new URL(baseURL ?? '').host}/${table.code}`)
     await expect(room(ada.page).getByRole('listitem')).toHaveText(['AAda (du)', 'Bväntar…'])
     // En start, inte två: filtens bricka står inte bredvid väntrummets.
     await expect(ada.page.locator('[data-table-start]')).toHaveCount(1)

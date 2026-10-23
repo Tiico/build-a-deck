@@ -200,7 +200,10 @@ textarea.byd-note-text { width: 100%; resize: vertical; background: #120f0d; box
 .byd-waiting-head + p { margin-top: 0; }
 .byd-waiting > p { margin: 4px 0 0; color: #b4bccc; font-size: 14px; line-height: 1.4; }
 .byd-waiting-address { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-.byd-waiting-address code { min-width: 0; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #3a4052; border-radius: 8px; background: #0f1117; color: #b4bccc; font: 600 17px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; user-select: all; }
+/* A run of text and not a flex box: as flex items the host and the code were two lines to a
+   selection, and the address copied by hand carried a line break. 42 px of line inside a 1 px border
+   is the 44 px target. */
+.byd-waiting-address code { min-width: 0; min-height: 44px; box-sizing: border-box; display: inline-block; padding: 0 12px; border: 1px solid #3a4052; border-radius: 8px; background: #0f1117; color: #b4bccc; font: 600 17px ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 42px; overflow-wrap: anywhere; user-select: all; }
 .byd-waiting-address b { color: #fff; }
 .byd-waiting-copy { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid #3a4052; border-radius: 8px; background: #20242f; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
 .byd-waiting-copy:hover { border-color: #6f7a90; }
