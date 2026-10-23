@@ -36,6 +36,7 @@ export function diff(prev: Snapshot, next: Snapshot): Patch {
   if (prev.played !== next.played) ops.push({ op: 'played', played: next.played })
   if (prev.version !== next.version) ops.push({ op: 'version', version: next.version })
   if (!deepEqual(prev.turn, next.turn)) ops.push({ op: 'turn', turn: next.turn })
+  if (!deepEqual(prev.notes, next.notes)) ops.push({ op: 'notes', notes: next.notes })
   return { seq: next.seq, ops }
 }
 
@@ -50,6 +51,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
   let played = prev.played
   let version = prev.version
   let turn = prev.turn
+  let notes = prev.notes
   for (const op of patch.ops) {
     switch (op.op) {
       case 'upsert':
@@ -87,6 +89,8 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
         break
       case 'turn':
         turn = op.turn
+      case 'notes':
+        notes = op.notes
         break
     }
   }
@@ -104,6 +108,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
     played,
     version,
     turn,
+    notes,
   }
 }
 

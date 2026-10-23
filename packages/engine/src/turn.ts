@@ -1,7 +1,7 @@
 import type { SeatId, Snapshot } from '@byd/protocol'
 import type { TableState } from './state.js'
 
-// The seats in turn order (K29), from the setup's first seat and round the table the way the game
+// The seats in turn order (K30), from the setup's first seat and round the table the way the game
 // says. Where a seat sits is where its hand lies around the middle of the floor, read the way
 // `seatEdge` reads the edge, so two seats on one edge (K18) follow each other along it in the same
 // direction as round the table. A seat without a hand sits nowhere, and comes last in the setup's
@@ -41,7 +41,7 @@ function after(order: readonly SeatId[], from: SeatId, taken: (seat: SeatId) => 
   return null
 }
 
-// Where the turn goes when the seat holding it is left (K29).
+// Where the turn goes when the seat holding it is left (K30).
 export function turnAfter(state: TableState, from: SeatId): SeatId | null {
   return after(turnOrder(state), from, (seat) => state.seats[seat]?.name != null)
 }

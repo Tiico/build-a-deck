@@ -8,6 +8,8 @@ import { expect, test } from '../support/test.js'
 test('puts the survey over an open rulebook when the table ends', async ({ request, player, host }) => {
   const table = await tableWithRules(request, { players: 2 })
   const ada = await player(table, { name: 'Ada', seat: table.seats[0]!, device: PHONE })
+  // The rules stand in «More» on the phone (#1147).
+  await ada.page.getByRole('tab', { name: /^More/ }).click()
   await ada.page.getByRole('button', { name: 'Rules', exact: true }).click()
   await expect(ada.page.getByRole('dialog', { name: 'Rules' })).toBeVisible()
 

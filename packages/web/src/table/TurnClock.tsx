@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-// How long the turn has stood (K29), from the time of the line that gave it, so that every screen
+// How long the turn has stood (K30), from the time of the line that gave it, so that every screen
 // says the same and a reload does not start it over. A clock a little ahead of the server's reads
 // as nought rather than as a turn from the future.
 export function TurnClock({ at }: { at: string }) {

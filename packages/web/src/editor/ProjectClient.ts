@@ -4,7 +4,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -751,6 +751,11 @@ export class ProjectClient {
     this.edit({ v: 'setRecipe', recipe, ...(words ? { words } : {}) }, gesture)
   }
 
+  // The game's dice (K5, #1139), written whole like the counters: one change, one step back.
+  setDice(dice: Die[], gesture?: string): void {
+    this.edit({ v: 'setDice', dice }, gesture)
+  }
+
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
   // middle of the table until it is dragged somewhere. Returns its id.
   // A zone the designer adds is theirs, and it is named in the language they are working in
@@ -794,7 +799,7 @@ export class ProjectClient {
     this.edit({ v: 'setDeck', id })
   }
 
-  // Whether the game goes in turns, and which way round the table (K29); `null` is none.
+  // Whether the game goes in turns, and which way round the table (K30); `null` is none.
   setTurns(turns: 'clockwise' | 'counterclockwise' | null): void {
     this.edit({ v: 'setTurns', turns })
   }

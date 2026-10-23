@@ -34,7 +34,7 @@ if (!OUT) throw new Error('the stack did not say where the built web app is (BYD
 //
 // Raised to 167 kB by the beställare's decision (#1141, 2026-10-23). The room above the mark was
 // spent the way it was left for: features the phone draws. Dice on the phone (#1163) and the turn
-// row (K29), each under the line on its own branch, met on main at 165.8 kB. What the turn costs
+// row (K30), each under the line on its own branch, met on main at 165.8 kB. What the turn costs
 // on the phone, about 0.9 kB, is its schema on the wire, its words, the tab's title and the row.
 const PHONE_JS_GZ = 167_000
 const JOIN_JS_GZ = 122_000

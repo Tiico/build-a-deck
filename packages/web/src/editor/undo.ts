@@ -40,6 +40,7 @@ export function whatOf(intent: EditIntent): Key {
     case 'setGroupColumn':
       return 'undo.what.template'
     case 'setRecipe':
+    case 'setDice':
     case 'addZone':
     case 'insertZone':
     case 'addSeatZone':

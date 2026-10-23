@@ -19,7 +19,7 @@ import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Lang, type T } from '../i18n/index.js'
-import { ExitGlyph, ImportGlyph, MoreGlyph, PersonGlyph } from '../glyphs.js'
+import { CheckGlyph, ExitGlyph, ImportGlyph, MoreGlyph, PersonGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { versionWord } from '../i18n/version.js'
@@ -476,10 +476,22 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   </div>
                   <strong>{p.deleted ? t('home.played.deleted') : (p.game ?? t('home.played.some-table'))}</strong>
                   <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: p.name })}</span>
-                  <span className="byd-home-facts">
-                    {p.ended ? (p.surveyed ? t('home.played.surveyed') : t('home.played.unsurveyed')) : t('home.played.running')}
-                    {p.flags > 0 && ` · ${t('home.played.flags', { n: p.flags })}`}
-                  </span>
+                  {/* What the player can do with the table (#1143, variant B): open it while it runs,
+                      answer its survey once it is over, and otherwise nothing but a quiet tick. A
+                      game taken away has no survey worth answering (#676). */}
+                  {p.ended && p.surveyed ? (
+                    <span className="byd-home-answered">
+                      <CheckGlyph />
+                      {t('home.played.surveyed')}
+                    </span>
+                  ) : (
+                    <span className="byd-home-facts">{p.ended ? t('home.played.ended') : t('home.played.running')}</span>
+                  )}
+                  {p.ended && !p.surveyed && !p.deleted && (
+                    <a className="byd-home-survey" href={`/survey?${suffix(new URLSearchParams({ session: p.session }))}`} onClick={(e) => { e.preventDefault(); onNavigate(`/survey?${suffix(new URLSearchParams({ session: p.session }))}`) }}>
+                      {t('home.played.answer')}
+                    </a>
+                  )}
                   {p.code && (
                     <a className="byd-home-action" href={`/join?${suffix(new URLSearchParams({ code: p.code }))}`} onClick={(e) => { e.preventDefault(); void backTo(p) }}>
                       {t('home.played.back')}

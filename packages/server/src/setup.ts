@@ -74,6 +74,6 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
   for (const { id, fields } of doc.rows) {
     cards[id] = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v).trim()]))
   }
-  // Whether the game goes in turns (K29) is the designer's answer in Bord, and travels as it is.
+  // Whether the game goes in turns (K30) is the designer's answer in Bord, and travels as it is.
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components, cards, ...(doc.setup.turns ? { turns: doc.setup.turns } : {}) }
 }

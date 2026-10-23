@@ -95,6 +95,12 @@ export type PhysicalIntent = z.infer<typeof PhysicalIntent>
 // the table is one of these, and a seat taken, a version changed or a table ended is not (#706).
 export const PHYSICAL_VERBS: readonly string[] = PhysicalIntent.options.map((o) => o.shape.v.value)
 
+// A row of the notepad (#1131) is at most what a flag's note may be (G3), and never only blanks:
+// a row with nothing on it is not a row.
+export const NOTE_MAX = 280
+export const NoteText = z.string().max(NOTE_MAX).refine((t) => t.trim().length > 0, 'a note says something')
+export const NoteId = z.string().regex(/^n\d+$/)
+
 // Session verbs are not physical and are kept apart so the physical set stays honest.
 export const SessionIntent = z.discriminatedUnion('v', [
   z.object({ v: z.literal('seat.claim'), seat: SeatId, name: z.string().min(1).max(64) }),
@@ -114,10 +120,18 @@ export const SessionIntent = z.discriminatedUnion('v', [
   // card it was reaches the log and the designer, and no other view (`projectActivity`).
   z.object({ v: z.literal('flag'), note: z.string().max(280).optional(), observer: z.string().min(1).max(64).optional(), component: ComponentId.optional() }),
   z.object({ v: z.literal('session.end') }),
-  // Whose turn it is (K29): the turn goes to `seat`, given by anyone at the table and refused only
+  // Whose turn it is (K30): the turn goes to `seat`, given by anyone at the table and refused only
   // where it cannot mean anything. Always a seat and never «the next one», so that two presses of
   // «Klar → Cy» both give the turn to Cy rather than the second skipping past her.
   z.object({ v: z.literal('turn.give'), seat: SeatId }),
+  // The table's notepad (#1131): rows everyone at the table reads and writes, for what the game
+  // makes them keep track of. A row is named by the line that wrote it, `n<seq>`, so its id needs
+  // no randomness and replays as it was. Session verbs and not play: undo passes them by, and a
+  // rewind of the table leaves the notepad as it stands.
+  z.object({ v: z.literal('note.add'), text: NoteText }),
+  z.object({ v: z.literal('note.edit'), note: NoteId, text: NoteText }),
+  z.object({ v: z.literal('note.check'), note: NoteId, done: z.boolean() }),
+  z.object({ v: z.literal('note.remove'), note: NoteId }),
 ])
 export type SessionIntent = z.infer<typeof SessionIntent>
 

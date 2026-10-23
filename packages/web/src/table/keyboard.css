@@ -174,14 +174,10 @@
 }
 
 /* A hand card became a real control (#1); a button brings its own font, border and alignment. */
-.byd-strip-card,
 .byd-fan-card {
   border: 0;
   font: inherit;
   text-align: left;
-}
-.byd-strip-card {
-  display: block;
 }
 
 /* "Sätt värde…" on a chip (C4, #67): the number written on the tool's own keys, since the table

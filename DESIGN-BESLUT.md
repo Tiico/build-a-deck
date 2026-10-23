@@ -820,6 +820,38 @@ Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/507/`](docs/ux-audits/202
 Känd lucka när detta skrevs: läsbredden räknades på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte visste vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått. Stängd i #523: läsvyn läser kortets minsta text från renderaren och växer efter den (K26).
 En mall med 7 pt brödtext når därför 11,5–13,2 px i läsvyn; K26:s «golvet gäller mallens brödtext som den är» kräver att den storleken når klienten, vilket är en egen fråga.
 
+Reviderat 2026-10-23 (#1147, beställarens val B 2026-10-22 efter prototypen i [`docs/ux-audits/2026-10-22-telefonen/`](docs/ux-audits/2026-10-22-telefonen/README.md)): **telefonen är fyra flikar, och varje flik är en sak.**
+Beställaren kallade telefonen mot TV:n grötig och svår att använda, och bad om en omtagning från grunden.
+Vid 390 × 844 stod allt i en kolumn: huvudet med fyra knappar, räknarna, rubriken över handen med högarna under sig, remsan med sin markör, sex knappar under remsan, tre hopfällbara avsnitt och en fast fot.
+«Framför mig» och «Spela…» stod två gånger på samma skärm, och foten låg över «Senaste dragen».
+Tre varianter prövades: A ett stort kort i taget med svep, B flikar, C platserna som rutor och handen som solfjäder att dra kort ur.
+B valdes, eftersom den rymmer det designern bestämmer — hur många zoner, genvägar och räknare ett bord har — utan att formen ändras.
+
+Flikraden står längst ner: **Handen**, **Framför mig**, **Bordet** och **Mer**, de två första med sitt antal.
+Kolumnen är exakt skärmens höjd, och bara den öppna flikens panel rullar; huvudet, raden över flikarna och flikarna själva står still.
+Huvudet säger vem som håller telefonen och har **Ångra**, ritad som ikon med ordet som namn (L73, led 3).
+**Handen** är högarna, med dragningen per hög som förut (#79), och under dem hela handen som ett rutnät, tre kort i bredd vid 390 och två vid 320.
+Remsan, dess markör och «Visa alla» (#767) är borta: med rutnätet syns hela handen, och en hand på tjugofem kort är några rader och inte tio skärmar.
+Ett tryck markerar ett kort och ett till avmarkerar det; flera kort kan vara markerade, och de bär numret för den ordning de markerades i, som är ordningen de spelas i.
+Ett draget kort och ett kort taget upp från framför en blir det markerade, och det markerade kortet rullas fram i panelen.
+Medan något är markerat växer en rad fram ovanför flikarna, och det är den enda plats på telefonen där en handkorts verb står: vad som är markerat, «Läs stort», «Avmarkera», sedan setupens första genväg som huvudknapp, dess andra, och «Spela…» till alla andra platser.
+**Framför mig** är räknarna, och under dem korten som ligger framför en, ett per rad med Ta upp och setupens högenvägar staplade bredvid.
+**Bordet** är varje annan zon läsaren får se in i, med de andras publika kort att läsa (#414), och de senaste dragen; högarna står bara på Handen, så ingen bricka står på två ställen (#465).
+**Mer** är frågetecknet med handens hjälp, regelboken, Flagga och Lämna.
+
+Det som därmed ersätts, uttryckligen:
+ett tryck håller inte längre upp kortet (#507 ovan) utan markerar det, och läsning är «Läs stort» — ett tryck till, mot att ett tryck aldrig både läser och väljer.
+Att lyfta ett kort uppåt till arket, att hålla för flerval och att vila tummen och bära kortet i sidled för att sortera (K4, #483) är borta med remsan, och med dem «Flytta vänster»/«Flytta höger» (#552): sorteringen finns kvar med Alt och pil på tangentbordet, men inte för en tumme.
+Priset är uttryckligt: under ett kort som hålls upp ur handen ryms en rad knappar och inte två, om kortet ska hålla K26:s läsbredd 294 px vid 320 × 568, och raden bär det som spelar och vänder kortet.
+Telefonens fot (#483, #484 fynd 11) och knapparna under remsan är borta; raden över flikarna bär det de bar.
+Ångra, Flagga och Avsluta nederst (C4 2026-09-08) gäller inte längre `/play`: Ångra står i huvudet och de två andra i Mer.
+Att ytan framför en fälls ut när ett kort spelas dit (#958) har ingen motsvarighet: Handen står kvar öppen, eftersom nästa kort är nästa sak att spela, och Framför mig-flikens antal säger att kortet kom fram.
+Frågetecknet stod i huvudet (L32, #305), men därifrån hängde rutan över handens första kortrad; i Mer täcker den ingenting man spelar med.
+Ett kort vänt i handen (#1133) visar baksidan i rutnätet, F vänder det, «Vänd» står under kortet när det hålls upp, och raden över flikarna säger «· nedvänt» på varje knapp.
+
+`/play` och telefonläget av `/online` ritar samma yta (#181), och en liggande telefon ritar samma kolumn: L62:s två spalter behövs inte när bara panelen rullar.
+Grindarna är `phone-tabs.test.tsx`, `player-page.test.tsx` och `player-viewport.test.tsx` i webben, och `hand.spec.ts`, `phone-foot-play.spec.ts`, `phone-foot-covers.spec.ts` och `phone-landscape.spec.ts` på den byggda appen.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
@@ -1935,6 +1967,14 @@ Den gamla token slutar gälla, som en bärartoken ska när den flyttar till en a
 Finns ingen plats kvar att gå tillbaka till — den är lämnad eller sparkad — går länken till platsväljaren.
 Tre varianter prövades för startsidan; valet blev två rutnät: egna spel först som förut, sedan "Bord du spelat vid" med platsens färg, spelet, namnet man spelade under, enkät och flaggor, och "Tillbaka till bordet" medan det pågår och koden lever. En ren gäst utan egna spel ser "Nytt spel" som inbjudan ovanför sina bord.
 
+Enkäten från Mina spel (beställarens beslut 2026-10-22, #1143, variant B av tre i `docs/ux-audits/2026-10-22-spelade-bord/prototyper/`):
+Brickan sade «enkät besvarad» eller «enkät inte besvarad» och ledde ingenstans; ett avslutat bord har ingen väg in, så den som inte svarade kunde inte svara, och den som svarade fick ett kvitto utan följd.
+Brickan säger nu bara det spelaren kan använda: «pågår» och «Öppna bordet» medan bordet pågår, «avslutat» och knappen «Svara på enkäten» när enkäten väntar, och en tyst bock med «Du har svarat på enkäten» när den är besvarad.
+Flaggorna står inte längre på brickan; de är designerns data och syns i Bord-fliken (#1010).
+Ett borttaget spels bord erbjuder ingen enkät.
+Knappen leder till `/survey?session=…`, telefonens egen enkät, med vägen tillbaka till Mina spel under tacket.
+`POST /sessions/:id/survey` tar utan token emot svaret från ett inloggat konto som claimat en admission vid bordet, under den admissionens namn och plats och med samma ett-svar-per-plats som #1021; en sparkad admission har ingen röst, och en claimad admission går inte ut som en token gör.
+
 Startsidan färdig 2026-09-08:
 Varje spel säger hur många bord det har och när ett av dem senast spelades vid; ett spel ingen satt sig till säger "aldrig spelat". Uppgiften kommer ur loggen, inte ur något listan håller själv.
 Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rumskoden på plats med en väg till bordets skärm, eller tar bort spelet efter en fråga; hela historien följer med och det går inte att ångra.
@@ -2219,6 +2259,8 @@ Batchar med flera slumputfall bestämmer utfallen i ordning.
 
 ### K4. Handen på telefonen: horisontell remsa
 
+Ersatt på telefonen 2026-10-23 av C4:s revision (#1147): handen är ett rutnät, och remsans gester är borta.
+
 Korten i en scrollbar remsa. Sedan telefon A valdes 2026-09-16 är korten kompakta så att fler syns samtidigt.
 Tryck väljer ett kort; Läs valt kort öppnar full upplösning (C4, reviderat 2026-09-17).
 Dra uppåt lyfter kortet till ett ark med zongenvägarna från C4.
@@ -2246,6 +2288,10 @@ Prototypen: `docs/ux-audits/2026-10-17-handen/prototyper/767/`.
 
 Ingen inbyggd låda med generiska tärningar, kuber eller lappar.
 Behöver gruppen en markör mitt i ett test lägger designern till den via versionsbyte enligt C7 — vilket är precis den insikten loggen bör fånga.
+
+Preciserat 2026-10-22 (#1131): bordets anteckningsblock (K29) är inte en sådan lapp.
+Det ligger inte på filten, går inte att flytta, vända eller räkna med, och är sessionens och inte spelets — som platserna.
+K5 handlar om föremål i spelet; blocket är det papper sällskapet för vid sidan av.
 
 ### K6. Närvaro: markörer, peka-gest, tillskrivna rörelser
 
@@ -2516,6 +2562,8 @@ Linsen är bordslägets egen och inte TV:ns kamera: TV:ns är platt och räknar 
 Den skalar inpassningen och flyttar träet i sin ram, så pekarens mappning, spöket ur handen och K24:s band räknar rätt utan att veta om den.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
+
+Ersatt 2026-10-23 av C4:s revision (#1147): telefonen är fyra flikar och handen ett rutnät.
 
 Reviderat 2026-09-16 (#99): **remsan är telefonens hand överallt, också i `/online`.**
 Avsnitt I:s fråga om `/online` på en telefon ska vara samma hand som `/play` är därmed stängd, och svaret är ja.
@@ -4060,6 +4108,9 @@ Värdet är det enda resultat en rad berättar, eftersom en tärning på bordet 
 Tärningarna hör till spelets setup (K5).
 En rad i setupen säger sort, antal och var: en yta alla delar, eller en yta varje plats har.
 En yta per plats ger varje plats sitt antal i sin egen yta, och «per spelare» på en delad yta ger antalet gånger platserna där (#1139).
+I fliken Bord är det en rad per tärning under räknarna, och hela listan är en redigering (`setDice`), så en ändring är ett steg tillbaka.
+Ett spel utan tärningar har bara «＋ Tärning» bredvid «＋ Räknare», eftersom en tom grupp med rubrik trycker ytknapparna under kanten vid 1024 × 640 (#711); rubriken kommer med den första tärningen.
+En rad vars yta tas bort står kvar med ett besked, som räknarna utan räknarzon, och ligger på bordet igen när ytan kommer tillbaka.
 Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
 
 Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysiska skalan, eftersom en d6 på 16 mm blir 19 px på filten.
@@ -4069,7 +4120,36 @@ Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på 
 
 Prototyperna: [`index.html`](https://github.com/Tiico/build-a-deck/blob/3cff0957e3494cc3c096f59c8dd1e70a06101144/docs/ux-audits/2026-10-22-tarningar/prototyper/index.html) (bordet och telefonen, beslut A + B) och [`editor.html`](https://github.com/Tiico/build-a-deck/blob/5adb14f5544d2a9be04da4a3f8e78eb6150e93df/docs/ux-audits/2026-10-22-tarningar/prototyper/editor.html) (fliken Bord, beslut A med dynamiskt antal).
 
-### K29. Turen är en markör som skickas vidare, och den hindrar ingen (prototypat och beslutat 2026-10-22, #1141)
+### K29. Bordets anteckningsblock: en spalt på /online, rader med vem som skrev dem (prototypat och beslutat 2026-10-22, #1131)
+
+Sällskap som spelar dator till dator behöver ett gemensamt ställe för det spelet låter dem hålla i huvudet: poäng som inte bor på ett kort, vems tur det var att blanda, en regelfråga till efter partiet.
+Tre former prototypades mot `/online` (`docs/ux-audits/2026-10-22-anteckningsblocket/prototyper/`): **A, Lådan** — en gemensam fritext bakom en knapp i huvudet; **B, Spalten** — rader till vänster om filten; **C, Lappen** — ett gult block bredvid bordet.
+
+**Valet blev B, och bara på `/online` i första leveransen.**
+Rader i stället för en gemensam text, eftersom två som skriver samtidigt då aldrig skriver över varandra (D3): en rad skrivs om hel, och den omskrivning som landar sist är raden.
+Varje rad bär sin skribents platsfärg och namn, kan bockas av (struken, kvar) och tas bort, och skrivs om där den står; Enter sparar, Escape ångrar.
+Spalten står vid filtens inline-början, mitt emot handen, och fälls ihop till en list ett tryckmål bred; listen får en prick och namnet «Anteckningar, nytt från någon annan» när någon annan skrivit sedan den fälldes.
+**Hopfälld där den kostar (beställarens beslut 2026-10-22).**
+Öppen tar spalten 240 px bredd av filten, och vid 1280×800 drog det korten under K9:s golv: 46 → 36 px på kortsidan, mätt i `online-felt.test.tsx`; 1440×900 gick 52 → 44, 1512×982 57 → 47, och 1920×1080 kostade ingenting, där filten är höjdbunden ändå.
+Utan eget val står spalten därför öppen bara där ett kort i vila håller 45 px med spalten öppen. Filten svarar själv på frågan (`onFit` i `TableRenderer`, med linsens mått, kortsidan gånger passningen), så gränsen är ingen brytpunkt i koden utan följer bordets form och antal platser.
+Ett eget val — öppna eller fäll ihop — minns webbläsaren som en tittares egen bekvämlighet och går före; den som öppnar spalten i ett litet fönster får mindre kort, och vet om det.
+I ett stående fönster ligger spalten över filtens hörn i stället för att ta en rad höjd, och öppnas aldrig utan att någon ber om det.
+Ihopfälld kostar den ingenting. A kostade ingen filt i vila men täckte en tredjedel av den när den var öppen och visade aldrig vem som skrev; C låg närmast det K5 sa nej till.
+
+**Blocket är sessionens, inte spelets.**
+Fyra sessionsverb — `note.add`, `note.edit`, `note.check`, `note.remove` — och inget fysiskt; en rad heter `n<seq>` efter raden i loggen som skrev den, så den behöver ingen slump (D4).
+Raderna är inte spel: de räknas inte som drag, gör inte bordet påbörjat, och Ångra går förbi dem till det egna draget.
+En tillbakaspolning, ett Ångra och en ny uppställning återställer bordet och lämnar blocket som det står, för det skrevs om sällskapet och inte om korten.
+Blocket rymmer hundra rader på högst 280 tecken, samma tak som en flaggas kommentar, och följer med i projektionen hel som en `notes`-patch när en rad ändras. Inget i det är dolt: blocket är rummets.
+Observatören läser det men skriver inte, som hon bara får flagga.
+«Senast:» i huvudet hoppar över raderna, eftersom spalten själv visar dem; skärmläsarens aktivitet säger dem med vad de säger.
+
+Följdkrav:
+Korpusen anonymiserar radernas text som den gör en flaggas (DRIFT §7), och `scripted-notepad.json` bär blocket genom ett ångra och en tillbakaspolning.
+Grindar: `packages/engine/test/notes.test.ts`, `packages/web/test/online-notes.test.tsx`, `packages/e2e/test/online-notes.spec.ts`, där två datorer skriver, bockar och skriver om i samma block, och `packages/e2e/test/online-notes-k9.spec.ts`, som håller K9:s golv vid 1280, 1440, 1512 och 1920 i spaltens eget standardläge.
+Utanför den här leveransen: blocket på bordsskärmen, TV:n och telefonen, och raderna i designerns «Resultat» (G3). Datan bär redan allt de skulle läsa.
+
+### K30. Turen är en markör som skickas vidare, och den hindrar ingen (prototypat och beslutat 2026-10-22, #1141)
 
 Bordet hade inget begrepp om tur.
 Raden «Senast: Ada drog ett kort · 12 s» sa vem som rörde något senast, men inte om hen var klar eller vem bordet väntade på.
@@ -4117,7 +4197,7 @@ Raden «Senast» står kvar, och `turn.give` läses där som «Ada gav turen til
 
 **Telefonen bär brickan.**
 Under telefonens huvud står en egen rad: «Din tur» och «Klar → Cy» när det är spelarens tur, och «Adas tur» annars.
-Huvudet självt har inte plats: vid 390 px bär det namnet, hjälpen och tre knappar på 44 px, och en bricka och en knapp till där hade tagit namnet.
+Raden står över telefonens flikar (#1147), så den syns på varje flik. Huvudet bär namnet och Ångra, och en bricka och en knapp där hade tagit namnets plats vid 390 px.
 Det är den bricka landningssidan redan visade.
 
 De avvisade varianterna var A, spåret, och C, turraden.
@@ -7364,6 +7444,8 @@ Rummet säger bara sina färger som tokens: fältet markeringens blå som fyllni
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/06-brickan.html`.
 
 ### L62. Telefonen på sidan står i två spalter, och huvudet vid 320 håller en rad med ikoner (prototypat och beslutat 2026-10-05, #716)
+
+Ersatt 2026-10-23 av C4:s revision (#1147): en liggande telefon ritar samma flikar, och bara panelen rullar.
 
 Speltestet 2026-10-02 fann att en telefon som läggs på sidan (844 × 390) ritade porträttspalten utsträckt: räknaren 1 100 px bred, högarna över hela skärmen och handen under den fasta foten, så att inget kort i handen syntes helt utan rullning.
 `/online` på samma telefon ritar samma yta och hade samma fel.

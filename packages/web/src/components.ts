@@ -12,15 +12,21 @@ import type { VisibleComponentState } from '@byd/protocol'
 // copy that can go stale on its own.
 export const isCounter = (c: { type: { id: string } }): boolean => c.type.id === TOKEN_COUNTER.id
 
-// A die is one of the engine's `DICE` (K28, #1136), and its kind is what a table calls it: «d6»,
-// by its sides. Null for anything that is not a die. The ids are read from the registry, so a kind
-// the engine does not have is not a die here either.
-const DIE_KINDS = new Map(DICE.map((d) => [d.id, `d${d.behaviours.rollable === false ? 0 : d.behaviours.rollable.faces}`]))
-export const dieKind = (c: { type: { id: string } }): string | null => DIE_KINDS.get(c.type.id) ?? null
+// A die (#1136, K28): one type per number of sides, `die.d4` to `die.d20`, its side up kept where a
+// counter keeps its value. What the felt, the keyboard and the activity line call it is its kind,
+// «d6», the word a table uses; the number of sides is read off the type's own `rollable`, the
+// engine's to own, and never off the id's spelling.
+const DIE_FACES = new Map(DICE.flatMap((d) => (d.behaviours.rollable === false ? [] : [[d.id, d.behaviours.rollable.faces] as const])))
+export const dieFaces = (c: { type: { id: string } }): number | null => DIE_FACES.get(c.type.id) ?? null
+export const isDie = (c: { type: { id: string } }): boolean => DIE_FACES.has(c.type.id)
+export const dieKind = (c: { type: { id: string } }): string | null => {
+  const n = dieFaces(c)
+  return n === null ? null : `d${n}`
+}
 
 // A piece that is not a card: a counter or a die. The phone draws each in a place of its own — the
 // counters' pills, the dice's sheet — and never as a card in a row of cards.
-export const isPiece = (c: { type: { id: string } }): boolean => isCounter(c) || dieKind(c) !== null
+export const isPiece = (c: { type: { id: string } }): boolean => isCounter(c) || isDie(c)
 
 // A card the screen shows without the wire having handed it out (K23): a face-down bottom card
 // held up to look at. It knows only what the zone said — that there is a card, and the back it

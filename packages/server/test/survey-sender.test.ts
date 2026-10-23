@@ -96,6 +96,46 @@ for (const backend of backends) {
       expect(await db.surveys.list(id)).toEqual([expect.objectContaining({ who: 'Cilla', seat: null, observer: true, answers: { ...answers, balance: 1 } })])
     })
 
+    // «Svara på enkäten» on Mina spel (#1143, variant B): an ended table has no way in, so the
+    // account that claimed the admission (G1) answers from its login. Who answered is still the
+    // admission, never the body, one answer per seat as from the phone, and a kicked seat has no say.
+    const login = async (email: string) => {
+      await post('/auth/login', { email })
+      const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+      return ((await fetch(`${run.http}${link}`, { redirect: 'manual' })).headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+    }
+    const claimed = async (token: string) => {
+      const cookie = await login(`konto-${++tables}@example.com`)
+      expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ token }) })).status).toBe(200)
+      return cookie
+    }
+    const asAccount = (id: string, cookie: string, body: unknown) => fetch(`${run.http}/sessions/${id}/survey`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(body) })
+
+    it('takes the answer of the account that claimed the seat, under the admission’s name and seat', async () => {
+      const { id, ada, cilla } = await ended()
+      const hers = await claimed(ada)
+      expect((await asAccount(id, hers, { who: 'Bo', seat: 'B', answers })).status).toBe(403)
+      expect((await asAccount(id, hers, { who: 'Någon', seat: 'A', answers })).status).toBe(201)
+      expect((await asAccount(id, hers, { seat: 'A', answers: { ...answers, fun: 2 } })).status).toBe(201)
+      expect(await db.surveys.list(id)).toEqual([expect.objectContaining({ who: 'Ada', seat: 'A', answers: { ...answers, fun: 2 } })])
+      const watcher = await claimed(cilla)
+      expect((await asAccount(id, watcher, { who: 'Ada', seat: null, observer: true, answers })).status).toBe(201)
+      expect((await db.surveys.list(id)).find((s) => s.observer)).toMatchObject({ who: 'Cilla', seat: null })
+      expect((await asAccount(id, await login('ingen@example.com'), { who: 'Ada', seat: 'A', answers })).status).toBe(403)
+    })
+
+    it('refuses the account’s answer before the table is over, and for a seat that was kicked', async () => {
+      const { id, hostKey } = await createRoom(run.http, `survey-${process.pid}-${++tables}`)
+      const ada = await run.admit(id, 'A', 'Ada')
+      const hers = await claimed(ada)
+      expect((await asAccount(id, hers, { seat: 'A', answers })).status).toBe(409)
+      await run.store.revokeGuests(id, 'A', new Date().toISOString())
+      const table = await run.connectTable(id, hostKey)
+      await table.send(null, { v: 'session.end' })
+      await table.close()
+      expect((await asAccount(id, hers, { seat: 'A', answers })).status).toBe(403)
+    })
+
     it('refuses the token of a seat that was kicked, as the door does', async () => {
       const { id, hostKey } = await createRoom(run.http, `survey-${process.pid}-${++tables}`)
       const ada = await run.admit(id, 'A', 'Ada')

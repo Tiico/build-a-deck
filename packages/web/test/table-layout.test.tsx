@@ -34,6 +34,7 @@ const card = (id: string, zone: string, x: number, y: number, cardRef: string | 
 // inside the zone would end up underneath them.
 function scene(): Snapshot {
   return {
+    notes: [],
     seq: 9,
     seat: null,
     floor: 'table',

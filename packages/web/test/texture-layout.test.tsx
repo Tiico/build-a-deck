@@ -104,7 +104,7 @@ const HOLDERS: Record<string, Holder> = {
   },
   'a card in the phone hand': {
     up: false,
-    wrap: (inner) => `<div class="byd-player"><div class="byd-strip"><div class="byd-strip-card">${inner}<strong>wizard</strong></div></div></div>`,
+    wrap: (inner) => `<div class="byd-player"><div class="byd-grid"><button class="byd-grid-card">${inner}<strong>wizard</strong></button></div></div>`,
   },
   // The cards in front of the seat (C4): the face is a box of its own inside the control, so the
   // image has a size to fill and the state has a card to lie on rather than the whole card (#78).

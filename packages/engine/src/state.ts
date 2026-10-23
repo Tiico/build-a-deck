@@ -85,7 +85,7 @@ export type SetupDef = {
   // view (B6). A setup without it answers no question, which is what every table built before
   // this field did.
   cards?: Record<string, Record<string, string>>
-  // Whether the game goes in turns, and which way round the table (K29). Absent is a game without
+  // Whether the game goes in turns, and which way round the table (K30). Absent is a game without
   // turns — one played all at once, or a setup written before there were turns.
   turns?: 'clockwise' | 'counterclockwise'
 }
@@ -106,10 +106,15 @@ export type TableState = {
   played: boolean
   // A rewind proposed and not yet confirmed (B).
   rewind: RewindProposal | null
-  // Who has the turn, and the time of the line that gave it (K29). The session's and not the
+  // Who has the turn, and the time of the line that gave it (K30). The session's and not the
   // table's, like the seats: a rewind leaves it where it stands.
   turn: { seat: SeatId; at: string } | null
+  // The table's notepad (#1131), in the order its rows were written. The session's and not the
+  // game's, like the seats: a rewind restores the table and leaves this as it stands.
+  notes: Note[]
 }
+
+export type Note = { id: string; by: SeatId | null; text: string; done: boolean }
 
 // The part of a state a rewind restores: the table itself. Seats, version and setup are the
 // session's, not the game's, and stay as they are.

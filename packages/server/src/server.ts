@@ -700,17 +700,26 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
 
 // Who is answering the survey (G3, #1021), or null for nobody this table admitted. A guest is
 // her admission: the token is tried the way the door tries it, and the name and the seat are the
-// admission's. Without a token it is the project's host, from the editor's own ways in, by the
-// same login the door lets her sit down with — never the table screen's key, which sits nowhere.
+// admission's. Without a token it is first an admission the account has claimed (G1) — the way
+// Mina spel answers for a table that is over and has no way in (#1143) — and otherwise the
+// project's host, from the editor's own ways in, by the same login the door lets her sit down
+// with — never the table screen's key, which sits nowhere.
 async function surveySender(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyBody): Promise<Omit<SurveyAnswer, 'answers'> | null> {
   const observer = body.observer === true
   const seat = body.seat ?? null
+  const as = (guest: { kind: 'seat' | 'observer'; seat: string | null; name: string }): Omit<SurveyAnswer, 'answers'> | null =>
+    guest.kind === 'observer' ? (observer && seat === null ? { who: guest.name, seat: null, observer: true } : null) : !observer && seat === guest.seat ? { who: guest.name, seat: guest.seat } : null
   if (body.token !== undefined) {
     const now = clock(opts)
     const guest = await opts.store.activateGuest(session.id, hash(body.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
-    if (!guest) return null
-    if (guest.kind === 'observer') return observer && seat === null ? { who: guest.name, seat: null, observer: true } : null
-    return !observer && seat === guest.seat ? { who: guest.name, seat: guest.seat } : null
+    return guest ? as(guest) : null
+  }
+  const account = opts.auth && !/^Bearer\s/i.test(req.headers.authorization ?? '') ? await accountOf(opts.auth, req) : null
+  if (account) {
+    // A claimed admission is the account's for good, so it does not expire as a token does; one
+    // that was kicked is not, as at the door.
+    const mine = (await opts.store.guestsOf(account.id)).filter((g) => g.sessionId === session.id && g.revokedAt === undefined).map(as).find((sender) => sender !== null)
+    if (mine) return mine
   }
   if (!session.project) return null
   if (opts.auth && (/^Bearer\s/i.test(req.headers.authorization ?? '') || (await hostOf(opts, req, session)) !== 'host')) return null

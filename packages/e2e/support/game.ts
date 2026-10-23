@@ -12,7 +12,7 @@ export type Game = {
   name?: string
   /** The game's dice, as the project document's `setup.dice` says them (K28, #1136). */
   dice?: ProjectDoc['setup']['dice']
-  /** Whether the game goes in turns, and which way (K29). Left out, it does not. */
+  /** Whether the game goes in turns, and which way (K30). Left out, it does not. */
   turns?: 'clockwise' | 'counterclockwise'
 }
 

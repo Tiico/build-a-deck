@@ -158,7 +158,7 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(() => applyEdit(doc, { v: 'setDeck', id: 'ingen' })).toThrow(/ingen/)
   })
 
-  it('says whether the game goes in turns and which way, and takes it back with null (K29)', () => {
+  it('says whether the game goes in turns and which way, and takes it back with null (K30)', () => {
     const doc = after(base(), { v: 'setTurns', turns: 'clockwise' })
     expect(doc.setup.turns).toBe('clockwise')
     expect(after(doc, { v: 'setTurns', turns: 'counterclockwise' }).setup.turns).toBe('counterclockwise')

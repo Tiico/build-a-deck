@@ -3,7 +3,7 @@ import type { Snapshot } from '@byd/protocol'
 import { Harness, CARD, CARDS, registry, twoSeatSetup } from './fixture.js'
 import { applyPatch, diff, initialState, nextTurn, replay, validateSetup, type SetupDef } from '../src/index.js'
 
-// Vems tur det är (K29, #1141): en markör som skickas vidare med `turn.give` och som aldrig
+// Vems tur det är (K30, #1141): en markör som skickas vidare med `turn.give` och som aldrig
 // hindrar någon (B5). Spelet säger om det går i tur och åt vilket håll; bordet håller reda på vem
 // som har turen, och turordningen följer av var platserna sitter.
 

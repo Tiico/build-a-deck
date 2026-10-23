@@ -1,6 +1,6 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
-import { isCounter, standIn } from '../components.js'
+import { dieKind, isCounter, isDie, standIn } from '../components.js'
 import { besidePile, type DragTarget } from './drop.js'
 import { laidIn } from './lay.js'
 import { faceDown } from '../player/play.js'
@@ -28,13 +28,15 @@ const swedish: T = (key, params) => translate('sv', key, params)
 export type Thing =
   | { key: string; kind: 'card'; id: string; name: string; zone: string }
   | { key: string; kind: 'counter'; id: string; name: string; zone: string; value: number; owner: string | null }
+  // A die (#1137): its kind, «d6», is its name, and its one verb is a roll, which Enter says at once.
+  | { key: string; kind: 'die'; id: string; name: string; zone: string; value: number }
   | { key: string; kind: 'pileTop'; pile: string; name: string }
   | { key: string; kind: 'pile'; pile: string; name: string; count: number }
 
 // The things that are components and move by `move` — a card and a counter — as against the ones
 // that are a pile or the top of one.
-export const isLoose = (thing: Thing): thing is Extract<Thing, { kind: 'card' | 'counter' }> =>
-  thing.kind === 'card' || thing.kind === 'counter'
+export const isLoose = (thing: Thing): thing is Extract<Thing, { kind: 'card' | 'counter' | 'die' }> =>
+  thing.kind === 'card' || thing.kind === 'counter' || thing.kind === 'die'
 
 // The word a card is called by, or null when this view has none: the row's own title, and the
 // row's id behind it for a deck that has given the row no title yet (#412). Written once and read
@@ -103,7 +105,9 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
     .filter((c) => areas.has(c.zone))
     .map((c) => ({
       at: absolute(view, c),
-      thing: isCounter(c)
+      thing: isDie(c)
+        ? ({ key: `die:${c.id}`, kind: 'die', id: c.id, name: dieKind(c) ?? '', zone: c.zone, value: c.counter ?? 1 } satisfies Thing)
+        : isCounter(c)
         ? // A counter's name is the designer's word and nothing stands in for it: a chip this view
           // may not read has no name, rather than a card's `Dolt kort` (B5, B6).
           ({ key: `counter:${c.id}`, kind: 'counter', id: c.id, name: c.cardRef ?? '', zone: c.zone, value: c.counter ?? 0, owner: ownerOf(view, c) } satisfies Thing)
@@ -125,6 +129,7 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
 
 // The sentence a reader hears when focus lands on a thing.
 export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
+  if (thing.kind === 'die') return t('kbd.die', { kind: thing.name, n: thing.value, zone: zoneName(view, thing.zone, t) })
   if (thing.kind === 'counter') {
     const said = { zone: zoneName(view, thing.zone, t), n: thing.value }
     return thing.name === '' ? t('kbd.counter.unnamed', said) : t('kbd.counter', { name: thing.name, ...said })
@@ -148,7 +153,8 @@ export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
 // What every node on the felt is called, keyed the way the renderer knows it. The sentence ends
 // by saying what Enter does, because a control that opens a panel should say so.
 export function feltLabels(view: Snapshot, t: T = swedish): Map<string, string> {
-  return new Map(thingsOn(view, t).map((thing) => [thing.key, t('kbd.enter', { label: labelOf(view, thing, t) })]))
+  // A die's own sentence already says what Enter does, and it is not «opens actions»: it rolls.
+  return new Map(thingsOn(view, t).map((thing) => [thing.key, thing.kind === 'die' ? labelOf(view, thing, t) : t('kbd.enter', { label: labelOf(view, thing, t) })]))
 }
 
 // ================================================================================================
@@ -182,6 +188,8 @@ export function counterActs(c: VisibleComponentState, t: T = swedish): Act[] {
 }
 
 export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
+  // A die has one verb, and the server decides what it comes to (D4).
+  if (thing.kind === 'die') return [{ key: 'roll', label: t('kbd.verb.roll'), intents: [{ v: 'roll', component: thing.id }] }]
   // A card's verbs are not a counter's: a chip has no face to turn, no back to reveal and nothing
   // to look at up close. It has a value, and that is what its verbs are about.
   if (thing.kind === 'counter') {
@@ -291,7 +299,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   // A counter is not something a card stacks on (K1 is about cards).
   const cards: Place[] = view.components
-    .filter((c) => areas.has(c.zone) && !moving.has(c.id) && !isCounter(c))
+    .filter((c) => areas.has(c.zone) && !moving.has(c.id) && !isCounter(c) && !isDie(c))
     .map((c): Place => ({
       key: `c:${c.id}`,
       label: t('kbd.place.onCard', { name: cardName(c, t) }),
@@ -349,7 +357,7 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   }
   // A chip stacks on nothing — the counter type is `stackable: false`, and the table says so — so
   // where a card would join the one it was sent to, a counter goes to that card's zone instead.
-  if (place.kind === 'card' && place.anchor && thing.kind !== 'counter') {
+  if (place.kind === 'card' && place.anchor && thing.kind !== 'counter' && thing.kind !== 'die') {
     const onto = place.anchor.id
     return moving.map((id): Intent => ({ v: 'stack', component: id, onto }))
   }
@@ -357,7 +365,7 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   // A card played into a public area turns face up as a hand would (K11) — the same two verbs
   // the phone's sheet already sends. A counter has one face and no back to turn from: it is
   // `flippable: false`, and the flip sent with the move had the whole envelope refused.
-  const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter'
+  const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter' && thing.kind !== 'die'
   return moving.flatMap((id, i): Intent[] => {
     const laid = laidIn(view, place.zone, i)
     const to: Intent & { v: 'move' } = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
@@ -375,7 +383,7 @@ export function landedKeyFor(view: Snapshot, place: Place, thing: Thing): string
   const z = view.zones.find((x) => x.id === place.zone)
   // A chip stacks on nothing: sent onto a card it lands in that card's zone, still itself, so the
   // focus stays on the chip where a card's would follow it into the pile it made.
-  if (place.kind === 'card') return thing.kind === 'counter' ? thing.key : `card:${place.anchor?.id ?? ''}`
+  if (place.kind === 'card') return thing.kind === 'counter' || thing.kind === 'die' ? thing.key : `card:${place.anchor?.id ?? ''}`
   if (z?.kind === 'pile') return `pile:${z.id}`
   if (z?.kind === 'area' && isLoose(thing)) return thing.key
   // A whole pile moved keeps its own id; the top of one is a card and lands as one, above.

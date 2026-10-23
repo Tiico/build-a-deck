@@ -13,8 +13,9 @@ import { chromium, type Browser } from 'playwright'
 import { HomePage } from '../src/account/HomePage.js'
 import { ROW, helpAnchor, helpPlacement } from '../src/editor/HelpDrawer.js'
 import { StatusLive } from '../src/status/StatusLive.js'
+import { Survey } from '../src/player/Survey.js'
 import { projectDoc } from './project-doc.js'
-import { startServer, type Running } from './fixture.js'
+import { admit, createSession, startServer, type Running } from './fixture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -199,6 +200,73 @@ describe('the game tiles at 1280 px (#725)', () => {
         await page.locator(sel).hover()
         expect({ [sel]: await look(sel) }).not.toEqual({ [sel]: rest })
       }
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// «Bord du har spelat vid» (G1): the tile had no padding of its own since the game tiles moved theirs
+// onto the link inside them, so the seat, the words and «idag» stood against its edge.
+describe('the tables sat at, at 390 and 1280 px', () => {
+  it.each([390, 1280])('keeps what a played tile says inside the room a game tile gives (%i px)', async (width) => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'played@example.com' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })).status).toBe(200)
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const { container } = render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByText('Bord du har spelat vid')
+    await screen.findByText('Skogens herrar')
+    const page = await browser.newPage({ viewport: { width, height: 800 } })
+    try {
+      await page.setContent(document_(container.innerHTML), { waitUntil: 'load' })
+      const inset = await page.evaluate(`(() => {
+        const gap = (tile, inner) => {
+          const t = tile.getBoundingClientRect()
+          const r = [...inner].map((el) => el.getBoundingClientRect()).filter((b) => b.width > 0)
+          return {
+            left: Math.min(...r.map((b) => b.left)) - t.left,
+            top: Math.min(...r.map((b) => b.top)) - t.top,
+            right: t.right - Math.max(...r.map((b) => b.right)),
+          }
+        }
+        const game = document.querySelector('[data-project]')
+        const played = document.querySelector('[data-played]')
+        return { game: gap(game, game.querySelectorAll('.byd-home-open > *')), played: gap(played, played.querySelectorAll('.byd-home-played-top > *, .byd-home-played > :not(.byd-home-played-top)')) }
+      })()`)
+      const { game, played } = inset as { game: { left: number; top: number }; played: { left: number; top: number; right: number } }
+      expect(game.left).toBeGreaterThanOrEqual(16)
+      expect(played.left).toBeCloseTo(game.left, 0)
+      expect(played.top).toBeCloseTo(game.top, 0)
+      expect(played.right).toBeGreaterThanOrEqual(16)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The survey's thanks, which Mina spel's «Svara på enkäten» ends on (#1143) as the phone does: the
+// grid's rows stretched to the whole height, so the thanks, the line under it and the way on stood
+// a third of a screen apart. They are one group, held together in the middle.
+describe('the thanks after the survey', () => {
+  it.each([390, 1440])('keeps the thanks and what follows them together (%i px)', async (width) => {
+    const { container } = render(<Survey who="Ada" version="v2" saved onSubmit={() => Promise.resolve()} onward={<a className="byd-survey-save" href="/">Till Mina spel</a>} />)
+    const sheets = ['src/player/player.css', 'src/buttons.css', 'src/a11y.css'].map(read).join('\n')
+    const page = await browser.newPage({ viewport: { width, height: 844 } })
+    try {
+      await page.setContent(shell.replace('<script type="module" src="/src/main.tsx"></script>', '').replace('</head>', `<style>${sheets}</style></head>`).replace('<div id="root"></div>', `<div id="root">${container.innerHTML}</div>`), { waitUntil: 'load' })
+      const gaps = (await page.evaluate(`(() => {
+        const r = [...document.querySelector('.byd-survey-thanks').children].map((el) => el.getBoundingClientRect())
+        return r.slice(1).map((b, i) => b.top - r[i].bottom)
+      })()`)) as number[]
+      expect(gaps.length).toBeGreaterThanOrEqual(2)
+      for (const gap of gaps) expect(gap).toBeLessThanOrEqual(16)
     } finally {
       await page.close()
     }

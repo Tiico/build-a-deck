@@ -37,6 +37,8 @@ test('the designer reads the phones’ answers and the flag in the Resultat view
   await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 } as never])
 
   // Ada flags a moment from her phone, with a word about it.
+  // The flag stands in «More» on the phone (#1147).
+  await ada.page.getByRole('tab', { name: /^More/ }).click()
   await ada.page.getByRole('button', { name: 'Flag' }).click()
   const sheet = ada.page.getByRole('dialog')
   await sheet.getByRole('textbox').fill('The dragon is too strong')
@@ -82,13 +84,17 @@ test('a card pointed out from the phone is the card in the flag’s row in Resul
   await expect(ada.page.getByText('Ada').first()).toBeVisible()
   const dealer = await host(table)
   await dealer.send([{ v: 'deal', from: 'draw', to: ['hand:A'], each: 2 } as never])
-  const cards = ada.page.locator('.byd-strip[data-hand] [data-hand-card]')
+  const cards = ada.page.locator('[data-hand] [data-hand-card]')
   await expect(cards).toHaveCount(2)
 
+  // The flag stands in «More» on the phone (#1147).
+  await ada.page.getByRole('tab', { name: /^More/ }).click()
   await ada.page.getByRole('button', { name: 'Flag' }).click()
   await ada.page.getByRole('dialog').getByRole('textbox').fill('Too much text')
   await ada.page.getByRole('button', { name: /A card/ }).click()
   await expect(ada.page.getByRole('status', { name: 'Tap the card it is about' })).toBeVisible()
+  // The hand is a tab away, and a tab still turns while a card is pointed out.
+  await ada.page.getByRole('tab', { name: /^Hand/ }).click()
   await cards.nth(1).tap()
   await expect(ada.page.locator('.byd-inspect')).toHaveCount(0)
   const sheet = ada.page.getByRole('dialog', { name: 'Flag the card' })

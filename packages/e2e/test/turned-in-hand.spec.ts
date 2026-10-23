@@ -23,7 +23,9 @@ test('a card turned over in the hand lands face down, and only its owner is told
   await ada.page.locator('[data-zone-draw="draw"]').click()
   const card = ada.page.locator('[data-hand-card]')
   await expect(card).toHaveCount(1)
-  await card.click()
+  // The card drawn is the one marked (#1147), and the bar over the tabs holds it up.
+  await expect(card).toHaveAttribute('aria-pressed', 'true')
+  await ada.page.locator('[data-hand-bar]').getByRole('button', { name: 'Read large' }).click()
   const held = ada.page.getByRole('dialog')
   const title = (await held.getAttribute('aria-label'))!
   // The card stays held up: the turn is not a play, and the press under it now says how it lands.

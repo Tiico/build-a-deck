@@ -213,6 +213,10 @@ export const svPlay = {
   // Namnet på en räknare är designerns (B5) och kan saknas i en vy som inte får se den. Ett korts
   // reservord är `Dolt kort`, och det skulle smuggla tillbaka `kort` i en brickas mening.
   'kbd.counter.unnamed': 'Räknare i {zone}, värde {n}',
+  // En tärning (#1137) heter sin sort, «d6», som vid ett bord, och sidan upp är det den visar. Enter slår
+  // den direkt i stället för att öppna en panel, så meningen säger det och inte «öppnar handlingar».
+  'kbd.die': '{kind}, visar {n}, i {zone}. Enter slår tärningen.',
+  'kbd.verb.roll': 'Slå',
   'kbd.pile.top': 'Översta kortet i {zone}: {name}',
   'kbd.pile.empty': '{zone}, tom',
   // En hög är ett stopp (#572): namnet, hur mycket som ligger i den, och vad som ligger överst.
@@ -311,7 +315,7 @@ export const svPlay = {
   'activity.flag.observer': '{name} (observatör)',
   'activity.turn.give': '{who} gav turen till {to}',
   'activity.turn.take': '{who} tog turen',
-  // Vems tur det är (K29): vid platsens namn på filten och i telefonens huvud.
+  // Vems tur det är (K30): vid platsens namn på filten och i telefonens huvud.
   'turn.of': '{name:s} tur',
   'turn.mine': 'Din tur',
   // Knappen visar «Klar», en pil och nästa plats namn; namnet för den som hör den säger hela meningen.
@@ -320,6 +324,14 @@ export const svPlay = {
   'turn.next': 'nästa',
   'turn.give': 'Ge turen till {name}',
   'turn.take': 'Ta turen',
+  'activity.note.add': '{who} antecknade: {text}',
+  'activity.note.edit': '{who} skrev om en anteckning: {text}',
+  'activity.note.check': '{who} bockade av: {text}',
+  'activity.note.uncheck': '{who} tog bort bocken vid: {text}',
+  'activity.note.checked': '{who} bockade av en anteckning',
+  'activity.note.unchecked': '{who} tog bort en bock',
+  'activity.note.remove': '{who} strök: {text}',
+  'activity.note.removed': '{who} strök en anteckning',
   // Flera rader i samma andetag blir en mening i den artiga live-regionen (D5). Singularformen
   // är ingen sammanfattning alls: en ensam rad sägs som den mening den är.
   'activity.others.one': '{latest}',
@@ -349,13 +361,11 @@ export const svPlay = {
   // stängs med ett tryck utanför — vilket på en telefon är nästan hela skärmen. Det som säger
   // vad en handling får för följd flyttar aldrig hit; raden över handen står kvar där den står.
   'play.help.hand.topic': 'handen',
-  'play.help.hand.pick': 'Tryck på ett kort för att läsa och välja det. Håll för att välja flera.',
-  'play.help.hand.play': 'Dra ett valt kort uppåt för att spela det, eller använd knapparna under handen.',
+  'play.help.hand.pick': 'Tryck på ett kort för att välja det. Tryck på flera för att spela dem tillsammans.',
+  'play.help.hand.play': 'Knapparna under handen spelar de valda korten, och «Läs stort» visar ett kort i full storlek.',
   'play.help.hand.hidden': 'De andra ser hur många kort du har, men inte vilka.',
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
-  'player.hint.selected.one': '{n} valt',
-  'player.hint.selected.other': '{n} valda',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
   'player.counter.set': '{name}: {value}. Ange värde',
@@ -379,18 +389,19 @@ export const svPlay = {
   'player.mine.empty': 'Inget här ännu. Spela ett kort från handen.',
   // Hela bordet, utfällt när det efterfrågas (C4). Raden över handen är högarna; det här är
   // varje zon läsaren ser in i, andra platsers ytor inräknade sedan #414.
-  'player.table.title': 'Hela bordet',
   'online.hand.back': 'Tillbaka till handen',
   'online.last': 'Senast:',
   'online.last.now': 'nyss',
   'online.last.s': 'för {n} s sedan',
   'online.last.min': 'för {n} min sedan',
   'online.table.where': 'Hela bordet visas på TV:n eller på en större skärm.',
-  // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
-  'player.hand.title': 'Dina kort',
-  // Handens överblick på telefonen (#767): «Visa alla» och var i remsan man står.
-  'player.hand.all': 'Visa alla · {n}',
-  'player.hand.where': '{from}–{to} av {n}',
+  // Telefonens fyra flikar (#1147, beställarens val B).
+  'player.tabs': 'Telefonens flikar',
+  'player.tab.hand': 'Handen',
+  'player.tab.mine': 'Framför mig',
+  'player.tab.table': 'Bordet',
+  'player.tab.more': 'Mer',
+  'player.more.help': 'Så fungerar handen',
   'online.spread.title': 'Hela handen',
   'online.spread.label.one': 'Hela handen, {n} kort',
   'online.spread.label.other': 'Hela handen, {n} kort',
@@ -398,16 +409,17 @@ export const svPlay = {
   'online.spread.count.other': '{n} kort',
   'online.spread.close': 'Stäng',
   'player.hand.actions': 'Spela valda kort',
-  'player.hand.read': 'Läs valt kort',
-  'player.hand.chosen': 'Valt: {name}',
-  'player.hand.chosen.down': 'Valt: {name} · spelas nedvänt',
+  'player.hand.read': 'Läs stort',
+  'player.hand.marked.one': '{n} kort valt',
+  'player.hand.marked.other': '{n} kort valda',
+  'player.hand.clear': 'Avmarkera',
+  // Ett kort vänt i handen spelas nedvänt (#1133), och raden över flikarna säger det.
+  'player.hand.chosen.down': '{name} · spelas nedvänt',
   'player.hand.turn': 'Vänd',
   'player.hand.unturn': 'Vänd upp',
   'player.hand.turned': 'nedvänt · {name}',
   'player.hand.down': '{label} · nedvänt',
-  'player.hand.none': 'Inget kort valt',
-  'player.hand.left': 'Flytta vänster',
-  'player.hand.right': 'Flytta höger',
+  // Tom hand (UX-16): samma form som raden under det som ligger framför en.
   'player.hand.empty': 'Du har inga kort. Dra ett kort från {pile}.',
   'player.hand.empty.any': 'Du har inga kort. Dra ett kort från en hög.',
   'player.hand.empty.none': 'Du har inga kort, och det finns inga att dra.',
@@ -546,6 +558,18 @@ export const svPlay = {
 
   // Helt online (C2): bordet och handen i samma fönster.
   'online.showall': 'Visa alla',
+  'notes.title': 'Anteckningar',
+  'notes.unseen': 'Anteckningar, nytt från någon annan',
+  'notes.empty': 'Inget antecknat än. Det ni skriver här ser alla vid bordet, och det ligger kvar till nästa gång.',
+  'notes.new': 'Ny anteckning',
+  'notes.new.placeholder': 'Skriv en anteckning och tryck Enter',
+  'notes.done': 'Klar: {text}',
+  'notes.edit': 'Ändra: {text}',
+  'notes.remove': 'Ta bort: {text}',
+  'notes.remove.title': 'Ta bort',
+  'notes.refused.full': 'Blocket är fullt: hundra rader. Ta bort en innan du skriver en ny.',
+  'notes.refused.gone': 'Raden finns inte längre: någon tog bort den.',
+  'notes.refused.other': 'Bordet tog inte emot raden. Försök igen.',
   'online.observers.one': '{names} tittar på',
   'online.observers.other': '{names} tittar på',
 

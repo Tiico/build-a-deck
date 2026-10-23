@@ -12,6 +12,7 @@ const counter = (id: string, zone: string): VisibleComponentState => ({ id, type
 
 function table(seat: string | null): Snapshot {
   return {
+    notes: [],
     seq: 1,
     seat,
     floor: 'table',

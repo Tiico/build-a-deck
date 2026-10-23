@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Bord du har spelat vid: vad enkätraden leder till</title>
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-22: «Formatteringen på "tables you have played at" är helt skev, det är
+     också oklart vad man ska göra med informationen efter man får upp survey answered.»
+     Skevheten är en bugg (brickan förlorade sin padding) och rättas utan prototyp.
+     Enkätraden är frågan här: i dag säger brickan «enkät besvarad» / «enkät inte besvarad» och
+     leder ingenstans. Ett avslutat bord har ingen väg in alls, så den som inte svarade kan inte
+     svara härifrån, och den som svarade får ett kvitto utan följd.
+       A  Bara det som går att göra: enkätraden och flaggorna tas bort.
+       B  Enkäten som en uppgift: «Svara på enkäten» där den väntar, en tyst bock där den är gjord.
+       C  Brickan öppnar bordets slut: hur det slutade, dina svar och dina flaggor att läsa.
+     Brickorna är ritade med account.css egna mått och färger, efter rättelsen av paddingen.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0f1117; color: #e6ecfa; font: 14px system-ui, sans-serif; }
+  .protorad { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 10px 16px; background: #2a2417; color: #ffd98a; border-bottom: 1px solid #5a4a22; }
+  .protorad b { letter-spacing: 1px; }
+  .protorad button { min-height: 36px; padding: 0 12px; border: 1px solid #5a4a22; border-radius: 8px; background: transparent; color: #ffd98a; font: inherit; cursor: pointer; }
+  .protorad button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad p { flex: 1 1 100%; margin: 0; color: #e8d9ad; font-size: 13px; }
+  main { display: flex; flex-wrap: wrap; gap: 32px; padding: 24px 16px 64px; align-items: flex-start; }
+  .skarm { display: grid; gap: 6px; }
+  .skarm > span { color: #9aa3b8; font-size: 11px; }
+  .sida { background: #0f1117; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); padding: 24px 20px 32px; display: grid; gap: 14px; align-content: start; }
+  .sida[data-w='desk'] { width: 960px; }
+  .sida[data-w='phone'] { width: 390px; }
+
+  /* Ur account.css */
+  .h2 { margin: 12px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .bricka { background: #171a23; border: 1px solid #262a35; border-radius: 16px; padding: 16px; display: grid; gap: 8px; align-content: start; color: #fff; text-decoration: none; position: relative; }
+  .bricka strong { font-size: 17px; }
+  .topp { display: flex; justify-content: space-between; align-items: center; }
+  .plats { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font-style: normal; font-weight: 800; font-size: 12px; }
+  .tyst { color: #9aa3b8; }
+  .fakta { color: #cfd5e3; font-size: 13px; }
+  .handling { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; color: #7dd3a0; font-weight: 700; text-decoration: none; }
+  /* B */
+  .bock { display: inline-flex; gap: 6px; align-items: center; color: #9aa3b8; font-size: 13px; }
+  .bock svg { width: 16px; height: 16px; color: #7dd3a0; }
+  .knapp { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; padding: 0 16px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; }
+  /* C */
+  .bricka[data-oppnar] { cursor: pointer; }
+  .bricka[data-oppnar]:hover { border-color: #3a4152; background: #1d212b; }
+  .bricka .pil { position: absolute; right: 16px; bottom: 16px; color: #7d8597; }
+  .ark { border: 1px solid #262a35; border-radius: 16px; background: #171a23; padding: 20px; display: grid; gap: 14px; }
+  .ark h3 { margin: 0; font-size: 20px; }
+  .ark dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+  .ark dt { color: #9aa3b8; }
+  .ark dd { margin: 0; }
+  .ark .flagga { border-left: 3px solid #f0b64a; padding: 4px 0 4px 10px; color: #cfd5e3; }
+  .ark .flagga small { display: block; color: #7d8597; }
+  .tillbaka { color: #7dd3a0; text-decoration: none; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <b>PROTOTYP</b>
+  <span style="display:flex;gap:4px;flex-wrap:wrap">
+    <button data-v="nu">I dag (rättad padding)</button>
+    <button data-v="A">A · Bara det som går att göra</button>
+    <button data-v="B">B · Enkäten som en uppgift</button>
+    <button data-v="C">C · Brickan öppnar bordets slut</button>
+  </span>
+  <p id="om"></p>
+</div>
+<main id="vy"></main>
+<script>
+const OM = {
+  nu: 'Som på main efter rättelsen av paddingen: «enkät besvarad» och «enkät inte besvarad» leder ingenstans, och ett avslutat bord har ingen väg in.',
+  A: 'Brickan säger bara det spelaren kan använda: vilket spel, vilken plats, när, och vägen tillbaka medan bordet pågår. Enkäten och flaggorna är designerns data och syns för designern i Bord-fliken (#1010). Ingen serverändring.',
+  B: 'Ett avslutat bord vars enkät väntar får knappen «Svara på enkäten», som öppnar telefonens egen enkät för den platsen. Ett besvarat blir en tyst bock. Kräver att /me/played/:id/return också ger en väg till enkäten när bordet är slut.',
+  C: 'Varje bricka öppnar en läsvy över bordets slut: versionen, hur länge, vilka som satt, dina svar och dina flaggade ögonblick. Svarar på «vad hände med det jag sa?». Ny vy och ny endpoint för spelarens egna svar.',
+}
+const SEAT = { A: '#3c8ce7', B: '#2fa36b', C: '#d0543f' }
+const bord = [
+  { plats: 'A', nar: 'idag', spel: 'Skogens herrar', ver: 'v3', namn: 'Ada', slut: false, svar: false, flaggor: 0 },
+  { plats: 'C', nar: 'igår', spel: 'Skogens herrar', ver: 'v2', namn: 'Ada', slut: true, svar: true, flaggor: 2 },
+  { plats: 'B', nar: '3 dagar sedan', spel: 'Havets handlare', ver: 'v1', namn: 'Ada L.', slut: true, svar: false, flaggor: 0 },
+]
+const bock = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>'
+
+function bricka(b, v) {
+  const topp = `<div class="topp"><i class="plats" style="background:${SEAT[b.plats]}">${b.plats}</i><span class="tyst">${b.nar}</span></div>`
+  const huvud = `${topp}<strong>${b.spel}</strong><span class="tyst">${b.ver} · du spelade som ${b.namn}</span>`
+  const tillbaka = !b.slut ? '<a class="handling" href="#">Öppna bordet</a>' : ''
+  if (v === 'nu') {
+    const fakta = !b.slut ? 'pågår' : b.svar ? 'enkät besvarad' : 'enkät inte besvarad'
+    return `<div class="bricka">${huvud}<span class="fakta">${fakta}${b.flaggor ? ` · ${b.flaggor} flaggade` : ''}</span>${tillbaka}</div>`
+  }
+  if (v === 'A') return `<div class="bricka">${huvud}<span class="fakta">${b.slut ? 'avslutat' : 'pågår'}</span>${tillbaka}</div>`
+  if (v === 'B') {
+    const rad = !b.slut ? '<span class="fakta">pågår</span>' : b.svar ? `<span class="bock">${bock}Du har svarat på enkäten</span>` : '<span class="fakta">avslutat</span><a class="knapp" href="#">Svara på enkäten</a>'
+    return `<div class="bricka">${huvud}${rad}${tillbaka}</div>`
+  }
+  const rad = !b.slut ? '<span class="fakta">pågår</span>' : `<span class="fakta">avslutat${b.svar ? ' · du svarade' : ''}${b.flaggor ? ` · ${b.flaggor} flaggade` : ''}</span>`
+  return `<div class="bricka" ${b.slut ? 'data-oppnar onclick="arket()"' : ''}>${huvud}${rad}${tillbaka}${b.slut ? '<span class="pil" aria-hidden="true">›</span>' : ''}</div>`
+}
+
+function sida(w, v) {
+  return `<div class="skarm"><span>${w === 'desk' ? 'Mina spel · 960 px' : 'Mina spel · telefon 390 px'}</span><div class="sida" data-w="${w}"><h2 class="h2">Bord du har spelat vid</h2><div class="grid">${bord.map((b) => bricka(b, v)).join('')}</div></div></div>`
+}
+
+function arket() {
+  document.getElementById('ark').innerHTML = `<span>Efter ett klick på «Skogens herrar · igår»</span><div class="sida" data-w="phone"><a class="tillbaka" href="#" onclick="document.getElementById('ark').innerHTML='';return false">‹ Mina spel</a>
+  <div class="ark"><h3>Skogens herrar</h3>
+  <dl><dt>Version</dt><dd>v2</dd><dt>Spelat</dt><dd>igår 19:40, 42 min</dd><dt>Vid bordet</dt><dd>Ada (C), Bertil (A), Cecilia (B)</dd></dl></div>
+  <div class="ark"><h3>Dina svar</h3><dl><dt>Kul</dt><dd>4 av 5</dd><dt>Tydlighet</dt><dd>3 av 5</dd><dt>Balans</dt><dd>2 av 5</dd><dt>Ändra</dt><dd>«Draghögen tar slut för fort med tre spelare.»</dd></dl></div>
+  <div class="ark"><h3>Dina flaggor</h3><div class="flagga">«Oklart om man får spela två kort.»<small>drag 14 · v2</small></div><div class="flagga">«Lodjuret känns för starkt.»<small>drag 31 · v2</small></div></div></div>`
+}
+
+function visa(v) {
+  document.querySelectorAll('[data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)))
+  document.getElementById('om').textContent = OM[v]
+  document.getElementById('vy').innerHTML = sida('desk', v) + sida('phone', v) + (v === 'C' ? '<div class="skarm" id="ark"></div>' : '')
+  if (v === 'C') arket()
+  history.replaceState(null, '', `?v=${v}`)
+}
+document.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', () => visa(b.dataset.v)))
+visa(new URLSearchParams(location.search).get('v') || 'B')
+</script>
+</body>
+</html>

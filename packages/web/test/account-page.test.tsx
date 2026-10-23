@@ -6,9 +6,11 @@ import { LoginCard } from '../src/account/LoginCard.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { SurveyPage } from '../src/account/SurveyPage.js'
+import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { faviconSvg } from '../src/brand/mark.js'
-import { admit, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
+import { admit, asTable, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 
 // Accounts (G1, prototype A): the login card at `/login` until the link in the mail has been
@@ -235,6 +237,64 @@ describe('the tables the account sat at (G1)', () => {
     // A token of its own: the server keeps only a hash, so the seat is handed a new one.
     expect(to.searchParams.get('token')).toBeTruthy()
     expect(to.searchParams.get('token')).not.toBe(token)
+  })
+
+  // The survey from Mina spel (#1143, variant B): a table that is over has no way in, so the tile
+  // offers its survey while it waits, the account answers it on a page of its own, and the tile
+  // then says quietly that it is answered — nothing more to do there.
+  it('offers the survey on a table that is over, answers it from the account, and then says it is answered', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })).status).toBe(200)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'session.end' })
+    table.close()
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    const card = (await screen.findByText('du spelade som Ada', { exact: false })).closest(`[data-played="${id}"]`) as HTMLElement
+    expect(card.textContent).toContain('avslutat')
+    expect(card.textContent).not.toContain('enkät inte besvarad')
+    fireEvent.click(within(card).getByRole('link', { name: 'Svara på enkäten' }))
+    const to = new URL(gone[0]!, 'http://app.invalid')
+    expect(to.pathname).toBe('/survey')
+    expect(Object.fromEntries(to.searchParams)).toEqual({ session: id, server: run.http })
+    cleanup()
+
+    history.replaceState(null, '', `${to.pathname}${to.search}`)
+    const after: string[] = []
+    render(<SurveyPage onNavigate={(u) => after.push(u)} />)
+    for (const n of ['4', '3', '2']) {
+      fireEvent.click(await screen.findByRole('button', { name: new RegExp(`^${n}$`) }))
+      fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    expect(await screen.findByText('Tack, Ada.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('link', { name: 'Till Mina spel' }))
+    expect(after).toEqual([`/?server=${encodeURIComponent(run.http)}`])
+    cleanup()
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+    const done = (await screen.findByText('Du har svarat på enkäten')).closest(`[data-played="${id}"]`) as HTMLElement
+    expect(within(done).queryByRole('link', { name: 'Svara på enkäten' })).toBeNull()
+  })
+
+  it('sends a reader without a login to the login page, which comes back to the survey', async () => {
+    const id = await createSession(run)
+    const here = `/survey?session=${id}&server=${encodeURIComponent(run.http)}`
+    history.replaceState(null, '', here)
+    const gone: string[] = []
+    render(<SurveyPage onNavigate={(u) => gone.push(u)} />)
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const to = new URL(gone[0]!, 'http://app.invalid')
+    expect(to.pathname).toBe('/login')
+    expect(Object.fromEntries(to.searchParams)).toEqual({ next: here, server: run.http })
   })
 
   // A game taken away takes its tables with it (#676): the row says so, and offers no way back.

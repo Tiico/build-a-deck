@@ -91,5 +91,5 @@ export function initialState(version: GameVersionId, setup: SetupDef, registry: 
   const { zones, components, nextId } = materialise(setup, 0)
   const seats: TableState['seats'] = {}
   for (const id of setup.seats) seats[id] = { id, name: null }
-  return { version, seq: 0, setup, zones, components, seats, nextId, ended: false, played: false, rewind: null, turn: null }
+  return { version, seq: 0, setup, zones, components, seats, nextId, ended: false, played: false, rewind: null, turn: null, notes: [] }
 }

@@ -1,4 +1,4 @@
-import { PHYSICAL_VERBS, SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
+import { NOTE_MAX, PHYSICAL_VERBS, SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
 import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import { sees } from './project.js'
@@ -47,10 +47,20 @@ export function decide(state: TableState, registry: TypeRegistry, env: Envelope,
   return { ok: true, applied: lines }
 }
 
+// The notepad's bounds (#1131): a row says something and is at most what a flag's note may be, and
+// the pad holds a hundred rows — more than a game asks anyone to keep in their head, and few enough
+// that the whole pad travels in one patch.
+const NOTES_MAX = 100
+function noteText(text: string): string | null {
+  if (text.trim().length === 0) return 'a note says something'
+  return text.length > NOTE_MAX ? `a note is at most ${NOTE_MAX} characters` : null
+}
+
 function validate(state: TableState, registry: TypeRegistry, seat: string | null, it: Intent): string | null {
   const comp = (id: ComponentId) => (state.components[id] ? null : `unknown component ${id}`)
   const zone = (id: ZoneId) => (state.zones[id] ? null : `unknown zone ${id}`)
   const all = (checks: (string | null)[]) => checks.find((c) => c !== null) ?? null
+  const note = (id: string) => (state.notes.some((n) => n.id === id) ? null : `unknown note ${id}`)
   const def = (id: ComponentId) => registry.get(componentOf(state, id).type)
   // A pile named as a source (K15) must exist, be a pile, and have a top to give.
   const ref = (r: ComponentRef): string | null => {
@@ -173,13 +183,21 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       if (it.component !== undefined && !sees(state, registry, seat, it.component, seat === null && it.observer !== undefined)) return `no component ${it.component} in view`
       return null
     case 'turn.give': {
-      // Refused only where it cannot mean anything (K29, B5): who gives it, and when, is never
+      // Refused only where it cannot mean anything (K30, B5): who gives it, and when, is never
       // the table's to judge.
       if (!state.setup.turns) return 'this game does not go in turns'
       const s = state.seats[it.seat]
       if (!s) return `unknown seat ${it.seat}`
       return s.name === null ? `seat ${it.seat} is free` : null
     }
+    case 'note.add':
+      if (state.notes.length >= NOTES_MAX) return `the notepad holds at most ${NOTES_MAX} notes`
+      return noteText(it.text)
+    case 'note.edit':
+      return note(it.note) ?? noteText(it.text)
+    case 'note.check':
+    case 'note.remove':
+      return note(it.note)
     case 'version.change': {
       for (const spec of it.components) {
         if (!state.zones[spec.zone]) return `unknown zone ${spec.zone}`
@@ -222,8 +240,9 @@ function validateRewind(state: TableState, env: Envelope, it: Intent, history: H
 }
 
 // The lines still in effect on the table: a restore takes everything after its target out of
-// the story, and neither talking about a rewind, sitting down or leaving, nor passing the turn is play.
-const NOT_PLAY = new Set(['rewind.propose', 'rewind.reject', 'seat.claim', 'seat.release', 'flag', 'turn.give'])
+// the story, and neither talking about a rewind, sitting down or leaving, passing the turn nor
+// writing in the notepad is play.
+const NOT_PLAY = new Set(['rewind.propose', 'rewind.reject', 'seat.claim', 'seat.release', 'flag', 'turn.give', 'note.add', 'note.edit', 'note.check', 'note.remove'])
 export function effectiveLines(log: readonly Applied[]): Applied[] {
   const out: Applied[] = []
   let cutoff = Infinity

@@ -44,7 +44,7 @@ export function routeOf(pathname: string): Route {
 // is not (#1009), and a tab that says "Mina spel" over the second one names a page that is not there.
 // Only a page with two shapes reports it, and the address decides for every other one.
 // `part` is which part of a page with parts is open — the editor's tab (#477) — in the reader's words.
-// `turn` is that it is the reader's turn (K29), said first so that a tab clipped from the right keeps it.
+// `turn` is that it is the reader's turn (K30), said first so that a tab clipped from the right keeps it.
 export type TitleContext = { state?: StatusKey | null; room?: string | null; game?: string | null; route?: Route | null; part?: string | null; turn?: boolean | null }
 
 // The name of the page first, because a tab is clipped from the right, and `·` because that is

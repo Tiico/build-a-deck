@@ -575,19 +575,18 @@ describe('a flag about a card (#1142)', () => {
     const eva = await connect(id, null, { role: 'observer', name: 'Eva' })
     clients.push(eva)
     const before = b.frames.length
-    // The id as a frame would carry it, quotes and all: a card id is two characters, and as a bare
-    // substring it turns up inside the random ids of other things on the wire (an observer's id).
-    const named = JSON.stringify(card)
 
     expect((await a.send('A', { v: 'flag', component: card, note: 'för lång text' })).t).toBe('ack')
     await b.waitFor((m) => m.t === 'activity' && m.lines.some((l) => l.intent.v === 'flag'))
     expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, note: 'för lång text' })
-    expect(b.frames.slice(before).join('\n')).not.toContain(named)
+    // Searched for as the JSON string it travels as: a bare `c0` is also somewhere inside the random
+    // id an observer is given in the roster, and CI failed on exactly that (#1165).
+    expect(b.frames.slice(before).join('\n')).not.toContain(JSON.stringify(card))
 
     // The observer's flag keeps its card too, stamped with her name.
     expect((await eva.send(null, { v: 'flag', component: card })).t).toBe('ack')
     expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, observer: 'Eva' })
-    expect(b.frames.slice(before).join('\n')).not.toContain(named)
+    expect(b.frames.slice(before).join('\n')).not.toContain(JSON.stringify(card))
   })
 })
 
@@ -772,7 +771,7 @@ describe('the printed text is hidden information, like the title (#551, B6)', ()
   }, 60_000)
 })
 
-// Whose turn it is (K29) is no secret: every view hears it in the same patch.
+// Whose turn it is (K30) is no secret: every view hears it in the same patch.
 describe('the turn on the wire', () => {
   it('reaches every view in a patch when it is given', async () => {
     const res = await fetch(`${run.http}/sessions`, {

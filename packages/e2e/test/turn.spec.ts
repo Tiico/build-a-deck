@@ -2,10 +2,10 @@ import { join } from '../support/api.js'
 import { DESK, PHONE } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
-// Vems tur det är (K29, #1141), som två spelare möter det: Ada vid en dator på /online och Bo med
+// Vems tur det är (K30, #1141), som två spelare möter det: Ada vid en dator på /online och Bo med
 // telefonen. Den som satte sig först har turen, «Klar» skickar den vidare, och båda skärmarna och
 // båda flikarna säger samma sak.
-test.describe('the turn passed on between a laptop and a phone (K29)', () => {
+test.describe('the turn passed on between a laptop and a phone (K30)', () => {
   test('Ada has the turn first, «Klar» gives it to Bo, and both screens say so', async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 6, turns: 'clockwise' })
     const ada = await join(request, table, { name: 'Ada', seat: 'A' })

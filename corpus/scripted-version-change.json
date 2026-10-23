@@ -465,6 +465,7 @@
       "ended": false,
       "played": true,
       "version": "v2",
+      "notes": [],
       "turn": null
     },
     "B": {
@@ -591,6 +592,7 @@
       "ended": false,
       "played": true,
       "version": "v2",
+      "notes": [],
       "turn": null
     },
     "table": {
@@ -717,6 +719,7 @@
       "ended": false,
       "played": true,
       "version": "v2",
+      "notes": [],
       "turn": null
     },
     "observer": {
@@ -971,6 +974,7 @@
       "ended": false,
       "played": true,
       "version": "v2",
+      "notes": [],
       "turn": null
     }
   }
