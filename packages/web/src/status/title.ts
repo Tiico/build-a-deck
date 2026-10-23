@@ -1,6 +1,7 @@
 import { codeOfAddress } from '@byd/protocol'
 import { translate, type T } from '../i18n/index.js'
 import type { StatusKey } from './notice.js'
+import { CROSSROADS, GUIDED } from '../wizard/paths.js'
 
 const swedish: T = (key, params) => translate('sv', key, params)
 
@@ -14,7 +15,8 @@ export type Route = (typeof ROUTES)[number]
 const PATHS: Record<string, Route> = {
   '/': 'home',
   '/login': 'login',
-  '/new': 'new',
+  [CROSSROADS]: 'new',
+  [GUIDED]: 'new',
   '/claim': 'claim',
   '/profile': 'profile',
   '/editor': 'editor',

@@ -119,11 +119,60 @@
 .byd-wizard-handoff strong { color: #3d2a0a; }
 
 .byd-wizard-block { display: grid; gap: 10px; align-content: start; min-width: 0; }
-/* The way past the guided start (L42): a quiet block under the name and the seats, with the
-   second action bordered rather than filled (L13), so the guided way stays the first. */
-.byd-wizard-blank { display: grid; gap: 8px; justify-items: start; margin-top: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fafaf7; }
-.byd-wizard-blank strong { color: #454c44; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-.byd-wizard-blank p { margin: 0; font-size: 12px; }
+
+/* The crossroads before the guide (L79, #1218, prototype B): one column on the paper, the name and
+   the seats in a quiet box, and the two doors under the question. The page scrolls as a page; it is
+   short enough that nothing on it needs to stand still. */
+.byd-wizard-crossroads { padding: 36px 24px 48px; display: grid; grid-template-columns: minmax(0, 760px); justify-content: center; }
+.byd-wizard-crossroads-inner { min-width: 0; display: grid; gap: 24px; }
+.byd-wizard-basics { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 24px; align-items: end; padding: 20px 24px; border: 1px solid var(--line); border-radius: 14px; background: #fafaf7; }
+.byd-wizard-basics > .byd-wizard-label { grid-column: 1; grid-row: 1; font-size: 13px; }
+.byd-wizard-basics > .byd-wizard-label input { font-size: 16px; font-weight: 650; }
+.byd-wizard-basics > fieldset { grid-column: 2; grid-row: 1; margin: 0; }
+.byd-wizard-basics > :is(.byd-wizard-hint, .byd-wizard-says) { grid-column: 1 / -1; margin: 0; }
+.byd-wizard-ways { display: grid; gap: 12px; }
+.byd-wizard-ways h2 { font-size: 13px; color: #454c44; }
+.byd-wizard-doors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* A door is a button the size of what it says: the art, the title, what it gives, and where it goes.
+   The first is the first action (L13) and is drawn in the ink the primary button is filled with; the
+   second keeps the room's own line. */
+.byd-wizard .byd-wizard-door { min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; gap: 4px 18px; padding: 20px; border: 1px solid var(--byd-secondary-line); border-radius: 14px; background: var(--byd-wizard-field-bg); text-align: left; }
+.byd-wizard .byd-wizard-door[data-first] { border: 2px solid var(--ink); padding: 19px; }
+.byd-wizard .byd-wizard-door:hover { border-color: var(--ink); box-shadow: 0 6px 18px rgb(30 38 32 / 12%); }
+.byd-wizard-door > :not(.byd-wizard-door-art) { grid-column: 2; }
+.byd-wizard-door > strong { font: 700 19px/1.2 Georgia, serif; }
+.byd-wizard-door > span:not([class]) { color: var(--muted); line-height: 1.45; }
+.byd-wizard-door-more { margin-top: 4px; display: inline-flex; align-items: center; gap: 6px; color: #454c44; font-size: 13px; font-weight: 700; }
+.byd-wizard-door[data-first] .byd-wizard-door-more { color: var(--accent); }
+.byd-wizard-door-more svg { width: 14px; height: 14px; }
+/* The cards each door makes, drawn: three example cards fanned, or one empty card. */
+.byd-wizard-door-art { grid-row: 1 / span 3; position: relative; width: 92px; height: 100px; }
+.byd-wizard-door-art i { position: absolute; top: 8px; left: 18px; width: 56px; height: 78px; border: 1.5px solid #55604f; border-radius: 5px; background: #f3eedf; }
+.byd-wizard-door-art i:nth-child(1) { left: 2px; rotate: -10deg; }
+.byd-wizard-door-art i:nth-child(2) { top: 4px; }
+.byd-wizard-door-art i:nth-child(3) { left: 34px; rotate: 10deg; background: #efe1cf; }
+.byd-wizard-door-art:not([data-blank]) i::before { content: ''; position: absolute; inset: 9px 8px auto; height: 5px; border-radius: 2px; background: #b9b3a2; }
+.byd-wizard-door-art:not([data-blank]) i::after { content: ''; position: absolute; inset: 20px 8px 26px; border-radius: 2px; background: #dcd6c4; }
+.byd-wizard-door-art[data-blank] i { left: 18px; top: 8px; rotate: none; border-style: dashed; background: transparent; }
+@media (max-width: 767px) {
+  .byd-wizard-crossroads { padding: 20px 16px 32px; }
+  .byd-wizard-crossroads-inner { gap: 20px; }
+  .byd-wizard-basics { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .byd-wizard-basics > fieldset { grid-column: 1; grid-row: auto; }
+  .byd-wizard-doors { grid-template-columns: minmax(0, 1fr); }
+  .byd-wizard-door-art { width: 64px; height: 80px; }
+  .byd-wizard-door-art i { left: 12px; width: 42px; height: 60px; }
+  .byd-wizard-door-art i:nth-child(3) { left: 22px; }
+  .byd-wizard-door-art[data-blank] i { left: 11px; }
+}
+
+/* The guide's head names the game it is the start of (L79), and says what was asked before it, with
+   the way back to change it. */
+.byd-wizard-named { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; min-width: 0; }
+.byd-wizard-named h1 { overflow-wrap: anywhere; }
+.byd-wizard-facts { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 650; }
+.byd-wizard .byd-wizard-change { min-width: var(--tap); padding: 0 6px; border: 0; background: none; color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.byd-wizard .byd-wizard-change:hover { background: var(--byd-wizard-panel-bg); }
 .byd-wizard-step { width: 24px; height: 24px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 800; }
 .byd-wizard-label { display: grid; gap: 5px; color: #454c44; font-size: 12px; font-weight: 700; }
 .byd-wizard fieldset { margin: 4px 0 0; padding: 0; border: 0; }

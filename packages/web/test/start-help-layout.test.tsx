@@ -17,6 +17,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { LoginCard } from '../src/account/LoginCard.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { atTheGuide } from './wizard-door.js'
 import { ROW, helpAnchor, helpPlacement, type HelpPlacement } from '../src/editor/HelpDrawer.js'
 import { contrastRatio } from '../src/player/contrast.js'
 import { atWidth } from './viewport.js'
@@ -69,7 +70,7 @@ async function measure(surface: Surface): Promise<{ closed: Reading; open: Readi
     page.evaluate(
       ({ card, topic, placed, rectOf, ROW, explained }) => {
         const rect = new Function('el', `return (${rectOf})(el)`) as (el: Element) => Rect
-        // The ring by its name: on a desk the wizard has three, one per step.
+        // The ring by its name: on a desk the guide has two, one per step.
         const ask = document.querySelector(`.byd-help-ask[aria-label="Hjälp om ${topic}"]`)
         const box = document.querySelector('.byd-help-box') as HTMLElement | null
         if (box && placed) {
@@ -125,13 +126,14 @@ const login = (width: number, height: number): Surface => ({
     </div>
   ),
 })
-// Below the desk the wizard is one step at a time and opens on the first; on a desk the second
-// step's question mark stands in the narrower column.
-const wizard = (width: number, height: number): Surface => ({
-  name: `the guided start at ${width}`,
+// The crossroads before the guide (L79) has its one question mark at its question. Behind its first
+// door the guide is one step at a time below the desk, and on a desk the fields' question mark
+// stands in the narrower column.
+const crossroads = (width: number, height: number): Surface => ({
+  name: `the crossroads at ${width}`,
   root: '.byd-wizard',
   card: '.byd-wizard',
-  topic: width < 1024 ? 'spelet' : 'fälten',
+  topic: 'spelet',
   width,
   height,
   mount: () => {
@@ -139,8 +141,20 @@ const wizard = (width: number, height: number): Surface => ({
     return <NewProjectPage onNavigate={() => undefined} />
   },
 })
+const wizard = (width: number, height: number): Surface => ({
+  name: `the guided start at ${width}`,
+  root: '.byd-wizard',
+  card: '.byd-wizard',
+  topic: 'fälten',
+  width,
+  height,
+  mount: () => {
+    atTheGuide()
+    return <NewProjectPage onNavigate={() => undefined} />
+  },
+})
 
-describe.each([login(390, 844), login(768, 1024), login(1280, 800), wizard(1280, 800), wizard(390, 844)])('$name', (surface) => {
+describe.each([login(390, 844), login(768, 1024), login(1280, 800), crossroads(1280, 800), crossroads(390, 844), wizard(1280, 800), wizard(390, 844)])('$name', (surface) => {
   it('is the same height with the help open, the question mark is a target, and the box stands inside the window', async () => {
     const { closed, open } = await measure(surface)
     console.log(`${surface.name}: card ${Math.round(closed.surface.h)} px closed, ${Math.round(open.surface.h)} px open`)

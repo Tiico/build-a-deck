@@ -7,6 +7,7 @@ import { projectActivity } from '@byd/engine'
 import { SessionButtons } from '../src/player/SessionOverlays.js'
 import { LastLine } from '../src/table/LastLine.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { buildScene } from './scene.js'
 import { atWidth } from './viewport.js'
 
@@ -77,6 +78,7 @@ describe('the guided start’s steps (L73, led 3)', () => {
     atWidth(390)
     history.replaceState(null, '', '/new')
     render(<NewProjectPage />)
+    throughTheDoor()
     const nav = screen.getByRole('navigation', { name: 'Stegnavigering' })
     iconOnly(within(nav).getByRole('button', { name: 'Föregående' }), 'Föregående')
     iconOnly(within(nav).getByRole('button', { name: 'Nästa' }), 'Nästa')

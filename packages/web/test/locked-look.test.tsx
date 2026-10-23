@@ -32,6 +32,7 @@ import { render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { TableClient } from '../src/client.js'
 import { contrastRatio, flatten, parseColor } from '../src/player/contrast.js'
 import { asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
@@ -197,6 +198,7 @@ async function openPicker(): Promise<string> {
 function guide(): string {
   history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
   const { container, unmount } = render(<NewProjectPage />)
+  throughTheDoor()
   // «Ta bort valt kort» locks on the last card, and the guide opens on three example cards (#733).
   for (let i = 0; i < 2; i++) fireEvent.click(screen.getByRole('button', { name: 'Ta bort valt kort' }))
   const html = container.innerHTML
@@ -204,10 +206,13 @@ function guide(): string {
   return html
 }
 
+// Sedan L79 frågar vägskälets dörrar efter namnet, så beskedet står där.
 function guideRefused(): string {
+  // Utan namn: utkastet en tidigare mätning lämnade i fliken hade fyllt i det.
+  sessionStorage.clear()
   history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
   const { container, unmount } = render(<NewProjectPage />)
-  fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
+  fireEvent.click(screen.getByRole('button', { name: 'Guidad start' }))
   const html = container.innerHTML
   unmount()
   return html

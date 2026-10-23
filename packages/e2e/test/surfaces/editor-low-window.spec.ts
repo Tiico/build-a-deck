@@ -3,6 +3,7 @@ import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
 import { PHONE } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 
 // The editor and the guided start in a low window (#550, beställarens beslut 2026-09-30: B's
 // reflow with A's rule for the room; L10's exception, L12's addition).
@@ -286,7 +287,7 @@ for (const { zoom, width, height } of LOW) {
     test('gives the step the whole window less its two moves, and never scrolls sideways', async ({ page }) => {
       await logIn(page.request)
       await page.goto('/new')
-      await page.getByLabel('Spelets namn').waitFor()
+      await throughTheDoor(page)
       await expect(page.locator('.byd-wizard')).toHaveAttribute('data-room', 'steps')
       const at = await page.evaluate(() => {
         const box = (el: Element | null) => {

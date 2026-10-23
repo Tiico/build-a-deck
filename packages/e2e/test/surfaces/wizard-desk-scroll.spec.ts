@@ -1,4 +1,5 @@
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 import { logIn } from '../../support/api.js'
 
 // The guided start on a desk (#476, beslut 2026-09-27, variant B): the whole page scrolled, so at
@@ -12,7 +13,7 @@ for (const [width, height] of [[1024, 768], [1280, 800]] as const) {
     test('keeps the whole card in view while a frame is picked, and never scrolls the page', async ({ page }) => {
       await logIn(page.request)
       await page.goto('/new')
-      await page.getByLabel('Spelets namn').waitFor()
+      await throughTheDoor(page)
       const frame = page.getByRole('button', { name: 'Minimal' })
       await frame.scrollIntoViewIfNeeded()
       await expect(frame).toBeInViewport({ ratio: 1 })
