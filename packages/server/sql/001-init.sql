@@ -109,6 +109,18 @@ create unique index if not exists guest_tokens_live_seat
 alter table projects add column if not exists owner text;
 create index if not exists projects_owner on projects (owner);
 
+-- The account a table is borne by (A2, #1194): the one its cost is counted against. Set when the
+-- table is started, to the game's owner (never the test leader who pressed) or to the account at
+-- the raw door, and kept when the game is taken away. Text, as `projects.owner` is.
+-- Filled in for the tables from before it out of their game's owner, while the game is there to
+-- say; a table without a game, or from a game from before accounts, has nobody to be given and is
+-- left without. Only empty bearers are filled, so running this again never moves one.
+alter table sessions add column if not exists account_id text;
+update sessions set account_id = projects.owner
+  from projects
+  where sessions.account_id is null and sessions.project = projects.id and projects.owner is not null;
+create index if not exists sessions_account on sessions (account_id) where account_id is not null;
+
 -- The project's images (E1, DRIFT §4): by content hash. With R2 the bytes live there under
 -- assets/<hash> and `bytes` stays null; without it they stay here.
 create table if not exists assets (

@@ -15,7 +15,16 @@ const setup = setupFromProject(doc)
 const deck = deckFromProject(doc)
 const SEATS = doc.setup.seats
 
-const res = await fetch(`${base}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, version: 'v0.7', setup, deck }) })
+// A table is borne by an account (#1194), and the raw door opens nothing for nobody, so the script
+// logs in first — which needs the server started with AUTH_BYPASS=true, as `seed:project` does.
+const login = await fetch(`${base}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'demo@example.com' }) })
+const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+if (login.status !== 200 || !cookie) {
+  console.error('login failed', login.status, await login.text())
+  console.error('start the server with AUTH_BYPASS=true, so the login answers with the cookie instead of a mail')
+  process.exit(1)
+}
+const res = await fetch(`${base}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id, version: 'v0.7', setup, deck }) })
 if (res.status !== 201) {
   console.error('create failed', res.status, await res.text())
   process.exit(1)

@@ -341,6 +341,11 @@ Den som redan sitter vid bordet får veta att det är slut genom sin egen anslut
 `GET /rooms/:kod` säger också spelets namn när bordet startades ur ett spel — det `GET /sessions/:id` redan sa till den som har id:t svaret lämnar ut — och aldrig projektet.
 Generatorn drar om en kod som stavar ett av appens egna vägord (`ROUTE_WORDS` i `packages/protocol`): `ASSETS` och `GUESTS` är de enda sex tecknen ur alfabetet som redan är en adress.
 
+Byggt 2026-10-23 (#1194): den råa dörren kräver konto.
+`POST /sessions` gjorde ett bord av vilken uppsättning och lek som helst, utan inloggning, och köade dess texturer i renderworkern: en väg för vem som helst att lägga Chromium-arbete på lådan, och en väg förbi varje tak på bord och renderingar (DESIGN-BESLUT A2).
+Med konton påslagna, vilket lådan alltid har, svarar den 401 utan inloggat konto och skriver ingenting, och med en kaka bärs bordet av det kontot.
+Webben startar bord genom `POST /projects/:id/sessions`, som redan krävde en roll i spelet; den råa dörren används bara av E2E-sviten och `seed`-skriptet, som loggar in med `AUTH_BYPASS` först.
+
 ## 10. Administration: Tailscale
 
 Lådan och administratörens enheter i samma privata nät.

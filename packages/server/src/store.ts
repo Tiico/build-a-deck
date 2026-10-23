@@ -12,7 +12,12 @@ export type { Deck }
 // `project` is the project a table was started from, so it can be refreshed to a newer rev (C7).
 // Admission (DRIFT §9): `code` is what guests reach the table by, alive until `codeExpiresAt`,
 // and `hostKeyHash` is the hash of the key that opens the table's own view.
-export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
+// `accountId` is the table's bearer (A2, #1194): the account its cost is counted against, set when
+// it is started and never moved. A table started from a game is borne by the game's owner, never by
+// the test leader who pressed; one opened at the raw door by the account that opened it. It stays
+// when the game is taken away, which is why it is written down rather than read through `project`.
+// A table from a game from before accounts, or from a server without accounts, has none.
+export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; accountId?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
 // A session as it is read back: everything but its decks (#1012). A deck names its pictures and
 // typefaces by hash since #1028, but one made before that carries them as data URLs, tens of
 // megabytes for a game with art on every card — and the session is read by every door a table has:

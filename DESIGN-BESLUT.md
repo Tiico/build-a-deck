@@ -39,6 +39,16 @@ Följdkrav:
 Kvoter och mätning måste finnas i domänmodellen från början.
 Skaparen bär kostnaden för sina egna testare.
 
+Byggt 2026-10-23 (#1194, skiva 2 av PRD #1192): ett bord bärs av ett konto.
+Bäraren står i sessionen (`sessions.account_id`, `accountId` i båda lagren), sätts när bordet startas och flyttas aldrig.
+Ett bord som startas ur ett spel bärs av spelets ägare, aldrig av den testledare eller medredigerare som tryckte (D3), och bäraren står kvar när spelet tas bort, så att ett borttaget spel inte nollställer det som räknats mot ägaren.
+Bord från före bäraren fick den ur sitt spels ägare när migreringen kördes; ett bord utan spel, ett från ett spel som redan var borttaget och ett från ett spel från före konton har ingen att få den av och står utan.
+Den råa dörren, `POST /sessions`, som gjorde ett bord av vilken lek som helst åt vem som helst och köade dess texturer i renderworkern, öppnar med konton påslagna inget bord utan inloggat konto: 401, och ingen session, inget bord och inget renderjobb skapas.
+Med en kaka öppnar den bordet som förut, och det kontot bär det.
+Lådan har alltid konton påslagna, också utan Postgres; bara en server som startas helt utan konton, som i några av testerna, har kvar den gamla dörren, och där bär ingen bordet.
+Webben använder inte dörren; E2E-stödet (`tableOf`) och `seed`-skriptet gör det, och loggar in med `AUTH_BYPASS` först: ett E2E-sammanhang som redan är inloggat bär sitt bord själv, och ett som inte är det får ett eget konto i ett eget sammanhang, så att den som anropar aldrig loggas in av att ett bord dukas.
+Grindarna: `packages/server/test/bearer.test.ts` (båda lagren, och bakåtfyllnaden mot Postgres) och `packages/e2e/test/raw-door.spec.ts` (den byggda appen).
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
