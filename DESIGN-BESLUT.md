@@ -2880,6 +2880,7 @@ Sidan bor därför på zonen och inte i steget som ber om korten: ringens Dra 1 
 Den är fyra: `left`, `right`, `above` och `below`, i högens egen vridning som vänster alltid räknats i, och en vriden hög vid en sidoplats får dem med sig.
 Ovanför och under mäts i kortets höjd och inte dess bredd, för en hög som läggs ovanför en annan måste gå fri från långsidan.
 Se K21 för ratten i editorn och för meningen som läser den.
+Sedan 2026-10-23 (#1203) får ett av designerns egna steg säga en egen sida; ett steg som inte gör det, och ringens verb, läser fortfarande högens (K21).
 
 Reviderat 2026-09-28 (#509, K26): på filten som läser öppnar ett tryck på ett uppvänt kort inte ringen utan lyfter kortet för att läsas (K8); ringen står bakom ett andra tryck.
 Regeln på filten blir därmed: en dragning flyttar saken, ett tryck läser den, och ett tryck till frågar vad som går att göra med den.
@@ -3781,6 +3782,28 @@ En åtgärd som bara gäller på begäran står kvar, eftersom designern då bet
 «Dra 1» och D på en skärm utan egen hand — bordets skärm — lade kortet nedvänt bredvid högen, och det enda sättet att se det var ett klick till och «Vänd».
 Där landar kortet nu uppvänt (`face: 'front'` på `split`): ingen enskild spelare ska läsa det i hemlighet där, så bordet läser det, och en dragning är en handling.
 `felt-shortcuts.test.tsx` och `table-renderer.test.tsx` håller båda.
+
+Reviderat 2026-10-23 (#1203, beställarens beslut A efter [prototyp](https://github.com/Tiico/build-a-deck/blob/4e9401596749158990ee50f83a769ab6802e6e2c/docs/ux-audits/2026-10-23-regelns-utlaggning/prototyper/index.html)): **ett steg säger själv vilken sida av leken korten läggs på, och hur de ligger där.**
+«Ta 1 per spelare och lägg dem uppvända» lade korten som en uppvänd hög, där bara det översta syns, så spelarna fick lägga ut dem för hand ändå.
+Och sidan gick bara att ändra på högen i fliken Bord, aldrig i meningen som visade den.
+Meningen fick därför två ord till: «Ta ett per spelare från högen och lägg dem uppvända **bredvid varandra** **till höger om högen**».
+Läggsätten är tre: *på varandra* (som förut), *bredvid varandra* (ett kort brett och tolv millimeter isär, samma glipa som en kapning håller) och *omlott* (handens eget steg, 26 mm, så att fler ryms och varje hörn syns).
+Platsrutan har fyra rader för «bredvid», en per sida, och ett läggsätt som redan valts följer med till den nya sidan.
+Ett ensamt kort har inget läggsätt, och en mening som inte lägger bredvid högen har inget heller.
+
+Det ersätter «sidan bor på zonen och inte i steget» ovan, men bara för steg som säger en sida.
+Ett steg som inte säger någon följer högens, så varje sparat bord ligger kvar där det låg, och ringens Dra 1 och Dela på hälften läser fortfarande bara högens.
+Faran det gamla beslutet varnade för — två ställen som kan säga emot varandra — är löst genom att stegets sida vinner och står utskriven i meningen: det designern läser är det som händer.
+
+**Protokollet fick en parameter och inget nytt verb:** `split` tar `row`, och korten läggs då lösa i den yta högen ligger i, var och en där raden säger, i stället för som en ny hög.
+Det måste vara motorns och inte klientens av K15:s skäl: hur många kort «Leta fram» hittar i en dold hög vet bara motorn, och att skicka en kapning per kort hade krävt att klienten visste det.
+Klienten säger det den kan veta: var det första kortet ligger, steget mellan korten, hur många som ryms på en rad innan den lämnar filten (`wrap.after`) och vart nästa rad börjar.
+Till vänster och höger går raden bort från leken och nästa rad läggs under den i högens vridning; ovanför och under centreras raden på lekens linje och nästa rad läggs längre bort.
+Omlott åt vänster lägger det första kortet överst (`firstOnTop`), så att det hörn man läser ett kort i är det som syns.
+Aktivitetsraden säger «Ada lade ut 4 kort bredvid Draghög», och en sökning säger inget tal, eftersom `at` då inte är hur många som hittades.
+En rad som hamnar över kasthögen gör det: var leken och kasthögen står är designerns beslut, och förhandsvisningen i fliken Bord visar det första kortet där det landar.
+
+Grindarna: `packages/engine/test/split-row.test.ts` (utläggningen, ordningen, radbrytningen, sökningen och uppspelningen), `packages/web/test/zone-actions.test.ts` (kompilatorn), `setup-step-lay.test.tsx` (meningen och rattarna), `setup-sentence-matrix.test.tsx`, `setup-landing.test.ts` och `describe.test.ts`.
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
 

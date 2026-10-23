@@ -1,5 +1,5 @@
 import { createContext, Fragment, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import type { ActionAmount, ActionStep, ActionTarget, ActionWhen, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
+import type { ActionAmount, ActionLay, ActionStep, ActionTarget, ActionWhen, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { ProjectDoc } from '@byd/server'
 import type { Zone } from '@byd/server/doc'
 import { placedProps, usePlacement } from './placement.js'
@@ -40,6 +40,9 @@ export type ZoneActionsProps = {
 const AMOUNTS: ActionAmount['of'][] = ['number', 'seats', 'zone', 'ask']
 const LANDS = ['keep', 'front', 'back'] as const
 const TURNS = ['toggle', 'front', 'back'] as const
+// Läggsätten och sidorna i den ordning rutan räknar upp dem (#1203).
+const LAYS: readonly ActionLay[] = ['stack', 'row', 'overlap']
+const SIDES: readonly ZoneBeside[] = ['left', 'right', 'above', 'below']
 const VERBS: ActionStep['v'][] = ['split', 'deal', 'take', 'shuffle', 'flipTop', 'movePile']
 // När åtgärden körs (#451). Ordningen är den lästa och inte protokollets: det en hög gör i dag
 // står först, och de två som rör starten under det.
@@ -348,19 +351,34 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
       }
     </Slot>
   )
+  // Hur korten ligger bredvid högen (#1203). Hålet finns bara i meningar som lägger fler än ett
+  // kort bredvid högen, så en mening utan det fyller aldrig det här.
+  const lay = (to: ActionTarget, set: (next: ActionTarget) => void) =>
+    to.at !== 'beside' ? null : (
+      <Slot key="l" label={t(`setup.lay.${to.lay ?? 'stack'}`)}>
+        {(close) =>
+          LAYS.map((o) => (
+            <button key={o} type="button" onClick={() => { set({ ...to, lay: o }); close() }}>
+              {t(`setup.lay.${o}`)}
+            </button>
+          ))
+        }
+      </Slot>
+    )
   if (step.v === 'shuffle') return <>{t('setup.step.shuffle')}</>
   if (step.v === 'flipTop') return <>{parts(t('setup.step.flipTop'), { face: side(step.face, TURNS, (face) => onChange({ ...step, face: face as typeof step.face }), true) })}</>
   if (step.v === 'movePile') return <>{parts(t('setup.step.movePile'), place(step.to, (to) => onChange({ ...step, to })))}</>
   if (step.v === 'take')
     return (
       <>
-        {parts(t('setup.step.take'), {
+        {parts(t(step.to.at === 'beside' ? 'setup.step.take.beside' : 'setup.step.take'), {
           which: (
             // «varje kort» with nothing asked, rather than «varje kort där vilket kort som helst» (#480).
             // «vilka kort?» until the question is asked (#713): a new search starts there, not at every card.
             <QuerySlot key="w" query={step.which ?? []} columns={columns} label={step.which === null ? t('setup.take.unchosen') : step.which.length > 0 ? t('setup.take.where', { what: queryWords(step.which, t) }) : t('setup.take.every')} onChange={(which) => onChange({ ...step, which })} t={t} />
           ),
           face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
+          lay: lay(step.to, (to) => onChange({ ...step, to })),
           ...place(step.to, (to) => onChange({ ...step, to })),
         })}
       </>
@@ -378,9 +396,10 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
   const one = step.count.of === 'number' && step.count.n === 1
   return (
     <>
-      {parts(t(one ? 'setup.step.split.one' : 'setup.step.split'), {
+      {parts(t(one ? 'setup.step.split.one' : step.to.at === 'beside' ? 'setup.step.split.beside' : 'setup.step.split'), {
         n: amount(step.count, (count) => onChange({ ...step, count })),
         face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face }), one),
+        lay: lay(step.to, (to) => onChange({ ...step, to })),
         ...place(step.to, (to) => onChange({ ...step, to })),
       })}
     </>
@@ -662,11 +681,20 @@ function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmoun
 }
 
 function TargetSlot({ target, zones, beside, form, t, onChange }: { target: ActionTarget; zones: readonly Zone[]; beside: ZoneBeside; form: PlaceForm; t: T; onChange(next: ActionTarget): void }) {
+  // Bredvid högen är fyra rader och inte en (#1203): steget väljer sin sida, och ett läggsätt som
+  // redan valts följer med till den nya sidan.
+  const lay = target.at === 'beside' && target.lay !== undefined ? { lay: target.lay } : {}
   const choices: Choice[] = [
-    ...(['beside', 'hands', 'mine'] as const).map((at) => ({
-      key: `place:${at}`,
+    ...SIDES.map((side) => ({
+      key: `place:beside:${side}`,
       // Raden bär samma form som meningen den hamnar i, så det som väljs är ordagrant det som står
       // där efteråt.
+      words: targetWords({ at: 'beside', side }, zones, t, beside, form).words,
+      group: t('setup.slot.group.place'),
+      pick: () => onChange({ at: 'beside', side, ...lay }),
+    })),
+    ...(['hands', 'mine'] as const).map((at) => ({
+      key: `place:${at}`,
       words: targetWords({ at }, zones, t, beside, form).words,
       group: t('setup.slot.group.place'),
       pick: () => onChange({ at }),
@@ -805,7 +833,7 @@ const amountWords = (a: ActionAmount, zones: readonly Zone[], t: T): Words => {
 // specifikationen. Zonen nästlas därför in i platsens hål med sin bricka, av samma nyckel som
 // bär rutans rad: ingen ny nyckel, och ingen sammansättning som ytan hittat på.
 const targetWords = (target: ActionTarget, zones: readonly Zone[], t: T, beside: ZoneBeside, form: PlaceForm): Words => {
-  if (target.at !== 'zone') return { words: t((target.at === 'beside' ? `setup.place.${form}.beside.${beside}` : `setup.place.${form}.${target.at}`) as Key) }
+  if (target.at !== 'zone') return { words: t((target.at === 'beside' ? `setup.place.${form}.beside.${target.side ?? beside}` : `setup.place.${form}.${target.at}`) as Key) }
   const key = `setup.place.${form}.zone` as Key
   const zone = zones.find((z) => z.id === target.zone)
   return zone === undefined ? { words: t(key, { zone: target.zone }) } : nested(key, zoneWords(zone, t), t)

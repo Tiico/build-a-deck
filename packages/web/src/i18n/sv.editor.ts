@@ -1561,6 +1561,13 @@ export const svEditor = {
   'setup.step.split.one': 'Ta {n} från högen och lägg det {face} {at}',
   'setup.step.deal': 'Dela ut {n} {to}, {face}',
   'setup.step.take': 'Leta fram {which} och lägg dem {face} {at}',
+  // Bredvid högen säger meningen också hur korten läggs (#1203): «på varandra» är vad som alltid
+  // hänt, och sägs därför ut i stället för att tigas om.
+  'setup.step.split.beside': 'Ta {n} från högen och lägg dem {face} {lay} {at}',
+  'setup.step.take.beside': 'Leta fram {which} och lägg dem {face} {lay} {at}',
+  'setup.lay.stack': 'på varandra',
+  'setup.lay.row': 'bredvid varandra',
+  'setup.lay.overlap': 'omlott',
   'setup.take.every': 'varje kort',
   // Ett nytt «Leta fram» innan frågan ställts (#713): steget körs inte förrän den är besvarad.
   'setup.take.unchosen': 'vilka kort?',

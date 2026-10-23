@@ -1,4 +1,4 @@
-import type { Intent, Snapshot, VisibleComponentState, ZoneBeside, ZoneView } from '@byd/protocol'
+import type { Intent, Snapshot, SplitRow, VisibleComponentState, ZoneBeside, ZoneView } from '@byd/protocol'
 import { CHIP_MM, DIE_MM as RECIPE_DIE_MM } from '@byd/server/doc'
 import { zoneAt, type Drop } from '../zones.js'
 import { isCounter, isDie } from '../components.js'
@@ -43,6 +43,65 @@ export function besidePile(pile: { x: number; y: number; rot: number }, cards: n
   // Whole millimetres in the log, and never the -0 a turned pile's sine leaves behind.
   const mm = (v: number): number => Math.round(v) + 0
   return { x: mm(at.x), y: mm(at.y) }
+}
+
+// Where a step that lays its cards side by side or overlapping puts them (#1203): the first card
+// where a lone card split off the pile lands, and the rest going away from the pile in its own
+// frame — leftwards from its left side, rightwards from its right. Above and below there is no
+// "away" along the line, so the line is centred on the pile's own axis there. Side by side is a
+// card's width and the gap a split already keeps; overlapping is the hand's own step, so that the
+// corner one reads a card by still shows, and a line running leftwards lays its first card on top
+// for the same reason.
+//
+// The engine lays them out (`SplitRow`), because how many cards a search finds in a hidden pile
+// is the one thing this side cannot know (B6). What this side can know is the floor, so it says
+// how many fit on a line before the line would leave it, and the next line starts away from the
+// pile — or, beside it, below it in its own frame.
+export const ROW_STEP_MM = { row: CARD_MM.w + BESIDE_MM, overlap: 26 } as const
+const ROW_MAX = 60
+
+export function rowBeside(pile: { x: number; y: number; rot: number }, side: ZoneBeside, lay: 'row' | 'overlap', floor: Rect): Point & { row: SplitRow } {
+  const first = besidePile(pile, 1, side)
+  const rad = (pile.rot * Math.PI) / 180
+  const turned = (x: number, y: number): Point => ({ x: x * Math.cos(rad) - y * Math.sin(rad), y: x * Math.sin(rad) + y * Math.cos(rad) })
+  const across = side === 'above' || side === 'below'
+  const along = turned(side === 'left' ? -1 : 1, 0)
+  const away = turned(0, side === 'above' ? -1 : 1)
+  const step = ROW_STEP_MM[lay]
+  const centre = { x: first.x + CARD_MM.w / 2, y: first.y + CARD_MM.h / 2 }
+  const fits = (m: number): boolean =>
+    Array.from({ length: m }, (_, k) => (across ? k - (m - 1) / 2 : k)).every((k) => cardOnFloor({ x: centre.x + k * step * along.x, y: centre.y + k * step * along.y }, pile.rot, floor))
+  let after = 1
+  while (after < ROW_MAX && fits(after + 1)) after++
+  // Whole millimetres, and never the -0 a turned sine leaves behind.
+  const mm = (v: number): number => Math.round(v) + 0
+  const row: SplitRow = {
+    dx: mm(step * along.x),
+    dy: mm(step * along.y),
+    ...(across ? { centred: true } : {}),
+    ...(lay === 'overlap' && side === 'left' ? { firstOnTop: true } : {}),
+    wrap: { after, dx: mm((CARD_MM.h + BESIDE_MM) * away.x), dy: mm((CARD_MM.h + BESIDE_MM) * away.y) },
+  }
+  return { ...first, row }
+}
+
+// Whether a card centred on `c`, turned `rot` degrees about its centre, lies wholly on the floor.
+// The turn matters: a card that clears the edge upright reaches past it lying on its side.
+export function cardOnFloor(c: Point, rot: number, floor: Rect): boolean {
+  const rad = (rot * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  return [-1, 1].every((sx) =>
+    [-1, 1].every((sy) => {
+      const dx = (sx * CARD_MM.w) / 2
+      const dy = (sy * CARD_MM.h) / 2
+      const x = c.x + dx * cos - dy * sin
+      const y = c.y + dx * sin + dy * cos
+      // A hair of slack for the sine of a turn that is a whole quarter, which is never quite zero.
+      const eps = 1e-6
+      return x >= floor.x - eps && x <= floor.x + floor.w + eps && y >= floor.y - eps && y <= floor.y + floor.h + eps
+    }),
+  )
 }
 
 // A chip pile (#89) is not a new kind of thing on the table, only a set of chips that lie on the

@@ -1,5 +1,5 @@
 import { SessionIntent, type Applied, type ComponentId, type ComponentSpec, type Outcome, type SeatId, type ZoneId } from '@byd/protocol'
-import type { CardQuery } from '@byd/protocol'
+import type { CardQuery, SplitRow } from '@byd/protocol'
 import { reach } from './reach.js'
 import { restoredTable } from './restore.js'
 import { handsReturnedBy } from './hands.js'
@@ -79,6 +79,8 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
         for (const id of [...taken].reverse()) relocate(state, id, it.to, zoneOf(state, it.to).order.length, { x: it.x, y: it.y })
       } else if (it.to !== undefined) {
         take(state, taken, it.to)
+      } else if (it.row !== undefined) {
+        layRow(state, it.pile, taken, { x: must(it.x, 'split needs x'), y: must(it.y, 'split needs y') }, it.row)
       } else {
         const source = zoneOf(state, it.pile)
         const parent = zoneOf(state, source.parent ?? state.setup.floor)
@@ -299,6 +301,29 @@ function take(state: TableState, ids: readonly ComponentId[], to: ZoneId): void 
     detach(state, id)
     attach(state, id, to, 0)
   }
+}
+
+// The cards of a `split` laid out beside their pile instead of piled (#1203): each one loose in
+// the area the pile lies in, where `SplitRow` puts it, turned as the pile is turned. Whole
+// millimetres, as every point the client writes is — a centred line of an even count would
+// otherwise lie half a millimetre off.
+function layRow(state: TableState, pileId: ZoneId, taken: readonly ComponentId[], first: { x: number; y: number }, row: SplitRow): void {
+  const pile = zoneOf(state, pileId)
+  const area = zoneOf(state, pile.parent ?? state.setup.floor)
+  const per = row.wrap?.after ?? taken.length
+  const at = taken.map((_, i) => {
+    const line = Math.floor(i / per)
+    const k = i % per
+    const inLine = Math.min(per, taken.length - line * per)
+    const shift = row.centred === true ? k - (inLine - 1) / 2 : k
+    const x = first.x + shift * row.dx + line * (row.wrap?.dx ?? 0)
+    const y = first.y + shift * row.dy + line * (row.wrap?.dy ?? 0)
+    return { x: Math.round(x - area.geometry.x) + 0, y: Math.round(y - area.geometry.y) + 0 }
+  })
+  // What is laid last lies on top: the area paints in its order.
+  const order = taken.map((id, i) => ({ id, ...must(at[i], 'a row has a place for every card') }))
+  if (row.firstOnTop === true) order.reverse()
+  for (const { id, x, y } of order) relocate(state, id, area.id, area.order.length, { x, y, rot: pile.geometry.rot })
 }
 
 // A dynamic pile inherits the visibility of the area it is created in (K1).

@@ -232,6 +232,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'zone.pile.within': 'a pile in {area}',
   'zone.pile.title': 'Pile in {area}',
   'activity.split.beside.other': '{who} split {n} cards off {zone} into a new pile',
+  'activity.split.row': '{who} laid out {n} cards beside {zone}',
+  'activity.split.row.found': '{who} laid out cards beside {zone}',
   'activity.shuffle': '{who} shuffled {zone}',
   'activity.deal.one': '{who} dealt {n} card each to {to}',
   'activity.deal.other': '{who} dealt {n} cards each to {to}',
