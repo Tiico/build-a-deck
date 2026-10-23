@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TableClient } from '../src/client.js'
 import { asSeat, asTable, createSession, deafServer, goingDeafProxy, startServer, type Running } from './fixture.js'
 
@@ -25,29 +25,61 @@ const watch = (c: TableClient) => {
   return () => seen.includes('reconnecting') && c.status === 'open'
 }
 
+// On a clock the test drives (#1229). The deadline is the client's own timer, and on the wall clock
+// a starved worker let it come due before the client had seen its own line come up: it then hung up
+// a line the kernel had already connected, the deaf server heard a call that ended, and `stayedDeaf`
+// said so — about a hang-up of the client's own. The clock stands still until the server has heard
+// the call, so the deadline can only come to a line that is up and silent; and the loop is starved
+// right after the dial, as a busy worker starves it, to show that it no longer matters.
+const starve = (ms: number) => {
+  const until = process.hrtime.bigint() + BigInt(ms) * 1_000_000n
+  while (process.hrtime.bigint() < until) {
+    // Nothing else runs: not the line, not the server.
+  }
+}
+
 describe('an initial connection that never answers', () => {
   it('gives up after its deadline instead of connecting for ever', async () => {
     const deaf = await deafServer()
-    const c = TableClient.connect({ url: deaf.url, sessionId: 's1', seat: null, connectTimeoutMs: 150, retryPlanMs: [20] })
-    expect(await settles(() => c.trouble !== null)).toBe(true)
-    expect(c.trouble).toBe('timeout')
-    // The sentence above is about a line that hangs, and a fixture that hung up instead would put
-    // a different test under the same name: the client would then be giving up because the socket
-    // closed and not because its deadline came. This is the fixture saying which of the two it was
-    // (#265), and it is the reading the copy that used to live in this file could not make.
-    expect(deaf.stayedDeaf()).toBe(true)
-    c.close()
+    // Only the timers the client keeps: Node's own HTTP client writes the request on `setImmediate`.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const c = TableClient.connect({ url: deaf.url, sessionId: 's1', seat: null, connectTimeoutMs: 150, retryPlanMs: [20] })
+      starve(300)
+      await deaf.heard()
+      await vi.advanceTimersByTimeAsync(149)
+      expect(c.trouble).toBeNull()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(c.trouble).toBe('timeout')
+      // The sentence above is about a line that hangs, and a fixture that hung up instead would put
+      // a different test under the same name: the client would then be giving up because the socket
+      // closed and not because its deadline came. This is the fixture saying which of the two it was
+      // (#265), and it is the reading the copy that used to live in this file could not make.
+      expect(deaf.stayedDeaf()).toBe(true)
+      c.close()
+    } finally {
+      vi.useRealTimers()
+    }
     await deaf.stop()
   })
 
   it('tells whoever is listening the moment it gives up, so a view can stop waiting', async () => {
     const deaf = await deafServer()
-    const c = TableClient.connect({ url: deaf.url, sessionId: 's1', seat: null, connectTimeoutMs: 150, retryPlanMs: [20] })
-    const seen: (string | null)[] = []
-    c.subscribe(() => seen.push(c.trouble))
-    expect(await settles(() => seen.includes('timeout'))).toBe(true)
-    expect(deaf.stayedDeaf()).toBe(true)
-    c.close()
+    // Only the timers the client keeps: Node's own HTTP client writes the request on `setImmediate`.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const c = TableClient.connect({ url: deaf.url, sessionId: 's1', seat: null, connectTimeoutMs: 150, retryPlanMs: [20] })
+      const seen: (string | null)[] = []
+      c.subscribe(() => seen.push(c.trouble))
+      starve(300)
+      await deaf.heard()
+      await vi.advanceTimersByTimeAsync(150)
+      expect(seen).toContain('timeout')
+      expect(deaf.stayedDeaf()).toBe(true)
+      c.close()
+    } finally {
+      vi.useRealTimers()
+    }
     await deaf.stop()
   })
 })
