@@ -1,7 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import type { RuleDoc } from '@byd/server'
 import { DESK } from '../support/devices.js'
-import { twoEditors } from '../support/editors.js'
+import { openTogether, twoEditors } from '../support/editors.js'
 import { expect, test } from '../support/test.js'
 
 // Two editors in the same rulebook (#1053, D3, B7). Ada owns the game and Bo edits it with her, each
@@ -19,10 +19,13 @@ test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 const ADA = 'Ada skrev det här.'
 const BO = 'Bo skrev det här.'
 
-async function openBook(page: Page, url: string): Promise<void> {
-  await page.goto(url)
-  await page.getByRole('tab', { name: 'Regler' }).click()
-  await expect(page.locator('[data-rulebook]')).toContainText('Andra stycket.')
+// Båda öppnar spelet, och när båda huvudena har satt sig (#1231) öppnar var och en boken.
+async function openBooks(ada: Page, bo: Page, url: string): Promise<void> {
+  await openTogether(ada, bo, url)
+  for (const page of [ada, bo]) {
+    await page.getByRole('tab', { name: 'Regler' }).click()
+    await expect(page.locator('[data-rulebook]')).toContainText('Andra stycket.')
+  }
 }
 
 // A paragraph written over, the way a designer does it: opened where it stands, and closed again.
@@ -51,8 +54,7 @@ async function stored(page: Page, request: APIRequestContext, id: string): Promi
 test('a co-editor writing in one paragraph keeps what the other wrote in the next (#1053)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await openBook(page, game.editorUrl)
-    await openBook(game.bo, game.editorUrl)
+    await openBooks(page, game.bo, game.editorUrl)
 
     // Bo's line is slow: what the actor says reaches him late.
     game.line.hold()
@@ -77,8 +79,7 @@ test('a co-editor writing in one paragraph keeps what the other wrote in the nex
 test('an edit written while the line was down lands on the book as it is now, not as it was (#1053)', async ({ browser, baseURL, page }) => {
   const game = await twoEditors(browser, baseURL, page)
   try {
-    await openBook(page, game.editorUrl)
-    await openBook(game.bo, game.editorUrl)
+    await openBooks(page, game.bo, game.editorUrl)
 
     // Bo goes into a tunnel, and his editor says so.
     await game.line.cut()
