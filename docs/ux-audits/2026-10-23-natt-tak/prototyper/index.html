@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Ett nått tak (#1198)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1198 (Kvoter 6/6, PRD #1192): hur ett nått tak och förbrukningen sägs.
+     Beställaren 2026-10-23: ett tak stoppar bara tillväxt, ingenting låses; ingen förbrukning i
+     betan; kort-taket gäller rader; bord mäts som öppna samtidigt och som startade under rullande
+     30 dygn; lagring är det kontots spel använder (historiken räknas).
+     Kontraktet: 402 { error: 'quota', quota: { measure, limit, used, bearer } } och på editorns tråd
+     { v: 'refused', why: 'quota', … }. bearer är 'you' eller 'owner'.
+     Tre varianter av helheten:
+       A  Svaret säger det, där handlingen begärdes, och förbrukningen står i Profil.
+       B  Knappen säger det innan, och förbrukningen står vid varje knapp.
+       C  Ett ark säger det när man trycker, och förbrukningen står samlad i Mina spel.
+     Ytorna är ritade för hand med appens egna mått, färger och strängar (account.css, editor.css,
+     game-dialogs.css, sv.account.ts, sv.editor.ts). Det nya är meningarna om taket.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  main.scen { flex: 1 1 auto; display: grid; justify-content: safe center; align-content: start; padding: 20px 16px 60px; background: #15171c; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 6px; }
+  .etikett b { color: #e6ecfa; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .g { width: 16px; height: 16px; flex: none; }
+  .off { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  button { font: inherit; cursor: pointer; }
+  [aria-disabled='true'] { cursor: default; }
+
+  /* ── Kontot: Mina spel och Profil (account.css, game-dialogs.css, game-menu.css) ───────────── */
+  .acc { --card: #171a23; --edge: #262a35; --muted: #9aa3b8; --ok: #7dd3a0; --sec-line: #6f7a90; --sec-ink: #dce3f2;
+    height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; box-sizing: border-box; display: grid; justify-content: center; align-content: start; }
+  .home { width: 920px; max-width: 100%; display: grid; gap: 18px; }
+  .home > header { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; }
+  .home h1 { margin: 0; font-size: 28px; flex: 1 1 auto; }
+  .vem { color: var(--muted); font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .ikon { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; color: var(--muted); border: 0; background: none; padding: 0; }
+  .ikon .g { width: 18px; height: 18px; }
+  .importknapp { position: relative; min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--sec-line); border-radius: 12px; background: transparent; color: var(--sec-ink); padding: 0; }
+  .importknapp .g { width: 18px; height: 18px; }
+  .notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; line-height: 1.5; }
+  .notice b { color: #fff; }
+  .h2 { margin: 12px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; grid-auto-rows: 1fr; }
+  .spel { position: relative; background: var(--card); border: 1px solid var(--edge); border-radius: 16px; display: grid; align-content: start; color: #fff; }
+  .spel .oppna { display: grid; gap: 8px; padding: 16px; }
+  .spel i.kortbild { display: block; height: 120px; aspect-ratio: 63 / 88; border-radius: 4px; background: var(--c); }
+  .spel strong { font-size: 17px; }
+  .spel .rad2 { color: var(--muted); font-size: 13px; }
+  .spel .mer { position: absolute; right: 4px; top: 4px; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 16px; }
+  .spel .mer[aria-expanded='true'] { background: #262a35; color: #fff; }
+  .spel[data-new] { border-style: dashed; place-items: center; align-content: center; text-align: center; color: var(--muted); padding: 16px; min-height: 230px; font-size: 15px; border-width: 1px; }
+  .spel[data-new][aria-disabled='true'] { color: #7d8597; }
+  .spel[data-new] small { display: block; max-width: 24ch; margin-top: 6px; font-size: 13px; line-height: 1.45; color: #e8c06a; }
+  .meny { position: absolute; z-index: 5; right: 8px; top: 48px; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgb(0 0 0 / 50%); min-width: 220px; }
+  .meny button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; text-align: left; display: grid; }
+  .meny button:hover { background: #262a35; }
+  .meny button[aria-disabled='true'] { color: #9aa3b8; }
+  .meny button small { color: #e8c06a; font-size: 12px; line-height: 1.4; white-space: normal; }
+  .meny hr { width: 100%; border: 0; border-top: 1px solid #262a35; margin: 4px 0; }
+  .skymning { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 16px; background: rgb(5 7 12 / 70%); }
+  .dialog { font-size: 16px; width: min(520px, 100%); box-sizing: border-box; padding: 24px; border-radius: 16px; background: #1b1f2a; border: 1px solid #3b4358; color: #e6ecfa; box-shadow: 0 24px 60px rgb(0 0 0 / 50%); font-family: system-ui, sans-serif; }
+  .dialog h2 { margin: 0 0 12px; font-size: 20px; }
+  .dialog p { margin: 8px 0; line-height: 1.45; }
+  .dialog .muted { color: #9aa3b8; font-size: 14px; line-height: 1.5; }
+  .dialog .fel { color: #ffd8d8; background: #2a1b1b; border-radius: 10px; padding: 10px 14px; font-size: 15px; }
+  .dialog .fel b { color: #fff; }
+  .dialog .knappar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 16px; }
+  .prim { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #7dd3a0; color: #0b2a18; font-weight: 700; }
+  .sek { min-height: 44px; padding: 0 16px; border: 1px solid #6f7a90; border-radius: 12px; background: transparent; color: #dce3f2; font-weight: 600; }
+  .sek[aria-disabled='true'] { color: #7d8597; border-color: #3b414e; }
+  /* Variant C:s utrymme på Mina spel, i Pågår nu:s form */
+  .utrymme { display: grid; gap: 8px; }
+  .utrymme > .h2 { margin: 0; }
+  .matare { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .matt { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: #171a23; border: 1px solid #262a35; }
+  .matt b { font-weight: 650; color: #e6ecfa; font-size: 13px; }
+  .matt span { color: #9aa3b8; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .matt[data-fullt] { border-color: #6b5a2e; }
+  .matt[data-fullt] span { color: #f0d48a; }
+  .bar { height: 6px; border-radius: 3px; background: #262a35; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: var(--p); background: #7dd3a0; border-radius: 3px; }
+  .bar[data-nara] > i { background: #e8c06a; }
+  .bar[data-fullt] > i { background: #f0b64a; }
+  .tak-rad { color: #9aa3b8; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .tak-rad[data-fullt] { color: #f0d48a; }
+  /* Profilen (profile.css) */
+  .profil { width: 640px; max-width: 100%; display: grid; gap: 16px; }
+  .tillbaka { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--muted); font-size: 14px; }
+  .profil h1 { margin: 0; font-size: 28px; }
+  .pkort { display: grid; gap: 12px; padding: 24px; border-radius: 16px; border: 1px solid var(--edge); background: var(--card); color: #e6ecfa; font-size: 14px; }
+  .pkort h2 { margin: 0; font-size: 18px; font-weight: 750; }
+  .liten { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .forbr { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 10px 16px; align-items: center; }
+  .forbr dt { color: #dce3f2; }
+  .forbr dt small { display: block; color: var(--muted); font-size: 12px; }
+  .forbr dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; white-space: nowrap; }
+  .forbr dd[data-fullt] { color: #f0d48a; }
+  .forbr .bar { margin: 0; }
+  .forbr .spelrad dt { padding-left: 14px; color: #c3cbdd; font-size: 13px; }
+
+  /* ── Editorn (editor.css) ──────────────────────────────────────────────────────────────────── */
+  .ed { height: 100%; display: flex; flex-direction: column; background: var(--chrome); color: #dce3f2; font: 13px system-ui, sans-serif; }
+  .ed > .ed-huvud { flex: none; height: 57px; gap: 10px; }
+  .ed-huvud .namn { color: #fff; font-size: 15px; font-weight: 800; }
+  .ed-huvud .dorr { min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); }
+  .ed-huvud .ver { color: var(--quiet-2); padding: 0 6px; }
+  .ed-huvud .bock { color: var(--quiet-2); width: 24px; text-align: center; }
+  .ed-huvud .angra { display: flex; gap: 4px; }
+  .ed-huvud .angra button { width: 42px; height: 44px; border: 0; border-radius: 8px; background: #15171c; color: #dce3f2; display: grid; place-items: center; }
+  .ed-huvud .dela { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 6px; color: #fff; font-weight: 700; }
+  .ed-huvud .dela i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #4a6fd4; color: #fff; font: 700 11px system-ui; font-style: normal; }
+  .ed-huvud .starta { display: inline-flex; padding: 0; overflow: hidden; }
+  .ed-huvud .starta span { padding: 0 18px 0 14px; display: grid; place-items: center; }
+  .ed-huvud .starta em { font-style: normal; display: grid; place-items: center; width: 40px; border-left: 1px solid rgb(255 255 255 / 25%); }
+  .sida[data-bredd='1024'] .ed-huvud { gap: 4px; padding: 0 10px; }
+  .sida[data-bredd='1024'] .ed-flikar button { padding: 0 8px; }
+  .sida[data-bredd='1024'] .ed-huvud .dela span { display: none; }
+  .ed-flikar button { min-height: 44px; }
+  /* Bandet under huvudet (#1073) och rollens band (#489): amber mark, ett tecken, ljus text. */
+  .notisband { flex: none; display: flex; align-items: center; gap: 12px; padding: 0 4px 0 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.45; }
+  .notisband > .g { width: 18px; height: 18px; color: #ffd98a; }
+  .notisband p { flex: 1; margin: 0; padding: 8px 0; }
+  .notisband p b { color: #fff; }
+  .notisband .stang { flex: none; width: 44px; height: 44px; border: 0; border-radius: 6px; background: transparent; color: #ffd98a; font-size: 20px; }
+  .rollband { flex: none; margin: 0; padding: 12px 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.4; }
+  .arbete { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .fot { flex: none; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; min-height: 20px; margin: 0 16px; padding: 10px 0 12px; border-top: 1px solid var(--line); color: #c3cbdd; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .fot .tyst { color: var(--quiet); }
+  .fot .tak { color: #9aa3b8; }
+  .fot .tak[data-fullt] { color: #f0d48a; }
+  .fot .sagt { color: #f0d48a; flex: 1 1 100%; line-height: 1.5; }
+  .fot .sagt b { color: #ffe4b0; }
+  /* Tabell */
+  .ed .t-vy { padding-top: 0; }
+  .ed .t-data td { height: 41px; }
+  .t-ny { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 14px; }
+  .t-ny[aria-disabled='true'] { color: #7d8597; border-color: #3b414e; }
+  .t-ny small { color: #e8c06a; font-size: 12px; }
+  .t-data tr[data-ny] td { background: rgb(125 211 160 / 10%); }
+  /* Kortväggen */
+  .v-rum { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; }
+  .v-vagg { min-width: 0; display: flex; flex-direction: column; }
+  .v-krona { flex: none; display: flex; gap: 8px; align-items: center; padding: 16px 16px 8px; border-bottom: 1px solid var(--line); }
+  .v-krona .t-sok { flex: 0 1 240px; }
+  .v-krona .t-box { font-size: 13px; }
+  .v-kort { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-wrap: wrap; align-content: start; gap: 18px 22px; padding: 14px 16px; }
+  .kort { position: relative; width: 112px; height: 156px; box-sizing: border-box; padding: 6px; border-radius: 6px; background: #f3ead8; box-shadow: 0 1px 2px rgb(0 0 0 / 50%); }
+  .kort > div { height: 100%; box-sizing: border-box; border: 1.5px solid #3c3326; border-radius: 4px; display: grid; grid-template-rows: 44% auto 1fr; }
+  .kort > div > i { background: #e2d6bf; }
+  .kort b { padding: 6px 5px 2px; font: 700 9px Georgia, serif; color: #2b241a; font-variant: small-caps; letter-spacing: .3px; }
+  .kort em { padding: 0 5px; font: 7px Georgia, serif; color: #3c3326; font-style: normal; }
+  .kort[data-forslag] { background: #f3ead8; opacity: .9; outline: 2px dashed #3c8ce7; outline-offset: 3px; }
+  .kort[data-forslag]::after { content: attr(data-forslag); position: absolute; left: 0; top: -20px; font: 700 10px system-ui; color: #9cc6ff; text-transform: uppercase; letter-spacing: 1px; }
+  .ai { min-height: 0; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; padding: 12px; background: #1d2027; }
+  .ai > header { display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; }
+  .ai > header .g { color: #c79bff; }
+  .ai > header button { margin-left: auto; width: 44px; height: 44px; border: 0; background: transparent; color: var(--quiet-2); font-size: 18px; }
+  .ai .fraga-ai { align-self: end; max-width: 85%; padding: 8px 12px; border-radius: 12px; background: #2f3a55; color: #e6ecfa; line-height: 1.45; }
+  .ai .forslag { display: grid; gap: 8px; padding: 12px; border: 1px solid #3b4358; border-radius: 10px; background: #171a23; }
+  .ai .forslag h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--quiet); }
+  .ai .forslag p { margin: 0; color: #dce3f2; }
+  .ai .forslag p small { display: block; color: #e8c06a; font-size: 12px; line-height: 1.45; margin-top: 2px; }
+  .ai .forslag .rad { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ai .forslag .ed-knapp { min-height: 40px; padding: 0 12px; font-size: 13px; }
+  .ai .forslag .ed-knapp[aria-disabled='true'] { background: transparent; border-color: #3b414e; color: #7d8597; }
+  /* Bord */
+  .b-rum { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: 290px minmax(0, 1fr) 330px; }
+  .sida[data-bredd='1024'] .b-rum { grid-template-columns: 230px minmax(0, 1fr) 300px; }
+  .b-vanster { padding: 16px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 10px; overflow: hidden; }
+  .b-vanster h3, .b-hoger h3 { margin: 6px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet-2); }
+  .stegare { display: inline-grid; grid-template-columns: 44px 56px 44px; width: max-content; border: 1px solid #3b414e; border-radius: 8px; }
+  .stegare span { display: grid; place-items: center; min-height: 44px; color: #fff; font-weight: 700; }
+  .zonrad { display: flex; align-items: center; gap: 10px; min-height: 40px; color: #dce3f2; }
+  .zonrad i { width: 14px; height: 11px; border: 1px dashed #868ea3; border-radius: 2px; }
+  .zonrad em { margin-left: auto; font-style: normal; font-size: 10px; padding: 1px 6px; border: 1px solid #3b414e; border-radius: 999px; color: var(--quiet-2); letter-spacing: 1px; }
+  .b-mitt { padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .b-mitt > p { margin: 0; color: #c3cbdd; }
+  .filt { flex: 1; border-radius: 14px; background: #15171c; position: relative; }
+  .filt > i { position: absolute; border: 1.5px dashed #c8b98d; border-radius: 6px; opacity: .7; }
+  .b-hoger { padding: 16px; border-left: 1px solid var(--line); display: grid; align-content: start; gap: 12px; overflow: auto; }
+  .b-hoger .lead { margin: 0; color: #c3cbdd; font-size: 12px; line-height: 1.5; }
+  .b-hoger .lead .tak-rad { display: block; margin-top: 4px; font-size: 12px; }
+  .b-ny { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #fff; font-weight: 700; }
+  .b-ny[aria-disabled='true'] { color: #7d8597; border-color: #3b414e; }
+  .b-said { margin: 0; font-size: 12px; line-height: 1.5; }
+  .b-said[data-ok] { color: #7dd3a0; }
+  .b-said[data-fel] { color: #f0d48a; }
+  .b-said[data-fel] b { color: #ffe4b0; }
+  .b-said .sek { margin-top: 8px; min-height: 40px; border-radius: 8px; font-size: 12px; display: inline-flex; align-items: center; }
+  .b-said .sek + .sek { margin-left: 6px; }
+  .bordrad { display: grid; gap: 8px; padding: 10px; border: 1px solid #2f333d; border-radius: 10px; background: #1b1d23; }
+  .bordrad .topp { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .bordrad .topp > i { height: 46px; border-radius: 5px; background: radial-gradient(#2f6b45, #1c4029); border: 3px solid #6b4a2a; }
+  .bordrad b { font: 700 13px ui-monospace, Menlo, monospace; letter-spacing: 2px; color: #fff; }
+  .bordrad b small { font: 600 11px system-ui; letter-spacing: 0; color: #c3cbdd; margin-left: 6px; }
+  .bordrad span { display: block; color: #c3cbdd; font-size: 11px; line-height: 1.5; }
+  .bordrad .vagar { display: grid; grid-template-columns: 1fr 44px; gap: 6px; }
+  .bordrad .vagar button { min-height: 40px; border: 1px solid #3b414e; border-radius: 8px; background: #23262e; color: #fff; font-size: 12px; font-weight: 700; }
+  /* Media */
+  .m-huvud { flex: none; display: flex; align-items: center; gap: 16px; padding: 16px 16px 8px; }
+  .m-huvud h2 { margin: 0; flex: 1; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--quiet-2); }
+  .m-huvud .lagring { display: grid; gap: 4px; width: 200px; font-size: 12px; color: #9aa3b8; font-variant-numeric: tabular-nums; }
+  .m-huvud .lagring[data-fullt] { color: #f0d48a; }
+  .m-ladda { min-height: 44px; padding: 0 14px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #fff; font-weight: 700; }
+  .m-ladda[aria-disabled='true'] { color: #7d8597; border-color: #3b414e; }
+  .m-sagt { margin: 0 16px; display: grid; gap: 6px; min-height: 24px; }
+  .m-sagt p { margin: 0; line-height: 1.5; color: #c3cbdd; }
+  .m-sagt p[data-fel] { color: #f0d48a; }
+  .m-sagt p[data-fel] b { color: #ffe4b0; }
+  .m-sagt p small { display: block; color: #d9c48f; }
+  .m-bilder { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-wrap: wrap; align-content: start; gap: 16px; padding: 16px; }
+  .bild { display: grid; gap: 6px; justify-items: center; width: 144px; }
+  .bild > i { width: 144px; height: 96px; border-radius: 6px; border: 1px solid #6f7a90; background: var(--bg); position: relative; }
+  .bild > i[data-ny]::before { content: attr(data-ny); position: absolute; left: 4px; top: 4px; padding: 1px 5px; border-radius: 4px; background: #15171c; color: #fff; font: 700 9px system-ui; letter-spacing: 1px; text-transform: uppercase; }
+  .bild > i[data-laddar] { opacity: .45; }
+  .bild span { font-size: 11px; color: #9aa3b8; text-align: center; }
+  .bild span[data-tom] { color: #f0b64a; }
+  .bild button { min-height: 40px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #9aa3b8; font-size: 12px; }
+  /* C:s ark i editorn: samma ruta som Mina spels dialoger, i editorns rum */
+  .ed .dialog .prim { background: #1f6fd0; color: #fff; border-radius: 8px; }
+  .ed .dialog .sek { border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP #1198 — ett nått tak.</b> Hur Deckster säger att ett tak är nått, och var förbrukningen läses när taken väl sätts. Ingenting låses; bara det som växer avvisas.</p>
+    <p>Växla variant med A/B/C eller ← →. Tryck på handlingen i ytan (Nytt spel, + Nytt kort, Godta alla, Starta nytt bord, Ladda upp media) för att se svaret.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp" id="handlinggrupp"><span>Handling</span><div class="flikar" id="handling"></div></div>
+  <div class="grupp"><span>Taken</span><div class="flikar" id="lage"></div></div>
+  <div class="grupp" id="barargrupp"><span>Bärare</span><div class="flikar" id="barare"></div></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <div class="grupp"><span>Språk</span><div class="flikar" id="sprak"></div></div>
+  <button type="button" id="omstart">Börja om ytan</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen"><div id="ram"><p class="etikett" id="etikett"></p><div class="sida" id="sida"></div></div></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  left: 'M13 8H3M7 4 3 8l4 4',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+  import: 'M8 2.5v7.25M5 6.75l3 3 3-3M3 12.75h10',
+  warn: 'M8 2.25 14.25 13.25H1.75zM8 6.5v3.25M8 11.6v.01',
+  play: 'M5 3.25v9.5l7.75-4.75z',
+  undo: 'M5.5 3.75 2.75 6.5 5.5 9.25M3 6.5h6.25a3.5 3.5 0 0 1 0 7H7',
+  redo: 'M10.5 3.75l2.75 2.75-2.75 2.75M13 6.5H6.75a3.5 3.5 0 0 0 0 7H9',
+  spark: 'M8 1.75v3.5M8 10.75v3.5M1.75 8h3.5M10.75 8h3.5',
+}
+const C = { person: [[8, 5.25, 2.5]] }
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(C[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+
+// ── Läget ────────────────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A — svaret säger det, där du tryckte · rekommenderas',
+    not: '<b>Före trycket ser allt ut som i dag.</b> Trycket svarar på det ställe ytan redan säger det som inte kunde hända: rutan under rubriken i Mina spel, importens dialog, bandet under editorns huvud (#1073), raden under «Starta nytt bord» (L31) och uppladdningens rad i Media. Varje svar säger vad som inte hände, siffrorna, och vad man kan göra. <b>Förbrukningen</b> står i Profil, och bara när ett tak är satt. <span class="plus">+ inga nya komponenter, en mening per mått; samma för ägare och testledare; i betan syns ingenting</span> <span class="minus">− man ser inte att taket närmar sig förrän man letar i Profil; ett kort som läggs till syns ett ögonblick och tas bort igen (D3)</span>' },
+  B: { namn: 'B — knappen säger det innan',
+    not: '<b>Kontrollerna vet förbrukningen.</b> Nära taket står antalet vid knappen («117 av 120 kort», «2 av 3 bord öppna», lagringens mätare i Media). Vid taket bär knappen orsaken och är <code>aria-disabled</code> men fokuserbar; ett tryck säger hela meningen på samma ställe. <b>Förbrukningen</b> står där den gäller, ingen samlad plats. <span class="plus">+ taket kommer aldrig som en överraskning; inget läggs till och tas bort igen</span> <span class="minus">− kräver en levande förbrukning i varje yta, också ägarens för en testledare (en ny läsning); fler ord i tabellens fot och Bord-kolumnen; en avstängd knapp läses lätt som trasig</span>' },
+  C: { namn: 'C — ett ark när du trycker, och utrymmet samlat i Mina spel',
+    not: '<b>Trycket öppnar ett ark</b>, samma i varje yta: taket i rubriken, en mätare, vad som inte hände, vad som fortfarande går, och vägen ut. <b>Förbrukningen</b> står samlad i en sektion «Utrymme» överst i Mina spel, i Pågår nu:s form, och spelens rutor säger sina kort. <span class="plus">+ svårt att missa; en plats att läsa allt; samma ark överallt</span> <span class="minus">− ett modalt ark avbryter, och verktyget säger annars inget fel i en dialog (L9, #1073); «Visa utrymmet» från editorn lämnar editorn; en ny sektion på Mina spel</span>' },
+}
+const YTOR = { hem: 'Mina spel', tabell: 'Tabell', vagg: 'Kortvägg', bord: 'Bord', media: 'Media', forbr: 'Förbrukningen' }
+const HANDLINGAR = { hem: { ny: 'Nytt spel', imp: 'Importera', dub: 'Dubblera' }, bord: { open: 'Öppna samtidigt', month: 'Startade 30 dygn' } }
+const LAGEN = { inga: 'Inga tak (betan)', nara: 'Nära taket', natt: 'Taket nått' }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let yta = q.get('yta') || 'hem'
+let hand = q.get('h') || ''
+let lage = q.get('lage') || 'natt'
+let barare = q.get('bar') || 'you'
+let bredd = q.get('bredd') || '1280'
+let lang = q.get('lang') || 'sv'
+let st = {}
+const omstart = () => { st = { tryckt: q.get('tryck') === '1', meny: q.get('meny') === '1' }; q.delete('tryck'); q.delete('meny') }
+omstart()
+const L = (sv, en) => (lang === 'en' ? en : sv)
+const handling = () => hand || (yta === 'hem' ? 'ny' : yta === 'bord' ? 'open' : '')
+
+// Talen: gratisnivåns exempel. I betan är varje tak null och samma förbrukning syns inte.
+const T = { projects: { limit: 3, nara: 2, natt: 3 }, cards: { limit: 120, nara: 117, natt: 120 }, open: { limit: 3, nara: 2, natt: 3 }, month: { limit: 30, nara: 27, natt: 30 }, storage: { limit: 500, nara: 470, natt: 498 } }
+const used = (m) => T[m][lage === 'nara' ? 'nara' : 'natt']
+const lim = (m) => (lage === 'inga' ? null : T[m].limit)
+const tak = () => lage !== 'inga'
+const fullt = (m, add = 1) => tak() && used(m) + add > T[m].limit
+const nara = (m) => tak() && !fullt(m) && used(m) / T[m].limit >= 0.8
+const NY = 6 // AI-förslagets nya kort
+const pct = (m) => `${Math.min(100, Math.round((used(m) / T[m].limit) * 100))}%`
+const bar = (m, add = 1) => `<div class="bar" ${fullt(m, add) ? 'data-fullt' : nara(m) ? 'data-nara' : ''}><i style="--p:${pct(m)}"></i></div>`
+const av = (m, enhet = '') => `${used(m)}${enhet} ${L('av', 'of')} ${T[m].limit}${enhet}`
+const MB = ' MB'
+
+// ── Meningarna: vad som inte hände, varför, och vad man kan göra ────────────────────────────────
+// Samma tre delar i alla varianter; det varianterna skiljer sig i är var och när de sägs.
+function sagt(matt) {
+  const du = barare === 'you'
+  const u = used(matt), l = T[matt].limit
+  if (matt === 'projects') {
+    const h = handling()
+    const vad = h === 'imp' ? L('«hamnen-export.zip» importerades inte.', '«hamnen-export.zip» was not imported.')
+      : h === 'dub' ? L('Skogens råd dubblerades inte.', 'Skogens råd was not duplicated.')
+      : L('Inget nytt spel skapades.', 'No new game was made.')
+    return { rubrik: L(`Ditt konto rymmer ${l} spel`, `Your account holds ${l} games`), vad, varfor: L(`Ditt konto rymmer ${l} spel, och du har ${u}.`, `Your account holds ${l} games, and you have ${u}.`),
+      vag: h === 'imp' ? L('Ta bort ett spel först, så går zippen att importera sedan.', 'Remove a game first; the zip can be imported afterwards.') : L('Ta bort ett spel du inte behöver för att få plats. Exportera det först om du vill ha det kvar.', 'Remove a game you no longer need to make room. Export it first if you want to keep it.') }
+  }
+  if (matt === 'cards' && yta === 'vagg') {
+    const rum = Math.max(0, l - u)
+    return { rubrik: du ? L(`Spelet rymmer ${l} kort`, `The game holds ${l} cards`) : L(`Ägarens konto rymmer ${l} kort per spel`, `The owner's account holds ${l} cards per game`),
+      vad: L('Förslaget lades inte in.', 'The proposal was not added.'),
+      varfor: du ? L(`Med ${NY} nya kort skulle spelet få ${u + NY}, och det rymmer ${l}.`, `With ${NY} new cards the game would have ${u + NY}, and it holds ${l}.`) : L(`Med ${NY} nya kort skulle spelet få ${u + NY}, och ägarens konto rymmer ${l} per spel.`, `With ${NY} new cards the game would have ${u + NY}, and the owner's account holds ${l} per game.`),
+      vag: rum > 0 ? L(`Välj högst ${rum} av korten med «Välj delar…», eller ta bort kort först.`, `Choose at most ${rum} of the cards with «Choose parts…», or remove cards first.`) : L('Ta bort kort först. Ändrade kort i ett förslag lägger inte till något och går alltid att godta.', 'Remove cards first. Changed cards in a proposal add nothing and can always be accepted.') }
+  }
+  if (matt === 'cards') {
+    return { rubrik: du ? L(`Spelet rymmer ${l} kort`, `The game holds ${l} cards`) : L(`Ägarens konto rymmer ${l} kort per spel`, `The owner's account holds ${l} cards per game`),
+      vad: L('Kortet lades inte till.', 'The card was not added.'),
+      varfor: du ? L(`Skogens råd har ${u} av ${l} kort, så många som ett spel rymmer på ditt konto.`, `Skogens råd has ${u} of ${l} cards, as many as a game holds on your account.`) : L(`Spelet har ${u} av ${l} kort, så många som ägarens konto rymmer per spel.`, `The game has ${u} of ${l} cards, as many as the owner's account holds per game.`),
+      vag: du ? L('Ta bort eller slå ihop kort för att få plats. Fler exemplar av ett kort går alltid: ändra Antal.', 'Remove or merge cards to make room. More copies of a card always fit: change Count.') : L('Ta bort eller slå ihop kort, eller fråga spelets ägare. Fler exemplar av ett kort går alltid: ändra Antal.', 'Remove or merge cards, or ask the game\'s owner. More copies of a card always fit: change Count.') }
+  }
+  if (matt === 'open') {
+    return { rubrik: du ? L(`Du har ${l} bord öppna`, `You have ${l} tables open`) : L('Spelets ägare har alla sina bord öppna', 'The game\'s owner has every table open'),
+      vad: L('Bordet startades inte.', 'The table was not started.'),
+      varfor: du ? L(`Du har ${u} av ${l} bord öppna, 2 av dem i det här spelet.`, `You have ${u} of ${l} tables open, 2 of them in this game.`) : L(`Spelets ägare har ${u} av ${l} bord öppna, och borden räknas mot ägaren.`, `The game's owner has ${u} of ${l} tables open, and tables count against the owner.`),
+      vag: du ? L('Avsluta ett bord som ingen spelar vid, eller öppna ett som redan kör och uppdatera det till version 4.', 'End a table nobody is playing at, or open one that is running and update it to version 4.') : L('Öppna bordet som redan kör, eller be ägaren avsluta ett.', 'Open the table that is running, or ask the owner to end one.') }
+  }
+  if (matt === 'month') {
+    return { rubrik: du ? L(`Du har startat ${l} bord på 30 dygn`, `You have started ${l} tables in 30 days`) : L(`Ägaren har startat ${l} bord på 30 dygn`, `The owner has started ${l} tables in 30 days`),
+      vad: L('Bordet startades inte.', 'The table was not started.'),
+      varfor: du ? L(`Du har startat ${u} bord de senaste 30 dygnen, så många som ditt konto rymmer.`, `You have started ${u} tables in the last 30 days, as many as your account holds.`) : L(`Spelets ägare har startat ${u} bord de senaste 30 dygnen, och borden räknas mot ägaren.`, `The game's owner has started ${u} tables in the last 30 days, and tables count against the owner.`),
+      vag: L('Ett bord som redan kör går att öppna och uppdatera till version 4, och det räknas inte som ett nytt.', 'A table that is running can be opened and updated to version 4, and that does not count as a new one.') }
+  }
+  // storage
+  return { rubrik: du ? L('Kontots lagring är full', 'The account\'s storage is full') : L('Ägarens lagring är full', 'The owner\'s storage is full'),
+    vad: L('Bilden skog-baksida.png kunde inte laddas upp och har tagits bort igen.', 'The picture skog-baksida.png could not be uploaded and has been removed again.'),
+    varfor: du ? L(`Kontots lagring är full: ${av('storage', MB)}, och bilden är 4,2 MB.`, `The account's storage is full: ${av('storage', MB)}, and the picture is 4.2 MB.`) : L(`Spelets ägares lagring är full: ${av('storage', MB)}, och bilden är 4,2 MB.`, `The game owner's storage is full: ${av('storage', MB)}, and the picture is 4.2 MB.`),
+    vag: (du ? '' : L('Fråga spelets ägare. ', 'Ask the game\'s owner. ')) + L('Att ta bort en bild ur spelet frigör ingenting, eftersom historiken behåller den; ett spel som tas bort frigör sitt.', 'Removing a picture from the game frees nothing, because the history keeps it; a game that is removed frees its own.') }
+}
+const ALLTID = () => L('Ingenting låses av ett tak: du kan fortfarande öppna, spela, ändra, exportera och ta bort.', 'Nothing is locked by a ceiling: you can still open, play, change, export and remove.')
+
+// ── C:s ark ─────────────────────────────────────────────────────────────────────────────────────
+function ark(matt, add = 1) {
+  const s = sagt(matt)
+  const egen = barare === 'you' || matt === 'projects'
+  const enhet = matt === 'storage' ? MB : ''
+  return `<div class="skymning"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="ark-h" aria-describedby="ark-p">
+    <h2 id="ark-h">${s.rubrik}</h2>
+    <p id="ark-p" class="fel"><b>${s.vad}</b> ${s.varfor}</p>
+    ${egen ? `<div style="display:grid;gap:6px;margin:12px 0"><div class="tak-rad" data-fullt>${av(matt, enhet)}</div>${bar(matt, add)}</div>` : ''}
+    <p>${s.vag}</p>
+    <p class="muted">${ALLTID()}</p>
+    <div class="knappar">${egen && yta !== 'hem' ? `<button class="sek" data-do="utrymme">${yta === 'hem' ? L('Visa utrymmet', 'Show the space') : L('Visa utrymmet i Mina spel', 'Show the space in My games')}</button>` : ''}<button class="prim" data-do="stang" data-fokus>${L('Stäng', 'Close')}</button></div>
+  </div></div>`
+}
+
+// ── Mina spel ───────────────────────────────────────────────────────────────────────────────────
+const SPEL = [['Skogens råd', '#3f8f5f', 4, 'cards', 'spelat i går', 'played yesterday'], ['Hamnen', '#b0703f', 12, 64, 'spelat 18 okt', 'played 18 Oct'], ['Stjärnhandel', '#3f6fb0', 2, 31, 'inte spelat', 'not played']]
+function minaSpel() {
+  const h = handling()
+  const antal = lage === 'nara' ? 2 : 3
+  const spel = SPEL.slice(0, antal)
+  const p = 'projects'
+  const stopp = fullt(p)
+  let over = '', dialog = '', rubrikRad = ''
+  // B: rubriken bär antalet nära och vid taket
+  if (v === 'B' && tak() && (nara(p) || stopp || used(p) / T[p].limit >= 0.6)) rubrikRad = `<span class="tak-rad" ${stopp ? 'data-fullt' : ''}>${L(`${used(p)} av ${T[p].limit} spel`, `${used(p)} of ${T[p].limit} games`)}${stopp ? '' : L(' · ett kvar', ' · one left')}</span>`
+  // C: utrymmet överst, så fort ett tak finns
+  if (v === 'C' && tak()) over += utrymme()
+  if (st.tryckt && stopp) {
+    const s = sagt(p)
+    if (v === 'A' && h !== 'imp') over += `<p class="notice" role="alert" tabindex="-1" data-fokus><b>${s.vad}</b> ${s.varfor} ${s.vag}</p>`
+    if (v === 'C') dialog = ark(p)
+  }
+  if (st.tryckt && !stopp && h === 'ny') over += `<p class="notice" style="background:#1b2a22;color:#d8ffe8">${L('(Här öppnas guiden, som i dag.)', '(The guided start opens here, as today.)')}</p>`
+  const nyTile = v === 'B' && stopp
+    ? `<button class="spel" data-new aria-disabled="true" aria-describedby="ny-why" data-do="tryck" ${st.tryckt && h === 'ny' ? 'data-fokus' : ''}>${L('＋ Nytt spel', '＋ New game')}<small id="ny-why">${st.tryckt && h === 'ny' ? `${sagt(p).varfor} ${sagt(p).vag}` : L(`Ditt konto rymmer ${T[p].limit} spel. Ta bort ett för att skapa ett nytt.`, `Your account holds ${T[p].limit} games. Remove one to make a new one.`)}</small></button>`
+    : `<button class="spel" data-new data-do="tryck">${L('＋ Nytt spel', '＋ New game')}</button>`
+  const kortRad = (s) => {
+    const n = s[3] === 'cards' ? used('cards') : s[3]
+    if ((v === 'C' && tak()) || (v === 'B' && tak())) {
+      const full = tak() && n >= T.cards.limit
+      return `<span class="rad2">v${s[2]} · <span class="tak-rad" ${full ? 'data-fullt' : ''}>${n} ${L('av', 'of')} ${T.cards.limit} ${L('kort', 'cards')}</span></span>`
+    }
+    return `<span class="rad2">v${s[2]} · ${L(s[4], s[5])}</span>`
+  }
+  const meny = (i) => (st.meny || h === 'dub') && i === 0 && !(st.tryckt && v !== 'B') ? `<div class="meny" role="menu">
+      <button role="menuitem">${L('Starta bord', 'Start a table')}</button>
+      <button role="menuitem">${L('Byt namn…', 'Rename…')}</button>
+      ${v === 'B' && stopp ? `<button role="menuitem" aria-disabled="true" data-do="tryck">${L('Dubblera', 'Duplicate')}<small>${L(`${used(p)} av ${T[p].limit} spel. Ta bort ett för att få plats.`, `${used(p)} of ${T[p].limit} games. Remove one to make room.`)}</small></button>` : `<button role="menuitem" data-do="tryck">${L('Dubblera', 'Duplicate')}</button>`}
+      <button role="menuitem">${L('Exportera…', 'Export…')}</button><hr><button role="menuitem">${L('Ta bort spelet', 'Remove the game')}</button></div>` : ''
+  // Importen: dialogen ur #529, med taket i felraden (A), i inledningen (B) eller i arket (C)
+  let imp = ''
+  if (h === 'imp' && (v !== 'C' || !st.tryckt || !stopp)) {
+    const s = sagt(p)
+    const fore = v === 'B' && stopp
+    const fel = st.tryckt && stopp && v === 'A' ? `<p class="fel" role="alert" tabindex="-1" data-fokus><b>${L('«hamnen-export.zip» kunde inte importeras:', '«hamnen-export.zip» could not be imported:')}</b> ${s.varfor} ${s.vag}</p>` : ''
+    imp = `<div class="skymning"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="imp-h"><h2 id="imp-h">${L('Importera spel', 'Import a game')}</h2>
+      <p class="muted">${L('Välj en zip-fil som exporterats från Deckster. Den blir ett nytt spel med hela sin historik, och inget av dina spel skrivs över.', 'Choose a zip file exported from Deckster. It becomes a new game with its whole history, and none of your games is overwritten.')}</p>
+      ${fore ? `<p class="fel" id="imp-why"><b>${L(`Ditt konto rymmer ${T[p].limit} spel, och du har ${used(p)}.`, `Your account holds ${T[p].limit} games, and you have ${used(p)}.`)}</b> ${L('Ta bort ett spel innan du importerar ett.', 'Remove a game before you import one.')}</p>` : ''}
+      ${fel}
+      <div class="knappar"><button class="sek">${L('Avbryt', 'Cancel')}</button><button class="prim" data-do="tryck" ${fore ? 'aria-disabled="true" aria-describedby="imp-why" style="background:transparent;border:1px solid #3b414e;color:#7d8597"' : ''}>${L('Välj fil…', 'Choose file…')}</button></div></div></div>`
+  }
+  return `<div class="acc" style="position:relative"><div class="home">
+    <header><h1 tabindex="-1">${L('Mina spel', 'My games')}</h1>${rubrikRad}<span class="vem"><span>ockelberg@gmail.com</span><span class="ikon" title="Profil">${g('person')}</span><span class="ikon" title="${L('Logga ut', 'Log out')}">${g('exit')}</span></span><button class="importknapp" title="${L('Importera spel…', 'Import a game…')}" data-do="imp">${g('import')}</button></header>
+    ${over}
+    <div class="grid">${spel.map((s, i) => `<div class="spel"><div class="oppna"><i class="kortbild" style="--c:${s[1]}"></i><strong>${s[0]}</strong>${kortRad(s)}</div><button class="mer" aria-expanded="${!!meny(i)}" data-do="meny">⋯</button>${meny(i)}</div>`).join('')}${nyTile}</div>
+  </div>${imp}${dialog}</div>`
+}
+
+// C:s utrymme: varje mått som har ett tak, i Pågår nu:s form.
+function utrymme() {
+  const m = (namn, matt, enhet = '', extra = '') => `<div class="matt" ${fullt(matt) ? 'data-fullt' : ''}><b>${namn}</b>${bar(matt)}<span>${av(matt, enhet)}${extra}</span></div>`
+  return `<section class="utrymme" aria-labelledby="utr"><h2 id="utr" class="h2">${L('Utrymme', 'Space')}</h2><div class="matare">
+    ${m(L('Spel', 'Games'), 'projects')}
+    ${m(L('Kort i Skogens råd', 'Cards in Skogens råd'), 'cards', '', L(' · flest av dina spel', ' · most of your games'))}
+    ${m(L('Bord öppna nu', 'Tables open now'), 'open')}
+    ${m(L('Bord startade, 30 dygn', 'Tables started, 30 days'), 'month')}
+    ${m(L('Lagring', 'Storage'), 'storage', MB)}
+  </div></section>`
+}
+
+// ── Profilen (A) ────────────────────────────────────────────────────────────────────────────────
+function profil() {
+  const rad = (namn, matt, enhet = '', sub = '') => `<dt>${namn}${sub ? `<small>${sub}</small>` : ''}</dt>${bar(matt)}<dd ${fullt(matt) ? 'data-fullt' : ''}>${av(matt, enhet)}</dd>`
+  const spelrad = (namn, n) => `<div class="spelrad" style="display:contents"><dt>${namn}</dt><div class="bar" ${n >= T.cards.limit ? 'data-fullt' : n / T.cards.limit >= 0.8 ? 'data-nara' : ''}><i style="--p:${Math.round((n / T.cards.limit) * 100)}%"></i></div><dd ${n >= T.cards.limit ? 'data-fullt' : ''}>${n} ${L('av', 'of')} ${T.cards.limit}</dd></div>`
+  const forbr = tak() ? `<section class="pkort" aria-labelledby="fb"><h2 id="fb">${L('Förbrukning', 'Usage')}</h2>
+      <p class="liten">${L('Det ditt konto rymmer, och hur mycket som används. Bord som testledare startar i dina spel och bilder som medredigerare laddar upp i dem räknas mot dig.', 'What your account holds, and how much is used. Tables test leaders start in your games and pictures co-editors upload to them count against you.')}</p>
+      <dl class="forbr">
+        ${rad(L('Spel', 'Games'), 'projects')}
+        <dt style="grid-column:1/-1;color:#9aa3b8;font-size:13px;margin-top:4px">${L('Kort per spel (unika; exemplar räknas inte)', 'Cards per game (unique; copies do not count)')}</dt>
+        ${spelrad('Skogens råd', used('cards'))}${spelrad('Hamnen', 64)}${lage === 'nara' ? '' : spelrad('Stjärnhandel', 31)}
+        ${rad(L('Bord öppna nu', 'Tables open now'), 'open')}
+        ${rad(L('Bord startade', 'Tables started'), 'month', '', L('de senaste 30 dygnen', 'in the last 30 days'))}
+        ${rad(L('Lagring', 'Storage'), 'storage', MB, L('bilder och typsnitt i alla versioner av dina spel', 'pictures and fonts in every version of your games'))}
+      </dl>
+      <p class="liten">${ALLTID()}</p></section>` : ''
+  return `<div class="acc"><div class="profil"><span class="tillbaka">${g('left')} ${L('Mina spel', 'My games')}</span><header><h1>${L('Profil', 'Profile')}</h1><p class="liten">ockelberg@gmail.com</p></header>
+    <section class="pkort"><h2>${L('AI-nyckel', 'AI key')}</h2><p class="liten">Anthropic · ${L('nyckeln som slutar på', 'the key ending in')} <code>x7Qd</code></p></section>
+    <section class="pkort"><h2>Passkeys</h2><p class="liten">iCloud-nyckelring · MacBook · Safari</p></section>
+    ${forbr}
+    <section class="pkort"><h2>${L('Språk', 'Language')}</h2><p class="liten">${L('Svenska', 'English')}</p></section>
+  </div></div>`
+}
+
+// ── Editorns krom ───────────────────────────────────────────────────────────────────────────────
+function huvud() {
+  const FLIKAR = [['vagg', L('Kortvägg', 'Card wall')], ['mall', L('Mall', 'Template')], ['tabell', L('Tabell', 'Table')], ['tema', L('Speltema', 'Theme')], ['media', 'Media'], ['regler', L('Regler', 'Rules')], ['bord', L('Bord', 'Tables')]]
+  return `<header class="ed-huvud"><span class="hem">${L('Mina spel', 'My games')}</span><span class="namn">Skogens råd</span><button class="dorr" aria-label="${L('Spelets val', 'The game\'s options')}">⋯</button><span class="ver">v4</span><span class="bock" title="${L('Sparat', 'Saved')}">✓</span>
+    <span class="angra"><button aria-label="${L('Ångra', 'Undo')}">${g('undo')}</button><button aria-label="${L('Gör om', 'Redo')}">${g('redo')}</button></span><span class="spacer"></span>
+    <nav class="ed-flikar" role="tablist">${FLIKAR.map(([k, n]) => `<button role="tab" aria-selected="${k === yta}">${n}</button>`).join('')}</nav><span class="spacer"></span>
+    <span class="dela"><i>V</i><span>${L('Dela', 'Share')}</span></span><button class="ed-knapp kantad">${L('Spara', 'Save')}</button><button class="ed-knapp primar starta"><span>${L('Starta', 'Start')}</span><em>⌄</em></button></header>`
+}
+const notisband = (s) => `<div class="notisband">${g('warn')}<p role="alert" tabindex="-1" data-fokus><b>${s.vad}</b> ${s.varfor} ${s.vag}</p><button class="stang" aria-label="${L('Stäng meddelandet', 'Close the message')}" data-do="stang">×</button></div>`
+const rollband = () => barare === 'owner' && yta === 'bord' ? `<p class="rollband">${L('Du är testledare: du kan starta bord, läsa spelet och jämföra versioner, men inte ändra det.', 'You are a test leader: you can start tables, read the game and compare versions, but not change it.')}</p>` : ''
+
+// ── Tabell ──────────────────────────────────────────────────────────────────────────────────────
+const KORT = [['skogsvandring', 'Skogsvandring', 'Dra ett kort.', 2], ['guldfynd', 'Guldfynd', 'Få 2 guld.', 2], ['bjornen', 'Björnen', 'Göra 3 skada.', 1], ['ravens', 'Korpens vaka', 'Titta på översta kortet.', 3], ['regn', 'Höstregn', 'Alla kastar ett kort.', 2], ['ek', 'Den gamla eken', 'Vila: få 1 liv.', 1], ['dimma', 'Dimma', 'Byt plats med en granne.', 2], ['svamp', 'Svampring', 'Dra två, kasta ett.', 2], ['raven', 'Rävens list', 'Ta ett kort från en granne.', 1], ['bro', 'Trollbron', 'Betala 1 guld eller vänd.', 1]]
+function tabell() {
+  const m = 'cards'
+  const stopp = fullt(m)
+  const ny = st.tryckt && !stopp
+  let band = ''
+  if (st.tryckt && stopp && v === 'A') band = notisband(sagt(m))
+  const n = used(m) + (ny ? 1 : 0)
+  let tny = `<button class="t-ny" data-do="tryck">${L('+ Nytt kort', '+ New card')}</button>`
+  let fotTak = '', fotSagt = ''
+  if (v === 'B' && tak()) {
+    fotTak = `<span class="tak" ${n >= T[m].limit ? 'data-fullt' : ''}>${n} ${L('av', 'of')} ${T[m].limit} ${L('kort', 'cards')}${n < T[m].limit ? L(` · ${T[m].limit - n} kvar`, ` · ${T[m].limit - n} left`) : ''}</span>`
+    if (stopp) tny = `<button class="t-ny" aria-disabled="true" aria-describedby="tny-why" data-do="tryck" ${st.tryckt ? 'data-fokus' : ''}><span>${L('+ Nytt kort', '+ New card')}</span><small id="tny-why">${L(`Spelet rymmer ${T[m].limit} kort`, `The game holds ${T[m].limit} cards`)}</small></button>`
+    if (stopp && st.tryckt) { const s = sagt(m); fotSagt = `<span class="sagt" role="status">${s.varfor} ${s.vag}</span>` }
+  }
+  const dialog = st.tryckt && stopp && v === 'C' ? ark(m) : ''
+  const rader = KORT.map((k, i) => `<tr><td class="bock"><input type="checkbox" aria-label="${k[1]}"></td><td class="id">${k[0]}</td><td><span class="las">${k[1]}</span></td><td><span class="las">${k[2]}</span></td><td><span class="las" style="text-align:right">${k[3]}</span></td><td class="spar"><button aria-label="${L('Ta bort', 'Remove')} ${k[1]}">×</button></td></tr>`).join('')
+  const nyRad = ny ? `<tr data-ny><td class="bock"><input type="checkbox"></td><td class="id">kort-${n}</td><td><span class="las"></span></td><td><span class="las"></span></td><td><span class="las" style="text-align:right">1</span></td><td class="spar"><button>×</button></td></tr>` : ''
+  return `<div class="ed byd-editor">${huvud()}${band}${rollband()}<div class="arbete">
+    <div class="t-krona"><input class="t-sok" placeholder="${L('Sök i alla fält…', 'Search all fields…')}"><span class="t-chips"></span><button class="t-box">${L('Importera', 'Import')} ▾</button></div>
+    <div class="t-vy"><div class="t-rulla" style="overflow:hidden"><table class="t-data"><colgroup><col style="width:44px"><col style="width:130px"><col style="width:200px"><col><col style="width:80px"><col style="width:44px"></colgroup>
+      <thead><tr><th class="bock"><input type="checkbox" aria-label="${L('Markera alla', 'Select all')}"></th><th class="id"><span class="sort"><span>ID</span></span></th><th><span class="sort"><span>${L('Namn', 'Name')}</span></span></th><th><span class="sort"><span>${L('Text', 'Text')}</span></span></th><th><span class="sort"><span>${L('Antal', 'Count')}</span></span></th><th class="spar"><button>+</button></th></tr></thead>
+      <tbody><tr><td colspan="6" style="height:24px;color:#868ea3;padding:0 10px;font-size:11px">⋮ ${used(m) - KORT.length} ${L('kort till ovanför', 'more cards above')}</td></tr>${rader}${nyRad}</tbody></table>${tny}</div></div>
+    <p class="fot"><span>${tak() && v === 'B' ? '' : `${n} ${L('kort', 'cards')}`}</span>${fotTak}<span class="tyst">${L('Sorterat efter ID', 'Sorted by ID')}</span>${fotSagt}</p>
+  </div>${dialog}</div>`
+}
+
+// ── Kortvägg med ett AI-förslag ─────────────────────────────────────────────────────────────────
+function vagg() {
+  const m = 'cards'
+  const stopp = fullt(m, NY)
+  const rum = Math.max(0, T[m].limit - used(m))
+  let band = ''
+  if (st.tryckt && stopp && v === 'A') band = notisband(sagt(m))
+  const tagen = st.tryckt && !stopp
+  const n = used(m) + (tagen ? NY : 0)
+  const ett = (k, forslag) => `<div class="kort" ${forslag ? `data-forslag="${L('föreslaget', 'proposed')}"` : ''}><div><i></i><b>${k}</b><em>${L('Dra ett kort.', 'Draw a card.')}</em></div></div>`
+  const NAMN = ['Skogsvandring', 'Guldfynd', 'Björnen', 'Korpens vaka', 'Höstregn', 'Den gamla eken', 'Dimma']
+  const FORSLAG = ['Lövfall', 'Ekorrens förråd', 'Frostnatt', 'Tranorna', 'Svamptid', 'Skymning']
+  const accept = v === 'B' && stopp
+    ? `<button class="ed-knapp primar" aria-disabled="true" aria-describedby="ai-why" data-do="tryck" ${st.tryckt ? 'data-fokus' : ''}>${L('Godta alla', 'Accept all')}</button>`
+    : `<button class="ed-knapp primar" data-do="tryck">${L('Godta alla', 'Accept all')}</button>`
+  const varning = v === 'B' && tak() && stopp ? `<small id="ai-why">${st.tryckt ? `${sagt(m).varfor} ${sagt(m).vag}` : rum > 0 ? L(`Spelet rymmer ${rum} kort till.`, `The game holds ${rum} more cards.`) : L('Spelet rymmer inga fler kort.', 'The game holds no more cards.')}</small>` : ''
+  const fotTak = v === 'B' && tak() ? `<span class="tak" ${n >= T[m].limit ? 'data-fullt' : ''}>${n} ${L('av', 'of')} ${T[m].limit} ${L('kort', 'cards')}</span>` : `<span>${n} ${L('kort', 'cards')}</span>`
+  const dialog = st.tryckt && stopp && v === 'C' ? ark(m, NY) : ''
+  return `<div class="ed byd-editor">${huvud()}${band}<div class="v-rum"><div class="v-vagg">
+      <div class="v-krona"><input class="t-sok" placeholder="${L('Sök i alla fält…', 'Search all fields…')}"><button class="t-box">${L('Normal syn', 'Normal vision')} ⌄</button><button class="t-box">${L('Guider (0)', 'Guides (0)')} ⌄</button><button class="t-box">${L('Ogrupperad', 'Ungrouped')} ⌄</button><span class="spacer"></span><button class="t-box">${L('Kontroll (0)', 'Check (0)')} ⌄</button></div>
+      <div class="v-kort">${NAMN.map((k) => ett(k)).join('')}${tagen ? FORSLAG.map((k) => ett(k)).join('') : FORSLAG.map((k) => ett(k, true)).join('')}</div>
+      <p class="fot">${fotTak}${tagen ? '' : `<span>${NY} ${L('föreslagna', 'proposed')}</span>`}<span class="tyst">${L('Inga anmärkningar', 'No remarks')}</span>${tagen ? `<span style="color:#7dd3a0">✓ ${L('Förslaget är inlagt.', 'The proposal is added.')}</span>` : ''}</p>
+    </div>
+    <aside class="ai" aria-label="${L('AI-hjälp', 'AI help')}"><header>${g('spark')} ${L('AI-hjälp', 'AI help')}<button aria-label="${L('Stäng', 'Close')}">×</button></header>
+      <p class="fraga-ai">${L('Gör sex kort till med hösten som tema.', 'Make six more cards with autumn as the theme.')}</p>
+      ${tagen ? '' : `<div class="forslag"><h3>${L('Förslag', 'Proposal')}</h3><p>${NY} ${L('nya kort', 'new cards')}${varning}</p><div class="rad"><button class="ed-knapp kantad">${L('Visa på väggen', 'Show on the wall')}</button><button class="ed-knapp kantad">${L('Välj delar…', 'Choose parts…')}</button>${accept}</div></div>`}
+    </aside></div>${dialog}</div>`
+}
+
+// ── Bord ────────────────────────────────────────────────────────────────────────────────────────
+function bord() {
+  const m = handling() === 'month' ? 'month' : 'open'
+  const stopp = fullt(m)
+  const startat = st.tryckt && !stopp
+  const du = barare === 'you'
+  // Bord som kör i det här spelet: ägaren har 2 här och 1 i ett annat spel; testledaren ser 1.
+  const har = m === 'open' ? (du ? (lage === 'nara' ? 1 : 2) : 1) : 1
+  const rad = (kod, vem, drag) => `<div class="bordrad"><div class="topp"><i></i><div><b>${kod}<small>v4 · ${L('i spel', 'in play')}</small></b><span>${vem}</span><span>${drag}</span></div></div><div class="vagar"><button>${L('Spela härifrån', 'Play from here')}</button><button aria-label="${L('Fler sätt att öppna bordet', 'More ways to open the table')}">⌄</button></div></div>`
+  const KODER = [['K7QF2M', L('Anna och Per spelar', 'Anna and Per are playing'), L('senaste drag 14:02', 'last move 14:02')], ['M7CG38', L('Lisa spelar', 'Lisa is playing'), L('senaste drag i går', 'last move yesterday')]]
+  const lista = KODER.slice(0, har).map((k) => rad(...k)).join('') + (startat ? rad('R4TN9X', L('ingen sitter än', 'nobody is seated yet'), L('inga drag än', 'no moves yet')) : '')
+  let said = ''
+  if (startat) said = `<p class="b-said" data-ok role="status">✓ ${L('Nytt bord startat: R4TN9X.', 'New table started: R4TN9X.')}</p>`
+  if (st.tryckt && stopp && v === 'A') { const s = sagt(m); said = `<p class="b-said" data-fel role="alert" tabindex="-1" data-fokus><b>${s.vad}</b> ${s.varfor} ${s.vag}<br><button class="sek">${L('Försök igen', 'Try again')}</button></p>` }
+  let ny = `<button class="b-ny" data-do="tryck">${g('play')} ${L('Starta nytt bord', 'Start a new table')}</button>`
+  let takRad = ''
+  if (v === 'B' && tak()) {
+    // Bara det mått som prövas står vid taket; det andra står nära, så att raden säger vilket.
+    const avB = (x) => (x === m ? av(x) : `${T[x].nara} ${L('av', 'of')} ${T[x].limit}`)
+    const o = du ? L(`${avB('open')} bord öppna`, `${avB('open')} tables open`) : L(`Ägaren har ${avB('open')} bord öppna`, `The owner has ${avB('open')} tables open`)
+    const mo = L(`${avB('month')} startade de senaste 30 dygnen`, `${avB('month')} started in the last 30 days`)
+    takRad = `<span class="tak-rad" ${stopp ? 'data-fullt' : ''}>${o} · ${mo}</span>`
+    if (stopp) {
+      ny = `<button class="b-ny" aria-disabled="true" aria-describedby="b-why" data-do="tryck" ${st.tryckt ? 'data-fokus' : ''}>${g('play')} ${L('Starta nytt bord', 'Start a new table')}</button>`
+      const s = sagt(m)
+      said = `<p class="b-said" data-fel id="b-why">${st.tryckt ? `<b>${s.varfor}</b> ${s.vag}` : `${s.varfor}`}</p>`
+    }
+  }
+  const dialog = st.tryckt && stopp && v === 'C' ? ark(m) : ''
+  return `<div class="ed byd-editor">${huvud()}${rollband()}<div class="b-rum">
+    <div class="b-vanster"><h3>${L('Spelare', 'Players')}</h3><div class="stegare"><span>−</span><span>4</span><span>+</span></div><h3>${L('På bordet', 'On the table')}</h3>
+      <div class="zonrad"><i></i>${L('Spelyta', 'Play area')}<em>${L('FAST', 'FIXED')}</em></div><div class="zonrad"><i></i>${L('Kortlek', 'Deck')}<em>${L('FAST', 'FIXED')}</em></div><div class="zonrad"><i></i>${L('Kasthög', 'Discard')}</div><h3>${L('Vid platserna', 'At the seats')}</h3><div class="zonrad"><i></i>${L('Hand', 'Hand')}<em>${L('FAST', 'FIXED')}</em></div></div>
+    <div class="b-mitt"><p>${L('Dra en zon på filten för att flytta den.', 'Drag a zone on the felt to move it.')}</p><div class="filt"><i style="left:30%;top:6%;width:40%;height:7%"></i><i style="left:25%;top:40%;width:50%;height:14%"></i><i style="left:30%;bottom:6%;width:40%;height:7%"></i><i style="left:4%;top:25%;width:6%;height:45%"></i><i style="right:4%;top:25%;width:6%;height:45%"></i></div></div>
+    <div class="b-hoger"><span style="color:#c3cbdd">▸ ${L('Visa spelarvyn', 'Show the player view')}</span><p class="lead">${L('Bord för det här spelet. Ett nytt bord startar från sparad version 4.', 'Tables for this game. A new table starts from the saved version, version 4.')}${takRad}</p>${ny}${said}<h3>▾ ${L('Bord som spelas', 'Tables in play')} · ${har + (startat ? 1 : 0)}</h3>${lista}</div>
+  </div>${dialog}</div>`
+}
+
+// ── Media ───────────────────────────────────────────────────────────────────────────────────────
+function media() {
+  const m = 'storage'
+  const stopp = fullt(m, 4.2)
+  const bilder = [['linear-gradient(135deg,#3f8f5f,#1c4029)', L('används av 31 kort', 'used by 31 cards')], ['linear-gradient(135deg,#b0703f,#6b3a1a)', L('används av 12 kort', 'used by 12 cards')], ['linear-gradient(135deg,#3f6fb0,#1f2f55)', L('används av mallen', 'used by the template')], ['linear-gradient(135deg,#8a6fb0,#3a2f55)', L('inget kort använder den', 'no card uses it'), true]]
+  let sagtRad = '', ladda = `<button class="m-ladda" data-do="tryck">${L('Ladda upp media', 'Upload media')}</button>`, matare = ''
+  const lagt = st.tryckt && !stopp
+  if (lagt) sagtRad = `<p><u>skog-baksida.png</u> ${L('är tillagd', 'is added')}</p>`
+  if (st.tryckt && stopp && v === 'A') {
+    // upload.undone i dag: «{what} kunde inte laddas upp och har tagits bort igen: {why}», med taket som why.
+    const vems = barare === 'you' ? L('kontots', 'the account\'s') : L('spelets ägares', 'the game owner\'s')
+    sagtRad = `<p data-fel role="alert" tabindex="-1" data-fokus>${L(`<b>Bilden skog-baksida.png kunde inte laddas upp och har tagits bort igen:</b> ${vems} lagring är full, ${av(m, MB)}, och bilden är 4,2 MB.`, `<b>The picture skog-baksida.png could not be uploaded and has been removed again:</b> ${vems} storage is full, ${av(m, MB)}, and the picture is 4.2 MB.`)}<small>${sagt(m).vag}</small></p>`
+  }
+  if (v === 'B' && tak()) {
+    matare = `<div class="lagring" ${stopp ? 'data-fullt' : ''} id="m-why"><span>${stopp ? L('Lagringen är full: ', 'Storage is full: ') : L('Lagring: ', 'Storage: ')}${av(m, MB)}</span>${bar(m, 4.2)}</div>`
+    if (stopp) {
+      ladda = `<button class="m-ladda" aria-disabled="true" aria-describedby="m-why" data-do="tryck" ${st.tryckt ? 'data-fokus' : ''}>${L('Ladda upp media', 'Upload media')}</button>`
+      if (st.tryckt) { const s = sagt(m); sagtRad = `<p data-fel role="status">${s.varfor}<small>${s.vag}</small></p>` }
+    }
+  }
+  const dialog = st.tryckt && stopp && v === 'C' ? ark(m, 4.2) : ''
+  return `<div class="ed byd-editor">${huvud()}<div class="arbete">
+    <div class="m-huvud"><h2>${L('Media i spelet', 'Media in the game')}</h2>${matare}${ladda}</div>
+    <div class="m-sagt">${sagtRad}</div>
+    <div class="m-bilder">${bilder.map((b) => `<div class="bild"><i style="--bg:${b[0]}"></i><span ${b[2] ? 'data-tom' : ''}>${b[1]}</span><button>${L('Ta bort', 'Remove')}</button></div>`).join('')}${lagt ? `<div class="bild"><i style="--bg:linear-gradient(135deg,#5a7a3a,#2a3a1a)" data-ny="${L('nyss tillagd', 'just added')}"></i><span data-tom>${L('inget kort använder den', 'no card uses it')}</span><button>${L('Ta bort', 'Remove')}</button></div>` : ''}</div>
+    <p class="fot"><span class="tyst">${L('4 bilder', '4 pictures')}</span></p>
+  </div>${dialog}</div>`
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+const sida = document.getElementById('sida')
+const HOJD = { 1024: 768, 1280: 800, 1440: 900 }
+function skala() {
+  const w = Number(bredd)
+  const z = Math.min(1, (document.documentElement.clientWidth - 32) / w)
+  document.getElementById('ram').style.zoom = z
+}
+function render() {
+  const fl = (id, obj, nu, attr) => { document.getElementById(id).innerHTML = Object.entries(obj).map(([k, n]) => `<button aria-pressed="${k === nu}" data-${attr}="${k}">${n}</button>`).join('') }
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  fl('ytor', YTOR, yta, 'yta')
+  const hs = HANDLINGAR[yta]
+  document.getElementById('handlinggrupp').hidden = !hs
+  if (hs) fl('handling', hs, handling(), 'h')
+  fl('lage', LAGEN, lage, 'lage')
+  document.getElementById('barargrupp').hidden = yta === 'hem' || yta === 'forbr'
+  fl('barare', { you: L('du (ägaren)', 'you (the owner)'), owner: yta === 'bord' ? 'ägaren (du är testledare)' : 'ägaren (du är medredigerare)' }, barare, 'bar')
+  fl('bredd', { 1024: '1024', 1280: '1280', 1440: '1440' }, bredd, 'bredd')
+  fl('sprak', { sv: 'Svenska', en: 'English' }, lang, 'lang')
+  document.getElementById('anteckning').innerHTML = `<b>${V[v].namn}.</b> ${V[v].not}`
+  const forbrYta = yta === 'forbr' ? (v === 'A' ? 'Profil' : 'Mina spel') : YTOR[yta]
+  document.getElementById('etikett').innerHTML = `<b>${forbrYta}</b> · variant ${v} · ${LAGEN[lage].toLowerCase()} · ${bredd} × ${HOJD[bredd]}${st.tryckt ? ' · efter trycket' : ''}`
+  sida.dataset.bredd = bredd
+  sida.style.width = `${bredd}px`
+  sida.style.height = `${HOJD[bredd]}px`
+  document.documentElement.lang = lang
+  sida.innerHTML = yta === 'hem' ? minaSpel() : yta === 'tabell' ? tabell() : yta === 'vagg' ? vagg() : yta === 'bord' ? bord() : yta === 'media' ? media() : (v === 'A' ? profil() : minaSpel())
+  skala()
+  const p = new URLSearchParams({ v, yta, lage, bredd, lang })
+  if (hand) p.set('h', hand)
+  if (barare !== 'you') p.set('bar', barare)
+  history.replaceState(null, '', `?${p}`)
+  sida.querySelector('[data-fokus]')?.focus({ preventScroll: true })
+}
+addEventListener('resize', skala)
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; omstart() }
+  if (b.dataset.yta) { yta = b.dataset.yta; hand = ''; omstart() }
+  if (b.dataset.h) { hand = b.dataset.h; omstart() }
+  if (b.dataset.lage) { lage = b.dataset.lage; omstart() }
+  if (b.dataset.bar) { barare = b.dataset.bar; omstart() }
+  if (b.dataset.bredd) bredd = b.dataset.bredd
+  if (b.dataset.lang) lang = b.dataset.lang
+  if (b.id === 'omstart') omstart()
+  render()
+})
+sida.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-do]')
+  if (!b) return
+  const d = b.dataset.do
+  if (d === 'tryck') st.tryckt = true
+  if (d === 'stang') st.tryckt = false
+  if (d === 'imp') { hand = 'imp'; omstart() }
+  if (d === 'meny') st.meny = !st.meny
+  if (d === 'utrymme') { yta = 'forbr'; omstart() }
+  render()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    omstart(); render()
+  }
+  if (e.key === 'Escape' && st.tryckt) { st.tryckt = false; render() }
+})
+render()
+</script>
+</body>
+</html>
