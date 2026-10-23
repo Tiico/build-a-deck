@@ -278,6 +278,10 @@ type PreparedCard = { cardRef: string; type: TypeRef; sku: string; files: Record
 
 En bild är en fil hur många kort som än visar den: basens baksida på femtio kort ritas en gång, och en grupps baksida är en annan fil (L7).
 Att rita en fil är den enda renderarens jobb via render-kön (E2, #1207): kompilera `cardRef`:s sida `face` med `bleedMm` utfall och rita den som `file` säger.
+Servern gör det i `packages/server/src/print-files.ts`: `printManifestOf` ger spelet som manifest, `printFileJobsOf` gör varje förberedd fil till ett renderjobb, och `renderedFiles` är den `FileSource` som `submit` och tryckpaketet läser filerna ur.
+Ett raster är jobbslaget `{ kind: 'raster', format, widthPx, heightPx }` och ritas av `Renderer.renderRaster` i exakt de pixlarna, hela sidan med utfall; en vektorfil är samma PDF som exporten gör, med partnerns utfall i stället för typens.
+Samma kort i samma krav är ett jobb, och i två partners krav två (DRIFT §6).
+En fil i ett annat snittmått än typens, eller i CMYK, vägras med ett fel i stället för att skalas eller skickas i sRGB: CMYK är ett ICC-steg efter renderingen som inte är byggt (E2), och frågan tas till beställaren när en riktig partner är vald.
 I `steps` står en fil som `{ "file": namn }`, och `submit` sätter uppladdningen eller URL:en där; varje förberedd fil nämns i stegen, och inga andra.
 TGC-formen är en uppladdning per fil, ett spel, en lek per baksida med baksidan som `back_id`, korten i omgångar om högst hundra, lagerdelarna och en vagn.
 QPMN-formen är en enda order med en `designData` per produkt, där varje kort är ett index med sin bild per sida.
@@ -295,11 +299,14 @@ En provider trycker spelet om den trycker varje kort; lagervaror som den inte pa
 ### 4.4 Fake-providern och kontraktssviten
 
 `createFakeProvider(config)` står i en riktig partners ställe och pratar inte med någon.
-Den har två förinställningar ur #1199: `MULTI_STEP_INCHES` i TGC:s form (USA, 63,5 × 88,9 mm, 1/8 tum utfall, PNG i 825 × 1125 px, tärningar som lagervara, spårning som rapporteras) och `SINGLE_ORDER_MM` i QPMN:s form (Kina och Vietnam, 63 × 88 mm, 1/8 tum utfall, PDF, inga tärningar, okänd spårning).
+Den har två förinställningar ur #1199: `MULTI_STEP_INCHES` i TGC:s form (USA, 1/8 tum utfall, PNG vid 300 dpi, tärningar som lagervara, spårning som rapporteras) och `SINGLE_ORDER_MM` i QPMN:s form (Kina och Vietnam, 63 × 88 mm, 1/8 tum utfall, PDF, inga tärningar, okänd spårning).
+TGC:s egen lek är 63,5 × 88,9 mm i 825 × 1125 px, men plattformen ritar en typ i typens eget mått och skalar aldrig ett kort till en partners (#1207, fråga 8 i #1199), så flerstegsformen trycker vår 63 × 88 mm med samma utfall: 819 × 1114 px.
+En provider vars snittmått inte är typens säger nej i `supports()` tills en typ i dess mått finns, och sviten håller den till det.
 Med `manufacturesIn` satt till ett EU-land går dirigeringen att pröva.
 Priset den svarar med är påhittat och märkt `basis: 'fictional'`.
 
 `printProviderContract(namn, { provider })` ur `@byd/print/contract` är sviten som varje adapter ska klara, och fake-providern klarar den i båda formerna.
+Med `files` får sviten plattformens ritade filer för en förberedd order och mäter varje fil ur dess egna bytes mot kraven den förbereddes efter: ett raster i exakt kravens pixlar, en PDF vars sida är snittet plus utfallet (#1207). Servern kör sviten så, mot båda formerna, med filerna från den enda renderaren.
 En riktig adapter kopplas in med en rad i en testfil, mot samma manifest (`CONTRACT_MANIFEST`) med baksidor per grupp, exemplar, kort-id som viks till samma filnamn och tärningar.
 
 ---

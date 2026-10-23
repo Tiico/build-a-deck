@@ -94,6 +94,37 @@ Renderingar (`rendersPer30Days`) mäts i en logg, `render_log`, med en rad per j
 Webben skickar ännu inget `?project=` vid uppladdning; hur ett nått tak sägs är skiva 6 (#1198).
 Grindarna: `packages/server/test/quota-storage.test.ts`, `quota-renders.test.ts` och `packages/render/test/render-log.test.ts`, mot båda lagren.
 
+Beslutat och byggt 2026-10-23 (#1198, skiva 6 av PRD #1192): **hur ett nått tak och förbrukningen sägs.**
+Tre varianter prototypades i [`docs/ux-audits/2026-10-23-natt-tak/prototyper/index.html`](docs/ux-audits/2026-10-23-natt-tak/prototyper/index.html): svaret där designern tryckte (A), knappen som säger det innan (B), och ett ark med utrymmet samlat i Mina spel (C).
+Beställaren valde **A, «svaret där du tryckte»**, med tre tillägg: ett datum för startade bord, ägaren vid namn, och förbrukningen i Profil när ett tak är satt.
+
+Före trycket ser allt ut som i dag.
+Trycket svarar där ytan redan säger det som inte kunde hända: rutan under rubriken i Mina spel för «＋ Nytt spel», «Duplicera» och «Starta bord», importens felrad (#529), notisbandet under editorns huvud (#1073) för en redigering och en sparning, raden under «Starta nytt bord» i Bord-fliken (L31) med «Försök igen» kvar, och uppladdningens rad i Media (`upload.undone`).
+Varje svar har tre delar: vad som inte hände, i fetstil, siffrorna, och vad man kan göra.
+Ingen mening säger en statuskod, en nivå, ett pris eller «uppgradera»; kontot «rymmer» så många.
+Vägen ut är alltid en som finns i dag: ta bort ett spel och exportera det först, ta bort eller slå ihop kort, ändra Antal, välja högst så många av ett AI-förslag som ryms med «Välj delar…», avsluta ett bord eller uppdatera ett som redan kör (L65), eller fråga ägaren.
+Meningarna byggs av en funktion, `quotaWords` i `packages/web/src/account/quota-words.ts`, per mått, bärare och handling, på svenska och engelska.
+Ett mått som sidan inte känner till är fortfarande ett tak och inget fel.
+
+«＋ Nytt spel» frågar `GET /me/usage` när den trycks och säger taket i stället för att öppna vägskälet (L79), eftersom guiden skapar spelet först i sitt sista steg.
+Servern prövar ändå, och guiden säger ett 402 efter «Spelet skapades inte.».
+Uppladdningar i editorn skickar `?project=`, så att ägarens tak på lagring prövas när bytena kommer och svaret står där designern laddade upp.
+Media säger att en borttagen bild inte frigör något, eftersom historiken behåller den, och att ett borttaget spel frigör sitt.
+Ett 402 för `tablesPer30Days` säger när nästa bord går att starta, med dag och minut på läsarens klocka.
+
+**Ägaren vid namn.**
+En testledare eller medredigerare som möter ägarens tak får `ownerName` bredvid `bearer: 'owner'`, i 402 och i editorns `refused`.
+Ett konto har inget namn utöver sin adress, så namnet är det första ordet i adressen före @ som läses som ett namn, med versal: «nicklas.ockelberg@…» blir Nicklas.
+Adressen och nivån sägs aldrig, och en adress utan ett sådant ord ger inget namn, så att meningen säger «spelets ägare».
+Ett eget visningsnamn på kontot är en senare fråga.
+
+**Profil** har kortet Förbrukning mellan Passkeys och Språk, med varje mått som har ett tak: spel, kort per spel för varje spel kontot äger, bord öppna nu, bord startade de senaste 30 dygnen och lagring.
+Stapeln blir gul från fyra femtedelar och mörkare gul när taket är nått.
+Renderingar visas inte, eftersom deras tak inte prövas.
+Med alla tak `null`, som i betan, finns kortet inte, och ingen yta ser annorlunda ut än i dag.
+
+Grindarna: `packages/web/test/quota-words.test.ts`, `quota-home.test.tsx` och `quota-editor.test.tsx` för varje yta och båda bärarna, `packages/server/test/quotas.test.ts` för namnet, och `packages/e2e/test/quota-reached.spec.ts`, där en designer i den byggda appen med `BYD_PLANS` möter sina tak.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
@@ -1994,6 +2025,14 @@ Byggt 2026-10-23 (#1206): kontraktet, regiondirigeringen, fake-providern och kon
 - `routeOrder` skickar en EU-destination bara till en provider vars alla fabriker ligger i EU, och svarar annars «inget EU-tryck».
 - Fake-providern klarar sviten i både TGC:s flerstegsform och QPMN:s form med en order, och dess pris är märkt som påhittat.
 - Ingen serverväg anropar ännu `submit` eller `track`, och inget i servern läser paketet; det gör #1207 och #1208.
+
+Byggt 2026-10-23 (#1207): tryckfilerna görs efter partnerns krav.
+- Kompilatorns utfall är en längd i millimeter ur `requirements()`; typens `print.bleedMm` står kvar där ingen partner frågas, i G5:s export och i `POST /projects/:id/print`.
+- Renderaren ritar ett raster i exakt de pixlar kravet anger, hela sidan med utfall, på samma väg som texturen: dokumentet zoomas tills kortet är så brett, passas in och fotograferas, och det som blir kvar av höjden, en bråkdel av en pixel, tas upp av att det ritade kortet sträcks lika mycket. Ingenting skalar filen efteråt.
+- Render-kön har jobbslaget `raster`, så samma kort i två partners krav är två renderingar och i samma krav en (DRIFT §6).
+- `GET /projects/:id/print-package?provider=` ger det en provider skulle få för versionen, ritar filerna och lämnar dem en och en med regelhäftet i vårt A5; inga providers är registrerade ännu, det gör tryckpaketet (#1208).
+- E5 mäter utfallet mot det som ska tryckas: mot den frågade providerns utfall, och när ingen är vald mot det största utfall någon registrerad provider kräver, så att ett spel som går igenom går igenom hos alla; typens eget där ingen trycker typen. En bakgrund som når 3 mm stoppas alltså hos en partner som vill ha 3,175 mm.
+- Kortet ritas i typens eget mått och skalas aldrig till en partners, och CMYK är inte byggt: en provider som begär något av dem får ett fel i stället för en tyst ersättning. CMYK tas till beställaren när en riktig partner är vald (E2:s ICC-steg).
 
 ### F3. Kostnadsbesked först i beställningsflödet (fråga 29)
 

@@ -1,5 +1,6 @@
 import type { Renderer } from './renderer.js'
-import type { RenderStore } from './store.js'
+import type { Fit, RenderStore } from './store.js'
+import type { CompiledLike, RenderKind } from './hash.js'
 import { AssetCache, inlineAssets, type AssetSource } from './assets.js'
 
 export type WorkerOptions = {
@@ -31,11 +32,7 @@ export async function runWorker(opts: WorkerOptions): Promise<string[]> {
     }
     try {
       const page = await inlineAssets(job.compiled, cache)
-      // A texture keeps what its smallest text was fitted to (#523); a print has no reader to size for.
-      const { output, fit } =
-        job.kind.kind === 'png'
-          ? await opts.renderer.renderTexture(page, { dpi: job.kind.dpi }).then(({ png, smallestPt }) => ({ output: png, fit: { smallestPt } }))
-          : { output: job.kind.kind === 'booklet' ? await opts.renderer.renderBooklet(page) : await opts.renderer.renderPdf(page), fit: undefined }
+      const { output, fit } = await renderJob(opts.renderer, job.kind, page)
       await opts.store.complete(job.hash, output, fit)
       done.push(job.hash)
       opts.log?.({ msg: 'rendered', hash: job.hash, kind: job.kind.kind, bytes: output.byteLength })
@@ -44,5 +41,22 @@ export async function runWorker(opts: WorkerOptions): Promise<string[]> {
       await opts.store.fail(job.hash, error)
       opts.log?.({ msg: 'render-failed', hash: job.hash, error })
     }
+  }
+}
+
+// What each kind of job is drawn as, all by the one renderer (E2). A texture keeps what its
+// smallest text was fitted to (#523); a print has no reader to size for.
+async function renderJob(renderer: Renderer, kind: RenderKind, page: CompiledLike): Promise<{ output: Uint8Array; fit?: Fit }> {
+  switch (kind.kind) {
+    case 'png': {
+      const { png, smallestPt } = await renderer.renderTexture(page, { dpi: kind.dpi })
+      return { output: png, fit: { smallestPt } }
+    }
+    case 'raster':
+      return { output: await renderer.renderRaster(page, kind) }
+    case 'pdf':
+      return { output: await renderer.renderPdf(page) }
+    case 'booklet':
+      return { output: await renderer.renderBooklet(page) }
   }
 }

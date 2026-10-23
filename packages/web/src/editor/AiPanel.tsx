@@ -140,9 +140,12 @@ export type AiPanelProps = {
   chosen?: string | null
   // An accepted proposal, as the edits it is: applied as one (#1002).
   onAccept?(edits: readonly EditIntent[]): void
+  // Once the designer's edits so far have reached the server (#1215): a question is asked about the
+  // game she sees, and the server reads it off its own copy.
+  editsLanded?(): Promise<void>
 }
 
-export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone, over = false, onShowOnWall, onAccept, wallShown = true, showsIn = 'wall', chosen = null }: AiPanelProps) {
+export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyGone, over = false, onShowOnWall, onAccept, wallShown = true, showsIn = 'wall', chosen = null, editsLanded }: AiPanelProps) {
   const t = useT()
   const { lang } = useLang()
   // Without a key it always starts folded: the editor is to look as it did (PRD 9), whatever the
@@ -297,7 +300,7 @@ export function AiPanel({ http, project, doc, aiKey, profileUrl, onLeave, onKeyG
         done()
         if (event.kind === 'no-key') onKeyGone()
       }
-    })
+    }, editsLanded?.())
     asking.current = { id, asking: call }
     setBusy(id)
   }

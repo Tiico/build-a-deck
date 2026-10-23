@@ -248,7 +248,7 @@ for (const backend of backends) {
       const id = await owned(ada.id, game(3))
       await db.projects.share(id, bo.id, 'editor')
       const editor = await edit(id, bo.cookie)
-      expect(await editor.edit(addRow('kort-4'))).toEqual({ v: 'refused', why: 'quota', to: 'edit', ask: 1, quota: { measure: 'cardRowsPerProject', limit: 3, used: 3, bearer: 'owner' } })
+      expect(await editor.edit(addRow('kort-4'))).toEqual({ v: 'refused', why: 'quota', to: 'edit', ask: 1, quota: { measure: 'cardRowsPerProject', limit: 3, used: 3, bearer: 'owner', ownerName: 'Ada' } })
       // And the owner's room is the co-editor's: on a tier without the ceiling, Bo's card goes through.
       await db.accountPlans.setPlan(ada.id, 'pro', 'operator')
       expect((await editor.edit(addRow('kort-4'))).v).toBe('edits')
