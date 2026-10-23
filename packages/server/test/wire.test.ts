@@ -575,16 +575,19 @@ describe('a flag about a card (#1142)', () => {
     const eva = await connect(id, null, { role: 'observer', name: 'Eva' })
     clients.push(eva)
     const before = b.frames.length
+    // The id as a frame would carry it, quotes and all: a card id is two characters, and as a bare
+    // substring it turns up inside the random ids of other things on the wire (an observer's id).
+    const named = JSON.stringify(card)
 
     expect((await a.send('A', { v: 'flag', component: card, note: 'för lång text' })).t).toBe('ack')
     await b.waitFor((m) => m.t === 'activity' && m.lines.some((l) => l.intent.v === 'flag'))
     expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, note: 'för lång text' })
-    expect(b.frames.slice(before).join('\n')).not.toContain(card)
+    expect(b.frames.slice(before).join('\n')).not.toContain(named)
 
     // The observer's flag keeps its card too, stamped with her name.
     expect((await eva.send(null, { v: 'flag', component: card })).t).toBe('ack')
     expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', component: card, observer: 'Eva' })
-    expect(b.frames.slice(before).join('\n')).not.toContain(card)
+    expect(b.frames.slice(before).join('\n')).not.toContain(named)
   })
 })
 
