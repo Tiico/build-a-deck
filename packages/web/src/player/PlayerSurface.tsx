@@ -1,12 +1,11 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { GridGlyph } from '../glyphs.js'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
 import { ShowForAll } from './ShowForAll.js'
 import { forTheRoom } from '../table/presence.js'
-import { FootPlay, HandActions } from './HandActions.js'
-import { HandStrip } from './HandStrip.js'
+import { CardPlays, HandBar } from './HandActions.js'
+import { HandGrid } from './HandGrid.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { isPiece } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
@@ -14,22 +13,28 @@ import { DicePill, DiceSheet, diceOf } from './Dice.js'
 import { standingRewind } from '../table/rewind.js'
 import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
-import { SessionButtons, SessionOverlays, useToast, type Sheet } from './SessionOverlays.js'
+import { ExitButton, FlagButton, SessionOverlays, UndoButton, useSheetOpener, useToast, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { playIntents } from './play.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
-import { HandSpread } from '../online/HandSpread.js'
+import { useRoving } from '../editor/roving.js'
 import type { TurnedHand } from './turned.js'
 
-// What a player is given on a screen that cannot carry the board: the seat's own hand as K10's
-// strip, the counters, the private zones, and the table itself as names and counts rather than as
-// a felt. It is the whole of `/play`, and since C2's revision of 2026-09-16 (#99) it is also what
-// `/online` shows a player holding a phone — a phone is the control, and the board is the TV in
-// the room or a screen wide enough to hold it.
+// What a player is given on a screen that cannot carry the board: the seat's own hand, the
+// counters, the private zones, and the table itself as names and counts rather than as a felt. It
+// is the whole of `/play`, and since C2's revision of 2026-09-16 (#99) it is also what `/online`
+// shows a player holding a phone — a phone is the control, and the board is the TV in the room or
+// a screen wide enough to hold it.
 //
-// One surface drawn by two routes, and deliberately one: "the hand on a phone is K10's strip
+// Four tabs at the foot (#1147, beställarens val B 2026-10-22): «Handen», «Framför mig», «Bordet»
+// and «Mer», and each of them is one thing. The column it replaced held all of it at once — the
+// counters, the piles, a strip, six buttons, three folds and a fixed foot — and two of its verbs
+// stood twice on the same screen. A hand card's verbs now stand in one place, the bar that grows
+// over the tabs while cards are marked.
+//
+// One surface drawn by two routes, and deliberately one: "the hand on a phone is this surface
 // whichever address opened it" is a sentence no pair of copies can keep true for long.
 //
 // What the surface does *not* own is the keyboard. Whether there is a felt under it is the route's
@@ -42,8 +47,9 @@ export type HandMarks = {
   clear(): void
 }
 
-// The cards a thumb has marked. It lives above the surface because the keyboard is given
-// `onPlayed` when it is made, and a play through the keyboard drops the marks like any other.
+// The cards a thumb has marked, in the order they were marked. It lives above the surface because
+// the keyboard is given `onPlayed` when it is made, and a play through the keyboard drops the
+// marks like any other.
 export function useHandMarks(): HandMarks {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   return {
@@ -84,15 +90,12 @@ export type PlayerSurfaceProps = {
 }
 
 export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false }: PlayerSurfaceProps) {
-  // What each fold is called is its summary, said on the fold itself (#560 P-20): a `details` is a
-  // group, and a group without a name is one a reader cannot tell from the next.
-  const folds = useId()
+  const ids = useId()
   const t = useT()
+  const [tab, setTab] = useState<Tab>('hand')
   // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
   // phone and has to be answered, so nothing behind it is a Tab stop or a press.
   const asking = standingRewind(view)
-  const personal = useRef<HTMLDetailsElement>(null)
-  const [chosenId, setChosenId] = useState<string | null>(null)
   const [quickTarget, setQuickTarget] = useState<string | null>(null)
   const [quickSource, setQuickSource] = useState<string | null>(null)
   const quick = useRefusal('phone')
@@ -106,11 +109,14 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // up (#715): the hand's buttons showed through the veil and read into the card's own row.
   const behind = (asking && asking.by !== seat) || held !== null ? { inert: true } : {}
   const [sheet, setSheet] = useState<Sheet>(null)
+  // The head's undo and «Mer»'s flag and way out each hand the focus back to themselves.
+  const raiseHead = useSheetOpener(sheet, setSheet)
+  const raiseMore = useSheetOpener(sheet, setSheet)
   // Which target the table said no to, and why.
   const refusal = useRefusal('phone')
   const [refusedZone, setRefusedZone] = useState<string | null>(null)
-  // The overview's own answer (#79): a draw the table refuses is said at the pile that was
-  // pressed, and never in the sheet, which is a different press.
+  // The pile's own answer (#79): a draw the table refuses is said at the pile that was pressed, and
+  // never in the sheet, which is a different press.
   const drawn = useRefusal('phone')
   const [refusedPile, setRefusedPile] = useState<string | null>(null)
   const [toast, setToast] = useToast()
@@ -118,36 +124,19 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const [rolling, setRolling] = useState(false)
 
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
-  const chosen = chosenId === '' ? undefined : hand.find(c => c.id === chosenId) ?? hand[0]
-  const marked = hand.filter(c => marks.selected.has(c.id))
-  const chosenCards = marked.length ? marked : chosen ? [chosen] : []
-  // A lifted card is played alone unless it is one of the selected hand cards (K3).
-  const toPlay = lifted ? (marks.selected.has(lifted.id) ? hand.filter((c) => marks.selected.has(c.id)) : [lifted]) : []
+  // The marked cards in the order they were marked, which is the order they are played in.
+  const marked = [...marks.selected].flatMap((id) => hand.filter((c) => c.id === id))
+  // A lifted card is played alone unless it is one of the marked hand cards (K3).
+  const toPlay = lifted ? (marks.selected.has(lifted.id) ? marked : [lifted]) : []
   const { turned } = turnedHand
   const allDown = (cards: readonly VisibleComponentState[]) => cards.length > 0 && cards.every((c) => turned.has(c.id))
 
-  // A play the table refuses leaves the sheet open with the answer beside the button that was
-  // pressed: the cards stay in the hand and nothing is quietly lost.
-  // A card carried to another place in the hand (K4; #483, beslut A efter prototyp 33). The strip
-  // draws the hand bottom-up (#415), so a place in the strip is counted from the other end of the
+  // A card carried to another place in the hand (K4; #483, beslut A efter prototyp 33). The grid
+  // draws the hand bottom-up (#415), so a place in the grid is counted from the other end of the
   // zone's order. It is `move` with `index` inside the same hand: no new verb.
   const reorder = (card: VisibleComponentState, position: number) => {
     const n = view.components.filter((c) => c.zone === `hand:${seat}`).length
     void client.send({ v: 'move', component: card.id, to: `hand:${seat}`, index: n - 1 - position })
-  }
-  // The one chosen card's place in the strip, and a step along it from the actions under the hand
-  // (#552). The card stays chosen where it lands: an unpinned choice is the hand's first card,
-  // which after a step is a different one.
-  const orderOf = (card: VisibleComponentState) => {
-    const at = hand.length - 1 - hand.findIndex((c) => c.id === card.id)
-    return {
-      at,
-      of: hand.length,
-      onStep: (by: -1 | 1) => {
-        setChosenId(card.id)
-        reorder(card, at + by)
-      },
-    }
   }
   const play = (zone: string, at: 'top' | 'bottom') => {
     setRefusedZone(zone)
@@ -159,21 +148,23 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     })
   }
   // The top card of a pile into this hand: the felt's ring already offers exactly this on any
-  // pile (K14), and the phone offers it on the same terms.
+  // pile (K14), and the phone offers it on the same terms. The card drawn is the one marked, so
+  // the bar offers to play it straight away.
   const draw = (zone: string) => {
     setRefusedPile(zone)
     void drawn.watch(client.send({ v: 'split', pile: zone, at: 1, to: `hand:${seat}` })).then((result) => {
       if (result.ok) {
         setRefusedPile(null)
         const added = client.view?.components.find(c => c.zone === `hand:${seat}` && !hand.some(before => before.id === c.id))
-        if (added) { setChosenId(added.id); marks.clear() }
+        marks.clear()
+        if (added) marks.toggle(added)
       }
     })
   }
-  // A card played from the hand takes the control that played it along — «Kasta» has nothing to
-  // offer once nothing is chosen — and focus fell to BODY, so the next Tab began at the header
-  // (#559 P-3, K16: never to nothing). Once the cards have left the hand, focus that was stranded
-  // goes to the strip's one tab stop, which is the card now chosen.
+  // A card played from the hand takes the control that played it along — the bar goes once
+  // nothing is marked — and focus fell to BODY, so the next Tab began at the header (#559 P-3,
+  // K16: never to nothing). Once the cards have left the hand, focus that was stranded goes to the
+  // grid's one tab stop.
   const regain = useRef<string[] | null>(null)
   useEffect(() => {
     const gone = regain.current
@@ -181,19 +172,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     regain.current = null
     const stranded = document.activeElement === null || document.activeElement === document.body
     // An emptied hand has no stop left, and the deck's tile is the one it wants next (#761).
-    if (stranded) (document.querySelector<HTMLElement>('.byd-strip[data-hand] [data-hand-card][tabindex="0"]') ?? document.querySelector<HTMLElement>('[data-zone-draw]'))?.focus()
+    if (stranded) (document.querySelector<HTMLElement>('.byd-grid [data-hand-card][tabindex="0"]') ?? document.querySelector<HTMLElement>('[data-zone-draw]'))?.focus()
   }, [hand])
-  // Cards she has just played in front of herself, and the area they are going to (C4). The fold
-  // opens in the commit that draws them there (#958): the table's answer is a frame of its own
-  // after the patch, and opening on the answer drew the card into a closed fold first — or never
-  // opened it, when the line went between the two frames.
-  const reveal = useRef<{ ids: string[]; zone: string } | null>(null)
-  useLayoutEffect(() => {
-    const going = reveal.current
-    if (!going || !view.components.some(c => c.zone === going.zone && going.ids.includes(c.id))) return
-    reveal.current = null
-    if (personal.current) personal.current.open = true
-  }, [view])
   const playDirect = async (cards: VisibleComponentState[], zone: string, at: 'top' | 'bottom') => {
     const first = cards[0]
     if (quickBusy.current || !first) return
@@ -202,22 +182,17 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     setQuickPending(true)
     setQuickTarget(zone)
     setQuickSource(first.zone === `hand:${seat}` ? 'hand' : first.id)
-    if (view.zones.some(z => z.id === zone && z.kind === 'area' && z.owner === seat)) reveal.current = { ids: cards.map(c => c.id), zone }
     try {
       const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at, turned)
       const result = await quick.watch(client.send(...intents))
-      // A play the table refused brings nothing in front of her. A line lost on the way may still
-      // have carried it, and the view after the resync says so, so that one stays armed. A play
-      // that went through is left for the effect: the client holds the patch before React has
-      // drawn it.
-      if (!result.ok && result.reason !== 'connection lost') reveal.current = null
       if (result.ok) {
         if (zone !== `hand:${seat}` && cards.some(c => c.zone === `hand:${seat}`)) regain.current = cards.map(c => c.id)
-        if (cards.some(c => c.zone === `hand:${seat}`) || zone === `hand:${seat}`) {
+        if (cards.some(c => c.zone === `hand:${seat}`)) marks.clear()
+        // A card taken up into the hand is the one marked there, ready for the next play.
+        if (zone === `hand:${seat}`) {
           marks.clear()
-          setChosenId(null)
+          marks.toggle(first)
         }
-        if (zone === `hand:${seat}`) setChosenId(first.id)
       }
     } finally {
       quickBusy.current = false
@@ -227,31 +202,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // The row as it is drawn now, so a card that moved while it was held leaves the walk with it.
   const rowOf = (row: 'hand' | 'mine' | { zone: string }): VisibleComponentState[] =>
     row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isPiece(c))
-  // The card read in the hand is the card chosen (#507, beslut A): what the foot plays is what she
-  // last read, so reading and choosing are one press and never two that can disagree.
-  const hold = (card: VisibleComponentState, row: 'hand' | 'mine' | { zone: string }) => {
-    setHeld({ card, row })
-    if (row === 'hand') {
-      setChosenId(card.id)
-      marks.clear()
-    }
-  }
-  // The whole hand, a press away while the strip holds more than it shows (#767, beslut A + B):
-  // the grid /online has (K17), in the strip's own order, and a card chosen there is the chosen
-  // card, brought into the strip's view.
-  const [overflows, setOverflows] = useState(false)
-  const [spread, setSpread] = useState(false)
-  const showAll = useRef<HTMLButtonElement>(null)
-  const pickFromAll = (card: VisibleComponentState) => {
-    setSpread(false)
-    setChosenId(card.id)
-    marks.clear()
-    requestAnimationFrame(() => document.querySelector(`[data-hand-card="${CSS.escape(card.id)}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' }))
-  }
-  const toggle = (card: VisibleComponentState) => {
-    if (marks.selected.size === 1 && marks.selected.has(card.id)) setChosenId('')
-    marks.toggle(card)
-  }
+  const hold = (card: VisibleComponentState, row: 'hand' | 'mine' | { zone: string }) => setHeld({ card, row })
+
+  const tabs: { id: Tab; label: string; count?: number }[] = [
+    { id: 'hand', label: t('player.tab.hand'), count: hand.length },
+    { id: 'mine', label: t('player.tab.mine'), count: inFrontOf(view).length },
+    { id: 'table', label: t('player.tab.table') },
+    { id: 'more', label: t('player.tab.more') },
+  ]
+  // The tabs are one stop with the arrows inside, and an arrow opens the tab it lands on.
+  const roving = useRoving({ ids: tabs.map((x) => x.id), selected: tab, orientation: 'horizontal', followFocus: true, onActivate: (id) => setTab(id as Tab) })
+  const panel = (id: Tab) => ({ role: 'tabpanel', id: `${ids}-${id}`, 'aria-labelledby': `${ids}-tab-${id}`, hidden: tab !== id, className: 'byd-panel', 'data-panel': id })
+  const playing = !view.ended && !view.rewind
 
   return (
     <>
@@ -262,86 +224,101 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <strong>{name}</strong>
           <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
         </span>
-        {/* The one help pattern (L32), on a narrower screen (#305). It stands in the chrome and
-            not beside the heading over the hand, and that is the whole of the measurement the
-            decision was made on: from up here the box hangs over the top of the felt and covers
-            nothing a thumb plays with, while a sheet from the bottom lay over four cards out of
-            five. Gesture instructions stay here; only the selection count stands by the hand. */}
-        <Help topic={t('play.help.hand.topic')}>
-          <p>{t('play.help.hand.pick')}</p>
-          <p>{t('play.help.hand.play')}</p>
-          <p>{t('play.help.hand.hidden')}</p>
-        </Help>
-        <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
+        <UndoButton client={client} view={view} raise={raiseHead} />
       </header>
-      <div className="byd-behind" {...behind}>
-        <CountersRow
-          view={view}
-          onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })}
-          extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
-        />
-      </div>
-      <main className="byd-phone-main" {...behind}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h1>{t('player.hand.title')}</h1>
-          {overflows && (
-            <button type="button" ref={showAll} className="byd-foot-more byd-hand-all" style={{ marginLeft: 'auto' }} aria-expanded={spread ? 'true' : 'false'} aria-label={t('player.hand.all', { n: hand.length })} title={t('player.hand.all', { n: hand.length })} onClick={() => setSpread(true)}>
-              <GridGlyph />
-              {hand.length}
-            </button>
-          )}
-        </div>
-        <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
-        {/* What the table just said to this seat, in the page's flow under the piles (#715, beslut
-            2026-10-04): fixed at the top it hid a counter's name and value while it stood. */}
-        {toast && <p className="byd-phone-said" role="status">{toast}</p>}
-        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} onOverflow={setOverflows} turned={turned} onTurn={(c) => turnedHand.toggle(c.id)} />
-        {hand.length > 0 && marks.selected.size > 0 && <p className="byd-hint">{t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size })}</p>}
-        <HandActions down={allDown(chosenCards)} refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
-        {quickSource === 'hand' && <Refusal handle={quick} />}
-        <details ref={personal} className="byd-personal" data-personal aria-labelledby={`${folds}-mine`}>
-          <summary id={`${folds}-mine`}>{t('player.mine.title', { n: inFrontOf(view).length })}</summary>
+      <main className="byd-panels" {...behind}>
+        <section {...panel('hand')}>
+          {/* The piles first, because they are what fills a hand (#79), and the hand under them,
+              whole. */}
+          <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
+          <HandGrid view={view} selected={marks.selected} faces={faces} onToggle={marks.toggle} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} turned={turned} onTurn={(c) => turnedHand.toggle(c.id)} />
+        </section>
+        <section {...panel('mine')}>
+          {/* The counters, and the dice's pill among them (#1138): the things a seat keeps count
+              of and rolls, which a phone in the hand reaches without looking up. */}
+          <CountersRow
+            view={view}
+            onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })}
+            extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
+          />
           <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
           {quickSource !== 'hand' && <Refusal handle={quick} />}
-        </details>
-        {/* The full table, folded out when it is asked for (C4). The row above the hand is the
-            piles, because the hand comes first (#156) and the piles are what a hand acts on; a
-            row that grew by a tile per seat would push the hand towards the fold at eight seats.
-            The whole table lives down here instead, beside the two folds that were already here,
-            and it costs one closed row of height whatever the table's size.
-            It is here, and not only on the felt, because the area in front of a seat is public
-            since #414: the cards in front of the others are in this phone's own frames, and a
-            screen that hid what its socket had been sent is the state the repo's rule about
-            hidden information exists to keep out. It reads and never acts — the draw stays in the
-            row above, where a thumb already knows to find it. */}
-        <details className="byd-phone-table" data-phone-table aria-labelledby={`${folds}-table`}><summary id={`${folds}-table`}>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} /></details>
-        {spread && (
-          <HandSpread
-            cards={[...hand].reverse()}
-            columns={4}
-            faces={faces}
-            turned={turned}
-            onOpen={pickFromAll}
-            onClose={() => {
-              setSpread(false)
-              showAll.current?.focus()
-            }}
-          />
-        )}
-        <details className="byd-phone-history" aria-labelledby={`${folds}-latest`}><summary id={`${folds}-latest`}>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
+        </section>
+        <section {...panel('table')}>
+          {/* Played from afar with no felt (C2, #484): where the whole table is, first. */}
+          {away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}
+          {/* Every zone this reader may look into that is not a pile: the piles stand on the
+              hand's tab, where the draw is, and no tile stands in two places (#465). The area in
+              front of another seat is public since #414, so it is read here — and never acted on. */}
+          <TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} />
+          <h2 className="byd-panel-title">{t('play.latest')}</h2>
+          <RecentActivity view={view} activity={activity} />
+        </section>
+        <section {...panel('more')}>
+          {/* The one help pattern (L32), on a narrower screen (#305), as a line with its question
+              mark. It stands here and not in the head (#1147): from the head the box hung over
+              the hand's first row of cards, and here it covers nothing a thumb plays with. */}
+          <p className="byd-help-row">
+            <span>{t('player.more.help')}</span>
+            <Help topic={t('play.help.hand.topic')}>
+              <p>{t('play.help.hand.pick')}</p>
+              <p>{t('play.help.hand.play')}</p>
+              <p>{t('play.help.hand.hidden')}</p>
+            </Help>
+          </p>
+          {/* The rules this table plays by (B7). The living number (#226) reads this seat's own
+              view. Out of the way when the table asks something of everyone (#483). */}
+          {playing && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
+          <FlagButton view={view} raise={raiseMore} words />
+          <ExitButton view={view} raise={raiseMore} words />
+        </section>
       </main>
-      {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
-          beslut C efter prototyp 32): in the head they made the row two rows at 390 and covered
-          their own «Stäng». The living number (#226) reads this seat's own view: her own hand is a
-          reading, the deck and the others' hands are counts. Out of the way when the table asks
-          something of everyone (#483): an ended table's survey and a rewind's question. The bar is
-          empty, and draws nothing, for a table without a rulebook. */}
-      <div className="byd-phone-foot" {...behind}>
-        {!view.ended && !view.rewind && <FootPlay view={view} cards={chosenCards} down={allDown(chosenCards)} pending={quickPending} refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />}
-        {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
+      {/* What the table just said to this seat, over the bar and the tabs (#715). */}
+      {toast && <p className="byd-phone-said" role="status">{toast}</p>}
+      {tab === 'hand' && (
+        <div className="byd-bar" {...behind}>
+          <HandBar
+            view={view}
+            cards={marked}
+            down={allDown(marked)}
+            pending={quickPending}
+            refusal={quickSource === 'hand' ? quick : undefined}
+            refusedZone={quickTarget}
+            onPlay={(zone, at) => void playDirect(marked, zone, at)}
+            onMore={setLifted}
+            onRead={(card) => hold(card, 'hand')}
+            onClear={marks.clear}
+          />
+          {quickSource === 'hand' && <Refusal handle={quick} />}
+        </div>
+      )}
+      <div role="tablist" aria-label={t('player.tabs')} className="byd-tabs" {...behind}>
+        {tabs.map((x) => {
+          const item = roving.itemProps(x.id)
+          return (
+            <button
+              key={x.id}
+              type="button"
+              role="tab"
+              id={`${ids}-tab-${x.id}`}
+              data-tab={x.id}
+              aria-selected={tab === x.id}
+              aria-controls={`${ids}-${x.id}`}
+              tabIndex={item.tabIndex}
+              ref={item.ref}
+              onFocus={item.onFocus}
+              onKeyDown={item.onKeyDown}
+              onClick={() => setTab(x.id)}
+            >
+              {x.label}
+              {/* Heard as «Framför mig, 1»: the comma is for the ear, the pill for the eye. */}
+              {x.count !== undefined && <><span className="byd-offscreen">, </span><span className="byd-tab-count">{x.count}</span></>}
+            </button>
+          )
+        })}
       </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
-          puts the card down as it goes: what it did is read off the strip behind it. */}
+          puts the card down as it goes: what it did is read off the row behind it. */}
       {held && (() => {
         const row = rowOf(held.row)
         // The card as it lies now, so a flip seen while it is held shows the face it has.
@@ -356,25 +333,26 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             row={row}
             onStep={(next) => hold(next, held.row)}
             onClose={put}
-            returnTo={(c) => document.querySelector<HTMLElement>(held.row === 'hand' ? `[data-hand-card="${CSS.escape(c.id)}"]` : `[data-area-card="${CSS.escape(c.id)}"]`)}
+            returnTo={(c) => document.querySelector<HTMLElement>(held.row === 'hand' ? `[data-hand-card="${CSS.escape(c.id)}"]` : `[data-area-card="${CSS.escape(c.id)}"], [data-mine-card="${CSS.escape(c.id)}"]`)}
             actions={
               held.row === 'hand' ? (
-                // The hand's own second press, the same two the foot carries: the setup's first
-                // place, and the way to every other one. A verb puts the card down as it goes.
-                // Turning the card over is the one that does not (#1133): it is still in the hand,
-                // and the press under it now says how it will land.
+                // The hand's own way to play the card read: what the bar leads with. A verb puts the
+                // card down as it goes. Turning the card over is the one that does not (#1133): it is
+                // still in the hand, and the press beside it now says how it will land. One row, so
+                // the card keeps its reading width at 320 × 568 (K26): a second row of buttons under
+                // it took 36 px off the card.
                 <>
-                <button type="button" className="byd-show-all" data-turn={card.id} onClick={() => turnedHand.toggle(card.id)}>
-                  {t(turned.has(card.id) ? 'player.hand.unturn' : 'player.hand.turn')}
-                </button>
-                <FootPlay
-                  view={view}
-                  cards={[card]}
-                  down={turned.has(card.id)}
-                  pending={quickPending}
-                  onPlay={(zone, at) => { put(); void playDirect([card], zone, at) }}
-                  onMore={(c) => { put(); setLifted(c) }}
-                />
+                  <CardPlays
+                    view={view}
+                    card={card}
+                    down={turned.has(card.id)}
+                    pending={quickPending}
+                    onPlay={(zone, where) => { put(); void playDirect([card], zone, where) }}
+                    onMore={(c) => { put(); setLifted(c) }}
+                  />
+                  <button type="button" data-turn={card.id} onClick={() => turnedHand.toggle(card.id)}>
+                    {t(turned.has(card.id) ? 'player.hand.unturn' : 'player.hand.turn')}
+                  </button>
                 </>
               ) : held.row === 'mine' ? (
                 <>
@@ -411,7 +389,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <PlaySheet
           view={view}
           count={toPlay.length}
-          // The card by the name the strip calls it, never by its id (#483).
+          // The card by the name the grid calls it, never by its id (#483).
           label={cardName(lifted, t)}
           onPlay={play}
           onClose={() => {
@@ -425,7 +403,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       )}
       {rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
       <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} />
-
     </>
   )
 }
+
+type Tab = 'hand' | 'mine' | 'table' | 'more'

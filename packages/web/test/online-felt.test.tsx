@@ -208,14 +208,14 @@ describe('a phone is not given a board to keep a band under (C2 revised 2026-09-
   // phone is the player's control; the board is the TV in the room, or a screen that can hold it.
   //
   // So the reading here is the felt's absence, in the file where its presence was measured. What
-  // the phone draws instead — the strip, the counters, the zones as names and counts — is
+  // the phone draws instead — the hand, the counters, the zones as names and counts — is
   // `online-phone.test.tsx`'s business.
   for (const [where, seat] of [
     ['a side seat', SIDE],
     ['a bottom seat', BOTTOM],
   ] as const)
     it(`draws ${where} no felt at all at ${PHONE.w} × ${PHONE.h}`, async () => {
-      const html = await markup(seat, PHONE, HANDS[0], { w: 1, h: 1 }, () => document.querySelector('.byd-strip[data-hand]') !== null)
+      const html = await markup(seat, PHONE, HANDS[0], { w: 1, h: 1 }, () => document.querySelector('[data-hand]') !== null)
       const drawn = await measure(PHONE, (page) => page.evaluate(() => ({ felts: document.querySelectorAll('[data-table]').length, bands: document.querySelectorAll('[data-hand-fan]').length })), html)
       expect({ at: where, ...drawn }).toEqual({ at: where, felts: 0, bands: 0 })
     }, 90_000)

@@ -418,7 +418,8 @@ async function playerViews(): Promise<Record<string, string>> {
   try {
     const out: Record<string, string> = {}
     // The way out is one of the three controls every seat has, and the sheet behind it is what
-    // the page looks like while it is being asked (#31).
+    // the page looks like while it is being asked (#31). On the phone it stands in «Mer» (#1147).
+    fireEvent.click(await screen.findByRole('tab', { name: /^Mer/ }))
     fireEvent.click(await screen.findByRole('button', { name: /Lämna…/ }))
     await screen.findByRole('button', { name: 'Lämna bordet' })
     out['vägen ut'] = container.innerHTML
@@ -1431,7 +1432,6 @@ describe('every suite that measures a surface', () => {
       'felt-hands.test.tsx',
       'felt-into-hand-look.test.tsx',
       'felt-names.test.tsx',
-      'hand-strip-scroll.test.tsx',
       'help-layout.test.tsx',
       'history-layout.test.tsx',
       'home-layout.test.tsx',

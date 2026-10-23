@@ -74,7 +74,8 @@ export function FlagFlow({ client, view, faces, refusal, onClose, onFlagged }: F
 // The screen while a card is pointed out: a band that says what the next press does and how to
 // get out of it, and every press caught before the surface under it hears it. Caught on the
 // document in the capture phase, so the felt's drag, the strip's hold and the ring are never
-// started; a disclosure (`summary`) still opens, since the card may lie folded away under one.
+// started; a disclosure (`summary`) still opens, and a tab still turns (#1147), since the card may
+// lie folded away under one or on a tab that is not open.
 function PointOut({ onPoint, onCancel }: { onPoint(id: string): void; onCancel(): void }) {
   const t = useT()
   const id = useId()
@@ -87,7 +88,7 @@ function PointOut({ onPoint, onCancel }: { onPoint(id: string): void; onCancel()
     band.current?.focus()
     const ours = (target: EventTarget | null): Element | null => {
       if (!(target instanceof Element)) return null
-      if (band.current?.contains(target) || target.closest('summary')) return null
+      if (band.current?.contains(target) || target.closest('summary, [role="tab"]')) return null
       return target
     }
     const still = (e: Event) => {

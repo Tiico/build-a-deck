@@ -109,6 +109,24 @@
    it keeps its 24 mm. A child laid outside its parent's box still hands the parent the press. */
 .byd-token-hit { position: absolute; display: block; background: transparent; touch-action: none; }
 
+/* A die (#1137, K28): its kind's outline seen from above, in the chalk of the felt's own cards,
+   with the side that is up in the felt's ink. `Die.tsx` draws it in a 100-unit square; the figure
+   is set in those units and so grows and shrinks with the die. A roll tumbles it on the spot for
+   0.7 s (`ROLL_MS`); under reduced motion nothing turns, and a ring in the colour of whoever rolled
+   stands round it for 1.5 s instead (`ROLL_RING_MS`), drawn without any motion at all. */
+.byd-die { --byd-die: #f3e9d6; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5)); }
+.byd-die svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.byd-die text { fill: #1c1c1c; font-weight: 700; font-family: var(--byd-felt-font, system-ui, sans-serif); text-anchor: middle; dominant-baseline: central; font-variant-numeric: tabular-nums; }
+.byd-die-ring { fill: none; stroke: var(--seat, transparent); stroke-width: 0; }
+.byd-die[data-rolling='tumble'] svg { animation: byd-die-tumble 700ms cubic-bezier(0.3, 0.7, 0.4, 1); }
+.byd-die[data-rolling='ring'] .byd-die-ring { stroke-width: 6; }
+@keyframes byd-die-tumble {
+  0% { transform: rotate(0) scale(1); }
+  45% { transform: rotate(200deg) scale(1.15); }
+  80% { transform: rotate(340deg) scale(0.95); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
 /* Zones that are areas other than the floor get an outline and a label. The outline is two bands
    (#553): the chalk outside a dark hairline, as the seat band is (K16), so it holds 3:1 between
    its bands on all of the felt, on the TV and against a card lying in the zone. */
@@ -912,11 +930,11 @@
    markeras som text på vägen. */
 .byd-table-frame[data-pan] { cursor: grab; user-select: none; }
 .byd-table-frame[data-pan='panning'] { cursor: grabbing; }
-.byd-table-frame[data-playable] .byd-card, .byd-table-frame[data-playable] .byd-pile-top, .byd-table-frame[data-playable] .byd-token { touch-action: none; cursor: grab; }
+.byd-table-frame[data-playable] .byd-card, .byd-table-frame[data-playable] .byd-pile-top, .byd-table-frame[data-playable] .byd-token, .byd-table-frame[data-playable] .byd-die { touch-action: none; cursor: grab; }
 .byd-table-frame[data-playable] .byd-pile-count[data-handle] { cursor: grab; touch-action: none; }
 .byd-table-frame[data-mode='table'][data-playable] .byd-pile-count[data-handle] { padding: 3px 10px; border: 1px solid rgba(255, 255, 255, 0.3); }
 .byd-table-frame[data-mode='tv'][data-playable] .byd-pile-count[data-handle] > * { cursor: grab; touch-action: none; }
-.byd-card[data-dragging], .byd-pile[data-dragging], .byd-token[data-dragging] { z-index: 60; }
+.byd-card[data-dragging], .byd-pile[data-dragging], .byd-token[data-dragging], .byd-die[data-dragging] { z-index: 60; }
 .byd-card[data-dragging] { box-shadow: 0 18px 30px rgba(0, 0, 0, 0.6); scale: 1.06; cursor: grabbing; }
 /* A chip is small and round, and the card's 1.06 would be invisible on it; the shadow it already
    carries deepens instead, so the eye sees the same thing lifted off the felt. */
@@ -1133,7 +1151,7 @@
 .byd-hand-fan > i.byd-hand-card > img ~ span:not([data-texture]) { visibility: hidden; }
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
-[data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-seat-name[data-read], [data-table] .byd-token, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
+[data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-seat-name[data-read], [data-table] .byd-token, [data-table] .byd-die, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
 /* The pile's pill and the carried card's tag hang under what they label by their top edge, and
    the turn back upright is about their own middle. Half a turn leaves that middle where it was.
    A quarter turn lays the label's width along the felt's «down»: hung by its middle, a pill a

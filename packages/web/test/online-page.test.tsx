@@ -202,13 +202,13 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
 
 // A phone gets the player's surface and no felt (C2's revision of 2026-09-16, #99), and C2's own
 // follow-up asks it to say where the whole table is (#484 fynd 11). It says so where a reader looks
-// for the table on a phone — in the fold that holds the table as names and counts — so it costs the
-// hand no height at 320.
+// for the table on a phone — on «Bordet», the tab that holds the table as names and counts — so it
+// costs the hand no height at 320.
 describe('/online on a phone says where the whole table is (C2, #484)', () => {
-  it('names the television, or a screen that holds it, in the fold with the table', async () => {
+  it('names the television, or a screen that holds it, on the table’s tab', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada', {}, { w: 390, h: 844 })
-    const fold = document.querySelector('[data-phone-table]')!
+    const fold = document.querySelector('[data-panel="table"]')!
     expect(fold.textContent).toMatch(/Hela bordet visas på TV:n eller på en större skärm\./)
   })
 })
