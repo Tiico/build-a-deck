@@ -394,6 +394,17 @@ export type Deaf = {
    * fixture's.
    */
   stayedDeaf(): boolean
+  /**
+   * Once a caller has said something on a call this server took: its request, which a client sends
+   * only when its own end of the line is up (#1229).
+   *
+   * A test on a clock it drives waits for this before it moves the clock. A deadline that comes
+   * while the client is still dialling makes the client hang up a line the kernel has already
+   * connected before it has said anything, and the server then hears a call that ended — rightly,
+   * by `stayedDeaf`. On the wall clock a starved worker let the deadline overtake the dial exactly
+   * so, and the test read a hang-up of the client's own under a sentence about a line that hangs.
+   */
+  heard(): Promise<void>
   stop(): Promise<void>
 }
 
@@ -410,8 +421,20 @@ export async function deafServer(): Promise<Deaf> {
   const open: Socket[] = []
   const trouble: string[] = []
   let stopping = false
+  let hear = (): void => undefined
+  const heard = new Promise<void>((resolve) => (hear = resolve))
   const server = createSocketServer((s) => {
     open.push(s)
+    // Noticed and never read. A server that read what the caller said would hear the caller hang up
+    // afterwards as well, and every caller here does hang up once it gives up: what it said stands
+    // unread in front of that, so this server never reaches it. A hang-up before anything was said
+    // has nothing in front of it, and is heard (`stayedDeaf`).
+    const noticing = () => {
+      if (s.readableLength === 0) return
+      s.off('readable', noticing)
+      hear()
+    }
+    s.on('readable', noticing)
     // Without a listener a socket error is an uncaught exception that takes the whole worker with
     // it — the same class of failure the note at `listenOn` is about. Here it is evidence instead.
     s.on('error', (e) => trouble.push(e.message))
@@ -428,6 +451,7 @@ export async function deafServer(): Promise<Deaf> {
   return {
     url: `ws://127.0.0.1:${port}`,
     stayedDeaf: () => trouble.length === 0,
+    heard: () => heard,
     stop: () =>
       new Promise<void>((resolve) => {
         stopping = true
