@@ -71,6 +71,7 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
       const ways = page.locator('.byd-home-running a')
       expect(await ways.count()).toBe(2)
       for (const way of await ways.all()) expect((await way.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      const open = (await page.getByRole('link', { name: /^Öppna bordet / }).boundingBox())!
       // And the band stays inside the window, its code whole, at every width.
       const band = (await page.locator('.byd-home-running-row').boundingBox())!
       expect(band.x + band.width).toBeLessThanOrEqual(width)
