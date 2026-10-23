@@ -92,7 +92,8 @@ function cbor(value: unknown): Buffer {
   }
   if (typeof value === 'number') return value >= 0 ? head(0, value) : head(1, -1 - value)
   if (typeof value === 'string') return Buffer.concat([head(3, Buffer.byteLength(value)), Buffer.from(value)])
-  if (value instanceof Uint8Array) return Buffer.concat([head(2, value.length), Buffer.from(value)])
+  // Asked by shape rather than by `instanceof`: under jsdom a Buffer is not the page's Uint8Array.
+  if (ArrayBuffer.isView(value)) return Buffer.concat([head(2, value.byteLength), Buffer.from(value.buffer, value.byteOffset, value.byteLength)])
   if (value instanceof Map) return Buffer.concat([head(5, value.size), ...[...value].flatMap(([k, v]) => [cbor(k), cbor(v)])])
   throw new Error(`cbor: ${typeof value}`)
 }

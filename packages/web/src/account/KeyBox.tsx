@@ -319,7 +319,7 @@ function modelChoices(saved: AiKey, models: AiModel[] | null, t: T): { value: st
 }
 
 // «i dag 09:41», «i går 18:02», or the date for anything older.
-function provedWhen(iso: string, lang: ReturnType<typeof useLang>['lang'], t: T): string {
+export function provedWhen(iso: string, lang: ReturnType<typeof useLang>['lang'], t: T): string {
   const at = new Date(iso)
   const locale = readerLocale(lang)
   const time = at.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
