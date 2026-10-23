@@ -3,7 +3,7 @@ import { describeActivity, sayable } from '../table/describe.js'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord } from '../table/keyboard.js'
-import { isCounter } from '../components.js'
+import { isPiece } from '../components.js'
 import { overviewOf } from './PlaySheet.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
@@ -105,7 +105,7 @@ function Tile({ zone, t, heading = false }: { zone: ZoneTile; t: T; heading?: bo
 // here: an area she may not look into sends a count and no component (B6), so it draws nothing.
 // A face-down card in an open area is drawn as the back it is, and read as that back (K8).
 function AreaCards({ view, zone, faces, onRead, t }: { view: Snapshot; zone: string; faces: string | undefined; onRead(row: VisibleComponentState[], card: VisibleComponentState): void; t: T }) {
-  const row = view.components.filter((c) => c.zone === zone && !isCounter(c))
+  const row = view.components.filter((c) => c.zone === zone && !isPiece(c))
   if (row.length === 0) return null
   return (
     <div className="byd-summary-cards">
