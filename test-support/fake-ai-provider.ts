@@ -37,7 +37,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 // `[regler-trasig]` the same section naming `[[zon:finns-inte]]`, a zone no game has — either with the
 // cards `[kort:n]` asks for beside it — `[regler-markör]` the same section with its list, numbered,
 // under the kind word «ordered_placeholder_removed_marker_do_not_use», as a long answer from
-// Anthropic's tool, which is not strict, has come back (#1183) — and `[regler-om]`
+// Anthropic's tool, which is not strict, has come back (#1183) — `[regler-rätta]` the broken section
+// until it is sent back to be corrected (#1184), and the whole one then — and `[regler-om]`
 // rewrites the book's last paragraph in its place, naming the same zone. Every proposal
 // writes `template`, null when it has none, and `rules`, empty when it has none, as the strict schema
 // has the model write every part.
@@ -211,7 +212,7 @@ type Refining = { proposal: FakeProposal; leave: Set<string> }
 // proposal being refined (#1004) under «## Proposal to refine» and what she left out of it, the cards
 // she selected (#1003) under «## Selected cards» — with the question under «## Question»: the
 // question is what follows that.
-function questionOf(provider: Provider, body: unknown): { question: string; game: string; selected: Record<string, unknown>[]; refining: Refining | null } {
+function questionOf(provider: Provider, body: unknown): { question: string; game: string; selected: Record<string, unknown>[]; refining: Refining | null; correcting: boolean } {
   const b = (body ?? {}) as { messages?: Said[]; input?: Said[]; system?: { text?: unknown }[]; instructions?: unknown }
   const turns = (provider === 'anthropic' ? b.messages : b.input) ?? []
   const last = turns.at(-1)?.content
@@ -234,7 +235,7 @@ function questionOf(provider: Provider, body: unknown): { question: string; game
       }),
   )
   const refining = proposal ? { proposal: JSON.parse(proposal) as Refining['proposal'], leave } : null
-  return { question: parts ? (parts[2] ?? '') : said, game: /^# Game: (.+)$/m.exec(system)?.[1] ?? '?', selected, refining }
+  return { question: parts ? (parts[2] ?? '') : said, game: /^# Game: (.+)$/m.exec(system)?.[1] ?? '?', selected, refining, correcting: section('Proposal that could not be used') !== '' }
 }
 
 // The proposal being refined, revised (#1004): the parts the designer left out are gone, and every
@@ -260,7 +261,7 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   fake.calls.push({ provider, path, key, version: (req.headers['anthropic-version'] as string | undefined) ?? null, body })
   if (refused(provider, key, req, res)) return
   if (provider === 'anthropic' && tooComplex(body)) return send(res, 400, { type: 'error', error: { type: 'invalid_request_error', message: 'Schema is too complex for compilation.' } })
-  const { question, game, selected, refining } = questionOf(provider, body)
+  const { question, game, selected, refining, correcting } = questionOf(provider, body)
   if (question.includes('[overloaded]')) return overloaded(provider, res)
   const stream: FakeAiStream = { provider, question, finished: false, closed: false }
   fake.streams.push(stream)
@@ -313,9 +314,9 @@ async function answer(fake: FakeAiProvider, provider: Provider, path: string, re
   const unusable = question.includes('[oanvändbart]')
   const how = { gap: question.includes('[sakta]') ? 400 : fake.pace, cut: question.includes('[kapat]') }
   if (proposing && refining && question.includes('[förfina]')) return propose(res, stream, anthropic, refined(refining), how)
-  if (proposing && (question.includes('[regler]') || question.includes('[regler-trasig]') || question.includes('[regler-markör]'))) {
+  if (proposing && (question.includes('[regler]') || question.includes('[regler-trasig]') || question.includes('[regler-markör]') || question.includes('[regler-rätta]'))) {
     const context = contextOf(provider, body)
-    const rules = rulesFor(context, question.includes('[regler-trasig]'))
+    const rules = rulesFor(context, question.includes('[regler-trasig]') || (question.includes('[regler-rätta]') && !correcting))
     if (question.includes('[regler-markör]')) rules.blocks[2] = { ...rules.blocks[2], kind: 'ordered_placeholder_removed_marker_do_not_use', ordered: true }
     return propose(res, stream, anthropic, { cards: asked ? cardsFor(context, Number(asked[1])) : [], changes: [], rules: [rules] }, how)
   }

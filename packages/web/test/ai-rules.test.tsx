@@ -217,8 +217,26 @@ describe('rule text that cannot be used', () => {
     const alert = await within(panel()).findByRole('alert')
     expect(alert.textContent).toContain('Förslaget gick inte att använda')
     expect(alert.textContent).toContain('Regeltext 1 («Att dra kort») nämner zonen «finns-inte», som spelet inte har.')
+    // Refused only once the AI has had its one chance to correct it (#1184).
+    expect(alert.textContent).toContain('AI:n hade redan fått rätta förslaget en gång.')
     expect(within(panel()).queryByRole('button', { name: 'Godta alla' })).toBeNull()
     expect(await logged()).toHaveLength(0)
+  })
+
+  // Variant A of the #1184 prototype: the unusable proposal is never shown. A quiet line says the AI
+  // is correcting it, the corrected one stands as any proposal does, and a note under it says what was
+  // corrected — a second question on her key is not something to hide.
+  it('is sent back once to be corrected, and the corrected proposal stands with a note of what was wrong', async () => {
+    await ownGame()
+    await openEditor()
+    ask('Regler som först blir fel [regler-rätta]')
+    await within(panel()).findByText('Förslaget höll inte. AI:n rättar det…')
+    await within(panel()).findByRole('button', { name: 'Godta alla' })
+    expect(within(panel()).queryByRole('alert')).toBeNull()
+    expect(within(panel()).queryByText('Förslaget höll inte. AI:n rättar det…')).toBeNull()
+    expect(proposal().textContent).toContain('Rättat en gång: Regeltext 1 («Att dra kort») nämner zonen «finns-inte», som spelet inte har.')
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Godta alla' }))
+    await waitFor(async () => expect(await logged()).toHaveLength(1))
   })
 })
 

@@ -62,6 +62,9 @@ export type AiProposalProps = {
   onAccept(): void
   onDiscard(): void
   onAgain?: (() => void) | undefined
+  // What was wrong with the proposal the AI was given its one chance to correct (#1184): said under
+  // a corrected one, and beside the reason when the corrected one could not be used either.
+  corrected?: ProposalProblem | undefined
   // «Välj delar…» (#1003): whether the choice stands open, the parts left out, and the ways to open
   // it, to tick or leave a part, and to accept the parts left ticked.
   choosing?: boolean
@@ -73,7 +76,7 @@ export type AiProposalProps = {
 
 const NONE: ReadonlySet<string> = new Set()
 
-export function AiProposal({ id, doc, http, parts, done, broken, verdict, accepted, onWall, showsIn = 'wall', onShow, onShowRules, onAccept, onDiscard, onAgain, choosing = false, leave = NONE, onChoose, onToggle, onAcceptChosen }: AiProposalProps) {
+export function AiProposal({ id, doc, http, parts, done, broken, verdict, accepted, onWall, showsIn = 'wall', onShow, onShowRules, onAccept, onDiscard, onAgain, corrected, choosing = false, leave = NONE, onChoose, onToggle, onAcceptChosen }: AiProposalProps) {
   const t = useT()
   const read = useMemo(() => (hasParts(parts) ? translated(doc, parts) : null), [doc, parts])
   const view = useMemo(() => (read?.ok ? proposalView(doc, read) : null), [doc, read])
@@ -122,7 +125,10 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
     )
   }
   const problem: ProposalProblem | { kind: 'broken' } | null = read && !read.ok ? read.problem : broken ? { kind: 'broken' } : null
-  if (problem) return <Unusable problem={problem} t={t} onAgain={onAgain} />
+  // A proposal that cannot be used is judged when it has come whole (#1184): until then the rest of it
+  // may still be on its way, and the AI is given it back once to correct before anything is refused.
+  if (problem && !done) return null
+  if (problem) return <Unusable problem={problem} t={t} onAgain={onAgain} corrected={corrected !== undefined} />
   const all: ProposalPart[] = read?.ok ? read.parts : []
   const summary = sizeWords(all, t)
   const label = `${t(done ? 'ai.proposal' : 'ai.proposal.coming')} · ${summary}`
@@ -320,6 +326,7 @@ export function AiProposal({ id, doc, http, parts, done, broken, verdict, accept
           </button>
         </div>
       )}
+      {done && corrected && <p className="byd-ai-corrected">{t('ai.corrected', { fault: problemWords(corrected, t) })}</p>}
     </div>
   )
 }
@@ -377,12 +384,13 @@ function acceptedWords({ cards, changed, template, rules }: Accepted, t: T): str
   return t('ai.proposal.accepted.both', { cards: t(cards === 1 ? 'ai.proposal.cards.one' : 'ai.proposal.cards.other', { n: cards }), changed: changedWords })
 }
 
-function Unusable({ problem, t, onAgain }: { problem: ProposalProblem | { kind: 'broken' }; t: T; onAgain?: (() => void) | undefined }) {
+function Unusable({ problem, t, onAgain, corrected = false }: { problem: ProposalProblem | { kind: 'broken' }; t: T; onAgain?: (() => void) | undefined; corrected?: boolean }) {
   return (
     <div className="byd-ai-fail" role="alert">
       <strong>{t('ai.unusable')}</strong>
       <span>
         {problemWords(problem, t)} {t('ai.unusable.text')}
+        {corrected && ` ${t('ai.unusable.corrected')}`}
       </span>
       {onAgain && (
         <button type="button" className="byd-secondary" onClick={onAgain}>
