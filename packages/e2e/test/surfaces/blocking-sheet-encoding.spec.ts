@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { request } from 'node:http'
 import { join } from 'node:path'
 import { brotliDecompressSync, gunzipSync } from 'node:zlib'
@@ -96,6 +96,31 @@ test.describe('the blocking sheet travels compressed from the box (#372)', () =>
     const plain = await ask(href, { 'accept-encoding': 'identity' })
     expect(plain.headers['content-encoding'] ?? 'none', `${href} was compressed for a client that refused compression`).toBe('none')
     expect(plain.bytes.equals(onDisk), `${href} did not come back whole for a client that refused compression`).toBe(true)
+  })
+})
+
+// Brotli's best is seconds of CPU per megabyte: the game-icons chunk is 6.4 MB (#1087), and on the
+// box's first request for it after a deploy the icon sheet waited 14 s on an idle machine and over
+// a minute on a busy one. So the build
+// compresses and the box sends what the build made (DRIFT §13). Read on the largest script the
+// build has, because that is the file a compression made at the door would cost the most on.
+test.describe('the build compresses, and the box sends what it made (DRIFT §13)', () => {
+  test('sends the largest script as the copy beside it on disk', async () => {
+    const assets = join(OUT, 'assets')
+    const scripts = readdirSync(assets).filter((f) => f.endsWith('.js'))
+    expect(scripts.length, 'the build has no scripts; nothing was measured').toBeGreaterThan(0)
+    const largest = scripts.map((f) => ({ f, size: statSync(join(assets, f)).size })).sort((a, b) => b.size - a.size)[0]!
+    // Not vacuous: a script of the size this is about, and not the handful of kilobytes the box
+    // could compress at the door for nothing.
+    expect(largest.size, `the largest script, ${largest.f}, is too small for this to mean anything`).toBeGreaterThan(1_000_000)
+
+    for (const [offer, ending] of [['br', '.br'], ['gzip', '.gz']] as const) {
+      const copy = join(assets, largest.f + ending)
+      expect(existsSync(copy), `the build wrote no ${ending} beside ${largest.f}`).toBe(true)
+      const answer = await ask(`/assets/${largest.f}`, { 'accept-encoding': offer })
+      expect(answer.headers['content-encoding'] ?? 'none', `${largest.f} came back without ${offer}`).toBe(offer)
+      expect(answer.bytes.equals(readFileSync(copy)), `${largest.f} was not sent as the build's ${ending}`).toBe(true)
+    }
   })
 })
 

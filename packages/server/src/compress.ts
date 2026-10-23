@@ -1,4 +1,5 @@
-import { readFile, stat } from 'node:fs/promises'
+import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { extname, join } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, constants, gzip } from 'node:zlib'
 
@@ -15,12 +16,19 @@ import { brotliCompress, constants, gzip } from 'node:zlib'
  * Two things decide the shape of what is below, and both come from the box being a shared machine
  * with four cores, 8 GB of memory it does not own, and a 512 MB cap on this container (DRIFT §1).
  *
- * **Compressed once per deploy, not once per request.** The built web app is immutable for the
- * life of the image, so the answer for a given file never changes. Each file is compressed the
- * first time it is asked for and the bytes are kept; every later request is a buffer already in
- * hand. Steady-state CPU is therefore nil, which is the only reason the expensive setting below
- * is affordable at all. Compression runs in libuv's pool rather than on the loop, so the one
- * request that pays for it does not hold up a table's patches.
+ * **Compressed by the build, not by the box.** The built web app is immutable for the life of the
+ * image, so the answer for a given file never changes, and `precompress` writes it beside the file
+ * when the app is built: `app.css.br` and `app.css.gz`. The box streams that copy from disk, so it
+ * spends no CPU and holds nothing in memory for it. Until #1087 the box made the copy itself the
+ * first time a file was asked for and kept it, which was affordable while the app was well under a
+ * megabyte of text; the game-icons chunk is 6.4 MB, brotli's best over it is 14 s on an idle Mac
+ * and 72 s on a busy one, and the first designer after a deploy waited that long with the icon
+ * sheet open.
+ *
+ * What the build did not compress — a file written under a running server, a page the server
+ * writes itself (#1084), a run without a build — is still compressed here once and kept, in libuv's
+ * pool rather than on the loop, so the one request that pays for it does not hold up a table's
+ * patches.
  *
  * **Brotli where the browser takes it, gzip otherwise.** Every browser that reaches a felt speaks
  * brotli, and on this sheet it is 100 916 bytes against gzip's 105 189 — four per cent, which is
@@ -36,6 +44,22 @@ import { brotliCompress, constants, gzip } from 'node:zlib'
  * request, and compressing them would be exactly the per-request CPU on a shared box that the
  * cache above exists to avoid.
  */
+
+/** The types the box serves, by the file's ending. */
+export const MIME: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.webmanifest': 'application/manifest+json',
+  '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8',
+}
+
+export const typeOf = (file: string): string => MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
 
 const gzipAsync = promisify(gzip)
 const brotliAsync = promisify(brotliCompress)
@@ -91,6 +115,47 @@ export const negotiate = (accept: string | undefined): Encoding | null => {
   if (takes('br')) return 'br'
   if (takes('gzip')) return 'gzip'
   return null
+}
+
+const ENDING: Record<Encoding, string> = { br: '.br', gzip: '.gz' }
+
+/**
+ * Every file under `dir` the box would compress, compressed beside itself in both encodings, by
+ * the same rule and at the same settings as below. Run by the web app's build; a copy that would
+ * not be smaller is not written, and the box then sends the file as it is.
+ */
+export async function precompress(dir: string): Promise<void> {
+  const files = (await readdir(dir, { recursive: true, withFileTypes: true })).filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name))
+  await Promise.all(
+    files
+      .filter((file) => !file.endsWith(ENDING.br) && !file.endsWith(ENDING.gzip) && compressible(typeOf(file)))
+      .map(async (file) => {
+        const raw = await readFile(file)
+        if (raw.length < FLOOR_BYTES) return
+        await Promise.all(
+          (['br', 'gzip'] as const).map(async (encoding) => {
+            const made = await compress(raw, encoding)
+            if (made) await writeFile(file + ENDING[encoding], made.bytes)
+          }),
+        )
+      }),
+  )
+}
+
+/**
+ * The copy the build made of this file for this client, when there is one, and it was made from
+ * the file as it is now: a copy older than its file is a copy of the file that was there before.
+ */
+export async function precompressed(file: string, type: string, accept: string | undefined): Promise<{ path: string; encoding: Encoding; size: number } | null> {
+  const encoding = negotiate(accept)
+  if (!encoding || !compressible(type)) return null
+  const path = file + ENDING[encoding]
+  try {
+    const [copy, original] = await Promise.all([stat(path), stat(file)])
+    return copy.isFile() && copy.mtimeMs >= original.mtimeMs ? { path, encoding, size: copy.size } : null
+  } catch {
+    return null
+  }
 }
 
 type Cached = { encoding: Encoding; bytes: Buffer }

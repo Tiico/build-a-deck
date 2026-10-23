@@ -1,11 +1,12 @@
 import { randomBytes } from 'node:crypto'
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, stat, utimes, writeFile } from 'node:fs/promises'
 import { request as httpRequest } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { brotliDecompressSync, gunzipSync } from 'node:zlib'
+import { brotliCompressSync, brotliDecompressSync, constants, gunzipSync, gzipSync } from 'node:zlib'
 import { afterEach, describe, expect, it } from 'vitest'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore } from '../src/index.js'
+import { precompress } from '../src/compress.js'
 import { listenInBand, registry } from './fixture.js'
 
 // In production the web app and the API share one origin (README): the server serves the built
@@ -218,6 +219,69 @@ describe('compressing what is served (DRIFT §13, #372)', () => {
     const small = await ask(http, '/assets/tiny.css', { 'accept-encoding': 'br, gzip' })
     expect(small.headers['content-encoding']).toBeUndefined()
     expect(small.bytes.toString()).toBe(tiny)
+  })
+
+  // Brotli's most expensive setting is seconds of CPU per megabyte: over the game-icons chunk
+  // (6.4 MB, #1087) it is 14 s on an idle Mac and 72 s on a busy one, and the first designer after
+  // a deploy waited that long with the icon sheet open. The build compresses, once, on a machine that is not the box, and the box sends
+  // what the build made.
+  it('is compressed by the build, beside each file, for what the box would compress itself', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'byd-precompress-'))
+    await mkdir(join(dir, 'assets'))
+    await writeFile(join(dir, 'assets', 'app.css'), sheet)
+    await writeFile(join(dir, 'assets', 'card.png'), Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), randomBytes(4096)]))
+    await writeFile(join(dir, 'assets', 'tiny.css'), '.byd-a{color:red}\n'.repeat(25))
+    await writeFile(join(dir, 'index.html'), `<!doctype html><title>Deckster</title>${'<p>Deckster</p>'.repeat(200)}`)
+
+    await precompress(dir)
+
+    expect((await readdir(join(dir, 'assets'))).sort()).toEqual(['app.css', 'app.css.br', 'app.css.gz', 'card.png', 'tiny.css'])
+    expect(brotliDecompressSync(await readFile(join(dir, 'assets', 'app.css.br'))).toString()).toBe(sheet)
+    expect(gunzipSync(await readFile(join(dir, 'assets', 'app.css.gz'))).toString()).toBe(sheet)
+    expect((await readdir(dir)).sort()).toEqual(['assets', 'index.html', 'index.html.br', 'index.html.gz'])
+  })
+
+  it('sends the copy the build made, and not a compression of its own', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'byd-encoding-'))
+    await mkdir(join(dir, 'assets'))
+    await writeFile(join(dir, 'assets', 'app.css'), sheet)
+    // Quality 1 and level 1: bytes the box would never make itself, so an answer that equals them
+    // is the file on disk and nothing else.
+    const br = brotliCompressSync(sheet, { params: { [constants.BROTLI_PARAM_QUALITY]: 1 } })
+    const gz = gzipSync(sheet, { level: 1 })
+    await writeFile(join(dir, 'assets', 'app.css.br'), br)
+    await writeFile(join(dir, 'assets', 'app.css.gz'), gz)
+    const http = await serve(dir)
+
+    const sentBr = await ask(http, '/assets/app.css', { 'accept-encoding': 'br, gzip' })
+    expect(sentBr.headers['content-encoding']).toBe('br')
+    expect(sentBr.headers['content-type']).toBe('text/css; charset=utf-8')
+    expect(sentBr.headers['vary']).toMatch(/accept-encoding/i)
+    expect(sentBr.headers['content-length']).toBe(String(br.length))
+    expect(sentBr.bytes.equals(br)).toBe(true)
+    const sentGz = await ask(http, '/assets/app.css', { 'accept-encoding': 'gzip' })
+    expect(sentGz.headers['content-encoding']).toBe('gzip')
+    expect(sentGz.bytes.equals(gz)).toBe(true)
+    const plain = await ask(http, '/assets/app.css', {})
+    expect(plain.headers['content-encoding']).toBeUndefined()
+    expect(plain.bytes.toString()).toBe(sheet)
+  })
+
+  // A file written under a running server after the build — which is what a development run does —
+  // is not answered with the copy of the file it replaced.
+  it('does not send a copy older than its file', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'byd-encoding-'))
+    await mkdir(join(dir, 'assets'))
+    await writeFile(join(dir, 'assets', 'app.css.br'), brotliCompressSync('.byd-old{color:red}'.repeat(100)))
+    await writeFile(join(dir, 'assets', 'app.css'), sheet)
+    const { mtime } = await stat(join(dir, 'assets', 'app.css'))
+    const before = new Date(mtime.getTime() - 60_000)
+    await utimes(join(dir, 'assets', 'app.css.br'), before, before)
+    const http = await serve(dir)
+
+    const sent = await ask(http, '/assets/app.css', { 'accept-encoding': 'br' })
+    expect(sent.headers['content-encoding']).toBe('br')
+    expect(brotliDecompressSync(sent.bytes).toString()).toBe(sheet)
   })
 
   // Compressed once per deploy and not once per request is the whole reason brotli's most

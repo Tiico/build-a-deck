@@ -7746,6 +7746,18 @@ Klammerns «Hela biblioteket» i Tabell söker i katalogen och laddar den när k
 Före det står Decksters egna, och ett spel utan ikoner öppnar som förut på dem, nu med vägen till hela katalogen under.
 Det öppnade biblioteket visar 60 träffar; namnet efter klammern är det som smalnar av, som i arket.
 
+**Byggt 2026-10-23 (prototypat och beslutat): arket under kortet väntar inte på biblioteken.**
+Arket i Mall visade ingenting förrän game-icons och Lucide var inlästa, flera MB bakom den dynamiska importen, fast Decksters egna symboler redan fanns i editorn.
+På en belastad maskin stod det en minut på «Biblioteken läses in …» med svärdet designern sökte i handen, och en E2E-resa föll på det.
+Nu står Decksters symboler direkt, som i Speltemats bibliotek, och biblioteken fyller på i samma rutnät när de kommer.
+Tills dess säger en tyst rad ovanför träffarna «Game Icons och Lucide läses in …».
+Står hyllan på Game Icons eller Lucide säger arket «Lucide läses in …» där träffarna ska stå, och de två hyllorna och Alla har inget antal förrän det finns ett.
+Går biblioteken inte att läsa in står felet ovanför Decksters träffar i stället för i deras ställe.
+Tre former prövades i en [prototyp](https://github.com/Tiico/build-a-deck/tree/df77d7b3/packages/web/prototype) med arkets riktiga CSS och bibliotek som hölls tills man släppte dem: raden ovanför (A), en streckad platshållarbricka i rutnätet (B) och beskedet på hyllorna och i foten (C).
+Valet blev **A**: B satte en bricka som inte går att trycka på bland dem som går, och C var lätt att missa längst ner till höger.
+`icon-libraries-late.spec.ts` håller bibliotekens chunkar på tråden och väljer svärdet medan de hålls.
+Att biblioteken dröjde en minut var lådans sak: den komprimerade game-icons-chunken på 6,4 MB med brotlis dyraste nivå vid första förfrågan, och nu gör bygget det i stället (DRIFT §13).
+
 ### L72. Inloggningsmejlet är bordet: tre band, trä, papper och vitt (prototypat och beslutat 2026-10-22, #1098)
 
 Inloggningsmejlet gick som ren text: «Hej! Klicka för att logga in: https://…», raden om 15 minuter och foten från #757.
