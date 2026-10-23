@@ -1752,7 +1752,7 @@ export const svEditor = {
   'tables.way.play': 'Spela härifrån',
   'tables.way.watch': 'Titta på',
   'tables.way.join': 'Anslutningssidan',
-  'tables.way.aria': '{label} för bordet {table} (öppnas i ny flik)',
+  'tables.way.aria': '{label} för bordet {table} (öppnas i bordets egen flik)',
   'tables.full': 'alla platser upptagna',
   'tables.qr': 'QR för telefoner',
   'tables.end': 'Avsluta bordet',

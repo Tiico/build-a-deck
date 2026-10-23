@@ -367,7 +367,7 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   // `flippable: false`, and the flip sent with the move had the whole envelope refused.
   const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter' && thing.kind !== 'die'
   return moving.flatMap((id, i): Intent[] => {
-    const laid = centredIn(laidIn(view, place.zone, i), thing)
+    const laid = centredIn(laidIn(view, place.zone, i, thing.kind === 'counter' || thing.kind === 'die'), thing)
     const to: Intent & { v: 'move' } = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
     const c = turned.has(id) ? view.components.find((x) => x.id === id) : undefined
     if (c) return faceDown(view, c, to)

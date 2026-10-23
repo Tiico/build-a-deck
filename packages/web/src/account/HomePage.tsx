@@ -9,6 +9,7 @@ import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
 import { duplicateProject, logout, myCards, myPlayed, myProjects, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { tvUrl } from '../editor/tableLinks.js'
+import { tableTab } from '../ways.js'
 import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
@@ -84,7 +85,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   }, [askedAbout, http])
   // A game's running tables, newest first, as the server lists them.
   const runningOf = (p: ProjectSummary) => running[p.id] ?? []
-  const runningList = (projects ?? []).flatMap((p) => runningOf(p).map((table) => ({ ...table, name: p.name })))
+  const runningList = (projects ?? []).flatMap((p) => runningOf(p).map((table) => ({ ...table, name: p.name, project: p.id })))
   // Landing here from the claim page (G1): which session was just saved. Said once (#475): the
   // address stops carrying it as soon as it has been read, so a reload does not say it again.
   const claimed = params.get('claimed')
@@ -251,7 +252,19 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               <div key={table.id} className="byd-home-running-row" data-running={table.id}>
                 <b>{table.name}</b>
                 <strong>{table.code}</strong>
-                <a href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                {/* The way to the game the table runs (#1217): «Pågår nu» led only to the table. */}
+                <a
+                  className="byd-home-running-game"
+                  href={`/editor?${suffix(new URLSearchParams({ project: table.project }))}`}
+                  aria-label={t('home.running.game.aria', { name: table.name })}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onNavigate(`/editor?${suffix(new URLSearchParams({ project: table.project }))}`)
+                  }}
+                >
+                  {t('home.running.game')}
+                </a>
+                <a href={tvUrl(table.id, server, undefined, true, lang)} target={tableTab(table.id, 'tv')} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
                   {t('home.running.open')}
                 </a>
               </div>
@@ -266,7 +279,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             keep={{
               label: t('tables.another.open', { table: anotherTable.code }),
               onChoose: () => {
-                window.open(tvUrl(anotherTable.id, server, undefined, true, lang), '_blank', 'noreferrer')
+                window.open(tvUrl(anotherTable.id, server, undefined, true, lang), tableTab(anotherTable.id, 'tv'))
                 setAnother(null)
                 setRefocus({ to: another.id })
               },
@@ -385,7 +398,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     {/* The tables already running come first (#724, beslut B), so a second press to see the
                         code again opens the table it was for rather than starting another. */}
                     {runningOf(p).map((table) => (
-                      <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
+                      <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target={tableTab(table.id, 'tv')} onClick={() => setMenu(null)}>
                         {t('home.menu.open', { code: table.code })}
                       </a>
                     ))}

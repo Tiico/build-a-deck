@@ -299,6 +299,12 @@
 .byd-join-lead { margin: 0; color: #9aa3b8; font-size: 15px; line-height: 1.5; }
 .byd-join-code input { text-align: center; }
 
+/* The page's way home (#1217), in the card's top corner and out of its flow: the picker is one
+   phone tall, and a way home is no reason to make it scroll. */
+.byd-join { position: relative; }
+.byd-join-home { position: absolute; top: 0; right: 8px; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; color: #9aa3b8; font-size: 13px; text-decoration: none; }
+.byd-join-home:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+
 /* A laptop opening the address sees a card and not a phone stretched across the screen (#675): the
    page as one column of 520 px, in the login card's form, on the account's darker ground. The card
    is the seat picker's own ground, so every contrast measured on the phone holds on it unchanged.
@@ -310,6 +316,8 @@
     padding: 28px 32px; border: 1px solid #262a35; border-radius: 20px;
   }
   .byd-join-page > :not(.byd-join-code) > header { text-align: center; }
+  /* On the card the way home stands on the heading's first line rather than on the card's edge. */
+  .byd-join-home { top: 18px; right: 20px; }
 }
 /* On a laptop the page has one choice (L77, #1130): «Gå med», and under it the phone's way and only
    watching as lines of text. They are buttons, since each buys a seat or a look before it goes

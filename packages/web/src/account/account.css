@@ -14,6 +14,10 @@
   min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; box-sizing: border-box; background: var(--byd-account-bg); color: #e6e6e6; font-family: system-ui, sans-serif;
 }
 .byd-account-wide { align-content: start; }
+/* The login's way home (#1217), quiet under the card; the card stays the middle of the page. */
+.byd-account[data-page='login'] { align-content: center; gap: 8px; }
+.byd-account-home { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #9aa3b8; font-size: 14px; text-decoration: none; }
+.byd-account-home:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 .byd-muted { color: #9aa3b8; font-size: 14px; line-height: 1.5; margin: 0; }
 .byd-login { width: min(420px, 100%); background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
 .byd-login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; }
@@ -135,10 +139,15 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    and the way to its screen — on the green the table's code has always stood on. */
 .byd-home-running { display: grid; gap: 8px; }
 .byd-home-running > h2 { margin: 0; }
-.byd-home-running-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 4px 4px 4px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
+.byd-home-running-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 16px; padding: 4px 4px 4px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
 .byd-home-running-row b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-home-running-row strong { font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 2px; }
-.byd-home-running-row a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; }
+.byd-home-running-row a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; }
+/* The way to the game is the row's second action (#1217): outlined, as L13 has every second one. */
+.byd-home-running-row a.byd-home-running-game { background: transparent; box-shadow: inset 0 0 0 1px #7dd3a088; color: #d8ffe8; }
+.byd-home-running-row a.byd-home-running-game:hover { box-shadow: inset 0 0 0 1px #7dd3a0; }
+/* Where the four do not fit on one line, the two ways stand under the name and the code. */
+@media (max-width: 520px) { .byd-home-running-row { grid-template-columns: minmax(0, 1fr) auto; padding: 4px; } .byd-home-running-row > b { padding-left: 12px; } .byd-home-running-row > strong { justify-self: end; padding-right: 12px; } }
 .byd-home-started, .byd-home-asking { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; }
 .byd-home-started { background: #1b2a22; color: #d8ffe8; }
 .byd-home-started strong { font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 2px; }
