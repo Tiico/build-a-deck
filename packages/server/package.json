@@ -17,6 +17,7 @@
     "@byd/protocol": "workspace:*",
     "@byd/render": "workspace:*",
     "@byd/template": "workspace:*",
+    "@simplewebauthn/server": "^14.0.3",
     "fflate": "^0.8.3",
     "postgres": "^3.4.5",
     "ws": "^8.18.0",
