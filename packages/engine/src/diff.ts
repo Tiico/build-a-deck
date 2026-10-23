@@ -89,6 +89,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
         break
       case 'turn':
         turn = op.turn
+        break
       case 'notes':
         notes = op.notes
         break
