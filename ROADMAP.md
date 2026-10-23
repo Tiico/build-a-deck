@@ -54,6 +54,7 @@ Server:
 Bordet och telefonen:
 - ✅ Filtbord i bordsläge och sändningslayout i TV-läge med rumskod och QR (C5, K9).
 - ✅ Telefonens hand som remsa med tryck, dra upp, håll; zongenvägar; spela vänder kortet om målet är publikt (C4, K4, K10, K11).
+- ✅ Vänd ett kort i handen så spelas det nedvänt, vart det än går (K11 reviderad, #1133).
 - ✅ Anslutning: bordet som platsväljare, "Bara titta", "Spela på den här skärmen" (K12, C8, C2).
 - ✅ Bordet spelas direkt: dra, släpp, håll för en ring med verb; perspektivet projiceras exakt (K14, C1).
 - ✅ Distansläget: bordet vridet till din kant, handen som solfjäder på filten, båda rollerna i ett fönster (C2, C5).
@@ -182,6 +183,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 - ✅ Säljtexten lovar inte trycket (L36, #743).
 - ✅ Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade; de två som väntade på beställarens val av prototyp valdes 2026-10-20 och är byggda: lagerraden som bryter (L3, #699) och antal på listen med grupp i typ (L4, #695).
 - ✅ Designern läser playtestets svar — enkätsvar och flaggor per bord och version, i Bord-flikens vy «Resultat» (G3, L70, #1010).
+- ✅ En flagga kan gälla ett kort, som pekas ut efter «Flagga», och Resultat visar kortet som det såg ut i versionen det flaggades på (G3, #1142).
 - ✅ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
 - ✅ Ett enkätsvar kommer från deltagarens eget inträde, ett per plats, och ett andra svar ersätter det första (G3, #1021).
 - ✅ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012), och tre bord på 308 kort ryms sedan leken bär hashar i stället för bilder (DRIFT §4, #1028). Det tredje av tre bord som startas samtidigt väntar runt sex minuter på sina texturer; beställaren beslutade 2026-10-18 att mäta det i betan i stället för att bygga bort det.

@@ -1,0 +1,293 @@
+<!doctype html>
+<!-- PROTOTYP (#1133). Kastas när varianten är vald. ?v=A|B|C, ←/→ byter. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vänd i handen — prototyp #1133</title>
+<style>
+:root {
+  --bg: #14161c; --surface: #1b1e27; --control: #242938; --ink: #eee; --ink-strong: #fff; --muted: #9aa3b8; --quiet: #7d8597;
+  --accent: #7dd3a0; --on-accent: #0b2a18; --line: #2c3242; --card-ink: #1c1c1c;
+  --plate: #171a23; --edge: #0d0f14; --chalk: #f3e9d6; --chalk-off: #9b968e;
+  --back: repeating-linear-gradient(45deg, #3a4d7a 0 4px, #2f4068 4px 8px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #0b0c10; color: var(--ink); font: 14px system-ui, sans-serif; }
+body { padding: 16px 16px 96px; }
+.rubrik { max-width: 1300px; margin: 0 0 10px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.anteckning { max-width: 1300px; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.scen { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+.etikett { color: var(--chalk-off); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 6px; }
+
+/* ── telefonen ── */
+.telefon { width: 390px; height: 844px; border-radius: 34px; background: #000; padding: 10px; outline: 1px solid #2a2d36; }
+.skarm { position: relative; width: 100%; height: 100%; border-radius: 26px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+.huvud { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #262a35; }
+.huvud .vem { flex: 1; } .huvud .vem b { display: block; font-size: 16px; color: var(--ink-strong); } .huvud .vem small { color: var(--muted); }
+.huvud span { padding: 8px 12px; border-radius: 12px; background: var(--control); font-weight: 700; color: var(--muted); font-size: 13px; }
+.innehall { flex: 1; overflow: auto; padding: 10px 14px 0; }
+.rad { color: var(--muted); font-weight: 700; margin: 6px 0 2px; font-size: 13px; }
+.strip { display: flex; gap: 12px; overflow-x: auto; padding: 8px 4px 14px; }
+.kort { position: relative; flex: 0 0 132px; height: 184px; border-radius: 12px; border: 0; padding: 0; overflow: hidden; cursor: pointer; font: inherit; text-align: left;
+  background: hsl(var(--hue) 40% 86%); color: var(--card-ink); transition: transform .28s ease, scale .12s; }
+.kort .fram { position: absolute; inset: 0; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.kort .fram b { font: 800 17px Georgia, serif; line-height: 1.1; }
+.kort .fram .band { margin: -10px -10px 0; padding: 10px; background: hsl(var(--hue) 55% 35%); color: #fff; }
+.kort .fram small { font-size: 11px; line-height: 1.3; }
+.kort .bak { position: absolute; inset: 0; background: var(--back); display: none; }
+.kort[data-down='true'] .fram { display: none; } .kort[data-down='true'] .bak { display: block; }
+.kort[data-selected='true'] { outline: 4px solid var(--accent); }
+.kort:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.kort.vander { animation: vand .32s ease; }
+@keyframes vand { 0% { transform: rotateY(0) } 50% { transform: rotateY(90deg) } 100% { transform: rotateY(0) } }
+/* det befintliga pillret ur «Framför dig» (.byd-mine-down) */
+.piller { position: absolute; z-index: 2; left: 6px; right: 6px; bottom: 6px; padding: 3px 6px; border-radius: 999px; background: #1b1e27; color: #cfd6e4; font-size: 11px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.horn { position: absolute; z-index: 2; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 50%; background: #1b1e27; color: #cfd6e4; display: grid; place-items: center; font-size: 15px; }
+.kort[data-down='true'].C-titt .fram { display: flex; opacity: .55; }
+.kort[data-down='true'].C-titt .bak { clip-path: polygon(0 0, 100% 0, 100% 46%, 0 70%); display: block; }
+.valt { color: var(--muted); margin: 2px 0 8px; }
+.valt b { color: var(--ink-strong); }
+.mal { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.knapp { min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--control); color: var(--ink-strong); font: 700 15px system-ui; cursor: pointer; }
+.knapp.prim { background: var(--accent); color: var(--on-accent); }
+.knapp[aria-pressed='true'] { background: #33405e; outline: 2px solid #8fb0ff; }
+.knapp:disabled { opacity: .45; cursor: default; }
+.knapp:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.vaxel { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 0 0 8px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.vaxel button { min-height: 44px; border: 0; background: transparent; color: var(--muted); font: 700 14px system-ui; cursor: pointer; }
+.vaxel button[aria-pressed='true'] { background: var(--control); color: var(--ink-strong); }
+.fot { display: flex; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid #262a35; }
+.fot .knapp.prim { flex: 1; }
+.sida-rad { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.liten { font-size: 12px; color: var(--quiet); }
+
+/* läsvyn (det lyfta kortet) */
+.las { position: absolute; inset: 0; background: rgba(0,0,0,.82); display: none; flex-direction: column; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 18px 22px; z-index: 10; }
+.las.open { display: flex; }
+.las .stor { position: relative; width: 300px; height: 420px; border-radius: 18px; background: hsl(var(--hue) 40% 92%); color: var(--card-ink); padding: 16px; overflow: hidden; }
+.las .stor b { display: block; margin: -16px -16px 10px; padding: 16px; background: hsl(var(--hue) 55% 35%); color: #fff; font: 800 26px Georgia, serif; }
+.las .stor p { font-size: 17px; line-height: 1.35; margin: 0; }
+.las .stor .piller { font-size: 13px; padding: 6px 10px; left: 16px; right: 16px; bottom: 16px; }
+.las .knappar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.las .knappar .hel { grid-column: 1 / -1; }
+
+/* arket */
+.ark { position: absolute; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: flex-end; z-index: 12; }
+.ark.open { display: flex; }
+.ark > div { width: 100%; background: var(--surface); border-radius: 20px 20px 0 0; padding: 18px 18px 26px; }
+.ark h3 { margin: 0 0 10px; font-size: 15px; }
+.ark .lista { display: grid; gap: 8px; margin-top: 8px; }
+.ark .lista .knapp { text-align: left; }
+
+/* ── filten ── */
+.tv { width: 620px; height: 460px; background: var(--edge); border-radius: 10px; padding: 18px; outline: 1px solid #2a2d36; display: flex; flex-direction: column; gap: 10px; }
+.felt { position: relative; flex: 1; background: radial-gradient(ellipse at 50% 40%, #1f5a3a, #12382a 70%); border-radius: 14px; }
+.zon { position: absolute; border: 1.5px dashed rgba(243,233,214,.35); border-radius: 8px; }
+.zon .namn { position: absolute; left: 0; right: 0; top: -20px; text-align: center; font: 700 12px 'Roboto Condensed', system-ui; color: var(--chalk); letter-spacing: .04em; }
+.zon .hogar { position: absolute; inset: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; justify-content: center; }
+.fk { width: 54px; height: 76px; border-radius: 5px; background: hsl(var(--hue) 40% 86%); color: var(--card-ink); font: 700 9px Georgia, serif; padding: 4px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,.4); }
+.fk.ned { background: var(--back); border: 1px solid #4b5f8e; color: transparent; }
+.fk.ny { animation: ny 1.2s ease-out; }
+@keyframes ny { from { box-shadow: 0 0 0 4px #ffd98a; } to { box-shadow: 0 2px 4px rgba(0,0,0,.4); } }
+.logg { background: #101219; border-radius: 8px; padding: 8px 10px; min-height: 64px; font-size: 13px; color: var(--chalk); line-height: 1.45; }
+.logg div:first-child { color: #ffd98a; }
+
+/* ── /online: solfjädern ── */
+.online { width: 620px; background: var(--edge); border-radius: 10px; padding: 12px 18px 18px; outline: 1px solid #2a2d36; margin-top: 18px; }
+.fan { display: flex; justify-content: center; padding: 26px 0 0; }
+.fan .kort { flex: 0 0 92px; height: 128px; margin: 0 -14px; transform: rotate(calc(var(--t) * 1deg)) translateY(calc(var(--d) * 1px)); box-shadow: 0 6px 14px rgba(0,0,0,.5); }
+.fan .kort .fram b { font-size: 12px; } .fan .kort .fram small { display: none; } .fan .kort .piller { font-size: 9px; padding: 2px 4px; }
+.fan .kort:hover { transform: translateY(-18px); z-index: 3; }
+.meny { position: fixed; z-index: 70; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 6px; display: none; min-width: 170px; box-shadow: 0 10px 30px rgba(0,0,0,.6); }
+.meny.open { display: grid; gap: 4px; }
+.meny button { min-height: 40px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-strong); font: 600 14px system-ui; text-align: left; padding: 0 10px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+.meny button:hover, .meny button:focus-visible { background: var(--control); outline: none; }
+.meny kbd { color: var(--muted); font: 600 12px system-ui; }
+
+/* ── växlare ── */
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; max-width: calc(100vw - 16px); overflow-x: auto; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>PROTOTYP #1133 — vända ett kort i handen så att det spelas nedvänt.</b> Telefonen till vänster är spelbar: tryck på ett kort för att läsa det, välj, vänd, spela. Filten visar vad bordet får se. Under den: samma hand på <code>/online</code> (högerklick eller tangenten V på ett kort). <a href="#" id="nollst" style="color:#ffe9b8">Börja om</a></div>
+<div class="anteckning" id="anteckning"></div>
+<div class="scen">
+  <div><p class="etikett">Telefonen · plats A, Ada · 390 × 844</p><div class="telefon"><div class="skarm" id="skarm"></div></div></div>
+  <div>
+    <p class="etikett">Bordet (TV) · vad alla ser</p>
+    <div class="tv"><div class="felt" id="felt"></div><div class="logg" id="logg"></div></div>
+    <div class="online"><p class="etikett">/online · solfjädern under filten</p><div class="fan" id="fan"></div></div>
+  </div>
+</div>
+<div class="meny" id="meny" role="menu"></div>
+<nav class="vaxlare" aria-label="Prototypväxlare">
+  <button id="prev" aria-label="Föregående">←</button>
+  <button data-v="A" aria-pressed="true">A · Vänd i handen (rek.)</button>
+  <button data-v="B" aria-pressed="false">B · Uppvänt/Nedvänt vid spelningen</button>
+  <button data-v="C" aria-pressed="false">C · Ett andra val i arket</button>
+  <button id="next" aria-label="Nästa">→</button>
+</nav>
+<script>
+const START = [
+  { id: 'c1', name: 'Hammer Time!', kind: 'Effect', text: 'Alla klunkar är +1', hue: 4 },
+  { id: 'c2', name: 'Bar Fight', kind: 'Action', text: 'Varje spelare slår en tärning.', hue: 28 },
+  { id: 'c3', name: 'The Heist', kind: 'Action', text: 'Ta ett kort ur en annan spelares hand.', hue: 210 },
+  { id: 'c4', name: 'Last Call', kind: 'Effect', text: 'Spelet slutar när draghögen är tom.', hue: 280 },
+  { id: 'c5', name: 'Bluff', kind: 'Trap', text: 'Läggs nedvänt. Avslöjas när någon spelar Duel.', hue: 140 },
+]
+const ZONES = [
+  { id: 'saloon', name: 'Saloonen', pub: true, x: 34, y: 10, w: 32, h: 40 },
+  { id: 'front', name: 'Framför Ada', pub: true, x: 30, y: 62, w: 40, h: 34 },
+  { id: 'discard', name: 'Kasthög', pub: true, x: 74, y: 10, w: 20, h: 40 },
+]
+const qs = new URLSearchParams(location.search)
+let V = ['A', 'B', 'C'].includes(qs.get('v')) ? qs.get('v') : 'A'
+let hand, down, chosen, reading, laid, log, mode, sheet, sheetDown
+function reset() { hand = START.map((c) => ({ ...c })); down = new Set(['c5']); chosen = 'c5'; reading = null; laid = { saloon: [], front: [], discard: [] }; log = []; mode = 'up'; sheet = false; sheetDown = false }
+reset()
+const $ = (s, r = document) => r.querySelector(s)
+const byId = (id) => hand.find((c) => c.id === id)
+
+const NOTES = {
+  A: `<b>A — Vänd i handen (rekommenderad).</b> «Vänd» är ett verb på kortet, där de andra verben på ett kort redan står: i läsvyn efter ett tryck, och som tangenten V. Ett vänt kort visar sin <i>baksida</i> i remsan, med samma piller som ett nedvänt kort under «Framför dig» bär («nedvänt · Bluff»), så ägaren vet vilket det är utan att vända det igen. Det spelas nedvänt vart det än går, och «Vänd upp» tar tillbaka det. Inget skickas när man vänder: att ett kort i ens hand ligger vänt ser ingen annan, precis som vid ett riktigt bord, så det är enhetens minne och inget i loggen.
+  <br><span class="plus">+ Det beställaren bad om, ordagrant. Ett tillstånd man ser: baksidan i handen säger hur kortet kommer att landa, innan det landar. Samma sak i solfjädern och på telefonen.</span> <span class="minus">− Ett kort man vänt och glömt landar nedvänt, men baksidan i handen är svår att missa. Minnet följer enheten, inte platsen (en omladdning av sidan behåller det; en annan telefon gör det inte).</span>`,
+  B: `<b>B — Uppvänt/Nedvänt vid spelningen.</b> Ovanför målknapparna står en växel «Uppvänt | Nedvänt», som gäller nästa spelning och sedan går tillbaka till uppvänt. Handen ändras inte; kortet visar alltid framsidan.
+  <br><span class="plus">+ Inget tillstånd i handen att glömma bort. Ett tryck mer, aldrig fler.</span> <span class="minus">− Ingen vändning <i>i handen</i>. Växeln står mitt i telefonens tätaste rad och kostar 52 px höjd på varje spelning, också i spel där ingen någonsin spelar nedvänt. I solfjädern finns inget naturligt ställe för den: dra-och-släpp har ingen knapprad.</span>`,
+  C: `<b>C — Ett andra val i arket.</b> K11:s följdkrav bokstavligt: «Spela…» öppnar arket som i dag, och där finns «Lägg nedvänt». Snabbknapparna under handen spelar alltid som i dag (uppvänt i en publik zon). I solfjädern: högerklick → «Spela nedvänt…».
+  <br><span class="plus">+ Minst förändring. Inget nytt på remsan, inget nytt att lära sig för den som aldrig spelar nedvänt.</span> <span class="minus">− Två tryck mer än i dag, och snabbknapparna kan aldrig spela nedvänt. Gömt bakom «Spela…», som de flesta aldrig öppnar. Inget syns i handen.</span>`,
+}
+
+function renderPhone() {
+  const sk = $('#skarm')
+  const c = byId(chosen)
+  const isDown = c && down.has(c.id)
+  const playDown = (V === 'A' && isDown) || (V === 'B' && mode === 'down')
+  sk.innerHTML = `
+    <div class="huvud"><div class="vem"><b>Ada</b><small>${hand.length} kort</small></div><span>?</span><span>↰ Ångra</span><span>Ut…</span></div>
+    <div class="innehall">
+      <div class="rad">Din hand · ${hand.length}</div>
+      <div class="strip" id="strip">${hand.map((k) => cardHtml(k, 'strip')).join('')}</div>
+      ${V === 'A' ? `<p class="liten" style="margin:0 0 6px">Tryck på ett kort för att läsa det. Där står «Vänd».</p>` : ''}
+      <p class="valt">${c ? `Valt: <b>${c.name}</b>${playDown ? ' · <span style="color:#cfd6e4">spelas nedvänt</span>' : ''}` : 'Inget kort valt'}</p>
+      ${V === 'B' ? `<div class="vaxel" role="group" aria-label="Hur kortet landar"><button data-mode="up" aria-pressed="${mode === 'up'}">Uppvänt</button><button data-mode="down" aria-pressed="${mode === 'down'}">Nedvänt</button></div>` : ''}
+      <div class="mal">
+        <button class="knapp" data-play="saloon" ${c ? '' : 'disabled'}>Till saloonen</button>
+        <button class="knapp" data-play="front" ${c ? '' : 'disabled'}>Framför mig</button>
+        <button class="knapp" data-play="discard" ${c ? '' : 'disabled'}>Kasta</button>
+        <button class="knapp" data-sheet ${c ? '' : 'disabled'}>Spela…</button>
+      </div>
+      <div class="rad" style="margin-top:14px">▸ Framför dig · ${laid.front.length}</div>
+      <div class="rad">▸ Ytorna</div>
+    </div>
+    <div class="fot"><button class="knapp prim" data-play="saloon" ${c ? '' : 'disabled'}>Till saloonen${playDown ? ' · nedvänt' : ''}</button><button class="knapp" data-sheet ${c ? '' : 'disabled'}>Spela…</button></div>
+    <div class="las ${reading ? 'open' : ''}" id="las">${reading ? readHtml(byId(reading)) : ''}</div>
+    <div class="ark ${sheet ? 'open' : ''}" id="ark">${sheet && c ? sheetHtml(c) : ''}</div>`
+}
+function cardHtml(k, where) {
+  const d = (V === 'A' && down.has(k.id))
+  const sel = where === 'strip' && k.id === chosen
+  return `<button class="kort" data-card="${k.id}" data-down="${d}" data-selected="${sel}" style="--hue:${k.hue}${where === 'fan' ? `;--t:${k.t};--d:${k.d}` : ''}" aria-label="${k.name}${d ? ', vänt — spelas nedvänt' : ''}${sel ? ', valt' : ''}">
+    <span class="fram"><span class="band"><b>${k.name}</b></span><small>${k.kind}</small><small>${k.text}</small></span>
+    <span class="bak"></span>
+    ${d ? `<span class="piller">nedvänt · ${k.name}</span>` : ''}
+  </button>`
+}
+function readHtml(k) {
+  const d = V === 'A' && down.has(k.id)
+  const verbs = V === 'A'
+    ? `<button class="knapp hel" data-flip="${k.id}">${d ? '⟲ Vänd upp' : '⟲ Vänd'}</button>
+       <button class="knapp prim" data-play="saloon">Till saloonen${d ? ' · nedvänt' : ''}</button><button class="knapp" data-sheet>Spela…</button>`
+    : `<button class="knapp prim" data-play="saloon">Till saloonen</button><button class="knapp" data-sheet>Spela…</button>`
+  return `<div class="stor" style="--hue:${k.hue}"><b>${k.name}</b><p>${k.kind}</p><p style="margin-top:10px">${k.text}</p>${d ? '<span class="piller">vänt i handen · spelas nedvänt</span>' : ''}</div>
+    <div class="knappar">${verbs}<button class="knapp hel" data-close>Stäng</button></div>`
+}
+function sheetHtml(k) {
+  const d = V === 'A' && down.has(k.id)
+  return `<div><h3>Spela ${k.name}</h3>
+    ${V === 'C' ? `<label class="sida-rad" style="min-height:44px;font-weight:700"><input type="checkbox" id="sheetDown" ${sheetDown ? 'checked' : ''} style="width:22px;height:22px"> Lägg nedvänt</label><p class="liten" style="margin:0 0 4px">Ingen vid bordet ser vilket kort det är.</p>` : ''}
+    ${d ? '<p class="liten" style="margin:0 0 4px">Kortet är vänt i handen och landar nedvänt.</p>' : ''}
+    <div class="lista">${ZONES.map((z) => `<button class="knapp" data-play="${z.id}">${z.name}</button>`).join('')}<button class="knapp" data-play="floor">Bordet, var du vill</button><button class="knapp" data-closesheet>Avbryt</button></div></div>`
+}
+function renderFelt() {
+  $('#felt').innerHTML = ZONES.map((z) => `<div class="zon" style="left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%"><span class="namn">${z.name}</span><div class="hogar">${laid[z.id].map((p, i) => `<div class="fk ${p.down ? 'ned' : ''} ${i === laid[z.id].length - 1 && p.fresh ? 'ny' : ''}" style="--hue:${p.hue}">${p.down ? '' : p.name}</div>`).join('')}</div></div>`).join('')
+  $('#logg').innerHTML = log.length ? log.slice().reverse().map((l) => `<div>${l}</div>`).join('') : '<div style="color:#9b968e">Senast: inget ännu</div>'
+}
+function renderFan() {
+  const n = hand.length
+  $('#fan').innerHTML = hand.map((k, i) => { const m = i - (n - 1) / 2; return cardHtml({ ...k, t: m * 5, d: Math.abs(m) * Math.abs(m) * 3 }, 'fan') }).join('')
+}
+function render() {
+  $('#anteckning').innerHTML = NOTES[V]
+  document.querySelectorAll('[data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === V)))
+  renderPhone(); renderFelt(); renderFan()
+}
+
+function flip(id) {
+  if (down.has(id)) down.delete(id); else down.add(id)
+  render()
+  document.querySelectorAll(`[data-card="${id}"]`).forEach((el) => el.classList.add('vander'))
+}
+function play(zone, id = chosen, forceDown = null) {
+  const k = byId(id); if (!k) return
+  let d = forceDown ?? ((V === 'A' && down.has(id)) || (V === 'B' && mode === 'down') || (V === 'C' && sheet && sheetDown))
+  const z = zone === 'floor' ? 'front' : zone
+  Object.values(laid).flat().forEach((p) => (p.fresh = false))
+  laid[z].push({ ...k, down: d, fresh: true })
+  hand = hand.filter((c) => c.id !== id); down.delete(id)
+  const zn = ZONES.find((x) => x.id === z).name
+  log.push(d ? `Ada lade ett kort nedvänt i ${zn}` : `Ada spelade ${k.name} till ${zn}`)
+  if (log.length > 3) log.shift()
+  chosen = hand[0]?.id ?? null; reading = null; sheet = false; sheetDown = false; mode = 'up'
+  render()
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button, a, input'); if (!t) { closeMenu(); return }
+  if (t.id === 'nollst') { e.preventDefault(); reset(); render(); return }
+  if (t.dataset.v) { V = t.dataset.v; setV(); return }
+  if (t.id === 'prev' || t.id === 'next') { const all = ['A', 'B', 'C']; V = all[(all.indexOf(V) + (t.id === 'next' ? 1 : 2)) % 3]; setV(); return }
+  if (t.closest('#meny')) { menuAct(t); return }
+  closeMenu()
+  if (t.dataset.card && t.closest('#strip')) { if (chosen === t.dataset.card) reading = t.dataset.card; chosen = t.dataset.card; render(); return }
+  if (t.dataset.card && t.closest('#fan')) { openMenu(t, t.dataset.card); return }
+  if (t.dataset.flip) { flip(t.dataset.flip); return }
+  if (t.dataset.mode) { mode = t.dataset.mode; render(); return }
+  if (t.dataset.play) { play(t.dataset.play); return }
+  if (t.hasAttribute('data-sheet')) { reading = null; sheet = true; render(); return }
+  if (t.hasAttribute('data-closesheet')) { sheet = false; render(); return }
+  if (t.hasAttribute('data-close')) { reading = null; render(); return }
+  if (t.id === 'sheetDown') { sheetDown = t.checked; return }
+})
+document.addEventListener('contextmenu', (e) => { const t = e.target.closest('#fan [data-card]'); if (t) { e.preventDefault(); openMenu(t, t.dataset.card) } })
+document.addEventListener('keydown', (e) => {
+  const card = document.activeElement?.closest?.('[data-card]')
+  if (card && (e.key === 'v' || e.key === 'V') && V === 'A') { e.preventDefault(); flip(card.dataset.card); document.querySelector(`#${card.closest('#fan') ? 'fan' : 'strip'} [data-card="${card.dataset.card}"]`)?.focus(); return }
+  if (e.key === 'Escape') { closeMenu(); reading = null; sheet = false; render(); return }
+  if (document.activeElement?.closest?.('.skarm, #fan, #meny')) return
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const all = ['A', 'B', 'C']; V = all[(all.indexOf(V) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]; setV() }
+})
+function openMenu(el, id) {
+  const k = byId(id), d = V === 'A' && down.has(id), m = $('#meny'), r = el.getBoundingClientRect()
+  m.innerHTML = V === 'A'
+    ? `<button data-mflip="${id}">${d ? 'Vänd upp' : 'Vänd'} <kbd>V</kbd></button><button data-mplay="saloon" data-id="${id}">Till saloonen${d ? ' · nedvänt' : ''}</button><button data-mplay="front" data-id="${id}">Framför mig${d ? ' · nedvänt' : ''}</button>`
+    : V === 'B'
+      ? `<button data-mplay="saloon" data-id="${id}">Till saloonen</button><button data-mplay="saloon" data-down="1" data-id="${id}">Till saloonen · nedvänt</button><button data-mplay="front" data-id="${id}">Framför mig</button><button data-mplay="front" data-down="1" data-id="${id}">Framför mig · nedvänt</button>`
+      : `<button data-mplay="saloon" data-id="${id}">Till saloonen</button><button data-mplay="front" data-id="${id}">Framför mig</button><button data-mplay="front" data-down="1" data-id="${id}">Spela nedvänt…</button>`
+  m.style.left = `${r.left}px`; m.style.top = `${r.top - 8 - 46 * m.children.length}px`; m.classList.add('open')
+  m.querySelector('button')?.focus()
+}
+function closeMenu() { $('#meny').classList.remove('open') }
+function menuAct(t) {
+  closeMenu()
+  if (t.dataset.mflip) { flip(t.dataset.mflip); return }
+  if (t.dataset.mplay) play(t.dataset.mplay, t.dataset.id, t.dataset.down ? true : (V === 'A' ? down.has(t.dataset.id) : false))
+}
+function setV() { const u = new URL(location); u.searchParams.set('v', V); history.replaceState(null, '', u); reading = null; sheet = false; render() }
+render()
+</script>
+</body>
+</html>

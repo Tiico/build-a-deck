@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ASSET_FORMATS, ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
-import { RULE_IMAGE_MAX_BYTES, assetUrl, assetsInUse, imageFieldsOf, imageSizeOf, imageTypeOf, isAssetRef, mediaInGame, resolveAssetRow } from '../src/editor/assets.js'
+import { RULE_IMAGE_MAX_BYTES, assetUrl, assetsInUse, imageFieldsOf, imageSizeOf, imageTypeOf, isAssetRef, mediaInGame, previewIcons, resolveAssetRow } from '../src/editor/assets.js'
 import { projectDoc } from './project-doc.js'
 
 const HASH = 'a'.repeat(64)
@@ -26,6 +26,19 @@ describe('assets in the editor (E1): rows point at images by hash', () => {
       { hash: HASH, cards: ['dragon', 'knight'] },
       { hash: 'b'.repeat(64), cards: ['wizard'] },
     ])
+  })
+})
+
+// An icon given a colour is drawn as a CSS mask (#1087), and a mask is fetched in CORS mode as a
+// typeface is. The object store's answer carries no `access-control-allow-origin`, so a symbol
+// redirected there is a mask that never loads, and a mask that never loads hides the whole icon:
+// it went transparent the moment it was painted. So the set is read through the box (DRIFT §4).
+describe('the icon set as a preview loads it', () => {
+  it('reads every uploaded symbol through the server, because it may be painted as a mask', () => {
+    expect(previewIcons({ icons: { sköld: `asset:${HASH}`, egen: 'data:image/svg+xml,x' } }, 'http://api.local')).toEqual({
+      sköld: `http://api.local/assets/${HASH}/bytes`,
+      egen: 'data:image/svg+xml,x',
+    })
   })
 })
 
