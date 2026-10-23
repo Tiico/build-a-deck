@@ -4089,6 +4089,7 @@ Filtens kant lyser i platsens färg vid den plats som har turen, i varje läge: 
 På TV:n, där platsen bär en skylt i stället för ett namn på kanten, får skylten en ring i platsens färg.
 Platsens namn säger «Adas tur» och hur länge turen pågått, räknat från `at`; nästa plats bär märket «nästa».
 Är det din tur står «Din tur» och knappen «Klar → Cy» vid din egen kant i stället för ditt namn, och fönstrets titel börjar med «● Din tur».
+Pilen i «Klar → Cy» är en ritad ikon och inget tecken (#1083), och knappen heter «Klar, ge turen till Cy» för den som hör den.
 På bordets delade skärm, där ingen plats är ens egen, står «Klar → Cy» i namnet hos den som har turen, eftersom den som har turen sitter vid den skärmen.
 Titeln är det enda som syns utanför sidan; det är ingen notis, och K7 står kvar.
 Där filten går att spela ger ett klick på en annan upptagen plats namn turen dit.

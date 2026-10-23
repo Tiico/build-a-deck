@@ -64,7 +64,7 @@ describe('turen på filten', () => {
     render(<TableRenderer view={view} mode="table" scale={1} me="B" onAct={onAct} />)
     const next = nextTurn(view)!
     expect(within(nameOf('B')).getByText('Din tur')).toBeTruthy()
-    fireEvent.click(within(nameOf('B')).getByRole('button', { name: `Klar → ${NAMES[next]}` }))
+    fireEvent.click(within(nameOf('B')).getByRole('button', { name: `Klar, ge turen till ${NAMES[next]}` }))
     expect(onAct).toHaveBeenCalledWith([{ v: 'turn.give', seat: next }])
   })
 
@@ -74,7 +74,7 @@ describe('turen på filten', () => {
     render(<TableRenderer view={view} mode="table" scale={1} onAct={onAct} />)
     const next = nextTurn(view)!
     expect(nameOf('B').textContent).toContain('Bos tur')
-    fireEvent.click(within(nameOf('B')).getByRole('button', { name: `Klar → ${NAMES[next]}` }))
+    fireEvent.click(within(nameOf('B')).getByRole('button', { name: `Klar, ge turen till ${NAMES[next]}` }))
     expect(onAct).toHaveBeenCalledWith([{ v: 'turn.give', seat: next }])
   })
 
@@ -84,7 +84,7 @@ describe('turen på filten', () => {
     const next = nextTurn(view)
     expect(next).not.toBe('C')
     render(<TableRenderer view={view} mode="table" scale={1} me="A" onAct={() => undefined} />)
-    expect(within(nameOf('A')).getByRole('button', { name: `Klar → ${NAMES[next!]}` })).toBeTruthy()
+    expect(within(nameOf('A')).getByRole('button', { name: `Klar, ge turen till ${NAMES[next!]}` })).toBeTruthy()
   })
 
   it('ger turen till en annan plats när dess namn trycks, där filten går att spela', () => {
@@ -130,7 +130,7 @@ describe('brickan på telefonen', () => {
     const onGive = vi.fn()
     render(<TurnBadge view={view} seat="B" onGive={onGive} />)
     expect(screen.getByText('Din tur')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: `Klar → ${NAMES[nextTurn(view)!]}` }))
+    fireEvent.click(screen.getByRole('button', { name: `Klar, ge turen till ${NAMES[nextTurn(view)!]}` }))
     expect(onGive).toHaveBeenCalledWith(nextTurn(view))
   })
 

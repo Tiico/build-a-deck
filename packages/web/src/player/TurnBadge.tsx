@@ -2,6 +2,7 @@ import { nextTurn } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
 import { useT } from '../i18n/index.js'
 import { seatColor } from '../table/seatColor.js'
+import { ArrowGlyph } from '../glyphs.js'
 
 // Whose turn it is, on the phone (K29): «Din tur» and «Klar → Cy» for the one who has it, and whose
 // it is for everyone else. A row of its own under the phone's chrome, which has no room for it.
@@ -17,8 +18,8 @@ export function TurnBadge({ view, seat, onGive }: { view: Snapshot; seat: string
     <div className="byd-turn-row" {...(mine ? { 'data-mine': '' } : {})} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === holder))) }}>
       <span className="byd-turn-badge">{mine ? t('turn.mine') : t('turn.of', { name: name(holder) })}</span>
       {mine && next !== null && !view.ended && (
-        <button type="button" className="byd-turn-done" onClick={() => onGive(next)}>
-          {t('turn.done', { name: name(next) })}
+        <button type="button" className="byd-turn-done" aria-label={t('turn.done.aria', { name: name(next) })} title={t('turn.done.aria', { name: name(next) })} onClick={() => onGive(next)}>
+          {t('turn.done')} <ArrowGlyph to="right" /> {name(next)}
         </button>
       )}
     </div>

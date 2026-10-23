@@ -314,7 +314,9 @@ export const svPlay = {
   // Vems tur det är (K29): vid platsens namn på filten och i telefonens huvud.
   'turn.of': '{name:s} tur',
   'turn.mine': 'Din tur',
-  'turn.done': 'Klar → {name}',
+  // Knappen visar «Klar», en pil och nästa plats namn; namnet för den som hör den säger hela meningen.
+  'turn.done': 'Klar',
+  'turn.done.aria': 'Klar, ge turen till {name}',
   'turn.next': 'nästa',
   'turn.give': 'Ge turen till {name}',
   'turn.take': 'Ta turen',

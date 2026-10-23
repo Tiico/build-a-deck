@@ -1333,7 +1333,7 @@ export const enEditor = {
   'setup.turns.none': 'None',
   'setup.turns.clockwise': 'Clockwise',
   'setup.turns.counterclockwise': 'Counterclockwise',
-  'setup.turns.help': 'The felt shows whose turn it is, and «Done» passes the turn on round the table. Nobody is stopped: anyone may give the turn to another seat. A game played all at once goes without.',
+  'setup.turns.help': 'The felt shows whose turn it is, and “Done” passes the turn on round the table. Nobody is stopped: anyone may give the turn to another seat.',
   'setup.turns.help.topic': 'the turn order',
   'setup.addSeatArea': '＋ Area per seat',
   'setup.addSeatCounters': '＋ Counters zone per seat',

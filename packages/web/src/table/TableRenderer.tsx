@@ -36,6 +36,7 @@ import { placeNames, placePlates, type PlateAt } from './freeSide.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { nextTurn } from '@byd/engine'
 import { TurnClock } from './TurnClock.js'
+import { ArrowGlyph } from '../glyphs.js'
 
 // Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
 // hög gör, så den är lika stor i förhållande till korten på varje skärm.
@@ -2313,8 +2314,8 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top, tur
         <>
           {mine ? t('turn.mine') : t('turn.of', { name })} <TurnClock at={turn.at} />
           {turn.done && (
-            <button type="button" className="byd-turn-done" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => (e.stopPropagation(), turn.done?.give())}>
-              {t('turn.done', { name: turn.done.name })}
+            <button type="button" className="byd-turn-done" aria-label={t('turn.done.aria', { name: turn.done.name })} title={t('turn.done.aria', { name: turn.done.name })} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => (e.stopPropagation(), turn.done?.give())}>
+              {t('turn.done')} <ArrowGlyph to="right" /> {turn.done.name}
             </button>
           )}
         </>

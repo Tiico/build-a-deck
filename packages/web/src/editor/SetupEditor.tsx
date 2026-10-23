@@ -304,6 +304,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
             ),
           }}
         />
+        <TurnsPanel client={client} setup={setup} />
       </div>
       <div className="byd-setup-canvas">
         {lead}
@@ -499,8 +500,18 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
         </div>
       </section>
+    </aside>
+  )
+}
+
+// Whether the game goes in turns (K29): one of three, each a version and a step back. It is the
+// game's and not the zones', so it stands last in the column, under the lists, where it costs the
+// ways to add a zone none of the height they are read at (#711).
+function TurnsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
+  const t = useT()
+  return (
+    <aside className="byd-setup-recipe">
       <section>
-        {/* Whether the game goes in turns (K29): one of three, each a version and a step back. */}
         <div className="byd-help-row">
           <h2 id="byd-setup-turns">{t('setup.turns')}</h2>
           <Help topic={t('setup.turns.help.topic')}>

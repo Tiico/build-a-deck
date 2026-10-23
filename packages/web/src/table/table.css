@@ -524,10 +524,12 @@
 .byd-turn-give { all: unset; cursor: pointer; }
 .byd-turn-give:focus-visible { outline: 2px solid var(--byd-felt-chalk); outline-offset: 4px; }
 .byd-turn-done {
+  display: inline-flex; align-items: center; gap: 4px;
   min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; cursor: pointer;
   background: var(--byd-seat-ink); color: #fff; font: inherit; letter-spacing: 0;
 }
 .byd-turn-done:focus-visible { outline: 2px solid var(--byd-felt-chalk); outline-offset: 2px; }
+.byd-turn-done .byd-glyph { width: 1em; height: 1em; }
 /* The felt that knows who is looking reads for them (#418, decision B of 2026-09-22). The turn
    above keeps C5's exception where its reason still holds — a screen lying on a table with
    people round it, where the name is a place card — and everywhere else the name is upright,

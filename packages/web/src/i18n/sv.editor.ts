@@ -1461,7 +1461,7 @@ export const svEditor = {
   'setup.turns.none': 'Ingen',
   'setup.turns.clockwise': 'Medurs',
   'setup.turns.counterclockwise': 'Moturs',
-  'setup.turns.help': 'Filten visar vems tur det är, och «Klar» skickar turen vidare runt bordet. Ingen hindras: vem som helst kan ge turen till en annan plats. Ett spel där alla spelar samtidigt klarar sig utan.',
+  'setup.turns.help': 'Filten visar vems tur det är, och «Klar» skickar turen vidare runt bordet. Ingen hindras: vem som helst kan ge turen till en annan plats.',
   'setup.turns.help.topic': 'turordningen',
   'setup.addSeatArea': '＋ Yta per plats',
   'setup.addSeatCounters': '＋ Räknarzon per plats',
