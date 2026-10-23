@@ -200,7 +200,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 Byggs sist (H3), och stänger den tunna skivan (H1).
 Beställaren beslutade 2026-10-23 (#1199) att stödet för fler partner och tryckpaketet byggs redan i betan, medan partnervalet, ordern och spårningen väntar (F1, F2, H3).
 
-- ⬜ `PrintProvider`-abstraktionen: komponenttyp till SKU, tryckunderlagskrav, prissättning, orderläggning och spårning, formad efter The Game Crafter och QPMN, med ett förberedelsesteg, regiondirigering för EU-kravet och kraven som data ur `requirements()`, en fake-provider och en kontraktssvit som varje adapter ska klara (F2, #1206).
+- ✅ `PrintProvider`-abstraktionen i `packages/print`: komponenttyp till SKU, tryckunderlagskrav, prissättning, orderläggning och spårning, formad efter The Game Crafter och QPMN, med ett förberedelsesteg, regiondirigering för EU-kravet och kraven som data ur `requirements()`, en fake-provider och en kontraktssvit som varje adapter ska klara (F2, TUNN-SKIVA §4, #1206). Ingen serverväg anropar `submit` eller `track` ännu.
 - ⬜ Tryckfiler efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()` i stället för typens fasta 3 mm, från den enda renderaren (E2, F2, #1207).
 - ⬜ Tryckpaketet: designern ser vad som skulle skickas till tryckeriet, förklarat, och laddar ner det i betan; prototypas först (F1, #1208).
 - ⬜ Tryckpaketet kostar att ladda ner när en riktig partner finns, i en form som beslutas med abonnemangen (F1, A2, #1209).
