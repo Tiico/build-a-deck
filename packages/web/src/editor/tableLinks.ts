@@ -22,8 +22,10 @@ export const tvUrl = (session: string, server: string | null, host?: string, own
   to('/table', new URLSearchParams({ session, ...(host ? { host } : {}), mode: 'tv', ...(owner ? { owner: '1' } : {}), ...spoken(lang) }), server)
 export const tableModeUrl = (session: string, server: string | null, owner = false, lang?: Lang): string =>
   to('/table', new URLSearchParams({ session, mode: 'table', ...(owner ? { owner: '1' } : {}), ...spoken(lang) }), server)
-export const onlineUrl = (session: string, server: string | null, seat: SeatId, owner = false, t?: T, lang?: Lang): string =>
-  to('/online', new URLSearchParams({ session, seat, name: designerName(t), ...(owner ? { owner: '1' } : {}), ...spoken(lang) }), server)
+// The host sits down under the name she gave when she started the table (L75), and the room code
+// rides along so the seat knows the address it hands on; without them it is the designer's word.
+export const onlineUrl = (session: string, server: string | null, seat: SeatId, owner = false, t?: T, lang?: Lang, as: { name?: string; code?: string } = {}): string =>
+  to('/online', new URLSearchParams({ session, seat, name: as.name ?? designerName(t), ...(owner ? { owner: '1' } : {}), ...(as.code ? { code: as.code } : {}), ...spoken(lang) }), server)
 export const observeUrl = (session: string, server: string | null, owner = false, t?: T, lang?: Lang): string =>
   to('/observe', new URLSearchParams({ session, name: designerName(t), ...(owner ? { owner: '1' } : {}), ...spoken(lang) }), server)
 // What the QR on the TV encodes (K12): the room code opens the phone's live seat picker.

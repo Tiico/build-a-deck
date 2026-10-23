@@ -25,7 +25,8 @@ import { NoticeBand } from './NoticeBand.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
-import { tvUrl } from './tableLinks.js'
+import { onlineUrl, tvUrl } from './tableLinks.js'
+import { rememberStart, type Seating, type StartAnswer } from './startAnswer.js'
 import { Asking, Question } from './Question.js'
 import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import { Arriving } from './AssetImage.js'
@@ -51,6 +52,8 @@ import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
 import { versionWord } from '../i18n/version.js'
 
+// «Hur sitter ni?» (L75) is asked once per table, so its window comes when it is first asked for.
+const StartQuestion = lazy(() => import('./StartQuestion.js').then((m) => ({ default: m.StartQuestion })))
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
 
 // How long the render count may stand still before the line says so (#88, UX-43): the table's own
@@ -241,6 +244,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // be made twice. So the press is answered before the table is: the button says what it is
   // doing and takes nothing more, the way "Spara" has since #8.
   const [updating, setUpdating] = useState(false)
+  // «Starta» on a game without a table asks how you sit first (L75), and the answer opens the
+  // host's screen in a tab of its own. A browser that stops the tab leaves the way there in the band.
+  const [askingStart, setAskingStart] = useState(false)
+  const [unopened, setUnopened] = useState<{ seating: Seating; href: string } | null>(null)
   // How many cards of the pending revision are lost for good. While this is set the table keeps
   // the version it has: a card without a face on the table is worse than a table left alone.
   const [lost, setLost] = useState<number | null>(null)
@@ -460,14 +467,45 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     goTo(to)
   }
   // A table that starts saves first, and puts away what stood when it was asked for, as a save does.
-  const startTable = async () => {
+  const startTable = async (): Promise<{ id: string; code: string; hostKey: string } | null> => {
     const standing = notice
+    setUnopened(null)
     try {
       const { saved, ...started } = await client.startTable()
       setTable({ ...started, kind: 'new', saved })
       putAway(standing)
+      return started
     } catch {
       say(t('editor.table.error.start'))
+      return null
+    }
+  }
+  // The answer to «Hur sitter ni?» (L75). The tab is opened here, in the press, before anything is
+  // awaited: a browser lets a page open a window only in the hand's own gesture, and the table's
+  // address is not known until the start has answered. So the tab opens blank and is sent on.
+  const startAs = async (answer: StartAnswer) => {
+    setAskingStart(false)
+    rememberStart(answer)
+    const tab = window.open('', '_blank')
+    // What is opened is the host's own screen; it has no business reaching back into the editor.
+    if (tab) tab.opener = null
+    if (updating) return tab?.close()
+    setUpdating(true)
+    try {
+      const started = await startTable()
+      if (!started) return tab?.close()
+      const server = params.get('server')
+      // A new table has every seat free, so the first free seat is the first seat (K12).
+      const seat = client.doc.setup.seats[0]
+      const href =
+        answer.seating === 'computer' && seat !== undefined
+          ? onlineUrl(started.id, server, seat, true, t, lang, { name: answer.name, code: started.code })
+          : tvUrl(started.id, server, started.hostKey, false, lang)
+      // Whole, since a blank tab has no address of its own to read a path against.
+      if (tab && !tab.closed) tab.location.href = new URL(href, location.href).href
+      else setUnopened({ seating: answer.seating, href })
+    } finally {
+      setUpdating(false)
     }
   }
   // The header's table was ended — from the Bord tab, from the TV, or from another tab (#705). Its
@@ -738,7 +776,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       // and «Dela» took the room the game's name had at 1280. The name is whole at every width, and
       // begins with what is drawn.
       aria-label={t(tableAction)}
-      onClick={() => void updateTable()}
+      onClick={() => (table ? void updateTable() : !updating && setAskingStart(true))}
     >
       <span className="byd-editor-primary-long">{t(tableAction)}</span>
       <span className="byd-editor-primary-short" aria-hidden="true">{t(`${tableAction}.short`)}</span>
@@ -888,6 +926,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {marked(t('home.remove.ask'), { name: <b>{doc.name}</b> })}
         </Question>
       )}
+      {askingStart && (
+        <Suspense fallback={null}>
+          <StartQuestion onStart={(answer) => void startAs(answer)} onCancel={() => setAskingStart(false)} />
+        </Suspense>
+      )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
           {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: versionWord(table.version, t) })}
@@ -924,6 +967,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
               {' '}· <span className="byd-editor-warning" data-unreadable>{t(unreadable === 1 ? 'editor.table.unreadable.one' : 'editor.table.unreadable.other', { n: unreadable, pt: minPtIn(phone).toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), width: phone.window.w, floor: SCREENS[phone.screen].floorPx })}</span>{' '}
               <button type="button" onClick={showOnWall}>{t('editor.table.unreadable.show')}</button>
             </>
+          )}
+          {unopened && (
+            <span data-unopened>
+              {' '}· <span className="byd-editor-warning">{t('editor.start.blocked')}</span>{' '}
+              <a href={unopened.href} target="_blank" rel="noreferrer">
+                {t(unopened.seating === 'computer' ? 'editor.start.blocked.computer' : 'editor.start.blocked.screen')}
+              </a>
+            </span>
           )}
           <span className="byd-editor-room">
             {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}

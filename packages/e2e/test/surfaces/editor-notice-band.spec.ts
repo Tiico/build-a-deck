@@ -4,6 +4,7 @@ import { spelkortDoc } from '../../../server/scripts/spelkort.js'
 import { svEditor } from '../../../web/src/i18n/sv.editor.js'
 import { enEditor } from '../../../web/src/i18n/en.editor.js'
 import { logIn, makeProjectOf, startTable } from '../../support/api.js'
+import { answerStart } from '../../support/start.js'
 
 // Editorns notis står i ett band under huvudet (#1073, beställarens val B 2026-10-21).
 //
@@ -186,6 +187,7 @@ for (const size of SIZES) {
               if (table === 'bord') await page.route('**/sessions/*/prepare**', (r) => r.fulfill({ status: 500, body: 'nej' }))
               else await page.route('**/projects/*/sessions', (r) => (r.request().method() === 'POST' ? r.fulfill({ status: 500, body: 'nej' }) : r.continue()))
               await primary.click()
+              if (table !== 'bord') await answerStart(page)
               const words = lang === 'sv' ? svEditor : enEditor
               await expect(band(page).locator('.byd-editor-notice')).toHaveText(words[table === 'bord' ? 'editor.table.error.update' : 'editor.table.error.start'])
               await expect(band(page).locator('.byd-editor-notice')).toHaveAttribute('role', 'alert')
@@ -267,6 +269,7 @@ test.describe('notisens band med tangentbordet', () => {
     await expect(primary).toHaveAttribute('data-table-kind', 'none')
     await page.route('**/projects/*/sessions', (r) => (r.request().method() === 'POST' ? r.fulfill({ status: 500, body: 'nej' }) : r.continue()))
     await primary.click()
+    await answerStart(page)
     await expect(band(page).locator('.byd-editor-notice')).toHaveText(svEditor['editor.table.error.start'])
 
     await page.locator('.byd-editor > header .byd-editor-caret').focus()
