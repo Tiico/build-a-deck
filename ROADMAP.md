@@ -152,7 +152,7 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 
 Målet är att kunna ta betalt och lämna ifrån sig allt.
 
-- 🔶 Kvoter och mätning: nivåer som konfiguration, kontots nivå, tak på projekt, kort, bord och lagring, och förbrukningen läsbar för designern och operatören (A2, DRIFT §12, #1192). Nivåerna i `BYD_PLANS`, kontots nivå och spel som första mått är byggda (#1193), bordets bärare likaså (#1194), kort per spel som rader och exemplar (#1195), och bord som mått, öppna och startade under rullande 30 dygn (#1196); lagring, renderingar och hur ett nått tak sägs återstår (#1197, #1198).
+- ✅ Kvoter och mätning: nivåer som konfiguration, kontots nivå, tak på projekt, kort, bord och lagring, och förbrukningen läsbar för designern och operatören (A2, DRIFT §12, #1192). Nivåerna i `BYD_PLANS`, kontots nivå och spel som första mått (#1193), bordets bärare (#1194), kort per spel som rader och exemplar (#1195), bord som mått, öppna och startade under rullande 30 dygn (#1196), lagring och renderingar (#1197), och hur ett nått tak och förbrukningen sägs, där designern tryckte och i Profil (#1198, variant A).
 - ⬜ Abonnemang via Stripe: betalnivåerna och kassan, som skriver kontots nivå i `account_plans` (A2, DRIFT §12).
 - 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
@@ -203,11 +203,11 @@ Byggs sist (H3), och stänger den tunna skivan (H1).
 Beställaren beslutade 2026-10-23 (#1199) att stödet för fler partner och tryckpaketet byggs redan i betan, medan partnervalet, ordern och spårningen väntar (F1, F2, H3).
 
 - ✅ `PrintProvider`-abstraktionen i `packages/print`: komponenttyp till SKU, tryckunderlagskrav, prissättning, orderläggning och spårning, formad efter The Game Crafter och QPMN, med ett förberedelsesteg, regiondirigering för EU-kravet och kraven som data ur `requirements()`, en fake-provider och en kontraktssvit som varje adapter ska klara (F2, TUNN-SKIVA §4, #1206). Ingen serverväg anropar `submit` eller `track` ännu.
-- ⬜ Tryckfiler efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()` i stället för typens fasta 3 mm, från den enda renderaren (E2, F2, #1207).
+- ✅ Tryckfiler efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()` i stället för typens fasta 3 mm, från den enda renderaren (E2, F2, #1207). Servern förbereder en providers order och ritar dess filer, och `GET /projects/:id/print-package` lämnar dem med regelhäftet; CMYK är inte byggt och väntar på en riktig partner.
 - ⬜ Tryckpaketet: designern ser vad som skulle skickas till tryckeriet, förklarat, och laddar ner det i betan; prototypas först (F1, #1208).
 - ⬜ Tryckpaketet kostar att ladda ner när en riktig partner finns, i en form som beslutas med abonnemangen (F1, A2, #1209).
 - ⬜ En verklig POD-partner integrerad; all beställning går via plattformen (F1). Ingen partner är vald: #1199 fann inget tryckeri som både tillverkar i EU och har ett order-API, och EU-kunder går till EU-tryck (F2).
-- 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; kvar är partnerns exakta krav (#1207) och tryckprofil per typ (B2).
+- 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; partnerns krav i pixlar och utfall är byggda (#1207); kvar är tryckprofil per typ (B2) och CMYK.
 - ⬜ Kassa med kostnadsbesked först i flödet, ingen prisvisning i editorn (F3).
 - ⬜ Automatisk IP-screening med manuell eskalering före tryck (F4).
 - ⬜ Moms, tull och leveransvillkor för EU-kunder: DDP eller DDU, IOSS (I, ekonomi).

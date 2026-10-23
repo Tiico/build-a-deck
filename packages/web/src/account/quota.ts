@@ -3,11 +3,12 @@
 // game's owner does, never who the owner is. The client hands it on as what it is, so that a surface
 // can say it in the reader's words (A4, #1198) rather than as a fault, a status or the network.
 // `frees` is when the next one fits under a rolling window (#1198), an ISO moment; only tables
-// started per 30 days have it.
-export type Quota = { measure: string; limit: number; used: number; bearer: 'you' | 'owner'; frees?: string }
+// started per 30 days have it. `ownerName` is the owner's name beside `bearer: 'owner'` (#1198,
+// beställarens beslut 3), when the server has one to give; never her address.
+export type Quota = { measure: string; limit: number; used: number; bearer: 'you' | 'owner'; frees?: string; ownerName?: string }
 
-// `message` is the surface's sentence for a write that did not happen, until #1198 says how a met
-// ceiling is put into words; `quota` is what that will be said from.
+// `message` is a surface's sentence for a write that did not happen, for one that says nothing more;
+// `quota` is what a surface says it from, in its own place (`quotaWords`, #1198).
 export class QuotaReached extends Error {
   override name = 'QuotaReached'
   constructor(
@@ -22,8 +23,21 @@ export class QuotaReached extends Error {
 // 402 whose body is not the contract, which is then the failure it is and nothing more.
 export async function quotaOf(res: Response): Promise<Quota | null> {
   if (res.status !== 402) return null
-  const body = (await res.json().catch(() => null)) as { error?: unknown; quota?: Partial<Quota> } | null
-  const q = body?.error === 'quota' ? body.quota : undefined
-  if (!q || typeof q.measure !== 'string' || typeof q.limit !== 'number' || typeof q.used !== 'number' || (q.bearer !== 'you' && q.bearer !== 'owner')) return null
-  return { measure: q.measure, limit: q.limit, used: q.used, bearer: q.bearer, ...(typeof q.frees === 'string' ? { frees: q.frees } : {}) }
+  const body = (await res.json().catch(() => null)) as { error?: unknown; quota?: unknown } | null
+  return body?.error === 'quota' ? quotaIn(body.quota) : null
+}
+
+// The ceiling in a body that may carry one — a 402's, or a refusal on the editor's line — read
+// field by field, so that what is not the contract is not taken for it.
+export function quotaIn(raw: unknown): Quota | null {
+  const q = (raw ?? {}) as Partial<Record<keyof Quota, unknown>>
+  if (typeof q.measure !== 'string' || typeof q.limit !== 'number' || typeof q.used !== 'number' || (q.bearer !== 'you' && q.bearer !== 'owner')) return null
+  return {
+    measure: q.measure,
+    limit: q.limit,
+    used: q.used,
+    bearer: q.bearer,
+    ...(typeof q.frees === 'string' ? { frees: q.frees } : {}),
+    ...(q.bearer === 'owner' && typeof q.ownerName === 'string' && q.ownerName !== '' ? { ownerName: q.ownerName } : {}),
+  }
 }

@@ -11,7 +11,7 @@ import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, s
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
-import { contentHash, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
+import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableActor, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, liftDoc, type Ceilings, type ProjectCredit, type ProjectRecord, type ProjectStore, type RuleDoc } from './projects.js'
@@ -27,6 +27,8 @@ import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, norm
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { inviteMail } from './invite-mail.js'
 import { printExportOf, queueFaces } from './faces.js'
+import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
+import { widestBleedMm, type PrintProvider } from '@byd/print'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, assetHash, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
@@ -36,7 +38,7 @@ import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
-import { DEFAULT_PLANS, QuotaReached, growth, limitOf, tableWindowFrom, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
+import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, ownerNameOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 
@@ -68,6 +70,9 @@ export type ServerOptions = {
   limiter?: LoginLimiter
   // One per server: the passkey ceremonies' one-use challenges (#1180).
   passkeyChallenges?: PasskeyChallenges
+  // The print partners the platform prepares orders for (F2), each through the same contract. None
+  // by default; the print package (#1208) is where the first one, a fake, is registered.
+  printProviders?: readonly PrintProvider[]
   // The clock, for tests: what codes and tokens expire against.
   now?: () => Date
   // The release this process is running, named in /health so the box can be asked what it is
@@ -96,15 +101,23 @@ const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
 
 // The contract when a ceiling is met (#1192): 402, a code and the numbers, and nothing written.
-// `bearer` is `you` when the one asking bears the cost and `owner` when the game's owner does; the
-// owner's address and tier are never said to anyone else. 402 because no other door uses it: 401 and
+// `bearer` is `you` when the one asking bears the cost and `owner` when the game's owner does, with
+// `ownerName` beside it (#1198); the owner's address and tier are never said to anyone else. 402 because no other door uses it: 401 and
 // 403 are login and role in the clients, 409 a taken seat or a conflict, and 429 rate limiting. The
 // client says it in the reader's words (A4), never as the status.
-function quotaRefused(res: ServerResponse, met: QuotaMet, bearer: 'you' | 'owner'): void {
-  json(res, 402, { error: 'quota', quota: { ...met, bearer } })
+function quotaRefused(res: ServerResponse, met: QuotaMet, bearer: Bearer): void {
+  json(res, 402, { error: 'quota', quota: { ...met, ...bearer } })
+}
+// The owner as the contract says her to someone else (#1198): by the name her address gives, and
+// never by the address itself. An owner the box has no account for, or whose address has no word
+// that reads as a name, is said without one.
+async function ownerBearer(opts: ServerOptions, owner: string | undefined): Promise<Bearer> {
+  const email = owner === undefined ? undefined : (await opts.auth?.accountById(owner))?.email
+  const ownerName = email === undefined ? null : ownerNameOf(email)
+  return ownerName === null ? { bearer: 'owner' } : { bearer: 'owner', ownerName }
 }
 // Who bears a game's cost, in the words of the contract: the one asking, or its owner.
-const bearerOf = (asking: Account | null, owner: string | undefined): 'you' | 'owner' => (asking && asking.id === owner ? 'you' : 'owner')
+const bearerOf = async (opts: ServerOptions, asking: Account | null, owner: string | undefined): Promise<Bearer> => (asking && asking.id === owner ? YOU : await ownerBearer(opts, owner))
 
 // An account's ceiling on a measure (#1193, #1197), out of its tier. Undefined when nobody bears the
 // cost — accounts off, or a game from before accounts — so the store is asked nothing.
@@ -151,13 +164,13 @@ async function tableCeilings(opts: ServerOptions, bearer: string | undefined): P
 // on a refusal — no session and no code — and the caller, which loads the table only after this,
 // queues no texture. Starting a table is the one thing a ceiling on tables is asked at: joining,
 // playing, a new code, «Uppdatera» (C7), a kick and ending it never ask, and neither does a replay.
-async function openTable(opts: ServerOptions, res: ServerResponse, record: SessionRecord, bearer: 'you' | 'owner'): Promise<boolean> {
+async function openTable(opts: ServerOptions, res: ServerResponse, record: SessionRecord, bearer: () => Promise<Bearer>): Promise<boolean> {
   try {
     await opts.store.createSession(record, await tableCeilings(opts, record.accountId))
     return true
   } catch (e) {
     if (!(e instanceof QuotaReached)) throw e
-    quotaRefused(res, e.quota, bearer)
+    quotaRefused(res, e.quota, await bearer())
     return false
   }
 }
@@ -446,7 +459,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const deck: Deck | undefined = body.deck
       const room = admission(opts)
       // Held to the ceilings of the account that knocks, which bears the table.
-      if (!(await openTable(opts, res, { id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record }, 'you'))) return
+      if (!(await openTable(opts, res, { id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record }, async () => YOU))) return
       // Textures start rendering now rather than when the first screen connects.
       if (deck) await opts.host.get(id)
       return json(res, 201, { id, code: room.code, hostKey: room.hostKey })
@@ -885,6 +898,9 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
     ws.close(4004, 'unknown project')
     return
   }
+  // Whose ceiling an edit of this editor's meets (#1195): the owner's whoever edits, and only the
+  // owner is told it is her own; anyone else is told whose it is, by name (#1198).
+  const bears: Bearer = role === 'owner' ? YOU : await ownerBearer(opts, rec.owner)
   const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
@@ -896,7 +912,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
       // number its editor gave it (#993), when it gave one.
       let to: 'edit' | 'save' | undefined
       let ask: number | undefined
-      const refuse = (why: string, quota?: QuotaMet) => send({ v: 'refused', why, ...(to ? { to } : {}), ...(ask === undefined ? {} : { ask }), ...(quota ? { quota: { ...quota, bearer: role === 'owner' ? 'you' : 'owner' } } : {}) })
+      const refuse = (why: string, quota?: QuotaMet) => send({ v: 'refused', why, ...(to ? { to } : {}), ...(ask === undefined ? {} : { ask }), ...(quota ? { quota: { ...quota, ...bears } } : {}) })
       try {
         const raw: unknown = JSON.parse(data.toString())
         const msg = EditorRequest.parse(raw)
@@ -910,7 +926,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
           // Held to the owner's ceiling on storage (#1197), whoever saves: a refusal for it says the
           // ceiling, as an edit refused for a ceiling does (#1192), and no version is made.
           const saved = await actor.save(editor.id, () => storageCeiling(opts, rec.owner))
-          if (!saved.ok && saved.quota) send({ v: 'refused', why: 'quota', to: 'save', quota: { ...saved.quota, bearer: bearerOf(account, rec.owner) } })
+          if (!saved.ok && saved.quota) send({ v: 'refused', why: 'quota', to: 'save', quota: { ...saved.quota, ...(await bearerOf(opts, account, rec.owner)) } })
           else if (!saved.ok) refuse(saved.reason)
           return
         }
@@ -1099,12 +1115,18 @@ async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionR
 // Every card of the project through the physical checks (E5), once per face, named by the card
 // the reader would hold. The row is what the card actually says, so a check reads the same thing
 // the compiler does.
-function checkedCards(rec: ProjectRecord, registry: TypeRegistry): (Issue & { cardRef: string; face: string })[] {
-  const type = registry.get({ id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version })
+//
+// The bleed is the one that will be printed (#1207): the provider's when one is asked, and when none
+// is, the widest any registered provider asks for, so a game that passes passes every one of them;
+// the type's own where no provider prints it.
+function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' | 'printProviders'>, provider?: PrintProvider): (Issue & { cardRef: string; face: string })[] {
+  const ref = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
+  const type = opts.registry.get(ref)
+  const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), ref) ?? type.print.bleedMm
   const out: (Issue & { cardRef: string; face: string })[] = []
   for (const row of rec.rows) {
     for (const [face, template] of Object.entries(rec.template.faces)) {
-      for (const issue of validateCard({ type, face: template, row: row.fields, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: row.id, face })
+      for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: row.id, face })
     }
   }
   return out
@@ -1135,7 +1157,7 @@ async function bookletJobOf(opts: ServerOptions, rec: ProjectRecord, rules: Rule
 // card files — the game is exported all the same, and why stands in the manifest — while its
 // rulebook, which the checks do not read, still goes.
 async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: ReturnType<typeof langOf>) {
-  const found = checkedCards(rec, opts.registry)
+  const found = checkedCards(rec, opts)
   const errors = found.filter((f) => f.severity === 'error')
   const warnings = found.filter((f) => f.severity === 'warning')
   const jobs: { file: string; job: RenderRequest }[] = []
@@ -1165,6 +1187,23 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
   if (rec.rules) jobs.push({ file: RULEBOOK_FILE, job: await bookletJobOf(opts, rec, rec.rules, lang) })
   return { cards, rulebook, warnings, errors, jobs }
 }
+
+// The print package of a version for one provider (F1, F2, #1207): the order it would get, prepared
+// without a word to it, the files that order names as the jobs that draw them after the provider's
+// own requirements, and the rulebook beside them in our A5 (no partner's booklet format is built).
+// A version the physical checks stop at this provider's bleed (E5) has no card files, as its export
+// has none (G5, #1208); the order is still prepared, so what would be sent can be shown.
+async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, provider: PrintProvider, lang: ReturnType<typeof langOf>) {
+  const found = checkedCards(rec, opts, provider)
+  const errors = found.filter((f) => f.severity === 'error')
+  const warnings = found.filter((f) => f.severity === 'warning')
+  const deck = await deckOf(opts, rec)
+  const order = provider.prepare(printManifestOf(deck, setupFromProject(rec), opts.registry))
+  const files: PrintFileJob[] = errors.length === 0 ? printFileJobsOf(deck, opts.registry, order, clock(opts).getTime()) : []
+  const rulebook: PrintFileJob | undefined = rec.rules ? { name: PACKAGE_RULEBOOK, job: await bookletJobOf(opts, rec, rec.rules, lang) } : undefined
+  return { order, files, rulebook, errors, warnings }
+}
+const PACKAGE_RULEBOOK = 'regelhafte.pdf'
 
 function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
   const icons = Object.entries(rec.credits ?? {}).map(([name, c]) => ({ name, ...c }))
@@ -1244,7 +1283,7 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       const fresh = assetHash(bytes)
       const met = await storageMet(opts, opts.projects, rec.owner, [fresh], { [fresh]: bytes.byteLength })
       if (met) {
-        quotaRefused(res, met, bearerOf(account, rec.owner))
+        quotaRefused(res, met, await bearerOf(opts, account, rec.owner))
         return true
       }
     }
@@ -1372,7 +1411,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return await write()
     } catch (e) {
       if (!(e instanceof QuotaReached)) throw e
-      quotaRefused(res, e.quota, 'you')
+      quotaRefused(res, e.quota, YOU)
       return null
     }
   }
@@ -1488,7 +1527,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // And the cards of the version that becomes current, against the same account's ceiling (#1195).
     const over = met ?? (await cardsMet(read.current))
     if (over) {
-      quotaRefused(res, over, 'you')
+      quotaRefused(res, over, YOU)
       return true
     }
     // And so is the ceiling on storage (#1197): every picture any version names, weighed by the
@@ -1497,7 +1536,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const carried = Object.fromEntries([...read.assets].map(([hash, asset]) => [hash, asset.bytes.byteLength]))
     const heavy = await storageMet(opts, projects, account?.id, read.manifest.versions.flatMap((v) => assetHashesOf(v.doc)), carried)
     if (heavy) {
-      quotaRefused(res, heavy, 'you')
+      quotaRefused(res, heavy, YOU)
       return true
     }
     if (opts.assets) {
@@ -1526,7 +1565,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     validateSetup(setupFromProject(doc), opts.registry)
     const cards = await cardsMet(doc)
     if (cards) {
-      quotaRefused(res, cards, 'you')
+      quotaRefused(res, cards, YOU)
       return true
     }
     const ceilings = await ownCeilings()
@@ -1591,7 +1630,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // (#1197), and borne by the owner whoever saves it.
     const heavy = await storageMet(opts, projects, gate.rec.owner, assetHashesOf(doc))
     if (heavy) {
-      quotaRefused(res, heavy, bearerOf(account, gate.rec.owner))
+      quotaRefused(res, heavy, await bearerOf(opts, account, gate.rec.owner))
       return true
     }
     const actor = await editors(opts, projects).get(gate.rec.id)
@@ -1604,10 +1643,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       result = actor ? await actor.put(rev, doc, account?.id, () => storageCeiling(opts, gate.rec.owner)) : { ok: false, reason: 'unknown project' }
     } catch (e) {
       if (!(e instanceof QuotaReached)) throw e
-      quotaRefused(res, e.quota, bearerOf(account, gate.rec.owner))
+      quotaRefused(res, e.quota, await bearerOf(opts, account, gate.rec.owner))
       return true
     }
-    if (!result.ok && result.quota) quotaRefused(res, result.quota, bearerOf(account, gate.rec.owner))
+    if (!result.ok && result.quota) quotaRefused(res, result.quota, await bearerOf(opts, account, gate.rec.owner))
     else if (!result.ok && result.reason === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
     else if (!result.ok) json(res, 404, { error: 'unknown project' })
     else json(res, 200, { id: gate.rec.id, rev: result.rev })
@@ -1901,7 +1940,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const rec = gate.rec
     // Physical validation (E5): warnings live in the editor, errors stop an order. A card that
     // would come back unreadable is cheaper to catch here than in five hundred printed copies.
-    const found = checkedCards(rec, opts.registry)
+    const found = checkedCards(rec, opts)
     const errors = found.filter((f) => f.severity === 'error')
     if (errors.length > 0) {
       json(res, 422, { project: rec.id, rev: rec.rev, errors })
@@ -1913,6 +1952,73 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
     json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
+    return true
+  }
+  // The print package for one provider (#1207, the page is #1208): GET says what the provider would
+  // be sent and how far its files have come, and asks for any not yet drawn; `files/<name>` hands
+  // one over once it is. Nothing is held between the calls: both work it out of the document and
+  // the render store, as the export does. The owner's and the co-editors', whose work it is.
+  const packaging = /^\/projects\/([^/]+)\/print-package(?:\/files\/([^/]+))?$/.exec(url.pathname)
+  if (packaging && req.method === 'GET') {
+    const gate = await allowed(decodeURIComponent(packaging[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    if (!opts.renders) {
+      json(res, 503, { error: 'render queue unavailable' })
+      return true
+    }
+    const provider = (opts.printProviders ?? []).find((p) => p.id === url.searchParams.get('provider'))
+    if (!provider) {
+      json(res, 404, { error: 'no such print provider' })
+      return true
+    }
+    const rec = gate.rec
+    const pkg = await printPackageOf(opts, rec, provider, langOf(url.searchParams.get('lang')))
+    const all = pkg.rulebook ? [...pkg.files, pkg.rulebook] : pkg.files
+    if (packaging[2] !== undefined) {
+      const name = decodeURIComponent(packaging[2])
+      const wanted = all.find((f) => f.name === name)
+      if (!wanted) {
+        json(res, 404, { error: 'no such file' })
+        return true
+      }
+      const bytes = await opts.renders.output(wanted.job.hash)
+      if (!bytes) {
+        json(res, 202, { state: (await opts.renders.status(wanted.job.hash))?.state ?? 'queued' })
+        return true
+      }
+      res.writeHead(200, { 'content-type': contentTypeOf(wanted.job.kind), 'content-length': String(bytes.length), 'cache-control': 'no-store' })
+      res.end(bytes)
+      return true
+    }
+    const renders = opts.renders
+    const stateOf = async ({ name, job }: PrintFileJob) => {
+      if ((await renders.output(job.hash)) !== null) return { name, state: 'done' }
+      const state = (await renders.status(job.hash))?.state
+      // Asked for here too, so a GET alone gets there, and a job reaped since is asked again.
+      // Borne by the game's owner, whoever asked, as the export's are (#1197, A2).
+      if (state !== 'queued' && state !== 'running' && state !== 'failed') await renders.enqueue(job, rec.owner)
+      return { name, state: state === 'failed' ? 'failed' : state === 'running' ? 'running' : 'queued' }
+    }
+    const files = []
+    for (const file of pkg.files) files.push(await stateOf(file))
+    const rulebook = pkg.rulebook ? await stateOf(pkg.rulebook) : null
+    const states = rulebook ? [...files, rulebook] : files
+    json(res, 200, {
+      project: rec.id,
+      rev: rec.rev,
+      provider: { id: provider.id, label: provider.label, manufacturesIn: provider.manufacturesIn },
+      order: pkg.order,
+      files,
+      rulebook,
+      errors: pkg.errors,
+      warnings: pkg.warnings,
+      total: states.length,
+      done: states.filter((f) => f.state === 'done').length,
+      failed: states.filter((f) => f.state === 'failed').length,
+    })
     return true
   }
   // The whole game for the designer to keep (G5, #527): POST asks for the print files to be made,
@@ -2016,7 +2122,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // copy is held to the co-editor's tier and never to the owner's (A2, #1192).
     const cards = await cardsMet(doc)
     if (cards) {
-      quotaRefused(res, cards, 'you')
+      quotaRefused(res, cards, YOU)
       return true
     }
     const ceilings = await ownCeilings()
@@ -2092,7 +2198,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // And held to the owner's ceilings on tables (#1196): a test leader or a co-editor who presses
     // is told it is the owner's ceiling, never whose or which tier.
     const record = { id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record }
-    if (!(await openTable(opts, res, record, account !== null && account.id === rec.owner ? 'you' : 'owner'))) return true
+    if (!(await openTable(opts, res, record, () => bearerOf(opts, account, rec.owner)))) return true
     await opts.host.get(id)
     json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
     return true

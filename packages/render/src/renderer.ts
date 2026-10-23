@@ -18,6 +18,11 @@ async function fitPage(page: Page): Promise<FitReport[]> {
 }
 
 export type PngOptions = { dpi: number }
+// A partner's raster (#1207): the whole page, bleed and all, in exactly these pixels.
+export type RasterOptions = { format: 'png' | 'jpg'; widthPx: number; heightPx: number }
+// A partner asking for a JPEG gets one that keeps what a press can tell apart; the file is the
+// partner's to print and not the table's to load, so size is not what it is weighed against.
+const JPEG_QUALITY = 95
 
 export class Renderer {
   private constructor(private readonly browser: Browser) {}
@@ -75,6 +80,43 @@ export class Renderer {
       const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
       const png = await capture(page, { type: 'png', clip, animations: 'disabled', caret: 'hide' })
       return { png, smallestPt: fitted.length > 0 ? Math.min(...fitted.map((f) => f.sizePt)) : null }
+    } finally {
+      await context.close()
+    }
+  }
+
+  // A partner's file in exactly the pixels it asks for (#1207), the way the texture is made: the
+  // document zoomed until the card's box — bleed and all — is `widthPx` across, fitted at that
+  // zoom, and screenshot. The pixels are the requirement and never a rounding of a DPI, so what
+  // the zoom leaves of the height, a fraction of a pixel when the partner's pixels and millimetres
+  // agree, is taken up by stretching the drawn card by that fraction. Laying the card out at the
+  // partner's pixels and not at 96 dpi matters: Chromium snaps boxes to whole pixels of the scale
+  // they are laid out at, and a card laid out small and scaled up carries that snap up with it.
+  // Nothing scales the file afterwards; the pixels are the ones Chromium drew (E2).
+  async renderRaster(compiled: CompiledLike, opts: RasterOptions): Promise<Uint8Array> {
+    const { widthPx, heightPx } = opts
+    if (!Number.isInteger(widthPx) || !Number.isInteger(heightPx) || widthPx <= 0 || heightPx <= 0) throw new Error(`a raster is whole pixels, not ${widthPx} × ${heightPx}`)
+    const context = await this.browser.newContext({ deviceScaleFactor: 1, viewport: { width: 4000, height: 6000 } })
+    try {
+      const page = await context.newPage()
+      await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
+      await page.evaluate(() => document.fonts.ready)
+      const plain = await cardBox(page)
+      if (!plain) throw new Error('compiled output has no [data-card]')
+      await page.evaluate((zoom) => (globalThis.document.documentElement.style.zoom = String(zoom)), widthPx / plain.width)
+      await fitPage(page)
+      const box = await cardBox(page)
+      if (!box) throw new Error('compiled output has no [data-card]')
+      // A transform moves no line of the layout the fitting measured; it only says where the
+      // laid-out card is drawn, and Chromium draws it there at the scale, as vectors. What it
+      // stretches is the card as painted, which Chromium has clipped to whole pixels from the
+      // page's corner: stretching the unrounded box instead left the last row of 1114 a quarter
+      // paper, a white line along the edge of the bleed.
+      const painted = { width: Math.round(box.x + box.width) - Math.round(box.x), height: Math.round(box.y + box.height) - Math.round(box.y) }
+      await page.addStyleTag({ content: `html{overflow:hidden}[data-card]{transform-origin:0 0;transform:scale(${widthPx / painted.width},${heightPx / painted.height})}` })
+      await page.setViewportSize({ width: widthPx, height: heightPx })
+      const clip = { x: 0, y: 0, width: widthPx, height: heightPx }
+      return await capture(page, { ...(opts.format === 'jpg' ? { type: 'jpeg', quality: JPEG_QUALITY } : { type: 'png' }), clip, animations: 'disabled', caret: 'hide' })
     } finally {
       await context.close()
     }

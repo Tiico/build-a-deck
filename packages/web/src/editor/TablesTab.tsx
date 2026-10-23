@@ -13,6 +13,8 @@ import { Question } from './Question.js'
 import { anotherAsk } from './another.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
+import { QuotaReached } from '../account/quota.js'
+import { quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { Help } from './HelpDrawer.js'
 import { usePressAway } from '../doors.js'
 import { lastMoveWords } from './when.js'
@@ -95,7 +97,8 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
   // A start that failed, said beside the button with a way to try again (L31). Its own state,
   // apart from `notice`: the list not arriving and the table not starting are two different
   // things, and only one of them has a retry.
-  const [failed, setFailed] = useState<string | null>(null)
+  // A met ceiling (#1196) is said in its three parts (#1198, variant A), in the same line.
+  const [failed, setFailed] = useState<string | QuotaWords | null>(null)
   const retry = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (failed !== null) retry.current?.focus()
@@ -126,7 +129,7 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
       setRevealed({ id: made.id, why: 'started', code: made.code })
       setAsked((n) => n + 1)
     } catch (err) {
-      setFailed(saidOr(err, t('tables.failed')))
+      setFailed(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: client.rev, here: running.filter((one) => one.code !== undefined).length }, t) : saidOr(err, t('tables.failed')))
     } finally {
       inFlight.current = false
       setStarting(false)
@@ -196,8 +199,14 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
         </p>
       )}
       {failed !== null && (
-        <p className="byd-tables-failed" role="alert">
-          {t('tables.failed', { reason: failed })}{' '}
+        <p className="byd-tables-failed" role="alert" {...(typeof failed === 'string' ? {} : { 'data-quota': '' })}>
+          {typeof failed === 'string' ? (
+            t('tables.failed', { reason: failed })
+          ) : (
+            <span>
+              <b>{failed.what}</b> {failed.why} {failed.way}
+            </span>
+          )}{' '}
           <button ref={retry} type="button" className="byd-secondary" onClick={() => void startTable()}>
             {t('tables.retry')}
           </button>

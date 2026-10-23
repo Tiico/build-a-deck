@@ -286,13 +286,14 @@ let fixtures = 0
 // ceilings (#1193), held only with accounts on; without them nothing is limited.
 export async function startServer(opts: { auth?: boolean; authBypass?: boolean; ai?: boolean; appOrigin?: string; plans?: Plans } = {}): Promise<Running> {
   const store = new MemoryLogStore()
-  const projects = new MemoryProjectStore()
+  // The assets weigh what the games store (#1197), as on the box: the store is handed them.
+  const assets = new MemoryAssetStore()
+  const projects = new MemoryProjectStore(assets)
   const renders = new MemoryRenderStore()
   const surveys = new MemorySurveyStore()
   const mail = new MemoryMailer()
   const auth = opts.auth ? new MemoryAuthStore() : undefined
   let http = ''
-  const assets = new MemoryAssetStore()
   // The providers the key is proved against, on a port out of this worker's own slice like the
   // server's, and a vault with a master key of the run's own.
   const fake = opts.ai ? fakeAiProvider() : null

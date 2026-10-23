@@ -58,6 +58,17 @@ export function planFiles(provider: Pick<PrintProvider, 'id' | 'supports' | 'req
   return { files, cards, hardware, omitted }
 }
 
+// The widest bleed any of the providers asks for the type, or nothing when none of them prints it.
+// What the physical checks (E5) hold a card to when no partner is chosen (#1207): a card that
+// passes then passes every one of them, and the type's own bleed stands where none prints it.
+export function widestBleedMm(providers: readonly Pick<PrintProvider, 'supports' | 'requirements'>[], type: TypeRef): number | undefined {
+  const bleeds = providers.flatMap((p) => {
+    const req = p.supports(type) ? p.requirements(type) : undefined
+    return req?.kind === 'printed' ? [req.bleedMm] : []
+  })
+  return bleeds.length > 0 ? Math.max(...bleeds) : undefined
+}
+
 // Whether the provider prints the type, rather than packing it as stock or not making it at all.
 export const prints = (provider: Pick<PrintProvider, 'supports' | 'requirements'>, type: TypeRef): boolean => provider.supports(type) && provider.requirements(type).kind === 'printed'
 

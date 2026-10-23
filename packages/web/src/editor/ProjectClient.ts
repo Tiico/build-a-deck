@@ -4,8 +4,9 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { QuotaReached, quotaOf } from '../account/quota.js'
-import { applyEdit, cellColumn, changeOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { QuotaReached, quotaIn, quotaOf, type Quota } from '../account/quota.js'
+import { QuotaSaid, quotaWords, type QuotaDoing } from '../account/quota-words.js'
+import { applyEdit, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -82,7 +83,8 @@ export type StepDrop = { dir: 'undo' | 'redo'; fields: string[] }
 // `offline`: no answer came — the line went, the request never left, or the actor stayed silent.
 // `failed`: an answer came and it was no, for a reason none of the others name.
 export type SaveFailure = 'conflict' | ProjectFault | 'failed'
-export type SaveResult = { ok: true; rev: number } | { ok: false; reason: SaveFailure }
+// `quota` is the ceiling a save would have crossed (#1197), for the editor to say in its words (#1198).
+export type SaveResult = { ok: true; rev: number } | { ok: false; reason: SaveFailure; quota?: Quota }
 // The actor's refusal of a save, read as one of those words. Only the two the actor itself says
 // are read for what they are; anything else is a fault under it — the store's own message.
 const refusedSave = (why: string): SaveFailure => (why === 'conflict' ? 'conflict' : why === 'unknown project' ? 'missing' : 'failed')
@@ -153,6 +155,10 @@ export class ProjectClient {
   // `refusedEdits` because it is said in other words — what could not be taken back, and why.
   public refusedSteps = 0
   public refusedStep: StepRefusal | null = null
+  // The ceiling the last refused edit met, when a ceiling is why it was refused (#1195, #1198): what
+  // it was, which kind of edit, and how much it would have added, for the band to say. Null when the
+  // last refusal was for anything else.
+  public refusedQuota: RefusedQuota | null = null
   // How many steps were taken without a value someone else's removal of its column took away, and
   // the last of them (#1072): the card came back, the column did not, and the designer is told why.
   public droppedSteps = 0
@@ -382,8 +388,9 @@ export class ProjectClient {
         // own «saved» to nobody, or to the next save. A refused edit ends no wait: the actor sends
         // the document with it, so nothing has to be asked for again. A server from before the
         // address names none, and its refusal is read the way it always was, as the save's.
+        const quota = message.why === 'quota' ? quotaIn(message.quota) : null
         if (message.to !== 'edit') {
-          this.finishSave({ ok: false, reason: refusedSave(message.why) })
+          this.finishSave({ ok: false, reason: refusedSave(message.why), ...(quota ? { quota } : {}) })
           return
         }
         // The refused edit comes off this editor (#993): kept, it was laid on top of the document
@@ -392,7 +399,10 @@ export class ProjectClient {
         // A step back or forward the actor refused (#1056) — a co-editor's edit reached it first and
         // changed what the step would have written over — is said as that step, and the step it
         // put on the other stack goes: it would bring back what never happened.
-        const step = message.ask === undefined ? undefined : this.pending.find((waiting) => waiting.ask === message.ask)?.step
+        const waiting = message.ask === undefined ? undefined : this.pending.find((one) => one.ask === message.ask)
+        const step = waiting?.step
+        // Read against the document the actor held before it, as the actor counted it (#1195).
+        this.refusedQuota = quota && waiting ? { quota, edit: editKind(waiting.intent), grown: grownBy(this.held, waiting.intent, quota.measure) } : null
         if (message.ask !== undefined) this.answered(message.ask)
         if (step) {
           this.past = this.past.filter((s) => s !== step.taken)
@@ -1074,7 +1084,11 @@ export class ProjectClient {
       this.future = rebased(this.future)
       this.futureBeforeGesture = rebased(this.futureBeforeGesture)
     }
-    return new Said(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: saidOr(why, t('upload.failed')) }))
+    const what = t(undoing.said, { name: undoing.name })
+    // A met ceiling keeps its parts (#1198): the lead is this sentence up to its colon, set off on the
+    // surface that draws it so, and the way out stands under it.
+    if (why instanceof QuotaSaid) return new QuotaSaid({ what: t('upload.undone', { what, why: '' }).trimEnd(), why: why.words.why, way: why.words.way })
+    return new Said(t('upload.undone', { what, why: saidOr(why, t('upload.failed')) }))
   }
 
   // One step with the correction laid on it (#358). Only what the step changes is touched: what the
@@ -1346,11 +1360,16 @@ export class ProjectClient {
   // Which is also what the refusal can say now. A 415 used to mean either "you said nothing" or
   // "the bytes are not that", and the message blamed the file for both. Saying the kind ourselves
   // leaves only the second, so the refusal names the formats that kind may be in.
+  //
+  // The upload names the game (#1197, #1198), so the owner's ceiling on storage is asked as the bytes
+  // arrive and a met one is said where the designer uploaded, rather than at the next save.
   async uploadAsset(file: Blob, kind: AssetKind, t: T = swedish): Promise<string> {
     this.mustBeAbleToEdit(t)
     await this.mustBeTakeable(file, kind, t)
-    const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
+    const res = await fetch(`${this.http}/assets?${new URLSearchParams({ project: this.id }).toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
+    const quota = await quotaOf(res)
+    if (quota) throw new QuotaSaid(quotaWords(quota, { kind: 'upload', file: kind === 'font' ? 'font' : kind === 'image' ? 'picture' : 'file', size: file.size }, t))
     if (res.status === 415) throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
     if (res.status === 413) throw new Said(t('upload.tooBig'))
     if (!res.ok) throw new Said(t('upload.failed'))
@@ -1642,4 +1661,29 @@ function letGo(sent: EditIntent, written: EditIntent): string[] {
   const kept = new Set(written.parts.map((part) => JSON.stringify(part.at)))
   const fields = sent.parts.flatMap((part) => (part.standing && part.to !== '' && part.to !== null && !kept.has(JSON.stringify(part.at)) ? (cellColumn(part.at) ?? []) : []))
   return [...new Set(fields)]
+}
+
+// A refused edit's ceiling, said as the kind of edit it was and how much it would have added (#1198).
+export type RefusedQuota = { quota: Quota; edit: Extract<QuotaDoing, { kind: 'edit' }>['edit']; grown: number }
+
+// Which kind of edit a refused one was, in the words the band says it in: a card, an accepted AI
+// proposal (the one compound the editor sends, #1002), cards read in from a file, a version taken
+// back, or another change.
+function editKind(intent: EditIntent): RefusedQuota['edit'] {
+  if (intent.v === 'addRow') return 'card'
+  if (intent.v === 'compound') return 'proposal'
+  if (intent.v === 'replaceRows') return 'cards'
+  if (intent.v === 'restore') return 'restore'
+  return 'other'
+}
+
+// How much an edit would have added to a measure of the game's cards, counted as the actor counts
+// it (#1195): rows, or the sum of the copies. What cannot be counted is 0, and the sentence says one.
+function grownBy(doc: ProjectDoc, intent: EditIntent, measure: string): number {
+  const count = (d: ProjectDoc) => (measure === 'cardCopiesPerProject' ? d.rows.reduce((n, row) => n + copiesOf(row.fields), 0) : d.rows.length)
+  try {
+    return count(applyEdit(doc, intent)) - count(doc)
+  } catch {
+    return 0
+  }
 }

@@ -3,6 +3,8 @@ import { PROJECT_NAME_MAX } from '@byd/server/doc'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import { useT, type Key } from '../i18n/index.js'
 import { importGame, readExport, startExport, type ImportProblem } from './api.js'
+import type { Quota } from './quota.js'
+import { quotaLine, quotaWords } from './quota-words.js'
 import './game-dialogs.css'
 
 // Taking a game out and bringing it back (G5, #529, beställarens beslut B efter prototypen).
@@ -151,7 +153,8 @@ export function RenameDialog({ game, onRename, onClose }: { game: { name: string
   )
 }
 
-type Importing ={ state: 'idle' } | { state: 'reading'; name: string } | { state: 'failed'; name: string; problems: ImportProblem[] } | { state: 'done'; id: string; name: string }
+// A ceiling the import met (#1198) is said in the same failure line, as its one problem: why, and the way out.
+type Importing ={ state: 'idle' } | { state: 'reading'; name: string } | { state: 'failed'; name: string; problems: ImportProblem[]; quota?: Quota } | { state: 'done'; id: string; name: string }
 
 // A refusal said in the reader's words (A4): the server names what is wrong, the catalogue says it.
 // A code this page does not know yet — a newer server — is said as a refusal with its code.
@@ -184,7 +187,7 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
     } catch {
       return setNow({ state: 'failed', name, problems: [{ code: 'network' }] })
     }
-    if (!got.ok) return setNow({ state: 'failed', name, problems: got.problems })
+    if (!got.ok) return setNow('quota' in got ? { state: 'failed', name, problems: [], quota: got.quota } : { state: 'failed', name, problems: got.problems })
     // The game is made; a list that cannot be read again this moment does not unmake it (#542).
     await onImported(got.id).catch(() => undefined)
     setNow({ state: 'done', id: got.id, name })
@@ -219,6 +222,7 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
           <div role="alert">
             <p className="byd-game-bad">{t('home.import.failed', { name: now.name })}</p>
             <ul className="byd-game-problems">
+              {now.quota && <li>{quotaLine(quotaWords(now.quota, { kind: 'import' }, t))}</li>}
               {now.problems.map((p, i) => (
                 <li key={i}>{said(p)}</li>
               ))}
