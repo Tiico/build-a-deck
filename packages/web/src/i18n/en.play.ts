@@ -9,6 +9,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'play.latest': 'Latest moves',
   'play.table': 'The table',
   'play.peer.table': 'the table',
+  'way.editor.aria': 'Back to {game} in the editor',
 
   'texture.pending': 'Loading the card…',
   'texture.failed': 'The image could not be loaded',
@@ -400,6 +401,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'exit.sheet.end': 'End for everyone',
   'exit.sheet.end.body': 'The game ends for everyone and the survey is sent out. You will be asked to confirm.',
   'exit.sheet.stay': 'Cancel',
+  'exit.sheet.editor': 'To {game}, keep my seat',
+  'exit.sheet.editor.body': 'You keep your seat and your cards, and the table stays open in its tab.',
 
   'survey.title': 'This table has ended',
   'survey.sub': 'Four questions, one minute. The answers are tied to {version}.',

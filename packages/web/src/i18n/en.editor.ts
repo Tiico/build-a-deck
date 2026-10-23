@@ -1583,7 +1583,7 @@ export const enEditor = {
   'tables.way.play': 'Play from here',
   'tables.way.watch': 'Watch',
   'tables.way.join': 'The join page',
-  'tables.way.aria': '{label} for table {table} (opens in a new tab)',
+  'tables.way.aria': '{label} for table {table} (opens in the table’s own tab)',
   'tables.full': 'every seat taken',
   'tables.qr': 'QR for phones',
   'tables.end': 'End the table',
