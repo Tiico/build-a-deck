@@ -4632,7 +4632,7 @@ Den stod förut bredvid knappen i huvudet, och vid 1024 px var det "Uppdatera bo
 Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort.
 Det frågades förut inte om (samma beslut), men ett tryck som menade det pågående bordet startade ett nytt med en ny kod, och gästerna vid det första såg ingenting.
 Sedan #1145 (beställarens beslut 2026-10-22, prototyp `docs/ux-audits/2026-10-22-andra-bordet/prototyper/`, variant A) frågar «Nytt bord», Bord-flikens «Starta nytt bord» och startsidans «Starta nytt bord» först, medan ett bord av spelet kör.
-Frågan är produktens `Question` som den är: den namnger det nyaste bordet som kör («Bordet KOD kör redan», eller «2 bord kör redan, senast KOD»), öppnar på «Öppna KOD», som öppnar bordets skärm i en ny flik, och «Starta ett nytt ändå» startar det andra bordet.
+Frågan är produktens `Question` som den är: den namnger det nyaste bordet som kör («Bordet KOD kör redan», eller «2 bord kör redan, senast KOD»), öppnar på «Öppna KOD», som öppnar bordets skärm i dess egen flik (L80), och «Starta ett nytt ändå» startar det andra bordet.
 Utan ett bord igång startar knappen direkt, som förut.
 Efter en omladdning plockar editorn upp det nyaste bordet som fortfarande kör, så att knappen uppdaterar det i stället för att starta ett andra (#477 fynd 1).
 Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bord hade en blå knapp som lovade en uppdatering och i stället startade en session med rumskod; meningen i Bord-fliken förklarade skillnaden på en annan flik i stället för att knappen sade rätt ord.
@@ -6567,6 +6567,8 @@ Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70
 Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
 En riktig pekare över den låsta knappen ändrar ingenting den målar.
 
+**Ändrat 2026-10-23 (L79, #1218): dörren står före guiden.** Namnet, spelarna och valet mellan guidad start och tomt spel står på vägskälet `/new`, inte i guidens steg 1, och frågan från #732 försvinner eftersom ingenting har gjorts när dörren trycks.
+
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 
 L39 säger vad body-redigeraren *gör*, inte vem som *får* den.
@@ -7608,7 +7610,7 @@ Och ett andra tryck på «Starta bord» för att se koden igen startade ett andr
 
 **C och B tillsammans** (av tre: en rad på brickan, en uppdelad ⋯-meny, och en egen sektion överst).
 Överst på «Mina spel» står **«Pågår nu»**, med ett band per bord som pågår: spelets namn, rumskoden i kodens egen typ och «Öppna bordet».
-Länken öppnar bordets skärm som ägare (`owner=1`) i en ny flik, så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
+Länken öppnar bordets skärm som ägare (`owner=1`) i bordets egen flik (L80), så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
 Bandet ersätter bannern, och tillkännagivandet «Bordet är igång. Rumskoden är …» står kvar i sidans levande region.
 Spelets **⋯-meny** listar «Öppna bordet KOD» för varje bord som pågår, före en linje, och «Starta bord» blir då «Starta nytt bord».
 Menyn öppnar på sitt första val, länk eller knapp.
@@ -8067,3 +8069,51 @@ Passkeyns webbplats är sidan webbläsaren står på när den är tjänstens, i 
 Profilen namnger nyckelringen efter AAGUID på läsarens språk och webbläsaren efter user agent, och visar aldrig nyckeln.
 Webbläsaren minns i `localStorage` vilken passkey den sparade eller loggade in med, och sitt «Inte nu», så att bandet erbjuds en gång per webbläsare; en webbläsare utan egen nyckelring får inget erbjudande, och en som inte kan WebAuthn får ingen knapp.
 `passkeys.test.ts` på servern kör riktiga WebAuthn-bytes från en mjukvarunyckelring (`test-support/soft-passkey.ts`), också mot Postgres; `passkeys.test.tsx` kör sidorna mot den riktiga servern; och `passkeys.spec.ts` går hela vägen i den byggda appen med Chromiums virtuella autentiserare.
+
+### L79. Steget före guidad start: `/new` är ett vägskäl, och guiden är två steg (prototypat och beslutat 2026-10-23, #1218)
+
+Beställaren ville flytta guidens steg 1 — spelets namn, antalet spelare och dörren till ett tomt spel (L42) — till ett steg före guiden.
+Tre varianter prövades i [`docs/ux-audits/2026-10-23-nytt-spel-forsteget/prototyper/index.html`](docs/ux-audits/2026-10-23-nytt-spel-forsteget/prototyper/index.html): en dialog över Mina spel, en egen sida som ett vägskäl, och brickan «＋ Nytt spel» som själv blir formuläret.
+Valet blev **B, vägskälet**.
+
+`/new` är en egen sida på guidens papper: «Skapa ett nytt spel», Spelets namn, Spelare och frågan «Hur vill du börja?» med två dörrar.
+«Guidad start» är första handlingen (L13): kantad i bläck, med tre exempelkort och «Två steg, ungefär två minuter».
+«Tomt spel» är den andra: ett tomt kort och «Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.»
+En dörr som trycks utan namn säger villkoret vid fältet, som L42:s tillägg från #416 bestämde.
+«Tomt spel» skapar spelet direkt, med samma väg och samma dokument som L42; frågan från #732 behövs inte, eftersom inget kort eller fält har gjorts när dörren trycks.
+Guiden är två steg, Fält och Korten, och dess huvud bär spelets namn och «N spelare · Ändra»; «Ändra» och vägen tillbaka leder till vägskälet med värdena kvar.
+Vägskälet och guiden har var sin adress, så att webbläsarens bakåt går från guiden till vägskälet.
+Utkastet och inloggningsvarvet (G1, #686) bär namnet och spelarna som förut, och rutan för den som är utloggad (#691) står på vägskälet, eftersom båda dörrarna slutar i en inloggning.
+Mina spel ändras inte: «＋ Nytt spel» leder till `/new`.
+
+Motivering:
+Samma adress gäller för den som är inloggad och den som kommer från landningssidan, så utkastet och inloggningsvarvet behöver ingen andra ritning av steget.
+Dörrarna får plats att säga vad de ger, i stället för att tomt spel står som ett block inne i guidens första steg.
+A:s dialog var ett klick snabbare men hade ingen Mina spel att öppnas över för den utloggade, så `/new` hade behövt samma steg en gång till.
+C lät det nya spelet födas där det skulle stå, men tog hela raden på telefonen och hade samma utloggade problem som A.
+
+### L80. Vägen tillbaka: varje bordsyta leder ägaren till editorns egen flik, och ett bord öppnas i sin flik (prototypat och beslutat 2026-10-23, #1217)
+
+Beställaren: många sidor saknade en tydlig väg tillbaka, särskilt mellan editorn och borden.
+Kartläggningen fann att TV-vyn, bordsläget och `/observe` inte länkade någonstans, att `/online` bara ledde ut genom att lämna platsen, och att varje väg in i ett bord öppnade en ny flik med `noopener`, också till ett bord som redan hade en.
+Tre varianter prövades mot dagens app i [`docs/ux-audits/2026-10-23-vagen-tillbaka/prototyper/index.html`](docs/ux-audits/2026-10-23-vagen-tillbaka/prototyper/index.html), med webbläsarens flikar ritade: tillbaka i ytan med parade flikar (A), samma flik (B) och Deckster-märket som meny (C).
+Valet blev **A**.
+B tog bort det L5 och L64 bygger på, att editorn och bordet går att se samtidigt medan man ändrar och uppdaterar.
+C gömde vägen tillbaka bakom ett märke som man måste veta är en knapp, och gjorde märket till en kontroll på TV:n.
+
+**Flikarna har namn.** Editorns flik heter efter spelet (`byd-editor-<projekt>`), och varje bordsyta efter sitt bord och sin vy (`byd-tv-<session>`, `byd-online-…`, `byd-table-…`, `byd-observe-…`), i `ways.ts`.
+En väg in som har en flik tar fram den i stället för att öppna en ny.
+Vägarna in öppnas därför med en öppnare: en flik i en egen grupp hittar aldrig ett namn, vilket en spik i Chromium visade innan något byggdes.
+Det är appens egna sidor på dess egen origin, så öppnaren når inget som inte redan gick att nå.
+Telefonernas anslutningssida är ingen bordsyta och öppnas som förut.
+
+**Ägarens väg tillbaka är spelets namn bakom en pil**, på TV:ns märkesrad, på bordslägets platta, först i `/online`-huvudet och överst i observatörens kolumn.
+Den leder till editorn på den adress Mina spel öppnar den på, med ett tomt fragment, så att editorns flik tas fram som den står i stället för att laddas om.
+Bara ägaren ser den, inloggad som ägare eller med värdnyckeln editorn startade bordet med; en gäst har samma sessionspost men editorn är inte hennes.
+På `/online` erbjuder lämnaarket ägaren «Till *spelet*, sitt kvar» först, och att lämna platsen leder till editorn i stället för Mina spel; ett avslutat bords enkät har samma väg vidare under tacket.
+
+Utanför borden fick «Pågår nu» på Mina spel «Öppna spelet» bredvid «Öppna bordet», och `/join` och `/login` en väg till startsidan under kortet.
+Statuslänkarna på bordsytorna säger servern som HTTP till Mina spel och inloggningen, och som bordets WebSocket till platsväljaren.
+
+`way-back-to-the-editor.spec.ts` går hela vägen i den byggda appen: TV:ns väg tillbaka tar fram editorns flik utan ny flik och utan omladdning, och «Spela härifrån» tryckt två gånger är en flik.
+`way-back-to-the-editor.test.tsx` visar var vägen står på varje yta, vart lämnandet leder och att en gäst inte får den.

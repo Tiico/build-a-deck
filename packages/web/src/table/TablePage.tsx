@@ -29,8 +29,8 @@ import { useCardsPending } from './textures.js'
 import { roomAddress } from './roomAddress.js'
 import { versionWord } from '../i18n/version.js'
 import { rememberTableLang } from './tableLang.js'
-
-type SessionRecord = { name?: string }
+import { useSessionRecord } from '../status/sessionName.js'
+import { EditorWayBack } from './EditorWayBack.js'
 
 // /table?session=…&host=…&mode=table|tv&server=ws://…
 // The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
@@ -63,18 +63,10 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // The session record: which game this table runs (L5). The name titles the screen. Which version
   // it runs is the view's (C7, #677): «Uppdatera» moves it mid-game, and the title, the book and
   // the ended screen follow it in the patch that carries the line.
-  const [record, setRecord] = useState<SessionRecord | null>(null)
-  useEffect(() => {
-    if (!sessionId) return
-    let live = true
-    void fetch(`${url.replace(/^ws/, 'http')}/sessions/${encodeURIComponent(sessionId)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<SessionRecord>) : Promise.reject(new Error(String(r.status)))))
-      .then((s) => live && setRecord(s))
-      .catch(() => live && setRecord({}))
-    return () => {
-      live = false
-    }
-  }, [sessionId, url])
+  const record = useSessionRecord(url.replace(/^ws/, 'http'), sessionId)
+  // The way back to the game's editor (#1217), for whoever opened the table as its owner: signed in
+  // as it, or holding the key the editor started it with.
+  const back = owner || host ? <EditorWayBack game={record} server={params.get('server')} /> : null
   // Without a code — an owner who opened their own table — the game's name names it (#759).
   // A table whose game was taken away (#676) is not there, which is not the same as shut.
   const gameDeleted = refused === 'the game was deleted'
@@ -235,6 +227,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         // beside it the room's address, which is the way in (#675, beslut C): no square here, the
         // address is enough for a table everyone is sitting at.
         <div className="byd-table-plate">
+          {back}
           <h1>{[record?.name ?? t('play.table'), version].filter(Boolean).join(' · ')}</h1>
           {roomCode && !view.ended && (
             <p data-address>
@@ -247,7 +240,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} host={site} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner} rendering={rendering}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} host={site} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner} rendering={rendering} back={back}>
           {table}
         </TvChrome>
       ) : (

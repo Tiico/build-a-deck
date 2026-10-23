@@ -39,6 +39,17 @@ describe('the room’s own address (#675)', () => {
     expect(screen.getByText('Du går med i')).toBeTruthy()
     expect(screen.getByText(`Rum ${roomOf(id).code} · Plats A vald`)).toBeTruthy()
   })
+
+  // The picker had no way home outside a fault (#1217). The table's address carries its server as
+  // WebSocket, and the start page is told it as HTTP.
+  it('leads home from under the card', async () => {
+    const id = await createSession(run)
+    at(`/${roomOf(id).code}`)
+    render(<JoinPage />)
+    await screen.findByRole('button', { name: /Plats A/ })
+    const home = screen.getByRole('link', { name: 'Till startsidan' })
+    expect(home.getAttribute('href')).toBe(`/?${new URLSearchParams({ server: run.http }).toString()}`)
+  })
 })
 
 describe('/join without a code (#675)', () => {
