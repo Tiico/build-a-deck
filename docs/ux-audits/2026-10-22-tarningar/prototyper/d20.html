@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- PROTOTYP (#1170-uppföljning). Kastas när varianten är vald. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>d20:ns toppyta — prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+<style>
+:root { --die: #f3e9d6; --ink: #1c1c1c; --side: #ddd2bd; --edge: #b9ad97; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: #14161c; color: #e6ecfa; font: 14px system-ui, sans-serif; }
+.rubrik { color: #ffd98a; font-size: 13px; line-height: 1.5; max-width: 1100px; margin: 0 0 12px; }
+.rubrik b { color: #ffe9b8; }
+.felt { background: radial-gradient(ellipse at center, #2b6a45 0%, #1f4d33 100%); border-radius: 12px; padding: 18px 20px; display: grid; grid-template-columns: 200px repeat(5, 1fr); gap: 14px 10px; align-items: center; max-width: 1100px; }
+.felt h3 { margin: 0; font-size: 13px; color: #f3e9d6; font-weight: 700; }
+.felt h3 small { display: block; font-weight: 400; color: #c9d6cc; font-size: 11px; margin-top: 2px; }
+.cell { display: flex; gap: 14px; align-items: center; justify-content: center; }
+.head { color: #c9d6cc; font-size: 12px; text-align: center; }
+svg text { font-family: 'Roboto Condensed', system-ui, sans-serif; font-weight: 700; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+.vald { outline: 2px solid #f0b64a; outline-offset: 6px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>d20:ns toppyta.</b> Beställaren valde en större toppyta så att tvåsiffriga värden får ungefär samma storlek som d12:ans «12». Raderna jämför i dag (#1173) med två större trianglar. Varje rad visar 17, 20 och 8 på d20, med d12 «12» och d6 «6» som referens, både i filtens verkliga storlek (cirka 26 px) och förstorat. Facetterna löper ut till kanten som förut. Silhuetten, sexhörningen, är oförändrad.</div>
+<div class="felt" id="felt"></div>
+<script>
+const r2 = (n) => Math.round(n * 100) / 100
+const ngon = (k, r, cx = 50, cy = 50) => Array.from({ length: k }, (_, i) => { const a = ((-90 + (360 / k) * i) * Math.PI) / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)] })
+const pts = (ps) => ps.map((p) => `${r2(p[0])},${r2(p[1])}`).join(' ')
+const E = 'stroke="#b9ad97" stroke-width="2" stroke-linejoin="round"'
+function d20(v, face, one, two, px) {
+  const rim = ngon(6, 50), tri = ngon(3, face.r, 50, face.cy)
+  const lines = rim.map((p, i) => { const to = tri[Math.floor(((i + 1) % 6) / 2)]; return `<line x1="${r2(p[0])}" y1="${r2(p[1])}" x2="${r2(to[0])}" y2="${r2(to[1])}" stroke="#b9ad97" stroke-width="1.5"/>` }).join('')
+  const f = String(v).length > 1 ? two : one
+  return `<svg width="${px}" height="${px}" viewBox="0 0 100 100" overflow="visible"><polygon points="${pts(rim)}" fill="var(--side)" ${E}/>${lines}<polygon points="${pts(tri)}" fill="var(--die)" ${E}/><text x="50" y="${f.top}" font-size="${f.size}">${v}</text></svg>`
+}
+const d12 = (px) => `<svg width="${px}" height="${px}" viewBox="0 0 100 100"><polygon points="${pts(ngon(10, 50))}" fill="var(--side)" ${E}/><polygon points="${pts(ngon(5, 34))}" fill="var(--die)" ${E}/><text x="50" y="53" font-size="${42 * 0.85}">12</text></svg>`
+const d6 = (px) => `<svg width="${px}" height="${px}" viewBox="0 0 100 100"><rect x="8" y="8" width="84" height="84" rx="12" fill="var(--die)" ${E}/><text x="50" y="51" font-size="56">6</text></svg>`
+const V = [
+  { key: 'A', name: 'I dag (#1173)', note: 'toppyta r 28; «17» i 22', face: { r: 28, cy: 54 }, one: { top: 55, size: 30 }, two: { top: 58.5, size: 22 } },
+  { key: 'B', name: 'B · toppyta r 35', note: '«17» i 28, ungefär d12:ans storlek', face: { r: 35, cy: 55 }, one: { top: 57, size: 38 }, two: { top: 60, size: 28 } },
+  { key: 'C', name: 'C · toppyta r 40', note: '«17» i 32; facetterna blir smala', face: { r: 40, cy: 56 }, one: { top: 58, size: 42 }, two: { top: 61.5, size: 32 } },
+]
+let html = `<div></div><div class="head">verklig storlek</div><div class="head">17</div><div class="head">20</div><div class="head">8</div><div class="head">referens d12 · d6</div>`
+for (const v of V) {
+  html += `<h3>${v.name}<small>${v.note}</small></h3>`
+  html += `<div class="cell">${[17, 20, 8].map((n) => d20(n, v.face, v.one, v.two, 26)).join('')}${d12(26)}${d6(26)}</div>`
+  html += [17, 20, 8].map((n) => `<div class="cell">${d20(n, v.face, v.one, v.two, 110)}</div>`).join('')
+  html += `<div class="cell">${d12(84)}${d6(84)}</div>`
+}
+document.getElementById('felt').innerHTML = html
+</script>
+</body>
+</html>
