@@ -7,7 +7,9 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { duplicateProject, gameFan, logout, myCards, myPlayed, myProjects, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { duplicateProject, gameFan, logout, myCards, myPlayed, myProjects, myUsage, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { QuotaReached } from './quota.js'
+import { quotaWords, type QuotaWords } from './quota-words.js'
 import { tvUrl } from '../editor/tableLinks.js'
 import { tableTab } from '../ways.js'
 import { anotherAsk } from '../editor/another.js'
@@ -105,7 +107,13 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // off the screen.
   const [offline, setOffline] = useState(false)
   const [attempt, setAttempt] = useState(0)
-  const [notice, setNotice] = useState<string | null>(null)
+  // What could not happen, in the box under the heading: a sentence, or a met ceiling in its three
+  // parts (#1198, variant A), which takes the focus so a keyboard hears it where the press was.
+  const [notice, setNotice] = useState<string | QuotaWords | null>(null)
+  const noticeRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (notice !== null && typeof notice !== 'string') noticeRef.current?.focus()
+  }, [notice])
   // A game's own menu (G1): which card has it open, which one is being asked about, and what the
   // last table started from here was, so the code can be read off.
   const [menu, setMenu] = useState<string | null>(null)
@@ -133,8 +141,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         say?.('polite', t('home.started', { code: table.code }))
         setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
       },
-      (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+      (err: unknown) => setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t) : err instanceof Error ? err.message : String(err)),
     )
+  // «＋ Nytt spel» asks what the account holds before the guide opens (#1198): the guide makes the
+  // game only in its last step, so a ceiling met there would be met after every step had been walked.
+  // A question that gets no answer opens the guide as before, and the server still asks at the end.
+  const newGame = async () => {
+    const games = (await myUsage(http))?.measures['projects']
+    if (games && games.limit !== null && games.used >= games.limit) return setNotice(quotaWords({ measure: 'projects', limit: games.limit, used: games.used, bearer: 'you' }, { kind: 'newGame' }, t))
+    onNavigate(`/new?${suffix(new URLSearchParams())}`)
+  }
   // «Starta bord» from a game's ⋯ or its hero (#1145, beslut A): asked first while a table of it runs.
   const startFrom = (p: ProjectSummary) => {
     if (runningOf(p).length > 0) return setAnother(p)
@@ -279,7 +295,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       setRefocus({ to: p.id })
                       say?.('polite', t('home.duplicated', { name: copy.name }))
                     },
-                    (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+                    (err: unknown) => setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'duplicate', game: p.name }, t) : err instanceof Error ? err.message : String(err)),
                   )
                 }}
               >
@@ -337,7 +353,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             <span className="byd-home-import-word">{t('home.import.word')}</span>
           </button>
           {/* The page's one fill is the hero's «Öppna editorn» (#44), so making a game is the outline. */}
-          <a className="byd-secondary byd-home-make" href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); onNavigate(`/new?${suffix(new URLSearchParams())}`) }}>
+          <a className="byd-secondary byd-home-make" href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); void newGame() }}>
             {t('home.new')}
           </a>
           {/* The dots between the parts are drawn by the stylesheet at the start of the part they
@@ -394,9 +410,14 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           </header>
           {/* The offer after the link (#1180, beslut A): under the heading, once per browser. */}
           <PasskeyOffer http={http} />
-          {notice && (
+          {typeof notice === 'string' && (
             <p className="byd-home-notice" role="alert">
               {notice}
+            </p>
+          )}
+          {notice !== null && typeof notice !== 'string' && (
+            <p ref={noticeRef} className="byd-home-notice" role="alert" tabIndex={-1}>
+              <b>{notice.what}</b> {notice.why} {notice.way}
             </p>
           )}
           {another && anotherTable && (
@@ -554,7 +575,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     {moreOf(p)}
                   </div>
                 ))}
-                <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); onNavigate(`/new?${suffix(new URLSearchParams())}`) }}>
+                <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); void newGame() }}>
                   {t('home.new')}
                 </a>
               </div>

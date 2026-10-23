@@ -22,6 +22,8 @@ import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { GameMore } from './GameMore.js'
 import { NoticeBand } from './NoticeBand.js'
+import { QuotaReached } from '../account/quota.js'
+import { QuotaSaid, quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
@@ -138,15 +140,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // on its way: a refusal that arrived in that moment was cleared by the save's answer a beat
   // later, and the change it was about vanished without a word. Said again, the same words are a
   // new notice, so a save cannot put away a word it never stood in front of.
-  const [notice, setNotice] = useState<{ text: string } | null>(null)
+  // `lead` is what did not happen when a met ceiling is said (#1198, variant A), set off before the rest.
+  const [notice, setNotice] = useState<{ text: string; lead?: string } | null>(null)
   const say = useCallback((text: string) => setNotice({ text }), [])
+  const sayQuota = useCallback((words: QuotaWords) => setNotice({ lead: words.what, text: [words.why, words.way].filter((part) => part !== '').join(' ') }), [])
   // An icon chosen for a layer is bound at once and its bytes follow (#1093). Should they not arrive
   // the choice has been taken back whole, and the notice says so where every upload's failure is said.
   const iconSettled = ({ name, stored }: { name: string; stored: Promise<void> }): string => {
-    void stored.catch((err: unknown) => say(saidOr(err, t('icons.catalog.refused', { name }))))
+    void stored.catch((err: unknown) => (err instanceof QuotaSaid ? sayQuota(err.words) : say(saidOr(err, t('icons.catalog.refused', { name })))))
     return name
   }
-  const putAway = (standing: { text: string } | null) => setNotice((now) => (now === standing ? null : now))
+  const putAway = (standing: { text: string; lead?: string } | null) => setNotice((now) => (now === standing ? null : now))
   const confirmation = useConfirmation()
   // How many questions stand right now (#698). While one does, what just happened is not drawn:
   // it stood over «Ja, ta bort» and «Avbryt», and a step taken while the question stands would
@@ -362,9 +366,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const heardRefusals = useRef<{ client: ProjectClient | null; n: number }>({ client: null, n: 0 })
   useEffect(() => {
     const heard = heardRefusals.current
-    if (heard.client === client && refusedEdits > heard.n) say(t('editor.edit.refused'))
+    // A ceiling is said as the ceiling (#1198): what did not happen, the numbers and the way out.
+    const met = client?.refusedQuota
+    if (heard.client === client && refusedEdits > heard.n) {
+      if (met) sayQuota(quotaWords(met.quota, { kind: 'edit', edit: met.edit, game: client.doc.name, grown: met.grown }, t))
+      else say(t('editor.edit.refused'))
+    }
     heardRefusals.current = { client, n: refusedEdits }
-  }, [client, refusedEdits, say, t])
+  }, [client, refusedEdits, say, sayQuota, t])
   // A step back or forward that a co-editor's change stood in the way of (#1056): nothing was
   // written over, and the designer is told what could not be taken and why, in the same place.
   const refusedSteps = client?.refusedSteps ?? 0
@@ -440,6 +449,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // Never the server's own words (#485), and never the table's (#1018): why a save made no
     // version is one of the client's closed set, and each is said in the editor's voice.
     if (result.ok) putAway(standing)
+    else if (result.quota) sayQuota(quotaWords(result.quota, { kind: 'save', game: client.doc.name }, t))
     else say(t(SAVE_FAILED[result.reason]))
     return result.ok
   }
@@ -481,8 +491,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       setTable({ ...started, kind: 'new', saved })
       putAway(standing)
       return started
-    } catch {
-      say(t('editor.table.error.start'))
+    } catch (err) {
+      // A met ceiling (#1196) is said as one (#1198), with the tables of this game the reader can open.
+      if (err instanceof QuotaReached) {
+        const here = (await client.tables().catch(() => [])).filter((one) => !one.ended && one.code !== undefined).length
+        sayQuota(quotaWords(err.quota, { kind: 'table', rev: client.rev, here }, t))
+      } else say(t('editor.table.error.start'))
       return null
     }
   }
@@ -887,7 +901,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           nothing routine may push it out of the way — but the designer may put it away (#1073).
           It is the first strip under the header, so it is in the same place whatever is up below
           it, and the header's row never gives it room: the game's name is never cut for it. */}
-      {notice && <NoticeBand text={notice.text} onClose={() => setNotice(null)} />}
+      {notice && <NoticeBand text={notice.text} {...(notice.lead ? { lead: notice.lead } : {})} onClose={() => setNotice(null)} />}
       {/* Said out loud, because a tool that is quietly missing reads as a tool that is broken: on
           a phone the editor is a reading and writing surface, and laying a card out waits for a
           wider screen (L10). */}
@@ -1113,6 +1127,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             showsIn={mode === 'table' ? 'table' : mode === 'rules' ? 'rules' : 'wall'}
             chosen={row}
             onAccept={(edits) => client.editTogether(edits, 'undo.what.proposal')}
+            editsLanded={() => client.editsLanded()}
           />
         )}
       </main>

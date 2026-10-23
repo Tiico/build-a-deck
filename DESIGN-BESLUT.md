@@ -94,6 +94,37 @@ Renderingar (`rendersPer30Days`) mäts i en logg, `render_log`, med en rad per j
 Webben skickar ännu inget `?project=` vid uppladdning; hur ett nått tak sägs är skiva 6 (#1198).
 Grindarna: `packages/server/test/quota-storage.test.ts`, `quota-renders.test.ts` och `packages/render/test/render-log.test.ts`, mot båda lagren.
 
+Beslutat och byggt 2026-10-23 (#1198, skiva 6 av PRD #1192): **hur ett nått tak och förbrukningen sägs.**
+Tre varianter prototypades i [`docs/ux-audits/2026-10-23-natt-tak/prototyper/index.html`](docs/ux-audits/2026-10-23-natt-tak/prototyper/index.html): svaret där designern tryckte (A), knappen som säger det innan (B), och ett ark med utrymmet samlat i Mina spel (C).
+Beställaren valde **A, «svaret där du tryckte»**, med tre tillägg: ett datum för startade bord, ägaren vid namn, och förbrukningen i Profil när ett tak är satt.
+
+Före trycket ser allt ut som i dag.
+Trycket svarar där ytan redan säger det som inte kunde hända: rutan under rubriken i Mina spel för «＋ Nytt spel», «Duplicera» och «Starta bord», importens felrad (#529), notisbandet under editorns huvud (#1073) för en redigering och en sparning, raden under «Starta nytt bord» i Bord-fliken (L31) med «Försök igen» kvar, och uppladdningens rad i Media (`upload.undone`).
+Varje svar har tre delar: vad som inte hände, i fetstil, siffrorna, och vad man kan göra.
+Ingen mening säger en statuskod, en nivå, ett pris eller «uppgradera»; kontot «rymmer» så många.
+Vägen ut är alltid en som finns i dag: ta bort ett spel och exportera det först, ta bort eller slå ihop kort, ändra Antal, välja högst så många av ett AI-förslag som ryms med «Välj delar…», avsluta ett bord eller uppdatera ett som redan kör (L65), eller fråga ägaren.
+Meningarna byggs av en funktion, `quotaWords` i `packages/web/src/account/quota-words.ts`, per mått, bärare och handling, på svenska och engelska.
+Ett mått som sidan inte känner till är fortfarande ett tak och inget fel.
+
+«＋ Nytt spel» frågar `GET /me/usage` när den trycks och säger taket i stället för att öppna vägskälet (L79), eftersom guiden skapar spelet först i sitt sista steg.
+Servern prövar ändå, och guiden säger ett 402 efter «Spelet skapades inte.».
+Uppladdningar i editorn skickar `?project=`, så att ägarens tak på lagring prövas när bytena kommer och svaret står där designern laddade upp.
+Media säger att en borttagen bild inte frigör något, eftersom historiken behåller den, och att ett borttaget spel frigör sitt.
+Ett 402 för `tablesPer30Days` säger när nästa bord går att starta, med dag och minut på läsarens klocka.
+
+**Ägaren vid namn.**
+En testledare eller medredigerare som möter ägarens tak får `ownerName` bredvid `bearer: 'owner'`, i 402 och i editorns `refused`.
+Ett konto har inget namn utöver sin adress, så namnet är det första ordet i adressen före @ som läses som ett namn, med versal: «nicklas.ockelberg@…» blir Nicklas.
+Adressen och nivån sägs aldrig, och en adress utan ett sådant ord ger inget namn, så att meningen säger «spelets ägare».
+Ett eget visningsnamn på kontot är en senare fråga.
+
+**Profil** har kortet Förbrukning mellan Passkeys och Språk, med varje mått som har ett tak: spel, kort per spel för varje spel kontot äger, bord öppna nu, bord startade de senaste 30 dygnen och lagring.
+Stapeln blir gul från fyra femtedelar och mörkare gul när taket är nått.
+Renderingar visas inte, eftersom deras tak inte prövas.
+Med alla tak `null`, som i betan, finns kortet inte, och ingen yta ser annorlunda ut än i dag.
+
+Grindarna: `packages/web/test/quota-words.test.ts`, `quota-home.test.tsx` och `quota-editor.test.tsx` för varje yta och båda bärarna, `packages/server/test/quotas.test.ts` för namnet, och `packages/e2e/test/quota-reached.spec.ts`, där en designer i den byggda appen med `BYD_PLANS` möter sina tak.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
