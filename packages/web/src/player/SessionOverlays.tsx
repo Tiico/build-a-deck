@@ -242,9 +242,8 @@ type SessionButtonProps = { view: Snapshot; raise: RaiseSheet; words?: boolean }
 
 // «Ångra» switches itself off by being pressed: the one thing there was to undo is undone. A
 // `disabled` button cannot hold the focus, so the focus that pressed it fell to nothing and the
-// next Tab began again at the top (#761, K16). It is `aria-disabled` instead, as the strip's
-// «Flytta vänster» is at the end of the hand (L53): said to be off, kept in the tab order, and
-// doing nothing when pressed.
+// next Tab began again at the top (#761, K16). It is `aria-disabled` instead (L53): said to be
+// off, kept in the tab order, and doing nothing when pressed.
 export function UndoButton({ client, view, raise, words = false }: SessionButtonProps & { client: TableClient }) {
   const t = useT()
   const off = !view.undo || !!view.rewind || view.ended
