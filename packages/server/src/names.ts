@@ -107,7 +107,23 @@ export type CardFace = {
 // no rows — not something broken.
 export function peekFace(doc: ProjectDoc): CardFace | null {
   const row = doc.rows[0]
-  if (!row) return null
+  return row ? faceOf(doc, row) : null
+}
+
+// The fan the page leads with (#1204, beslut B): three of the game's own cards, the first in front
+// so the game is the one its row shows, then the middle and the last, spread over the deck as the
+// fan of 2026-09-14 was. A deck of fewer gives what it has, never one card twice.
+export function fanFaces(doc: ProjectDoc): CardFace[] {
+  const last = doc.rows.length - 1
+  const picks = [...new Set([0, Math.floor(last / 2), last])].filter((i) => i >= 0)
+  return picks.flatMap((i) => {
+    const row = doc.rows[i]
+    const face = row ? faceOf(doc, row) : null
+    return face ? [face] : []
+  })
+}
+
+function faceOf(doc: ProjectDoc, row: ProjectRow): CardFace | null {
   const face = doc.template.faces['front'] ?? Object.values(doc.template.faces)[0]
   if (!face) return null
   return {

@@ -259,9 +259,9 @@ describe('the seat picker', () => {
 })
 
 // The way in, in all its shapes: the landing page at `/` for whoever is not signed in (#1009), the
-// login card at `/login` it leads to, and the games for whoever is. The games are opened by pressing
-// a card, so that view has no filled button at all — which is a statement about the page and not
-// an omission, and is written out as one.
+// login card at `/login` it leads to, and the games for whoever is. On the games the one fill is the
+// hero's «Öppna editorn» (#1204): going on with the game last saved is the page's first action, and
+// making a new one is its outline.
 // The account's sheet and the landing page's, which is the account's room too (#1009).
 const ACCOUNT_CSS = () => `${read('src/account/account.css')}\n${read('src/account/landing.css')}`
 async function accountViews(): Promise<Record<string, string>> {
@@ -291,7 +291,7 @@ describe('the way in', () => {
     const measured = await inChromium(ACCOUNT_CSS(), 390, await accountViews(), wearingThePrimary('.byd-account'))
     // The landing page's two fills are one action said twice, at the top and at the foot of a page
     // too long to see both of on one screen: each is the only filled thing where it stands.
-    expect(measured).toEqual({ landningssidan: ['Börja bygga', 'Till editorn'], inloggningskortet: ['Skicka inloggningslänk'], 'mina spel': [] })
+    expect(measured).toEqual({ landningssidan: ['Börja bygga', 'Till editorn'], inloggningskortet: ['Skicka inloggningslänk'], 'mina spel': ['Öppna editorn'] })
   }, 90_000)
 })
 

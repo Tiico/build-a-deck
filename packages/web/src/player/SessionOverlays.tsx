@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useId, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
@@ -67,9 +67,11 @@ export type SessionOverlaysProps = {
   version: string | null
   // Where the textures are served from, for the card a flag is about (#1142).
   faces: string | undefined
+  // The owner's way to the editor with the seat kept (#1217), offered in the exit sheet.
+  stay?: ReactNode
 }
 
-export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces, stay }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -129,6 +131,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
         <ExitSheet
           pile={returnPile(view, seat)}
           refusal={gone}
+          stay={stay}
           onLeave={() => {
             void gone.watch(client.send({ v: 'seat.release', seat })).then((result) => {
               if (!result.ok) return
@@ -188,12 +191,14 @@ export type SeatSurveyProps = {
   saveUrl?: string | null | undefined
   // The claim has come back here (#690).
   saved?: boolean | undefined
+  // The way on under the thanks: the owner's back to the game's editor (#1217).
+  onward?: ReactNode
 }
 
-export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved }: SeatSurveyProps) {
+export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved, onward }: SeatSurveyProps) {
   const rulebook = useHasRulebook(http, sessionId, view.ended)
   if (!view.ended) return null
-  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} saved={saved} remember={`${sessionId}:${seat}`} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })} />
+  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} saved={saved} remember={`${sessionId}:${seat}`} rulebook={rulebook} onward={onward} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })} />
 }
 
 // The three buttons every seat has, in one row in `/online`'s head (the phone splits them, #1147:

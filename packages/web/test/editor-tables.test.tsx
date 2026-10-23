@@ -142,7 +142,7 @@ describe('the Bord tab (#19)', () => {
 })
 
 describe('the ways into a table (#19)', () => {
-  it('reaches the TV view, the table mode, playing from here and watching, each in a new tab and saying so', async () => {
+  it('reaches the TV view, the table mode, playing from here and watching, each in its own tab and saying so', async () => {
     await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
@@ -167,12 +167,14 @@ describe('the ways into a table (#19)', () => {
       `/observe?session=${id}&name=Designern&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
     ])
     // A link that leaves the editor behind says so, and says which table it is about: four
-    // identical rows of links are otherwise four times the same word to a screen reader.
-    for (const [i, label] of ['Spela härifrån', 'Öppna TV-vyn', 'Bordsläge', 'Titta på'].entries()) {
+    // identical rows of links are otherwise four times the same word to a screen reader. Each opens
+    // in the table's own tab for its view (#1217), with an opener, so taken twice it brings that tab
+    // out and the table's way back finds the editor.
+    for (const [i, [label, view]] of [['Spela härifrån', 'online'], ['Öppna TV-vyn', 'tv'], ['Bordsläge', 'table'], ['Titta på', 'observe']].entries()) {
       const way = ways[i]!
-      expect(way.getAttribute('target')).toBe('_blank')
-      expect(way.getAttribute('rel')).toBe('noreferrer')
-      expect(way.getAttribute('aria-label')).toBe(`${label} för bordet ${name} (öppnas i ny flik)`)
+      expect(way.getAttribute('target')).toBe(`byd-${view}-${id}`)
+      expect(way.hasAttribute('rel')).toBe(false)
+      expect(way.getAttribute('aria-label')).toBe(`${label} för bordet ${name} (öppnas i bordets egen flik)`)
     }
   })
 })
@@ -528,7 +530,7 @@ describe('a second table is asked about first (#1145)', () => {
     const opened = vi.spyOn(window, 'open').mockReturnValue(null)
     await user.click(open)
     const url = new URL(String(opened.mock.calls[0]![0]), 'http://x')
-    expect([url.pathname, url.searchParams.get('session'), opened.mock.calls[0]![1]]).toEqual(['/table', id, '_blank'])
+    expect([url.pathname, url.searchParams.get('session'), opened.mock.calls[0]![1]]).toEqual(['/table', id, `byd-tv-${id}`])
     opened.mockRestore()
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(document.activeElement).toBe(button)
@@ -716,7 +718,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     const shortcut = await screen.findByRole('group', { name: 'Bordet' })
     const row = await within(shortcut).findByRole('listitem')
     expect(row.getAttribute('data-table')).toBe(newest)
-    expect(await within(row).findByRole('link', { name: `Spela härifrån för bordet ${roomOf(newest).code} (öppnas i ny flik)` })).toBeTruthy()
+    expect(await within(row).findByRole('link', { name: `Spela härifrån för bordet ${roomOf(newest).code} (öppnas i bordets egen flik)` })).toBeTruthy()
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('group', { name: 'Bordet' })).toBeNull()

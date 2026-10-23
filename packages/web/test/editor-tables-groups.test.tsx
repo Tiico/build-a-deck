@@ -139,7 +139,7 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     const name = roomOf(id).code
 
     // The seat comes from the table itself (K12), so the ready way is complete once it answers.
-    const ready = await within(row).findByRole('link', { name: `Spela härifrån för bordet ${name} (öppnas i ny flik)` })
+    const ready = await within(row).findByRole('link', { name: `Spela härifrån för bordet ${name} (öppnas i bordets egen flik)` })
     // And it is the only way standing in the row: everything else is one press away, not six.
     expect(within(row).getAllByRole('link')).toEqual([ready])
   })
@@ -234,7 +234,7 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     // the list is drawn first, so the row is waited for under its code rather than read at once.
     const name = roomOf(id).code
 
-    expect(await within(row).findByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i ny flik)` })).toBeTruthy()
+    expect(await within(row).findByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i bordets egen flik)` })).toBeTruthy()
     expect(within(row).queryByRole('link', { name: /Spela härifrån/ })).toBeNull()
     // And its menu has neither of the two an ended table has no use for.
     await user.click(within(row).getByRole('button', { name: `Fler sätt att öppna ${name}` }))

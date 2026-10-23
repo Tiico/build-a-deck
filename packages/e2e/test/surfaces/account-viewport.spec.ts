@@ -71,21 +71,23 @@ for (const width of WIDTHS) {
   })
 }
 
-// The card on a game's tile (G1, #231, variant B). The measurements are relations and not pixels
-// off one machine: the box's proportion is the card's own 63 × 88, the drawing fills the box it
-// was given, and a game with no cards keeps exactly the same box — which is what "nothing jumps
-// and the grid stands even" means where it can actually be seen.
-test.describe('the card on a game in "Mina spel" (#231)', () => {
+// The card on a game's row (G1, #231; beside the name since #1204). The measurements are relations
+// and not pixels off one machine: the box's proportion is the card's own 63 × 88, the drawing fills
+// the box it was given, and a game with no cards keeps exactly the same box — which is what "nothing
+// jumps and the rows stand even" means where it can actually be seen.
+test.describe('the card on a game in "Mina spel" (#231, #1204)', () => {
   test.use({ viewport: { width: 1024, height: 900 }, locale: LANG })
 
-  test("draws the game's first card over its name, and keeps the place for a game that has none", async ({ page }) => {
+  test("draws the game's first card beside its name, and keeps the place for a game that has none", async ({ page }) => {
     await logIn(page.request)
-    await makeProject(page.request, { name: 'Skogens herrar', cards: 12 })
     await makeProject(page.request, { name: 'Tomt utkast', cards: 0 })
+    await makeProject(page.request, { name: 'Skogens herrar', cards: 12 })
+    // Saved last, so it is the hero and the two above stand as rows.
+    await makeProject(page.request, { name: 'Vinterspelet', cards: 12 })
     await page.goto('/')
-    await expect(page.getByRole('img', { name: 'Första kortet: Björn 1' })).toBeVisible()
-
-    const drawn = page.locator('.byd-home-card[role="img"]').first()
+    const row = page.locator('.byd-home-grid[data-projects] .byd-home-game', { hasText: 'Skogens herrar' })
+    const drawn = row.locator('.byd-home-card[role="img"]')
+    await expect(drawn).toBeVisible()
     const box = (await drawn.boundingBox())!
     // The place is the card's own shape, so what lands in it is a card and not a letterbox.
     expect(box.width / box.height).toBeCloseTo(63 / 88, 2)
@@ -94,16 +96,33 @@ test.describe('the card on a game in "Mina spel" (#231)', () => {
     expect(Math.abs(inner.width - box.width)).toBeLessThan(1.5)
     expect(Math.abs(inner.height - box.height)).toBeLessThan(1.5)
 
-    // The card stands over the name, which is what variant B is.
-    const name = (await page.getByText('Skogens herrar').boundingBox())!
-    expect(box.y + box.height).toBeLessThanOrEqual(name.y + 1)
+    // The card stands to the left of the name, which is what a row is (#1204).
+    const name = (await row.getByText('Skogens herrar').boundingBox())!
+    expect(box.x + box.width).toBeLessThanOrEqual(name.x + 1)
 
-    // A game with no cards says so in the very same box, so the row stands even.
-    const empty = page.locator('.byd-home-card[data-empty]')
+    // A game with no cards says so in the very same box, so the rows stand even.
+    const empty = page.locator('.byd-home-grid[data-projects] .byd-home-card[data-empty]')
     await expect(empty).toHaveText('inga kort ännu')
     const emptyBox = (await empty.boundingBox())!
     expect(emptyBox.height).toBeCloseTo(box.height, 1)
     expect(emptyBox.width).toBeCloseTo(box.width, 1)
+  })
+
+  // The hero (#1204, beslut B): the game saved last leads, its own first card in front of a fan of
+  // two more of its cards, and the fan lands after the page rather than holding it up.
+  test('leads with the game saved last, in front of a fan of its own cards', async ({ page }) => {
+    await logIn(page.request)
+    await makeProject(page.request, { name: 'Skogens herrar', cards: 12 })
+    await makeProject(page.request, { name: 'Vinterspelet', cards: 12 })
+    await page.goto('/')
+    const hero = page.locator('.byd-home-hero')
+    await expect(hero.getByText('Vinterspelet')).toBeVisible()
+    await expect(hero.locator('.byd-home-fan-back')).toHaveCount(2)
+    const front = (await hero.locator('.byd-home-card[role="img"]').boundingBox())!
+    expect(front.width / front.height).toBeCloseTo(63 / 88, 2)
+    // Its two things to do are on it, and not behind its ⋯.
+    await expect(hero.getByRole('link', { name: 'Öppna editorn' })).toBeVisible()
+    await expect(hero.getByRole('button', { name: 'Starta bord' })).toBeVisible()
   })
 })
 
@@ -131,6 +150,15 @@ test.describe('the "Nytt spel" tile on a row of its own (#231)', () => {
     // And it is still a game's tile, not a line of text. The height is the game's own and not a
     // number this test knows: whatever a game's tile measures, the invitation measures too.
     expect(box.height).toBeCloseTo(game.height, 0)
+    // Its words stand in its middle (#1204): `align-content: start` once won over the centring,
+    // and «＋ Nytt spel» hung from the top edge of a tile as tall as a game.
+    const words = await invitation.evaluate((el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      const r = range.getBoundingClientRect()
+      return r.top + r.height / 2
+    })
+    expect(Math.abs(words - (box.y + box.height / 2))).toBeLessThan(2)
   })
 
   test('keeps a floor of the card\'s own height on an account with no games to stand beside', async ({ page }) => {
