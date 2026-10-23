@@ -7,8 +7,8 @@ import { compressible, encodedBytes, encodedCopy } from './compress.js'
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type ServerMessage } from '@byd/protocol'
-import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type Applied, type ServerMessage } from '@byd/protocol'
+import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
@@ -700,17 +700,26 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
 
 // Who is answering the survey (G3, #1021), or null for nobody this table admitted. A guest is
 // her admission: the token is tried the way the door tries it, and the name and the seat are the
-// admission's. Without a token it is the project's host, from the editor's own ways in, by the
-// same login the door lets her sit down with — never the table screen's key, which sits nowhere.
+// admission's. Without a token it is first an admission the account has claimed (G1) — the way
+// Mina spel answers for a table that is over and has no way in (#1143) — and otherwise the
+// project's host, from the editor's own ways in, by the same login the door lets her sit down
+// with — never the table screen's key, which sits nowhere.
 async function surveySender(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyBody): Promise<Omit<SurveyAnswer, 'answers'> | null> {
   const observer = body.observer === true
   const seat = body.seat ?? null
+  const as = (guest: { kind: 'seat' | 'observer'; seat: string | null; name: string }): Omit<SurveyAnswer, 'answers'> | null =>
+    guest.kind === 'observer' ? (observer && seat === null ? { who: guest.name, seat: null, observer: true } : null) : !observer && seat === guest.seat ? { who: guest.name, seat: guest.seat } : null
   if (body.token !== undefined) {
     const now = clock(opts)
     const guest = await opts.store.activateGuest(session.id, hash(body.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
-    if (!guest) return null
-    if (guest.kind === 'observer') return observer && seat === null ? { who: guest.name, seat: null, observer: true } : null
-    return !observer && seat === guest.seat ? { who: guest.name, seat: guest.seat } : null
+    return guest ? as(guest) : null
+  }
+  const account = opts.auth && !/^Bearer\s/i.test(req.headers.authorization ?? '') ? await accountOf(opts.auth, req) : null
+  if (account) {
+    // A claimed admission is the account's for good, so it does not expire as a token does; one
+    // that was kicked is not, as at the door.
+    const mine = (await opts.store.guestsOf(account.id)).filter((g) => g.sessionId === session.id && g.revokedAt === undefined).map(as).find((sender) => sender !== null)
+    if (mine) return mine
   }
   if (!session.project) return null
   if (opts.auth && (/^Bearer\s/i.test(req.headers.authorization ?? '') || (await hostOf(opts, req, session)) !== 'host')) return null
@@ -929,7 +938,7 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
         ...msg.envelope,
         intents: msg.envelope.intents.map((it) => {
           if (it.v !== 'flag') return it
-          const flag = { v: 'flag' as const, ...(it.note !== undefined ? { note: it.note } : {}) }
+          const flag = { v: 'flag' as const, ...(it.component !== undefined ? { component: it.component } : {}), ...(it.note !== undefined ? { note: it.note } : {}) }
           return sub.observer !== undefined ? { ...flag, observer: sub.observer } : flag
         }),
       }
@@ -958,6 +967,32 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
   const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
   return { ...doc, motifs: { ...motifs, ...own.motifs }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+}
+
+// What a deck knows about its cards — texture hashes, titles and printed text — without queueing a
+// render: the textures were queued when the table was dealt them.
+async function factsOf(deck: Deck, setup: SetupDef, registry: TypeRegistry): Promise<DeckFacts> {
+  const { faces, titles, texts } = await queueFaces(deck, setup, registry, TEXTURE_DPI, Date.now(), () => Promise.resolve())
+  return { faces, titles, texts }
+}
+
+// The decks of the versions a table raised a flag about a card on (#1142), each with the cards the
+// table dealt on that version: a refreshed table's setup is the one its `version.change` carried.
+async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionRecord, log: readonly Applied[]): Promise<Record<string, DeckFacts>> {
+  const decks: Record<string, DeckFacts> = {}
+  let version = session.version
+  let setup = session.setup
+  for (const line of log) {
+    const it = line.intent
+    if (it.v === 'version.change') {
+      version = it.to
+      if (it.cards !== undefined) setup = { ...setup, cards: it.cards }
+    } else if (it.v === 'flag' && it.component !== undefined && !(version in decks)) {
+      const deck = await opts.store.deckOf(id, version)
+      if (deck) decks[version] = await factsOf(deck, setup, opts.registry)
+    }
+  }
+  return decks
 }
 
 // Every card of the project through the physical checks (E5), once per face, named by the card
@@ -1792,9 +1827,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       const session = await opts.store.loadSession(id)
       if (!session) continue
       const [log, surveys, admissions] = await Promise.all([opts.store.read(id), opts.surveys ? opts.surveys.list(id) : [], opts.store.guestsAt(id)])
-      sources.push({ id, session, log, surveys, admissions })
+      sources.push({ id, session, log, surveys, admissions, decks: await flaggedDecksOf(opts, id, session, log) })
     }
-    json(res, 200, playtestOf(sources))
+    // A flag about a card (#1142) is held against the game as it is now, which only costs a compile
+    // when some table has one.
+    const aboutCards = sources.some((s) => Object.keys(s.decks ?? {}).length > 0)
+    const now = aboutCards ? await factsOf(await deckOf(opts, gate.rec), setupFromProject(gate.rec), opts.registry) : undefined
+    json(res, 200, playtestOf(sources, { registry: opts.registry, ...(now ? { now } : {}) }))
     return true
   }
   if (start && req.method === 'POST') {

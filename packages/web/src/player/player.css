@@ -1,4 +1,4 @@
-/* Player view — the strip from the chosen prototype. */
+/* Player view — the phone beside the television, four tabs (#1147, beställarens val B). */
 
 /* The view's colours as tokens, so a colour change is a measurable change (see contrast.ts).
    Every ink/ground pair a player reads is listed in PLAYER_TEXT_PAIRS and measured by a test.
@@ -39,12 +39,66 @@
   --byd-rule: #262a35;
   --byd-rule-soft: #1f2330;
   --byd-line: #2c3242;
+  /* A die's face in the dice sheet (#1138): ivory with dark figures, as the prototype drew it. */
+  --byd-die: #f3e9d6;
+  --byd-die-ink: #1c1c1c;
+  --byd-die-kind: #5f5749;
+  --byd-die-edge: #b9ad97;
 }
 
 .byd-player {
   display: block; min-height: 100svh; width: 100%; max-width: 580px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom);
   background: var(--byd-bg); color: var(--byd-ink); font-family: system-ui, sans-serif;
 }
+/* The phone's four tabs (#1147, beställarens val B): a column exactly as tall as the screen, in
+   which only the open tab's panel scrolls — the head, the bar and the tabs stand still, and nothing
+   lies over the panel to be scrolled out from under. */
+.byd-player:has(> .byd-tabs) { display: flex; flex-direction: column; height: 100svh; min-height: 0; box-sizing: border-box; }
+.byd-player > header, .byd-bar, .byd-tabs, .byd-phone-said, .byd-rewind-mine { flex: none; }
+.byd-panels { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.byd-panel { display: grid; gap: 14px; align-content: start; padding: 14px 16px 20px; }
+/* A closed tab's panel is not drawn: the rule above would otherwise beat the browser's own `[hidden]`. */
+.byd-panel[hidden] { display: none; }
+.byd-panel-title { margin: 6px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-ink-muted); font-weight: 600; }
+.byd-panel ol { list-style: none; margin: 0; padding: 0; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-panel li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
+.byd-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--byd-rule); background: var(--byd-bg); }
+/* The count stands over the label, and a tab without one keeps the room for it, so every label
+   stands on one line at the same height — «Framför mig» broke in two beside its count at 390. */
+.byd-tabs button {
+  position: relative; min-height: 56px; padding: 6px 2px; border: 0; background: none; color: var(--byd-ink-muted);
+  display: flex; flex-direction: column-reverse; align-items: center; justify-content: center; gap: 2px; font: 700 12px system-ui, sans-serif;
+}
+.byd-tabs button::after { content: ''; height: 18px; }
+.byd-tabs button:has(.byd-tab-count)::after { content: none; }
+.byd-tabs button[aria-selected='true'] { color: var(--byd-ink-strong); box-shadow: inset 0 3px 0 var(--byd-accent); }
+.byd-tab-count { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 11px; line-height: 18px; box-sizing: border-box; text-align: center; }
+/* The hand's verbs, over the tabs while cards are marked (#1147). */
+.byd-bar { padding: 10px 16px 12px; background: var(--byd-surface); border-top: 1px solid var(--byd-line); }
+.byd-hand-bar p { display: flex; align-items: center; gap: 4px; margin: 0 0 8px; }
+.byd-hand-bar p strong { flex: 1; min-width: 0; color: var(--byd-ink-strong); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-hand-bar p button { min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--byd-warn); font: 700 14px system-ui, sans-serif; }
+.byd-bar-plays { display: flex; gap: 8px; }
+.byd-bar-plays button, .byd-inspect-actions > button {
+  flex: 1 1 0; min-width: 0; min-height: 52px; padding: 0 12px; border: 0; border-radius: 12px; box-sizing: border-box;
+  background: var(--byd-control); color: var(--byd-ink-strong); font: 700 15px system-ui, sans-serif; overflow-wrap: anywhere;
+}
+.byd-bar-plays .byd-bar-main, .byd-inspect-actions > .byd-bar-main { flex-grow: 1.4; background: var(--byd-accent); color: var(--byd-on-accent); }
+.byd-bar-plays > :last-child:not(.byd-bar-main) { flex: 0 0 auto; }
+/* At the narrowest phone a setup's first place stays one line («Framför mig» broke in two at 320). */
+@media (max-width: 359px) { .byd-bar-plays button { padding: 0 8px; font-size: 14px; } }
+.byd-bar-plays button:disabled, .byd-inspect-actions > button:disabled { opacity: .5; }
+/* Under a card held up the row is the reading width, three to a row at 320 (K26). */
+.byd-inspect-actions > button { min-height: 44px; padding: 0 8px; font-size: 14px; }
+/* «Mer»: the rules, the flag and the way out, each a row a thumb can find. */
+.byd-panel[data-panel='more'] > button, .byd-panel .byd-rules-open {
+  width: 100%; min-height: 52px; padding: 0 16px; border: 0; border-radius: 14px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+  background: var(--byd-control); color: var(--byd-ink-strong); font: 700 16px system-ui, sans-serif; text-align: left;
+}
+.byd-panel[data-panel='more'] > button:disabled { opacity: .35; }
+.byd-panel .byd-help-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; min-height: 44px; color: var(--byd-ink-muted); font-size: 14px; }
+.byd-panel[data-panel='more'] .byd-glyph { width: 18px; height: 18px; flex: none; }
 /* The column is 580 px and the window may be wider — a tablet, or a laptop at 200 % zoom — and the
    page behind it has no ground of its own: the column stood in white bands (#560 P-22). The page
    takes the column's ground (`--byd-bg`, which is not bound up here) wherever the column is shown. */
@@ -72,7 +126,7 @@ html:has(.byd-player) { background: #14161c; }
 .byd-player > header .byd-glyph { width: 16px; height: 16px; flex: none; }
 
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
-.byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
+.byd-counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
 /* The sides are a thumb's 44 px (UX-36, #81); at 320 px two pills leave the value 52 px, which a three-digit count fits. */
 .byd-counter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
 .byd-counter button { min-height: 44px; border: 0; padding: 0; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 18px; font-weight: 800; }
@@ -82,10 +136,43 @@ html:has(.byd-player) { background: #14161c; }
 .byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
 .byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
 
-/* The private strip (C4): the face inspects; direct actions sit below it as separate controls. */
-.byd-mine { padding: 6px 16px 0; }
+/* The dice (K28, #1138, variant B): a pill among the counters that opens their sheet. It is a pill
+   like theirs, with the die drawn in the felt's amber so a thumb finds it; beside two counters a
+   third column would leave a counter's value no room at 320 px, so it takes a row of its own. */
+.byd-dice-pill {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px;
+  border: 1px solid var(--byd-line); border-radius: 14px; background: var(--byd-surface); color: var(--byd-ink-strong);
+  font: inherit; font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.byd-dice-pill .byd-glyph { width: 20px; height: 20px; flex: none; color: var(--byd-warn); }
+.byd-counters[data-full] { grid-auto-flow: row; grid-template-columns: repeat(var(--byd-counters), minmax(0, 1fr)); }
+.byd-counters[data-full] .byd-dice-pill { grid-row: 2; grid-column: 1 / -1; }
+/* The sheet: the tiles scroll inside it when a game has many dice, and the two actions stay. */
+.byd-dice-sheet { display: flex; flex-direction: column; gap: 12px; max-height: 88dvh; box-sizing: border-box; }
+.byd-dice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.byd-dice-head .byd-sheet-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--byd-ink-strong); }
+.byd-dice-sheet button.byd-secondary, .byd-dice-sheet button.byd-primary { min-height: 48px; padding: 0 16px; border-radius: 12px; font: inherit; font-size: 16px; }
+.byd-dice-sheet button.byd-primary { font-weight: 750; }
+.byd-dice-sheet button.byd-primary:disabled { opacity: 0.45; }
+.byd-dice-head button.byd-secondary { min-height: 44px; font-size: 14px; }
+.byd-dice-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 12px; overflow-y: auto; min-height: 0; padding: 4px; margin: -4px; }
+/* A tile is the die itself, face up: its kind small in the corner and the side it shows large. What
+   is chosen is ringed in the phone's accent, never filled (#44, variant B). */
+.byd-dice-tile { padding: 0; border: 0; border-radius: 16px; background: transparent; cursor: pointer; }
+.byd-dice-face {
+  position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 16px; box-sizing: border-box;
+  border: 2px solid var(--byd-die-edge); background: var(--byd-die); color: var(--byd-die-ink);
+}
+.byd-dice-face small { position: absolute; left: 8px; top: 4px; font-size: 13px; font-weight: 700; color: var(--byd-die-kind); }
+.byd-dice-face b { font-size: 32px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.byd-dice-tile[aria-pressed='true'] .byd-dice-face { box-shadow: 0 0 0 3px var(--byd-accent); }
+.byd-dice-sheet .byd-dice-said { min-height: 1.4em; margin: 0; font-size: 16px; font-weight: 700; color: var(--byd-ink-strong); }
+.byd-dice-actions { display: grid; gap: 8px; }
+
+/* What lies in front of you (C4): the face inspects; direct actions sit beside it as separate controls. */
+.byd-mine { padding: 0; }
 .byd-mine h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-ink-muted); font-weight: 600; }
-.byd-mine-strip { display: flex; gap: 10px; overflow-x: auto; }
+.byd-mine-strip { display: grid; gap: 10px; }
 .byd-mine-card {
   position: relative; flex: 0 0 84px; display: grid; gap: 4px; padding: 0; border: 0;
   background: none; color: var(--byd-ink); font: inherit; text-align: left;
@@ -127,34 +214,23 @@ html:has(.byd-player) { background: #14161c; }
 .byd-summary ol { list-style: none; margin: 0; padding: 0; }
 .byd-summary li { padding: 5px 0; border-bottom: 1px solid var(--byd-rule-soft); }
 
-/* Nothing in hand (UX-16): the same quiet voice as the line under what lies in front of you. */
-/* At the top of the room the cards would take, not floating in its middle — the same
-   decision the waiting inspection panel on the TV is drawn by. */
-.byd-strip-empty { align-self: start; color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; }
-.byd-strip { display: flex; gap: 14px; overflow-x: auto; padding: 10px 24px; scroll-snap-type: x mandatory; }
-.byd-strip-card {
-  flex: 0 0 62vw; aspect-ratio: 63 / 88; scroll-snap-align: center;
-  border-radius: 14px; padding: 16px; box-sizing: border-box;
-  background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
-  /* Sideways pans the strip, and a finger moving down scrolls the page from a card (#483): the page
-     used to be unscrollable anywhere a card lay, which at 62vw is most of the screen. Upward stays
-     the card's own, because that is the lift (K4). */
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x pan-up; user-select: none;
+
+/* The hand, all of it at once (#1147): three cards wide at 390 px, two at 320. Marked is a ring of
+   its own outside the card, so the focus ring keeps the outline; the number a marked card carries
+   sits on its corner, outside the face, and covers nothing the designer drew. */
+.byd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+/* A phone on its side (#716): the panel between the head and the tabs is low, so the cards are
+   smaller and more of them stand in a row, and a whole one stands over the tabs. */
+@media (max-height: 500px) { .byd-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); } }
+.byd-grid-card {
+  position: relative; aspect-ratio: 63 / 88; min-width: 0; padding: 8px; border: 0; border-radius: 10px; box-sizing: border-box;
+  display: flex; align-items: flex-start; text-align: left; overflow-wrap: anywhere;
+  background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font: 700 13px system-ui, sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
-.byd-strip-card[data-selected='true'] { outline: 4px solid var(--byd-accent); }
-/* A card a resting thumb has lifted, and one it is carrying along the strip (K4, #483): raised off
-   the strip so the thumb can see it has hold of it, and drawn over its neighbours while it moves. */
-.byd-strip-card[data-lifting='true'], .byd-strip-card[data-carried='true'] { scale: 1.04; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65); position: relative; z-index: 1; }
-@media (prefers-reduced-motion: no-preference) {
-  .byd-strip-card { transition: scale 120ms ease-out; }
-}
-.byd-strip-card strong { font-size: 20px; font-weight: 800; }
-/* A touch keeps the element it began on as its target to the end. Begun on the words a waiting
-   face says, it lost the card when the face arrived and took the words away: the moves after went
-   to an element no longer in the page, the strip never heard them, and a carry became a pan (#590).
-   The card is the thumb's only target, so nothing in it can leave from under the thumb. */
-.byd-strip-card > * { pointer-events: none; }
-.byd-hint { text-align: center; font-size: 12px; color: var(--byd-ink-quiet); margin: 6px 0 20px; }
+.byd-grid-card[data-selected='true'] { box-shadow: 0 0 0 3px var(--byd-bg), 0 0 0 6px var(--byd-warn); }
+.byd-grid-at { position: absolute; z-index: 1; top: -9px; left: -9px; min-width: 24px; height: 24px; border-radius: 12px; display: grid; place-items: center; background: var(--byd-warn); color: var(--byd-warn-bg); font: 800 13px system-ui, sans-serif; font-style: normal; }
+.byd-grid-empty { margin: 4px 0; color: var(--byd-ink-quiet); font-size: 13px; }
 
 .byd-sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; align-content: end; z-index: 20; }
 .byd-sheet { background: var(--byd-surface); border-radius: 20px 20px 0 0; padding: 18px 18px 30px; }
@@ -208,10 +284,8 @@ html:has(.byd-player) { background: #14161c; }
 .byd-behind { display: contents; }
 
 /* Undo and rewind (B, C). */
-/* The proposer's strip stands at the foot and takes its own room there (#483): fixed, it lay over
-   «Spela…» and the sections under the hand with nothing left to scroll them out from under it.
-   The page is a column while it stands, so on a page shorter than the screen the strip is pushed
-   to the bottom of the screen and not left under the last section, where the toast can reach it. */
+/* The proposer's strip stands at the foot and takes its own room there (#483): a row of the
+   phone's column, under the tabs, and in `/online`'s column the same. */
 .byd-player:has(> .byd-rewind-mine) { display: flex; flex-direction: column; }
 .byd-rewind-mine {
   position: sticky; bottom: 0; z-index: 30; margin-top: auto;
@@ -229,16 +303,15 @@ html:has(.byd-player) { background: #14161c; }
 .byd-rewind-ask button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
 
 /* Textures (TUNN-SKIVA §5): the rendered face fills the card; the name stays for screen readers. */
-.byd-strip-card { position: relative; overflow: hidden; }
-.byd-strip-card img, .byd-mine-face img, .byd-summary-card img, .byd-player .byd-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.byd-grid-card img, .byd-mine-face img, .byd-summary-card img, .byd-player .byd-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 /* The face says the name once it has one, so the line under it is for the ear only. It leaves
-   the flow as it goes, so the strip is the same height whether the render has landed or not. */
-.byd-strip-card img ~ strong, .byd-mine-card:has(img) strong, .byd-summary-card img ~ strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+   the flow as it goes, so a card is the same height whether the render has landed or not. */
+.byd-grid-card img ~ strong, .byd-mine-card:has(img) strong, .byd-summary-card img ~ strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* Flagging, the way out, ending, the survey (G3, C9, #31, prototype A). The way out is a plain
    control like the other two: the row holds no red one any more, because the difference between
    leaving your seat and ending everyone's table is a decision and not a colour (#31, variant C). */
-.byd-phone-said { margin: 0 0 12px; padding: 8px 14px; border-radius: 10px; background: var(--byd-warn); color: var(--byd-warn-bg); font-size: 13px; font-weight: 700; }
+.byd-phone-said { margin: 0 16px 8px; padding: 8px 14px; border-radius: 10px; background: var(--byd-warn); color: var(--byd-warn-bg); font-size: 13px; font-weight: 700; }
 .byd-toast { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40; background: var(--byd-warn); color: var(--byd-warn-bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
 .byd-sheet-title { font-size: 16px; color: var(--byd-ink-strong); margin: 0 0 10px; }
 .byd-session-sheet textarea { width: 100%; box-sizing: border-box; min-height: 70px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-bg); color: var(--byd-ink-strong); padding: 10px; font: 14px system-ui; }
@@ -280,54 +353,37 @@ html:has(.byd-player) { background: #14161c; }
 .byd-survey-dots i[data-on='true'] { background: var(--byd-accent); }
 .byd-survey-nav button { padding: 14px 18px; border-radius: 12px; font-size: 15px; }
 .byd-survey-nav button:disabled { opacity: 0.35; }
-.byd-survey-thanks { display: grid; place-items: center; text-align: center; gap: 8px; }
+/* One group in the middle of the screen: without `align-content` the rows stretched to the whole
+   height and the thanks, the line and the way on stood a third of a screen apart (#1143). */
+.byd-survey-thanks { display: grid; place-items: center; align-content: center; text-align: center; gap: 8px; }
 .byd-survey-thanks strong { font-size: 24px; }
 /* On a wide screen (the observer's), the survey keeps a phone's width. */
 .byd-survey > * { width: 100%; max-width: 520px; margin: 0 auto; box-sizing: border-box; }
 
-/* Phone A, approved 2026-09-16: the hand and its visible actions lead the page. */
-.byd-phone-main { min-width: 0; padding: 18px 16px 24px; }
-.byd-phone-main h1 { margin: 0 0 12px; font-size: 22px; }
-/* Every summary on this screen — the row over the hand and the table folded out under it — sits
-   in the phone's own gutter and not in a second one of its own. */
-.byd-phone-main .byd-summary { padding: 0; overflow: visible; }
-.byd-phone-main .byd-summary-zones { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
+.byd-panel .byd-summary { padding: 0; overflow: visible; }
+.byd-panel .byd-summary-zones { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }
 .byd-summary-zones > * { min-width: 0; overflow-wrap: anywhere; }
 /* The areas, each a row of its own with the cards it holds (#506 beslut 3, #507): read by the
    hand's tap, so they are drawn only as large as a thumb needs to find one. */
-.byd-phone-table .byd-summary-zones { grid-template-columns: minmax(0, 1fr); }
+.byd-panel[data-panel='table'] .byd-summary-zones { grid-template-columns: minmax(0, 1fr); }
 .byd-summary-cards { display: flex; gap: 8px; overflow-x: auto; margin-top: 8px; padding-bottom: 4px; }
 .byd-summary-card {
   position: relative; overflow: hidden; flex: 0 0 84px; aspect-ratio: 63 / 88; padding: 0; border: 0; border-radius: 8px;
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font: 600 11px system-ui;
 }
-.byd-player .byd-strip { min-width: 0; padding: 8px 6px 16px; gap: 12px; }
-/* Small at rest, since one tap reads (#507 beslut A), and following the screen rather than one
-   width from 320 to 768 (fynd 1): two cards and the edge of a third at a phone, more on a tablet. */
-.byd-player .byd-strip-card { flex-basis: clamp(112px, 34vw, 200px); flex-shrink: 0; scroll-snap-align: start; }
-.byd-hand-actions { padding: 0 0 12px; }
-.byd-hand-actions p { margin: 0 0 10px; color: var(--byd-ink-muted); font-size: 14px; overflow-wrap: anywhere; }
-.byd-hand-actions button, .byd-mine-quick {
+.byd-mine-quick {
   min-height: 44px; min-width: 44px; box-sizing: border-box; padding: 10px 12px;
   border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control);
   color: var(--byd-ink-strong); font: 600 14px system-ui; overflow-wrap: anywhere;
 }
-.byd-hand-actions > button { width: 100%; margin-bottom: 8px; }
-.byd-hand-targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.byd-hand-targets button:first-child:not(:disabled) { background: var(--byd-accent); color: var(--byd-on-accent); }
-.byd-hand-order { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-.byd-hand-actions button:disabled, .byd-hand-actions button[aria-disabled='true'], .byd-mine-quick:disabled { opacity: .5; }
-.byd-player .byd-hint { margin: 0 0 12px; text-align: left; }
-.byd-personal, .byd-phone-table, .byd-phone-history { border-top: 1px solid var(--byd-line); margin-top: 8px; }
-.byd-personal > summary, .byd-phone-table > summary, .byd-phone-history > summary { padding: 14px 0; min-height: 48px; box-sizing: border-box; cursor: pointer; font-size: 15px; font-weight: 600; }
-/* Played from afar with no felt (C2, #484): where the whole table is, first in the fold that holds it. */
-.byd-phone-table-where { margin: 0 0 12px; color: var(--byd-ink-muted); font-size: 14px; line-height: 1.4; }
-.byd-personal .byd-mine { padding: 0 0 12px; }
-.byd-mine-item { flex: 0 0 84px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.byd-mine-item:has(.byd-mine-quick) { flex-basis: 144px; }
-.byd-mine-item .byd-mine-card { width: 100%; flex: none; }
-.byd-phone-history ol { padding: 0; list-style: none; font-size: 13px; color: var(--byd-ink-muted); }
-.byd-phone-history li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
+.byd-mine-quick:disabled { opacity: .5; }
+/* Played from afar with no felt (C2, #484): where the whole table is, first in the tab that holds it. */
+.byd-phone-table-where { margin: 0; color: var(--byd-ink-muted); font-size: 14px; line-height: 1.4; }
+/* A card in front of you as a row (#1147): the card to read on the left, its verbs stacked beside
+   it — two of them are as tall as the card, so the row is no taller than it has to be. */
+.byd-mine-item { min-width: 0; display: grid; grid-template-columns: 72px minmax(0, 1fr); align-content: start; gap: 8px; padding: 10px; border-radius: 14px; background: var(--byd-surface); }
+.byd-mine-item .byd-mine-card { grid-row: 1 / span 3; width: 100%; }
+.byd-mine-item .byd-mine-quick { grid-column: 2; align-self: start; }
 .byd-inspect-actions { flex-wrap: wrap; }
 .byd-inspect-actions, .byd-inspect-walk { display: flex; align-items: center; gap: 8px; width: var(--byd-read-w); max-width: 100%; flex: none; }
 .byd-inspect-walk { justify-content: center; }
@@ -336,54 +392,9 @@ html:has(.byd-player) { background: #14161c; }
 .byd-inspect-at { flex: 1; text-align: center; color: var(--byd-ink-muted); font: 600 14px system-ui; }
 .byd-inspect-close { flex: 0 0 auto; min-width: 120px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: 600 15px system-ui; }
 
-/* «Regler» at the foot, by the hand (#483, beslut C efter prototyp 32): held at the bottom of the
-   screen where the thumb is, and the page ends a bar's height earlier so nothing lies under it. */
-.byd-player:has(.byd-phone-foot:not(:empty)) { padding-bottom: 64px; }
-/* A control Tab reaches is scrolled into view at the window's bottom edge, which is where the foot
-   stands, and «Senast» at 390 and the region's buttons at 320 were focused wholly behind it
-   (#559 P-6, WCAG 2.4.11). The window keeps the foot's own height clear when it scrolls to one:
-   64 px of foot, its 1 px rule, and 8 px of air. */
-html:has(.byd-phone-foot:not(:empty)) { scroll-padding-bottom: 73px; }
-.byd-phone-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; box-sizing: border-box; min-height: 64px; display: flex; padding: 8px 16px 12px; background: var(--byd-bg); border-top: 1px solid var(--byd-rule); }
-.byd-phone-foot:empty { display: none; }
-.byd-phone-foot .byd-rules-open { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-/* The chosen card's first place and «Spela…» beside «Regler» (#484 fynd 11, beslut B): the play
-   takes the room, and «Regler» steps down to its own width once there is a play to make. */
-.byd-phone-foot { gap: 8px; }
-.byd-foot-play, .byd-foot-more { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px; font: 700 14px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.byd-foot-play { flex: 1 1 0; min-width: 0; background: var(--byd-accent); color: var(--byd-on-accent); }
-.byd-foot-more { flex: 0 0 auto; background: var(--byd-control); color: var(--byd-ink); }
-.byd-foot-play:disabled, .byd-foot-more:disabled { opacity: 0.5; }
-/* «Visa alla · n» is the grid and the count (L73, led 3); the whole name is the button's. */
-.byd-hand-all { display: inline-flex; align-items: center; gap: 4px; }
-.byd-hand-all .byd-glyph { width: 18px; height: 18px; }
-.byd-phone-foot:has(.byd-foot-more) .byd-rules-open { flex: 0 0 auto; padding: 0 12px; }
-@media (max-width: 359px) {
-  .byd-phone-foot:has(.byd-foot-more) .byd-rules-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-}
-
-/* The row's three are icons at every width (L73, led 3; under 375 px since #716, L62): each a
-   whole thumb target named by its word, which stays in the DOM out of sight and on the pointer as
-   the title. The head at 320 keeps one row, and so does the head at 375 with «Lämna…». */
+/* The head's undo is an icon at every width (L73, led 3; under 375 px since #716, L62): a whole thumb
+   target named by its word, which stays in the DOM out of sight and on the pointer as the title.
+   Flagga and Lämna… stand in «Mer» since #1147, where they are rows with their words; on /online
+   the same three stand in its own head. */
 .byd-player > header .byd-undo, .byd-player > header .byd-flag, .byd-player > header .byd-exit { gap: 0; padding: 0; width: 44px; }
 .byd-player > header .byd-undo .byd-glyph, .byd-player > header .byd-flag .byd-glyph, .byd-player > header .byd-exit .byd-glyph { width: 18px; height: 18px; }
-
-/* A phone on its side (#716, L62, beslut A, prototyp 716): the portrait column stretched out showed
-   no whole card of the hand without scrolling. In a low, wide window the head runs over two
-   columns; the counters and the piles stand in a narrow one on the left and the hand with its verbs
-   has the rest, its cards sized by the window's height so that a whole one stands above the foot. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .byd-player { max-width: none; display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 12px; row-gap: 8px; align-items: start; }
-  .byd-player > * { grid-column: 1 / -1; }
-  .byd-player > header { min-height: 48px; padding: 2px 16px; }
-  .byd-player > .byd-behind { grid-column: 1; grid-row: 2; }
-  .byd-player > .byd-phone-main { display: contents; }
-  .byd-phone-main > h1 { display: none; }
-  .byd-phone-main > * { grid-column: 2; }
-  .byd-phone-main > .byd-summary { grid-column: 1; grid-row: 3; padding: 0 0 0 16px; }
-  .byd-phone-main .byd-summary-zones { grid-template-columns: minmax(0, 1fr); }
-  .byd-phone-main > .byd-strip { grid-row: 2 / span 2; }
-  .byd-player .byd-strip-card { flex-basis: calc((100svh - 48px - 64px - 40px) * 63 / 88); }
-}
-
-

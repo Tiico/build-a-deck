@@ -1,11 +1,11 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { CounterEntry } from '../table/CounterEntry.js'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { cardName, cardWord } from '../table/keyboard.js'
 import { targetsOf, type Placement } from './PlaySheet.js'
-import { isCounter } from '../components.js'
+import { isCounter, isPiece } from '../components.js'
 import type { RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import { MinusGlyph, PlusGlyph } from '../glyphs.js'
@@ -21,7 +21,7 @@ export function countersOf(view: Snapshot): VisibleComponentState[] {
 // The cards in the seat's own areas: zones it owns that are areas, and hold cards.
 export function inFrontOf(view: Snapshot): VisibleComponentState[] {
   const own = new Set(view.zones.filter((z) => z.owner === view.seat && z.kind === 'area').map((z) => z.id))
-  return view.components.filter((c) => !isCounter(c) && own.has(c.zone))
+  return view.components.filter((c) => !isPiece(c) && own.has(c.zone))
 }
 
 // A counter as a pill: tap the sides to count, tap the number to type a value.
@@ -30,15 +30,18 @@ export function inFrontOf(view: Snapshot): VisibleComponentState[] {
 // the same sheet the table screen uses. It used to be a `div` behind `prompt()`: no Tab reached
 // it, nothing named it, and «abc» was dropped without a word. No bounds (beslut A): a counter is
 // a number the players keep, and the tool plays no rules.
-export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleComponentState, value: number): void }) {
+//
+// `extra` stands in the row after the counters: the dice's pill (K28, #1138), which belongs among
+// them and keeps the row standing in a game that counts nothing.
+export function CountersRow({ view, onSet, extra }: { view: Snapshot; onSet(c: VisibleComponentState, value: number): void; extra?: ReactNode }) {
   const t = useT()
   const counters = countersOf(view)
   const [entry, setEntry] = useState<string | null>(null)
   const numbers = useRef(new Map<string, HTMLButtonElement>())
-  if (counters.length === 0) return null
+  if (counters.length === 0 && !extra) return null
   const open = entry === null ? undefined : counters.find((c) => c.id === entry)
   return (
-    <div className="byd-counters" data-counters>
+    <div className="byd-counters" data-counters data-full={counters.length >= 2 && extra ? '' : undefined} style={{ ['--byd-counters' as string]: counters.length }}>
       {counters.map((c) => (
         <div key={c.id} className="byd-counter" data-counter={c.cardRef ?? c.id}>
           <button type="button" aria-label={t('player.counter.minus', { name: c.cardRef ?? '' })} onClick={() => onSet(c, (c.counter ?? 0) - 1)}>
@@ -62,6 +65,7 @@ export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleC
           </button>
         </div>
       ))}
+      {extra}
       {open && (
         <CounterEntry
           view={view}

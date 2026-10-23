@@ -1,5 +1,6 @@
 // Seeds the corpus with scripted sessions so the gate exists before the first real log.
 // Real logs, exported from a running server, replace these over time.
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { CARD, Harness, SEATS, registry, twoSeatSetup } from '../test/fixture.js'
 import { record, write } from './corpus.js'
@@ -67,11 +68,34 @@ function pileTop(): Harness {
   return h
 }
 
+// The table's notepad (#1131): rows written, rewritten, ticked and taken away around play, an undo
+// and a rewind that both leave the notepad as it stands.
+function notepad(): Harness {
+  const h = new Harness(13)
+  h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+  h.do(null, { v: 'seat.claim', seat: 'B', name: 'Bo' })
+  const score = h.do('A', { v: 'note.add', text: 'Poäng: Ada 0, Bo 0' })
+  h.do(null, { v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 2 })
+  const turn = h.do('B', { v: 'note.add', text: 'Bo har en extra tur' })
+  h.do('A', { v: 'note.edit', note: `n${score.seq}`, text: 'Poäng: Ada 3, Bo 1' })
+  h.do('B', { v: 'move', component: h.top('hand:B'), to: 'table', x: 0, y: 0 })
+  h.do('B', { v: 'note.check', note: `n${turn.seq}`, done: true })
+  h.do('B', { v: 'undo.self' })
+  const p = h.do('A', { v: 'rewind.propose', toSeq: 2 })
+  h.do('B', { v: 'rewind.confirm', proposal: p.batch })
+  h.do(null, { v: 'note.add', text: 'Regelfråga till efteråt' })
+  h.do('A', { v: 'note.remove', note: `n${turn.seq}` })
+  return h
+}
+
+// A recorded entry is never rewritten (DRIFT §7): seeding again writes only the entries not yet there.
 for (const [name, h] of [
   ['scripted-full-round', full()],
   ['scripted-version-change', versionChange()],
   ['scripted-pile-top', pileTop()],
+  ['scripted-notepad', notepad()],
 ] as const) {
+  if (existsSync(join(dir, `${name}.json`))) continue
   const file = write(record(name, 'v1', h.initial.setup, h.log, registry), dir)
   console.log(JSON.stringify({ msg: 'seeded', file, lines: h.log.length, viewers: SEATS.length + 1 }))
 }

@@ -1,11 +1,12 @@
 // The survey after a session (G3): short, structured, one per participant, sent once the log is
 // locked. `http` is the server origin.
 import type { Key } from '../i18n/index.js'
+import { withCredentials } from '../account/session.js'
 
 export type SurveyAnswers = { fun: number; clarity: number; balance: number; change: string }
 // `token` is the admission the phone sat or watched under (#1021): the server reads who answered
-// out of it, and a seat or an observer has one answer, the latest. Without one it is the host,
-// from the editor's own ways in, whose login is her admission.
+// out of it, and a seat or an observer has one answer, the latest. Without one it is the login: the
+// account's own claimed seat from Mina spel (#1143), or the host from the editor's own ways in.
 export type SurveyRequest = { token?: string | undefined; who: string; seat: string | null; observer?: boolean; answers: SurveyAnswers }
 
 // The questions themselves are the tool's words, so they are catalogue keys and the sheet reads
@@ -28,10 +29,7 @@ export function questions(rulebook: boolean | null | undefined): Question[] {
 }
 
 export async function submitSurvey(http: string, sessionId: string, answer: SurveyRequest): Promise<void> {
-  const res = await fetch(`${http}/sessions/${encodeURIComponent(sessionId)}/survey`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(answer),
-  })
+  const init: RequestInit = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(answer) }
+  const res = await fetch(`${http}/sessions/${encodeURIComponent(sessionId)}/survey`, answer.token === undefined ? withCredentials(init) : init)
   if (!res.ok) throw new Error(`could not send the survey: ${res.status}`)
 }

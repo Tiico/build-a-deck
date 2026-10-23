@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import type { DocDiff, Playtest, PlaytestAnswer, PlaytestQuestion, PlaytestTable, PlaytestVersion } from '@byd/server/doc'
+import type { DocDiff, Playtest, PlaytestAnswer, PlaytestFlag, PlaytestQuestion, PlaytestTable, PlaytestVersion } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import { Summary } from './HistoryPanel.js'
 import { useRoving } from './roving.js'
@@ -9,6 +9,7 @@ import { saidOr } from '../i18n/said.js'
 import { clockWord } from './when.js'
 import { versionWord } from '../i18n/version.js'
 import { FlagGlyph } from '../glyphs.js'
+import { cardLine, FlagThumb, LiftedCard } from './FlaggedCard.js'
 
 // «Resultat» (#1010, beställarens val 2026-10-18): what the playtests said, read version by
 // version. It is the Bord tab's second view and not a tab of its own — the answers belong to the
@@ -253,7 +254,7 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
           </section>
         </>
       )}
-      {(version.ended > 0 || version.flags > 0) && <Flags tables={shown} version={version.version} lang={lang} />}
+      {(version.ended > 0 || version.flags > 0) && <Flags tables={shown} version={version.version} versionName={name(version.version)} origin={client.facesOrigin} lang={lang} />}
     </>
   )
 }
@@ -388,10 +389,14 @@ function Answer({ answer, table }: { answer: PlaytestAnswer; table: PlaytestTabl
 }
 
 // Every flag raised on this version, in the order of the game, table by table: who, when in the
-// game and on the clock, and what she wrote.
-function Flags({ tables, version, lang }: { tables: readonly PlaytestTable[]; version: string; lang: 'sv' | 'en' }) {
+// game and on the clock, and what she wrote — and the card it was about, as it was (#1142), which
+// a press lifts.
+function Flags({ tables, version, versionName, origin, lang }: { tables: readonly PlaytestTable[]; version: string; versionName: string; origin: string; lang: 'sv' | 'en' }) {
   const t = useT()
   const flags = tables.flatMap((x) => x.flags.filter((f) => f.version === version).map((f) => ({ f, table: x })))
+  const [lifted, setLifted] = useState<number | null>(null)
+  const when = (f: PlaytestFlag, x: PlaytestTable) => `${t('results.flag.when', { n: f.move, of: x.moves })} · ${clockWord(f.at, lang)}`
+  const up = lifted === null ? undefined : flags[lifted]
   return (
     <section className="byd-results-sec" aria-labelledby="byd-results-flags">
       <h3 id="byd-results-flags">
@@ -402,7 +407,8 @@ function Flags({ tables, version, lang }: { tables: readonly PlaytestTable[]; ve
       ) : (
         <ol className="byd-results-flags">
           {flags.map(({ f, table: x }, i) => (
-            <li key={i}>
+            <li key={i} data-card={f.card ? 'true' : undefined}>
+              {f.card && <FlagThumb origin={origin} card={f.card} onLift={() => setLifted(i)} />}
               <span className="byd-results-when">
                 <FlagGlyph />
                 {t('results.flag.when', { n: f.move, of: x.moves })}
@@ -413,10 +419,12 @@ function Flags({ tables, version, lang }: { tables: readonly PlaytestTable[]; ve
                 {f.observer && <em className="byd-results-badge">{t('results.observer')}</em>} <span className="byd-results-quiet">· {t('results.atTable', { table: tableName(x, t) })}</span>
                 {f.note ? `: «${f.note}»` : ` ${t('results.flag.silent')}`}
               </p>
+              {f.card && <p className="byd-results-card-line">{cardLine(f.card, t)}</p>}
             </li>
           ))}
         </ol>
       )}
+      {up?.f.card && <LiftedCard origin={origin} flag={up.f} card={up.f.card} version={versionName} when={when(up.f, up.table)} onClose={() => setLifted(null)} />}
     </section>
   )
 }

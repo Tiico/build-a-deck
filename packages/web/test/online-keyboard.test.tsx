@@ -118,6 +118,44 @@ const HELD = 21
 
 const handCards = () => [...document.querySelectorAll('[data-hand-fan] [data-hand-card]')] as HTMLElement[]
 
+// A card turned over in the hand is played face down (#1133). On the felt's screen the hand's
+// panel turns it — «Vänd» there is the hand's turn, which sends nothing, and not a flip of a card
+// nobody else can see — and F on a card in the fan does the same, as F turns a card on the felt.
+describe('turning a card over in the distance view’s hand (#1133)', () => {
+  afterEach(() => localStorage.clear())
+
+  it('turns it in the panel without a word to the table, and plays it face down from there', async () => {
+    const { id, table } = await online()
+    const user = userEvent.setup()
+    const before = (await run.store.read(id)).length
+    screen.getByRole('button', { name: /^dragon, i min hand/ }).focus()
+    await user.keyboard('{Enter}')
+    let panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
+    await user.click(within(panel).getByRole('button', { name: 'Vänd' }))
+    expect((await run.store.read(id)).length, 'the turn is not sent').toBe(before)
+    const card = screen.getByRole('button', { name: /^dragon, i min hand, vänt – spelas nedvänt/ })
+    expect(card.getAttribute('data-turned')).toBe('true')
+    panel = screen.getByRole('dialog', { name: 'Handlingar för dragon' })
+    expect(within(panel).getByRole('button', { name: 'Vänd upp' })).toBeTruthy()
+    await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
+    await waitFor(async () => expect((await run.store.read(id)).slice(-1).map((l) => l.intent.v)).toEqual(['move']))
+    expect((await run.store.read(id)).some((l) => l.intent.v === 'flip' && l.intent.component === 'c0'), 'never turned face up').toBe(false)
+    await waitFor(() => expect(table.view!.components.find((c) => c.id === 'c0')).toMatchObject({ zone: 'table', face: 'back', cardRef: null }))
+    table.close()
+  })
+
+  it('turns with F on a card in the fan, and back with F again', async () => {
+    const { table } = await online(2, PORTRAIT)
+    const user = userEvent.setup()
+    screen.getByRole('button', { name: /^dragon, i min hand/ }).focus()
+    await user.keyboard('f')
+    expect(screen.getByRole('button', { name: /^dragon, i min hand, vänt/ }).getAttribute('data-turned')).toBe('true')
+    await user.keyboard('F')
+    expect(screen.getByRole('button', { name: /^dragon, i min hand\./ }).getAttribute('data-turned')).toBe(null)
+    table.close()
+  })
+})
+
 describe('the whole hand stays one tab stop with the arrows inside it, however big it is (K16, #24)', () => {
   // The arrows run the way the hand does: down the column a landscape window puts it in, along the
   // band a portrait one keeps (#77). It is one roving tabindex either way, and it is the editor's.

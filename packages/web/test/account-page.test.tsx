@@ -6,9 +6,11 @@ import { LoginCard } from '../src/account/LoginCard.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { SurveyPage } from '../src/account/SurveyPage.js'
+import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { faviconSvg } from '../src/brand/mark.js'
-import { admit, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
+import { admit, asTable, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 
 // Accounts (G1, prototype A): the login card at `/login` until the link in the mail has been
@@ -237,6 +239,64 @@ describe('the tables the account sat at (G1)', () => {
     expect(to.searchParams.get('token')).not.toBe(token)
   })
 
+  // The survey from Mina spel (#1143, variant B): a table that is over has no way in, so the tile
+  // offers its survey while it waits, the account answers it on a page of its own, and the tile
+  // then says quietly that it is answered — nothing more to do there.
+  it('offers the survey on a table that is over, answers it from the account, and then says it is answered', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })).status).toBe(200)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'session.end' })
+    table.close()
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    const card = (await screen.findByText('du spelade som Ada', { exact: false })).closest(`[data-played="${id}"]`) as HTMLElement
+    expect(card.textContent).toContain('avslutat')
+    expect(card.textContent).not.toContain('enkät inte besvarad')
+    fireEvent.click(within(card).getByRole('link', { name: 'Svara på enkäten' }))
+    const to = new URL(gone[0]!, 'http://app.invalid')
+    expect(to.pathname).toBe('/survey')
+    expect(Object.fromEntries(to.searchParams)).toEqual({ session: id, server: run.http })
+    cleanup()
+
+    history.replaceState(null, '', `${to.pathname}${to.search}`)
+    const after: string[] = []
+    render(<SurveyPage onNavigate={(u) => after.push(u)} />)
+    for (const n of ['4', '3', '2']) {
+      fireEvent.click(await screen.findByRole('button', { name: new RegExp(`^${n}$`) }))
+      fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    expect(await screen.findByText('Tack, Ada.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('link', { name: 'Till Mina spel' }))
+    expect(after).toEqual([`/?server=${encodeURIComponent(run.http)}`])
+    cleanup()
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+    const done = (await screen.findByText('Du har svarat på enkäten')).closest(`[data-played="${id}"]`) as HTMLElement
+    expect(within(done).queryByRole('link', { name: 'Svara på enkäten' })).toBeNull()
+  })
+
+  it('sends a reader without a login to the login page, which comes back to the survey', async () => {
+    const id = await createSession(run)
+    const here = `/survey?session=${id}&server=${encodeURIComponent(run.http)}`
+    history.replaceState(null, '', here)
+    const gone: string[] = []
+    render(<SurveyPage onNavigate={(u) => gone.push(u)} />)
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const to = new URL(gone[0]!, 'http://app.invalid')
+    expect(to.pathname).toBe('/login')
+    expect(Object.fromEntries(to.searchParams)).toEqual({ next: here, server: run.http })
+  })
+
   // A game taken away takes its tables with it (#676): the row says so, and offers no way back.
   it('says a table\'s game was deleted, and offers no way back to it', async () => {
     await run.stop()
@@ -445,6 +505,52 @@ describe('a game on the home page (G1)', () => {
     await waitFor(() => expect(document.activeElement).toBe(open))
     expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
+  })
+
+  // «Starta nytt bord» stood one line under «Öppna bordet KOD», and a press that meant the one
+  // started the other (#1145, beslut A): the press asks first, and the answer it opens on is the
+  // table that runs.
+  it('asks before starting a second table, opens on the running one, and starts another only when told to (#1145)', async () => {
+    await home()
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    await waitFor(() => expect(running()).not.toBeNull())
+    const listed = async () => ((await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as unknown[]).length
+    const more = within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' })
+
+    fireEvent.click(more)
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    const asked = screen.getByRole('alertdialog', { name: 'Ett bord kör redan' })
+    expect(asked.textContent).toContain(`Bordet ${made.code} kör redan.`)
+    const open = within(asked).getByRole('button', { name: `Öppna ${made.code}` })
+    expect(document.activeElement).toBe(open)
+    expect(await listed()).toBe(1)
+
+    // The safe answer opens the table's own screen, as «Öppna bordet» does, and starts nothing.
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
+    fireEvent.click(open)
+    const [href, target] = opened.mock.calls[0]!
+    const url = new URL(String(href), 'http://x')
+    expect([url.pathname, url.searchParams.get('session'), url.searchParams.get('owner'), target]).toEqual(['/table', made.id, '1', '_blank'])
+    opened.mockRestore()
+    expect(screen.queryByRole('alertdialog', { name: 'Ett bord kör redan' })).toBeNull()
+    expect(await listed()).toBe(1)
+
+    // Escape takes the question back and gives the focus to ⋯.
+    fireEvent.click(more)
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    fireEvent.keyDown(screen.getByRole('alertdialog', { name: 'Ett bord kör redan' }), { key: 'Escape' })
+    expect(screen.queryByRole('alertdialog', { name: 'Ett bord kör redan' })).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(more))
+    expect(await listed()).toBe(1)
+
+    // And «Starta ett nytt ändå» does what the button used to do on its own.
+    fireEvent.click(more)
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Starta ett nytt ändå' }))
+    await waitFor(async () => expect(await listed()).toBe(2))
   })
 
   it('asks before taking a game away, and takes it away when the answer is yes', async () => {

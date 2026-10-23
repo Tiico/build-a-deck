@@ -169,7 +169,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
     // And it is an icon that can actually be fetched: a symbol lives in the project's own assets
     // (E1), so a preview handed the raw `asset:` reference draws a broken image and calls it done.
     const src = icon.getAttribute('src') ?? ''
-    expect(src).toMatch(/\/assets\/[0-9a-f]{64}$/)
+    expect(src).toMatch(/\/assets\/[0-9a-f]{64}\/bytes$/)
     expect((await fetch(src)).headers.get('content-type')).toBe('image/svg+xml')
   })
 

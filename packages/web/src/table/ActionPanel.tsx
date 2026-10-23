@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
-import { isLoose, placesFor, verbsFor, type Place, type Thing } from './keyboard.js'
+import { isLoose, placesFor, verbsFor, type Act, type Place, type Thing } from './keyboard.js'
 import { useT } from '../i18n/index.js'
 import './keyboard.css'
 
@@ -35,6 +35,9 @@ export type ActionPanelProps = {
   // words and with the sheet's placement, and of its own verbs only looking: what a thumb is not
   // offered, a keyboard is not offered either.
   sheet?: HandSheet | undefined
+  // A card in this seat's own hand turns over there and is played face down (#1133): the panel's
+  // «Vänd» is that turn, which sends nothing, and not a flip of a card nobody else can see.
+  turn?: { on: boolean; toggle(): void } | undefined
 }
 
 export type HandSheet = {
@@ -42,7 +45,7 @@ export type HandSheet = {
   intentsFor(zone: string, moving: readonly string[]): Intent[]
 }
 
-export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey, sheet }: ActionPanelProps) {
+export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey, sheet, turn }: ActionPanelProps) {
   const t = useT()
   const moving = cards.length > 0 ? [...cards] : isLoose(thing) ? [thing.id] : []
   // A thing is never offered the place it already is: a card or a chip its own zone, a pile
@@ -60,9 +63,15 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
   // of them says why it cannot run, when it cannot (K14) — and none of the tool's verbs switched
   // off in a row.
   const empty = pileZone !== undefined && topCount === 0
-  const verbs = (sheet ? verbsFor(view, thing, t).filter((a) => a.look !== undefined) : verbsFor(view, thing, t)).filter(
+  const own = (sheet ? verbsFor(view, thing, t).filter((a) => a.look !== undefined) : verbsFor(view, thing, t)).filter(
     (a) => !empty || a.intents !== null || a.key.startsWith('action:'),
   )
+  // Where the felt's own panel offers «Vänd», a card in the hand turns there instead, in the same
+  // place. The sheet's panel offers what the sheet does, and the thumb turns a card under the held
+  // card and not in the sheet; the keyboard has F on the strip.
+  const verbs: Act[] = turn && isLoose(thing)
+    ? own.map((a) => (a.key === 'flip' ? { key: 'turn', label: t(turn.on ? 'player.hand.unturn' : 'player.hand.turn'), intents: [], turn: thing.id } : a))
+    : own
   const groups: { heading: string; as?: Thing }[] =
     empty
       ? []
@@ -125,6 +134,10 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
               type="button"
               disabled={a.intents === null}
               onClick={() => {
+                if (a.turn !== undefined) {
+                  turn?.toggle()
+                  return
+                }
                 if (a.look !== undefined) {
                   const c = typeof a.look === 'string' ? view.components.find((x) => x.id === a.look) : a.look
                   if (c) onLook(c)

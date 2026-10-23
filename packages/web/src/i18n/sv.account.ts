@@ -125,10 +125,10 @@ export const svAccount = {
   'home.played.some-table': 'Ett bord',
   'home.played.deleted': 'Borttaget spel',
   'home.played.you': '{version} · du spelade som {name}',
-  'home.played.surveyed': 'enkät besvarad',
-  'home.played.unsurveyed': 'enkät inte besvarad',
+  'home.played.surveyed': 'Du har svarat på enkäten',
+  'home.played.ended': 'avslutat',
+  'home.played.answer': 'Svara på enkäten',
   'home.played.running': 'pågår',
-  'home.played.flags': '{n} flaggade',
   'home.played.back': 'Öppna bordet',
   'home.played.seat': 'Plats {seat}',
   'home.played.watched': 'Åskådare',
@@ -142,6 +142,11 @@ export const svAccount = {
   'claim.taken.heading': 'Bordet är redan sparat',
   'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
   'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på «Spara till ditt konto» igen.',
+
+  // Enkäten från Mina spel (#1143): ett avslutat bord kontot satt vid.
+  'survey-page.home': 'Till Mina spel',
+  'survey-page.gone.heading': 'Enkäten finns inte här',
+  'survey-page.gone.text': 'Det här bordet är inte ett du har spelat vid, eller så är det inte avslutat än.',
 
   // Att följa en inbjudan till ett spel (D3).
   'invite.title': 'Inbjudan',

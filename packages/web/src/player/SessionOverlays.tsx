@@ -1,9 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useId, useRef, useState } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
-import { FlagSheet, EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
+import { EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
@@ -11,6 +11,10 @@ import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
 import { returnPile } from '../table/handName.js'
 import { ExitGlyph, FlagGlyph, HookGlyph } from '../glyphs.js'
+
+// Flagging is never in the first frame, so it travels in a chunk of its own with its sheet rather
+// than in the stylesheet every phone blocks on (#760, L20, #1142).
+const FlagFlow = lazy(() => import('./FlagFlow.js').then((m) => ({ default: m.FlagFlow })))
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
 export function refusedText(reason: string, t: T): string {
@@ -61,9 +65,11 @@ export type SessionOverlaysProps = {
   toast: string | null
   onToast(msg: string): void
   version: string | null
+  // Where the textures are served from, for the card a flag is about (#1142).
+  faces: string | undefined
 }
 
-export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -93,20 +99,19 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
     <>
       {toast && <div className="byd-toast" role="status">{toast}</div>}
       {sheet === 'flag' && (
-        <FlagSheet
-          refusal={flagged}
-          onFlag={(note) => {
-            void flagged.watch(client.send({ v: 'flag', ...(note ? { note } : {}) })).then((result) => {
-              if (!result.ok) return
+        <Suspense fallback={null}>
+          <FlagFlow
+            client={client}
+            view={view}
+            faces={faces}
+            refusal={flagged}
+            onFlagged={() => {
               onSheet(null)
               onToast(t('session.flagged'))
-            })
-          }}
-          onClose={() => {
-            flagged.clear()
-            onSheet(null)
-          }}
-        />
+            }}
+            onClose={() => onSheet(null)}
+          />
+        </Suspense>
       )}
       {sheet === 'propose' && view.undo?.contested && (
         <ProposeSheet
@@ -191,7 +196,8 @@ export function SeatSurvey({ view, seat, name, http, sessionId, version, token, 
   return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} saved={saved} remember={`${sessionId}:${seat}`} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })} />
 }
 
-// The three buttons every seat has, and three is the number (#31): the row is full at 375 px,
+// The three buttons every seat has, in one row in `/online`'s head (the phone splits them, #1147:
+// undo in its head, the other two in «Mer»). Three is the number (#31): the row is full at 375 px,
 // and a game with a rulebook puts a fourth control of its own beside them. Undo (B, C), flag
 // (G3), and the way out (C9, #31) — which is one control for both exits rather than two exits
 // standing next to each other.
@@ -206,7 +212,21 @@ export function SeatSurvey({ view, seat, name, http, sessionId, version, token, 
 // chain went — `Question.tsx`'s manners, which say a question hands the focus back to what opened
 // it. The row is what opened it, so the row is where it is handed back.
 export function SessionButtons({ client, view, sheet, onSheet }: { client: TableClient; view: Snapshot; sheet: Sheet; onSheet(sheet: Sheet): void }) {
-  const t = useT()
+  const raise = useSheetOpener(sheet, onSheet)
+  return (
+    <>
+      <UndoButton client={client} view={view} raise={raise} />
+      <FlagButton view={view} raise={raise} />
+      <ExitButton view={view} raise={raise} />
+    </>
+  )
+}
+
+// Opens a sheet and remembers what opened it, to hand the focus back there when the last sheet
+// closes. Each group of buttons keeps its own: the phone's undo stands in the head and its flag and
+// way out in «Mer» (#1147), and an opener that is not this group's is never this group's to refocus.
+export type RaiseSheet = (which: Sheet) => (event: { currentTarget: HTMLButtonElement }) => void
+export function useSheetOpener(sheet: Sheet, onSheet: (sheet: Sheet) => void): RaiseSheet {
   const opener = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
     if (sheet !== null) return
@@ -214,15 +234,23 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
     opener.current = null
     if (from?.isConnected && !from.disabled) from.focus()
   }, [sheet])
-  const raise = (which: Sheet) => (event: { currentTarget: HTMLButtonElement }) => {
+  return (which) => (event) => {
     opener.current = event.currentTarget
     onSheet(which)
   }
-  // «Ångra» switches itself off by being pressed: the one thing there was to undo is undone. A
-  // `disabled` button cannot hold the focus, so the focus that pressed it fell to nothing and the
-  // next Tab began again at the top (#761, K16). It is `aria-disabled` instead, as the strip's
-  // «Flytta vänster» is at the end of the hand (L53): said to be off, kept in the tab order, and
-  // doing nothing when pressed.
+}
+
+// `words`: the label stands beside the glyph, in the phone's «Mer» (#1147), where each is a row of
+// its own. Without it the word is the button's name, out of sight in the DOM and on the pointer as
+// its title (L73, led 3).
+type SessionButtonProps = { view: Snapshot; raise: RaiseSheet; words?: boolean }
+
+// «Ångra» switches itself off by being pressed: the one thing there was to undo is undone. A
+// `disabled` button cannot hold the focus, so the focus that pressed it fell to nothing and the
+// next Tab began again at the top (#761, K16). It is `aria-disabled` instead (L53): said to be
+// off, kept in the tab order, and doing nothing when pressed.
+export function UndoButton({ client, view, raise, words = false }: SessionButtonProps & { client: TableClient }) {
+  const t = useT()
   const off = !view.undo || !!view.rewind || view.ended
   const tapUndo = (event: { currentTarget: HTMLButtonElement }) => {
     if (off || !view.undo) return
@@ -231,22 +259,30 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
     else void client.send({ v: 'undo.self' })
   }
   return (
-    <>
-      {/* Icons at every width (L73, led 3; before that only under 375 px, #716, L62): the word stays
-          the button's name, out of sight in the DOM and on the pointer as its title. */}
-      <button className="byd-undo" aria-disabled={off} onClick={tapUndo} title={t('session.undo')}>
-        <HookGlyph />
-        <span className="byd-offscreen">{t('session.undo')}</span>
-      </button>
-      <button className="byd-flag" disabled={view.ended} onClick={raise('flag')} title={t('session.flag')}>
-        <FlagGlyph />
-        <span className="byd-offscreen">{t('session.flag')}</span>
-      </button>
-      <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} title={t('session.exit')} disabled={view.ended} onClick={raise('exit')}>
-        <ExitGlyph />
-        <span className="byd-offscreen">{t('session.exit')}</span>
-      </button>
-    </>
+    <button className="byd-undo" aria-disabled={off} onClick={tapUndo} title={t('session.undo')}>
+      <HookGlyph />
+      <span className={words ? undefined : 'byd-offscreen'}>{t('session.undo')}</span>
+    </button>
+  )
+}
+
+export function FlagButton({ view, raise, words = false }: SessionButtonProps) {
+  const t = useT()
+  return (
+    <button className="byd-flag" disabled={view.ended} onClick={raise('flag')} title={t('session.flag')}>
+      <FlagGlyph />
+      <span className={words ? undefined : 'byd-offscreen'}>{t('session.flag')}</span>
+    </button>
+  )
+}
+
+export function ExitButton({ view, raise, words = false }: SessionButtonProps) {
+  const t = useT()
+  return (
+    <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} title={t('session.exit')} disabled={view.ended} onClick={raise('exit')}>
+      <ExitGlyph />
+      <span className={words ? undefined : 'byd-offscreen'}>{t('session.exit')}</span>
+    </button>
   )
 }
 

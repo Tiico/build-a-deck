@@ -796,8 +796,9 @@
 .byd-setup-recipe { display: grid; gap: 18px; min-width: 0; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
 /* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
-.byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+.byd-setup-tools button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
+.byd-setup-adds { display: flex; flex-wrap: wrap; gap: 6px; }
 /* A counter is a name, «från», a number and ×. The row wraps rather than setting the column's
    width (#480): at 1024 it was 296 px of content in a 260 px track, and the whole column scrolled
    sideways with × and «FAST» cut at its edge. */
@@ -806,6 +807,8 @@
    counters themselves are written in, at the width the column has. */
 .byd-setup-note { margin: 0; max-width: 260px; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 .byd-setup-counter button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+/* A die's row (#1139) wraps like a counter's, but «i» never parts from the area it names. */
+.byd-setup-die-where { display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
 /* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
    counted on top of it every field on this tab stood 62 px tall. */
 .byd-setup input:not([type='checkbox']), .byd-setup select { box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
@@ -4377,7 +4380,7 @@ img[data-arriving] { opacity: 0; }
   .byd-theme-tiles, .byd-theme-reset, .byd-theme-show,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
   .byd-crop-corner, .byd-media-crop-row .byd-secondary,
-  .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-props > button,
+  .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props > button,
   .byd-zone-action-x, .byd-zone-action-drop, .byd-zone-step-add, .byd-zone-action-undo, .byd-zone-action-new
 ) { display: none !important; }
 .byd-editor[data-readonly] > main { background: repeating-linear-gradient(135deg, rgb(255 255 255 / 3%) 0 2px, transparent 2px 9px), #1d1f25; }
@@ -4648,6 +4651,28 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-results-when { color: var(--byd-editor-narrow-ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .byd-results-when > .byd-glyph { margin-right: var(--byd-s1); }
 .byd-results-when span { color: var(--byd-tables-quiet); font-weight: 400; }
+
+/* A flag about a card (#1142): the card as it was, beside the flag, and held up on a press. The
+   thumbnail is the card's own shape, so a texture still rendering keeps its box. */
+.byd-results-flags li[data-card] { grid-template-columns: 64px minmax(0, 1fr); column-gap: var(--byd-s3); }
+.byd-results-flags li[data-card] > :not(.byd-results-thumb) { grid-column: 2; }
+.byd-results-thumb { position: relative; grid-row: 1 / span 3; align-self: start; width: 64px; aspect-ratio: 63 / 88; padding: 0; border: 0; border-radius: 5px; background: #0f1115; overflow: hidden; cursor: zoom-in; box-shadow: 0 2px 8px #0008; }
+.byd-results-thumb .byd-texture, .byd-results-lift-card .byd-texture, .byd-results-lift-front-card .byd-texture { display: block; width: 100%; height: 100%; object-fit: contain; }
+.byd-results-thumb:focus-visible, .byd-results-lift-close:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
+.byd-results-flags p.byd-results-card-line { color: var(--byd-tables-quiet); font-size: 12px; }
+.byd-results-lift-ground { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: var(--byd-s4); background: #000b; }
+.byd-results-lift { display: grid; grid-template-columns: auto minmax(0, 280px); gap: var(--byd-s5); align-items: start; max-height: 100%; overflow: auto; padding: var(--byd-s5); border-radius: 16px; background: var(--byd-tables-bg); border: 1px solid var(--byd-editor-line); box-shadow: 0 30px 80px #000; color: var(--byd-tables-ink); }
+.byd-results-lift-card { position: relative; width: min(340px, 40vw); aspect-ratio: 63 / 88; border-radius: 10px; overflow: hidden; }
+.byd-results-lift-about { display: grid; gap: var(--byd-s2); align-content: start; font-size: 13px; }
+.byd-results-lift-about h3 { margin: 0; font-size: 17px; }
+.byd-results-lift-about p { margin: 0; }
+.byd-results-lift-about dl { display: grid; grid-template-columns: auto 1fr; gap: var(--byd-s1) var(--byd-s3); margin: 0; font-size: 12px; }
+.byd-results-lift-about dt { color: var(--byd-tables-quiet); }
+.byd-results-lift-about dd { margin: 0; }
+.byd-results-lift-about dd[data-now='changed'], .byd-results-lift-about dd[data-now='gone'] { color: var(--byd-editor-narrow-ink); }
+.byd-results-lift-front { display: grid; gap: var(--byd-s1); margin: 0; font-size: 12px; color: var(--byd-tables-quiet); }
+.byd-results-lift-front-card { position: relative; width: 120px; aspect-ratio: 63 / 88; border-radius: 6px; overflow: hidden; }
+.byd-results-lift-close { justify-self: start; min-height: var(--byd-tap); padding: 0 var(--byd-s4); border: 1px solid var(--byd-editor-line); border-radius: 8px; background: transparent; color: var(--byd-tables-ink); font: inherit; cursor: pointer; }
 
 /* The first column is as wide as the setup's at each width, so the switch stands still. */
 @media (min-width: 1024px) and (max-width: 1279px) {
