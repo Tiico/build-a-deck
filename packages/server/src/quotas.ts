@@ -21,7 +21,7 @@ import { z } from 'zod'
 export const MEASURES = ['projects', 'cardRowsPerProject', 'cardCopiesPerProject', 'openTables', 'tablesPer30Days', 'storageBytes', 'rendersPer30Days'] as const
 export type Measure = (typeof MEASURES)[number]
 // What `GET /me/usage` and the operator's usage script say: the measures the server counts today.
-export const BUILT_MEASURES = ['projects'] as const satisfies readonly Measure[]
+export const BUILT_MEASURES = ['projects', 'openTables', 'tablesPer30Days'] as const satisfies readonly Measure[]
 export type BuiltMeasure = (typeof BUILT_MEASURES)[number]
 
 export type Limit = number | null
@@ -97,4 +97,22 @@ export class QuotaReached extends Error {
     super(`quota ${quota.measure} reached: ${quota.used} of ${quota.limit}`)
     this.name = 'QuotaReached'
   }
+}
+
+// Tables, the second and third measures (#1196, #1192 question 3): tables open at once, the ceiling
+// that guards the box's memory (DRIFT §1), and tables started over a rolling 30 days, the one that
+// follows use — rolling and not by the calendar month, so that no day of the month is better than
+// another. Both are counted out of the sessions and their bearer (#1194), and both are asked only
+// when a table is started.
+export const TABLE_WINDOW_MS = 30 * 24 * 3600 * 1000
+// Where the window counted back from `now` begins: a start after it is in it.
+export const tableWindowFrom = (now: Date): Date => new Date(now.getTime() - TABLE_WINDOW_MS)
+// What an account bears of them: the tables of its that have not ended, and those started in the window.
+export type TableUse = { open: number; started: number }
+// The ceilings a table is opened within, and where the window begins.
+export type TableCeilings = { openTables: Limit; tablesPer30Days: Limit; since: Date }
+// The ceiling one more table would cross, or null when it may be opened. Open tables are asked
+// first: it is the ceiling that guards the box, and the one a table that ends makes room under.
+export function tableGrowth(ceilings: TableCeilings, used: TableUse): QuotaMet | null {
+  return growth('openTables', ceilings.openTables, used.open, 1) ?? growth('tablesPer30Days', ceilings.tablesPer30Days, used.started, 1)
 }

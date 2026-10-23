@@ -1,7 +1,8 @@
 import type { Sql } from 'postgres'
 import type { AuthStore } from './auth.js'
 import type { ProjectStore } from './projects.js'
-import { BUILT_MEASURES, checkPlansInUse, limitOf, plansFromEnv, type BuiltMeasure, type Limit, type Plans } from './quotas.js'
+import type { LogStore } from './store.js'
+import { BUILT_MEASURES, checkPlansInUse, limitOf, plansFromEnv, tableWindowFrom, type BuiltMeasure, type Limit, type Plans } from './quotas.js'
 
 // Which tier an account has (#1193, A2, #1192). A table of its own, beside the accounts, written by
 // the operator today and by Stripe later — so that paying becomes a way to change tier and not a
@@ -78,10 +79,12 @@ export async function planOf(accountPlans: AccountPlanStore | undefined, plans: 
 // Each measure is counted out of the domain's own data, never kept beside it, so the count cannot
 // drift from the truth (#1192).
 export type Usage = { plan: string; measures: Record<BuiltMeasure, { used: number; limit: Limit }> }
-export type UsageStores = { projects: Pick<ProjectStore, 'owned'>; accountPlans?: AccountPlanStore }
-export async function usageOf(stores: UsageStores, plans: Plans, account: string): Promise<Usage> {
+// The tables are counted out of the sessions and their bearer (#1196), the window back from `now`.
+export type UsageStores = { projects: Pick<ProjectStore, 'owned'>; tables: Pick<LogStore, 'tablesOf'>; accountPlans?: AccountPlanStore }
+export async function usageOf(stores: UsageStores, plans: Plans, account: string, now = new Date()): Promise<Usage> {
   const plan = await planOf(stores.accountPlans, plans, account)
-  const used: Record<BuiltMeasure, number> = { projects: await stores.projects.owned(account) }
+  const tables = await stores.tables.tablesOf(account, tableWindowFrom(now))
+  const used: Record<BuiltMeasure, number> = { projects: await stores.projects.owned(account), openTables: tables.open, tablesPer30Days: tables.started }
   const measures = Object.fromEntries(BUILT_MEASURES.map((m) => [m, { used: used[m], limit: limitOf(plans, plan, m) }])) as Usage['measures']
   return { plan, measures }
 }

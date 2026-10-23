@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { MemoryAuthStore, MemoryProjectStore, PostgresLogStore, type AuthStore } from '../src/index.js'
+import { MemoryAuthStore, MemoryLogStore, MemoryProjectStore, PostgresLogStore, type AuthStore, type LogStore } from '../src/index.js'
 import { MemoryAccountPlanStore, clearPlanByAddress, plansAtStart, setPlanByAddress, usageReport, type AccountPlanStore } from '../src/account-plans.js'
 import type { ProjectStore } from '../src/projects.js'
 import { DEFAULT_PLANS, plansFromEnv } from '../src/quotas.js'
@@ -13,9 +13,9 @@ import { template } from './deck.js'
 const url = process.env['DATABASE_URL']
 const schema = `test_account_plans_${process.pid}_${Date.now()}`
 
-type Backend = { auth: AuthStore; plans: AccountPlanStore; projects: ProjectStore; close(): Promise<void> }
+type Backend = { auth: AuthStore; plans: AccountPlanStore; projects: ProjectStore; tables: LogStore; close(): Promise<void> }
 const backends: { name: string; skip: boolean; open(): Promise<Backend> }[] = [
-  { name: 'memory', skip: false, open: async () => ({ auth: new MemoryAuthStore(), plans: new MemoryAccountPlanStore(), projects: new MemoryProjectStore(), close: () => Promise.resolve() }) },
+  { name: 'memory', skip: false, open: async () => ({ auth: new MemoryAuthStore(), plans: new MemoryAccountPlanStore(), projects: new MemoryProjectStore(), tables: new MemoryLogStore(), close: () => Promise.resolve() }) },
   {
     name: 'Postgres',
     skip: !url,
@@ -26,6 +26,7 @@ const backends: { name: string; skip: boolean; open(): Promise<Backend> }[] = [
         auth: store.auth(),
         plans: store.accountPlans(),
         projects: store.projects(),
+        tables: store,
         close: async () => {
           await store.dropSchema()
           await store.close()
@@ -99,10 +100,14 @@ for (const backend of backends) {
       const dee = await db.auth.ensureAccount('dee@example.com')
       await db.projects.create(`dee-1-${backend.name}`, game('Ett'), dee.id)
       await db.projects.create(`dee-2-${backend.name}`, game('Två'), dee.id)
+      // A table Dee bears (#1196), standing, and counted both as open and as started.
+      await db.tables.createSession({ id: `dee-table-${backend.name}-${Date.now()}`, version: 'v1', setup: twoSeatSetup(), accountId: dee.id })
       await db.plans.setPlan(dee.id, 'pro', 'operator')
-      const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects }, tiers)
-      expect(report).toContainEqual({ email: 'dee@example.com', plan: 'pro', measures: { projects: { used: 2, limit: null } } })
-      expect(report).toContainEqual({ email: 'bo@example.com', plan: 'free', measures: { projects: { used: 0, limit: 2 } } })
+      const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, tiers)
+      // Each slice adds its measures (#1192), so a line is read for the ones this report is about.
+      const line = (email: string, plan: string, measures: Record<string, unknown>) => expect.objectContaining({ email, plan, measures: expect.objectContaining(measures) })
+      expect(report).toContainEqual(line('dee@example.com', 'pro', { projects: { used: 2, limit: null }, openTables: { used: 1, limit: null }, tablesPer30Days: { used: 1, limit: null } }))
+      expect(report).toContainEqual(line('bo@example.com', 'free', { projects: { used: 0, limit: 2 }, openTables: { used: 0, limit: null }, tablesPer30Days: { used: 0, limit: null } }))
       await db.plans.clearPlan(dee.id)
     })
   })

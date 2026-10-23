@@ -5,6 +5,7 @@ import type { CardFace, CardPeek, Role } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
 import { Unauthorized, pageLang, withCredentials } from './session.js'
+import { QuotaReached, quotaOf } from './quota.js'
 export { Unauthorized, claimGuest, claimUrl, loginUrl, logout, requestLink, whoAmI, withCredentials } from './session.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
@@ -109,6 +110,9 @@ export async function startTable(http: string, project: string, t: T = swedish):
   // so a refusal is an answer that changed under the page, said as what it means.
   if (res.status === 403) throw new Said(t('error.startTable.viewer'))
   if (res.status === 404) throw new Said(t('error.game.gone'))
+  // A ceiling met (#1196): the ceiling goes with it, for the page to say (#1198).
+  const quota = await quotaOf(res)
+  if (quota) throw new QuotaReached(quota, t('error.startTable.failed'))
   if (!res.ok) throw new Said(t('error.startTable.failed'))
   return (await res.json()) as { id: string; code: string; hostKey: string }
 }
