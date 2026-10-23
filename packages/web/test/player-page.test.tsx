@@ -504,7 +504,7 @@ describe('flagging a moment (G3)', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
+    fireEvent.change(await screen.findByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     const said = await screen.findByRole('status')
     expect(said.textContent).toMatch(/Flaggat/)
@@ -534,7 +534,7 @@ describe('flagging a card (#1142)', () => {
     const card = second.getAttribute('data-hand-card')!
 
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    const sheet = screen.getByRole('dialog')
+    const sheet = await screen.findByRole('dialog')
     expect(within(sheet).getByRole('button', { name: /Det som händer/ }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.change(within(sheet).getByPlaceholderText(/Vad hände/), { target: { value: 'Texten är för lång' } })
     fireEvent.click(within(sheet).getByRole('button', { name: /Ett kort/ }))
@@ -559,7 +559,7 @@ describe('flagging a card (#1142)', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
     expect(screen.getByRole('dialog', { name: 'Flagga det som hände' })).toBeTruthy()
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Ett kort/ }))

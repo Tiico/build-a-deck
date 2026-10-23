@@ -31,7 +31,7 @@ describe('ObserverPage (C8)', () => {
     expect(document.querySelector('[data-playable]')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Ada tvekade' } })
+    fireEvent.change(await screen.findByPlaceholderText(/Vad hände/), { target: { value: 'Ada tvekade' } })
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: null, intent: { v: 'flag', note: 'Ada tvekade', observer: 'Eva' } }))
     ada.close()
@@ -52,7 +52,7 @@ describe('ObserverPage (C8)', () => {
     })
     const card = held.getAttribute('data-component')!
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
     fireEvent.click(held)
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Flagga kortet' })).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: null, intent: { v: 'flag', component: card, observer: 'Eva' } }))
@@ -332,7 +332,7 @@ describe('the observer is shown and told what the table is', () => {
     history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${token}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     fireEvent.click(await screen.findByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     expect((await screen.findByText('Flaggat')).closest('[role="status"]')).not.toBeNull()
   })
 })

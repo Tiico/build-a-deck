@@ -95,7 +95,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
     fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
@@ -118,7 +118,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     })
     const card = felt.getAttribute('data-component')!
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
     fireEvent.pointerDown(felt, { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerUp(felt, { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.click(felt)
