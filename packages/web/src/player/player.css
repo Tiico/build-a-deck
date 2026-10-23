@@ -39,6 +39,11 @@
   --byd-rule: #262a35;
   --byd-rule-soft: #1f2330;
   --byd-line: #2c3242;
+  /* A die's face in the dice sheet (#1138): ivory with dark figures, as the prototype drew it. */
+  --byd-die: #f3e9d6;
+  --byd-die-ink: #1c1c1c;
+  --byd-die-kind: #5f5749;
+  --byd-die-edge: #b9ad97;
 }
 
 .byd-player {
@@ -91,6 +96,39 @@ html:has(.byd-player) { background: #14161c; }
 .byd-counter .byd-counter-value span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
 .byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* The dice (K28, #1138, variant B): a pill among the counters that opens their sheet. It is a pill
+   like theirs, with the die drawn in the felt's amber so a thumb finds it; beside two counters a
+   third column would leave a counter's value no room at 320 px, so it takes a row of its own. */
+.byd-dice-pill {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px;
+  border: 1px solid var(--byd-line); border-radius: 14px; background: var(--byd-surface); color: var(--byd-ink-strong);
+  font: inherit; font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.byd-dice-pill .byd-glyph { width: 20px; height: 20px; flex: none; color: var(--byd-warn); }
+.byd-counters[data-full] { grid-auto-flow: row; grid-template-columns: repeat(var(--byd-counters), minmax(0, 1fr)); }
+.byd-counters[data-full] .byd-dice-pill { grid-row: 2; grid-column: 1 / -1; }
+/* The sheet: the tiles scroll inside it when a game has many dice, and the two actions stay. */
+.byd-dice-sheet { display: flex; flex-direction: column; gap: 12px; max-height: 88dvh; box-sizing: border-box; }
+.byd-dice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.byd-dice-head .byd-sheet-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--byd-ink-strong); }
+.byd-dice-sheet button.byd-secondary, .byd-dice-sheet button.byd-primary { min-height: 48px; padding: 0 16px; border-radius: 12px; font: inherit; font-size: 16px; }
+.byd-dice-sheet button.byd-primary { font-weight: 750; }
+.byd-dice-sheet button.byd-primary:disabled { opacity: 0.45; }
+.byd-dice-head button.byd-secondary { min-height: 44px; font-size: 14px; }
+.byd-dice-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 12px; overflow-y: auto; min-height: 0; padding: 4px; margin: -4px; }
+/* A tile is the die itself, face up: its kind small in the corner and the side it shows large. What
+   is chosen is ringed in the phone's accent, never filled (#44, variant B). */
+.byd-dice-tile { padding: 0; border: 0; border-radius: 16px; background: transparent; cursor: pointer; }
+.byd-dice-face {
+  position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 16px; box-sizing: border-box;
+  border: 2px solid var(--byd-die-edge); background: var(--byd-die); color: var(--byd-die-ink);
+}
+.byd-dice-face small { position: absolute; left: 8px; top: 4px; font-size: 13px; font-weight: 700; color: var(--byd-die-kind); }
+.byd-dice-face b { font-size: 32px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.byd-dice-tile[aria-pressed='true'] .byd-dice-face { box-shadow: 0 0 0 3px var(--byd-accent); }
+.byd-dice-sheet .byd-dice-said { min-height: 1.4em; margin: 0; font-size: 16px; font-weight: 700; color: var(--byd-ink-strong); }
+.byd-dice-actions { display: grid; gap: 8px; }
 
 /* The private strip (C4): the face inspects; direct actions sit below it as separate controls. */
 .byd-mine { padding: 6px 16px 0; }

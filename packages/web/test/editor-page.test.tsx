@@ -210,9 +210,12 @@ describe('the table follows the editor (C7, L5)', () => {
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getAllByRole('link', { name: /öppna bordet/i })).toHaveLength(1)
 
-    // «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477 fynd 4).
+    // «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477 fynd 4), and asks first while a
+    // table runs (#1145).
     fireEvent.click(screen.getByRole('button', { name: 'Fler sätt att öppna bordet' }))
+    await within(await screen.findByRole('group', { name: 'Bordet' })).findByRole('listitem')
     fireEvent.click(await screen.findByRole('button', { name: /nytt bord/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Starta ett nytt ändå' }))
     await screen.findByText(/nytt bord startat/i)
     const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
     expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)
