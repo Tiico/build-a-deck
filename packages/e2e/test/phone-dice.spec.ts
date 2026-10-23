@@ -3,7 +3,7 @@ import { expect, test } from '../support/test.js'
 
 // Two dice thrown from the phone (K28, #1138, variant B). The setup lays 2d6 on the table every
 // seat shares; the pill among the counters opens the sheet, a tap chooses each die, and «Slå»
-// sends both as one envelope (K3). What they came to is said in the sheet with the sum, in the
+// sends both as one envelope (K3). What they came to stands in the sheet with the sum, is said in the
 // phone's log, and on the television in the room, and the numbers are the same everywhere because
 // the server decided them once (D4). At 375 px, by touch, the way a phone is held.
 test('throws 2d6 from the phone in one envelope, and the sheet, the log and the TV say the same throw', async ({ tableOf, player, open }) => {
@@ -34,7 +34,7 @@ test('throws 2d6 from the phone in one envelope, and the sheet, the log and the 
   await expect(tiles.nth(1)).toHaveAttribute('aria-pressed', 'true')
   await sheet.getByRole('button', { name: 'Roll 2 dice' }).tap()
 
-  const said = sheet.getByRole('status')
+  const said = sheet.getByText(/^You rolled /)
   await expect(said).toHaveText(/^You rolled 2d6: [1-6] \+ [1-6] = \d+$/)
   const [, a, b, sum] = /: (\d) \+ (\d) = (\d+)$/.exec((await said.textContent()) ?? '')!.map(Number)
   expect(sum).toBe(a! + b!)

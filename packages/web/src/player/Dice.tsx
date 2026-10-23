@@ -101,9 +101,9 @@ export function DiceSheet({ view, activity, send, onClose }: DiceSheetProps) {
             </button>
           ))}
         </div>
-        <p className="byd-dice-said" role="status">
-          {said}
-        </p>
+        {/* Not a live region: the phone's `useActivityLive` already says one's own throw at once,
+            and a second voice in the sheet would read the same sentence twice (StatusLive). */}
+        <p className="byd-dice-said">{said}</p>
         <div className="byd-dice-actions">
           <button type="button" className="byd-primary" data-dice-roll disabled={picked.length === 0} onClick={() => void roll()} {...refusal.control}>
             {picked.length === 0 ? t('player.dice.roll.nothing') : picked.length === 1 ? t('player.dice.roll.one') : t('player.dice.roll.other', { n: picked.length })}
