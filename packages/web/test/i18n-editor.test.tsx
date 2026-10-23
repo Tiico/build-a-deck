@@ -60,12 +60,12 @@ describe('the editor in the reader\'s own language (A4)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Physical check/ }))
     const checks = screen.getByRole('list', { name: 'Physical check' })
     // The fixture's frame stops short of the bleed on every card, which is the fault the wall
-    // gathers: named by kind, counted in cards, and marked as what stops an order.
+    // gathers: named by kind, counted in cards, and marked as what keeps the deck from print.
     const bleed = checks.querySelector('[data-check="short-of-bleed"]') as HTMLElement
     expect(within(bleed).getByText('short of the bleed')).toBeTruthy()
     expect(within(bleed).getByText('3 cards')).toBeTruthy()
     expect(within(bleed).getByText('error')).toBeTruthy()
-    expect(screen.getByText('One error stops the order.')).toBeTruthy()
+    expect(screen.getByText('One error must be mended before the deck is print-ready.')).toBeTruthy()
   })
 
   it('says the data table in English and keeps the designer\'s own column names', async () => {
