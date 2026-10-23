@@ -442,6 +442,10 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'join.sit': 'Sit down',
   'join.sitting': 'Sitting down…',
   'join.online': 'Play on this screen',
+  'join.seats.left.one': '{n} of {total} seat left',
+  'join.seats.left.other': '{n} of {total} seats left',
+  'join.go': 'Join',
+  'join.phone': 'Sitting around a TV? Use your phone as your hand',
   'join.observe': 'Just watch (you see everything, everyone sees you)',
 
   'notes.title': 'Notes',

@@ -174,22 +174,33 @@ test.describe('the code is the address (#675)', () => {
     for (const answer of wire) expect(answer.body).not.toContain(table.session)
   })
 
-  test('a laptop is shown a card with the game’s name, and playing on this screen is the suggestion', async ({ request, open }) => {
+  // A laptop has one choice (L75, #1130): how many seats are left, a name, and «Gå med», which
+  // sits her down at the table on this screen. The phone's way and only watching are links under it.
+  test('a laptop is shown a card with the game’s name and one way in, «Gå med»', async ({ request, open }) => {
     const table = await namedTable(request, "Sal's Saloon")
     const { page } = await open(LAPTOP, `/${table.code}?lang=sv`)
     await expect(page.getByRole('heading', { level: 1, name: "Sal's Saloon" })).toBeVisible()
+    const seats = await page.locator('[data-seat]').count()
+    await expect(page.getByText(`Rum ${table.code} · ${seats} av ${seats} platser kvar`)).toBeVisible()
     const card = (await page.locator('[data-page="join"]').boundingBox())!
     expect(Math.round(card.width)).toBe(520)
     expect(Math.abs(card.x + card.width / 2 - 1280 / 2)).toBeLessThanOrEqual(1)
-    const buttons = page.locator('[data-page="join"] form button')
-    await expect(buttons.first()).toHaveText(/Spela på den här skärmen/)
-    await expect(buttons.first()).toHaveClass(/byd-primary/)
-    await expect(buttons.nth(1)).toHaveText('Sätt dig')
-    await expect(buttons.nth(1)).toHaveClass(/byd-secondary/)
-    // Enter does what the suggestion does.
-    await page.locator('form input').fill('Ada')
-    await page.locator('form input').press('Enter')
+    const go = page.getByRole('button', { name: 'Gå med', exact: true })
+    await expect(go).toHaveClass(/byd-primary/)
+    await expect(page.locator('[data-page="join"] form .byd-primary, [data-page="join"] form .byd-secondary')).toHaveCount(1)
+    // The two lines under it are a whole target tall, and drawn as links rather than as buttons.
+    for (const name of ['Sitter ni runt en TV? Använd telefonen som hand', /^Bara titta/]) {
+      const link = page.getByRole('button', { name })
+      expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      expect(await link.evaluate((el) => [getComputedStyle(el).textDecorationLine, getComputedStyle(el).borderTopStyle])).toEqual(['underline', 'none'])
+    }
+    // The whole card stands on the screen, nothing under the fold.
+    expect(card.y + card.height).toBeLessThanOrEqual(800)
+    await page.getByLabel('Ditt namn').fill('Ada')
+    await go.click()
     await page.waitForURL('**/online*')
+    // Seated at the table, under the name she typed.
+    await expect(page.locator('.byd-online-me strong')).toHaveText('Ada')
     // Below 1024 it is a phone's page again.
     const narrow = await open({ name: 'narrow', viewport: { width: 1000, height: 800 } }, `/${table.code}?lang=sv`)
     await expect(narrow.page.locator('[data-page="join"] form button').first()).toHaveText('Sätt dig')
