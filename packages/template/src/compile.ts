@@ -243,7 +243,9 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       const found = input.motifs?.[src]
       const motif = el.frame || el.trim || found?.cropped ? found : undefined
       const laid = motif && (el.frame ? throughWindow(el, el.frame, motif) : aroundMotif(el, motif))
-      css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
+      // The box clips what it holds, so a rounded box is a rounded picture however it is laid (#1224).
+      const corner = (el.radiusMm ?? 0) > 0 ? `border-radius:${el.radiusMm}mm;` : ''
+      css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;${corner}}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-art{${laid ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
       // A cell with no picture in it is an empty cell, whether it is blank or holds words (#802).
       html.push(isPictureSource(src) ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)

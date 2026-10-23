@@ -40,13 +40,26 @@ const plainBack = (fill: string, inner?: string) => (t: T): FaceTemplate => ({
 // Where a picture goes, for a game that has a picture field (#730): a quiet plate under the picture's
 // box, so a card whose cell is still empty shows where its picture will land, and the picture covers
 // it once there is one. A game without a picture field gets neither; a plate there read as «bild hit».
-const picture = (fields: Field[], t: T, box: { x: number; y: number; w: number; h: number }, mark: string): Element[] =>
+// The picture is rounded as its plate is (#1224): a square picture on a rounded plate had a different
+// shape filled than empty, and in classic its corners were drawn out over the frame line's curve.
+type Box = { x: number; y: number; w: number; h: number }
+const picture = (fields: Field[], t: T, box: Box, mark: string, radiusMm: number): Element[] =>
   has(fields, 'art')
     ? [
-        { kind: 'shape', id: 'artbg', name: t('wizard.layer.artbg'), ...box, shape: 'rect', fill: mark, radiusMm: 2 },
-        { kind: 'image', id: 'art', name: t('wizard.layer.art'), ...box, bind: at(fields, 'art'), fit: 'cover' },
+        { kind: 'shape', id: 'artbg', name: t('wizard.layer.artbg'), ...box, shape: 'rect', fill: mark, radiusMm },
+        { kind: 'image', id: 'art', name: t('wizard.layer.art'), ...box, bind: at(fields, 'art'), fit: 'cover', radiusMm },
       ]
     : []
+
+// Classic's line and the picture inside it. The line is drawn on a path inset by half its width, so
+// its inner edge is a curve of `radius − stroke / 2` round a centre `stroke / 2 + radius` in from the
+// line's corner. The picture's corners are drawn round that same centre: the gap between the line
+// and the picture is then as wide in the corner as along the sides, and the picture never reaches
+// the curve.
+const CLASSIC_LINE = { x: 3, y: 3, w: 57, h: 82, strokeMm: 0.6, radiusMm: 3 }
+const CLASSIC_ART: Box = { x: 4, y: 4, w: 55, h: 36 }
+// Rounded to a hundredth, which is what the template writes and what the press can tell apart.
+const CLASSIC_ART_RADIUS = Math.round((CLASSIC_LINE.x + CLASSIC_LINE.strokeMm / 2 + CLASSIC_LINE.radiusMm - CLASSIC_ART.x) * 100) / 100
 
 const classic: Frame = {
     id: 'classic',
@@ -55,8 +68,8 @@ const classic: Frame = {
     front: (fields, t) => ({
       base: [
         { kind: 'shape', id: 'paper', name: t('wizard.layer.paper'), x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#f4ead8' },
-        { kind: 'shape', id: 'frame', name: t('wizard.layer.frame'), x: 3, y: 3, w: 57, h: 82, shape: 'rect', stroke: '#3a2a1a', strokeMm: 0.6, radiusMm: 3 },
-        ...picture(fields, t, { x: 4, y: 4, w: 55, h: 36 }, '#e6d9c2'),
+        { kind: 'shape', id: 'frame', name: t('wizard.layer.frame'), ...CLASSIC_LINE, shape: 'rect', stroke: '#3a2a1a' },
+        ...picture(fields, t, CLASSIC_ART, '#e6d9c2', CLASSIC_ART_RADIUS),
         { kind: 'text', id: 'title', name: t('wizard.layer.title'), x: 5, y: 42, w: 53, h: 9, bind: { field: 'title' }, font: { family: THEMED, sizePt: 13, weight: 800 }, color: '#1c1c1c' },
         ...(has(fields, 'body') ? [{ kind: 'text' as const, id: 'body', name: t('wizard.layer.body'), x: 5, y: 53, w: 53, h: 30, bind: at(fields, 'body'), font: { family: THEMED, sizePt: 8.5 }, color: '#333333' }] : []),
         // The circle belongs to the figure in it (L6): a card whose cost is empty gets neither, and a
@@ -105,7 +118,7 @@ export const FRAMES: Frame[] = [
     front: (fields, t) => ({
       base: [
         { kind: 'shape', id: 'frame', name: t('wizard.layer.paper'), x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#1b1d23' },
-        ...picture(fields, t, { x: 3, y: 3, w: 57, h: 48 }, '#2a2d36'),
+        ...picture(fields, t, { x: 3, y: 3, w: 57, h: 48 }, '#2a2d36', 2),
         { kind: 'shape', id: 'plate', name: t('wizard.layer.plate'), x: 3, y: 53, w: 57, h: 32, shape: 'rect', fill: '#2a2d36', radiusMm: 2 },
         { kind: 'text', id: 'title', name: t('wizard.layer.title'), x: 5, y: 55, w: 53, h: 8, bind: { field: 'title' }, font: { family: THEMED, sizePt: 12, weight: 800 }, color: '#ffffff' },
         ...(has(fields, 'body') ? [{ kind: 'text' as const, id: 'body', name: t('wizard.layer.body'), x: 5, y: 64, w: 53, h: 20, bind: at(fields, 'body'), font: { family: THEMED, sizePt: 8.5 }, color: '#cfd3dc' }] : []),

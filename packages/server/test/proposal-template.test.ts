@@ -158,6 +158,19 @@ describe('a template proposal raises its tree out of the flat list it is written
     const paper = applyEdit(own, { v: 'compound', edits: translated.edits }).template.faces['front']!.base[0]
     expect(paper).toMatchObject({ id: 'paper', locked: true, points: [{ x: 0, y: 0 }, { x: 69, y: 0 }, { x: 35, y: 94 }] })
   })
+
+  // A picture's rounded corners (#1224) are not something the model writes, so a proposal that moves
+  // the picture keeps them: classic's picture would otherwise come back square over the frame's curve.
+  it('keeps the rounded corners of a picture it keeps', () => {
+    const faces = template().faces
+    const art = { kind: 'image' as const, id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'typ' }, fit: 'cover' as const, radiusMm: 2.3 }
+    const own: ProjectDoc = { ...doc(), template: { faces: { ...faces, front: { ...faces['front']!, base: [...faces['front']!.base, art] } } } }
+    const picture = { kind: 'image', id: 'art', parent: null, name: null, x: 5, y: 5, w: 53, h: 34, bind: { field: 'typ' }, fit: null }
+    const translated = translateProposal(own, proposed({ variants: [], fields: [], elements: [...proposed().template.elements, picture] }))
+    if (!translated.ok) throw new Error(`refused: ${JSON.stringify(translated.problem)}`)
+    const kept = applyEdit(own, { v: 'compound', edits: translated.edits }).template.faces['front']!.base.find((e) => e.kind === 'image')
+    expect(kept).toMatchObject({ id: 'art', x: 5, y: 5, radiusMm: 2.3 })
+  })
 })
 
 describe('a template proposal that cannot be used is refused, and says why', () => {
