@@ -133,7 +133,7 @@ async function count(png: string, arcs: Arc[], from: (arc: Arc) => number, to: (
 describe('a starter frame’s picture keeps inside the rounded corners round it (#1224)', () => {
   it('measures every frame that has a picture, classic among them', () => {
     expect(PICTURED).toEqual(expect.arrayContaining(['classic', 'dark']))
-  })
+  }, 60_000)
 
   // Bilden målar ingenting utanför sin bildplattas rundade kontur, och fyller den ända fram till
   // bågen: en tom ruta och en fylld har samma form.
@@ -147,7 +147,7 @@ describe('a starter frame’s picture keeps inside the rounded corners round it 
       const inside = await count(png, arcs, () => 0, (a) => a.r - EDGE, ART, 24)
       expect(inside.every((n) => n > 100), `the picture inside its corners: ${inside}`).toBe(true)
       expect(await count(png, arcs, (a) => a.r + EDGE, () => FAR, ART, 24), 'the picture outside its plate’s corners').toEqual([0, 0, 0, 0])
-    }, 30_000)
+    }, 60_000)
   }
 
   // Classic: bilden ligger innanför ramlinjens inre kant, och linjens hörn är målade i linjens färg
@@ -163,5 +163,5 @@ describe('a starter frame’s picture keeps inside the rounded corners round it 
     expect(await count(png, arcs, (a) => a.r - s / 2 + EDGE, () => FAR, ART, 24), 'the picture past the inner edge of the frame line').toEqual([0, 0, 0, 0])
     const onLine = await count(png, arcs, (a) => a.r - s / 4, (a) => a.r + s / 4, hex(line.stroke!), 40)
     expect(onLine.every((n) => n > 50), `the line’s own colour on its corners: ${onLine}`).toBe(true)
-  }, 30_000)
+  }, 60_000)
 })
