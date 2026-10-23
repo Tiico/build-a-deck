@@ -32,7 +32,9 @@
 .byd-profile-small { margin: 0; font-size: 13px; line-height: 1.5; }
 .byd-profile-lead { margin: 0; line-height: 1.5; color: var(--byd-profile-soft); }
 .byd-profile-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.byd-profile-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; box-sizing: border-box; border-radius: 10px; font: inherit; font-size: 14px; cursor: pointer; text-decoration: none; }
+/* A glyph beside the words stands one step from them, as on every other icon button on the account
+   pages (#1245): «Logga in med passkey», «Importera», the landing page's ways in. */
+.byd-profile-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; box-sizing: border-box; border-radius: 10px; font: inherit; font-size: 14px; cursor: pointer; text-decoration: none; }
 
 /* A field: its label over it, at the account's own field ground. A picker is as wide as what it
    says and never the card's whole width — «Claude Sonnet 5.5 (standard)» is a short name. */
