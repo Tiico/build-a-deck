@@ -335,13 +335,11 @@ export const svPlay = {
   // stängs med ett tryck utanför — vilket på en telefon är nästan hela skärmen. Det som säger
   // vad en handling får för följd flyttar aldrig hit; raden över handen står kvar där den står.
   'play.help.hand.topic': 'handen',
-  'play.help.hand.pick': 'Tryck på ett kort för att läsa och välja det. Håll för att välja flera.',
-  'play.help.hand.play': 'Dra ett valt kort uppåt för att spela det, eller använd knapparna under handen.',
+  'play.help.hand.pick': 'Tryck på ett kort för att välja det. Tryck på flera för att spela dem tillsammans.',
+  'play.help.hand.play': 'Knapparna under handen spelar de valda korten, och «Läs stort» visar ett kort i full storlek.',
   'play.help.hand.hidden': 'De andra ser hur många kort du har, men inte vilka.',
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
-  'player.hint.selected.one': '{n} valt',
-  'player.hint.selected.other': '{n} valda',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
   'player.counter.set': '{name}: {value}. Ange värde',
@@ -355,18 +353,19 @@ export const svPlay = {
   'player.mine.empty': 'Inget här ännu. Spela ett kort från handen.',
   // Hela bordet, utfällt när det efterfrågas (C4). Raden över handen är högarna; det här är
   // varje zon läsaren ser in i, andra platsers ytor inräknade sedan #414.
-  'player.table.title': 'Hela bordet',
   'online.hand.back': 'Tillbaka till handen',
   'online.last': 'Senast:',
   'online.last.now': 'nyss',
   'online.last.s': 'för {n} s sedan',
   'online.last.min': 'för {n} min sedan',
   'online.table.where': 'Hela bordet visas på TV:n eller på en större skärm.',
-  // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
-  'player.hand.title': 'Dina kort',
-  // Handens överblick på telefonen (#767): «Visa alla» och var i remsan man står.
-  'player.hand.all': 'Visa alla · {n}',
-  'player.hand.where': '{from}–{to} av {n}',
+  // Telefonens fyra flikar (#1147, beställarens val B).
+  'player.tabs': 'Telefonens flikar',
+  'player.tab.hand': 'Handen',
+  'player.tab.mine': 'Framför mig',
+  'player.tab.table': 'Bordet',
+  'player.tab.more': 'Mer',
+  'player.more.help': 'Så fungerar handen',
   'online.spread.title': 'Hela handen',
   'online.spread.label.one': 'Hela handen, {n} kort',
   'online.spread.label.other': 'Hela handen, {n} kort',
@@ -374,11 +373,12 @@ export const svPlay = {
   'online.spread.count.other': '{n} kort',
   'online.spread.close': 'Stäng',
   'player.hand.actions': 'Spela valda kort',
-  'player.hand.read': 'Läs valt kort',
-  'player.hand.chosen': 'Valt: {name}',
-  'player.hand.none': 'Inget kort valt',
+  'player.hand.read': 'Läs stort',
+  'player.hand.marked': '{n} kort valda',
+  'player.hand.clear': 'Avmarkera',
   'player.hand.left': 'Flytta vänster',
   'player.hand.right': 'Flytta höger',
+  // Tom hand (UX-16): samma form som raden under det som ligger framför en.
   'player.hand.empty': 'Du har inga kort. Dra ett kort från {pile}.',
   'player.hand.empty.any': 'Du har inga kort. Dra ett kort från en hög.',
   'player.hand.empty.none': 'Du har inga kort, och det finns inga att dra.',

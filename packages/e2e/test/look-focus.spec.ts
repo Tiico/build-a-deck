@@ -24,7 +24,7 @@ test('on the phone, Tab stays in the card held up and Escape gives focus back to
   const dealer = await host(table)
   await dealer.send([{ v: 'deal', from: 'draw', to: ['hand:A'], each: 2 }])
   const page = ada.page
-  await expect(page.locator('.byd-strip[data-hand] [data-hand-card]')).toHaveCount(2)
+  await expect(page.locator('[data-hand] [data-hand-card]')).toHaveCount(2)
   await tabTo(page, '[data-hand-card]')
   const id = await focusedKey(page)
   await page.keyboard.press('Enter')

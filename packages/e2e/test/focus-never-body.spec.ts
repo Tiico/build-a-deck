@@ -50,12 +50,12 @@ test('/play: a card played from the address panel leaves focus on the next card 
   const dealer = await host(table)
   await dealer.send([{ v: 'deal', from: 'draw', to: ['hand:A'], each: 3 }])
   const page = await inSwedish(ada.page)
-  const strip = page.locator('.byd-strip[data-hand] [data-hand-card]')
+  const strip = page.locator('[data-hand] [data-hand-card]')
   await expect(strip).toHaveCount(3)
   await playFromPanel(page)
   await expect(strip).toHaveCount(2)
   await expect.poll(() => active(page)).toBe('hand-card')
-  // The strip's one tab stop, so the next Tab goes on from the hand.
+  // The grid's one tab stop, so the next Tab goes on from the hand.
   await expect(page.locator('[data-hand-card]:focus')).toHaveAttribute('tabindex', '0')
 })
 
@@ -65,7 +65,7 @@ test('/play: the last card played from the address panel leaves focus on the dec
   const dealer = await host(table)
   await dealer.send([{ v: 'deal', from: 'draw', to: ['hand:A'], each: 1 }])
   const page = await inSwedish(ada.page)
-  const strip = page.locator('.byd-strip[data-hand] [data-hand-card]')
+  const strip = page.locator('[data-hand] [data-hand-card]')
   await expect(strip).toHaveCount(1)
   await playFromPanel(page)
   await expect(strip).toHaveCount(0)
@@ -78,9 +78,10 @@ test('/play: «Ångra» keeps the focus once there is nothing left to undo', asy
   const dealer = await host(table)
   await dealer.send([{ v: 'deal', from: 'draw', to: ['hand:A'], each: 3 }])
   const page = await inSwedish(ada.page)
-  const strip = page.locator('.byd-strip[data-hand] [data-hand-card]')
+  const strip = page.locator('[data-hand] [data-hand-card]')
   await expect(strip).toHaveCount(3)
-  // One move of her own, so there is one thing to undo.
+  // One move of her own, so there is one thing to undo: a card marked, and the bar's «Kasta».
+  await strip.first().tap()
   const discard = page.getByRole('region', { name: /Spela valda kort|Play selected cards/ }).getByRole('button', { name: 'Kasta' })
   await tabTo(page, () => discard.evaluate((el) => el === document.activeElement))
   await page.keyboard.press('Enter')

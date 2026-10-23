@@ -29,10 +29,10 @@ async function seated(id: string) {
   await screen.findByText('Ada')
 }
 
+// The way to every place (#1147): mark the card, and «Spela…» in the bar over the tabs.
 const lift = (card: Element) => {
-  fireEvent.pointerDown(card, { clientX: 100, clientY: 500 })
-  fireEvent.pointerMove(card, { clientX: 100, clientY: 430 })
-  fireEvent.pointerUp(card, { clientX: 100, clientY: 430 })
+  fireEvent.click(card)
+  fireEvent.click(within(document.querySelector('[data-hand-bar]') as HTMLElement).getByRole('button', { name: 'Spela…' }))
 }
 
 // `TableClient.send` has always answered `{ ok: false, reason }`; before #7 no view read it, so
@@ -45,9 +45,10 @@ describe('an action the table refuses', () => {
     await seated(id)
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    fireEvent.click(document.querySelector('[data-hand-card]')!)
     await table.send({ v: 'session.end' })
-    // The actions under the hand; the bar at the foot carries the first of them too (#484).
-    const cast = within(document.querySelector('.byd-hand-actions') as HTMLElement).getByRole('button', { name: 'Kasta' })
+    // The bar over the tabs (#1147), where a marked card's verbs are.
+    const cast = within(document.querySelector('[data-hand-bar]') as HTMLElement).getByRole('button', { name: 'Kasta' })
     fireEvent.click(cast)
     const said = await screen.findByTestId('refusal')
     expect(said.textContent).toMatch(/avslutat/i)
