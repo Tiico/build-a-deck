@@ -11,6 +11,7 @@ import { CounterEntry } from './CounterEntry.js'
 import { cardName, feltLabels, intentsForPlace, landedKeyFor, shortcutIntents, thingsOn, type Thing } from './keyboard.js'
 import type { DragTarget } from './drop.js'
 import type { FeltKeyboard } from './TableRenderer.js'
+import type { TurnedHand } from '../player/turned.js'
 
 // The keyboard on the felt and in the hand (#1, #2, variant C "adressen"). It owns four things:
 // what every node is called, which one holds the single tab stop, which one has the panel open,
@@ -44,6 +45,9 @@ export type FeltKeyboardOptions = {
   // room's: the TV holds the card up over the felt for everyone (#508). Only a face: a back held
   // up for the room says nothing to it, so a card this view sees face down keeps K8's view (K23).
   look?: ((card: VisibleComponentState) => void) | undefined
+  // The cards turned over in this seat's hand (#1133): a hand card's panel turns them, and plays
+  // them face down.
+  turned?: TurnedHand | undefined
 }
 
 // `felt` says whether this route draws a table that can be played on. The phone has no felt, so
@@ -189,9 +193,10 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
           options.onPlayed?.()
           close(landedOn)
         }}
-        intentsFor={(place, moving, as) => intentsForPlace(view, place, as ?? open.thing, moving)}
+        intentsFor={(place, moving, as) => intentsForPlace(view, place, as ?? open.thing, moving, open.hand ? options.turned?.turned : undefined)}
         landedKey={(place, as) => landedKeyFor(view, place, as ?? open.thing)}
         sheet={open.hand ? options.handSheet?.(view) : undefined}
+        turn={open.hand && options.turned && open.thing.kind === 'card' ? turnOf(options.turned, open.thing.id) : undefined}
       />
     ) : null
   const panel = (
@@ -235,3 +240,5 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
     },
   }
 }
+
+const turnOf = (hand: TurnedHand, id: string) => ({ on: hand.turned.has(id), toggle: () => hand.toggle(id) })

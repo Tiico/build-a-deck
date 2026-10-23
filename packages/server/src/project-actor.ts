@@ -79,8 +79,17 @@ export class ProjectActor {
   get seq(): number {
     return this.at
   }
+  // Who is here is people, not tabs: an account with the game open twice is here once, as its
+  // first editor still open. An editor with no account is nobody else, so it is here on its own.
   get here(): Presence[] {
-    return [...this.editors].map((e) => ({ id: e.id, name: e.name, ...(e.role ? { role: e.role } : {}) }))
+    const seen = new Set<string>()
+    const people = [...this.editors].filter((e) => {
+      if (e.account === undefined) return true
+      if (seen.has(e.account)) return false
+      seen.add(e.account)
+      return true
+    })
+    return people.map((e) => ({ id: e.id, name: e.name, ...(e.role ? { role: e.role } : {}) }))
   }
 
   // An editor joins: it is given the document as it stands, and everyone is told who is here.
