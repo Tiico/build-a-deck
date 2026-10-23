@@ -82,6 +82,18 @@ Byggt 2026-10-23 (#1196, skiva 4 av PRD #1192): **bord som mått, i två former.
 - `GET /me/usage` och `usage`-skriptet tar med båda måtten. Webben får ett 402 som ett `QuotaReached` med taket i (`packages/web/src/account/quota.ts`), från både editorn och startsidan; hur det sägs är #1198.
 - Grindarna är `packages/server/test/quota-tables.test.ts` mot båda lagren, `account-plans.test.ts` för skriptets rapport, och `packages/web/test/start-table-quota.test.ts` med `project-client.test.ts` för klienten.
 
+Byggt 2026-10-23 (#1197, skiva 5 av PRD #1192): lagring och renderingar.
+Lagring (`storageBytes`) är det kontots spel använder, inte det kontot har lagt på lådan (beställarens svar på fråga 4): summan av `assets.size` över de olika assets som någon version av något spel kontot äger nämner, läst med samma `assetHashesOf` som exporten väljer sina bilder med.
+Måttet är härlett ur versionerna och har ingen innehavslogg och ingen bakåtfyllnad: två konton vars spel nämner samma bytes bär storleken båda två, ett konto med två sådana spel bär den en gång, historiken räknas så länge den finns, och ett borttaget spel frigör det som inget annat av kontots spel nämner.
+I Postgres håller tabellen `project_assets` (spel, hash) det versionerna nämner, skriven i samma transaktion som versionen och borta med spelet; saknas den byggs den om ur `project_versions` vid start, och ett test håller den lika med versionerna, också ombyggd.
+Taket prövas där en ny hash kommer in i ett av kontots spel: `POST /assets?project=<id>`, `POST /projects`, kopian, importen och varje sparad version (`PUT /projects/:id` och editorns «Spara»). Det prövas vid dörren innan något skrivs och igen i lagrets steg under ett lås per konto, så att två skrivningar om de sista byten ger exakt en.
+Det som kontots spel redan nämner kostar inget igen, och en version som inte nämner något nytt avvisas aldrig. Ett nått tak är 402 med `measure: 'storageBytes'`, på editorns tråd ett avslag med `why: 'quota'`, och `bearer` är `owner` när det är ägarens tak en medredigerare möter.
+Assets raderas fortfarande aldrig från lådan (DRIFT §4).
+Renderingar (`rendersPer30Days`) mäts i en logg, `render_log`, med en rad per jobb som kön svarade `queued` på, skriven i samma transaktion som jobbet: på bordets bärare för dess texturer och «Uppdatera», på spelets ägare för tryck, export och regelhäfte, vem som än bad om dem. Taket finns i schemat men prövas inte.
+`GET /me/usage` och `usage`-skriptet tar med båda måtten, renderingarna över rullande 30 dygn.
+Webben skickar ännu inget `?project=` vid uppladdning; hur ett nått tak sägs är skiva 6 (#1198).
+Grindarna: `packages/server/test/quota-storage.test.ts`, `quota-renders.test.ts` och `packages/render/test/render-log.test.ts`, mot båda lagren.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.

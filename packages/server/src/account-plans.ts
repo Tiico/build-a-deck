@@ -1,5 +1,6 @@
 import type { Sql } from 'postgres'
 import type { AuthStore } from './auth.js'
+import type { RenderStore } from '@byd/render/queue'
 import type { ProjectDoc, ProjectStore } from './projects.js'
 import type { LogStore } from './store.js'
 import { ProjectHost } from './project-actor.js'
@@ -78,21 +79,25 @@ export async function planOf(accountPlans: AccountPlanStore | undefined, plans: 
 }
 
 // What an account uses of each measure that is built, and its ceiling on it (`null` is unlimited).
-// Each measure is counted out of the domain's own data, never kept beside it, so the count cannot
-// drift from the truth (#1192).
+// A stock is counted out of the domain's own data, never kept beside it, so the count cannot drift
+// from the truth (#1192): games out of `projects.owner`, cards out of each game as it stands, and
+// storage out of what the versions of the account's games name (#1197). A flow that content
+// addressing hides is read out of the log written as it happened: renderings out of the render log,
+// over the thirty days up to `now`. Without a render queue nothing is rendered, and nothing counted.
 //
 // Cards are a ceiling per game (#1195), and are said per game: every game the account owns, by id,
 // with what it uses. `used` is the most any one of them uses, which is how near the account's games
 // stand to the ceiling — none when it owns none.
 export type Measured = { used: number; limit: Limit }
 export type PerGame = Measured & { projects: { id: string; used: number }[] }
-export type Usage = { plan: string; measures: { projects: Measured; openTables: Measured; tablesPer30Days: Measured } & Record<CardMeasure, PerGame> }
+export type Usage = { plan: string; measures: { projects: Measured; openTables: Measured; tablesPer30Days: Measured; storageBytes: Measured; rendersPer30Days: Measured } & Record<CardMeasure, PerGame> }
 // `live` is the game as it stands (D3, #909): the running actor's document, or the saved version
 // with the log's tail replayed — the same source «Mina spel» reads a name out of. Without it, the
 // log is replayed, which is what a process with no actors running (the operator's script) has.
 //
-// The tables are counted out of the sessions and their bearer (#1196), the window back from `now`.
-export type UsageStores = { projects: ProjectStore; tables: Pick<LogStore, 'tablesOf'>; accountPlans?: AccountPlanStore; live?: (id: string) => Promise<ProjectDoc | null> }
+// The tables are counted out of the sessions and their bearer (#1196), the window back from `now`,
+// and the renderings out of the render log over the same window (#1197).
+export type UsageStores = { projects: ProjectStore; tables: Pick<LogStore, 'tablesOf'>; accountPlans?: AccountPlanStore; live?: (id: string) => Promise<ProjectDoc | null>; renders?: Pick<RenderStore, 'rendersBy'> }
 export async function usageOf(stores: UsageStores, plans: Plans, account: string, now = new Date()): Promise<Usage> {
   const plan = await planOf(stores.accountPlans, plans, account)
   const tables = await stores.tables.tablesOf(account, tableWindowFrom(now))
@@ -105,8 +110,19 @@ export async function usageOf(stores: UsageStores, plans: Plans, account: string
   }
   const perGame = (m: CardMeasure): PerGame => ({ used: Math.max(0, ...games.map((g) => g.used[m])), limit: limitOf(plans, plan, m), projects: games.map((g) => ({ id: g.id, used: g.used[m] })) })
   const cards = Object.fromEntries(CARD_MEASURES.map((m) => [m, perGame(m)])) as Record<CardMeasure, PerGame>
-  const measured = (used: number, m: 'projects' | 'openTables' | 'tablesPer30Days'): Measured => ({ used, limit: limitOf(plans, plan, m) })
-  return { plan, measures: { projects: measured(await stores.projects.owned(account), 'projects'), ...cards, openTables: measured(tables.open, 'openTables'), tablesPer30Days: measured(tables.started, 'tablesPer30Days') } }
+  const measured = (used: number, m: 'projects' | 'openTables' | 'tablesPer30Days' | 'storageBytes' | 'rendersPer30Days'): Measured => ({ used, limit: limitOf(plans, plan, m) })
+  const rendered = stores.renders ? await stores.renders.rendersBy(account, tableWindowFrom(now).getTime()) : 0
+  return {
+    plan,
+    measures: {
+      projects: measured(await stores.projects.owned(account), 'projects'),
+      ...cards,
+      openTables: measured(tables.open, 'openTables'),
+      tablesPer30Days: measured(tables.started, 'tablesPer30Days'),
+      storageBytes: measured(await stores.projects.stored(account), 'storageBytes'),
+      rendersPer30Days: measured(rendered, 'rendersPer30Days'),
+    },
+  }
 }
 
 // The operator's door to an account's tier (DRIFT §10): by address, over Tailscale, and no HTTP
@@ -128,8 +144,8 @@ export async function clearPlanByAddress(stores: { auth: Pick<AuthStore, 'accoun
 }
 
 // What every account uses, for the price decision (#1192): read from the database and sent nowhere.
-export async function usageReport(stores: { auth: Pick<AuthStore, 'listAccounts'> } & UsageStores, plans: Plans): Promise<({ email: string } & Usage)[]> {
+export async function usageReport(stores: { auth: Pick<AuthStore, 'listAccounts'> } & UsageStores, plans: Plans, now: Date = new Date()): Promise<({ email: string } & Usage)[]> {
   const out: ({ email: string } & Usage)[] = []
-  for (const account of await stores.auth.listAccounts()) out.push({ email: account.email, ...(await usageOf(stores, plans, account.id)) })
+  for (const account of await stores.auth.listAccounts()) out.push({ email: account.email, ...(await usageOf(stores, plans, account.id, now)) })
   return out
 }

@@ -58,6 +58,10 @@ export class TableActor {
     // the card is called by (#412), and what it prints beside it (#551); undefined for a session without a deck.
     private cards: DeckFacts | undefined,
     private readonly renders: RenderStore | undefined,
+    // The table's bearer (#1194): every page it has queued is written in the render log on them
+    // (#1197), its textures and «Uppdatera»'s alike. A table from before accounts has none, and
+    // its pages are counted on nobody.
+    private readonly bearer: string | undefined,
   ) {
     this.deps = {
       ...sources,
@@ -81,17 +85,17 @@ export class TableActor {
     const deck = await store.deckOf(id, state.version)
     if (deck) {
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
-      const compiled = await queueFaces(deck, state.setup, registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job) ?? Promise.resolve())
+      const compiled = await queueFaces(deck, state.setup, registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, record.accountId) ?? Promise.resolve())
       cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
     }
-    return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders)
+    return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders, record.accountId)
   }
 
   // A newer deck (C7): recompute texture hashes and queue what is not rendered yet. Views
   // pick the new hashes up with the next projection.
   async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
     const renders = this.renders
-    const compiled = await queueFaces(deck, setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job) ?? Promise.resolve())
+    const compiled = await queueFaces(deck, setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
     this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
   }
 
