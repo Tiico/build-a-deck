@@ -2013,7 +2013,7 @@ Beställaren ville att en spelare ska kunna flagga ett element i spelet, till ex
 Tre sätt att peka ut kortet och tre sätt att visa det prövades i [`docs/ux-audits/2026-10-22-flagga-element/prototyper/index.html`](docs/ux-audits/2026-10-22-flagga-element/prototyper/index.html), med riktiga texturer ur provleken.
 Beställaren valde B och 1, och komponenter i första leveransen: högar och zoner flaggas inte än.
 
-- **Flaggan pekar efter frågan (B).** «Flagga» frågar först om det gäller ögonblicket eller ett kort.
+- **Flaggan pekar efter frågan (B).** «Flagga» frågar först om det gäller det som händer eller ett kort.
   «Ett kort…» lägger undan arket, och nästa tryck på ett kort pekar ut det och gör inget annat: det läser inte, spelar inte, lyfter inte och drar inte.
   Inget som inte är ett kort svarar under tiden, utom en hopfälld rubrik som kortet kan ligga under.
   Arket kommer tillbaka med kortet och med kommentaren som den lämnades.

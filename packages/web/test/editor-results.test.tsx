@@ -133,7 +133,7 @@ describe('a flag about a card in Resultat (#1142)', () => {
     await user.click(screen.getByRole('button', { name: 'Resultat' }))
     const thumb = await screen.findByRole('button', { name: `Visa ${card.title} som kortet såg ut` })
     expect(thumb.querySelector('img')?.getAttribute('src')).toBe(`${run.http}/faces/${card.faces!['front']}`)
-    expect(screen.getByText(`${card.title} · Spelyta · oförändrat sedan`)).toBeTruthy()
+    expect(screen.getByText(`${card.title} · Spelyta · likadant i senaste versionen`)).toBeTruthy()
 
     await user.click(thumb)
     const lifted = screen.getByRole('dialog', { name: `${card.title} som kortet såg ut` })

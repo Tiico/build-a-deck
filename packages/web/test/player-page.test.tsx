@@ -535,7 +535,7 @@ describe('flagging a card (#1142)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     const sheet = screen.getByRole('dialog')
-    expect(within(sheet).getByRole('button', { name: /Ögonblicket/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(within(sheet).getByRole('button', { name: /Det som händer/ }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.change(within(sheet).getByPlaceholderText(/Vad hände/), { target: { value: 'Texten är för lång' } })
     fireEvent.click(within(sheet).getByRole('button', { name: /Ett kort/ }))
     expect(screen.queryByRole('dialog')).toBeNull()

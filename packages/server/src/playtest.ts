@@ -82,17 +82,19 @@ function tableOf({ id, session, log, surveys, admissions, decks }: PlaytestSourc
   let version = session.version
   let endedAt: string | null = null
   const flags: PlaytestFlag[] = []
-  for (const [i, line] of told.entries()) {
-    // The log's own line, not the activity's: the activity leaves out which card a flag is about.
-    const intent = log[i]!.intent
+  // The name each line is told by, from the activity; the lines themselves are the log's own, since
+  // the activity leaves out which card a flag is about.
+  const names = new Map(told.map((l) => [l.seq, l.name]))
+  for (const line of log) {
+    const intent = line.intent
     if (intent.v === 'seat.claim') meet(intent.name, intent.seat, false)
     else if (intent.v === 'version.change') version = intent.to
     else if (intent.v === 'session.end') endedAt = line.at
     else if (intent.v === 'flag') {
       const observer = line.by === null && intent.observer !== undefined
-      const who = line.by !== null ? (line.name ?? line.by) : (intent.observer ?? null)
+      const who = line.by !== null ? (names.get(line.seq) ?? line.by) : (intent.observer ?? null)
       const move = moves.filter((m) => m.seq < line.seq).length
-      const card = intent.component !== undefined && cards ? cardAt(session, log, log[i]!, intent.component, observer, cards, decks?.[version]) : undefined
+      const card = intent.component !== undefined && cards ? cardAt(session, log, line, intent.component, observer, cards, decks?.[version]) : undefined
       flags.push({ who, seat: line.by, observer, note: intent.note ?? '', at: line.at, move, version, ...(card ? { card } : {}) })
       if (observer && who !== null) meet(who, null, true)
     }

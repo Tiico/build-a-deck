@@ -106,7 +106,7 @@ test('a card pointed out from the phone is the card in the flag’s row in Resul
   await desk.page.getByRole('button', { name: 'Results' }).click()
   const thumb = desk.page.getByRole('button', { name: `Show ${title} as the card was` })
   await expect(thumb).toBeVisible()
-  await expect(desk.page.getByText(`${title} · in Ada’s hand · unchanged since`)).toBeVisible()
+  await expect(desk.page.getByText(`${title} · in Ada’s hand · the same in the latest version`)).toBeVisible()
   await thumb.click()
   const lifted = desk.page.getByRole('dialog', { name: `${title} as the card was` })
   await expect(lifted).toContainText('when Ada flagged it')
