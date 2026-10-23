@@ -141,6 +141,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'felt.key.turnInHand': 'Turn a card in your hand over, so it is played face down',
   'felt.key.draw': 'Draw the top card off the pile under the pointer',
   'felt.key.shuffle': 'Shuffle the pile under the pointer',
+  'felt.key.moveDie': 'Move the die that has the focus',
   'felt.key.escape': 'Close the ring · cancel the drag',
   'felt.key.help': 'Show this list',
 
@@ -165,7 +166,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'kbd.card.rotated': '{name}, card in {zone}, rotated',
   'kbd.counter': '{name}, counter in {zone}, value {n}',
   'kbd.counter.unnamed': 'Counter in {zone}, value {n}',
-  'kbd.die': '{kind}, showing {n}, in {zone}. Enter rolls it.',
+  'kbd.die': '{kind}, showing {n}, in {zone}. Enter rolls it, M moves it.',
   'kbd.verb.roll': 'Roll',
   'kbd.pile.top': 'Top card in {zone}: {name}',
   'kbd.pile.empty': '{zone}, empty',

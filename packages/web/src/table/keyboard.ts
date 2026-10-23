@@ -1,7 +1,7 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { dieKind, isCounter, isDie, standIn } from '../components.js'
-import { besidePile, type DragTarget } from './drop.js'
+import { CARD_MM, DIE_MM, besidePile, type DragTarget } from './drop.js'
 import { laidIn } from './lay.js'
 import { faceDown } from '../player/play.js'
 import { handName } from './handName.js'
@@ -367,7 +367,7 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   // `flippable: false`, and the flip sent with the move had the whole envelope refused.
   const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter' && thing.kind !== 'die'
   return moving.flatMap((id, i): Intent[] => {
-    const laid = laidIn(view, place.zone, i)
+    const laid = dieIn(laidIn(view, place.zone, i), thing)
     const to: Intent & { v: 'move' } = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
     const c = turned.has(id) ? view.components.find((x) => x.id === id) : undefined
     if (c) return faceDown(view, c, to)
@@ -376,6 +376,14 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
 }
 
 const PILE_CORNER = 90
+
+// A die sent to an area lies in the middle of the place a card laid there would take (#1169): the
+// area's answer is a card's top-left corner, and a die put there sat on the area's corner, half over
+// its edge.
+function dieIn(laid: ReturnType<typeof laidIn>, thing: Thing): ReturnType<typeof laidIn> {
+  if (!laid || thing.kind !== 'die') return laid
+  return { ...laid, x: Math.round(laid.x + (CARD_MM.w - DIE_MM) / 2), y: Math.round(laid.y + (CARD_MM.h - DIE_MM) / 2) }
+}
 
 // Where the focus should stand once the move has been made: on the card itself while it is still
 // on the felt, otherwise on the place that swallowed it — which is where the eye goes too.
@@ -460,7 +468,8 @@ export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | nu
 // out the one a reader already knows is not the whole truth about the surface, and the whole
 // truth is the only thing worth opening.
 // `hand`: the screen holds this seat's own hand, where F turns a card over to be played face down (#1133).
-export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false, hand = false): Shortcut[] {
+// `dice`: there are dice on the felt, and M moves the one with the keyboard's focus (#1169).
+export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false, hand = false, dice = false): Shortcut[] {
   return [
     // The felt's own rule first, and the keyboard's way in (#719, K16): a drag moves, a click reads
     // and then asks, and Tab, the arrows and Enter reach the same things. A list of shortcuts that
@@ -476,6 +485,8 @@ export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(),
     ...(hand ? [{ press: ['F'], what: t('felt.key.turnInHand') }] : []),
     { press: ['D'], what: t('felt.key.draw') },
     { press: ['S'], what: t('felt.key.shuffle') },
+    // M is the focus's and not the pointer's, so the row says so where D and S say «under pekaren».
+    ...(dice ? [{ press: ['M'], what: t('felt.key.moveDie') }] : []),
     // Kameran (#325), och bara där det finns en att köra: `/online` har ingen, och en lista som
     // lovade den där skulle lova något ytan inte har. Varje rad bär alla sina grepp, eftersom
     // hjulet, plus och minus är samma handling bedd om på tre sätt — och panoreringen likaså.
