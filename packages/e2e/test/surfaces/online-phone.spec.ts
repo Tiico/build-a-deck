@@ -14,7 +14,7 @@ import { Host } from '../../support/host.js'
 // in the room, or a screen wide enough to carry it.
 //
 // So this is the gate K17 went without: whether a felt is drawn at all at a phone's size, and
-// whether the hand there is the strip K10 gives a phone. Presence is a question about the
+// whether the hand there is the grid #1147 gives a phone. Presence is a question about the
 // document, but the sideways scroll under it is a question only an engine with the real box model
 // can answer — and a surface that fits by hiding what runs past the edge fits nothing.
 //
@@ -51,7 +51,7 @@ function fourSeatSetup(): SetupDef {
 }
 
 // What a surface is made of, counted rather than described: a felt, the fan or the column the wide
-// screens give a hand, and the strip a phone gives it.
+// screens give a hand, and the grid a phone gives it.
 const made = (page: Page) =>
   page.evaluate(() => ({
     felts: document.querySelectorAll('[data-table]').length,
@@ -59,8 +59,8 @@ const made = (page: Page) =>
     // hand in another shape — so the fan proper is the one that is not a column.
     fans: document.querySelectorAll('[data-hand-fan]:not([data-hand-column])').length,
     columns: document.querySelectorAll('[data-hand-column]').length,
-    strips: document.querySelectorAll('.byd-strip[data-hand]').length,
-    cards: document.querySelectorAll('.byd-strip[data-hand] [data-hand-card]').length,
+    grids: document.querySelectorAll('.byd-grid[data-hand]').length,
+    cards: document.querySelectorAll('.byd-grid[data-hand] [data-hand-card]').length,
     sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
   }))
 
@@ -80,12 +80,12 @@ async function seated(page: Page, request: import('@playwright/test').APIRequest
 
 test.describe(`a player at ${PHONE.width} × ${PHONE.height}`, () => {
   test.use({ viewport: PHONE })
-  test('is given the controls and not the board: no felt, and the hand as the strip', async ({ page, request, baseURL }) => {
+  test('is given the controls and not the board: no felt, and the hand as the grid', async ({ page, request, baseURL }) => {
     await seated(page, request, baseURL!)
-    // The five cards are counted as well as the strip, so a strip that arrived empty — or a
+    // The five cards are counted as well as the grid, so a grid that arrived empty — or a
     // selector that stopped matching — cannot report a clean surface.
-    await expect.poll(async () => (await made(page)).cards, { message: 'the five cards reach the strip' }).toBe(5)
-    expect(await made(page)).toEqual({ felts: 0, fans: 0, columns: 0, strips: 1, cards: 5, sideways: 0 })
+    await expect.poll(async () => (await made(page)).cards, { message: 'the five cards reach the grid' }).toBe(5)
+    expect(await made(page)).toEqual({ felts: 0, fans: 0, columns: 0, grids: 1, cards: 5, sideways: 0 })
   })
 })
 
@@ -96,7 +96,7 @@ test.describe(`a player at ${DESK.width} × ${DESK.height}`, () => {
     // A landscape window puts the hand in a column at the window's inline end (#77), beside a felt
     // that keeps the height. None of that is #99's to change.
     await expect.poll(async () => (await made(page)).felts, { message: 'the felt is drawn' }).toBe(1)
-    expect(await made(page)).toEqual({ felts: 1, fans: 0, columns: 1, strips: 0, cards: 0, sideways: 0 })
+    expect(await made(page)).toEqual({ felts: 1, fans: 0, columns: 1, grids: 0, cards: 0, sideways: 0 })
   })
 })
 
@@ -115,10 +115,10 @@ for (const [what, viewport, board] of [
       await seated(page, request, baseURL!)
       if (board) {
         await expect.poll(async () => (await made(page)).felts, { message: 'the felt is drawn' }).toBe(1)
-        expect(await made(page)).toMatchObject({ felts: 1, strips: 0 })
+        expect(await made(page)).toMatchObject({ felts: 1, grids: 0 })
       } else {
-        await expect.poll(async () => (await made(page)).cards, { message: 'the five cards reach the strip' }).toBe(5)
-        expect(await made(page)).toEqual({ felts: 0, fans: 0, columns: 0, strips: 1, cards: 5, sideways: 0 })
+        await expect.poll(async () => (await made(page)).cards, { message: 'the five cards reach the grid' }).toBe(5)
+        expect(await made(page)).toEqual({ felts: 0, fans: 0, columns: 0, grids: 1, cards: 5, sideways: 0 })
       }
     })
   })

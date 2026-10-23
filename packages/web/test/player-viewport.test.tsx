@@ -11,19 +11,16 @@ import type { ReactNode } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
-import { FootPlay, HandActions } from '../src/player/HandActions.js'
+import { CardPlays } from '../src/player/HandActions.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
 import { READING_VIEWS } from '../src/legibility.js'
-import { HandStrip } from '../src/player/HandStrip.js'
+import { PlayerSurface } from '../src/player/PlayerSurface.js'
 import { HeldCard } from '../src/player/HeldCard.js'
 import { Texture } from '../src/table/Texture.js'
 import { CountersRow, MineActions, MineStrip } from '../src/player/SeatExtras.js'
 import { PlaySheet } from '../src/player/PlaySheet.js'
-import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
 import { EndSheet, ExitSheet, FlagSheet } from '../src/player/SessionSheets.js'
-import { RuleShelf } from '../src/rules/RuleDrawer.js'
-import { Help } from '../src/editor/HelpDrawer.js'
 import { Survey } from '../src/player/Survey.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { CardLook } from '../src/table/CardLook.js'
@@ -102,8 +99,22 @@ function lost(html: string): string {
 // The client is only ever a click target in these surfaces; nothing is sent.
 const idle = { send: async () => undefined, activity: [] } as unknown as Parameters<typeof SessionButtons>[0]['client']
 
-// PlayerPage itself needs a live socket, so its head is repeated here; everything below it is the
-// real component. Keep the two in step when the head changes.
+// The whole phone (#1147), as `PlayerPage` mounts it, with `marked` cards marked. The server render
+// opens on the hand's tab; `onTab` opens another one in the markup, the way a press opens it.
+function phone(view: Snapshot, marked: string[] = []) {
+  const marks = { selected: new Set(marked), toggle: noop, clear: noop }
+  return (
+    <div className="byd-player">
+      <PlayerSurface client={idle} view={view} activity={[]} seat="A" name="Ada" sessionId="s1" faces={FACES} version="v1" marks={marks} turnedHand={{ turned: new Set(), toggle: noop }} openHand={noop} onLeft={noop} />
+    </div>
+  )
+}
+const onTab = (body: ReactNode, tab: 'hand' | 'mine' | 'table' | 'more') =>
+  renderToStaticMarkup(body).replace(/<section([^>]*?) data-panel="(\w+)"([^>]*)>/g, (_, before: string, id: string, after: string) => {
+    const open = `${before}${after}`.replace(/ hidden=""/, '')
+    return `<section${open}${id === tab ? '' : ' hidden=""'} data-panel="${id}">`
+  })
+
 function surfaces(view: Snapshot) {
   const overlays = (v: Snapshot) => (
     <div className="byd-player">
@@ -112,25 +123,14 @@ function surfaces(view: Snapshot) {
   )
   const proposal = { id: 'p1', toSeq: 1, by: 'B', confirmed: [] as string[], waiting: ['A'] }
   return {
-    hand: (
-      <div className="byd-player">
-        <header>
-          <strong>Ada</strong>
-          <span>{view.components.length} kort</span>
-          {/* The help pattern's question mark stands in the chrome on this screen (L32, #305),
-              so the row it has to share is measured with it in place. */}
-          <Help topic="handen">
-            <p>Tryck på ett kort för att läsa det i full storlek.</p>
-          </Help>
-          <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
-        </header>
-        {/* The overview since #79: a pile that has a card is a control that draws it (K14). */}
-        <TableSummary view={view} activity={[]} onDraw={noop} />
-        <HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
-      </div>
-    ),
-    handActions: <div className="byd-player"><HandActions view={view} cards={view.components.filter(c => c.zone === 'hand:A').slice(0, 1)} pending={false} onPlay={noop} onMore={noop} /></div>,
-    // The cards in front of the seat (C4): a strip of faces, each one control (#78).
+    // The four tabs, each open in turn, and the hand with a card marked: the bar over the tabs.
+    hand: phone(view),
+    marked: phone(view, view.components.filter((c) => c.zone === 'hand:A').slice(0, 1).map((c) => c.id)),
+    markedTwo: phone(view, view.components.filter((c) => c.zone === 'hand:A').slice(0, 2).map((c) => c.id)),
+    tabMine: onTab(phone(inFront(view)), 'mine'),
+    tabTable: onTab(phone(view), 'table'),
+    tabMore: onTab(phone(view), 'more'),
+    // The cards in front of the seat (C4): a row each, the face one control (#78).
     mine: (
       <div className="byd-player">
         <MineStrip view={inFront(view)} faces={FACES} onOpen={noop} onPlay={noop} />
@@ -151,7 +151,7 @@ function surfaces(view: Snapshot) {
         </div>,
       ),
     ),
-    // The seat's own counters under the head (C4): two pills, as the wizard lays a table out.
+    // The seat's own counters (C4): two pills, as the wizard lays a table out.
     counters: (
       <div className="byd-player">
         <CountersRow view={view} onSet={noop} />
@@ -273,7 +273,7 @@ describe.each(WIDTHS)('the player view at %ipx', (width) => {
       await page.setContent(document_(surfaces(view).hand))
       const card = await page.locator('[data-hand-card]').first().boundingBox()
       expect(card!.width).toBeLessThanOrEqual(160)
-      await page.setContent(document_(surfaces(view).mine))
+      await page.setContent(document_(surfaces(view).tabMine))
       const cast = page.getByRole('button', { name: /^Kasta/ }).first()
       const box = await cast.boundingBox()
       expect(box!.width).toBeGreaterThanOrEqual(130)
@@ -284,8 +284,10 @@ describe.each(WIDTHS)('the player view at %ipx', (width) => {
   it('gives every control a 44 by 44 pixel hit area', async () => {
     // Links count as controls too: the survey's save link is the one a phone shows (UX-36, #81).
     const measured = await eachSurface(width, (page) =>
+      // A closed tab's panel is not drawn, and nothing in it is a target until it is opened.
       page.$$eval('button, textarea, a[href]', (els) =>
         els
+          .filter((el) => !el.closest('[hidden]'))
           .map((el) => ({ label: (el.textContent ?? el.tagName).trim().slice(0, 24), box: el.getBoundingClientRect() }))
           .filter(({ box }) => box.width < 44 || box.height < 44)
           .map(({ label, box }) => `${label}: ${Math.round(box.width)}×${Math.round(box.height)}`),
@@ -301,9 +303,9 @@ describe.each(WIDTHS)('the player view at %ipx', (width) => {
   it('puts every control under the finger that lands on it', async () => {
     const measured = await eachSurface(width, (page) =>
       page.$$eval('button, textarea, a[href]', (els) =>
-        els.flatMap((el) => {
-          // A strip scrolls sideways, so a control is asked about where it is when it is looked
-          // at: brought into view first, and then pressed in the middle.
+        els.filter((el) => !el.closest('[hidden]')).flatMap((el) => {
+          // A panel scrolls, so a control is asked about where it is when it is looked at: brought
+          // into view first, and then pressed in the middle.
           el.scrollIntoView({ block: 'center', inline: 'center' })
           const box = el.getBoundingClientRect()
           const at = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
@@ -381,57 +383,33 @@ describe.each(WIDTHS)('the player view at %ipx', (width) => {
   }, 60_000)
 })
 
-// The phone's control row (#31). The prototype measured this row at 375 px and its finding is what
-// chose the variant: the row is already full. A fourth control does not squeeze in, it falls to a
-// second line — and in the variant that put `Lämna` beside the red `Avsluta`, it fell directly
-// underneath it, which is two exits stacked on one another. C keeps the row to three by replacing
-// a control rather than adding one, and this is the measurement that keeps it three.
-describe("the seat's control row at 375px (#31)", () => {
-  it('holds its three controls on one line, and shows what a fourth would do to them', async () => {
-    const page = await browser.newPage({ viewport: { width: 375, height: 812 } })
-    const row = async (extra: ReactNode = null) => {
-      await page.setContent(
-        document_(
-          <div className="byd-player">
-            <header>
-              <strong>Ada</strong>
-              <span>{view.components.length} kort</span>
-              <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
-              {extra}
-            </header>
-          </div>,
-        ),
-        { waitUntil: 'load' },
-      )
-      return await page.$$eval('.byd-player > header button', (els) =>
-        els.map((el) => {
-          const box = el.getBoundingClientRect()
-          return { label: (el.textContent ?? '').trim(), top: Math.round(box.top), right: Math.round(box.right) }
-        }),
-      )
-    }
+// The phone's head (#1147): who is holding it and «Ångra» with its word — on one line at the
+// narrowest phone, where the head used to hold three icon buttons (#31), the question mark and the
+// rulebook's button beside them. Flagga, Lämna, the help and the rules stand in «Mer» now.
+describe("the phone's head at 320 px (#1147)", () => {
+  it('holds the name and «Ångra» on one line, and the column is exactly the screen', async () => {
+    const page = await browser.newPage({ viewport: { width: 320, height: 568 } })
     try {
-      const three = await row()
-      expect(three.map((c) => c.label)).toEqual(['Ångra', 'Flagga', 'Lämna…'])
-      // One line: every control shares a top edge, and none is pushed off the screen.
-      expect(new Set(three.map((c) => c.top)).size).toBe(1)
-      expect(Math.max(...three.map((c) => c.right))).toBeLessThanOrEqual(375)
-
-      // With the three drawn as icons (L73, led 3) the rulebook's own button, which every game with
-      // rules brings (B7), fits beside them too. The control, and the reason the measurement is
-      // trusted: a control the row cannot hold lands on a second line, so the single line above is
-      // a row that fits and not a measurement that cannot tell the difference.
-      const four = await row(<RuleShelf rules={null} placement="phone" />)
-      expect(four).toHaveLength(4)
-      expect(new Set(four.map((c) => c.top)).size).toBe(1)
-      const five = await row(
-        <>
-          <RuleShelf rules={null} placement="phone" />
-          <button type="button" style={{ width: 160 }}>bred</button>
-        </>,
-      )
-      expect(five).toHaveLength(5)
-      expect(new Set(five.map((c) => c.top)).size).toBe(2)
+      await page.setContent(document_(phone(view, view.components.filter((c) => c.zone === 'hand:A').slice(0, 1).map((c) => c.id))), { waitUntil: 'load' })
+      const seen = (await page.evaluate(`(() => {
+        const box = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), right: Math.round(r.right) } }
+        return {
+          head: [...document.querySelectorAll('.byd-player > header button')].map((b) => ({ label: b.getAttribute('aria-label') || b.textContent.trim(), ...box(b) })),
+          tabs: box(document.querySelector('.byd-tabs')),
+          bar: box(document.querySelector('.byd-bar')),
+          panels: box(document.querySelector('.byd-panels')),
+          page: document.documentElement.scrollHeight,
+        }
+      })()`)) as { head: { label: string; top: number; right: number }[]; tabs: { top: number; bottom: number }; bar: { top: number; bottom: number }; panels: { top: number; bottom: number }; page: number }
+      expect(seen.head.map((c) => c.label)).toEqual(['Ångra'])
+      expect(new Set(seen.head.map((c) => c.top)).size).toBe(1)
+      expect(Math.max(...seen.head.map((c) => c.right))).toBeLessThanOrEqual(320)
+      // The tabs at the bottom of the screen, the bar right over them, the panel over the bar —
+      // and the page itself no taller than the screen, so nothing scrolls but the panel.
+      expect(seen.tabs.bottom).toBe(568)
+      expect(seen.bar.bottom).toBe(seen.tabs.top)
+      expect(seen.panels.bottom).toBe(seen.bar.top)
+      expect(seen.page).toBe(568)
     } finally {
       await page.close()
     }
@@ -445,10 +423,10 @@ describe('a card held up on the phone reads at the floor, at every phone and tab
   const SIZES = [[320, 568], [390, 844], [768, 1024]] as const
   const hand = () => view.components.filter((c) => c.zone === 'hand:A').reverse()
   const held = {
-    // Ur handen: med handens eget andra tryck under kortet.
+    // Ur handen: med handens eget sätt att spela kortet, och «Vänd», under det på en rad.
     hand: () => {
       const row = hand()
-      return <div className="byd-player"><HeldCard card={row[1]!} row={row} onStep={noop} onClose={noop} actions={<FootPlay view={view} cards={[row[1]!]} pending={false} onPlay={noop} onMore={noop} />} /></div>
+      return <div className="byd-player"><HeldCard card={row[1]!} row={row} onStep={noop} onClose={noop} actions={<><CardPlays view={view} card={row[1]!} pending={false} onPlay={noop} onMore={noop} /><button type="button">Vänd upp</button></>} /></div>
     },
     // Framför dig: med de tre verb ett liggande kort har (#78), som är det högsta raden kan bli.
     mine: () => {
@@ -495,7 +473,7 @@ describe('a card held up on the phone reads at the floor, at every phone and tab
     const row = hand()
     const page = await browser.newPage({ viewport: { width, height } })
     try {
-      await page.setContent(document_(<div className="byd-player"><HeldCard card={row[1]!} row={row} onStep={noop} onClose={noop} smallestPt={6.5} actions={<FootPlay view={view} cards={[row[1]!]} pending={false} onPlay={noop} onMore={noop} />} /></div>), { waitUntil: 'load' })
+      await page.setContent(document_(<div className="byd-player"><HeldCard card={row[1]!} row={row} onStep={noop} onClose={noop} smallestPt={6.5} actions={<CardPlays view={view} card={row[1]!} pending={false} onPlay={noop} onMore={noop} />} /></div>), { waitUntil: 'load' })
       const card = (await page.evaluate(`document.querySelector('[data-inspect]').getBoundingClientRect().width`)) as number
       const reads = textPxOnCard(6.5, card) >= SCREENS.phone.floorPx - 0.05
       const edge = card >= width - 16 - 0.5
@@ -506,16 +484,16 @@ describe('a card held up on the phone reads at the floor, at every phone and tab
     }
   }, 60_000)
 
-  // The strip is small at rest now that one tap reads (#507 fynd 1): it follows the screen rather
-  // than standing at one width from 320 to 768.
-  it('draws the hand strip at a width that follows the screen', async () => {
-    const widths: number[] = []
-    for (const width of [320, 768]) {
+  // The whole hand at once (#1147): three cards a row at a phone, two at the narrowest, and more
+  // on a tablet — the grid follows the screen rather than standing at one width.
+  it('lays the hand out three a row at 390, two at 320 and four at 768', async () => {
+    const rows: Record<number, number> = {}
+    for (const width of [320, 390, 768]) {
       const page = await browser.newPage({ viewport: { width, height: 844 } })
-      await page.setContent(document_(<div className="byd-player"><HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} /></div>), { waitUntil: 'load' })
-      widths.push(await page.evaluate(`document.querySelector('[data-hand-card]').getBoundingClientRect().width`) as number)
+      await page.setContent(document_(phone(view)), { waitUntil: 'load' })
+      rows[width] = (await page.evaluate(`(() => { const tops = [...document.querySelectorAll('[data-hand-card]')].map((c) => Math.round(c.getBoundingClientRect().top)); return tops.filter((t) => t === tops[0]).length })()`)) as number
       await page.close()
     }
-    expect(widths[1]).toBeGreaterThan(widths[0]!)
+    expect(rows).toEqual({ 320: 2, 390: 3, 768: 4 })
   }, 60_000)
 })

@@ -76,11 +76,13 @@ describe('the rules where the game is played (B7)', () => {
     expect(overFelt.closest('.byd-rules-drawer')?.getAttribute('data-placement')).toBe('table')
   })
 
-  it('is one press away on the phone too', async () => {
+  // On the phone the rules stand in «Mer» (#1147): a tab away, and then one press.
+  it('is a tab and a press away on the phone too', async () => {
     const id = await tableWithRules()
     const { token } = await asSeat(run, id, 'A', 'Ada')
     history.replaceState(null, '', `/play?session=${id}&seat=A&token=${encodeURIComponent(token)}&server=${encodeURIComponent(run.url)}`)
     render(<PlayerPage />)
+    fireEvent.click(await screen.findByRole('tab', { name: /^Mer/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
     const panel = await screen.findByRole('dialog', { name: 'Regler' })
     expect(await within(panel).findByRole('heading', { name: 'Skogens herrar' })).toBeTruthy()
@@ -140,6 +142,7 @@ describe('the rules where the game is played (B7)', () => {
 
     history.replaceState(null, '', `/play?session=${made.id}&seat=A&token=${encodeURIComponent(token)}&server=${encodeURIComponent(run.url)}`)
     render(<PlayerPage />)
+    fireEvent.click(await screen.findByRole('tab', { name: /^Mer/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
     const panel = await screen.findByRole('dialog', { name: 'Regler' })
     const badge = (name: string) => within(panel).getAllByText(name, { selector: '.byd-rules-ref' })[0]?.querySelector('.byd-rules-tally')

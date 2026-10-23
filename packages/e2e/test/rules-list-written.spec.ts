@@ -51,6 +51,8 @@ test('a list written in the editor without an import is read as a list on the ph
   const started = await startTable(page.request, project.id)
   const seat = doc.setup.seats[0]!
   const ada = await player({ ...started, seats: doc.setup.seats }, { name: 'Ada', seat, device: PHONE })
+  // The rules stand in «Mer» on the phone (#1147).
+  await ada.page.getByRole('tab', { name: /^Mer/ }).click()
   await ada.page.getByRole('button', { name: 'Regler', exact: true }).click()
   const panel = ada.page.locator('.byd-rules-panel')
   // Read as lists, by what a screen reader is handed: two lists, each with its own points.

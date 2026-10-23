@@ -16,15 +16,15 @@ test('a card read on one phone is held up on the television for the room', async
   await ada.page.locator('[data-zone-draw="draw"]').click()
   await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
   // Her hand is hers: the reader offers nothing for the room there.
-  await ada.page.locator('[data-hand-card]').first().click()
+  await ada.page.locator('[data-hand-bar]').getByRole('button', { name: /^(Read large|Läs stort)$/ }).click()
   await expect(ada.page.locator('.byd-inspect')).toBeVisible()
   await expect(ada.page.locator('[data-show-all]')).toHaveCount(0)
   // Played from the reader's own second press (#507), which is where her thumb already is.
   await ada.page.locator('.byd-inspect').getByRole('button', { name: 'Framför mig' }).click()
   await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
 
-  await bo.page.locator('[data-phone-table] > summary').click()
-  const card = bo.page.locator('[data-phone-table] [data-zone-summary="mine:A"] [data-area-card]').first()
+  await bo.page.locator('[data-tab="table"]').click()
+  const card = bo.page.locator('[data-panel="table"] [data-zone-summary="mine:A"] [data-area-card]').first()
   await card.click()
   const id = await card.getAttribute('data-area-card')
   await bo.page.locator('[data-show-all]').click()

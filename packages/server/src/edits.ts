@@ -1,8 +1,8 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { AssetCrop, PictureName } from './projects.js'
-import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { AssetCrop, PictureName, ProjectDice } from './projects.js'
+import type { Cell, Picture, ProjectDie, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { applyRevert, decideRevert, type Revert } from './undo.js'
 import { columnsOf } from './columns.js'
 import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
@@ -148,6 +148,10 @@ export type EditIntent =
   // reason `addZone` carries its `geometry`. Only what the recipe touched is in it, so a line
   // applied on a document a co-editor has changed since never takes their zones back.
   | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords; places?: Places }
+  // The game's dice (K5, #1139), the whole list at once, as the recipe writes the counters whole:
+  // a die added, changed or taken away is one version and one step back (B4). A line that names a
+  // zone nobody has any more is kept, and lies nowhere until the zone is back (`setupFromProject`).
+  | { v: 'setDice'; dice: ProjectDie[] }
   // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
   // written into the log with it (#894). Where a new zone goes is a rule that changes with a
   // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
@@ -555,6 +559,12 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 
     case 'setRecipe':
       return { ...doc, setup: placed(doc.setup, applyRecipe(doc.setup, intent.recipe, intent.words), intent.places) }
+    case 'setDice': {
+      // Held to the document's own schema here, since no other door checks what an edit writes.
+      const dice = ProjectDice.parse(intent.dice)
+      const { dice: _gone, ...rest } = doc.setup
+      return { ...doc, setup: dice.length > 0 ? { ...rest, dice } : rest }
+    }
     case 'addZone': {
       if (doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`zone ${intent.id} already exists`)
       // En ny zon föds på ledig filt (#440 för ytan, #443 för högen). Var det är är

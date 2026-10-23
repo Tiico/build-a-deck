@@ -54,6 +54,7 @@ Server:
 Bordet och telefonen:
 - ✅ Filtbord i bordsläge och sändningslayout i TV-läge med rumskod och QR (C5, K9).
 - ✅ Telefonens hand som remsa med tryck, dra upp, håll; zongenvägar; spela vänder kortet om målet är publikt (C4, K4, K10, K11).
+- ✅ Telefonen mot TV:n tagen om från grunden: fyra flikar (Handen, Framför mig, Bordet, Mer), handen som rutnät och verben i en rad över flikarna (C4 2026-10-23, #1147).
 - ✅ Vänd ett kort i handen så spelas det nedvänt, vart det än går (K11 reviderad, #1133).
 - ✅ Anslutning: bordet som platsväljare, "Bara titta", "Spela på den här skärmen" (K12, C8, C2).
 - ✅ Bordet spelas direkt: dra, släpp, håll för en ring med verb; perspektivet projiceras exakt (K14, C1).
@@ -116,7 +117,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ En zon går att klippa, kopiera och klistra i fliken Bord (K22): kopian bär frågan, åtgärderna, genvägen, ägaren, synligheten och storleken, och landar bredvid originalet. En hand kopieras aldrig (C3).
 - ✅ Filten säger när ett kort är på väg in i en hand, och bara då (K24): det burna kortet vänder ryggen till medan det bärs, och platsens egna 500 mm av kanten tänds med antalet uppräknat. Ett släpp i en hand är det enda släppet som tar bort information ur allas syn, och det enda som träffas på en yta större än den ser ut. Den fällda handen i distansvyn får samma besked, vilket gör en osynlig träffyta synlig.
 - ✅ Bordets anteckningsblock på `/online` (K29, #1131): en spalt med rader som alla vid bordet skriver, bockar av och tar bort, med skribentens platsfärg; sessionens och inte spelets, så Ångra och tillbakaspolning lämnar det kvar.
-- 🔶 Tärningar d4–d20, slagna från bordet och telefonen, i spelets setup med antal per spelare (K28, #1129). Typerna, setupen och aktivitetsraden med värden är byggda (#1136), och telefonens ark «Tärningar» med flerslag i ett kuvert (#1138) och bordet som ritar och slår dem (#1137); fliken Bord (#1139) och trycket (#1140) återstår.
+- 🔶 Tärningar d4–d20, slagna från bordet och telefonen, i spelets setup med antal per spelare (K28, #1129). Typerna, setupen och aktivitetsraden med värden är byggda (#1136), telefonens ark «Tärningar» med flerslag i ett kuvert (#1138), fliken Bord med en rad per tärning (#1139) och bordet som ritar och slår dem (#1137); trycket (#1140) återstår.
 - ❓ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
 

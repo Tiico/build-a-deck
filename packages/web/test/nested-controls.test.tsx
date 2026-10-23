@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { Snapshot } from '@byd/protocol'
-import { HandStrip } from '../src/player/HandStrip.js'
+import { HandGrid } from '../src/player/HandGrid.js'
 import { MineActions, MineStrip } from '../src/player/SeatExtras.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { HeldCard } from '../src/player/HeldCard.js'
@@ -42,7 +42,7 @@ function expectNoNestedControl() {
 }
 
 describe('no control sits inside a control, on any player surface (UX-37, #82)', () => {
-  it('the phone: the hand strip, the cards in front of the seat, and the card held up', () => {
+  it('the phone: the hand, the cards in front of the seat, and the card held up', () => {
     vi.useFakeTimers()
     const { view } = buildScene()
     const snapshot = withFaces(view('A'))
@@ -53,7 +53,7 @@ describe('no control sits inside a control, on any player surface (UX-37, #82)',
     const mine = front.components.find((c) => c.zone === 'mine:A')!
     render(
       <>
-        <HandStrip view={snapshot} selected={new Set()} faces={FACES} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
+        <HandGrid view={snapshot} selected={new Set([hand[1]!.id, hand[0]!.id])} faces={FACES} onToggle={noop} onOpen={noop} />
         <MineStrip view={front} faces={FACES} onOpen={noop} />
         {/* The overview's pile is a control since #79, and the verb is read inside it: the whole
             tile, and never a button within a button. */}
@@ -65,7 +65,7 @@ describe('no control sits inside a control, on any player surface (UX-37, #82)',
     )
     loseEveryTexture()
     expectNoNestedControl()
-    // The card in the strip is a control now, so the way back is on the held-up card alone.
+    // The card in the hand is a control, so the way back is on the held-up card alone.
     expect(screen.getAllByRole('button', { name: 'Försök igen' })).toHaveLength(1)
     expect(document.querySelectorAll('button[data-mine-card]')).toHaveLength(1)
     vi.useRealTimers()

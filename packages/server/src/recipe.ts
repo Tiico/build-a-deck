@@ -13,6 +13,8 @@ export type Zone = Setup['zones'][number]
 export type Geometry = Zone['geometry']
 export type Counter = NonNullable<Setup['counters']>[number]
 export type Recipe = { players: number; counters: Counter[] }
+// One line of the game's dice (K5, #1139): which kind, how many, and in which zone or seat role.
+export type Die = NonNullable<Setup['dice']>[number]
 
 export const SEAT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
 export const MAX_PLAYERS = SEAT_IDS.length

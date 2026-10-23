@@ -820,6 +820,38 @@ Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/507/`](docs/ux-audits/202
 Känd lucka när detta skrevs: läsbredden räknades på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte visste vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått. Stängd i #523: läsvyn läser kortets minsta text från renderaren och växer efter den (K26).
 En mall med 7 pt brödtext når därför 11,5–13,2 px i läsvyn; K26:s «golvet gäller mallens brödtext som den är» kräver att den storleken når klienten, vilket är en egen fråga.
 
+Reviderat 2026-10-23 (#1147, beställarens val B 2026-10-22 efter prototypen i [`docs/ux-audits/2026-10-22-telefonen/`](docs/ux-audits/2026-10-22-telefonen/README.md)): **telefonen är fyra flikar, och varje flik är en sak.**
+Beställaren kallade telefonen mot TV:n grötig och svår att använda, och bad om en omtagning från grunden.
+Vid 390 × 844 stod allt i en kolumn: huvudet med fyra knappar, räknarna, rubriken över handen med högarna under sig, remsan med sin markör, sex knappar under remsan, tre hopfällbara avsnitt och en fast fot.
+«Framför mig» och «Spela…» stod två gånger på samma skärm, och foten låg över «Senaste dragen».
+Tre varianter prövades: A ett stort kort i taget med svep, B flikar, C platserna som rutor och handen som solfjäder att dra kort ur.
+B valdes, eftersom den rymmer det designern bestämmer — hur många zoner, genvägar och räknare ett bord har — utan att formen ändras.
+
+Flikraden står längst ner: **Handen**, **Framför mig**, **Bordet** och **Mer**, de två första med sitt antal.
+Kolumnen är exakt skärmens höjd, och bara den öppna flikens panel rullar; huvudet, raden över flikarna och flikarna själva står still.
+Huvudet säger vem som håller telefonen och har **Ångra**, ritad som ikon med ordet som namn (L73, led 3).
+**Handen** är högarna, med dragningen per hög som förut (#79), och under dem hela handen som ett rutnät, tre kort i bredd vid 390 och två vid 320.
+Remsan, dess markör och «Visa alla» (#767) är borta: med rutnätet syns hela handen, och en hand på tjugofem kort är några rader och inte tio skärmar.
+Ett tryck markerar ett kort och ett till avmarkerar det; flera kort kan vara markerade, och de bär numret för den ordning de markerades i, som är ordningen de spelas i.
+Ett draget kort och ett kort taget upp från framför en blir det markerade, och det markerade kortet rullas fram i panelen.
+Medan något är markerat växer en rad fram ovanför flikarna, och det är den enda plats på telefonen där en handkorts verb står: vad som är markerat, «Läs stort», «Avmarkera», sedan setupens första genväg som huvudknapp, dess andra, och «Spela…» till alla andra platser.
+**Framför mig** är räknarna, och under dem korten som ligger framför en, ett per rad med Ta upp och setupens högenvägar staplade bredvid.
+**Bordet** är varje annan zon läsaren får se in i, med de andras publika kort att läsa (#414), och de senaste dragen; högarna står bara på Handen, så ingen bricka står på två ställen (#465).
+**Mer** är frågetecknet med handens hjälp, regelboken, Flagga och Lämna.
+
+Det som därmed ersätts, uttryckligen:
+ett tryck håller inte längre upp kortet (#507 ovan) utan markerar det, och läsning är «Läs stort» — ett tryck till, mot att ett tryck aldrig både läser och väljer.
+Att lyfta ett kort uppåt till arket, att hålla för flerval och att vila tummen och bära kortet i sidled för att sortera (K4, #483) är borta med remsan, och med dem «Flytta vänster»/«Flytta höger» (#552): sorteringen finns kvar med Alt och pil på tangentbordet, men inte för en tumme.
+Priset är uttryckligt: under ett kort som hålls upp ur handen ryms en rad knappar och inte två, om kortet ska hålla K26:s läsbredd 294 px vid 320 × 568, och raden bär det som spelar och vänder kortet.
+Telefonens fot (#483, #484 fynd 11) och knapparna under remsan är borta; raden över flikarna bär det de bar.
+Ångra, Flagga och Avsluta nederst (C4 2026-09-08) gäller inte längre `/play`: Ångra står i huvudet och de två andra i Mer.
+Att ytan framför en fälls ut när ett kort spelas dit (#958) har ingen motsvarighet: Handen står kvar öppen, eftersom nästa kort är nästa sak att spela, och Framför mig-flikens antal säger att kortet kom fram.
+Frågetecknet stod i huvudet (L32, #305), men därifrån hängde rutan över handens första kortrad; i Mer täcker den ingenting man spelar med.
+Ett kort vänt i handen (#1133) visar baksidan i rutnätet, F vänder det, «Vänd» står under kortet när det hålls upp, och raden över flikarna säger «· nedvänt» på varje knapp.
+
+`/play` och telefonläget av `/online` ritar samma yta (#181), och en liggande telefon ritar samma kolumn: L62:s två spalter behövs inte när bara panelen rullar.
+Grindarna är `phone-tabs.test.tsx`, `player-page.test.tsx` och `player-viewport.test.tsx` i webben, och `hand.spec.ts`, `phone-foot-play.spec.ts`, `phone-foot-covers.spec.ts` och `phone-landscape.spec.ts` på den byggda appen.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
@@ -2219,6 +2251,8 @@ Batchar med flera slumputfall bestämmer utfallen i ordning.
 
 ### K4. Handen på telefonen: horisontell remsa
 
+Ersatt på telefonen 2026-10-23 av C4:s revision (#1147): handen är ett rutnät, och remsans gester är borta.
+
 Korten i en scrollbar remsa. Sedan telefon A valdes 2026-09-16 är korten kompakta så att fler syns samtidigt.
 Tryck väljer ett kort; Läs valt kort öppnar full upplösning (C4, reviderat 2026-09-17).
 Dra uppåt lyfter kortet till ett ark med zongenvägarna från C4.
@@ -2520,6 +2554,8 @@ Linsen är bordslägets egen och inte TV:ns kamera: TV:ns är platt och räknar 
 Den skalar inpassningen och flyttar träet i sin ram, så pekarens mappning, spöket ur handen och K24:s band räknar rätt utan att veta om den.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
+
+Ersatt 2026-10-23 av C4:s revision (#1147): telefonen är fyra flikar och handen ett rutnät.
 
 Reviderat 2026-09-16 (#99): **remsan är telefonens hand överallt, också i `/online`.**
 Avsnitt I:s fråga om `/online` på en telefon ska vara samma hand som `/play` är därmed stängd, och svaret är ja.
@@ -4064,6 +4100,9 @@ Värdet är det enda resultat en rad berättar, eftersom en tärning på bordet 
 Tärningarna hör till spelets setup (K5).
 En rad i setupen säger sort, antal och var: en yta alla delar, eller en yta varje plats har.
 En yta per plats ger varje plats sitt antal i sin egen yta, och «per spelare» på en delad yta ger antalet gånger platserna där (#1139).
+I fliken Bord är det en rad per tärning under räknarna, och hela listan är en redigering (`setDice`), så en ändring är ett steg tillbaka.
+Ett spel utan tärningar har bara «＋ Tärning» bredvid «＋ Räknare», eftersom en tom grupp med rubrik trycker ytknapparna under kanten vid 1024 × 640 (#711); rubriken kommer med den första tärningen.
+En rad vars yta tas bort står kvar med ett besked, som räknarna utan räknarzon, och ligger på bordet igen när ytan kommer tillbaka.
 Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
 
 Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysiska skalan, eftersom en d6 på 16 mm blir 19 px på filten.
@@ -7337,6 +7376,8 @@ Rummet säger bara sina färger som tokens: fältet markeringens blå som fyllni
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/06-brickan.html`.
 
 ### L62. Telefonen på sidan står i två spalter, och huvudet vid 320 håller en rad med ikoner (prototypat och beslutat 2026-10-05, #716)
+
+Ersatt 2026-10-23 av C4:s revision (#1147): en liggande telefon ritar samma flikar, och bara panelen rullar.
 
 Speltestet 2026-10-02 fann att en telefon som läggs på sidan (844 × 390) ritade porträttspalten utsträckt: räknaren 1 100 px bred, högarna över hela skärmen och handen under den fasta foten, så att inget kort i handen syntes helt utan rullning.
 `/online` på samma telefon ritar samma yta och hade samma fel.
