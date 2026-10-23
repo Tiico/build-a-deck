@@ -316,6 +316,8 @@
     padding: 28px 32px; border: 1px solid #262a35; border-radius: 20px;
   }
   .byd-join-page > :not(.byd-join-code) > header { text-align: center; }
+  /* On the card the way home stands on the heading's first line rather than on the card's edge. */
+  .byd-join-home { top: 18px; right: 20px; }
 }
 /* On a laptop the page has one choice (L77, #1130): «Gå med», and under it the phone's way and only
    watching as lines of text. They are buttons, since each buys a seat or a look before it goes
