@@ -154,5 +154,11 @@ describe('a die’s figure stays on its top face (#1170)', () => {
     expect(fits.filter((f) => f.inked < 20).map((f) => f.die)).toEqual([])
     expect(fits.filter((f) => f.tall < LEAST_TALL).map((f) => `${f.die}: ${f.tall} units tall`)).toEqual([])
     expect(fits.filter((f) => f.outside > 0).map((f) => `${f.die}: ${f.outside} px past the face, ${f.worst} units from its edge`)).toEqual([])
+    // And a d20's two figures read as large as a d12's (#1178, beställarens beslut C): its top face
+    // was the smallest, and «17» set to fit it was a size smaller than every other die's figure
+    // across a room. Measured as ink height against the d12's «12», the nearest two-digit side.
+    const tall = (die: string) => fits.find((f) => f.die === die)?.tall ?? 0
+    const twelve = tall('d12 12')
+    expect(fits.filter((f) => f.die.startsWith('d20 ') && f.die.length > 5 && f.tall < 0.85 * twelve).map((f) => `${f.die}: ${f.tall} units tall against d12 12's ${twelve}`)).toEqual([])
   }, 120_000)
 })

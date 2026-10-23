@@ -4114,6 +4114,9 @@ En rad vars yta tas bort står kvar med ett besked, som räknarna utan räknarzo
 Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
 
 Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysiska skalan, eftersom en d6 på 16 mm blir 19 px på filten.
+*Reviderat 2026-10-23 (#1178, beställarens beslut C efter [prototyp](https://github.com/Tiico/build-a-deck/blob/c199f3792083e26786d1aaf1d6c87f03279d2611/docs/ux-audits/2026-10-22-tarningar/prototyper/d20.html)):* d20:ns toppyta ritas stor, en triangel med radien 40 av 50 i sexhörningen, så att ett tvåsiffrigt värde blir lika stort som d12:ans «12».
+Med den mindre toppytan måste «17» ritas en storlek mindre än alla andra tärningars siffror för att rymmas (#1170).
+`die-figure-fit.test.tsx` håller att varje värde ryms på sin toppyta, och att d20:ns tvåsiffriga värden är minst 0,85 av d12:ans höjd.
 Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
 Med tangentbordet slår Enter eller Space en fokuserad tärning, och M öppnar «Flytta till» med filtens ytor, så att tangentbordet når det pekaren når (K16; beställarens beslut 2026-10-23, #1169).
 Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
