@@ -108,6 +108,9 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
         const t = zone(it.to)
         if (t) return t
         if (it.pile === it.to) return 'cannot split a pile onto itself'
+        // A row is laid beside the pile it came out of (#1203); a zone has its own way of
+        // holding what is put into it.
+        if (it.row !== undefined) return 'a row is laid beside its pile and takes no target'
       } else if (it.x === undefined || it.y === undefined) {
         return 'split without a target needs x and y for the new pile'
       }

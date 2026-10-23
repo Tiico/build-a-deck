@@ -22,12 +22,25 @@ export const ActionAmount = z.discriminatedUnion('of', [
 ])
 export type ActionAmount = z.infer<typeof ActionAmount>
 
-// Where the cards go. `beside` is the pile's own left side, where a split already lands (#87);
-// `hands` is every seated hand; `mine` is the hand of whoever asked, and is nothing at a screen
-// that sits nowhere (C3).
+// Which side of a pile "beside it" is (K21, revising #87): where Dra 1, Dela på hälften and an
+// action that lays cards beside the pile put them, in the pile's own rotation and turned with it.
+// A pile that says nothing means its left — the side free of both its name and its count — which
+// is what every pile meant before the designer could say otherwise.
+export const ZoneBeside = z.enum(['left', 'right', 'above', 'below'])
+export type ZoneBeside = z.infer<typeof ZoneBeside>
+
+// How the cards lie once they are there (#1203): on top of each other as one pile — what every
+// step meant before this was asked — side by side with a gap between, or overlapping by the
+// hand's own step, so that more of them fit on a small felt and every one still shows its corner.
+export const ActionLay = z.enum(['stack', 'row', 'overlap'])
+export type ActionLay = z.infer<typeof ActionLay>
+
+// Where the cards go. `beside` is beside the pile (#87), on the side the step names or, naming
+// none, the pile's own (#1203); `hands` is every seated hand; `mine` is the hand of whoever asked,
+// and is nothing at a screen that sits nowhere (C3).
 export const ActionTarget = z.discriminatedUnion('at', [
   z.object({ at: z.literal('zone'), zone: ZoneId }),
-  z.object({ at: z.literal('beside') }),
+  z.object({ at: z.literal('beside'), side: ZoneBeside.optional(), lay: ActionLay.optional() }),
   z.object({ at: z.literal('hands') }),
   z.object({ at: z.literal('mine') }),
 ])

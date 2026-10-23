@@ -24,6 +24,15 @@ describe('vad åtgärderna lägger bredvid högen (L30)', () => {
     // En sökning läggs som en hög, hur många kort den än hittar (actions.ts, #87).
     expect(laidBeside([act('sök', [{ v: 'take', which: [], to: { at: 'beside' }, face: 'keep' }])])).toBe(2)
   })
+  // Ett steg som valt sin egen sida lägger inte på högens (#1203), och en rad börjar med ett
+  // ensamt kort i sitt hörn, var den än slutar.
+  it('räknar inte steg som valt egen sida, och läser en rad som ett ensamt kort', () => {
+    expect(laidBeside([act('ta3', [split(3)]), act('höger', [{ v: 'split', count: { of: 'number', n: 1 }, to: { at: 'beside', side: 'right' }, face: 'keep' }])])).toBe(2)
+    expect(laidBeside([act('ta1', [split(1)]), act('höger', [{ v: 'split', count: { of: 'number', n: 3 }, to: { at: 'beside', side: 'right' }, face: 'keep' }])])).toBe(1)
+    expect(laidBeside([act('rad', [{ v: 'split', count: { of: 'seats' }, to: { at: 'beside', lay: 'row' }, face: 'front' }])])).toBe(1)
+    expect(laidBeside([act('sök', [{ v: 'take', which: [], to: { at: 'beside', lay: 'overlap' }, face: 'front' }])])).toBe(1)
+  })
+
   it('ritar högens placering för en zon utan åtgärder, och för en vars åtgärder inte lägger något bredvid', () => {
     expect(laidBeside(undefined)).toBe(2)
     expect(laidBeside([])).toBe(2)

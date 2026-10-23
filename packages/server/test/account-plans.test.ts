@@ -104,10 +104,12 @@ for (const backend of backends) {
       await db.tables.createSession({ id: `dee-table-${backend.name}-${Date.now()}`, version: 'v1', setup: twoSeatSetup(), accountId: dee.id })
       await db.plans.setPlan(dee.id, 'pro', 'operator')
       const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, tiers)
-      // Each slice adds its measures (#1192), so a line is read for the ones this report is about.
-      const line = (email: string, plan: string, measures: Record<string, unknown>) => expect.objectContaining({ email, plan, measures: expect.objectContaining(measures) })
-      expect(report).toContainEqual(line('dee@example.com', 'pro', { projects: { used: 2, limit: null }, openTables: { used: 1, limit: null }, tablesPer30Days: { used: 1, limit: null } }))
-      expect(report).toContainEqual(line('bo@example.com', 'free', { projects: { used: 0, limit: 2 }, openTables: { used: 0, limit: null }, tablesPer30Days: { used: 0, limit: null } }))
+      // Cards per game, for every game the account owns (#1195): the log is replayed, since no
+      // actor runs in the operator's process. And the tables the account bears (#1196).
+      const games = [`dee-1-${backend.name}`, `dee-2-${backend.name}`].sort()
+      const perGame = { used: 1, limit: null, projects: games.map((id) => ({ id, used: 1 })) }
+      expect(report).toContainEqual(expect.objectContaining({ email: 'dee@example.com', plan: 'pro', measures: expect.objectContaining({ projects: { used: 2, limit: null }, cardRowsPerProject: perGame, cardCopiesPerProject: perGame, openTables: { used: 1, limit: null }, tablesPer30Days: { used: 1, limit: null } }) }))
+      expect(report).toContainEqual(expect.objectContaining({ email: 'bo@example.com', plan: 'free', measures: expect.objectContaining({ projects: { used: 0, limit: 2 }, cardRowsPerProject: { used: 0, limit: null, projects: [] }, openTables: { used: 0, limit: null }, tablesPer30Days: { used: 0, limit: null } }) }))
       await db.plans.clearPlan(dee.id)
     })
   })

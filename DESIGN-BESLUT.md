@@ -59,6 +59,17 @@ Lådan har alltid konton påslagna, också utan Postgres; bara en server som sta
 Webben använder inte dörren; E2E-stödet (`tableOf`) och `seed`-skriptet gör det, och loggar in med `AUTH_BYPASS` först: ett E2E-sammanhang som redan är inloggat bär sitt bord själv, och ett som inte är det får ett eget konto i ett eget sammanhang, så att den som anropar aldrig loggas in av att ett bord dukas.
 Grindarna: `packages/server/test/bearer.test.ts` (båda lagren, och bakåtfyllnaden mot Postgres) och `packages/e2e/test/raw-door.spec.ts` (den byggda appen).
 
+Byggt 2026-10-23 (#1195, skiva 3 av PRD #1192): kort per spel, som rader och som exemplar.
+Måtten är `cardRowsPerProject`, leken rader, alltså unika kort, och `cardCopiesPerProject`, summan av `antal` som bordet delar ut dem (`copiesOf`, samma läsning som `setupFromProject`).
+Båda mäts och båda går att sätta tak på; gratisnivåns tak gäller rader (beställarens beslut 2026-10-23, fråga 2 i #1192), men det är en siffra i `BYD_PLANS` och inte i koden.
+Taket prövas i projektaktörens beslutssteg, före commit i loggen, mot spelet som det står och spelet som redigeringen gör av det, för varje redigering: en sammansatt (ett godtaget AI-förslag) avvisas hel, och `restore`, CSV-importens `replaceRows` och en ändrad `antal` prövas likadant.
+Taket är ägarens, också när en medredigerare redigerar, och nivån läses när redigeringen beslutas, så en nivå som ändras gäller från nästa redigering.
+Bara tillväxt prövas: en redigering som inte ökar ett mått går igenom också när spelet redan ligger över taket, och uppspelning av en logg prövar aldrig ett tak.
+På tråden är avslaget det vanliga `refused` med `why: 'quota'`, `to`, `ask` och ett tillagt `quota`-fält med kontraktets form, där `bearer` är `you` för ägaren och `owner` för en medredigerare; en editor från före fältet läser avslaget som vilket annat och tar tillbaka redigeringen.
+`PUT /projects/:id`, `POST /projects`, `POST /projects/import` och `POST /projects/:id/duplicate` svarar 402 och skriver ingenting när dokumentet de skulle skriva går över taket; ett nytt spel växer från noll och bärs av den som gör det.
+`GET /me/usage` och `usage`-skriptet svarar båda måtten per spel för varje spel kontot äger, ur det levande dokumentet (aktörens, annars den sparade versionen med loggens svans), med `used` som det mesta något av spelen använder.
+Grindarna: `packages/server/test/quota-cards.test.ts` (båda lagren) och `packages/web/test/project-client-quota.test.ts` (editorn från före fältet).
+
 Byggt 2026-10-23 (#1196, skiva 4 av PRD #1192): **bord som mått, i två former.**
 - `openTables` är de bord kontot bär vars logg inte slutar med `session.end`, alltså bord som står; taket skyddar lådans minne (DRIFT §1).
 - `tablesPer30Days` är de bord kontot bär som startats under de senaste 30 dygnen, rullande och inte per kalendermånad, så att ingen dag i månaden är bättre än en annan (beställarens beslut 2026-10-23 i #1192).
@@ -2913,6 +2924,7 @@ Sidan bor därför på zonen och inte i steget som ber om korten: ringens Dra 1 
 Den är fyra: `left`, `right`, `above` och `below`, i högens egen vridning som vänster alltid räknats i, och en vriden hög vid en sidoplats får dem med sig.
 Ovanför och under mäts i kortets höjd och inte dess bredd, för en hög som läggs ovanför en annan måste gå fri från långsidan.
 Se K21 för ratten i editorn och för meningen som läser den.
+Sedan 2026-10-23 (#1203) får ett av designerns egna steg säga en egen sida; ett steg som inte gör det, och ringens verb, läser fortfarande högens (K21).
 
 Reviderat 2026-09-28 (#509, K26): på filten som läser öppnar ett tryck på ett uppvänt kort inte ringen utan lyfter kortet för att läsas (K8); ringen står bakom ett andra tryck.
 Regeln på filten blir därmed: en dragning flyttar saken, ett tryck läser den, och ett tryck till frågar vad som går att göra med den.
@@ -3814,6 +3826,28 @@ En åtgärd som bara gäller på begäran står kvar, eftersom designern då bet
 «Dra 1» och D på en skärm utan egen hand — bordets skärm — lade kortet nedvänt bredvid högen, och det enda sättet att se det var ett klick till och «Vänd».
 Där landar kortet nu uppvänt (`face: 'front'` på `split`): ingen enskild spelare ska läsa det i hemlighet där, så bordet läser det, och en dragning är en handling.
 `felt-shortcuts.test.tsx` och `table-renderer.test.tsx` håller båda.
+
+Reviderat 2026-10-23 (#1203, beställarens beslut A efter [prototyp](https://github.com/Tiico/build-a-deck/blob/4e9401596749158990ee50f83a769ab6802e6e2c/docs/ux-audits/2026-10-23-regelns-utlaggning/prototyper/index.html)): **ett steg säger själv vilken sida av leken korten läggs på, och hur de ligger där.**
+«Ta 1 per spelare och lägg dem uppvända» lade korten som en uppvänd hög, där bara det översta syns, så spelarna fick lägga ut dem för hand ändå.
+Och sidan gick bara att ändra på högen i fliken Bord, aldrig i meningen som visade den.
+Meningen fick därför två ord till: «Ta ett per spelare från högen och lägg dem uppvända **bredvid varandra** **till höger om högen**».
+Läggsätten är tre: *på varandra* (som förut), *bredvid varandra* (ett kort brett och tolv millimeter isär, samma glipa som en kapning håller) och *omlott* (handens eget steg, 26 mm, så att fler ryms och varje hörn syns).
+Platsrutan har fyra rader för «bredvid», en per sida, och ett läggsätt som redan valts följer med till den nya sidan.
+Ett ensamt kort har inget läggsätt, och en mening som inte lägger bredvid högen har inget heller.
+
+Det ersätter «sidan bor på zonen och inte i steget» ovan, men bara för steg som säger en sida.
+Ett steg som inte säger någon följer högens, så varje sparat bord ligger kvar där det låg, och ringens Dra 1 och Dela på hälften läser fortfarande bara högens.
+Faran det gamla beslutet varnade för — två ställen som kan säga emot varandra — är löst genom att stegets sida vinner och står utskriven i meningen: det designern läser är det som händer.
+
+**Protokollet fick en parameter och inget nytt verb:** `split` tar `row`, och korten läggs då lösa i den yta högen ligger i, var och en där raden säger, i stället för som en ny hög.
+Det måste vara motorns och inte klientens av K15:s skäl: hur många kort «Leta fram» hittar i en dold hög vet bara motorn, och att skicka en kapning per kort hade krävt att klienten visste det.
+Klienten säger det den kan veta: var det första kortet ligger, steget mellan korten, hur många som ryms på en rad innan den lämnar filten (`wrap.after`) och vart nästa rad börjar.
+Till vänster och höger går raden bort från leken och nästa rad läggs under den i högens vridning; ovanför och under centreras raden på lekens linje och nästa rad läggs längre bort.
+Omlott åt vänster lägger det första kortet överst (`firstOnTop`), så att det hörn man läser ett kort i är det som syns.
+Aktivitetsraden säger «Ada lade ut 4 kort bredvid Draghög», och en sökning säger inget tal, eftersom `at` då inte är hur många som hittades.
+En rad som hamnar över kasthögen gör det: var leken och kasthögen står är designerns beslut, och förhandsvisningen i fliken Bord visar det första kortet där det landar.
+
+Grindarna: `packages/engine/test/split-row.test.ts` (utläggningen, ordningen, radbrytningen, sökningen och uppspelningen), `packages/web/test/zone-actions.test.ts` (kompilatorn), `setup-step-lay.test.tsx` (meningen och rattarna), `setup-sentence-matrix.test.tsx`, `setup-landing.test.ts` och `describe.test.ts`.
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
 
@@ -6532,6 +6566,8 @@ Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70
 Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
 En riktig pekare över den låsta knappen ändrar ingenting den målar.
 
+**Ändrat 2026-10-23 (L79, #1218): dörren står före guiden.** Namnet, spelarna och valet mellan guidad start och tomt spel står på vägskälet `/new`, inte i guidens steg 1, och frågan från #732 försvinner eftersom ingenting har gjorts när dörren trycks.
+
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 
 L39 säger vad body-redigeraren *gör*, inte vem som *får* den.
@@ -8032,3 +8068,25 @@ Passkeyns webbplats är sidan webbläsaren står på när den är tjänstens, i 
 Profilen namnger nyckelringen efter AAGUID på läsarens språk och webbläsaren efter user agent, och visar aldrig nyckeln.
 Webbläsaren minns i `localStorage` vilken passkey den sparade eller loggade in med, och sitt «Inte nu», så att bandet erbjuds en gång per webbläsare; en webbläsare utan egen nyckelring får inget erbjudande, och en som inte kan WebAuthn får ingen knapp.
 `passkeys.test.ts` på servern kör riktiga WebAuthn-bytes från en mjukvarunyckelring (`test-support/soft-passkey.ts`), också mot Postgres; `passkeys.test.tsx` kör sidorna mot den riktiga servern; och `passkeys.spec.ts` går hela vägen i den byggda appen med Chromiums virtuella autentiserare.
+
+### L79. Steget före guidad start: `/new` är ett vägskäl, och guiden är två steg (prototypat och beslutat 2026-10-23, #1218)
+
+Beställaren ville flytta guidens steg 1 — spelets namn, antalet spelare och dörren till ett tomt spel (L42) — till ett steg före guiden.
+Tre varianter prövades i [`docs/ux-audits/2026-10-23-nytt-spel-forsteget/prototyper/index.html`](docs/ux-audits/2026-10-23-nytt-spel-forsteget/prototyper/index.html): en dialog över Mina spel, en egen sida som ett vägskäl, och brickan «＋ Nytt spel» som själv blir formuläret.
+Valet blev **B, vägskälet**.
+
+`/new` är en egen sida på guidens papper: «Skapa ett nytt spel», Spelets namn, Spelare och frågan «Hur vill du börja?» med två dörrar.
+«Guidad start» är första handlingen (L13): kantad i bläck, med tre exempelkort och «Två steg, ungefär två minuter».
+«Tomt spel» är den andra: ett tomt kort och «Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.»
+En dörr som trycks utan namn säger villkoret vid fältet, som L42:s tillägg från #416 bestämde.
+«Tomt spel» skapar spelet direkt, med samma väg och samma dokument som L42; frågan från #732 behövs inte, eftersom inget kort eller fält har gjorts när dörren trycks.
+Guiden är två steg, Fält och Korten, och dess huvud bär spelets namn och «N spelare · Ändra»; «Ändra» och vägen tillbaka leder till vägskälet med värdena kvar.
+Vägskälet och guiden har var sin adress, så att webbläsarens bakåt går från guiden till vägskälet.
+Utkastet och inloggningsvarvet (G1, #686) bär namnet och spelarna som förut, och rutan för den som är utloggad (#691) står på vägskälet, eftersom båda dörrarna slutar i en inloggning.
+Mina spel ändras inte: «＋ Nytt spel» leder till `/new`.
+
+Motivering:
+Samma adress gäller för den som är inloggad och den som kommer från landningssidan, så utkastet och inloggningsvarvet behöver ingen andra ritning av steget.
+Dörrarna får plats att säga vad de ger, i stället för att tomt spel står som ett block inne i guidens första steg.
+A:s dialog var ett klick snabbare men hade ingen Mina spel att öppnas över för den utloggade, så `/new` hade behövt samma steg en gång till.
+C lät det nya spelet födas där det skulle stå, men tog hela raden på telefonen och hade samma utloggade problem som A.
