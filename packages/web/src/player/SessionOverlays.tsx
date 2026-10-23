@@ -1,9 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useId, useRef, useState } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
-import { FlagSheet, EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
+import { EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
@@ -11,6 +11,10 @@ import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
 import { returnPile } from '../table/handName.js'
 import { ExitGlyph, FlagGlyph, HookGlyph } from '../glyphs.js'
+
+// Flagging is never in the first frame, so it travels in a chunk of its own with its sheet rather
+// than in the stylesheet every phone blocks on (#760, L20, #1142).
+const FlagFlow = lazy(() => import('./FlagFlow.js').then((m) => ({ default: m.FlagFlow })))
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
 export function refusedText(reason: string, t: T): string {
@@ -61,9 +65,11 @@ export type SessionOverlaysProps = {
   toast: string | null
   onToast(msg: string): void
   version: string | null
+  // Where the textures are served from, for the card a flag is about (#1142).
+  faces: string | undefined
 }
 
-export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -93,20 +99,19 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
     <>
       {toast && <div className="byd-toast" role="status">{toast}</div>}
       {sheet === 'flag' && (
-        <FlagSheet
-          refusal={flagged}
-          onFlag={(note) => {
-            void flagged.watch(client.send({ v: 'flag', ...(note ? { note } : {}) })).then((result) => {
-              if (!result.ok) return
+        <Suspense fallback={null}>
+          <FlagFlow
+            client={client}
+            view={view}
+            faces={faces}
+            refusal={flagged}
+            onFlagged={() => {
               onSheet(null)
               onToast(t('session.flagged'))
-            })
-          }}
-          onClose={() => {
-            flagged.clear()
-            onSheet(null)
-          }}
-        />
+            }}
+            onClose={() => onSheet(null)}
+          />
+        </Suspense>
       )}
       {sheet === 'propose' && view.undo?.contested && (
         <ProposeSheet

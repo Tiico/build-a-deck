@@ -110,7 +110,9 @@ export const SessionIntent = z.discriminatedUnion('v', [
   z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec), cards: z.record(z.string(), z.record(z.string(), z.string())).optional() }),
   // A flagged moment (G3): a line in the log, with an optional note. `observer` names a
   // watcher (C8), whose flags weigh differently than a player's; the server stamps it.
-  z.object({ v: z.literal('flag'), note: z.string().max(280).optional(), observer: z.string().min(1).max(64).optional() }),
+  // `component` is the card the flag is about (#1142), one the flagger's own view holds; which
+  // card it was reaches the log and the designer, and no other view (`projectActivity`).
+  z.object({ v: z.literal('flag'), note: z.string().max(280).optional(), observer: z.string().min(1).max(64).optional(), component: ComponentId.optional() }),
   z.object({ v: z.literal('session.end') }),
   // Whose turn it is (K29): the turn goes to `seat`, given by anyone at the table and refused only
   // where it cannot mean anything. Always a seat and never «the next one», so that two presses of

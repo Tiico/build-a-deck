@@ -1431,6 +1431,11 @@ export class ProjectClient {
 
   // What the game's playtests said (#1010, G3): every table's answers, flags and people, and every
   // version's sums, counted by the server. Read by whoever may start the game's tables (#524).
+  // Where the textures a flag about a card was raised on are served from (#1142): the API itself.
+  get facesOrigin(): string {
+    return this.http
+  }
+
   async playtest(): Promise<Playtest> {
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/playtest`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
