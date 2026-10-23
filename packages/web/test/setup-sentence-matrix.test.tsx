@@ -167,10 +167,10 @@ describe('Ta av högen med fler än ett', () => {
 describe('Leta fram', () => {
   describe('på svenska', () => {
     each('take', 'sv', {
-      'bredvid vänster': 'Leta fram varje kort och lägg dem uppvända till vänster om högen',
-      'bredvid höger': 'Leta fram varje kort och lägg dem uppvända till höger om högen',
-      'bredvid ovanför': 'Leta fram varje kort och lägg dem uppvända ovanför högen',
-      'bredvid under': 'Leta fram varje kort och lägg dem uppvända under högen',
+      'bredvid vänster': 'Leta fram varje kort och lägg dem uppvända på varandra till vänster om högen',
+      'bredvid höger': 'Leta fram varje kort och lägg dem uppvända på varandra till höger om högen',
+      'bredvid ovanför': 'Leta fram varje kort och lägg dem uppvända på varandra ovanför högen',
+      'bredvid under': 'Leta fram varje kort och lägg dem uppvända på varandra under högen',
       'varje hand': 'Leta fram varje kort och lägg dem uppvända i varje hand',
       'min hand': 'Leta fram varje kort och lägg dem uppvända i min hand',
       'en zon': 'Leta fram varje kort och lägg dem uppvända i Kasthög',
@@ -179,10 +179,10 @@ describe('Leta fram', () => {
 
   describe('på engelska', () => {
     each('take', 'en', {
-      'bredvid vänster': "Search out every card and lay them face up to the pile's left",
-      'bredvid höger': "Search out every card and lay them face up to the pile's right",
-      'bredvid ovanför': 'Search out every card and lay them face up above the pile',
-      'bredvid under': 'Search out every card and lay them face up below the pile',
+      'bredvid vänster': "Search out every card and lay them face up on top of each other to the pile's left",
+      'bredvid höger': "Search out every card and lay them face up on top of each other to the pile's right",
+      'bredvid ovanför': 'Search out every card and lay them face up on top of each other above the pile',
+      'bredvid under': 'Search out every card and lay them face up on top of each other below the pile',
       'varje hand': 'Search out every card and lay them face up in every hand',
       'min hand': 'Search out every card and lay them face up in my hand',
       'en zon': 'Search out every card and lay them face up in Kasthög',
@@ -237,7 +237,9 @@ describe('matrisen täcker katalogen', () => {
   it('läser varje steg i vokabuläret — de två utan plats står utanför, och säger själva varför', () => {
     const placeless = ['setup.step.shuffle', 'setup.step.flipTop']
     // `split.one` is the matrix's own split, whose count is 1 (#713); the plural is read beside it.
-    expect(keysUnder('setup.step.')).toEqual([...Object.keys(STEPS).map((v) => `setup.step.${v}`), 'setup.step.split.one', ...placeless].sort())
+    // The `.beside` forms carry the lay as well (#1203): the matrix reads take's beside rows through
+    // one, and `setup-step-lay.test.tsx` reads split's.
+    expect(keysUnder('setup.step.')).toEqual([...Object.keys(STEPS).map((v) => `setup.step.${v}`), 'setup.step.split.one', 'setup.step.split.beside', 'setup.step.take.beside', ...placeless].sort())
     // Och de två står utanför för att de inte har något hål att sätta en plats i, inte för att
     // någon glömde dem.
     for (const key of placeless) for (const lang of ['sv', 'en'] as const) expect(translate(lang, key as Key)).not.toMatch(/\{(at|to)\}/)

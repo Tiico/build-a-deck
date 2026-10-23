@@ -24,6 +24,25 @@ export type PileTop = z.infer<typeof PileTop>
 export const ComponentRef = z.union([ComponentId, PileTop])
 export type ComponentRef = z.infer<typeof ComponentRef>
 
+// The cards a `split` takes, laid out one beside the other instead of piled (#1203). A parameter
+// and not a verb, for the reason `face` is one: laying a row of cards out is one motion of the
+// hand, and only the verb that takes them out of a hidden pile can lay them, because how many a
+// question finds in there is the one thing the client cannot know (B6).
+//
+// (x, y) is then the first card's corner, and card i lies (dx, dy) on from the one before, in
+// table millimetres. `wrap` starts a new line after so many, (dx, dy) on from the line before;
+// `centred` centres each line on the point instead of starting it there. The last card lies on
+// top unless `firstOnTop` says the first does — which is what a row running leftwards wants, so
+// that the corner one reads a card by is the corner left showing.
+export const SplitRow = z.object({
+  dx: z.number(),
+  dy: z.number(),
+  wrap: z.object({ after: z.number().int().positive(), dx: z.number(), dy: z.number() }).optional(),
+  centred: z.boolean().optional(),
+  firstOnTop: z.boolean().optional(),
+})
+export type SplitRow = z.infer<typeof SplitRow>
+
 // A closed vocabulary of what a hand can do to a physical object.
 // No game semantics live here. The set is finite because physics is finite;
 // adding a verb is a protocol migration and must be treated as one.
@@ -63,6 +82,8 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   // With `to` an area and a point, they lie at (x, y) in that area's own coordinates, as a `move`
   // names them, on top of what it holds (#680). With `to` and no point — every line written
   // before that — they go to the bottom of `to` and keep the x/y they had.
+  // With `row` and no `to`, they lie loose in the area the pile lies in, laid out from (x, y) as
+  // `SplitRow` says, and no new pile is made (#1203).
   z.object({
     v: z.literal('split'),
     pile: ZoneId,
@@ -72,6 +93,7 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
     y: z.number().optional(),
     face: FaceId.optional(),
     which: CardQuery.optional(),
+    row: SplitRow.optional(),
   }),
   z.object({ v: z.literal('shuffle'), pile: ZoneId }),
   z.object({ v: z.literal('draw'), from: ZoneId, to: ZoneId, count: z.number().int().positive(), face: FaceId.optional(), which: CardQuery.optional() }),
