@@ -53,7 +53,7 @@ export function UsageCard({ http }: { http: string }) {
         {copies && <Games label={t('profile.usage.copies')} at={copies} names={usage.names} t={t} />}
         <Row label={t('profile.usage.open')} at={limited('openTables')} t={t} />
         <Row label={t('profile.usage.started')} sub={t('profile.usage.started.sub')} at={limited('tablesPer30Days')} t={t} />
-        <Row label={t('profile.usage.storage')} sub={t('profile.usage.storage.sub')} at={limited('storageBytes')} t={t} amount={(n) => bytes(n, t)} />
+        <Row label={t('profile.usage.storage')} sub={t('profile.usage.storage.sub')} at={limited('storageBytes')} t={t} amount={(n) => bytes(n, t, m['storageBytes']?.limit ?? n)} />
       </dl>
       <p className="byd-profile-quiet byd-profile-small">{t('profile.usage.locked')}</p>
     </section>

@@ -548,6 +548,9 @@ export const svAccount = {
   'quota.copies.born.way': 'Minska antalet exemplar i originalet först.',
   'quota.storage.upload.you': 'kontots lagring är full, {used} av {limit}, och {file} är {size}.',
   'quota.storage.upload.owner': '{owner:s} lagring är full, {used} av {limit}, och {file} är {size}.',
+  // Det som får plats sägs som det som är kvar, så att «full» aldrig sägs om en lagring med plats i.
+  'quota.storage.upload.you.room': 'kontots lagring har {free} kvar av {limit}, och {file} är {size}.',
+  'quota.storage.upload.owner.room': '{owner:s} lagring har {free} kvar av {limit}, och {file} är {size}.',
   'quota.storage.way.you': 'Att ta bort en bild ur spelet frigör ingenting, eftersom historiken behåller den; ett spel som tas bort frigör sitt.',
   'quota.storage.way.owner': 'Fråga {owner}. Att ta bort en bild ur spelet frigör ingenting, eftersom historiken behåller den; ett spel som tas bort frigör sitt.',
   'quota.storage.save.you': 'Bilderna som lagts till sedan förra versionen får inte plats i kontots lagring: {used} av {limit} används.',

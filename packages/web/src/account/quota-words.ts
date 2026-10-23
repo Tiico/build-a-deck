@@ -85,11 +85,14 @@ export function quotaWords(quota: Quota, doing: QuotaDoing, t: T): QuotaWords {
       return { what, why, way: t(`quota.${m}.way.${mine ? 'you' : 'owner'}`, params) }
     }
     case 'storageBytes': {
-      const s = { ...n, limit: bytes(quota.limit, t), used: bytes(quota.used, t) }
+      const s = { ...n, limit: bytes(quota.limit, t), used: bytes(quota.used, t, quota.limit) }
       if (doing.kind === 'upload') {
+        // Full only when it is; with room left, the room is what is said, in the ceiling's unit.
+        const full = quota.used >= quota.limit
+        const words = { ...s, free: bytes(Math.max(0, quota.limit - quota.used), t, quota.limit), file: t(FILE_WORD[doing.file]), size: bytes(doing.size, t) }
         return {
           what,
-          why: t(mine ? 'quota.storage.upload.you' : 'quota.storage.upload.owner', { ...s, file: t(FILE_WORD[doing.file]), size: bytes(doing.size, t) }),
+          why: t(`quota.storage.upload.${mine ? 'you' : 'owner'}${full ? '' : '.room'}` as const, words),
           way: t(mine ? 'quota.storage.way.you' : 'quota.storage.way.owner', s),
         }
       }
@@ -136,11 +139,13 @@ const num = (n: number, t: T): string => new Intl.NumberFormat(t('quota.locale')
 
 // Bytes as a designer reads a file's size: in decimal megabytes, the way a file manager says them,
 // with one decimal under ten and none above; kilobytes under one, gigabytes from a thousand.
-export function bytes(n: number, t: T): string {
-  const say = (value: number, digits: number, unit: Key) => t(unit, { n: new Intl.NumberFormat(t('quota.locale'), { maximumFractionDigits: digits }).format(value) })
-  if (n >= 1e9) return say(n / 1e9, 1, 'quota.bytes.gb')
-  if (n >= 1e6 || n === 0) return say(n / 1e6, n < 1e7 ? 1 : 0, 'quota.bytes.mb')
-  return say(Math.max(1, Math.round(n / 1e3)), 0, 'quota.bytes.kb')
+// `scale` picks the unit, so that what is used is said in the ceiling's: «0,9 MB av 1 MB», never
+// «900 kB av 1 MB».
+export function bytes(n: number, t: T, scale = n): string {
+  const say = (value: number, unit: Key) => t(unit, { n: new Intl.NumberFormat(t('quota.locale'), { maximumFractionDigits: value !== 0 && value < 10 ? 1 : 0 }).format(value) })
+  if (scale >= 1e9) return say(n / 1e9, 'quota.bytes.gb')
+  if (scale >= 1e6 || scale === 0) return say(n / 1e6, 'quota.bytes.mb')
+  return say(n === 0 ? 0 : Math.max(1, Math.round(n / 1e3)), 'quota.bytes.kb')
 }
 
 // When something frees, on the reader's clock: the day, the month short, and the minute, since a

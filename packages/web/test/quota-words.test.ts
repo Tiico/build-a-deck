@@ -113,16 +113,18 @@ describe('a met ceiling on storage (#1198)', () => {
   it('says the account’s storage, the picture’s size, and that taking a picture away frees nothing', () => {
     const words = quotaWords(q('storageBytes', 500_000_000, 498_000_000), { kind: 'upload', file: 'picture', size: 4_200_000 }, sv)
     expect(words.what).toBe('')
-    expect(words.why).toBe('kontots lagring är full, 498 MB av 500 MB, och bilden är 4,2 MB.')
+    expect(words.why).toBe('kontots lagring har 2 MB kvar av 500 MB, och bilden är 4,2 MB.')
+    // Full is said only when it is.
+    expect(quotaWords(q('storageBytes', 500_000_000, 500_000_000), { kind: 'upload', file: 'picture', size: 4_200_000 }, sv).why).toBe('kontots lagring är full, 500 MB av 500 MB, och bilden är 4,2 MB.')
     expect(words.way).toBe('Att ta bort en bild ur spelet frigör ingenting, eftersom historiken behåller den; ett spel som tas bort frigör sitt.')
   })
 
   it('says the owner’s storage to a co-editor, and to ask her', () => {
     const words = quotaWords(q('storageBytes', 500_000_000, 498_000_000, owner('Nicklas')), { kind: 'upload', file: 'picture', size: 4_200_000 }, sv)
-    expect(words.why).toBe('Nicklas lagring är full, 498 MB av 500 MB, och bilden är 4,2 MB.')
+    expect(words.why).toBe('Nicklas lagring har 2 MB kvar av 500 MB, och bilden är 4,2 MB.')
     expect(words.way).toMatch(/^Fråga Nicklas\. Att ta bort en bild/)
     expect(quotaWords(q('storageBytes', 500_000_000, 498_000_000, owner()), { kind: 'upload', file: 'picture', size: 4_200_000 }, en).why).toBe(
-      'the game’s owner’s storage is full, 498 MB of 500 MB, and the picture is 4.2 MB.',
+      'the game’s owner’s storage has 2 MB left of 500 MB, and the picture is 4.2 MB.',
     )
   })
 

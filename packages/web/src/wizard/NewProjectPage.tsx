@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { quotaOf } from '../account/quota.js'
+import { quotaWords } from '../account/quota-words.js'
 import { oversetOf } from '@byd/template'
 import { CardPreview } from '../editor/CardPreview.js'
 import { oversetWords, useCut } from '../editor/overset.js'
@@ -307,6 +309,12 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
       if (res.status === 401) throw await login()
+      // A met ceiling (#1193, #1198): why and the way out, after «Spelet skapades inte.» as every reason is.
+      const quota = await quotaOf(res)
+      if (quota) {
+        const words = quotaWords(quota, { kind: 'newGame' }, t)
+        throw new Error([words.why, words.way].filter((part) => part !== '').join(' '))
+      }
       if (!res.ok) throw new NotMade('wizard.error.create')
       forgetDraft()
       const { id } = (await res.json()) as { id: string }

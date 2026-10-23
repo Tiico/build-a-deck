@@ -487,6 +487,8 @@ export const enAccount = {
   'quota.copies.born.way': 'Lower the number of copies in the original first.',
   'quota.storage.upload.you': 'the account’s storage is full, {used} of {limit}, and {file} is {size}.',
   'quota.storage.upload.owner': '{owner:s} storage is full, {used} of {limit}, and {file} is {size}.',
+  'quota.storage.upload.you.room': 'the account’s storage has {free} left of {limit}, and {file} is {size}.',
+  'quota.storage.upload.owner.room': '{owner:s} storage has {free} left of {limit}, and {file} is {size}.',
   'quota.storage.way.you': 'Removing a picture from the game frees nothing, because the history keeps it; a game that is removed frees its own.',
   'quota.storage.way.owner': 'Ask {owner}. Removing a picture from the game frees nothing, because the history keeps it; a game that is removed frees its own.',
   'quota.storage.save.you': 'The pictures added since the last version do not fit in the account’s storage: {used} of {limit} is used.',
