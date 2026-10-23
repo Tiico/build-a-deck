@@ -59,6 +59,17 @@ Lådan har alltid konton påslagna, också utan Postgres; bara en server som sta
 Webben använder inte dörren; E2E-stödet (`tableOf`) och `seed`-skriptet gör det, och loggar in med `AUTH_BYPASS` först: ett E2E-sammanhang som redan är inloggat bär sitt bord själv, och ett som inte är det får ett eget konto i ett eget sammanhang, så att den som anropar aldrig loggas in av att ett bord dukas.
 Grindarna: `packages/server/test/bearer.test.ts` (båda lagren, och bakåtfyllnaden mot Postgres) och `packages/e2e/test/raw-door.spec.ts` (den byggda appen).
 
+Byggt 2026-10-23 (#1195, skiva 3 av PRD #1192): kort per spel, som rader och som exemplar.
+Måtten är `cardRowsPerProject`, leken rader, alltså unika kort, och `cardCopiesPerProject`, summan av `antal` som bordet delar ut dem (`copiesOf`, samma läsning som `setupFromProject`).
+Båda mäts och båda går att sätta tak på; gratisnivåns tak gäller rader (beställarens beslut 2026-10-23, fråga 2 i #1192), men det är en siffra i `BYD_PLANS` och inte i koden.
+Taket prövas i projektaktörens beslutssteg, före commit i loggen, mot spelet som det står och spelet som redigeringen gör av det, för varje redigering: en sammansatt (ett godtaget AI-förslag) avvisas hel, och `restore`, CSV-importens `replaceRows` och en ändrad `antal` prövas likadant.
+Taket är ägarens, också när en medredigerare redigerar, och nivån läses när redigeringen beslutas, så en nivå som ändras gäller från nästa redigering.
+Bara tillväxt prövas: en redigering som inte ökar ett mått går igenom också när spelet redan ligger över taket, och uppspelning av en logg prövar aldrig ett tak.
+På tråden är avslaget det vanliga `refused` med `why: 'quota'`, `to`, `ask` och ett tillagt `quota`-fält med kontraktets form, där `bearer` är `you` för ägaren och `owner` för en medredigerare; en editor från före fältet läser avslaget som vilket annat och tar tillbaka redigeringen.
+`PUT /projects/:id`, `POST /projects`, `POST /projects/import` och `POST /projects/:id/duplicate` svarar 402 och skriver ingenting när dokumentet de skulle skriva går över taket; ett nytt spel växer från noll och bärs av den som gör det.
+`GET /me/usage` och `usage`-skriptet svarar båda måtten per spel för varje spel kontot äger, ur det levande dokumentet (aktörens, annars den sparade versionen med loggens svans), med `used` som det mesta något av spelen använder.
+Grindarna: `packages/server/test/quota-cards.test.ts` (båda lagren) och `packages/web/test/project-client-quota.test.ts` (editorn från före fältet).
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
