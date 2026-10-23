@@ -1,0 +1,19 @@
+{
+  "name": "@byd/print",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract": "./contract/suite.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@byd/engine": "workspace:*",
+    "@byd/protocol": "workspace:*",
+    "zod": "^4.0.0"
+  }
+}

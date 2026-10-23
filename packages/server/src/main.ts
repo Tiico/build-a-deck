@@ -95,10 +95,11 @@ if (databaseUrl) {
 } else {
   store = new MemoryLogStore()
   renders = new MemoryRenderStore()
-  projects = new MemoryProjectStore()
+  assets = new MemoryAssetStore()
+  // Weighs the pictures its games name in the same asset store (#1197).
+  projects = new MemoryProjectStore(assets)
   surveys = new MemorySurveyStore()
   auth = new MemoryAuthStore()
-  assets = new MemoryAssetStore()
   aiKeys = new MemoryAiKeyStore()
   accountPlans = new MemoryAccountPlanStore()
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))

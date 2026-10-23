@@ -182,11 +182,23 @@ export const svAccount = {
   'wizard.name.max': 'Namnet får vara högst {n} tecken.',
   'wizard.eyebrow': 'Guidad start',
   'wizard.title': 'Skapa ett nytt spel',
-  'wizard.steps': 'Tre steg, ungefär tre minuter',
-  'wizard.block.game': 'Spelet',
-  'wizard.step.spelet': '1 · Spelet',
-  'wizard.step.falten': '2 · Fälten',
-  'wizard.step.korten': '3 · Korten',
+  // Vägskälet före guiden (L79): namnet, spelarna och två dörrar. «Nytt spel» är också vägen tillbaka
+  // dit från guiden.
+  'wizard.new': 'Nytt spel',
+  'wizard.door.ask': 'Hur vill du börja?',
+  'wizard.door.guided': 'Guidad start',
+  'wizard.door.guided.body': 'Välj vad korten ska ha och gör några exempelkort. Du ser dem på kortet medan du skriver.',
+  'wizard.door.blank': 'Tomt spel',
+  'wizard.door.blank.body': 'Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.',
+  'wizard.door.blank.more': 'Till editorn',
+  // Guidens huvud bär spelet det är början på, och vägen tillbaka till det som frågades före.
+  'wizard.seats.one': '{n} spelare',
+  'wizard.seats.other': '{n} spelare',
+  'wizard.change': 'Ändra',
+  'wizard.change.label': 'Ändra namn och spelare',
+  'wizard.steps': 'Två steg, ungefär två minuter',
+  'wizard.step.falten': '1 · Fälten',
+  'wizard.step.korten': '2 · Korten',
   // Ett frågetecken per steg, vid stegets rubrik (L36): lådan bär stegets förklaringar.
   'wizard.help.spelet': 'spelet',
   'wizard.help.falten': 'fälten',
@@ -209,12 +221,9 @@ export const svAccount = {
   'players.more': 'En spelare fler',
   'players.count': 'Antal spelare, {min} till {max}',
   // Vägen förbi den guidade starten (L42): namnet och platserna räcker, resten görs i editorn.
-  'wizard.blank.title': 'Börja från ett tomt spel',
-  'wizard.blank.body': 'Bara namnet och antalet spelare följer med.',
-  'wizard.blank.help': 'Tomt spel: «Skapa tomt spel» skapar spelet med namnet och antalet spelare ovanför, utan kort, fält eller mall.',
-  'wizard.blank.create': 'Skapa tomt spel',
+  'wizard.blank.help': 'Tomt spel: skapar spelet med namnet och antalet spelare, utan kort, fält eller mall.',
   // Frågan dörren ställer när guiden håller kort eller fält som designern gjort (#732, L9).
-  'wizard.blank.ask': 'Ett tomt spel får bara namnet och platserna. Korten och fälten du har gjort här följer inte med.',
+  'wizard.blank.ask': 'Ett tomt spel får bara namnet och platserna. Korten och fälten du har gjort i guiden följer inte med.',
   'wizard.blank.ask.confirm': 'Ja, skapa ett tomt spel',
 
   // Fälten: vad varje kort har, och om det syns på kortet. Med ord nybörjaren redan har: ramen

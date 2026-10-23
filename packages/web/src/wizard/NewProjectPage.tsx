@@ -22,6 +22,7 @@ import { ANTAL } from '@byd/server/doc'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Stepper } from '../Stepper.js'
+import { CROSSROADS, GUIDED } from './paths.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
 import { ArrowGlyph, CloseGlyph  } from '../glyphs.js'
 import './wizard.css'
@@ -69,15 +70,23 @@ const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].i
 // Fältet beskriver valideringsbeskedet och längdgränsen när de behövs.
 const NAME_SAYS = 'byd-wizard-name-says'
 const NAME_LIMIT = 'byd-wizard-name-limit'
+const NAME_FIELD = 'byd-wizard-name'
 
-// The three steps the header has promised all along. Below the desk they are three screens with
-// one job each; on a desk they are the two columns the wizard has always had (L10, #4).
-type Step = 'spelet' | 'falten' | 'korten'
+// The guide's two steps (L79): the name and the seats stand before it now, at the crossroads. Below
+// the desk they are two screens with one job each; on a desk they are the two columns the wizard
+// has always had (L10, #4).
+type Step = 'falten' | 'korten'
 const STEPS: readonly (readonly [Step, Key])[] = [
-  ['spelet', 'wizard.step.spelet'],
   ['falten', 'wizard.step.falten'],
   ['korten', 'wizard.step.korten'],
 ]
+
+// Where the page stands (L79, #1218): the crossroads at `/new`, or the guide behind its first door
+// at an address of its own, so that the browser's back goes from the guide to the crossroads. The
+// guide is only ever the guide of a game with a name; without one its address is the crossroads.
+type Stage = 'door' | 'guide'
+const DOOR = CROSSROADS
+const stageAt = (path: string, named: boolean): Stage => (path === GUIDED && named ? 'guide' : 'door')
 
 // /new?server=http://… — a short graphical starter flow. It creates the same document the
 // editor edits, then sends the designer there for the rest of the deck and template work.
@@ -112,7 +121,14 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const leaving = useRef(false)
   const [selectedRow, setSelectedRow] = useState(0)
   const desk = useRoom() === 'desk'
-  const [step, setStep] = useState<Step>('spelet')
+  const [step, setStep] = useState<Step>('falten')
+  const [stage, setStage] = useState<Stage>(() => stageAt(location.pathname, s.name.trim().length > 0))
+  // An address the page cannot stand at is put right as it is read: the guide of a game with no name
+  // is the crossroads.
+  useLayoutEffect(() => {
+    if (location.pathname === GUIDED && stage === 'door') history.replaceState(history.state, '', `${DOOR}${location.search}`)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- read once, on arrival
+  }, [])
   const at = STEPS.findIndex(([key]) => key === step)
   const { itemProps } = useRoving({ ids: STEPS.map(([key]) => key), selected: step, orientation: 'horizontal' })
   const [busy, setBusy] = useState(false)
@@ -246,7 +262,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     // lämnar markören där det rättas.
     if (!named) {
       setSays(t('wizard.name.says'))
-      setStep('spelet')
+      if (stage !== 'door') toDoor()
       setAsked((n) => n + 1)
       return
     }
@@ -403,6 +419,33 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     setStep(to)
     setFocusOn({ at: `#byd-wizard-panel-${to}` })
   }
+  // Between the crossroads and the guide (L79). Each is a step the browser keeps, as a link would
+  // be, so its back goes the way the designer came. The first door is shut without a name, and says
+  // so at the field (#416, variant B); the keys land in the first thing there is to do behind it.
+  const toGuide = () => {
+    if (!named) {
+      setSays(t('wizard.name.says'))
+      setAsked((n) => n + 1)
+      return
+    }
+    setSays(null)
+    history.pushState(history.state, '', `${GUIDED}${location.search}`)
+    setStage('guide')
+    setStep('falten')
+    setFocusOn({ at: '.byd-wizard-field input' })
+  }
+  const toDoor = () => {
+    history.pushState(history.state, '', `${DOOR}${location.search}`)
+    setStage('door')
+    setFocusOn({ at: `#${NAME_FIELD}` })
+  }
+  const isNamed = useRef(named)
+  isNamed.current = named
+  useEffect(() => {
+    const moved = () => setStage(stageAt(location.pathname, isNamed.current))
+    window.addEventListener('popstate', moved)
+    return () => window.removeEventListener('popstate', moved)
+  }, [])
   const setFields = (fields: Field[]) => setS((current) => ({ ...current, fields }))
   const updateRow = (index: number, key: string, value: string) => setS((current) => ({
     ...current,
@@ -500,98 +543,120 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     setFocusOn({ at: '.byd-wizard-card-tabs [aria-pressed="true"]' })
   }
 
-  // Steps 1 and 2 are one panel each, and the cards are the third. On a desk they are read side
-  // by side, the way they always have been; below one they are three steps with one job each —
-  // the wizard has said "3 enkla steg" all along, and now it is three (L10, #4).
-  const spelet = (
-    <section className="byd-wizard-block" aria-labelledby="byd-wizard-h1">
-      {/* One question mark per step, at the step's heading (L36): the box carries what the
-          handoff and the blank door used to say on the surface. */}
-      <div className="byd-help-row">
-        <h2 id="byd-wizard-h1"><span className="byd-wizard-step">1</span>{t('wizard.block.game')}</h2>
-        <Help topic={t('wizard.help.spelet')}>
-          <p>{t('wizard.handoff.body')}</p>
-          <p>{t('wizard.blank.help')}</p>
-        </Help>
+  // The box at the top (#687, beslut 2026-10-06): logged out, it says the game is kept on an
+  // account (#691) — on the crossroads, since both its doors end in a login — and logged in there
+  // is no box. What the guided start is the start of is said behind the question's mark (L36).
+  const handoff = loggedOut ? (
+    <div className="byd-wizard-handoff">
+      <p>
+        <strong>{t('wizard.handoff.account.lead')}</strong> {t('wizard.handoff.account')}
+      </p>
+    </div>
+  ) : null
+  // The crossroads (L79, #1218, prototype B): what every game has — its name and its seats — and
+  // the two ways to begin. The guided way is the first action (L13), drawn in ink with the cards it
+  // makes; the empty game is the second, with the empty card it is. Each door is named by its title
+  // and described by what it gives, so a screen reader hears «Guidad start», then the rest.
+  const crossroads = (
+    <main className="byd-wizard-crossroads">
+      <div className="byd-wizard-crossroads-inner">
+        {handoff}
+        <div className="byd-wizard-basics">
+          {/* The words over the field are its name. A second, shorter one in `aria-label` would win
+              over them, and then what is written on the screen and what the field is called are two
+              different things — which is the whole of WCAG 2.5.3. */}
+          <label className="byd-wizard-label">{t('wizard.name')}<input
+            id={NAME_FIELD}
+            ref={nameField}
+            value={s.name}
+            onChange={(event) => {
+              setS({ ...s, name: event.target.value })
+              // Villkoret gäller inte längre så snart något står i fältet.
+              if (event.target.value.trim()) setSays(null)
+            }}
+            onKeyDown={(event) => {
+              // Enter is the first door, which is what a name written and sent asks for.
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              toGuide()
+            }}
+            autoFocus={desk}
+            aria-required="true"
+            aria-invalid={says ? 'true' : 'false'}
+            maxLength={PROJECT_NAME_MAX}
+            aria-describedby={[says ? NAME_SAYS : null, atLimit ? NAME_LIMIT : null].filter(Boolean).join(' ')}
+          /></label>
+          {/* The limit is said once it is reached (#476): a name that stops growing without a word
+              looks like a keyboard that stopped working. */}
+          {atLimit && (
+            <p className="byd-wizard-hint" id={NAME_LIMIT}>
+              {t('wizard.name.max', { n: PROJECT_NAME_MAX })}
+            </p>
+          )}
+          {/* Villkoret, sagt en gång och vid fältet — inte en gång per dörr. Det föds efter trycket
+              och föds därför som en levande region. */}
+          {says && (
+            <p className="byd-wizard-says" id={NAME_SAYS} role="alert" aria-live="assertive">
+              {says}
+            </p>
+          )}
+          {/* Every seat count the table can hold, `MAX_PLAYERS` and not six (K18, K19) — as the same
+              stepper Bord's recipe column has (#620). */}
+          <fieldset>
+            <legend>{t('wizard.players')}</legend>
+            <Stepper value={s.players} min={1} max={MAX_PLAYERS} onChange={(players) => setS({ ...s, players })} label={t('players.count', { min: 1, max: MAX_PLAYERS })} fewer={t('players.fewer')} more={t('players.more')} />
+          </fieldset>
+        </div>
+        <div className="byd-wizard-ways" role="group" aria-labelledby="byd-wizard-ways-h">
+          {/* One question mark, at the question (L36): the box says what each door is for. */}
+          <div className="byd-help-row">
+            <h2 id="byd-wizard-ways-h">{t('wizard.door.ask')}</h2>
+            <Help topic={t('wizard.help.spelet')}>
+              <p>{t('wizard.handoff.body')}</p>
+              <p>{t('wizard.blank.help')}</p>
+            </Help>
+          </div>
+          <div className="byd-wizard-doors">
+            <button type="button" className="byd-wizard-door" data-first="" aria-labelledby="byd-wizard-door-guided" aria-describedby="byd-wizard-door-guided-body byd-wizard-door-guided-more" onClick={toGuide}>
+              <span className="byd-wizard-door-art" aria-hidden="true"><i /><i /><i /></span>
+              <strong id="byd-wizard-door-guided">{t('wizard.door.guided')}</strong>
+              <span id="byd-wizard-door-guided-body">{t('wizard.door.guided.body')}</span>
+              <span id="byd-wizard-door-guided-more" className="byd-wizard-door-more">{t('wizard.steps')}<ArrowGlyph to="right" /></span>
+            </button>
+            <button ref={blankDoor} type="button" className="byd-wizard-door" aria-labelledby="byd-wizard-door-blank" aria-describedby="byd-wizard-door-blank-body byd-wizard-door-blank-more" {...working(busy)} onClick={toBlank}>
+              <span className="byd-wizard-door-art" data-blank="" aria-hidden="true"><i /></span>
+              <strong id="byd-wizard-door-blank">{t('wizard.door.blank')}</strong>
+              <span id="byd-wizard-door-blank-body">{t('wizard.door.blank.body')}</span>
+              <span id="byd-wizard-door-blank-more" className="byd-wizard-door-more"><Held busy={busy && via === 'blank'} idle={t('wizard.door.blank.more')} working={t('wizard.creating')} /><ArrowGlyph to="right" /></span>
+            </button>
+          </div>
+          {/* The tool's one question (L9), where the door was pressed: only when the guide was
+              visited and cards or fields made there would be left behind (#732). It opens on
+              «Avbryt», and either answer hands the focus back to the door. */}
+          {askingBlank && (
+            <Suspense fallback={null}>
+              <BlankAsk
+                onCancel={() => {
+                  setAskingBlank(false)
+                  blankDoor.current?.focus()
+                }}
+                onConfirm={() => {
+                  setAskingBlank(false)
+                  blankDoor.current?.focus()
+                  void toEditor('blank')
+                }}
+              />
+            </Suspense>
+          )}
+          {error && via === 'blank' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}
+        </div>
       </div>
-      {/* The words over the field are its name. A second, shorter one in `aria-label` would win
-          over them, and then what is written on the screen and what the field is called are two
-          different things — which is the whole of WCAG 2.5.3. */}
-      <label className="byd-wizard-label">{t('wizard.name')}<input
-        ref={nameField}
-        value={s.name}
-        onChange={(event) => {
-          setS({ ...s, name: event.target.value })
-          // Villkoret gäller inte längre så snart något står i fältet.
-          if (event.target.value.trim()) setSays(null)
-        }}
-        onKeyDown={(event) => {
-          // Enter goes on to the fields, which is what comes next whether they stand beside the
-          // name or behind the next step.
-          if (event.key !== 'Enter') return
-          event.preventDefault()
-          if (!desk) setStep('falten')
-          setFocusOn({ at: '.byd-wizard-field input' })
-        }}
-        autoFocus={desk}
-        aria-required="true"
-        aria-invalid={says ? 'true' : 'false'}
-        maxLength={PROJECT_NAME_MAX}
-        aria-describedby={[says ? NAME_SAYS : null, atLimit ? NAME_LIMIT : null].filter(Boolean).join(' ')}
-      /></label>
-      {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per utgång, fastän de två
-          ligger i var sin spalt. Det föds efter trycket och föds därför som en levande region. */}
-      {/* The limit is said once it is reached (#476): a name that stops growing without a word
-          looks like a keyboard that stopped working. */}
-      {atLimit && (
-        <p className="byd-wizard-hint" id={NAME_LIMIT}>
-          {t('wizard.name.max', { n: PROJECT_NAME_MAX })}
-        </p>
-      )}
-      {says && (
-        <p className="byd-wizard-says" id={NAME_SAYS} role="alert" aria-live="assertive">
-          {says}
-        </p>
-      )}
-      {/* Every seat count the table can hold, `MAX_PLAYERS` and not six (K18, K19) — as the same
-          stepper Bord's recipe column has (#620), one row of three targets rather than eight. */}
-      <fieldset>
-        <legend>{t('wizard.players')}</legend>
-        <Stepper value={s.players} min={1} max={MAX_PLAYERS} onChange={(players) => setS({ ...s, players })} label={t('players.count', { min: 1, max: MAX_PLAYERS })} fewer={t('players.fewer')} more={t('players.more')} />
-      </fieldset>
-      {/* The guided start is a door, not a gate (L42): the name and the seats above are all a
-          game needs in order to exist, and whoever would rather make the cards, the fields and
-          the faces in the editor goes there now, with none of them. It is the second action in
-          the view (L13): the guided way is the first, and this one stands beside it, bordered. */}
-      <div className="byd-wizard-blank">
-        <strong>{t('wizard.blank.title')}</strong>
-        <p>{t('wizard.blank.body')}</p>
-        <button ref={blankDoor} type="button" className="byd-secondary" {...working(busy)} onClick={toBlank}><Held busy={busy && via === 'blank'} idle={t('wizard.blank.create')} working={t('wizard.creating')} /></button>
-        {/* The tool's one question (L9), where the door was pressed. It opens on «Avbryt», and
-            either answer hands the focus back to the door. */}
-        {askingBlank && (
-          <Suspense fallback={null}>
-            <BlankAsk
-              onCancel={() => {
-                setAskingBlank(false)
-                blankDoor.current?.focus()
-              }}
-              onConfirm={() => {
-                setAskingBlank(false)
-                blankDoor.current?.focus()
-                void toEditor('blank')
-              }}
-            />
-          </Suspense>
-        )}
-        {error && via === 'blank' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}
-      </div>
-    </section>
+    </main>
   )
   const falten = (
     <section className="byd-wizard-block" aria-labelledby="byd-wizard-h2">
       <div className="byd-help-row">
-        <h2 id="byd-wizard-h2"><span className="byd-wizard-step">2</span>{t('wizard.fields')}</h2>
+        <h2 id="byd-wizard-h2"><span className="byd-wizard-step">1</span>{t('wizard.fields')}</h2>
         <Help topic={t('wizard.help.falten')}>
           <p>{t('wizard.fields.help')}</p>
           <p>{t('wizard.look.later')}</p>
@@ -637,7 +702,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     <section className="byd-wizard-block" aria-labelledby="byd-wizard-h3">
       <div className="byd-wizard-cards-head">
         <div className="byd-help-row">
-          <h2 id="byd-wizard-h3"><span className="byd-wizard-step">3</span>{t('wizard.cards.title')}</h2>
+          <h2 id="byd-wizard-h3"><span className="byd-wizard-step">2</span>{t('wizard.cards.title')}</h2>
           <Help topic={t('wizard.help.korten')}>
             <p>{t('wizard.cards.body')}</p>
             <p>{t('wizard.footer')}</p>
@@ -687,39 +752,63 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards} {...working(busy)} onClick={() => void toEditor()}><Held busy={busy && via === 'guided'} idle={t('wizard.create')} working={t('wizard.creating')} /></button>{error && via === 'guided' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}</footer>
     </section>
   )
-  // The box at the top (#687, beslut 2026-10-06): logged out, it says the game is kept on an
-  // account (#691) — here and only here — and logged in there is no box. What the guided start is
-  // the start of is said behind the first step's question mark (L36).
-  const handoff = loggedOut ? (
-    <div className="byd-wizard-handoff">
-      <p>
-        <strong>{t('wizard.handoff.account.lead')}</strong> {t('wizard.handoff.account')}
-      </p>
-    </div>
-  ) : null
-  const panels: Record<Step, ReactNode> = { spelet, falten: <>{falten}</>, korten }
+  const panels: Record<Step, ReactNode> = { falten: <>{falten}</>, korten }
+
+  const draftLine = draftSays && <p className="byd-wizard-draft-says" role="alert">{t(draftSays)}</p>
+  if (stage === 'door') {
+    return (
+      <div className="byd-wizard" data-page="new" data-stage="door">
+        <header>
+          {/* The way back, where the editor has its own (#476): the draft stays in the tab, and the
+              browser asks first if something is written. */}
+          <a className="byd-wizard-home" href={server ? `/?${new URLSearchParams({ server }).toString()}` : '/'}>
+            {t('editor.home')}
+          </a>
+          <div><span>{t('wizard.new')}</span><h1>{t('wizard.title')}</h1></div>
+          {draftLine}
+        </header>
+        {crossroads}
+      </div>
+    )
+  }
 
   return (
-    <div className="byd-wizard" data-page="new" data-room={desk ? 'desk' : 'steps'}>
+    <div className="byd-wizard" data-page="new" data-stage="guide" data-room={desk ? 'desk' : 'steps'}>
       <header>
-        {/* The way back, where the editor has its own (#476): the draft stays in the tab, and the
-            browser asks first if something is written. */}
-        <a className="byd-wizard-home" href={server ? `/?${new URLSearchParams({ server }).toString()}` : '/'}>
-          {t('editor.home')}
+        {/* The way back is to the crossroads the guide was entered from (L79), with the name and the
+            seats as they were left; Mina spel is one step further, from there. */}
+        <a
+          className="byd-wizard-home"
+          href={`${DOOR}${location.search}`}
+          onClick={(event) => {
+            event.preventDefault()
+            toDoor()
+          }}
+        >
+          {t('wizard.new')}
         </a>
-        <div><span>{t('wizard.eyebrow')}</span><h1>{t('wizard.title')}</h1></div>
+        <div>
+          <span>{t('wizard.eyebrow')}</span>
+          {/* The game the guide is the start of, by its name, and what was asked of it before. */}
+          <div className="byd-wizard-named">
+            <h1>{s.name}</h1>
+            <span className="byd-wizard-facts">
+              <span>{t(s.players === 1 ? 'wizard.seats.one' : 'wizard.seats.other', { n: s.players })}</span>
+              <span aria-hidden="true">·</span>
+              <button type="button" className="byd-wizard-change" aria-label={t('wizard.change.label')} onClick={toDoor}>
+                {t('wizard.change')}
+              </button>
+            </span>
+          </div>
+        </div>
         <span>{t('wizard.steps')}</span>
-        {draftSays && <p className="byd-wizard-draft-says" role="alert">{t(draftSays)}</p>}
+        {draftLine}
       </header>
       {desk ? (
-        // All three steps are the page's main content (#555): the first two are the form as much
-        // as the third, not something beside it.
+        // Both steps are the page's main content (#555): the fields are the form as much as the
+        // cards, not something beside them.
         <main className="byd-wizard-grid">
-          <div className="byd-wizard-side">
-            {handoff}
-            {spelet}
-            {falten}
-          </div>
+          <div className="byd-wizard-side">{falten}</div>
           <div className="byd-wizard-main">{korten}</div>
         </main>
       ) : (
@@ -751,12 +840,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           <div className="byd-wizard-body" ref={body}>
             {STEPS.map(([key]) => (
               <div key={key} id={`byd-wizard-panel-${key}`} role="tabpanel" aria-labelledby={`byd-wizard-tab-${key}`} tabIndex={0} hidden={step !== key}>
-                {step === key && (
-                  <>
-                    {key === 'spelet' && handoff}
-                    {panels[key]}
-                  </>
-                )}
+                {step === key && panels[key]}
               </div>
             ))}
           </div>

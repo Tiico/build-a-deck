@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 import { fitInDocument, type FitReport } from '@byd/template'
 import { logIn } from '../../support/api.js'
 
@@ -65,6 +66,7 @@ test('fits the body text again once the theme’s face has landed, as the editor
   })
   await logIn(page.request)
   await page.goto('/new', { waitUntil: 'load' })
+  await throughTheDoor(page)
   await page.getByRole('button', { name: 'Klassisk', exact: true }).click()
   await page.getByRole('button', { name: 'Välj temat Krönika' }).click()
   // The sheet has answered once the file is asked for, and the file is held: the card says so (#687).

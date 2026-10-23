@@ -1,5 +1,5 @@
 import { applyEdit, checkNewName, decideEdit, type EditIntent } from './edits.js'
-import { stamp, type ProjectDoc, type ProjectStore } from './projects.js'
+import { stamp, type Ceilings, type ProjectDoc, type ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
 import { cardGrowth, type CardMeasure } from './quota-cards.js'
 import { QuotaReached, type Limit, type QuotaMet } from './quotas.js'
@@ -35,15 +35,19 @@ export type EditorMessage =
   // refusal without it the way it always did. `ask` is the number of the edit refused (#993), so
   // the editor takes that edit back and keeps every other one it has on the line.
   //
-  // `quota` is the ceiling an edit would have crossed (#1195, #1192), on a refusal whose `why` is
-  // `quota`: the measure, the ceiling, what the game uses, and who bears it — `you` when the editor
-  // owns the game, `owner` when its owner does. An addition as `to` and `ask` were: a page from
-  // before it reads the refusal by `why` and takes the edit back, as it does any other.
+  // `quota` is the ceiling an edit (#1195) or a save (#1197) would have crossed (#1192), on a
+  // refusal whose `why` is `quota`: the measure, the ceiling, what is used, and who bears it — `you`
+  // when the editor owns the game, `owner` when its owner does. An addition as `to` and `ask` were:
+  // a page from before it reads the refusal by `why`, as it does any other.
   | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & { bearer: 'you' | 'owner' } }
 export type Presence = { id: string; name: string; role?: Role }
 // The ceiling an owner's games are held to on a card measure (#1195): asked of the owner's tier as
 // the edit is decided, so a tier changed while the game is open holds from the next edit.
 export type CardCeilings = (owner: string, measure: CardMeasure) => Promise<Limit>
+// The owner's ceilings a version is held to, asked for when the version is made (#1197).
+export type OwnerCeilings = () => Promise<Pick<Ceilings, 'storageBytes'>>
+// What a version that could not be made says: why, and the ceiling it met when that was why.
+export type Saved = { ok: true; rev: number } | { ok: false; reason: string; quota?: QuotaMet }
 
 export class ProjectActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -160,12 +164,22 @@ export class ProjectActor {
   }
 
   // Saving makes a version of what stands now (B4), and marks how far the log had come, so a
-  // fresh actor knows which edits are already in it. `from` is the editor that asked.
-  async save(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
-    return this.serial(() => this.makeVersion(from))
+  // fresh actor knows which edits are already in it. `from` is the editor that asked. `storage`
+  // is the owner's ceiling on storage (#1197): a version that names more than the owner has room
+  // for is not made, and says the ceiling it met; the log and what stands are as they were. It is
+  // asked for in the save's own turn of the queue, never before it, so a save takes its place behind exactly
+  // the edits sent before it, however long the question takes (#994).
+  async save(from?: string, storage?: OwnerCeilings): Promise<Saved> {
+    return this.serial(() => this.makeVersion(from, storage))
   }
-  private async makeVersion(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
-    const result = await this.store.replace(this.id, this.rev, this.current, this.at)
+  private async makeVersion(from?: string, storage?: OwnerCeilings): Promise<Saved> {
+    let result: Awaited<ReturnType<ProjectStore['replace']>>
+    try {
+      result = await this.store.replace(this.id, this.rev, this.current, this.at, storage ? await storage() : undefined)
+    } catch (e) {
+      if (e instanceof QuotaReached) return { ok: false as const, reason: 'quota', quota: e.quota }
+      throw e
+    }
     if (result === 'missing') return { ok: false as const, reason: 'unknown project' }
     if (result === 'conflict') return { ok: false as const, reason: 'conflict' }
     this.rev = result.rev
@@ -180,11 +194,16 @@ export class ProjectActor {
   // So it is what a document taken back already is, a `restore` in the log, and then a version
   // of it, in one turn of the queue so that no edit can land between the two. It is written
   // against a rev, and a rev the project has left is a conflict, as it always was.
-  async put(expectedRev: number, doc: ProjectDoc, by?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
+  //
+  // `storage` as for `save`. The door asks the ceiling on storage before it comes here (#1197), so
+  // a document refused for it never reaches the log; the version asks again in the step that
+  // writes it, and only two writes racing for the owner's last bytes can leave the document in
+  // the log and the version unmade.
+  async put(expectedRev: number, doc: ProjectDoc, by?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
       if (stamp(doc) !== stamp(this.current)) await this.commit({ v: 'restore', doc }, by)
-      return this.makeVersion()
+      return this.makeVersion(undefined, storage)
     })
   }
 

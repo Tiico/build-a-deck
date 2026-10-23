@@ -96,7 +96,8 @@ describe('TableHost', () => {
 
 function bind(store: MemoryLogStore): LogStore {
   return {
-    createSession: (r) => store.createSession(r),
+    createSession: (r, ceilings) => store.createSession(r, ceilings),
+    tablesOf: (account, since) => store.tablesOf(account, since),
     loadSession: (id) => store.loadSession(id),
     addDeck: (id, version, deck) => store.addDeck(id, version, deck),
     deckOf: (id, version) => store.deckOf(id, version),

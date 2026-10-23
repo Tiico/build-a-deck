@@ -24,6 +24,9 @@ export type AssetStore = {
   motifs(hashes: readonly string[]): Promise<Record<string, Motif>>
   // Which of these the store has, without reading a byte of any of them (#1028).
   known(hashes: readonly string[]): Promise<Set<string>>
+  // How many bytes each of these weighs, for the ones the store has (#1197): what storage is
+  // summed out of. A hash the store does not have is left out, and weighs nothing.
+  sizes(hashes: readonly string[]): Promise<Record<string, number>>
   // A URL a browser may fetch the asset from directly for `ttlSeconds`; null when the bytes
   // have to come through the server.
   link(hash: string, ttlSeconds: number): Promise<string | null>
@@ -53,12 +56,24 @@ export const MotifBody = z
   .object({ w: z.number().int().positive(), h: z.number().int().positive(), trim: z.object({ left: Whole, top: Whole, right: Whole, bottom: Whole }) })
   .refine((m) => m.trim.left + m.trim.right < m.w && m.trim.top + m.trim.bottom < m.h, 'the border leaves no picture')
 
+export { assetHashesOf } from './asset-refs.js'
+
 export const isAssetRef = (value: unknown): value is string => typeof value === 'string' && value.startsWith(ASSET_PREFIX) && /^[0-9a-f]{64}$/.test(value.slice(ASSET_PREFIX.length))
 
 export class MemoryAssetStore implements AssetStore {
   private readonly types = new Map<string, string>()
+  private readonly lengths = new Map<string, number>()
   private readonly drawn = new Map<string, Motif>()
   constructor(private readonly objects: ObjectStore = new MemoryObjectStore()) {}
+
+  async sizes(hashes: readonly string[]): Promise<Record<string, number>> {
+    const out: Record<string, number> = {}
+    for (const hash of hashes) {
+      const size = this.lengths.get(hash)
+      if (size !== undefined) out[hash] = size
+    }
+    return out
+  }
 
   async setMotif(hash: string, motif: Motif): Promise<boolean> {
     if (!this.types.has(hash) || this.drawn.has(hash)) return false
@@ -82,6 +97,7 @@ export class MemoryAssetStore implements AssetStore {
     if (!this.types.has(hash)) {
       await this.objects.put(assetKey(hash), bytes, contentType)
       this.types.set(hash, contentType)
+      this.lengths.set(hash, bytes.byteLength)
     }
     return hash
   }
@@ -119,6 +135,11 @@ export class PostgresAssetStore implements AssetStore {
     if (hashes.length === 0) return new Set()
     const rows = await this.sql<{ hash: string }[]>`select hash from assets where hash in ${this.sql(hashes as string[])}`
     return new Set(rows.map((r) => r.hash))
+  }
+  async sizes(hashes: readonly string[]): Promise<Record<string, number>> {
+    if (hashes.length === 0) return {}
+    const rows = await this.sql<{ hash: string; size: number }[]>`select hash, size from assets where hash in ${this.sql(hashes as string[])}`
+    return Object.fromEntries(rows.map((r) => [r.hash, r.size]))
   }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {

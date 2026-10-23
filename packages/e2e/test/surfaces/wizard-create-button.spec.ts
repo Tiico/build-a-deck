@@ -1,4 +1,5 @@
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 import { logIn } from '../../support/api.js'
 
 // The button that makes the game (#476): «Skapar…» shrank it from 315 to 95 px, and the error was
@@ -18,7 +19,7 @@ test('stands still while the game is being made and after it could not be', asyn
     await route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' })
   })
   await page.goto('/new')
-  await page.getByLabel('Spelets namn').fill('Skogens herrar')
+  await throughTheDoor(page)
   const button = page.getByRole('button', { name: /Skapa spelet/ })
   const before = (await button.boundingBox())!
 

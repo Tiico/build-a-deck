@@ -70,6 +70,30 @@ På tråden är avslaget det vanliga `refused` med `why: 'quota'`, `to`, `ask` o
 `GET /me/usage` och `usage`-skriptet svarar båda måtten per spel för varje spel kontot äger, ur det levande dokumentet (aktörens, annars den sparade versionen med loggens svans), med `used` som det mesta något av spelen använder.
 Grindarna: `packages/server/test/quota-cards.test.ts` (båda lagren) och `packages/web/test/project-client-quota.test.ts` (editorn från före fältet).
 
+Byggt 2026-10-23 (#1196, skiva 4 av PRD #1192): **bord som mått, i två former.**
+- `openTables` är de bord kontot bär vars logg inte slutar med `session.end`, alltså bord som står; taket skyddar lådans minne (DRIFT §1).
+- `tablesPer30Days` är de bord kontot bär som startats under de senaste 30 dygnen, rullande och inte per kalendermånad, så att ingen dag i månaden är bättre än en annan (beställarens beslut 2026-10-23 i #1192).
+- Båda räknas ur sessionerna och deras bärare (`sessions.account_id`), så ett avslutat bord räknas som startat i 30 dygn, och ett borttaget spel tar inget av sina bord ur räkningen.
+- Taken prövas när ett bord startas, i `POST /projects/:id/sessions` och i den råa `POST /sessions`, och mot bärarens nivå: en testledare eller medredigerare som trycker prövas mot ägarens tak, och svaret säger `bearer: 'owner'` utan ägarens adress eller nivå.
+- Prövning och skrivning är ett steg i lagret, med ett transaktionslås per bärare i Postgres och ingen väntan mellan räkning och skrivning i minnet; två starter vid tak − 1 ger exakt en. Ett avslag skapar ingen session, ingen kod och inget renderjobb.
+- Ingenting annat prövar taket: att ansluta, köpa en plats med koden, spela, «Ny kod», «Uppdatera» (C7), att sparka, att avsluta och att spela upp en logg gör det aldrig. Ett bord som står stängs aldrig av ett tak, och ett konto över taket gör allt det med de bord som står.
+- När ett bord avslutas, av sin skärm eller av C9:s timeout, får nästa start plats under `openTables`.
+- Ett 402 för `tablesPer30Days` bär `frees`, ögonblicket då nästa bord går att starta (beställarens beslut 2026-10-23 i #1198). Det är när den äldsta starten i fönstret faller ur, och för ett konto över taket när så många fallit ur att ett till ryms. Under taket 0 finns inget sådant ögonblick, och då sägs inget. `openTables` bär inget datum, eftersom ett bord får plats när ett annat avslutas.
+- `GET /me/usage` och `usage`-skriptet tar med båda måtten. Webben får ett 402 som ett `QuotaReached` med taket i (`packages/web/src/account/quota.ts`), från både editorn och startsidan; hur det sägs är #1198.
+- Grindarna är `packages/server/test/quota-tables.test.ts` mot båda lagren, `account-plans.test.ts` för skriptets rapport, och `packages/web/test/start-table-quota.test.ts` med `project-client.test.ts` för klienten.
+
+Byggt 2026-10-23 (#1197, skiva 5 av PRD #1192): lagring och renderingar.
+Lagring (`storageBytes`) är det kontots spel använder, inte det kontot har lagt på lådan (beställarens svar på fråga 4): summan av `assets.size` över de olika assets som någon version av något spel kontot äger nämner, läst med samma `assetHashesOf` som exporten väljer sina bilder med.
+Måttet är härlett ur versionerna och har ingen innehavslogg och ingen bakåtfyllnad: två konton vars spel nämner samma bytes bär storleken båda två, ett konto med två sådana spel bär den en gång, historiken räknas så länge den finns, och ett borttaget spel frigör det som inget annat av kontots spel nämner.
+I Postgres håller tabellen `project_assets` (spel, hash) det versionerna nämner, skriven i samma transaktion som versionen och borta med spelet; saknas den byggs den om ur `project_versions` vid start, och ett test håller den lika med versionerna, också ombyggd.
+Taket prövas där en ny hash kommer in i ett av kontots spel: `POST /assets?project=<id>`, `POST /projects`, kopian, importen och varje sparad version (`PUT /projects/:id` och editorns «Spara»). Det prövas vid dörren innan något skrivs och igen i lagrets steg under ett lås per konto, så att två skrivningar om de sista byten ger exakt en.
+Det som kontots spel redan nämner kostar inget igen, och en version som inte nämner något nytt avvisas aldrig. Ett nått tak är 402 med `measure: 'storageBytes'`, på editorns tråd ett avslag med `why: 'quota'`, och `bearer` är `owner` när det är ägarens tak en medredigerare möter.
+Assets raderas fortfarande aldrig från lådan (DRIFT §4).
+Renderingar (`rendersPer30Days`) mäts i en logg, `render_log`, med en rad per jobb som kön svarade `queued` på, skriven i samma transaktion som jobbet: på bordets bärare för dess texturer och «Uppdatera», på spelets ägare för tryck, export och regelhäfte, vem som än bad om dem. Taket finns i schemat men prövas inte.
+`GET /me/usage` och `usage`-skriptet tar med båda måtten, renderingarna över rullande 30 dygn.
+Webben skickar ännu inget `?project=` vid uppladdning; hur ett nått tak sägs är skiva 6 (#1198).
+Grindarna: `packages/server/test/quota-storage.test.ts`, `quota-renders.test.ts` och `packages/render/test/render-log.test.ts`, mot båda lagren.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
@@ -1963,6 +1987,13 @@ Preciserat 2026-10-23 (#1199, beställarens beslut efter researchen i issuet): *
 - En fake-provider står i en riktig partners ställe, och en kontraktssvit som den klarar är den som varje framtida adapter ska klara (#1206).
 - Tryckfilerna görs efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()`, i stället för typens fasta 3 mm, av den enda renderaren (E2, #1207).
 - Byggs inte nu: order och spårning på servern, och tillverkningsflaggan i F3.
+
+Byggt 2026-10-23 (#1206): kontraktet, regiondirigeringen, fake-providern och kontraktssviten finns i paketet `packages/print`, och TUNN-SKIVA §4 beskriver dem som de är byggda.
+- `requirements(type)` är partnerns krav som data: snitt, utfall, raster i exakta pixelmått eller vektor, färgrymd, filnamnsform, partnerns ord för varje sida, och lagervaror som partnern packar.
+- `prepare(manifest)` ger det förberedda paketet utan att tala med partnern: filerna som ska ritas, korten med sina sidor som filer, lagervarorna, det som lämnades och varför, och partnerns steg som data.
+- `routeOrder` skickar en EU-destination bara till en provider vars alla fabriker ligger i EU, och svarar annars «inget EU-tryck».
+- Fake-providern klarar sviten i både TGC:s flerstegsform och QPMN:s form med en order, och dess pris är märkt som påhittat.
+- Ingen serverväg anropar ännu `submit` eller `track`, och inget i servern läser paketet; det gör #1207 och #1208.
 
 ### F3. Kostnadsbesked först i beställningsflödet (fråga 29)
 
@@ -6567,7 +6598,7 @@ Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70
 Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
 En riktig pekare över den låsta knappen ändrar ingenting den målar.
 
-**Ändrat 2026-10-23 (L79, #1218): dörren står före guiden.** Namnet, spelarna och valet mellan guidad start och tomt spel står på vägskälet `/new`, inte i guidens steg 1, och frågan från #732 försvinner eftersom ingenting har gjorts när dörren trycks.
+**Ändrat 2026-10-23 (L79, #1218): dörren står före guiden.** Namnet, spelarna och valet mellan guidad start och tomt spel står på vägskälet `/new`, inte i guidens steg 1. Frågan från #732 ställs bara när designern har gått in i guiden, gjort kort eller fält och kommit tillbaka.
 
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 
@@ -8080,7 +8111,8 @@ Valet blev **B, vägskälet**.
 «Guidad start» är första handlingen (L13): kantad i bläck, med tre exempelkort och «Två steg, ungefär två minuter».
 «Tomt spel» är den andra: ett tomt kort och «Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.»
 En dörr som trycks utan namn säger villkoret vid fältet, som L42:s tillägg från #416 bestämde.
-«Tomt spel» skapar spelet direkt, med samma väg och samma dokument som L42; frågan från #732 behövs inte, eftersom inget kort eller fält har gjorts när dörren trycks.
+«Tomt spel» skapar spelet direkt, med samma väg och samma dokument som L42.
+Frågan från #732 står kvar men ställs nästan aldrig: bara när designern har gått in i guiden, gjort kort eller fält där och kommit tillbaka med «Ändra», eftersom det är då något går förlorat.
 Guiden är två steg, Fält och Korten, och dess huvud bär spelets namn och «N spelare · Ändra»; «Ändra» och vägen tillbaka leder till vägskälet med värdena kvar.
 Vägskälet och guiden har var sin adress, så att webbläsarens bakåt går från guiden till vägskälet.
 Utkastet och inloggningsvarvet (G1, #686) bär namnet och spelarna som förut, och rutan för den som är utloggad (#691) står på vägskälet, eftersom båda dörrarna slutar i en inloggning.
@@ -8091,6 +8123,12 @@ Samma adress gäller för den som är inloggad och den som kommer från landning
 Dörrarna får plats att säga vad de ger, i stället för att tomt spel står som ett block inne i guidens första steg.
 A:s dialog var ett klick snabbare men hade ingen Mina spel att öppnas över för den utloggade, så `/new` hade behövt samma steg en gång till.
 C lät det nya spelet födas där det skulle stå, men tog hela raden på telefonen och hade samma utloggade problem som A.
+
+**Byggt 2026-10-23 (#1218).**
+Vägskälet är `/new` och guiden `/new/guided`, båda i `NewProjectPage`, så att utkastet, inloggningsvarvet och felbeskeden är en och samma kod; `wizard/paths.ts` låter routern, flikens titel och inloggningssidans `resume` känna båda adresserna utan att ladda guiden.
+Varje steg mellan dem är en `pushState`, så webbläsarens bakåt och framåt går den väg designern kom; en omladdning av guidens adress öppnar guiden igen om utkastet har ett namn, och annars vägskälet.
+Enter i namnet är första dörren, och markören hamnar i första fältet bakom den.
+`new-game-crossroads.test.tsx` mäter vägskälet och vägen in och ut ur guiden; `wizard-flows.spec.ts` går samma väg i den byggda appen med webbläsarens egna knappar och en omladdning.
 
 ### L80. Vägen tillbaka: varje bordsyta leder ägaren till editorns egen flik, och ett bord öppnas i sin flik (prototypat och beslutat 2026-10-23, #1217)
 

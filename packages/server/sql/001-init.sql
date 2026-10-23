@@ -233,3 +233,30 @@ create table if not exists account_plans (
   since       timestamptz not null default now(),
   source      text not null check (source in ('operator', 'stripe'))
 );
+
+-- What each game's versions name (#1197, #1192 question 4): one row per game and asset some version
+-- of it uses, read the way `assetHashesOf` reads a document — every string anywhere in it that is
+-- an `asset:<hash>`, and every hash `pictures` has an entry for — which is what an export carries.
+-- Storage is what an account's games use, the sum of `assets.size` over the distinct hashes its
+-- games name, and this table is only so that the sum is not a walk over every version at every
+-- upload: derived from `project_versions`, written in the transaction that writes a version, and
+-- gone with the game. It holds nothing the versions do not say, so it is rebuilt from them whenever
+-- it is not there: dropped, the next start makes it again out of every version. A name no asset
+-- answers to is kept like any other, and weighs nothing until the bytes come.
+do $$
+begin
+  if to_regclass('project_assets') is null then
+    create table project_assets (
+      project_id  text not null references projects(id) on delete cascade,
+      hash        text not null,
+      primary key (project_id, hash)
+    );
+    insert into project_assets (project_id, hash)
+      select v.project_id, substr(s #>> '{}', 7) from project_versions v,
+        jsonb_path_query(v.doc, 'strict $.** ? (@.type() == "string" && @ like_regex "^asset:[0-9a-f]{64}$")') as s
+      union
+      select v.project_id, k from project_versions v,
+        jsonb_object_keys(case when jsonb_typeof(v.doc -> 'pictures') = 'object' then v.doc -> 'pictures' else '{}'::jsonb end) as k
+      where k ~ '^[0-9a-f]{64}$';
+  end if;
+end $$;

@@ -6,6 +6,8 @@ import type { AppliedEdit } from './project-actor.js'
 import type { Role } from './roles.js'
 import { peekCard, type CardPeek } from './names.js'
 import { QuotaReached, growth, type Limit } from './quotas.js'
+import type { AssetStore } from './assets.js'
+import { assetHashesOf } from './asset-refs.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -213,18 +215,29 @@ export function checkedHistory<T extends { rev: number }>(versions: readonly T[]
   return last
 }
 
+// The owner's ceilings a write that makes a version is held to (A2, #1192): `projects` on the games
+// it owns (#1193), `storageBytes` on what its games name (#1197). Each is counted and written in one
+// step, so two writes asked for at a ceiling's last place give exactly one, and the other throws
+// `QuotaReached` with nothing written. A ceiling absent or null is unlimited.
+export type Ceilings = { projects?: Limit; storageBytes?: Limit }
+
 export type ProjectStore = {
-  // `limit` is the owner's ceiling on the games it owns (#1193, A2): counted and written in one step,
-  // so two games asked for at the ceiling's last place give exactly one, and the other throws
-  // `QuotaReached` with nothing written. Absent or null is unlimited.
-  create(id: string, doc: ProjectDoc, owner?: string, limit?: Limit): Promise<ProjectRecord>
+  create(id: string, doc: ProjectDoc, owner?: string, ceilings?: Ceilings): Promise<ProjectRecord>
   // A new project with a history it already had (G5, #528): brought back from an export, each
   // version at its own revision, date and name. The revisions are one save after another from 1,
-  // as the history always is; an id that is taken is refused and nothing is written. `limit` as
-  // for `create`.
-  restore(id: string, versions: RestoredVersion[], owner?: string, limit?: Limit): Promise<ProjectRecord>
+  // as the history always is; an id that is taken is refused and nothing is written. `ceilings`
+  // as for `create`, with what every version names counted.
+  restore(id: string, versions: RestoredVersion[], owner?: string, ceilings?: Ceilings): Promise<ProjectRecord>
   // How many games an account owns (#1193): the measure `projects`, counted out of `owner`.
   owned(owner: string): Promise<number>
+  // What an account's games use (#1197, #1192 question 4): the measure `storageBytes`, the sum of
+  // the sizes of the distinct assets some version of some game it owns names. Derived out of the
+  // versions, so a game taken away frees what no other game of the account names, and the history
+  // counts as long as it is kept. A name no asset answers to weighs nothing.
+  stored(owner: string): Promise<number>
+  // Which of these hashes some version of some game the account owns names already (#1197): what
+  // costs it nothing again.
+  borne(owner: string, hashes: readonly string[]): Promise<Set<string>>
   // The games an account owns, by id and in id order (#1195): the ones its cards per game are
   // counted over. Never the ones shared with it, nor a game that belongs to nobody.
   ownedIds(owner: string): Promise<string[]>
@@ -235,7 +248,9 @@ export type ProjectStore = {
   // revision it already had, and the history gains nothing. The history is meant to be read, and
   // a version that changed nothing is a line in it that says nothing. Every way into the history
   // goes through here, so this is where the rule holds rather than at each of the doors.
-  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'>
+  // `ceilings.storageBytes` is the owner's ceiling on what its games name (#1197), held as for
+  // `create`; a version that names nothing new is never refused.
+  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<ProjectRecord | 'conflict' | 'missing'>
   // The history, newest first.
   versions(id: string): Promise<VersionSummary[]>
   // The project as it stood at a revision; null when there is no such version.
@@ -273,28 +288,101 @@ export class MemoryProjectStore implements ProjectStore {
   // Who else a project is shared with (D3), by project.
   private readonly shared = new Map<string, Map<string, Role>>()
   private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean }>()
+  // The writes held to a ceiling on storage, one after another (#1197): weighing asks the asset
+  // store, which is a wait, and no other such write may come in between the count and the write.
+  private turn: Promise<unknown> = Promise.resolve()
+
+  // `assets` is where the pictures the games name are weighed (#1197); without it every picture
+  // weighs nothing, as an asset the store has never seen does.
+  constructor(private readonly assets?: Pick<AssetStore, 'sizes'>) {}
 
   // Counted and written with no wait between them, so no other request can come in between.
-  async create(id: string, doc: ProjectDoc, owner?: string, limit?: Limit): Promise<ProjectRecord> {
-    if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
-    this.within(owner, limit)
-    const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
-    this.docs.set(id, rec)
-    this.history.set(id, [{ rev: 1, at: new Date().toISOString(), doc: structuredClone(doc) }])
-    return structuredClone(rec)
+  async create(id: string, doc: ProjectDoc, owner?: string, ceilings?: Ceilings): Promise<ProjectRecord> {
+    return this.storing(
+      owner,
+      ceilings?.storageBytes,
+      [doc],
+      () => {
+        if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
+        this.within(owner, ceilings?.projects)
+        return null
+      },
+      () => {
+        const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
+        this.docs.set(id, rec)
+        this.history.set(id, [{ rev: 1, at: new Date().toISOString(), doc: structuredClone(doc) }])
+        return structuredClone(rec)
+      },
+    )
   }
 
-  async restore(id: string, versions: RestoredVersion[], owner?: string, limit?: Limit): Promise<ProjectRecord> {
+  async restore(id: string, versions: RestoredVersion[], owner?: string, ceilings?: Ceilings): Promise<ProjectRecord> {
     const last = checkedHistory(versions)
-    if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
-    this.within(owner, limit)
-    const rec: ProjectRecord = { ...structuredClone(last.doc), id, rev: last.rev, ...(owner !== undefined ? { owner } : {}) }
-    this.docs.set(id, rec)
-    this.history.set(
-      id,
-      versions.map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), doc: structuredClone(v.doc) })),
+    return this.storing(
+      owner,
+      ceilings?.storageBytes,
+      versions.map((v) => v.doc),
+      () => {
+        if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
+        this.within(owner, ceilings?.projects)
+        return null
+      },
+      () => {
+        const rec: ProjectRecord = { ...structuredClone(last.doc), id, rev: last.rev, ...(owner !== undefined ? { owner } : {}) }
+        this.docs.set(id, rec)
+        this.history.set(
+          id,
+          versions.map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), doc: structuredClone(v.doc) })),
+        )
+        return structuredClone(rec)
+      },
     )
-    return structuredClone(rec)
+  }
+
+  // A write that makes versions naming `docs`, held to the owner's ceiling on storage (#1197).
+  // `early` is everything the write answers without writing — a refusal it throws, or an answer
+  // it returns — and `write` the write itself. With no ceiling it is what it always was, the two
+  // with no wait between them. With one it waits its turn behind every other such write, asks
+  // `early` in that turn, weighs what the documents name that the owner does not bear yet, and
+  // only then checks and writes: still with no wait between the count and the write.
+  private async storing<T>(owner: string | undefined, limit: Limit | undefined, docs: readonly ProjectDoc[], early: () => T | null, write: () => T): Promise<T> {
+    if (owner === undefined || limit === undefined || limit === null) return early() ?? write()
+    const turn = this.turn.then(async () => {
+      const answered = early()
+      if (answered !== null) return answered
+      const mine = this.named(owner)
+      const fresh = [...new Set(docs.flatMap(assetHashesOf))].filter((hash) => !mine.has(hash))
+      const sizes = await this.weigh([...mine, ...fresh])
+      const met = growth('storageBytes', limit, weight([...mine], sizes), weight(fresh, sizes))
+      if (met) throw new QuotaReached(met)
+      return early() ?? write()
+    })
+    this.turn = turn.catch(() => undefined)
+    return turn
+  }
+
+  // Every asset some version of some game the account owns names.
+  private named(owner: string): Set<string> {
+    const out = new Set<string>()
+    for (const [id, rec] of this.docs) {
+      if (rec.owner !== owner) continue
+      for (const v of this.history.get(id) ?? []) for (const hash of assetHashesOf(v.doc)) out.add(hash)
+    }
+    return out
+  }
+
+  private async weigh(hashes: readonly string[]): Promise<Record<string, number>> {
+    return this.assets && hashes.length > 0 ? this.assets.sizes(hashes) : {}
+  }
+
+  async stored(owner: string): Promise<number> {
+    const mine = [...this.named(owner)]
+    return weight(mine, await this.weigh(mine))
+  }
+
+  async borne(owner: string, hashes: readonly string[]): Promise<Set<string>> {
+    const mine = this.named(owner)
+    return new Set(hashes.filter((hash) => mine.has(hash)))
   }
 
   async load(id: string): Promise<ProjectRecord | null> {
@@ -388,16 +476,28 @@ export class MemoryProjectStore implements ProjectStore {
     return { project: found.project, email: found.email, role: found.role }
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'> {
-    const rec = this.docs.get(id)
-    if (!rec) return 'missing'
-    if (rec.rev !== expectedRev) return 'conflict'
-    const { id: _id, rev: _rev, owner: _owner, ...held } = rec
-    if (stamp(held) === stamp(doc)) return structuredClone(rec)
-    const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
-    this.docs.set(id, next)
-    this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), doc: structuredClone(doc) })
-    return structuredClone(next)
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<ProjectRecord | 'conflict' | 'missing'> {
+    return this.storing<ProjectRecord | 'conflict' | 'missing'>(
+      this.docs.get(id)?.owner,
+      ceilings?.storageBytes,
+      [doc],
+      () => {
+        const rec = this.docs.get(id)
+        if (!rec) return 'missing'
+        if (rec.rev !== expectedRev) return 'conflict'
+        const { id: _id, rev: _rev, owner: _owner, ...held } = rec
+        return stamp(held) === stamp(doc) ? structuredClone(rec) : null
+      },
+      () => {
+        // `early` has just found it, with no wait since.
+        const rec = this.docs.get(id)
+        if (!rec) return 'missing'
+        const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
+        this.docs.set(id, next)
+        this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), doc: structuredClone(doc) })
+        return structuredClone(next)
+      },
+    )
   }
 
   async appendEdits(id: string, edits: AppliedEdit[]): Promise<void> {
@@ -460,3 +560,6 @@ export function deckFromProject(doc: ProjectDoc): Deck {
     ...(doc.fonts ? { fonts: doc.fonts } : {}),
   }
 }
+
+// What these weigh together, a hash the store does not have weighing nothing.
+const weight = (hashes: readonly string[], sizes: Record<string, number>): number => hashes.reduce((n, hash) => n + (sizes[hash] ?? 0), 0)

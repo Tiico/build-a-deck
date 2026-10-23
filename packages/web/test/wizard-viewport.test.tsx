@@ -11,6 +11,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { atWidth } from './viewport.js'
 import { filePickerFaults } from './file-pickers.js'
 
@@ -24,16 +25,18 @@ const document_ = (html: string) =>
     .replace('</head>', `<style>${css}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
-// Every screen the wizard has at a width: one per step below the desk, and the one page above it.
+// Every screen the wizard has at a width: the crossroads before it (L79), then one per step below
+// the desk, and the one page above it.
 async function surfaces(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', '/new')
   const { unmount } = render(<NewProjectPage />)
   try {
     await screen.findByText(/Skapa ett nytt spel/)
+    const out: Record<string, string> = { vägskälet: document.querySelector('.byd-wizard')!.outerHTML }
+    throughTheDoor()
     const steps = () => [...document.querySelectorAll<HTMLElement>('[role="tablist"][aria-label="Steg"] [role="tab"]')]
-    if (steps().length === 0) return { 'hela sidan': document.querySelector('.byd-wizard')!.outerHTML }
-    const out: Record<string, string> = {}
+    if (steps().length === 0) return { ...out, 'hela sidan': document.querySelector('.byd-wizard')!.outerHTML }
     for (let i = 0; i < steps().length; i++) {
       const step = steps()[i]!
       const name = step.textContent?.trim() ?? String(i)
@@ -172,8 +175,9 @@ describe.each(WIDTHS)('the wizard at %ipx', (width) => {
     // own; a step that is closed but drawn leaves a gap above the one that is open, and a tab
     // stop in the middle of nowhere.
     const measured = await measure(width, (page) => page.$$eval('[role="tabpanel"]', (els) => els.filter((el) => el.checkVisibility({ opacityProperty: true })).length))
-    const steps = Object.keys(measured).length
-    expect(measured).toEqual(nothing(measured, steps > 1 ? 1 : 0))
+    // The crossroads (L79) and the desk's one page have no steps to open; every step has one.
+    const whole = ['vägskälet', 'hela sidan']
+    expect(measured).toEqual(Object.fromEntries(Object.keys(measured).map((surface) => [surface, whole.includes(surface) ? 0 : 1])))
   }, 90_000)
 
   it('shows the whole card in the space the preview is given', async () => {

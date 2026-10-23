@@ -384,6 +384,7 @@ BYD_PLANS='{"default":"free","plans":{"free":{"projects":3},"pro":{}}}'
 ```
 
 Ett tak är ett heltal eller `null`, och `null` är obegränsat; ett mått som en nivå inte nämner är obegränsat på den nivån.
+Bordens mått är `openTables`, bord som står samtidigt och som §1:s minnesbudget bär, och `tablesPer30Days`, bord som startats under rullande 30 dygn (#1196); båda prövas bara när ett bord startas, så ett tak stänger aldrig ett bord som står.
 Utan variabeln är allt obegränsat, vilket är betans läge och det läge en glömd variabel ger, så att en deploy aldrig av misstag stänger ute en designer.
 Variabeln läses en gång när appen startar, som `BYD_CORPUS_ACCOUNTS` (§7), och starten skriver en rad med nivåernas namn, standarden och om något tak alls är satt, aldrig vem som har vilken nivå (§8).
 En variabel som inte är giltig JSON eller inte håller schemat stoppar starten, och så gör en nivå som något konto har men som variabeln saknar; loggen säger varför.
@@ -391,6 +392,8 @@ Vilken nivå ett konto har står i tabellen `account_plans`, som Stripe skriver 
 I dag sätter operatören den över Tailscale (§10), med lådans egen `BYD_PLANS` så att en nivå lådan inte har aldrig skrivs:
 `pnpm --filter @byd/server plan set <adress> <nivå>` och `plan clear <adress>`.
 `pnpm --filter @byd/server usage` skriver varje kontos nivå, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
+Lagring (`storageBytes`, #1197) är det kontots spel nämner i någon version, räknat ur databasen; ett borttaget spel frigör sitt, men bytesen ligger kvar i R2 (§4).
+Renderingar (`rendersPer30Days`) läses ur renderköns logg `render_log` i samma databas, så skriptet behöver ingen annan anslutning.
 
 E-post: Resend, Postmark eller motsvarande — en bostads-IP är i praktiken svartlistad.
 POD-partnerns API.

@@ -184,27 +184,123 @@ Editorn får aldrig låta någon bygga en komponent ingen partner tillverkar, oc
 Gränssnittet ska designas mot minst två verkliga partner enligt F2, även om bara en implementeras i skivan.
 Att designa mot en och föreställa sig resten ger ett gränssnitt format efter en enda leverantörs egenheter.
 
+Byggt 2026-10-23 (#1206) i `packages/print` (`@byd/print`), format efter The Game Crafter och QPMN i #1199 utan att någon av dem byggs.
+Paketet är ramverksfritt och gör ingen I/O: filerna som `submit` behöver injiceras, och ingenting i det ritar ett kort (E2).
+Typerna nedan är förenklade ur zod-schemana i `packages/print/src/schema.ts`, som är sanningen och valideringen där data korsar gränsen.
+
 ```ts
-interface PrintProvider {
+type PrintProvider = {
   readonly id: ProviderId
+  readonly label: string
+  readonly manufacturesIn: readonly Country[]   // ISO 3166-1 alpha-2; EU-kravet dirigerar på det
 
-  supports(type: ComponentTypeRef): boolean
-  requirements(type: ComponentTypeRef): PrintRequirements   // utfall, DPI, färgrymd, filformat, dielineform
-
-  quote(manifest: ComponentManifest, dest: Destination): Promise<Quote>   // anropas i kassan, F3
-  submit(order: PreparedOrder): Promise<ProviderOrderRef>
+  supports(type: TypeRef): boolean
+  requirements(type: TypeRef): PrintRequirements   // kastar för en typ som supports() säger nej till
+  prepare(manifest: PrintManifest): PreparedOrder   // inga sidoeffekter mot partnern, deterministisk
+  quote(manifest: PrintManifest, dest: Destination): Promise<Quote>   // anropas i kassan, F3
+  submit(order: PreparedOrder, files: FileSource): Promise<ProviderOrderRef>
   track(ref: ProviderOrderRef): Promise<OrderStatus>
 }
 
-type ComponentManifest = { items: { type: ComponentTypeRef; qty: number }[]; boxing: BoxingSpec }
-type Quote = { unitPrice: Money; shipping: Money; duties: Money | 'unknown'; leadTimeDays: number }
+type FileSource = { bytes(name: string): Promise<Uint8Array>; url(name: string): Promise<string> }
+type Quote = { basis: 'partner' | 'fictional'; unitPrice: Money; shipping: Money; duties: Money | 'unknown'; leadTimeDays: number }
+type Money = { amountMinor: number; currency: 'EUR' | 'SEK' | 'USD' }
 ```
 
 `duties: 'unknown'` är medvetet en del av typen.
 Tull till EU från amerikansk eller asiatisk partner är en öppen fråga i DESIGN-BESLUT.md avsnitt I, och kontraktet ska inte låtsas att den är löst.
+`basis: 'fictional'` är fake-providerns märkning av ett påhittat pris, som aldrig får visas som ett pris, och ett påhittat pris över en tullgräns säger alltid `'unknown'`.
 
-Preciserat 2026-10-23 (F2, #1199): kontraktet formas efter The Game Crafter och QPMN, och får ett förberedelsesteg som tar fram partnerns tryckfiler utan att beställa något, regiondirigering för EU-kravet, och en fake-provider med en kontraktssvit (#1206).
-Gränssnittet ovan skrivs om till det byggda när #1206 är klart.
+### 4.1 `requirements()`: partnerns krav som data
+
+`requirements(type)` är den enda källan till vad partnern vill ha, och inget nedströms antar ett fast utfall på 3 mm (#1207).
+Svaret är en av två former.
+
+```ts
+type PrintedRequirements = {
+  kind: 'printed'
+  type: TypeRef
+  sku: string                                     // partnerns produkt, till exempel «PokerDeck»
+  trim: { widthMm: number; heightMm: number }     // snittmåttet, i partnerns mått och inte typens
+  bleedMm: number                                 // utfall på varje kant
+  safeMm: number
+  file: { kind: 'raster'; format: 'png' | 'jpg'; dpi: number; widthPx: number; heightPx: number }
+      | { kind: 'vector'; format: 'pdf' }
+  colorSpace: 'sRGB' | 'CMYK'
+  fileName: string                                // filnamnets stam av {n}, {cardRef}, {face}, {side}
+  sides: Record<FaceId, string>                   // vår sida till partnerns ord för den
+}
+type StockRequirements = { kind: 'stock'; type: TypeRef; sku: string }   // en lagervara partnern packar (#1140)
+```
+
+Ett raster ritas i exakt `widthPx` × `heightPx`, som är snittet plus utfallet på varje kant vid `dpi`; kontraktssviten håller det inom en pixel.
+En vektorfil är en PDF vars sida är samma ruta i millimeter.
+`{n}` i filnamnet är filens nummer bland filerna med samma sida, från 1, och `{cardRef}` är kortets id vikt som exporten viker det (#527); filändelsen följer av formatet.
+En lagervara som partnern inte packar har inga krav: `supports()` säger nej, och tärningarna försvinner därmed ur QPMN-formen.
+
+### 4.2 Manifestet och det förberedda paketet
+
+Plattformen lämnar spelet som fysiska ting innan något är ritat.
+
+```ts
+type PrintManifest = {
+  cards: { cardRef: string; type: TypeRef; faces: Record<FaceId, string> }[]   // en post per fysiskt kort
+  hardware: { type: TypeRef; count: number }[]
+}
+```
+
+Två exemplar är två poster, som setupen och `printExportOf` listar dem.
+`faces` namnger varje sida med en innehållsnyckel som anroparen väljer, till exempel en hash av den kompilerade sidan; samma nyckel betyder samma bild.
+En framsida och dess baksida står i samma post och paras aldrig någon annanstans (L3, L7).
+
+`prepare` ger det som skulle skickas, och samma sak visas för designern som tryckpaketet (F1, #1208).
+
+```ts
+type PreparedOrder = {
+  provider: ProviderId
+  files: PreparedFile[]          // en fil per bild, i den ordning manifestet först nämner dem
+  cards: PreparedCard[]          // en per kort i manifestet, i samma ordning
+  hardware: { type: TypeRef; sku: string; count: number }[]                // det partnern packar
+  omitted: { type: TypeRef; count: number; reason: 'not-packed' }[]        // det som lämnades, och varför
+  steps: { action: string; payload: Json }[]                              // partnerns anrop, i partnerns ord
+}
+type PreparedFile = {
+  name: string                   // med filändelse, unikt i ordern
+  type: TypeRef
+  cardRef: string                // det första kortet som visar bilden: det som bilden kompileras ur
+  face: FaceId
+  side: string                   // partnerns ord för sidan
+  content: string                // manifestets innehållsnyckel
+  trim; bleedMm; safeMm; file; colorSpace   // kopierat ur requirements(type)
+}
+type PreparedCard = { cardRef: string; type: TypeRef; sku: string; files: Record<FaceId, string> }   // sida till filnamn
+```
+
+En bild är en fil hur många kort som än visar den: basens baksida på femtio kort ritas en gång, och en grupps baksida är en annan fil (L7).
+Att rita en fil är den enda renderarens jobb via render-kön (E2, #1207): kompilera `cardRef`:s sida `face` med `bleedMm` utfall och rita den som `file` säger.
+I `steps` står en fil som `{ "file": namn }`, och `submit` sätter uppladdningen eller URL:en där; varje förberedd fil nämns i stegen, och inga andra.
+TGC-formen är en uppladdning per fil, ett spel, en lek per baksida med baksidan som `back_id`, korten i omgångar om högst hundra, lagerdelarna och en vagn.
+QPMN-formen är en enda order med en `designData` per produkt, där varje kort är ett index med sin bild per sida.
+
+`planFiles(provider, manifest)` i paketet gör den del av `prepare` som är gemensam för alla adaptrar: filerna, korten, lagervarorna och det som lämnades.
+En adapter lägger bara till sina egna steg.
+
+### 4.3 Regiondirigeringen
+
+`routeOrder(providers, manifest, dest)` är en ren funktion som väljer provider för en destination, i plattformens prioritetsordning.
+En EU-destination går bara till en provider vars alla fabriker ligger i EU, och finns ingen sådan som trycker spelet blir svaret `{ kind: 'none', reason: 'no-eu-print' }`, aldrig en tyst reserv utanför EU (F2).
+Utanför EU går en provider som tillverkar i destinationens land först, och annars den första som trycker spelet; finns ingen blir svaret `'no-provider'`.
+En provider trycker spelet om den trycker varje kort; lagervaror som den inte packar lämnas och avgör inte.
+
+### 4.4 Fake-providern och kontraktssviten
+
+`createFakeProvider(config)` står i en riktig partners ställe och pratar inte med någon.
+Den har två förinställningar ur #1199: `MULTI_STEP_INCHES` i TGC:s form (USA, 63,5 × 88,9 mm, 1/8 tum utfall, PNG i 825 × 1125 px, tärningar som lagervara, spårning som rapporteras) och `SINGLE_ORDER_MM` i QPMN:s form (Kina och Vietnam, 63 × 88 mm, 1/8 tum utfall, PDF, inga tärningar, okänd spårning).
+Med `manufacturesIn` satt till ett EU-land går dirigeringen att pröva.
+Priset den svarar med är påhittat och märkt `basis: 'fictional'`.
+
+`printProviderContract(namn, { provider })` ur `@byd/print/contract` är sviten som varje adapter ska klara, och fake-providern klarar den i båda formerna.
+En riktig adapter kopplas in med en rad i en testfil, mot samma manifest (`CONTRACT_MANIFEST`) med baksidor per grupp, exemplar, kort-id som viks till samma filnamn och tärningar.
 
 ---
 
