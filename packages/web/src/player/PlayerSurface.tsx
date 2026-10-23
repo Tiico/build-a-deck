@@ -20,6 +20,7 @@ import { playIntents } from './play.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import { HandSpread } from '../online/HandSpread.js'
+import type { TurnedHand } from './turned.js'
 
 // What a player is given on a screen that cannot carry the board: the seat's own hand as K10's
 // strip, the counters, the private zones, and the table itself as names and counts rather than as
@@ -69,6 +70,9 @@ export type PlayerSurfaceProps = {
   faces: string
   version: string | null
   marks: HandMarks
+  // The cards turned over in the hand (#1133): the route keeps them, because its keyboard plays
+  // from the hand too and has to play them face down as well.
+  turnedHand: TurnedHand
   // The route's own keyboard, the one door into it a hand needs (#1, #2).
   openHand(card: VisibleComponentState, marked: readonly string[]): void
   // Where the way out (#31) leads once the seat has been given up.
@@ -78,7 +82,7 @@ export type PlayerSurfaceProps = {
   away?: boolean | undefined
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft, away = false }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false }: PlayerSurfaceProps) {
   // What each fold is called is its summary, said on the fold itself (#560 P-20): a `details` is a
   // group, and a group without a name is one a reader cannot tell from the next.
   const folds = useId()
@@ -116,6 +120,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const chosenCards = marked.length ? marked : chosen ? [chosen] : []
   // A lifted card is played alone unless it is one of the selected hand cards (K3).
   const toPlay = lifted ? (marks.selected.has(lifted.id) ? hand.filter((c) => marks.selected.has(c.id)) : [lifted]) : []
+  const { turned } = turnedHand
+  const allDown = (cards: readonly VisibleComponentState[]) => cards.length > 0 && cards.every((c) => turned.has(c.id))
 
   // A play the table refuses leaves the sheet open with the answer beside the button that was
   // pressed: the cards stay in the hand and nothing is quietly lost.
@@ -142,7 +148,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   }
   const play = (zone: string, at: 'top' | 'bottom') => {
     setRefusedZone(zone)
-    void refusal.watch(client.send(...playIntents(view, toPlay, zone, undefined, at))).then((result) => {
+    void refusal.watch(client.send(...playIntents(view, toPlay, zone, undefined, at, turned))).then((result) => {
       if (!result.ok) return
       setRefusedZone(null)
       setLifted(null)
@@ -195,7 +201,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     setQuickSource(first.zone === `hand:${seat}` ? 'hand' : first.id)
     if (view.zones.some(z => z.id === zone && z.kind === 'area' && z.owner === seat)) reveal.current = { ids: cards.map(c => c.id), zone }
     try {
-      const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at)
+      const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at, turned)
       const result = await quick.watch(client.send(...intents))
       // A play the table refused brings nothing in front of her. A line lost on the way may still
       // have carried it, and the view after the resync says so, so that one stays armed. A play
@@ -282,9 +288,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         {/* What the table just said to this seat, in the page's flow under the piles (#715, beslut
             2026-10-04): fixed at the top it hid a counter's name and value while it stood. */}
         {toast && <p className="byd-phone-said" role="status">{toast}</p>}
-        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} onOverflow={setOverflows} />
+        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} onOverflow={setOverflows} turned={turned} onTurn={(c) => turnedHand.toggle(c.id)} />
         {hand.length > 0 && marks.selected.size > 0 && <p className="byd-hint">{t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size })}</p>}
-        <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
+        <HandActions down={allDown(chosenCards)} refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
         <details ref={personal} className="byd-personal" data-personal aria-labelledby={`${folds}-mine`}>
           <summary id={`${folds}-mine`}>{t('player.mine.title', { n: inFrontOf(view).length })}</summary>
@@ -307,6 +313,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             cards={[...hand].reverse()}
             columns={4}
             faces={faces}
+            turned={turned}
             onOpen={pickFromAll}
             onClose={() => {
               setSpread(false)
@@ -323,7 +330,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           something of everyone (#483): an ended table's survey and a rewind's question. The bar is
           empty, and draws nothing, for a table without a rulebook. */}
       <div className="byd-phone-foot" {...behind}>
-        {!view.ended && !view.rewind && <FootPlay view={view} cards={chosenCards} pending={quickPending} refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />}
+        {!view.ended && !view.rewind && <FootPlay view={view} cards={chosenCards} down={allDown(chosenCards)} pending={quickPending} refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />}
         {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
       </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
@@ -347,13 +354,21 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               held.row === 'hand' ? (
                 // The hand's own second press, the same two the foot carries: the setup's first
                 // place, and the way to every other one. A verb puts the card down as it goes.
+                // Turning the card over is the one that does not (#1133): it is still in the hand,
+                // and the press under it now says how it will land.
+                <>
+                <button type="button" className="byd-show-all" data-turn={card.id} onClick={() => turnedHand.toggle(card.id)}>
+                  {t(turned.has(card.id) ? 'player.hand.unturn' : 'player.hand.turn')}
+                </button>
                 <FootPlay
                   view={view}
                   cards={[card]}
+                  down={turned.has(card.id)}
                   pending={quickPending}
                   onPlay={(zone, at) => { put(); void playDirect([card], zone, at) }}
                   onMore={(c) => { put(); setLifted(c) }}
                 />
+                </>
               ) : held.row === 'mine' ? (
                 <>
                 <MineActions
