@@ -48,11 +48,29 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
   // When the line went. One clock answers everything that is about the break rather than about
   // the message: how long the line has been gone, how old the picture standing on the screen is,
   // and — on the other side of it — whether the break was ever long enough to have been said.
-  // It is kept past the mending for that last question and cleared once it is answered.
-  const went = useRef<number | null>(null)
+  //
+  // Both ends of the break are read in the render that sees them, not in an effect after it
+  // (#1244). An effect is a commit late: the line was back, the break not yet answered, and the
+  // state in between was null — so the message left the screen, took the focus to <body> with it,
+  // and came back a commit later as «uppkopplad igen». A state set while rendering is React's own
+  // way to carry something from one render to the next: the render is done again at once, and the
+  // commit in between never happens.
+  const [went, setWent] = useState<number | null>(null)
+  // A connection that comes back says so once. Without the reader being told, a table that went
+  // grey and came back again is just a screen that flickered — but only a reader who was told it
+  // went needs telling it is back. A break that healed inside the grace was never said, and
+  // "uppkopplad igen" about something nobody saw happen is the same flicker one step further on.
+  const [resumedAt, setResumedAt] = useState<number | null>(null)
   const lineDown = trouble !== null || (status === 'reconnecting' && hasView)
-  if (lineDown) went.current ??= Date.now()
-  const downSince = lineDown ? went.current : null
+  if (lineDown && went === null) setWent(Date.now())
+  if (!lineDown && went !== null) {
+    setWent(null)
+    // Read off the clock and not off what was rendered: whether the reader was told is a fact
+    // about how long the line was gone, so a timer that fires late cannot turn a break that was
+    // announced into one that silently was not.
+    if (hasView && Date.now() - went > timing.dropAfterMs) setResumedAt(Date.now())
+  }
+  const downSince = lineDown ? (went ?? Date.now()) : null
 
   // The grace has to end even when nothing else changes, or a line that stays down would be
   // announced only by the next thing that happened to re-render the route.
@@ -62,20 +80,6 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
     return () => clearTimeout(timer)
   }, [downSince, timing.dropAfterMs])
 
-  // A connection that comes back says so once. Without the reader being told, a table that went
-  // grey and came back again is just a screen that flickered — but only a reader who was told it
-  // went needs telling it is back. A break that healed inside the grace was never said, and
-  // "uppkopplad igen" about something nobody saw happen is the same flicker one step further on.
-  const [resumedAt, setResumedAt] = useState<number | null>(null)
-  useEffect(() => {
-    if (lineDown) return
-    const broke = went.current
-    went.current = null
-    // Read off the clock and not off what was rendered: whether the reader was told is a fact
-    // about how long the line was gone, so a timer that fires late cannot turn a break that was
-    // announced into one that silently was not.
-    if (broke !== null && hasView && Date.now() - broke > timing.dropAfterMs) setResumedAt(Date.now())
-  }, [lineDown, hasView, timing.dropAfterMs])
   useEffect(() => {
     if (resumedAt === null) return
     const timer = setTimeout(() => setResumedAt(null), RESUMED_MS)
