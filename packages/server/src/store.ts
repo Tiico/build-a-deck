@@ -1,7 +1,7 @@
 import { PHYSICAL_VERBS, type Applied, type GameVersionId } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import type { Deck } from './faces.js'
-import { QuotaReached, tableGrowth, type TableCeilings, type TableUse } from './quotas.js'
+import { QuotaReached, startThatFrees, tableGrowth, withFrees, type TableCeilings, type TableUse } from './quotas.js'
 
 export type { Deck }
 
@@ -107,7 +107,7 @@ export class MemoryLogStore implements LogStore {
     if (this.sessions.has(record.id)) throw new Error(`session ${record.id} already exists`)
     if (record.accountId !== undefined && ceilings) {
       const met = tableGrowth(ceilings, this.countTables(record.accountId, ceilings.since))
-      if (met) throw new QuotaReached(met)
+      if (met) throw new QuotaReached(met.measure === 'tablesPer30Days' ? withFrees(met, this.startsOf(record.accountId, ceilings.since)[startThatFrees(met)]) : met)
     }
     this.sessions.set(record.id, structuredClone(record))
     this.logs.set(record.id, [])
@@ -116,6 +116,16 @@ export class MemoryLogStore implements LogStore {
 
   async tablesOf(account: string, since: Date): Promise<TableUse> {
     return this.countTables(account, since)
+  }
+
+  // When each of the account's tables in the window was started, oldest first.
+  private startsOf(account: string, since: Date): number[] {
+    const starts: number[] = []
+    for (const [id, record] of this.sessions) {
+      const at = this.createdAt.get(id) ?? 0
+      if (record.accountId === account && at > since.getTime()) starts.push(at)
+    }
+    return starts.sort((a, b) => a - b)
   }
 
   private countTables(account: string, since: Date): TableUse {

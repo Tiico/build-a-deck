@@ -81,7 +81,9 @@ export function plansLine(plans: Plans): Record<string, unknown> {
 }
 
 // Where a ceiling stood when it was met: the measure, the ceiling and what was used against it.
-export type QuotaMet = { measure: Measure; limit: number; used: number }
+// `frees` is when a measure counted over a rolling window has room again (#1198): only
+// `tablesPer30Days` has one, since open tables make room by being ended, which no date can say.
+export type QuotaMet = { measure: Measure; limit: number; used: number; frees?: string }
 
 // Whether a measure may grow by `n` from `used` under `limit`: null when it may, and the ceiling
 // that was met when it may not. Something that does not grow is never refused, over the ceiling or not.
@@ -115,4 +117,15 @@ export type TableCeilings = { openTables: Limit; tablesPer30Days: Limit; since: 
 // first: it is the ceiling that guards the box, and the one a table that ends makes room under.
 export function tableGrowth(ceilings: TableCeilings, used: TableUse): QuotaMet | null {
   return growth('openTables', ceilings.openTables, used.open, 1) ?? growth('tablesPer30Days', ceilings.tablesPer30Days, used.started, 1)
+}
+
+// Which start in the window has to fall out before one more table fits under a met
+// `tablesPer30Days`, counted from the oldest and from 0: the oldest when the account stands at its
+// ceiling, and later ones when it stands over it, since the oldest falling out then makes no room.
+export const startThatFrees = (met: QuotaMet): number => met.used - met.limit
+// The ceiling met, with when there is room again (#1198): `start` is the moment, in milliseconds,
+// of the start `startThatFrees` names, which leaves the window 30 days on. There is none under a
+// ceiling of 0, and then no date is said, since no date makes room.
+export function withFrees(met: QuotaMet, start: number | undefined): QuotaMet {
+  return start === undefined ? met : { ...met, frees: new Date(start + TABLE_WINDOW_MS).toISOString() }
 }

@@ -22,6 +22,14 @@ describe('starting a table from the home page at a ceiling (#1196)', () => {
     expect((err as Error).message).not.toMatch(/402|quota|network|nätverk/i)
   })
 
+  // The rolling window says when the next table can be started (#1198), for the page to say.
+  it('hands on when the next table can be started', async () => {
+    const quota = { measure: 'tablesPer30Days', limit: 2, used: 2, bearer: 'you', frees: '2026-11-22T10:00:00.000Z' }
+    vi.stubGlobal('fetch', vi.fn(async () => reply(402, { error: 'quota', quota })))
+    const err = await startTable('http://api', 'p1').catch((e: unknown) => e)
+    expect((err as QuotaReached).quota).toEqual(quota)
+  })
+
   it('reads a 402 that is not the contract as the failure it is', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => reply(402, { error: 'payment' })))
     const err = await startTable('http://api', 'p1').catch((e: unknown) => e)

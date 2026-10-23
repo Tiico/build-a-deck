@@ -20,6 +20,8 @@ import { deck, template } from './deck.js'
 const url = process.env['DATABASE_URL']
 const schema = `test_quota_tables_${process.pid}_${Date.now()}`
 const DAY = 24 * 3600 * 1000
+// Postgres stamps a start with its own clock, which in a container may stand a little apart from this one.
+const CLOCKS = 2000
 
 type Backend = { store: LogStore; projects: ProjectStore; auth: AuthStore; accountPlans: AccountPlanStore; assets: AssetStore; close(): Promise<void> }
 const backends: { name: string; skip: boolean; open(): Promise<Backend> }[] = [
@@ -154,13 +156,61 @@ for (const backend of backends) {
       await open(tiers({ tablesPer30Days: 2 }))
       const ada = await someone('ada')
       const project = await gameOf(ada.cookie)
+      const before = Date.now()
       await end(await started(await startAt(ada.cookie, project)))
+      const between = Date.now()
       await end(await started(await startAt(ada.cookie, project)))
       expect((await send('DELETE', `/projects/${project}`, ada.cookie)).status).toBe(200)
       const refused = await startAt(ada.cookie, await gameOf(ada.cookie))
       expect(refused.status).toBe(402)
-      expect(await refused.json()).toEqual({ error: 'quota', quota: { measure: 'tablesPer30Days', limit: 2, used: 2, bearer: 'you' } })
+      const body = (await refused.json()) as { quota: { frees: string } }
+      expect(body).toEqual({ error: 'quota', quota: { measure: 'tablesPer30Days', limit: 2, used: 2, bearer: 'you', frees: expect.any(String) } })
+      // When the next table can be started (#1198): the oldest start in the window, 30 days on.
+      expect(Date.parse(body.quota.frees)).toBeGreaterThanOrEqual(before + 30 * DAY - CLOCKS)
+      expect(Date.parse(body.quota.frees)).toBeLessThanOrEqual(between + 30 * DAY + CLOCKS)
       expect((await usage(ada.cookie)).measures).toMatchObject({ openTables: { used: 0, limit: null }, tablesPer30Days: { used: 2, limit: 2 } })
+    })
+
+    // `frees` is the moment the next start goes through (#1198): not a moment before it.
+    it('says when the next table can be started, and it can be started then', async () => {
+      await open(tiers({ tablesPer30Days: 1 }))
+      const ada = await someone('ada')
+      const project = await gameOf(ada.cookie)
+      await end(await started(await startAt(ada.cookie, project)))
+      const { quota } = (await (await startAt(ada.cookie, project)).json()) as { quota: { frees: string } }
+      now = Date.parse(quota.frees) - 1
+      const still = await startAt(ada.cookie, project)
+      expect(still.status).toBe(402)
+      expect(((await still.json()) as { quota: { frees: string } }).quota.frees).toBe(quota.frees)
+      now = Date.parse(quota.frees)
+      await started(await startAt(ada.cookie, project))
+    })
+
+    // Over the ceiling, the oldest start falling out makes no room: the date is when enough have.
+    it('says when there is room again for an account over its ceiling, not when the oldest start falls out', async () => {
+      await open(tiers({ tablesPer30Days: 1 }))
+      const ada = await someone('ada')
+      await db.accountPlans.setPlan(ada.id, 'pro', 'operator')
+      const project = await gameOf(ada.cookie)
+      await end(await started(await startAt(ada.cookie, project)))
+      const between = Date.now()
+      await end(await started(await startAt(ada.cookie, project)))
+      const after = Date.now()
+      await db.accountPlans.clearPlan(ada.id)
+      const refused = (await (await startAt(ada.cookie, project)).json()) as { quota: { used: number; frees: string } }
+      expect(refused.quota.used).toBe(2)
+      expect(Date.parse(refused.quota.frees)).toBeGreaterThanOrEqual(between + 30 * DAY - CLOCKS)
+      expect(Date.parse(refused.quota.frees)).toBeLessThanOrEqual(after + 30 * DAY + CLOCKS)
+    })
+
+    // Open tables free by being ended, which no date can say.
+    it('gives no date with open tables', async () => {
+      await open(tiers({ openTables: 1, tablesPer30Days: 5 }))
+      const ada = await someone('ada')
+      const project = await gameOf(ada.cookie)
+      await started(await startAt(ada.cookie, project))
+      const { quota } = (await (await startAt(ada.cookie, project)).json()) as { quota: Record<string, unknown> }
+      expect(quota).toEqual({ measure: 'openTables', limit: 1, used: 1, bearer: 'you' })
     })
 
     // Rolling, not by the calendar month (#1192 question 3): a start leaves the window 30 days after it.

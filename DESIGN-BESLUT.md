@@ -67,6 +67,7 @@ Byggt 2026-10-23 (#1196, skiva 4 av PRD #1192): **bord som mått, i två former.
 - Prövning och skrivning är ett steg i lagret, med ett transaktionslås per bärare i Postgres och ingen väntan mellan räkning och skrivning i minnet; två starter vid tak − 1 ger exakt en. Ett avslag skapar ingen session, ingen kod och inget renderjobb.
 - Ingenting annat prövar taket: att ansluta, köpa en plats med koden, spela, «Ny kod», «Uppdatera» (C7), att sparka, att avsluta och att spela upp en logg gör det aldrig. Ett bord som står stängs aldrig av ett tak, och ett konto över taket gör allt det med de bord som står.
 - När ett bord avslutas, av sin skärm eller av C9:s timeout, får nästa start plats under `openTables`.
+- Ett 402 för `tablesPer30Days` bär `frees`, ögonblicket då nästa bord går att starta (beställarens beslut 2026-10-23 i #1198). Det är när den äldsta starten i fönstret faller ur, och för ett konto över taket när så många fallit ur att ett till ryms. Under taket 0 finns inget sådant ögonblick, och då sägs inget. `openTables` bär inget datum, eftersom ett bord får plats när ett annat avslutas.
 - `GET /me/usage` och `usage`-skriptet tar med båda måtten. Webben får ett 402 som ett `QuotaReached` med taket i (`packages/web/src/account/quota.ts`), från både editorn och startsidan; hur det sägs är #1198.
 - Grindarna är `packages/server/test/quota-tables.test.ts` mot båda lagren, `account-plans.test.ts` för skriptets rapport, och `packages/web/test/start-table-quota.test.ts` med `project-client.test.ts` för klienten.
 
