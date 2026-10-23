@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Renderer } from '../src/renderer.js'
-import { MemoryRenderStore } from '../src/store.js'
+import { contentTypeOf, MemoryRenderStore } from '../src/store.js'
 import { contentHash } from '../src/hash.js'
 import { runWorker } from '../src/worker.js'
 import { createHash } from 'node:crypto'
@@ -33,6 +33,22 @@ describe('runWorker', () => {
     const smallest = Math.min(...(await renderer.fit(card)).filter((f) => !f.empty).map((f) => f.sizePt))
     expect(await store.fitOf(png)).toEqual({ smallestPt: smallest })
     expect(await store.fitOf(pdf)).toEqual({ smallestPt: null })
+  }, 30_000)
+
+  // A partner's raster (#1207) goes through the same queue and the same worker as a texture and a
+  // PDF, and comes out in exactly the pixels the job names, stored under its own hash.
+  it('renders a partner raster in the pixels its job names, as a PNG or a JPEG', async () => {
+    const store = new MemoryRenderStore()
+    const card = compiled({ title: 'Drake', body: 'Text.' }, true)
+    const png = { kind: 'raster', format: 'png', widthPx: 815, heightPx: 1110 } as const
+    const jpg = { kind: 'raster', format: 'jpg', widthPx: 815, heightPx: 1110 } as const
+    await store.enqueue({ hash: contentHash(card, png), kind: png, priority: 'print', compiled: card, requestedAt: 1 })
+    await store.enqueue({ hash: contentHash(card, jpg), kind: jpg, priority: 'print', compiled: card, requestedAt: 2 })
+    expect(await runWorker({ store, renderer, until: 'empty' })).toEqual([contentHash(card, png), contentHash(card, jpg)])
+    expect(pngSize((await store.output(contentHash(card, png)))!)).toEqual({ w: 815, h: 1110 })
+    expect([...(await store.output(contentHash(card, jpg)))!.subarray(0, 2)]).toEqual([0xff, 0xd8])
+    expect(contentTypeOf(jpg)).toBe('image/jpeg')
+    expect(contentTypeOf(png)).toBe('image/png')
   }, 30_000)
 
   it('records a failure and moves on', async () => {

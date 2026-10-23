@@ -176,7 +176,7 @@ const rooms = new Map<string, { code: string; hostKey: string }>()
 // `plans` and `accountPlans` are the tiers and who has which (#1193); without them nothing is limited.
 // `renders` is the render queue, for a test about who a rendering is counted against (#1197): the
 // render log is written by the queue, so the Postgres one has to be the one asked.
-export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore | false; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore; renders?: RenderStore } = {}): Promise<Running> {
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore | false; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore; renders?: RenderStore; printProviders?: ServerOptions['printProviders'] } = {}): Promise<Running> {
   const store = opts.store ?? new MemoryLogStore()
   const renders = opts.renders ?? new MemoryRenderStore(opts.objects)
   // One store for the app and the worker, as the box has one table and one bucket for both (#1028).
@@ -190,7 +190,7 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
   // Accounts are on unless a test says the server has none, as a server started without them has.
   const auth = opts.auth === false ? null : (opts.auth ?? new MemoryAuthStore())
   let bearer: Promise<Record<string, string>> | null = null
-  const server = createServer({ host, store, registry, renders, projects, assets, surveys: opts.surveys ?? new MemorySurveyStore(), ...(auth ? { auth } : {}), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...authBypass })
+  const server = createServer({ host, store, registry, renders, projects, assets, surveys: opts.surveys ?? new MemorySurveyStore(), ...(auth ? { auth } : {}), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.printProviders ? { printProviders: opts.printProviders } : {}), ...authBypass })
   // Never hang up an idle connection from this end (#848): the `fetch` in this same process pools
   // it for its next request, and a worker held past Node's five seconds wakes with both due in one
   // turn. The client decides when a connection is done; `stop` closes this end.

@@ -203,11 +203,11 @@ Byggs sist (H3), och stänger den tunna skivan (H1).
 Beställaren beslutade 2026-10-23 (#1199) att stödet för fler partner och tryckpaketet byggs redan i betan, medan partnervalet, ordern och spårningen väntar (F1, F2, H3).
 
 - ✅ `PrintProvider`-abstraktionen i `packages/print`: komponenttyp till SKU, tryckunderlagskrav, prissättning, orderläggning och spårning, formad efter The Game Crafter och QPMN, med ett förberedelsesteg, regiondirigering för EU-kravet och kraven som data ur `requirements()`, en fake-provider och en kontraktssvit som varje adapter ska klara (F2, TUNN-SKIVA §4, #1206). Ingen serverväg anropar `submit` eller `track` ännu.
-- ⬜ Tryckfiler efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()` i stället för typens fasta 3 mm, från den enda renderaren (E2, F2, #1207).
+- ✅ Tryckfiler efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()` i stället för typens fasta 3 mm, från den enda renderaren (E2, F2, #1207). Servern förbereder en providers order och ritar dess filer, och `GET /projects/:id/print-package` lämnar dem med regelhäftet; CMYK är inte byggt och väntar på en riktig partner.
 - ⬜ Tryckpaketet: designern ser vad som skulle skickas till tryckeriet, förklarat, och laddar ner det i betan; prototypas först (F1, #1208).
 - ⬜ Tryckpaketet kostar att ladda ner när en riktig partner finns, i en form som beslutas med abonnemangen (F1, A2, #1209).
 - ⬜ En verklig POD-partner integrerad; all beställning går via plattformen (F1). Ingen partner är vald: #1199 fann inget tryckeri som både tillverkar i EU och har ett order-API, och EU-kunder går till EU-tryck (F2).
-- 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; kvar är partnerns exakta krav (#1207) och tryckprofil per typ (B2).
+- 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; partnerns krav i pixlar och utfall är byggda (#1207); kvar är tryckprofil per typ (B2) och CMYK.
 - ⬜ Kassa med kostnadsbesked först i flödet, ingen prisvisning i editorn (F3).
 - ⬜ Automatisk IP-screening med manuell eskalering före tryck (F4).
 - ⬜ Moms, tull och leveransvillkor för EU-kunder: DDP eller DDU, IOSS (I, ekonomi).

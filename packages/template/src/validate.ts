@@ -20,7 +20,9 @@ export type Issue = { element: string; code: IssueCode; severity: Severity; valu
 // whether a text fits its box is a question about a laid-out page, so it is asked of the page that
 // drew the card and handed over here, the way the fitting is handed a measurer. A card nobody has
 // measured is said nothing about.
-export type ValidateInput = { type: ComponentTypeDef; face: FaceTemplate; row: Row; fonts?: Record<string, { stack: string; asset?: string | undefined }>; fitted?: readonly FitReport[] | undefined }
+// `bleedMm` is the bleed that will be printed (#1207): a partner's, from its `requirements()`, and
+// the type's own where no partner is asked.
+export type ValidateInput = { type: ComponentTypeDef; face: FaceTemplate; row: Row; fonts?: Record<string, { stack: string; asset?: string | undefined }>; fitted?: readonly FitReport[] | undefined; bleedMm?: number | undefined }
 
 // Text below the type's own minimum for the script cannot be read; a little above it is a risk.
 const SMALL_TEXT_FACTOR = 1.35
@@ -44,11 +46,11 @@ export const BLINDNESS = ['protanopia', 'deuteranopia', 'tritanopia'] as const
 export type Blindness = (typeof BLINDNESS)[number]
 type Box = { id: string; x: number; y: number; w: number; h: number; el: Element }
 
-export function validateCard({ type, face, row, fonts, fitted }: ValidateInput): Issue[] {
+export function validateCard({ type, face, row, fonts, fitted, bleedMm = type.print.bleedMm }: ValidateInput): Issue[] {
   const issues: Issue[] = []
   const boxes = flatten(elementsFor(face, row), 0, 0, row)
   const { widthMm, heightMm } = type.physical
-  const { safeMm, bleedMm, minPtByScript } = type.print
+  const { safeMm, minPtByScript } = type.print
 
   for (const box of boxes) {
     const el = box.el
@@ -308,7 +310,8 @@ export function remedyFor(issue: Issue, input: ValidateInput): Remedy | null {
   if (!('x' in el)) return null
   const off = { x: box.x - el.x, y: box.y - el.y }
   const { widthMm, heightMm } = input.type.physical
-  const { safeMm, bleedMm, minPtByScript } = input.type.print
+  const { safeMm, minPtByScript } = input.type.print
+  const bleedMm = input.bleedMm ?? input.type.print.bleedMm
   switch (issue.code) {
     case 'text-too-small': {
       if (el.kind !== 'text') return null
