@@ -1,5 +1,5 @@
-import type { Intent, Snapshot, ZoneAction, ZoneView, ActionAmount, ActionStep, ActionTarget } from '@byd/protocol'
-import { besidePile, type Point } from './drop.js'
+import type { Intent, Snapshot, SplitRow, ZoneAction, ZoneView, ActionAmount, ActionStep, ActionTarget } from '@byd/protocol'
+import { besidePile, rowBeside, type Point } from './drop.js'
 
 // Turning a designer's action into the intents it means (B5, K14).
 //
@@ -92,10 +92,17 @@ export function compileStart(view: Snapshot, asked: Asked = {}): Compiled {
 
 type Made = { intents: Intent[] } | { asks: string } | { why: string }
 
-// `beside` is the pile's own side and not the step's (K21): a pile that lies at the felt's left
-// edge lays its cards to the right, whoever asked for them and whichever verb did it.
+// `beside` is the side the step names, and the pile's own when it names none (K21, #1203): a pile
+// that lies at the felt's left edge lays its cards to the right, whoever asked for them and
+// whichever verb did it, unless the designer wrote a step that says otherwise. Laid side by side
+// or overlapping, the engine lays them out from the first card's corner (`rowBeside`).
 function compileStep(view: Snapshot, zone: ZoneView, pile: string, step: ActionStep, asked: Asked, key: string): Made {
-  const beside = (cards: number): Point => besidePile(zone.geometry, cards, zone.beside)
+  const place = 'to' in step ? step.to : undefined
+  const side = (place?.at === 'beside' ? place.side : undefined) ?? zone.beside ?? 'left'
+  const lay = place?.at === 'beside' ? (place.lay ?? 'stack') : 'stack'
+  const floor = view.zones.find((z) => z.id === view.floor)
+  const beside = (cards: number): Point | (Point & { row: SplitRow }) =>
+    lay === 'stack' || floor === undefined ? besidePile(zone.geometry, cards, side) : rowBeside(zone.geometry, side, lay, floor.geometry)
   if (step.v === 'shuffle') return { intents: [{ v: 'shuffle', pile }] }
   if (step.v === 'flipTop') {
     const z = view.zones.find((x) => x.id === pile)

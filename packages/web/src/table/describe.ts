@@ -87,6 +87,9 @@ export function describeActivity(line: Said, view: Snapshot, t: T): string {
     // drawn to it, without one they became a new pile beside. `at` is said and the cards are not,
     // so a hidden pile stays hidden — `which` never reaches the line.
     case 'split':
+      // A row lies loose and makes no pile (#1203). With a search, `at` is only the fallback and
+      // not how many were found, so the line says no number rather than a wrong one.
+      if (it.row !== undefined && it.to === undefined) return it.which ? t('activity.split.row.found', { who, zone: zone(it.pile) }) : t(it.at === 1 ? 'activity.split.row.one' : 'activity.split.row.other', { who, n: it.at, zone: zone(it.pile) })
       return it.to
         ? t(it.at === 1 ? 'activity.split.to.one' : 'activity.split.to.other', { who, n: it.at, zone: zone(it.pile), to: zone(it.to) })
         : t(it.at === 1 ? 'activity.split.beside.one' : 'activity.split.beside.other', { who, n: it.at, zone: zone(it.pile) })

@@ -19,6 +19,14 @@ test.describe('the focus on the editor frame (#477)', () => {
     await expect(primary).toHaveAttribute('data-table-kind', 'none')
     await primary.focus()
     await page.keyboard.press('Enter')
+    // «Hur sitter ni?» (L77) comes first, answered with the keys too; its window hands the focus
+    // back to the primary when it goes, and the table's screen opens in a tab of its own.
+    const dialog = page.getByRole('dialog', { name: /^(Starta ett bord|Start a table)$/ })
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: /^(Starta|Start)$/ }).focus()
+    const screen = page.context().waitForEvent('page')
+    await page.keyboard.press('Enter')
+    await (await screen).close()
     await expect(primary).toHaveAttribute('data-table-kind', 'new')
     expect(await lost(page)).toBe(false)
     await expect(primary).toBeFocused()

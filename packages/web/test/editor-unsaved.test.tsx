@@ -8,6 +8,7 @@ import { startServer, type Running } from './fixture.js'
 import { setEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
 import { requestLink } from '../src/account/session.js'
 import { EditSocket, RefusesToSave } from './setup.js'
+import { answerStart } from './start-answer.js'
 
 let run: Running
 beforeEach(async () => {
@@ -95,6 +96,7 @@ describe('starting a table over unsaved work (#737)', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
     fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     await screen.findByText(/Sparade version 2 och startade ett nytt bord/)
     expect((await run.projects.load(run.projectId))?.rev).toBe(2)
   })
@@ -102,6 +104,7 @@ describe('starting a table over unsaved work (#737)', () => {
   it('says only that a table started when there was nothing to save', async () => {
     await openEditor()
     fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     await screen.findByText(/Nytt bord startat på version 1/)
     expect(screen.queryByText(/Sparade/)).toBeNull()
   })

@@ -143,6 +143,21 @@ export const svEditor = {
   'editor.table.rendering': 'laddar kort {done}/{total}',
   'editor.table.stalled': 'laddningen har stannat. Korten på bordet visar sin text tills den fortsätter',
   'editor.table.open': 'öppna bordet',
+  // Starta frågar hur ni sitter (L77, #1130): en gång, innan bordet finns. Svaret väljer vilken
+  // skärm värden får, inte ett läge för bordet (C2).
+  'editor.start.title': 'Starta ett bord',
+  'editor.start.how': 'Hur sitter ni?',
+  'editor.start.screen': 'Runt en skärm',
+  'editor.start.screen.body': 'Bordet på en TV eller stor skärm, var och en har handen i sin telefon.',
+  'editor.start.computer': 'Var och en vid sin dator',
+  'editor.start.computer.body': 'Alla ser bordet och sin egen hand i sitt eget fönster. Du skickar en länk.',
+  'editor.start.name': 'Ditt namn vid bordet',
+  'editor.start.go.screen': 'Starta',
+  'editor.start.go.computer': 'Starta och sätt dig',
+  // Ett nytt fönster som webbläsaren stoppade: vägen dit står kvar som en länk i bandet.
+  'editor.start.blocked': 'Webbläsaren öppnade inget nytt fönster:',
+  'editor.start.blocked.screen': 'Öppna bordets skärm',
+  'editor.start.blocked.computer': 'Sätt dig vid bordet',
   'editor.table.failed.one': '{n} kort kunde inte laddas',
   'editor.table.failed.other': '{n} kort kunde inte laddas',
   // Efter start (#523): kort vars minsta text en telefon inte kan visa i golvets storlek (K26).
@@ -1561,6 +1576,13 @@ export const svEditor = {
   'setup.step.split.one': 'Ta {n} från högen och lägg det {face} {at}',
   'setup.step.deal': 'Dela ut {n} {to}, {face}',
   'setup.step.take': 'Leta fram {which} och lägg dem {face} {at}',
+  // Bredvid högen säger meningen också hur korten läggs (#1203): «på varandra» är vad som alltid
+  // hänt, och sägs därför ut i stället för att tigas om.
+  'setup.step.split.beside': 'Ta {n} från högen och lägg dem {face} {lay} {at}',
+  'setup.step.take.beside': 'Leta fram {which} och lägg dem {face} {lay} {at}',
+  'setup.lay.stack': 'på varandra',
+  'setup.lay.row': 'bredvid varandra',
+  'setup.lay.overlap': 'omlott',
   'setup.take.every': 'varje kort',
   // Ett nytt «Leta fram» innan frågan ställts (#713): steget körs inte förrän den är besvarad.
   'setup.take.unchosen': 'vilka kort?',

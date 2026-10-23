@@ -139,6 +139,9 @@ async function joinViews(): Promise<Record<string, string>> {
   const table = TableClient.connect(await asTable(run, session))
   await table.ready()
   history.replaceState(null, '', `/join?code=${roomOf(session).code}&server=${encodeURIComponent(run.url)}`)
+  // Measured at 390, so mounted at 390: the page is a different page from 1024 (L77), and a walk
+  // that runs after one at 1280 would otherwise mount the laptop's and measure it as the phone's.
+  atWidth(390)
   const { container, unmount } = render(<JoinPage />)
   await screen.findByRole('button', { name: /Sätt dig/ })
   // How the page opens. The next free seat is chosen for you (`chosen` falls back to `free[0]`),
@@ -233,6 +236,25 @@ describe('the seat picker', () => {
     )
     const [screenHere, watching] = measured['sätt dig vid bordet']!
     expect(screenHere).toBe(watching)
+  }, 90_000)
+
+  // A laptop has one choice (L77): «Gå med» is the one filled thing, and the two ways under it are
+  // drawn as links and not as a second pair of pills.
+  it('wears the primary fill on «Gå med» alone on a laptop', async () => {
+    const session = await createSession(run, 's1', undefined, twoSeatSetup())
+    history.replaceState(null, '', `/join?code=${roomOf(session).code}&server=${encodeURIComponent(run.url)}`)
+    atWidth(1280)
+    const { container, unmount } = render(<JoinPage />)
+    await screen.findByRole('button', { name: 'Gå med' })
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Bo' } })
+    const views = { 'gå med': container.innerHTML }
+    unmount()
+    const filled = await inChromium(read('src/join/join.css'), 1280, views, wearingThePrimary('.byd-join'))
+    expect(filled).toEqual({ 'gå med': ['Gå med'] })
+    const links = await inChromium(read('src/join/join.css'), 1280, views, (page) =>
+      page.$$eval('.byd-join-link', (els) => els.map((el) => `${getComputedStyle(el).backgroundColor} ${getComputedStyle(el).borderTopStyle} ${getComputedStyle(el).textDecorationLine}`)),
+    )
+    expect(links['gå med']).toEqual(['rgba(0, 0, 0, 0) none underline', 'rgba(0, 0, 0, 0) none underline'])
   }, 90_000)
 })
 

@@ -4,6 +4,7 @@ import { setupFromProject } from '@byd/server/doc'
 import { join, tableOf as tableFromSetup } from '../support/api.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
+import { pastTheWaitingRoom } from '../support/waiting.js'
 
 // Bordsläget utan telefoner (#682, beställarens beslut 2026-10-17: raden E och ångra/avsluta C).
 //
@@ -177,6 +178,7 @@ for (const surface of ['bordsläget', '/online'] as const) {
         })
       })
       await page.goto(`${url}&lang=sv`)
+      if (surface === '/online') await pastTheWaitingRoom(page)
       const deck = page.locator('.byd-pile[data-zone="draw"]')
       await expect(deck).toHaveAttribute('data-count', '12')
       const top = centre((await deck.locator('.byd-pile-top').boundingBox())!)

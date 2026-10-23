@@ -75,6 +75,20 @@ describe('the log tells a drawn card from a cut pile (#421)', () => {
     expect(describeActivity(splitBeside(3), table(null), en)).toBe('Ada split 3 cards off Draghög into a new pile')
   })
 
+  // A row makes no pile (#1203): «till en ny hög» would send the reader looking for one.
+  it('says cards laid out beside a pile were laid out, not split into a new pile', () => {
+    const row = { ...splitBeside(4), intent: { v: 'split', pile: 'draw', at: 4, x: 40, y: 0, row: { dx: 75, dy: 0 } } } as Activity
+    expect(describeActivity(row, table(null), sv)).toBe('Ada lade ut 4 kort bredvid Draghög')
+    expect(describeActivity(row, table(null), en)).toBe('Ada laid out 4 cards beside Draghög')
+    // «1 per spelare» at a table of one is a row of one.
+    const one = { ...row, intent: { ...row.intent, at: 1 } } as Activity
+    expect(describeActivity(one, table(null), en)).toBe('Ada laid out 1 card beside Draghög')
+    // A search says how many it reached for and not how many it found, so it says no number at all.
+    const found = { ...row, intent: { ...row.intent, at: 1, which: [{ field: 'Typ', is: ['Drake'] }] } } as Activity
+    expect(describeActivity(found, table(null), sv)).toBe('Ada lade ut kort bredvid Draghög')
+    expect(describeActivity(found, table(null), en)).toBe('Ada laid out cards beside Draghög')
+  })
+
   it('gives the two moves two lines, and neither says which card it was', () => {
     // The same pile, the same count: only `to` separates them, and the reader must still be able to.
     // The card the draw reached for rides along in `which`; the line must not pass it on.

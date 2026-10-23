@@ -26,6 +26,7 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
 import { keepHostKey, takeHostKey } from './hostKey.js'
 import { useCardsPending } from './textures.js'
+import { roomAddress } from './roomAddress.js'
 import { versionWord } from '../i18n/version.js'
 import { rememberTableLang } from './tableLang.js'
 
@@ -140,13 +141,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // The table screen acts as the table itself, so a line with no seat on it is its own (K14).
   useActivityLive(activity, view, null)
 
-  // The code is the address (#675, beslut C): the room's own address is the screen's origin and
-  // the code, and the square carries the very same one as the words beside it.
-  const joinUrl = useMemo(() => {
-    if (!roomCode) return undefined
-    const server = params.get('server')
-    return `${location.origin}/${roomCode}${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`
-  }, [params, roomCode])
+  // The code is the address (#675, beslut C): the square carries the very same one as the words beside it.
+  const joinUrl = useMemo(() => (roomCode ? roomAddress(roomCode, params.get('server')).url : undefined), [params, roomCode])
   const site = location.host
 
   // A link with no room in it is a link to a room that does not exist.

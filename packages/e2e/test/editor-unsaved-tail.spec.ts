@@ -1,6 +1,7 @@
 import { logIn, makeProject } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
+import { answerStart } from '../support/start.js'
 
 // A tab closed over unsaved work leaves that work in the project's actor (D3): the log carries
 // the tail between saves, and the next editor is handed it. That editor used to take what it was
@@ -44,6 +45,7 @@ test('an editor opened on work nobody saved says so, and the table it starts has
   const primary = again.locator('.byd-editor-primary:not(.byd-editor-caret)')
   await expect(primary).toHaveAccessibleName('Start a table')
   await primary.click()
+  await answerStart(again)
   await expect(primary).toHaveAccessibleName('Update the table')
   expect(await seats()).toEqual({ rev: 2, seats: 3 })
   const tables = (await (await again.request.get(`/projects/${encodeURIComponent(project.id)}/sessions`)).json()) as { version: string }[]

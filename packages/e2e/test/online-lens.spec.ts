@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { join } from '../support/api.js'
 import { expect, test } from '../support/test.js'
+import { pastTheWaitingRoom } from '../support/waiting.js'
 
 // A lens on the felt of /online (#502, beslut B, prototyp 36). K9 asks 45 px of a card on the felt,
 // and /online reached it only for a four-seat table from 1280 × 720: measured, 36 px at 1024 × 600
@@ -78,6 +79,7 @@ test('moves an enlarged felt by a drag on the bare felt, and enlarges about the 
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
   const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  await pastTheWaitingRoom(page)
   const wood = page.locator('.byd-online-felt .byd-table-wood')
   const frame = page.locator('.byd-online-felt .byd-table-frame')
   await expect(wood).toBeVisible()
@@ -106,6 +108,7 @@ test('enlarges about the middle and lets a drag reach every rim of the felt', as
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
   const { page } = await open({ name: 'd', viewport: { width: 1024, height: 600 } }, `${seat.onlineUrl}&lang=sv`)
+  await pastTheWaitingRoom(page)
   const wood = page.locator('.byd-online-felt .byd-table-wood')
   const frame = page.locator('.byd-online-felt .byd-table-frame')
   await expect(wood).toBeVisible()
@@ -142,6 +145,7 @@ test('ends a drag of the enlarged felt that is let go of outside the felt', asyn
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
   const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  await pastTheWaitingRoom(page)
   const wood = page.locator('.byd-online-felt .byd-table-wood')
   const frame = page.locator('.byd-online-felt .byd-table-frame')
   await expect(wood).toBeVisible()
@@ -165,6 +169,7 @@ test('keeps the keyboard in the corner as its way in becomes the cluster and bac
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
   const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  await pastTheWaitingRoom(page)
   const zoomIn = page.getByRole('button', { name: 'Zooma in' })
   await zoomIn.focus()
   await page.keyboard.press('Enter')

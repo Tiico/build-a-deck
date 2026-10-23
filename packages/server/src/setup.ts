@@ -16,7 +16,7 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
   // no zone asks for lies in the deck's pile as every row used to.
   const asked = doc.setup.zones.filter((z) => z.fill !== undefined && z.fill.length > 0)
   for (const { id: cardRef, fields } of doc.rows) {
-    const copies = Math.max(0, Math.floor(Number(fields['antal'] ?? 1)) || 0)
+    const copies = copiesOf(fields)
     const zone = asked.find((z) => matches(z.fill ?? [], fields))?.id ?? doc.setup.deckZone
     for (let i = 0; i < copies; i++) components.push({ type, cardRef, zone, face: 'back' })
   }
@@ -77,4 +77,11 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
   }
   // Whether the game goes in turns (K30) is the designer's answer in Bord, and travels as it is.
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components, cards, ...(doc.setup.turns ? { turns: doc.setup.turns } : {}) }
+}
+
+// How many copies of a card the deck holds (L4): `antal`, one when it is absent, and none when it
+// is below zero or no number at all. The one reading of it, so the deck the table deals and the
+// copies a ceiling counts (#1195) are the same number.
+export function copiesOf(fields: Record<string, unknown>): number {
+  return Math.max(0, Math.floor(Number(fields['antal'] ?? 1)) || 0)
 }
