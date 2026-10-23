@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -88,9 +88,11 @@ export type PlayerSurfaceProps = {
   // Played from afar with no felt in the window (`/online` on a phone, C2): the table fold says
   // where the whole table is, which a phone beside the television never needs told.
   away?: boolean | undefined
+  // The owner's way to the editor with the seat kept (#1217), for the exit sheet.
+  stay?: ReactNode
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false, stay }: PlayerSurfaceProps) {
   const ids = useId()
   const t = useT()
   const [tab, setTab] = useState<Tab>('hand')
@@ -408,7 +410,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         />
       )}
       {rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} stay={stay} />
     </>
   )
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
@@ -119,8 +119,10 @@ export function ProposeSheet({ where, who, onPropose, onClose }: { where: string
 // way out is meant. The two are told apart by what they cost, written under each of them: your
 // seat, or everyone's table. Ending still asks its own question afterwards, so it is one press
 // further away than it was rather than one nearer.
-// `pile` is where the hand goes back to, by its own name (#714); null says «leken».
-export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle }) {
+// `pile` is where the hand goes back to, by its own name (#714); null says «leken». `stay` is the
+// owner's third way (#1217, L80): to the game's editor with the seat kept, first because it is the
+// one that gives nothing up.
+export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle; stay?: ReactNode }) {
   const t = useT()
   const box = useSheet(onClose)
   return (
@@ -134,6 +136,12 @@ export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal }: { pile: st
         ref={box}
       >
         <p className="byd-sheet-title" id="exit-sheet-title">{t('exit.sheet.title')}</p>
+        {/* Taking it brings the editor's tab out, and the sheet is not left standing behind. */}
+        {stay && (
+          <div className="byd-exit-choice" onClick={(e) => (e.target as HTMLElement).closest('a') && onClose()}>
+            {stay}
+          </div>
+        )}
         <div className="byd-exit-choice">
           <button type="button" data-kind="leave" onClick={onLeave} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
             {t('exit.sheet.leave')}

@@ -13,6 +13,7 @@ import { noticeFor } from '../status/notice.js'
 import { useT } from '../i18n/index.js'
 import { useCodeField } from './codeField.js'
 import { useWide } from './wide.js'
+import { ArrowGlyph } from '../glyphs.js'
 import './join.css'
 
 // /KOD and /join?code=…&server=ws://…  — what the TV says and what its QR points at, and what a
@@ -261,6 +262,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   return (
     <div className="byd-join-page">
       <main className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
+      <HomeWay href={links.home} />
       <header>
         <span>{t('join.into')}</span>
         {/* The game's name, when the table has one (#675): it is what the guest came to play, and
@@ -372,6 +374,20 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   )
 }
 
+// The page's way home (#1217): the picker and the code's form had none outside a fault, so a
+// person who came here by mistake had only the browser's own back. Quiet, in the card's top corner
+// and out of its flow, since what the page is for is the seat and a phone's picker is exactly one
+// screen tall (`join-layout.test.tsx`).
+function HomeWay({ href = '/' }: { href?: string | undefined }) {
+  const t = useT()
+  return (
+    <a className="byd-join-home" href={href}>
+      <ArrowGlyph to="left" />
+      {t('status.act.home.start')}
+    </a>
+  )
+}
+
 // The form `/join` is without a code, and with one that names nothing (#675, A's form, which C
 // took over): one field for the code, read as a code, and one button.
 function CodeForm({ server, onOpen, typed, unknown }: { server: string | null; onOpen(url: string): void; typed?: string; unknown?: boolean }) {
@@ -391,6 +407,7 @@ function CodeForm({ server, onOpen, typed, unknown }: { server: string | null; o
   return (
     <div className="byd-join-page">
       <main className="byd-join byd-join-code" data-page="join">
+        <HomeWay href={statusLinks({ server }).home} />
         <header>
           <h1>{t('join.code.title')}</h1>
         </header>
