@@ -139,6 +139,35 @@ describe('väntrummet på /online (L77, #1130)', () => {
     expect(window.getSelection()?.toString()).toBe(`${location.host}/${made.code}`)
   })
 
+  // Ett tryck i samma ögonblick som väntrummet kommer (#1221). Väntrummet nollställde «Kopierad» i en
+  // effekt som också körs när det monteras, och React kör den effekten först i en senare uppgift: ett
+  // tryck före den slogs ihop med nollställningen, och «Kopierad» syntes aldrig. Det är vad en
+  // findBy som löser på just den commit:en gör, och vad en upptagen CI-maskin gjorde av testet ovan.
+  it('säger «Kopierad» också för ett tryck i samma ögonblick som väntrummet kommer', async () => {
+    const made = await newTable()
+    const written: string[] = []
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text: string) => void written.push(text) },
+    })
+    // Tryckt från den commit som för in väntrummet, innan React har kört dess effekter.
+    const pressed = new Promise<void>((resolve) => {
+      const watch = new MutationObserver(() => {
+        const button = document.querySelector<HTMLButtonElement>('.byd-waiting-copy')
+        if (!button) return
+        watch.disconnect()
+        button.click()
+        resolve()
+      })
+      watch.observe(document.body, { childList: true, subtree: true })
+    })
+    await asGuest(made)
+    await pressed
+    const panel = await room()
+    await within(panel).findByRole('button', { name: 'Kopierad' })
+    expect(written).toHaveLength(1)
+  })
+
   // Värden som sitter vid sitt eget bord från editorn har kanske ingen kod i adressen: servern
   // berättar den för hennes plats, och berättar den nya efter «Ny kod».
   it('visar värdens adress utan kod i URL:en, och den nya koden efter «Ny kod»', async () => {
@@ -148,7 +177,13 @@ describe('väntrummet på /online (L77, #1130)', () => {
     render(<OnlinePage />)
     const panel = await room()
     await waitFor(() => expect(panel.querySelector('[data-address]')?.textContent).toBe(`${location.host}/${made.code}`))
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => undefined } })
+    within(panel).getByRole('button', { name: 'Kopiera länk' }).click()
+    await within(panel).findByRole('button', { name: 'Kopierad' })
     const rotated = (await (await fetch(`${run.http}/sessions/${made.id}/code`, { method: 'POST', headers: { authorization: `Bearer ${made.hostKey}` } })).json()) as { code: string }
     await waitFor(() => expect(panel.querySelector('[data-address]')?.textContent).toBe(`${location.host}/${rotated.code}`))
+    // En ny kod är en ny adress: det som kopierades förut är inte det som står här nu.
+    expect(within(panel).getByRole('button', { name: 'Kopiera länk' })).toBeTruthy()
+    expect(within(panel).getByRole('status').textContent).toBe('')
   })
 })
