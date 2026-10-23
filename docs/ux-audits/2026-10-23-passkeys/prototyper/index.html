@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Passkeys (#1180)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-23: «När man loggar in så ska man få möjlighet att spara ner en nyckel på
+     enheten man loggade in på, om man använder den så slipper man använda mail nästa gång.»
+     Tre ytor, tre varianter av helheten:
+       1. Erbjudandet efter att länken följts     A band på Mina spel · B ett steg i kortet · C en dialog
+       2. Inloggningskortet med en sparad nyckel   A egen knapp       · B förslag i fältet  · C kortet leder med nyckeln
+       3. Profilsidan                              A eget kort        · B rader i Konto     · C den här enheten först
+     Varje yta är ritad för hand med kontots egna färger och mått (account.css, profile.css,
+     buttons.css) och kortets egna strängar (sv.account.ts). Webbläsarens egen ruta är grå och
+     märkt: den är inte vår och ser olika ut i varje webbläsare.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  /* Raden rullar bort med sidan: på en liten skärm tog den en tredjedel av ytan. ← → växlar ändå. */
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  main.scen { flex: 1 1 auto; display: grid; justify-content: safe center; align-content: start; padding: 20px 16px 60px; background: #15171c; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .sida[data-bredd='dator'] { width: 1040px; min-height: 680px; }
+  .sida[data-bredd='telefon'] { width: 375px; min-height: 740px; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 6px; }
+  .etikett b { color: #e6ecfa; }
+
+  /* ── Kontot (account.css, profile.css, buttons.css) ───────────────────────────────────────── */
+  .acc { --bg: #0f1117; --card: #171a23; --field: #14161c; --edge: #262a35; --muted: #9aa3b8; --ok: #7dd3a0; --ok-ink: #0b2a18; --sec-line: #6f7a90; --sec-ink: #dce3f2;
+    min-height: inherit; background: var(--bg); color: #e6e6e6; font: 14px system-ui, sans-serif; box-sizing: border-box; }
+  .acc :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .acc button { font: inherit; cursor: pointer; }
+  .prim { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--ok); color: var(--ok-ink); font-weight: 700 !important; }
+  .sek { min-height: 44px; padding: 0 16px; border: 1px solid var(--sec-line); border-radius: 12px; background: transparent; color: var(--sec-ink); font-weight: 600 !important; }
+  .lank { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .g { width: 16px; height: 16px; flex: none; }
+  .med { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .muted { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
+
+  /* Inloggningskortet */
+  .acc.mitt { display: grid; place-items: center; padding: 40px 20px; }
+  .login { width: min(420px, 100%); background: var(--card); border: 1px solid var(--edge); border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
+  .sida[data-bredd='telefon'] .login { padding: 24px; }
+  .login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; }
+  .hand { width: 32px; height: 32px; }
+  .login form { display: grid; gap: 10px; margin: 0; }
+  .falt { display: grid; gap: 6px; position: relative; }
+  .falt > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+  .falt input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--sec-line); background: var(--field); color: #fff; font-size: 16px; }
+  .login .prim, .login .sek { padding: 14px 18px; font-size: 16px; }
+  .eller { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+  .eller::before, .eller::after { content: ''; height: 1px; background: var(--edge); }
+  .skickat { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+  .skickat strong { font-size: 16px; }
+  .lang { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+  .lang select { min-height: 44px; border: 1px solid var(--sec-line); border-radius: 8px; padding: 4px 8px; background: var(--field); color: #e6e6e6; font: inherit; }
+  .about { margin-top: 12px; text-align: center; font-size: 12px; color: var(--muted); }
+  /* Webbläsarens förslag under fältet (conditional mediation, variant B) */
+  .forslag { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 3; background: #f4f4f6; color: #1d1d1f; border-radius: 10px; box-shadow: 0 8px 30px rgb(0 0 0 / 50%); padding: 6px; font-size: 14px; }
+  .forslag button { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; border-radius: 7px; padding: 8px 10px; background: #dfe7f6; color: inherit; }
+  .forslag small { display: block; color: #6b6b72; font-size: 12px; }
+  .forslag .gra { margin: 6px 4px 2px; color: #8a8a90; font-size: 11px; }
+
+  /* Mina spel */
+  .acc.topp { padding: 40px 20px; display: grid; justify-content: center; align-content: start; }
+  .sida[data-bredd='telefon'] .acc.topp { padding: 24px 16px; }
+  .home { width: min(920px, calc(100vw - 32px)); display: grid; gap: 18px; }
+  .sida[data-bredd='dator'] .home { width: 920px; }
+  .sida[data-bredd='telefon'] .home { width: 343px; }
+  .home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; }
+  .home h1 { margin: 0; font-size: 28px; }
+  .vem { color: var(--muted); font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .vem .ikon { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .sida[data-bredd='telefon'] .grid { grid-template-columns: 1fr 1fr; }
+  .spel { background: var(--card); border: 1px solid var(--edge); border-radius: 16px; padding: 16px; display: grid; gap: 8px; align-content: start; color: #fff; }
+  .spel i { display: block; height: 120px; aspect-ratio: 63 / 88; border-radius: 4px; background: var(--c); }
+  .sida[data-bredd='telefon'] .spel i { height: 90px; }
+  .spel strong { font-size: 17px; }
+  .spel[data-new] { border-style: dashed; place-items: center; color: var(--muted); }
+  /* Variant A: bandet, i kontots gröna — samma grund som «Pågår nu» och beskedet efter claim. */
+  .band { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
+  .band .g { width: 22px; height: 22px; color: var(--ok); }
+  .band p { flex: 1 1 280px; margin: 0; line-height: 1.5; }
+  .band b { color: #fff; }
+  .band .knappar { display: flex; gap: 8px; flex-wrap: wrap; }
+  .band .sek { border-color: #5f8a70; color: #d8ffe8; }
+  .band[data-klar] { padding: 12px 16px; }
+  /* Variant C: dialogen */
+  .skymning { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: rgb(5 7 12 / 70%); }
+  .dialog { width: min(440px, 100%); box-sizing: border-box; display: grid; gap: 14px; padding: 28px; border-radius: 20px; background: var(--card); border: 1px solid #343a4a; box-shadow: 0 20px 60px rgb(0 0 0 / 60%); }
+  .dialog h2 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .dialog h2 .g { width: 24px; height: 24px; color: var(--ok); }
+  .dialog .knappar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+  /* Profilen */
+  .profil { width: min(640px, 100%); display: grid; gap: 16px; }
+  .sida[data-bredd='dator'] .profil { width: 640px; }
+  .sida[data-bredd='telefon'] .profil { width: 343px; }
+  .tillbaka { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--muted); font-size: 14px; }
+  .profil-head { display: grid; gap: 4px; margin-bottom: 8px; }
+  .profil-head h1 { margin: 0; font-size: 28px; }
+  .pkort { display: grid; gap: 12px; padding: 24px; border-radius: 16px; border: 1px solid var(--edge); background: var(--card); color: #e6ecfa; font-size: 14px; }
+  .sida[data-bredd='telefon'] .pkort { padding: 16px; }
+  .pkort h2 { margin: 0; font-size: 18px; font-weight: 750; }
+  .pkort .sek, .pkort .prim { border-radius: 10px; font-size: 14px; }
+  .liten { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; overflow-wrap: anywhere; }
+  .sparad { margin: 0; display: flex; gap: 12px; align-items: center; line-height: 1.5; }
+  .sparad code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; padding: 0 4px; border-radius: 4px; background: #232838; }
+  .bock { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 50%; background: var(--ok); color: #0b2a18; font-size: 13px; font-weight: 800; }
+  .nycklar { list-style: none; margin: 0; padding: 0; display: grid; }
+  .nycklar li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--edge); }
+  .nycklar li:first-child { border-top: 0; }
+  .nycklar .enhet { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #232838; color: #c3cbdd; }
+  .nycklar .enhet .g { width: 18px; height: 18px; }
+  .nycklar b { display: block; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nycklar small { display: block; color: var(--muted); font-size: 12px; }
+  .nycklar .har { color: var(--ok); font-weight: 650; }
+  .ta-bort { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--muted); }
+  .ta-bort:hover { border-color: var(--sec-line); color: #fff; }
+  .fraga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 8px; background: #3b3222; color: #ffeccc; grid-column: 1 / -1; }
+  .fraga p { flex: 1 1 200px; margin: 0; line-height: 1.45; }
+  .fraga button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #a39a86; background: transparent; color: var(--sec-ink); font-weight: 600; }
+  .fraga button[data-kind='danger'] { border-color: #7a3243; background: #7a3243; color: #ffe4ea; font-weight: 700; }
+  .rad { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  details.andra summary { min-height: 44px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: #c3cbdd; }
+  details.andra summary::before { content: '▸'; transition: rotate .15s; }
+  details.andra[open] summary::before { rotate: 90deg; }
+
+  /* ── Webbläsarens egen ruta: inte vår, ritad grå och märkt ─────────────────────────────────── */
+  .system { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: rgb(0 0 0 / 35%); }
+  .system > div { width: 320px; padding: 20px; border-radius: 14px; background: #ececee; color: #1d1d1f; font: 13px -apple-system, system-ui, sans-serif; box-shadow: 0 20px 60px rgb(0 0 0 / 60%); display: grid; gap: 12px; text-align: center; }
+  .system .stamp { justify-self: center; padding: 2px 8px; border-radius: 99px; background: #ffd98a; color: #2a2417; font-size: 11px; font-weight: 700; }
+  .system .fp { justify-self: center; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #e0245e; font-size: 30px; }
+  .system .knappar { display: flex; gap: 8px; justify-content: center; }
+  .system button { min-height: 32px; padding: 0 14px; border-radius: 7px; border: 1px solid #c5c5c9; background: #fff; font: inherit; cursor: pointer; }
+  .system button.blå { background: #0a66ff; color: #fff; border-color: #0a66ff; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP #1180 — passkeys.</b> Logga in med länken en gång, spara en nyckel på enheten, logga in utan mejl nästa gång.</p>
+    <p>Växla variant med A/B/C eller ← →. Allt går att klicka: erbjudandet, webbläsarens ruta, inloggningen och borttagningen.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <div class="grupp"><span>Ordet</span><div class="flikar" id="ord"></div></div>
+  <div class="grupp" id="enhetgrupp"><span>Enheten har en nyckel</span><div class="flikar" id="enhet"></div></div>
+  <button type="button" id="omstart">Börja om ytan</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen"><div><p class="etikett" id="etikett"></p><div class="sida" id="sida"></div></div></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  key: 'M8 8h5.75M11.5 8v2.25M13.75 8v1.5',
+  trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9M6.75 7v4.25M9.25 7v4.25',
+  left: 'M13 8H3M7 4 3 8l4 4',
+  phone: 'M5.25 1.75h5.5a1 1 0 0 1 1 1v10.5a1 1 0 0 1-1 1h-5.5a1 1 0 0 1-1-1V2.75a1 1 0 0 1 1-1zM7.25 12h1.5',
+  laptop: 'M3.25 3.5h9.5a.75.75 0 0 1 .75.75v6.25h-11V4.25a.75.75 0 0 1 .75-.75zM1.25 12.5h13.5',
+  cloud: 'M4.75 12.25h6.5a2.75 2.75 0 0 0 .3-5.48A3.75 3.75 0 0 0 4.3 7.6a2.35 2.35 0 0 0 .45 4.65z',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+}
+const C = { key: [[5.25, 8, 2.75]], person: [[8, 5.25, 2.5]] }
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(C[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+const HAND = `<svg class="hand" viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="8" width="13" height="18" rx="2" transform="rotate(-14 11 17)" fill="#e0a73a" stroke="#171a23" stroke-width="1.5"/><rect x="10" y="6" width="13" height="18" rx="2" fill="#3f8f5f" stroke="#171a23" stroke-width="1.5"/><rect x="15" y="8" width="13" height="18" rx="2" transform="rotate(14 21 17)" fill="#efe8d8" stroke="#171a23" stroke-width="1.5"/></svg>`
+
+// ── Ordet ────────────────────────────────────────────────────────────────────────────────────────
+const ORD = {
+  passkey: { en: 'en passkey', def: 'passkeyn', pl: 'passkeys', plDef: 'passkeys', bar: 'passkey', Cap: 'Passkey', CapPl: 'Passkeys' },
+  inloggningsnyckel: { en: 'en inloggningsnyckel', def: 'inloggningsnyckeln', pl: 'inloggningsnycklar', plDef: 'inloggningsnycklarna', bar: 'inloggningsnyckel', Cap: 'Inloggningsnyckel', CapPl: 'Inloggningsnycklar' },
+}
+
+// ── Varianterna ──────────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A — bandet, egen knapp, eget kort · rekommenderas',
+    not: '<b>Erbjudandet är ett grönt band överst på Mina spel</b>, där man ändå landar; det går att strunta i. <b>Kortet</b> har en egen knapp under e-postknappen, efter «eller». <b>Profilen</b> får ett eget kort mellan AI-nyckeln och Språk. <span class="plus">+ stör inte, syns där man redan är, knappen fungerar i alla webbläsare</span> <span class="minus">− bandet kan missas; landar man i editorn (en inbjudan) syns det inte förrän Mina spel</span>' },
+  B: { namn: 'B — ett steg i kortet, förslag i fältet, rader i Konto',
+    not: '<b>Erbjudandet är ett steg</b>: länken landar på kortet med «Du är inloggad» och frågan, innan man skickas vidare. <b>Kortet</b> har ingen ny knapp: webbläsaren föreslår nyckeln i e-postfältet (conditional mediation). <b>Profilen</b> lägger nycklarna som rader i Konto. <span class="plus">+ frågan ställs där inloggningen hände, gäller varje väg in; kortet ser ut som i dag</span> <span class="minus">− ett klick till för alla; förslaget i fältet syns inte i alla webbläsare och inte förrän man trycker i fältet</span>' },
+  C: { namn: 'C — dialog, kortet minns enheten, den här enheten först',
+    not: '<b>Erbjudandet är en dialog</b> över Mina spel. <b>Kortet</b> leder med «Logga in med ' + '{bar}' + '» på en enhet som har en, och e-posten står bakom en länk. <b>Profilen</b> säger först vad som gäller den här enheten. <span class="plus">+ snabbast för den som kommer tillbaka; svår att missa</span> <span class="minus">− en dialog avbryter; kortet ser olika ut på olika enheter och måste minnas enheten (localStorage), vilket kan ljuga efter att nyckeln tagits bort</span>' },
+}
+const YTOR = { erbjudande: 'Erbjudandet', kort: 'Inloggningskortet', profil: 'Profilen' }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let yta = q.get('yta') || 'erbjudande'
+let bredd = q.get('bredd') || 'dator'
+let ord = q.get('ord') || 'passkey'
+let harNyckel = q.get('har') !== '0'
+let st = {}
+const omstart = () => { st = { erbjudande: 'öppet', kort: 'öppet', nycklar: [
+  { id: 1, enhet: 'laptop', namn: 'iCloud-nyckelring', mer: 'MacBook · Safari', skapad: '23 okt', anvand: 'i dag 09:14', denna: true },
+  { id: 2, enhet: 'phone', namn: 'Google Lösenordshanterare', mer: 'Pixel 9 · Chrome', skapad: '2 okt', anvand: '19 okt' },
+], fraga: null } }
+omstart()
+
+const W = () => ORD[ord]
+const t = (s) => s.replace(/\{(\w+)\}/g, (_, k) => W()[k])
+
+// ── Webbläsarens ruta ───────────────────────────────────────────────────────────────────────────
+function system(vad) {
+  const rubrik = vad === 'skapa' ? `Spara ${t('{bar}')} för deckster.se?` : `Logga in på deckster.se med ${t('{bar}')}?`
+  return `<div class="system" data-system><div>
+    <span class="stamp">webbläsarens egen ruta — inte vår</span>
+    <div class="fp">◉</div>
+    <strong>${rubrik}</strong>
+    <span>${vad === 'skapa' ? 'ockelberg@… · sparas i iCloud-nyckelringen' : 'ockelberg@… · iCloud-nyckelring'}</span>
+    <span style="color:#6b6b72">Touch ID</span>
+    <div class="knappar"><button data-do="system-nej">Avbryt</button><button class="blå" data-do="system-ja">Fortsätt</button></div>
+  </div></div>`
+}
+
+// ── Mina spel ───────────────────────────────────────────────────────────────────────────────────
+const SPEL = [['Stjärnhandel', '#3f6fb0'], ['Skogens råd', '#3f8f5f'], ['Hamnen', '#b0703f']]
+function minaSpel(over = '') {
+  return `<div class="acc topp"><div class="home">
+    <header><h1>Mina spel</h1><span class="vem"><span>ockelberg@gmail.com</span><span class="ikon" title="Profil">${g('person')}</span><span class="ikon" title="Logga ut">${g('exit')}</span></span></header>
+    ${over}
+    <div class="grid">${SPEL.map(([n, c]) => `<div class="spel"><i style="--c:${c}"></i><strong>${n}</strong><span class="muted" style="font-size:13px">ändrat i går</span></div>`).join('')}<div class="spel" data-new>+ Nytt spel</div></div>
+  </div></div>`
+}
+
+// ── Erbjudandet ─────────────────────────────────────────────────────────────────────────────────
+function erbjudande() {
+  const s = st.erbjudande
+  const sheet = s === 'ark' ? system('skapa') : ''
+  if (v === 'A') {
+    let band = ''
+    if (s === 'öppet' || s === 'ark') band = `<div class="band" role="region" aria-label="${t('{Cap}')}">${g('key')}<p><b>Logga in utan mejl nästa gång.</b> Spara ${t('{en}')} i den här webbläsaren, så räcker fingret eller koden till skärmlåset.</p><div class="knappar"><button class="prim" data-do="spara">Spara ${t('{bar}')}</button><button class="sek" data-do="sen">Inte nu</button></div></div>`
+    if (s === 'klar') band = `<div class="band" data-klar role="status"><span class="bock">✓</span><p>${t('{Cap}')} är sparad. Nästa gång loggar du in med den. Du ser den under Profil.</p></div>`
+    return minaSpel(band) + sheet
+  }
+  if (v === 'B') {
+    if (s === 'vidare' || s === 'klar-vidare') return minaSpel(s === 'klar-vidare' ? `<div class="band" data-klar role="status"><span class="bock">✓</span><p>${t('{Cap}')} är sparad.</p></div>` : '')
+    const inne = s === 'klar'
+      ? `<div class="skickat" role="status"><strong>${t('{Cap}')} är sparad</strong><span>Nästa gång loggar du in med den, utan mejl.</span></div><button class="prim" data-do="vidare-klar">Till Mina spel</button>`
+      : `<div class="skickat"><strong>Du är inloggad</strong><span>Vill du logga in utan mejl nästa gång? Spara ${t('{en}')} i den här webbläsaren, så räcker fingret eller koden till skärmlåset.</span></div>
+         <button class="prim med" data-do="spara">${g('key')} Spara ${t('{bar}')}</button>
+         <button class="sek" data-do="vidare">Inte nu, fortsätt till Mina spel</button>`
+    return `<div class="acc mitt"><div class="login"><h1>${HAND}Deckster</h1>${inne}<p class="about">Kontakt · v0.9.2</p></div></div>` + sheet
+  }
+  // C
+  let over = ''
+  if (s === 'öppet' || s === 'ark') over = `<div class="skymning"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg"><h2 id="dlg">${g('key')} Logga in utan mejl?</h2><p class="muted">Spara ${t('{en}')} i den här webbläsaren. Nästa gång loggar du in med fingret eller koden till skärmlåset i stället för med en länk i mejlet.</p><p class="liten">Använder du en dator som andra också använder? Välj Inte nu.</p><div class="knappar"><button class="sek" data-do="sen">Inte nu</button><button class="prim" data-do="spara">Spara ${t('{bar}')}</button></div></div></div>`
+  const klar = s === 'klar' ? `<div class="band" data-klar role="status"><span class="bock">✓</span><p>${t('{Cap}')} är sparad.</p></div>` : ''
+  // Dialogen står i kontots rum, annars når knapparna inte dess gröna och dess linje.
+  return `<div class="acc" style="position:relative">${minaSpel(klar)}${over}</div>` + sheet
+}
+
+// ── Inloggningskortet ───────────────────────────────────────────────────────────────────────────
+function kort() {
+  const s = st.kort
+  if (s === 'inne') return minaSpel(`<div class="band" data-klar role="status"><span class="bock">✓</span><p>Inloggad med ${t('{def}')}, utan mejl.</p></div>`)
+  if (s === 'skickat') return wrapKort(`<div class="skickat" role="status"><strong>Kolla din mejl</strong><span>Vi har skickat en inloggningslänk till ockelberg@gmail.com. Den gäller i 15 minuter och kan användas en gång.</span></div>`)
+  const sheet = s === 'ark' ? system('logga') : ''
+  const lead = `<div class="muted">Logga in för att komma till dina spel.</div>`
+  const falt = (extra = '') => `<label class="falt"><span>E-post</span><input type="email" placeholder="din@epost.se" ${extra}>${s === 'forslag' ? `<div class="forslag"><button data-do="logga">${g('key')}<span>ockelberg@gmail.com<small>${t('{Cap}')} · iCloud-nyckelring</small></span></button><p class="gra">webbläsarens förslag — inte vårt</p></div>` : ''}</label>`
+  const epost = `<form onsubmit="return false">${falt()}<button class="prim" data-do="skicka">Skicka inloggningslänk</button></form>`
+  if (v === 'A') return wrapKort(`${lead}${epost}<div class="eller">eller</div><button class="sek med" data-do="logga">${g('key')} Logga in med ${t('{bar}')}</button>`) + sheet
+  if (v === 'B') return wrapKort(`${lead}<form onsubmit="return false">${falt('data-do="fokus" autocomplete="username webauthn"')}<button class="prim" data-do="skicka">Skicka inloggningslänk</button></form><p class="liten">Tryck i fältet: har webbläsaren ${t('{en}')} för Deckster föreslår den den där.</p>`) + sheet
+  // C
+  if (harNyckel && s !== 'epost') return wrapKort(`<div class="muted">Välkommen tillbaka.</div><button class="prim med" data-do="logga">${g('key')} Logga in med ${t('{bar}')}</button><button class="lank" data-do="epost">Logga in med e-post i stället</button>`) + sheet
+  return wrapKort(`${lead}${epost}`) + sheet
+}
+const wrapKort = (inne) => `<div class="acc mitt"><div class="login"><h1>${HAND}Deckster</h1>${inne}<label class="lang">Språk <select><option>Svenska</option></select></label><p class="about">Kontakt · v0.9.2</p></div></div>`
+
+// ── Profilen ────────────────────────────────────────────────────────────────────────────────────
+const fragaOm = (n) => st.fraga === n.id ? `<div class="fraga"><p>Ta bort ${t('{def}')}? ${n.denna ? 'Den här webbläsaren loggar in med mejl igen.' : `${n.mer} loggar in med mejl igen.`} Ta också bort den ur ${n.namn} om du vill bli av med den helt.</p><button data-do="behall">Avbryt</button><button data-kind="danger" data-do="radera" data-id="${n.id}">Ja, ta bort</button></div>` : ''
+function nyckelrad(n, kompakt = false) {
+  const fragan = fragaOm(n)
+  return `<li><span class="enhet">${g(n.enhet)}</span><span><b>${n.namn}</b><small>${n.mer}</small>${n.denna ? '<small class="har">Den här webbläsaren</small>' : ''}${kompakt ? '' : `<small>Skapad ${n.skapad} · senast använd ${n.anvand}</small>`}</span><button class="ta-bort" title="Ta bort" aria-label="Ta bort ${n.namn}" data-do="fraga" data-id="${n.id}">${g('trash')}</button>${fragan}</li>`
+}
+function profil() {
+  const ns = st.nycklar
+  const denna = ns.find((n) => n.denna)
+  const lagg = denna ? '' : `<div class="rad"><button class="sek med" data-do="lagg">${g('key')} Spara ${t('{bar}')} i den här webbläsaren</button></div>`
+  const tom = ns.length ? '' : `<p class="liten">Inga ${t('{pl}')} än. Du loggar in med länken i mejlet.</p>`
+  const ai = `<section class="pkort"><h2>AI-nyckel</h2><p class="sparad"><span class="bock">✓</span><span>Anthropic · nyckeln som slutar på <code>x7Qd</code></span></p><div class="rad"><button class="sek">Byt nyckel</button><button class="sek">Ta bort</button></div></section>`
+  const sprak = `<section class="pkort"><h2>Språk</h2><label class="lang">Språk i verktyget <select><option>Svenska</option></select></label></section>`
+  const utloggning = `<div class="rad"><button class="sek">Logga ut</button></div>`
+  let mitten = '', konto
+  if (v === 'A') {
+    mitten = `<section class="pkort"><h2>${t('{CapPl}')}</h2><p class="liten">Logga in utan mejl. En ${t('{bar}')} ligger i webbläsarens eller telefonens nyckelring och kan följa med till dina andra enheter.</p>${tom}<ul class="nycklar">${ns.map((n) => nyckelrad(n)).join('')}</ul>${lagg}</section>`
+    konto = `<section class="pkort"><h2>Konto</h2><dl class="facts"><dt>E-post</dt><dd>ockelberg@gmail.com</dd></dl><p class="liten">Du loggar alltid in med länken i mejlet, också om du tappar ${t('{def}')}.</p>${utloggning}</section>`
+  } else if (v === 'B') {
+    konto = `<section class="pkort"><h2>Konto</h2><dl class="facts"><dt>E-post</dt><dd>ockelberg@gmail.com</dd><dt>${t('{CapPl}')}</dt><dd>${ns.length ? '' : 'inga'}</dd></dl>${ns.length ? `<ul class="nycklar">${ns.map((n) => nyckelrad(n, true)).join('')}</ul>` : ''}${lagg}<p class="liten">Du loggar alltid in med länken i mejlet, också om du tappar ${t('{def}')}.</p>${utloggning}</section>`
+  } else {
+    const andra = ns.filter((n) => !n.denna)
+    const har = denna
+      ? `<p class="sparad"><span class="bock">✓</span><span>Den här webbläsaren loggar in med ${t('{def}')} i ${denna.namn}.</span></p>${st.fraga === denna.id ? fragaOm(denna) : `<div class="rad"><button class="sek" data-do="fraga" data-id="${denna.id}">Ta bort ${t('{def}')}</button></div>`}`
+      : `<p class="liten">Den här webbläsaren loggar in med mejl.</p>${lagg}`
+    mitten = `<section class="pkort"><h2>${t('{CapPl}')}</h2>${har}${andra.length ? `<details class="andra"><summary>${andra.length} till på andra enheter</summary><ul class="nycklar">${andra.map((n) => nyckelrad(n)).join('')}</ul></details>` : ''}</section>`
+    konto = `<section class="pkort"><h2>Konto</h2><dl class="facts"><dt>E-post</dt><dd>ockelberg@gmail.com</dd></dl>${utloggning}</section>`
+  }
+  const sheet = st.erbjudande === 'ark-profil' ? system('skapa') : ''
+  return `<div class="acc topp"><div class="profil"><span class="tillbaka">${g('left')} Mina spel</span><header class="profil-head"><h1>Profil</h1><p class="muted">ockelberg@gmail.com</p></header>${ai}${mitten}${sprak}${konto}<p class="about">Kontakt · v0.9.2</p></div></div>${sheet}`
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+const sida = document.getElementById('sida')
+function render() {
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  document.getElementById('ytor').innerHTML = Object.entries(YTOR).map(([k, n]) => `<button aria-pressed="${k === yta}" data-yta="${k}">${n}</button>`).join('')
+  document.getElementById('bredd').innerHTML = [['dator', 'Dator'], ['telefon', 'Telefon 375']].map(([k, n]) => `<button aria-pressed="${k === bredd}" data-bredd="${k}">${n}</button>`).join('')
+  document.getElementById('ord').innerHTML = Object.keys(ORD).map((k) => `<button aria-pressed="${k === ord}" data-ord="${k}">${k}</button>`).join('')
+  document.getElementById('enhet').innerHTML = [['1', 'ja'], ['0', 'nej']].map(([k, n]) => `<button aria-pressed="${(k === '1') === harNyckel}" data-har="${k}">${n}</button>`).join('')
+  document.getElementById('enhetgrupp').hidden = !(v === 'C' && yta === 'kort')
+  document.getElementById('anteckning').innerHTML = `<b>${V[v].namn}.</b> ${t(V[v].not)}`
+  document.getElementById('etikett').innerHTML = `<b>${YTOR[yta]}</b> · variant ${v} · ${bredd === 'dator' ? '1040 px' : '375 px'}`
+  sida.dataset.bredd = bredd
+  sida.innerHTML = yta === 'erbjudande' ? erbjudande() : yta === 'kort' ? kort() : profil()
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&bredd=${bredd}&ord=${ord}${harNyckel ? '' : '&har=0'}`)
+}
+
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; omstart() }
+  if (b.dataset.yta) { yta = b.dataset.yta; omstart() }
+  if (b.dataset.bredd) bredd = b.dataset.bredd
+  if (b.dataset.ord) ord = b.dataset.ord
+  if (b.dataset.har) { harNyckel = b.dataset.har === '1'; omstart() }
+  if (b.id === 'omstart') omstart()
+  render()
+})
+sida.addEventListener('focusin', (e) => {
+  if (e.target.matches('[data-do="fokus"]') && st.kort === 'öppet') { st.kort = 'forslag'; render(); sida.querySelector('input')?.focus() }
+})
+sida.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-do]')
+  if (!b) return
+  const d = b.dataset.do
+  if (d === 'fokus') return
+  if (yta === 'erbjudande') {
+    if (d === 'spara') st.erbjudande = 'ark'
+    if (d === 'sen') st.erbjudande = 'borta'
+    if (d === 'system-ja') st.erbjudande = 'klar'
+    if (d === 'system-nej') st.erbjudande = 'öppet'
+    if (d === 'vidare') st.erbjudande = 'vidare'
+    if (d === 'vidare-klar') st.erbjudande = 'klar-vidare'
+  } else if (yta === 'kort') {
+    if (d === 'logga') st.kort = 'ark'
+    if (d === 'system-ja') st.kort = 'inne'
+    if (d === 'system-nej') st.kort = 'öppet'
+    if (d === 'skicka') st.kort = 'skickat'
+    if (d === 'epost') st.kort = 'epost'
+  } else {
+    if (d === 'fraga') st.fraga = Number(b.dataset.id)
+    if (d === 'behall') st.fraga = null
+    if (d === 'radera') { st.nycklar = st.nycklar.filter((n) => n.id !== Number(b.dataset.id)); st.fraga = null }
+    if (d === 'lagg') st.erbjudande = 'ark-profil'
+    if (d === 'system-ja') { st.nycklar = [{ id: 3, enhet: 'laptop', namn: 'iCloud-nyckelring', mer: 'MacBook · Safari', skapad: '23 okt', anvand: 'aldrig', denna: true }, ...st.nycklar]; st.erbjudande = null }
+    if (d === 'system-nej') st.erbjudande = null
+  }
+  render()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    omstart(); render()
+  }
+})
+render()
+</script>
+</body>
+</html>
