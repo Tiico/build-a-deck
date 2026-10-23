@@ -6554,6 +6554,8 @@ Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70
 Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
 En riktig pekare över den låsta knappen ändrar ingenting den målar.
 
+**Ändrat 2026-10-23 (L79, #1218): dörren står före guiden.** Namnet, spelarna och valet mellan guidad start och tomt spel står på vägskälet `/new`, inte i guidens steg 1, och frågan från #732 försvinner eftersom ingenting har gjorts när dörren trycks.
+
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 
 L39 säger vad body-redigeraren *gör*, inte vem som *får* den.
@@ -8054,3 +8056,25 @@ Passkeyns webbplats är sidan webbläsaren står på när den är tjänstens, i 
 Profilen namnger nyckelringen efter AAGUID på läsarens språk och webbläsaren efter user agent, och visar aldrig nyckeln.
 Webbläsaren minns i `localStorage` vilken passkey den sparade eller loggade in med, och sitt «Inte nu», så att bandet erbjuds en gång per webbläsare; en webbläsare utan egen nyckelring får inget erbjudande, och en som inte kan WebAuthn får ingen knapp.
 `passkeys.test.ts` på servern kör riktiga WebAuthn-bytes från en mjukvarunyckelring (`test-support/soft-passkey.ts`), också mot Postgres; `passkeys.test.tsx` kör sidorna mot den riktiga servern; och `passkeys.spec.ts` går hela vägen i den byggda appen med Chromiums virtuella autentiserare.
+
+### L79. Steget före guidad start: `/new` är ett vägskäl, och guiden är två steg (prototypat och beslutat 2026-10-23, #1218)
+
+Beställaren ville flytta guidens steg 1 — spelets namn, antalet spelare och dörren till ett tomt spel (L42) — till ett steg före guiden.
+Tre varianter prövades i [`docs/ux-audits/2026-10-23-nytt-spel-forsteget/prototyper/index.html`](docs/ux-audits/2026-10-23-nytt-spel-forsteget/prototyper/index.html): en dialog över Mina spel, en egen sida som ett vägskäl, och brickan «＋ Nytt spel» som själv blir formuläret.
+Valet blev **B, vägskälet**.
+
+`/new` är en egen sida på guidens papper: «Skapa ett nytt spel», Spelets namn, Spelare och frågan «Hur vill du börja?» med två dörrar.
+«Guidad start» är första handlingen (L13): kantad i bläck, med tre exempelkort och «Två steg, ungefär två minuter».
+«Tomt spel» är den andra: ett tomt kort och «Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.»
+En dörr som trycks utan namn säger villkoret vid fältet, som L42:s tillägg från #416 bestämde.
+«Tomt spel» skapar spelet direkt, med samma väg och samma dokument som L42; frågan från #732 behövs inte, eftersom inget kort eller fält har gjorts när dörren trycks.
+Guiden är två steg, Fält och Korten, och dess huvud bär spelets namn och «N spelare · Ändra»; «Ändra» och vägen tillbaka leder till vägskälet med värdena kvar.
+Vägskälet och guiden har var sin adress, så att webbläsarens bakåt går från guiden till vägskälet.
+Utkastet och inloggningsvarvet (G1, #686) bär namnet och spelarna som förut, och rutan för den som är utloggad (#691) står på vägskälet, eftersom båda dörrarna slutar i en inloggning.
+Mina spel ändras inte: «＋ Nytt spel» leder till `/new`.
+
+Motivering:
+Samma adress gäller för den som är inloggad och den som kommer från landningssidan, så utkastet och inloggningsvarvet behöver ingen andra ritning av steget.
+Dörrarna får plats att säga vad de ger, i stället för att tomt spel står som ett block inne i guidens första steg.
+A:s dialog var ett klick snabbare men hade ingen Mina spel att öppnas över för den utloggade, så `/new` hade behövt samma steg en gång till.
+C lät det nya spelet födas där det skulle stå, men tog hela raden på telefonen och hade samma utloggade problem som A.
