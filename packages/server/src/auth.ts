@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { IncomingMessage } from 'node:http'
 import { z } from 'zod'
+import type { PasskeyRecord } from './passkeys.js'
 
 // Accounts for creators (G1, DRIFT §11): a magic link by mail, a session cookie, no passwords.
 // Tokens and session ids are random and stored hashed; a token is one use and short-lived.
@@ -16,6 +17,14 @@ export type AuthStore = {
   createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void>
   sessionAccount(sessionHash: string, now: string): Promise<Account | null>
   deleteSession(sessionHash: string): Promise<void>
+  // Passkeys (#1180): kept by the account they log in to, found by their credential id.
+  addPasskey(passkey: PasskeyRecord): Promise<void>
+  passkey(id: string): Promise<PasskeyRecord | null>
+  passkeysOf(accountId: string): Promise<PasskeyRecord[]>
+  // A login with it: the authenticator's new counter, and when.
+  usePasskey(id: string, counter: number, at: string): Promise<void>
+  // Only the account's own; false when it had none by that id.
+  removePasskey(accountId: string, id: string): Promise<boolean>
 }
 
 // `text` is the part every reader gets; `html` (#1098) is the letter a client that draws HTML shows
@@ -43,6 +52,7 @@ export class MemoryAuthStore implements AuthStore {
   private readonly tokens = new Map<string, { email: string; expiresAt: string; used: boolean }>()
   private readonly accounts = new Map<string, Account>()
   private readonly sessions = new Map<string, { accountId: string; expiresAt: string }>()
+  private readonly passkeys = new Map<string, PasskeyRecord>()
   async issueToken(tokenHash: string, email: string, expiresAt: string): Promise<void> {
     this.tokens.set(tokenHash, { email, expiresAt, used: false })
   }
@@ -72,6 +82,25 @@ export class MemoryAuthStore implements AuthStore {
   }
   async deleteSession(sessionHash: string): Promise<void> {
     this.sessions.delete(sessionHash)
+  }
+  async addPasskey(passkey: PasskeyRecord): Promise<void> {
+    this.passkeys.set(passkey.id, { ...passkey })
+  }
+  async passkey(id: string): Promise<PasskeyRecord | null> {
+    const p = this.passkeys.get(id)
+    return p ? { ...p } : null
+  }
+  // Newest first, as the profile lists them.
+  async passkeysOf(accountId: string): Promise<PasskeyRecord[]> {
+    return [...this.passkeys.values()].filter((p) => p.accountId === accountId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((p) => ({ ...p }))
+  }
+  async usePasskey(id: string, counter: number, at: string): Promise<void> {
+    const p = this.passkeys.get(id)
+    if (p) Object.assign(p, { counter, lastUsedAt: at })
+  }
+  async removePasskey(accountId: string, id: string): Promise<boolean> {
+    if (this.passkeys.get(id)?.accountId !== accountId) return false
+    return this.passkeys.delete(id)
   }
 }
 

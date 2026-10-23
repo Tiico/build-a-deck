@@ -61,7 +61,8 @@ export function LoginPage({ onNavigate = go }: LoginPageProps) {
         : undefined
   return (
     <main className="byd-account" data-page="login">
-      <LoginCard http={http} next={next} lead={lead} />
+      {/* The card goes on the way the page does, so a login it makes is not a step Back returns to. */}
+      <LoginCard http={http} next={next} lead={lead} onNavigate={onNavigate} />
     </main>
   )
 }

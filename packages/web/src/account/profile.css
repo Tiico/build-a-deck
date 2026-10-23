@@ -83,3 +83,20 @@
 @media (max-width: 480px) {
   .byd-profile-card { padding: 16px; }
 }
+
+/* The passkeys (#1180, beslut A): a row each — the key in its well, what it is and where it was
+   saved, and the bin at a thumb's size — with the question under the row it asks about. */
+.byd-passkeys { list-style: none; margin: 0; padding: 0; display: grid; }
+.byd-passkeys > li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--byd-profile-line); }
+.byd-passkeys > li:first-child { border-top: 0; }
+.byd-passkeys > li > .byd-profile-question { grid-column: 1 / -1; }
+.byd-passkey-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #232838; color: var(--byd-profile-soft); }
+.byd-passkey-icon > .byd-glyph { width: 18px; height: 18px; }
+.byd-passkey-text { display: grid; min-width: 0; }
+.byd-passkey-text b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-passkey-text small { color: var(--byd-profile-quiet); font-size: 12px; line-height: 1.5; }
+.byd-passkey-text small.byd-passkey-here { color: var(--byd-profile-ok); font-weight: 650; }
+.byd-passkey-remove { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--byd-profile-quiet); cursor: pointer; }
+.byd-passkey-remove:hover { border-color: var(--byd-secondary-line); color: #fff; }
+.byd-passkey-remove > .byd-glyph { width: 18px; height: 18px; }
+.byd-passkey-add { gap: 8px; }

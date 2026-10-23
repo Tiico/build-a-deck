@@ -361,7 +361,12 @@ Byggt 2026-09-06: eget, litet — inga beroenden.
 Tokens och sessions-id:n är slumpade och lagras hashade (`login_tokens`, `auth_sessions`, `accounts`); fem länkar i timmen per adress innanför Cloudflares gräns (§9).
 Mejl går genom Resend (`RESEND_API_KEY`, `MAIL_FROM`); utan nyckel hamnar länken i loggen, vilket är utvecklingsläget.
 `PUBLIC_ORIGIN` styr vart länkarna pekar och om kakan får `Secure`.
-Passkeys och OAuth återstår.
+
+Passkeys byggda 2026-10-23 (#1180, DESIGN-BESLUT L78): en bekvämlighet bredvid länken, aldrig i stället för den, och mejlet är återställningen.
+WebAuthn-kontrollerna görs av `@simplewebauthn/server`, som enda undantag från «inga beroenden»: CBOR, COSE och signaturer skrivs inte här.
+Den publika nyckeln, räknaren, nyckelringens AAGUID och webbläsaren den sparades från ligger i tabellen `passkeys`; den privata nyckeln lämnar aldrig läsarens enhet.
+Passkeyns webbplats är sidan webbläsaren står på, i produktion `deckster.se`; en passkey gjord på ett värdnamn erbjuds aldrig på ett annat.
+OAuth återstår.
 
 ## 12. Vad som inte bor på lådan
 

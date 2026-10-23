@@ -22,6 +22,7 @@ import { useLang, useT, type Lang, type T } from '../i18n/index.js'
 import { CheckGlyph, ExitGlyph, ImportGlyph, MoreGlyph, PersonGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
+import { PasskeyOffer } from './PasskeyOffer.js'
 import { versionWord } from '../i18n/version.js'
 
 // The three dialogs a game's ⋯ and «Importera» open are drawn on a press and never on the first
@@ -233,6 +234,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             <span className="byd-offscreen">{t('home.import.open')}</span>
           </button>
         </header>
+        {/* The offer after the link (#1180, beslut A): under the heading, once per browser. */}
+        <PasskeyOffer http={http} />
         {notice && (
           <p className="byd-home-notice" role="alert">
             {notice}

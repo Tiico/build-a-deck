@@ -300,3 +300,21 @@ export function GridGlyph() {
     </Glyph>
   )
 }
+
+// A passkey (#1180): a key, its bow a ring and its bit two teeth.
+export function KeyGlyph() {
+  return (
+    <Glyph name="key">
+      <Line d="M5.25 5.25a2.75 2.75 0 1 0 0 5.5a2.75 2.75 0 1 0 0-5.5M8 8h5.75M11.5 8v2.25M13.75 8v1.5" />
+    </Glyph>
+  )
+}
+
+// Taking something away for good: a bin.
+export function TrashGlyph() {
+  return (
+    <Glyph name="trash">
+      <Line d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9M6.75 7v4.25M9.25 7v4.25" />
+    </Glyph>
+  )
+}

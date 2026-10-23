@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { LoginCard } from './LoginCard.js'
 import { AboutLine } from './AboutLine.js'
 import { KeyBox, type WayBack } from './KeyBox.js'
+import { PasskeyBox } from './PasskeyBox.js'
 import { logout, myProjects, whoAmI } from './api.js'
 import { readAiKey, type AiKey } from './ai-key.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -89,6 +90,7 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
           <p className="byd-muted">{loaded.email}</p>
         </header>
         <KeyBox http={http} initial={loaded.key} wayBack={wayBack} />
+        <PasskeyBox http={http} />
         <section className="byd-profile-card" aria-labelledby="byd-profile-lang">
           <h2 id="byd-profile-lang">{t('profile.lang.title')}</h2>
           <div className="byd-profile-field">

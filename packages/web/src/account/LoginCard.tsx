@@ -5,6 +5,8 @@ import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { LanguagePicker, useT, type Key } from '../i18n/index.js'
 import { AboutLine } from './AboutLine.js'
+import { KeyGlyph } from '../glyphs.js'
+import { letGoOfSuggestion, loginWithPasskey, useKeychain } from './passkey.js'
 
 // Logging in (G1, prototype A): one field, one button, one line about what logging in is for.
 // Never a password, never a word about whether the address is known. The password-less link and
@@ -30,6 +32,31 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
   const error = ERRORS[state] ?? null
   // The address is the one at fault for these, and not for a service that is busy or down.
   const faulty = state === 'empty' || state === 'at' || state === 'invalid'
+  // The passkey's way in (#1180, beslut A + B's suggestion): a button under the address, and the
+  // browser's own suggestion in the address field where it can make one, which logs in on a pick
+  // without a press. Only in a browser that can make a passkey at all.
+  const keychain = useKeychain()
+  const [passkeys] = useState(() => keychain.supported())
+  const [passkey, setPasskey] = useState<'open' | 'busy' | 'unknown' | 'failed'>('open')
+  const passkeyErrorId = useId()
+  const arrived = (result: Awaited<ReturnType<typeof loginWithPasskey>>) => {
+    if (result === 'in') onNavigate(next)
+    else if (result === 'unknown' || result === 'failed') setPasskey(result)
+    else setPasskey('open')
+  }
+  useEffect(() => {
+    if (!passkeys) return
+    let live = true
+    void keychain.autofill().then((yes) => {
+      if (yes && live) void loginWithPasskey(http, keychain, true).then((result) => live && result === 'in' && onNavigate(next))
+    }, () => undefined)
+    return () => {
+      live = false
+      letGoOfSuggestion()
+    }
+    // Asked once, when the card opens: the suggestion waits for as long as the card stands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     // An address that is not one yet is said here, before the server is asked (#475): the button
@@ -93,8 +120,9 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
               onChange={(e) => {
                 setEmail(e.target.value)
                 if (error) setState('open')
+                if (passkey !== 'open' && passkey !== 'busy') setPasskey('open')
               }}
-              autoComplete="email"
+              autoComplete="email webauthn"
               autoFocus
               required
               {...(faulty ? { 'aria-invalid': true } : {})}
@@ -110,6 +138,29 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
             </p>
           )}
         </form>
+      )}
+      {passkeys && state !== 'sent' && (
+        <>
+          <p className="byd-login-or">{t('login.or')}</p>
+          <button
+            type="button"
+            className="byd-secondary byd-login-passkey"
+            disabled={passkey === 'busy'}
+            {...(passkey === 'unknown' || passkey === 'failed' ? { 'aria-describedby': passkeyErrorId } : {})}
+            onClick={() => {
+              setPasskey('busy')
+              void loginWithPasskey(http, keychain).then(arrived)
+            }}
+          >
+            <KeyGlyph />
+            {t('login.passkey')}
+          </button>
+          {(passkey === 'unknown' || passkey === 'failed') && (
+            <p id={passkeyErrorId} className="byd-login-error" role="alert">
+              {t(passkey === 'unknown' ? 'login.passkey.unknown' : 'login.passkey.failed')}
+            </p>
+          )}
+        </>
       )}
       {/* The reader who cannot read this card is the one who most needs the switch on it. */}
       <label className="byd-lang">
