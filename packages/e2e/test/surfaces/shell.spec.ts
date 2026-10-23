@@ -319,12 +319,26 @@ test.describe('the page says what it is fetching before the app has arrived (#74
   test('says it is taking longer at D5’s four seconds from the navigation, and offers a reload at twenty', async ({ browser, baseURL }) => {
     const { context, page } = await screen(browser, baseURL, TV)
     try {
-      await page.clock.install()
+      // The clock stands still from the start (#1239). `install` alone leaves it running on the wall
+      // clock until something pauses it, so however long the page took to come was already on the
+      // shell's clock when the test began to count, and on a loaded runner the shell said it was
+      // slow, and offered the reload, a second before the test's own numbers. Paused, the page's
+      // clock holds only the moment between these two calls, and the test counts from what it reads.
+      const now = Date.now()
+      await page.clock.install({ time: now })
+      await page.clock.pauseAt(now + 60_000)
       await stallEntry(page)
+      // The page itself comes slowly, as it does on a loaded runner, and that must not count.
+      await page.route(/\/table\?mode=tv$/, async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1_500))
+        await route.continue()
+      })
       await page.goto('/table?mode=tv', { waitUntil: 'load' })
       const w = words('sv', 'table')
       expect(await shellSays(page)).toMatchObject({ heading: w.heading, text: w.text, reload: null })
-      await page.clock.runFor(DEFAULT_TIMING.slowAfterMs - 500)
+      const from = await page.evaluate(() => performance.now())
+      expect(from).toBeLessThan(DEFAULT_TIMING.slowAfterMs - 500)
+      await page.clock.runFor(DEFAULT_TIMING.slowAfterMs - 500 - from)
       expect(await shellSays(page)).toMatchObject({ heading: w.heading, reload: null })
       await page.clock.runFor(1_000)
       expect(await shellSays(page)).toEqual({ lang: 'sv', mark: w.slowMark, heading: w.slowHeading, text: w.slowText, reload: null })
