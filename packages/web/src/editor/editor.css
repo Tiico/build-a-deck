@@ -807,8 +807,17 @@
    counters themselves are written in, at the width the column has. */
 .byd-setup-note { margin: 0; max-width: 260px; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 .byd-setup-counter button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
-/* A die's row (#1139) wraps like a counter's, but «i» never parts from the area it names. */
-.byd-setup-die-where { display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
+/* A die's row (#1139) is two lines on purpose, not a counter's row that happens to wrap: the count,
+   the kind, how the count is counted and × on the first, «i [yta]» on the second, starting under the
+   count and ending under ×. Left to wrap, «i» hung alone at the column's edge and × followed the
+   area instead of closing the row. */
+.byd-setup-counter.byd-setup-die { display: grid; justify-self: stretch; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: 'count kind mode x' 'where where where where'; }
+.byd-setup-die > input { grid-area: count; }
+.byd-setup-die > select:first-of-type { grid-area: kind; }
+.byd-setup-die > :is(span, select):nth-child(3) { grid-area: mode; justify-self: start; max-width: 100%; }
+.byd-setup-die > button { grid-area: x; }
+.byd-setup-die-where { grid-area: where; display: flex; gap: 6px; align-items: center; min-width: 0; }
+.byd-setup-die-where select { flex: 1 1 auto; }
 /* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
    counted on top of it every field on this tab stood 62 px tall. */
 .byd-setup input:not([type='checkbox']), .byd-setup select { box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
