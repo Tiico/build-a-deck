@@ -667,6 +667,8 @@ export const enEditor = {
   'canvas.if.children': 'Contents',
   'canvas.drag.kept': 'Half the element stays on the card',
   'canvas.layer.isLocked': '{name} is locked. Unlock the layer to move it.',
+  'canvas.layer.isLocked.unlock': 'Unlock',
+  'canvas.layer.isLocked.close': 'Close',
   'canvas.layer.remove.one': 'Remove {name} from the {face}? It draws on {n} card.',
   'canvas.layer.remove.other': 'Remove {name} from the {face}? It draws on {n} cards.',
   'canvas.layer.remove.yes': 'Yes, remove',

@@ -93,6 +93,67 @@ describe('locking a layer (L15)', () => {
 // What a row says (L15). The panel used to read `text title` — the tool's word for the kind, and
 // the raw id — which says nothing about which layer is which once the rail has added `bild-1` and
 // `shape-2` to the card.
+// Why a locked layer did not move, and where that is said (#1181). The note stood over the
+// canvas' foot, on top of the card row, from the first press that only chose the layer until the
+// layer was unlocked: nothing else took it away.
+describe('the note a locked layer gives (#1181)', () => {
+  const note = () => document.querySelector('.byd-canvas-locked') as HTMLElement | null
+  const lockTheTitle = async () => {
+    await openTheTemplate()
+    await userEvent.click(screen.getByRole('button', { name: 'Lås title' }))
+  }
+  // A pull that goes somewhere: the hand meant to move the layer.
+  const pull = () => dragVia(target('title')!, [30, 30], [[30, 48]])
+
+  it('says nothing to a press that only chooses the layer, tremble and all', async () => {
+    await lockTheTitle()
+    dragVia(target('title')!, [30, 30], [[31, 31]])
+    expect(row('title').getAttribute('aria-selected')).toBe('true')
+    expect(note()).toBeNull()
+  })
+
+  it('stands on the card beside the layer that did not move, and not in the canvas\' foot', async () => {
+    await lockTheTitle()
+    pull()
+    expect(note()?.textContent).toMatch(/title.*låst/i)
+    // On the card, at the layer's own lower edge: the title stands in the card's upper half, so
+    // the note opens downwards, over the card and away from the stage's top.
+    expect(document.querySelector('[data-drag-layer]')!.contains(note())).toBe(true)
+    const box = target('title')!.style
+    const at = (note()!.closest('.byd-canvas-locked-at') as HTMLElement).style
+    expect(at.top.endsWith('mm')).toBe(true)
+    expect(parseFloat(at.top)).toBeCloseTo(parseFloat(box.top) + parseFloat(box.height))
+    expect(parseFloat(at.left)).toBeCloseTo(parseFloat(box.left) + parseFloat(box.width) / 2)
+  })
+
+  it('goes with its own button, with Escape, and when another layer is chosen', async () => {
+    await lockTheTitle()
+    pull()
+    await userEvent.click(within(note()!).getByRole('button', { name: 'Stäng' }))
+    expect(note()).toBeNull()
+    // The hand is given back to the layer the note was about, not dropped on the page.
+    expect(document.activeElement).toBe(target('title'))
+
+    pull()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(note()).toBeNull()
+
+    pull()
+    await userEvent.click(within(row('body')).getByRole('button', { name: /^body/ }))
+    expect(note()).toBeNull()
+  })
+
+  it('unlocks the layer from the note, which is its answer', async () => {
+    await lockTheTitle()
+    pull()
+    await userEvent.click(within(note()!).getByRole('button', { name: 'Lås upp' }))
+    expect(note()).toBeNull()
+    expect(screen.getByRole('button', { name: 'Lås title' })).toBeTruthy()
+    dragVia(target('title')!, [30, 30], [[30, 48], [30, 66], [30, 90]])
+    await waitFor(() => expect(top('title')).toBe('15mm'))
+  })
+})
+
 describe('what a layer says it is (L15)', () => {
   it('is called by its name, and says what it shows when that is something else', async () => {
     const doc = projectDoc()

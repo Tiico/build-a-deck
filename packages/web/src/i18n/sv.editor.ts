@@ -752,6 +752,8 @@ export const svEditor = {
   'canvas.if.children': 'Innehåll',
   'canvas.drag.kept': 'Halva elementet stannar på kortet',
   'canvas.layer.isLocked': '{name} är låst. Lås upp lagret för att flytta det.',
+  'canvas.layer.isLocked.unlock': 'Lås upp',
+  'canvas.layer.isLocked.close': 'Stäng',
   // Frågan innan ett lager tas bort (#143, L9). Den säger de tre sakerna som gör elementet till
   // den största av editorns borttagningar: vad designern kallar det, vilken sida det ritas på
   // och hur många kort som ärver det. Samma mening namnger frågan och står i den, så att höra
