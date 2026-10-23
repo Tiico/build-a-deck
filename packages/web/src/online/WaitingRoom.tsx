@@ -61,10 +61,12 @@ export function WaitingRoom({ view, seat, code, server, startWait, onStart, onBe
   }
   return (
     <section className="byd-waiting" aria-labelledby={heading} data-waiting-room="">
-      <h2 id={heading}>{t('online.wait.heading', { n: taken, of: view.seats.length })}</h2>
-      <button type="button" className="byd-waiting-hide" aria-label={t('online.wait.hide')} title={t('online.wait.hide')} onClick={onBegin}>
-        <CloseGlyph />
-      </button>
+      <div className="byd-waiting-head">
+        <h2 id={heading}>{t('online.wait.heading', { n: taken, of: view.seats.length })}</h2>
+        <button type="button" className="byd-waiting-hide" aria-label={t('online.wait.hide')} title={t('online.wait.hide')} onClick={onBegin}>
+          <CloseGlyph />
+        </button>
+      </div>
       <p>{t('online.wait.text')}</p>
       {address && code && (
         <div className="byd-waiting-address">
