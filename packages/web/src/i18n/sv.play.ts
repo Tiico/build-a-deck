@@ -387,7 +387,8 @@ export const svPlay = {
   'online.spread.close': 'Stäng',
   'player.hand.actions': 'Spela valda kort',
   'player.hand.read': 'Läs stort',
-  'player.hand.marked': '{n} kort valda',
+  'player.hand.marked.one': '{n} kort valt',
+  'player.hand.marked.other': '{n} kort valda',
   'player.hand.clear': 'Avmarkera',
   // Ett kort vänt i handen spelas nedvänt (#1133), och raden över flikarna säger det.
   'player.hand.chosen.down': '{name} · spelas nedvänt',

@@ -5,7 +5,7 @@ import { translate } from '../src/i18n/index.js'
 describe('the play words (#714)', () => {
   // One marked card is called by its name in the bar; several are counted (#1147).
   it('says how many cards are marked', () => {
-    expect(translate('sv', 'player.hand.marked', { n: 2 })).toBe('2 kort valda')
+    expect(translate('sv', 'player.hand.marked.other', { n: 2 })).toBe('2 kort valda')
   })
 
   // A pile is called what its designer called it (B5): «Kortlek» on the felt, and not «draghögen»

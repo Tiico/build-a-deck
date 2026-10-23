@@ -240,9 +240,9 @@ export function useSheetOpener(sheet: Sheet, onSheet: (sheet: Sheet) => void): R
   }
 }
 
-// `words`: the label stands beside the glyph, where there is room for it — the phone's head and its
-// «Mer» (#1147). Without it the word is the button's name, out of sight in the DOM and on the
-// pointer as its title (L73, led 3).
+// `words`: the label stands beside the glyph, in the phone's «Mer» (#1147), where each is a row of
+// its own. Without it the word is the button's name, out of sight in the DOM and on the pointer as
+// its title (L73, led 3).
 type SessionButtonProps = { view: Snapshot; raise: RaiseSheet; words?: boolean }
 
 // «Ångra» switches itself off by being pressed: the one thing there was to undo is undone. A

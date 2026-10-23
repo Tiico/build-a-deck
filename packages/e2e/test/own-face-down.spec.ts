@@ -22,6 +22,7 @@ test('tells the owner which card they turned down in front of them, and nobody e
   await expect(bea.page.locator('[data-hand-card]')).toHaveCount(1)
   await bea.page.locator('[data-hand-bar]').getByRole('button', { name: 'Framför mig' }).click()
   await expect(bea.page.locator('[data-hand-card]')).toHaveCount(0)
+  await bea.page.locator('[data-tab="mine"]').click()
   await bea.page.locator('[data-mine-card]').first().click()
   await bea.page.getByRole('button', { name: 'Turn down' }).click()
   await expect(bea.page.locator('[data-mine-card][data-face="known"]')).toHaveCount(1)

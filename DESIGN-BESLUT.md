@@ -829,7 +829,7 @@ B valdes, eftersom den rymmer det designern bestämmer — hur många zoner, gen
 
 Flikraden står längst ner: **Handen**, **Framför mig**, **Bordet** och **Mer**, de två första med sitt antal.
 Kolumnen är exakt skärmens höjd, och bara den öppna flikens panel rullar; huvudet, raden över flikarna och flikarna själva står still.
-Huvudet säger vem som håller telefonen och har **Ångra**, med ordet utskrivet.
+Huvudet säger vem som håller telefonen och har **Ångra**, ritad som ikon med ordet som namn (L73, led 3).
 **Handen** är högarna, med dragningen per hög som förut (#79), och under dem hela handen som ett rutnät, tre kort i bredd vid 390 och två vid 320.
 Remsan, dess markör och «Visa alla» (#767) är borta: med rutnätet syns hela handen, och en hand på tjugofem kort är några rader och inte tio skärmar.
 Ett tryck markerar ett kort och ett till avmarkerar det; flera kort kan vara markerade, och de bär numret för den ordning de markerades i, som är ordningen de spelas i.

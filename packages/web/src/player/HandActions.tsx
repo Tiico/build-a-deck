@@ -52,7 +52,7 @@ export function HandBar({ view, cards, pending, onPlay, onMore, onRead, onClear,
       {down ? t('player.hand.down', { label: target.label }) : target.label}
     </button>
   )
-  const named = one ? cardName(first, t) : t('player.hand.marked', { n: cards.length })
+  const named = one ? cardName(first, t) : t(cards.length === 1 ? 'player.hand.marked.one' : 'player.hand.marked.other', { n: cards.length })
   return (
     <section className="byd-hand-bar" data-hand-bar aria-label={t('player.hand.actions')}>
       <p>

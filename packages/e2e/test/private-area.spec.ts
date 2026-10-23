@@ -79,8 +79,8 @@ test.describe('the area in front of a seat, on the opening table', () => {
     await expect(tile.getByRole('heading', { level: 2 })).toHaveText('Framför A')
     await expect(tile.locator(':scope > span')).toHaveText(/^1\b/)
     // Reading it is not playing into it: the bar offers Bo's own area and never Ada's (C4).
-    await bo.page.locator('[data-zone-draw="draw"]').click()
     await bo.page.locator('[data-tab="hand"]').click()
+    await bo.page.locator('[data-zone-draw="draw"]').click()
     await expect(bo.page.locator('[data-hand-bar] [data-zone="mine:B"]')).toHaveCount(1)
     await expect(bo.page.locator('[data-zone="mine:A"]')).toHaveCount(0)
     await bo.page.locator('[data-tab="table"]').click()

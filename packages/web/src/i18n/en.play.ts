@@ -276,7 +276,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   // The box behind the question mark (L32's addendum, #305).
   'play.help.hand.topic': 'the hand',
   'play.help.hand.pick': 'Tap a card to select it. Tap several to play them together.',
-  'play.help.hand.play': 'The buttons under the hand play the selected cards, and «Read large» shows one card at full size.',
+  'play.help.hand.play': 'The buttons under the hand play the selected cards, and “Read large” shows one card at full size.',
   'play.help.hand.hidden': 'The others see how many cards you hold, but not which.',
 
   'player.counter.minus': '{name} minus',
@@ -319,7 +319,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'online.spread.close': 'Close',
   'player.hand.actions': 'Play selected cards',
   'player.hand.read': 'Read large',
-  'player.hand.marked': '{n} cards selected',
+  'player.hand.marked.one': '{n} card selected',
+  'player.hand.marked.other': '{n} cards selected',
   'player.hand.clear': 'Clear',
   'player.hand.chosen.down': '{name} · played face down',
   'player.hand.turn': 'Turn over',

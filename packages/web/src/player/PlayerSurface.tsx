@@ -224,7 +224,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <strong>{name}</strong>
           <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
         </span>
-        <UndoButton client={client} view={view} raise={raiseHead} words />
+        <UndoButton client={client} view={view} raise={raiseHead} />
       </header>
       <main className="byd-panels" {...behind}>
         <section {...panel('hand')}>
