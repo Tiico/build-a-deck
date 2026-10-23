@@ -15,7 +15,7 @@ if (!url) {
 }
 const store = PostgresLogStore.connect(url)
 try {
-  for (const line of await usageReport({ auth: store.auth(), accountPlans: store.accountPlans(), projects: store.projects() }, plansFromEnv(process.env))) console.log(JSON.stringify(line))
+  for (const line of await usageReport({ auth: store.auth(), accountPlans: store.accountPlans(), projects: store.projects(), tables: store }, plansFromEnv(process.env))) console.log(JSON.stringify(line))
 } finally {
   await store.close()
 }

@@ -70,6 +70,18 @@ På tråden är avslaget det vanliga `refused` med `why: 'quota'`, `to`, `ask` o
 `GET /me/usage` och `usage`-skriptet svarar båda måtten per spel för varje spel kontot äger, ur det levande dokumentet (aktörens, annars den sparade versionen med loggens svans), med `used` som det mesta något av spelen använder.
 Grindarna: `packages/server/test/quota-cards.test.ts` (båda lagren) och `packages/web/test/project-client-quota.test.ts` (editorn från före fältet).
 
+Byggt 2026-10-23 (#1196, skiva 4 av PRD #1192): **bord som mått, i två former.**
+- `openTables` är de bord kontot bär vars logg inte slutar med `session.end`, alltså bord som står; taket skyddar lådans minne (DRIFT §1).
+- `tablesPer30Days` är de bord kontot bär som startats under de senaste 30 dygnen, rullande och inte per kalendermånad, så att ingen dag i månaden är bättre än en annan (beställarens beslut 2026-10-23 i #1192).
+- Båda räknas ur sessionerna och deras bärare (`sessions.account_id`), så ett avslutat bord räknas som startat i 30 dygn, och ett borttaget spel tar inget av sina bord ur räkningen.
+- Taken prövas när ett bord startas, i `POST /projects/:id/sessions` och i den råa `POST /sessions`, och mot bärarens nivå: en testledare eller medredigerare som trycker prövas mot ägarens tak, och svaret säger `bearer: 'owner'` utan ägarens adress eller nivå.
+- Prövning och skrivning är ett steg i lagret, med ett transaktionslås per bärare i Postgres och ingen väntan mellan räkning och skrivning i minnet; två starter vid tak − 1 ger exakt en. Ett avslag skapar ingen session, ingen kod och inget renderjobb.
+- Ingenting annat prövar taket: att ansluta, köpa en plats med koden, spela, «Ny kod», «Uppdatera» (C7), att sparka, att avsluta och att spela upp en logg gör det aldrig. Ett bord som står stängs aldrig av ett tak, och ett konto över taket gör allt det med de bord som står.
+- När ett bord avslutas, av sin skärm eller av C9:s timeout, får nästa start plats under `openTables`.
+- Ett 402 för `tablesPer30Days` bär `frees`, ögonblicket då nästa bord går att starta (beställarens beslut 2026-10-23 i #1198). Det är när den äldsta starten i fönstret faller ur, och för ett konto över taket när så många fallit ur att ett till ryms. Under taket 0 finns inget sådant ögonblick, och då sägs inget. `openTables` bär inget datum, eftersom ett bord får plats när ett annat avslutas.
+- `GET /me/usage` och `usage`-skriptet tar med båda måtten. Webben får ett 402 som ett `QuotaReached` med taket i (`packages/web/src/account/quota.ts`), från både editorn och startsidan; hur det sägs är #1198.
+- Grindarna är `packages/server/test/quota-tables.test.ts` mot båda lagren, `account-plans.test.ts` för skriptets rapport, och `packages/web/test/start-table-quota.test.ts` med `project-client.test.ts` för klienten.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.

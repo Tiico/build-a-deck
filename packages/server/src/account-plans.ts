@@ -1,9 +1,10 @@
 import type { Sql } from 'postgres'
 import type { AuthStore } from './auth.js'
 import type { ProjectDoc, ProjectStore } from './projects.js'
+import type { LogStore } from './store.js'
 import { ProjectHost } from './project-actor.js'
 import { CARD_MEASURES, cardsUsed, type CardMeasure } from './quota-cards.js'
-import { checkPlansInUse, limitOf, plansFromEnv, type Limit, type Plans } from './quotas.js'
+import { checkPlansInUse, limitOf, plansFromEnv, tableWindowFrom, type Limit, type Plans } from './quotas.js'
 
 // Which tier an account has (#1193, A2, #1192). A table of its own, beside the accounts, written by
 // the operator today and by Stripe later — so that paying becomes a way to change tier and not a
@@ -85,13 +86,16 @@ export async function planOf(accountPlans: AccountPlanStore | undefined, plans: 
 // stand to the ceiling — none when it owns none.
 export type Measured = { used: number; limit: Limit }
 export type PerGame = Measured & { projects: { id: string; used: number }[] }
-export type Usage = { plan: string; measures: { projects: Measured } & Record<CardMeasure, PerGame> }
+export type Usage = { plan: string; measures: { projects: Measured; openTables: Measured; tablesPer30Days: Measured } & Record<CardMeasure, PerGame> }
 // `live` is the game as it stands (D3, #909): the running actor's document, or the saved version
 // with the log's tail replayed — the same source «Mina spel» reads a name out of. Without it, the
 // log is replayed, which is what a process with no actors running (the operator's script) has.
-export type UsageStores = { projects: ProjectStore; accountPlans?: AccountPlanStore; live?: (id: string) => Promise<ProjectDoc | null> }
-export async function usageOf(stores: UsageStores, plans: Plans, account: string): Promise<Usage> {
+//
+// The tables are counted out of the sessions and their bearer (#1196), the window back from `now`.
+export type UsageStores = { projects: ProjectStore; tables: Pick<LogStore, 'tablesOf'>; accountPlans?: AccountPlanStore; live?: (id: string) => Promise<ProjectDoc | null> }
+export async function usageOf(stores: UsageStores, plans: Plans, account: string, now = new Date()): Promise<Usage> {
   const plan = await planOf(stores.accountPlans, plans, account)
+  const tables = await stores.tables.tablesOf(account, tableWindowFrom(now))
   const replay = new ProjectHost(stores.projects)
   const live = stores.live ?? ((id: string) => replay.live(id))
   const games: { id: string; used: Record<CardMeasure, number> }[] = []
@@ -101,7 +105,8 @@ export async function usageOf(stores: UsageStores, plans: Plans, account: string
   }
   const perGame = (m: CardMeasure): PerGame => ({ used: Math.max(0, ...games.map((g) => g.used[m])), limit: limitOf(plans, plan, m), projects: games.map((g) => ({ id: g.id, used: g.used[m] })) })
   const cards = Object.fromEntries(CARD_MEASURES.map((m) => [m, perGame(m)])) as Record<CardMeasure, PerGame>
-  return { plan, measures: { projects: { used: await stores.projects.owned(account), limit: limitOf(plans, plan, 'projects') }, ...cards } }
+  const measured = (used: number, m: 'projects' | 'openTables' | 'tablesPer30Days'): Measured => ({ used, limit: limitOf(plans, plan, m) })
+  return { plan, measures: { projects: measured(await stores.projects.owned(account), 'projects'), ...cards, openTables: measured(tables.open, 'openTables'), tablesPer30Days: measured(tables.started, 'tablesPer30Days') } }
 }
 
 // The operator's door to an account's tier (DRIFT §10): by address, over Tailscale, and no HTTP
