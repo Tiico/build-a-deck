@@ -1791,6 +1791,19 @@ Schemat står kvar som det skrivs ur zod-schemat, med varje egenskap krävd och 
 Den falska Anthropic i sviterna håller nu ett strikt verktyg till samma gränser och svarar 400 som den riktiga, och loggraden `ai` bär leverantörens status när ett svar uteblev, eftersom ett 400 om vår egen begäran annars syns som en linje som brast.
 Den falska leverantörens `[regler]` lägger ett avsnitt efter bokens sista block som nämner spelets första zon med dess id, och `[regler-trasig]` samma avsnitt med `[[zon:finns-inte]]`.
 
+Ändrat 2026-10-23 (#1183, #1184): ett förslag som inte går att använda får AI:n rätta en gång, och ett regelblock läses på sina fält.
+Utan strikt verktyg kom ett långt Anthropic-svar tillbaka med en lista under slaget «ordered_placeholder_removed_marker_do_not_use», och hela förslaget kastades.
+Bokens tre blockslag delar inga fält utom `text`, så ett block under ett okänt slagsord läses som det enda slag vars fält det har exakt (#1183); ett block vars fält inte passar något slag avvisas som förut.
+Allt annat som gör ett förslag oanvändbart ger AI:n en chans att rätta (beställarens beslut 2026-10-23, prototypat i #1184, variant A, «tyst rättning»).
+Editorn skickar svaret tillbaka som det skrevs, `correct: { answer }`, och servern översätter det själv mot spelet och ger modellen felet i editorns egna termer, så det modellen får veta inte kan skilja sig från det editorn säger.
+Förfiningens väg duger inte, eftersom `refine.proposal` läses mot det strikta schemat och ett svar kan vara oanvändbart just för sin form.
+Det oanvändbara förslaget visas aldrig: ett förslag döms först när det kommit helt, och medan AI:n rättar står en lugn rad i panelens ljusa bläck, «Förslaget höll inte. AI:n rättar det…», utan rött eftersom designern inte har något att göra än.
+Det rättade förslaget står som vilket förslag som helst, med en tyst not under knapparna, «Rättat en gång: <felet>», eftersom en andra fråga på hennes nyckel inte ska vara osynlig.
+Går inte heller det rättade att använda kommer dagens felruta med det sista felet och «AI:n hade redan fått rätta förslaget en gång.»; ett svar rättas en gång, aldrig fler.
+Prosan från första svaret står kvar, och det rättningen säger runt sitt förslag sägs inte igen.
+Två varianter valdes bort: en synlig följdtur i samtalet, som gör panelen lång och ger två röda rutor i rad, och en felruta som väntar, som visar felet en stund även när det sedan rättas.
+Den falska leverantörens `[regler-markör]` svarar med listan under markörordet, och `[regler-rätta]` med det trasiga avsnittet tills det skickas tillbaka för rättning och det hela sedan.
+
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
 Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.

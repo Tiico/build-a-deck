@@ -9,7 +9,7 @@ import { expect, test } from '../support/test.js'
 // rendering draws the new blocks marked and the zone by its name. Accepting is one composite edit
 // over the editor's line, taken back with one step; and rule text naming a zone the game does not
 // have is refused with the reason, writing nothing. The provider is the stack's fake behind the
-// server's own proxy, whose `[regler]`, `[regler-trasig]` and `[regler-markör]` answer with such rule text.
+// server's own proxy, whose `[regler]`, `[regler-trasig]`, `[regler-markör]` and `[regler-rätta]` answer with such rule text.
 const KEY = 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefR3gl'
 const GAME = 'Skogens regler'
 
@@ -70,6 +70,8 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   const refused = panel.getByRole('alert').filter({ hasText: 'The proposal could not be used' })
   await expect(refused).toContainText('Rule text 1 (“Att dra kort”) names the zone “finns-inte”, which the game does not have.')
   await expect(refused).toContainText('The answer from the AI could not be used. Nothing in the game changed.')
+  // Refused only after the AI's one chance to correct it (#1184).
+  await expect(refused).toContainText('The AI had already been given one chance to correct the proposal.')
   expect(edits()).toHaveLength(2)
 
   // 6. A list under a kind word the book does not have, as a long answer from Anthropic's tool has
@@ -82,4 +84,15 @@ test('a designer asks for rules, sees them marked in the rulebook with names, ac
   await kinded.getByRole('button', { name: 'Show in the rulebook' }).click()
   await expect(book.locator('[data-ai="new"]')).toHaveCount(3)
   await expect(book.locator('[data-ai="new"]').nth(2).locator('ol > li')).toHaveText(['Dra ett kort.', 'Spela ett kort eller passa.'])
+
+  // 7. Rule text that first names a zone the game does not have is given back to the AI once (#1184):
+  // the broken proposal is never shown, and the corrected one stands with a note of what was wrong.
+  await kinded.getByRole('button', { name: 'Discard' }).click()
+  await field.fill('First wrong [regler-rätta]')
+  await field.press('Enter')
+  const corrected = panel.getByRole('group', { name: 'Proposal · 1 addition to the rulebook' }).last()
+  await expect(corrected.getByRole('button', { name: 'Accept all' })).toBeVisible()
+  await expect(corrected).toContainText('Corrected once: Rule text 1 (“Att dra kort”) names the zone “finns-inte”, which the game does not have.')
+  await expect(panel.getByRole('alert')).toHaveCount(1)
+  await expect(panel.getByText('The proposal did not hold. The AI is correcting it…')).toHaveCount(0)
 })

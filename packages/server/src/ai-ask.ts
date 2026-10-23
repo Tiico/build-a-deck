@@ -4,7 +4,7 @@ import { AI_INSTRUCTIONS, aiChangedCardsOf, aiContextOf, aiSelectionOf } from '.
 import type { AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiFailure, type AiProviders } from './ai-providers.js'
 import type { ProjectDoc } from './projects.js'
-import { Proposal, proposalSchema } from './proposal.js'
+import { Proposal, proposalSchema, translateProposal } from './proposal.js'
 
 // The editor's question, made on the designer's behalf (#1001, E4, PRD module 6). The server does
 // not think, it passes on: it builds the game's context out of its own copy of the document, opens
@@ -62,6 +62,10 @@ export const AskBody = z.strictObject({
   // wrote it and read with the same schema, and the parts the designer left out of it with «Välj
   // delar…», by the keys the editor names them with — `card:2`, `change:<id>`.
   refine: z.strictObject({ proposal: Proposal, leave: z.array(z.string().min(1).max(210)).max(5000) }).optional(),
+  // An answer to this same question whose proposal the editor could not use (#1184), sent back once
+  // to be corrected, as the model wrote it: unread, since what is wrong with it may be its shape. The
+  // server says what is wrong with it itself, against its own copy of the game.
+  correct: z.strictObject({ answer: z.unknown().refine((answer) => answer !== undefined) }).optional(),
 })
 export type AskBody = z.infer<typeof AskBody>
 
@@ -173,8 +177,19 @@ export async function answerQuestion(ai: AskWith, res: ServerResponse, account: 
 // large deck's context holds a sample, and the cards a question is about must not depend on it.
 function questionOf(doc: ProjectDoc, ask: AskBody): string {
   const changed = ask.refine ? aiChangedCardsOf(doc, ask.refine.proposal.changes.map((c) => c.card)) : null
-  const before = [...(ask.refine ? refining(ask.refine) : []), changed, aiSelectionOf(doc, ask.selected ?? [])].filter((s): s is string => s !== null)
+  const before = [...(ask.correct ? [correcting(doc, ask.correct.answer)] : []), ...(ask.refine ? refining(ask.refine) : []), changed, aiSelectionOf(doc, ask.selected ?? [])].filter((s): s is string => s !== null)
   return before.length > 0 ? `${before.join('\n\n')}\n\n## Question\n${ask.question}` : ask.question
+}
+
+// An answer the editor could not use (#1184), and why, in the editor's own terms: the model is asked
+// for the whole proposal again, corrected, as the answer to the same question.
+function correcting(doc: ProjectDoc, answer: unknown): string {
+  const read = translateProposal(doc, answer)
+  return [
+    '## Proposal that could not be used',
+    `You proposed this in answer to the question below, and the editor could not use it, so nothing of it is in the game. ${read.ok ? 'The editor found nothing wrong with it against the game as it stands now.' : `What the editor found wrong: ${JSON.stringify(read.problem)}`} Propose the whole proposal again, corrected, keeping to the tool's schema and to what the game has.`,
+    JSON.stringify(answer),
+  ].join('\n')
 }
 
 // The proposal still waiting for the designer (#1004), as the model wrote it, and what she left out

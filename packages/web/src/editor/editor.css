@@ -4503,6 +4503,14 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-turn { display: grid; gap: var(--byd-s2); }
 .byd-ai-said { justify-self: end; max-width: calc(100% - 40px); margin: 0; padding: var(--byd-s2) var(--byd-s3); border-radius: 12px 12px 2px 12px; background: #263049; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .byd-ai-reading { margin: 0; }
+/* The AI correcting a proposal that could not be used (#1184, variant A): no red, since there is
+   nothing yet for the designer to do — a line in the panel's light ink whose spark breathes, held
+   still for a reader who asks for less motion — and, under the corrected proposal, what was wrong. */
+.byd-ai-correcting { display: flex; align-items: center; gap: var(--byd-s2); margin: 0; color: #c3cbdd; }
+.byd-ai-correcting .byd-ai-spark { animation: byd-ai-breathe 1.2s ease-in-out infinite; }
+@keyframes byd-ai-breathe { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .byd-ai-correcting .byd-ai-spark { animation: none; } }
+.byd-ai-corrected { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.45; }
 .byd-ai-answer { line-height: 1.5; overflow-wrap: anywhere; }
 .byd-ai-answer p, .byd-ai-answer ul { margin: 0 0 var(--byd-s2); }
 .byd-ai-answer > :last-child { margin-bottom: 0; }
