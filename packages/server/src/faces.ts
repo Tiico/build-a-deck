@@ -1,6 +1,6 @@
-import type { SetupDef, TypeRegistry } from '@byd/engine'
+import type { ComponentTypeDef, SetupDef, TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
-import { compileCard, printedText, type Motif, type Row, type Template } from '@byd/template'
+import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderRequest } from '@byd/render/queue'
 import { titleOfFields } from './names.js'
 
@@ -16,6 +16,13 @@ export type Deck = {
   palette?: Record<string, string>
   fonts?: Record<string, { stack: string; src?: string }>
   motifs?: Record<string, Motif>
+}
+
+// One row of the deck through the one compiler (E2), every face of it, with whatever the deck
+// carries for it to be drawn with. `bleed` is the compiler's one print option: the type's own for
+// `true`, or the millimetres a partner asks for (#1207).
+export function compileRow(deck: Deck, type: ComponentTypeDef, row: Row, bleed: boolean | number = false): Record<string, Compiled> {
+  return compileCard({ template: deck.template, type, row, icons: deck.icons, ...(bleed === false ? {} : { bleed }), ...(deck.palette ? { palette: deck.palette } : {}), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
 }
 
 export type PrintCard = { cardRef: string; faces: Record<string, string> }
@@ -52,7 +59,7 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
     // The words of the face a view that may see the card is shown: its content face (#551, K27).
     const content = deck.template.faces[registry.get(spec.type).contentFace]
     if (content) out.texts[spec.cardRef] = printedText({ face: content, row })
-    const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, ...(deck.palette ? { palette: deck.palette } : {}), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
+    const compiled = compileRow(deck, registry.get(spec.type), row)
     const perFace: Record<string, string> = {}
     out.faces[spec.cardRef] = perFace
     for (const [face, page] of Object.entries(compiled)) {
@@ -82,6 +89,8 @@ export async function queueFaces(deck: Deck, setup: SetupDef, registry: TypeRegi
 // same row, so a group's front can never be paired with the base back (or another group's back).
 // Identical copies keep their own manifest entries while their content-addressed render jobs are
 // shared. The ordinary compiler is also the print compiler; bleed is its only print-time option.
+// This is the print where no partner is asked, so the bleed is the type's own; a partner's files
+// are drawn after its own requirements in `print-files.ts` (#1207).
 //
 // A stock item, a die (#1140), is listed as hardware by kind in the order the game first names it,
 // and printed as nothing. Whoever orders may leave the hardware out (`hardware: false`): many
@@ -100,7 +109,8 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     if (spec.counter !== undefined) continue
     const row = deck.rows[spec.cardRef]
     if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
-    const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, bleed: true, ...(deck.palette ? { palette: deck.palette } : {}), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
+    // The type's own bleed: this is the print where no partner is asked (G5's export, #1207).
+    const compiled = compileRow(deck, registry.get(spec.type), row, true)
     const faces: Record<string, string> = {}
     for (const [face, out] of Object.entries(compiled)) {
       const hash = contentHash(out, { kind: 'pdf' })

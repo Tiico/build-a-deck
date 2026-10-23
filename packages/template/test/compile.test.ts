@@ -171,6 +171,17 @@ describe('bleed (print profile from the type, B2)', () => {
     expect(bled.css).toContain('[data-element="title"]{left:8mm;top:8mm;')
     expect(bled.html).toContain('data-bleed="3"')
   })
+
+  // A partner says how much bleed it wants (#1207): The Game Crafter and QPMN both want an eighth
+  // of an inch, which is not the type's 3 mm. The bleed is then a length, not a switch.
+  it('grows by the millimetres a partner asks for, whatever the type says', () => {
+    const bled = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'x', body: '' }, icons, bleed: 3.175 })
+    expect(bled.css).toContain('[data-card]{position:relative;width:69.35mm;height:94.35mm;')
+    expect(bled.css).toContain('[data-element="title"]{left:8.175mm;top:8.175mm;')
+    expect(bled.html).toContain('data-bleed="3.175"')
+    const none = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'x', body: '' }, icons, bleed: 0 })
+    expect(none.css).toContain('[data-card]{position:relative;width:63mm;height:88mm;')
+  })
 })
 
 describe('text fitting (E6)', () => {

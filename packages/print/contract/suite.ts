@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { STANDARD_TYPES } from '@byd/engine'
+import { STANDARD_TYPES, TypeRegistry } from '@byd/engine'
 import type { TypeRef } from '@byd/protocol'
 import { Country, crossesCustoms, EU_COUNTRIES, manufacturesInEU, OrderStatus, PreparedOrder, PrintRequirements, ProviderOrderRef, Quote, routeOrder, type FileSource, type PrintManifest, type PrintProvider } from '../src/index.js'
 import { CONTRACT_MANIFEST } from './fixture.js'
+import { measureFile } from './measure.js'
 
 export { CONTRACT_MANIFEST }
 
@@ -12,6 +13,10 @@ export type ContractSubject = {
   types?: readonly TypeRef[]
   // The game it prepares. CONTRACT_MANIFEST by default.
   manifest?: PrintManifest
+  // The platform's files for a prepared order, drawn by the one renderer (E2, #1207). Given, the
+  // suite measures every file the order names against the requirements it was prepared under;
+  // the manifest is then one whose content keys the platform can draw.
+  files?: (order: PreparedOrder) => Promise<FileSource>
 }
 
 // Every `{ "file": name }` a step's payload stands a file in with.
@@ -25,6 +30,7 @@ function fileRefs(value: unknown): string[] {
 
 export function printProviderContract(name: string, subject: ContractSubject): void {
   const types = subject.types ?? STANDARD_TYPES.map(({ id, version }) => ({ id, version }))
+  const known = new TypeRegistry(STANDARD_TYPES)
   const manifest = subject.manifest ?? CONTRACT_MANIFEST
 
   describe(`PrintProvider-kontraktet: ${name}`, () => {
@@ -47,6 +53,41 @@ export function printProviderContract(name: string, subject: ContractSubject): v
         expect(Math.abs(req.file.heightPx - px(req.trim.heightMm)), `${type.id} height`).toBeLessThanOrEqual(1)
       }
     })
+
+    // The platform draws a type at its own size, and nothing scales a card to a partner's (#1207):
+    // a partner whose trim is not the type's says no to it, until a type of its size exists (#1199,
+    // question 8).
+    it('trycker en typ bara i typens eget snittmått', () => {
+      const provider = subject.provider()
+      for (const type of types.filter((t) => provider.supports(t) && known.has(t))) {
+        const req = provider.requirements(type)
+        if (req.kind !== 'printed') continue
+        const { widthMm, heightMm } = known.get(type).physical
+        expect(req.trim, type.id).toEqual({ widthMm, heightMm })
+      }
+    })
+
+    if (subject.files) {
+      const draw = subject.files
+      it('ritar varje fil i exakt kravens pixlar eller millimetrar, utfallet medräknat', async () => {
+        const provider = subject.provider()
+        const prepared = provider.prepare(manifest)
+        const files = await draw(prepared)
+        expect(prepared.files.length).toBeGreaterThan(0)
+        for (const file of prepared.files) {
+          const measured = measureFile(await files.bytes(file.name))
+          if (file.file.kind === 'raster') {
+            expect(measured, file.name).toEqual({ kind: 'raster', format: file.file.format, widthPx: file.file.widthPx, heightPx: file.file.heightPx })
+          } else {
+            if (measured.kind !== 'vector') throw new Error(`${file.name} is a ${measured.format}, not a PDF`)
+            // Chromium quantises a PDF page by a fraction of a point, measured at up to 0,2 mm on a
+            // card; the content inside it is placed in exact millimetres.
+            expect(Math.abs(measured.widthMm - (file.trim.widthMm + 2 * file.bleedMm)), `${file.name} width`).toBeLessThanOrEqual(0.25)
+            expect(Math.abs(measured.heightMm - (file.trim.heightMm + 2 * file.bleedMm)), `${file.name} height`).toBeLessThanOrEqual(0.25)
+          }
+        }
+      })
+    }
 
     it('förbereder en fil för varje sida av varje kort, i kravens mått, med paret hållet ihop', () => {
       const provider = subject.provider()
