@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flagga ett kort · prototyp #1142</title>
+<!--
+  PROTOTYPE — throwaway (#1142). Två frågor på en sida, så att flödet syns från telefonen till
+  designerns Resultat:
+    ?v=A|B|C  hur Ada pekar ut kortet på telefonen (/play)
+    ?r=1|2|3  hur kortet och flaggan visas i editorns Bord › Resultat
+  Pilarna ← → växlar telefonvarianten, ↑ ↓ resultatvarianten. En flagga Ada skickar landar i
+  Resultat direkt. Texturerna i img/ är riktiga, hämtade från /faces/:hash på ett bord med
+  provleken Sal's Saloon; bordsbilden är /online vid 1280 × 800 från samma bord.
+  Ingenting här importeras av appen.
+-->
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; }
+  body { background: #0d0e11; color: #e6e8ee; font: 13px/1.45 system-ui, sans-serif; }
+  button, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+
+  /* --- prototypens egen rad: aldrig en del av förslaget ------------------------------------- */
+  .protorad { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; }
+  .protorad .grupp { display: flex; align-items: center; gap: 8px; }
+  .vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+  .vaxlare button { border: 0; min-height: 30px; min-width: 34px; padding: 0 10px; border-radius: 7px; background: transparent; color: #ffd98a; font-weight: 700; cursor: pointer; }
+  .vaxlare button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .om { flex: 1 1 100%; color: #e9d7a8; max-width: 1180px; }
+
+  .scen { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 20px 16px 60px; }
+  .etikett-scen { margin: 0 0 8px; color: #7d8597; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+
+  /* --- telefonen, /play som den är ------------------------------------------------------- */
+  .telefon { position: relative; flex: none; width: 390px; height: 844px; overflow: hidden; border-radius: 28px; background: #14161b; box-shadow: 0 0 0 10px #000, 0 0 0 11px #333, 0 30px 60px #000a; }
+  .tel-scroll { position: absolute; inset: 0; overflow-y: auto; padding-bottom: 96px; }
+  .huvud { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #2a2d36; }
+  .huvud .vem { flex: 1; line-height: 1.15; }
+  .huvud .vem strong { display: block; font-size: 15px; color: #fff; }
+  .huvud .vem span { color: #9aa3b8; font-size: 12px; }
+  .ikon { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 12px; background: #242836; color: #fff; cursor: pointer; }
+  .ikon.rund { width: 26px; height: 26px; border-radius: 50%; background: transparent; border: 1.5px solid #c8cbd4; font-weight: 700; font-size: 13px; margin-right: 8px; }
+  .ikon.slack { color: #5b6170; }
+  .ikon svg { width: 20px; height: 20px; }
+  .raknare { display: flex; margin: 10px 16px; border-radius: 12px; background: #1c2029; overflow: hidden; }
+  .raknare button { width: 44px; border: 0; background: #262b38; color: #fff; font-size: 20px; }
+  .raknare div { flex: 1; text-align: center; padding: 6px 0; }
+  .raknare b { display: block; font-size: 16px; color: #fff; }
+  .raknare small { color: #9aa3b8; font-weight: 700; letter-spacing: .08em; font-size: 10px; }
+  .rubrik { display: flex; align-items: center; justify-content: space-between; margin: 14px 16px 8px; }
+  .rubrik h2 { margin: 0; font-size: 22px; color: #fff; }
+  .hogar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 16px 10px; }
+  .hogar div { padding: 9px 10px; border-radius: 12px; background: #1c2029; border: 1px solid #2a2f3b; color: #9aa3b8; }
+  .hogar b { display: block; color: #fff; font-size: 13px; }
+  .remsa { display: flex; gap: 8px; padding: 6px 16px 4px; overflow-x: auto; scrollbar-width: none; }
+  .kortknapp { position: relative; flex: none; width: 132px; padding: 0; border: 3px solid transparent; border-radius: 12px; background: none; cursor: pointer; }
+  .kortknapp img { display: block; width: 100%; border-radius: 9px; }
+  .kortknapp[aria-pressed='true'] { border-color: #7bd39c; }
+  .valt { margin: 6px 16px 8px; color: #9aa3b8; }
+  .mal { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 16px; }
+  .mal button { min-height: 44px; border: 1px solid #2a2f3b; border-radius: 12px; background: #1f2330; color: #fff; font-weight: 700; }
+  .mal button.forsta { background: #7bd39c; color: #10261a; border-color: #7bd39c; }
+  .delrubrik { margin: 18px 16px 6px; color: #9aa3b8; font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .liten-remsa { display: flex; gap: 8px; padding: 0 16px; }
+  .liten-remsa .kortknapp { width: 78px; }
+  .fot { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 16px 16px; background: linear-gradient(transparent, #14161b 24%); }
+  .fot button { min-height: 44px; border: 0; border-radius: 12px; font-weight: 700; }
+  .fot .forsta { flex: 1; background: #7bd39c; color: #10261a; }
+  .fot .andra { padding: 0 14px; background: #242836; color: #fff; }
+
+  /* Ett kort hållet uppe (K4/#507): som HeldCard ser ut i skärmbilden phone-held. */
+  .hallet { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 20px 28px; background: #000c; }
+  .hallet .ram { padding: 14px; border-radius: 22px; background: #f4ecdf; }
+  .hallet .ram img { display: block; width: 100%; border-radius: 8px; }
+  .hallet .rad { display: flex; gap: 8px; align-items: center; }
+  .hallet .rad button { min-height: 44px; border: 0; border-radius: 12px; font-weight: 700; padding: 0 14px; }
+  .hallet .spela { flex: 1; background: #7bd39c; color: #10261a; }
+  .hallet .gra { background: #242836; color: #fff; }
+  .hallet .pager { flex: 1; text-align: center; color: #9aa3b8; }
+  .hallet .stang { background: #1d2130; color: #fff; border: 2px solid #3c8ce7 !important; min-width: 110px; }
+  .hallet .flaggaknapp { background: #3a2f12; color: #ffd98a; border: 1px solid #6b5520 !important; display: inline-flex; align-items: center; gap: 6px; }
+  .hallet .flaggaknapp svg { width: 16px; height: 16px; }
+
+  /* Arket (FlagSheet) */
+  .ark-bakgrund { position: absolute; inset: 0; z-index: 20; display: flex; align-items: flex-end; background: #000a; }
+  .ark { width: 100%; max-height: 92%; overflow-y: auto; padding: 18px 16px 20px; border-radius: 18px 18px 0 0; background: #1b1e27; border-top: 1px solid #343a4a; }
+  .ark h3 { margin: 0 0 4px; font-size: 17px; color: #fff; }
+  .ark p { margin: 0 0 10px; color: #b8c0d2; }
+  .ark textarea { width: 100%; min-height: 76px; padding: 10px 12px; border-radius: 10px; border: 1px solid #343a4a; background: #11131a; color: #f2f3f6; resize: none; }
+  .ark .knappar { display: flex; gap: 8px; margin-top: 12px; }
+  .ark .knappar button { flex: 1; min-height: 44px; border: 0; border-radius: 12px; font-weight: 700; cursor: pointer; }
+  .ark .knappar .skicka { background: #e3b341; color: #2a1e04; }
+  .ark .knappar .tyst { background: #242836; color: #fff; }
+  .galler { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 8px; border-radius: 12px; background: #11131a; border: 1px solid #343a4a; }
+  .galler img { width: 58px; border-radius: 5px; }
+  .galler div { flex: 1; color: #b8c0d2; font-size: 12px; }
+  .galler div b { display: block; color: #fff; font-size: 14px; }
+  .galler button { min-height: 44px; min-width: 44px; border: 0; border-radius: 10px; background: transparent; color: #9aa3b8; font-size: 18px; cursor: pointer; }
+  .vad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .vad button { min-height: 56px; border: 1px solid #343a4a; border-radius: 12px; background: #11131a; color: #fff; font-weight: 700; cursor: pointer; text-align: left; padding: 8px 12px; }
+  .vad button small { display: block; color: #9aa3b8; font-weight: 400; }
+  .vad button[aria-pressed='true'] { border-color: #e3b341; box-shadow: inset 0 0 0 1px #e3b341; }
+  .valremsa { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -2px 6px; scrollbar-width: thin; }
+  .valremsa .val { flex: none; width: 74px; padding: 0; border: 3px solid transparent; border-radius: 9px; background: none; cursor: pointer; position: relative; }
+  .valremsa .val img { display: block; width: 100%; border-radius: 6px; }
+  .valremsa .val[aria-pressed='true'] { border-color: #e3b341; }
+  .valremsa .val[aria-pressed='true']::after { content: '⚑'; position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; background: #e3b341; color: #2a1e04; font-size: 12px; display: grid; place-items: center; font-weight: 700; }
+  .valremsa .grupp { flex: none; align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); color: #7d8597; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+
+  /* B: pekläget */
+  .peka-band { position: absolute; z-index: 15; left: 12px; right: 12px; top: 10px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #e3b341; color: #2a1e04; font-weight: 700; box-shadow: 0 10px 30px #000a; }
+  .peka-band span { flex: 1; }
+  .peka-band button { min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: #2a1e04; color: #ffd98a; font-weight: 700; }
+  .pekar .tel-scroll > :not(.peka-yta) { opacity: .28; pointer-events: none; }
+  .pekar .kortknapp { animation: puls 1.4s ease-in-out infinite; border-color: #e3b341; }
+  @keyframes puls { 50% { box-shadow: 0 0 0 4px #e3b34155; } }
+  .peka-yta { opacity: 1 !important; pointer-events: auto !important; }
+
+  .toast { position: absolute; z-index: 30; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; background: #f2f3f6; color: #14161b; font-weight: 700; white-space: nowrap; box-shadow: 0 8px 24px #0008; }
+
+  /* --- editorn: Bord › Resultat, flaggsektionen ------------------------------------------- */
+  .editor { flex: 0 1 900px; min-width: 0; border-radius: 12px; background: #1b1d23; border: 1px solid #2f333d; overflow: hidden; }
+  .ed-huvud { display: flex; align-items: center; gap: 14px; padding: 12px 18px; background: #111317; border-bottom: 1px solid #2f333d; }
+  .ed-huvud strong { color: #fff; font-size: 15px; }
+  .ed-huvud .flik { margin-left: auto; display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f222a; }
+  .ed-huvud .flik span { padding: 5px 12px; border-radius: 7px; color: #9aa3b8; }
+  .ed-huvud .flik span.vald { background: #2c313d; color: #fff; }
+  .ed-kropp { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
+  .versioner { padding: 16px; border-right: 1px solid #2f333d; }
+  .versioner h4 { margin: 0 0 10px; color: #8a91a3; font-size: 11px; letter-spacing: .1em; }
+  .versioner div { padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #343944; color: #b8c0d2; font-size: 12px; }
+  .versioner div b { display: block; color: #fff; }
+  .versioner div.vald { border-color: transparent; box-shadow: inset 0 -2px 0 #3c8ce7; }
+  .resultat { padding: 16px 20px 28px; min-width: 0; }
+  .resultat h3 { margin: 0 0 4px; font-size: 15px; color: #fff; }
+  .tyst { color: #8a91a3; font-weight: 400; }
+  .nar { display: inline-flex; align-items: center; gap: 4px; color: #ffd98a; font-weight: 700; font-size: 12px; }
+  .badge { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #2b3242; color: #b8c0d2; font-size: 11px; font-style: normal; }
+
+  /* 1 · miniatyren i raden */
+  .flaggor { list-style: none; margin: 8px 0 0; padding: 0; }
+  .flaggor > li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; padding: 12px 0; border-top: 1px solid #2f333d; }
+  .flaggor > li.utan { grid-template-columns: 64px minmax(0, 1fr); }
+  .flaggor p { margin: 2px 0 0; color: #d6dae3; }
+  .tumme { position: relative; width: 64px; padding: 0; border: 0; border-radius: 5px; background: none; cursor: zoom-in; }
+  .tumme img { display: block; width: 100%; border-radius: 5px; box-shadow: 0 2px 8px #0008; }
+  .tumme.nedvand::after { content: 'nedvänt'; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); padding: 0 5px; border-radius: 999px; background: #000c; color: #fff; font-size: 9px; }
+  .ingen-tumme { width: 64px; aspect-ratio: 63 / 88; display: grid; place-items: center; border-radius: 5px; border: 1px dashed #3a3f4b; color: #5d6474; font-size: 10px; text-align: center; padding: 4px; }
+  .sa-sag { color: #8a91a3; font-size: 12px; margin-top: 4px !important; }
+  .andrat { color: #ffd98a; }
+
+  /* lyftet över editorn */
+  .lyft-bakgrund { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: #000b; }
+  .lyft { display: grid; grid-template-columns: auto 280px; gap: 22px; align-items: start; padding: 20px; border-radius: 16px; background: #1b1d23; border: 1px solid #343944; box-shadow: 0 30px 80px #000; }
+  .lyft img { width: 340px; border-radius: 10px; display: block; }
+  .lyft h4 { margin: 0 0 4px; font-size: 18px; color: #fff; }
+  .lyft dl { margin: 12px 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; }
+  .lyft dt { color: #8a91a3; } .lyft dd { margin: 0; color: #e6e8ee; }
+  .lyft button { min-height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #343944; background: transparent; color: #e6e8ee; cursor: pointer; }
+
+  /* 2 · kort först */
+  .kortgalleri { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; margin: 10px 0 20px; }
+  .kortgalleri button { position: relative; padding: 0; border: 2px solid transparent; border-radius: 10px; background: none; cursor: pointer; text-align: left; color: inherit; }
+  .kortgalleri button[aria-pressed='true'] { border-color: #ffd98a; }
+  .kortgalleri img { display: block; width: 100%; border-radius: 8px; }
+  .kortgalleri .antal { position: absolute; top: -8px; right: -8px; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px; background: #ffd98a; color: #2a1e04; font-weight: 800; display: grid; place-items: center; box-shadow: 0 2px 6px #000a; }
+  .kortgalleri .namn { display: block; padding: 6px 2px 0; color: #b8c0d2; font-size: 12px; }
+  .kortets-flaggor { margin: -6px 0 18px; padding: 12px 14px; border-radius: 10px; background: #22252d; border: 1px solid #343944; }
+  .kortets-flaggor ol { list-style: none; margin: 6px 0 0; padding: 0; }
+  .kortets-flaggor li { padding: 8px 0; border-top: 1px solid #2f333d; }
+
+  /* 3 · ögonblicket */
+  .ogon > li { display: block; padding: 12px 0; border-top: 1px solid #2f333d; }
+  .ogon .oppna { margin-top: 6px; min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #343944; background: transparent; color: #e6e8ee; cursor: pointer; }
+  .ogonblick { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 14px; margin-top: 10px; align-items: start; }
+  .bordsbild { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #343944; }
+  .bordsbild img { display: block; width: 100%; }
+  .bordsbild .ring { position: absolute; border: 3px solid #ffd98a; border-radius: 8px; box-shadow: 0 0 0 4px #0008, 0 0 24px #ffd98a; }
+  .bordsbild figcaption { position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px; background: #000c; color: #fff; font-size: 11px; }
+  .ogonblick .sidan img { width: 100%; border-radius: 8px; }
+  .ogonblick .sidan p { font-size: 12px; color: #8a91a3; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="grupp"><b>Telefonen</b><div class="vaxlare" id="v"></div></div>
+  <div class="grupp"><b>Resultat</b><div class="vaxlare" id="r"></div></div>
+  <p class="om" id="om"></p>
+</div>
+
+<div class="scen">
+  <div>
+    <p class="etikett-scen">Ada vid bordet · /play · 390 × 844</p>
+    <div class="telefon" id="tel"></div>
+  </div>
+  <div class="editor" id="ed-wrap">
+    <div class="ed-huvud"><span class="tyst">Mina spel</span><strong>Sal's Saloon</strong><span class="tyst">v1</span>
+      <div class="flik"><span>Kortvägg</span><span>Mall</span><span>Tabell</span><span>Regler</span><span class="vald">Bord</span></div>
+    </div>
+    <div class="ed-kropp">
+      <div class="versioner"><h4>VERSIONER</h4>
+        <div>Version 2 · Ny text på Sheriff's Check<br>1 bord pågår</div>
+        <div class="vald"><b>Version 1 · Första playtestet</b>2 bord · 5 svar · <span id="v-antal"></span></div>
+      </div>
+      <div class="resultat" id="res"></div>
+    </div>
+  </div>
+</div>
+<div id="lyft"></div>
+
+<script>
+const FLAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>'
+const UNDO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>'
+const EXIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4H5v16h5"/><path d="m15 8 4 4-4 4"/><path d="M19 12H9"/></svg>'
+
+const C = {
+  duel: { title: 'Duel', img: 'img/duel-silver-front.png', back: 'img/duel-silver-back.png' },
+  sheriff: { title: "Sheriff's Check", img: 'img/sheriffs-check-front.png' },
+  bullseye: { title: 'Bullseye', img: 'img/bullseye-front.png' },
+  deflect: { title: 'Deflect', img: 'img/deflect-front.png', back: 'img/deflect-back.png' },
+  stolen: { title: 'Stolen Goods', img: 'img/stolen-goods-silver-front.png' },
+}
+const hand = ['duel', 'sheriff', 'bullseye', 'deflect', 'stolen']
+const front = ['duel']          // Framför dig
+const table = ['stolen', 'bullseye'] // uppvänt i saloonen
+const lastMoved = 'stolen'      // kortet senaste raden handlade om (K8:s componentOf)
+
+// Flaggor som redan restes på version 1, så att Resultat har något att visa innan Ada flaggar.
+const flags = [
+  { who: 'Eva', table: 'GRFWRJ', move: 4, of: 23, at: '20:14', note: 'Vi förstod inte vem som slår — jag eller den jag tjallar på?', card: 'sheriff', where: 'i Evas hand', up: true },
+  { who: 'Fia', table: 'GRFWRJ', move: 9, of: 23, at: '20:22', note: 'Samma kort igen, texten tar för lång tid att läsa', card: 'sheriff', where: 'i saloonen', up: true },
+  { who: 'Bo', table: 'GRFWRJ', move: 15, of: 23, at: '20:31', note: 'Fia höll den nedvänd hela rundan, och jag visste inte vad den gjorde', card: 'deflect', where: 'framför Fia', up: false },
+  { who: 'Eva', table: 'A423Z4', move: 21, of: 21, at: '21:02', note: 'Tog slut för fort', card: null },
+]
+
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'A'
+let r = q.get('r') ?? '1'
+const st = { chosen: 0, held: null, sheet: false, picking: false, about: null, chosenCards: [], what: 'moment', toast: null, open: null, openFlag: 0 }
+
+const OM = {
+  A: '<b>A · Från kortet.</b> Ett tryck på kortet håller upp det (K4/#507), och där står «⚑ Flagga kortet» bredvid verben. Arket öppnas med kortet redan fäst. Flaggan i huvudet flaggar ögonblicket som förut. Samma sak på /online: ringens verb får «Flagga».',
+  B: '<b>B · Peka efter flaggan.</b> Flaggan i huvudet frågar först vad det gäller: ögonblicket, eller ett kort. «Ett kort» tonar ner allt utom korten, och nästa tryck på ett kort fäster det. På /online: pekaren blir ett sikte över filten.',
+  C: '<b>C · Välj i arket.</b> Flaggarket visar de kort Ada ser — senast rörda först, sedan handen, framför dig och bordet — och ett tryck fäster ett eller flera. Inget val betyder ögonblicket. Samma ark på /online och /observe.',
+  1: '<b>1 · Miniatyren i raden.</b> Flaggorna står som idag, i spelets ordning, och varje rad bär kortet som det såg ut: versionens egen textur, med den sida upp som låg upp. Ett klick lyfter det, med var det låg och om kortet ändrats sedan.',
+  2: '<b>2 · Kortet först.</b> Flaggade kort samlas överst, med antal: tre flaggor på samma kort är ett fynd. Ett klick visar kortets flaggor. Ögonblicken utan kort står under, som idag.',
+  3: '<b>3 · Ögonblicket.</b> En flagga öppnas till bordet som det låg vid draget, med kortet inringat, och kortet stort bredvid. Bilden ritas ur loggen fram till flaggans rad (prototypen visar en skärmbild).',
+}
+
+function vaxlare(id, keys, cur, set) {
+  const el = document.getElementById(id)
+  el.innerHTML = keys.map(k => `<button aria-pressed="${k === cur}" data-k="${k}">${k}</button>`).join('')
+  el.onclick = e => { const k = e.target.closest('button')?.dataset.k; if (k) set(k) }
+}
+function setV(k) { v = k; Object.assign(st, { held: null, sheet: false, picking: false, about: null, chosenCards: [], what: 'moment' }); sync() }
+function setR(k) { r = k; st.open = null; sync() }
+function sync() {
+  const u = new URL(location); u.searchParams.set('v', v); u.searchParams.set('r', r); history.replaceState(null, '', u)
+  vaxlare('v', ['A', 'B', 'C'], v, setV); vaxlare('r', ['1', '2', '3'], r, setR)
+  document.getElementById('om').innerHTML = OM[v] + '<br>' + OM[r]
+  telefon(); resultat()
+}
+addEventListener('keydown', e => {
+  if (e.target.closest('textarea, input')) return
+  const V = ['A', 'B', 'C'], R = ['1', '2', '3']
+  if (e.key === 'ArrowRight') setV(V[(V.indexOf(v) + 1) % 3])
+  if (e.key === 'ArrowLeft') setV(V[(V.indexOf(v) + 2) % 3])
+  if (e.key === 'ArrowDown') { e.preventDefault(); setR(R[(R.indexOf(r) + 1) % 3]) }
+  if (e.key === 'ArrowUp') { e.preventDefault(); setR(R[(R.indexOf(r) + 2) % 3]) }
+  if (e.key === 'Escape') { st.held = null; st.sheet = false; st.picking = false; document.getElementById('lyft').innerHTML = ''; telefon() }
+})
+
+const kort = (key, i, where, small) => `<button class="kortknapp" data-card="${key}" data-where="${where}" data-i="${i}" aria-pressed="${where === 'hand' && i === st.chosen}" aria-label="${C[key].title}"><img src="${C[key].img}" alt=""></button>`
+
+function telefon() {
+  const tel = document.getElementById('tel')
+  tel.className = 'telefon' + (st.picking ? ' pekar' : '')
+  const chosen = C[hand[st.chosen]]
+  tel.innerHTML = `
+    <div class="tel-scroll">
+      <div class="huvud">
+        <div class="vem"><strong>Ada</strong><span>5 kort</span></div>
+        <button class="ikon rund" aria-label="Hjälp">?</button>
+        <button class="ikon slack" aria-label="Ångra">${UNDO}</button>
+        <button class="ikon" id="flagga" aria-label="Flagga" title="Flagga">${FLAG}</button>
+        <button class="ikon" aria-label="Lämna">${EXIT}</button>
+      </div>
+      <div class="raknare"><button>−</button><div><b>0</b><small>GULD</small></div><button>+</button></div>
+      <div class="rubrik"><h2>Dina kort</h2></div>
+      <div class="hogar"><div><b>Kasthög</b>3 kort</div><div><b>Kortlek</b>128 kort · Dra 1 till handen</div></div>
+      <div class="remsa peka-yta">${hand.map((k, i) => kort(k, i, 'hand')).join('')}</div>
+      <p class="valt">Valt: ${chosen.title}</p>
+      <div class="mal"><button class="forsta">Till saloonen</button><button>Framför mig</button><button>Kasta</button><button>Lägg underst</button></div>
+      <p class="delrubrik">Framför dig · 1</p>
+      <div class="liten-remsa peka-yta">${front.map((k, i) => kort(k, i, 'front')).join('')}</div>
+      <p class="delrubrik">I saloonen · 2</p>
+      <div class="liten-remsa peka-yta">${table.map((k, i) => kort(k, i, 'table')).join('')}</div>
+    </div>
+    <div class="fot"><button class="forsta">Till saloonen</button><button class="andra">Spela…</button></div>
+    ${st.picking ? `<div class="peka-band" role="status"><span>Tryck på kortet det gäller</span><button id="avbryt-peka">Avbryt</button></div>` : ''}
+    ${st.held !== null ? hallet() : ''}
+    ${st.sheet ? ark() : ''}
+    ${st.toast ? `<div class="toast" role="status">${st.toast}</div>` : ''}`
+  tel.querySelector('#flagga').onclick = () => { st.sheet = true; st.about = null; st.chosenCards = []; st.what = 'moment'; telefon(); tel.querySelector('textarea')?.focus() }
+  tel.querySelectorAll('.tel-scroll .kortknapp').forEach(b => b.onclick = () => {
+    const key = b.dataset.card
+    if (st.picking) { st.picking = false; st.about = { key, where: b.dataset.where }; st.sheet = true; telefon(); return }
+    if (b.dataset.where === 'hand') st.chosen = +b.dataset.i
+    st.held = { key, where: b.dataset.where }
+    telefon()
+  })
+  const avbryt = tel.querySelector('#avbryt-peka'); if (avbryt) avbryt.onclick = () => { st.picking = false; telefon() }
+  wireHallet(tel); wireArk(tel)
+}
+
+function hallet() {
+  const c = C[st.held.key]
+  const i = hand.indexOf(st.held.key)
+  return `<div class="hallet" role="dialog" aria-label="${c.title}">
+    <div class="ram"><img src="${c.img}" alt="${c.title}"></div>
+    <div class="rad"><button class="spela">Till saloonen</button><button class="gra">Spela…</button></div>
+    <div class="rad">
+      ${v === 'A' ? `<button class="flaggaknapp" id="flagga-kortet">${FLAG} Flagga kortet</button>` : `<button class="gra" aria-label="Förra">‹</button>`}
+      <span class="pager">${st.held.where === 'hand' ? `${i + 1} av 5` : ''}</span>
+      <button class="stang" id="stang">Stäng</button>
+      ${v === 'A' ? '' : `<button class="gra" aria-label="Nästa">›</button>`}
+    </div>
+  </div>`
+}
+function wireHallet(tel) {
+  const s = tel.querySelector('#stang'); if (s) s.onclick = () => { st.held = null; telefon() }
+  const f = tel.querySelector('#flagga-kortet'); if (f) f.onclick = () => { st.about = st.held; st.held = null; st.sheet = true; telefon(); tel.querySelector('textarea')?.focus() }
+}
+
+const whereWord = w => ({ hand: 'i din hand', front: 'framför dig', table: 'i saloonen' }[w])
+function fast(a) {
+  const c = C[a.key]
+  return `<div class="galler"><img src="${c.img}" alt=""><div><b>${c.title}</b>${whereWord(a.where)} · designern ser kortet som det ser ut nu</div><button id="lossa" aria-label="Ta bort kortet ur flaggan" title="Ta bort kortet">✕</button></div>`
+}
+function ark() {
+  let mitt = ''
+  if (v === 'A') mitt = st.about ? fast(st.about) : `<p>Gäller det ett kort? Tryck på kortet och flagga därifrån.</p>`
+  if (v === 'B') mitt = st.about ? fast(st.about) : `<div class="vad"><button aria-pressed="true">Ögonblicket<small>det som händer nu</small></button><button id="ett-kort">Ett kort…<small>peka ut det</small></button></div>`
+  if (v === 'C') {
+    const grupp = (namn, keys, where) => `<span class="grupp">${namn}</span>` + keys.map((k, i) => {
+      const id = `${where}:${i}`
+      return `<button class="val" data-id="${id}" data-key="${k}" data-where="${where}" aria-pressed="${st.chosenCards.includes(id)}" aria-label="${C[k].title}, ${whereWord(where)}"><img src="${C[k].img}" alt=""></button>`
+    }).join('')
+    mitt = `<p>Gäller det ett kort? Tryck på det. Inget val flaggar ögonblicket.</p>
+      <div class="valremsa">${grupp('Senast', [lastMoved], 'table')}${grupp('Handen', hand, 'hand')}${grupp('Framför', front, 'front')}${grupp('Bordet', table.filter(k => k !== lastMoved), 'table')}</div>`
+  }
+  return `<div class="ark-bakgrund" id="ark-bg"><div class="ark" role="dialog" aria-modal="true" aria-labelledby="ark-t">
+    <h3 id="ark-t">${st.about || st.chosenCards.length ? 'Flagga kortet' : 'Flagga ögonblicket'}</h3>
+    ${v === 'C' || !st.about ? '<p>Designern ser när i spelet det hände.</p>' : ''}
+    ${mitt}
+    <textarea placeholder="Vad hände? (frivilligt)" maxlength="280"></textarea>
+    <div class="knappar"><button class="skicka" id="skicka">Flagga</button><button class="tyst" id="avbryt">Avbryt</button></div>
+  </div></div>`
+}
+function wireArk(tel) {
+  const bg = tel.querySelector('#ark-bg'); if (!bg) return
+  bg.onclick = e => { if (e.target === bg) { st.sheet = false; telefon() } }
+  tel.querySelector('#avbryt').onclick = () => { st.sheet = false; telefon() }
+  const l = tel.querySelector('#lossa'); if (l) l.onclick = () => { st.about = null; telefon() }
+  const k = tel.querySelector('#ett-kort'); if (k) k.onclick = () => { st.sheet = false; st.picking = true; telefon() }
+  tel.querySelectorAll('.val').forEach(b => b.onclick = () => {
+    const id = b.dataset.id
+    st.chosenCards = st.chosenCards.includes(id) ? st.chosenCards.filter(x => x !== id) : [...st.chosenCards, id]
+    const note = tel.querySelector('textarea').value
+    telefon(); tel.querySelector('textarea').value = note
+  })
+  tel.querySelector('#skicka').onclick = () => {
+    const note = tel.querySelector('textarea').value.trim()
+    const picked = v === 'C' ? st.chosenCards.map(id => { const [where] = id.split(':'); return { key: tel.querySelector(`.val[data-id="${id}"]`).dataset.key, where } }) : st.about ? [st.about] : []
+    const base = { who: 'Ada', table: 'KZD7HC', move: 7, of: 7, at: 'nu', note, mine: true }
+    if (picked.length === 0) flags.push({ ...base, card: null })
+    else for (const p of picked) flags.push({ ...base, card: p.key, where: ({ hand: 'i Adas hand', front: 'framför Ada', table: 'i saloonen' })[p.where], up: true })
+    st.sheet = false; st.about = null; st.chosenCards = []
+    st.toast = 'Flaggat'; telefon(); resultat()
+    setTimeout(() => { st.toast = null; telefon() }, 1600)
+  }
+}
+
+// --- Resultat ---------------------------------------------------------------------------------
+const vem = f => `<b>${f.who}</b>${f.observer ? '<em class="badge">observatör</em>' : ''} <span class="tyst">· bord ${f.table}</span>`
+const nar = f => `<span class="nar">${FLAG.replace('<svg', '<svg width="12" height="12"')} drag ${f.move} av ${f.of} · ${f.at}</span>`
+const text = f => f.note ? `: «${f.note}»` : ' flaggade utan kommentar'
+const andratSedan = f => f.card === 'sheriff' ? ' · <span class="andrat">ändrat sedan, i version 2</span>' : ''
+
+function resultat() {
+  const res = document.getElementById('res')
+  document.getElementById('v-antal').textContent = `${flags.length} flaggor`
+  const head = `<h3>Flaggor <span class="tyst">· i spelets ordning, bord för bord</span></h3>`
+  if (r === '1') {
+    res.innerHTML = head + `<ol class="flaggor">${flags.map((f, i) => `<li>
+      ${f.card ? `<button class="tumme${f.up ? '' : ' nedvand'}" data-i="${i}" aria-label="Visa ${C[f.card].title} som det såg ut"><img src="${f.up ? C[f.card].img : C[f.card].back}" alt=""></button>` : '<span class="ingen-tumme">inget kort</span>'}
+      <div>${nar(f)}<p>${vem(f)}${text(f)}</p>
+      ${f.card ? `<p class="sa-sag">${C[f.card].title} · ${f.where}${f.up ? '' : ', nedvänt'} · version 1${andratSedan(f)}</p>` : ''}</div></li>`).join('')}</ol>`
+    res.querySelectorAll('.tumme').forEach(b => b.onclick = () => lyft(flags[+b.dataset.i]))
+  }
+  if (r === '2') {
+    const per = {}
+    flags.forEach(f => { if (f.card) (per[f.card] ??= []).push(f) })
+    const keys = Object.keys(per).sort((a, b) => per[b].length - per[a].length)
+    const open = st.open ?? keys[0]
+    res.innerHTML = `<h3>Flaggade kort <span class="tyst">· flest flaggor först, som korten såg ut i version 1</span></h3>
+      <div class="kortgalleri">${keys.map(k => `<button data-k="${k}" aria-pressed="${k === open}"><img src="${C[k].img}" alt=""><span class="antal">${per[k].length}</span><span class="namn">${C[k].title}${k === 'sheriff' ? '<br><span class="andrat">ändrat i version 2</span>' : ''}</span></button>`).join('')}</div>
+      ${open ? `<div class="kortets-flaggor"><b>${C[open].title}</b> <span class="tyst">· ${per[open].length} ${per[open].length === 1 ? 'flagga' : 'flaggor'}</span><ol>${per[open].map(f => `<li>${nar(f)}<p style="margin:2px 0 0">${vem(f)}${text(f)} <span class="tyst">· ${f.where}${f.up ? '' : ', nedvänt'}</span></p></li>`).join('')}</ol></div>` : ''}
+      <h3>Ögonblick <span class="tyst">· flaggor utan kort</span></h3>
+      <ol class="flaggor">${flags.filter(f => !f.card).map(f => `<li style="grid-template-columns:1fr"><div>${nar(f)}<p>${vem(f)}${text(f)}</p></div></li>`).join('')}</ol>`
+    res.querySelectorAll('.kortgalleri button').forEach(b => b.onclick = () => { st.open = b.dataset.k; resultat() })
+  }
+  if (r === '3') {
+    res.innerHTML = head + `<ol class="flaggor ogon">${flags.map((f, i) => `<li>${nar(f)}<p>${vem(f)}${text(f)}</p>
+      ${f.card ? `<p class="sa-sag">${C[f.card].title} · ${f.where}${f.up ? '' : ', nedvänt'}${andratSedan(f)}</p>` : ''}
+      ${st.openFlag === i ? `<div class="ogonblick">
+          <figure class="bordsbild" style="margin:0"><img src="img/bordet-drag-7.jpg" alt="Bordet vid drag ${f.move}">
+            ${f.card ? '<span class="ring" style="left:54.6%;top:25.6%;width:4.2%;height:8.4%"></span>' : ''}
+            <figcaption>Bordet vid drag ${f.move} av ${f.of}, sett av alla</figcaption></figure>
+          ${f.card ? `<div class="sidan"><img src="${f.up ? C[f.card].img : C[f.card].back}" alt="${C[f.card].title}"><p>Som kortet såg ut, version 1.</p></div>` : '<div class="sidan"><p>Flaggan gäller inget kort.</p></div>'}
+        </div>` : `<button class="oppna" data-i="${i}">Visa bordet vid drag ${f.move}</button>`}</li>`).join('')}</ol>`
+    res.querySelectorAll('.oppna').forEach(b => b.onclick = () => { st.openFlag = +b.dataset.i; resultat() })
+  }
+}
+
+function lyft(f) {
+  const c = C[f.card]
+  const el = document.getElementById('lyft')
+  el.innerHTML = `<div class="lyft-bakgrund" id="lyft-bg"><div class="lyft" role="dialog" aria-modal="true" aria-label="${c.title} som det såg ut">
+    <img src="${f.up ? c.img : c.back}" alt="${c.title}">
+    <div><h4>${c.title}</h4><span class="tyst">som kortet såg ut när ${f.who} flaggade</span>
+      <dl><dt>Version</dt><dd>1 · Första playtestet</dd><dt>Läge</dt><dd>${f.where}, ${f.up ? 'uppvänt' : 'nedvänt — ' + f.who + ' såg baksidan'}</dd><dt>När</dt><dd>drag ${f.move} av ${f.of} · ${f.at}</dd><dt>Nu</dt><dd>${f.card === 'sheriff' ? '<span class="andrat">texten ändrades i version 2</span>' : 'oförändrat'}</dd></dl>
+      ${f.up ? '' : `<p class="tyst">Framsidan: </p><img src="${c.img}" alt="" style="width:120px">`}
+      <p>«${f.note || '—'}»</p>
+      <button id="lyft-stang">Stäng</button></div></div></div>`
+  el.querySelector('#lyft-stang').onclick = () => el.innerHTML = ''
+  el.querySelector('#lyft-bg').onclick = e => { if (e.target.id === 'lyft-bg') el.innerHTML = '' }
+  el.querySelector('#lyft-stang').focus()
+}
+
+sync()
+</script>
+</body>
+</html>

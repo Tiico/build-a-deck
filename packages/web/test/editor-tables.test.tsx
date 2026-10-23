@@ -500,6 +500,103 @@ describe('starting a table from the Bord tab (#19, L5, #299, L31)', () => {
   })
 })
 
+// «Starta nytt bord» står först i kolumnen, ovanför bordet som redan kör (L31), och «Nytt bord»
+// står i pilens meny direkt under det (L5): båda startade ett andra bord med ett tryck, och den som
+// kom för att öppna det pågående fick ett nytt med en ny kod (#1145, beslut A). Trycket frågar nu
+// först, och frågan öppnar på svaret som öppnar bordet som kör.
+describe('a second table is asked about first (#1145)', () => {
+  const sessions = async () => ((await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as unknown[]).length
+
+  it('in the Bord tab: names the running table, opens it, takes Escape back, and starts another only when told to', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    const id = await startTable()
+    const code = roomOf(id).code
+    await openTables()
+    await onlyRow()
+    const button = screen.getByRole('button', { name: 'Starta nytt bord' })
+
+    await user.click(button)
+    const asked = screen.getByRole('alertdialog', { name: 'Ett bord kör redan' })
+    expect(asked.textContent).toContain(`Bordet ${code} kör redan.`)
+    const open = within(asked).getByRole('button', { name: `Öppna ${code}` })
+    expect(document.activeElement).toBe(open)
+    expect(await sessions()).toBe(1)
+
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
+    await user.click(open)
+    const url = new URL(String(opened.mock.calls[0]![0]), 'http://x')
+    expect([url.pathname, url.searchParams.get('session'), opened.mock.calls[0]![1]]).toEqual(['/table', id, '_blank'])
+    opened.mockRestore()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(button)
+
+    await user.click(button)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(button)
+    expect(await sessions()).toBe(1)
+
+    await user.click(button)
+    await user.click(screen.getByRole('button', { name: 'Starta ett nytt ändå' }))
+    await waitFor(async () => expect(await sessions()).toBe(2))
+    await waitFor(() => expect(document.querySelector('.byd-tables-started')?.textContent).toMatch(/^Nytt bord startat: /))
+  })
+
+  it('in the Bord tab: says how many run when there are several, by the newest', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    await startTable()
+    const newest = await startTable()
+    await openTables()
+    await rows()
+    await user.click(screen.getByRole('button', { name: 'Starta nytt bord' }))
+    expect(screen.getByRole('alertdialog', { name: 'Ett bord kör redan' }).textContent).toContain(`2 bord kör redan, senast ${roomOf(newest).code}.`)
+  })
+
+  it('in the Bord tab: starts at once when every table of the game has ended', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const { TablesTab } = await import('../src/editor/TablesTab.js')
+    let started = 0
+    const over = { id: 'bord-1', version: 'rev-1', lastAt: new Date().toISOString(), ended: true, code: 'ABCDEF' }
+    const client = { rev: 1, doc: projectDoc(), tables: () => Promise.resolve([over]), startTable: () => ((started += 1), Promise.resolve({ ...over, id: 'bord-2', ended: false })) }
+    render(<TablesTab client={client as unknown as Parameters<typeof TablesTab>[0]['client']} server={run.http} />)
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(started).toBe(1)
+  })
+
+  it('in the caret menu: «Nytt bord» asks in the menu, and Escape puts «Nytt bord» back with the focus on it', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    const id = await startTable()
+    const code = roomOf(id).code
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    await user.click(await screen.findByRole('button', { name: 'Fler sätt att öppna bordet' }))
+    const menu = await screen.findByRole('group', { name: 'Bordet' })
+    await within(menu).findByRole('listitem')
+
+    await user.click(await within(menu).findByRole('button', { name: 'Nytt bord' }))
+    const asked = within(menu).getByRole('alertdialog', { name: 'Ett bord kör redan' })
+    expect(asked.textContent).toContain(`Bordet ${code} kör redan.`)
+    expect(document.activeElement).toBe(within(asked).getByRole('button', { name: `Öppna ${code}` }))
+    expect(await sessions()).toBe(1)
+
+    // Escape answers the question, not the menu: the menu stays, with «Nytt bord» back in it.
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(within(menu).getByRole('button', { name: 'Nytt bord' }))
+    expect(await sessions()).toBe(1)
+
+    await user.click(within(menu).getByRole('button', { name: 'Nytt bord' }))
+    await user.click(screen.getByRole('button', { name: 'Starta ett nytt ändå' }))
+    await waitFor(async () => expect(await sessions()).toBe(2))
+    expect(screen.queryByRole('group', { name: 'Bordet' })).toBeNull()
+  })
+})
+
 // Vänteläget, dubbeltrycket och felet (#299, L31), mot en klient som svarar när provet säger
 // till: servern i fixturen svarar för fort för att ett andra tryck ska hinna landa under väntan.
 describe('the wait, the second press and the failure of «Starta nytt bord» (#299, L31)', () => {

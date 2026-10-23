@@ -11,12 +11,7 @@ import { translate } from '../src/i18n/index.js'
 // Sidorna 1–6 i #505 mäter mot de här talen och inga egna. Ett golv som flyttas flyttas här och i
 // DESIGN-BESLUT K26, aldrig i ett enskilt test.
 
-export { textPxOnCard, cardPxForText, SCREENS, type Screen } from '../src/legibility.js'
-
-// K9:s golv för ett kort som kontroll på filten, i px på kortsidan: det dras, trycks och pekas på.
-// Det är ett mått på ramen och inte på texten, och står här för att det är talet sidorna 1–6 ställer
-// textgolven mot — ett kort i 45 px bär 2,1 px brödtext och läses därför bara genom läsgesten.
-export const CARD_CONTROL_PX = 45
+export { textPxOnCard, cardPxForText, CARD_CONTROL_PX, SCREENS, type Screen } from '../src/legibility.js'
 
 // Brödtextens punktstorlek i en mall, läst ur elementet och inte antagen. Golvet gäller mallens
 // brödtext som den är (K26), så en yta räknar med det här och inte med ett eget 8,5.

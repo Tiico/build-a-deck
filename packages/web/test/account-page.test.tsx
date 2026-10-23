@@ -447,6 +447,52 @@ describe('a game on the home page (G1)', () => {
     expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
   })
 
+  // «Starta nytt bord» stood one line under «Öppna bordet KOD», and a press that meant the one
+  // started the other (#1145, beslut A): the press asks first, and the answer it opens on is the
+  // table that runs.
+  it('asks before starting a second table, opens on the running one, and starts another only when told to (#1145)', async () => {
+    await home()
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    await waitFor(() => expect(running()).not.toBeNull())
+    const listed = async () => ((await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as unknown[]).length
+    const more = within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' })
+
+    fireEvent.click(more)
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    const asked = screen.getByRole('alertdialog', { name: 'Ett bord kör redan' })
+    expect(asked.textContent).toContain(`Bordet ${made.code} kör redan.`)
+    const open = within(asked).getByRole('button', { name: `Öppna ${made.code}` })
+    expect(document.activeElement).toBe(open)
+    expect(await listed()).toBe(1)
+
+    // The safe answer opens the table's own screen, as «Öppna bordet» does, and starts nothing.
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
+    fireEvent.click(open)
+    const [href, target] = opened.mock.calls[0]!
+    const url = new URL(String(href), 'http://x')
+    expect([url.pathname, url.searchParams.get('session'), url.searchParams.get('owner'), target]).toEqual(['/table', made.id, '1', '_blank'])
+    opened.mockRestore()
+    expect(screen.queryByRole('alertdialog', { name: 'Ett bord kör redan' })).toBeNull()
+    expect(await listed()).toBe(1)
+
+    // Escape takes the question back and gives the focus to ⋯.
+    fireEvent.click(more)
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    fireEvent.keyDown(screen.getByRole('alertdialog', { name: 'Ett bord kör redan' }), { key: 'Escape' })
+    expect(screen.queryByRole('alertdialog', { name: 'Ett bord kör redan' })).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(more))
+    expect(await listed()).toBe(1)
+
+    // And «Starta ett nytt ändå» does what the button used to do on its own.
+    fireEvent.click(more)
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Starta ett nytt ändå' }))
+    await waitFor(async () => expect(await listed()).toBe(2))
+  })
+
   it('asks before taking a game away, and takes it away when the answer is yes', async () => {
     await home()
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))

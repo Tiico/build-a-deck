@@ -228,7 +228,14 @@ export type TableRendererProps = {
   // What the screen adds to the corner, between «Starta om» and «?»: the felt's own screen puts its
   // «⋯» there (#682). The corner lays them out on one row, so none of them is placed on its own.
   more?: ReactNode | undefined
+  // Told how big a card at rest would be in a frame of another size, whenever the felt is fitted
+  // (#1131): `/online` asks it whether its notepad may stand open and keep K9's floor. The answer
+  // is the lens's own measure of a card, the short side times the fit, so 45 px means the same
+  // thing to both.
+  onFit?: ((felt: FeltRoom) => void) | undefined
 }
+
+export type FeltRoom = { frame: Size; cardPxAt(frame: Size): number }
 
 // The short side a card on the felt is brought to by the lens's first step in (K9).
 const LENS_CARD_PX = 45
@@ -323,7 +330,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, more }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, more, onFit }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -371,6 +378,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const floorDrawn = rotate % 180 === 0 ? { w: floorRect.w, h: floorRect.h } : { w: floorRect.h, h: floorRect.w }
   const room = { w: Math.max(drawn.w, floorDrawn.w + 2 * margin), h: Math.max(drawn.h, floorDrawn.h + 2 * margin) }
   const withMargin = (fitted: number): number => (margin > 0 && size ? Math.min(fitted, fitScale(room, size, 0)) : fitted)
+  // The fit as it would be in a frame of any size, by the same rule as the one below.
+  const fitIn = (frame: Size): number => {
+    if (frame.w <= 0 || frame.h <= 0) return 0
+    const fitted = mode === 'table' ? feltScale(drawn, frame) : fitScale(drawn, frame, TV_AIR_PX)
+    return margin > 0 ? Math.min(fitted, fitScale(room, frame, 0)) : fitted
+  }
+  const fitKey = size && fixedScale === undefined ? [size.w, size.h, drawn.w, drawn.h, room.w, room.h, mode, margin].join() : null
+  useEffect(() => {
+    if (!onFit || !size || fitKey === null) return
+    onFit({ frame: size, cardPxAt: (frame) => CARD_MM.w * fitIn(frame) })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the fit is told again only when what it is fitted from has changed
+  }, [fitKey])
   // How the felt meets its frame is one rule per mode, and each leaves the air its own furniture
   // needs (K9, K17): the felt table lies on wood that stands on the dark and holds back to its
   // share of it, the TV has no rim and leaves only what a hand's count hangs out into. They were
@@ -1822,7 +1841,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           </button>
         )}
         {more}
-        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} named={forTheRoom} />}
+        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable, me !== null)} named={forTheRoom} />}
         </>,
       )}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => send([{ v: 'setCounter', component: entry.id, value }], null)} onClose={() => setEntry(null)} />}

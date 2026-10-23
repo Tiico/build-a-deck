@@ -2008,6 +2008,26 @@ Preciserat 2026-10-18 (#1021):
 - **Ett svar per plats och per observatör och bord, och ett andra svar ersätter det första.** Telefonen minns att den svarat bara i flikens egen lagring, och en telefon som glömt det frågar igen; att ta emot det nya svaret i stället för det gamla är vad den redan uttrycker, medan ett avslag skulle göra «Skicka» till ett fel för någon som inget fel gjort. Observatören känns igen på namnet hennes inträde köptes under, som «Bord du spelat vid» redan gör.
 - Unika nycklar i `surveys` håller det i Postgres; migreringen kortar befintliga dubbletter till det senaste svaret, det som ett ersättande svar hade lämnat kvar.
 
+Utvidgat 2026-10-22 (#1142, prototypat och beslutat): **en flagga kan gälla ett kort.**
+Beställaren ville att en spelare ska kunna flagga ett element i spelet, till exempel ett visst kort, och att designern ska se det exakta kortet som det såg ut.
+Tre sätt att peka ut kortet och tre sätt att visa det prövades i [`docs/ux-audits/2026-10-22-flagga-element/prototyper/index.html`](docs/ux-audits/2026-10-22-flagga-element/prototyper/index.html), med riktiga texturer ur provleken.
+Beställaren valde B och 1, och komponenter i första leveransen: högar och zoner flaggas inte än.
+
+- **Flaggan pekar efter frågan (B).** «Flagga» frågar först om det gäller det som händer eller ett kort.
+  «Ett kort…» lägger undan arket, och nästa tryck på ett kort pekar ut det och gör inget annat: det läser inte, spelar inte, lyfter inte och drar inte.
+  Inget som inte är ett kort svarar under tiden, utom en hopfälld rubrik som kortet kan ligga under.
+  Arket kommer tillbaka med kortet och med kommentaren som den lämnades.
+  Telefonen, distansvyn och observatören delar flödet (`FlagFlow`).
+- **`flag` får fältet `component`.** Det är inget nytt verb, men det är en protokolländring och står här av det skälet.
+  Motorn vägrar ett id som flaggarens vy inte har (`sees`, samma regel som `project`), så en flagga kan inte användas för att pröva dolda id:n.
+  Observatören ser varje hand (C8) och får peka ut kort i dem.
+- **Vilket kort en flagga gäller når bara loggen och designern.** `projectActivity` tar bort fältet ur raden som alla vyer får, eftersom en flagga på ett kort i den egna handen annars skulle avslöja för bordet vilket kort som oroade, i samma stund kortet spelas.
+  `wire.test.ts` läser de andra anslutningarnas råa frames och visar att id:t aldrig når dem.
+- **Resultat visar kortet som det låg (1).** Varje flaggrad bär en miniatyr av kortet, och ett tryck lyfter det med var det låg, när, i vilken version och hur spelet ritar det nu.
+  `GET /projects/:id/playtest` bär per flagga `card`: komponenten som en observatör såg den, med texturerna ur versionen flaggan restes på, vad flaggaren själv såg (`seen`), var den låg (`place`) och `now` — `same`, `changed` eller `gone` mot spelets senaste version.
+  Allt härleds på servern genom att spela upp loggen fram till flaggans rad, och texturerna är innehållsadresserade, så ett kort som skrivits om sedan visas ändå som spelaren hade det.
+  Låg kortet nedvänt för flaggaren visar miniatyren baksidan, och lyftet visar framsidan bredvid.
+
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
 Endast digitala sessioner registreras.
@@ -2226,6 +2246,10 @@ Prototypen: `docs/ux-audits/2026-10-17-handen/prototyper/767/`.
 
 Ingen inbyggd låda med generiska tärningar, kuber eller lappar.
 Behöver gruppen en markör mitt i ett test lägger designern till den via versionsbyte enligt C7 — vilket är precis den insikten loggen bör fånga.
+
+Preciserat 2026-10-22 (#1131): bordets anteckningsblock (K29) är inte en sådan lapp.
+Det ligger inte på filten, går inte att flytta, vända eller räkna med, och är sessionens och inte spelets — som platserna.
+K5 handlar om föremål i spelet; blocket är det papper sällskapet för vid sidan av.
 
 ### K6. Närvaro: markörer, peka-gest, tillskrivna rörelser
 
@@ -2519,6 +2543,20 @@ Det är vad handen gör fysiskt, och det är en affordance, inte en regel — ko
 
 Följdkrav:
 Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
+
+Reviderat 2026-10-22 (#1133, beställarens beslut A efter prototyp): **det andra valet är att vända kortet i handen.**
+Ett kort man vänt i handen spelas nedvänt vart det än går, också till en publik zon, och ett kort man inte vänt följer regeln ovan.
+Tre former prototypades i `docs/ux-audits/2026-10-22-vanda-i-handen/prototyper/`: vänd i handen, en växel «Uppvänt | Nedvänt» vid spelningen, och en kryssruta i arket.
+Valet blev den första, eftersom det är det beställaren bad om och eftersom handen då visar hur kortet kommer att landa innan det landar.
+
+- «Vänd» och «Vänd upp» är ett verb på kortet: under det lyfta kortet på telefonen, i adresspanelen bakom Enter eller ett tryck i `/online`s hand, och som F på ett kort i remsan, solfjädern och spalten, som F vänder ett kort på filten.
+- Ett vänt kort visar sin baksida i handen med pillret «nedvänt · namn», samma form som ett eget nedvänt kort framför en (#483), i remsan, solfjädern, spalten, «Visa alla» och spöket som bärs ut på filten (K24).
+- Spelknappen under kortet och i foten säger «… · nedvänt», och raden under handen «Valt: … · spelas nedvänt».
+- Vändningen skickar ingenting och står inte i loggen. Ingen annan ser åt vilket håll ett kort i ens hand ligger, så den är skärmens minne (`player/turned.ts`), sparat per bord och plats i webbläsaren. Ett kort som lämnar handen glöms, så ett kort som kommer tillbaka kommer uppvänt som alla kort.
+- Handkortets `face` i motorn kunde inte bära valet: ett kort draget ur en nedvänd hög ligger som `back` i handen, och ägaren ser framsidan ändå.
+- Spelningen vänder kortet nedåt medan det fortfarande ligger i handen (`flip` före `move` i samma kuvert), så det ligger aldrig uppvänt i en publik zon. `faceDown` i `player/play.ts` är regeln för varje väg en hand spelar på: knapparna, arket, dragningen ut på filten och adresspanelen.
+- Lagt framför sig själv följer en `peek` med, som när man vänder ner ett eget kort där (#483): ägaren vet vilket kort det är, rummet vet att ett kort ligger där. Lagt någon annanstans följer ingen kunskap med (B6).
+- Grindar: `packages/web/test/turned-in-hand.test.ts` (motorn och projektionen), `player-page.test.tsx` och `online-keyboard.test.tsx` (ytorna), och `packages/e2e/test/turned-in-hand.spec.ts`, som läser de råa ramarna.
 
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
@@ -4038,6 +4076,35 @@ Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på 
 
 Prototyperna: [`index.html`](https://github.com/Tiico/build-a-deck/blob/3cff0957e3494cc3c096f59c8dd1e70a06101144/docs/ux-audits/2026-10-22-tarningar/prototyper/index.html) (bordet och telefonen, beslut A + B) och [`editor.html`](https://github.com/Tiico/build-a-deck/blob/5adb14f5544d2a9be04da4a3f8e78eb6150e93df/docs/ux-audits/2026-10-22-tarningar/prototyper/editor.html) (fliken Bord, beslut A med dynamiskt antal).
 
+### K29. Bordets anteckningsblock: en spalt på /online, rader med vem som skrev dem (prototypat och beslutat 2026-10-22, #1131)
+
+Sällskap som spelar dator till dator behöver ett gemensamt ställe för det spelet låter dem hålla i huvudet: poäng som inte bor på ett kort, vems tur det var att blanda, en regelfråga till efter partiet.
+Tre former prototypades mot `/online` (`docs/ux-audits/2026-10-22-anteckningsblocket/prototyper/`): **A, Lådan** — en gemensam fritext bakom en knapp i huvudet; **B, Spalten** — rader till vänster om filten; **C, Lappen** — ett gult block bredvid bordet.
+
+**Valet blev B, och bara på `/online` i första leveransen.**
+Rader i stället för en gemensam text, eftersom två som skriver samtidigt då aldrig skriver över varandra (D3): en rad skrivs om hel, och den omskrivning som landar sist är raden.
+Varje rad bär sin skribents platsfärg och namn, kan bockas av (struken, kvar) och tas bort, och skrivs om där den står; Enter sparar, Escape ångrar.
+Spalten står vid filtens inline-början, mitt emot handen, och fälls ihop till en list ett tryckmål bred; listen får en prick och namnet «Anteckningar, nytt från någon annan» när någon annan skrivit sedan den fälldes.
+**Hopfälld där den kostar (beställarens beslut 2026-10-22).**
+Öppen tar spalten 240 px bredd av filten, och vid 1280×800 drog det korten under K9:s golv: 46 → 36 px på kortsidan, mätt i `online-felt.test.tsx`; 1440×900 gick 52 → 44, 1512×982 57 → 47, och 1920×1080 kostade ingenting, där filten är höjdbunden ändå.
+Utan eget val står spalten därför öppen bara där ett kort i vila håller 45 px med spalten öppen. Filten svarar själv på frågan (`onFit` i `TableRenderer`, med linsens mått, kortsidan gånger passningen), så gränsen är ingen brytpunkt i koden utan följer bordets form och antal platser.
+Ett eget val — öppna eller fäll ihop — minns webbläsaren som en tittares egen bekvämlighet och går före; den som öppnar spalten i ett litet fönster får mindre kort, och vet om det.
+I ett stående fönster ligger spalten över filtens hörn i stället för att ta en rad höjd, och öppnas aldrig utan att någon ber om det.
+Ihopfälld kostar den ingenting. A kostade ingen filt i vila men täckte en tredjedel av den när den var öppen och visade aldrig vem som skrev; C låg närmast det K5 sa nej till.
+
+**Blocket är sessionens, inte spelets.**
+Fyra sessionsverb — `note.add`, `note.edit`, `note.check`, `note.remove` — och inget fysiskt; en rad heter `n<seq>` efter raden i loggen som skrev den, så den behöver ingen slump (D4).
+Raderna är inte spel: de räknas inte som drag, gör inte bordet påbörjat, och Ångra går förbi dem till det egna draget.
+En tillbakaspolning, ett Ångra och en ny uppställning återställer bordet och lämnar blocket som det står, för det skrevs om sällskapet och inte om korten.
+Blocket rymmer hundra rader på högst 280 tecken, samma tak som en flaggas kommentar, och följer med i projektionen hel som en `notes`-patch när en rad ändras. Inget i det är dolt: blocket är rummets.
+Observatören läser det men skriver inte, som hon bara får flagga.
+«Senast:» i huvudet hoppar över raderna, eftersom spalten själv visar dem; skärmläsarens aktivitet säger dem med vad de säger.
+
+Följdkrav:
+Korpusen anonymiserar radernas text som den gör en flaggas (DRIFT §7), och `scripted-notepad.json` bär blocket genom ett ångra och en tillbakaspolning.
+Grindar: `packages/engine/test/notes.test.ts`, `packages/web/test/online-notes.test.tsx`, `packages/e2e/test/online-notes.spec.ts`, där två datorer skriver, bockar och skriver om i samma block, och `packages/e2e/test/online-notes-k9.spec.ts`, som håller K9:s golv vid 1280, 1440, 1512 och 1920 i spaltens eget standardläge.
+Utanför den här leveransen: blocket på bordsskärmen, TV:n och telefonen, och raderna i designerns «Resultat» (G3). Datan bär redan allt de skulle läsa.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
@@ -4348,7 +4415,11 @@ Editorn har en knapp som startar ett bord från projektet eller skickar `version
 Knappen heter det jobb den står i begrepp att göra (#417, byggt 2026-09-21): utan bord heter den "Starta bord" ("Start a table"), och "Startar bordet…" medan starten är på väg; med ett bord heter den "Uppdatera bordet" som förut.
 "Nytt bord" står i pilens meny bredvid knappen, ovanför "Alla bord", vid alla bredder (beslut 2026-09-27, #477 fynd 4, prototyp 09 variant B).
 Den stod förut bredvid knappen i huvudet, och vid 1024 px var det "Uppdatera bordet" som fick ge plats: den klipptes till "Uppdatera bo".
-Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort, och det frågas inte om (samma beslut).
+Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort.
+Det frågades förut inte om (samma beslut), men ett tryck som menade det pågående bordet startade ett nytt med en ny kod, och gästerna vid det första såg ingenting.
+Sedan #1145 (beställarens beslut 2026-10-22, prototyp `docs/ux-audits/2026-10-22-andra-bordet/prototyper/`, variant A) frågar «Nytt bord», Bord-flikens «Starta nytt bord» och startsidans «Starta nytt bord» först, medan ett bord av spelet kör.
+Frågan är produktens `Question` som den är: den namnger det nyaste bordet som kör («Bordet KOD kör redan», eller «2 bord kör redan, senast KOD»), öppnar på «Öppna KOD», som öppnar bordets skärm i en ny flik, och «Starta ett nytt ändå» startar det andra bordet.
+Utan ett bord igång startar knappen direkt, som förut.
 Efter en omladdning plockar editorn upp det nyaste bordet som fortfarande kör, så att knappen uppdaterar det i stället för att starta ett andra (#477 fynd 1).
 Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bord hade en blå knapp som lovade en uppdatering och i stället startade en session med rumskod; meningen i Bord-fliken förklarade skillnaden på en annan flik i stället för att knappen sade rätt ord.
 Meningen citerar numera det namn knappen bär.
@@ -5782,6 +5853,7 @@ Knappen är en **andrahandsknapp** och kan inte bli något annat: den ljusa fyll
 **Den står först i kolumnen, över listan.**
 Det är det fliken finns till för; allt under den är bord som redan finns.
 Priset är erkänt: den som kom hit för att öppna ett pågående bord möter varje gång en knapp som startar ett nytt.
+Sedan #1145 kostar priset bara en fråga: medan ett bord kör frågar knappen först och öppnar på det bordet (L5).
 
 **Revisionen står inte i knappen.**
 Knappen säger bara «Starta nytt bord», med en play-ikon.
@@ -7677,3 +7749,19 @@ Verktygsradens fem märken och skrubbernas sju är ikoner som tabellen inte rita
 En glyf tar aldrig emot pekaren (`pointer-events: none`): trycket, och varje fråga om vad som står under en punkt, landar på kontrollen den är ritad i.
 Det upptäcktes när tabellens träffytetester läste glyfens `<path>` i stället för ×-knappen.
 En glyf är 1 em i fyrkant, och där en rad var mätt till tecknet den ersatte ger den tillbaka luften runt sin teckning: kronans och tabellfotens chevroner och tabellrubrikens sorteringspil står med negativ marginal på rutnätets tomma fjärdedelar, så kronan står kvar på en rad bredvid AI-panelen vid 1280 i ett brett typsnitt (#130), fotens tysta rad bryts inte vid 1024 på Linux (#618) och en sifferkolumn är inte bredare än en siffra (#46).
+
+### L76. En dropdown-knapp säger att den är öppen, och ett tryck utanför stänger (prototypat och beslutat 2026-10-22, #1144)
+
+Åtta knappar i editorn öppnar en meny eller låda under sig, och alla åtta pekade sin chevron nedåt både stängd och öppen.
+Ingenting sade alltså att ett tryck till stänger menyn, och tre av dem stängde inte heller vid ett tryck utanför: bordsmenyn i huvudet («Uppdatera ⌄», «Starta bord ⌄») stod kvar genom allt utom Escape och sin egen pil, och radmenyn i Bord-fliken och mallens kortgruppsmeny stängde bara när fokus flyttades — ett tryck på dukens rutmönster flyttar inget fokus.
+Tre utseenden prövades på den byggda editorn i [`docs/ux-audits/2026-10-22-dropdown-knappar/prototyper/1144-dropdown-knappar.html`](docs/ux-audits/2026-10-22-dropdown-knappar/prototyper/1144-dropdown-knappar.html): chevronen vänds (A), chevronen vänds och knappen trycks ned (B), och chevronen blir × och knappen trycks ned (C).
+Valet blev **B**.
+Formen säger åt vilket håll menyn går, grunden säger att knappen hålls, och den nedtryckta grunden är samma som kolumndörrens handtag (#695).
+C:s × läses som «ta bort» när det står bredvid ett värde i kronan.
+
+**Byggt 2026-10-22 (#1144).**
+En dropdown-knapp är en knapp med `data-drop` och `aria-expanded`; en regel i `editor.css` vrider dess `chevron-down` ett halvt varv (150 ms, direkt med «minska rörelse») och lägger en mörkare grund och en inre skugga över det knappens roll målar, medan menyn står.
+`drop-buttons.test.ts` håller att varje `<ChevronGlyph to="down" />` i `packages/web/src` sitter i en sådan knapp; en chevron som vänder sig själv efter sitt läge är en fällning och läses inte.
+Ett tryck utanför stänger alla åtta: `usePressAway` i `doors.ts` är den gemensamma vägen, och fokus lämnas där pekaren satte det, som #133 säger.
+`drop-buttons.spec.ts` mäter det öppna läget och trycket på rutmönstret i den byggda appen.
+Disclosure-knapparna, som redan vänder sin chevron från höger till ned, och ⋯-knapparna, som redan får editorns mörka grund när de är öppna (#791), är oförändrade.

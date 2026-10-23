@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
-import { useDoor } from '../doors.js'
+import { useRef, type ReactNode, type RefObject } from 'react'
+import { useDoor, usePressAway } from '../doors.js'
 import { useT } from '../i18n/index.js'
 import { ChevronGlyph } from '../glyphs.js'
 
@@ -66,6 +66,7 @@ export function CrownBox({ name, state, count, short, open, onToggle, boxRef, en
       type="button"
       className={end ? 'byd-crown-box byd-crown-end' : 'byd-crown-box'}
       aria-expanded={open}
+      data-drop
       // The whole sentence is the box's name, whatever the row has room to show of it (#477): on a
       // wall narrower than a 1280 window's a box with a choice in it shows only the choice.
       aria-label={said}
@@ -92,27 +93,14 @@ export function CrownBox({ name, state, count, short, open, onToggle, boxRef, en
 // leaves the focus where the pointer put it. The order against a drag that is still held is
 // `doors.ts`'s and not this component's (#152).
 export function CrownDrawer({ label, opener, onClose, children }: { label: string; opener: RefObject<HTMLButtonElement | null>; onClose(): void; children: ReactNode }) {
-  const latest = useRef({ opener, onClose })
-  latest.current = { opener, onClose }
+  const drawer = useRef<HTMLDivElement>(null)
   useDoor('standing', () => {
     onClose()
     opener.current?.focus()
   })
-  useEffect(() => {
-    const onPointerDown = (event: Event) => {
-      const now = latest.current
-      const target = event.target
-      if (!(target instanceof Element)) return
-      // The box that opened it is left alone: it already closes the drawer, and closing on the way
-      // down would only let the click that follows open it again.
-      if (now.opener.current?.contains(target) || target.closest('[data-crown-drawer]')) return
-      now.onClose()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [])
+  usePressAway(true, () => [opener.current, drawer.current], onClose)
   return (
-    <div className="byd-crown-drawer" data-crown-drawer role="group" aria-label={label}>
+    <div ref={drawer} className="byd-crown-drawer" data-crown-drawer role="group" aria-label={label}>
       {children}
     </div>
   )
