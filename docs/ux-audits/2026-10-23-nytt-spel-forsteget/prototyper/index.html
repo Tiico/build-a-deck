@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Steget före guidad start</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-23: «När man skapar ett spel så tycker jag nog att steg 1 kan flyttas ut
+     till ett steg innan man kommer in i wizarden.»
+     Steg 1 i dag (NewProjectPage.tsx, `spelet`): Spelets namn, Spelare (1–8) och dörren «Börja från
+     ett tomt spel» (L42). Tre varianter av var det steget står när det inte längre står i guiden:
+       A  en dialog över Mina spel
+       B  en egen sida, /new, som är ett vägskäl
+       C  brickan «＋ Nytt spel» blir själv formuläret, i rutnätet
+     Efter försteget är guiden två steg (Fält, Korten) och samma i alla tre; tomt spel går rakt
+     till editorn, som här bara är en märkt attrapp.
+     Ritat för hand med kontots (account.css, buttons.css) och guidens (wizard.css, stepper.css)
+     egna färger och mått, och guidens egna strängar (sv.account.ts).
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  main.scen { flex: 1 1 auto; display: grid; justify-content: safe center; align-content: start; padding: 20px 16px 60px; background: #15171c; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .sida[data-bredd='dator'] { width: 1180px; height: 740px; }
+  .sida[data-bredd='telefon'] { width: 375px; height: 760px; }
+  .sida > * { height: 100%; overflow: auto; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 6px; }
+  .etikett b { color: #e6ecfa; }
+  .offscreen { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* ── Kontot: Mina spel (account.css, buttons.css) ───────────────────────────────────────── */
+  .acc { --bg: #0f1117; --card: #171a23; --card-hover: #1c2030; --edge: #262a35; --muted: #9aa3b8; --ok: #7dd3a0; --ok-ink: #0b2a18; --sec-line: #6f7a90; --sec-ink: #dce3f2; --field: #0f1117;
+    position: relative; background: var(--bg); color: #e6e6e6; font: 14px system-ui, sans-serif; box-sizing: border-box; padding: 40px 20px; display: grid; justify-content: center; align-content: start; }
+  .sida[data-bredd='telefon'] .acc { padding: 24px 16px; }
+  .acc :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .acc button { font: inherit; cursor: pointer; }
+  .acc .prim { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--ok); color: var(--ok-ink); font-weight: 700; }
+  .acc .sek { min-height: 44px; padding: 0 16px; border: 1px solid var(--sec-line); border-radius: 12px; background: transparent; color: var(--sec-ink); font-weight: 600; }
+  .acc .lank { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .home { width: 920px; display: grid; gap: 18px; }
+  .sida[data-bredd='telefon'] .home { width: 343px; }
+  .home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; }
+  .home h1 { margin: 0; font-size: 28px; }
+  .vem { color: var(--muted); font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .vem .ikon { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; }
+  .g { width: 16px; height: 16px; flex: none; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-rows: 1fr; gap: 14px; }
+  .sida[data-bredd='telefon'] .grid { grid-template-columns: 1fr 1fr; }
+  .spel { background: var(--card); border: 1px solid var(--edge); border-radius: 16px; padding: 16px; display: grid; gap: 8px; align-content: start; color: #fff; text-align: left; }
+  .spel .kort { height: 132px; aspect-ratio: 63 / 88; border-radius: 4px; background: var(--c); }
+  .sida[data-bredd='telefon'] .spel .kort { height: 96px; }
+  .spel strong { font-size: 17px; }
+  .spel .muted { color: var(--muted); font-size: 13px; }
+  button.spel[data-new] { border-style: dashed; place-items: center; align-content: center; color: var(--muted); font-size: 14px; }
+  button.spel[data-new]:hover { background: var(--card-hover); border-color: #3a4152; }
+  .falt { display: grid; gap: 6px; color: #c3cbdd; font-size: 13px; font-weight: 600; }
+  .falt input { min-height: 44px; padding: 0 12px; border: 1px solid #3a4152; border-radius: 10px; background: var(--field); color: #fff; font: 15px system-ui, sans-serif; }
+  .falt input:focus { outline: 3px solid #9cc6ff; outline-offset: 1px; border-color: #9cc6ff; }
+  .falt input[aria-invalid='true'] { border-color: #ff9a9a; }
+  .says { margin: 0; color: #ffb4b4; font-size: 13px; font-weight: 600; }
+  .stegare { display: inline-flex; align-items: stretch; border: 1px solid var(--sec-line); border-radius: 8px; background: #1b1d23; }
+  .stegare button { width: 44px; height: 44px; border: 0; background: none; color: #fff; font-size: 18px; }
+  .stegare output { width: 44px; display: grid; place-items: center; border-inline: 1px solid #2f333d; color: #fff; font-weight: 700; }
+  .stegrad { display: inline-flex; align-items: center; gap: 12px; }
+  .stegrad .muted { color: var(--muted); font-size: 13px; }
+
+  /* A: dialogen, kontots egen (samma som borttagningsfrågan och passkey-dialogen) */
+  .skymning { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: rgb(5 7 12 / 70%); }
+  .dialog { width: min(460px, 100%); box-sizing: border-box; display: grid; gap: 18px; padding: 28px; border-radius: 20px; background: var(--card); border: 1px solid #343a4a; box-shadow: 0 20px 60px rgb(0 0 0 / 60%); }
+  .dialog-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dialog h2 { margin: 0; font-size: 20px; }
+  .stang { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--muted); }
+  .stang:hover { border-color: var(--sec-line); color: #fff; }
+  .val { display: grid; gap: 10px; padding-top: 4px; border-top: 1px solid var(--edge); }
+  .val .prim { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .val .forklaring { margin: -4px 0 4px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+  .val .eller { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+  .sida[data-bredd='telefon'] .skymning { place-items: end stretch; padding: 0; }
+  .sida[data-bredd='telefon'] .dialog { width: 100%; border-radius: 20px 20px 0 0; padding: 22px 16px 28px; }
+
+  /* C: brickan som blir spelet. Två kolumner bred på datorn, hela raden på telefonen. */
+  .spel.fodd { grid-column: span 2; grid-template-columns: auto 1fr; gap: 16px; align-content: stretch; border-color: #3a4152; background: var(--card-hover); }
+  .sida[data-bredd='telefon'] .spel.fodd { grid-column: 1 / -1; grid-template-columns: 1fr; }
+  .spel.fodd .tomkort { height: 132px; aspect-ratio: 63 / 88; border-radius: 4px; border: 1.5px dashed #4a5266; display: grid; place-items: center; color: #4a5266; font: 700 28px Georgia, serif; }
+  .sida[data-bredd='telefon'] .spel.fodd .tomkort { display: none; }
+  .spel.fodd form { display: grid; gap: 12px; align-content: start; margin: 0; }
+  .spel.fodd .falt input { font-size: 17px; font-weight: 700; }
+  .spel.fodd .knappar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .spel.fodd .knappar .lank { margin-left: auto; }
+
+  /* ── Guiden (wizard.css, stepper.css): papperet ──────────────────────────────────────────── */
+  .wiz { --ink: #1e2620; --muted: #5c6459; --paper: #f5f3eb; --panel: #eeece4; --fieldbg: #fff; --line: #d9d8cc; --accent: #b8461f; --sec-line: #797d75;
+    background: var(--paper); color: var(--ink); font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; }
+  .wiz * { box-sizing: border-box; }
+  .wiz button, .wiz input { font: inherit; }
+  .wiz button { min-height: 44px; min-width: 44px; border: 1px solid #cbcabe; border-radius: 9px; padding: 0 12px; background: var(--fieldbg); color: inherit; cursor: pointer; }
+  .wiz button:hover { border-color: #8d918a; }
+  .wiz :focus-visible { outline: 3px solid color-mix(in srgb, var(--accent), transparent 60%); outline-offset: 2px; }
+  .wiz input:not([type='file']) { font-weight: 400; min-height: 44px; width: 100%; min-width: 0; border: 1px solid var(--sec-line); border-radius: 9px; padding: 9px 11px; background: var(--fieldbg); color: var(--ink); }
+  .wiz input:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
+  .wiz input[aria-invalid='true'] { border-color: #8d3823; }
+  .wiz h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
+  .wiz h2 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 16px; }
+  .wiz p { margin: 3px 0; color: var(--muted); }
+  .wiz .prim { border: 0; background: var(--ink); color: #fff; font-weight: 700; padding: 0 16px; }
+  .wiz .prim:hover { background: #33403a; }
+  .wiz .sek { border: 1px solid var(--sec-line); background: transparent; font-weight: 600; }
+  .wiz > header { flex: none; padding: 18px 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 60%); }
+  .wiz > header .eyebrow { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+  .wiz > header > .lovar { margin-left: auto; color: var(--muted); font-weight: 650; }
+  .hem { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); font-weight: 600; text-decoration: none; white-space: nowrap; border: 0 !important; background: none !important; padding: 0 !important; }
+  .hem:hover { text-decoration: underline; }
+  .rubrikrad { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .fakta { display: inline-flex; align-items: center; gap: 2px; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .wiz .fakta button { min-height: 32px; min-width: 0; padding: 0 6px; border: 0; background: none; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; font-weight: 650; }
+  .steg { width: 24px; height: 24px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 800; }
+  .hjalp { width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid #6f736b; color: #454c44; font-size: 12px; font-weight: 800; }
+  .wgrid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 400px 1fr; }
+  .wside { padding: 26px 30px 60px 36px; border-right: 1px solid var(--line); background: var(--panel); display: grid; align-content: start; gap: 22px; overflow: auto; }
+  .wmain { padding: 26px 36px 60px; display: grid; align-content: start; gap: 18px; overflow: auto; }
+  .wblock { display: grid; gap: 12px; }
+  .wlabel { display: grid; gap: 5px; color: #454c44; font-size: 12px; font-weight: 700; }
+  .wlegend { color: #454c44; font-size: 12px; font-weight: 700; margin: 0 0 6px; }
+  .wsays { margin: 0 !important; color: #8d3823 !important; font-size: 13px; font-weight: 650; }
+  .wstegare { display: inline-flex; border: 1px solid var(--sec-line); border-radius: 8px; background: #fff; }
+  .wiz .wstegare button { border: 0; border-radius: 0; background: none; font-size: 18px; }
+  .wstegare output { width: 44px; display: grid; place-items: center; border-inline: 1px solid var(--line); font-weight: 700; }
+  .faltrad { display: grid; grid-template-columns: 56px 1fr auto 44px; gap: 8px; align-items: center; }
+  .typ { justify-self: start; padding: 3px 9px; border-radius: 99px; background: #e2e6dd; color: #3c4a3f; font-size: 11px; font-weight: 700; }
+  .faltrad .visas { color: var(--muted); font-size: 11px; }
+  .faltrad b { padding-left: 2px; }
+  .lagg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .wiz .lagg button { border-style: dashed; font-size: 13px; }
+  .utseende { display: grid; gap: 8px; }
+  .ramar { display: flex; gap: 6px; }
+  .wiz .ramar button[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); font-weight: 700; }
+  .korthuvud { display: flex; justify-content: space-between; align-items: center; }
+  .kortyta { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: start; }
+  .forhand { padding: 14px; border-radius: 16px; background: #dfe4dc; display: grid; gap: 8px; justify-items: center; }
+  .forhand small { color: #55604f; font-size: 10px; letter-spacing: .1em; font-weight: 700; white-space: nowrap; }
+  .ettkort { width: 150px; aspect-ratio: 63 / 88; border-radius: 6px; background: #f3eedf; border: 2px solid #55604f; position: relative; padding: 12px; display: grid; align-content: center; gap: 6px; }
+  .ettkort .kost { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: #8f8a7c; color: #fff; display: grid; place-items: center; font: 700 12px Georgia, serif; }
+  .ettkort strong { font: 700 15px Georgia, serif; color: #6e6a5d; }
+  .ettkort span { font: 11px Georgia, serif; color: #8f8a7c; }
+  .kortfalt { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; align-content: start; }
+  .kortfalt .bred { grid-column: 1 / -1; }
+  .flikrad { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; border-block: 1px solid var(--line); }
+  .wiz .flikrad button[aria-pressed='true'] { box-shadow: inset 0 -3px 0 var(--accent); font-weight: 700; }
+  .wiz .flikrad i { font-style: normal; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 6px; border-radius: 4px; background: #e8e6dc; font-size: 11px; font-weight: 700; }
+  .skapa { display: flex; justify-content: flex-end; }
+  /* Guiden under skrivbordet: stegremsan och ett steg i taget (L10) */
+  .stegremsa { flex: none; display: flex; gap: 6px; padding: 6px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .wiz .stegremsa button { border-color: transparent; background: transparent; color: #454c44; font-weight: 700; }
+  .wiz .stegremsa button[aria-selected='true'] { box-shadow: inset 0 -3px 0 var(--accent); color: var(--ink); }
+  .wkropp { flex: 1 1 auto; overflow: auto; padding: 20px 16px 32px; display: grid; align-content: start; gap: 18px; }
+  .wnav { flex: none; display: flex; justify-content: space-between; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--panel); }
+  .sida[data-bredd='telefon'] .wiz > header { padding: 12px 16px; row-gap: 0; gap: 8px 16px; }
+  .sida[data-bredd='telefon'] .wiz > header > .rubrik { order: 2; flex-basis: 100%; }
+  .sida[data-bredd='telefon'] .wiz h1 { font-size: 21px; }
+  .sida[data-bredd='telefon'] .faltrad { grid-template-columns: 48px 1fr 44px; }
+  .sida[data-bredd='telefon'] .faltrad .visas { display: none; }
+  .sida[data-bredd='telefon'] .kortyta { grid-template-columns: 1fr; }
+
+  /* B: vägskälet, på guidens papper */
+  .skal { flex: 1 1 auto; overflow: auto; padding: 36px 24px 48px; display: grid; justify-content: center; align-content: start; }
+  .skal-inner { width: 760px; display: grid; gap: 26px; }
+  .sida[data-bredd='telefon'] .skal { padding: 20px 16px 32px; }
+  .sida[data-bredd='telefon'] .skal-inner { width: 343px; gap: 20px; }
+  .grund { display: grid; grid-template-columns: 1fr auto; gap: 16px 24px; align-items: end; padding: 22px 24px; border: 1px solid var(--line); border-radius: 14px; background: #fafaf7; }
+  .sida[data-bredd='telefon'] .grund { grid-template-columns: 1fr; padding: 16px; }
+  .grund .wlabel { font-size: 13px; }
+  .grund .wlabel input { font-size: 17px; font-weight: 650; }
+  .grund .wsays { grid-column: 1 / -1; margin-top: -8px !important; }
+  .dorrar { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .sida[data-bredd='telefon'] .dorrar { grid-template-columns: 1fr; }
+  .wiz button.dorr { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: start; padding: 20px; min-height: 0; text-align: left; border-radius: 14px; border: 1px solid #cbcabe; background: #fff; }
+  .wiz button.dorr:hover { border-color: var(--ink); box-shadow: 0 6px 18px rgb(30 38 32 / 12%); }
+  .wiz button.dorr.forst { border: 2px solid var(--ink); }
+  .dorr .bild { grid-row: 1 / span 3; width: 92px; height: 104px; position: relative; }
+  .dorr .bild i { position: absolute; top: 8px; width: 56px; height: 78px; border-radius: 5px; border: 1.5px solid #55604f; background: #f3eedf; }
+  .dorr .bild i:nth-child(1) { left: 2px; rotate: -10deg; }
+  .dorr .bild i:nth-child(2) { left: 18px; top: 4px; }
+  .dorr .bild i:nth-child(3) { left: 34px; rotate: 10deg; background: #efe1cf; }
+  .dorr .bild i::before { content: ''; position: absolute; inset: 9px 8px auto; height: 5px; border-radius: 2px; background: #b9b3a2; }
+  .dorr .bild i::after { content: ''; position: absolute; inset: 20px 8px 26px; border-radius: 2px; background: #dcd6c4; }
+  .dorr .bild.tom i { left: 18px; top: 6px; rotate: 0deg; border-style: dashed; background: transparent; }
+  .dorr .bild.tom i::before, .dorr .bild.tom i::after { display: none; }
+  .dorr strong { font: 700 19px/1.2 Georgia, serif; display: flex; align-items: center; gap: 8px; }
+  .dorr .vad { color: var(--muted); }
+  .dorr .hur { margin-top: 4px; color: var(--accent); font-weight: 700; font-size: 13px; }
+  .dorr .hur.tyst { color: #454c44; }
+  .sida[data-bredd='telefon'] .dorr .bild { width: 64px; height: 80px; }
+  .sida[data-bredd='telefon'] .dorr .bild i { width: 42px; height: 60px; }
+  .sida[data-bredd='telefon'] .dorr .bild i:nth-child(2) { left: 12px; }
+  .sida[data-bredd='telefon'] .dorr .bild i:nth-child(3) { left: 22px; }
+
+  /* ── Editorn: en märkt attrapp, inte en del av förslaget ─────────────────────────────────── */
+  .ed { background: #12141a; color: #dce3f2; font: 13px system-ui, sans-serif; display: flex; flex-direction: column; }
+  .ed header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: #1b1d23; border-bottom: 1px solid #2f333d; }
+  .ed header b { font-size: 15px; color: #fff; }
+  .ed nav { display: flex; gap: 4px; }
+  .ed nav span { padding: 6px 10px; border-radius: 6px; color: #9aa3b8; }
+  .ed nav span:first-child { background: #262a35; color: #fff; }
+  .ed .tom { flex: 1; display: grid; place-content: center; gap: 10px; text-align: center; color: #9aa3b8; }
+  .ed .tom strong { color: #fff; font-size: 16px; }
+  .attrapp { justify-self: center; padding: 2px 10px; border-radius: 99px; background: #ffd98a; color: #2a2417; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP — steget före guidad start.</b> Namnet, spelarna och valet mellan guidad start och tomt spel står före guiden; guiden blir två steg.</p>
+    <p>Växla variant med A/B/C eller ← →. Allt går att klicka: Nytt spel, försteget, båda dörrarna, «Ändra» i guidens huvud och vägen tillbaka.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Skede</span><div class="flikar" id="skeden"></div></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <button type="button" id="omstart">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen"><div><p class="etikett" id="etikett"></p><div class="sida" id="sida"></div></div></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  left: 'M13 8H3M7 4 3 8l4 4',
+  right: 'M3 8h10M9 4l4 4-4 4',
+  close: 'M4 4l8 8M12 4l-8 8',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+}
+const C = { person: [[8, 5.25, 2.5]] }
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(C[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+// ── Varianterna ──────────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A — dialog över Mina spel',
+    not: '<b>«＋ Nytt spel» öppnar en dialog</b> över Mina spel: namnet, spelarna och de två vägarna, guidad start först och fylld, tomt spel kantat bredvid. På telefonen ett ark nerifrån. <span class="plus">+ snabbast: ingen sidladdning innan valet; man står kvar bland sina spel</span> <span class="minus">− den utloggade som kommer från landningssidan till /new har ingen Mina spel att öppna den över, så /new behöver samma fråga som egen sida ändå — två ritningar av samma steg</span>' },
+  B: { namn: 'B — vägskälet på egen sida · rekommenderas',
+    not: '<b>/new blir ett vägskäl</b> på guidens papper: namnet och spelarna överst, sedan två dörrar som säger vad de ger — guidad start med exempelkorten, tomt spel med ett tomt kort. <span class="plus">+ samma adress för inloggad och utloggad, så utkastet och inloggningsvarvet (G1) bär oförändrat; dörrarna får plats att förklara sig; Mina spel rörs inte</span> <span class="minus">− en sida till innan något händer; den som vet vad den vill gör ett klick mer än i A</span>' },
+  C: { namn: 'C — brickan blir spelet',
+    not: '<b>Brickan «＋ Nytt spel» blir själv formuläret</b>, två kolumner bred i rutnätet: ett tomt kort, namnet där spelets namn kommer att stå, spelarna och de två vägarna. Esc eller «Avbryt» ger tillbaka brickan. <span class="plus">+ det nya spelet föds där det kommer att stå; inget lager över sidan</span> <span class="minus">− trångt: på telefonen tar den hela raden och skjuter spelen nedåt; samma utloggade problem som A; den sista brickan hamnar långt ner hos den som har många spel</span>' },
+}
+const KEYS = Object.keys(V)
+const SKEDEN = { hem: 'Mina spel', forsteg: 'Försteget', guide: 'Guiden', editor: 'Editorn (tomt)' }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'B').toUpperCase(); if (!V[v]) v = 'B'
+let bredd = q.get('bredd') || 'dator'
+let st
+const omstart = () => { st = { skede: 'hem', namn: '', spelare: 2, says: false, wsteg: 'falten', ram: 'classic' } }
+omstart()
+const MAX = 8
+const SPEL = [['Stjärnhandel', '#3f6fb0', 'ändrat i går'], ['Skogens råd', '#3f8f5f', 'ändrat 19 okt'], ['Hamnen', '#b0703f', 'ändrat 2 okt']]
+
+// ── Bitarna ──────────────────────────────────────────────────────────────────────────────────────
+const namnFalt = (cls = 'falt', etikett = 'Spelets namn') => `<label class="${cls}">${etikett}<input id="namn" value="${esc(st.namn)}" maxlength="80" autocomplete="off" aria-required="true" aria-invalid="${st.says}" ${st.says ? 'aria-describedby="namn-says"' : ''}></label>
+  ${st.says ? `<p class="${cls === 'falt' ? 'says' : 'wsays'}" id="namn-says" role="alert">Spelet behöver ett namn först.</p>` : ''}`
+const stegare = (cls) => `<div class="stegrad"><div class="${cls}" role="group" aria-label="Antal spelare, 1 till ${MAX}"><button type="button" data-do="farre" aria-label="En spelare färre" ${st.spelare <= 1 ? 'disabled' : ''}>−</button><output>${st.spelare}</output><button type="button" data-do="fler" aria-label="En spelare fler" ${st.spelare >= MAX ? 'disabled' : ''}>+</button></div><span class="muted" style="font-size:13px">1–${MAX}</span></div>`
+
+function minaSpel(over = '', fodd = '') {
+  const tiles = SPEL.map(([n, c, d]) => `<div class="spel"><span class="kort" style="--c:${c}"></span><strong>${n}</strong><span class="muted">${d}</span></div>`).join('')
+  const ny = fodd || `<button type="button" class="spel" data-new data-do="nytt">＋ Nytt spel</button>`
+  return `<div class="acc"><div class="home">
+    <header><h1>Mina spel</h1><span class="vem"><span>ockelberg@gmail.com</span><span class="ikon" title="Profil">${g('person')}</span><span class="ikon" title="Logga ut">${g('exit')}</span></span></header>
+    <div class="grid">${tiles}${ny}</div>
+  </div>${over}</div>`
+}
+
+// A: dialogen
+function dialogA() {
+  return `<div class="skymning" data-do="avbryt-bakgrund"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ny-h">
+    <div class="dialog-top"><h2 id="ny-h">Nytt spel</h2><button type="button" class="stang" data-do="avbryt" aria-label="Stäng">${g('close')}</button></div>
+    ${namnFalt()}
+    <fieldset style="border:0;margin:0;padding:0;display:grid;gap:6px"><legend class="falt" style="padding:0;margin-bottom:6px">Spelare</legend>${stegare('stegare')}</fieldset>
+    <div class="val">
+      <button type="button" class="prim" data-do="guidad">Guidad start ${g('right')}</button>
+      <p class="forklaring">Välj fält och gör några exempelkort. Två steg, ungefär två minuter.</p>
+      <div class="eller"><button type="button" class="sek" data-do="tomt">Skapa tomt spel</button><span>Direkt till editorn, utan kort eller fält.</span></div>
+    </div>
+  </div></div>`
+}
+
+// C: brickan
+function brickaC() {
+  return `<div class="spel fodd" role="group" aria-label="Nytt spel">
+    <span class="tomkort" aria-hidden="true">?</span>
+    <form data-form>
+      ${namnFalt('falt', 'Nytt spel')}
+      <div style="display:grid;gap:6px"><span class="falt" style="display:block">Spelare</span>${stegare('stegare')}</div>
+      <div class="knappar"><button type="button" class="prim" data-do="guidad">Guidad start</button><button type="button" class="sek" data-do="tomt">Tomt spel</button><button type="button" class="lank" data-do="avbryt">Avbryt</button></div>
+    </form>
+  </div>`
+}
+
+// B: vägskälet
+function skalB() {
+  return `<div class="wiz">
+    <header><a class="hem" href="#" data-do="hem">${g('left')}&nbsp;Mina spel</a><div class="rubrik"><span class="eyebrow">Nytt spel</span><h1>Skapa ett nytt spel</h1></div></header>
+    <div class="skal"><div class="skal-inner">
+      <div class="grund">
+        ${namnFalt('wlabel')}
+        <div><p class="wlegend">Spelare</p>${stegare('wstegare')}</div>
+      </div>
+      <div>
+        <p class="wlegend" style="margin-bottom:10px">Hur vill du börja?</p>
+        <div class="dorrar">
+          <button type="button" class="dorr forst" data-do="guidad">
+            <span class="bild" aria-hidden="true"><i></i><i></i><i></i></span>
+            <strong>Guidad start</strong>
+            <span class="vad">Välj vad korten ska ha och gör några exempelkort. Du ser dem på kortet medan du skriver.</span>
+            <span class="hur">Två steg, ungefär två minuter →</span>
+          </button>
+          <button type="button" class="dorr" data-do="tomt">
+            <span class="bild tom" aria-hidden="true"><i></i></span>
+            <strong>Tomt spel</strong>
+            <span class="vad">Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.</span>
+            <span class="hur tyst">Till editorn →</span>
+          </button>
+        </div>
+      </div>
+    </div></div>
+  </div>`
+}
+
+// Guiden, två steg
+const FALT = [['Text', 'Titel', false], ['Tal', 'Kostnad', true], ['Text', 'Regeltext', true], ['Bild', 'Illustration', true]]
+function faltBlock(nr) {
+  return `<section class="wblock">
+    <h2><span class="steg">${nr}</span>Fält <span class="hjalp" aria-label="Hjälp om fälten">?</span></h2>
+    ${FALT.map(([typ, namn, bort]) => `<div class="faltrad"><span class="typ">${typ}</span>${bort ? `<input value="${namn}" aria-label="${namn} namn">` : `<b>${namn}</b>`}<span class="visas">Visas på kortet</span>${bort ? `<button type="button" aria-label="Ta bort ${namn}">×</button>` : '<span></span>'}</div>`).join('')}
+    <div class="lagg"><button type="button">+ Textfält</button><button type="button">+ Talfält</button><button type="button">+ Bildfält</button></div>
+    <div class="utseende"><p class="wlegend" style="margin:6px 0 0">Utseende</p><span class="wlabel" style="font-weight:600">Ram</span>
+      <div class="ramar">${[['classic', 'Klassisk'], ['minimal', 'Minimal'], ['dark', 'Mörk']].map(([id, n]) => `<button type="button" data-do="ram" data-ram="${id}" aria-pressed="${st.ram === id}">${n}</button>`).join('')}</div></div>
+  </section>`
+}
+function kortBlock(nr) {
+  return `<section class="wblock">
+    <div class="korthuvud"><h2><span class="steg">${nr}</span>Lägg till några exempelkort <span class="hjalp" aria-label="Hjälp om korten">?</span></h2><span style="color:var(--muted)">3 kort</span></div>
+    <div class="kortyta">
+      <div class="forhand"><div class="ettkort"><span class="kost">1</span><strong>Skogsvandring</strong><span>Dra ett kort.</span></div><small>LEVANDE FÖRHANDSVISNING</small></div>
+      <div class="kortfalt">
+        <label class="wlabel">Titel<input value="Skogsvandring"></label>
+        <label class="wlabel">Kostnad<input value="1"></label>
+        <label class="wlabel bred">Regeltext<input value="Dra ett kort."></label>
+        <span class="wlabel bred">Illustration<span style="display:flex;gap:8px;align-items:center;padding:8px;border:1px dashed #cbcabe;border-radius:9px"><span style="font-size:11px;font-style:italic;color:var(--muted);font-weight:400">Ingen bild vald</span><button type="button">Välj bild</button></span></span>
+      </div>
+    </div>
+    <div class="flikrad"><button type="button" aria-pressed="true"><i>1</i>Skogsvandring</button><button type="button"><i>2</i>Guldfynd</button><button type="button"><i>3</i>Björnen</button><button type="button" style="border-style:dashed">+ Nytt kort</button></div>
+    <div class="skapa"><button type="button" class="prim" data-do="skapa">Skapa spelet</button></div>
+  </section>`
+}
+function guiden() {
+  const tillbaka = v === 'B' ? 'Nytt spel' : 'Mina spel'
+  const huvud = `<header>
+    <a class="hem" href="#" data-do="tillbaka">${g('left')}&nbsp;${tillbaka}</a>
+    <div class="rubrik"><span class="eyebrow">Guidad start</span>
+      <div class="rubrikrad"><h1>${esc(st.namn) || 'Namnlöst spel'}</h1><span class="fakta">${st.spelare} ${st.spelare === 1 ? 'spelare' : 'spelare'} · <button type="button" data-do="andra">Ändra</button></span></div></div>
+    <span class="lovar">Två steg, ungefär två minuter</span>
+  </header>`
+  if (bredd === 'dator') return `<div class="wiz">${huvud}<div class="wgrid"><div class="wside">${faltBlock(1)}</div><div class="wmain">${kortBlock(2)}</div></div></div>`
+  const at = st.wsteg
+  return `<div class="wiz">${huvud}
+    <div class="stegremsa" role="tablist" aria-label="Steg"><button type="button" role="tab" data-do="wsteg" data-steg="falten" aria-selected="${at === 'falten'}">1 · Fälten</button><button type="button" role="tab" data-do="wsteg" data-steg="korten" aria-selected="${at === 'korten'}">2 · Korten</button></div>
+    <div class="wkropp">${at === 'falten' ? faltBlock(1) : kortBlock(2)}</div>
+    <nav class="wnav"><button type="button" class="sek" data-do="wsteg" data-steg="falten" ${at === 'falten' ? 'disabled' : ''}>Föregående</button>${at === 'falten' ? '<button type="button" class="prim" data-do="wsteg" data-steg="korten">Nästa</button>' : ''}</nav>
+  </div>`
+}
+
+function editorn() {
+  return `<div class="ed"><header><b>${esc(st.namn) || 'Namnlöst spel'}</b><nav><span>Kortväggen</span><span>Mall</span><span>Tabell</span><span>Bord</span></nav></header>
+    <div class="tom"><span class="attrapp">attrapp — editorn som den är i dag</span><strong>Ett tomt spel för ${st.spelare} spelare</strong><span>Inga kort, inga fält, en tom fram- och baksida (L42).</span><button type="button" style="justify-self:center;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid #6f7a90;background:none;color:#dce3f2;cursor:pointer" data-do="hem">Tillbaka till Mina spel</button></div></div>`
+}
+
+// ── Ritningen ────────────────────────────────────────────────────────────────────────────────────
+function vy() {
+  if (st.skede === 'guide') return guiden()
+  if (st.skede === 'editor') return editorn()
+  if (st.skede === 'forsteg') {
+    if (v === 'A') return minaSpel(dialogA())
+    if (v === 'B') return skalB()
+    return minaSpel('', brickaC())
+  }
+  return minaSpel()
+}
+const adress = () => ({ hem: '/', forsteg: v === 'B' ? '/new' : '/', guide: '/new?guidad', editor: '/editor?project=…' })[st.skede]
+
+function rita(fokus) {
+  const sida = document.getElementById('sida')
+  sida.dataset.bredd = bredd
+  sida.innerHTML = vy()
+  passa()
+  document.getElementById('etikett').innerHTML = `<b>${V[v].namn}</b> · ${SKEDEN[st.skede]} · <code>${adress()}</code> · ${bredd === 'dator' ? '1180 × 740, skalad till scenen' : '375 × 760'}`
+  document.getElementById('anteckning').innerHTML = V[v].not
+  document.getElementById('vaxlare').innerHTML = KEYS.map((k) => `<button type="button" data-v="${k}" aria-pressed="${k === v}" title="${V[k].namn}">${k}</button>`).join('')
+  document.getElementById('skeden').innerHTML = Object.entries(SKEDEN).map(([k, n]) => `<button type="button" data-skede="${k}" aria-pressed="${k === st.skede}">${n}</button>`).join('')
+  document.getElementById('bredd').innerHTML = ['dator', 'telefon'].map((b) => `<button type="button" data-bredd="${b}" aria-pressed="${b === bredd}">${b}</button>`).join('')
+  const u = new URL(location.href); u.searchParams.set('v', v); u.searchParams.set('bredd', bredd); history.replaceState(null, '', u)
+  const namn = document.getElementById('namn')
+  if (namn && (fokus || st.says)) { namn.focus(); namn.setSelectionRange(namn.value.length, namn.value.length) }
+  else if (fokus === 'nytt') sida.querySelector('[data-new]')?.focus()
+}
+
+// Datorsidan ritas i sina riktiga 1180 px och skalas ner till scenen, så att ett smalt fönster
+// inte får rulla i sidled och ändå visar guidens två spalter som de är från 1024 px och uppåt.
+function passa() {
+  const sida = document.getElementById('sida')
+  sida.style.zoom = String(Math.min(1, (document.querySelector('main.scen').clientWidth - 32) / (bredd === 'dator' ? 1180 : 375)))
+}
+addEventListener('resize', passa)
+
+function vidare(vag) {
+  if (!st.namn.trim()) { st.says = true; rita(true); return }
+  st.says = false
+  st.skede = vag === 'guidad' ? 'guide' : 'editor'
+  st.wsteg = 'falten'
+  rita()
+}
+
+document.getElementById('sida').addEventListener('input', (e) => {
+  if (e.target.id !== 'namn') return
+  st.namn = e.target.value
+  if (st.says && st.namn.trim()) { st.says = false; rita(true) }
+})
+document.getElementById('sida').addEventListener('keydown', (e) => {
+  if (e.target.id === 'namn' && e.key === 'Enter') { e.preventDefault(); vidare('guidad') }
+  if (e.key === 'Escape' && st.skede === 'forsteg' && v !== 'B') { st.skede = 'hem'; st.says = false; rita('nytt') }
+})
+document.getElementById('sida').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-do]')
+  if (!el) return
+  const vad = el.dataset.do
+  if (vad === 'avbryt-bakgrund' && e.target !== el) return
+  e.preventDefault()
+  if (vad === 'nytt') { st.skede = 'forsteg'; rita(true) }
+  else if (vad === 'avbryt' || vad === 'avbryt-bakgrund') { st.skede = 'hem'; st.says = false; rita('nytt') }
+  else if (vad === 'farre') { st.spelare = Math.max(1, st.spelare - 1); rita() }
+  else if (vad === 'fler') { st.spelare = Math.min(MAX, st.spelare + 1); rita() }
+  else if (vad === 'guidad' || vad === 'tomt') vidare(vad)
+  else if (vad === 'andra') { st.skede = 'forsteg'; rita(true) }
+  else if (vad === 'tillbaka') { st.skede = v === 'B' ? 'forsteg' : 'hem'; rita(v === 'B') }
+  else if (vad === 'hem') { omstart(); rita() }
+  else if (vad === 'wsteg') { st.wsteg = el.dataset.steg; rita() }
+  else if (vad === 'ram') { st.ram = el.dataset.ram; rita() }
+  else if (vad === 'skapa') { st.skede = 'editor'; rita() }
+})
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; rita() }
+  else if (b.dataset.skede) { st.skede = b.dataset.skede; if (st.skede !== 'hem' && st.skede !== 'forsteg' && !st.namn) st.namn = 'Skogens herrar'; st.says = false; rita() }
+  else if (b.dataset.bredd) { bredd = b.dataset.bredd; rita() }
+  else if (b.id === 'omstart') { omstart(); rita() }
+})
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest?.('input, textarea, [contenteditable]')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const i = KEYS.indexOf(v)
+  v = KEYS[(i + (e.key === 'ArrowRight' ? 1 : KEYS.length - 1)) % KEYS.length]
+  rita()
+})
+rita()
+</script>
+</body>
+</html>
