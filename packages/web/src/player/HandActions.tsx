@@ -18,9 +18,12 @@ export function handTargets(view: Snapshot, t: ReturnType<typeof useT>) {
 // and the one place on the phone a hand card's verbs stand: what is marked, a way to read it large
 // and a way to let go of it, then the setup's first two places and «Spela…» for every other one.
 // Nothing at all while nothing is marked — the hand's tab is the cards and nothing else.
-export function HandBar({ view, cards, pending, onPlay, onMore, onRead, onClear, refusal, refusedZone }: {
+export function HandBar({ view, cards, pending, onPlay, onMore, onRead, onClear, refusal, refusedZone, down = false }: {
   view: Snapshot
   cards: VisibleComponentState[]
+  // The marked cards are turned over in the hand and go face down wherever they go (#1133): the
+  // bar says so on every press, so nobody plays a card face up who turned it down.
+  down?: boolean
   pending: boolean
   refusal?: RefusalHandle | undefined
   refusedZone?: string | null
@@ -47,13 +50,14 @@ export function HandBar({ view, cards, pending, onPlay, onMore, onRead, onClear,
       disabled={pending}
       onClick={() => onPlay(target.id, target.at)}
     >
-      {target.label}
+      {down ? t('player.hand.down', { label: target.label }) : target.label}
     </button>
   )
+  const named = one ? cardName(first, t) : t('player.hand.marked', { n: cards.length })
   return (
     <section className="byd-hand-bar" data-hand-bar aria-label={t('player.hand.actions')}>
       <p>
-        <strong>{one ? cardName(first, t) : t('player.hand.marked', { n: cards.length })}</strong>
+        <strong>{down ? t('player.hand.chosen.down', { name: named }) : named}</strong>
         {one && (
           <button type="button" onClick={() => onRead(first)}>
             {t('player.hand.read')}
@@ -76,9 +80,11 @@ export function HandBar({ view, cards, pending, onPlay, onMore, onRead, onClear,
 
 // One card's first place and «Spela…», under a hand card held up to be read: the same two the bar
 // leads with, so reading a card large never takes the way to play it away.
-export function CardPlays({ view, card, pending, onPlay, onMore }: {
+export function CardPlays({ view, card, pending, onPlay, onMore, down = false }: {
   view: Snapshot
   card: VisibleComponentState
+  // Played face down, because the card is turned over in the hand (#1133): the one press says so.
+  down?: boolean
   pending: boolean
   onPlay(zone: string, at: Placement): void
   onMore(card: VisibleComponentState): void
@@ -89,7 +95,7 @@ export function CardPlays({ view, card, pending, onPlay, onMore }: {
     <>
       {target && (
         <button type="button" className="byd-bar-main" data-zone={target.id} disabled={pending} onClick={() => onPlay(target.id, target.at)}>
-          {target.label}
+          {down ? t('player.hand.down', { label: target.label }) : target.label}
         </button>
       )}
       <button type="button" disabled={pending} onClick={() => onMore(card)}>

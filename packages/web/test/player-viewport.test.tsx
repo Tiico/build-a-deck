@@ -106,7 +106,7 @@ function phone(view: Snapshot, marked: string[] = []) {
   const marks = { selected: new Set(marked), toggle: noop, clear: noop }
   return (
     <div className="byd-player">
-      <PlayerSurface client={idle} view={view} activity={[]} seat="A" name="Ada" sessionId="s1" faces={FACES} version="v1" marks={marks} openHand={noop} onLeft={noop} />
+      <PlayerSurface client={idle} view={view} activity={[]} seat="A" name="Ada" sessionId="s1" faces={FACES} version="v1" marks={marks} turnedHand={{ turned: new Set(), toggle: noop }} openHand={noop} onLeft={noop} />
     </div>
   )
 }

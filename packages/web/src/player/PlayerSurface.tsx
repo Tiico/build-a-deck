@@ -19,6 +19,7 @@ import { playIntents } from './play.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import { useRoving } from '../editor/roving.js'
+import type { TurnedHand } from './turned.js'
 
 // What a player is given on a screen that cannot carry the board: the seat's own hand, the
 // counters, the private zones, and the table itself as names and counts rather than as a felt. It
@@ -75,6 +76,9 @@ export type PlayerSurfaceProps = {
   faces: string
   version: string | null
   marks: HandMarks
+  // The cards turned over in the hand (#1133): the route keeps them, because its keyboard plays
+  // from the hand too and has to play them face down as well.
+  turnedHand: TurnedHand
   // The route's own keyboard, the one door into it a hand needs (#1, #2).
   openHand(card: VisibleComponentState, marked: readonly string[]): void
   // Where the way out (#31) leads once the seat has been given up.
@@ -84,7 +88,7 @@ export type PlayerSurfaceProps = {
   away?: boolean | undefined
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft, away = false }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false }: PlayerSurfaceProps) {
   const ids = useId()
   const t = useT()
   const [tab, setTab] = useState<Tab>('hand')
@@ -121,6 +125,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const marked = [...marks.selected].flatMap((id) => hand.filter((c) => c.id === id))
   // A lifted card is played alone unless it is one of the marked hand cards (K3).
   const toPlay = lifted ? (marks.selected.has(lifted.id) ? marked : [lifted]) : []
+  const { turned } = turnedHand
+  const allDown = (cards: readonly VisibleComponentState[]) => cards.length > 0 && cards.every((c) => turned.has(c.id))
 
   // A card carried to another place in the hand (K4; #483, beslut A efter prototyp 33). The grid
   // draws the hand bottom-up (#415), so a place in the grid is counted from the other end of the
@@ -131,7 +137,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   }
   const play = (zone: string, at: 'top' | 'bottom') => {
     setRefusedZone(zone)
-    void refusal.watch(client.send(...playIntents(view, toPlay, zone, undefined, at))).then((result) => {
+    void refusal.watch(client.send(...playIntents(view, toPlay, zone, undefined, at, turned))).then((result) => {
       if (!result.ok) return
       setRefusedZone(null)
       setLifted(null)
@@ -174,7 +180,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     setQuickTarget(zone)
     setQuickSource(first.zone === `hand:${seat}` ? 'hand' : first.id)
     try {
-      const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at)
+      const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at, turned)
       const result = await quick.watch(client.send(...intents))
       if (result.ok) {
         if (zone !== `hand:${seat}` && cards.some(c => c.zone === `hand:${seat}`)) regain.current = cards.map(c => c.id)
@@ -222,7 +228,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           {/* The piles first, because they are what fills a hand (#79), and the hand under them,
               whole. */}
           <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
-          <HandGrid view={view} selected={marks.selected} faces={faces} onToggle={marks.toggle} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
+          <HandGrid view={view} selected={marks.selected} faces={faces} onToggle={marks.toggle} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} turned={turned} onTurn={(c) => turnedHand.toggle(c.id)} />
         </section>
         <section {...panel('mine')}>
           <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
@@ -265,6 +271,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <HandBar
             view={view}
             cards={marked}
+            down={allDown(marked)}
             pending={quickPending}
             refusal={quickSource === 'hand' ? quick : undefined}
             refusedZone={quickTarget}
@@ -322,10 +329,16 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               held.row === 'hand' ? (
                 // The hand's own way to play the card read, and its place in the hand: what the bar
                 // offers, and the order the grid keeps (#552). A verb puts the card down as it goes.
+                // Turning the card over is the one that does not (#1133): it is still in the hand,
+                // and the press beside it now says how it will land.
                 <>
+                  <button type="button" className="byd-show-all" data-turn={card.id} onClick={() => turnedHand.toggle(card.id)}>
+                    {t(turned.has(card.id) ? 'player.hand.unturn' : 'player.hand.turn')}
+                  </button>
                   <CardPlays
                     view={view}
                     card={card}
+                    down={turned.has(card.id)}
                     pending={quickPending}
                     onPlay={(zone, where) => { put(); void playDirect([card], zone, where) }}
                     onMore={(c) => { put(); setLifted(c) }}

@@ -86,3 +86,28 @@ export function useDoor(doorway: Doorway, onEscape: () => void): void {
     // A door that becomes held — or stops being — opens again where it now belongs.
   }, [doorway])
 }
+
+// The other way out of something that stands over the work: a press anywhere outside it (#133,
+// #1144). A menu that closes only when the focus leaves it stays standing through a press on
+// whatever takes no focus — the canvas's checkerboard, the empty felt of a page — and a menu
+// that closes on nothing but its own button never closes for a hand that has moved on.
+//
+// What counts as inside is the thing and the button it hangs from: the button already closes it,
+// and closing on the way down would only let the click that follows open it again. A dialog
+// opened from inside stands over it rather than beside it, so a press there is still its business
+// (#8). The focus is left where the pointer put it; only Escape hands it back to the button.
+export function usePressAway(open: boolean, inside: () => readonly (Element | null | undefined)[], onAway: () => void): void {
+  const latest = useRef({ inside, onAway })
+  latest.current = { inside, onAway }
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (latest.current.inside().some((el) => el?.contains(target)) || target.closest('[role="dialog"]')) return
+      latest.current.onAway()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open])
+}

@@ -1,9 +1,9 @@
 import { useRef } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
-import { Texture } from '../table/Texture.js'
+import { HandFace, TURNED_GROUND } from '../player/HandFace.js'
 import { useRoving } from '../editor/roving.js'
-import { cardWord, handLabel } from '../table/keyboard.js'
+import { handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { fanPlace, fanStyle } from './fan.js'
 import { HandGhost, useHandDrag, type HandDragOptions, type HandPlay } from './handDrag.js'
@@ -20,6 +20,9 @@ export type HandFanProps = {
   // felt's own card size while it is over the table (#484).
   onCarry?: HandDragOptions['onCarry']
   aim?: { size: { w: number } | null } | undefined
+  // The cards turned over in the hand, played face down, and F on a card turning it (#1133).
+  turned?: ReadonlySet<string> | undefined
+  onTurn?: ((card: VisibleComponentState) => void) | undefined
   // Enter on a card: the address panel, the same one the felt opens (#2, variant C).
   onOpen(card: VisibleComponentState): void
 }
@@ -34,7 +37,7 @@ export type HandFanProps = {
 //
 // In a landscape window this is not the shape the hand takes: there the band cost the felt the one
 // axis it was bound by, and the hand stands beside it as `HandColumn` instead (#77).
-export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen }: HandFanProps) {
+export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen, turned, onTurn }: HandFanProps) {
   const t = useT()
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
@@ -59,8 +62,9 @@ export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, on
                   className="byd-fan-card"
                   data-hand-card={c.id}
                   data-lifted={drag?.id === c.id ? 'true' : undefined}
-                  aria-label={handLabel(c, false, t)}
-                  style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ['--i' as string]: `${i}`, ['--fan' as string]: `${tilt}deg`, ['--dip' as string]: `${dip}` }}
+                  aria-label={handLabel(c, false, t, turned?.has(c.id) === true)}
+                data-turned={turned?.has(c.id) === true ? 'true' : undefined}
+                  style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true ? TURNED_GROUND : {}), ['--i' as string]: `${i}`, ['--fan' as string]: `${tilt}deg`, ['--dip' as string]: `${dip}` }}
                   tabIndex={item.tabIndex}
                   ref={item.ref}
                   onFocus={(e) => {
@@ -75,19 +79,23 @@ export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, on
                       onOpen(c)
                       return
                     }
-                    item.onKeyDown(e)
+                    if ((e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                    onTurn(c)
+                    return
+                  }
+                  item.onKeyDown(e)
                   }}
                   {...handlers(c)}
                 >
-                  <Texture faces={faces} c={c} />
-                  <span aria-hidden="true">{cardWord(c)}</span>
+                  <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
                 </button>
               )
             })}
           </div>
         </div>
       </div>
-      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} />}
+      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} turned={turned?.has(lifted.id) === true} />}
       {drag && <DragDoor onCancel={cancel} />}
     </div>
   )

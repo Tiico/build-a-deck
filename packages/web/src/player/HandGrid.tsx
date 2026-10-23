@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
-import { Texture } from '../table/Texture.js'
+import { HandFace, TURNED_GROUND } from './HandFace.js'
 import { useRoving } from '../editor/roving.js'
-import { cardWord, handLabel } from '../table/keyboard.js'
+import { handLabel } from '../table/keyboard.js'
 import { useT, type T } from '../i18n/index.js'
 import { returnPile } from '../table/handName.js'
 
@@ -20,6 +20,10 @@ export type HandGridProps = {
   onReorder?: ((card: VisibleComponentState, position: number) => void) | undefined
   // The HTTP origin that serves /faces/:hash; without it cards show their names on colour.
   faces?: string | undefined
+  // The cards turned over in the hand, which are played face down (#1133), and F on a card turning
+  // it, as F turns a card on the felt.
+  turned?: ReadonlySet<string> | undefined
+  onTurn?: ((card: VisibleComponentState) => void) | undefined
 }
 
 // The seat's own hand, the whole of it at once (#1147, beställarens val B): a grid three cards wide
@@ -33,9 +37,9 @@ export type HandGridProps = {
 //
 // Every card is a real control (#1): it has the name the projection gives it, it says whether it is
 // marked, and the grid is one tab stop with the arrows inside — the editor's roving tabindex, moving
-// through the grid as it is laid out. Space marks and unmarks, Enter opens the address panel, and
-// Alt with an arrow moves a card along the hand.
-export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces }: HandGridProps) {
+// through the grid as it is laid out. Space marks and unmarks, Enter opens the address panel, F
+// turns the card over, and Alt with an arrow moves a card along the hand.
+export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces, turned, onTurn }: HandGridProps) {
   const t = useT()
   // The hand read from the bottom up (#415, decision B of 2026-09-22). A drawn card lands on top of
   // the zone, which is index 0 of the projection's order, so reading the order backwards is what
@@ -83,6 +87,7 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces }:
       {hand.map((c, at) => {
         const item = roving.itemProps(c.id)
         const marked = selected.has(c.id)
+        const faceDown = turned?.has(c.id) === true
         return (
           <button
             key={c.id}
@@ -90,9 +95,10 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces }:
             className="byd-grid-card"
             data-hand-card={c.id}
             data-selected={marked ? 'true' : 'false'}
-            aria-label={handLabel(c, marked, t)}
+            {...(faceDown ? { 'data-turned': 'true' } : {})}
+            aria-label={handLabel(c, marked, t, faceDown)}
             aria-pressed={marked}
-            style={{ ['--hue' as string]: hue(c.cardRef ?? '') }}
+            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(faceDown ? TURNED_GROUND : {}) }}
             tabIndex={item.tabIndex}
             ref={item.ref}
             onFocus={() => {
@@ -117,12 +123,16 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces }:
                 onOpen(c)
                 return
               }
+              if ((e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault()
+                onTurn(c)
+                return
+              }
               item.onKeyDown(e)
             }}
             onClick={() => onToggle(c)}
           >
-            <Texture faces={faces} c={c} />
-            <strong aria-hidden="true">{cardWord(c)}</strong>
+            <HandFace faces={faces} c={c} turned={faceDown} Word="strong" />
             {/* Where in the order of a several-card play this card goes. */}
             {marked && order.length > 1 && <i className="byd-grid-at" aria-hidden="true">{order.indexOf(c.id) + 1}</i>}
           </button>
