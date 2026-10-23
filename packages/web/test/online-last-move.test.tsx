@@ -66,3 +66,14 @@ describe('the last move is where a played card went (#560 P-12)', () => {
     expect(container.querySelector('[data-last-move]')!.textContent).toMatch(/^Senast: Bo flyttade Minefield till Spelyta/)
   })
 })
+
+// The notepad has its own column, which shows every row as it is written (#1131); «Senast» is the
+// last move on the table, and a row written since must not push it out of the bar.
+describe('the last move is a move, not a row of the notepad (#1131)', () => {
+  it('passes a written row by and says the move before it', () => {
+    vi.useFakeTimers({ now: NOW })
+    const note = { seq: 2, batch: 'b2', schemaVersion: 1, by: 'B', at: new Date(NOW - 2000).toISOString(), intent: { v: 'note.add', text: 'Poäng: 3' } } as Activity
+    const { container } = render(<LastMove view={view} activity={[line(1, 'B', 40), note]} seat="A" />)
+    expect(container.querySelector('[data-last-move]')!.textContent).toMatch(/^Senast: Bo drog 1 kort/)
+  })
+})

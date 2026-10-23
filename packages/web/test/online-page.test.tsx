@@ -153,6 +153,31 @@ describe('OnlinePage (C2): both roles in one window', () => {
 
 // The online seat shares the phone's session overlays, so it shares the phone's quiet once the
 // table has ended (UX-38, #83): the felt and the hand are the picture behind the survey.
+// The table's notepad (#1131, beslut B · Spalten): a column beside the felt, read and written by
+// everyone at the table, through the same line the cards go by.
+describe('the notepad on /online (#1131)', () => {
+  it('writes a row the rest of the table gets, and shows a row somebody else wrote, with who wrote it', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await open(id, 'A', 'Ada')
+    const column = screen.getByRole('complementary', { name: 'Anteckningar' })
+    // jsdom fits no felt, so nothing says the column can be spared: it stands folded until opened.
+    fireEvent.click(within(column).getByRole('button', { name: 'Anteckningar' }))
+    const field = within(column).getByRole('textbox', { name: 'Ny anteckning' })
+    fireEvent.change(field, { target: { value: 'Poäng: Ada 3' } })
+    fireEvent.submit(field.closest('form')!)
+    await waitFor(() => expect(table.view?.notes).toEqual([{ id: expect.stringMatching(/^n\d+$/), by: 'A', text: 'Poäng: Ada 3', done: false }]))
+    await waitFor(() => expect((field as HTMLInputElement).value).toBe(''))
+
+    await table.send({ v: 'note.add', text: 'Regelfråga till efteråt' })
+    const rows = await within(column).findAllByRole('listitem')
+    await waitFor(() => expect(within(column).getAllByRole('listitem').map((li) => li.querySelector('[data-note-by]')?.textContent)).toEqual(['Ada', 'Bordet']))
+    expect(rows[0]?.textContent).toContain('Poäng: Ada 3')
+    table.close()
+  })
+})
+
 describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () => {
   it('takes the felt and the hand out of reach, and leaves the survey the only thing Tab can reach', async () => {
     const id = await createSession(run)

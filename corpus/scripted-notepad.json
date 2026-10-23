@@ -1,0 +1,1489 @@
+{
+  "name": "scripted-notepad",
+  "recordedAt": "2026-10-22T20:19:10.105Z",
+  "version": "v1",
+  "setup": {
+    "seats": [
+      "A",
+      "B"
+    ],
+    "floor": "table",
+    "zones": [
+      {
+        "id": "draw",
+        "kind": "pile",
+        "name": "Zon 1",
+        "visibility": "none",
+        "geometry": {
+          "x": -200,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "rot": 0
+        }
+      },
+      {
+        "id": "discard",
+        "kind": "pile",
+        "name": "Zon 2",
+        "visibility": "all",
+        "geometry": {
+          "x": 200,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "rot": 0
+        }
+      },
+      {
+        "id": "table",
+        "kind": "area",
+        "name": "Zon 3",
+        "visibility": "all",
+        "geometry": {
+          "x": -500,
+          "y": -300,
+          "w": 1000,
+          "h": 600,
+          "rot": 0
+        }
+      },
+      {
+        "id": "hand:A",
+        "kind": "hand",
+        "name": "Zon 4",
+        "visibility": "owner",
+        "owner": "A",
+        "returnTo": "draw",
+        "geometry": {
+          "x": -300,
+          "y": 320,
+          "w": 600,
+          "h": 100,
+          "rot": 0
+        }
+      },
+      {
+        "id": "hand:B",
+        "kind": "hand",
+        "name": "Zon 5",
+        "visibility": "owner",
+        "owner": "B",
+        "returnTo": "draw",
+        "geometry": {
+          "x": -300,
+          "y": -420,
+          "w": 600,
+          "h": 100,
+          "rot": 0
+        }
+      }
+    ],
+    "components": [
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-1",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-2",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-3",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-4",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-5",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-6",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-7",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-8",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-9",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "kort-10",
+        "zone": "draw",
+        "face": "back"
+      }
+    ]
+  },
+  "log": [
+    {
+      "schemaVersion": 1,
+      "seq": 1,
+      "batch": "e0",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "seat.claim",
+        "seat": "A",
+        "name": "Spelare 1"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 2,
+      "batch": "e1",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "seat.claim",
+        "seat": "B",
+        "name": "Spelare 2"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 3,
+      "batch": "e2",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "A",
+      "intent": {
+        "v": "note.add",
+        "text": "(anteckning)"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 4,
+      "batch": "e3",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "deal",
+        "from": "draw",
+        "to": [
+          "hand:A",
+          "hand:B"
+        ],
+        "each": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 5,
+      "batch": "e4",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "B",
+      "intent": {
+        "v": "note.add",
+        "text": "(anteckning)"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 6,
+      "batch": "e5",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "A",
+      "intent": {
+        "v": "note.edit",
+        "note": "n3",
+        "text": "(anteckning)"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 7,
+      "batch": "e6",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "B",
+      "intent": {
+        "v": "move",
+        "component": "c3",
+        "to": "table",
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 8,
+      "batch": "e7",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "B",
+      "intent": {
+        "v": "note.check",
+        "note": "n5",
+        "done": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 9,
+      "batch": "e8",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "B",
+      "intent": {
+        "v": "undo.self"
+      },
+      "outcome": {
+        "kind": "restore",
+        "toSeq": 6,
+        "table": {
+          "zones": {
+            "draw": {
+              "id": "draw",
+              "kind": "pile",
+              "name": "Zon 1",
+              "visibility": "none",
+              "geometry": {
+                "x": -200,
+                "y": 0,
+                "w": 0,
+                "h": 0,
+                "rot": 0
+              },
+              "order": [
+                "c4",
+                "c5",
+                "c6",
+                "c7",
+                "c8",
+                "c9"
+              ],
+              "dynamic": false
+            },
+            "discard": {
+              "id": "discard",
+              "kind": "pile",
+              "name": "Zon 2",
+              "visibility": "all",
+              "geometry": {
+                "x": 200,
+                "y": 0,
+                "w": 0,
+                "h": 0,
+                "rot": 0
+              },
+              "order": [],
+              "dynamic": false
+            },
+            "table": {
+              "id": "table",
+              "kind": "area",
+              "name": "Zon 3",
+              "visibility": "all",
+              "geometry": {
+                "x": -500,
+                "y": -300,
+                "w": 1000,
+                "h": 600,
+                "rot": 0
+              },
+              "order": [],
+              "dynamic": false
+            },
+            "hand:A": {
+              "id": "hand:A",
+              "kind": "hand",
+              "name": "Zon 4",
+              "visibility": "owner",
+              "owner": "A",
+              "returnTo": "draw",
+              "geometry": {
+                "x": -300,
+                "y": 320,
+                "w": 600,
+                "h": 100,
+                "rot": 0
+              },
+              "order": [
+                "c2",
+                "c0"
+              ],
+              "dynamic": false
+            },
+            "hand:B": {
+              "id": "hand:B",
+              "kind": "hand",
+              "name": "Zon 5",
+              "visibility": "owner",
+              "owner": "B",
+              "returnTo": "draw",
+              "geometry": {
+                "x": -300,
+                "y": -420,
+                "w": 600,
+                "h": 100,
+                "rot": 0
+              },
+              "order": [
+                "c3",
+                "c1"
+              ],
+              "dynamic": false
+            }
+          },
+          "components": {
+            "c0": {
+              "id": "c0",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-1",
+              "zone": "hand:A",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c1": {
+              "id": "c1",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-2",
+              "zone": "hand:B",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c2": {
+              "id": "c2",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-3",
+              "zone": "hand:A",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c3": {
+              "id": "c3",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-4",
+              "zone": "hand:B",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c4": {
+              "id": "c4",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-5",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c5": {
+              "id": "c5",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-6",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c6": {
+              "id": "c6",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-7",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c7": {
+              "id": "c7",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-8",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c8": {
+              "id": "c8",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-9",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "c9": {
+              "id": "c9",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-10",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 10,
+      "batch": "e9",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "A",
+      "intent": {
+        "v": "rewind.propose",
+        "toSeq": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 11,
+      "batch": "e10",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "B",
+      "intent": {
+        "v": "rewind.confirm",
+        "proposal": "e9"
+      },
+      "outcome": {
+        "kind": "restore",
+        "toSeq": 2,
+        "table": {
+          "zones": {
+            "draw": {
+              "id": "draw",
+              "kind": "pile",
+              "name": "Zon 1",
+              "visibility": "none",
+              "geometry": {
+                "x": -200,
+                "y": 0,
+                "w": 0,
+                "h": 0,
+                "rot": 0
+              },
+              "order": [
+                "r8",
+                "r2",
+                "r1",
+                "r4",
+                "r9",
+                "r6",
+                "r7",
+                "r0",
+                "r3",
+                "r5"
+              ],
+              "dynamic": false
+            },
+            "discard": {
+              "id": "discard",
+              "kind": "pile",
+              "name": "Zon 2",
+              "visibility": "all",
+              "geometry": {
+                "x": 200,
+                "y": 0,
+                "w": 0,
+                "h": 0,
+                "rot": 0
+              },
+              "order": [],
+              "dynamic": false
+            },
+            "table": {
+              "id": "table",
+              "kind": "area",
+              "name": "Zon 3",
+              "visibility": "all",
+              "geometry": {
+                "x": -500,
+                "y": -300,
+                "w": 1000,
+                "h": 600,
+                "rot": 0
+              },
+              "order": [],
+              "dynamic": false
+            },
+            "hand:A": {
+              "id": "hand:A",
+              "kind": "hand",
+              "name": "Zon 4",
+              "visibility": "owner",
+              "owner": "A",
+              "returnTo": "draw",
+              "geometry": {
+                "x": -300,
+                "y": 320,
+                "w": 600,
+                "h": 100,
+                "rot": 0
+              },
+              "order": [],
+              "dynamic": false
+            },
+            "hand:B": {
+              "id": "hand:B",
+              "kind": "hand",
+              "name": "Zon 5",
+              "visibility": "owner",
+              "owner": "B",
+              "returnTo": "draw",
+              "geometry": {
+                "x": -300,
+                "y": -420,
+                "w": 600,
+                "h": 100,
+                "rot": 0
+              },
+              "order": [],
+              "dynamic": false
+            }
+          },
+          "components": {
+            "r0": {
+              "id": "r0",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-1",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r1": {
+              "id": "r1",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-2",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r2": {
+              "id": "r2",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-3",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r3": {
+              "id": "r3",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-4",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r4": {
+              "id": "r4",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-5",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r5": {
+              "id": "r5",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-6",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r6": {
+              "id": "r6",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-7",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r7": {
+              "id": "r7",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-8",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r8": {
+              "id": "r8",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-9",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            },
+            "r9": {
+              "id": "r9",
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "cardRef": "kort-10",
+              "zone": "draw",
+              "face": "back",
+              "x": 0,
+              "y": 0,
+              "rot": 0,
+              "shownTo": [],
+              "peekedBy": [],
+              "publicOverride": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 12,
+      "batch": "e11",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "note.add",
+        "text": "(anteckning)"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "seq": 13,
+      "batch": "e12",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "A",
+      "intent": {
+        "v": "note.remove",
+        "note": "n5"
+      }
+    }
+  ],
+  "expected": {
+    "A": {
+      "seq": 13,
+      "seat": "A",
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1",
+          "edge": "S"
+        },
+        {
+          "id": "B",
+          "name": "Spelare 2",
+          "edge": "N"
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Zon 2",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        },
+        {
+          "mode": "count",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Zon 1",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "none",
+          "count": 10
+        },
+        {
+          "mode": "order",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Zon 4",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "A",
+          "returnTo": "draw",
+          "order": []
+        },
+        {
+          "mode": "count",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Zon 5",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "B",
+          "returnTo": "draw",
+          "count": 0
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Zon 3",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        }
+      ],
+      "components": [],
+      "rewind": null,
+      "undo": null,
+      "ended": false,
+      "played": true,
+      "version": "v1",
+      "notes": [
+        {
+          "id": "n3",
+          "by": "A",
+          "text": "(anteckning)",
+          "done": false
+        },
+        {
+          "id": "n12",
+          "by": null,
+          "text": "(anteckning)",
+          "done": false
+        }
+      ]
+    },
+    "B": {
+      "seq": 13,
+      "seat": "B",
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1",
+          "edge": "S"
+        },
+        {
+          "id": "B",
+          "name": "Spelare 2",
+          "edge": "N"
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Zon 2",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        },
+        {
+          "mode": "count",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Zon 1",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "none",
+          "count": 10
+        },
+        {
+          "mode": "count",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Zon 4",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "A",
+          "returnTo": "draw",
+          "count": 0
+        },
+        {
+          "mode": "order",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Zon 5",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "B",
+          "returnTo": "draw",
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Zon 3",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        }
+      ],
+      "components": [],
+      "rewind": null,
+      "undo": null,
+      "ended": false,
+      "played": true,
+      "version": "v1",
+      "notes": [
+        {
+          "id": "n3",
+          "by": "A",
+          "text": "(anteckning)",
+          "done": false
+        },
+        {
+          "id": "n12",
+          "by": null,
+          "text": "(anteckning)",
+          "done": false
+        }
+      ]
+    },
+    "table": {
+      "seq": 13,
+      "seat": null,
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1",
+          "edge": "S"
+        },
+        {
+          "id": "B",
+          "name": "Spelare 2",
+          "edge": "N"
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Zon 2",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        },
+        {
+          "mode": "count",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Zon 1",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "none",
+          "count": 10
+        },
+        {
+          "mode": "count",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Zon 4",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "A",
+          "returnTo": "draw",
+          "count": 0
+        },
+        {
+          "mode": "count",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Zon 5",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "B",
+          "returnTo": "draw",
+          "count": 0
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Zon 3",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        }
+      ],
+      "components": [],
+      "rewind": null,
+      "undo": null,
+      "ended": false,
+      "played": true,
+      "version": "v1",
+      "notes": [
+        {
+          "id": "n3",
+          "by": "A",
+          "text": "(anteckning)",
+          "done": false
+        },
+        {
+          "id": "n12",
+          "by": null,
+          "text": "(anteckning)",
+          "done": false
+        }
+      ]
+    },
+    "observer": {
+      "seq": 13,
+      "seat": null,
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1",
+          "edge": "S"
+        },
+        {
+          "id": "B",
+          "name": "Spelare 2",
+          "edge": "N"
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Zon 2",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Zon 1",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "none",
+          "order": [
+            "r8",
+            "r2",
+            "r1",
+            "r4",
+            "r9",
+            "r6",
+            "r7",
+            "r0",
+            "r3",
+            "r5"
+          ]
+        },
+        {
+          "mode": "order",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Zon 4",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "A",
+          "returnTo": "draw",
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Zon 5",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "owner",
+          "owner": "B",
+          "returnTo": "draw",
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Zon 3",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "visibility": "all",
+          "order": []
+        }
+      ],
+      "components": [
+        {
+          "id": "r8",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-9"
+        },
+        {
+          "id": "r2",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-3"
+        },
+        {
+          "id": "r1",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-2"
+        },
+        {
+          "id": "r4",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-5"
+        },
+        {
+          "id": "r9",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-10"
+        },
+        {
+          "id": "r6",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-7"
+        },
+        {
+          "id": "r7",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-8"
+        },
+        {
+          "id": "r0",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-1"
+        },
+        {
+          "id": "r3",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-4"
+        },
+        {
+          "id": "r5",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "kort-6"
+        }
+      ],
+      "rewind": null,
+      "undo": null,
+      "ended": false,
+      "played": true,
+      "version": "v1",
+      "notes": [
+        {
+          "id": "n3",
+          "by": "A",
+          "text": "(anteckning)",
+          "done": false
+        },
+        {
+          "id": "n12",
+          "by": null,
+          "text": "(anteckning)",
+          "done": false
+        }
+      ]
+    }
+  }
+}

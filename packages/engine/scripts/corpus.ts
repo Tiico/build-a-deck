@@ -45,7 +45,8 @@ const numbered = (prefix: string) => {
   }
 }
 
-// The people (DRIFT §7): who sat down, what was flagged and who watched. `nameFor` numbers the seats,
+// The people (DRIFT §7): who sat down, what was flagged, what was written on the notepad (#1131) and
+// who watched. `nameFor` numbers the seats,
 // and is shared with `anonymiseGame` so a name in a rewind's stored table is the same pseudonym.
 export function anonymise(log: readonly Applied[], nameFor: (seat: string) => string = numbered('Spelare ')): Applied[] {
   return log.map((line) => {
@@ -57,6 +58,7 @@ export function anonymise(log: readonly Applied[], nameFor: (seat: string) => st
         intent: { v: 'flag', ...(it.note !== undefined ? { note: '(kommentar)' } : {}), ...(it.observer !== undefined ? { observer: 'Observatör' } : {}) },
       }
     }
+    if (it.v === 'note.add' || it.v === 'note.edit') return { ...line, intent: { ...it, text: '(anteckning)' } }
     return line
   })
 }
