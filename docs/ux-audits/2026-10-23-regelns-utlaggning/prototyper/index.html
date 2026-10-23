@@ -1,0 +1,259 @@
+<!doctype html>
+<!-- PROTOTYP (#1203). Kastas när varianten är vald. ?v=A|B|C, ←/→ byter. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regelns utläggning — prototyp #1203</title>
+<style>
+:root { --bg: #14161c; --panel: #1a1d25; --ink: #e6ecfa; --quiet: #8b93a7; --line: #343a48; --btn: #232733; --blue: #2f7de1; --gold: #f0b64a; --felt: #1f4a33; --felt-edge: #163826; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px system-ui, sans-serif; }
+body { padding: 16px 16px 96px; }
+.rubrik { max-width: 1280px; margin: 0 0 10px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; }
+.anteckning { max-width: 1280px; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.proto { max-width: 1280px; margin: 0 0 14px; display: flex; gap: 16px; align-items: center; font-size: 13px; color: #ffd98a; }
+.proto input[type=range] { width: 160px; }
+.editor { width: 100%; max-width: 1180px; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; background: var(--bg); outline: 1px solid #2a2d36; border-radius: 8px; padding: 16px; }
+.kol { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+h4 { margin: 8px 0 0; font-size: 12px; letter-spacing: .12em; color: var(--quiet); }
+select { background: var(--btn); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; height: 36px; padding: 0 6px; font: inherit; font-weight: 600; }
+button { font: inherit; color: var(--ink); background: var(--btn); border: 1px solid var(--line); border-radius: 8px; min-height: 40px; padding: 0 12px; cursor: pointer; font-weight: 600; }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.zon { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 8px; border-radius: 8px; }
+.zon.vald { background: #232a3a; }
+.zon .ikon { width: 12px; height: 16px; border: 1.5px solid var(--quiet); border-radius: 2px; }
+.zon .chip { margin-left: auto; font-size: 12px; background: #2a2f3c; border-radius: 999px; padding: 2px 8px; }
+.panel { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--panel); display: flex; flex-direction: column; gap: 10px; }
+.panel .namn { font-weight: 700; }
+.mening { line-height: 2.5; }
+.mening select { margin: 0 2px; }
+.mening .las { color: #ffe9b8; font-weight: 600; }
+.mening .steg { color: var(--quiet); font-size: 12px; margin-right: 6px; }
+.var { display: grid; grid-template-columns: 116px 1fr; gap: 14px; align-items: start; }
+.karta { display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 4px; }
+.karta button { min-height: 0; padding: 0; width: 36px; height: 36px; font-size: 16px; }
+.karta button[aria-pressed='true'], .satt button[aria-pressed='true'] { background: #2f4a7a; border-color: var(--blue); }
+.karta .lek { grid-area: 2 / 2; display: grid; place-items: center; }
+.karta .lek i { width: 22px; height: 30px; border-radius: 3px; background: #6b4a2b; box-shadow: 2px 2px 0 #3b2a18, 4px 4px 0 #2a1d10; }
+.satt { display: flex; flex-direction: column; gap: 6px; }
+.satt button { display: flex; align-items: center; gap: 10px; text-align: left; }
+.satt svg { flex: none; }
+.etikett { font-size: 12px; color: var(--quiet); }
+.felt { position: relative; background: #0f1117; border-radius: 12px; overflow: hidden; }
+.felt svg { display: block; width: 100%; height: auto; }
+.flyt { position: absolute; display: flex; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.flyt button { border: 0; border-radius: 0; min-height: 40px; font-size: 13px; }
+.flyt button[aria-pressed='true'] { background: #2f4a7a; }
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>Prototyp #1203 · Var och hur en regel lägger ut korten.</b> Draghögens åtgärd «Lägg ut marknaden» tar kort och lägger dem bredvid högen. I dag kan regeln varken välja sida (den är högens, i fliken Bord) eller lägga korten annat än i en hög. Filten till höger är förhandsvisningen och visar var korten hamnar vid ett riktigt bord.</div>
+<div class="anteckning" id="anteckning"></div>
+<div class="proto">
+  <label>Prototyp — platser vid bordet: <b id="platsN">4</b> <input id="platser" type="range" min="2" max="8" value="4"></label>
+  <span>Kasthögen ligger där receptet lägger den (140 mm höger om leken), så en rad åt höger visar vad som händer när den är i vägen.</span>
+</div>
+<div class="editor"><div class="kol" id="kol"></div><div class="felt" id="felt"></div></div>
+<nav class="vaxlare" aria-label="Prototypväxlare">
+  <button id="prev" aria-label="Föregående">←</button>
+  <button data-v="A" aria-pressed="true">A · Två ord till i meningen</button>
+  <button data-v="B" aria-pressed="false">B · Karta och läggsätt under meningen</button>
+  <button data-v="C" aria-pressed="false">C · Peka på filten</button>
+  <button id="next" aria-label="Nästa">→</button>
+</nav>
+<script>
+const W = 63, H = 88, GAP = 12, OVERLAP = 26
+const DECK = { x: -140, y: 0 }, DISCARD = { x: 140, y: 0 }
+const SIDES = ['left', 'right', 'above', 'below']
+const SIDE_WORD = { left: 'till vänster om högen', right: 'till höger om högen', above: 'ovanför högen', below: 'under högen' }
+const LAY_WORD = { stack: 'på varandra', row: 'bredvid varandra', overlap: 'omlott' }
+const LAY_LONG = { stack: 'På varandra — som i dag', row: 'Bredvid varandra', overlap: 'Omlott — fjädrat som handen' }
+const qs = new URLSearchParams(location.search)
+let V = ['A', 'B', 'C'].includes(qs.get('v')) ? qs.get('v') : 'A'
+let seats = 4
+// Högen själv säger vänster (fliken Bord). Steget ärver det tills designern väljer.
+let st = { n: 'seats', face: 'front', lay: 'row', side: 'left' }
+const $ = (s) => document.querySelector(s)
+
+const NOTES = {
+  A: `<b>A — Två ord till i meningen.</b> Platsen «till vänster om högen» blir en väljare med de fyra sidorna, och ett nytt hål säger hur: «på varandra», «bredvid varandra» eller «omlott». Ett nytt steg börjar på högens egen sida.
+  <br><span class="plus">+ Meningen är fortfarande specifikationen ordagrant (K21), och ingen ny yta behövs.</span> <span class="minus">− Sidan blir en sak högen <i>och</i> steget säger; K21 valde bort just det. Fyra väljare i en mening radbryts vid 360 px.</span>`,
+  B: `<b>B — Karta och läggsätt under meningen.</b> Meningen läses men väljs inte i för de här två. Under den står en liten karta med leken i mitten och fyra knappar runt, och tre läggsätt med en bild var.
+  <br><span class="plus">+ Sidan väljs där den syns, och läggsätten förklarar sig med bilden.</span> <span class="minus">− Ett andra ställe att ställa in ett steg, och panelen växer med ~130 px per steg som lägger bredvid högen.</span>`,
+  C: `<b>C — Peka på filten.</b> När steget är valt visar filten fyra streckade platser runt leken. Ett klick väljer sida, och läggsättet väljs i en liten ruta vid korten. Meningen läser resultatet.
+  <br><span class="plus">+ Man väljer där korten faktiskt hamnar, och ser genast om de krockar med kasthögen.</span> <span class="minus">− Filten blir en kontroll; tangentbordet behöver en egen väg dit (K16), och på liten skärm är filten liten.</span>`,
+}
+
+function feltSize(n) {
+  const edges = n <= 2 ? ['S', 'N'] : n === 3 ? ['S', 'N', 'E'] : ['S', 'N', 'E', 'W', 'S', 'N', 'E', 'W']
+  const at = (e) => edges.slice(0, n).filter((x) => x === e).length
+  return { w: 1200 + (Math.max(1, at('S'), at('N')) - 1) * 600, h: 800 + (Math.max(1, at('E'), at('W')) - 1) * 600, edges: edges.slice(0, n), at }
+}
+
+function count() { return st.n === 'seats' ? seats : Number(st.n) }
+
+// Var kort i hamnar, mittpunkter i bordets mm. Det första kortet ligger där en kapning redan landar
+// (besidePile), och resten går bort från leken — ovanför och under centreras raden på lekens linje.
+function placed() {
+  const n = count(), f = feltSize(seats)
+  const out = { left: [-1, 0], right: [1, 0], above: [0, -1], below: [0, 1] }[st.side]
+  const first = { x: DECK.x + out[0] * (W + GAP), y: DECK.y + out[1] * (H + GAP) }
+  if (st.lay === 'stack') return Array.from({ length: n }, () => ({ ...first }))
+  const step = st.lay === 'row' ? W + GAP : OVERLAP
+  const horiz = out[0] !== 0
+  const cards = []
+  const minX = -f.w / 2 + 70, maxX = f.w / 2 - 70
+  let line = 0, k = 0
+  for (let i = 0; i < n; i++) {
+    let x
+    if (horiz) x = first.x + out[0] * k * step
+    else x = first.x + (k - (Math.min(n - line * perLine(), perLine()) - 1) / 2) * step
+    if (horiz && (x - W / 2 < minX || x + W / 2 > maxX)) { line++; k = 0; x = first.x }
+    // Raden radbryts bort från leken när den skulle lämna filten.
+    const lineOff = horiz ? line * (H + GAP) : out[1] * line * (H + GAP)
+    cards.push({ x, y: first.y + lineOff })
+    k++
+    if (!horiz && k >= perLine()) { line++; k = 0 }
+  }
+  return cards
+  function perLine() { return Math.max(1, Math.floor((f.w - 140) / step) ) }
+}
+
+function sentence(interactive) {
+  const nSel = `<select id="sn" aria-label="Hur många">${[['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['seats', '1 per spelare']].map(([v, t]) => `<option value="${v}"${st.n === v ? ' selected' : ''}>${t}</option>`).join('')}</select>`
+  const faceSel = `<select id="sf" aria-label="Vilken sida upp">${[['front', 'uppvända'], ['back', 'nedvända'], ['keep', 'som de ligger']].map(([v, t]) => `<option value="${v}"${st.face === v ? ' selected' : ''}>${t}</option>`).join('')}</select>`
+  const lay = interactive ? `<select id="sl" aria-label="Hur de läggs">${Object.entries(LAY_WORD).map(([v, t]) => `<option value="${v}"${st.lay === v ? ' selected' : ''}>${t}</option>`).join('')}</select>` : `<span class="las">${LAY_WORD[st.lay]}</span>`
+  const side = interactive ? `<select id="ss" aria-label="Var">${SIDES.map((v) => `<option value="${v}"${st.side === v ? ' selected' : ''}>${SIDE_WORD[v]}</option>`).join('')}</select>` : `<span class="las">${SIDE_WORD[st.side]}</span>`
+  return `<div class="mening"><span class="steg">1</span>Ta ${nSel} från högen och lägg dem ${faceSel} ${lay} ${side}</div>`
+}
+
+const ICON = {
+  stack: `<svg width="44" height="28" viewBox="0 0 44 28"><rect x="14" y="4" width="14" height="20" rx="2" fill="#555c6e"/><rect x="16" y="2" width="14" height="20" rx="2" fill="#8b93a7"/><rect x="18" y="0" width="14" height="20" rx="2" fill="#e6ecfa"/></svg>`,
+  row: `<svg width="44" height="28" viewBox="0 0 44 28"><rect x="1" y="4" width="12" height="18" rx="2" fill="#e6ecfa"/><rect x="16" y="4" width="12" height="18" rx="2" fill="#e6ecfa"/><rect x="31" y="4" width="12" height="18" rx="2" fill="#e6ecfa"/></svg>`,
+  overlap: `<svg width="44" height="28" viewBox="0 0 44 28"><rect x="6" y="4" width="14" height="20" rx="2" fill="#8b93a7" stroke="#14161c"/><rect x="14" y="4" width="14" height="20" rx="2" fill="#b9c0d0" stroke="#14161c"/><rect x="22" y="4" width="14" height="20" rx="2" fill="#e6ecfa" stroke="#14161c"/></svg>`,
+}
+
+function kol() {
+  const panelExtra = V === 'B' ? `
+    <div class="var">
+      <div><div class="etikett">Var</div><div class="karta" role="group" aria-label="Var korten läggs">
+        <button style="grid-area:1/2" data-side="above" aria-pressed="${st.side === 'above'}" aria-label="Ovanför högen">↑</button>
+        <button style="grid-area:2/1" data-side="left" aria-pressed="${st.side === 'left'}" aria-label="Till vänster om högen">←</button>
+        <span class="lek"><i></i></span>
+        <button style="grid-area:2/3" data-side="right" aria-pressed="${st.side === 'right'}" aria-label="Till höger om högen">→</button>
+        <button style="grid-area:3/2" data-side="below" aria-pressed="${st.side === 'below'}" aria-label="Under högen">↓</button>
+      </div></div>
+      <div><div class="etikett">Hur</div><div class="satt" role="group" aria-label="Hur korten läggs">
+        ${Object.keys(LAY_WORD).map((v) => `<button data-lay="${v}" aria-pressed="${st.lay === v}">${ICON[v]}${LAY_LONG[v]}</button>`).join('')}
+      </div></div>
+    </div>` : V === 'C' ? `<div class="etikett">Peka på filten där korten ska ligga.</div>` : ''
+  $('#kol').innerHTML = `
+    <h4>PÅ BORDET</h4>
+    <div class="zon"><span class="ikon" style="border-style:dashed"></span>Golv</div>
+    <div class="zon vald"><span class="ikon"></span>Draghög<span class="chip">leken</span></div>
+    <div class="zon"><span class="ikon"></span>Kasthög</div>
+    <h4>DRAGHÖGENS ÅTGÄRDER</h4>
+    <div class="panel">
+      <div class="namn">Lägg ut marknaden</div>
+      ${sentence(V === 'A')}
+      ${panelExtra}
+    </div>`
+  for (const [id, key] of [['#sn', 'n'], ['#sf', 'face'], ['#sl', 'lay'], ['#ss', 'side']]) {
+    const el = $(id); if (el) el.onchange = () => { st[key] = el.value; draw() }
+  }
+  document.querySelectorAll('[data-side]').forEach((b) => (b.onclick = () => { st.side = b.dataset.side; draw() }))
+  document.querySelectorAll('[data-lay]').forEach((b) => (b.onclick = () => { st.lay = b.dataset.lay; draw() }))
+}
+
+function felt() {
+  const f = feltSize(seats)
+  const pad = 40, vw = f.w + pad * 2, vh = f.h + pad * 2
+  const T = (x, y) => [x + vw / 2, y + vh / 2]
+  let s = `<svg viewBox="0 0 ${vw} ${vh}" role="img" aria-label="Förhandsvisning av bordet">`
+  s += `<rect x="${pad - 20}" y="${pad - 20}" width="${f.w + 40}" height="${f.h + 40}" rx="40" fill="#3b2a18"/>`
+  s += `<rect x="${pad}" y="${pad}" width="${f.w}" height="${f.h}" rx="24" fill="var(--felt)"/>`
+  // Platser: hand längs kanten och ytan framför. Dekor, men på receptets mått.
+  const done = { S: 0, N: 0, E: 0, W: 0 }
+  f.edges.forEach((e) => {
+    const k = done[e]++, along = (k - (f.at(e) - 1) / 2) * 600
+    const seat = (x, y, w, h) => `<rect x="${T(x, y)[0]}" y="${T(x, y)[1]}" width="${w}" height="${h}" rx="6" fill="none" stroke="#9ec9a9" stroke-opacity=".35" stroke-dasharray="8 6" stroke-width="2"/>`
+    if (e === 'S') s += seat(along - 250, f.h / 2 - 60, 500, 60) + seat(along - 182, f.h / 2 - 170, 365, 100)
+    if (e === 'N') s += seat(along - 250, -f.h / 2, 500, 60) + seat(along - 182, -f.h / 2 + 70, 365, 100)
+    if (e === 'E') s += seat(f.w / 2 - 60, along - 250, 60, 500) + seat(f.w / 2 - 170, along - 182, 100, 365)
+    if (e === 'W') s += seat(-f.w / 2, along - 250, 60, 500) + seat(-f.w / 2 + 70, along - 182, 100, 365)
+  })
+  const pile = (p, label, fill) => {
+    const [x, y] = T(p.x - W / 2, p.y - H / 2)
+    return `<rect x="${x + 6}" y="${y + 6}" width="${W}" height="${H}" rx="5" fill="#1a120a" opacity=".6"/><rect x="${x + 3}" y="${y + 3}" width="${W}" height="${H}" rx="5" fill="#4a3320"/><rect x="${x}" y="${y}" width="${W}" height="${H}" rx="5" fill="${fill}" stroke="#d7b98a" stroke-width="2"/><text x="${x + W / 2}" y="${y + H + 26}" fill="#cfe3d5" font-size="18" font-weight="700" text-anchor="middle">${label}</text>`
+  }
+  s += pile(DECK, 'DRAGHÖG', '#6b4a2b')
+  s += `<rect x="${T(DISCARD.x - W / 2, 0)[0]}" y="${T(0, DISCARD.y - H / 2)[1]}" width="${W}" height="${H}" rx="5" fill="none" stroke="#cfe3d5" stroke-opacity=".5" stroke-dasharray="6 5" stroke-width="2"/><text x="${T(DISCARD.x, 0)[0]}" y="${T(0, DISCARD.y + H / 2)[1] + 26}" fill="#cfe3d5" font-size="18" font-weight="700" text-anchor="middle">KASTHÖG</text>`
+  // C: fyra platser runt leken.
+  if (V === 'C') {
+    for (const side of SIDES) {
+      const o = { left: [-1, 0], right: [1, 0], above: [0, -1], below: [0, 1] }[side]
+      const c = { x: DECK.x + o[0] * (W + GAP), y: DECK.y + o[1] * (H + GAP) }
+      const [x, y] = T(c.x - W / 2 - 6, c.y - H / 2 - 6)
+      const on = st.side === side
+      s += `<g class="mal" data-side="${side}" role="button" tabindex="0" aria-pressed="${on}" aria-label="${SIDE_WORD[side]}" style="cursor:pointer"><rect x="${x}" y="${y}" width="${W + 12}" height="${H + 12}" rx="8" fill="${on ? '#f0b64a22' : '#ffffff0a'}" stroke="${on ? '#f0b64a' : '#ffffff66'}" stroke-dasharray="7 6" stroke-width="2.5"/></g>`
+    }
+  }
+  const cards = placed()
+  const faces = ['#c8553d', '#3d7ec8', '#4fa36b', '#c89b3d', '#8b5cc8', '#3dc8b8', '#c83d8b', '#7a8a3d']
+  const order = st.lay === 'stack' ? cards.slice(0, 3).reverse() : cards
+  order.forEach((c, i) => {
+    const idx = st.lay === 'stack' ? Math.min(cards.length, 3) - 1 - i : i
+    const off = st.lay === 'stack' ? (Math.min(cards.length, 3) - 1 - idx) * 3 : 0
+    const [x, y] = T(c.x - W / 2 + off, c.y - H / 2 + off)
+    const up = st.face !== 'back'
+    s += `<g opacity=".95"><rect x="${x}" y="${y}" width="${W}" height="${H}" rx="5" fill="${up ? '#f6f0e4' : '#6b4a2b'}" stroke="${up ? faces[idx % 8] : '#d7b98a'}" stroke-width="3"/>`
+    if (up) s += `<rect x="${x + 7}" y="${y + 7}" width="${W - 14}" height="36" rx="3" fill="${faces[idx % 8]}"/><text x="${x + W / 2}" y="${y + 68}" font-size="18" font-weight="800" fill="#222" text-anchor="middle">${idx + 1}</text>`
+    s += `</g>`
+  })
+  if (st.lay === 'stack' && cards.length > 1) {
+    const [x, y] = T(cards[0].x + W / 2 - 4, cards[0].y - H / 2 - 4)
+    s += `<circle cx="${x}" cy="${y}" r="16" fill="#e6ecfa"/><text x="${x}" y="${y + 6}" font-size="17" font-weight="800" text-anchor="middle" fill="#14161c">${cards.length}</text>`
+  }
+  s += `</svg>`
+  // C: läggsättet i en liten ruta vid korten.
+  let flyt = ''
+  if (V === 'C') flyt = `<div class="flyt" id="flyt" role="group" aria-label="Hur korten läggs">${Object.keys(LAY_WORD).map((v) => `<button data-lay="${v}" aria-pressed="${st.lay === v}">${LAY_WORD[v][0].toUpperCase() + LAY_WORD[v].slice(1)}</button>`).join('')}</div>`
+  $('#felt').innerHTML = s + flyt
+  if (V === 'C') {
+    const svg = $('#felt svg'), box = svg.getBoundingClientRect(), k = box.width / vw
+    const ys = cards.map((c) => c.y), xs = cards.map((c) => c.x)
+    // Ovanför korten, utom när de ligger ovanför leken: då under dem — aldrig över lekens namn.
+    const mid = (Math.min(...xs) + Math.max(...xs)) / 2
+    const el = $('#flyt'), [px, py] = T(mid, st.side === 'above' ? Math.max(...ys) + H / 2 + 50 : Math.min(...ys) - H / 2 - 30)
+    el.style.transform = st.side === 'above' ? '' : 'translateY(-100%)'
+    el.style.left = Math.max(8, px * k - el.offsetWidth / 2) + 'px'; el.style.top = py * k + 'px'
+    document.querySelectorAll('.mal').forEach((g) => {
+      const go = () => { st.side = g.dataset.side; draw() }
+      g.onclick = go; g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go() } }
+    })
+    document.querySelectorAll('#flyt [data-lay]').forEach((b) => (b.onclick = () => { st.lay = b.dataset.lay; draw() }))
+  }
+}
+
+function draw() {
+  $('#anteckning').innerHTML = NOTES[V]
+  document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === V)))
+  kol(); felt()
+}
+function go(v) { V = v; const u = new URL(location); u.searchParams.set('v', v); history.replaceState(null, '', u); draw() }
+document.querySelectorAll('.vaxlare [data-v]').forEach((b) => (b.onclick = () => go(b.dataset.v)))
+const step = (d) => go('ABC'[('ABC'.indexOf(V) + d + 3) % 3])
+$('#prev').onclick = () => step(-1); $('#next').onclick = () => step(1)
+addEventListener('keydown', (e) => { if (e.target.closest('select, [role=button]')) return; if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1) })
+$('#platser').oninput = (e) => { seats = Number(e.target.value); $('#platsN').textContent = seats; draw() }
+addEventListener('resize', draw)
+draw()
+</script>
+</body>
+</html>
