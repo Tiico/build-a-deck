@@ -133,6 +133,12 @@ export type RewindProposal = z.infer<typeof RewindProposal>
 export const UndoMeaning = z.object({ toSeq: z.number().int().nonnegative(), contested: z.boolean() }).nullable()
 export type UndoMeaning = z.infer<typeof UndoMeaning>
 
+// A row of the table's notepad (#1131), as every view sees it: the notepad is the room's, like
+// the felt's open cards, so there is nothing in it to hide. `by` is the seat that wrote the row,
+// and stays so when somebody else rewrites it; null for the table's own screen.
+export const NoteView = z.object({ id: z.string(), by: SeatId.nullable(), text: z.string(), done: z.boolean() })
+export type NoteView = z.infer<typeof NoteView>
+
 export const Snapshot = z.object({
   seq: z.number().int().nonnegative(),
   seat: SeatId.nullable(),
@@ -156,6 +162,8 @@ export const Snapshot = z.object({
   // it. Every screen names it — a TV's title, the book a phone hands out (#677) — and it changes
   // in the very patch that carries the version.change line. No secret: it is the room's.
   version: GameVersionId,
+  // The table's notepad (#1131), in the order its rows were written.
+  notes: z.array(NoteView),
 })
 export type Snapshot = z.infer<typeof Snapshot>
 
@@ -170,6 +178,9 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('ended'), ended: z.boolean() }),
   z.object({ op: z.literal('played'), played: z.boolean() }),
   z.object({ op: z.literal('version'), version: GameVersionId }),
+  // The whole notepad, when any row of it changed: a hundred short rows at most, and sent whole it
+  // never needs an order of its own to merge.
+  z.object({ op: z.literal('notes'), notes: z.array(NoteView) }),
 ])
 export type Op = z.infer<typeof Op>
 

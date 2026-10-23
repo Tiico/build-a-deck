@@ -1,6 +1,7 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneBeside, ZoneView } from '@byd/protocol'
-import { CHIP_MM } from '@byd/server/doc'
+import { CHIP_MM, DIE_MM as RECIPE_DIE_MM } from '@byd/server/doc'
 import { zoneAt, type Drop } from '../zones.js'
+import { isCounter, isDie } from '../components.js'
 import { union, type Rect } from './camera.js'
 import { handExtent, handRotation, type TableMode } from './hand.js'
 import { laidIn } from './lay.js'
@@ -12,6 +13,10 @@ export const CARD_MM = { w: 63, h: 88 }
 // recipe already has to know how wide a chip is to centre one in its slot (#89), so the number
 // lives there and this is the felt's name for it.
 export const TOKEN_MM = CHIP_MM
+// A die (#1137, K28), drawn larger than life by the same rule as the chip: a square of the felt's
+// own millimetres, which the recipe already reserves for it when it lays the dice out (`diceSpots`).
+// A 16 mm d6 drawn to scale would be a speck across a room.
+export const DIE_MM = RECIPE_DIE_MM
 
 export type Point = { x: number; y: number }
 
@@ -43,7 +48,9 @@ export function besidePile(pile: { x: number; y: number; rot: number }, cards: n
 // A chip pile (#89) is not a new kind of thing on the table, only a set of chips that lie on the
 // same spot: it travels as one and the ring reaches into it, and the log hears nothing but the
 // `move` each chip already travelled by.
-export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'counterPile'; ids: string[] } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
+// A die (#1137) travels as a chip does, by itself and onto no pile; a click on it is a roll and not a
+// question, so it has a target of its own rather than borrowing the chip's.
+export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'die'; id: string } | { kind: 'counterPile'; ids: string[] } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
 export type Drag = {
   target: DragTarget
   // Cards moving together (a card drag); their absolute positions when the drag began.
@@ -139,6 +146,13 @@ function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
     const dest = at({ x: o.x + dx, y: o.y + dy })
     const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: TOKEN_MM, h: TOKEN_MM })
     return ids.map((id): Intent => ({ v: 'move', component: id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }))
+  }
+  // A die lies where it was let go of, as a chip does: it stacks on nothing and joins no pile.
+  if (d.target.kind === 'die') {
+    const o = d.origin[d.target.id] ?? d.grab
+    const dest = at({ x: o.x + dx, y: o.y + dy })
+    const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: DIE_MM, h: DIE_MM })
+    return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }]
   }
   if (d.target.kind === 'pileTop') {
     const pile = zones.get(d.target.pile)
@@ -243,6 +257,9 @@ export function hitAt(view: Snapshot, p: Point, ignore: ReadonlySet<string>, ign
   const zones = new Map(view.zones.map((z) => [z.id, z]))
   for (const c of [...view.components].reverse()) {
     if (ignore.has(c.id)) continue
+    // Only a card is something to stack on (K1): a die and a chip are `stackable: false`, and a
+    // card let go of over one lies on the felt rather than asking for a stack the table refuses.
+    if (isDie(c) || isCounter(c)) continue
     const z = zones.get(c.zone)
     if (!z || z.kind !== 'area') continue
     if (inside(p, { x: z.geometry.x + c.x, y: z.geometry.y + c.y })) return { kind: 'card', id: c.id, zone: c.zone }

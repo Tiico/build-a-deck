@@ -1,45 +1,40 @@
 import { PHONE } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
-// Handen på telefonen med många kort (#767, beställarens beslut A + B). Med 25 kort var remsan
-// 3 615 px i en ruta på 358 px, tre kort syntes åt gången och inget sade var i handen man stod.
-// «Visa alla · 25» bredvid «Dina kort» öppnar hela handen i ett rutnät, som /online har (K17), och
-// under remsan står vilka kort som syns av hur många.
+// Handen på telefonen med många kort (#767, #1147). Med 25 kort var remsan 3 615 px i en ruta på
+// 358 px, tre kort syntes åt gången och inget sade var i handen man stod; «Visa alla · 25» öppnade
+// då hela handen i ett rutnät. Sedan flikarna (beställarens val B) är handen det rutnätet: alla
+// kort i rader, panelen rullar uppåt och nedåt, och ingenting går i sidled.
 test.use({ locale: 'sv-SE' })
 
-test('25 kort på telefonen: hela handen ett tryck bort, och remsan säger var man är (#767)', async ({ tableOf, host, player }) => {
+test('25 kort på telefonen: hela handen i rutnätet, och varje kort når man genom att rulla panelen (#767, #1147)', async ({ tableOf, host, player }) => {
   const table = await tableOf({ players: 4, counters: [], cards: 40, copies: 1 })
   const ada = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 25 }])
   const page = ada.page
-  await expect(page.locator('[data-hand-card]')).toHaveCount(25)
+  const cards = page.locator('[data-hand-card]')
+  await expect(cards).toHaveCount(25)
+  await expect(page.getByRole('button', { name: /^Visa alla/ })).toHaveCount(0)
 
-  // Var i handen: remsan står vid sitt slut, där det senast dragna kortet ligger.
-  const where = page.locator('[data-strip-where]')
-  await expect(where).toHaveText(/^\d+–25 av 25$/)
-  await page.locator('.byd-strip').evaluate((el) => el.scrollTo({ left: 0 }))
-  await expect(where).toHaveText(/^1–\d+ av 25$/)
+  // Tre i bredd, och inget i sidled — varken sidan eller panelen.
+  const laid = await page.evaluate(() => {
+    const tops = [...document.querySelectorAll('[data-hand-card]')].map((c) => Math.round(c.getBoundingClientRect().top))
+    const panel = document.querySelector('.byd-panels') as HTMLElement
+    return {
+      perRow: tops.filter((t) => t === tops[0]).length,
+      sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth + panel.scrollWidth - panel.clientWidth,
+      down: panel.scrollHeight > panel.clientHeight,
+    }
+  })
+  expect(laid).toEqual({ perRow: 3, sideways: 0, down: true })
 
-  // Hela handen, och ett kort därifrån är det valda.
-  const all = page.getByRole('button', { name: 'Visa alla · 25' })
-  await all.click()
-  const sheet = page.getByRole('dialog', { name: 'Hela handen, 25 kort' })
-  await expect(sheet.locator('[data-spread-card]')).toHaveCount(25)
-  const pick = sheet.locator('[data-spread-card]').nth(12)
-  const id = await pick.getAttribute('data-spread-card')
-  await pick.click()
-  await expect(sheet).toHaveCount(0)
-  await expect(page.locator(`[data-hand-card="${id}"]`)).toHaveAttribute('data-selected', 'true')
-  await expect(page.locator(`[data-hand-card="${id}"]`)).toBeInViewport()
-})
-
-test('en hand som ryms i remsan har ingen «Visa alla» och ingen markör', async ({ tableOf, host, player }) => {
-  const table = await tableOf({ players: 4, counters: [], cards: 40, copies: 1 })
-  const ada = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
-  const dealer = await host(table)
-  await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 2 }])
-  await expect(ada.page.locator('[data-hand-card]')).toHaveCount(2)
-  await expect(ada.page.getByRole('button', { name: /^Visa alla/ })).toHaveCount(0)
-  await expect(ada.page.locator('[data-strip-where]')).toHaveCount(0)
+  // Ett kort långt ner i handen: rullat fram, tryckt, och raden över flikarna säger dess namn.
+  const deep = cards.nth(19)
+  await deep.scrollIntoViewIfNeeded()
+  await deep.tap()
+  await expect(deep).toHaveAttribute('data-selected', 'true')
+  // The card's name as it is spoken: its text also holds what a face still on its way says.
+  const name = (await deep.getAttribute('aria-label'))!.split(',')[0]!
+  await expect(page.locator('[data-hand-bar] strong')).toHaveText(name)
 })

@@ -123,6 +123,8 @@ export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refuse
               // The sheet takes focus when it opens, on the target a thumb would land on first:
               // a modal without focus is one Escape and Tab cannot reach.
               autoFocus={i === 0}
+              // The zone, said in markup as the bar's targets say it (A4).
+              data-zone={target.zone}
               onClick={() => onPlay(target.zone, target.at)}
               className={refusedZone === target.zone ? 'byd-status-refused-control' : undefined}
               {...(refusedZone === target.zone && refusal ? refusal.control : {})}

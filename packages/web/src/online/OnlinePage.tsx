@@ -3,11 +3,12 @@ import type { Intent, VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
 import './online.css'
-import { TableRenderer, type TableHandle } from '../table/TableRenderer.js'
+import { TableRenderer, type FeltRoom, type TableHandle } from '../table/TableRenderer.js'
 import { useCardsPending } from '../table/textures.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { usePresence, useRecent } from '../table/usePresence.js'
 import { useShuffles } from '../table/shuffle.js'
+import { useRolls } from '../table/Die.js'
 import { previewOf } from '../table/rewind.js'
 import { seatColor } from '../table/seatColor.js'
 import { playIntents } from '../player/play.js'
@@ -18,6 +19,8 @@ import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/session.js'
 import { SeatLine } from './SeatLine.js'
 import { LastMove } from './LastMove.js'
+import { NOTES_OPEN_PX, NOTES_RAIL_PX, NotesColumn } from './NotesColumn.js'
+import { CARD_CONTROL_PX } from '../legibility.js'
 import { HandFan } from './HandFan.js'
 import { HandColumn } from './HandColumn.js'
 import { HandSpread } from './HandSpread.js'
@@ -96,6 +99,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const recent = useRecent(activity)
   // The shuffle fanned on the phone's felt too (L35): every screen that sees the pile plays it.
   const shuffles = useShuffles(activity, view !== null)
+  const rolls = useRolls(activity, view !== null)
   const table = useRef<TableHandle>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
   // The hand's second mode (#24): the fan at rest, the whole hand as a grid when it is asked for.
@@ -103,6 +107,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // A card carried out of the hand, and where (#484 fynd 4): the felt is asked what lies under it.
   const [carried, setCarried] = useState<{ card: VisibleComponentState; x: number; y: number } | null>(null)
   const showAll = useRef<HTMLButtonElement>(null)
+  // What the felt says about its frame, and whether the notepad stands open (#1131): together they
+  // answer whether the column may stand open by default and keep K9's floor on every card.
+  const [felt, setFelt] = useState<FeltRoom | null>(null)
+  const [notesOpen, setNotesOpen] = useState(false)
   const [toast, setToast] = useToast()
   const marks = useHandMarks()
   const turned = useSeatTurned(sessionId, seat, view)
@@ -153,6 +161,12 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const shown = withoutHand(previewOf(view), seat)
   const playable = !view.rewind && !view.ended
   const up = spread && hand.length > 0
+  // Folded where it costs (beställarens beslut 2026-10-22, K29): open by default only where a card
+  // at rest keeps K9's 45 px with the column open — measured by the felt's own fit, in the frame the
+  // open column would leave it. A portrait window lays the column over the felt instead and never
+  // opens it unasked. Until the felt has been fitted the answer is no.
+  const openFrame = felt ? { w: felt.frame.w - (notesOpen ? 0 : NOTES_OPEN_PX - NOTES_RAIL_PX), h: felt.frame.h } : null
+  const notesByDefault = column && felt !== null && openFrame !== null && felt.cardPxAt(openFrame) >= CARD_CONTROL_PX
   // The answer goes back to the felt, which says a refusal beside the drop (#682).
   const onAct = (intents: Intent[]) => client.send(...intents)
   // A card out of the fan lands where it is dropped, centred on the pointer, in what the felt
@@ -212,6 +226,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         </div>
       </header>
       <main className="byd-online-play" data-hand={column ? 'column' : 'band'}>
+        {/* The table's notepad (#1131, beslut B · Spalten) at the felt's inline start, across from
+            the hand; open by default only where the felt can spare it (`notesByDefault`). */}
+        <NotesColumn view={view} activity={activity} seat={seat} send={(...intents) => client.send(...intents)} defaultOpen={notesByDefault} onOpen={setNotesOpen} />
         <div className="byd-online-felt">
           <TableRenderer
             ref={table}
@@ -230,8 +247,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             pulses={presence.pulses}
             recent={recent}
             shuffles={shuffles}
+            rolls={rolls}
             onPresence={(p) => client.sendPresence(p)}
             startWait={startWait}
+            onFit={setFelt}
           />
         </div>
         {/* One hand, one copy of it. While the grid stands the band is still drawn — dimmed,

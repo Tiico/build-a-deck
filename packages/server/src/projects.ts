@@ -35,6 +35,19 @@ const ZoneDef = z.object({
   // leaves it there, and back in this pile it lies last again. Piles only.
   bottom: z.object({ cardRef: z.string().min(1), face: FaceId }).optional(),
 })
+// One line of the game's dice (K5, #1136): which kind, how many, and where. Its own schema because
+// the editor's `setDice` holds a list to it as well as the stored document does (#1139).
+export const ProjectDie = z
+  .object({
+    faces: z.union([z.literal(4), z.literal(6), z.literal(8), z.literal(10), z.literal(12), z.literal(20)]),
+    count: z.number().int().min(1).max(20),
+    perSeat: z.boolean().optional(),
+    zone: z.string().min(1).optional(),
+    role: z.string().min(1).optional(),
+  })
+  .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a die lies in a zone or in a role, and only one' })
+export type ProjectDie = z.infer<typeof ProjectDie>
+export const ProjectDice = z.array(ProjectDie)
 export const ProjectSetup = z.object({
   zones: z.array(ZoneDef),
   seats: z.array(z.string().min(1)),
@@ -50,19 +63,7 @@ export const ProjectSetup = z.object({
   // (`DICE`). Where is one of two things (#1139): `zone`, an area every seat shares, or `role`, an
   // area each seat has (`front` is `front:A`, `front:B` …), which gives every seat `count` of its
   // own. `perSeat` on a shared area makes the count follow the players: `count` for each seat.
-  dice: z
-    .array(
-      z
-        .object({
-          faces: z.union([z.literal(4), z.literal(6), z.literal(8), z.literal(10), z.literal(12), z.literal(20)]),
-          count: z.number().int().min(1).max(20),
-          perSeat: z.boolean().optional(),
-          zone: z.string().min(1).optional(),
-          role: z.string().min(1).optional(),
-        })
-        .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a die lies in a zone or in a role, and only one' }),
-    )
-    .optional(),
+  dice: ProjectDice.optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export type Cell = z.infer<typeof Cell>

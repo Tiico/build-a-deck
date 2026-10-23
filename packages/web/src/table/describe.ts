@@ -140,5 +140,21 @@ export function describeActivity(line: Said, view: Snapshot, t: T): string {
       const flagger = it.observer ? t('activity.flag.observer', { name: it.observer }) : who
       return it.note ? t('activity.flag.note', { who: flagger, note: it.note }) : t('activity.flag', { who: flagger })
     }
+    // The notepad (#1131). A tick and a removal carry only the row's id, so the row is named by what
+    // it says while the reader still has it — and a removed row, which the reader no longer has once
+    // the patch has landed, is said without it.
+    case 'note.add':
+      return t('activity.note.add', { who, text: it.text })
+    case 'note.edit':
+      return t('activity.note.edit', { who, text: it.text })
+    case 'note.check': {
+      const text = view.notes.find((n) => n.id === it.note)?.text
+      if (text === undefined) return t(it.done ? 'activity.note.checked' : 'activity.note.unchecked', { who })
+      return t(it.done ? 'activity.note.check' : 'activity.note.uncheck', { who, text })
+    }
+    case 'note.remove': {
+      const text = view.notes.find((n) => n.id === it.note)?.text
+      return text === undefined ? t('activity.note.removed', { who }) : t('activity.note.remove', { who, text })
+    }
   }
 }

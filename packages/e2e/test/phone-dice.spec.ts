@@ -12,6 +12,8 @@ test('throws 2d6 from the phone in one envelope, and the sheet, the log and the 
   const tv = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
   const page = ada.page
 
+  // Among the counters, on «In front of me» (#1147).
+  await page.getByRole('tab', { name: /^In front of me/ }).tap()
   const pill = page.getByRole('button', { name: 'Dice · 2' })
   await expect(pill).toBeVisible()
   expect((await pill.boundingBox())!.height).toBeGreaterThanOrEqual(44)
@@ -49,7 +51,7 @@ test('throws 2d6 from the phone in one envelope, and the sheet, the log and the 
   expect(envelopes.map((m) => m.envelope!.intents.map((i) => i.v))).toEqual([['roll', 'roll']])
 
   // The phone's log and the room's television say the one throw in the one sentence.
-  await expect(page.locator('.byd-phone-history li').first()).toHaveText(`You rolled 2d6: ${a} + ${b} = ${sum}`)
+  await expect(page.locator('[data-panel="table"] li').first()).toHaveText(`You rolled 2d6: ${a} + ${b} = ${sum}`)
   await expect(tv.page.getByText(`Ada slog 2d6: ${a} + ${b} = ${sum}`)).toBeVisible()
 
   await sheet.getByRole('button', { name: 'Close' }).tap()

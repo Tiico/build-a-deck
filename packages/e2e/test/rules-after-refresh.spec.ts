@@ -17,6 +17,8 @@ test('a table updated to a version with rules hands out the book and names the v
   const ada = await player({ ...table, seats }, { name: 'Ada', seat: seats[0]! })
   await expect(tv.page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar version 1')
   await expect(ada.page.locator('.byd-player > header')).toBeVisible()
+  // On the phone the rules stand in «More» (#1147), which is open for both readings.
+  await ada.page.getByRole('tab', { name: /^More/ }).click()
   await expect(ada.page.getByRole('button', { name: 'Rules', exact: true })).toHaveCount(0)
   await expect(tv.page.getByRole('button', { name: 'Regler', exact: true })).toHaveCount(0)
 

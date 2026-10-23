@@ -171,6 +171,18 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     case 'flag':
       // A flagged moment (G3) is a mark in the log; the table is untouched.
       break
+    case 'note.add':
+      state.notes = [...state.notes, { id: `n${applied.seq}`, by: applied.by, text: it.text, done: false }]
+      break
+    case 'note.edit':
+      state.notes = state.notes.map((n) => (n.id === it.note ? { ...n, text: it.text } : n))
+      break
+    case 'note.check':
+      state.notes = state.notes.map((n) => (n.id === it.note ? { ...n, done: it.done } : n))
+      break
+    case 'note.remove':
+      state.notes = state.notes.filter((n) => n.id !== it.note)
+      break
     case 'version.change':
       changeVersion(state, it.to, it.components, it.cards)
       break
