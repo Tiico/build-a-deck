@@ -68,6 +68,48 @@ describe('att kompilera en åtgärd till intents', () => {
     expect(landsAt([{ v: 'take', which: [{ field: 'rarity', is: ['Diamant'] }], to: { at: 'beside' }, face: 'front' }])).toBeGreaterThan(draw.geometry.x)
   })
 
+  // Steget får säga sin egen sida och hur korten läggs (#1203, beställarens beslut A). Scenens
+  // draghög ligger i (-200, 0) på ett golv från (-500, -300) som är 1000 × 600 mm.
+  it('lägger korten på stegets egen sida när steget säger en, och på högens annars (#1203)', () => {
+    const { view } = buildScene()
+    const made = compile(view(null), [{ v: 'split', count: { of: 'number', n: 3 }, to: { at: 'beside', side: 'right' }, face: 'front' }])
+    expect(made).toEqual({ ok: true, intents: [{ v: 'split', pile: 'draw', at: 3, x: -125, y: 0, face: 'front' }] })
+  })
+
+  it('lägger korten bredvid varandra, bort från högen, och börjar en ny rad innan raden lämnar golvet (#1203)', () => {
+    const { view } = buildScene()
+    // Tre kort ryms till vänster om högen innan golvets kant: mitten på -275, -350 och -425.
+    expect(compile(view(null), [{ v: 'split', count: { of: 'number', n: 4 }, to: { at: 'beside', side: 'left', lay: 'row' }, face: 'front' }])).toEqual({
+      ok: true,
+      intents: [{ v: 'split', pile: 'draw', at: 4, x: -306, y: -44, face: 'front', row: { dx: -75, dy: 0, wrap: { after: 3, dx: 0, dy: 100 } } }],
+    })
+  })
+
+  it('lägger dem omlott med handens steg, och åt vänster med det första kortet överst så att hörnet syns (#1203)', () => {
+    const { view } = buildScene()
+    expect(compile(view(null), [{ v: 'split', count: { of: 'number', n: 2 }, to: { at: 'beside', side: 'left', lay: 'overlap' }, face: 'front' }])).toEqual({
+      ok: true,
+      intents: [{ v: 'split', pile: 'draw', at: 2, x: -306, y: -44, face: 'front', row: { dx: -26, dy: 0, firstOnTop: true, wrap: { after: 8, dx: 0, dy: 100 } } }],
+    })
+  })
+
+  it('centrerar en rad ovanför högen på högens linje, och radbryter uppåt (#1203)', () => {
+    const { view } = buildScene()
+    expect(compile(view(null), [{ v: 'split', count: { of: 'seats' }, to: { at: 'beside', side: 'above', lay: 'row' }, face: 'keep' }])).toEqual({
+      ok: true,
+      intents: [{ v: 'split', pile: 'draw', at: 1, x: -231, y: -144, row: { dx: 75, dy: 0, centred: true, wrap: { after: 8, dx: 0, dy: -100 } } }],
+    })
+  })
+
+  it('lägger ut ett framletat knippe i rad, fast antalet inte går att veta här (#1203)', () => {
+    const { view } = buildScene()
+    const which = [{ field: 'rarity', is: ['Diamant'] }]
+    expect(compile(view(null), [{ v: 'take', which, to: { at: 'beside', side: 'below', lay: 'row' }, face: 'front' }])).toEqual({
+      ok: true,
+      intents: [{ v: 'split', pile: 'draw', at: 1, which, x: -231, y: 56, face: 'front', row: { dx: 75, dy: 0, centred: true, wrap: { after: 8, dx: 0, dy: 100 } } }],
+    })
+  })
+
   // Ett nytt «Leta fram» börjar utan fråga (#713, beslut 2026-10-04: «fråga först»): steget gör
   // ingenting förrän designern sagt vilka kort, och åtgärden säger varför i stället för att flytta
   // hela högen kort för kort.

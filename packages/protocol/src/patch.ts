@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ZoneAction } from './actions.js'
+import { ZoneAction, ZoneBeside } from './actions.js'
 import { ComponentId, FaceId, GameVersionId, SeatId, TypeRef, ZoneId } from './ids.js'
 
 // What one seat is allowed to know about one component.
@@ -52,13 +52,6 @@ export type Geometry = z.infer<typeof Geometry>
 // table shows, and where in a pile a card played there goes. Without one, the name is the verb.
 export const ZoneShortcut = z.object({ label: z.string().min(1).max(40), at: z.enum(['top', 'bottom']) })
 export type ZoneShortcut = z.infer<typeof ZoneShortcut>
-
-// Which side of a pile "beside it" is (K21, revising #87): where Dra 1, Dela på hälften and an
-// action that lays cards beside the pile put them, in the pile's own rotation and turned with it.
-// A pile that says nothing means its left — the side free of both its name and its count — which
-// is what every pile meant before the designer could say otherwise.
-export const ZoneBeside = z.enum(['left', 'right', 'above', 'below'])
-export type ZoneBeside = z.infer<typeof ZoneBeside>
 
 const zoneBase = {
   id: ZoneId,
