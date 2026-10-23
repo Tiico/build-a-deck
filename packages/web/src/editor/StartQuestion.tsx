@@ -3,8 +3,12 @@ import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 import { PlayGlyph } from '../glyphs.js'
 import { useFocusTrap } from './focusTrap.js'
+import { rememberedStart, type Seating, type StartAnswer } from './startAnswer.js'
 import '../account/game-dialogs.css'
 import './start-question.css'
+
+// As long as a name may be anywhere a seat is claimed (`seat.claim`).
+const NAME_MAX = 64
 
 // «Starta» on a game without a table asks how you sit (L75, #1130), once, before the table exists.
 //
@@ -13,31 +17,6 @@ import './start-question.css'
 // way, and a mixed table works as before. It is a window and not a strip, the same window a game's
 // name is changed in (#738): what is behind it is not what is being asked about, and it holds a
 // field.
-export type Seating = 'screen' | 'computer'
-export type StartAnswer = { seating: Seating; name: string }
-
-// The answer and the name are the host's, not the game's: the next table of any game asks with
-// them chosen. Remembered in this browser only; a browser that refuses storage simply forgets.
-const KEY = 'byd.start'
-const NAME_MAX = 64
-
-export function rememberedStart(): StartAnswer {
-  try {
-    const kept = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<StartAnswer> | null
-    return { seating: kept?.seating === 'computer' ? 'computer' : 'screen', name: typeof kept?.name === 'string' ? kept.name : '' }
-  } catch {
-    return { seating: 'screen', name: '' }
-  }
-}
-
-export function rememberStart(answer: StartAnswer): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(answer))
-  } catch {
-    // Forgotten, as a browser without storage forgets everything else the tool remembers.
-  }
-}
-
 export function StartQuestion({ onStart, onCancel }: { onStart(answer: StartAnswer): void; onCancel(): void }) {
   const t = useT()
   const id = useId()
