@@ -96,6 +96,47 @@ describe('"Mina spel" over HTTP (G1)', () => {
     expect(cards['p0']).toBeNull()
   })
 
+  // Arbetsbänken (#1204): a game says how big its deck is, how many sit down to it and when it was
+  // last saved, read out of the live document as the name is (#909).
+  it('says of every game how many cards it deals, how many players it seats and when it was saved (#1204)', async () => {
+    const big = { ...doc('Stora leken'), rows: [{ id: 'a', fields: { title: 'A', antal: 3 } }, { id: 'b', fields: { title: 'B', antal: 2 } }] }
+    await send('POST', '/projects', { id: 'p1', ...big })
+    const [listed] = (await (await send('GET', '/projects')).json()) as { id: string; cards: number; players: number; savedAt: string }[]
+    // The copies, as the table deals them (#1195), and not the rows: five cards, not two.
+    expect(listed).toMatchObject({ id: 'p1', cards: 5, players: 2 })
+    const [version] = (await (await send('GET', '/projects/p1/versions')).json()) as { at: string }[]
+    expect(listed!.savedAt).toBe(version!.at)
+    // An edit in the log is what the list says at once, as of the name.
+    const ws = new WebSocket(`${run.base}/projects/p1/edit?name=Ada`, { headers: { cookie } })
+    const seen: { v: string }[] = []
+    ws.on('message', (data) => seen.push(JSON.parse(data.toString()) as { v: string }))
+    await new Promise((resolve) => ws.once('message', resolve))
+    ws.send(JSON.stringify({ t: 'edit', intent: { v: 'setCell', cardRef: 'a', field: 'antal', value: 4 } }))
+    for (let i = 0; i < 100 && !seen.some((m) => m.v === 'edits'); i++) await new Promise((r) => setTimeout(r, 10))
+    ws.close()
+    const [again] = (await (await send('GET', '/projects')).json()) as { cards: number }[]
+    expect(again!.cards).toBe(6)
+  })
+
+  // The hero's fan (#1204, beslut B): three of the game's own cards, the first in front so the game
+  // is the one its row shows, then the middle and the last, spread over the deck as 2026-09-14 had it.
+  it('hands over a fan of three cards for the game the page leads with (#1204)', async () => {
+    const many = { ...doc('Stora leken'), rows: Array.from({ length: 9 }, (_, i) => ({ id: `r${i}`, fields: { title: `Kort ${i}`, antal: 1 } })) }
+    await send('POST', '/projects', { id: 'p1', ...many })
+    const res = await send('GET', '/projects/p1/fan')
+    expect(res.status).toBe(200)
+    const fan = (await res.json()) as { id: string; face: unknown }[]
+    expect(fan.map((f) => f.id)).toEqual(['r0', 'r4', 'r8'])
+    expect(fan[0]!.face).toEqual(template.faces['front'])
+    // A small deck gives what it has, never the same card twice.
+    await send('POST', '/projects', { id: 'p2', ...doc() })
+    expect(((await (await send('GET', '/projects/p2/fan')).json()) as { id: string }[]).map((f) => f.id)).toEqual(['dragon'])
+    await send('POST', '/projects', { id: 'p0', ...doc('Tomt'), rows: [] })
+    expect(await (await send('GET', '/projects/p0/fan')).json()).toEqual([])
+    // The fan is the game's, and answers only whoever may read the game.
+    expect((await fetch(`${run.http}/projects/p1/fan`)).status).toBe(401)
+  })
+
   it('tells whoever is not logged in to log in first, as the list does', async () => {
     expect((await fetch(`${run.http}/me/cards`)).status).toBe(401)
   })

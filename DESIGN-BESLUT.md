@@ -2081,6 +2081,19 @@ Byggt 2026-09-21 (#231), variant B ur prototypen: kortet står över namnet där
 Urvalet och ritningen skildes åt i två svar, eftersom följdkravet ovan inte går att hålla i ett. `GET /projects` bär `card` — `peekCard`, lekens första rad som id och titel — vilket är allt listan behöver för att veta att det finns ett kort och för att rita tomläget direkt. `GET /me/cards` bär `peekFace`: ytan, radens fält, ikonerna, typsnitten, paletten och kortets egen avvikelse från måttet, för alla spel i ett enda svar. Ett spel i listan kostar därmed ingen rundtur, och första skärmen väntar inte på en enda mall.
 Ett spel utan rader — eller med en mall utan ytor — har inget kort, och brickan säger «inga kort än» i kortets egen ruta, lika hög och lika bred som kortet. Medan svaret är i luften står samma ruta och drar. Kortet är ett `role="img"` med «Första kortet: <titel>», inte mallens fjorton lösa ord.
 
+**Arbetsbänken (beställarens beslut 2026-10-23, #1204, variant B av fyra i `docs/ux-audits/2026-10-23-mina-spel/prototyper/`).**
+Beställaren tyckte att sidan var för nedstrippad och att datorlayouten var för anpassad efter mobil.
+På 1440 px stod allt i en 920 px smal spalt.
+Varje spel sa bara «v1 · inte spelat», och allt man kunde göra med det låg bakom ⋯.
+På telefon tog varje spel ~300 px höjd med kortet i ena hörnet.
+Hyllan (A), en tabell (C) och ett appskal med vänstermeny (D) prövades och valdes bort.
+- **Två spalter på dator.** Huvudspalten har spelen och högerspalten det som händer: «Pågår nu», «Bord du har spelat vid» och rumskoden. Sidan får bli 1440 px bred. Under 860 px står allt i en spalt, med «Pågår nu» först.
+- **Heron är det senast sparade spelet.** Det står stort överst under «Fortsätt där du slutade», med namn, när versionen sparades, siffror (kort, spelare, bord, senast spelat) och spelets två viktigaste handlingar: «Öppna editorn» och bordet («Öppna bordet KOD» medan ett bord kör, annars «Starta bord»). Resten står kvar i ⋯ som förut.
+- **Heron visar en solfjäder med tre kort.** Det ändrar #231 för heron, och bara där: kortet längst fram är lekens första, så att spelet känns igen från raden, och bakom det står mittersta och sista kortet, jämnt spritt som 2026-09-14. Solfjädern hämtas för sig (`GET /projects/:id/fan`) efter listan, och tills den landar står heron med sitt enda kort ur `/me/cards`. Första skärmen väntar alltså fortfarande inte på mer än ett kort per spel.
+- **Övriga spel är kompakta rader** med kortet till vänster, namn, «v7 · 77 kort · 4 spelare» och spelad-raden, i två kolumner på bred skärm och en på telefon.
+- **`GET /projects` bär `cards`, `players` och `savedAt`.** `cards` är exemplaren (`cardsUsed`, #1195), det som läggs på bordet. `players` är uppställningens antal platser. `savedAt` är när den senaste versionen sparades. Alla tre läses ur samma levande dokument som namnet (#909), så listan ljuger aldrig om ett spel som är öppet i en editor.
+- Det som prototypen hade och som väntar: «Väntar på dig» (nya flaggor per spel, enkäter att svara på, en medredigerares version) kräver att varje bords logg läses och att «ny» betyder något. Det byggs för sig, med sitt eget svar efter listan.
+
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
 Användarna kör Discord eller motsvarande vid sidan om.
