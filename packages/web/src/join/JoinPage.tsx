@@ -262,6 +262,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   return (
     <div className="byd-join-page">
       <main className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
+      <HomeWay href={links.home} />
       <header>
         <span>{t('join.into')}</span>
         {/* The game's name, when the table has one (#675): it is what the guest came to play, and
@@ -368,15 +369,15 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
         {ways}
       </form>
       </main>
-      <HomeWay href={links.home} />
       <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
     </div>
   )
 }
 
 // The page's way home (#1217): the picker and the code's form had none outside a fault, so a
-// person who came here by mistake had only the browser's own back. Quiet, under the card, since
-// what the page is for is the seat.
+// person who came here by mistake had only the browser's own back. Quiet, in the card's top corner
+// and out of its flow, since what the page is for is the seat and a phone's picker is exactly one
+// screen tall (`join-layout.test.tsx`).
 function HomeWay({ href = '/' }: { href?: string | undefined }) {
   const t = useT()
   return (
@@ -406,6 +407,7 @@ function CodeForm({ server, onOpen, typed, unknown }: { server: string | null; o
   return (
     <div className="byd-join-page">
       <main className="byd-join byd-join-code" data-page="join">
+        <HomeWay href={statusLinks({ server }).home} />
         <header>
           <h1>{t('join.code.title')}</h1>
         </header>
@@ -431,7 +433,6 @@ function CodeForm({ server, onOpen, typed, unknown }: { server: string | null; o
           </button>
         </form>
       </main>
-      <HomeWay href={statusLinks({ server }).home} />
     </div>
   )
 }

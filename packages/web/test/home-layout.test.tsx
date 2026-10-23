@@ -66,9 +66,11 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
     const page = await browser.newPage({ viewport: { width, height: 800 } })
     try {
       await page.setContent(document_(html), { waitUntil: 'load' })
-      // The way to the table is the band in «Pågår nu» since #724, and it is a whole target.
-      const open = (await page.locator('.byd-home-running a').boundingBox())!
-      expect(open.height).toBeGreaterThanOrEqual(44)
+      // The way to the table is the band in «Pågår nu» since #724, and the way to its game beside it
+      // since #1217: each a whole target, on one line or wrapped under the name.
+      const ways = page.locator('.byd-home-running a')
+      expect(await ways.count()).toBe(2)
+      for (const way of await ways.all()) expect((await way.boundingBox())!.height).toBeGreaterThanOrEqual(44)
       // And the band stays inside the window, its code whole, at every width.
       const band = (await page.locator('.byd-home-running-row').boundingBox())!
       expect(band.x + band.width).toBeLessThanOrEqual(width)
