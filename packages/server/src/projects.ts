@@ -6,7 +6,8 @@ import type { AppliedEdit } from './project-actor.js'
 import type { Role } from './roles.js'
 import { peekCard, type CardPeek } from './names.js'
 import { QuotaReached, growth, type Limit } from './quotas.js'
-import { assetHashesOf, type AssetStore } from './assets.js'
+import type { AssetStore } from './assets.js'
+import { assetHashesOf } from './asset-refs.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).

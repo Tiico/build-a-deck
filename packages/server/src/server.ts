@@ -881,7 +881,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
         if (msg.t === 'save') {
           // Held to the owner's ceiling on storage (#1197), whoever saves: a refusal for it says the
           // ceiling, as an edit refused for a ceiling does (#1192), and no version is made.
-          const saved = await actor.save(editor.id, await storageCeiling(opts, rec.owner))
+          const saved = await actor.save(editor.id, () => storageCeiling(opts, rec.owner))
           if (!saved.ok && saved.quota) send({ v: 'refused', why: 'quota', to: 'save', quota: { ...saved.quota, bearer: bearerOf(account, rec.owner) } })
           else if (!saved.ok) refuse(saved.reason)
           return
@@ -1525,7 +1525,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const actor = await editors(opts, projects).get(gate.rec.id)
-    const result = actor ? await actor.put(rev, doc, account?.id, await storageCeiling(opts, gate.rec.owner)) : ({ ok: false, reason: 'unknown project' } as Saved)
+    const result = actor ? await actor.put(rev, doc, account?.id, () => storageCeiling(opts, gate.rec.owner)) : ({ ok: false, reason: 'unknown project' } as Saved)
     if (!result.ok && result.quota) quotaRefused(res, result.quota, bearerOf(account, gate.rec.owner))
     else if (!result.ok && result.reason === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
     else if (!result.ok) json(res, 404, { error: 'unknown project' })

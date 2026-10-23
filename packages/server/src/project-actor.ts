@@ -40,6 +40,8 @@ export type EditorMessage =
   | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & { bearer: 'you' | 'owner' } }
 export type Presence = { id: string; name: string; role?: Role }
 // What a version that could not be made says: why, and the ceiling it met when that was why.
+// The owner's ceilings a version is held to, asked for when the version is made (#1197).
+export type OwnerCeilings = () => Promise<Pick<Ceilings, 'storageBytes'>>
 export type Saved = { ok: true; rev: number } | { ok: false; reason: string; quota?: QuotaMet }
 
 export class ProjectActor {
@@ -146,14 +148,16 @@ export class ProjectActor {
   // Saving makes a version of what stands now (B4), and marks how far the log had come, so a
   // fresh actor knows which edits are already in it. `from` is the editor that asked. `ceilings`
   // are the owner's (#1197): a version that names more than the owner has room for is not made,
-  // and says the ceiling it met; the log and what stands are as they were.
-  async save(from?: string, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<Saved> {
+  // and says the ceiling it met; the log and what stands are as they were. They are asked for in
+  // the save's own turn of the queue, never before it, so a save takes its place behind exactly
+  // the edits sent before it, however long the question takes (#994).
+  async save(from?: string, ceilings?: OwnerCeilings): Promise<Saved> {
     return this.serial(() => this.makeVersion(from, ceilings))
   }
-  private async makeVersion(from?: string, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<Saved> {
+  private async makeVersion(from?: string, ceilings?: OwnerCeilings): Promise<Saved> {
     let result: Awaited<ReturnType<ProjectStore['replace']>>
     try {
-      result = await this.store.replace(this.id, this.rev, this.current, this.at, ceilings)
+      result = await this.store.replace(this.id, this.rev, this.current, this.at, ceilings ? await ceilings() : undefined)
     } catch (e) {
       if (e instanceof QuotaReached) return { ok: false as const, reason: 'quota', quota: e.quota }
       throw e
@@ -177,7 +181,7 @@ export class ProjectActor {
   // a document refused for it never reaches the log; the version asks again in the step that
   // writes it, and only two writes racing for the owner's last bytes can leave the document in
   // the log and the version unmade.
-  async put(expectedRev: number, doc: ProjectDoc, by?: string, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<Saved> {
+  async put(expectedRev: number, doc: ProjectDoc, by?: string, ceilings?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
       if (stamp(doc) !== stamp(this.current)) await this.commit({ v: 'restore', doc }, by)
