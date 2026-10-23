@@ -1,6 +1,7 @@
 import { applyEdit, checkNewName, decideEdit, type EditIntent } from './edits.js'
-import { stamp, type ProjectDoc, type ProjectStore } from './projects.js'
+import { stamp, type Ceilings, type ProjectDoc, type ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
+import { QuotaReached, type QuotaMet } from './quotas.js'
 
 // One actor owns one project (D3). A project is structurally the same as a table — shared state
 // several people change at once, which belongs in the history — so it gets the table's shape: a
@@ -32,8 +33,14 @@ export type EditorMessage =
   // neither and names none; neither does a server from before the field, so an editor reads a
   // refusal without it the way it always did. `ask` is the number of the edit refused (#993), so
   // the editor takes that edit back and keeps every other one it has on the line.
-  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number }
+  //
+  // `quota` is the ceiling a save would have crossed (#1192, #1197), with `why: 'quota'`: an addition
+  // as `to` and `ask` were, which a page from before it reads past. `bearer` is `you` when the one
+  // refused owns the game and `owner` when it is the game's owner who bears it.
+  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & { bearer: 'you' | 'owner' } }
 export type Presence = { id: string; name: string; role?: Role }
+// What a version that could not be made says: why, and the ceiling it met when that was why.
+export type Saved = { ok: true; rev: number } | { ok: false; reason: string; quota?: QuotaMet }
 
 export class ProjectActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -137,12 +144,20 @@ export class ProjectActor {
   }
 
   // Saving makes a version of what stands now (B4), and marks how far the log had come, so a
-  // fresh actor knows which edits are already in it. `from` is the editor that asked.
-  async save(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
-    return this.serial(() => this.makeVersion(from))
+  // fresh actor knows which edits are already in it. `from` is the editor that asked. `ceilings`
+  // are the owner's (#1197): a version that names more than the owner has room for is not made,
+  // and says the ceiling it met; the log and what stands are as they were.
+  async save(from?: string, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<Saved> {
+    return this.serial(() => this.makeVersion(from, ceilings))
   }
-  private async makeVersion(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
-    const result = await this.store.replace(this.id, this.rev, this.current, this.at)
+  private async makeVersion(from?: string, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<Saved> {
+    let result: Awaited<ReturnType<ProjectStore['replace']>>
+    try {
+      result = await this.store.replace(this.id, this.rev, this.current, this.at, ceilings)
+    } catch (e) {
+      if (e instanceof QuotaReached) return { ok: false as const, reason: 'quota', quota: e.quota }
+      throw e
+    }
     if (result === 'missing') return { ok: false as const, reason: 'unknown project' }
     if (result === 'conflict') return { ok: false as const, reason: 'conflict' }
     this.rev = result.rev
@@ -157,11 +172,16 @@ export class ProjectActor {
   // So it is what a document taken back already is, a `restore` in the log, and then a version
   // of it, in one turn of the queue so that no edit can land between the two. It is written
   // against a rev, and a rev the project has left is a conflict, as it always was.
-  async put(expectedRev: number, doc: ProjectDoc, by?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
+  //
+  // `ceilings` as for `save`. The door asks the ceiling on storage before it comes here (#1197), so
+  // a document refused for it never reaches the log; the version asks again in the step that
+  // writes it, and only two writes racing for the owner's last bytes can leave the document in
+  // the log and the version unmade.
+  async put(expectedRev: number, doc: ProjectDoc, by?: string, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
       if (stamp(doc) !== stamp(this.current)) await this.commit({ v: 'restore', doc }, by)
-      return this.makeVersion()
+      return this.makeVersion(undefined, ceilings)
     })
   }
 

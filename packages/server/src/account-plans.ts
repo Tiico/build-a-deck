@@ -1,7 +1,8 @@
 import type { Sql } from 'postgres'
 import type { AuthStore } from './auth.js'
+import type { RenderStore } from '@byd/render/queue'
 import type { ProjectStore } from './projects.js'
-import { BUILT_MEASURES, checkPlansInUse, limitOf, plansFromEnv, type BuiltMeasure, type Limit, type Plans } from './quotas.js'
+import { BUILT_MEASURES, THIRTY_DAYS_MS, checkPlansInUse, limitOf, plansFromEnv, type BuiltMeasure, type Limit, type Plans } from './quotas.js'
 
 // Which tier an account has (#1193, A2, #1192). A table of its own, beside the accounts, written by
 // the operator today and by Stripe later — so that paying becomes a way to change tier and not a
@@ -75,13 +76,20 @@ export async function planOf(accountPlans: AccountPlanStore | undefined, plans: 
 }
 
 // What an account uses of each measure that is built, and its ceiling on it (`null` is unlimited).
-// Each measure is counted out of the domain's own data, never kept beside it, so the count cannot
-// drift from the truth (#1192).
+// A stock is counted out of the domain's own data, never kept beside it, so the count cannot drift
+// from the truth (#1192): games out of `projects.owner`, storage out of what the versions of those
+// games name (#1197). A flow that content addressing hides is read out of the log written as it
+// happened: renderings out of the render log, over the thirty days up to `now`. Without a render
+// queue nothing is rendered, and nothing counted.
 export type Usage = { plan: string; measures: Record<BuiltMeasure, { used: number; limit: Limit }> }
-export type UsageStores = { projects: Pick<ProjectStore, 'owned'>; accountPlans?: AccountPlanStore }
-export async function usageOf(stores: UsageStores, plans: Plans, account: string): Promise<Usage> {
+export type UsageStores = { projects: Pick<ProjectStore, 'owned' | 'stored'>; accountPlans?: AccountPlanStore; renders?: Pick<RenderStore, 'rendersBy'> }
+export async function usageOf(stores: UsageStores, plans: Plans, account: string, now: Date = new Date()): Promise<Usage> {
   const plan = await planOf(stores.accountPlans, plans, account)
-  const used: Record<BuiltMeasure, number> = { projects: await stores.projects.owned(account) }
+  const used: Record<BuiltMeasure, number> = {
+    projects: await stores.projects.owned(account),
+    storageBytes: await stores.projects.stored(account),
+    rendersPer30Days: stores.renders ? await stores.renders.rendersBy(account, now.getTime() - THIRTY_DAYS_MS) : 0,
+  }
   const measures = Object.fromEntries(BUILT_MEASURES.map((m) => [m, { used: used[m], limit: limitOf(plans, plan, m) }])) as Usage['measures']
   return { plan, measures }
 }
@@ -105,8 +113,8 @@ export async function clearPlanByAddress(stores: { auth: Pick<AuthStore, 'accoun
 }
 
 // What every account uses, for the price decision (#1192): read from the database and sent nowhere.
-export async function usageReport(stores: { auth: Pick<AuthStore, 'listAccounts'> } & UsageStores, plans: Plans): Promise<({ email: string } & Usage)[]> {
+export async function usageReport(stores: { auth: Pick<AuthStore, 'listAccounts'> } & UsageStores, plans: Plans, now: Date = new Date()): Promise<({ email: string } & Usage)[]> {
   const out: ({ email: string } & Usage)[] = []
-  for (const account of await stores.auth.listAccounts()) out.push({ email: account.email, ...(await usageOf(stores, plans, account.id)) })
+  for (const account of await stores.auth.listAccounts()) out.push({ email: account.email, ...(await usageOf(stores, plans, account.id, now)) })
   return out
 }
