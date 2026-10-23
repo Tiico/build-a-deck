@@ -1,7 +1,7 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { dieKind, isCounter, isDie, standIn } from '../components.js'
-import { CARD_MM, DIE_MM, besidePile, type DragTarget } from './drop.js'
+import { CARD_MM, DIE_MM, TOKEN_MM, besidePile, type DragTarget } from './drop.js'
 import { laidIn } from './lay.js'
 import { faceDown } from '../player/play.js'
 import { handName } from './handName.js'
@@ -367,7 +367,7 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   // `flippable: false`, and the flip sent with the move had the whole envelope refused.
   const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter' && thing.kind !== 'die'
   return moving.flatMap((id, i): Intent[] => {
-    const laid = dieIn(laidIn(view, place.zone, i), thing)
+    const laid = centredIn(laidIn(view, place.zone, i), thing)
     const to: Intent & { v: 'move' } = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
     const c = turned.has(id) ? view.components.find((x) => x.id === id) : undefined
     if (c) return faceDown(view, c, to)
@@ -377,12 +377,14 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
 
 const PILE_CORNER = 90
 
-// A die sent to an area lies in the middle of the place a card laid there would take (#1169): the
-// area's answer is a card's top-left corner, and a die put there sat on the area's corner, half over
-// its edge.
-function dieIn(laid: ReturnType<typeof laidIn>, thing: Thing): ReturnType<typeof laidIn> {
-  if (!laid || thing.kind !== 'die') return laid
-  return { ...laid, x: Math.round(laid.x + (CARD_MM.w - DIE_MM) / 2), y: Math.round(laid.y + (CARD_MM.h - DIE_MM) / 2) }
+// What is not a card, sent to an area, lies in the middle of the place a card laid there would
+// take, by its own size (#1169, #1177): the area's answer is a card's top-left corner, and a die
+// or a chip put there sat on the area's corner, over its edge and its name. A card keeps the
+// area's answer as it is.
+function centredIn(laid: ReturnType<typeof laidIn>, thing: Thing): ReturnType<typeof laidIn> {
+  const size = thing.kind === 'die' ? DIE_MM : thing.kind === 'counter' ? TOKEN_MM : null
+  if (!laid || size === null) return laid
+  return { ...laid, x: Math.round(laid.x + (CARD_MM.w - size) / 2), y: Math.round(laid.y + (CARD_MM.h - size) / 2) }
 }
 
 // Where the focus should stand once the move has been made: on the card itself while it is still

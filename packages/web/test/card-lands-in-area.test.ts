@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, type SetupDef } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { MAX_PLAYERS, openingSetup, type Recipe } from '@byd/server/doc'
 import type { Snapshot } from '@byd/protocol'
 import type { Rect } from '../src/table/camera.js'
-import { CARD_MM, absoluteOf, dropIntents, type Drag } from '../src/table/drop.js'
+import { CARD_MM, DIE_MM, TOKEN_MM, absoluteOf, dropIntents, type Drag } from '../src/table/drop.js'
 import { FAN_MAX, HAND_STEP_MM } from '../src/table/hand.js'
 import { playIntents } from '../src/player/play.js'
 import { intentsForPlace, placesFor, type Thing } from '../src/table/keyboard.js'
-import { fanIn } from '../src/table/lay.js'
+import { fanIn, laidIn } from '../src/table/lay.js'
 import { tableOf } from './scene.js'
 
 // Var ett kort hamnar i en yta när den som spelar inte har pekat (L47, #449).
@@ -379,5 +379,45 @@ describe('nästa kort i ytan landar där inget kort redan ligger (#560 P-11)', (
     const steps = alongOf(table.view('A'), 'mine:A')
     expect(steps).toHaveLength(4)
     expect(tooClose(steps)).toBe(false)
+  })
+})
+
+// Det som inte är ett kort, sänt till en yta från tangentbordet (#1169, #1177). Ytans svar är ett
+// korts övre vänstra hörn; en tärning lades där tills #1176 centrerade den, och en räknare låg kvar
+// i ytans hörn, på dess kant och under dess namn. Båda läggs mitt på den plats ett kort hade tagit,
+// var och en efter sin egen storlek.
+describe.each([
+  ['en räknare', 'counter' as const, TOKEN_MM],
+  ['en tärning', 'die' as const, DIE_MM],
+])('%s som flyttas till en yta med tangentbordet (#1177)', (_, kind, size) => {
+  it('ligger helt innanför ytan, mitt på den plats ett kort hade tagit', () => {
+    const def = felt(4, 0)
+    const d6 = DICE.find((d) => d.id === 'die.d6')
+    if (!d6) throw new Error('ingen d6')
+    const type = kind === 'counter' ? { id: TOKEN_COUNTER.id, version: TOKEN_COUNTER.version } : { id: d6.id, version: d6.version }
+    def.components.push({ type, cardRef: kind === 'counter' ? 'Liv' : 'd6', zone: 'table', face: 'front', counter: kind === 'counter' ? 20 : 1, x: -100, y: -100 })
+    const table = tableOf(def)
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    const view = table.view('A')
+    const c = view.components.find((x) => x.zone === 'table')
+    if (!c) throw new Error('ingenting ligger på filten')
+    const thing: Thing =
+      kind === 'counter'
+        ? { key: `counter:${c.id}`, kind: 'counter', id: c.id, name: 'Liv', zone: c.zone, value: 20 }
+        : { key: `die:${c.id}`, kind: 'die', id: c.id, name: 'd6', zone: c.zone, value: 1 }
+    const place = placesFor(view, new Set([c.id]), c.zone).find((p) => p.zone === 'mine:A' && p.kind === 'area')
+    if (!place) throw new Error('ytan framför Nina går inte att adressera')
+    // Där ett kort hade lagts, i ytans egna millimetrar.
+    const card = laidIn(view, 'mine:A')
+    if (!card) throw new Error('ytan svarar inte')
+    table.run('A', ...intentsForPlace(view, place, thing, [c.id]))
+    const after = table.view('A')
+    const moved = after.components.find((x) => x.id === c.id)
+    if (!moved) throw new Error('den försvann')
+    expect(moved.zone).toBe('mine:A')
+    expect(inside({ ...absoluteOf(after, moved), w: size, h: size }, zoneOf(after, 'mine:A').geometry)).toBe(true)
+    // Mitt på kortets plats, på en halv millimeter när: loggen skriver hela millimetrar.
+    expect(Math.abs(moved.x + size / 2 - (card.x + CARD_MM.w / 2))).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(moved.y + size / 2 - (card.y + CARD_MM.h / 2))).toBeLessThanOrEqual(0.5)
   })
 })
