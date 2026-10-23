@@ -4,7 +4,7 @@ import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
 import { ShowForAll } from './ShowForAll.js'
 import { forTheRoom } from '../table/presence.js'
-import { CardPlays, HandBar, HandOrder } from './HandActions.js'
+import { CardPlays, HandBar } from './HandActions.js'
 import { HandGrid } from './HandGrid.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { isCounter } from '../components.js'
@@ -302,7 +302,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               onClick={() => setTab(x.id)}
             >
               {x.label}
-              {x.count !== undefined && <span className="byd-tab-count">{x.count}</span>}
+              {/* Heard as «Framför mig, 1»: the comma is for the ear, the pill for the eye. */}
+              {x.count !== undefined && <><span className="byd-offscreen">, </span><span className="byd-tab-count">{x.count}</span></>}
             </button>
           )
         })}
@@ -316,7 +317,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         const put = () => setHeld(null)
         // A card the table sees face up can be held up on the room's screen too (#518).
         const share = forTheRoom(view, card) ? <ShowForAll card={card} client={client} /> : null
-        const at = row.findIndex((c) => c.id === card.id)
         return (
           <HeldCard
             card={card}
@@ -327,14 +327,12 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             returnTo={(c) => document.querySelector<HTMLElement>(held.row === 'hand' ? `[data-hand-card="${CSS.escape(c.id)}"]` : `[data-area-card="${CSS.escape(c.id)}"], [data-mine-card="${CSS.escape(c.id)}"]`)}
             actions={
               held.row === 'hand' ? (
-                // The hand's own way to play the card read, and its place in the hand: what the bar
-                // offers, and the order the grid keeps (#552). A verb puts the card down as it goes.
-                // Turning the card over is the one that does not (#1133): it is still in the hand,
-                // and the press beside it now says how it will land.
+                // The hand's own way to play the card read: what the bar leads with. A verb puts the
+                // card down as it goes. Turning the card over is the one that does not (#1133): it is
+                // still in the hand, and the press beside it now says how it will land. One row, so
+                // the card keeps its reading width at 320 × 568 (K26): a second row of buttons under
+                // it took 36 px off the card.
                 <>
-                  <button type="button" className="byd-show-all" data-turn={card.id} onClick={() => turnedHand.toggle(card.id)}>
-                    {t(turned.has(card.id) ? 'player.hand.unturn' : 'player.hand.turn')}
-                  </button>
                   <CardPlays
                     view={view}
                     card={card}
@@ -343,7 +341,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
                     onPlay={(zone, where) => { put(); void playDirect([card], zone, where) }}
                     onMore={(c) => { put(); setLifted(c) }}
                   />
-                  {at >= 0 && <HandOrder at={at} of={row.length} onStep={(by) => reorder(card, at + by)} />}
+                  <button type="button" data-turn={card.id} onClick={() => turnedHand.toggle(card.id)}>
+                    {t(turned.has(card.id) ? 'player.hand.unturn' : 'player.hand.turn')}
+                  </button>
                 </>
               ) : held.row === 'mine' ? (
                 <>

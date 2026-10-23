@@ -3,7 +3,6 @@ import type { RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import { cardName } from '../table/keyboard.js'
 import { targetsOf, type Placement } from './PlaySheet.js'
-import { ArrowGlyph } from '../glyphs.js'
 
 // The places a card in the hand is played to in one press: the setup's own shortcuts, the areas
 // first. Every destination belongs to the setup: no role is inferred from an id or a label (#79),
@@ -102,23 +101,5 @@ export function CardPlays({ view, card, pending, onPlay, onMore, down = false }:
         {t('player.mine.play')}
       </button>
     </>
-  )
-}
-
-// The hand's order without a drag (#552, beslut A; WCAG 2.5.7): what Alt and an arrow do on the
-// grid (K4). At an end the button stays where it is and says it can go no further, so the focus
-// that carried the card there is not dropped to the page (`aria-disabled`).
-export function HandOrder({ at, of, onStep }: { at: number; of: number; onStep(by: -1 | 1): void }) {
-  const t = useT()
-  if (of < 2) return null
-  return (
-    <div className="byd-hand-order">
-      <button type="button" aria-disabled={at === 0 ? true : undefined} onClick={() => at > 0 && onStep(-1)}>
-        <ArrowGlyph to="left" /> {t('player.hand.left')}
-      </button>
-      <button type="button" aria-disabled={at === of - 1 ? true : undefined} onClick={() => at < of - 1 && onStep(1)}>
-        {t('player.hand.right')} <ArrowGlyph to="right" />
-      </button>
-    </div>
   )
 }

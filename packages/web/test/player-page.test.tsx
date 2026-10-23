@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { WebSocket as WsClient } from 'ws'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
@@ -51,20 +51,6 @@ function losesTheFirstClaim(): WebSocketCtor {
   } as unknown as WebSocketCtor
 }
 
-// A socket on which the table's answer to an envelope arrives a while after the patches it
-// answers for, the way two frames on a phone's line do, with renders in between (#958).
-function answersLate(): WebSocketCtor {
-  return class extends WsClient {
-    override emit(event: string | symbol, ...args: unknown[]): boolean {
-      if (event === 'message' && String(args[0]).includes('"t":"ack"')) {
-        setTimeout(() => super.emit(event, ...args), 50)
-        return true
-      }
-      return super.emit(event, ...args)
-    }
-  } as unknown as WebSocketCtor
-}
-
 describe('PlayerPage', () => {
   it('claims its seat by name on connect and shows the hand it is dealt', async () => {
     const id = await createSession(run)
@@ -102,7 +88,7 @@ describe('PlayerPage', () => {
     expect(box()).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'Hjälp om handen' })).textContent).toMatch(/tryck på ett kort för att läsa och välja det/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om handen' })).textContent).toMatch(/tryck på ett kort för att välja det/i)
     // What the surface itself says stays on the surface: the box is not where the hint went.
     expect(screen.getByRole('tab', { name: /^Handen/ })).toBeTruthy()
 
@@ -896,7 +882,7 @@ describe('counters and the area in front of you (C4)', () => {
     // The hand's tab stays open — the next card is the next thing to play — and the tab the card
     // went to says it holds one more.
     expect(screen.getByRole('tab', { name: /^Handen/ }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: /^Framför mig/ }).textContent).toBe('Framför mig1')
+    expect(screen.getByRole('tab', { name: /^Framför mig/ }).textContent).toBe('Framför mig, 1')
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1)
     me.close()
   })
@@ -963,7 +949,8 @@ describe('counters and the area in front of you (C4)', () => {
     tab(/^Framför mig/)
     fireEvent.click(screen.getByRole('button', { name: /^Ta upp/ }))
     await waitFor(() => expect(document.querySelector('[data-hand-card]')?.getAttribute('data-hand-card')).toBe(idOfCard))
-    expect(document.querySelector('[data-hand-card]')?.getAttribute('aria-pressed')).toBe('true')
+    // Marked once the table has said yes, which may be a frame after the card arrived.
+    await waitFor(() => expect(document.querySelector('[data-hand-card]')?.getAttribute('aria-pressed')).toBe('true'))
     expect(document.querySelector('[data-mine-card]')).toBeNull()
     me.close()
   })
@@ -1006,7 +993,7 @@ describe('counters and the area in front of you (C4)', () => {
       expect(cards).toHaveLength(2)
       return cards
     })
-    expect(screen.getByRole('tab', { name: /^Framför mig/ }).textContent).toBe('Framför mig2')
+    expect(screen.getByRole('tab', { name: /^Framför mig/ }).textContent).toBe('Framför mig, 2')
     // Nothing to press inside the card: it is the control itself.
     expect(document.querySelector('[data-mine-card] button')).toBeNull()
 

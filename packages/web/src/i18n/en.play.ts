@@ -317,8 +317,6 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'player.hand.unturn': 'Turn face up',
   'player.hand.turned': 'face down · {name}',
   'player.hand.down': '{label} · face down',
-  'player.hand.left': 'Move left',
-  'player.hand.right': 'Move right',
   'player.hand.empty': 'You have no cards. Draw one from {pile}.',
   'player.hand.empty.any': 'You have no cards. Draw one from a pile.',
   'player.hand.empty.none': 'You have no cards, and there are none to draw.',

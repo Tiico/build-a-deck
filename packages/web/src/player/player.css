@@ -58,27 +58,31 @@
 .byd-panel ol { list-style: none; margin: 0; padding: 0; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-panel li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
 .byd-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--byd-rule); background: var(--byd-bg); }
+/* The count stands over the label, and a tab without one keeps the room for it, so every label
+   stands on one line at the same height — «Framför mig» broke in two beside its count at 390. */
 .byd-tabs button {
   position: relative; min-height: 56px; padding: 6px 2px; border: 0; background: none; color: var(--byd-ink-muted);
-  display: flex; align-items: center; justify-content: center; gap: 6px; font: 700 13px system-ui, sans-serif; overflow-wrap: anywhere;
+  display: flex; flex-direction: column-reverse; align-items: center; justify-content: center; gap: 2px; font: 700 12px system-ui, sans-serif;
 }
+.byd-tabs button::after { content: ''; height: 18px; }
+.byd-tabs button:has(.byd-tab-count)::after { content: none; }
 .byd-tabs button[aria-selected='true'] { color: var(--byd-ink-strong); box-shadow: inset 0 3px 0 var(--byd-accent); }
-.byd-tab-count { min-width: 20px; padding: 0 5px; border-radius: 10px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 12px; line-height: 20px; box-sizing: border-box; }
+.byd-tab-count { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 11px; line-height: 18px; box-sizing: border-box; text-align: center; }
 /* The hand's verbs, over the tabs while cards are marked (#1147). */
 .byd-bar { padding: 10px 16px 12px; background: var(--byd-surface); border-top: 1px solid var(--byd-line); }
 .byd-hand-bar p { display: flex; align-items: center; gap: 4px; margin: 0 0 8px; }
 .byd-hand-bar p strong { flex: 1; min-width: 0; color: var(--byd-ink-strong); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-hand-bar p button { min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--byd-warn); font: 700 14px system-ui, sans-serif; }
 .byd-bar-plays { display: flex; gap: 8px; }
-.byd-bar-plays button, .byd-inspect-actions > button, .byd-hand-order button {
+.byd-bar-plays button, .byd-inspect-actions > button {
   flex: 1 1 0; min-width: 0; min-height: 52px; padding: 0 12px; border: 0; border-radius: 12px; box-sizing: border-box;
   background: var(--byd-control); color: var(--byd-ink-strong); font: 700 15px system-ui, sans-serif; overflow-wrap: anywhere;
 }
 .byd-bar-plays .byd-bar-main, .byd-inspect-actions > .byd-bar-main { flex-grow: 1.4; background: var(--byd-accent); color: var(--byd-on-accent); }
 .byd-bar-plays > :last-child:not(.byd-bar-main) { flex: 0 0 auto; }
-.byd-bar-plays button:disabled, .byd-inspect-actions > button:disabled, .byd-hand-order button[aria-disabled='true'] { opacity: .5; }
-.byd-hand-order { flex: 1 1 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.byd-hand-order button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; }
+.byd-bar-plays button:disabled, .byd-inspect-actions > button:disabled { opacity: .5; }
+/* Under a card held up the row is the reading width, three to a row at 320 (K26). */
+.byd-inspect-actions > button { padding: 0 8px; font-size: 14px; }
 /* «Mer»: the rules, the flag and the way out, each a row a thumb can find. */
 .byd-panel[data-panel='more'] > button, .byd-panel .byd-rules-open {
   width: 100%; min-height: 52px; padding: 0 16px; border: 0; border-radius: 14px; box-sizing: border-box;
@@ -175,6 +179,9 @@ html:has(.byd-player) { background: #14161c; }
    its own outside the card, so the focus ring keeps the outline; the number a marked card carries
    sits on its corner, outside the face, and covers nothing the designer drew. */
 .byd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+/* A phone on its side (#716): the panel between the head and the tabs is low, so the cards are
+   smaller and more of them stand in a row, and a whole one stands over the tabs. */
+@media (max-height: 500px) { .byd-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); } }
 .byd-grid-card {
   position: relative; aspect-ratio: 63 / 88; min-width: 0; padding: 8px; border: 0; border-radius: 10px; box-sizing: border-box;
   display: flex; align-items: flex-start; text-align: left; overflow-wrap: anywhere;

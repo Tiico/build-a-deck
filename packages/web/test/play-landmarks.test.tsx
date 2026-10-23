@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { TablePage } from '../src/table/TablePage.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
@@ -52,6 +52,7 @@ describe('the playing surfaces’ landmarks (#560 P-20)', () => {
       expect(panel.getAttribute('role')).toBe('tabpanel')
       expect(panel.getAttribute('aria-labelledby')).toBe(tab.id)
     }
+    fireEvent.click(screen.getByRole('tab', { name: /^Bordet/ }))
     const table = document.querySelector('[data-panel="table"]') as HTMLElement
     const areas = [...table.querySelectorAll('[data-zone-summary]:not(button)')]
     expect(areas.length).toBeGreaterThan(0)

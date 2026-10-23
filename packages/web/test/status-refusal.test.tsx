@@ -184,6 +184,8 @@ describe('a flag the table refuses', () => {
         </DocumentTitle>,
       )
       await screen.findByText('Ada')
+      // The flag stands in «Mer» on the phone (#1147).
+      fireEvent.click(screen.getByRole('tab', { name: /^Mer/ }))
     }],
     ['/observe', async (id: string) => {
       history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)

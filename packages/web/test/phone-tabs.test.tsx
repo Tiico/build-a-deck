@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { TableClient } from '../src/client.js'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { PlayerPage } from '../src/player/PlayerPage.js'
-import { admit, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
+import { admit, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 
 // The phone beside the television, from the ground up (#1147, beställarens val B 2026-10-22): four
 // tabs at the foot — the hand, what lies in front of you, the table, and the rest — and each tab is
@@ -36,7 +35,7 @@ describe('the phone is four tabs (#1147)', () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     await open(id, 'A', 'Ada')
     const tabs = within(screen.getByRole('tablist')).getAllByRole('tab')
-    expect(tabs.map((t) => t.textContent?.replace(/\d+/g, '').trim())).toEqual(['Handen', 'Framför mig', 'Bordet', 'Mer'])
+    expect(tabs.map((t) => t.textContent?.replace(/, \d+$/, ''))).toEqual(['Handen', 'Framför mig', 'Bordet', 'Mer'])
     expect(screen.getByRole('tab', { name: /^Handen/ }).getAttribute('aria-selected')).toBe('true')
     expect(panel(/^Handen/).hidden).toBe(false)
     expect(panel(/^Bordet/).hidden).toBe(true)

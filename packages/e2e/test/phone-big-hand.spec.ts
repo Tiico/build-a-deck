@@ -34,6 +34,7 @@ test('25 kort på telefonen: hela handen i rutnätet, och varje kort når man ge
   await deep.scrollIntoViewIfNeeded()
   await deep.tap()
   await expect(deep).toHaveAttribute('data-selected', 'true')
-  const name = (await deep.textContent())!.trim()
+  // The card's name as it is spoken: its text also holds what a face still on its way says.
+  const name = (await deep.getAttribute('aria-label'))!.split(',')[0]!
   await expect(page.locator('[data-hand-bar] strong')).toHaveText(name)
 })

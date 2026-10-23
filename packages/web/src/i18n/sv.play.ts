@@ -385,8 +385,6 @@ export const svPlay = {
   'player.hand.unturn': 'Vänd upp',
   'player.hand.turned': 'nedvänt · {name}',
   'player.hand.down': '{label} · nedvänt',
-  'player.hand.left': 'Flytta vänster',
-  'player.hand.right': 'Flytta höger',
   // Tom hand (UX-16): samma form som raden under det som ligger framför en.
   'player.hand.empty': 'Du har inga kort. Dra ett kort från {pile}.',
   'player.hand.empty.any': 'Du har inga kort. Dra ett kort från en hög.',
