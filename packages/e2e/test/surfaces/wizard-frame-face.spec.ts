@@ -1,4 +1,5 @@
 import { expect, test } from '../../support/test.js'
+import { throughTheDoor } from '../../support/wizard.js'
 import { logIn } from '../../support/api.js'
 
 // The wizard's preview in the theme's own faces (#476, beslut 2026-09-27; «Utseende», L57, #633):
@@ -20,6 +21,7 @@ test('loads the pressed theme s faces into the page, and asks for none before', 
   })
   await logIn(page.request)
   await page.goto('/new', { waitUntil: 'load' })
+  await throughTheDoor(page)
   // The preselection is not a press (#687): the card offers to show it, and nothing is asked yet.
   await expect(page.getByRole('button', { name: 'Visa kortet i Skogssaga' })).toBeVisible()
   await page.getByRole('button', { name: 'Minimal' }).click()

@@ -1,6 +1,7 @@
 import { logIn } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
+import { throughTheDoor } from '../support/wizard.js'
 
 // The draft in the guided start (#476): a reload used to throw away everything typed without a
 // word. The browser now asks first, and what was typed is still there when the page comes back —
@@ -10,7 +11,7 @@ test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 test('asks before a reload takes the draft, and gives it back after one', async ({ page }) => {
   await logIn(page.request)
   await page.goto('/new')
-  await page.getByLabel('Spelets namn').fill('Skogens herrar')
+  await throughTheDoor(page)
   await page.getByLabel('kort 1 Titel').fill('Drake')
 
   const asked: string[] = []
@@ -21,9 +22,10 @@ test('asks before a reload takes the draft, and gives it back after one', async 
   await page.reload()
   expect(asked, 'the browser asked before the reload').toEqual(['beforeunload'])
 
-  await expect(page.getByLabel('Spelets namn')).toHaveValue('Skogens herrar')
+  // The guide comes back where it stood (L79), with the game's name at its head.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar')
   await expect(page.getByLabel('kort 1 Titel')).toHaveValue('Drake')
-  await expect(page).toHaveURL(/\/new/)
+  await expect(page).toHaveURL(/\/new\/guided/)
   const games = await (await page.request.get('/projects')).json()
   expect(games).toEqual([])
 })
@@ -38,7 +40,7 @@ const BIG = Buffer.concat([PIXEL, Buffer.alloc(5 * 1024 * 1024 - PIXEL.length)])
 test('gives back a draft with a 5 MB picture and six cards after a reload (#686)', async ({ page }) => {
   await logIn(page.request)
   await page.goto('/new')
-  await page.getByLabel('Spelets namn').fill('Skogens herrar')
+  await throughTheDoor(page)
   await page.getByLabel('kort 1 Illustration').setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: BIG })
   await expect(page.getByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeVisible()
   // Six cards: the three examples the guide opens on (#733), and three more.
@@ -50,7 +52,7 @@ test('gives back a draft with a 5 MB picture and six cards after a reload (#686)
   page.on('dialog', (dialog) => void dialog.accept())
   await page.reload()
 
-  await expect(page.getByLabel('Spelets namn')).toHaveValue('Skogens herrar')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar')
   const tabs = page.locator('.byd-wizard-card-tabs .byd-choice')
   await expect(tabs).toHaveCount(6)
   await expect(tabs.nth(5)).toContainText('Drake 6')
@@ -71,7 +73,7 @@ test('gives back a draft with a 5 MB picture and six cards after a reload (#686)
 // The card is only drawn once the page has heard that nobody is here, so it cannot go on twice.
 test('makes the game with its 5 MB picture on the way back from a login (#686)', async ({ page }) => {
   await page.goto('/new')
-  await page.getByLabel('Spelets namn').fill('Skogens herrar')
+  await throughTheDoor(page)
   await page.getByLabel('kort 1 Illustration').setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: BIG })
   await expect(page.getByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeVisible()
   await page.getByRole('button', { name: '+ Nytt kort' }).click()

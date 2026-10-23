@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Language } from '../src/i18n/index.js'
 import { LoginCard } from '../src/account/LoginCard.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { buildProject } from '../src/wizard/build.js'
 import { defaultFields } from '../src/wizard/frames.js'
 import { translate } from '../src/i18n/index.js'
@@ -77,19 +78,26 @@ describe('the guided start (L6) in the reader\'s own language', () => {
         <NewProjectPage onNavigate={() => undefined} />
       </Language>,
     )
+    // The crossroads before the guide (L79), and then the guide behind its first door.
+    expect(screen.getByRole('heading', { name: 'How do you want to start?' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Empty game' })).toBeTruthy()
+    throughTheDoor('Forest lords', { label: 'The name of the game', door: 'Guided start' })
     expect(screen.getByText('Guided start')).toBeTruthy()
+    expect(screen.getByText('2 players')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ Text field' })).toBeTruthy()
     expect(screen.getByText('Look')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Create the game/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Create an empty game' })).toBeTruthy()
-    expect(screen.getByText('Start from an empty game')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Classic' })).toBeTruthy()
     // The example card the wizard seeds is a word the designer reads and writes over, like the
     // field names it suggests, so it starts in the language they are building the game in.
     expect(screen.getByRole('button', { name: /Forest walk/ })).toBeTruthy()
     cleanup()
 
+    // A fresh visit to the crossroads, not a reload of the English guide's draft.
+    sessionStorage.clear()
+    history.replaceState(null, '', '/new')
     render(<NewProjectPage onNavigate={() => undefined} />)
+    throughTheDoor()
     expect(screen.getByText('Guidad start')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ Textfält' })).toBeTruthy()
   })

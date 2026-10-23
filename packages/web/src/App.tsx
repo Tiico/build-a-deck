@@ -10,6 +10,7 @@ import { noticeFor, type Voice } from './status/notice.js'
 import { statusLinks } from './status/links.js'
 import { DEFAULT_TIMING } from './status/connection.js'
 import { useWaitedLong, waitBegan } from './status/waitClock.js'
+import { isNewGame } from './wizard/paths.js'
 
 // The editor is fetched behind its own loading page. Its stylesheet is the biggest the app has,
 // and while it travelled in the entry's sheet the browser blocked the felt's first painting on it
@@ -83,7 +84,7 @@ function fetchPage(path: string): Promise<ComponentType> {
   if (path === '/observe') return surface(import('./observer/ObserverPage.js').then((m) => m.ObserverPage), ['play'])
   if (path === '/online') return surface(import('./online/OnlinePage.js').then((m) => m.OnlinePage), ['play'])
   if (path === '/editor') return surface(Promise.resolve(EditorRoute), ['play', 'account', 'editor'])
-  if (path === '/new') return surface(import('./wizard/NewProjectPage.js').then((m) => m.NewProjectPage), ['account', 'editor'])
+  if (isNewGame(path)) return surface(import('./wizard/NewProjectPage.js').then((m) => m.NewProjectPage), ['account', 'editor'])
   if (path === '/login') return surface(import('./account/LoginPage.js').then((m) => m.LoginPage), ['account'])
   if (path === '/claim') return surface(import('./account/ClaimPage.js').then((m) => m.ClaimPage), ['account'])
   if (path === '/survey') return surface(import('./account/SurveyPage.js').then((m) => m.SurveyPage), ['account', 'play'])

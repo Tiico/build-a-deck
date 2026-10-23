@@ -6554,7 +6554,7 @@ Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70
 Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
 En riktig pekare över den låsta knappen ändrar ingenting den målar.
 
-**Ändrat 2026-10-23 (L79, #1218): dörren står före guiden.** Namnet, spelarna och valet mellan guidad start och tomt spel står på vägskälet `/new`, inte i guidens steg 1, och frågan från #732 försvinner eftersom ingenting har gjorts när dörren trycks.
+**Ändrat 2026-10-23 (L79, #1218): dörren står före guiden.** Namnet, spelarna och valet mellan guidad start och tomt spel står på vägskälet `/new`, inte i guidens steg 1. Frågan från #732 ställs bara när designern har gått in i guiden, gjort kort eller fält och kommit tillbaka.
 
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 
@@ -8067,7 +8067,8 @@ Valet blev **B, vägskälet**.
 «Guidad start» är första handlingen (L13): kantad i bläck, med tre exempelkort och «Två steg, ungefär två minuter».
 «Tomt spel» är den andra: ett tomt kort och «Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.»
 En dörr som trycks utan namn säger villkoret vid fältet, som L42:s tillägg från #416 bestämde.
-«Tomt spel» skapar spelet direkt, med samma väg och samma dokument som L42; frågan från #732 behövs inte, eftersom inget kort eller fält har gjorts när dörren trycks.
+«Tomt spel» skapar spelet direkt, med samma väg och samma dokument som L42.
+Frågan från #732 står kvar men ställs nästan aldrig: bara när designern har gått in i guiden, gjort kort eller fält där och kommit tillbaka med «Ändra», eftersom det är då något går förlorat.
 Guiden är två steg, Fält och Korten, och dess huvud bär spelets namn och «N spelare · Ändra»; «Ändra» och vägen tillbaka leder till vägskälet med värdena kvar.
 Vägskälet och guiden har var sin adress, så att webbläsarens bakåt går från guiden till vägskälet.
 Utkastet och inloggningsvarvet (G1, #686) bär namnet och spelarna som förut, och rutan för den som är utloggad (#691) står på vägskälet, eftersom båda dörrarna slutar i en inloggning.
@@ -8078,3 +8079,9 @@ Samma adress gäller för den som är inloggad och den som kommer från landning
 Dörrarna får plats att säga vad de ger, i stället för att tomt spel står som ett block inne i guidens första steg.
 A:s dialog var ett klick snabbare men hade ingen Mina spel att öppnas över för den utloggade, så `/new` hade behövt samma steg en gång till.
 C lät det nya spelet födas där det skulle stå, men tog hela raden på telefonen och hade samma utloggade problem som A.
+
+**Byggt 2026-10-23 (#1218).**
+Vägskälet är `/new` och guiden `/new/guided`, båda i `NewProjectPage`, så att utkastet, inloggningsvarvet och felbeskeden är en och samma kod; `wizard/paths.ts` låter routern, flikens titel och inloggningssidans `resume` känna båda adresserna utan att ladda guiden.
+Varje steg mellan dem är en `pushState`, så webbläsarens bakåt och framåt går den väg designern kom; en omladdning av guidens adress öppnar guiden igen om utkastet har ett namn, och annars vägskälet.
+Enter i namnet är första dörren, och markören hamnar i första fältet bakom den.
+`new-game-crossroads.test.tsx` mäter vägskälet och vägen in och ut ur guiden; `wizard-flows.spec.ts` går samma väg i den byggda appen med webbläsarens egna knappar och en omladdning.

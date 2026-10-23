@@ -6,6 +6,7 @@ import { safeNext } from './next.js'
 import { noticeFor } from '../status/notice.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useT } from '../i18n/index.js'
+import { isNewGame } from '../wizard/paths.js'
 import './account.css'
 
 // /login?next=/editor?project=…&server=http://…
@@ -68,12 +69,13 @@ export function LoginPage({ onNavigate = go }: LoginPageProps) {
 }
 
 // Where the login is on its way to says what it is for: following an invitation, or making the
-// game the guide's draft is waiting to become (the `resume` mark `/new` sends it back with).
+// game the guide's draft is waiting to become (the `resume` mark the crossroads or the guide sends
+// it back with, L79).
 type WayIn = { kind: 'invite'; token: string } | { kind: 'resume' } | { kind: 'plain' }
 function wayIn(next: string): WayIn {
   const url = new URL(next, 'http://next.invalid')
   const invite = /^\/invites\/([^/]+)$/.exec(url.pathname)
   if (invite?.[1]) return { kind: 'invite', token: decodeURIComponent(invite[1]) }
-  if (url.pathname === '/new' && url.searchParams.get('resume') === '1') return { kind: 'resume' }
+  if (isNewGame(url.pathname) && url.searchParams.get('resume') === '1') return { kind: 'resume' }
   return { kind: 'plain' }
 }

@@ -5,6 +5,7 @@ import { MAX_PLAYERS } from '@byd/server/doc'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
+import { throughTheDoor } from './wizard-door.js'
 
 // A picture the designer picks, as a picture actually is: the server reads the bytes and not the
 // name, so a file called drake.png that is not one never becomes an asset (#204).
@@ -24,9 +25,16 @@ afterEach(async () => {
   await run.stop()
 })
 
+// The crossroads (L79): the name, the seats and the two doors.
 function open(onNavigate: (url: string) => void) {
   history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
   render(<NewProjectPage onNavigate={onNavigate} />)
+}
+
+// The guide, behind the crossroads' first door.
+function guide(onNavigate: (url: string) => void, name?: string) {
+  open(onNavigate)
+  throughTheDoor(name)
 }
 
 describe('NewProjectPage (L6, approved prototype A)', () => {
@@ -65,7 +73,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
   // example cards, two of each, in the game's language, every field filled and one meaning each.
   it('opens on three example cards that fill every field, and makes a table of six cards', async () => {
     const gone: string[] = []
-    open((url) => gone.push(url))
+    guide((url) => gone.push(url), 'Exempel')
     // One card at a time behind its tab, as the guide shows them.
     const tabs = [...document.querySelectorAll('.byd-wizard-card-tabs > button[aria-pressed]')] as HTMLElement[]
     expect(tabs.map((b) => b.textContent)).toEqual(['1Skogsvandring', '2Guldfynd', '3Björnen'])
@@ -80,7 +88,6 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
       ['Björnen', '3', 'Gör 3 {svärd|anfall}.'],
     ])
 
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Exempel' } })
     fireEvent.click(screen.getByRole('button', { name: /skapa spelet/i }))
     await waitFor(() => expect(gone).toHaveLength(1))
     const stored = await run.projects.load(new URL(gone[0]!, 'http://x').searchParams.get('project')!)
@@ -88,7 +95,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
   })
 
   it('builds starter cards graphically and shows a newly added field on every card', () => {
-    open(() => undefined)
+    guide(() => undefined)
 
     expect(screen.queryByLabelText('Kort som CSV')).toBeNull()
     expect(screen.getByLabelText('kort 1 Titel')).toBeTruthy()
@@ -100,18 +107,19 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
   // Words a beginner has before the step that introduces them (#731): the prose field was «Text»
   // beside the type «Text», and every field said «startramen» before any frame had been shown.
   it('names the prose its own word and says where a field shows in words the beginner already has', async () => {
-    open(() => undefined)
+    guide(() => undefined)
     expect(screen.getByLabelText('kort 1 Regeltext')).toBeTruthy()
     expect(screen.getAllByText('Visas på kortet').length).toBeGreaterThan(0)
     expect(document.body.textContent).not.toMatch(/startram/i)
-    // One door per paragraph in the help, each led by its own name.
+    // One door per paragraph in the help at the crossroads' question, each led by its own name.
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra namn och spelare' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
     const box = await screen.findByRole('dialog', { name: 'Hjälp om spelet' })
     expect([...box.querySelectorAll('p')].map((p) => p.textContent!.split(':')[0])).toEqual(['Guidad start', 'Tomt spel'])
   })
 
   it('lets the designer choose an image for an image field and previews it', async () => {
-    open(() => undefined)
+    guide(() => undefined)
     const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
     expect(input.type).toBe('file')
 
@@ -123,15 +131,16 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
   it('builds a project from the form with a live card, and hands off to the editor', async () => {
     const gone: string[] = []
     open((url) => gone.push(url))
+    // The number written straight into the stepper's field at the crossroads, and kept when the
+    // field is left.
+    const seats = screen.getByRole('spinbutton', { name: /Antal spelare/ })
+    fireEvent.change(seats, { target: { value: '3' } })
+    fireEvent.blur(seats)
+    throughTheDoor('Skogens herrar')
     const live = () => within(document.querySelector('.byd-wizard-preview') as HTMLElement)
     // The first of the example cards the guide opens on (#733).
     expect(live().getByText('Skogsvandring')).toBeTruthy()
 
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
-    // The number written straight into the stepper's field, and kept when the field is left.
-    const seats = screen.getByRole('spinbutton', { name: /Antal spelare/ })
-    fireEvent.change(seats, { target: { value: '3' } })
-    fireEvent.blur(seats)
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
     const file = new File([PNG], 'drake.png', { type: 'image/png' })
     fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [file] } })
@@ -161,12 +170,19 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
 
   it('makes the editor the clear next step instead of offering a direct table', async () => {
     open(() => undefined)
-    // What waits in the editor is said behind the first step's question mark (L36), and the word
-    // «wizard» is not on the surface at all (#687): it is «guidad start» everywhere.
+    // What waits in the editor is said behind the crossroads' question mark (L36), and the word
+    // «wizard» is not on the surface at all (#687): it is «guidad start» everywhere — at the
+    // crossroads and in the guide.
     // The words on the page, not the card's own scoped style sheet (`#wizard-live …`).
-    const page = document.querySelector('.byd-wizard')!.cloneNode(true) as HTMLElement
-    for (const sheet of page.querySelectorAll('style')) sheet.remove()
-    expect(page.textContent).not.toMatch(/wizard/i)
+    const words = () => {
+      const page = document.querySelector('.byd-wizard')!.cloneNode(true) as HTMLElement
+      for (const sheet of page.querySelectorAll('style')) sheet.remove()
+      return page.textContent
+    }
+    expect(words()).not.toMatch(/wizard/i)
+    throughTheDoor()
+    expect(words()).not.toMatch(/wizard/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra namn och spelare' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
     expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/csv-import gör du i editorn/i)
     expect(screen.queryByRole('button', { name: /öppna bordet/i })).toBeNull()
@@ -178,7 +194,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
   it('does not proceed without a name, and says so instead of standing locked', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
-    const next = screen.getByRole('button', { name: /skapa spelet/i }) as HTMLButtonElement
+    const next = screen.getByRole('button', { name: 'Guidad start' }) as HTMLButtonElement
     expect(next.disabled).toBe(false)
     fireEvent.click(next)
     expect(gone).toEqual([])
@@ -270,7 +286,7 @@ describe('a game without the guided start (L42)', () => {
     // Two seats more than the two it starts at, a step at a time.
     fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
     fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Skapa tomt spel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tomt spel' }))
 
     await waitFor(() => expect(gone).toHaveLength(1))
     const url = new URL(gone[0]!, 'http://x')
@@ -287,27 +303,31 @@ describe('a game without the guided start (L42)', () => {
   // The door past the guided start leaves the guide's cards and fields behind (#732, L9, L42): with
   // a title written on card 1 it made a game of no cards and no fields without a word. It asks
   // first now, with the one question the tool asks before something cannot be looked at again —
-  // and only when the designer has made something there to lose.
+  // and only when the designer has made something there to lose. Since L79 the door is at the
+  // crossroads, so that is a designer who went into the guide and came back out.
   it('asks before it leaves behind the cards and fields the designer has made', async () => {
     const gone: string[] = []
-    open((url) => gone.push(url))
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
+    guide((url) => gone.push(url), 'Kråkkriget')
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
-    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' })
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra namn och spelare' }))
+    const blank = screen.getByRole('button', { name: 'Tomt spel' })
     fireEvent.click(blank)
 
     // The question travels behind a cut of its own (L40), so it is there once its chunk has come.
     const asked = await screen.findByRole('alertdialog')
-    expect(asked.textContent).toMatch(/Korten och fälten du har gjort här följer inte med/)
+    expect(asked.textContent).toMatch(/Korten och fälten du har gjort i guiden följer inte med/)
     // It opens on the answer that loses nothing, and that answer leaves everything where it was.
     const cancel = within(asked).getByRole('button', { name: 'Avbryt' })
     await waitFor(() => expect(document.activeElement).toBe(cancel))
     fireEvent.click(cancel)
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(document.activeElement).toBe(blank)
+    fireEvent.click(screen.getByRole('button', { name: 'Guidad start' }))
     expect((screen.getByLabelText('kort 1 Titel') as HTMLInputElement).value).toBe('Drake')
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra namn och spelare' }))
 
-    fireEvent.click(blank)
+    // The crossroads is drawn anew on the way back, and its door with it.
+    fireEvent.click(screen.getByRole('button', { name: 'Tomt spel' }))
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Ja, skapa ett tomt spel' }))
     await waitFor(() => expect(gone).toHaveLength(1))
     expect(gone).toHaveLength(1)
@@ -320,7 +340,7 @@ describe('a game without the guided start (L42)', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Skapa tomt spel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tomt spel' }))
     expect(screen.queryByRole('alertdialog')).toBeNull()
     await waitFor(() => expect(gone).toHaveLength(1))
   })
@@ -328,7 +348,7 @@ describe('a game without the guided start (L42)', () => {
   it('asks for the name the same way the guided door does, instead of standing locked', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
-    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' }) as HTMLButtonElement
+    const blank = screen.getByRole('button', { name: 'Tomt spel' }) as HTMLButtonElement
     expect(blank.disabled).toBe(false)
     fireEvent.click(blank)
     expect(gone).toEqual([])
@@ -337,12 +357,20 @@ describe('a game without the guided start (L42)', () => {
 
   it('says what it leaves out, and is the second action beside the guided way (L13)', async () => {
     open(() => undefined)
-    expect(screen.getByText('Börja från ett tomt spel')).toBeTruthy()
-    expect(screen.getByText('Bara namnet och antalet spelare följer med.')).toBeTruthy()
+    const blank = screen.getByRole('button', { name: 'Tomt spel' })
+    // What a reader is told: the words that are seen, not the «Skapar…» held hidden beside them.
+    const said = (id: string) => {
+      const part = document.getElementById(id)!.cloneNode(true) as HTMLElement
+      for (const hidden of part.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+      return part.textContent
+    }
+    const described = (blank.getAttribute('aria-describedby') ?? '').split(' ').map(said)
+    expect(described).toEqual(['Bara namnet och spelarna. Fälten, mallen och korten gör du i editorn.', 'Till editorn'])
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
     expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/utan kort, fält eller mall/i)
-    const blank = screen.getByRole('button', { name: 'Skapa tomt spel' })
-    expect(blank.classList.contains('byd-secondary')).toBe(true)
+    // The guided way is the first door and this the second, never two first actions.
+    expect(screen.getByRole('button', { name: 'Guidad start' }).hasAttribute('data-first')).toBe(true)
+    expect(blank.hasAttribute('data-first')).toBe(false)
     expect(blank.classList.contains('byd-primary')).toBe(false)
   })
 })
@@ -353,12 +381,13 @@ describe('a game without the guided start (L42)', () => {
 describe('the draft in the wizard (#476)', () => {
   it('is still there after a reload, and nothing is made by the reload', async () => {
     const gone: string[] = []
-    open((u) => gone.push(u))
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    guide((u) => gone.push(u), 'Skogens herrar')
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
     cleanup()
-    open((u) => gone.push(u))
-    expect((screen.getByLabelText('Spelets namn') as HTMLInputElement).value).toBe('Skogens herrar')
+    // The reload is of the address the guide stands at.
+    history.replaceState(null, '', `/new/guided?server=${encodeURIComponent(run.http)}`)
+    render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar')
     expect((screen.getByLabelText('kort 1 Titel') as HTMLInputElement).value).toBe('Drake')
     await new Promise((r) => setTimeout(r, 100))
     expect(gone).toEqual([])
@@ -380,8 +409,7 @@ describe('the draft in the wizard (#476)', () => {
   // whatever older draft the tab still held. It is now said at the head of the page, and the older
   // draft is not left standing to come back in its place.
   it('says at the head of the page when the browser will not keep it', async () => {
-    open(() => undefined)
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    guide(() => undefined, 'Skogens herrar')
     await waitFor(() => expect(sessionStorage.getItem('byd.pending-wizard')).toContain('Skogens herrar'))
     // On the tab's own storage, whichever runtime put it there.
     const proto = Object.getPrototypeOf(sessionStorage) as Storage
@@ -451,8 +479,7 @@ describe('when the game could not be made (#476)', () => {
       return real(input, init)
     })
     try {
-      open(() => undefined)
-      fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+      guide(() => undefined)
       create()
       const said = await screen.findByRole('alert')
       expect(said.textContent).toBe('Spelet skapades inte. Tjänsten svarade med ett fel. Försök igen om en stund.')
@@ -467,7 +494,7 @@ describe('when the game could not be made (#476)', () => {
   it('says the service could not be reached, not the browser s words for it', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent('http://127.0.0.1:1')}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    throughTheDoor()
     fireEvent.click(screen.getByRole('button', { name: /Skapa spelet/i }))
     const said = await screen.findByRole('alert')
     expect(said.textContent).toBe('Spelet skapades inte. Ingen kontakt med tjänsten. Kontrollera anslutningen och försök igen.')
@@ -480,7 +507,7 @@ describe('when the game could not be made (#476)', () => {
 // field the moment the file is chosen, and the field stays as it was.
 describe('a file that is not a picture the game can hold (#476)', () => {
   it('refuses a file that is not a picture at the field, and keeps the field as it was', async () => {
-    open(() => undefined)
+    guide(() => undefined)
     const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
     fireEvent.change(input, { target: { files: [new File(['hej'], 'drake.png', { type: 'image/png' })] } })
     expect((await screen.findByRole('alert')).textContent).toBe('Filen är ingen bild. Välj en PNG, JPEG, GIF eller WebP.')
@@ -488,7 +515,7 @@ describe('a file that is not a picture the game can hold (#476)', () => {
   })
 
   it('refuses a picture larger than the service keeps, before reading it', async () => {
-    open(() => undefined)
+    guide(() => undefined)
     const big = new Uint8Array(8 * 1024 * 1024 + 1)
     big.set(PNG)
     fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [new File([big], 'stor.png', { type: 'image/png' })] } })
@@ -500,7 +527,7 @@ describe('a file that is not a picture the game can hold (#476)', () => {
   // nothing left for it to be about, and «Bilden är större än 8 MB» under «Ingen bild vald» reads
   // as if the removal had been refused too.
   it('takes the refusal away with the picture it kept', async () => {
-    open(() => undefined)
+    guide(() => undefined)
     const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
     fireEvent.change(input, { target: { files: [new File([PNG], 'drake.png', { type: 'image/png' })] } })
     await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })
@@ -522,7 +549,7 @@ describe('a file that is not a picture the game can hold (#476)', () => {
 // draws it cut short; the whole of it is on the tab for whoever points at it or reads it.
 describe('a card s tab (#732)', () => {
   it('keeps the whole of a long title on the tab, and the cut-short drawing to its own box', () => {
-    open(() => undefined)
+    guide(() => undefined)
     const long = 'Den gamla björnen som vaktade bron över Mörkälven i tusen år'
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: long } })
     const tab = document.querySelector('.byd-wizard-card-tabs > button[aria-pressed="true"]') as HTMLElement
@@ -537,7 +564,7 @@ describe('a card s tab (#732)', () => {
 // title stands empty on it.
 describe('the live card after the fields are named (#476)', () => {
   it('shows what is written in every field, under whatever name the field was given', async () => {
-    open(() => undefined)
+    guide(() => undefined)
     fireEvent.change(screen.getByLabelText('Kostnad namn'), { target: { value: 'Pris' } })
     fireEvent.change(screen.getByLabelText('kort 1 Pris'), { target: { value: '7' } })
     fireEvent.change(screen.getByLabelText('kort 1 Regeltext'), { target: { value: 'Flygande drake.' } })

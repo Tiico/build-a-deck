@@ -16,6 +16,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { DataTable } from '../src/editor/DataTable.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
+import { throughTheDoor } from './wizard-door.js'
 import { projectDoc } from './project-doc.js'
 
 const HASH = 'c'.repeat(64)
@@ -110,6 +111,7 @@ describe('guidens bildfält tar emot ett släpp (#291)', () => {
   const open = () => {
     history.replaceState(null, '', '/new')
     render(<NewProjectPage onNavigate={() => undefined} />)
+    throughTheDoor()
   }
 
   it('lägger den släppta bilden i det fält som tog emot den', async () => {

@@ -121,6 +121,12 @@ describe('the line the card leads with, chosen by the way in (#691)', () => {
     expect(screen.queryByText(/Skapa ditt kortspel/)).toBeNull()
   })
 
+  // The guided game is sent back to the guide's own address (L79), the empty one to the crossroads.
+  it('says the same on the way back to the guide behind the crossroads', async () => {
+    await card('/new/guided?resume=1')
+    expect(screen.getByText('Ditt spel skapas när du loggat in.')).toBeTruthy()
+  })
+
   it('tells a first visit that the link in the mail makes the account', async () => {
     localStorage.clear()
     await card('/')
