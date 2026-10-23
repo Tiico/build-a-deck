@@ -61,6 +61,6 @@ test('a passkey saved after the link logs in without a mail, and is taken away o
   await page.request.post('/auth/logout')
   await page.goto('/login')
   await page.getByRole('button', { name: 'Logga in med passkey' }).click()
-  await expect(page.getByText('Den passkeyn känns inte igen här. Logga in med e-post.')).toBeVisible()
+  await expect(page.getByText('Den passkeyn känns inte igen här. Logga in med e\u2011post.')).toBeVisible()
   await context.close()
 })

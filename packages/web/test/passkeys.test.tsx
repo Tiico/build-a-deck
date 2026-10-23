@@ -60,7 +60,7 @@ describe('the offer on Mina spel', () => {
 
     expect(await within(screen.getByRole('main')).findByText(/Passkeyn är sparad/)).toBeTruthy()
     // Said once, in the page's live region.
-    await waitFor(() => expect(screen.getAllByRole('status').map((s) => s.textContent)).toContain('Passkeyn är sparad. Nästa gång loggar du in med den. Du ser den under Profil.'))
+    await waitFor(() => expect(screen.getAllByRole('status').map((s) => s.textContent)).toContain('Passkeyn är sparad, och nästa gång loggar du in med den. Du ser den under Profil.'))
     expect((await passkeys()).passkeys).toHaveLength(1)
 
     cleanup()
@@ -127,7 +127,7 @@ describe('«Logga in med passkey» on the login card', () => {
     const gone: string[] = []
     at('/login', <LoginPage onNavigate={(u) => gone.push(u)} />, keychainOf(soft))
     fireEvent.click(await screen.findByRole('button', { name: 'Logga in med passkey' }))
-    const said = await screen.findByText('Den passkeyn känns inte igen här. Logga in med e-post.')
+    const said = await screen.findByText('Den passkeyn känns inte igen här. Logga in med e\u2011post.')
     expect(said.getAttribute('role')).toBe('alert')
     // The button it is about points at it.
     expect(screen.getByRole('button', { name: 'Logga in med passkey' }).getAttribute('aria-describedby')).toBe(said.id)

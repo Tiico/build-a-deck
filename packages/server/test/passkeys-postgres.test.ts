@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { PostgresLogStore } from '../src/index.js'
-import { SoftPasskey } from '../../../test-support/soft-passkey.js'
+import { SoftPasskey, type Wire } from '../../../test-support/soft-passkey.js'
 import { start } from './fixture.js'
 
 // Passkeys as the box keeps them (#1180): in Postgres, saved, used, listed and taken away over the
@@ -25,7 +25,7 @@ describe.skipIf(!url)('passkeys in Postgres', () => {
     try {
       const call = async (method: string, path: string, body?: unknown, cookie?: string) => {
         const res = await fetch(`${run.http}${path}`, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), redirect: 'manual' })
-        return { status: res.status, json: (await res.json()) as any, cookie: (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '' }
+        return { status: res.status, json: (await res.json()) as Wire, cookie: (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '' }
       }
       await call('POST', '/auth/login', { email: 'ada@example.com' })
       const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
@@ -37,7 +37,7 @@ describe.skipIf(!url)('passkeys in Postgres', () => {
       expect(saved.status).toBe(200)
 
       // Twice, so the counter the first login wrote is what the second is checked against.
-      for (const _ of [1, 2]) {
+      for (let round = 0; round < 2; round++) {
         const loginOptions = await call('POST', '/auth/passkeys/login/options', {})
         const res = await call('POST', '/auth/passkeys/login', { response: keychain.get(loginOptions.json) })
         expect(res.status).toBe(200)

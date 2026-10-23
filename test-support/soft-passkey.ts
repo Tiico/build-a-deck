@@ -9,6 +9,10 @@ import { createHash, generateKeyPairSync, randomBytes, sign, type KeyObject } fr
 // (what `@simplewebauthn/browser` sends), for one page origin. `aaguid` says which keychain it is;
 // the default is iCloud Keychain's.
 
+// What the server answers, as these tests read it: the options a keychain is handed, a saved
+// passkey, the list, or what was refused.
+export type Wire = { challenge: string; rp: { id?: string }; rpId?: string; user: { id: string }; allowCredentials?: { id: string }[]; excludeCredentials?: { id: string }[]; authenticatorSelection?: unknown; id: string; createdAt: string; error?: string; passkeys: { id: string; lastUsedAt: string | null }[] }
+
 export const ICLOUD_KEYCHAIN = 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd'
 
 type CreationOptions = { challenge: string; rp: { id?: string }; user: { id: string } }

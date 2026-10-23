@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { SoftPasskey } from '../../../test-support/soft-passkey.js'
+import { SoftPasskey, type Wire } from '../../../test-support/soft-passkey.js'
 import { start, type Running } from './fixture.js'
 
 // Passkeys (#1180, DRIFT §11): whoever logged in with the link may save a passkey in the browser,
@@ -16,10 +16,10 @@ afterEach(async () => {
 // The fixture's public origin is the page the browser stands on, and so the passkey's site.
 const ORIGIN = 'http://test.local'
 
-const call = async (method: string, path: string, body?: unknown, cookie?: string): Promise<{ status: number; json: any; cookie: string }> => {
+const call = async (method: string, path: string, body?: unknown, cookie?: string): Promise<{ status: number; json: Wire; cookie: string }> => {
   const res = await fetch(`${run.http}${path}`, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), redirect: 'manual' })
   const text = await res.text()
-  return { status: res.status, json: text ? JSON.parse(text) : null, cookie: (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '' }
+  return { status: res.status, json: (text ? JSON.parse(text) : null) as Wire, cookie: (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '' }
 }
 
 async function login(email = 'ada@example.com'): Promise<string> {
@@ -28,13 +28,13 @@ async function login(email = 'ada@example.com'): Promise<string> {
   return ((await fetch(`${run.http}${link}`, { redirect: 'manual' })).headers.get('set-cookie') ?? '').split(';')[0] ?? ''
 }
 
-async function save(keychain: SoftPasskey, cookie: string): Promise<{ status: number; json: any }> {
+async function save(keychain: SoftPasskey, cookie: string): Promise<{ status: number; json: Wire }> {
   const options = await call('POST', '/auth/passkeys/register/options', {}, cookie)
   expect(options.status).toBe(200)
   return call('POST', '/auth/passkeys/register', { response: keychain.create(options.json) }, cookie)
 }
 
-async function passkeyLogin(keychain: SoftPasskey): Promise<{ status: number; json: any; cookie: string }> {
+async function passkeyLogin(keychain: SoftPasskey): Promise<{ status: number; json: Wire; cookie: string }> {
   const options = await call('POST', '/auth/passkeys/login/options', {})
   expect(options.status).toBe(200)
   return call('POST', '/auth/passkeys/login', { response: keychain.get(options.json) })
@@ -72,7 +72,7 @@ describe('the passkeys on the profile', () => {
     expect(JSON.stringify(before.json)).not.toMatch(/publicKey|counter/)
 
     await passkeyLogin(keychain)
-    expect((await call('GET', '/auth/passkeys', undefined, cookie)).json.passkeys[0].lastUsedAt).toEqual(expect.any(String))
+    expect((await call('GET', '/auth/passkeys', undefined, cookie)).json.passkeys[0]?.lastUsedAt).toEqual(expect.any(String))
   })
 
   it('takes one away, which then logs nobody in; and nobody else may take it', async () => {
@@ -160,11 +160,11 @@ describe('the site a passkey belongs to', () => {
     const from = { origin: run.http }
     const keychain = new SoftPasskey(run.http)
     const post = (path: string, body: unknown, withCookie = true) => fetch(`${run.http}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...from, ...(withCookie ? { cookie } : {}) }, body: JSON.stringify(body) })
-    const options = (await (await post('/auth/passkeys/register/options', {})).json()) as any
+    const options = (await (await post('/auth/passkeys/register/options', {})).json()) as Wire
     expect(options.rp.id).toBe(new URL(run.http).hostname)
     expect((await post('/auth/passkeys/register', { response: keychain.create(options) })).status).toBe(200)
 
-    const loginOptions = (await (await post('/auth/passkeys/login/options', {}, false)).json()) as any
+    const loginOptions = (await (await post('/auth/passkeys/login/options', {}, false)).json()) as Wire
     expect((await post('/auth/passkeys/login', { response: keychain.get(loginOptions) }, false)).status).toBe(200)
   })
 })
