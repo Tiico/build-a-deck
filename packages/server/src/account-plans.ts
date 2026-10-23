@@ -1,7 +1,9 @@
 import type { Sql } from 'postgres'
 import type { AuthStore } from './auth.js'
-import type { ProjectStore } from './projects.js'
-import { BUILT_MEASURES, checkPlansInUse, limitOf, plansFromEnv, type BuiltMeasure, type Limit, type Plans } from './quotas.js'
+import type { ProjectDoc, ProjectStore } from './projects.js'
+import { ProjectHost } from './project-actor.js'
+import { CARD_MEASURES, cardsUsed, type CardMeasure } from './quota-cards.js'
+import { checkPlansInUse, limitOf, plansFromEnv, type Limit, type Plans } from './quotas.js'
 
 // Which tier an account has (#1193, A2, #1192). A table of its own, beside the accounts, written by
 // the operator today and by Stripe later — so that paying becomes a way to change tier and not a
@@ -77,13 +79,29 @@ export async function planOf(accountPlans: AccountPlanStore | undefined, plans: 
 // What an account uses of each measure that is built, and its ceiling on it (`null` is unlimited).
 // Each measure is counted out of the domain's own data, never kept beside it, so the count cannot
 // drift from the truth (#1192).
-export type Usage = { plan: string; measures: Record<BuiltMeasure, { used: number; limit: Limit }> }
-export type UsageStores = { projects: Pick<ProjectStore, 'owned'>; accountPlans?: AccountPlanStore }
+//
+// Cards are a ceiling per game (#1195), and are said per game: every game the account owns, by id,
+// with what it uses. `used` is the most any one of them uses, which is how near the account's games
+// stand to the ceiling — none when it owns none.
+export type Measured = { used: number; limit: Limit }
+export type PerGame = Measured & { projects: { id: string; used: number }[] }
+export type Usage = { plan: string; measures: { projects: Measured } & Record<CardMeasure, PerGame> }
+// `live` is the game as it stands (D3, #909): the running actor's document, or the saved version
+// with the log's tail replayed — the same source «Mina spel» reads a name out of. Without it, the
+// log is replayed, which is what a process with no actors running (the operator's script) has.
+export type UsageStores = { projects: ProjectStore; accountPlans?: AccountPlanStore; live?: (id: string) => Promise<ProjectDoc | null> }
 export async function usageOf(stores: UsageStores, plans: Plans, account: string): Promise<Usage> {
   const plan = await planOf(stores.accountPlans, plans, account)
-  const used: Record<BuiltMeasure, number> = { projects: await stores.projects.owned(account) }
-  const measures = Object.fromEntries(BUILT_MEASURES.map((m) => [m, { used: used[m], limit: limitOf(plans, plan, m) }])) as Usage['measures']
-  return { plan, measures }
+  const replay = new ProjectHost(stores.projects)
+  const live = stores.live ?? ((id: string) => replay.live(id))
+  const games: { id: string; used: Record<CardMeasure, number> }[] = []
+  for (const id of await stores.projects.ownedIds(account)) {
+    const doc = await live(id)
+    if (doc) games.push({ id, used: cardsUsed(doc) })
+  }
+  const perGame = (m: CardMeasure): PerGame => ({ used: Math.max(0, ...games.map((g) => g.used[m])), limit: limitOf(plans, plan, m), projects: games.map((g) => ({ id: g.id, used: g.used[m] })) })
+  const cards = Object.fromEntries(CARD_MEASURES.map((m) => [m, perGame(m)])) as Record<CardMeasure, PerGame>
+  return { plan, measures: { projects: { used: await stores.projects.owned(account), limit: limitOf(plans, plan, 'projects') }, ...cards } }
 }
 
 // The operator's door to an account's tier (DRIFT §10): by address, over Tailscale, and no HTTP

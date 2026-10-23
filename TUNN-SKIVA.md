@@ -203,6 +203,9 @@ type Quote = { unitPrice: Money; shipping: Money; duties: Money | 'unknown'; lea
 `duties: 'unknown'` är medvetet en del av typen.
 Tull till EU från amerikansk eller asiatisk partner är en öppen fråga i DESIGN-BESLUT.md avsnitt I, och kontraktet ska inte låtsas att den är löst.
 
+Preciserat 2026-10-23 (F2, #1199): kontraktet formas efter The Game Crafter och QPMN, och får ett förberedelsesteg som tar fram partnerns tryckfiler utan att beställa något, regiondirigering för EU-kravet, och en fake-provider med en kontraktssvit (#1206).
+Gränssnittet ovan skrivs om till det byggda när #1206 är klart.
+
 ---
 
 ## 5. Åtkomstkontrollerade ansikten
