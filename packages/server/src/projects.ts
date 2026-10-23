@@ -250,7 +250,11 @@ export type ProjectStore = {
   // goes through here, so this is where the rule holds rather than at each of the doors.
   // `ceilings.storageBytes` is the owner's ceiling on what its games name (#1197), held as for
   // `create`; a version that names nothing new is never refused.
-  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<ProjectRecord | 'conflict' | 'missing'>
+  // `edits` go into the log in the same step as the version, after the ceiling is asked (#1233):
+  // the document a `PUT` restores is in the log exactly when its version is answered, so one
+  // refused for the ceiling, or as a conflict, has left no trace. A document that is already the
+  // stored one makes no version, but its edits are still logged: they are what the log says now.
+  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits?: readonly AppliedEdit[]): Promise<ProjectRecord | 'conflict' | 'missing'>
   // The history, newest first.
   versions(id: string): Promise<VersionSummary[]>
   // The project as it stood at a revision; null when there is no such version.
@@ -476,7 +480,7 @@ export class MemoryProjectStore implements ProjectStore {
     return { project: found.project, email: found.email, role: found.role }
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = []): Promise<ProjectRecord | 'conflict' | 'missing'> {
     return this.storing<ProjectRecord | 'conflict' | 'missing'>(
       this.docs.get(id)?.owner,
       ceilings?.storageBytes,
@@ -486,12 +490,16 @@ export class MemoryProjectStore implements ProjectStore {
         if (!rec) return 'missing'
         if (rec.rev !== expectedRev) return 'conflict'
         const { id: _id, rev: _rev, owner: _owner, ...held } = rec
-        return stamp(held) === stamp(doc) ? structuredClone(rec) : null
+        if (stamp(held) !== stamp(doc)) return null
+        // Answered without a version, and so with no ceiling to ask: the edits are logged here.
+        this.logged(id, edits)
+        return structuredClone(rec)
       },
       () => {
         // `early` has just found it, with no wait since.
         const rec = this.docs.get(id)
         if (!rec) return 'missing'
+        this.logged(id, edits)
         const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
         this.docs.set(id, next)
         this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), doc: structuredClone(doc) })
@@ -501,7 +509,10 @@ export class MemoryProjectStore implements ProjectStore {
   }
 
   async appendEdits(id: string, edits: AppliedEdit[]): Promise<void> {
-    this.edits.set(id, [...(this.edits.get(id) ?? []), ...structuredClone(edits)])
+    this.logged(id, edits)
+  }
+  private logged(id: string, edits: readonly AppliedEdit[]): void {
+    if (edits.length > 0) this.edits.set(id, [...(this.edits.get(id) ?? []), ...structuredClone(edits)])
   }
 
   async readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]> {

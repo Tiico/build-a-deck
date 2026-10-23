@@ -1597,7 +1597,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const actor = await editors(opts, projects).get(gate.rec.id)
     // The owner's ceiling on the game's cards stands in the actor's decide step (#1195), so a
     // document over it is refused before it is in the log, and no version is made of it. The
-    // ceiling on storage is asked again where the version is written (#1197).
+    // ceiling on storage is asked again where the version is written (#1197), and the document goes
+    // into the log in that same step, so one refused there is in no log either (#1233).
     let result: Saved
     try {
       result = actor ? await actor.put(rev, doc, account?.id, () => storageCeiling(opts, gate.rec.owner)) : { ok: false, reason: 'unknown project' }

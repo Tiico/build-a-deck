@@ -143,6 +143,14 @@ export class ProjectActor {
     return this.serial(() => this.commit(intent, by, from, ask))
   }
   private async commit(asked: EditIntent, by?: string, from?: string, ask?: number): Promise<AppliedEdit> {
+    const { entry, next } = await this.decide(asked, by, from)
+    await this.store.appendEdits(this.id, [entry])
+    this.apply(entry, next, ask)
+    return entry
+  }
+  // What an edit comes to, decided against what stands and held to the ceilings, before anything
+  // is committed: the entry the log would gain, and the document it makes.
+  private async decide(asked: EditIntent, by?: string, from?: string): Promise<{ entry: AppliedEdit; next: ProjectDoc }> {
     // Decided first, so what is committed is the answer and not the question (#894).
     const intent = decideEdit(this.current, asked)
     // What may be made now is asked here as well as by the verb (#694); the log's replay asks
@@ -156,11 +164,13 @@ export class ProjectActor {
     const met = owner !== undefined && ceilings ? await cardGrowth(this.current, next, (measure) => ceilings(owner, measure)) : null
     if (met) throw new QuotaReached(met)
     const entry: AppliedEdit = { seq: this.at + 1, at: new Date().toISOString(), ...(by ? { by } : {}), ...(from ? { from } : {}), intent }
-    await this.store.appendEdits(this.id, [entry])
+    return { entry, next }
+  }
+  // An edit the log already has, applied and told.
+  private apply(entry: AppliedEdit, next: ProjectDoc, ask?: number): void {
     this.current = next
     this.at = entry.seq
     this.tell({ v: 'edits', edits: [ask === undefined ? entry : { ...entry, ask }] })
-    return entry
   }
 
   // Saving makes a version of what stands now (B4), and marks how far the log had come, so a
@@ -172,16 +182,23 @@ export class ProjectActor {
   async save(from?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(() => this.makeVersion(from, storage))
   }
-  private async makeVersion(from?: string, storage?: OwnerCeilings): Promise<Saved> {
+  // `edit` is one decided and not yet committed (#1233): it is committed with the version, in the
+  // same step of the store and after the ceiling is asked, and applied only once both are written.
+  // A version refused leaves it in no log and on no screen.
+  private async makeVersion(from?: string, storage?: OwnerCeilings, edit?: { entry: AppliedEdit; next: ProjectDoc }): Promise<Saved> {
     let result: Awaited<ReturnType<ProjectStore['replace']>>
     try {
-      result = await this.store.replace(this.id, this.rev, this.current, this.at, storage ? await storage() : undefined)
+      const ceilings = storage ? await storage() : undefined
+      result = edit
+        ? await this.store.replace(this.id, this.rev, edit.next, edit.entry.seq, ceilings, [edit.entry])
+        : await this.store.replace(this.id, this.rev, this.current, this.at, ceilings)
     } catch (e) {
       if (e instanceof QuotaReached) return { ok: false as const, reason: 'quota', quota: e.quota }
       throw e
     }
     if (result === 'missing') return { ok: false as const, reason: 'unknown project' }
     if (result === 'conflict') return { ok: false as const, reason: 'conflict' }
+    if (edit) this.apply(edit.entry, edit.next)
     this.rev = result.rev
     this.saved = this.current
     this.tell({ v: 'saved', rev: result.rev, ...(from ? { from } : {}) })
@@ -191,19 +208,20 @@ export class ProjectActor {
   // A whole document written over HTTP (#768): an API client's `PUT /projects/:id`, or an editor
   // that saves while its socket is down. It is the actor's to write, like every other change,
   // or the actor goes on holding — and handing out — a document and a rev the store has left.
-  // So it is what a document taken back already is, a `restore` in the log, and then a version
-  // of it, in one turn of the queue so that no edit can land between the two. It is written
-  // against a rev, and a rev the project has left is a conflict, as it always was.
+  // So it is what a document taken back already is, a `restore` in the log, and a version of it,
+  // in one turn of the queue so that no edit can land between the two. It is written against a
+  // rev, and a rev the project has left is a conflict, as it always was.
   //
-  // `storage` as for `save`. The door asks the ceiling on storage before it comes here (#1197), so
-  // a document refused for it never reaches the log; the version asks again in the step that
-  // writes it, and only two writes racing for the owner's last bytes can leave the document in
-  // the log and the version unmade.
+  // `storage` as for `save`. The door asks the ceiling on storage before it comes here (#1197),
+  // and the store asks it again in the step that writes the version (#1233): the `restore` is
+  // decided here, held to the ceiling on cards, and committed in that same step after the ceiling
+  // on storage is asked — decide, commit, apply, as every edit is. Two writes racing for the
+  // owner's last bytes give exactly one version, and the one refused is in no log and on no screen.
   async put(expectedRev: number, doc: ProjectDoc, by?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
-      if (stamp(doc) !== stamp(this.current)) await this.commit({ v: 'restore', doc }, by)
-      return this.makeVersion(undefined, storage)
+      if (stamp(doc) === stamp(this.current)) return this.makeVersion(undefined, storage)
+      return this.makeVersion(undefined, storage, await this.decide({ v: 'restore', doc }, by))
     })
   }
 
