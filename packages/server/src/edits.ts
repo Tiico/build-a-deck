@@ -171,7 +171,7 @@ export type EditIntent =
   // a designer may call any pile the deck, and moving the role is what lets the pile the wizard
   // laid out be taken away like any other.
   | { v: 'setDeck'; id: string }
-  // Whether the game goes in turns, and which way round the table (K28). `null` is a game without
+  // Whether the game goes in turns, and which way round the table (K29). `null` is a game without
   // turns, and takes the answer away rather than writing a third value.
   | { v: 'setTurns'; turns: 'clockwise' | 'counterclockwise' | null }
   | { v: 'patchZone'; id: string; patch: ZonePatch }

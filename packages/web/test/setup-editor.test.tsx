@@ -215,9 +215,9 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
   })
 })
 
-// Om spelet går i tur är designerns svar (K28): ett av tre i receptets spalt, som en version och
+// Om spelet går i tur är designerns svar (K29): ett av tre i receptets spalt, som en version och
 // ett steg tillbaka var, och ett spel utan svar går inte i tur.
-describe('the setup editor (K28): the turn order', () => {
+describe('the setup editor (K29): the turn order', () => {
   it('chooses none, clockwise or counterclockwise, and the choice is the document\'s', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()

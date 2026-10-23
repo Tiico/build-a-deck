@@ -45,9 +45,27 @@ export const ProjectSetup = z.object({
   // `id` is what a rule names it by (#708, B7), so a rule follows the counter when it is renamed.
   // A counter written before it had one is known by its name (`counterId`).
   counters: z.array(z.object({ id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(), name: z.string().min(1).max(24), start: z.number().int() })).optional(),
-  // Whether the game goes in turns, and which way round the table (K28). Absent is a game without
+  // Whether the game goes in turns, and which way round the table (K29). Absent is a game without
   // turns, which is every game written before there were turns.
   turns: z.enum(['clockwise', 'counterclockwise']).optional(),
+  // The game's dice (K5, #1136): which kinds, how many, and where they lie when the table is laid.
+  // A die is named by its sides, the way a table says it, and only the kinds the registry has
+  // (`DICE`). Where is one of two things (#1139): `zone`, an area every seat shares, or `role`, an
+  // area each seat has (`front` is `front:A`, `front:B` …), which gives every seat `count` of its
+  // own. `perSeat` on a shared area makes the count follow the players: `count` for each seat.
+  dice: z
+    .array(
+      z
+        .object({
+          faces: z.union([z.literal(4), z.literal(6), z.literal(8), z.literal(10), z.literal(12), z.literal(20)]),
+          count: z.number().int().min(1).max(20),
+          perSeat: z.boolean().optional(),
+          zone: z.string().min(1).optional(),
+          role: z.string().min(1).optional(),
+        })
+        .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a die lies in a zone or in a role, and only one' }),
+    )
+    .optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export type Cell = z.infer<typeof Cell>

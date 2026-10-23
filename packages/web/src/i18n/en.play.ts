@@ -231,6 +231,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'activity.deal.other': '{who} dealt {n} cards each to {to}',
   'activity.and': 'and',
   'activity.roll': '{who} rolled a die',
+  'activity.roll.thrown': '{who} rolled {thrown}',
   'activity.setCounter': '{who} set a counter to {value}',
   'activity.setCounter.named': '{who} set {counter} to {value}',
   'activity.peek': '{who} looked at a card',

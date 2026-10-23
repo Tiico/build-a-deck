@@ -267,7 +267,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
       </header>
       <div className="byd-behind" {...behind}>
-        {/* Whose turn it is (K28), on a row of its own: the head has no room for it at 390. */}
+        {/* Whose turn it is (K29), on a row of its own: the head has no room for it at 390. */}
         <TurnBadge view={view} seat={seat} onGive={(next) => void client.send({ v: 'turn.give', seat: next })} />
         <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       </div>

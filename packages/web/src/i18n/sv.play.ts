@@ -287,6 +287,7 @@ export const svPlay = {
   // How a list of places is said: «Adas hand, Bos hand och Cys hand».
   'activity.and': 'och',
   'activity.roll': '{who} slog en tärning',
+  'activity.roll.thrown': '{who} slog {thrown}',
   'activity.setCounter': '{who} satte en räknare till {value}',
   'activity.setCounter.named': '{who} satte {counter} till {value}',
   'activity.peek': '{who} tittade på ett kort',
@@ -307,7 +308,7 @@ export const svPlay = {
   'activity.flag.observer': '{name} (observatör)',
   'activity.turn.give': '{who} gav turen till {to}',
   'activity.turn.take': '{who} tog turen',
-  // Vems tur det är (K28): vid platsens namn på filten och i telefonens huvud.
+  // Vems tur det är (K29): vid platsens namn på filten och i telefonens huvud.
   'turn.of': '{name:s} tur',
   'turn.mine': 'Din tur',
   'turn.done': 'Klar → {name}',

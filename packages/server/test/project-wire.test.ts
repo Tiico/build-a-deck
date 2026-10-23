@@ -8,13 +8,25 @@ import type { EditIntent } from '../src/edits.js'
 
 let run: Running
 let cookie = ''
-beforeEach(async () => {
-  run = await start()
-  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+async function logIn(email: string): Promise<string> {
+  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
   const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
   const res = await fetch(`${run.http}${link}`, { redirect: 'manual' })
-  cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+  return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+}
+beforeEach(async () => {
+  run = await start()
+  cookie = await logIn('ada@example.com')
 })
+
+// Bo, a person of his own (#1151): logged in as himself and let in to the game by Ada's invitation.
+async function coEditor(id: string): Promise<string> {
+  await fetch(`${run.http}/projects/${id}/invites`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
+  const token = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+  const bo = await logIn('bo@example.com')
+  await fetch(`${run.http}/invites/${token}`, { method: 'POST', headers: { cookie: bo } })
+  return bo
+}
 afterEach(async () => {
   await run.stop()
 })
@@ -73,7 +85,7 @@ describe('two people editing the same project (D3)', () => {
     expect(first.doc.name).toBe('Skogens herrar')
     expect(first.rev).toBe(1)
 
-    const bo = await Editing.open(run.base, 'p1', 'Bo')
+    const bo = await Editing.open(run.base, 'p1', 'Bo', await coEditor('p1'))
     await bo.until('project')
     // Both know who is here.
     expect((await ada.until('here', (m) => m.here.length === 2)).here.map((p) => p.name)).toEqual(['Ada', 'Bo'])

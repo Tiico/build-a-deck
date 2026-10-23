@@ -512,7 +512,7 @@
    lika starka och den senare vinner — och det den säger just nu, att den här handen tar emot, är
    det färskare av de två. */
 .byd-seat-name[data-taking] { box-shadow: 0 0 0 2px var(--byd-felt-chalk), 0 0 14px var(--seat, #666); }
-/* Vems tur det är (K28). Kanten är `.byd-seat-band` ovan, samma två band i samma uppmätta par, men
+/* Vems tur det är (K29). Kanten är `.byd-seat-band` ovan, samma två band i samma uppmätta par, men
    den står kvar så länge turen gör och lyser lite längre ut. Namnet bär sin klocka, och nästa
    plats säger att den är nästa; den som har turen vid sin egen filt får «Klar» i namnet. */
 .byd-turn-band { box-shadow: 0 0 0 1px var(--byd-felt-chalk), 0 0 22px 4px var(--seat, #666); }
@@ -1345,7 +1345,7 @@
   padding: 6px 12px 6px 6px; border-left: 4px solid var(--seat); border-radius: 12px;
   background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 var(--byd-felt-font, system-ui, sans-serif); white-space: nowrap; pointer-events: none;
 }
-/* The seat whose turn it is (K28), ringed in its own colour, beside the band at its edge. */
+/* The seat whose turn it is (K29), ringed in its own colour, beside the band at its edge. */
 .byd-seat-plate[data-turn] { box-shadow: 0 0 0 2px var(--seat), 0 0 18px var(--seat); }
 .byd-seat-plate > b { display: inline-flex; align-items: center; gap: 10px; color: #fff; }
 .byd-seat-plate > b > i { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }

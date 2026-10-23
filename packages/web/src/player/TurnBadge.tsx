@@ -3,7 +3,7 @@ import type { Snapshot } from '@byd/protocol'
 import { useT } from '../i18n/index.js'
 import { seatColor } from '../table/seatColor.js'
 
-// Whose turn it is, on the phone (K28): «Din tur» and «Klar → Cy» for the one who has it, and whose
+// Whose turn it is, on the phone (K29): «Din tur» and «Klar → Cy» for the one who has it, and whose
 // it is for everyone else. A row of its own under the phone's chrome, which has no room for it.
 // Nothing at all for a game without turns, or while nobody has the turn.
 export function TurnBadge({ view, seat, onGive }: { view: Snapshot; seat: string | null; onGive(seat: string): void }) {

@@ -133,7 +133,7 @@ export type RewindProposal = z.infer<typeof RewindProposal>
 export const UndoMeaning = z.object({ toSeq: z.number().int().nonnegative(), contested: z.boolean() }).nullable()
 export type UndoMeaning = z.infer<typeof UndoMeaning>
 
-// Whose turn it is (K28), for a game that goes in turns; `null` for one that does not. `seat` is
+// Whose turn it is (K29), for a game that goes in turns; `null` for one that does not. `seat` is
 // who has the turn and `at` the time of the line that gave it, both `null` until somebody sits
 // down. `order` is every seat in turn order, wherever they sit. No secret (B6): every view gets
 // the same value.

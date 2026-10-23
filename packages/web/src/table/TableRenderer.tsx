@@ -715,7 +715,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
-  // Whose turn it is (K28), and who «Klar» passes it to. A seat's name gives the turn to that seat
+  // Whose turn it is (K29), and who «Klar» passes it to. A seat's name gives the turn to that seat
   // only where the felt can be played and somebody sits there (B5: nobody is stopped). «Klar» stands
   // at the holder's own felt, and at a table's shared screen, where whoever holds the turn is at it.
   const turn = view.turn
@@ -1491,7 +1491,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               täcker — och den är därtill det enda som finns att se vid en hand som är fälld
               till sitt antal och ritar ingen fläkt alls (#77). Ritad före högarna och korten,
               så att den ligger under allt som spelas på den. */}
-          {/* The seat whose turn it is (K28): its own millimetres of the edge, as the band above, and
+          {/* The seat whose turn it is (K29): its own millimetres of the edge, as the band above, and
               in every mode, so the television shows it as the felt on a laptop does. */}
           {turn?.seat &&
             hands
@@ -2295,7 +2295,7 @@ const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 
 
 // Who sits at this edge (B): the name lies along the table's own border, turned toward the seat
 // that reads it — as a name card would on a real table. The count stays on the hand.
-// What a seat's name says about the turn (K28): that it holds it and since when, with «Klar» for the
+// What a seat's name says about the turn (K29): that it holds it and since when, with «Klar» for the
 // one who holds it at their own felt; or that it is next, and that pressing it gives it the turn.
 type SeatTurn = { holds: true; at: string; done?: { name: string; give(): void } } | { holds: false; next: boolean; give?: () => void }
 

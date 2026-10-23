@@ -746,7 +746,7 @@ describe('the printed text is hidden information, like the title (#551, B6)', ()
   }, 60_000)
 })
 
-// Whose turn it is (K28) is no secret: every view hears it in the same patch.
+// Whose turn it is (K29) is no secret: every view hears it in the same patch.
 describe('the turn on the wire', () => {
   it('reaches every view in a patch when it is given', async () => {
     const res = await fetch(`${run.http}/sessions`, {

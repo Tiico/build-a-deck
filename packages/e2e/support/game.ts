@@ -10,7 +10,7 @@ export type Game = {
   cards?: number
   copies?: number
   name?: string
-  /** Whether the game goes in turns, and which way (K28). Left out, it does not. */
+  /** Whether the game goes in turns, and which way (K29). Left out, it does not. */
   turns?: 'clockwise' | 'counterclockwise'
 }
 

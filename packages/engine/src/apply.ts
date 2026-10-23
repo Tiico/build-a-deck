@@ -140,12 +140,12 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     }
     case 'seat.claim':
       must(state.seats[it.seat], `unknown seat ${it.seat}`).name = it.name
-      // Nobody has the turn yet, so the first to sit down takes it (K28).
+      // Nobody has the turn yet, so the first to sit down takes it (K29).
       if (state.setup.turns && !state.turn) state.turn = { seat: it.seat, at: applied.at }
       break
     case 'seat.release': {
       must(state.seats[it.seat], `unknown seat ${it.seat}`).name = null
-      // A turn left behind at an empty seat would be a marker nobody can pass on (K28).
+      // A turn left behind at an empty seat would be a marker nobody can pass on (K29).
       if (state.turn?.seat === it.seat) {
         const next = turnAfter(state, it.seat)
         state.turn = next === null ? null : { seat: next, at: applied.at }

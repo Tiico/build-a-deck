@@ -794,7 +794,7 @@ export class ProjectClient {
     this.edit({ v: 'setDeck', id })
   }
 
-  // Whether the game goes in turns, and which way round the table (K28); `null` is none.
+  // Whether the game goes in turns, and which way round the table (K29); `null` is none.
   setTurns(turns: 'clockwise' | 'counterclockwise' | null): void {
     this.edit({ v: 'setTurns', turns })
   }

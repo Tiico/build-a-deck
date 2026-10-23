@@ -500,7 +500,7 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
         </div>
       </section>
       <section>
-        {/* Whether the game goes in turns (K28): one of three, each a version and a step back. */}
+        {/* Whether the game goes in turns (K29): one of three, each a version and a step back. */}
         <div className="byd-help-row">
           <h2 id="byd-setup-turns">{t('setup.turns')}</h2>
           <Help topic={t('setup.turns.help.topic')}>

@@ -798,7 +798,7 @@
 /* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
 .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
-/* The turn order is one of three (K28), the tool's `.byd-choice` in a row. */
+/* The turn order is one of three (K29), the tool's `.byd-choice` in a row. */
 .byd-setup-turns { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
 /* A counter is a name, «från», a number and ×. The row wraps rather than setting the column's
    width (#480): at 1024 it was 296 px of content in a 260 px track, and the whole column scrolled

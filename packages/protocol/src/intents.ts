@@ -112,7 +112,7 @@ export const SessionIntent = z.discriminatedUnion('v', [
   // watcher (C8), whose flags weigh differently than a player's; the server stamps it.
   z.object({ v: z.literal('flag'), note: z.string().max(280).optional(), observer: z.string().min(1).max(64).optional() }),
   z.object({ v: z.literal('session.end') }),
-  // Whose turn it is (K28): the turn goes to `seat`, given by anyone at the table and refused only
+  // Whose turn it is (K29): the turn goes to `seat`, given by anyone at the table and refused only
   // where it cannot mean anything. Always a seat and never «the next one», so that two presses of
   // «Klar → Cy» both give the turn to Cy rather than the second skipping past her.
   z.object({ v: z.literal('turn.give'), seat: SeatId }),

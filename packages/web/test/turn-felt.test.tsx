@@ -11,7 +11,7 @@ import { translate, type T } from '../src/i18n/index.js'
 import { tableOf } from './scene.js'
 import { recipeSetup } from './fixture.js'
 
-// Vems tur det är (K28, #1141): kanten lyser vid den som har turen, namnet säger det och hur
+// Vems tur det är (K29, #1141): kanten lyser vid den som har turen, namnet säger det och hur
 // länge, nästa plats är märkt, och den som har turen skickar den vidare med «Klar».
 
 const swedish: T = (key, params) => translate('sv', key, params)

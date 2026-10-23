@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telefonen mot TV:n · prototyp</title>
+<!--
+  PROTOTYPE — throwaway. En omtagning från grunden av telefonens spelaryta (/play) när bordet står
+  på TV:n. Tre strukturellt olika varianter, växlade med ?v=A|B|C, pilarna i bandet eller ← →.
+  Allt är lokalt: ingen server, ingen projektion. Korten är ritade här och inte av renderaren.
+  Ingenting här importeras av appen.
+-->
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; }
+  body { background: #0c0d11; color: #eee; font: 15px/1.4 system-ui, -apple-system, sans-serif; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+
+  /* ---------------- prototypens ram: aldrig en del av förslaget ---------------- */
+  #stage { min-height: 100%; display: flex; gap: 40px; align-items: center; justify-content: center; padding: 24px 24px 88px; }
+  #info { width: 340px; flex: none; color: #c9c2b4; font-size: 14px; line-height: 1.55; }
+  #info h1 { margin: 0 0 4px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #ffd98a; }
+  #info h2 { margin: 0 0 12px; font-size: 24px; line-height: 1.2; color: #fff; }
+  #info p { margin: 0 0 12px; }
+  #info ul { margin: 0 0 12px; padding-left: 18px; }
+  #info li { margin: 0 0 6px; }
+  #info .pris { color: #f0a58a; }
+  #info .vinst { color: #b7dca0; }
+  #info small { color: #8a8478; }
+  #frame { flex: none; width: 390px; height: 844px; border-radius: 46px; padding: 12px; background: #000; box-shadow: 0 0 0 2px #2a2c33, 0 30px 80px #000c; transform-origin: center; }
+  #phone { position: relative; width: 100%; height: 100%; border-radius: 36px; overflow: hidden; }
+  #switch { position: fixed; z-index: 100; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #2a2417; box-shadow: 0 8px 30px #000a; font-weight: 700; font-size: 14px; }
+  #switch button { border: 0; background: transparent; min-width: 40px; min-height: 40px; border-radius: 999px; font-size: 18px; font-weight: 800; color: #2a2417; }
+  #switch button:hover { background: #0001; }
+  #switch .lbl { padding: 0 10px; white-space: nowrap; }
+  #switch .reset { font-size: 12px; font-weight: 700; padding: 0 12px; border-left: 1px solid #2a241733; border-radius: 0 999px 999px 0; }
+  /* På en riktig telefon är ramen telefonen själv. */
+  @media (max-width: 760px) {
+    #stage { padding: 0; display: block; }
+    #info { display: none; }
+    #frame { width: 100%; height: 100svh; border-radius: 0; padding: 0; box-shadow: none; transform: none !important; }
+    /* Prototypens band tar en egen rad överst, så att det aldrig ligger över förslaget. */
+    #phone { border-radius: 0; height: calc(100% - 36px); margin-top: 36px; }
+    #switch { top: 3px; bottom: auto; left: 50%; transform: translateX(-50%); padding: 0 2px; font-size: 12px; }
+    #switch button { min-width: 30px; min-height: 30px; font-size: 14px; }
+    #switch .lbl { padding: 0 4px; }
+    #switch .reset { display: none; }
+  }
+
+  /* ---------------- produktens tokens (player.css) ---------------- */
+  .phone {
+    --bg: #14161c; --surface: #1b1e27; --control: #242938; --ink: #eee; --strong: #fff; --muted: #9aa3b8; --quiet: #7d8597;
+    --accent: #7dd3a0; --on-accent: #0b2a18; --warn: #ffd98a; --rule: #262a35; --line: #2c3242;
+    --seat: #e5534b;
+    background: var(--bg); color: var(--ink); height: 100%; display: flex; flex-direction: column; position: relative; user-select: none;
+  }
+  .seat-a { --seat: #e5534b; } .seat-b { --seat: #3c8ce7; } .seat-c { --seat: #3fb67a; } .seat-d { --seat: #e3b341; }
+
+  /* ---------------- kortet, gemensamt för alla varianter ---------------- */
+  .card { --w: 120px; position: relative; width: var(--w); aspect-ratio: 63 / 88; flex: none; border-radius: calc(var(--w) * .06); background: #f4ead8; color: #1c1c1c; box-shadow: 0 2px 8px #0008; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size; }
+  /* Allt i kortet mäts i kortets egen bredd, så samma kort går att rita i 22 px och i 300. */
+  .card > * { font-size: 8.5cqw; }
+  .card .hd { display: flex; align-items: center; gap: .4em; padding: .45em .55em; background: hsl(var(--h) 45% 32%); color: #fff; font-weight: 800; font-family: Georgia, serif; }
+  .card .hd b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.1em; }
+  .card .cost { flex: none; width: 1.7em; height: 1.7em; border-radius: 50%; display: grid; place-items: center; background: #f0b64a; color: #2a1c05; font: 800 .95em system-ui; }
+  .card .art { flex: 1 1 auto; margin: .45em .55em 0; border-radius: .3em; background: radial-gradient(circle at 30% 30%, hsl(var(--h) 50% 72%), hsl(var(--h) 40% 42%)); display: grid; place-items: center; color: #fff9; font: 800 34cqw Georgia, serif; }
+  .card .ty { padding: .3em .55em 0; font-size: 6.6cqw; text-transform: uppercase; letter-spacing: .08em; color: #6b5f4c; font-weight: 700; }
+  .card .tx { padding: .15em .55em .6em; min-height: 3.2em; line-height: 1.25; }
+  .card.back { background: repeating-linear-gradient(45deg, #2b3d78 0 4px, #34478a 4px 8px); border: 2px solid #1a2650; }
+  .card.back > * { display: none; }
+  .card.down::after { content: 'nedvänt · bara du'; position: absolute; inset: auto 0 0 0; padding: .3em; background: #14161ce6; color: #ffd98a; font: 700 7.5cqw system-ui; text-align: center; }
+  /* Små kort: bara namn och kostnad syns. */
+  .card.mini .ty, .card.mini .tx { display: none; }
+  .card.mini .art { margin-bottom: .45em; }
+
+  /* ---------------- delade ark: läs, meny, toast ---------------- */
+  .scrim { position: absolute; inset: 0; z-index: 40; background: #000a; display: flex; flex-direction: column; justify-content: flex-end; animation: fade .15s; }
+  @keyframes fade { from { opacity: 0; } }
+  .sheet { background: var(--surface); border-radius: 22px 22px 0 0; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); max-height: 86%; overflow: auto; animation: up .18s ease-out; }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  .sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: #3a4052; margin: 0 auto 12px; }
+  .sheet h3 { margin: 0 0 12px; font-size: 17px; color: var(--strong); }
+  .sheet .list { display: grid; gap: 8px; }
+  .btn { min-height: 52px; border: 0; border-radius: 14px; padding: 0 16px; background: var(--control); color: var(--strong); font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 12px; text-align: left; }
+  .btn .sub { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+  .btn .ic { width: 28px; flex: none; text-align: center; font-size: 18px; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
+  .btn.primary .sub { color: #0b2a18bb; }
+  .btn.danger { color: #ff9a9a; }
+  .btn:disabled { opacity: .35; }
+  .reader { position: absolute; inset: 0; z-index: 45; background: #0b0c10f2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; animation: fade .15s; }
+  .reader .card { --w: min(300px, 78vw); }
+  .reader .row { display: flex; gap: 8px; width: min(320px, 100%); }
+  .reader .row .btn { flex: 1; justify-content: center; }
+  .reader .close { position: absolute; top: 14px; right: 14px; width: 48px; height: 48px; border: 0; border-radius: 50%; background: var(--control); color: #fff; font-size: 20px; }
+  .toast { position: absolute; z-index: 30; left: 12px; right: 12px; bottom: var(--toast-at, 16px); display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 14px; background: #2b3140; color: var(--strong); box-shadow: 0 8px 24px #000a; animation: up .18s ease-out; font-size: 14px; }
+  .toast span { flex: 1; min-width: 0; }
+  .toast button { min-height: 40px; border: 0; border-radius: 10px; padding: 0 14px; background: transparent; color: var(--warn); font-weight: 800; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--seat); flex: none; }
+
+  /* =================== A — Kortet i fokus =================== */
+  .A-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px 16px; }
+  .A-who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; color: var(--strong); }
+  .A-chip { min-height: 40px; border: 0; border-radius: 999px; padding: 0 12px; background: var(--control); color: var(--strong); font-weight: 800; font-size: 15px; display: inline-flex; gap: 6px; align-items: center; }
+  .A-chip small { font-weight: 600; color: var(--muted); font-size: 12px; }
+  .A-icon { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--control); color: var(--strong); font-size: 20px; }
+  .A-piles { flex: none; display: flex; gap: 8px; padding: 0 12px; }
+  .A-pile { flex: 1; min-height: 48px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--ink); display: flex; align-items: center; gap: 10px; padding: 0 12px; font-weight: 700; font-size: 14px; text-align: left; }
+  .A-pile .card { --w: 22px; box-shadow: none; }
+  .A-pile small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
+  .A-pile.draw { border-color: #7dd3a066; color: var(--accent); }
+  .A-car { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; overflow-x: auto; scroll-snap-type: x mandatory; gap: 16px; padding: 8px calc(50% - 125px); scrollbar-width: none; }
+  .A-car::-webkit-scrollbar { display: none; }
+  .A-car .card { --w: 250px; scroll-snap-align: center; transition: transform .2s, opacity .2s; }
+  .A-car .card:not(.on) { transform: scale(.88); opacity: .55; }
+  .A-empty { flex: 1; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 24px; }
+  .A-where { flex: none; text-align: center; color: var(--muted); font-size: 13px; height: 18px; font-variant-numeric: tabular-nums; }
+  .A-acts { flex: none; display: grid; grid-template-columns: 1fr 1fr 56px; gap: 8px; padding: 10px 12px 8px; }
+  .A-acts .btn { justify-content: center; text-align: center; padding: 0 8px; }
+  .A-acts .btn.primary { grid-column: 1 / -1; min-height: 58px; font-size: 17px; }
+  .A-strip { flex: none; display: flex; gap: 6px; padding: 4px 12px 10px; overflow-x: auto; scrollbar-width: none; }
+  .A-strip button { border: 2px solid transparent; border-radius: 6px; padding: 0; background: none; }
+  .A-strip button[aria-current='true'] { border-color: var(--warn); }
+  .A-strip .card { --w: 38px; box-shadow: none; }
+  .A-mine { flex: none; display: flex; align-items: center; gap: 10px; margin: 0 12px calc(10px + env(safe-area-inset-bottom)); min-height: 52px; padding: 0 14px; border: 0; border-radius: 14px; background: var(--surface); color: var(--ink); font-weight: 700; text-align: left; }
+  .A-mine .cards { display: flex; gap: 3px; margin-left: auto; }
+  .A-mine .card { --w: 22px; box-shadow: none; }
+  .A-mine .chev { color: var(--muted); }
+  .A-mrow { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--rule); }
+  .A-mrow .card { --w: 70px; }
+  .A-mrow .acts { flex: 1; display: grid; gap: 6px; grid-template-columns: 1fr 1fr; }
+  .A-mrow .acts .btn { min-height: 44px; font-size: 14px; justify-content: center; padding: 0 6px; }
+  .A-count { display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .A-count button { min-height: 64px; border: 0; border-radius: 16px; background: var(--control); color: var(--strong); font-size: 28px; font-weight: 800; }
+  .A-count .v { text-align: center; } .A-count .v b { display: block; font-size: 40px; color: var(--strong); line-height: 1; font-variant-numeric: tabular-nums; } .A-count .v span { color: var(--muted); font-size: 13px; }
+
+  /* =================== B — Flikar =================== */
+  .B-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--rule); }
+  .B-head h1 { flex: 1; margin: 0; font-size: 20px; color: var(--strong); }
+  .B-head h1 small { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .B-undo { min-height: 44px; border: 0; border-radius: 12px; padding: 0 12px; background: var(--control); color: var(--strong); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+  .B-undo:disabled { opacity: .35; }
+  .B-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 12px 16px; }
+  .B-draw { width: 100%; justify-content: center; margin-bottom: 12px; border: 1px dashed #7dd3a088; background: transparent; color: var(--accent); }
+  .B-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .B-grid button { position: relative; padding: 0; border: 0; background: none; border-radius: 8px; }
+  .B-grid .card { --w: 100%; }
+  .B-grid button[aria-pressed='true'] .card { outline: 3px solid var(--warn); outline-offset: 2px; transform: translateY(-4px); }
+  .B-grid .tick { position: absolute; top: -6px; right: -6px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; background: var(--warn); color: #2a2417; font-weight: 900; display: grid; place-items: center; font-size: 14px; }
+  .B-bar { flex: none; padding: 10px 12px; background: var(--surface); border-top: 1px solid var(--line); animation: up .15s ease-out; }
+  .B-bar .what { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: 14px; color: var(--muted); }
+  .B-bar .what b { color: var(--strong); font-size: 15px; }
+  .B-bar .what button { border: 0; background: none; color: var(--warn); font-weight: 700; min-height: 32px; }
+  .B-bar .row { display: grid; grid-template-columns: 1.4fr 1fr 52px; gap: 8px; }
+  .B-bar .btn { justify-content: center; padding: 0 8px; }
+  .B-tabs { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--rule); background: #101217; padding-bottom: env(safe-area-inset-bottom); }
+  .B-tabs button { min-height: 62px; border: 0; background: none; color: var(--quiet); font-size: 12px; font-weight: 700; display: grid; place-items: center; gap: 0; padding: 6px 0; position: relative; }
+  .B-tabs button .g { font-size: 21px; line-height: 1; }
+  .B-tabs button[aria-selected='true'] { color: var(--strong); }
+  .B-tabs button[aria-selected='true']::before { content: ''; position: absolute; top: 0; left: 25%; right: 25%; height: 3px; border-radius: 0 0 3px 3px; background: var(--seat); }
+  .B-badge { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--control); color: var(--strong); font-size: 11px; display: grid; place-items: center; }
+  .B-sec { margin: 4px 0 18px; }
+  .B-sec h2 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .B-counter { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 8px; padding: 6px; border-radius: 16px; background: var(--surface); margin-bottom: 8px; }
+  .B-counter button { min-height: 56px; border: 0; border-radius: 12px; background: var(--control); color: var(--strong); font-size: 24px; font-weight: 800; }
+  .B-counter .v { text-align: center; } .B-counter .v b { font-size: 30px; color: var(--strong); font-variant-numeric: tabular-nums; display: block; line-height: 1.1; } .B-counter .v span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .B-row { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 14px; background: var(--surface); margin-bottom: 8px; }
+  .B-row .card { --w: 64px; }
+  .B-row .mid { flex: 1; min-width: 0; display: grid; gap: 6px; }
+  .B-row .mid b { color: var(--strong); }
+  .B-row .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .B-row .acts button { min-height: 44px; border: 0; border-radius: 10px; padding: 0 12px; background: var(--control); color: var(--strong); font-weight: 700; font-size: 14px; }
+  .B-pile { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; background: var(--surface); margin-bottom: 8px; width: 100%; border: 0; color: var(--ink); text-align: left; }
+  .B-pile .card { --w: 44px; }
+  .B-pile b { color: var(--strong); display: block; }
+  .B-pile .go { margin-left: auto; padding: 0 14px; min-height: 44px; display: grid; place-items: center; border-radius: 10px; background: var(--control); font-weight: 700; color: var(--accent); }
+  .B-seat { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; background: var(--surface); margin-bottom: 8px; }
+  .B-seat b { color: var(--strong); }
+  .B-seat .n { margin-left: auto; color: var(--muted); font-size: 13px; text-align: right; }
+  .B-seat .cards { display: flex; gap: 3px; }
+  .B-seat .card { --w: 24px; box-shadow: none; }
+  .B-log { list-style: none; margin: 0; padding: 0; }
+  .B-log li { display: flex; gap: 10px; align-items: baseline; padding: 8px 2px; border-bottom: 1px solid var(--rule); font-size: 14px; }
+  .B-log li .dot { transform: translateY(1px); }
+  .B-empty { color: var(--muted); padding: 24px 8px; text-align: center; }
+
+  /* =================== C — Platserna i handen =================== */
+  .C-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px 6px 16px; }
+  .C-head .who { flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; color: var(--strong); }
+  .C-head .who small { font-weight: 500; color: var(--muted); font-size: 13px; }
+  .C-head button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--control); color: var(--strong); font-size: 19px; }
+  .C-head button:disabled { opacity: .35; }
+  .C-board { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 12px 0; }
+  .C-tile { position: relative; min-height: 112px; border: 2px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; transition: border-color .12s, background .12s, transform .12s; }
+  .C-tile b { color: var(--strong); font-size: 15px; }
+  .C-tile small { color: var(--muted); font-size: 12px; }
+  .C-tile .cards { display: flex; gap: 4px; align-items: flex-end; }
+  .C-tile .card { --w: 40px; box-shadow: 0 1px 3px #0008; }
+  .C-tile.wide { grid-column: 1 / -1; min-height: 132px; }
+  .C-tile.wide .cards .card { --w: 60px; }
+  .C-tile .verb { position: absolute; right: 10px; top: 10px; font-size: 12px; font-weight: 800; color: var(--accent); }
+  .C-tile.target { border-color: var(--warn); background: #2a2417; }
+  .C-tile.target .verb { color: var(--warn); }
+  .C-tile.hot { transform: scale(1.03); background: #3a3218; border-color: #ffe9b8; }
+  .phone.lifting .C-tile:not(.target) { opacity: .35; }
+  .C-counters { flex: none; display: flex; gap: 8px; padding: 8px 12px 0; }
+  .C-counter { flex: 1; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; border-radius: 14px; background: var(--surface); overflow: hidden; }
+  .C-counter button { min-height: 44px; border: 0; background: var(--control); color: var(--strong); font-size: 20px; font-weight: 800; }
+  .C-counter div { text-align: center; line-height: 1.1; } .C-counter b { font-size: 18px; color: var(--strong); font-variant-numeric: tabular-nums; } .C-counter span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .C-hint { flex: none; margin: 4px 16px auto; padding: 10px 0 4px; text-align: center; color: var(--muted); font-size: 13px; min-height: 36px; }
+  .C-hint b { color: var(--warn); }
+  .C-fan { flex: none; position: relative; height: 250px; margin-bottom: env(safe-area-inset-bottom); touch-action: none; }
+  .C-fan .slot { position: absolute; bottom: 6px; left: 50%; transform-origin: 50% 100%; transition: transform .18s; touch-action: none; }
+  .C-fan .slot .card { --w: 150px; }
+  .C-fan .slot.sel { z-index: 20 !important; }
+  .C-fan .slot.sel .card { outline: 3px solid var(--warn); outline-offset: 2px; }
+  .C-ghost { position: absolute; z-index: 50; pointer-events: none; transform: translate(-50%, -60%) rotate(-4deg) scale(.7); opacity: .95; }
+  .C-ghost .card { --w: 150px; box-shadow: 0 16px 40px #000c; }
+  .C-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); padding: 24px; text-align: center; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <aside id="info"></aside>
+  <div id="frame"><div id="phone" class="phone seat-a"></div></div>
+</div>
+<nav id="switch" aria-label="Prototypens varianter">
+  <button type="button" data-sw="-1" aria-label="Föregående variant">‹</button>
+  <span class="lbl" id="swlbl"></span>
+  <button type="button" data-sw="1" aria-label="Nästa variant">›</button>
+  <button type="button" class="reset" data-sw="reset">Börja om</button>
+</nav>
+<script>
+// ---------------------------------------------------------------- data
+const KINDS = {
+  bjorn: { t: 'Björnen', k: 'Varelse', c: 4, h: 25, x: 'Ta tillbaka ett kort från kasthögen.' },
+  raven: { t: 'Räven', k: 'Varelse', c: 2, h: 18, x: 'Byt plats på två kort framför dig.' },
+  uggla: { t: 'Ugglan', k: 'Varelse', c: 3, h: 265, x: 'Titta på det översta kortet i leken.' },
+  hare: { t: 'Haren', k: 'Varelse', c: 1, h: 45, x: 'Dra ett kort.' },
+  ekollon: { t: 'Ekollon', k: 'Resurs', c: 0, h: 35, x: '+1 guld.' },
+  alg: { t: 'Älgen', k: 'Varelse', c: 6, h: 140, x: '+2 poäng när den spelas.' },
+  svamp: { t: 'Svampringen', k: 'Plats', c: 3, h: 300, x: 'I början av din runda: +1 poäng.' },
+  varg: { t: 'Vargen', k: 'Varelse', c: 5, h: 220, x: 'Alla andra kastar ett kort.' },
+  skata: { t: 'Skatan', k: 'Varelse', c: 2, h: 200, x: 'Ta ett guld från en annan spelare.' },
+  lo: { t: 'Lodjuret', k: 'Varelse', c: 4, h: 30, x: 'Kan inte kastas av Vargen.' },
+  orm: { t: 'Huggormen', k: 'Varelse', c: 3, h: 95, x: 'Den som spelar ett kort framför dig kastar ett.' },
+  myra: { t: 'Myrstacken', k: 'Plats', c: 2, h: 10, x: 'Dina resurser ger +1 extra.' },
+  igel: { t: 'Igelkotten', k: 'Varelse', c: 2, h: 330, x: 'Skyddar ett kort framför dig.' },
+}
+const DECK = ['skata', 'lo', 'orm', 'myra', 'igel', 'hare', 'ekollon', 'raven']
+let uid = 0
+const inst = (id, up = true) => ({ u: ++uid, id, up })
+function fresh() {
+  uid = 0
+  return {
+    hand: ['bjorn', 'raven', 'uggla', 'hare', 'ekollon', 'alg'].map(id => inst(id)),
+    mine: [inst('svamp')],
+    deck: 34, deckAt: 0,
+    discard: [inst('varg')],
+    bottom: [],
+    counters: [{ n: 'Poäng', v: 3 }, { n: 'Guld', v: 5 }],
+    others: [
+      { name: 'Bo', seat: 'b', hand: 5, mine: [inst('lo')] },
+      { name: 'Cy', seat: 'c', hand: 4, mine: [] },
+      { name: 'Di', seat: 'd', hand: 5, mine: [inst('myra'), inst('ekollon')] },
+    ],
+    log: [
+      { s: 'b', t: 'Bo spelade Lodjuret framför sig' },
+      { s: 'd', t: 'Di drog ett kort' },
+      { s: 'c', t: 'Cy kastade Vargen' },
+    ],
+  }
+}
+let S = fresh()
+let past = []
+let toast = null, toastTimer = 0
+
+const card = (c, cls = '', w) => {
+  if (!c) return ''
+  const k = KINDS[c.id]
+  const style = `--h:${k.h};${w ? `--w:${w};` : ''}`
+  return `<div class="card ${c.up ? '' : 'down'} ${cls}" style="${style}"><div class="hd"><b>${k.t}</b><span class="cost">${k.c}</span></div><div class="art">${k.t[0]}</div><div class="ty">${k.k}</div><div class="tx">${k.x}</div></div>`
+}
+const back = (w) => `<div class="card back" style="--w:${w}"></div>`
+const name = (c) => KINDS[c.id].t
+
+// ---------------------------------------------------------------- verb
+function act(label, fn) {
+  past.push(JSON.stringify(S))
+  fn()
+  S.log.unshift({ s: 'a', t: 'Du ' + label })
+  say(label[0].toUpperCase() + label.slice(1), true)
+}
+function say(t, undo = false) {
+  toast = { t, undo }
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toast = null; draw() }, 4200)
+}
+const take = (from, u) => { const i = from.findIndex(c => c.u === u); return i < 0 ? null : from.splice(i, 1)[0] }
+const DEST = {
+  mine: { verb: 'Framför mig', long: 'Spela framför mig', said: 'framför dig', ic: '▲' },
+  discard: { verb: 'Kasta', long: 'Kasta', said: 'till kasthögen', ic: '✕' },
+  bottom: { verb: 'Underst i leken', long: 'Lägg underst i leken', said: 'underst i leken', ic: '↧' },
+}
+function play(us, dest, down = false) {
+  const cards = us.map(u => S.hand.find(c => c.u === u)).filter(Boolean)
+  if (!cards.length) return
+  const what = cards.length === 1 ? (down ? 'ett kort nedvänt' : name(cards[0])) : `${cards.length} kort`
+  act(`${dest === 'discard' ? 'kastade' : dest === 'bottom' ? 'lade' : 'spelade'} ${what} ${DEST[dest].said}`, () => {
+    for (const c of cards) {
+      take(S.hand, c.u)
+      if (down) c.up = false
+      if (dest === 'mine') S.mine.push(c)
+      else if (dest === 'discard') { c.up = true; S.discard.push(c) }
+      else { S.bottom.push(c); S.deck++ }
+    }
+  })
+}
+function drawCard() {
+  if (S.deck <= 0) return
+  act('drog ett kort', () => {
+    S.deck--
+    const id = DECK[S.deckAt++ % DECK.length]
+    const c = inst(id)
+    S.hand.push(c)
+    V.focus = S.hand.length - 1
+  })
+}
+function fromMine(u, dest) {
+  const c = S.mine.find(x => x.u === u)
+  if (!c) return
+  if (dest === 'hand') act(`tog upp ${name(c)}`, () => { take(S.mine, u); c.up = true; S.hand.push(c) })
+  else if (dest === 'discard') act(`kastade ${name(c)}`, () => { take(S.mine, u); c.up = true; S.discard.push(c) })
+  else if (dest === 'flip') act(`vände ${c.up ? 'ner' : 'upp'} ${name(c)}`, () => { c.up = !c.up })
+}
+function count(i, d) {
+  const c = S.counters[i]
+  past.push(JSON.stringify(S))
+  c.v += d
+  draw()
+}
+function undo() {
+  const prev = past.pop()
+  if (!prev) return
+  S = JSON.parse(prev)
+  say('Ångrat')
+}
+function show(c) { say(`${name(c)} visas på TV:n för alla`) }
+
+// ---------------------------------------------------------------- shared overlays
+function readerHTML(c, actions) {
+  return `<div class="reader" data-a="closeReader"><button class="close" data-a="closeReader" aria-label="Stäng">✕</button>${card(c)}<div class="row">${actions}</div></div>`
+}
+function menuHTML() {
+  return `<div class="scrim" data-a="closeMenu"><div class="sheet" role="dialog" aria-label="Bordet"><div class="grab"></div><h3>Bordet · Skogens herrar <small style="color:var(--muted);font-weight:500">v3</small></h3><div class="list">
+    <button class="btn" data-a="undo" ${past.length ? '' : 'disabled'}><span class="ic">↶</span><span>Ångra<span class="sub">${past.length ? S.log[0].t : 'Inget att ångra'}</span></span></button>
+    <button class="btn" data-a="rules"><span class="ic">§</span><span>Regler<span class="sub">Sök i regelboken</span></span></button>
+    <button class="btn" data-a="flag"><span class="ic">⚑</span><span>Flagga ögonblicket<span class="sub">Något var oklart – spelledaren ser det efteråt</span></span></button>
+    <button class="btn danger" data-a="leave"><span class="ic">⎋</span><span>Lämna bordet…</span></button>
+  </div></div></div>`
+}
+function toastHTML() {
+  if (!toast) return ''
+  return `<div class="toast" role="status"><span>${toast.t}</span>${toast.undo && past.length ? '<button data-a="undo">Ångra</button>' : ''}</div>`
+}
+
+// ---------------------------------------------------------------- view state per variant
+let V = {}
+const VARIANTS = {
+  A: {
+    name: 'Kortet i fokus',
+    info: `<h1>Variant A</h1><h2>Kortet i fokus</h2>
+      <p>Ett kort i taget, stort nog att läsas från soffan. Svep åt sidan för nästa kort; under kortet står de verb setupen gett zonerna, med det vanligaste störst.</p>
+      <ul><li>Räknarna är två chip i huvudet; ett tryck öppnar stora plus och minus.</li>
+      <li>Högarna är en rad: dra ett kort, se kasthögens översta.</li>
+      <li>Framför dig är en rad längst ner som öppnas som ark.</li>
+      <li>Ångra visas där handlingen syns – i bekräftelsen – och i menyn.</li></ul>
+      <p class="vinst">+ Inget att läsa ut ur ett rutnät: kortet du ska spela är det du ser.</p>
+      <p class="pris">− Översikten över handen är en miniatyrrad; flerval saknas.</p>`,
+    init: () => ({ focus: 0, sheet: null }),
+    render() {
+      const f = Math.min(V.focus, S.hand.length - 1)
+      const cur = S.hand[f]
+      const top = S.discard[S.discard.length - 1]
+      return `
+      <div class="A-head"><div class="A-who"><span class="dot"></span>Ada</div>
+        ${S.counters.map((c, i) => `<button class="A-chip" data-a="counterSheet" data-i="${i}" aria-label="${c.n} ${c.v}"><small>${c.n}</small>${c.v}</button>`).join('')}
+        <button class="A-icon" data-a="menu" aria-label="Meny">⋯</button></div>
+      <div class="A-piles">
+        <button class="A-pile draw" data-a="draw">${back('22px')}<span>Dra ett kort<small>${S.deck} kvar i leken</small></span></button>
+        <button class="A-pile" data-a="readDiscard">${card(top, 'mini')}<span>Kasthögen<small>${top ? name(top) : 'tom'}</small></span></button>
+      </div>
+      ${S.hand.length ? `<div class="A-car" id="car">${S.hand.map((c, i) => `<div data-i="${i}" data-a="readFocus" class="${i === f ? 'on' : ''}" style="scroll-snap-align:center">${card(c, i === f ? 'on' : '')}</div>`).join('')}</div>
+      <div class="A-where">${f + 1} av ${S.hand.length} på handen</div>
+      <div class="A-acts">
+        <button class="btn primary" data-a="playA" data-d="mine">▲ Spela framför mig</button>
+        <button class="btn" data-a="playA" data-d="discard">Kasta</button>
+        <button class="btn" data-a="playA" data-d="bottom">Lägg underst</button>
+        <button class="btn" data-a="moreA" aria-label="Fler sätt att spela">⋯</button>
+      </div>
+      <div class="A-strip">${S.hand.map((c, i) => `<button data-a="focus" data-i="${i}" aria-current="${i === f}" aria-label="${name(c)}">${card(c, 'mini')}</button>`).join('')}</div>`
+      : `<div class="A-empty">Handen är tom.<br>Dra ett kort ur leken ovanför.</div>`}
+      <button class="A-mine" data-a="mineSheet"><span>Framför dig · ${S.mine.length}</span><span class="cards">${S.mine.slice(0, 5).map(c => card(c, 'mini')).join('')}</span><span class="chev">⌃</span></button>
+      ${this.sheet()}`
+    },
+    sheet() {
+      if (V.sheet === 'mine') return `<div class="scrim" data-a="closeSheet"><div class="sheet" role="dialog" aria-label="Framför dig"><div class="grab"></div><h3>Framför dig · ${S.mine.length}</h3>
+        ${S.mine.length ? S.mine.map(c => `<div class="A-mrow">${card(c)}<div class="acts">
+          <button class="btn" data-a="mine" data-u="${c.u}" data-d="hand">Ta upp</button>
+          <button class="btn" data-a="mine" data-u="${c.u}" data-d="discard">Kasta</button>
+          <button class="btn" data-a="mine" data-u="${c.u}" data-d="flip">${c.up ? 'Vänd ner' : 'Vänd upp'}</button>
+          <button class="btn" data-a="readMine" data-u="${c.u}">Läs</button></div></div>`).join('') : '<p style="color:var(--muted)">Inget här ännu.</p>'}
+        </div></div>`
+      if (V.sheet && V.sheet.counter !== undefined) {
+        const c = S.counters[V.sheet.counter]
+        return `<div class="scrim" data-a="closeSheet"><div class="sheet" role="dialog" aria-label="${c.n}"><div class="grab"></div><h3>${c.n}</h3>
+          <div class="A-count"><button data-a="count" data-i="${V.sheet.counter}" data-d="-1" aria-label="minus">−</button><div class="v"><b>${c.v}</b><span>${c.n}</span></div><button data-a="count" data-i="${V.sheet.counter}" data-d="1" aria-label="plus">+</button></div>
+          <div class="list">${S.counters.map((o, i) => i === V.sheet.counter ? '' : `<button class="btn" data-a="counterSheet" data-i="${i}">Till ${o.n} · ${o.v}</button>`).join('')}</div></div></div>`
+      }
+      if (V.sheet === 'more') {
+        const c = S.hand[Math.min(V.focus, S.hand.length - 1)]
+        return `<div class="scrim" data-a="closeSheet"><div class="sheet" role="dialog" aria-label="Mer"><div class="grab"></div><h3>${c ? name(c) : ''}</h3><div class="list">
+          <button class="btn" data-a="showA"><span class="ic">📺</span><span>Visa för alla<span class="sub">Kortet syns på TV:n en stund, stannar på handen</span></span></button>
+          <button class="btn" data-a="downA"><span class="ic">▼</span><span>Spela nedvänt framför mig<span class="sub">Bara du ser vad det är</span></span></button>
+        </div></div></div>`
+      }
+      return ''
+    },
+    after() {
+      const car = document.getElementById('car')
+      if (!car) return
+      const kids = [...car.children]
+      const f = Math.min(V.focus, kids.length - 1)
+      const target = kids[f]
+      if (target) car.scrollLeft = target.offsetLeft - (car.clientWidth - target.clientWidth) / 2
+      let t = 0
+      car.onscroll = () => {
+        clearTimeout(t)
+        t = setTimeout(() => {
+          const mid = car.scrollLeft + car.clientWidth / 2
+          let best = 0, dist = 1e9
+          kids.forEach((k, i) => { const d = Math.abs(k.offsetLeft + k.clientWidth / 2 - mid); if (d < dist) { dist = d; best = i } })
+          if (best !== V.focus) { V.focus = best; draw() }
+        }, 90)
+      }
+    },
+    on(a, el) {
+      const f = Math.min(V.focus, S.hand.length - 1)
+      if (a === 'playA') { play([S.hand[f].u], el.dataset.d); V.focus = Math.max(0, Math.min(f, S.hand.length - 1)) }
+      else if (a === 'moreA') V.sheet = 'more'
+      else if (a === 'showA') { V.sheet = null; show(S.hand[f]) }
+      else if (a === 'downA') { V.sheet = null; play([S.hand[f].u], 'mine', true) }
+      else if (a === 'focus') V.focus = +el.dataset.i
+      else if (a === 'readFocus') { const i = +el.dataset.i; if (i !== f) V.focus = i; else V.read = S.hand[f] }
+      else if (a === 'readMine') { V.sheet = null; V.read = S.mine.find(c => c.u === +el.dataset.u) }
+      else if (a === 'readDiscard') V.read = S.discard[S.discard.length - 1]
+      else if (a === 'mineSheet') V.sheet = 'mine'
+      else if (a === 'counterSheet') V.sheet = { counter: +el.dataset.i }
+      else if (a === 'mine') fromMine(+el.dataset.u, el.dataset.d)
+      else return false
+    },
+    toastAt: 76,
+  },
+
+  B: {
+    name: 'Flikar',
+    info: `<h1>Variant B</h1><h2>Fyra flikar</h2>
+      <p>Telefonen som en app: en flikrad längst ner – <b>Handen</b>, <b>Framför mig</b>, <b>Bordet</b>, <b>Mer</b> – och varje flik är en enda sak.</p>
+      <ul><li>Handen är ett rutnät med tre i bredd; inget gömmer sig i en remsa.</li>
+      <li>Tryck väljer (flera går), och en handlingsrad växer fram ovanför flikarna.</li>
+      <li>Räknarna bor i <i>Framför mig</i>, stora, tillsammans med dina utlagda kort.</li>
+      <li>Bordet: högarna, de andras antal och utlagda kort, de senaste dragen.</li></ul>
+      <p class="vinst">+ Aldrig något utfällt i något annat; varje fråga har en plats.</p>
+      <p class="pris">− Räknare och hand på olika flikar: ett tryck extra när båda behövs.</p>`,
+    init: () => ({ tab: 'hand', sel: [] }),
+    render() {
+      V.sel = V.sel.filter(u => S.hand.some(c => c.u === u))
+      const tabs = [['hand', '🂠', 'Handen', S.hand.length], ['mine', '▲', 'Framför mig', S.mine.length], ['table', '◎', 'Bordet'], ['menu', '≡', 'Mer']]
+      const title = { hand: 'Handen', mine: 'Framför mig', table: 'Bordet', menu: 'Mer' }[V.tab]
+      return `
+      <div class="B-head"><span class="dot"></span><h1>${title} <small>· Ada</small></h1><button class="B-undo" data-a="undo" ${past.length ? '' : 'disabled'}>↶ Ångra</button></div>
+      <div class="B-body">${this[V.tab]()}</div>
+      ${V.tab === 'hand' && V.sel.length ? this.bar() : ''}
+      <nav class="B-tabs" role="tablist">${tabs.map(([k, g, l, n]) => `<button role="tab" aria-selected="${V.tab === k}" data-a="tab" data-t="${k}"><span class="g">${g}</span>${l}${n !== undefined ? `<span class="B-badge">${n}</span>` : ''}</button>`).join('')}</nav>
+      ${V.sheet === 'moreB' ? this.more() : ''}`
+    },
+    hand() {
+      return `<button class="btn B-draw" data-a="draw">＋ Dra ett kort <span style="color:var(--muted);font-weight:500">· ${S.deck} kvar</span></button>
+        ${S.hand.length ? `<div class="B-grid">${S.hand.map(c => { const on = V.sel.includes(c.u); return `<button data-a="sel" data-u="${c.u}" aria-pressed="${on}" aria-label="${name(c)}">${on ? `<span class="tick">${V.sel.indexOf(c.u) + 1}</span>` : ''}${card(c)}</button>` }).join('')}</div>` : '<p class="B-empty">Handen är tom.</p>'}`
+    },
+    bar() {
+      const one = V.sel.length === 1 ? S.hand.find(c => c.u === V.sel[0]) : null
+      return `<div class="B-bar"><div class="what"><span>${one ? `<b>${name(one)}</b>` : `<b>${V.sel.length} kort valda</b>`}</span><span>${one ? '<button data-a="readSel">Läs stort</button>' : ''}<button data-a="clearSel">Avmarkera</button></span></div>
+        <div class="row"><button class="btn primary" data-a="playB" data-d="mine">▲ Framför mig</button><button class="btn" data-a="playB" data-d="discard">Kasta</button><button class="btn" data-a="moreB" aria-label="Fler sätt att spela">⋯</button></div></div>`
+    },
+    mine() {
+      return `<div class="B-sec"><h2>Räknare</h2>${S.counters.map((c, i) => `<div class="B-counter"><button data-a="count" data-i="${i}" data-d="-1" aria-label="${c.n} minus">−</button><div class="v"><b>${c.v}</b><span>${c.n}</span></div><button data-a="count" data-i="${i}" data-d="1" aria-label="${c.n} plus">+</button></div>`).join('')}</div>
+        <div class="B-sec"><h2>Utlagt framför dig · ${S.mine.length}</h2>${S.mine.length ? S.mine.map(c => `<div class="B-row"><button style="padding:0;border:0;background:none" data-a="readMine" data-u="${c.u}" aria-label="Läs ${name(c)}">${card(c, 'mini')}</button><div class="mid"><b>${name(c)}${c.up ? '' : ' <small style="color:var(--warn)">· nedvänt</small>'}</b><div class="acts"><button data-a="mine" data-u="${c.u}" data-d="hand">Ta upp</button><button data-a="mine" data-u="${c.u}" data-d="discard">Kasta</button><button data-a="mine" data-u="${c.u}" data-d="flip">${c.up ? 'Vänd ner' : 'Vänd upp'}</button></div></div></div>`).join('') : '<p class="B-empty">Inget här ännu. Spela ett kort från handen.</p>'}</div>`
+    },
+    table() {
+      const top = S.discard[S.discard.length - 1]
+      return `<div class="B-sec"><h2>Högar</h2>
+        <button class="B-pile" data-a="draw">${back('44px')}<span><b>Leken</b><small style="color:var(--muted)">${S.deck} kort</small></span><span class="go">Dra 1</span></button>
+        <button class="B-pile" data-a="readDiscard">${card(top, 'mini')}<span><b>Kasthögen</b><small style="color:var(--muted)">${S.discard.length} kort · överst ${top ? name(top) : '–'}</small></span><span class="go" style="color:var(--strong)">Läs</span></button></div>
+        <div class="B-sec"><h2>Spelarna</h2>${S.others.map(o => `<div class="B-seat seat-${o.seat}"><span class="dot"></span><b>${o.name}</b><span class="cards">${o.mine.map(c => card(c, 'mini')).join('')}</span><span class="n">${o.hand} på handen<br>${o.mine.length} framför</span></div>`).join('')}</div>
+        <div class="B-sec"><h2>Senaste dragen</h2><ul class="B-log">${S.log.slice(0, 8).map(l => `<li class="seat-${l.s}"><span class="dot"></span>${l.t}</li>`).join('')}</ul></div>`
+    },
+    menu() {
+      return `<div class="B-sec"><h2>Skogens herrar · v3</h2><div class="list" style="display:grid;gap:8px">
+        <button class="btn" data-a="rules"><span class="ic">§</span><span>Regler<span class="sub">Sök i regelboken</span></span></button>
+        <button class="btn" data-a="flag"><span class="ic">⚑</span><span>Flagga ögonblicket<span class="sub">Något var oklart – spelledaren ser det efteråt</span></span></button>
+        <button class="btn danger" data-a="leave"><span class="ic">⎋</span><span>Lämna bordet…</span></button></div></div>`
+    },
+    more() {
+      if (V.tab !== 'hand') return ''
+      return `<div class="scrim" data-a="closeSheet"><div class="sheet" role="dialog"><div class="grab"></div><h3>Spela ${V.sel.length === 1 ? name(S.hand.find(c => c.u === V.sel[0])) : V.sel.length + ' kort'}</h3><div class="list">
+        <button class="btn" data-a="playB" data-d="bottom"><span class="ic">↧</span><span>Lägg underst i leken</span></button>
+        <button class="btn" data-a="downB"><span class="ic">▼</span><span>Spela nedvänt framför mig<span class="sub">Bara du ser vad det är</span></span></button>
+        ${V.sel.length === 1 ? '<button class="btn" data-a="showB"><span class="ic">📺</span><span>Visa för alla<span class="sub">Syns på TV:n en stund, stannar på handen</span></span></button>' : ''}
+      </div></div></div>`
+    },
+    on(a, el) {
+      if (a === 'tab') { V.tab = el.dataset.t; V.sheet = null }
+      else if (a === 'sel') { const u = +el.dataset.u; V.sel = V.sel.includes(u) ? V.sel.filter(x => x !== u) : [...V.sel, u] }
+      else if (a === 'clearSel') V.sel = []
+      else if (a === 'readSel') V.read = S.hand.find(c => c.u === V.sel[0])
+      else if (a === 'playB') { V.sheet = null; play(V.sel, el.dataset.d); V.sel = [] }
+      else if (a === 'downB') { V.sheet = null; play(V.sel, 'mine', true); V.sel = [] }
+      else if (a === 'showB') { V.sheet = null; show(S.hand.find(c => c.u === V.sel[0])) }
+      else if (a === 'moreB') V.sheet = 'moreB'
+      else if (a === 'readMine') V.read = S.mine.find(c => c.u === +el.dataset.u)
+      else if (a === 'readDiscard') V.read = S.discard[S.discard.length - 1]
+      else if (a === 'mine') fromMine(+el.dataset.u, el.dataset.d)
+      else return false
+    },
+    get toastAt() { return V.tab === 'hand' && V.sel.length ? 200 : 76 },
+  },
+
+  C: {
+    name: 'Platserna i handen',
+    info: `<h1>Variant C</h1><h2>Platserna i handen</h2>
+      <p>Telefonen som en liten spelplan: överst står platserna du kan spela till, nederst håller du korten som en solfjäder. Dra ett kort upp till en plats – eller tryck på kortet och sedan på platsen.</p>
+      <ul><li>Leken är en ruta: tryck så hamnar ett kort i handen.</li>
+      <li>Räknarna står alltid synliga som två reglage.</li>
+      <li>Ett tryck på ett valt kort läser det stort.</li>
+      <li>Ingen text med verb att leta efter: platsen <i>är</i> verbet.</li></ul>
+      <p class="vinst">+ Samma rörelse som vid ett riktigt bord; två tryck från kort till spelat.</p>
+      <p class="pris">− Solfjädern rymmer runt åtta kort innan de blir smala; platserna tar höjd.</p>`,
+    init: () => ({ sel: null }),
+    render() {
+      if (V.sel && !S.hand.some(c => c.u === V.sel)) V.sel = null
+      const top = S.discard[S.discard.length - 1]
+      const t = (k) => V.sel ? 'target' : ''
+      const n = S.hand.length
+      const spread = Math.min(4, 20 / Math.max(1, n - 1))
+      const step = Math.min(46, 180 / Math.max(1, n - 1))
+      return `
+      <div class="C-head"><div class="who"><span class="dot"></span>Ada <small>· ${n} kort</small></div><button data-a="undo" aria-label="Ångra" ${past.length ? '' : 'disabled'}>↶</button><button data-a="menu" aria-label="Meny">⋯</button></div>
+      <div class="C-board">
+        <button class="C-tile ${t()}" data-a="${V.sel ? 'to' : 'draw'}" data-tgt="bottom" data-drop="bottom">
+          <b>Leken</b><span class="verb">${V.sel ? 'Lägg underst' : 'Tryck: dra 1'}</span><span class="cards">${back('40px')}<small style="margin-left:6px">${S.deck} kort</small></span></button>
+        <button class="C-tile ${t()}" data-a="${V.sel ? 'to' : 'readDiscard'}" data-tgt="discard" data-drop="discard"><b>Kasthögen</b><span class="verb">${V.sel ? 'Kasta hit' : ''}</span><span class="cards">${card(top, 'mini')}<small style="margin-left:6px">${top ? name(top) : 'tom'}</small></span></button>
+        <button class="C-tile wide ${t()}" data-a="${V.sel ? 'to' : 'mineSheetC'}" data-tgt="mine" data-drop="mine"><b>Framför mig · ${S.mine.length}</b><span class="verb">${V.sel ? 'Spela hit' : 'Öppna'}</span><span class="cards">${S.mine.map(c => card(c, 'mini')).join('') || '<small>Tomt – dra hit ett kort</small>'}</span></button>
+      </div>
+      <div class="C-counters">${S.counters.map((c, i) => `<div class="C-counter"><button data-a="count" data-i="${i}" data-d="-1" aria-label="${c.n} minus">−</button><div><b>${c.v}</b><span>${c.n}</span></div><button data-a="count" data-i="${i}" data-d="1" aria-label="${c.n} plus">+</button></div>`).join('')}</div>
+      <div class="C-hint">${V.sel ? `<b>${name(S.hand.find(c => c.u === V.sel))}</b> – tryck på en plats, eller på kortet för att läsa` : 'Dra ett kort till en plats, eller tryck på det'}</div>
+      <div class="C-fan" id="fan">${n ? S.hand.map((c, i) => {
+        const off = i - (n - 1) / 2
+        const sel = V.sel === c.u
+        return `<div class="slot ${sel ? 'sel' : ''}" data-u="${c.u}" style="z-index:${i};transform:translateX(calc(-50% + ${off * step}px)) translateY(${sel ? -40 : Math.abs(off) * 4}px) rotate(${off * spread}deg)">${card(c)}</div>`
+      }).join('') : '<div class="C-empty">Handen är tom – tryck på Leken.</div>'}</div>
+      ${V.sheet === 'mineC' ? this.mineSheet() : ''}`
+    },
+    mineSheet() {
+      return `<div class="scrim" data-a="closeSheet"><div class="sheet" role="dialog"><div class="grab"></div><h3>Framför dig · ${S.mine.length}</h3>
+        ${S.mine.map(c => `<div class="A-mrow">${card(c)}<div class="acts"><button class="btn" data-a="mine" data-u="${c.u}" data-d="hand">Ta upp</button><button class="btn" data-a="mine" data-u="${c.u}" data-d="discard">Kasta</button><button class="btn" data-a="mine" data-u="${c.u}" data-d="flip">${c.up ? 'Vänd ner' : 'Vänd upp'}</button><button class="btn" data-a="readMine" data-u="${c.u}">Läs</button></div></div>`).join('') || '<p style="color:var(--muted)">Inget här ännu.</p>'}</div></div>`
+    },
+    after() {
+      const fan = document.getElementById('fan')
+      if (!fan) return
+      const phone = document.getElementById('phone')
+      fan.querySelectorAll('.slot').forEach(slot => {
+        slot.onpointerdown = (e) => {
+          e.preventDefault()
+          const u = +slot.dataset.u
+          const sx = e.clientX, sy = e.clientY
+          let ghost = null, hot = null
+          const scale = phone.getBoundingClientRect().width / phone.offsetWidth
+          const local = (x, y) => { const r = phone.getBoundingClientRect(); return [(x - r.left) / scale, (y - r.top) / scale] }
+          const move = (m) => {
+            if (!ghost && Math.hypot(m.clientX - sx, m.clientY - sy) > 12) {
+              ghost = document.createElement('div')
+              ghost.className = 'C-ghost'
+              ghost.innerHTML = slot.innerHTML
+              phone.appendChild(ghost)
+              phone.classList.add('lifting')
+              phone.querySelectorAll('[data-drop]').forEach(d => d.classList.add('target'))
+              slot.style.opacity = '.25'
+            }
+            if (!ghost) return
+            const [x, y] = local(m.clientX, m.clientY)
+            ghost.style.left = x + 'px'; ghost.style.top = y + 'px'
+            const under = document.elementFromPoint(m.clientX, m.clientY)?.closest('[data-drop]')
+            if (hot && hot !== under) hot.classList.remove('hot')
+            hot = under || null; if (hot) hot.classList.add('hot')
+          }
+          const end = (ev) => {
+            removeEventListener('pointermove', move)
+            removeEventListener('pointerup', end)
+            removeEventListener('pointercancel', end)
+            phone.classList.remove('lifting')
+            if (ghost) {
+              ghost.remove()
+              if (ev.type === 'pointerup' && hot) { V.sel = null; play([u], hot.dataset.drop) }
+              return draw()
+            }
+            if (ev.type !== 'pointerup') return draw()
+            if (V.sel === u) V.read = S.hand.find(c => c.u === u)
+            else V.sel = u
+            draw()
+          }
+          addEventListener('pointermove', move)
+          addEventListener('pointerup', end)
+          addEventListener('pointercancel', end)
+        }
+      })
+    },
+    on(a, el) {
+      if (a === 'to') { const u = V.sel; V.sel = null; play([u], el.dataset.tgt) }
+      else if (a === 'readDiscard') V.read = S.discard[S.discard.length - 1]
+      else if (a === 'mineSheetC') V.sheet = 'mineC'
+      else if (a === 'readMine') { V.sheet = null; V.read = S.mine.find(c => c.u === +el.dataset.u) }
+      else if (a === 'mine') fromMine(+el.dataset.u, el.dataset.d)
+      else return false
+    },
+    toastAt: 280,
+  },
+}
+
+// ---------------------------------------------------------------- shell
+const KEYS = Object.keys(VARIANTS)
+let current = new URLSearchParams(location.search).get('v')?.toUpperCase()
+if (!KEYS.includes(current)) current = 'A'
+V = VARIANTS[current].init()
+
+function draw() {
+  const v = VARIANTS[current]
+  const phone = document.getElementById('phone')
+  let html = v.render()
+  if (V.menu) html += menuHTML()
+  if (V.read) {
+    const c = V.read
+    const inHand = S.hand.some(h => h.u === c.u)
+    html += readerHTML(c, inHand
+      ? `<button class="btn primary" data-a="readPlay" data-d="mine">▲ Framför mig</button><button class="btn" data-a="readPlay" data-d="discard">Kasta</button>`
+      : `<button class="btn" data-a="closeReader">Stäng</button>`)
+  }
+  phone.style.setProperty('--toast-at', (v.toastAt ?? 16) + 'px')
+  html += toastHTML()
+  phone.innerHTML = html
+  v.after?.()
+  document.getElementById('swlbl').textContent = `${current} — ${v.name}`
+  document.getElementById('info').innerHTML = v.info + `<p><small>Prototyp. Allt är lokalt – ingen server, inga riktiga kortbilder. Pröva: spela ett kort, dra ett, ändra poäng, ångra.</small></p>`
+}
+
+document.getElementById('phone').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-a]')
+  if (!el) return
+  const a = el.dataset.a
+  if ((a === 'closeReader' || a === 'closeMenu' || a === 'closeSheet') && e.target !== el && !e.target.closest('.close')) {
+    // ett tryck inne i arket stänger det inte
+    if (e.target.closest('.sheet, .reader .card, .reader .row')) return
+  }
+  const v = VARIANTS[current]
+  if (v.on(a, el) !== false) return draw()
+  if (a === 'draw') drawCard()
+  else if (a === 'undo') { V.menu = false; undo() }
+  else if (a === 'count') count(+el.dataset.i, +el.dataset.d)
+  else if (a === 'menu') V.menu = true
+  else if (a === 'closeMenu') V.menu = false
+  else if (a === 'closeSheet') V.sheet = null
+  else if (a === 'closeReader') V.read = null
+  else if (a === 'readPlay') { const u = V.read.u; V.read = null; if (V.sel) V.sel = Array.isArray(V.sel) ? [] : null; play([u], el.dataset.d) }
+  else if (a === 'flag') { V.menu = false; say('Flaggat – spelledaren ser ögonblicket efteråt') }
+  else if (a === 'rules') { V.menu = false; say('Regelboken öppnas här (inte prototypad)') }
+  else if (a === 'leave') { V.menu = false; say('Lämna… (inte prototypad)') }
+  draw()
+})
+
+function go(k) {
+  current = k
+  V = VARIANTS[k].init()
+  const u = new URL(location.href); u.searchParams.set('v', k); history.replaceState(null, '', u)
+  draw()
+}
+document.getElementById('switch').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sw]'); if (!b) return
+  if (b.dataset.sw === 'reset') { S = fresh(); past = []; toast = null; V = VARIANTS[current].init(); return draw() }
+  go(KEYS[(KEYS.indexOf(current) + +b.dataset.sw + KEYS.length) % KEYS.length])
+})
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest?.('input, textarea, [contenteditable]')) return
+  if (e.key === 'ArrowRight') go(KEYS[(KEYS.indexOf(current) + 1) % KEYS.length])
+  if (e.key === 'ArrowLeft') go(KEYS[(KEYS.indexOf(current) - 1 + KEYS.length) % KEYS.length])
+  if (e.key === 'Escape') { V.read = null; V.menu = false; V.sheet = null; draw() }
+})
+function fit() {
+  const f = document.getElementById('frame')
+  if (innerWidth <= 760) { f.style.transform = ''; f.style.margin = ''; return }
+  const s = Math.min(1, (innerHeight - 110) / 868)
+  f.style.transform = `scale(${s})`
+  f.style.margin = `${(868 * s - 868) / 2}px 0`
+}
+addEventListener('resize', fit)
+fit()
+draw()
+</script>
+</body>
+</html>

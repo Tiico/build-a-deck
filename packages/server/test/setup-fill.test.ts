@@ -94,7 +94,7 @@ describe('draghögens blandning på väg till bordet', () => {
   })
 })
 
-// Om spelet går i tur, och åt vilket håll (K28), är designerns svar i Bord och måste följa med
+// Om spelet går i tur, och åt vilket håll (K29), är designerns svar i Bord och måste följa med
 // till bordet som spelas; ett spel som inte säger något går inte i tur.
 describe('turordningen', () => {
   it('följer med till bordet, och ett spel utan turordning bär ingen', () => {

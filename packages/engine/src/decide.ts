@@ -168,7 +168,7 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'flag':
       return it.note !== undefined && it.note.length > 280 ? 'a flag note is at most 280 characters' : null
     case 'turn.give': {
-      // Refused only where it cannot mean anything (K28, B5): who gives it, and when, is never
+      // Refused only where it cannot mean anything (K29, B5): who gives it, and when, is never
       // the table's to judge.
       if (!state.setup.turns) return 'this game does not go in turns'
       const s = state.seats[it.seat]

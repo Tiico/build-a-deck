@@ -71,7 +71,7 @@ html:has(.byd-player) { background: #14161c; }
 .byd-player > header button:disabled, .byd-player > header button[aria-disabled='true'] { opacity: 0.35; }
 .byd-player > header .byd-glyph { width: 16px; height: 16px; flex: none; }
 
-/* Whose turn it is (K28): a row of its own under the head, which has no room for it at 390. The
+/* Whose turn it is (K29): a row of its own under the head, which has no room for it at 390. The
    holder's colour marks it; on one's own turn it is the seat's pill with «Klar» beside it. */
 .byd-turn-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px 0; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-turn-badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--byd-ink-strong); }

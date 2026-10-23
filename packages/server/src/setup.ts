@@ -1,6 +1,6 @@
 import { matches } from '@byd/protocol'
-import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
-import { counterSpots } from './recipe.js'
+import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
+import { counterSpots, diceSpots } from './recipe.js'
 import type { ProjectDoc } from './projects.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
@@ -31,6 +31,25 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     const spots = counterSpots(zone.geometry, counters.length)
     counters.forEach((c, i) => components.push({ type: token, cardRef: c.name, zone: zone.id, face: 'front', counter: c.start, ...(spots[i] ?? { x: 0, y: 0 }) }))
   }
+  // The game's dice (K5, #1136), side by side in the area each is put in, one side up. The side is
+  // the document's and not a roll: a table is laid the same way every time, and the first roll is
+  // a line in the log like every other (D4). A die put in a zone that is gone lies nowhere.
+  const byZone = new Map<string, number[]>()
+  const put = (zone: string, faces: number, count: number) => byZone.set(zone, [...(byZone.get(zone) ?? []), ...Array<number>(count).fill(faces)])
+  for (const d of doc.setup.dice ?? []) {
+    if (d.role !== undefined) for (const seat of doc.setup.seats) put(`${d.role}:${seat}`, d.faces, d.count)
+    else if (d.zone !== undefined) put(d.zone, d.faces, d.perSeat ? d.count * doc.setup.seats.length : d.count)
+  }
+  for (const [zoneId, kinds] of byZone) {
+    const zone = doc.setup.zones.find((z) => z.id === zoneId)
+    if (!zone) continue
+    const spots = diceSpots(zone.geometry, kinds.length)
+    kinds.forEach((faces, i) => {
+      const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === faces)
+      const at = spots[i] ?? { x: 0, y: 0 }
+      if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: `d${faces}`, zone: zoneId, face: 'front', counter: 1, ...at })
+    })
+  }
   // Optional keys that are present but undefined are dropped: the engine's types are exact.
   const zones: SetupDef['zones'] = doc.setup.zones.map((z) => ({
     id: z.id,
@@ -55,6 +74,6 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
   for (const { id, fields } of doc.rows) {
     cards[id] = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v).trim()]))
   }
-  // Whether the game goes in turns (K28) is the designer's answer in Bord, and travels as it is.
+  // Whether the game goes in turns (K29) is the designer's answer in Bord, and travels as it is.
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components, cards, ...(doc.setup.turns ? { turns: doc.setup.turns } : {}) }
 }
