@@ -287,6 +287,7 @@ export const svPlay = {
   // How a list of places is said: «Adas hand, Bos hand och Cys hand».
   'activity.and': 'och',
   'activity.roll': '{who} slog en tärning',
+  'activity.roll.thrown': '{who} slog {thrown}',
   'activity.setCounter': '{who} satte en räknare till {value}',
   'activity.setCounter.named': '{who} satte {counter} till {value}',
   'activity.peek': '{who} tittade på ett kort',

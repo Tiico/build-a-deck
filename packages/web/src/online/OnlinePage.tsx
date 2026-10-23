@@ -156,7 +156,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const shown = withoutHand(previewOf(view), seat)
   const playable = !view.rewind && !view.ended
   const up = spread && hand.length > 0
-  // Folded where it costs (beställarens beslut 2026-10-22, K28): open by default only where a card
+  // Folded where it costs (beställarens beslut 2026-10-22, K29): open by default only where a card
   // at rest keeps K9's 45 px with the column open — measured by the felt's own fit, in the frame the
   // open column would leave it. A portrait window lays the column over the felt instead and never
   // opens it unasked. Until the felt has been fitted the answer is no.
