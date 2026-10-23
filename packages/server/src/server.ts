@@ -1661,6 +1661,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 503, { error: 'render queue unavailable' })
       return true
     }
+    // Whoever orders may leave the hardware out (#1140): many partners will not pack a die. An
+    // order with no body asks for everything, as every order did before.
+    const order = PrintBody.safeParse(parsedOrNull(await readBody(req)) ?? {})
+    if (!order.success) {
+      json(res, 400, { error: 'malformed' })
+      return true
+    }
     const rec = gate.rec
     // Physical validation (E5): warnings live in the editor, errors stop an order. A card that
     // would come back unreadable is cheaper to catch here than in five hundred printed copies.
@@ -1670,11 +1677,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 422, { project: rec.id, rev: rec.rev, errors })
       return true
     }
-    const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
+    const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime(), { hardware: order.data.hardware !== false })
     for (const job of printed.jobs) await opts.renders.enqueue(job)
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
-    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, credits: creditsOf(rec), warnings: found })
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
     return true
   }
   // The whole game for the designer to keep (G5, #527): POST asks for the print files to be made,
@@ -2051,6 +2058,7 @@ const frontsOf = (faces: Record<string, Record<string, string>>): Record<string,
 // closed set of words (`AiFailure`), and nothing is kept. PUT …/model chooses a model, null being the
 // provider's standard; GET …/models lists them anew; DELETE forgets the key.
 // A body that is not a key is refused without a word of what it held, and nothing here logs.
+const PrintBody = z.object({ hardware: z.boolean().optional() })
 const AiKeyBody = z.object({ provider: z.enum(AI_PROVIDERS), key: z.string().trim().min(8).max(512).regex(/^[\x21-\x7e]+$/) })
 const AiModelBody = z.object({ model: z.string().min(1).max(200).regex(/^[A-Za-z0-9._:/-]+$/).nullable() })
 const parsedOrNull = (text: string): unknown => {

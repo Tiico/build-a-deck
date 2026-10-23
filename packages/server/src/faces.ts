@@ -19,7 +19,9 @@ export type Deck = {
 }
 
 export type PrintCard = { cardRef: string; faces: Record<string, string> }
-export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[] }
+// Hardware is what the partner packs rather than prints (#1140): a stock die, by type and count.
+export type PrintHardware = { type: string; count: number }
+export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[]; hardware: PrintHardware[] }
 
 // Compiles every card in the setup once per face and keys the textures by content hash
 // (DRIFT §6): the same face on three copies is one rendering, and a card that did not change
@@ -80,10 +82,19 @@ export async function queueFaces(deck: Deck, setup: SetupDef, registry: TypeRegi
 // same row, so a group's front can never be paired with the base back (or another group's back).
 // Identical copies keep their own manifest entries while their content-addressed render jobs are
 // shared. The ordinary compiler is also the print compiler; bleed is its only print-time option.
-export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, now: number): PrintExport {
+//
+// A stock item, a die (#1140), is listed as hardware by kind in the order the game first names it,
+// and printed as nothing. Whoever orders may leave the hardware out (`hardware: false`): many
+// partners will not pack it, and a game is still a game of cards without it.
+export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, now: number, opts: { hardware?: boolean } = {}): PrintExport {
   const cards: PrintCard[] = []
   const jobs = new Map<string, RenderRequest>()
+  const hardware = new Map<string, number>()
   for (const spec of setup.components) {
+    if (registry.get(spec.type).print.stock) {
+      if (opts.hardware !== false) hardware.set(spec.type.id, (hardware.get(spec.type.id) ?? 0) + 1)
+      continue
+    }
     // A seat's counter is a token, not a card (C4): it names no row of the deck and there is
     // nothing card-shaped to print for it.
     if (spec.counter !== undefined) continue
@@ -98,5 +109,5 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     }
     cards.push({ cardRef: spec.cardRef, faces })
   }
-  return { cards, jobs: [...jobs.values()] }
+  return { cards, jobs: [...jobs.values()], hardware: [...hardware].map(([type, count]) => ({ type, count })) }
 }
