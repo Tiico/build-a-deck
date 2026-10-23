@@ -543,7 +543,11 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         <span id={`home-${p.id}-played`} className="byd-muted">
                           {playedLine(t, lang, p)}
                         </span>
-                        {runningOf(p)[0] && <span className="byd-home-live">{t('home.row.live', { code: runningOf(p)[0]!.code })}</span>}
+                        {runningOf(p).slice(0, 1).map((table) => (
+                          <span key={table.id} className="byd-home-live">
+                            {t('home.row.live', { code: table.code })}
+                          </span>
+                        ))}
                       </span>
                     </a>
                     {moreOf(p)}
