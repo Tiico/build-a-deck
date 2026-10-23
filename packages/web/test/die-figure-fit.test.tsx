@@ -22,7 +22,8 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 const FACE = /url\('(\.\/[^']+\.woff2)'\)/g
 const sheet = (rel: string): string =>
   read(rel).replace(FACE, (_all, file: string) => `url('data:font/woff2;base64,${readFileSync(join(import.meta.dirname, '..', dirname(rel), file)).toString('base64')}')`)
-const SHEETS = ['src/fonts/felt-font.css', 'src/table/table.css']
+// The felt's sheets as they ship, the shared button language among them, though no button is drawn.
+const SHEETS = ['src/fonts/felt-font.css', 'src/table/table.css', 'src/buttons.css']
 
 const KINDS = [4, 6, 8, 10, 12, 20] as const
 // Every side of every kind, which is also every figure a tumble can show on the way (D4).
