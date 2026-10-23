@@ -1,6 +1,7 @@
 import { PHYSICAL_VERBS, SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
 import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
+import { sees } from './project.js'
 import type { IdSource, Rng } from './rng.js'
 import { permutation } from './rng.js'
 import { reach } from './reach.js'
@@ -166,7 +167,11 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'session.end':
       return null
     case 'flag':
-      return it.note !== undefined && it.note.length > 280 ? 'a flag note is at most 280 characters' : null
+      if (it.note !== undefined && it.note.length > 280) return 'a flag note is at most 280 characters'
+      // The card a flag is about is one the flagger can see (#1142): naming any other would let a
+      // flag probe for ids no view was given. The observer is seatless and sees every hand (C8).
+      if (it.component !== undefined && !sees(state, registry, seat, it.component, seat === null && it.observer !== undefined)) return `no component ${it.component} in view`
+      return null
     case 'version.change': {
       for (const spec of it.components) {
         if (!state.zones[spec.zone]) return `unknown zone ${spec.zone}`

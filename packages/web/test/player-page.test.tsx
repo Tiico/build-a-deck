@@ -504,7 +504,7 @@ describe('flagging a moment (G3)', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
+    fireEvent.change(await screen.findByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     const said = await screen.findByRole('status')
     expect(said.textContent).toMatch(/Flaggat/)
@@ -516,6 +516,55 @@ describe('flagging a moment (G3)', () => {
     expect(piles.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', note: 'Draken känns för stark här' } }))
     expect(screen.queryByPlaceholderText(/Vad hände/)).toBeNull()
+  })
+})
+
+// A flag about a card (#1142, beställarens val 2026-10-22: «B · peka efter flaggan»): the flag asks
+// first whether it is about the moment or a card, «Ett kort…» lets the next tap on a card point it
+// out — and only point it out — and the sheet comes back with the card and the note still in it.
+describe('flagging a card (#1142)', () => {
+  it('points the card out with the next tap, which neither reads nor plays it, and sends it with the flag', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await open(id, 'A', 'Ada')
+    await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 2 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
+    const second = document.querySelectorAll<HTMLElement>('[data-hand-card]')[1]!
+    const card = second.getAttribute('data-hand-card')!
+
+    fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
+    const sheet = await screen.findByRole('dialog')
+    expect(within(sheet).getByRole('button', { name: /Det som händer/ }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.change(within(sheet).getByPlaceholderText(/Vad hände/), { target: { value: 'Texten är för lång' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: /Ett kort/ }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByRole('status', { name: 'Tryck på kortet det gäller' })).toBeTruthy()
+
+    fireEvent.pointerDown(second)
+    fireEvent.pointerUp(second)
+    fireEvent.click(second)
+    // The tap pointed the card out: no card is held up to read, and the sheet is back with it.
+    expect(document.querySelector('.byd-inspect')).toBeNull()
+    const back = screen.getByRole('dialog', { name: 'Flagga kortet' })
+    expect(within(back).getByPlaceholderText(/Vad hände/)).toHaveProperty('value', 'Texten är för lång')
+    expect(within(back).getByRole('button', { name: 'Ta bort kortet ur flaggan' })).toBeTruthy()
+    fireEvent.click(within(back).getByRole('button', { name: 'Flagga' }))
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', component: card, note: 'Texten är för lång' } }))
+    expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2)
+    table.close()
+  })
+
+  it('goes back to the sheet when pointing is cancelled, and Escape cancels too', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(screen.getByRole('dialog', { name: 'Flagga det som hände' })).toBeTruthy()
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.getByRole('dialog', { name: 'Flagga det som hände' })).toBeTruthy()
   })
 })
 

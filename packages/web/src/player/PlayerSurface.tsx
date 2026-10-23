@@ -424,7 +424,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         />
       )}
       {rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} />
+
     </>
   )
 }

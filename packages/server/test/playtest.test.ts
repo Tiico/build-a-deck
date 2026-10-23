@@ -3,7 +3,8 @@ import { SCHEMA_VERSION, type Applied, type Intent } from '@byd/protocol'
 import { playtestOf, type PlaytestSource } from '../src/playtest.js'
 import type { SurveyRecord } from '../src/surveys.js'
 import type { GuestRecord } from '../src/store.js'
-import { twoSeatSetup } from './fixture.js'
+import type { DeckFacts } from '@byd/engine'
+import { CARDS, registry, twoSeatSetup } from './fixture.js'
 
 // What the designer reads after a playtest (#1010, G3): per table its answers, its flags and who
 // was there; per version how many answered and how the answers fall. All of it is read off what
@@ -134,5 +135,46 @@ describe('a version’s playtest', () => {
       ['rev-2', 1, 1, 1],
       ['rev-1', 0, 0, 1],
     ])
+  })
+})
+
+// A flag about a card (#1142) is read with the card as it was: the textures of the version the
+// flag was raised on, the side that lay up, where it lay and whether the flagger saw its face — so
+// the designer sees the exact card even after the row has been rewritten.
+describe('a flag about a card', () => {
+  const facts = (rev: string, rows: string[]): DeckFacts => ({
+    faces: Object.fromEntries(rows.map((r) => [r, { front: `${r}-front-${rev}`, back: 'back' }])),
+    titles: Object.fromEntries(rows.map((r) => [r, r[0]!.toUpperCase() + r.slice(1)])),
+  })
+
+  it('carries the card as it lay, in the version it was raised on, and says whether it has changed since', () => {
+    const log = logOf(
+      [null, { v: 'seat.claim', seat: 'A', name: 'Ada' }],
+      [null, { v: 'seat.claim', seat: 'B', name: 'Bo' }],
+      ['A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1, face: 'front' }],
+      ['A', { v: 'flag', component: 'c0', note: 'för stark' }],
+      ['A', { v: 'move', component: 'c0', to: 'table', x: 0, y: 0 }],
+      ['A', { v: 'rotate', component: 'c0', rot: 90 }],
+      ['B', { v: 'flag', component: 'c0' }],
+      ['A', { v: 'flip', component: 'c0', face: 'back' }],
+      ['B', { v: 'flag', component: 'c0' }],
+      [null, { v: 'session.end' }],
+    )
+    const source = { ...table('t1', 'rev-1', log), decks: { 'rev-1': facts('rev-1', CARDS) } }
+    const [read] = playtestOf([source], { registry, now: facts('rev-2', CARDS.filter((c) => c !== 'knight')) }).tables
+    const [inHand, onTable, turned] = read!.flags.map((f) => f.card)
+    // Ada held it in her hand and saw it; the line says so in the seat's name.
+    expect(inHand).toMatchObject({ id: 'c0', cardRef: 'dragon', title: 'Dragon', faces: { front: 'dragon-front-rev-1', back: 'back' }, seen: 'front', place: { zone: 'Hand', kind: 'hand', owner: 'Ada' }, rot: 0, now: 'changed' })
+    expect(onTable).toMatchObject({ face: 'front', seen: 'front', place: { zone: 'Spelyta', kind: 'area', owner: null }, rot: 90 })
+    // Turned down on the table, Bo saw its back; the designer still gets the front.
+    expect(turned).toMatchObject({ face: 'back', seen: 'back', faces: { front: 'dragon-front-rev-1' } })
+  })
+
+  it('says a card is gone when the newest version has no such row, and leaves a flag without one alone', () => {
+    const log = logOf([null, { v: 'seat.claim', seat: 'A', name: 'Ada' }], [null, { v: 'draw', from: 'draw', to: 'table', count: 2, face: 'front' }], ['A', { v: 'flag', component: 'c1' }], ['A', { v: 'flag' }])
+    const source = { ...table('t1', 'rev-1', log), decks: { 'rev-1': facts('rev-1', CARDS) } }
+    const [read] = playtestOf([source], { registry, now: facts('rev-1', CARDS.filter((c) => c !== 'knight')) }).tables
+    expect(read!.flags.map((f) => f.card?.now)).toEqual(['gone', undefined])
+    expect(read!.flags[1]).not.toHaveProperty('card')
   })
 })

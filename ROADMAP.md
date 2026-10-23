@@ -182,6 +182,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 - ✅ Säljtexten lovar inte trycket (L36, #743).
 - ✅ Speltestet före betan 2026-10-02: 94 fynd ur tretton resor (#675–#768), alla rättade; de två som väntade på beställarens val av prototyp valdes 2026-10-20 och är byggda: lagerraden som bryter (L3, #699) och antal på listen med grupp i typ (L4, #695).
 - ✅ Designern läser playtestets svar — enkätsvar och flaggor per bord och version, i Bord-flikens vy «Resultat» (G3, L70, #1010).
+- ✅ En flagga kan gälla ett kort, som pekas ut efter «Flagga», och Resultat visar kortet som det såg ut i versionen det flaggades på (G3, #1142).
 - ✅ Korpusen får läsa samtyckta kontons bord, och inget annat (DRIFT §7, #1011).
 - ✅ Ett enkätsvar kommer från deltagarens eget inträde, ett per plats, och ett andra svar ersätter det första (G3, #1021).
 - ✅ Minnesbudgeten mätt under ett riktigt playtest mot lådans tak (DRIFT §1, #1012), och tre bord på 308 kort ryms sedan leken bär hashar i stället för bilder (DRIFT §4, #1028). Det tredje av tre bord som startas samtidigt väntar runt sex minuter på sina texturer; beställaren beslutade 2026-10-18 att mäta det i betan i stället för att bygga bort det.

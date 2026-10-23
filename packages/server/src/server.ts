@@ -7,8 +7,8 @@ import { compressible, encodedBytes, encodedCopy } from './compress.js'
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type ServerMessage } from '@byd/protocol'
-import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type Applied, type ServerMessage } from '@byd/protocol'
+import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
@@ -929,7 +929,7 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
         ...msg.envelope,
         intents: msg.envelope.intents.map((it) => {
           if (it.v !== 'flag') return it
-          const flag = { v: 'flag' as const, ...(it.note !== undefined ? { note: it.note } : {}) }
+          const flag = { v: 'flag' as const, ...(it.component !== undefined ? { component: it.component } : {}), ...(it.note !== undefined ? { note: it.note } : {}) }
           return sub.observer !== undefined ? { ...flag, observer: sub.observer } : flag
         }),
       }
@@ -958,6 +958,32 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
   const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
   return { ...doc, motifs: { ...motifs, ...own.motifs }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+}
+
+// What a deck knows about its cards — texture hashes, titles and printed text — without queueing a
+// render: the textures were queued when the table was dealt them.
+async function factsOf(deck: Deck, setup: SetupDef, registry: TypeRegistry): Promise<DeckFacts> {
+  const { faces, titles, texts } = await queueFaces(deck, setup, registry, TEXTURE_DPI, Date.now(), () => Promise.resolve())
+  return { faces, titles, texts }
+}
+
+// The decks of the versions a table raised a flag about a card on (#1142), each with the cards the
+// table dealt on that version: a refreshed table's setup is the one its `version.change` carried.
+async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionRecord, log: readonly Applied[]): Promise<Record<string, DeckFacts>> {
+  const decks: Record<string, DeckFacts> = {}
+  let version = session.version
+  let setup = session.setup
+  for (const line of log) {
+    const it = line.intent
+    if (it.v === 'version.change') {
+      version = it.to
+      if (it.cards !== undefined) setup = { ...setup, cards: it.cards }
+    } else if (it.v === 'flag' && it.component !== undefined && !(version in decks)) {
+      const deck = await opts.store.deckOf(id, version)
+      if (deck) decks[version] = await factsOf(deck, setup, opts.registry)
+    }
+  }
+  return decks
 }
 
 // Every card of the project through the physical checks (E5), once per face, named by the card
@@ -1792,9 +1818,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       const session = await opts.store.loadSession(id)
       if (!session) continue
       const [log, surveys, admissions] = await Promise.all([opts.store.read(id), opts.surveys ? opts.surveys.list(id) : [], opts.store.guestsAt(id)])
-      sources.push({ id, session, log, surveys, admissions })
+      sources.push({ id, session, log, surveys, admissions, decks: await flaggedDecksOf(opts, id, session, log) })
     }
-    json(res, 200, playtestOf(sources))
+    // A flag about a card (#1142) is held against the game as it is now, which only costs a compile
+    // when some table has one.
+    const aboutCards = sources.some((s) => Object.keys(s.decks ?? {}).length > 0)
+    const now = aboutCards ? await factsOf(await deckOf(opts, gate.rec), setupFromProject(gate.rec), opts.registry) : undefined
+    json(res, 200, playtestOf(sources, { registry: opts.registry, ...(now ? { now } : {}) }))
     return true
   }
   if (start && req.method === 'POST') {
