@@ -409,6 +409,7 @@ export const enAccount = {
   'profile.passkeys.add': 'Save a passkey in this browser',
   'profile.passkeys.remove': 'Remove {name}',
   'profile.passkeys.remove.ask': 'Remove the passkey? It will no longer sign you in. Also remove it from {name} if you want to be rid of it entirely.',
+  'profile.passkeys.remove.ask.unknown': 'Remove the passkey? It will no longer sign you in. Also remove it from the keychain it lives in if you want to be rid of it entirely.',
   'profile.passkeys.remove.confirm': 'Yes, remove',
   'profile.passkeys.remove.keep': 'Cancel',
   'profile.passkeys.removed': 'The passkey is removed.',

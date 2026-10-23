@@ -25,6 +25,8 @@ export function PasskeyBox({ http }: { http: string }) {
   }, [load])
   if (!list) return null
   const nameOf = (p: Passkey) => t(`passkey.keychain.${p.keychain ?? 'unknown'}` as Key)
+  // A keychain the service cannot name is not named in the question either.
+  const ask = (p: Passkey) => (p.keychain ? t('profile.passkeys.remove.ask', { name: nameOf(p) }) : t('profile.passkeys.remove.ask.unknown'))
   const mine = here.id()
   const canAdd = keychain.supported() && mine !== 'known' && !list.some((p) => p.id === mine)
   return (
@@ -52,7 +54,7 @@ export function PasskeyBox({ http }: { http: string }) {
               {asking === p.id && (
                 <Question
                   className="byd-profile-question"
-                  label={t('profile.passkeys.remove.ask', { name: nameOf(p) })}
+                  label={ask(p)}
                   confirm={t('profile.passkeys.remove.confirm')}
                   cancel={t('profile.passkeys.remove.keep')}
                   onCancel={() => setAsking(null)}
@@ -68,7 +70,7 @@ export function PasskeyBox({ http }: { http: string }) {
                     )
                   }}
                 >
-                  {t('profile.passkeys.remove.ask', { name: nameOf(p) })}
+                  {ask(p)}
                 </Question>
               )}
             </li>

@@ -1965,7 +1965,7 @@ Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar e
 Projekt som skapas med konto tillhör kontot: bara ägaren läser, skriver, listar och startar bord; projekt från före konton förblir öppna.
 Startsidan `/` är inloggningskortet tills länken följts — **ändrat 2026-10-18: landningssidan, se nedan; kortet står på `/login`** — sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401. Ett inskickat wizardutkast och dess mål bevaras under auth-rundan i samma flik och återupptas automatiskt efter login, så att skaparen inte behöver bygga spelet två gånger.
 Gäster loggar aldrig in: bord, telefon, distansvy och observatör nås med rumskod; inloggningskortet säger det.
-Passkeys och OAuth återstår.
+OAuth återstår; passkeys är byggda sedan 2026-10-23 (L78).
 
 Claimat (prototypat och byggt 2026-09-07):
 Gästens admission, den token telefonen spelade under (DRIFT §9), är det som claimas: `POST /guests/claim` med kontots kaka knyter den till kontot, en gång, och 409 om ett annat konto redan har den.
@@ -7910,3 +7910,26 @@ En dropdown-knapp är en knapp med `data-drop` och `aria-expanded`; en regel i `
 Ett tryck utanför stänger alla åtta: `usePressAway` i `doors.ts` är den gemensamma vägen, och fokus lämnas där pekaren satte det, som #133 säger.
 `drop-buttons.spec.ts` mäter det öppna läget och trycket på rutmönstret i den byggda appen.
 Disclosure-knapparna, som redan vänder sin chevron från höger till ned, och ⋯-knapparna, som redan får editorns mörka grund när de är öppna (#791), är oförändrade.
+
+### L78. Passkeys efter länken: ett band på Mina spel, en knapp på kortet och ett kort på profilen (prototypat och beslutat 2026-10-23, #1180)
+
+Beställaren ville att den som loggar in med länken i mejlet ska kunna spara en nyckel på enheten och logga in med den nästa gång, utan mejl.
+DRIFT §11 hade redan beslutat inloggning med e-postlänk eller passkey, och ROADMAP hade passkeys kvar som en punkt att bygga.
+Tre varianter av tre ytor prövades i [`docs/ux-audits/2026-10-23-passkeys/prototyper/index.html`](docs/ux-audits/2026-10-23-passkeys/prototyper/index.html): erbjudandet som ett band på Mina spel, som ett eget steg i kortet eller som en dialog; inloggningen som en egen knapp, som webbläsarens förslag i e-postfältet eller som ett kort som leder med nyckeln; och profilen som ett eget kort, som rader under Konto eller med den här enheten först.
+Valet blev **A, plus B:s förslag i fältet**, och ordet blev **passkey**.
+Bandet stör inte inloggningen och står där läsaren ändå landar, knappen fungerar i alla webbläsare, och förslaget i fältet kostar inget där webbläsaren kan göra det.
+«Nyckel» ensamt är profilens AI-nyckel, och «passkey» är ordet i webbläsarens egen ruta.
+B:s eget steg kostade alla ett klick till, och C:s dialog avbröt och lät kortet se olika ut på olika enheter.
+
+**Mejlet är vägen tillbaka.** Den som tappat enheten loggar in med länken och erbjuds en ny passkey; det finns inget eget återställningsflöde, vilket är svaret på DRIFT §11:s följdkrav.
+**Kontrollerna är ett bibliotek.** `@simplewebauthn/server` och `@simplewebauthn/browser` gör WebAuthn-kontrollerna, eftersom CBOR, COSE och signaturer är säkerhetskritisk kod; sessioner, länkar och kakan förblir egna (DRIFT §11).
+
+**Byggt 2026-10-23 (#1180).**
+Servern har fyra ceremonier under `/auth/passkeys` och en lista och en borttagning för kontot (`passkeys.ts`, tabellen `passkeys`).
+En utmaning gäller en gång och i fem minuter, för den ceremoni och det konto den gavs till.
+Inloggningen frågar efter en upptäckbar passkey utan lista, så inget svar säger om en adress finns eller har en passkey, och en okänd passkey får samma svar som en borttagen: logga in med länken.
+En POST från en sida på en annan webbplats vägras, så att ingen kan logga in en besökare på sitt eget konto.
+Passkeyns webbplats är sidan webbläsaren står på när den är tjänstens, i produktion `deckster.se`.
+Profilen namnger nyckelringen efter AAGUID på läsarens språk och webbläsaren efter user agent, och visar aldrig nyckeln.
+Webbläsaren minns i `localStorage` vilken passkey den sparade eller loggade in med, och sitt «Inte nu», så att bandet erbjuds en gång per webbläsare; en webbläsare utan egen nyckelring får inget erbjudande, och en som inte kan WebAuthn får ingen knapp.
+`passkeys.test.ts` på servern kör riktiga WebAuthn-bytes från en mjukvarunyckelring (`test-support/soft-passkey.ts`), också mot Postgres; `passkeys.test.tsx` kör sidorna mot den riktiga servern; och `passkeys.spec.ts` går hela vägen i den byggda appen med Chromiums virtuella autentiserare.

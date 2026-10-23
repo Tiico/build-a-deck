@@ -152,3 +152,19 @@ describe('what a passkey login refuses', () => {
     expect(next.json.excludeCredentials).toEqual([expect.objectContaining({ id })])
   })
 })
+
+describe('the site a passkey belongs to', () => {
+  it('is the page the browser stands on, when that page is this service on another of its names', async () => {
+    const cookie = await login()
+    // The browser says where the page is; here it is the API's own host rather than its public name.
+    const from = { origin: run.http }
+    const keychain = new SoftPasskey(run.http)
+    const post = (path: string, body: unknown, withCookie = true) => fetch(`${run.http}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...from, ...(withCookie ? { cookie } : {}) }, body: JSON.stringify(body) })
+    const options = (await (await post('/auth/passkeys/register/options', {})).json()) as any
+    expect(options.rp.id).toBe(new URL(run.http).hostname)
+    expect((await post('/auth/passkeys/register', { response: keychain.create(options) })).status).toBe(200)
+
+    const loginOptions = (await (await post('/auth/passkeys/login/options', {}, false)).json()) as any
+    expect((await post('/auth/passkeys/login', { response: keychain.get(loginOptions) }, false)).status).toBe(200)
+  })
+})

@@ -2177,8 +2177,11 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
 // Passkeys (#1180): saving one needs the session the link made; logging in with one makes a
 // session as the link does. The ceremonies themselves are `passkeys.ts`'s.
 async function routePasskeys(opts: ServerOptions, auth: AuthStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  // The site is the page the browser says it stands on, when that page is this service's (the API's
+  // own host, or the web app's in development); otherwise the web app's, then the public name.
   const own = req.headers.host ? `${schemeOf(opts, req)}://${req.headers.host}` : null
-  const c: Ceremonies = { auth, challenges: opts.passkeyChallenges ?? new PasskeyChallenges(), site: siteOf([opts.appOrigin, opts.publicOrigin, own]), now: clock(opts) }
+  const page = req.headers.origin && browserOriginAllowed(opts, req) ? req.headers.origin : null
+  const c: Ceremonies = { auth, challenges: opts.passkeyChallenges ?? new PasskeyChallenges(), site: siteOf([page, opts.appOrigin, opts.publicOrigin, own]), now: clock(opts) }
   const answer = (a: Answer) => json(res, a.status, a.body)
   // A page on another site may not start or finish a ceremony here: it could otherwise post its own
   // account's signed answer and log a visitor into that account. Browsers always say where a POST

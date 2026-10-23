@@ -152,7 +152,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - ⬜ Abonnemang via Stripe: gratisnivå med tak på projekt, kort och sessioner, betalnivåer, kvoter (A2, DRIFT §12).
 - 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
-- ⬜ Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11).
+- 🔶 Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11). Passkeys är byggda (#1180, L78): bandet på Mina spel efter länken, knappen och förslaget på inloggningskortet och kortet på profilen, med mejlet som återställning; OAuth återstår.
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
 - ⬜ GDPR för gäster: enkätsvar och flaggor från personer utan konto, radering (I).
 - ⬜ Villkor med garantiklausul om IP (F4).

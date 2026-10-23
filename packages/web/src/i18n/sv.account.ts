@@ -463,6 +463,7 @@ export const svAccount = {
   'profile.passkeys.add': 'Spara passkey i den här webbläsaren',
   'profile.passkeys.remove': 'Ta bort {name}',
   'profile.passkeys.remove.ask': 'Ta bort passkeyn? Den loggar inte in längre. Ta också bort den ur {name} om du vill bli av med den helt.',
+  'profile.passkeys.remove.ask.unknown': 'Ta bort passkeyn? Den loggar inte in längre. Ta också bort den ur nyckelringen den ligger i om du vill bli av med den helt.',
   'profile.passkeys.remove.confirm': 'Ja, ta bort',
   'profile.passkeys.remove.keep': 'Avbryt',
   'profile.passkeys.removed': 'Passkeyn är borttagen.',
