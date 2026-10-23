@@ -161,12 +161,13 @@ describe('a long name on the room’s television stays on its own seat’s plate
     expect(reading.overlaps).toEqual([])
   }, 120_000)
 
-  // An ordinary name is worn whole on every table, on a whole plate, and on a free place.
+  // An ordinary name is worn whole on every table, on a whole plate, and on a free place. The ball is
+  // the seat's letter and not the name's (#683, beslut E: «(B) ledig 5 kort»; #1171).
   it.each([2, 4, 6, 8])('wears an ordinary name whole on a %i-seat table', async (seats) => {
     const scene = sceneOf(feltOf(seats))
     const ordinary = { ...scene, seats: scene.seats.map((s) => ({ ...s, name: 'Margareta' })) }
     const reading = await onPage(await roomMarkup(ordinary), (page) => page.evaluate(READ) as Promise<Reading>)
-    expect(reading.plates.map((p) => `${p.seat} ${p.form} ${p.seen}`)).toEqual(ordinary.seats.map((s) => `${s.id} plate M Margareta 3 kort`))
+    expect(reading.plates.map((p) => `${p.seat} ${p.form} ${p.seen}`)).toEqual(ordinary.seats.map((s) => `${s.id} plate ${s.id} Margareta 3 kort`))
     expect(reading.plates.filter((p) => p.cut).map((p) => p.seat)).toEqual([])
     expect(reading.overlaps).toEqual([])
   }, 120_000)
@@ -184,8 +185,8 @@ describe('a long name on the room’s television stays on its own seat’s plate
       expect(plate.text).toContain(name)
       expect(plate.cut).toBe(false)
       expect(plate.seen).not.toContain('…')
-      if (plate.form === 'badge') expect(plate.seen).toBe(name.slice(0, 1))
-      else expect(plate.seen).toBe(`${name.slice(0, 1)} ${name} 3 kort`)
+      if (plate.form === 'badge') expect(plate.seen).toBe(plate.seat)
+      else expect(plate.seen).toBe(`${plate.seat} ${name} 3 kort`)
       if (sides.includes(plate.seat)) expect(plate.form).toBe('badge')
     }
     expect(reading.overlaps).toEqual([])

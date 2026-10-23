@@ -74,6 +74,19 @@ describe('the room’s television gives every seat a plate (#573, beslut C)', ()
     expect(name.textContent).toBe('Aledig')
   })
 
+  // The ball is the seat's letter whoever sits there (#683, beslut E: «(B) ledig 5 kort»). It took
+  // the first letter of the name, so with Bo on A both plates read «B» (#1171).
+  it('keeps the seat’s letter in the ball when someone sits there, not the first letter of their name', () => {
+    const table = tableOf(felt(2))
+    const seen = table.view(null)
+    const view = { ...seen, seats: seen.seats.map((s) => (s.id === 'A' ? { ...s, name: 'Bo' } : s)) }
+    const { container } = render(<TableRenderer view={view} mode="tv" scale={1} forTheRoom />)
+    const a = container.querySelector<HTMLElement>('[data-seat-plate="A"] > b')!
+    const b = container.querySelector<HTMLElement>('[data-seat-plate="B"] > b')!
+    expect(a.textContent).toBe('ABo')
+    expect(b.textContent).toBe('Bledig')
+  })
+
   it('draws the plates under the cards, so a card played beside a seat is never covered', () => {
     const table = tableOf(felt(2))
     const view = table.view(null)

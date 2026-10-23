@@ -2378,8 +2378,9 @@ function SeatPlate({ view, seat, color, left, top, t, at }: { view: Snapshot; se
     edge === 'W' ? { left: box.r + PLATE_AIR_PX, top: (box.t + box.b) / 2, transform: 'translateY(-50%)' } :
     { left: box.l - PLATE_AIR_PX, top: (box.t + box.b) / 2, transform: 'translate(-100%, -50%)' }
   const held = hand ? (hand.mode === 'count' ? hand.count : hand.order.length) : null
-  // A seat nobody sits in keeps its letter in the ball and says it is free where the name goes; the
-  // letter written twice read «A A» (#717).
+  // The ball is the seat's letter, whoever sits there (#683, beslut E): taken from the name it read
+  // «B Bo» on seat A beside «B ledig» on seat B (#1171). A seat nobody sits in says it is free where
+  // the name goes; the letter written twice read «A A» (#717).
   return (
     <div
       className="byd-seat-plate"
@@ -2390,7 +2391,7 @@ function SeatPlate({ view, seat, color, left, top, t, at }: { view: Snapshot; se
       style={{ ...(placed ?? home), ['--seat' as string]: color }}
     >
       <b>
-        <i aria-hidden="true">{(seat.name ?? seat.id).slice(0, 1)}</i>
+        <i aria-hidden="true">{seat.id.slice(0, 1)}</i>
         <span>{seat.name ?? t('tv.seat.free')}</span>
       </b>
       {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.short.one' : 'tv.seat.hand.short.other', { n: held })}</span>}
