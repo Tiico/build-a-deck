@@ -44,11 +44,12 @@ async function openBord(page: Page): Promise<string> {
 test.describe('tärningarna i fliken Bord', () => {
   test('läggs till i editorn, sparas och ligger där de ska när ett bord startas', async ({ page, browser, baseURL }) => {
     const project = await openBord(page)
-    await expect(page.getByRole('heading', { name: 'Tärningar' })).toBeVisible()
     const add = page.getByRole('button', { name: '＋ Tärning' })
 
     // «2 d6 per spelare i Framför»: en yta vid platserna, så varje plats får två i sin egen.
     await add.click()
+    await expect(page.getByRole('heading', { name: 'Tärningar' })).toBeVisible()
+    await expect(page.getByRole('spinbutton', { name: 'Antal för tärning 1' })).toBeFocused()
     await page.getByRole('spinbutton', { name: 'Antal för tärning 1' }).fill('2')
     await page.getByRole('spinbutton', { name: 'Antal för tärning 1' }).press('Enter')
     await page.getByRole('combobox', { name: 'Yta för tärning 1' }).selectOption({ label: 'Framför' })
@@ -57,6 +58,7 @@ test.describe('tärningarna i fliken Bord', () => {
     // «1 d20 totalt i Spelyta», med tangentbordet hela vägen.
     await add.focus()
     await page.keyboard.press('Enter')
+    await expect(page.getByRole('spinbutton', { name: 'Antal för tärning 2' })).toBeFocused()
     await page.getByRole('combobox', { name: 'Sort för tärning 2' }).selectOption({ label: 'd20' })
     await page.getByRole('combobox', { name: 'Yta för tärning 2' }).selectOption({ label: 'Spelyta' })
     await expect(page.getByRole('combobox', { name: 'Hur antalet räknas för tärning 2' })).toHaveValue('perSeat')

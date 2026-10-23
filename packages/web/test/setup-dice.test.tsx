@@ -38,13 +38,17 @@ const field = (name: string) => screen.getByRole('spinbutton', { name }) as HTML
 describe('tärningarna i fliken Bord (#1139)', () => {
   it('lägger «2 d6 per spelare i Framför» och «1 d20 totalt i Spelyta» i setupen', async () => {
     await openBord()
-    expect(screen.getByRole('heading', { name: 'Tärningar' })).toBeTruthy()
+    // Ett spel utan tärningar har bara knappen, bredvid «＋ Räknare» (#711): rubriken kommer med den första.
+    expect(screen.queryByRole('heading', { name: 'Tärningar' })).toBeNull()
 
     // «＋ Tärning» lägger en d6 i Spelyta när det inte finns någon rad att ärva ytan av.
     fireEvent.click(screen.getByRole('button', { name: '＋ Tärning' }))
     await waitFor(async () => expect(await diceOnServer()).toEqual([{ faces: 6, count: 1, zone: 'table' }]))
     expect(select('Yta för tärning 1').selectedOptions[0]?.textContent).toBe('Spelyta')
     expect(select('Sort för tärning 1').value).toBe('6')
+    expect(screen.getByRole('heading', { name: 'Tärningar' })).toBeTruthy()
+    // Knappen som lade till den är borta, så fokus går till den nya radens första fält.
+    await waitFor(() => expect(document.activeElement).toBe(field('Antal för tärning 1')))
 
     fireEvent.change(field('Antal för tärning 1'), { target: { value: '2' } })
     fireEvent.keyDown(field('Antal för tärning 1'), { key: 'Enter' })
@@ -86,10 +90,10 @@ describe('tärningarna i fliken Bord (#1139)', () => {
     await waitFor(() => expect(select('Yta för tärning 1')).toBeTruthy())
     fireEvent.change(select('Yta för tärning 1'), { target: { value: 'zone:yta-1' } })
     await waitFor(async () => expect(await diceOnServer()).toEqual([{ faces: 6, count: 1, zone: 'yta-1' }]))
-    expect(screen.queryByText(/ligger i en yta som inte finns/)).toBeNull()
+    expect(screen.queryByText(/Ytan finns inte längre/)).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Yta 1' }))
-    await waitFor(() => expect(screen.getByText(/Tärning 1 ligger i en yta som inte finns längre/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Ytan finns inte längre, så tärningen läggs inte på bordet/)).toBeTruthy())
     expect(select('Yta för tärning 1').getAttribute('aria-invalid')).toBe('true')
     expect(await diceOnServer()).toEqual([{ faces: 6, count: 1, zone: 'yta-1' }])
   })

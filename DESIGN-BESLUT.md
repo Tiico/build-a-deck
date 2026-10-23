@@ -4027,6 +4027,7 @@ Tärningarna hör till spelets setup (K5).
 En rad i setupen säger sort, antal och var: en yta alla delar, eller en yta varje plats har.
 En yta per plats ger varje plats sitt antal i sin egen yta, och «per spelare» på en delad yta ger antalet gånger platserna där (#1139).
 I fliken Bord är det en rad per tärning under räknarna, och hela listan är en redigering (`setDice`), så en ändring är ett steg tillbaka.
+Ett spel utan tärningar har bara «＋ Tärning» bredvid «＋ Räknare», eftersom en tom grupp med rubrik trycker ytknapparna under kanten vid 1024 × 640 (#711); rubriken kommer med den första tärningen.
 En rad vars yta tas bort står kvar med ett besked, som räknarna utan räknarzon, och ligger på bordet igen när ytan kommer tillbaka.
 Bordet föds med sida 1 upp, så att det läggs likadant varje gång.
 

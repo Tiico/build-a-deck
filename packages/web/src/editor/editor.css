@@ -796,8 +796,9 @@
 .byd-setup-recipe { display: grid; gap: 18px; min-width: 0; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
 /* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
-.byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+.byd-setup-tools button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
+.byd-setup-adds { display: flex; flex-wrap: wrap; gap: 6px; }
 /* A counter is a name, «från», a number and ×. The row wraps rather than setting the column's
    width (#480): at 1024 it was 296 px of content in a 260 px track, and the whole column scrolled
    sideways with × and «FAST» cut at its edge. */
@@ -4368,7 +4369,7 @@ img[data-arriving] { opacity: 0; }
   .byd-theme-tiles, .byd-theme-reset, .byd-theme-show,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
   .byd-crop-corner, .byd-media-crop-row .byd-secondary,
-  .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-props > button,
+  .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props > button,
   .byd-zone-action-x, .byd-zone-action-drop, .byd-zone-step-add, .byd-zone-action-undo, .byd-zone-action-new
 ) { display: none !important; }
 .byd-editor[data-readonly] > main { background: repeating-linear-gradient(135deg, rgb(255 255 255 / 3%) 0 2px, transparent 2px 9px), #1d1f25; }

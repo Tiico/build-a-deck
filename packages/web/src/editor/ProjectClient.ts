@@ -752,9 +752,6 @@ export class ProjectClient {
   }
 
   // The game's dice (K5, #1139), written whole like the counters: one change, one step back.
-  get dice(): Die[] {
-    return this.doc.setup.dice ?? []
-  }
   setDice(dice: Die[], gesture?: string): void {
     this.edit({ v: 'setDice', dice }, gesture)
   }

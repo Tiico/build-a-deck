@@ -9,7 +9,7 @@ import type { ProjectDoc } from '../src/projects.js'
 // skrivs av receptet, så att en ändring är en version och ett steg tillbaka (B4, L14).
 const game = (): ProjectDoc => ({
   name: 'Tärningsspel',
-  template: { faces: { front: { base: [] }, back: { base: [] } } },
+  template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } },
   rows: [],
   icons: {},
   setup: openingSetup({ players: 3, counters: [] }),

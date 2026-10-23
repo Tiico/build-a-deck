@@ -450,6 +450,14 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
   // however long the list is, so the panel says so where the list is rather than leaving the
   // designer to wonder why the table looks the same.
   const homeless = recipe.counters.length > 0 && !setup.seats.some((s) => setup.zones.some((z) => z.id === `counters:${s}`))
+  const dice = setup.dice ?? []
+  // A die just added takes the focus in its own row, so that the key that added it is followed by
+  // the row it made rather than by nothing: the first «＋ Tärning» leaves the page with the first die.
+  const [fresh, setFresh] = useState<number | null>(null)
+  const addDie = () => {
+    client.setDice(withNewDie(setup, dice))
+    setFresh(dice.length)
+  }
   return (
     <aside className="byd-setup-recipe">
       <section>
@@ -493,13 +501,23 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
               </button>
             </div>
           ))}
-          <button type="button" onClick={() => turn({ counters: [...recipe.counters, newCounter(recipe.counters, t)] })}>
-            {t('setup.counter.add')}
-          </button>
+          {/* A game without dice has «＋ Tärning» beside «＋ Räknare» and no heading of its own (#1139):
+              at 1024 × 640 the column has no 100 px to spare for an empty group before the ways
+              to add a zone fall below its fold (#711). The heading comes with the first die. */}
+          <div className="byd-setup-adds">
+            <button type="button" onClick={() => turn({ counters: [...recipe.counters, newCounter(recipe.counters, t)] })}>
+              {t('setup.counter.add')}
+            </button>
+            {dice.length === 0 && (
+              <button type="button" onClick={addDie}>
+                {t('setup.die.add')}
+              </button>
+            )}
+          </div>
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
         </div>
       </section>
-      <DicePanel client={client} setup={setup} />
+      {dice.length > 0 && <DicePanel client={client} setup={setup} dice={dice} fresh={fresh} onAdd={addDie} onFocused={() => setFresh(null)} />}
     </aside>
   )
 }
@@ -524,22 +542,24 @@ function movedTo(die: Die, value: string): Die {
   return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) }
 }
 
+// The list with one more die: a d6 where the one above it lies, or on the felt when it is the first
+// or the one above lies nowhere any more.
+function withNewDie(setup: Setup, dice: readonly Die[]): Die[] {
+  const places = diePlaces(setup)
+  const known = new Set([...places.table, ...places.seats].map((p) => p.value))
+  const above = dice.at(-1)
+  const floor = places.table.find((p) => p.value === `zone:${setup.floor}`) ?? places.table[0]
+  const at = above && known.has(placeOf(above)) ? placeOf(above) : floor?.value
+  return at ? [...dice, movedTo({ faces: 6, count: 1, zone: '' }, at)] : [...dice]
+}
+
 // The game's dice (#1139, beställarens beslut A med dynamiskt antal), under the counters and
 // written like them: one row per line of `setup.dice`, the whole list one edit (B4).
-function DicePanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
+function DicePanel({ client, setup, dice, fresh, onAdd, onFocused }: { client: ProjectClient; setup: Setup; dice: Die[]; fresh: number | null; onAdd(): void; onFocused(): void }) {
   const t = useT()
-  const dice = client.dice
   const places = diePlaces(setup)
   const known = new Set([...places.table, ...places.seats].map((p) => p.value))
   const write = (next: Die[]) => client.setDice(next)
-  // A new die is a d6 where the one above it lies, or on the felt when it is the first.
-  const add = () => {
-    const above = dice.at(-1)
-    const floor = places.table.find((p) => p.value === `zone:${setup.floor}`) ?? places.table[0]
-    const at = above && known.has(placeOf(above)) ? placeOf(above) : floor?.value
-    if (!at) return
-    write([...dice, movedTo({ faces: 6, count: 1, zone: '' }, at)])
-  }
   return (
     <section>
       <div className="byd-setup-counters">
@@ -557,11 +577,13 @@ function DicePanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
             places={places}
             gone={!known.has(placeOf(die))}
             reading={!client.mayEdit}
+            fresh={i === fresh}
+            onFocused={onFocused}
             onChange={(next) => write(dice.map((d, j) => (j === i ? next : d)))}
             onRemove={() => write(dice.filter((_, j) => j !== i))}
           />
         ))}
-        <button type="button" onClick={add}>
+        <button type="button" onClick={onAdd}>
           {t('setup.die.add')}
         </button>
       </div>
@@ -569,15 +591,22 @@ function DicePanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
   )
 }
 
-function DieRow({ die, n, places, gone, reading, onChange, onRemove }: { die: Die; n: number; places: { table: DiePlace[]; seats: DiePlace[] }; gone: boolean; reading: boolean; onChange(die: Die): void; onRemove(): void }) {
+function DieRow({ die, n, places, gone, reading, fresh, onFocused, onChange, onRemove }: { die: Die; n: number; places: { table: DiePlace[]; seats: DiePlace[] }; gone: boolean; reading: boolean; fresh: boolean; onFocused(): void; onChange(die: Die): void; onRemove(): void }) {
   const t = useT()
   const note = useId()
+  const first = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!fresh) return
+    first.current?.focus()
+    onFocused()
+  }, [fresh, onFocused])
   const count = useNumberDraft({ value: die.count, min: 1, max: 20, onCommit: (value) => onChange({ ...die, count: Math.trunc(value) }) })
   const place = placeOf(die)
   return (
     <>
       <div className="byd-setup-counter byd-setup-die">
         <input
+          ref={first}
           aria-label={t('setup.die.count', { n })}
           type="number"
           min={1}
