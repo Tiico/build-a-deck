@@ -276,6 +276,22 @@ describe('the deaf server the status tests dial (#275)', () => {
     await deaf.stop()
   })
 
+  // What a test on a clock it drives waits for before it moves the clock (#1229): a caller that has
+  // spoken, which a call the kernel connected and the caller has not yet seen come up has not.
+  it('says it has heard a call once the caller has spoken, and not before', async () => {
+    const deaf = await deafServer()
+    const line = await dial(deaf.url)
+    let heard = false
+    void deaf.heard().then(() => (heard = true))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(heard).toBe(false)
+    line.write('GET / HTTP/1.1\r\n\r\n')
+    await deaf.heard()
+    expect(deaf.stayedDeaf()).toBe(true)
+    await deaf.stop()
+    line.destroy()
+  })
+
   // The teardown is not a hang-up either — `stop()` destroys the calls it is holding and that is
   // the test putting the phone down, not the fixture letting go. It is left unasked here on
   // purpose: the only way to know the server has taken a call is to end it and watch the predicate
