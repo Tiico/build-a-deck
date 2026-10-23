@@ -1,6 +1,7 @@
 import { PHYSICAL_VERBS, type Applied, type GameVersionId } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import type { Deck } from './faces.js'
+import { QuotaReached, startThatFrees, tableGrowth, withFrees, type TableCeilings, type TableUse } from './quotas.js'
 
 export type { Deck }
 
@@ -33,7 +34,14 @@ export type GuestRecord = { tokenHash: string; kind: 'seat' | 'observer'; seat: 
 export type PlayedRecord = GuestRecord & { sessionId: string }
 
 export type LogStore = {
-  createSession(record: SessionRecord): Promise<void>
+  // `ceilings` are the bearer's on its tables (#1196, A2): counted and written in one step, so two
+  // tables asked for at the ceiling's last place give exactly one, and the other throws
+  // `QuotaReached` with nothing written. Absent, or a table with no bearer, is unlimited.
+  createSession(record: SessionRecord, ceilings?: TableCeilings): Promise<void>
+  // What an account bears of tables (#1196): those of its tables whose log does not end with
+  // `session.end`, and those started after `since`. Counted out of the sessions and their bearer,
+  // so a game taken away takes none of its tables out of the count.
+  tablesOf(account: string, since: Date): Promise<TableUse>
   loadSession(id: string): Promise<SessionInfo | null>
   // The deck a table is refreshed to (C7), kept under the version it is for. Written before the
   // version.change line is committed, so a log that says a version always has its deck.
@@ -94,11 +102,40 @@ export class MemoryLogStore implements LogStore {
   private readonly createdAt = new Map<string, number>()
   private readonly guests = new Map<string, GuestRecord[]>()
 
-  async createSession(record: SessionRecord): Promise<void> {
+  // Counted and written with no wait between them, so no other request can come in between.
+  async createSession(record: SessionRecord, ceilings?: TableCeilings): Promise<void> {
     if (this.sessions.has(record.id)) throw new Error(`session ${record.id} already exists`)
+    if (record.accountId !== undefined && ceilings) {
+      const met = tableGrowth(ceilings, this.countTables(record.accountId, ceilings.since))
+      if (met) throw new QuotaReached(met.measure === 'tablesPer30Days' ? withFrees(met, this.startsOf(record.accountId, ceilings.since)[startThatFrees(met)]) : met)
+    }
     this.sessions.set(record.id, structuredClone(record))
     this.logs.set(record.id, [])
     this.createdAt.set(record.id, Date.now())
+  }
+
+  async tablesOf(account: string, since: Date): Promise<TableUse> {
+    return this.countTables(account, since)
+  }
+
+  // When each of the account's tables in the window was started, oldest first.
+  private startsOf(account: string, since: Date): number[] {
+    const starts: number[] = []
+    for (const [id, record] of this.sessions) {
+      const at = this.createdAt.get(id) ?? 0
+      if (record.accountId === account && at > since.getTime()) starts.push(at)
+    }
+    return starts.sort((a, b) => a - b)
+  }
+
+  private countTables(account: string, since: Date): TableUse {
+    const used: TableUse = { open: 0, started: 0 }
+    for (const [id, record] of this.sessions) {
+      if (record.accountId !== account) continue
+      if (this.logs.get(id)?.at(-1)?.intent.v !== 'session.end') used.open++
+      if ((this.createdAt.get(id) ?? 0) > since.getTime()) used.started++
+    }
+    return used
   }
 
   async loadSession(id: string): Promise<SessionInfo | null> {

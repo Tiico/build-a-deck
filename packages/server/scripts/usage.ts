@@ -18,7 +18,7 @@ const store = PostgresLogStore.connect(url)
 // The render log is the queue's (#1197), in the same database.
 const renders = PostgresRenderStore.connect(url)
 try {
-  for (const line of await usageReport({ auth: store.auth(), accountPlans: store.accountPlans(), projects: store.projects(), renders }, plansFromEnv(process.env))) console.log(JSON.stringify(line))
+  for (const line of await usageReport({ auth: store.auth(), accountPlans: store.accountPlans(), projects: store.projects(), tables: store, renders }, plansFromEnv(process.env))) console.log(JSON.stringify(line))
 } finally {
   await renders.close()
   await store.close()

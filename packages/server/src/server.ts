@@ -36,7 +36,7 @@ import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
-import { DEFAULT_PLANS, QuotaReached, growth, limitOf, type Limit, type Measure, type Plans, type QuotaMet } from './quotas.js'
+import { DEFAULT_PLANS, QuotaReached, growth, limitOf, tableWindowFrom, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 
@@ -134,6 +134,32 @@ async function storageMet(opts: ServerOptions, projects: ProjectStore, owner: st
   const here = opts.assets ? await opts.assets.sizes(fresh.filter((hash) => carried[hash] === undefined)) : {}
   const added = fresh.reduce((n, hash) => n + (carried[hash] ?? here[hash] ?? 0), 0)
   return growth('storageBytes', limit, await projects.stored(owner), added)
+}
+
+// The ceilings on the tables an account bears (#1196): its tier's on open tables and on tables
+// started in the rolling window, which ends at the server's clock. Asked only with accounts on, and
+// only of a table somebody bears; a table from a game from before accounts has nobody to ask.
+async function tableCeilings(opts: ServerOptions, bearer: string | undefined): Promise<TableCeilings | undefined> {
+  if (!opts.auth || bearer === undefined) return undefined
+  const plans = opts.plans ?? DEFAULT_PLANS
+  const plan = await planOf(opts.accountPlans, plans, bearer)
+  return { openTables: limitOf(plans, plan, 'openTables'), tablesPer30Days: limitOf(plans, plan, 'tablesPer30Days'), since: tableWindowFrom(clock(opts)) }
+}
+
+// A table opened within its bearer's ceilings (#1196): true when it was, and false when a ceiling
+// was met and the 402 has said so. The store counts and writes in one step, so nothing is written
+// on a refusal — no session and no code — and the caller, which loads the table only after this,
+// queues no texture. Starting a table is the one thing a ceiling on tables is asked at: joining,
+// playing, a new code, «Uppdatera» (C7), a kick and ending it never ask, and neither does a replay.
+async function openTable(opts: ServerOptions, res: ServerResponse, record: SessionRecord, bearer: 'you' | 'owner'): Promise<boolean> {
+  try {
+    await opts.store.createSession(record, await tableCeilings(opts, record.accountId))
+    return true
+  } catch (e) {
+    if (!(e instanceof QuotaReached)) throw e
+    quotaRefused(res, e.quota, bearer)
+    return false
+  }
 }
 
 // A fresh code and host key for a new session (DRIFT §9); the key is shown once and kept hashed.
@@ -419,7 +445,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const id = body.id ?? randomUUID()
       const deck: Deck | undefined = body.deck
       const room = admission(opts)
-      await opts.store.createSession({ id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record })
+      // Held to the ceilings of the account that knocks, which bears the table.
+      if (!(await openTable(opts, res, { id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record }, 'you'))) return
       // Textures start rendering now rather than when the first screen connects.
       if (deck) await opts.host.get(id)
       return json(res, 201, { id, code: room.code, hostKey: room.hostKey })
@@ -1363,7 +1390,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     else if (!account) json(res, 401, { error: 'log in first' })
     else {
       const host = editors(opts, projects)
-      json(res, 200, await usageOf({ projects, live: (id) => host.live(id), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.renders ? { renders: opts.renders } : {}) }, plans, account.id, clock(opts)))
+      json(res, 200, await usageOf({ projects, tables: opts.store, live: (id) => host.live(id), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.renders ? { renders: opts.renders } : {}) }, plans, account.id, clock(opts)))
     }
     return true
   }
@@ -2061,7 +2088,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const room = admission(opts)
     // Borne by the game's owner, whoever pressed (A2: the creator bears the cost of her own
     // testers, #1194). A game from before accounts has no owner, and its table no bearer.
-    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record })
+    // And held to the owner's ceilings on tables (#1196): a test leader or a co-editor who presses
+    // is told it is the owner's ceiling, never whose or which tier.
+    const record = { id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record }
+    if (!(await openTable(opts, res, record, account !== null && account.id === rec.owner ? 'you' : 'owner'))) return true
     await opts.host.get(id)
     json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
     return true

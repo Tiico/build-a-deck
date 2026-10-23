@@ -11,6 +11,7 @@ import { startServer, type Running } from './fixture.js'
 import { assetTypeDeclaring } from '@byd/protocol'
 import { columnsOf } from '@byd/server/doc'
 import { Said } from '../src/i18n/said.js'
+import { QuotaReached } from '../src/account/quota.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 
 let run: Running
@@ -110,6 +111,25 @@ describe('ProjectClient', () => {
     expect(session.id).toMatch(/[0-9a-f-]{36}/)
     expect(session.version).toBe('rev-1')
     expect((await run.store.loadSession(session.id))?.setup.components).toHaveLength(4)
+  })
+
+  // A start refused at a ceiling (#1196): the client gets the ceiling the server met, not a status.
+  it('rejects a start the server refused at a ceiling with that ceiling, and starts nothing', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const quota = { measure: 'tablesPer30Days', limit: 2, used: 2, bearer: 'you' }
+    const real = globalThis.fetch
+    const refusing = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      init?.method === 'POST' && String(input).endsWith('/sessions') ? new Response(JSON.stringify({ error: 'quota', quota }), { status: 402, headers: { 'content-type': 'application/json' } }) : real(input, init),
+    )
+    try {
+      const err = await client.startTable().catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(QuotaReached)
+      expect((err as QuotaReached).quota).toEqual(quota)
+    } finally {
+      refusing.mockRestore()
+    }
+    expect(await run.store.sessionsOf(created.id)).toEqual([])
   })
 })
 

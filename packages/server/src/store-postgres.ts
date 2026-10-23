@@ -10,7 +10,7 @@ import { peekCard } from './names.js'
 import { PostgresAssetStore, assetHashesOf } from './assets.js'
 import { PostgresAiKeyStore } from './ai-keys.js'
 import { PostgresAccountPlanStore } from './account-plans.js'
-import { QuotaReached, growth, type Limit } from './quotas.js'
+import { QuotaReached, growth, startThatFrees, tableGrowth, withFrees, type Limit, type TableCeilings, type TableUse } from './quotas.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
@@ -172,12 +172,29 @@ export class PostgresLogStore implements LogStore {
     await this.sql.end()
   }
 
-  async createSession(record: SessionRecord): Promise<void> {
-    await this.sql`
-      insert into sessions (id, version, setup, deck, project, account_id, code, code_expires_at, host_key_hash)
-      values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)}, ${record.deck ? this.sql.json(record.deck as never) : null}, ${record.project ?? null},
-              ${record.accountId ?? null}, ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null})
-    `
+  // The ceilings on the bearer's tables (#1196) are counted and held in the transaction that writes
+  // the table, as the games' are (#1193): the account's lock for its tables, taken only when there
+  // is a ceiling to hold, serialises exactly the starts that could cross it. A second start for the
+  // same bearer waits here until the first has committed or rolled back, and then counts what the
+  // first left. In the two-key form, beside the games' own lock and never sharing a key with it.
+  async createSession(record: SessionRecord, ceilings?: TableCeilings): Promise<void> {
+    await this.sql.begin(async (tx) => {
+      const bearer = record.accountId
+      if (bearer !== undefined && ceilings && (ceilings.openTables !== null || ceilings.tablesPer30Days !== null)) {
+        await tx`select pg_advisory_xact_lock(hashtext('quota:tables'), hashtext(${bearer}))`
+        const met = tableGrowth(ceilings, await tablesIn(tx, bearer, ceilings.since))
+        if (met) throw new QuotaReached(met.measure === 'tablesPer30Days' ? withFrees(met, await startIn(tx, bearer, ceilings.since, startThatFrees(met))) : met)
+      }
+      await tx`
+        insert into sessions (id, version, setup, deck, project, account_id, code, code_expires_at, host_key_hash)
+        values (${record.id}, ${record.version}, ${tx.json(record.setup as never)}, ${record.deck ? tx.json(record.deck as never) : null}, ${record.project ?? null},
+                ${record.accountId ?? null}, ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null})
+      `
+    })
+  }
+
+  async tablesOf(account: string, since: Date): Promise<TableUse> {
+    return tablesIn(this.sql, account, since)
   }
 
   async addDeck(sessionId: string, version: string, deck: Deck): Promise<void> {
@@ -380,6 +397,31 @@ export class PostgresLogStore implements LogStore {
       }),
     )
   }
+}
+
+// What an account bears of tables (#1196): the ones whose latest line is not `session.end`, and the
+// ones started after `since`, out of the bearer's index.
+async function tablesIn(sql: postgres.Sql | postgres.TransactionSql, account: string, since: Date): Promise<TableUse> {
+  const [row] = await sql<{ open: number; started: number }[]>`
+    select count(*) filter (where coalesce(last.v, '') <> 'session.end')::int as open,
+           count(*) filter (where s.created_at > ${since})::int as started
+    from sessions s
+    left join lateral (select intent->>'v' as v from events e where e.session_id = s.id order by seq desc limit 1) last on true
+    where s.account_id = ${account}
+  `
+  return { open: row?.open ?? 0, started: row?.started ?? 0 }
+}
+
+// When the account's `nth` table in the window was started, counted from the oldest and from 0, in
+// milliseconds rounded up: the stamp is finer than a millisecond, and a moment rounded down would
+// be one at which the start still stands in the window.
+async function startIn(sql: postgres.Sql | postgres.TransactionSql, account: string, since: Date, nth: number): Promise<number | undefined> {
+  const [row] = await sql<{ ms: string }[]>`
+    select ceil(extract(epoch from created_at) * 1000)::bigint as ms from sessions
+    where account_id = ${account} and created_at > ${since}
+    order by created_at, id offset ${nth} limit 1
+  `
+  return row ? Number(row.ms) : undefined
 }
 
 // The ceiling on the games an account owns (#1193), counted and held in the transaction that writes

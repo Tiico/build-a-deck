@@ -70,6 +70,18 @@ På tråden är avslaget det vanliga `refused` med `why: 'quota'`, `to`, `ask` o
 `GET /me/usage` och `usage`-skriptet svarar båda måtten per spel för varje spel kontot äger, ur det levande dokumentet (aktörens, annars den sparade versionen med loggens svans), med `used` som det mesta något av spelen använder.
 Grindarna: `packages/server/test/quota-cards.test.ts` (båda lagren) och `packages/web/test/project-client-quota.test.ts` (editorn från före fältet).
 
+Byggt 2026-10-23 (#1196, skiva 4 av PRD #1192): **bord som mått, i två former.**
+- `openTables` är de bord kontot bär vars logg inte slutar med `session.end`, alltså bord som står; taket skyddar lådans minne (DRIFT §1).
+- `tablesPer30Days` är de bord kontot bär som startats under de senaste 30 dygnen, rullande och inte per kalendermånad, så att ingen dag i månaden är bättre än en annan (beställarens beslut 2026-10-23 i #1192).
+- Båda räknas ur sessionerna och deras bärare (`sessions.account_id`), så ett avslutat bord räknas som startat i 30 dygn, och ett borttaget spel tar inget av sina bord ur räkningen.
+- Taken prövas när ett bord startas, i `POST /projects/:id/sessions` och i den råa `POST /sessions`, och mot bärarens nivå: en testledare eller medredigerare som trycker prövas mot ägarens tak, och svaret säger `bearer: 'owner'` utan ägarens adress eller nivå.
+- Prövning och skrivning är ett steg i lagret, med ett transaktionslås per bärare i Postgres och ingen väntan mellan räkning och skrivning i minnet; två starter vid tak − 1 ger exakt en. Ett avslag skapar ingen session, ingen kod och inget renderjobb.
+- Ingenting annat prövar taket: att ansluta, köpa en plats med koden, spela, «Ny kod», «Uppdatera» (C7), att sparka, att avsluta och att spela upp en logg gör det aldrig. Ett bord som står stängs aldrig av ett tak, och ett konto över taket gör allt det med de bord som står.
+- När ett bord avslutas, av sin skärm eller av C9:s timeout, får nästa start plats under `openTables`.
+- Ett 402 för `tablesPer30Days` bär `frees`, ögonblicket då nästa bord går att starta (beställarens beslut 2026-10-23 i #1198). Det är när den äldsta starten i fönstret faller ur, och för ett konto över taket när så många fallit ur att ett till ryms. Under taket 0 finns inget sådant ögonblick, och då sägs inget. `openTables` bär inget datum, eftersom ett bord får plats när ett annat avslutas.
+- `GET /me/usage` och `usage`-skriptet tar med båda måtten. Webben får ett 402 som ett `QuotaReached` med taket i (`packages/web/src/account/quota.ts`), från både editorn och startsidan; hur det sägs är #1198.
+- Grindarna är `packages/server/test/quota-tables.test.ts` mot båda lagren, `account-plans.test.ts` för skriptets rapport, och `packages/web/test/start-table-quota.test.ts` med `project-client.test.ts` för klienten.
+
 Byggt 2026-10-23 (#1197, skiva 5 av PRD #1192): lagring och renderingar.
 Lagring (`storageBytes`) är det kontots spel använder, inte det kontot har lagt på lådan (beställarens svar på fråga 4): summan av `assets.size` över de olika assets som någon version av något spel kontot äger nämner, läst med samma `assetHashesOf` som exporten väljer sina bilder med.
 Måttet är härlett ur versionerna och har ingen innehavslogg och ingen bakåtfyllnad: två konton vars spel nämner samma bytes bär storleken båda två, ett konto med två sådana spel bär den en gång, historiken räknas så länge den finns, och ett borttaget spel frigör det som inget annat av kontots spel nämner.
@@ -1975,6 +1987,13 @@ Preciserat 2026-10-23 (#1199, beställarens beslut efter researchen i issuet): *
 - En fake-provider står i en riktig partners ställe, och en kontraktssvit som den klarar är den som varje framtida adapter ska klara (#1206).
 - Tryckfilerna görs efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()`, i stället för typens fasta 3 mm, av den enda renderaren (E2, #1207).
 - Byggs inte nu: order och spårning på servern, och tillverkningsflaggan i F3.
+
+Byggt 2026-10-23 (#1206): kontraktet, regiondirigeringen, fake-providern och kontraktssviten finns i paketet `packages/print`, och TUNN-SKIVA §4 beskriver dem som de är byggda.
+- `requirements(type)` är partnerns krav som data: snitt, utfall, raster i exakta pixelmått eller vektor, färgrymd, filnamnsform, partnerns ord för varje sida, och lagervaror som partnern packar.
+- `prepare(manifest)` ger det förberedda paketet utan att tala med partnern: filerna som ska ritas, korten med sina sidor som filer, lagervarorna, det som lämnades och varför, och partnerns steg som data.
+- `routeOrder` skickar en EU-destination bara till en provider vars alla fabriker ligger i EU, och svarar annars «inget EU-tryck».
+- Fake-providern klarar sviten i både TGC:s flerstegsform och QPMN:s form med en order, och dess pris är märkt som påhittat.
+- Ingen serverväg anropar ännu `submit` eller `track`, och inget i servern läser paketet; det gör #1207 och #1208.
 
 ### F3. Kostnadsbesked först i beställningsflödet (fråga 29)
 
