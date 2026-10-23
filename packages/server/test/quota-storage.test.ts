@@ -103,8 +103,8 @@ for (const backend of backends) {
     let db: Backend
     let run: Running
     let n = 0
-    const open = async (plans: Plans) => {
-      run = await start({ store: db.store, projects: db.projects, auth: db.auth, assets: db.assets, accountPlans: db.accountPlans, plans })
+    const open = async (plans: Plans, projects: ProjectStore = db.projects) => {
+      run = await start({ store: db.store, projects, auth: db.auth, assets: db.assets, accountPlans: db.accountPlans, plans })
     }
     const login = async (email: string): Promise<{ cookie: string; id: string }> => {
       await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
@@ -137,6 +137,21 @@ for (const backend of backends) {
       const res = await send(cookie, 'GET', '/me/usage')
       expect(res.status).toBe(200)
       return ((await res.json()) as { measures: Record<string, { used: number; limit: number | null }> }).measures['storageBytes']!
+    }
+    // The game as its actor holds it, which is what every editor that opens it is handed.
+    const live = async (cookie: string, id: string): Promise<{ name: string }> => {
+      const ws = new WebSocket(`${run.base}/projects/${id}/edit?name=Ada`, { headers: { cookie } })
+      try {
+        return await new Promise((resolve, reject) => {
+          ws.on('message', (data) => {
+            const m = JSON.parse(data.toString()) as EditorMessage
+            if (m.v === 'project') resolve(m.doc)
+          })
+          ws.on('error', reject)
+        })
+      } finally {
+        ws.close()
+      }
     }
     const known = async (hash: string) => (await fetch(`${run.http}/assets/${hash}`, { redirect: 'manual' })).status !== 404
 
@@ -365,6 +380,43 @@ for (const backend of backends) {
         const res = await send(bo.cookie, 'POST', `/projects/${id}/duplicate`)
         expect(res.status).toBe(402)
         expect(((await res.json()) as Quota).quota).toEqual({ measure: 'storageBytes', limit: 250, used: 100, bearer: 'you' })
+      })
+
+      // Two `PUT`s on two of the owner's games, each naming a picture of its own, with room for one
+      // (#1233). Each is held where its version is written until both are there, so both have
+      // passed the door's own question of the ceiling before either version is: the race, every
+      // time. The one refused is in no log, no version and on no editor's screen (#1192).
+      it('two versions at once with room for one: one is made, and the refused one leaves no edit, version or document behind', async () => {
+        const arrived: (() => void)[] = []
+        let holding = false
+        const held = new Proxy(db.projects, {
+          get(target, key) {
+            const value: unknown = Reflect.get(target, key)
+            if (typeof value !== 'function') return value
+            if (key !== 'replace') return value.bind(target)
+            return async (...args: unknown[]) => {
+              if (holding) await new Promise<void>((go) => arrived.push(go) === 2 && arrived.forEach((both) => both()))
+              return value.apply(target, args)
+            }
+          },
+        })
+        await run.stop()
+        await open(ceiling(250), held)
+        const ada = await someone('ada')
+        const a = await uploaded(ada.cookie, freshPicture(150))
+        const b = await uploaded(ada.cookie, freshPicture(80))
+        const c = await uploaded(ada.cookie, freshPicture(80))
+        const one = await made(ada.cookie, 'Ett', [a])
+        const two = await made(ada.cookie, 'Två', [a])
+        holding = true
+        const answers = await Promise.all([save(ada.cookie, one, 'Ett ändrat', [a, b]), save(ada.cookie, two, 'Två ändrat', [a, c])])
+        expect(answers.map((r) => r.status).sort()).toEqual([200, 402])
+        const [refused, was] = answers[0]!.status === 402 ? [answers[0]!, { id: one, name: 'Ett' }] : [answers[1]!, { id: two, name: 'Två' }]
+        expect(((await refused.json()) as Quota).quota).toEqual({ measure: 'storageBytes', limit: 250, used: 230, bearer: 'you' })
+        expect(await db.projects.readEdits(was.id, 0)).toEqual([])
+        expect(await db.projects.versions(was.id)).toHaveLength(1)
+        expect((await live(ada.cookie, was.id)).name).toBe(was.name)
+        expect((await stored(ada.cookie)).used).toBe(230)
       })
 
       it('two games at once with room for one: exactly one is made', async () => {
