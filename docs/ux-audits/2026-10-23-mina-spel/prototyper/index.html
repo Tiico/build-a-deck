@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Mina spel</title>
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-23: «Mina spel-sidan känns lite för nedstrippad och desktopvarianten är
+     lite för anpassad efter mobil.»
+     I dag: en 920 px smal spalt mitt på skärmen, ett 132 px högt kort per spel, en rad «v1 · inte
+     spelat», och allt man kan göra med ett spel gömt bakom ⋯. På telefon tar varje spel ~300 px
+     höjd med kortet i ena hörnet.
+       I dag  Skärmdumpar ur den riktiga appen, 1440 och 390.
+       A  Hyllan — samma rutnät, men brett, rikare brickor och verktygsrad.
+       B  Arbetsbänken — «fortsätt där du slutade» + en högerspalt med det som händer.
+       C  Listan — en tabell med kolumner och flikar, som en filhanterare.
+       D  Sidomenyn — appskal med vänstermeny; spelen som en hylla av stora kort.
+     Färger och knappspråk ur account.css och buttons.css. Data är påhittad; det som inte finns i
+     API:t i dag är märkt «ny data» i beskrivningen under varje variant.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #08090d; color: #e6e6e6; font: 14px/1.4 system-ui, sans-serif; }
+  .protorad { position: sticky; top: 0; z-index: 50; display: grid; gap: 4px; padding: 10px 16px; background: #2a2417; color: #ffd98a; border-bottom: 1px solid #5a4a22; }
+  .protorad b { letter-spacing: 1px; }
+  .protorad p { margin: 0; color: #e8d9ad; font-size: 13px; max-width: 120ch; }
+  .protorad .nydata { color: #ffd98a; }
+  .stage { padding: 24px 16px 120px; }
+  .shot .protorad, .shot .vaxlare { display: none; }
+  .shot .stage { padding: 0; }
+  .ramhylsa { margin: 0 auto; position: relative; }
+  .ram { position: absolute; left: 0; top: 0; transform-origin: 0 0; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); container-type: inline-size; background: #0f1117; min-height: 900px; }
+  .ram[data-w='390'] { min-height: 844px; }
+  .ram img.dump { display: block; width: 100%; }
+
+  /* Växlaren */
+  .vaxlare { white-space: nowrap; position: fixed; z-index: 60; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; background: #ffd98a; color: #2a2417; box-shadow: 0 8px 30px rgb(0 0 0 / 60%); font-weight: 700; max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; }
+  .vaxlare button { min-height: 36px; min-width: 36px; border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 0 10px; }
+  .vaxlare button:hover { background: rgb(0 0 0 / 10%); }
+  .vaxlare button[aria-pressed='true'] { background: #2a2417; color: #ffd98a; }
+  .vaxlare .namn { min-width: 210px; text-align: center; }
+  .vaxlare .skilj { width: 1px; height: 24px; background: rgb(0 0 0 / 25%); }
+
+  /* ── Gemensamt: account.css färger och knappspråket ───────────────────────────────────── */
+  .ram { --bg: #0f1117; --kort: #171a23; --kort-hover: #1d212b; --kant: #262a35; --kant-hover: #3a4152; --brunn: #14161c; --tyst: #9aa3b8; --tystare: #7d8597; --gron: #7dd3a0; --gronbg: #1b2a22; --gronink: #d8ffe8; --linje: #6f7a90; --ink2: #dce3f2; --rod: #ffb4b4; --gul: #f2c46d; color: #e6e6e6; font-family: system-ui, sans-serif; }
+  .ram a { color: inherit; text-decoration: none; }
+  .knapp { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .knapp.prim { background: var(--gron); color: #0f1117; border: 0; }
+  .knapp.sek { background: transparent; color: var(--ink2); border: 1px solid var(--linje); }
+  .knapp.tyst { background: transparent; color: var(--tyst); border: 0; padding: 0 10px; }
+  .knapp.liten { min-height: 36px; padding: 0 12px; border-radius: 10px; font-size: 13px; }
+  .ikon { width: 18px; height: 18px; flex: none; }
+  .mer { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--tyst); cursor: pointer; font-size: 18px; letter-spacing: 1px; }
+  .mer:hover { background: var(--kant); color: #fff; }
+  .muted { color: var(--tyst); }
+  .h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--tystare); font-weight: 700; }
+  .kod { font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .chip.lever { background: var(--gronbg); color: var(--gronink); }
+  .chip.lever::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gron); box-shadow: 0 0 0 3px rgb(125 211 160 / 25%); }
+  .chip.delad { background: #1f2433; color: #b9c3dc; border: 1px solid #2c3242; }
+  .chip.flagga { background: #2e2717; color: var(--gul); }
+  .plats { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font-style: normal; font-weight: 800; font-size: 12px; flex: none; }
+  .falt { min-height: 44px; border-radius: 12px; border: 1px solid var(--linje); background: var(--brunn); color: #fff; padding: 0 14px; font: inherit; min-width: 0; }
+  .falt.kodfalt { font: 700 16px ui-monospace, Menlo, monospace; letter-spacing: 0.2em; text-transform: uppercase; }
+  .sok { position: relative; display: inline-flex; align-items: center; }
+  .sok svg { position: absolute; left: 12px; width: 16px; height: 16px; color: var(--tyst); }
+  .sok .falt { padding-left: 36px; width: 240px; }
+  select.falt { padding-right: 32px; cursor: pointer; }
+  .segment { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--brunn); border: 1px solid var(--kant); }
+  .segment button { min-height: 38px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: var(--tyst); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .segment button[aria-pressed='true'] { background: #262a35; color: #fff; }
+  .segment button span { color: var(--tystare); font-weight: 500; margin-left: 4px; }
+  .marke { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; white-space: nowrap; color: #fff; text-decoration: none; }
+  .marke svg { width: 28px; height: 28px; }
+  .avatar { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #2b3a55; color: #dce3f2; font-weight: 800; font-size: 14px; }
+  .avatarknapp { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 6px 0 4px; border: 0; border-radius: 999px; background: transparent; color: var(--tyst); cursor: pointer; font: inherit; }
+  .avatarknapp:hover { background: var(--kant); }
+  .om { margin: 32px 0 0; text-align: center; font-size: 12px; color: var(--tyst); }
+
+  /* Ett kort ritat som spelets första kort ritas (en efterbildning av CardPreview). */
+  .spelkort { --hz: var(--h, var(--hs, 132px)); height: var(--hz); aspect-ratio: 63 / 88; border-radius: calc(var(--hz) * 0.03); background: #f4ecdc; position: relative; overflow: hidden; flex: none; box-shadow: 0 2px 10px rgb(0 0 0 / 35%); color: #2a2018; font-family: Georgia, 'Times New Roman', serif; }
+  .spelkort::after { content: ''; position: absolute; inset: calc(var(--hz) * 0.03); border: 1px solid rgb(60 40 20 / 55%); border-radius: calc(var(--hz) * 0.03); pointer-events: none; }
+  .spelkort .hd { position: absolute; left: calc(var(--hz) * 0.04); right: calc(var(--hz) * 0.04); top: calc(var(--hz) * 0.04); background: var(--c); color: #fff; padding: calc(var(--hz) * 0.025) calc(var(--hz) * 0.03); }
+  .spelkort .hd b { display: block; font-size: calc(var(--hz) * 0.062); line-height: 1.1; }
+  .spelkort .hd i { display: block; font-style: normal; font-family: system-ui, sans-serif; font-weight: 700; font-size: calc(var(--hz) * 0.035); opacity: 0.9; }
+  .spelkort .bild { position: absolute; left: calc(var(--hz) * 0.06); right: calc(var(--hz) * 0.06); top: calc(var(--hz) * 0.2); height: calc(var(--hz) * 0.36); border-radius: calc(var(--hz) * 0.015); background: radial-gradient(circle at 30% 35%, rgb(255 255 255 / 35%), transparent 45%), linear-gradient(160deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c)); }
+  .spelkort .bild::after { content: attr(data-glyf); position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--hz) * 0.16); filter: saturate(0.6); }
+  .spelkort .tx { position: absolute; left: calc(var(--hz) * 0.07); right: calc(var(--hz) * 0.07); top: calc(var(--hz) * 0.6); font-family: system-ui, sans-serif; font-size: calc(var(--hz) * 0.036); line-height: 1.3; }
+  .spelkort .pill { position: absolute; left: calc(var(--hz) * 0.06); bottom: calc(var(--hz) * 0.055); background: #7ca7ea; color: #102040; border-radius: 999px; padding: 0 calc(var(--hz) * 0.05); font: 700 calc(var(--hz) * 0.032) / 1.6 system-ui, sans-serif; }
+  .spelkort.tom { background: transparent; box-shadow: none; border: 1px dashed #2c3242; display: grid; place-items: center; color: var(--tyst); font: 11px/1.35 system-ui, sans-serif; text-align: center; padding: 6px; }
+  .spelkort.tom::after { content: none; }
+  .spelkort.tom.liten { font-size: 0; }
+  .spelkort.liten .tx, .spelkort.liten .pill, .spelkort.liten .hd i { display: none; }
+
+  /* ════ A · Hyllan ════════════════════════════════════════════════════════════════════════ */
+  .A { min-height: inherit; }
+  .A .topp { display: flex; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid var(--kant); background: rgb(15 17 23 / 92%); backdrop-filter: blur(8px); }
+  .A .topp .hoger { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .A .kodrad { display: flex; gap: 6px; }
+  .A .kodrad .falt { width: 150px; }
+  .A .inne { max-width: 1440px; margin: 0 auto; padding: 28px 32px 40px; display: grid; gap: 22px; }
+  .A .rubrik { display: flex; align-items: end; gap: 16px; flex-wrap: wrap; }
+  .A .rubrik h1 { margin: 0; font-size: 32px; }
+  .A .rubrik .muted { padding-bottom: 6px; }
+  .A .verktyg { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .A .verktyg .hoger { margin-left: auto; display: flex; gap: 10px; }
+  .A .pagar { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px; }
+  .A .pagar > div { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 8px 8px 8px 16px; border-radius: 14px; background: var(--gronbg); color: var(--gronink); }
+  .A .pagar small { display: block; color: #9fc9b0; font-size: 12px; white-space: nowrap; }
+  .A .pagar b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .A .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+  .A .bricka { position: relative; display: grid; grid-template-rows: auto 1fr; background: var(--kort); border: 1px solid var(--kant); border-radius: 18px; overflow: hidden; }
+  .A .bricka:hover { border-color: var(--kant-hover); background: var(--kort-hover); }
+  .A .scen { position: relative; display: grid; place-items: center; height: 230px; background: radial-gradient(120% 90% at 50% 100%, color-mix(in srgb, var(--c) 45%, #0f1117), #12141b 70%); text-decoration: none; }
+  .A .scen .spelkort { --h: 190px; transform: rotate(-2deg); transition: transform 0.2s; }
+  .A .bricka:hover .scen .spelkort { transform: rotate(0) translateY(-4px); }
+  .A .scen .chip { position: absolute; left: 12px; top: 12px; }
+  .A .desktopmer { position: absolute; right: 6px; top: 6px; background: rgb(15 17 23 / 55%); }
+  .A .info { display: grid; gap: 6px; padding: 14px 16px 16px; align-content: start; }
+  .A .info strong { font-size: 18px; }
+  .A .fakta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--tyst); font-size: 13px; }
+  .A .chips { display: flex; gap: 6px; flex-wrap: wrap; min-height: 22px; }
+  .A .handlingar { display: flex; gap: 8px; margin-top: 6px; }
+  .A .handlingar .knapp { flex: 1; }
+  .A .nytt { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 360px; border: 1px dashed #2c3242; border-radius: 18px; color: var(--tyst); text-decoration: none; text-align: center; padding: 16px; }
+  .A .nytt:hover { border-color: var(--kant-hover); background: var(--kort); color: #fff; }
+  .A .nytt .plus { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--kort); border: 1px solid var(--kant); font-size: 28px; color: var(--gron); }
+  .A .spelade { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 300px); gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+  .A .spelad { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 14px 16px; border-radius: 16px; background: var(--kort); border: 1px solid var(--kant); }
+  .A .spelad .knapp, .A .spelad .klar { grid-column: 1 / -1; justify-self: start; }
+  .A .klar { color: var(--tyst); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; min-height: 36px; }
+  .A .klar svg { color: var(--gron); width: 16px; height: 16px; }
+  @container (max-width: 760px) {
+    .A .topp { padding: 10px 16px; gap: 8px; }
+    .A .topp .kodrad, .A .topp .importera span { display: none; }
+    .A .topp .nyttknapp span.lang { display: none; }
+    .A .inne { padding: 18px 16px 32px; gap: 18px; }
+    .A .rubrik h1 { font-size: 26px; }
+    .A .verktyg .sok { flex: 1; }
+    .A .verktyg .sok .falt { width: 100%; }
+    .A .verktyg .hoger { margin-left: 0; }
+    .A .pagar { grid-template-columns: 1fr; }
+    .A .pagar > div { grid-template-columns: minmax(0, 1fr) auto; }
+    .A .pagar > div > .spelkort { display: none; }
+    .A .pagar .kod { display: none; }
+    .A .grid { grid-template-columns: 1fr; gap: 10px; }
+    .A .bricka { grid-template-rows: none; grid-template-columns: 104px minmax(0, 1fr); }
+    .A .scen { height: auto; padding: 12px 0; }
+    .A .scen .spelkort { --h: 110px; transform: none; }
+    .A .scen .chip { display: none; }
+    .A .desktopmer { display: none; }
+    .A .info { padding: 12px 12px 12px 4px; gap: 4px; }
+    .A .info strong { font-size: 16px; padding-right: 36px; }
+    .A .info .mobilmer { position: absolute; right: 2px; top: 2px; display: inline-grid; }
+    .A .handlingar .knapp.sek { display: none; }
+    .A .handlingar .knapp { flex: 0 0 auto; min-height: 40px; }
+    .A .nytt { min-height: 72px; grid-auto-flow: column; justify-content: center; gap: 14px; }
+    .A .chips:empty { display: none; }
+    .A .nytt .plus { width: 36px; height: 36px; font-size: 20px; }
+    .A .nytt .muted { display: none; }
+  }
+  .A .info .mobilmer { display: none; }
+
+  /* ════ B · Arbetsbänken ═════════════════════════════════════════════════════════════════ */
+  .B .topp { display: flex; align-items: center; gap: 16px; padding: 14px 32px; border-bottom: 1px solid var(--kant); }
+  .B .topp .hoger { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .B .bank { max-width: 1440px; margin: 0 auto; padding: 28px 32px 40px; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 32px; align-items: start; }
+  .B .huvud { display: grid; gap: 28px; min-width: 0; }
+  .B .rail { display: grid; gap: 24px; position: sticky; top: 16px; }
+  .B h1 { margin: 0; font-size: 30px; }
+  .B .halsning { display: grid; gap: 4px; }
+  .B .hero { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 32px; padding: 28px; border-radius: 22px; background: radial-gradient(90% 120% at 0% 100%, color-mix(in srgb, var(--c) 40%, #171a23), #171a23 60%); border: 1px solid var(--kant); align-items: center; }
+  .B .solfjader { position: relative; width: 250px; height: 250px; }
+  .B .solfjader .spelkort { --h: 230px; position: absolute; left: 50%; top: 10px; margin-left: -82px; }
+  .B .solfjader .spelkort:nth-child(1) { transform: rotate(-9deg) translate(-34px, 8px); filter: brightness(0.7); }
+  .B .solfjader .spelkort:nth-child(2) { transform: rotate(8deg) translate(34px, 8px); filter: brightness(0.82); }
+  .B .hero .text { display: grid; gap: 14px; min-width: 0; }
+  .B .hero .over { color: var(--tyst); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+  .B .hero h2 { margin: 0; font-size: 34px; line-height: 1.1; }
+  .B .siffror { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .B .siffror div { padding: 10px 12px; border-radius: 12px; background: rgb(15 17 23 / 55%); border: 1px solid var(--kant); }
+  .B .siffror b { display: block; font-size: 22px; }
+  .B .siffror span { color: var(--tyst); font-size: 12px; }
+  .B .hero .knappar { display: flex; gap: 10px; flex-wrap: wrap; }
+  .B .sekhuvud { display: flex; align-items: center; gap: 12px; }
+  .B .sekhuvud .hoger { margin-left: auto; display: flex; gap: 8px; }
+  .B .smagrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .B .rad { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px; border-radius: 16px; background: var(--kort); border: 1px solid var(--kant); text-decoration: none; }
+  .B .rad:hover { background: var(--kort-hover); border-color: var(--kant-hover); }
+  .B .rad .spelkort { --h: 92px; }
+  .B .rad .t { display: grid; gap: 3px; min-width: 0; }
+  .B .rad strong { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .B .rad .muted { font-size: 13px; }
+  .B .rad .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .B .rad .mer { align-self: start; }
+  .B .rad.nytt { grid-template-columns: auto 1fr; border-style: dashed; background: transparent; color: var(--tyst); }
+  .B .rad.nytt .plus { display: grid; place-items: center; width: 66px; height: 92px; border-radius: 6px; border: 1px dashed #2c3242; font-size: 26px; color: var(--gron); }
+  .B .panel { display: grid; gap: 10px; }
+  .B .lev { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--gronbg); color: var(--gronink); }
+  .B .lev .topprad { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .B .lev .kod { font-size: 26px; letter-spacing: 4px; color: #fff; }
+  .B .lev .platser { display: flex; gap: 4px; align-items: center; }
+  .B .lev .platser .plats { width: 22px; height: 22px; font-size: 11px; }
+  .B .lev .platser .ledig { background: transparent; border: 1px dashed #5f8a70; }
+  .B .lev .knapp { justify-self: stretch; }
+  .B .gora { display: grid; border-radius: 16px; background: var(--kort); border: 1px solid var(--kant); overflow: hidden; }
+  .B .gora a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; text-decoration: none; border-top: 1px solid var(--kant); }
+  .B .gora a:first-child { border-top: 0; }
+  .B .gora a:hover { background: var(--kort-hover); }
+  .B .gora .rund { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #2e2717; color: var(--gul); font-size: 15px; }
+  .B .gora .rund.g { background: var(--gronbg); color: var(--gron); }
+  .B .gora .rund.b { background: #1f2433; color: #b9c3dc; }
+  .B .gora small { display: block; color: var(--tyst); font-size: 12px; }
+  .B .gora .pil { color: var(--tyst); }
+  .B .tidslinje { display: grid; gap: 2px; }
+  .B .tidslinje > div { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid #1d212b; }
+  .B .tidslinje small { display: block; color: var(--tyst); font-size: 12px; }
+  .B .tidslinje .muted { font-size: 12px; }
+  .B .kodruta { display: grid; gap: 8px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--kant); }
+  .B .kodruta label { font-size: 13px; font-weight: 700; color: #cdd4e4; }
+  .B .kodruta div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  @container (max-width: 1100px) {
+    .B .bank { grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; }
+    .B .siffror { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @container (max-width: 860px) {
+    .B .topp { padding: 10px 16px; }
+    .B .topp .hoger .importera span { display: none; }
+    .B .bank { grid-template-columns: 1fr; padding: 18px 16px 32px; gap: 22px; }
+    .B .rail { position: static; order: -1; gap: 16px; }
+    .B .rail .spelat, .B .rail .kodruta { display: none; }
+    .B .huvud .mobilspelat { display: grid; }
+    .B .hero { grid-template-columns: 1fr; padding: 18px; gap: 16px; justify-items: start; }
+    .B .solfjader { width: 100%; height: 180px; }
+    .B .solfjader .spelkort { --h: 160px; margin-left: -57px; }
+    .B .hero h2 { font-size: 26px; }
+    .B .hero .knappar .knapp { flex: 1; }
+    .B .smagrid { grid-template-columns: 1fr; gap: 8px; }
+    .B .rad .spelkort { --h: 76px; }
+    .B .rad.nytt .plus { width: 54px; height: 76px; }
+    .B h1 { font-size: 24px; }
+  }
+  .B .huvud .mobilspelat { display: none; }
+
+  /* ════ C · Listan ═══════════════════════════════════════════════════════════════════════ */
+  .C .topp { display: flex; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid var(--kant); }
+  .C .topp .hoger { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .C .inne { max-width: 1440px; margin: 0 auto; padding: 24px 32px 40px; display: grid; gap: 16px; }
+  .C .rubrik { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .C h1 { margin: 0; font-size: 28px; }
+  .C .rubrik .hoger { margin-left: auto; display: flex; gap: 10px; }
+  .C .flikar { display: flex; gap: 4px; border-bottom: 1px solid var(--kant); overflow-x: auto; }
+  .C .flikar button { min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--tyst); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+  .C .flikar button[aria-selected='true'] { color: #fff; border-bottom-color: var(--gron); }
+  .C .flikar button span { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: #1f2433; color: var(--tyst); font-size: 12px; }
+  .C .flikar button .lev { background: var(--gronbg); color: var(--gron); }
+  .C .verktyg { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .C .verktyg .hoger { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .C table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .C thead th { position: sticky; top: 0; text-align: left; font-size: 12px; font-weight: 700; color: var(--tystare); text-transform: uppercase; letter-spacing: 1px; padding: 10px 12px; border-bottom: 1px solid var(--kant); background: var(--bg); white-space: nowrap; }
+  .C thead th.sort::after { content: ' ↓'; color: var(--gron); }
+  .C tbody td { padding: 10px 12px; border-bottom: 1px solid #1d212b; vertical-align: middle; white-space: nowrap; color: #cfd5e3; }
+  .C tbody tr:hover td { background: #141720; }
+  .C tbody tr.lever td { background: rgb(27 42 34 / 40%); }
+  .C .namncell { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .C .namncell .spelkort { --h: 58px; box-shadow: 0 1px 4px rgb(0 0 0 / 40%); }
+  .C .namncell strong { display: block; font-size: 15px; color: #fff; }
+  .C .namncell .under { display: flex; gap: 6px; align-items: center; margin-top: 3px; }
+  .C td.tal { text-align: right; font-variant-numeric: tabular-nums; }
+  .C th.tal { text-align: right; }
+  .C td.handling { text-align: right; }
+  .C td.handling .knapp { visibility: hidden; }
+  .C tr:hover td.handling .knapp, .C tr.lever td.handling .knapp { visibility: visible; }
+  .C .nyrad td { color: var(--tyst); }
+  .C .nyrad a { display: inline-flex; gap: 10px; align-items: center; min-height: 44px; text-decoration: none; color: var(--gron); font-weight: 700; }
+  .C .listkort { display: none; }
+  @container (max-width: 1100px) {
+    .C .kol-andrad, .C .kol-spelare { display: none; }
+  }
+  @container (max-width: 760px) {
+    .C .topp { padding: 10px 16px; }
+    .C .topp .kodrad, .C .topp .importera span { display: none; }
+    .C .inne { padding: 16px; gap: 12px; }
+    .C h1 { font-size: 24px; }
+    .C .rubrik .hoger .knapp span.lang { display: none; }
+    .C .verktyg .sok { flex: 1; } .C .verktyg .sok .falt { width: 100%; }
+    .C .verktyg .vy { display: none; }
+    .C table { display: none; }
+    .C .listkort { display: grid; }
+    .C .listkort > div { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #1d212b; }
+    .C .listkort .spelkort { --h: 64px; }
+    .C .listkort strong { display: block; font-size: 15px; color: #fff; }
+    .C .listkort .muted { font-size: 12px; }
+  }
+
+  /* ════ D · Sidomenyn ════════════════════════════════════════════════════════════════════ */
+  .D { display: grid; grid-template-columns: 264px minmax(0, 1fr); min-height: inherit; }
+  .D .meny { display: flex; flex-direction: column; gap: 6px; padding: 18px 14px; border-right: 1px solid var(--kant); background: #0c0e13; min-height: 100%; }
+  .D .meny .marke { padding: 4px 8px 14px; }
+  .D .meny .knapp.prim { margin-bottom: 12px; }
+  .D .meny nav { display: grid; gap: 2px; }
+  .D .meny nav a { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--tyst); text-decoration: none; font-weight: 600; }
+  .D .meny nav a:hover { background: #151821; color: #fff; }
+  .D .meny nav a[aria-current] { background: #1d212b; color: #fff; }
+  .D .meny nav a .ikon { color: var(--tystare); }
+  .D .meny nav a[aria-current] .ikon { color: var(--gron); }
+  .D .meny nav a span.n { margin-left: auto; color: var(--tystare); font-size: 12px; font-weight: 500; }
+  .D .meny nav a span.n.lev { color: var(--gron); }
+  .D .meny .h2 { padding: 18px 12px 6px; font-size: 11px; }
+  .D .meny .levande { display: grid; gap: 6px; }
+  .D .meny .levande a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 10px 12px; border-radius: 12px; background: var(--gronbg); color: var(--gronink); text-decoration: none; }
+  .D .meny .levande a small { grid-column: 1; color: #9fc9b0; font-size: 12px; }
+  .D .meny .levande .kod { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-size: 14px; color: #fff; }
+  .D .meny .botten { margin-top: auto; display: grid; gap: 10px; }
+  .D .meny .botten .kodrad { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: #11141b; border: 1px solid var(--kant); }
+  .D .meny .botten .kodrad label { font-size: 12px; font-weight: 700; color: #cdd4e4; }
+  .D .meny .botten .kodrad div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .D .meny .botten .kodrad .falt { padding: 0 10px; }
+  .D .meny .konto { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 4px; }
+  .D .meny .konto span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tyst); font-size: 13px; }
+  .D .yta { padding: 28px 40px 40px; display: grid; gap: 22px; align-content: start; min-width: 0; }
+  .D .rubrik { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .D h1 { margin: 0; font-size: 30px; }
+  .D .rubrik .hoger { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .D .hylla { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 36px 24px; }
+  .D .stall { position: relative; display: grid; gap: 10px; justify-items: start; align-content: start; text-decoration: none; }
+  .D .stall .ram2 { position: relative; display: block; }
+  .D .stall .spelkort { --h: 250px; transition: transform 0.18s, box-shadow 0.18s; }
+  .D .stall .bakom { position: absolute; inset: 0; transform: translate(6px, -6px); border-radius: 8px; background: #20242f; border: 1px solid #2c3242; }
+  .D .stall .bakom.b2 { transform: translate(12px, -12px); background: #1a1d26; }
+  .D .stall:hover .spelkort { transform: translateY(-6px); box-shadow: 0 14px 30px rgb(0 0 0 / 55%); }
+  .D .stall .ovan { position: absolute; left: 8px; top: -11px; z-index: 1; }
+  .D .stall .snabb { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1; display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s; }
+  .D .stall:hover .snabb, .D .stall:focus-within .snabb { opacity: 1; }
+  .D .stall .snabb .knapp { flex: 1; min-height: 40px; box-shadow: 0 4px 14px rgb(0 0 0 / 50%); }
+  .D .stall .snabb .knapp.sek { background: #171a23; }
+  .D .stall .namnrad { display: grid; grid-template-columns: minmax(0, 1fr) auto; width: 179px; align-items: start; }
+  .D .stall strong { font-size: 16px; color: #fff; }
+  .D .stall .muted { font-size: 13px; }
+  .D .stall .mer { margin: -10px -12px 0 0; }
+  .D .stall.nytt .platshallare { display: grid; place-items: center; align-content: center; gap: 8px; height: 250px; aspect-ratio: 63 / 88; border-radius: 8px; border: 1px dashed #2c3242; color: var(--tyst); }
+  .D .stall.nytt .platshallare b { font-size: 32px; color: var(--gron); font-weight: 400; }
+  .D .stall.nytt:hover .platshallare { border-color: var(--kant-hover); color: #fff; }
+  .D .flikar-mobil { display: none; }
+  .D .mobiltopp { display: none; }
+  @container (max-width: 1100px) {
+    .D { grid-template-columns: 228px minmax(0, 1fr); }
+    .D .yta { padding: 24px; }
+    .D .hylla { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 28px 16px; }
+    .D .stall .spelkort, .D .stall.nytt .platshallare { --h: 200px; height: 200px; }
+    .D .stall .namnrad { width: 143px; }
+  }
+  @container (max-width: 760px) {
+    .D { grid-template-columns: 1fr; }
+    .D .meny { display: none; }
+    .D .mobiltopp { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--kant); }
+    .D .mobiltopp .hoger { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+    .D .flikar-mobil { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 2px; }
+    .D .flikar-mobil button { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--kant); background: transparent; color: var(--tyst); font: inherit; font-weight: 600; white-space: nowrap; }
+    .D .flikar-mobil button[aria-pressed='true'] { background: #262a35; color: #fff; border-color: #262a35; }
+    .D .flikar-mobil button.lev { color: var(--gronink); background: var(--gronbg); border-color: var(--gronbg); }
+    .D .yta { padding: 16px; gap: 16px; }
+    .D h1 { font-size: 24px; }
+    .D .rubrik .hoger { display: none; }
+    .D .hylla { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 14px; }
+    .D .stall .spelkort, .D .stall.nytt .platshallare { --h: 218px; height: 218px; }
+    .D .stall .ram2 { width: 100%; }
+    .D .stall .spelkort { width: 100%; height: auto; --h: 218px; }
+    .D .stall .namnrad { width: 100%; }
+    .D .stall .snabb { display: none; }
+    .D .stall .bakom { display: none; }
+    .D .stall.nytt .platshallare { width: 100%; height: auto; align-self: start; }
+  }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div><b>PROTOTYP</b> · Mina spel · <span id="vnamn"></span></div>
+  <p id="vbeskr"></p>
+</div>
+<div class="stage" id="stage"><div class="ramhylsa" id="hylsa"><div class="ram" id="ram"></div></div></div>
+<div class="vaxlare" role="toolbar" aria-label="Prototypens växlare">
+  <button type="button" id="forra" aria-label="Föregående variant">←</button>
+  <span class="namn" id="vlabel"></span>
+  <button type="button" id="nasta" aria-label="Nästa variant">→</button>
+  <span class="skilj"></span>
+  <span id="bredder"></span>
+</div>
+
+<script>
+// ── Data: ett konto med sju spel, två delade, två bord igång och fyra spelade bord ───────────
+const SPEL = [
+  { id: 'saloon', namn: "Sal's Saloon", rev: 7, kort: 77, spelare: '3–6', bord: 12, senast: 'i dag', andrad: 'för 2 tim sedan', flaggor: 3, enkater: 5, c: '#6b4a2b', glyf: '🥃', titel: "Juice em' up!", typ: 'Playcard', text: 'Välj två andra spelare. De blandar en shot till varann.', pill: 'Diamant', lever: [{ kod: 'R8RHY5', satt: 4, platser: 6, start: '19:42' }] },
+  { id: 'drake', namn: 'Drakhamnen', rev: 12, kort: 108, spelare: '2–5', bord: 9, senast: 'i dag', andrad: 'för 3 dagar sedan', flaggor: 0, enkater: 11, c: '#7a2e2e', glyf: '⚓', titel: 'Hamnfogden', typ: 'Person', text: 'Ta ett kort ur hamnen. Varje motspelare betalar dig ett guld.', pill: 'Sällsynt', lever: [{ kod: 'KS74CC', satt: 3, platser: 5, start: '20:05' }] },
+  { id: 'skog', namn: 'Skogens herrar', rev: 3, kort: 42, spelare: '2–4', bord: 4, senast: 'i går', andrad: 'i går', flaggor: 1, enkater: 2, c: '#2f5d3a', glyf: '🦉', titel: 'Ugglans råd', typ: 'Händelse', text: 'Titta på de tre översta korten i draghögen och lägg tillbaka dem.', pill: 'Vanlig', lever: [] },
+  { id: 'polar', namn: 'Polarnatt', rev: 5, kort: 60, spelare: '3–5', bord: 2, senast: 'för 5 dagar sedan', andrad: 'för 4 dagar sedan', flaggor: 0, enkater: 0, c: '#2d5f70', glyf: '🌌', titel: 'Norrsken', typ: 'Väder', text: 'Alla spelare visar sin hand tills din nästa tur.', pill: 'Episk', roll: 'editor', agare: 'kim@exempel.se', lever: [] },
+  { id: 'skatt', namn: 'Sjörövarnas skatt', rev: 9, kort: 54, spelare: '2–6', bord: 6, senast: 'för 2 veckor sedan', andrad: 'för 9 dagar sedan', flaggor: 0, enkater: 0, c: '#8a6a1f', glyf: '🏴‍☠️', titel: 'Kaparbrev', typ: 'Föremål', text: 'Stjäl ett guld från valfri spelare.', pill: 'Vanlig', roll: 'tester', agare: 'alex@exempel.se', lever: [] },
+  { id: 'kvall', namn: 'Kvällsmarknaden', rev: 1, kort: 24, spelare: '2–4', bord: 0, senast: null, andrad: 'för 2 veckor sedan', flaggor: 0, enkater: 0, c: '#3b4a7a', glyf: '🧺', titel: 'Kryddhandlaren', typ: 'Person', text: 'Byt ett kort i din hand mot ett på marknaden.', pill: 'Vanlig', lever: [] },
+  { id: 'tomt', namn: 'Nytt spel 2', rev: 1, kort: 0, spelare: '2–4', bord: 0, senast: null, andrad: 'för 3 veckor sedan', flaggor: 0, enkater: 0, c: '#444', lever: [] },
+]
+const SPELAT = [
+  { spel: 'Polarnatt', plats: 'B', farg: '#4f8be0', namn: 'Nicklas', v: 'v5', nar: 'i dag', pagar: true },
+  { spel: 'Sjörövarnas skatt', plats: 'D', farg: '#d0679a', namn: 'Nick', v: 'v9', nar: 'i går', enkat: 'vantar' },
+  { spel: 'Kortkrig', plats: 'A', farg: '#e0864f', namn: 'Nicklas', v: 'v2', nar: 'för 4 dagar sedan', enkat: 'klar' },
+  { spel: "Sal's Saloon", plats: null, farg: '#7d8597', namn: 'Nicklas', v: 'v6', nar: '12 okt', enkat: 'klar' },
+]
+const LEVER = SPEL.flatMap((s) => s.lever.map((b) => ({ ...b, spel: s })))
+const EGNA = SPEL.filter((s) => !s.roll), DELADE = SPEL.filter((s) => s.roll)
+const ROLL = { editor: 'får redigera', tester: 'får testa' }
+
+// ── Små byggstenar ─────────────────────────────────────────────────────────────────────────
+const ikon = {
+  sok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  imp: '<svg class="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>',
+  spela: '<svg class="ikon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  penna: '<svg class="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>',
+  hylla: '<svg class="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="9" rx="1.5"/><rect x="13" y="4" width="7" height="9" rx="1.5"/><path d="M4 18h16"/></svg>',
+  delad: '<svg class="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M16 4.5a3.5 3.5 0 0 1 0 7M21 20c0-3-1.8-5.3-4.5-5.9"/></svg>',
+  bord: '<svg class="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="10" rx="9" ry="5"/><path d="M6 14v5M18 14v5"/></svg>',
+  lev: '<svg class="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>',
+  bock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m5 12 5 5 9-10"/></svg>',
+  ut: '<svg class="ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg>',
+}
+const marke = `<a class="marke" href="#"><svg viewBox="0 0 32 32"><rect x="7" y="4" width="17" height="23" rx="3" fill="#7dd3a0" transform="rotate(10 16 16)"/><rect x="5" y="5" width="17" height="23" rx="3" fill="#f4ecdc" stroke="#0f1117" stroke-width="1.5" transform="rotate(-6 16 16)"/></svg>Deckster</a>`
+const kort = (s, h, extra = '') => s.kort === 0
+  ? `<div class="spelkort tom ${extra}" style="--hs:${h}px">inga kort ännu</div>`
+  : `<div class="spelkort ${extra}" style="--hs:${h}px;--c:${s.c}"><div class="hd"><b>${s.titel}</b><i>${s.typ}</i></div><div class="bild" data-glyf="${s.glyf}"></div><div class="tx">${s.text}</div><span class="pill">${s.pill}</span></div>`
+const spelatRad = (s) => s.bord === 0 ? 'inte spelat' : `${s.bord} bord · senast ${s.senast}`
+const delChip = (s) => s.roll ? `<span class="chip delad">Delat av ${s.agare.split('@')[0]} · ${ROLL[s.roll]}</span>` : ''
+const levChip = (s) => s.lever.length ? `<span class="chip lever">Pågår · <span class="kod" style="font-size:12px;letter-spacing:1px">${s.lever[0].kod}</span></span>` : ''
+const flaggChip = (s) => s.flaggor ? `<span class="chip flagga">⚑ ${s.flaggor} nya flaggor</span>` : ''
+const plats = (p) => `<i class="plats" style="background:${p.farg}">${p.plats ?? '👁'}</i>`
+const enkatDel = (p, cls = 'knapp prim liten') => p.pagar ? `<a class="${cls}" href="#">Öppna bordet</a>` : p.enkat === 'vantar' ? `<a class="${cls}" href="#">Svara på enkäten</a>` : `<span class="klar muted" style="display:inline-flex;gap:6px;align-items:center;font-size:13px">${ikon.bock.replace('<svg', '<svg width="16" height="16" style="color:#7dd3a0"')} Du har svarat på enkäten</span>`
+const kodrad = `<span class="kodrad"><input class="falt kodfalt" placeholder="Rumskod" aria-label="Rumskod"><button class="knapp sek" type="button">Gå med</button></span>`
+const avatar = `<button class="avatarknapp" type="button" title="nicklas@exempel.se — Profil, logga ut"><span class="avatar">N</span><span aria-hidden="true">▾</span></button>`
+const om = `<p class="om">Kontakt · Deckster 2026.10.23</p>`
+
+// ── A · Hyllan ─────────────────────────────────────────────────────────────────────────────
+function A() {
+  const bricka = (s) => `
+    <div class="bricka" style="--c:${s.c}">
+      <a class="scen" href="#">${kort(s, 190)}${levChip(s)}</a>
+      <button class="mer desktopmer" type="button" aria-label="Fler val">⋯</button>
+      <div class="info">
+        <button class="mer mobilmer" type="button" aria-label="Fler val">⋯</button>
+        <strong>${s.namn}</strong>
+        <div class="fakta"><span>v${s.rev}</span><span>${s.kort} kort</span><span>${s.spelare} spelare</span></div>
+        <div class="fakta"><span>${spelatRad(s)}</span></div>
+        <div class="chips">${delChip(s)}${flaggChip(s)}</div>
+        <div class="handlingar">
+          <a class="knapp sek liten" href="#">${ikon.penna} Redigera</a>
+          ${s.roll === 'tester' || s.kort === 0 ? '' : s.lever.length ? `<a class="knapp prim liten" href="#">Öppna bordet</a>` : `<button class="knapp prim liten" type="button">${ikon.spela} Starta bord</button>`}
+        </div>
+      </div>
+    </div>`
+  return `<div class="A">
+    <div class="topp">${marke}<div class="hoger">${kodrad}<button class="knapp sek importera" type="button">${ikon.imp}<span>Importera</span></button><a class="knapp prim nyttknapp" href="#">＋ <span class="lang">Nytt spel</span></a>${avatar}</div></div>
+    <div class="inne">
+      <div class="rubrik"><h1>Mina spel</h1><span class="muted">7 spel · 2 bord igång</span></div>
+      ${LEVER.length ? `<section style="display:grid;gap:10px"><h2 class="h2">Pågår nu</h2><div class="pagar">${LEVER.map((b) => `<div>${kort(b.spel, 44, 'liten')}<span><b>${b.spel.namn}</b><small>${b.satt} av ${b.platser} platser · startade ${b.start}</small></span><span style="display:flex;gap:14px;align-items:center"><strong class="kod">${b.kod}</strong><a class="knapp prim" href="#">Öppna bordet</a></span></div>`).join('')}</div></section>` : ''}
+      <div class="verktyg">
+        <div class="segment" role="group" aria-label="Visa"><button aria-pressed="true">Alla<span>7</span></button><button>Mina<span>5</span></button><button>Delade med mig<span>2</span></button></div>
+        <div class="hoger"><label class="sok">${ikon.sok}<input class="falt" placeholder="Sök bland spelen"></label><select class="falt" aria-label="Sortera"><option>Senast ändrade</option><option>Senast spelade</option><option>Namn</option></select></div>
+      </div>
+      <div class="grid">${SPEL.map(bricka).join('')}<a class="nytt" href="#"><span class="plus">＋</span><b>Nytt spel</b><span class="muted" style="font-size:13px;max-width:24ch">Namn och antal spelare — resten gör guiden.</span></a></div>
+      <section style="display:grid;gap:12px;margin-top:8px"><h2 class="h2">Bord du har spelat vid</h2>
+        <div class="spelade">${SPELAT.map((p) => `<div class="spelad">${plats(p)}<span><b>${p.spel}</b><br><span class="muted" style="font-size:13px">${p.v} · som ${p.namn} · ${p.nar}</span></span>${enkatDel(p)}</div>`).join('')}</div>
+      </section>
+      ${om}
+    </div></div>`
+}
+
+// ── B · Arbetsbänken ───────────────────────────────────────────────────────────────────────
+function B() {
+  const s = SPEL[0]
+  const fan = [SPEL[2], SPEL[1], s]
+  const rad = (s) => `<a class="rad" href="#">${kort(s, 92)}<span class="t"><strong>${s.namn}</strong><span class="muted">v${s.rev} · ${s.kort} kort · ${s.spelare} spelare</span><span class="muted">${spelatRad(s)}</span>${(delChip(s) + levChip(s) + flaggChip(s)) ? `<span class="chips">${delChip(s)}${levChip(s)}${flaggChip(s)}</span>` : ''}</span><button class="mer" type="button" aria-label="Fler val" onclick="event.preventDefault()">⋯</button></a>`
+  const spelat = `<section class="panel spelat"><h2 class="h2">Bord du har spelat vid</h2><div class="tidslinje">${SPELAT.map((p) => `<div>${plats(p)}<span><b>${p.spel}</b><small>${p.v} · som ${p.namn} · ${p.nar}</small></span>${p.pagar ? '<a class="knapp prim liten" href="#">Öppna</a>' : p.enkat === 'vantar' ? '<a class="knapp sek liten" href="#">Enkät</a>' : `<span class="muted">${ikon.bock.replace('<svg', '<svg width="16" height="16" style="color:#7dd3a0"')}</span>`}</div>`).join('')}</div></section>`
+  return `<div class="B">
+    <div class="topp">${marke}<div class="hoger"><button class="knapp tyst importera" type="button">${ikon.imp}<span>Importera</span></button><a class="knapp prim" href="#">＋ Nytt spel</a>${avatar}</div></div>
+    <div class="bank">
+      <div class="huvud">
+        <div class="halsning"><h1>Mina spel</h1></div>
+        <section class="hero" style="--c:${s.c}">
+          <div class="solfjader">${fan.map((f) => kort(f, 230)).join('')}</div>
+          <div class="text">
+            <span class="over">Fortsätt där du slutade</span>
+            <h2>${s.namn}</h2>
+            <span class="muted">Version ${s.rev} sparad ${s.andrad} · ${s.spelare} spelare</span>
+            <div class="siffror"><div><b>${s.kort}</b><span>kort</span></div><div><b>${s.bord}</b><span>bord spelade</span></div><div><b>${s.enkater}</b><span>enkätsvar</span></div><div><b style="color:var(--gul)">${s.flaggor}</b><span>nya flaggor</span></div></div>
+            <div class="knappar"><a class="knapp prim" href="#">${ikon.penna} Öppna editorn</a><a class="knapp sek" href="#">Öppna bordet R8RHY5</a></div>
+          </div>
+        </section>
+        <section class="panel" style="gap:12px">
+          <div class="sekhuvud"><h2 class="h2">Alla spel</h2><div class="hoger"><div class="segment"><button aria-pressed="true">Alla<span>7</span></button><button>Delade<span>2</span></button></div></div></div>
+          <div class="smagrid">${SPEL.slice(1).map(rad).join('')}<a class="rad nytt" href="#"><span class="plus">＋</span><span><b style="color:#fff">Nytt spel</b><br><span class="muted" style="font-size:13px">Namn och antal spelare — resten gör guiden.</span></span></a></div>
+        </section>
+        <section class="mobilspelat panel">${spelat.replace('class="panel spelat"', 'class="panel"')}</section>
+      </div>
+      <aside class="rail">
+        <section class="panel"><h2 class="h2">Pågår nu · ${LEVER.length}</h2>
+          ${LEVER.map((b) => `<div class="lev"><div class="topprad"><b>${b.spel.namn}</b><small style="color:#9fc9b0">sedan ${b.start}</small></div><div class="topprad"><span class="kod">${b.kod}</span><span class="platser">${Array.from({ length: b.platser }, (_, i) => i < b.satt ? `<i class="plats" style="background:${['#e0864f', '#4f8be0', '#7dd3a0', '#d0679a', '#c9b04f', '#9a7be0'][i]}">${'ABCDEF'[i]}</i>` : '<i class="plats ledig"></i>').join('')}</span></div><a class="knapp prim" href="#">Öppna bordet</a></div>`).join('')}
+        </section>
+        <section class="panel"><h2 class="h2">Väntar på dig</h2>
+          <div class="gora">
+            <a href="#"><span class="rund">⚑</span><span><b>3 nya flaggor</b><small>Sal's Saloon v7 · från bordet i går</small></span><span class="pil">›</span></a>
+            <a href="#"><span class="rund g">✎</span><span><b>Svara på enkäten</b><small>Sjörövarnas skatt · du spelade som Nick</small></span><span class="pil">›</span></a>
+            <a href="#"><span class="rund b">${ikon.delad.replace('class="ikon"', 'width="16" height="16"')}</span><span><b>Kim sparade version 5</b><small>Polarnatt · för 4 dagar sedan</small></span><span class="pil">›</span></a>
+          </div>
+        </section>
+        ${spelat}
+        <section class="kodruta"><label>Ska du spela? Skriv rumskoden</label><div><input class="falt kodfalt" placeholder="KOD"><button class="knapp sek" type="button">Gå med</button></div></section>
+      </aside>
+    </div>${om}</div>`
+}
+
+// ── C · Listan ─────────────────────────────────────────────────────────────────────────────
+function C() {
+  const roll = (s) => s.roll ? `<span class="chip delad">${s.agare.split('@')[0]} · ${ROLL[s.roll]}</span>` : `<span class="muted" style="font-size:12px">Ditt</span>`
+  const tr = (s) => `<tr class="${s.lever.length ? 'lever' : ''}">
+    <td><div class="namncell">${kort(s, 58, 'liten')}<div><strong>${s.namn}</strong><div class="under">${roll(s)}${levChip(s)}${flaggChip(s)}</div></div></div></td>
+    <td class="tal">v${s.rev}</td><td class="tal">${s.kort}</td><td class="kol-spelare">${s.spelare}</td><td class="tal">${s.bord}</td>
+    <td>${s.senast ?? '<span class="muted">aldrig</span>'}</td><td class="kol-andrad">${s.andrad}</td>
+    <td class="handling">${s.roll === 'tester' || s.kort === 0 ? '' : s.lever.length ? '<a class="knapp prim liten" href="#">Öppna bordet</a>' : `<button class="knapp sek liten" type="button">${ikon.spela} Starta bord</button>`} <button class="mer" type="button" aria-label="Fler val">⋯</button></td></tr>`
+  return `<div class="C">
+    <div class="topp">${marke}<div class="hoger">${kodrad}${avatar}</div></div>
+    <div class="inne">
+      <div class="rubrik"><h1>Mina spel</h1><div class="hoger"><button class="knapp sek importera" type="button">${ikon.imp}<span>Importera</span></button><a class="knapp prim" href="#">＋ <span class="lang">Nytt spel</span></a></div></div>
+      <div class="flikar" role="tablist"><button role="tab" aria-selected="true">Spel<span>7</span></button><button role="tab">Pågår nu<span class="lev">2</span></button><button role="tab">Bord du spelat vid<span>4</span></button></div>
+      <div class="verktyg"><label class="sok">${ikon.sok}<input class="falt" placeholder="Sök bland spelen"></label><select class="falt"><option>Alla spel</option><option>Mina</option><option>Delade med mig</option></select><div class="hoger vy"><div class="segment"><button aria-pressed="true">Lista</button><button>Rutnät</button></div></div></div>
+      <table><thead><tr><th>Spel</th><th class="tal">Version</th><th class="tal">Kort</th><th class="kol-spelare">Spelare</th><th class="tal">Bord</th><th>Senast spelat</th><th class="kol-andrad sort">Ändrat</th><th></th></tr></thead>
+        <tbody>${SPEL.map(tr).join('')}<tr class="nyrad"><td colspan="8"><a href="#">＋ Nytt spel</a></td></tr></tbody></table>
+      <div class="listkort">${SPEL.map((s) => `<div>${kort(s, 64, 'liten')}<span><strong>${s.namn}</strong><span class="muted">v${s.rev} · ${s.kort} kort · ${spelatRad(s)}</span><span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${delChip(s)}${levChip(s)}${flaggChip(s)}</span></span><button class="mer" type="button">⋯</button></div>`).join('')}</div>
+      ${om}
+    </div></div>`
+}
+
+// ── D · Sidomenyn ──────────────────────────────────────────────────────────────────────────
+function D() {
+  const stall = (s) => `<div class="stall">
+    <div class="ram2">${s.kort ? '<span class="bakom b2"></span><span class="bakom"></span>' : ''}<a href="#" style="position:relative;display:block">${kort(s, 250)}</a>${s.lever.length ? `<span class="ovan">${levChip(s)}</span>` : ''}
+    ${s.roll === 'tester' || s.kort === 0 ? '' : `<div class="snabb"><a class="knapp sek liten" href="#">${ikon.penna} Redigera</a>${s.lever.length ? '<a class="knapp prim liten" href="#">Bordet</a>' : `<button class="knapp prim liten" type="button">${ikon.spela} Spela</button>`}</div>`}</div>
+    <div class="namnrad"><span><strong>${s.namn}</strong><br><span class="muted">v${s.rev} · ${s.kort} kort · ${s.bord ? `${s.bord} bord` : 'inte spelat'}</span>${s.roll ? `<br><span class="muted" style="font-size:12px">Delat av ${s.agare.split('@')[0]}</span>` : ''}</span><button class="mer" type="button" aria-label="Fler val">⋯</button></div>
+  </div>`
+  return `<div class="D">
+    <aside class="meny">
+      ${marke}
+      <a class="knapp prim" href="#">＋ Nytt spel</a>
+      <nav>
+        <a href="#" aria-current="page">${ikon.hylla} Mina spel <span class="n">5</span></a>
+        <a href="#">${ikon.delad} Delade med mig <span class="n">2</span></a>
+        <a href="#">${ikon.bord} Bord du spelat vid <span class="n">4</span></a>
+        <a href="#">${ikon.imp} Importera spel</a>
+      </nav>
+      <h2 class="h2">Pågår nu</h2>
+      <div class="levande">${LEVER.map((b) => `<a href="#"><b>${b.spel.namn}</b><span class="kod">${b.kod}</span><small>${b.satt} av ${b.platser} platser</small></a>`).join('')}</div>
+      <div class="botten">
+        <div class="kodrad"><label>Ska du spela?</label><div><input class="falt kodfalt" placeholder="KOD"><button class="knapp sek liten" type="button">Gå med</button></div></div>
+        <div class="konto"><span class="avatar">N</span><span>nicklas@exempel.se</span><a class="mer" href="#" title="Logga ut">${ikon.ut}</a></div>
+      </div>
+    </aside>
+    <div>
+      <div class="mobiltopp">${marke}<div class="hoger"><a class="knapp prim liten" href="#">＋ Nytt spel</a>${avatar}</div></div>
+      <div class="yta">
+        <div class="rubrik"><h1>Mina spel</h1><div class="hoger"><label class="sok">${ikon.sok}<input class="falt" placeholder="Sök"></label><select class="falt"><option>Senast ändrade</option><option>Senast spelade</option><option>Namn</option></select></div></div>
+        <div class="flikar-mobil"><button aria-pressed="true">Mina spel 5</button><button class="lev">● Pågår 2</button><button>Delade 2</button><button>Spelade bord 4</button></div>
+        <div class="hylla">${EGNA.map(stall).join('')}<a class="stall nytt" href="#"><span class="platshallare"><b>＋</b>Nytt spel</span></a></div>
+        <h2 class="h2" style="margin-top:8px">Delade med dig</h2>
+        <div class="hylla">${DELADE.map(stall).join('')}</div>
+        ${om}
+      </div>
+    </div></div>`
+}
+
+function Idag(w) {
+  return `<img class="dump" alt="Mina spel i dag, ${w} px bred" src="bilder/idag-${w <= 500 ? 'telefon' : 'dator'}.png">`
+}
+
+const VARIANTER = [
+  { k: 'idag', namn: 'I dag', fn: Idag, beskr: 'Skärmdumpar ur den riktiga appen (riktig server, fyra spel, två bord igång). Bredden växlar mellan dumparna 1440 och 390. Notera: på 1440 står allt i en 920 px spalt; på telefon tar varje spel ~300 px höjd med ett 132 px kort i hörnet; «＋ Nytt spel» hänger i överkanten av sin ruta (align-content: start vinner över place-items) — en bugg oavsett vad som väljs.' },
+  { k: 'A', namn: 'A — Hyllan', fn: A, beskr: 'Samma rutnät, men brett (upp till 1440), större kort på en scen i spelets färg, och tre rader fakta per spel. «Redigera» och «Starta bord» syns direkt på brickan i stället för bakom ⋯. Verktygsrad: Alla/Mina/Delade, sök, sortering. Rumskod, Importera och Nytt spel i en riktig toppbar. Telefon: brickan blir en rad med kortet till vänster. Ny data: antal kort, antal spelare, platser vid ett pågående bord, flaggor per spel.' },
+  { k: 'B', namn: 'B — Arbetsbänken', fn: B, beskr: 'Sidan svarar på «vad gör jag nu?»: det senast ändrade spelet stort överst med siffror och sina två viktigaste knappar, alla andra spel som kompakta rader under. En högerspalt bär det som händer: pågående bord med kod och vilka platser som är tagna, «Väntar på dig» (flaggor, enkäter, en medredigerares nya version), spelade bord och rumskoden. Telefon: högerspalten hamnar först. Ny data: senast ändrad, kort, enkätsvar och flaggor per spel, en enkel händelseström. Obs: solfjädern (tre kort) i heron går emot beslutet «ett kort» (#231) — kan lika gärna vara ett.' },
+  { k: 'C', namn: 'C — Listan', fn: C, beskr: 'En tabell som i en filhanterare: miniatyrkort, namn, roll, version, kort, spelare, bord, senast spelat, ändrat. «Starta bord» syns på raden vid hover; ett spel med bord igång har grön rad och sin knapp alltid framme. Flikar ersätter de tre sektionerna. Byggd för många spel; ger minst känsla av «mina kortspel». Telefon: tvåradiga rader. Ny data: kort, spelare, ändrat.' },
+  { k: 'D', namn: 'D — Sidomenyn', fn: D, beskr: 'Ett appskal som editorn: vänstermeny med Nytt spel, avdelningarna, pågående bord med kod, rumskoden och kontot längst ned. Spelen som en hylla av stora kort (250 px) utan brickor — kortet är spelet. «Redigera» och «Spela» glider fram över kortet vid hover. Telefon: menyn blir en toppbar och chips, två kort i bredd. Ny data: antal kort.' },
+]
+
+// ── Växlaren ───────────────────────────────────────────────────────────────────────────────
+const BREDDER = [1440, 1280, 1024, 390]
+const q = new URLSearchParams(location.search)
+let vi = Math.max(0, VARIANTER.findIndex((v) => v.k === (q.get('v') ?? 'B')))
+let w = Number(q.get('w')) || 1440
+if (q.has('shot')) document.body.classList.add('shot')
+const ram = document.getElementById('ram'), hylsa = document.getElementById('hylsa')
+function rita() {
+  const v = VARIANTER[vi]
+  const bw = v.k === 'idag' ? (w <= 500 ? 390 : 1440) : w
+  ram.style.width = bw + 'px'
+  ram.dataset.w = bw
+  ram.innerHTML = v.fn(bw)
+  document.getElementById('vnamn').textContent = `${v.namn} · ${bw} px`
+  document.getElementById('vbeskr').textContent = v.beskr
+  document.getElementById('vlabel').textContent = v.namn
+  document.getElementById('bredder').innerHTML = BREDDER.map((b) => `<button type="button" aria-pressed="${b === w}" data-b="${b}">${b}</button>`).join('')
+  const nq = new URLSearchParams({ v: v.k, w })
+  history.replaceState(null, '', `?${nq}`)
+  skala()
+  ram.querySelectorAll('img').forEach((i) => i.addEventListener('load', skala, { once: true }))
+}
+function skala() {
+  const bw = Number(ram.dataset.w)
+  const plats = document.getElementById('stage').clientWidth - (q.has('shot') ? 0 : 32)
+  const s = Math.min(1, plats / bw)
+  ram.style.transform = `scale(${s})`
+  hylsa.style.width = bw * s + 'px'
+  hylsa.style.height = ram.offsetHeight * s + 'px'
+}
+document.getElementById('forra').onclick = () => { vi = (vi + VARIANTER.length - 1) % VARIANTER.length; rita() }
+document.getElementById('nasta').onclick = () => { vi = (vi + 1) % VARIANTER.length; rita() }
+document.getElementById('bredder').onclick = (e) => { const b = e.target.closest('button'); if (b) { w = Number(b.dataset.b); rita() } }
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  if (e.key === 'ArrowLeft') document.getElementById('forra').click()
+  if (e.key === 'ArrowRight') document.getElementById('nasta').click()
+})
+addEventListener('resize', skala)
+new ResizeObserver(skala).observe(ram)
+rita()
+</script>
+</body>
+</html>
