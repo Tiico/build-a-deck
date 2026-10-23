@@ -318,7 +318,9 @@ html:has(.byd-player) { background: #14161c; }
 .byd-survey-dots i[data-on='true'] { background: var(--byd-accent); }
 .byd-survey-nav button { padding: 14px 18px; border-radius: 12px; font-size: 15px; }
 .byd-survey-nav button:disabled { opacity: 0.35; }
-.byd-survey-thanks { display: grid; place-items: center; text-align: center; gap: 8px; }
+/* One group in the middle of the screen: without `align-content` the rows stretched to the whole
+   height and the thanks, the line and the way on stood a third of a screen apart (#1143). */
+.byd-survey-thanks { display: grid; place-items: center; align-content: center; text-align: center; gap: 8px; }
 .byd-survey-thanks strong { font-size: 24px; }
 /* On a wide screen (the observer's), the survey keeps a phone's width. */
 .byd-survey > * { width: 100%; max-width: 520px; margin: 0 auto; box-sizing: border-box; }

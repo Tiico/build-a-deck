@@ -1935,6 +1935,14 @@ Den gamla token slutar gälla, som en bärartoken ska när den flyttar till en a
 Finns ingen plats kvar att gå tillbaka till — den är lämnad eller sparkad — går länken till platsväljaren.
 Tre varianter prövades för startsidan; valet blev två rutnät: egna spel först som förut, sedan "Bord du spelat vid" med platsens färg, spelet, namnet man spelade under, enkät och flaggor, och "Tillbaka till bordet" medan det pågår och koden lever. En ren gäst utan egna spel ser "Nytt spel" som inbjudan ovanför sina bord.
 
+Enkäten från Mina spel (beställarens beslut 2026-10-22, #1143, variant B av tre i `docs/ux-audits/2026-10-22-spelade-bord/prototyper/`):
+Brickan sade «enkät besvarad» eller «enkät inte besvarad» och ledde ingenstans; ett avslutat bord har ingen väg in, så den som inte svarade kunde inte svara, och den som svarade fick ett kvitto utan följd.
+Brickan säger nu bara det spelaren kan använda: «pågår» och «Öppna bordet» medan bordet pågår, «avslutat» och knappen «Svara på enkäten» när enkäten väntar, och en tyst bock med «Du har svarat på enkäten» när den är besvarad.
+Flaggorna står inte längre på brickan; de är designerns data och syns i Bord-fliken (#1010).
+Ett borttaget spels bord erbjuder ingen enkät.
+Knappen leder till `/survey?session=…`, telefonens egen enkät, med vägen tillbaka till Mina spel under tacket.
+`POST /sessions/:id/survey` tar utan token emot svaret från ett inloggat konto som claimat en admission vid bordet, under den admissionens namn och plats och med samma ett-svar-per-plats som #1021; en sparkad admission har ingen röst, och en claimad admission går inte ut som en token gör.
+
 Startsidan färdig 2026-09-08:
 Varje spel säger hur många bord det har och när ett av dem senast spelades vid; ett spel ingen satt sig till säger "aldrig spelat". Uppgiften kommer ur loggen, inte ur något listan håller själv.
 Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rumskoden på plats med en väg till bordets skärm, eller tar bort spelet efter en fråga; hela historien följer med och det går inte att ångra.

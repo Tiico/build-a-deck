@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { questions, type SurveyAnswers } from './surveyApi.js'
 import { useT } from '../i18n/index.js'
 import { versionWord } from '../i18n/version.js'
@@ -11,12 +11,13 @@ import { versionWord } from '../i18n/version.js'
 // what the second question asks about when it did (#744); `null` while that is being asked.
 // `saved`: the claim has come back here (#690). Saving is only offered once the answers are sent,
 // so it is the thanks that stand — in a tab of its own too, where `remember` knows nothing — and
-// they say it is saved in place of offering it again.
-export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined; remember?: string | undefined; rulebook?: boolean | null | undefined; saved?: boolean | undefined }
+// they say it is saved in place of offering it again. `onward`: the way on under the thanks, for a
+// survey answered from the account (#1143), which has a page to go back to where the phone has not.
+export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined; remember?: string | undefined; rulebook?: boolean | null | undefined; saved?: boolean | undefined; onward?: ReactNode }
 
 // The survey after a session (G3, prototype A): one question at a time with big buttons, a free
 // line last, then thanks. Answers are tied to the version the session ended on.
-export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, saved = false }: SurveyProps) {
+export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, saved = false, onward }: SurveyProps) {
   const t = useT()
   const [step, setStep] = useState(0)
   const [scales, setScales] = useState<Partial<Record<'fun' | 'clarity' | 'balance', number>>>({})
@@ -49,6 +50,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, sa
           {saved ? <span>{t('survey.saved')}</span> : saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
           {/* What a guest leaves behind, said where she saves it (#757). */}
           {!saved && saveUrl && <p className="byd-muted">{t('guest.kept')}</p>}
+          {onward}
         </div>
         <div />
       </div>

@@ -13,6 +13,7 @@ import { chromium, type Browser } from 'playwright'
 import { HomePage } from '../src/account/HomePage.js'
 import { ROW, helpAnchor, helpPlacement } from '../src/editor/HelpDrawer.js'
 import { StatusLive } from '../src/status/StatusLive.js'
+import { Survey } from '../src/player/Survey.js'
 import { projectDoc } from './project-doc.js'
 import { admit, createSession, startServer, type Running } from './fixture.js'
 
@@ -244,6 +245,28 @@ describe('the tables sat at, at 390 and 1280 px', () => {
       expect(played.left).toBeCloseTo(game.left, 0)
       expect(played.top).toBeCloseTo(game.top, 0)
       expect(played.right).toBeGreaterThanOrEqual(16)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The survey's thanks, which Mina spel's «Svara på enkäten» ends on (#1143) as the phone does: the
+// grid's rows stretched to the whole height, so the thanks, the line under it and the way on stood
+// a third of a screen apart. They are one group, held together in the middle.
+describe('the thanks after the survey', () => {
+  it.each([390, 1440])('keeps the thanks and what follows them together (%i px)', async (width) => {
+    const { container } = render(<Survey who="Ada" version="v2" saved onSubmit={() => Promise.resolve()} onward={<a className="byd-survey-save" href="/">Till Mina spel</a>} />)
+    const sheets = ['src/player/player.css', 'src/buttons.css', 'src/a11y.css'].map(read).join('\n')
+    const page = await browser.newPage({ viewport: { width, height: 844 } })
+    try {
+      await page.setContent(shell.replace('<script type="module" src="/src/main.tsx"></script>', '').replace('</head>', `<style>${sheets}</style></head>`).replace('<div id="root"></div>', `<div id="root">${container.innerHTML}</div>`), { waitUntil: 'load' })
+      const gaps = (await page.evaluate(`(() => {
+        const r = [...document.querySelector('.byd-survey-thanks').children].map((el) => el.getBoundingClientRect())
+        return r.slice(1).map((b, i) => b.top - r[i].bottom)
+      })()`)) as number[]
+      expect(gaps.length).toBeGreaterThanOrEqual(2)
+      for (const gap of gaps) expect(gap).toBeLessThanOrEqual(16)
     } finally {
       await page.close()
     }
