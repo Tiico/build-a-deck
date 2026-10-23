@@ -1,5 +1,5 @@
 import { applyEdit, checkNewName, decideEdit, type EditIntent } from './edits.js'
-import { stamp, type Ceilings, type ProjectDoc, type ProjectStore } from './projects.js'
+import { liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
 import { cardGrowth, type CardMeasure } from './quota-cards.js'
 import { QuotaReached, type Bearer, type Limit, type QuotaMet } from './quotas.js'
@@ -267,7 +267,12 @@ async function replayed(id: string, store: ProjectStore): Promise<{ doc: Project
       console.error(JSON.stringify({ msg: 'edit-skipped', project: id, seq: entry.seq, intent: entry.intent.v, error: err instanceof Error ? err.message : String(err) }))
     }
   }
-  return { doc, saved, rev: rec.rev, seq: tail.at(-1)?.seq ?? from, owner: rec.owner }
+  // The tail is stored as it was written, and an edit that carries a face or a whole document — a
+  // reorder, a restore — carries it in the shape it had then. So what the tail made is read through
+  // the same door the saved version came through (#1238): a starter frame's square picture put back
+  // after the last save is rounded as the saved one is. Only when there is a tail, so a project with
+  // none is still exactly its saved version, which is how the actor tells nothing is unsaved.
+  return { doc: tail.length > 0 ? liftDoc(doc) : doc, saved, rev: rec.rev, seq: tail.at(-1)?.seq ?? from, owner: rec.owner }
 }
 
 // The document without the record's own fields: what an editor holds and an edit applies to.
