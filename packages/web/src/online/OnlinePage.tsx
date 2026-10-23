@@ -280,11 +280,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             shuffles={shuffles}
             onPresence={(p) => client.sendPresence(p)}
             startWait={startWait}
-<<<<<<< HEAD
             onFit={setFelt}
-=======
             startTile={!waiting}
->>>>>>> origin/claude/1130-vantrum-online
           />
         </div>
         {/* One hand, one copy of it. While the grid stands the band is still drawn — dimmed,
