@@ -10,8 +10,8 @@ export type Game = {
   cards?: number
   copies?: number
   name?: string
-  /** The game's dice (K28, #1136), as the project document's `setup.dice` says them. */
-  dice?: NonNullable<ProjectDoc['setup']['dice']>
+  /** The game's dice, as the project document's `setup.dice` says them (K28, #1136). */
+  dice?: ProjectDoc['setup']['dice']
 }
 
 // A card with a title and a body and nothing else. The template is deliberately plain: a journey

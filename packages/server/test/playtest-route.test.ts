@@ -128,6 +128,28 @@ for (const backend of backends) {
       expect(read.versions).toEqual([{ version: 'rev-1', ended: 1, running: 0, players: 2, answered: 1, observers: 1, flags: 2, distribution: { fun: [0, 0, 0, 1, 0], clarity: [0, 0, 1, 0, 0], balance: [0, 0, 0, 1, 0] } }])
     })
 
+    // A flag about a card (#1142) is read with the card's textures in the version it was raised on —
+    // the very hashes the table handed the flagger — and with how the game's newest version differs.
+    it('reads a flag about a card with the textures the table showed, and says when the row has changed since', async () => {
+      const owner = as(await login(`eva-${++games}@example.com`))
+      const project = `p-${process.pid}-${games}`
+      await owner('POST', '/projects', { id: project, ...game() })
+      const table = (await (await owner('POST', `/projects/${project}/sessions`, {})).json()) as { id: string; code: string; hostKey: string }
+      registerRoom(table.id, table)
+      const ada = await WireClient.connect(run.base, table.id, 'A', undefined, { token: await run.admit(table.id, 'A', 'Ada') })
+      await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+      await ada.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+      const held = ada.view!.components.find((c) => c.zone === 'hand:A')!
+      await ada.send('A', { v: 'flag', component: held.id, note: 'Drake? Draken!' })
+      await ada.send('A', { v: 'session.end' })
+      await ada.close()
+
+      const flagged = async () => ((await (await owner('GET', `/projects/${project}/playtest`)).json()) as Playtest).tables[0]!.flags[0]!.card
+      expect(await flagged()).toMatchObject({ id: held.id, cardRef: 'dragon', title: 'Drake', faces: held.faces, seen: 'front', place: { zone: 'Hand', kind: 'hand', owner: 'Ada' }, now: 'same' })
+      expect((await owner('PUT', `/projects/${project}`, { rev: 1, ...game(), rows: [{ id: 'dragon', fields: { title: 'Draken', antal: 6 } }] })).status).toBe(200)
+      expect(await flagged()).toMatchObject({ title: 'Drake', faces: held.faces, now: 'changed' })
+    })
+
     it('is read by those who may start the game’s tables, and by nobody else', async () => {
       const ownerCookie = await login(`bo-${++games}@example.com`)
       const owner = as(ownerCookie)

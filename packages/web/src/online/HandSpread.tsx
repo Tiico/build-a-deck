@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react'
 import { useDoor } from '../doors.js'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
-import { Texture } from '../table/Texture.js'
+import { HandFace, TURNED_GROUND } from '../player/HandFace.js'
 import { useRoving } from '../editor/roving.js'
-import { cardWord, handLabel } from '../table/keyboard.js'
+import { handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { spreadStyle } from './fan.js'
 
@@ -16,6 +16,8 @@ export type HandSpreadProps = {
   onClose(): void
   // How many cards a row holds, when the grid is an overview rather than a reading (the phone, #767).
   columns?: number | undefined
+  // The cards turned over in the hand, shown as their backs (#1133).
+  turned?: ReadonlySet<string> | undefined
 }
 
 // The hand read all at once (#24, prototype C's Uppslaget, kept as the fan's second mode). The
@@ -36,7 +38,7 @@ export type HandSpreadProps = {
 // they are and stay reachable; a surface that covers the only Ångra on the page has made it
 // unreachable and not merely hidden. When the hand is larger than the screen the grid scrolls in
 // its own box and the page never does, which is L10's rule for the data table applied here.
-export function HandSpread({ cards, faces, onOpen, onClose, columns }: HandSpreadProps) {
+export function HandSpread({ cards, faces, onOpen, onClose, columns, turned }: HandSpreadProps) {
   const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'both' })
@@ -78,8 +80,9 @@ export function HandSpread({ cards, faces, onOpen, onClose, columns }: HandSprea
                 type="button"
                 className="byd-hand-face byd-spread-card"
                 data-spread-card={c.id}
-                aria-label={handLabel(c, false, t)}
-                style={{ ['--hue' as string]: hue(c.cardRef ?? '') }}
+                aria-label={handLabel(c, false, t, turned?.has(c.id) === true)}
+                data-turned={turned?.has(c.id) === true ? 'true' : undefined}
+                style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true ? TURNED_GROUND : {}) }}
                 tabIndex={item.tabIndex}
                 ref={item.ref}
                 onFocus={item.onFocus}
@@ -93,8 +96,7 @@ export function HandSpread({ cards, faces, onOpen, onClose, columns }: HandSprea
                   item.onKeyDown(e)
                 }}
               >
-                <Texture faces={faces} c={c} />
-                <span aria-hidden="true">{cardWord(c)}</span>
+                <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
               </button>
             )
           })}

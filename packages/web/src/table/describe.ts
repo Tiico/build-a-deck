@@ -4,6 +4,7 @@ import { handName } from './handName.js'
 import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 import { versionWord } from '../i18n/version.js'
+import { dieKind } from '../components.js'
 
 // The lines worth saying. A card played to a public zone is one envelope with a move and a flip,
 // and said as its flip it never said where the card went (#560 P-12): the flip of a card the same
@@ -39,8 +40,8 @@ export function sayable(lines: readonly Activity[]): Said[] {
 function thrown(rolls: readonly { component: string; value: number }[], view: Snapshot): string {
   const kinds = new Map<string, number[]>()
   for (const r of rolls) {
-    const type = view.components.find((c) => c.id === r.component)?.type.id ?? ''
-    const kind = /^die\.(d\d+)$/.exec(type)?.[1] ?? 'd?'
+    const die = view.components.find((c) => c.id === r.component)
+    const kind = (die && dieKind(die)) ?? 'd?'
     kinds.set(kind, [...(kinds.get(kind) ?? []), r.value])
   }
   const told = [...kinds].map(([kind, values]) => `${values.length > 1 ? values.length : ''}${kind}: ${values.join(' + ')}`).join(', ')
@@ -138,6 +139,22 @@ export function describeActivity(line: Said, view: Snapshot, t: T): string {
     case 'flag': {
       const flagger = it.observer ? t('activity.flag.observer', { name: it.observer }) : who
       return it.note ? t('activity.flag.note', { who: flagger, note: it.note }) : t('activity.flag', { who: flagger })
+    }
+    // The notepad (#1131). A tick and a removal carry only the row's id, so the row is named by what
+    // it says while the reader still has it — and a removed row, which the reader no longer has once
+    // the patch has landed, is said without it.
+    case 'note.add':
+      return t('activity.note.add', { who, text: it.text })
+    case 'note.edit':
+      return t('activity.note.edit', { who, text: it.text })
+    case 'note.check': {
+      const text = view.notes.find((n) => n.id === it.note)?.text
+      if (text === undefined) return t(it.done ? 'activity.note.checked' : 'activity.note.unchecked', { who })
+      return t(it.done ? 'activity.note.check' : 'activity.note.uncheck', { who, text })
+    }
+    case 'note.remove': {
+      const text = view.notes.find((n) => n.id === it.note)?.text
+      return text === undefined ? t('activity.note.removed', { who }) : t('activity.note.remove', { who, text })
     }
   }
 }

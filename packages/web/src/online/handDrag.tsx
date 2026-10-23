@@ -2,6 +2,7 @@ import { useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
+import { HandFace, TURNED_GROUND } from '../player/HandFace.js'
 import { FAN_AIM_PX } from './fan.js'
 
 export type Held = { id: string; x: number; y: number }
@@ -97,11 +98,18 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, { locked =
 //
 // Over the table it is the card it will become (#484 fynd 4, beslut C): `size` is a card on the felt,
 // in pixels, and the ghost takes it, so what is seen before the release is what lies there after.
-export function HandGhost({ at, card, faces, size }: { at: Held; card: VisibleComponentState; faces?: string | undefined; size?: { w: number } | null | undefined }) {
+// A card turned over in the hand is carried as its back, the way it will land (#1133, K24).
+export function HandGhost({ at, card, faces, size, turned = false }: { at: Held; card: VisibleComponentState; faces?: string | undefined; size?: { w: number } | null | undefined; turned?: boolean }) {
   return (
-    <div className="byd-fan-ghost" data-on-felt={size ? '' : undefined} style={{ left: at.x, top: at.y, ['--hue' as string]: hue(card.cardRef ?? ''), ...(size ? { ['--fan-card' as string]: `${size.w}px` } : {}) }}>
-      <Texture faces={faces} c={card} />
-      <span>{card.cardRef}</span>
+    <div className="byd-fan-ghost" data-on-felt={size ? '' : undefined} data-turned={turned ? 'true' : undefined} style={{ left: at.x, top: at.y, ['--hue' as string]: hue(card.cardRef ?? ''), ...(turned ? TURNED_GROUND : {}), ...(size ? { ['--fan-card' as string]: `${size.w}px` } : {}) }}>
+      {turned ? (
+        <HandFace faces={faces} c={card} turned />
+      ) : (
+        <>
+          <Texture faces={faces} c={card} />
+          <span>{card.cardRef}</span>
+        </>
+      )}
     </div>
   )
 }

@@ -49,6 +49,21 @@ describe('recording an entry', () => {
     expect(Object.keys(entry.expected).sort()).toEqual(['A', 'B', 'observer', 'table'])
     expect(entry.expected['A']?.seats.find((s) => s.id === 'A')?.name).toBe('Spelare 1')
   })
+
+  it('anonymises what was written on the notepad, and keeps that a row was written, changed and ticked (#1131)', () => {
+    const h = new Harness()
+    const added = h.do('A', { v: 'note.add', text: 'Nicklas har 7 poäng' })
+    h.do('B', { v: 'note.edit', note: `n${added.seq}`, text: 'Nicklas har 9 poäng' })
+    h.do('B', { v: 'note.check', note: `n${added.seq}`, done: true })
+    const log = anonymise(h.log)
+    expect(log.map((l) => l.intent)).toEqual([
+      { v: 'note.add', text: '(anteckning)' },
+      { v: 'note.edit', note: `n${added.seq}`, text: '(anteckning)' },
+      { v: 'note.check', note: `n${added.seq}`, done: true },
+    ])
+    const entry = record('test', 'v1', h.state.setup, h.log, registry)
+    expect(entry.expected['A']?.notes).toEqual([{ id: `n${added.seq}`, by: 'A', text: '(anteckning)', done: true }])
+  })
 })
 
 // The game as well as the people (#540, beställarens beslut): the repo is public, and a real log

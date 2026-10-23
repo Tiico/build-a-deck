@@ -102,6 +102,7 @@ function Measure({ value, said, note, onStep, choices }: MeasureProps) {
         className="byd-pill-value"
         aria-haspopup="menu"
         aria-expanded={open}
+        data-drop
         {...(open ? { 'aria-controls': menuId } : {})}
         aria-label={said}
         onClick={() => setOpen((was) => !was)}

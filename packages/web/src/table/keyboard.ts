@@ -3,6 +3,7 @@ import { translate, type Key, type T } from '../i18n/index.js'
 import { dieKind, isCounter, isDie, standIn } from '../components.js'
 import { besidePile, type DragTarget } from './drop.js'
 import { laidIn } from './lay.js'
+import { faceDown } from '../player/play.js'
 import { handName } from './handName.js'
 import { compileAction } from './actions.js'
 import type { Shortcut } from './ShortcutHelp.js'
@@ -166,7 +167,8 @@ export function feltLabels(view: Snapshot, t: T = swedish): Map<string, string> 
 // only opens the card on this screen (K8).
 // `look` is the card to hold up: an id the view knows, or the card itself when the view was
 // handed none — a face-down bottom card (K23) is only a back the zone described.
-export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string | VisibleComponentState; set?: string }
+// `turn` turns a card over in this seat's own hand (#1133): the hand's memory, nothing sent.
+export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string | VisibleComponentState; set?: string; turn?: string }
 
 // What a counter can be asked to do (C4, #67): one step either way, and a number said outright.
 // The same three things the phone's `CountersRow` offers and nothing more — not a step of five,
@@ -340,7 +342,8 @@ function numbered(places: Place[], t: T): Place[] {
 // another card with `stack`, the top of a pile with `split` or `stack`, a whole pile with
 // `movePile` — and `movePile` and a `split` without a `to` demand x and y that a keyboard has
 // not got, so the client invents the zone's own corner. Also an open question in I.
-export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, moving: readonly string[]): Intent[] {
+// A card in `turned` was turned over in this seat's hand and goes face down (#1133, `faceDown`).
+export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, moving: readonly string[], turned: ReadonlySet<string> = new Set()): Intent[] {
   if (thing.kind === 'pile') {
     const z = view.zones.find((x) => x.id === place.zone)
     return [{ v: 'movePile', pile: thing.pile, to: place.kind === 'area' ? place.zone : view.floor, x: (z?.geometry.x ?? 0) + PILE_CORNER, y: (z?.geometry.y ?? 0) + PILE_CORNER }]
@@ -365,7 +368,9 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter' && thing.kind !== 'die'
   return moving.flatMap((id, i): Intent[] => {
     const laid = laidIn(view, place.zone, i)
-    const to: Intent = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
+    const to: Intent & { v: 'move' } = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
+    const c = turned.has(id) ? view.components.find((x) => x.id === id) : undefined
+    if (c) return faceDown(view, c, to)
     return isPublic ? [to, { v: 'flip', component: id, face: 'front' }] : [to]
   })
 }
@@ -387,8 +392,10 @@ export function landedKeyFor(view: Snapshot, place: Place, thing: Thing): string
 
 // A card in this seat's own hand, for a reader. The hand is not on the felt, so it is not a
 // `Thing`; the sentence is the same shape all the same, and marking says so out loud (K3).
-export function handLabel(c: VisibleComponentState, marked: boolean, t: T = swedish): string {
-  return t('kbd.enter', { label: t(marked ? 'kbd.hand.mine.marked' : 'kbd.hand.mine', { name: cardName(c, t) }) })
+// A card turned over in the hand says so, since it will be played face down (#1133).
+export function handLabel(c: VisibleComponentState, marked: boolean, t: T = swedish, turned = false): string {
+  const key = marked ? (turned ? 'kbd.hand.mine.marked.turned' : 'kbd.hand.mine.marked') : turned ? 'kbd.hand.mine.turned' : 'kbd.hand.mine'
+  return t('kbd.enter', { label: t(key, { name: cardName(c, t) }) })
 }
 
 // ================================================================================================
@@ -452,7 +459,8 @@ export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | nu
 // stands in it although it was already there (#142, #152), because a list of commands that leaves
 // out the one a reader already knows is not the whole truth about the surface, and the whole
 // truth is the only thing worth opening.
-export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false): Shortcut[] {
+// `hand`: the screen holds this seat's own hand, where F turns a card over to be played face down (#1133).
+export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false, hand = false): Shortcut[] {
   return [
     // The felt's own rule first, and the keyboard's way in (#719, K16): a drag moves, a click reads
     // and then asks, and Tab, the arrows and Enter reach the same things. A list of shortcuts that
@@ -465,6 +473,7 @@ export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(),
     // because they say the same thing, and three rows carrying one sentence is that sentence read
     // three times.
     { press: [t('felt.press.modClick', { mod: isMac(platform) ? 'Cmd' : 'Ctrl' }), t('felt.press.doubleClick'), 'F'], what: t('felt.key.flip') },
+    ...(hand ? [{ press: ['F'], what: t('felt.key.turnInHand') }] : []),
     { press: ['D'], what: t('felt.key.draw') },
     { press: ['S'], what: t('felt.key.shuffle') },
     // Kameran (#325), och bara där det finns en att köra: `/online` har ingen, och en lista som

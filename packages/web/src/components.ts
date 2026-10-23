@@ -24,6 +24,10 @@ export const dieKind = (c: { type: { id: string } }): string | null => {
   return n === null ? null : `d${n}`
 }
 
+// A piece that is not a card: a counter or a die. The phone draws each in a place of its own — the
+// counters' pills, the dice's sheet — and never as a card in a row of cards.
+export const isPiece = (c: { type: { id: string } }): boolean => isCounter(c) || isDie(c)
+
 // A card the screen shows without the wire having handed it out (K23): a face-down bottom card
 // held up to look at. It knows only what the zone said — that there is a card, and the back it
 // wears — and it is a standard card because that is the one shape the felt draws a back on. It

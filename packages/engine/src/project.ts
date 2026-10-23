@@ -7,10 +7,15 @@ import { canSeeFace, canSeeZoneOrder, faceUpAtBottom, faceUpOnTop } from './visi
 
 // A log line as every view may see it. The outcome never leaves the server: a shuffle's
 // re-keying says exactly where each card went, which no one at a physical table knows.
+// Nor does the card a flag is about (#1142): a flag on a card in your own hand would tell the table
+// which card worried you the moment it is played. The designer reads it from the log.
 export function projectActivity(line: Applied): Activity {
-  const { schemaVersion, seq, batch, at, by, intent, outcome } = line
+  const { schemaVersion, seq, batch, at, by, outcome } = line
+  const intent = line.intent.v === 'flag' && line.intent.component !== undefined ? withoutComponent(line.intent) : line.intent
   return { schemaVersion, seq, batch, at, by, intent, ...(outcome?.kind === 'roll' ? { rolled: outcome.value } : {}) }
 }
+
+const withoutComponent = ({ component: _, ...flag }: Extract<Applied['intent'], { v: 'flag' }>) => flag
 
 // The log as every view may see it, each line told by the name its seat sat under when the line was
 // written (#714) — read off the log itself, so a replay tells it the same way. `tail` keeps the last
@@ -63,7 +68,7 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
   }
   // An observer is seatless too, but she watches: the table's undo is the table's screen's (#682).
   const undo = history && !observer ? undoTarget(history.lines(), seat) : null
-  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended, played: state.played, version: state.version }
+  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended, played: state.played, version: state.version, notes: state.notes.map((n) => ({ ...n })) }
 }
 
 // Which edge of the table a seat sits at (K12), from where its hand lies relative to the middle
@@ -83,6 +88,11 @@ function seatEdge(state: TableState, seat: SeatId): SeatEdge | null {
   const dy = hand.geometry.y + hand.geometry.h / 2 - (floor.geometry.y + floor.geometry.h / 2)
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'E' : 'W'
   return dy > 0 ? 'S' : 'N'
+}
+
+// Whether a view holds a component at all (#1142): the same rule that puts it on the wire.
+export function sees(state: TableState, registry: TypeRegistry, seat: SeatId | null, id: string, observer = false): boolean {
+  return projectTable(state, registry, seat, undefined, observer).components.some((c) => c.id === id)
 }
 
 function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, deck?: DeckFacts, observer = false): TablePreview {
