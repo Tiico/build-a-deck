@@ -265,7 +265,11 @@ describe('the tables the account sat at (G1)', () => {
     const gone: string[] = []
     render(<HomePage onNavigate={(u) => gone.push(u)} />)
     // The tile, and not «Väntar på dig», which offers the same survey (#1225).
-    const card = await waitFor(() => document.querySelector(`[data-played="${id}"]`) as HTMLElement)
+    const card = await waitFor(() => {
+      const tile = document.querySelector<HTMLElement>(`[data-played="${id}"]`)
+      expect(tile).not.toBeNull()
+      return tile!
+    })
     expect(card.textContent).toContain('avslutat')
     expect(card.textContent).not.toContain('enkät inte besvarad')
     fireEvent.click(within(card).getByRole('link', { name: 'Svara på enkäten' }))
