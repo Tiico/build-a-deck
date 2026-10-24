@@ -18,5 +18,54 @@
 .byd-flag-point button { flex: none; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--byd-warn-bg, #2a2417); color: var(--byd-warn, #ffd98a); font: inherit; cursor: pointer; }
 .byd-flag-point:focus { outline: none; }
 .byd-flag-point button:focus-visible { outline: 2px solid var(--byd-warn-bg, #2a2417); outline-offset: 2px; }
-:root[data-flag-pointing] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]) { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; cursor: crosshair; }
-:root[data-flag-pointing] :is(button, summary, input, select, textarea):not([data-component], [data-hand-card], [data-area-card], [data-mine-card], .byd-flag-point *, summary) { opacity: 0.35; }
+:root[data-flag-pointing] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]) { cursor: crosshair; }
+:root[data-flag-pointing='band'] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]) { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
+:root[data-flag-pointing] :is(button, summary, input, select, textarea):not([data-component], [data-hand-card], [data-area-card], [data-mine-card], .byd-flag-point *, .byd-flag-panel *, summary) { opacity: 0.35; }
+/* A press points out and reads nothing (#1142), so the card a resting mouse would lift is not lifted. */
+:root[data-flag-pointing] [data-lift] { display: none; }
+
+/* The panel a screen with a board flags from (#1255, beställarens val B). It stands beside the
+   felt rather than over it: in the online window's row between the felt and the hand's column, in
+   its own column beside the felt when the hand is the band under it, and where the television's
+   column stands for the observer at a desk. Nothing is dimmed; the card under the pointer is
+   ringed, since a press on it is what points it out. */
+:root[data-flag-pointing='panel'] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]):hover { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
+.byd-flag-panel { flex: none; display: flex; flex-direction: column; box-sizing: border-box; width: 360px; min-height: 0; margin: 12px; border: 1px solid var(--byd-line, #343a4a); border-radius: 12px; background: var(--byd-surface, #1a1d26); color: var(--byd-ink-strong, #fff); font: 14px/1.4 system-ui; box-shadow: 0 12px 40px #0009; overflow: hidden auto; }
+.byd-flag-panel *, .byd-flag-panel *::before { box-sizing: border-box; }
+.byd-online-play[data-hand='band']:has(> .byd-flag-panel) { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) auto; }
+.byd-online-play[data-hand='band'] > .byd-online-felt { grid-area: 1 / 1; }
+.byd-online-play[data-hand='band'] > .byd-flag-panel { grid-area: 1 / 2; }
+.byd-online-play[data-hand='band'] > .byd-hand-under { grid-area: 2 / 1 / 3 / 3; }
+.byd-observer > .byd-flag-panel { position: fixed; z-index: 30; inset-block: 0 var(--byd-observer-handle-h, 56px); inset-inline-end: 0; margin: 0; border-radius: 0; border-block: 0; border-inline-end: 0; box-shadow: -12px 0 40px #0009; }
+.byd-flag-panel-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--byd-line, #343a4a); }
+.byd-flag-panel-head > .byd-glyph { width: 18px; height: 18px; color: var(--byd-warn, #ffd98a); }
+.byd-flag-panel-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.byd-flag-panel-x { display: grid; place-items: center; width: 32px; height: 32px; margin-inline-start: auto; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--byd-ink-quiet, #a7b0c4); cursor: pointer; }
+.byd-flag-panel-x:hover { background: var(--byd-control, #262b38); color: var(--byd-ink-strong, #fff); }
+.byd-flag-panel-part { flex: none; display: grid; gap: 8px; padding: 16px; border-bottom: 1px solid var(--byd-line, #343a4a); }
+.byd-flag-panel-part h3 { margin: 0; color: var(--byd-ink-quiet, #a7b0c4); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.byd-flag-panel-part h3 span { font-weight: 400; letter-spacing: 0; text-transform: none; }
+.byd-flag-panel-part small { color: var(--byd-ink-quiet, #a7b0c4); font-size: 12px; }
+.byd-flag-panel-moment { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
+.byd-flag-panel-moment > .byd-glyph { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--byd-ink-quiet, #a7b0c4); }
+.byd-flag-panel-pick { display: grid; gap: 4px; justify-items: center; margin: 0; padding: 24px 12px; border: 1px dashed var(--byd-line, #343a4a); border-radius: 12px; color: var(--byd-ink-quiet, #a7b0c4); font-size: 13px; text-align: center; }
+.byd-flag-panel-pick b { color: var(--byd-ink-strong, #fff); font-size: 14px; }
+.byd-flag-panel-card { display: flex; gap: 12px; align-items: flex-start; }
+.byd-flag-panel-face { flex: none; width: 128px; aspect-ratio: 63 / 88; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 16px #0008; }
+.byd-flag-panel-face .byd-texture { display: block; width: 100%; height: 100%; object-fit: contain; }
+.byd-flag-panel-card > div { display: grid; gap: 8px; min-width: 0; }
+.byd-flag-panel-card b { font-size: 16px; overflow-wrap: anywhere; }
+.byd-flag-panel-drop { justify-self: start; padding: 0; border: 0; background: none; color: var(--byd-warn, #ffd98a); font: 700 13px system-ui; cursor: pointer; }
+.byd-flag-panel-drop:hover { text-decoration: underline; }
+.byd-flag-panel-note { flex: 1 0 auto; grid-template-rows: auto 1fr; border-bottom: 0; }
+.byd-flag-panel-note textarea { width: 100%; min-height: 96px; height: 100%; resize: none; padding: 8px 12px; border: 1px solid var(--byd-line, #343a4a); border-radius: 8px; background: var(--byd-bg, #11131a); color: var(--byd-ink-strong, #fff); font: 14px/1.4 system-ui; }
+.byd-flag-panel-note textarea:focus-visible { outline: 2px solid var(--byd-warn, #ffd98a); outline-offset: -1px; border-color: transparent; }
+.byd-flag-panel-foot { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--byd-line, #343a4a); }
+.byd-flag-panel-foot small { margin-inline-end: auto; color: var(--byd-ink-quiet, #a7b0c4); font-size: 12px; white-space: nowrap; }
+.byd-flag-panel-foot kbd { display: inline-block; min-width: 20px; margin-inline-end: 2px; padding: 0 4px; border: 1px solid var(--byd-line, #343a4a); border-bottom-width: 2px; border-radius: 4px; background: var(--byd-bg, #11131a); color: var(--byd-ink-strong, #fff); font: 600 11px/18px system-ui; text-align: center; }
+.byd-flag-panel-foot button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 8px; font: 700 14px system-ui; cursor: pointer; }
+.byd-flag-panel-foot button[data-kind='flag'] { background: var(--byd-warn, #ffd98a); color: var(--byd-warn-bg, #2a2417); }
+.byd-flag-panel-foot button[data-kind='quiet'] { background: transparent; color: var(--byd-ink-strong, #fff); }
+.byd-flag-panel-foot button[data-kind='quiet']:hover { background: var(--byd-control, #262b38); }
+:is(.byd-flag-panel-x, .byd-flag-panel-drop, .byd-flag-panel-foot button):focus-visible { outline: 2px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
+.byd-flag-panel > .byd-status-refusal, .byd-flag-panel > [role='alert'] { margin: 0 16px 12px; }

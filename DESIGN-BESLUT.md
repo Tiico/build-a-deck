@@ -2215,6 +2215,18 @@ Beställaren valde B och 1, och komponenter i första leveransen: högar och zon
   Allt härleds på servern genom att spela upp loggen fram till flaggans rad, och texturerna är innehållsadresserade, så ett kort som skrivits om sedan visas ändå som spelaren hade det.
   Låg kortet nedvänt för flaggaren visar miniatyren baksidan, och lyftet visar framsidan bredvid.
 
+Utvidgat 2026-10-24 (#1255, prototypat och beslutat): **på en skärm med bord flaggar man från en panel bredvid filten, inte från telefonens ark.**
+På en dator öppnade «Flagga» telefonens bottenark i full skärmbredd, med två val på 700 px var och bordet dimmat bakom.
+Tre former prövades på riktiga `/online` (gren `prototype/flag-desktop`): en popover vid knappen, en dockad panel och en centrerad dialog. Beställaren valde panelen (B).
+
+- **Panelen står bredvid filten och täcker den inte.** På `/online` står den i raden mellan filten och handens kolumn, och i en egen kolumn bredvid filten när handen är bandet under den; filten ger upp panelens 360 px medan den står.
+  Observatören vid ett skrivbord får den där TV-kolumnen står, ovanför handtaget.
+  Under skrivbordets 1023 px, och på telefonen (`/play` och `/online` utan bord), är flaggan arket som förut.
+- **Inga lägen.** Medan panelen står pekar ett tryck på ett kort ut det, och gör inget annat, med samma regler som bandet (#1142): inget läses, spelas, lyfts eller dras, och kontroller som inte är kort står tillbakadragna. Kortet under pekaren ringas, inte alla kort.
+  Ett annat kort byter, och «Ta bort kortet» gör flaggan till ögonblickets igen.
+- **Panelen säger vad som stämplas.** «Det som hände» står som loggens senaste rad, utan flaggor och anteckningar, och kortet visas 128 px brett med namnet.
+- **Den är inget modalt fönster.** Fokus går till kommentaren och tillbaka till det som hade det när panelen stängs; Tab lämnar den för korten, och Esc, «Avbryt» och krysset stänger. ⌘↵ eller Ctrl+↵ flaggar.
+
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
 Endast digitala sessioner registreras.
