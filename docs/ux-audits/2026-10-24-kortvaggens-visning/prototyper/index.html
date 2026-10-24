@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Kortväggens visning</title>
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-24: «På kortväggens sida finns det många alternativ för att ändra hur
+     väggen presenteras, de är lite överallt.»
+     Mätt i den byggda appen vid 1440 × 900 (bilder/nu-*.png): sex saker om hur väggen ser ut står
+     på fyra ställen, och två av dem tar över varandra utan att säga det.
+       · Visning blandar två frågor — med vilka ögon (färgsyn) och i vilken storlek (läsvyerna) —
+         så att Deuteranopi och Telefonens läsvy inte går att se samtidigt.
+       · Tätheten (− 150 px +) tas över tyst av läsvyn och av Guider › armlängd; pillret byter tal.
+       · Guider är två bockar bakom en box; den ena är en storlek, den andra en guide.
+       · «Minsta text 14,0 px» står under vartenda kort, 77 gånger.
+       · Grupperad efter står i krönet, grupperna i spalten till vänster.
+       · Fysisk kontroll står längst till höger, dess antal en gång till i foten, och lådan trycker
+         ner hela väggen när den öppnas.
+     Tre varianter av helheten, och Nu som referens:
+       A  Ett ställe: väggens sidopanel med flikarna Visning och Kontroll.
+       B  Inga dörrar: krönet ställer tre frågor öppet — storlek, ögon, guide.
+       C  Hörnet: krönet är vad som visas, en docka i väggens hörn är hur det ser ut.
+     Ytorna är ritade för hand med editorns mått, färger och strängar (editor.css, sv.editor.ts,
+     legibility.ts, density.ts). Korten är attrapper; deras text skalar som de riktiga (0,048 × bredd).
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  :root { --chrome: #23262e; --panel: #171a23; --line: #2f333d; --quiet: #868ea3; --ink: #e6ecfa; --mark: #3c8ce7; --sec-line: #6f7a90; --tap: 44px; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--chrome); color: var(--ink); font: 13px/1.4 system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .off { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* Editorns huvud, stilla */
+  .head { flex: none; height: 56px; display: flex; align-items: center; gap: 18px; padding: 0 16px; border-bottom: 1px solid var(--line); background: #1b1d23; font-size: 14px; }
+  .head b { font-size: 15px; }
+  .head .q { color: var(--quiet); }
+  .head .tabs { display: flex; gap: 22px; margin-left: 40px; padding: 0 14px; height: 100%; align-items: center; background: #14161c; }
+  .head .tabs span { color: #b7c0d6; font-weight: 600; }
+  .head .tabs span.on { color: #fff; box-shadow: inset 0 -3px 0 var(--mark); padding: 17px 0 16px; }
+  .head .right { margin-left: auto; display: flex; gap: 10px; }
+  .head .right span { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--sec-line); font-weight: 600; }
+  .head .right span.p { background: #1f6fd0; border-color: #1f6fd0; }
+
+  /* Väggens vy */
+  .view { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 16px 16px 0; gap: 0; }
+  .crown { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .search { flex: 0 1 240px; min-width: 180px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--sec-line); border-radius: 8px; background: #14161c; font-size: 12px; }
+  .box { min-height: var(--tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .box .n { color: #b7c0d6; font-weight: 500; }
+  .box[aria-expanded='true'], .box[aria-pressed='true'] { border-color: var(--mark); color: #fff; }
+  .box .v { font-size: 11px; opacity: .8; }
+  .end { margin-left: auto; }
+  .pill { display: inline-flex; align-items: stretch; min-height: var(--tap); border-radius: 22px; background: #1b1d23; box-shadow: 0 0 0 1px #3b414e; overflow: hidden; }
+  .pill button { width: 44px; border: 0; background: transparent; font-size: 18px; color: #dce3f2; }
+  .pill button:disabled { color: #4c5263; cursor: default; }
+  .pill output { display: grid; place-items: center; min-width: 64px; padding: 0 6px; border-inline: 1px solid #3b414e; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pill[data-held] output { color: #ffd98a; }
+  .drawer { flex: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .choice { min-height: var(--tap); padding: 0 8px; border: 1px solid var(--sec-line); border-radius: 8px; background: transparent; font-weight: 600; font-size: 14px; }
+  .choice[aria-pressed='true'] { border-color: transparent; box-shadow: inset 0 -3px 0 var(--mark); }
+  .tick { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); color: #cfd5e3; font-size: 12px; }
+  .tick input { width: 18px; height: 18px; accent-color: var(--mark); margin: 0; }
+
+  .work { flex: 1 1 auto; min-height: 0; display: flex; gap: 12px; padding-top: 0; }
+  .jump { flex: none; width: 172px; margin: 12px 0; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+  .jump-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 8px 4px 12px; min-height: 52px; }
+  .jump-head h2 { margin: 0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--quiet); }
+  .jump-head .fold { width: 32px; height: 32px; border: 0; background: none; color: #b7c0d6; font-size: 16px; }
+  .jump-by { padding: 0 8px 8px; }
+  .jump-by label { display: block; color: var(--quiet); font-size: 11px; margin: 0 4px 4px; }
+  .jump-by select { width: 100%; min-height: 40px; padding: 0 8px; border: 1px solid var(--sec-line); border-radius: 8px; background: #14161c; font-weight: 600; }
+  .jump ul { list-style: none; margin: 0; padding: 0 8px 12px; overflow: auto; }
+  .jump li button { display: flex; width: 100%; align-items: center; gap: 8px; min-height: var(--tap); padding: 0 8px; border: 0; border-radius: 8px; background: transparent; font-size: 12px; text-align: left; }
+  .jump li button small { margin-left: auto; color: var(--quiet); font-size: 11px; }
+  .jump li button[aria-current='true'] { background: #1b1f2a; box-shadow: inset 3px 0 0 var(--mark); }
+  .deckwrap { position: relative; flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  .deck { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 4px 24px; }
+  .band-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: baseline; gap: 8px; padding: 12px 4px 8px; background: linear-gradient(var(--chrome) 72%, transparent); }
+  .band-head h3 { margin: 0; font-size: 13px; color: #fff; }
+  .band-head small { color: var(--quiet); }
+  .band-head .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
+  .wall { display: grid; grid-template-columns: repeat(auto-fill, var(--w)); gap: 14px 22px; padding: 4px 4px 12px; }
+  .deck[data-eye='gray'] .wall { filter: grayscale(1); }
+  .deck[data-eye='protanopia'] .wall { filter: url(#protanopia); }
+  .deck[data-eye='deuteranopia'] .wall { filter: url(#deuteranopia); }
+  .deck[data-eye='tritanopia'] .wall { filter: url(#tritanopia); }
+
+  /* Ett kort: attrapp, men texten skalar som den riktiga */
+  .cell { position: relative; width: var(--w); container-type: inline-size; }
+  .card { position: relative; width: 100%; aspect-ratio: 63 / 88; background: #f4ecdc; border-radius: calc(var(--w) * .045); padding: 4.5cqw; box-shadow: 0 1px 0 #fff4 inset, 0 2px 6px #0006; overflow: hidden; }
+  .card .frame { height: 100%; border: .9cqw solid #4a3320; border-radius: 3cqw; display: flex; flex-direction: column; overflow: hidden; }
+  .card .top { background: #6b4a2b; color: #fff; padding: 2.5cqw 3cqw 2cqw; }
+  .card .top b { display: block; font: 700 8.2cqw/1.1 Georgia, serif; }
+  .card .top i { display: block; font: 600 4.6cqw/1.3 system-ui; font-style: normal; }
+  .card p { margin: 0; padding: 3cqw; color: #2a2016; font-size: 4.8cqw; line-height: 1.25; flex: 1; }
+  .card p.small { font-size: 4.0cqw; }
+  .card .gem { align-self: flex-start; margin: 0 0 3cqw 3cqw; padding: .6cqw 8cqw; border-radius: 4cqw; font: 700 4.6cqw/1.2 system-ui; color: #111; }
+  .cell .copies { position: absolute; right: -6px; bottom: -6px; padding: 0 4px; border-radius: 6px; background: #14161c; color: #fff; font: 700 10px/16px system-ui; }
+  .cell .warn { position: absolute; left: -6px; top: -6px; width: 18px; height: 18px; border-radius: 50%; background: #f0b64a; color: #2a1d05; font: 800 11px/18px system-ui; text-align: center; }
+  .cell .read { margin: 6px 0 0; color: var(--quiet); font-size: 12px; }
+  .cell .read[data-under] { color: #ffb4a0; }
+  .deck[data-trim] .card { outline: 1px dashed rgba(224, 92, 92, .9); outline-offset: -2px; }
+  .deck[data-trim] .card::after { content: ''; position: absolute; inset: 4.8cqw; border: 1px dashed rgba(125, 211, 160, .85); border-radius: 2cqw; pointer-events: none; }
+  .cell[data-under] .card { box-shadow: 0 0 0 3px #ff8a6a, 0 2px 6px #0006; }
+
+  .foot { flex: none; display: flex; align-items: center; gap: 16px; min-height: 40px; border-top: 1px solid var(--line); color: var(--quiet); font-size: 12px; }
+  .foot .link { border: 0; background: none; padding: 0; color: #ffd98a; text-decoration: underline; text-underline-offset: 3px; min-height: 32px; }
+
+  .checks { padding: 4px 0; display: grid; gap: 8px; width: 100%; }
+  .checks .lead { margin: 0; color: #cfd5e3; }
+  .checks .row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; background: #1b1f2a; box-shadow: inset 3px 0 0 #f0b64a; }
+  .checks .row b { font-weight: 700; }
+  .checks .row small { color: var(--quiet); }
+  .checks .row .tag { margin-left: auto; color: var(--quiet); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* A — sidopanelen */
+  .side { flex: none; width: 320px; margin: 12px 0; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+  .side-tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .side-tabs button { flex: 1; min-height: 48px; border: 0; background: none; font-weight: 600; color: #b7c0d6; }
+  .side-tabs button[aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 var(--mark); }
+  .side-tabs .x { flex: none; width: 48px; font-size: 18px; }
+  .side-body { overflow: auto; padding: 4px 14px 16px; }
+  .side h4 { margin: 16px 0 6px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--quiet); }
+  .side .hint { margin: 2px 0 8px; color: var(--quiet); font-size: 12px; }
+  .radio { display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 0 8px; border-radius: 8px; cursor: pointer; }
+  .radio:hover { background: #1b1f2a; }
+  .radio input { width: 18px; height: 18px; accent-color: var(--mark); margin: 0; }
+  .radio small { margin-left: auto; color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .radio .pill { margin-left: auto; min-height: 36px; }
+  .radio .pill button { width: 36px; }
+  .radio .pill output { min-width: 56px; }
+  .eyes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .eyes button { min-height: var(--tap); border: 1px solid #3b414e; border-radius: 8px; background: transparent; font-weight: 600; display: flex; align-items: center; gap: 8px; padding: 0 10px; text-align: left; }
+  .eyes button[aria-pressed='true'] { border-color: var(--mark); background: #1b2436; }
+  .sw { display: inline-flex; width: 28px; height: 12px; border-radius: 3px; overflow: hidden; flex: none; }
+  .sw i { flex: 1; }
+  .legible { margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: #1b1f2a; }
+  .legible b { font-size: 15px; }
+  .legible.under { box-shadow: inset 3px 0 0 #ff8a6a; }
+  .legible ul { margin: 6px 0 0; padding-left: 18px; color: #cfd5e3; }
+  .sumbox { display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.15; }
+  .sumbox small { color: #b7c0d6; font-weight: 500; font-size: 11px; }
+
+  /* B — tre frågor i krönet */
+  .q-group { display: inline-flex; align-items: center; gap: 6px; padding-left: 10px; border-left: 1px solid var(--line); }
+  .q-group > .lbl { color: var(--quiet); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .seg { display: inline-flex; min-height: var(--tap); border: 1px solid #3b414e; border-radius: 8px; overflow: hidden; background: #1b1d23; }
+  .seg > button, .seg > .pill { border: 0; border-right: 1px solid #3b414e; background: transparent; padding: 0 10px; font-weight: 600; color: #cfd5e3; white-space: nowrap; }
+  .seg > :last-child { border-right: 0; }
+  .seg > button[aria-pressed='true'] { background: #1b2a44; color: #fff; box-shadow: inset 0 -3px 0 var(--mark); }
+  .seg .pill { box-shadow: none; border-radius: 0; padding: 0; background: transparent; }
+  .seg .pill[aria-pressed='true'] { background: #1b2a44; box-shadow: inset 0 -3px 0 var(--mark); }
+  .seg .pill button { width: 34px; }
+  .seg .pill output { min-width: 58px; border-color: #3b414e; }
+  .readline { color: #a7f0c4; font-size: 12px; white-space: nowrap; }
+  .readline[data-under] { color: #ffb4a0; }
+  .pop { position: absolute; z-index: 10; bottom: 44px; left: 0; width: 460px; padding: 14px; border-radius: 12px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 16px 40px #000a; }
+  .pop h4 { margin: 0 0 8px; }
+
+  /* C — hörnet */
+  .dock { position: absolute; z-index: 5; right: 16px; bottom: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .dock-bar { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 28px; background: #1b1d23f2; box-shadow: 0 0 0 1px #3b414e, 0 12px 30px #000a; backdrop-filter: blur(6px); }
+  .dock-bar .pill { box-shadow: none; background: transparent; }
+  .dock-bar .db { min-height: var(--tap); padding: 0 14px; border: 0; border-radius: 22px; background: transparent; font-weight: 600; color: #dce3f2; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .dock-bar .db[aria-expanded='true'], .dock-bar .db[data-on] { background: #1b2a44; color: #fff; }
+  .dock-bar .sep { width: 1px; align-self: stretch; margin: 6px 2px; background: #3b414e; }
+  .dock-menu { min-width: 240px; padding: 6px; border-radius: 14px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 16px 40px #000a; display: grid; }
+  .dock-menu button { display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 0 10px; border: 0; border-radius: 8px; background: transparent; text-align: left; font-weight: 600; }
+  .dock-menu button:hover { background: #262a35; }
+  .dock-menu button[aria-pressed='true'] { background: #1b2a44; }
+  .dock-menu button small { margin-left: auto; color: var(--quiet); font-weight: 500; }
+  .dock-menu .h { padding: 6px 10px 2px; color: var(--quiet); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .banner { flex: none; display: flex; align-items: center; gap: 12px; margin: 10px 4px 0; padding: 8px 8px 8px 14px; border-radius: 10px; background: #1b2436; box-shadow: inset 3px 0 0 var(--mark); }
+  .banner[data-under] { background: #2a1d1b; box-shadow: inset 3px 0 0 #ff8a6a; }
+  .banner .sec { margin-left: auto; }
+  .sec { min-height: 40px; padding: 0 14px; border: 1px solid var(--sec-line); border-radius: 10px; background: transparent; font-weight: 600; }
+  .overlay { position: absolute; z-index: 8; top: 12px; right: 0; bottom: 12px; width: 380px; padding: 16px; border-radius: 14px; background: var(--panel); border: 1px solid #3b4358; box-shadow: -16px 0 40px #0008; overflow: auto; }
+  .overlay header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .overlay header h3 { margin: 0; font-size: 15px; }
+  .overlay header button { width: 40px; height: 40px; border: 0; background: none; font-size: 18px; }
+
+  /* Prototypväxeln — inte en del av designen */
+  .switcher { position: fixed; z-index: 100; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; background: #ffd98a; color: #2a2417; box-shadow: 0 10px 30px #000c; font: 600 13px system-ui; }
+  .switcher button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: #2a2417; color: #ffd98a; font-size: 16px; }
+  .switcher span { padding: 0 12px; min-width: 300px; text-align: center; }
+  .note { position: fixed; z-index: 99; left: 16px; bottom: 14px; max-width: 360px; padding: 10px 12px; border-radius: 10px; background: #2a2417ee; color: #ffe4b0; font-size: 12px; line-height: 1.45; box-shadow: 0 10px 30px #000a; }
+  .note b { color: #ffd98a; }
+  .note button { float: right; border: 0; background: none; color: #ffd98a; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="protanopia"><feColorMatrix type="matrix" values="0.11238 0.88762 0 0 0  0.11238 0.88762 0 0 0  0.00401 -0.00401 1 0 0  0 0 0 1 0"/></filter>
+  <filter id="deuteranopia"><feColorMatrix type="matrix" values="0.29275 0.70725 0 0 0  0.29275 0.70725 0 0 0  -0.02234 0.02234 1 0 0  0 0 0 1 0"/></filter>
+  <filter id="tritanopia"><feColorMatrix type="matrix" values="1 0.14461 -0.14461 0 0  0 0.85924 0.14076 0 0  0 0.85924 0.14076 0 0  0 0 0 1 0"/></filter>
+</svg>
+<div class="head" aria-hidden="true">
+  <span class="q">Mina spel</span><b>Sal's Saloon</b><span class="q">v1</span><span class="q">Sparat</span>
+  <div class="tabs"><span class="on">Kortvägg</span><span>Mall</span><span>Tabell</span><span>Speltema</span><span>Media</span><span>Regler</span><span>Bord</span></div>
+  <div class="right"><span>Spara</span><span class="p">Uppdatera bordet</span></div>
+</div>
+<div id="app" class="view"></div>
+<div class="note" id="note"></div>
+<nav class="switcher" aria-label="Prototypens varianter">
+  <button type="button" id="prev" aria-label="Föregående variant">←</button>
+  <span id="label"></span>
+  <button type="button" id="next" aria-label="Nästa variant">→</button>
+</nav>
+<script>
+// ── Leken: Sal's Saloon i attrapp, 77 kort i åtta grupper ─────────────────────────────────────
+const GEMS = { Diamant: '#6fa3ef', Koppar: '#ff9a1a', Silver: '#cfcfcf', Guld: '#ffd400', Special: '#ff2a2a' }
+const TEXT = {
+  short: 'Utmana en spelare på duell. Förloraren dricker 3',
+  mid: 'Välj en annan spelare. Ni är allierade resten av spelet. När en av er får klunkar dricker BÅDA fullt.',
+  long: 'Sista kortet i leken, gå varvet runt och spela en stor duell mot varann, vinnaren donerar en del av sin dryck till Sal\'s Concucktion™ och slinker undan. Repetera tills det bara finns en spelare kvar.',
+}
+const NAMES = {
+  Playcard: ['Juice em\' up!', 'Duel', 'Duel', 'Duel', 'Duel', 'Saddle Pals', 'Stolen Goods', 'Stolen Goods', 'Stolen Goods', 'Sheriff\'s Check', 'Final Shootout', 'Cactus Hugger', 'Snake in the boot', 'Buckaroo\'s Backfire', 'Shoot from the hip', 'Quickdraw', 'Bullseye', 'Poisoned', 'Rolling Stone', 'Hit by Tumbleweed', 'Lucky Draw', 'Dead Man\'s Hand', 'High Noon'],
+  Location: ['The Saloon', 'Gold Mine', 'Jail', 'Train Station'],
+  Effect: ['Hangover', 'Thirsty', 'Lucky Spurs', 'Dust Storm', 'Moonshine', 'Rattled', 'Steady Hand', 'Bounty', 'Outlaw', 'Deputy'],
+  Event: ['Bar Fight', 'Stampede', 'Gold Rush', 'Showdown', 'Hoedown', 'Rodeo', 'Drought', 'Bank Heist'],
+  'Trap+': ['Bear Trap', 'Quicksand', 'Ambush'],
+  Character: ['Sal', 'Doc', 'The Kid', 'Calamity', 'Preacher', 'Gambler', 'Barkeep', 'Marshal', 'Prospector', 'Drifter'],
+  Shopcard: ['Whiskey', 'Revolver', 'Hat', 'Boots', 'Lasso', 'Horse', 'Map', 'Lantern', 'Dynamite', 'Badge', 'Poncho', 'Harmonica', 'Spurs', 'Canteen', 'Saddle', 'Bandana'],
+  'Trap-': ['Rattlesnake', 'Cursed Coin', 'Bad Whiskey'],
+}
+const gemKeys = Object.keys(GEMS)
+// Kort vars text är så lång att renderaren krymper den (E6) — de som hamnar under telefonens golv.
+const LONG = new Set(['Final Shootout', 'Sheriff\'s Check', 'Rolling Stone', 'Gold Rush', 'Bank Heist', 'Sal', 'Dynamite', 'Cursed Coin'])
+let id = 0
+const ROWS = []
+for (const [typ, names] of Object.entries(NAMES)) {
+  names.forEach((name, i) => {
+    const k = id++
+    const kind = LONG.has(name) ? 'long' : name === 'Duel' ? 'short' : k % 3 === 0 ? 'mid' : 'short'
+    ROWS.push({ id: 'r' + k, name, typ, gem: name === 'Final Shootout' ? 'Special' : gemKeys[k % 4], text: TEXT[kind], kind,
+      // Minsta text på kortet i pt, som renderaren mäter den: 8,5 pt brödtext, krympt där texten är lång (E6).
+      minPt: kind === 'long' ? 7.0 : 8.5, copies: [1, 4, 4, 2, 1, 1, 4, 2][k % 8] })
+  })
+}
+const GROUPABLE = ['typ', 'pris']
+
+// ── Storlekarna: täthetens stege, armlängden och läsvyerna, ur density.ts och legibility.ts ──
+const DENSITY = [90, 110, 130, 150, 180, 220]
+const SIZES = {
+  arm: { name: 'På armlängds avstånd', short: 'Armlängd', px: 90 },
+  phone: { name: 'Telefonens läsvy', short: 'Telefonen', px: 294, floor: 12 },
+  desk: { name: 'Bordets läsvy', short: 'Bordet', px: 341, floor: 12 },
+  tv: { name: 'TV:ns visning', short: 'TV:n', px: 671, floor: 24, scale: 1920 / 1440 },
+}
+const EYES = [
+  { key: 'normal', name: 'Normal syn', sw: ['#ff9a1a', '#ffd400', '#6fa3ef', '#2fae5b'] },
+  { key: 'deuteranopia', name: 'Deuteranopi', sw: ['#b8a33a', '#e6d33a', '#6f8fef', '#9a8f4a'] },
+  { key: 'protanopia', name: 'Protanopi', sw: ['#a99a2a', '#e8d93a', '#7090ef', '#a49a5a'] },
+  { key: 'tritanopia', name: 'Tritanopi', sw: ['#ff8a8a', '#ffd0d8', '#5fb0c0', '#3aa0a0'] },
+  { key: 'gray', name: 'Gråskala', sw: ['#999', '#ddd', '#aaa', '#888'] },
+]
+// Textens höjd i px för ett kort som ritas `w` px brett (legibility.ts): pt → mm → andel av 63 mm.
+const textPx = (pt, w) => (pt * 0.3528 * w) / 63
+const fmt = (n) => n.toFixed(1).replace('.', ',')
+
+// ── Tillståndet. Nu har ett enda «öga» som är antingen färgsyn eller läsvy; varianterna har två. ──
+const S = { query: '', eye: 'normal', size: 'free', step: 3, trim: false, by: 'typ', open: null, here: 'Playcard', jumpOpen: true, sideTab: 'view', underOnly: false }
+const VARIANTS = [
+  { key: 'nu', name: 'Nu — som appen är i dag' },
+  { key: 'A', name: 'A — Ett ställe: sidopanelen' },
+  { key: 'B', name: 'B — Inga dörrar: krönet frågar öppet' },
+  { key: 'C', name: 'C — Hörnet: dockan i väggens hörn' },
+]
+const NOTES = {
+  nu: '<b>Nu.</b> Visning blandar färgsyn och läsvy (ett i taget). Läsvyn och armlängden tar över tätheten tyst. «Minsta text» står under varje kort. Kontrollens låda trycker ner väggen; antalet står igen i foten.',
+  A: '<b>A.</b> Krönet: sök, gruppering och <i>en</i> knapp som säger vad som gäller. Allt om hur väggen ser ut, och Fysisk kontroll, öppnas i en sidopanel bredvid väggen — den trycker aldrig ner korten. Storlek är <i>ett</i> val (fritt, armlängd eller en läsvy), ögonen ett annat, så de går att kombinera. Läsbarheten sägs en gång, i panelen.',
+  B: '<b>B.</b> Inga lådor: storlek, ögon och guide står öppet i krönet som segment, och det valda syns alltid. Grupperingen flyttar till spaltens huvud, där grupperna står. Kontrollen öppnas från foten som en ruta över väggen. Läsbarheten är en rad i krönet. Kräver bredd — vid 1280 med AI-panelen bryter krönet till två rader.',
+  C: '<b>C.</b> Krönet handlar om <i>vilka</i> kort (sök, kontroll), spaltens huvud om ordningen, och en docka i väggens hörn om <i>hur</i> de ser ut — samma plats som dukens zoom. En läsvy säger sig själv i ett band över väggen, med en väg till korten under golvet. Kontrollen lägger sig över väggens högerkant.',
+}
+
+const params = new URLSearchParams(location.search)
+let variant = VARIANTS.some((v) => v.key === params.get('variant')) ? params.get('variant') : 'A'
+
+// ── Härledningar ──────────────────────────────────────────────────────────────────────────────
+// I Nu är läsvyerna en del av ögat; i varianterna är de en storlek.
+function sizeNow() {
+  if (variant === 'nu') {
+    if (S.eye.startsWith('read.')) return S.eye.slice(5)
+    if (S.trimArm) return 'arm'
+    return 'free'
+  }
+  return S.size
+}
+function eyeNow() { return variant === 'nu' && S.eye.startsWith('read.') ? 'normal' : S.eye }
+function px() { const s = sizeNow(); return s === 'free' ? DENSITY[S.step] : SIZES[s].px }
+function reading() { const s = sizeNow(); return SIZES[s] && SIZES[s].floor ? SIZES[s] : null }
+function shown() {
+  const q = S.query.trim().toLowerCase()
+  let rows = q ? ROWS.filter((r) => (r.name + ' ' + r.typ + ' ' + r.text + ' ' + r.gem).toLowerCase().includes(q)) : ROWS
+  const r = reading()
+  if (r && S.underOnly && variant !== 'nu') rows = rows.filter((x) => under(x, r))
+  return rows
+}
+// Textens storlek i läsvyn räknas mot läsvyns bredd på sin egen skärm, inte mot editorns.
+const shownPx = (row, r) => textPx(row.minPt, r.px)
+const under = (row, r) => shownPx(row, r) < r.floor
+function bands(rows) {
+  if (!S.by) return null
+  const key = S.by === 'pris' ? 'gem' : 'typ'
+  const m = new Map()
+  for (const r of rows) { const k = r[key]; if (!m.has(k)) m.set(k, []); m.get(k).push(r) }
+  return [...m.entries()].map(([name, cards]) => ({ name, cards }))
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+// ── Bitar som flera varianter delar ───────────────────────────────────────────────────────────
+function card(row) {
+  const r = reading()
+  const u = r && under(row, r)
+  const readOut = variant === 'nu' && r ? `<p class="read" ${u ? 'data-under' : ''}>Minsta text ${fmt(shownPx(row, r))} px${u ? ` · under golvet ${r.floor} px` : ''}</p>` : ''
+  return `<div class="cell" ${u && variant !== 'nu' ? 'data-under' : ''}>
+    <div class="card"><div class="frame"><div class="top"><b>${esc(row.name)}</b><i>${esc(row.typ)}</i></div>
+    <p class="${row.kind === 'long' ? 'small' : ''}">${esc(row.text)}</p><span class="gem" style="background:${GEMS[row.gem]}">${row.gem}</span></div></div>
+    ${row.copies > 1 ? `<span class="copies">×${row.copies}</span>` : ''}${readOut}</div>`
+}
+function deck(extraTop = '') {
+  const rows = shown()
+  const b = bands(rows)
+  const attrs = `data-eye="${eyeNow()}" ${S.trim ? 'data-trim' : ''} style="--w:${px()}px"`
+  const body = rows.length === 0
+    ? `<div style="padding:40px 8px"><h2 style="margin:0 0 12px;font-size:17px">Inga kort matchar «${esc(S.query)}».</h2><button class="sec" data-act="clear">Rensa sökningen</button></div>`
+    : b ? b.map((band) => `<section data-band="${esc(band.name)}"><div class="band-head"><h3>${esc(band.name)}</h3><small>${band.cards.length} kort</small><span class="rule"></span></div><div class="wall">${band.cards.map(card).join('')}</div></section>`).join('')
+    : `<div class="wall" style="padding-top:12px">${rows.map(card).join('')}</div>`
+  return `${extraTop}<div class="deck" id="deck" ${attrs}>${body}</div>`
+}
+function jump({ byInHead }) {
+  const b = bands(shown()) || []
+  if (!b.length && !byInHead) return ''
+  const by = byInHead ? `<div class="jump-by"><label for="by">Grupperad efter</label><select id="by" data-act="by">
+      <option value="">Ingen gruppering</option>${GROUPABLE.map((g) => `<option ${S.by === g ? 'selected' : ''}>${g}</option>`).join('')}</select></div>` : ''
+  return `<nav class="jump" aria-label="Grupper i leken"><div class="jump-head"><h2>Leken</h2><button class="fold" aria-label="Fäll ihop gruppspalten">‹</button></div>${by}
+    <ul>${b.map((band) => `<li><button data-jump="${esc(band.name)}" aria-current="${S.here === band.name}"><span>${esc(band.name)}</span><small>${band.cards.length}</small></button></li>`).join('')}</ul></nav>`
+}
+function pill({ held } = {}) {
+  const free = sizeNow() === 'free'
+  return `<span class="pill" ${held ? 'data-held' : ''} ${free ? 'aria-pressed="true"' : ''}><button data-act="denser" aria-label="Fler kort per rad" ${S.step === 0 ? 'disabled' : ''}>−</button><output>${free ? DENSITY[S.step] : px()} px</output><button data-act="looser" aria-label="Färre och större kort" ${S.step === DENSITY.length - 1 ? 'disabled' : ''}>+</button></span>`
+}
+function checks() {
+  return `<div class="checks"><p class="lead">Bara varningar. Leken är tryckfärdig.</p>
+    <div class="row"><b>typsnitt som inte följer med</b><small>77 kort</small><span class="tag">Varning</span></div>
+    <p class="lead" style="color:var(--quiet);font-size:12px">En anmärkning gäller oftast mallen, inte kortet, och syns då på alla kort som använder elementet.</p>
+    <button class="sec" style="justify-self:start">Lägg till typsnittet i Speltema ›</button></div>`
+}
+function footCount() {
+  const rows = shown()
+  return S.query ? `${rows.length} av ${ROWS.length} kort` : `${ROWS.length} kort`
+}
+function legibility() {
+  const r = reading()
+  if (!r) return ''
+  const rows = shown()
+  const min = Math.min(...ROWS.map((x) => shownPx(x, r)))
+  const bad = ROWS.filter((x) => under(x, r))
+  return { r, min, bad, under: bad.length > 0, rows }
+}
+
+// ── Nu ────────────────────────────────────────────────────────────────────────────────────────
+function viewNu() {
+  const eyeName = S.eye.startsWith('read.') ? SIZES[S.eye.slice(5)].name : EYES.find((e) => e.key === S.eye).name
+  const held = sizeNow() !== 'free'
+  const drawer = {
+    eyes: () => `<div class="drawer">${[...EYES.map((e) => [e.key, e.name]), ...['phone', 'desk', 'tv'].map((k) => ['read.' + k, SIZES[k].name])].map(([k, n]) => `<button class="choice" data-eye="${k}" aria-pressed="${S.eye === k}">${n}</button>`).join('')}</div>`,
+    guides: () => `<div class="drawer"><label class="tick"><input type="checkbox" data-act="trim" ${S.trim ? 'checked' : ''}> snitt och skyddsmarginal</label><label class="tick"><input type="checkbox" data-act="arm" ${S.trimArm ? 'checked' : ''}> på armlängds avstånd</label></div>`,
+    grouping: () => `<div class="drawer"><button class="choice" data-by="" aria-pressed="${!S.by}">Ingen gruppering</button>${GROUPABLE.map((g) => `<button class="choice" data-by="${g}" aria-pressed="${S.by === g}">${g}</button>`).join('')}</div>`,
+    checks: () => `<div class="drawer">${checks()}</div>`,
+  }
+  return `<div class="crown">
+      <input class="search" type="search" placeholder="Sök i alla fält…" aria-label="Sök" value="${esc(S.query)}" data-act="query">
+      <button class="box" data-open="eyes" aria-expanded="${S.open === 'eyes'}">Visning: <span>${eyeName}</span> <span class="v">▾</span></button>
+      <button class="box" data-open="guides" aria-expanded="${S.open === 'guides'}">Guider <span class="n">(${(S.trim ? 1 : 0) + (S.trimArm ? 1 : 0)})</span> <span class="v">▾</span></button>
+      ${pill({ held })}
+      <button class="box" data-open="grouping" aria-expanded="${S.open === 'grouping'}">Grupperad efter: <span>${S.by || 'Ingen gruppering'}</span> <span class="v">▾</span></button>
+      <button class="box end" data-open="checks" aria-expanded="${S.open === 'checks'}">Fysisk kontroll <span class="n">(1)</span> <span class="v">▾</span></button>
+    </div>
+    ${S.open ? drawer[S.open]() : ''}
+    <div class="work">${jump({ byInHead: false })}<div class="deckwrap">${deck()}</div></div>
+    <div class="foot"><span>${footCount()}</span><span>En anmärkning</span></div>`
+}
+
+// ── A: ett ställe ─────────────────────────────────────────────────────────────────────────────
+function viewA() {
+  const s = sizeNow()
+  const eye = EYES.find((e) => e.key === S.eye)
+  const sizeSaid = s === 'free' ? `${px()} px` : SIZES[s].short
+  const said = [sizeSaid, eye.key !== 'normal' ? eye.name : null, S.trim ? 'snitt' : null].filter(Boolean).join(' · ')
+  const L = legibility()
+  const side = S.open === 'view' || S.open === 'checks'
+  const radio = (k, label, extra) => `<label class="radio"><input type="radio" name="size" value="${k}" data-act="size" ${s === k ? 'checked' : ''}> <span>${label}</span>${extra}</label>`
+  const viewTab = `
+      <h4>Storlek</h4><p class="hint">Ett val. En läsvy ritar kortet så stort som skärmen håller upp det.</p>
+      ${radio('free', 'Fritt', pill())}
+      ${radio('arm', 'På armlängds avstånd', `<small>90 px</small>`)}
+      ${radio('phone', 'Telefonens läsvy', `<small>294 px</small>`)}
+      ${radio('desk', 'Bordets läsvy', `<small>341 px</small>`)}
+      ${radio('tv', 'TV:ns visning', `<small>671 px</small>`)}
+      ${L ? `<div class="legible ${L.under ? 'under' : ''}">Minsta text i leken <b>${fmt(L.min)} px</b>, golvet ${L.r.floor} px.${L.under ? `<ul>${L.bad.slice(0, 4).map((x) => `<li>${esc(x.name)} — ${fmt(shownPx(x, L.r))} px</li>`).join('')}</ul><label class="tick"><input type="checkbox" data-act="underOnly" ${S.underOnly ? 'checked' : ''}> Visa bara de ${L.bad.length} korten</label>` : ' Alla kort klarar golvet.'}</div>` : ''}
+      <h4>Ögon</h4><p class="hint">Gäller i alla storlekar.</p>
+      <div class="eyes">${EYES.map((e) => `<button data-eye="${e.key}" aria-pressed="${S.eye === e.key}"><span class="sw">${e.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>${e.name}</button>`).join('')}</div>
+      <h4>Guider</h4>
+      <label class="tick"><input type="checkbox" data-act="trim" ${S.trim ? 'checked' : ''}> Snitt och skyddsmarginal</label>`
+  return `<div class="crown">
+      <input class="search" type="search" placeholder="Sök i alla fält…" aria-label="Sök" value="${esc(S.query)}" data-act="query">
+      <button class="box" data-open="grouping" aria-expanded="${S.open === 'grouping'}">Grupperad efter: <span>${S.by || 'Ingen gruppering'}</span> <span class="v">▾</span></button>
+      <button class="box end" data-open="view" aria-expanded="${S.open === 'view'}"><span class="sumbox">Visning<small>${said}</small></span> <span class="v">▸</span></button>
+      <button class="box" data-open="checks" aria-expanded="${S.open === 'checks'}">Fysisk kontroll <span class="n">(1)</span> <span class="v">▸</span></button>
+    </div>
+    ${S.open === 'grouping' ? `<div class="drawer"><button class="choice" data-by="" aria-pressed="${!S.by}">Ingen gruppering</button>${GROUPABLE.map((g) => `<button class="choice" data-by="${g}" aria-pressed="${S.by === g}">${g}</button>`).join('')}</div>` : ''}
+    <div class="work">${jump({ byInHead: false })}<div class="deckwrap">${deck()}</div>
+      ${side ? `<aside class="side" aria-label="Väggens panel"><div class="side-tabs" role="tablist">
+          <button role="tab" data-open="view" aria-selected="${S.open === 'view'}">Visning</button>
+          <button role="tab" data-open="checks" aria-selected="${S.open === 'checks'}">Kontroll (1)</button>
+          <button class="x" data-act="close" aria-label="Stäng panelen">×</button></div>
+        <div class="side-body">${S.open === 'view' ? viewTab : checks()}</div></aside>` : ''}
+    </div>
+    <div class="foot"><span>${footCount()}</span><button class="link" data-open="checks">En anmärkning</button></div>`
+}
+
+// ── B: inga dörrar ────────────────────────────────────────────────────────────────────────────
+function viewB() {
+  const s = sizeNow()
+  const L = legibility()
+  const seg = (k) => `<button data-size="${k}" aria-pressed="${s === k}">${SIZES[k].short}</button>`
+  return `<div class="crown">
+      <input class="search" type="search" placeholder="Sök i alla fält…" aria-label="Sök" value="${esc(S.query)}" data-act="query" style="flex-basis:200px">
+      <span class="q-group"><span class="lbl">Storlek</span><span class="seg" role="group" aria-label="Storlek">${pill()}${seg('arm')}${seg('phone')}${seg('desk')}${seg('tv')}</span></span>
+      <span class="q-group"><span class="lbl">Ögon</span><span class="seg" role="group" aria-label="Ögon">${EYES.map((e) => `<button data-eye="${e.key}" aria-pressed="${S.eye === e.key}" title="${e.name}">${{ normal: 'Normal', deuteranopia: 'Deut.', protanopia: 'Prot.', tritanopia: 'Trit.', gray: 'Grå' }[e.key]}</button>`).join('')}</span></span>
+      <span class="q-group"><label class="tick"><input type="checkbox" data-act="trim" ${S.trim ? 'checked' : ''}> Snitt</label></span>
+      ${L ? `<span class="readline" ${L.under ? 'data-under' : ''}>Minsta text ${fmt(L.min)} px${L.under ? ` · ${L.bad.length} kort under ${L.r.floor} px` : ' ✓'}</span>` : ''}
+    </div>
+    <div class="work">${jump({ byInHead: true })}<div class="deckwrap">${deck()}</div></div>
+    <div class="foot" style="position:relative"><span>${footCount()}</span><button class="link" data-open="checks" aria-expanded="${S.open === 'checks'}">Fysisk kontroll: en varning ▴</button>
+      ${S.open === 'checks' ? `<div class="pop" role="dialog" aria-label="Fysisk kontroll"><h4>Fysisk kontroll</h4>${checks()}</div>` : ''}</div>`
+}
+
+// ── C: hörnet ─────────────────────────────────────────────────────────────────────────────────
+function viewC() {
+  const s = sizeNow()
+  const eye = EYES.find((e) => e.key === S.eye)
+  const L = legibility()
+  const banner = L ? `<div class="banner" ${L.under ? 'data-under' : ''}><span><b>${L.r.name}</b> · korten ${L.r.px} px · minsta text ${fmt(L.min)} px${L.under ? `, ${L.bad.length} kort under golvet ${L.r.floor} px` : ', alla över golvet'}</span>
+      ${L.under ? `<button class="sec" data-act="underOnlyToggle">${S.underOnly ? 'Visa alla kort' : `Visa bara de ${L.bad.length}`}</button>` : '<span class="sec" style="visibility:hidden"></span>'}<button class="sec" data-size="free" style="margin-left:0">Avsluta läsvyn</button></div>` : ''
+  const menu = S.open === 'eyes'
+    ? `<div class="dock-menu" role="menu"><div class="h">Se leken med</div>${EYES.map((e) => `<button data-eye="${e.key}" aria-pressed="${S.eye === e.key}"><span class="sw">${e.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>${e.name}</button>`).join('')}</div>`
+    : S.open === 'size'
+    ? `<div class="dock-menu" role="menu"><div class="h">Läs som</div>
+        <button data-size="free" aria-pressed="${s === 'free'}">Editorn<small>${DENSITY[S.step]} px</small></button>
+        ${['arm', 'phone', 'desk', 'tv'].map((k) => `<button data-size="${k}" aria-pressed="${s === k}">${SIZES[k].name}<small>${SIZES[k].px} px</small></button>`).join('')}</div>` : ''
+  return `<div class="crown">
+      <input class="search" type="search" placeholder="Sök i alla fält…" aria-label="Sök" value="${esc(S.query)}" data-act="query">
+      <button class="box end" data-open="checks" aria-expanded="${S.open === 'checks'}">Fysisk kontroll <span class="n">(1)</span> <span class="v">▸</span></button>
+    </div>
+    <div class="work">${jump({ byInHead: true })}<div class="deckwrap">${banner}${deck()}
+      <div class="dock">${menu}<div class="dock-bar" role="toolbar" aria-label="Hur väggen ser ut">
+        <button class="db" data-open="eyes" aria-expanded="${S.open === 'eyes'}" ${S.eye !== 'normal' ? 'data-on' : ''}><span class="sw">${eye.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>${eye.name}</button>
+        <span class="sep"></span>
+        <button class="db" data-act="trim" aria-pressed="${S.trim}" ${S.trim ? 'data-on' : ''}>Snitt</button>
+        <span class="sep"></span>
+        ${s === 'free' ? pill() : `<span class="db" style="color:#ffd98a">${SIZES[s].px} px</span>`}
+        <button class="db" data-open="size" aria-expanded="${S.open === 'size'}" ${s !== 'free' ? 'data-on' : ''}>${s === 'free' ? 'Läs som…' : SIZES[s].short} ▴</button>
+      </div></div>
+      ${S.open === 'checks' ? `<div class="overlay" role="dialog" aria-label="Fysisk kontroll"><header><h3>Fysisk kontroll</h3><button data-act="close" aria-label="Stäng">×</button></header>${checks()}</div>` : ''}
+    </div></div>
+    <div class="foot"><span>${footCount()}</span><span>En anmärkning</span></div>`
+}
+
+// ── Ritningen och händelserna ─────────────────────────────────────────────────────────────────
+const app = document.getElementById('app')
+function render() {
+  const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null
+  const caret = focused === 'query' ? document.activeElement.selectionStart : null
+  const scroll = document.getElementById('deck')?.scrollTop ?? 0
+  app.innerHTML = { nu: viewNu, A: viewA, B: viewB, C: viewC }[variant]()
+  const d = document.getElementById('deck')
+  if (d) { d.scrollTop = scroll; d.addEventListener('scroll', onScroll) }
+  if (focused === 'query') { const q = app.querySelector('[data-act="query"]'); q.focus(); q.setSelectionRange(caret, caret) }
+  const v = VARIANTS.find((x) => x.key === variant)
+  document.getElementById('label').textContent = v.name
+  document.getElementById('note').innerHTML = `<button aria-label="Dölj">×</button>${NOTES[variant]}`
+}
+function onScroll(e) {
+  const d = e.target
+  const top = d.getBoundingClientRect().top
+  let here = null
+  for (const sec of d.querySelectorAll('section[data-band]')) if (sec.getBoundingClientRect().top - top < 40) here = sec.dataset.band
+  if (here && here !== S.here) { S.here = here; for (const b of app.querySelectorAll('[data-jump]')) b.setAttribute('aria-current', String(b.dataset.jump === here)) }
+}
+app.addEventListener('input', (e) => {
+  const a = e.target.dataset.act
+  if (a === 'query') { S.query = e.target.value; render() }
+})
+app.addEventListener('change', (e) => {
+  const a = e.target.dataset.act
+  if (a === 'trim') S.trim = e.target.checked
+  else if (a === 'arm') S.trimArm = e.target.checked
+  else if (a === 'size') { S.size = e.target.value; S.underOnly = false }
+  else if (a === 'by') S.by = e.target.value || null
+  else if (a === 'underOnly') S.underOnly = e.target.checked
+  else return
+  render()
+})
+app.addEventListener('click', (e) => {
+  const t = e.target.closest('button')
+  if (!t) return
+  const d = t.dataset
+  if (d.open) { S.open = S.open === d.open && !t.closest('.side-tabs') ? null : d.open }
+  else if (d.eye) { S.eye = d.eye; if (variant === 'C') S.open = null }
+  else if (d.size) { S.size = d.size; S.underOnly = false; if (variant === 'C') S.open = null }
+  else if (d.by !== undefined) { S.by = d.by || null }
+  else if (d.jump) { const sec = app.querySelector(`section[data-band="${CSS.escape(d.jump)}"]`); if (sec) document.getElementById('deck').scrollTop = sec.offsetTop - document.getElementById('deck').offsetTop; S.here = d.jump }
+  else if (d.act === 'denser') { S.step = Math.max(0, S.step - 1); if (variant !== 'nu') S.size = 'free' }
+  else if (d.act === 'looser') { S.step = Math.min(DENSITY.length - 1, S.step + 1); if (variant !== 'nu') S.size = 'free' }
+  else if (d.act === 'trim' && t.tagName === 'BUTTON') S.trim = !S.trim
+  else if (d.act === 'close') S.open = null
+  else if (d.act === 'clear') S.query = ''
+  else if (d.act === 'underOnlyToggle') S.underOnly = !S.underOnly
+  else return
+  render()
+})
+document.getElementById('note').addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') e.currentTarget.hidden = true })
+function go(dir) {
+  const i = VARIANTS.findIndex((v) => v.key === variant)
+  variant = VARIANTS[(i + dir + VARIANTS.length) % VARIANTS.length].key
+  // Ett öga som är en läsvy i Nu blir en storlek i varianterna, och tvärtom.
+  if (variant === 'nu') { if (S.size !== 'free' && S.size !== 'arm') S.eye = 'read.' + S.size; S.trimArm = S.size === 'arm' }
+  else if (S.eye.startsWith('read.')) { S.size = S.eye.slice(5); S.eye = 'normal' }
+  S.open = null
+  const p = new URLSearchParams(location.search); p.set('variant', variant); history.replaceState(null, '', '?' + p)
+  document.getElementById('note').hidden = false
+  render()
+}
+document.getElementById('prev').onclick = () => go(-1)
+document.getElementById('next').onclick = () => go(1)
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  if (e.key === 'ArrowLeft') go(-1)
+  if (e.key === 'ArrowRight') go(1)
+  if (e.key === 'Escape' && S.open) { S.open = null; render() }
+})
+render()
+</script>
+</body>
+</html>
