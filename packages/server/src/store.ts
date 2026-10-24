@@ -51,6 +51,10 @@ export type LogStore = {
   deckOf(sessionId: string, version: GameVersionId): Promise<Deck | null>
   append(sessionId: string, lines: readonly Applied[]): Promise<void>
   read(sessionId: string): Promise<Applied[]>
+  // The lines whose verb is one of `verbs`, in order (#1225): what «Väntar på dig» reads of every
+  // table of every game — its flags and the versions they were raised on — without the moves
+  // between them, which are most of a long log.
+  readVerbs(sessionId: string, verbs: readonly Applied['intent']['v'][]): Promise<Applied[]>
   // Sessions whose latest line (or creation, if none) is older than `olderThan` and that have
   // not ended: what the timeout in C9 ends for a group that forgot.
   staleSessions(olderThan: Date): Promise<string[]>
@@ -174,6 +178,10 @@ export class MemoryLogStore implements LogStore {
     const log = this.logs.get(sessionId)
     if (!log) throw new Error(`unknown session ${sessionId}`)
     return structuredClone(log)
+  }
+
+  async readVerbs(sessionId: string, verbs: readonly Applied['intent']['v'][]): Promise<Applied[]> {
+    return (await this.read(sessionId)).filter((line) => verbs.includes(line.intent.v))
   }
 
   async sessionsOf(project: string): Promise<SessionSummary[]> {
