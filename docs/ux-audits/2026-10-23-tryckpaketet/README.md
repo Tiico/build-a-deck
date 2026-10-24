@@ -37,3 +37,9 @@ Inga passmärken, eftersom tryck-PDF:en inte har några och ingen partner i #119
 ![B, dator](bilder/B-dator.png)
 
 Fler bilder i [`bilder/`](bilder/).
+
+## Bygget (#1208)
+
+Beställaren valde B 2026-10-23.
+Skärmdumparna i [`bygget/`](bygget/) är den byggda sidan i den byggda stacken, med Sal's Saloon och Testtryckeriet, vid 1024, 1280 och 1440 px och på telefon (375).
+`fel-*` visar ett spel vars baksida slutar vid snittet, så att tryckkontrollen hittar fel och kortfilerna lämnas ute ur nedladdningen.
