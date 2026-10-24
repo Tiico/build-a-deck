@@ -110,8 +110,10 @@ describe('OnlinePage (C2): both roles in one window', () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
-    await table.send({ v: 'shuffle', pile: 'draw' })
     await open(id, 'A', 'Ada')
+    // Shuffled once Ada sits, so it is the last thing that happened and not her sitting down.
+    await table.send({ v: 'shuffle', pile: 'draw' })
+    await screen.findByText(/blandade/)
     const flag = screen.getByRole('button', { name: /Flagga/ })
     fireEvent.click(flag)
     const panel = await screen.findByRole('dialog', { name: 'Flagga' })
