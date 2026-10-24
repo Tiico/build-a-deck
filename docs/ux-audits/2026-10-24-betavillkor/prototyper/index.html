@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Betavillkoren (#1272)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1272, del av #1268. Beställarens beslut 2026-10-24: korta betavillkor före inbjudningarna,
+     godkända i ett eget steg efter första inloggningen och samordnade med välkomststeget för
+     namnet (#1254, variant C, byggs i PR #1265), så att en ny användare inte möter två lösa steg.
+     Ett konto som inte godkänt kan läsa, exportera och logga ut, inget annat. 18 år för konto.
+     Tre varianter, var och en hel genom fyra frågor:
+       1. hur välkomststeget med namn och villkor hänger ihop,
+       2. hur /villkor och integritetssidan ser ut och läses,
+       3. vad ett konto som inte godkänt ser, när det hoppat över och när det kommer tillbaka,
+       4. hur befintliga konton möter nya villkor.
+       A  Ett kort: namnet och villkoren i samma välkomststeg. Läsläge (#489) för den som väntar.
+       B  Två steg i en följd i samma kort. Grinden sitter på handlingen, i en dialog.
+       C  Villkoren först, som en egen sida. Den som väntar får en avskalad läs- och exportsida.
+     Utkastet till villkoren och integritetstexten står i VILLKOR och INTEGRITET nedan och är
+     detsamma i alla tre; bara formen skiljer. UTKAST, inte juridiskt granskat.
+     Ytorna är ritade för hand med appens egna mått, färger och strängar (account.css, editor.css,
+     WelcomePage.tsx och sv.account.ts från PR #1265). PROTOTYP. Slängs när beslutet står i
+     DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  main.scen { flex: 1 1 auto; display: grid; justify-content: safe center; align-content: start; padding: 20px 16px 60px; background: #15171c; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin: 0 0 6px; }
+  .etikett b { color: #e6ecfa; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: auto; background: #0f1117; }
+  .noter { display: grid; gap: 6px; margin-top: 10px; max-width: 1280px; }
+  .noter p { margin: 0; padding: 6px 10px; border: 1px dashed #c8a24a; border-radius: 8px; background: rgb(42 36 23 / 94%); color: #ffd98a; font: 12px/1.5 system-ui, sans-serif; }
+  .noter b { color: #ffe9b8; }
+  .g { width: 16px; height: 16px; flex: none; }
+  :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  button { font: inherit; cursor: pointer; }
+  a { color: inherit; }
+  /* Prototypens märkning av utkastet: bärnsten, streckad, aldrig en del av förslaget. */
+  .utkast { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px dashed #c8a24a; border-radius: 8px; background: #2a2417; color: #ffd98a; font: 700 12px/1.4 system-ui, sans-serif; letter-spacing: .02em; }
+  .bygg { display: inline; padding: 1px 6px; border: 1px dashed #c8a24a; border-radius: 6px; background: #2a2417; color: #ffd98a; font: 600 11px/1.5 system-ui, sans-serif; white-space: normal; }
+
+  /* ── Kontots rum (account.css) ─────────────────────────────────────────────────────────── */
+  .acc { --card: #171a23; --edge: #262a35; --muted: #9aa3b8; --field: #14161c; --sec-line: #6f7a90;
+    min-height: 100%; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; box-sizing: border-box; display: grid; justify-content: center; align-content: center; gap: 8px; }
+  .acc[data-topp] { align-content: start; }
+  .login { width: 420px; max-width: 100%; background: var(--card); border: 1px solid var(--edge); border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
+  .login[data-bred] { width: 500px; }
+  .login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; color: #fff; line-height: 1.2; }
+  .login h1 img { width: 32px; height: 32px; border-radius: 7px; flex: none; }
+  .as { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .falt { display: grid; gap: 8px; }
+  .falt > label, .falt > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+  .falt input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--sec-line); background: var(--field); color: #fff; font-size: 16px; }
+  .not { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .prim { width: 100%; padding: 14px 18px; border: 0; border-radius: 12px; background: #7dd3a0; color: #0b2a18; font-size: 16px; font-weight: 700; }
+  .prim:disabled { opacity: .4; cursor: default; }
+  .sek { padding: 14px 18px; border: 1px solid #6f7a90; border-radius: 12px; background: transparent; color: #dce3f2; font-size: 16px; font-weight: 600; }
+  .svar { display: grid; gap: 8px; }
+  .tyst { justify-self: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+  .tyst:hover { color: #fff; }
+  .lankar { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; }
+  .lankar a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #cdd4e4; text-underline-offset: 3px; }
+  .lankar a .g { width: 14px; height: 14px; color: var(--muted); }
+  /* Villkorens del av välkomstkortet (A) och villkorssteget (B). */
+  .vk { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--edge); }
+  .vk h2 { margin: 0; color: #fff; font-size: 17px; }
+  .vk .datum { color: var(--muted); font-size: 13px; font-weight: 400; }
+  .kortlista { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: #c3cbdd; font-size: 14px; line-height: 1.5; }
+  .kortlista b { color: #fff; font-weight: 650; }
+  .nytt { margin: 0; padding: 12px 14px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; font-size: 14px; line-height: 1.5; display: grid; gap: 6px; }
+  .nytt ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .nytt b { color: #fff; }
+  .stegrad { display: flex; align-items: center; gap: 8px; margin: -4px 0 0; color: var(--muted); font-size: 13px; }
+  .stegrad i { width: 8px; height: 8px; border-radius: 50%; background: #3a4152; }
+  .stegrad i[data-nu] { background: #7dd3a0; }
+  .stegrad .bak { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 13px; padding: 0; }
+  .kryss { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; min-height: 44px; color: #dce3f2; font-size: 14px; line-height: 1.5; }
+  .kryss input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: #7dd3a0; }
+  .sidfot { margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted); }
+  .sidfot a { color: inherit; }
+
+  /* C: villkoren som egen sida före namnet. */
+  .forst { width: 760px; max-width: 100%; display: grid; gap: 18px; }
+  .forst header { display: grid; gap: 8px; }
+  .forst h1 { margin: 0; display: flex; align-items: center; gap: 12px; color: #fff; font-size: 30px; line-height: 1.2; }
+  .forst h1 img { width: 34px; height: 34px; border-radius: 7px; }
+  .forst .ingress { margin: 0; color: #c3cbdd; font-size: 16px; line-height: 1.55; max-width: 62ch; }
+  .lovar { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .lovar section { padding: 18px 20px; border-radius: 16px; border: 1px solid #262a35; background: #171a23; display: grid; align-content: start; gap: 10px; }
+  .lovar h2 { margin: 0; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #9aa3b8; }
+  .lovar ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: #dce3f2; font-size: 15px; line-height: 1.5; }
+  .forst .godkann { display: grid; gap: 12px; padding: 20px; border-radius: 16px; background: #171a23; border: 1px solid #3b4358; }
+  .forst .godkann .rad { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .forst .godkann .prim { width: auto; padding: 14px 28px; }
+
+  /* Mina spel (account.css .byd-home), ritad i sin 1280-form och sin telefonform. */
+  .home { width: 100%; max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px 40px; align-content: start; padding: 24px 20px 40px; box-sizing: border-box; color: #e6e6e6; font: 14px system-ui, sans-serif; }
+  .hbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid #262a35; }
+  .hbar .mark { display: inline-flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 700; font-size: 17px; color: #fff; }
+  .hbar .mark img { width: 30px; height: 30px; border-radius: 7px; }
+  .hbar .vem { color: #9aa3b8; font-size: 13px; overflow-wrap: anywhere; }
+  .hbar .ikon { display: grid; place-items: center; width: 44px; height: 44px; color: #9aa3b8; }
+  .gora { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #6f7a90; background: transparent; font-weight: 700; color: #dce3f2; font-size: 15px; }
+  .gora[data-prim] { border-color: #7dd3a0; background: #7dd3a0; color: #0b2a18; }
+  .hvanster { display: grid; gap: 18px; align-content: start; min-width: 0; }
+  .hhoger { display: grid; gap: 8px; align-content: start; }
+  .hhoger label { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+  .hhoger .kodrad { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .hhoger input { min-height: 52px; border-radius: 12px; border: 1px solid #6f7a90; background: #14161c; }
+  .home h1 { margin: 0; font-size: 34px; color: #fff; }
+  .hero { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; padding: 24px; border-radius: 20px; border: 1px solid #262a35; background: radial-gradient(120% 120% at 0% 100%, #1b2a22 0%, #171a23 50%); }
+  .hero .lek { height: 200px; border-radius: 8px; background: #f3ead8; box-shadow: 0 6px 16px rgb(0 0 0 / 45%); transform: rotate(-3deg); }
+  .hero small { color: #9aa3b8; letter-spacing: 3px; text-transform: uppercase; font-size: 12px; font-weight: 700; }
+  .hero h2 { margin: 6px 0 4px; font-size: 34px; color: #fff; }
+  .hero p { margin: 0 0 16px; color: #9aa3b8; }
+  .hero .knappar { display: flex; flex-wrap: wrap; gap: 10px; }
+  .hgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .hgrid > div { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 14px; padding: 16px; border-radius: 16px; border: 1px solid #262a35; background: #171a23; }
+  .hgrid > div i { height: 96px; border-radius: 4px; background: #f3ead8; }
+  .hgrid strong { color: #fff; font-size: 17px; display: block; margin-bottom: 4px; }
+  .hgrid span { color: #9aa3b8; font-size: 13px; }
+  .hgrid .mer { width: 44px; height: 44px; border: 0; background: none; color: #9aa3b8; font-size: 18px; }
+  .rubrik2 { margin: 6px 0 0; color: #9aa3b8; font-size: 13px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; }
+  .tomt { padding: 40px 24px; border-radius: 20px; border: 1px dashed #3a4152; color: #9aa3b8; text-align: center; display: grid; gap: 12px; justify-items: center; }
+  .tomt b { color: #fff; font-size: 18px; }
+  .meny { position: absolute; z-index: 5; width: 220px; padding: 6px; border-radius: 12px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 30px rgb(0 0 0 / 50%); display: grid; }
+  .meny button { min-height: 44px; border: 0; border-radius: 8px; background: none; color: #dce3f2; text-align: left; padding: 0 12px; font-size: 14px; }
+  .meny button:hover { background: #262a35; }
+  .home .sidfot { grid-column: 1 / -1; }
+  /* Bandet (L78:s form) och läsbandet (#489:s form) på kontots rum. */
+  .band { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; padding: 14px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
+  .band > .g { width: 22px; height: 22px; color: #7dd3a0; }
+  .band p { margin: 0; line-height: 1.5; } .band b { color: #fff; }
+  .band .svar { display: flex; flex-wrap: wrap; gap: 8px; }
+  .band .svar button { min-height: 44px; padding: 0 16px; border-radius: 12px; font-weight: 700; font-size: 15px; }
+  .band .svar .p { border: 0; background: #7dd3a0; color: #0b2a18; }
+  .band .svar .s { border: 1px solid #5f8a70; background: transparent; color: #d8ffe8; }
+  .lasband { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; padding: 12px 16px; border-radius: 12px; background: #2a2418; border: 1px solid #4a4230; color: #ffe4b0; font-size: 14px; line-height: 1.5; }
+  .lasband > .g { width: 20px; height: 20px; color: #ffd98a; }
+  .lasband p { margin: 0; } .lasband b { color: #ffd98a; }
+  .lasband small { display: block; color: #e0cfa3; font-size: 13px; }
+  .lasband button { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #ffd98a; background: #ffd98a; color: #2a2417; font-weight: 700; font-size: 15px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #4a4230; background: #2a2418; color: #ffd98a; font-size: 13px; font-weight: 600; }
+  /* C: läs- och exportsidan. */
+  .lasrum { width: 100%; max-width: 900px; margin: 0 auto; padding: 24px 20px 40px; box-sizing: border-box; display: grid; gap: 18px; color: #e6e6e6; font: 14px system-ui, sans-serif; }
+  .lasrum .hbar .gora[data-prim] { margin-left: 4px; }
+  .lasrum .ingress { margin: 0; color: #c3cbdd; font-size: 15px; line-height: 1.55; }
+  .lasrum ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .lasrum li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 16px; border-radius: 14px; border: 1px solid #262a35; background: #171a23; }
+  .lasrum li i { height: 72px; border-radius: 4px; background: #f3ead8; }
+  .lasrum li strong { color: #fff; font-size: 16px; display: block; }
+  .lasrum li span { color: #9aa3b8; font-size: 13px; }
+  .lasrum li .k { display: flex; gap: 8px; }
+  /* B: dialogen som villkorssteget öppnas i. */
+  .slojan { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgb(5 6 9 / 66%); }
+  .slojan .login { box-shadow: 0 24px 60px rgb(0 0 0 / 60%); border-color: #3b4358; }
+
+  /* ── Editorn (editor.css), med läsbandet från #489 ───────────────────────────────────────── */
+  .ed { height: 100%; min-height: 600px; display: flex; flex-direction: column; background: var(--chrome); color: #dce3f2; font: 13px system-ui, sans-serif; position: relative; }
+  .ed .ed-huvud { flex: none; height: 57px; }
+  .ed .ed-huvud .namn { color: #fff; font-size: 15px; font-weight: 800; }
+  .ed .ed-huvud .ver { color: var(--quiet-2); }
+  .ed-las { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.4; }
+  .ed-las > .g { width: 18px; height: 18px; color: #ffd98a; }
+  .ed-las b { color: #ffd98a; }
+  .ed-las small { display: block; color: #e0cfa3; font-size: 12px; }
+  .ed-las button { margin-left: auto; flex: none; min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #ffd98a; background: #ffd98a; color: #2a2417; font-weight: 700; }
+  .ed .t-vy { padding-top: 12px; }
+  .ed .t-data td { height: 41px; padding: 0 10px; border-bottom: 1px solid #2f333d; color: #e6ecfa; }
+  .ed .t-data td.id { color: var(--quiet); }
+
+  /* ── Bordets telefon: anslutningssidan och enkäten (play.css), för raden ─────────────────── */
+  .telefoner { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: start; padding: 32px 20px; min-height: 100%; box-sizing: border-box; background: #0f1117; }
+  .tel { width: 340px; max-width: 100%; border-radius: 28px; border: 8px solid #2a2d36; background: #0c0e12; color: #e6ecfa; font: 15px system-ui, sans-serif; overflow: hidden; display: grid; gap: 14px; padding: 22px 18px; box-sizing: border-box; align-content: start; }
+  .tel h2 { margin: 0; font-size: 22px; color: #fff; }
+  .tel .liten { margin: 0; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
+  .tel .sidfot { margin-top: 4px; }
+  .tel .prim { font-size: 17px; }
+  .tel .tack { padding: 14px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; line-height: 1.5; }
+
+  /* ── /villkor och integritetssidan ──────────────────────────────────────────────────────── */
+  .dok { min-height: 100%; background: #0f1117; color: #dfe4ef; font: 16px/1.6 system-ui, sans-serif; }
+  .dok-bar { display: flex; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid #262a35; font-size: 14px; }
+  .dok-bar .mark { display: inline-flex; align-items: center; gap: 10px; margin-right: auto; color: #fff; font-weight: 700; font-size: 16px; text-decoration: none; }
+  .dok-bar .mark img { width: 28px; height: 28px; border-radius: 6px; }
+  .dok-bar a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #9aa3b8; text-underline-offset: 3px; }
+  .dok-flikar { display: inline-flex; gap: 4px; padding: 3px; border-radius: 10px; background: #1b1d23; }
+  .dok-flikar a { min-height: 40px; padding: 0 14px; border-radius: 8px; color: #9aa3b8; text-decoration: none; font-weight: 650; display: inline-flex; align-items: center; }
+  .dok-flikar a[aria-current] { background: #2b303c; color: #fff; }
+  .dok h1 { margin: 0; color: #fff; font-size: 34px; line-height: 1.2; }
+  .dok .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: #9aa3b8; font-size: 14px; }
+  .dok .meta select { min-height: 40px; border-radius: 8px; border: 1px solid #6f7a90; background: #14161c; color: #dce3f2; padding: 0 10px; font: inherit; }
+  .dok h2 { margin: 0; color: #fff; font-size: 20px; line-height: 1.3; scroll-margin-top: 16px; }
+  .dok h2 .nr { color: #6f7a90; font-variant-numeric: tabular-nums; margin-right: 6px; }
+  .dok p { margin: 0; }
+  .dok ul { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
+  .dok section { display: grid; gap: 10px; }
+  .dok .vantar { color: #9aa3b8; font-style: italic; }
+  /* A: dokumentet med innehållsförteckningen bredvid. «Kort sagt» är en rad under rubriken. */
+  .dokA { display: grid; grid-template-columns: 240px minmax(0, 680px); gap: 56px; justify-content: center; padding: 36px 24px 80px; }
+  .dokA nav { position: sticky; top: 16px; align-self: start; display: grid; gap: 2px; font-size: 14px; line-height: 1.4; }
+  .dokA nav b { color: #9aa3b8; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .dokA nav a { display: flex; gap: 8px; min-height: 32px; align-items: center; color: #c3cbdd; text-decoration: none; }
+  .dokA nav a span { color: #6f7a90; width: 18px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
+  .dokA nav a[aria-current] { color: #fff; font-weight: 650; }
+  .dokA article { display: grid; gap: 32px; }
+  .dokA .ks { padding-left: 12px; border-left: 3px solid #7dd3a0; color: #fff; font-weight: 600; }
+  .dokA details.inn { display: none; }
+  /* B: kort sagt först; hela texten bakom en öppning per avsnitt. */
+  .dokB { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; display: grid; gap: 22px; }
+  .dokB .del { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 0; background: #0f1117; border-bottom: 1px solid #262a35; }
+  .dokB .del button { min-height: 40px; }
+  .dokB .visa { margin-left: auto; min-height: 44px; border: 1px solid #6f7a90; border-radius: 10px; background: transparent; color: #dce3f2; padding: 0 14px; font-size: 14px; }
+  .dokB ol.rader { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .dokB details { border-radius: 14px; border: 1px solid #262a35; background: #171a23; }
+  .dokB summary { list-style: none; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 4px 10px; padding: 14px 16px; cursor: pointer; min-height: 44px; }
+  .dokB summary::-webkit-details-marker { display: none; }
+  .dokB summary .nr { color: #6f7a90; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dokB summary b { color: #fff; font-size: 17px; }
+  .dokB summary span.ks { grid-column: 2; color: #c3cbdd; font-size: 15px; line-height: 1.5; }
+  .dokB summary .pil { grid-column: 3; grid-row: 1; color: #9aa3b8; font-size: 13px; white-space: nowrap; }
+  .dokB details[open] summary .pil::after { content: ' ▴'; } .dokB details:not([open]) summary .pil::after { content: ' ▾'; }
+  .dokB .hel { display: grid; gap: 10px; padding: 0 16px 16px 56px; color: #dfe4ef; font-size: 15px; }
+  .dokB h2.del-rubrik { margin-top: 18px; font-size: 24px; }
+  /* C: texten till vänster och «Kort sagt» i marginalen till höger, avsnitt för avsnitt. */
+  .dokC { max-width: 1040px; margin: 0 auto; padding: 36px 24px 80px; display: grid; gap: 30px; }
+  .dokC .par { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 40px; align-items: start; padding-top: 22px; border-top: 1px solid #262a35; }
+  .dokC aside { position: sticky; top: 12px; padding: 14px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; font-size: 15px; line-height: 1.5; }
+  .dokC aside b { display: block; color: #7dd3a0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .dokC table { border-collapse: collapse; font-size: 14px; width: 100%; }
+  .dokC td, .dokC th { text-align: left; padding: 10px 12px; border-bottom: 1px solid #262a35; vertical-align: top; }
+  .dokC th { color: #9aa3b8; font-weight: 600; }
+  .dokC .nyheter { padding: 16px 18px; border-radius: 14px; border: 1px solid #3b4358; background: #171a23; display: grid; gap: 6px; }
+
+  /* ── Telefonbredden: samma ytor vid 375 ─────────────────────────────────────────────────── */
+  .sida[data-bredd='375'] .acc { padding: 24px 12px; align-content: start; }
+  .sida[data-bredd='375'] .login { padding: 22px 18px; border-radius: 18px; }
+  .sida[data-bredd='375'] .login h1 { font-size: 22px; }
+  .sida[data-bredd='375'] .lovar { grid-template-columns: 1fr; }
+  .sida[data-bredd='375'] .forst h1 { font-size: 24px; }
+  .sida[data-bredd='375'] .forst .godkann .prim { width: 100%; }
+  .sida[data-bredd='375'] .home { grid-template-columns: minmax(0, 1fr); padding: 16px 12px 32px; gap: 16px; }
+  .sida[data-bredd='375'] .hbar { flex-wrap: wrap; }
+  .sida[data-bredd='375'] .hbar .vem { display: none; }
+  .sida[data-bredd='375'] .hbar .gora { padding: 0 12px; font-size: 14px; }
+  .sida[data-bredd='375'] .home h1 { font-size: 28px; }
+  .sida[data-bredd='375'] .hero { grid-template-columns: 1fr; padding: 18px; }
+  .sida[data-bredd='375'] .hero .lek { display: none; }
+  .sida[data-bredd='375'] .hero h2 { font-size: 26px; }
+  .sida[data-bredd='375'] .hgrid { grid-template-columns: 1fr; }
+  .sida[data-bredd='375'] .hhoger { order: 3; }
+  .sida[data-bredd='375'] .band, .sida[data-bredd='375'] .lasband { grid-template-columns: auto minmax(0, 1fr); }
+  .sida[data-bredd='375'] .band .svar, .sida[data-bredd='375'] .lasband button { grid-column: 1 / -1; }
+  .sida[data-bredd='375'] .lasband button { justify-self: start; }
+  .sida[data-bredd='375'] .lasrum { padding: 16px 12px 32px; }
+  .sida[data-bredd='375'] .lasrum li { grid-template-columns: 40px minmax(0, 1fr); }
+  .sida[data-bredd='375'] .lasrum li i { height: 56px; }
+  .sida[data-bredd='375'] .lasrum li .k { grid-column: 1 / -1; }
+  .sida[data-bredd='375'] .dok { font-size: 16px; }
+  .sida[data-bredd='375'] .dok-bar { padding: 8px 12px; flex-wrap: wrap; }
+  .sida[data-bredd='375'] .dok h1 { font-size: 26px; }
+  .sida[data-bredd='375'] .dokA { grid-template-columns: minmax(0, 1fr); padding: 20px 16px 60px; gap: 20px; }
+  .sida[data-bredd='375'] .dokA nav { display: none; }
+  .sida[data-bredd='375'] .dokA details.inn { display: block; border: 1px solid #262a35; border-radius: 12px; background: #171a23; }
+  .sida[data-bredd='375'] .dokA details.inn summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px; font-weight: 650; color: #fff; }
+  .sida[data-bredd='375'] .dokA details.inn ol { margin: 0; padding: 0 14px 12px 36px; display: grid; gap: 2px; font-size: 15px; }
+  .sida[data-bredd='375'] .dokA details.inn a { display: inline-flex; min-height: 36px; align-items: center; }
+  .sida[data-bredd='375'] .dokB { padding: 20px 12px 60px; }
+  .sida[data-bredd='375'] .dokB summary { grid-template-columns: 26px minmax(0, 1fr); padding: 12px; }
+  .sida[data-bredd='375'] .dokB summary .pil { grid-column: 2; grid-row: auto; }
+  .sida[data-bredd='375'] .dokB .hel { padding: 0 12px 14px 12px; }
+  .sida[data-bredd='375'] .dokC { padding: 20px 16px 60px; }
+  .sida[data-bredd='375'] .dokC .par { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .sida[data-bredd='375'] .dokC aside { position: static; order: -1; }
+  .sida[data-bredd='375'] .ed .ed-flikar, .sida[data-bredd='375'] .ed .ed-knapp, .sida[data-bredd='375'] .ed .hem { display: none; }
+  .sida[data-bredd='375'] .ed-las { flex-wrap: wrap; }
+  .sida[data-bredd='375'] .ed-las button { margin-left: 30px; }
+  .sida[data-bredd='375'] .telefoner { padding: 12px; }
+  .sida[data-bredd='375'] .tel { border: 0; border-radius: 0; width: 100%; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP #1272 — betavillkoren.</b> Hur välkomststeget med namnet (#1254 C) och villkoren hänger ihop, hur /villkor och integritetssidan läses, vad ett konto som inte godkänt ser, och hur befintliga konton möter villkoren. Texten är ett <b>utkast, inte juridiskt granskat</b>, och densamma i alla tre.</p>
+    <p>Växla variant med A/B/C eller ← →. «Ny användare» och «Inte godkänt» går att klicka sig igenom. «Börja om ytan» nollställer.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp" id="steggrupp"><span>Läge</span><div class="flikar" id="steg"></div></div>
+  <div class="grupp" id="fallgrupp"><span>Fall</span><div class="flikar" id="fall"></div></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <button type="button" id="omstart">Börja om ytan</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen"><div id="ram"><p class="etikett" id="etikett"></p><div class="sida" id="sida"></div><div class="noter" id="noter"></div></div></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  left: 'M13 8H3M7 4 3 8l4 4',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+  book: 'M8 4.25C6.75 3.25 4.75 2.75 2.25 2.75v9.5c2.5 0 4.5.5 5.75 1.5 1.25-1 3.25-1.5 5.75-1.5v-9.5C11.25 2.75 9.25 3.25 8 4.25zM8 4.25v9.5',
+  out: 'M9.25 2.75h4v4M13.25 2.75 7.5 8.5M11.25 9.5v3a.75.75 0 0 1-.75.75h-6.75a.75.75 0 0 1-.75-.75V5.75A.75.75 0 0 1 3.75 5h3',
+  doc: 'M4 1.75h5.5l3 3v9.5H4zM9.5 1.75v3h3M6 8h5M6 10.75h5',
+  plus: 'M8 3v10M3 8h10',
+  down: 'M8 2.75v8M4.75 7.75 8 11l3.25-3.25M3 13.25h10',
+}
+const C = { person: [[8, 5.25, 2.5]] }
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(C[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+
+// ── Utkastet: betavillkoren ──────────────────────────────────────────────────────────────────────
+// Dispositionen är #1268:s, avsnitt för avsnitt och med samma numrering, så att 9 och 10 står som
+// rubriker från början. Besluten 2026-10-24 i #1268 (1–7) och #1269 (F1–F7) är inskrivna.
+// [hakparentes] är det beställaren fyller i. UTKAST, inte juridiskt granskat (fråga 3: betan utan jurist).
+const VILLKOR = {
+  titel: 'Villkor för Decksters beta',
+  version: '2026-10-24',
+  delar: [
+    { h: 'Vilka vi är och vad Deckster är',
+      ks: 'Deckster drivs i betan av en privatperson och är ett verktyg för att göra och speltesta kortspel.',
+      t: `<p>Deckster drivs under betan av [namn], [adress] («vi»). Du når oss på [kontaktadressen], som också är kontaktpunkten för myndigheter och användare enligt EU:s förordning om digitala tjänster.</p>
+        <p>Deckster är ett verktyg för att skapa kortspel, speltesta dem vid ett bord och ta fram tryckfiler.</p>
+        <p>Innan något i Deckster säljs tar ett aktiebolag över tjänsten. Då får du nya villkor att läsa och godkänna.</p>` },
+    { h: 'Konto, ålder och gäster',
+      ks: 'Du måste vara 18 år för att ha ett konto. Gäster vid ditt bord ingår inget avtal, så du svarar för vilka du bjuder in.',
+      t: `<p>Du måste vara 18 år eller äldre för att ha ett konto. Kontot är ditt eget: dela inte inloggningslänken eller dina passkeys med någon.</p>
+        <p>Den som sätter sig vid ett bord med en rumskod är gäst. Gäster har ingen åldersgräns, loggar aldrig in och ingår inget avtal med oss. Därför svarar du som startar bordet för vilka du bjuder in, och för att bordet används enligt de här villkoren.</p>
+        <p>Det gästerna lämnar vid ditt bord — namn, drag, anteckningar, flaggor och enkätsvar — ser du och de du delar spelet med. Ni får använda det bara för att utveckla ert spel. Hur vi sparar och raderar det står i <a href="#" data-gaa="integritet">integritetstexten</a>.</p>
+        <p>En gäst som sparar sin session till ett konto blir användare och godkänner villkoren som alla andra.</p>` },
+    { h: 'Ditt innehåll är ditt',
+      ks: 'Allt du gör i Deckster är ditt, och du kan exportera allt när som helst.',
+      t: `<p>Du behåller all rätt till det du skapar och laddar upp.</p>
+        <p>Du kan när som helst exportera hela spelet — alla versioner, bilder, typsnitt och tryckfiler — också utan att betala. Om ett abonnemang en dag går ut kan du fortfarande läsa och exportera; vi raderar inte ett spel för att du slutat betala.</p>` },
+    { h: 'Det du lovar om ditt innehåll',
+      ks: 'Du lovar att du har rätt till allt du laddar upp och skriver, och att det inte bryter mot lag.',
+      t: `<p>Du garanterar att du äger eller har licens till allt du laddar upp eller skriver: bilder, typsnitt, text, kortnamn och regler. Särskilt att</p>
+        <ul><li>ett typsnitts licens tillåter att det bäddas in i tryck,</li><li>du inte använder andras varumärken eller figurer utan tillstånd,</li><li>innehållet inte bryter mot lag.</li></ul>
+        <p>Symbolerna i Decksters bibliotek och typsnitten från Google Fonts är undantagna så länge du använder dem som de levereras. Deras licenser är vår sak.</p>
+        <p>Får vi krav från någon annan för att du brutit mot det här, ska du ersätta oss för det om du varit vårdslös eller gjort det med avsikt.</p>` },
+    { h: 'Det du låter oss göra med ditt innehåll',
+      ks: 'Du ger oss rätt att lagra, kopiera och visa ditt innehåll, men bara för att Deckster ska fungera.',
+      t: `<p>För att Deckster ska fungera måste vi kopiera ditt innehåll: spara och säkerhetskopiera det, rita kort, texturer och tryckfiler, och visa det för dem du delar med — medredigerare, testledare, gäster och observatörer.</p>
+        <p>Du ger oss därför en icke-exklusiv, avgiftsfri och världsomfattande rätt att göra just det och inget annat, och att låta våra leverantörer göra det åt oss: lagring, e-post och, när tryck finns, tryckeriet. I rätten ingår också att bilder du laddar upp granskas automatiskt på vår egen server (avsnitt 7).</p>
+        <p>Rätten upphör när du tar bort innehållet, utom i säkerhetskopior under den tid de sparas.</p>
+        <p>Ett bord du spelat blir testdata för Deckster bara om du sagt ja till det, och då utan namn och fritext.</p>` },
+    { h: 'Det vi inte gör med ditt innehåll',
+      ks: 'Vi publicerar inte, säljer inte och tränar inga modeller på det du gör.',
+      t: `<p>Vi publicerar inte ditt spel, använder det inte i marknadsföring utan att fråga dig, säljer det inte och tränar inga modeller på det.</p>` },
+    { h: 'Tillåtet innehåll och hur vi modererar',
+      ks: 'Våld och mörka teman går bra. Explicit sexuellt innehåll trycks inte. Sexuellt innehåll som rör barn tolereras aldrig.',
+      t: `<ul><li><b>Aldrig tillåtet:</b> olagligt innehåll, sexuellt innehåll som rör barn, och intrång i andras rättigheter. Sexuellt innehåll som rör barn tas bort, kontot stängs och vi anmäler det alltid till polisen.</li>
+        <li><b>Tillåtet digitalt men trycks inte:</b> explicit sexuellt innehåll, om det är lagligt.</li>
+        <li><b>Tillåtet överallt:</b> våld och mörka teman.</li></ul>
+        <p>Bilder du laddar upp klassificeras automatiskt på vår egen server; ingen bild lämnar den för det. Under betan stoppar granskningen ingenting och syns inte för dig — den hjälper oss att ställa in den innan tryck kan beställas.</p>
+        <p>En automatisk träff stoppar aldrig något ensam: en människa granskar alltid. När tryck kan beställas granskar en människa också den första ordern för varje spel.</p>` },
+    { h: 'Betan',
+      ks: 'Betan är gratis och kan ändras eller stängas. Tryckpaketet är ett exempel: inga riktiga priser och ingen beställning.',
+      t: `<p>Under betan får du Deckster som den är, utan avgift. Den kan ändras, ligga nere eller behöva återställas från en säkerhetskopia, och då kan det senaste du gjort försvinna. Exportera det du inte vill förlora.</p>
+        <p>Tryckpaketet är ett exempel. Testtryckeriet finns inte, priserna är påhittade och ingen beställning läggs. Inget i betan är ett erbjudande att sälja något.</p>
+        <p>Vi stänger betan med minst 30 dagars varsel, och exporten är öppen hela tiden.</p>` },
+    { h: 'Abonnemang och betalning', ks: 'Under betan kostar ingenting.', vantar: true,
+      t: `<p class="vantar">Skrivs när det finns något att betala för.</p>` },
+    { h: 'Tryck och leverans', ks: 'Under betan trycks ingenting.', vantar: true,
+      t: `<p class="vantar">Skrivs när tryck kan beställas.</p>` },
+    { h: 'Anmälan och borttagning',
+      ks: 'Ser du något som inte får finnas, skriv till oss. Tar vi bort något får du veta varför och kan invända.',
+      t: `<p>Anmäl innehåll som du tror är olagligt eller gör intrång i dina rättigheter till [kontaktadressen]. Skriv vad det är, var det finns, varför det inte får finnas och vem du är, och att du lämnar uppgifterna i god tro.</p>
+        <p>Håller anmälan spärrar vi innehållet och berättar för den som laddade upp det varför. Hen kan invända, och vi prövar invändningen.</p>
+        <p>Den som gör intrång upprepade gånger får sitt konto stängt. Misstanke om brott som hotar någons liv eller säkerhet anmäler vi till polisen.</p>` },
+    { h: 'Ansvar',
+      ks: 'Deckster körs på en server utan reserv. Exportera själv; dina rättigheter som konsument gäller alltid.',
+      t: `<p>Deckster körs på en enda server utan reservström. Vi lovar ingen tillgänglighet, och vår säkerhetskopia ersätter inte din egen export.</p>
+        <p>Vi svarar inte för indirekt skada eller förlorad vinst, och vårt ansvar är högst det du betalat oss de senaste tolv månaderna. Det gäller inte om vi orsakat skadan med avsikt eller genom grov vårdslöshet, och det inskränker aldrig de rättigheter du har som konsument enligt lag.</p>` },
+    { h: 'Uppsägning',
+      ks: 'Du kan sluta när du vill. Stänger vi ditt konto får du skälen och 30 dagar att exportera.',
+      t: `<p>Du kan sluta använda Deckster när du vill.</p>
+        <p>Vi får stänga ett konto som väsentligt bryter mot villkoren. Då får du veta skälen, och exporten är öppen i 30 dagar — utom när innehållet är olagligt.</p>` },
+    { h: 'Ändringar i villkoren',
+      ks: 'Varje version har ett datum och finns kvar. En väsentlig ändring får du veta 30 dagar innan, och du godkänner den igen.',
+      t: `<p>Varje version av villkoren har ett datum och ligger kvar att läsa på den här sidan.</p>
+        <p>En väsentlig ändring mejlar vi 30 dagar innan den börjar gälla, och du godkänner den nästa gång du kommer in. En redaktionell ändring, som en ny adress eller ett rättat ord, får du bara veta i ett mejl.</p>` },
+    { h: 'Lag och tvister',
+      ks: 'Svensk lag gäller. Som konsument kan du alltid vända dig till Allmänna reklamationsnämnden.',
+      t: `<p>Svensk lag gäller. Bor du i ett annat land behåller du det skydd som tvingande regler där ger dig som konsument.</p>
+        <p>Tvister prövas av svensk allmän domstol. Som konsument kan du också vända dig till Allmänna reklamationsnämnden, arn.se.</p>` },
+    { h: 'Integritet',
+      ks: 'Vad vi sparar om dig och hur det raderas står i integritetstexten.',
+      t: `<p>Vad vi sparar om dig och om gästerna vid ditt bord, varför, hur länge och hur det raderas står i <a href="#" data-gaa="integritet">integritetstexten</a>.</p>` },
+  ],
+}
+
+// ── Utkastet: integritetstexten ─────────────────────────────────────────────────────────────────
+// Ur #1269:s kartor och beslut F1–F7. Det som ännu inte är byggt står med en prototypmärkning, så att
+// texten aldrig lovar mer än tjänsten gör den dag den publiceras.
+const INTEGRITET = {
+  titel: 'Integritet i Decksters beta',
+  version: '2026-10-24',
+  delar: [
+    { h: 'Vem som ansvarar',
+      ks: 'Den som driver Deckster ansvarar för alla personuppgifter i tjänsten, också gästernas.',
+      t: `<p>Personuppgiftsansvarig är [namn], [adress], som driver Deckster under betan. Det gäller allt som sparas i Deckster, också det gäster lämnar vid en designers bord.</p>
+        <p>Den som äger ett spel får läsa det gästerna lämnat, men bara för att utveckla spelet. Frågor och begäran skickar du till [kontaktadressen].</p>` },
+    { h: 'Om du har ett konto',
+      ks: 'Din e-postadress, ditt namn, dina spel och det som behövs för att logga in.',
+      t: `<ul><li>Din e-postadress och ditt namn, om du satt ett.</li><li>Dina passkeys: den publika nyckeln, webbläsaren och när den användes senast.</li><li>Din AI-nyckel, krypterad, om du lagt in en.</li><li>Dina spel, deras versioner, bilder och typsnitt, och adresserna du bjudit in.</li><li>En kaka som håller dig inloggad.</li></ul>
+        <p>Vi behandlar det för att kunna ge dig tjänsten, alltså enligt avtalet med dig. Inloggningslänkar, spärrar mot för många försök och säkerhetskopior har vi för att hålla tjänsten säker, vilket är ett berättigat intresse.</p>` },
+    { h: 'Om du är gäst vid ett bord',
+      ks: 'Namnet du skriver, dina drag, anteckningar, flaggor och enkätsvar. Alla vid bordet ser dem medan ni spelar, och spelets ägare efteråt.',
+      t: `<p>När du sätter dig vid ett bord sparar vi namnet du skriver, dina drag, dina anteckningar och flaggor, och dina enkätsvar.</p>
+        <p>Medan ni spelar ser alla vid bordet dem. Efteråt ser spelets ägare och de hen delar spelet med dem. Ingen annan.</p>
+        <p>Du väljer själv att sätta dig och att svara, och det står vid bordet vad som sparas. Vi behandlar det därför på ett berättigat intresse, utan samtyckesruta. Gäster åldersprövas inte.</p>` },
+    { h: 'Hur länge vi sparar',
+      ks: 'En gästs namn och fritext tas bort efter ett år. Ett raderat konto försvinner direkt. Säkerhetskopior finns i åtta dagar.',
+      t: `<ul><li><b>Gäst utan konto:</b> namn och fritext tas bort 12 månader efter att bordet avslutades. Spelet och enkätens siffror står kvar utan namn.</li>
+        <li><b>Gäst som sparat till ett konto:</b> så länge kontot finns.</li>
+        <li><b>Ett borttaget spel:</b> namnen och svaren vid dess bord tas bort direkt.</li>
+        <li><b>Ett raderat konto:</b> direkt. Bilder och typsnitt som inget annat spel använder tas bort efter 30 dagar.</li>
+        <li><b>Inbjudningar:</b> 30 dagar efter att de använts eller gått ut. <b>Inloggningslänkar och kakor:</b> när de inte längre går att använda.</li>
+        <li><b>Säkerhetskopior:</b> åtta dagar. Efter en återställning tar vi bort det som raderats igen.</li>
+        <li>Ett konto som inte används raderas inte under betan.</li></ul>
+        <p class="bygg">Prototyp: stämmer först när #1277 och #1279 är byggda — texten publiceras inte före dem.</p>` },
+    { h: 'Vilka andra som får uppgifter',
+      ks: 'Cloudflare, som står framför servern och lagrar bilder i EU, och Resend, som skickar mejlen. Ingen analys och ingen spårning.',
+      t: `<ul><li><b>Cloudflare</b> står framför vår server och lagrar bilder och tryckfiler i sin europeiska jurisdiktion.</li>
+        <li><b>Resend</b> skickar inloggnings- och inbjudningsmejlen och får då adressen och länken. Resend finns i USA; överföringen sker under [EU–USA-ramverket eller standardavtalsklausuler].</li>
+        <li><b>Google</b>: typsnittsväljaren i editorn hämtar typsnitt direkt från Google Fonts, som då ser din IP-adress.</li></ul>
+        <p>Vi har biträdesavtal med Cloudflare och Resend. Vi använder inga analysverktyg och ingen reklam. Den enda kakan håller dig inloggad, och därför finns ingen kakruta.</p>` },
+    { h: 'Speltester som testdata',
+      ks: 'Bord kan bli testdata för Deckster, men bara utan namn och fritext.',
+      t: `<p>För att hitta fel spelar vi ibland upp bord igen. Då byts alla namn och all fritext ut innan något sparas utanför servern, och den råa kopian sparas aldrig. Bord ur andras spel används bara om spelets ägare sagt ja.</p>` },
+    { h: 'Dina rättigheter',
+      ks: 'Du kan få se, rätta, flytta och radera det vi har om dig. Gäster kan radera sig själva från telefonen.',
+      t: `<p>Du har rätt att få veta vad vi har om dig, få det rättat, raderat eller utlämnat i ett format du kan ta med dig, och att invända mot det vi gör på ett berättigat intresse.</p>
+        <p><b>Med konto:</b> skriv till [kontaktadressen]. <span class="bygg">Prototyp: när #1280 är byggt står «Ladda ner» och «Radera kontot» i Profil, och meningen säger det.</span></p>
+        <p><b>Som gäst:</b> ta bort ditt namn och dina svar från bordet på din egen telefon, eller skriv till [kontaktadressen] med spelets namn, ungefär när ni spelade och namnet du satt under. <span class="bygg">Prototyp: telefonens väg kommer med #1281.</span></p>
+        <p>Är du inte nöjd med hur vi svarar kan du klaga hos Integritetsskyddsmyndigheten, imy.se.</p>` },
+    { h: 'Ändringar',
+      ks: 'Varje version har ett datum och ligger kvar.',
+      t: `<p>Varje version av den här texten har ett datum och ligger kvar att läsa. Ändras något väsentligt får du ett mejl.</p>` },
+  ],
+}
+
+// Det som är nytt i en påhittad väsentlig ändring, för «Ändrade villkor».
+const NYTT = { version: '2027-03-01', fran: '2026-10-24', rader: ['<b>1.</b> Deckster drivs nu av Deckster AB.', '<b>9.</b> Abonnemang och betalning: vad Deckster kostar, och hur du säger upp.', '<b>10.</b> Tryck och leverans: vem som säljer lådan, ångerrätt och reklamation.'] }
+
+// Sammanfattningen i steget: fem rader ur «Kort sagt», det man faktiskt lovar och får.
+const KORT = [
+  'Det du gör i Deckster är <b>ditt</b>, och du kan exportera allt när som helst.',
+  'Du lovar att du har <b>rätt till</b> det du laddar upp, och att det inte bryter mot lag.',
+  'Vi lagrar och visar ditt innehåll bara för att tjänsten ska fungera, och <b>tränar inga modeller</b> på det.',
+  'Betan är <b>gratis</b> och kan ändras eller stängas. Tryckpaketet är ett exempel och inget erbjudande.',
+  'Du måste vara <b>18 år</b>. Gästerna vid ditt bord svarar du för.',
+]
+
+// ── Varianterna ─────────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A — ett kort · rekommenderas',
+    not: '<b>Namnet och villkoren i samma välkomstkort</b>, ett tryck: «Godkänn och fortsätt». Tomt namn är #1254:s «Hoppa över». /villkor är ett dokument med innehållet bredvid och «Kort sagt» under varje rubrik. Den som väntar får läsläget från #489 på Mina spel och i editorn, och kortet igen vid nästa besök. Befintliga konton får samma kort. <span class="plus">+ ett steg, inte två; återanvänder välkomstkortet och läsbandet; den som väntar ser hela tiden varför och vägen dit</span> <span class="minus">− kortet blir långt (två frågor), och vid 375 hamnar knappen under vecket</span>' },
+  B: { namn: 'B — två steg i följd',
+    not: '<b>Samma kort i två steg</b>, «1 av 2» namnet som byggt i #1265 och «2 av 2» villkoren. /villkor visar «Kort sagt» först och hela texten bakom en öppning per avsnitt, villkor och integritet på en sida. Den som väntar ser Mina spel som vanligt; en handling som kräver villkoren öppnar steget som en dialog. Befintliga konton får ett band. <span class="plus">+ varje steg är kort och har en fråga; inget ser låst ut i onödan; det byggda välkomststeget står orört</span> <span class="minus">− två tryck för den nya; den som väntar får veta först när något nekas; bandkön (namn, passkey) blir tre långa</span>' },
+  C: { namn: 'C — villkoren först',
+    not: '<b>Villkoren som en egen sida före namnet</b>: «Du lovar» och «Vi lovar» sida vid sida, en ruta för 18 år och «Godkänn villkoren». Sedan namnet. /villkor har «Kort sagt» i marginalen bredvid texten och versionerna i en tabell. Den som väntar får en avskalad läs- och exportsida i stället för Mina spel; befintliga konton får sidan med «Det här är nytt». <span class="plus">+ det bindande först, och mest tydligt läst; namnet blir det lätta sista steget</span> <span class="minus">− två sidor i följd; en tredje form av Mina spel att bygga och hålla; mest att bygga</span>' },
+}
+const YTOR = { ny: 'Ny användare', villkor: '/villkor', integritet: 'Integritet', inte: 'Inte godkänt', befintligt: 'Befintligt konto', raden: 'Raden' }
+const LAGEN = {
+  ny: { A: { kort: 'Välkomstkortet', hem: 'Godkänt → Mina spel', vantar: 'Inte nu → läsläge' }, B: { namn: '1 · Namnet', villkor: '2 · Villkoren', hem: 'Godkänt → Mina spel', vantar: 'Inte nu → Mina spel' }, C: { villkor: '1 · Villkoren', namn: '2 · Namnet', hem: 'Klart → Mina spel', ute: 'Logga ut' } },
+  inte: { A: { hem: 'Mina spel', meny: 'Spelets meny', editor: 'Editorn', tillbaka: 'Nästa besök' }, B: { hem: 'Mina spel', dialog: 'Trycker «Nytt spel»', editor: 'Ändrar i editorn', tillbaka: 'Nästa besök' }, C: { hem: 'Läs och exportera', editor: 'Editorn', tillbaka: 'Nästa besök' } },
+  befintligt: { A: { yta: 'Vid nästa besök' }, B: { band: 'Bandet', dialog: 'Läs och godkänn' }, C: { yta: 'Vid nästa besök' } },
+}
+const FALL = { forsta: 'Första villkoren', utannamn: 'Första villkoren, aldrig fått namnfrågan', andrad: 'Väsentlig ändring' }
+const EMAIL = 'nicklas.ockelberg@gmail.com'
+const HOJD = { 1280: 800, 375: 812 }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let yta = q.get('yta') || 'ny'
+let lage = q.get('lage') || ''
+let fall = q.get('fall') || 'forsta'
+let bredd = q.get('bredd') || '1280'
+let st = {}
+const omstart = () => { st = { namn: 'Nicklas', alder: false, meny: false, oppna: {}, alla: false } }
+omstart()
+const lagen = () => LAGEN[yta]?.[v] ?? null
+const lageNu = () => { const l = lagen(); return l ? (l[lage] ? lage : Object.keys(l)[0]) : '' }
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+// ── Gemensamma bitar ────────────────────────────────────────────────────────────────────────────
+const RADEN = (kontakt = true) => `<p class="sidfot" data-about><a href="#" data-gaa="villkor">Villkor</a> · <a href="#" data-gaa="integritet">Integritet</a>${kontakt ? ' · <a href="#">Kontakt</a>' : ''} · Deckster v0.9.3</p>`
+const lankar = () => `<div class="lankar"><a href="#" data-gaa="villkor">${g('doc')} Läs hela villkoren</a><a href="#" data-gaa="integritet">${g('doc')} Integritet</a></div>`
+const kortlista = () => `<ul class="kortlista">${KORT.map((k) => `<li>${k}</li>`).join('')}</ul>`
+const namnfalt = (id) => `<div class="falt"><label for="${id}">Vad ska andra kalla dig?</label><input id="${id}" data-namn maxlength="40" value="${esc(st.namn)}" placeholder="Till exempel Kim Larsson" autocomplete="name"></div>`
+const nyttRuta = () => `<div class="nytt"><p style="margin:0"><b>Det här är nytt sedan ${NYTT.fran}</b></p><ul>${NYTT.rader.map((r) => `<li>${r}</li>`).join('')}</ul></div>`
+
+// ── 1. Välkomststeget ───────────────────────────────────────────────────────────────────────────
+// A: ett kort. Namnet överst, som det byggda steget, och villkoren under ett streck i samma kort.
+function kortA({ medNamn = true, rubrik = 'Välkommen till Deckster', ingress = `Du är inloggad som ${EMAIL}.`, nytt = false, version = VILLKOR.version } = {}) {
+  return `<div class="acc"><div class="login" data-bred role="main">
+    <h1><img src="mark-128.png" alt="">${rubrik}</h1>
+    <p class="as">${ingress}</p>
+    ${medNamn ? `${namnfalt('a-namn')}<p class="not">Namnet står när du delar ett spel och när du är online i det. Förslaget kommer ur din adress. Lämna tomt om du vill vänta; du kan ändra det i Profil.</p>` : ''}
+    <section class="vk" aria-labelledby="a-vk"><h2 id="a-vk">Villkoren för betan <span class="datum">· ${version}</span></h2>
+      ${nytt ? nyttRuta() : kortlista()}
+      ${lankar()}
+    </section>
+    <p class="not">Genom att godkänna intygar du att du är 18 år eller äldre.</p>
+    <div class="svar"><button class="prim" data-do="godkann">Godkänn och fortsätt</button><button class="tyst" data-do="vanta">Inte nu</button></div>
+  </div></div>`
+}
+// B: steg 1 är det byggda välkomststeget med en stegrad; steg 2 är villkoren i samma kort.
+function namnB(total = 2) {
+  return `<div class="acc"><div class="login" role="main">
+    <h1><img src="mark-128.png" alt="">Välkommen till Deckster</h1>
+    ${total > 1 ? `<p class="stegrad"><i data-nu></i><i></i>Steg 1 av 2</p>` : ''}
+    <p class="as">Du är inloggad som ${EMAIL}.</p>
+    ${namnfalt('b-namn')}
+    <p class="not">Namnet står när du delar ett spel och när du är online i det. Förslaget kommer ur din adress. Du kan ändra det i Profil.</p>
+    <div class="svar"><button class="prim" data-do="namn">Fortsätt</button><button class="tyst" data-do="namn">Hoppa över</button></div>
+  </div></div>`
+}
+function villkorB({ steg = true, rubrik = 'Villkoren för betan', nytt = false, dialog = false } = {}) {
+  const kort = `<div class="login" data-bred role="${dialog ? 'dialog' : 'main'}" ${dialog ? 'aria-modal="true" aria-labelledby="b-vk"' : ''}>
+    <h1 id="b-vk"><img src="mark-128.png" alt="">${rubrik}</h1>
+    ${steg ? `<p class="stegrad"><i></i><i data-nu></i>Steg 2 av 2<button class="bak" data-do="tillnamn">${g('left')} Namnet</button></p>` : ''}
+    <p class="as">${nytt ? `Villkoren har ändrats. Version ${NYTT.version} gäller från den 1 mars.` : `Version ${VILLKOR.version}. Kort sagt:`}</p>
+    ${nytt ? nyttRuta() : kortlista()}
+    ${lankar()}
+    <p class="not">Genom att godkänna intygar du att du är 18 år eller äldre.</p>
+    <div class="svar"><button class="prim" data-do="godkann">Godkänn och fortsätt</button><button class="tyst" data-do="vanta">Inte nu</button></div>
+  </div>`
+  return dialog ? kort : `<div class="acc">${kort}</div>`
+}
+// C: villkoren som egen sida, före namnet. Rutan för åldern är ett eget intygande.
+function villkorC({ nytt = false, befintlig = false } = {}) {
+  return `<div class="acc" data-topp><div class="forst" role="main">
+    <header><h1><img src="mark-128.png" alt="">${nytt ? 'Villkoren har ändrats' : befintlig ? 'Deckster har fått villkor' : 'Innan du börjar'}</h1>
+      <p class="ingress">${nytt ? `Version ${NYTT.version} gäller från den 1 mars. Godkänn den för att fortsätta skapa och ändra.` : befintlig ? 'Deckster är i beta, och betan har nu villkor. Läs dem och godkänn för att fortsätta skapa och ändra dina spel.' : `Deckster är i beta. Läs vad du lovar och vad vi lovar. Du är inloggad som ${EMAIL}.`}</p></header>
+    ${nytt ? nyttRuta() : ''}
+    <div class="lovar"><section><h2>Du lovar</h2><ul><li>att du är 18 år eller äldre,</li><li>att du har rätt till det du laddar upp och skriver,</li><li>att det inte bryter mot lag,</li><li>att använda det gästerna lämnar bara för ditt spel.</li></ul></section>
+      <section><h2>Vi lovar</h2><ul><li>att det du gör är ditt och alltid kan exporteras,</li><li>att bara lagra och visa det för att tjänsten ska fungera,</li><li>att aldrig sälja det eller träna modeller på det,</li><li>att säga till 30 dagar innan betan stängs.</li></ul></section></div>
+    ${lankar()}
+    <div class="godkann"><label class="kryss"><input type="checkbox" data-alder ${st.alder ? 'checked' : ''}><span>Jag är 18 år eller äldre.</span></label>
+      <div class="rad"><button class="prim" data-do="godkann" ${st.alder ? '' : 'disabled'}>Godkänn villkoren</button>${befintlig || nytt ? '<button class="tyst" data-do="vanta">Bara läsa och exportera</button>' : ''}<button class="tyst" data-do="ut">Logga ut</button></div></div>
+  </div></div>`
+}
+function utloggad() {
+  return `<div class="acc"><div class="login"><h1><img src="mark-128.png" alt="">Deckster</h1><p class="as">Du är utloggad. Kontot finns kvar, och nästa gång du loggar in börjar du på villkoren.</p>
+    <div class="falt"><span>E-postadress</span><input value="${EMAIL}"></div><button class="prim">Skicka länken</button>${RADEN()}</div></div>`
+}
+
+// ── 2. Mina spel och editorn ────────────────────────────────────────────────────────────────────
+// lasA: A:s läsläge; kanSkapa: knapparna ritas; over: band ovanför titeln; chip: B:s tysta ord i huvudet.
+function minaSpel({ tom = false, kanSkapa = true, over = '', chip = false, meny = false } = {}) {
+  const spel = [['Hamnen', 'v12 · 41 kort · spelat 18 okt'], ['Skogens råd', 'v4 · 23 kort · spelat i går']]
+  return `<div class="home">
+    <div class="hbar"><span class="mark"><img src="mark-128.png" alt="">Deckster</span>${chip ? '<span class="chip">Villkoren inte godkända</span>' : ''}${kanSkapa ? `<button class="gora" data-do="skapa">${g('down')} Importera</button><button class="gora" data-do="skapa">${g('plus')} Nytt spel</button>` : ''}<span class="vem">${EMAIL}</span><span class="ikon">${g('person')}</span><span class="ikon">${g('exit')}</span></div>
+    <div class="hvanster">
+      <h1>Mina spel</h1>
+      ${over}
+      ${tom ? `<div class="tomt"><b>Inga spel ännu</b><span>Börja med ett nytt spel eller importera ett.</span><button class="gora" data-prim data-do="skapa">${g('plus')} Nytt spel</button></div>` : `
+      <div class="hero"><div class="lek"></div><div><small>Fortsätt där du slutade</small><h2>Stjärnhandel</h2><p>Version 7 sparad i går</p>
+        <div class="knappar"><button class="gora" data-prim data-do="editor">Öppna editorn</button>${kanSkapa ? '<button class="gora" data-do="skapa">Starta bord</button>' : ''}</div></div></div>
+      <p class="rubrik2">Övriga spel</p>
+      <div class="hgrid" style="position:relative">${spel.map(([n, s], i) => `<div><i></i><span><strong>${n}</strong><span>${s}</span></span><button class="mer" aria-label="Val för ${n}" ${i === 0 ? 'data-do="meny"' : ''}>⋯</button></div>`).join('')}
+        ${meny ? `<div class="meny" role="menu" style="left:calc(50% - 236px);top:64px"><button role="menuitem">Öppna</button><button role="menuitem">Exportera…</button></div>` : ''}</div>`}
+    </div>
+    <div class="hhoger"><label>Har du en rumskod?</label><div class="kodrad"><input aria-label="Rumskod"><button class="gora">Gå med</button></div></div>
+    ${RADEN()}
+  </div>`
+}
+const lasbandA = () => `<div class="lasband" role="note">${g('book')}<p><b>Läsläge</b> — du har inte godkänt villkoren ännu. <small>Du kan läsa och exportera dina spel och logga ut, men inte skapa, ändra eller starta bord.</small></p><button data-do="tillsteg">Läs och godkänn</button></div>`
+function editor({ band = '', dialog = '' } = {}) {
+  const FLIKAR = ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord']
+  const rader = [['stj-01', 'Handelsstation', '2', 'Bas'], ['stj-02', 'Fraktskepp', '4', 'Skepp'], ['stj-03', 'Asteroidbälte', '3', 'Plats'], ['stj-04', 'Pirat', '2', 'Hot'], ['stj-05', 'Kryddor', '6', 'Vara'], ['stj-06', 'Kristaller', '5', 'Vara'], ['stj-07', 'Svart hål', '1', 'Plats'], ['stj-08', 'Diplomat', '2', 'Person']]
+  const las = band !== ''
+  return `<div class="ed">
+    <header class="ed-huvud"><span class="hem">Mina spel</span><span class="namn">Stjärnhandel</span><span class="ver">v7</span><span class="spacer"></span>
+      <nav class="ed-flikar" role="tablist">${FLIKAR.map((n) => `<button role="tab" aria-selected="${n === 'Tabell'}">${n}</button>`).join('')}</nav><span class="spacer"></span>
+      ${las ? '' : '<button class="ed-knapp kantad">Spara</button><button class="ed-knapp primar">Starta</button>'}</header>
+    ${band}
+    <div class="t-vy"><div class="t-rulla"><table class="t-data"><colgroup><col style="width:110px"><col><col style="width:80px"><col></colgroup>
+      <thead><tr><th>id</th><th>namn</th><th>antal</th><th>typ</th></tr></thead>
+      <tbody>${rader.map((r, i) => `<tr><td class="id">${r[0]}</td><td>${i === 2 && dialog ? 'Asteroidbältet' : r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table></div></div>
+    ${dialog}
+  </div>`
+}
+const edLasA = (ord = 'du har inte godkänt villkoren ännu') => `<div class="ed-las" role="note">${g('book')}<div><b>Läsläge</b> — ${ord}: du kan läsa spelet, jämföra versioner och exportera, men inte ändra det.<small>Sökning, zoom, visning och historik fungerar som vanligt.</small></div><button data-do="tillsteg">Läs och godkänn</button></div>`
+// C: läs- och exportsidan i stället för Mina spel.
+function lasrum() {
+  const spel = [['Stjärnhandel', 'v7 · 52 kort · sparad i går'], ['Hamnen', 'v12 · 41 kort · spelat 18 okt'], ['Skogens råd', 'v4 · 23 kort · spelat i går']]
+  return `<div class="lasrum">
+    <div class="hbar"><span class="mark"><img src="mark-128.png" alt="">Deckster</span><button class="gora" data-prim data-do="tillsteg">Godkänn villkoren</button><span class="ikon">${g('exit')}</span></div>
+    <h1 style="margin:0;font-size:30px;color:#fff">Dina spel, att läsa</h1>
+    <p class="ingress">Du har inte godkänt villkoren. Tills dess kan du öppna dina spel för att läsa dem, exportera dem och logga ut. Allt du gjort ligger kvar som det var.</p>
+    <ul>${spel.map(([n, s]) => `<li><i></i><span><strong>${n}</strong><span>${s}</span></span><span class="k"><button class="gora" data-do="editor">${g('book')} Läs</button><button class="gora">${g('down')} Exportera</button></span></li>`).join('')}</ul>
+    ${RADEN()}
+  </div>`
+}
+
+// ── 3. /villkor och integritetssidan ────────────────────────────────────────────────────────────
+function dokBar(vilket) {
+  return `<div class="dok-bar"><a class="mark" href="#"><img src="mark-128.png" alt="">Deckster</a>
+    <nav class="dok-flikar" aria-label="Dokument"><a href="#" data-gaa="villkor" ${vilket === 'villkor' ? 'aria-current="page"' : ''}>Villkor</a><a href="#" data-gaa="integritet" ${vilket === 'integritet' ? 'aria-current="page"' : ''}>Integritet</a></nav>
+    <a href="#">In English</a><a href="#">${g('left')} Mina spel</a></div>`
+}
+const utkast = `<span class="utkast">UTKAST — inte juridiskt granskat</span>`
+function dokA(vilket) {
+  const D = vilket === 'integritet' ? INTEGRITET : VILLKOR
+  const toc = D.delar.map((d, i) => `<a href="#d${i + 1}" ${i === 0 ? 'aria-current="true"' : ''}><span>${i + 1}</span>${d.h}</a>`).join('')
+  return `<div class="dok">${dokBar(vilket)}<div class="dokA">
+    <nav aria-label="Innehåll"><b>Innehåll</b>${toc}</nav>
+    <article><header style="display:grid;gap:12px">${utkast}<h1>${D.titel}</h1>
+      <p class="meta"><span>Gäller från ${D.version}</span><select aria-label="Version"><option>Version ${D.version} (gällande)</option></select><a href="#">Skriv ut</a></p>
+      <details class="inn"><summary>Innehåll</summary><ol>${D.delar.map((d, i) => `<li><a href="#d${i + 1}">${d.h}</a></li>`).join('')}</ol></details></header>
+      ${D.delar.map((d, i) => `<section id="d${i + 1}"><h2><span class="nr">${i + 1}.</span>${d.h}</h2><p class="ks">${d.ks}</p>${d.t}</section>`).join('')}
+    </article></div></div>`
+}
+function dokB(vilket) {
+  const del = (D, start) => `<ol class="rader">${D.delar.map((d, i) => { const id = `${D === INTEGRITET ? 'i' : 'v'}${i}`; const oppen = st.alla || st.oppna[id]; return `<li><details ${oppen ? 'open' : ''} data-id="${id}" ${d.vantar ? 'data-vantar' : ''}><summary><span class="nr">${start + i}</span><b>${d.h}</b><span class="ks">${d.ks}</span><span class="pil">${d.vantar ? '' : 'Hela texten'}</span></summary><div class="hel">${d.t}</div></details></li>` }).join('')}</ol>`
+  return `<div class="dok">${dokBar(vilket)}<div class="dokB">
+    <header style="display:grid;gap:12px">${utkast}<h1>Villkor och integritet</h1>
+      <p class="meta"><span>Version ${VILLKOR.version} · gällande</span><a href="#">Tidigare versioner</a></p>
+      <p style="color:#c3cbdd">Varje avsnitt börjar med vad det betyder i en mening. Öppna det för hela texten, som är den som gäller.</p></header>
+    <div class="del"><nav class="dok-flikar"><a href="#" data-gaa="villkor" ${vilket === 'villkor' ? 'aria-current="page"' : ''}>Villkor</a><a href="#" data-gaa="integritet" ${vilket === 'integritet' ? 'aria-current="page"' : ''}>Integritet</a></nav><button class="visa" data-do="alla">${st.alla ? 'Stäng alla' : 'Visa all text'}</button></div>
+    ${vilket === 'integritet' ? `<h2 class="del-rubrik">${INTEGRITET.titel}</h2>${del(INTEGRITET, 1)}` : `<h2 class="del-rubrik" style="margin-top:0">${VILLKOR.titel}</h2>${del(VILLKOR, 1)}`}
+  </div></div>`
+}
+function dokC(vilket) {
+  const D = vilket === 'integritet' ? INTEGRITET : VILLKOR
+  return `<div class="dok">${dokBar(vilket)}<div class="dokC">
+    <header style="display:grid;gap:12px;max-width:680px">${utkast}<h1>${D.titel}</h1>
+      <p class="meta"><span>Version ${D.version} · gällande</span><a href="#versioner">Alla versioner</a><a href="#">Skriv ut</a></p>
+      <p style="color:#c3cbdd">Texten till vänster är den som gäller. I rutan till höger står vad avsnittet betyder, kort sagt.</p></header>
+    ${D.delar.map((d, i) => `<div class="par"><section><h2><span class="nr">${i + 1}.</span>${d.h}</h2>${d.t}</section><aside><b>Kort sagt</b>${d.ks}</aside></div>`).join('')}
+    <section id="versioner" class="par" style="grid-template-columns:minmax(0,1fr)"><h2>Versioner</h2>
+      <table><thead><tr><th>Version</th><th>Ändring</th><th>Väsentlig</th></tr></thead><tbody><tr><td>${D.version}</td><td>Första versionen, för betan.</td><td>—</td></tr></tbody></table></section>
+  </div></div>`
+}
+
+// ── 4. Raden «Villkor · Integritet» (#757) ─────────────────────────────────────────────────────
+function raden() {
+  return `<div class="telefoner">
+    <div class="login" style="align-self:start"><h1><img src="mark-128.png" alt="">Deckster</h1>
+      <div class="falt"><span>E-postadress</span><input placeholder="du@exempel.se"></div><button class="prim">Skicka länken</button>${RADEN()}</div>
+    <div class="tel" aria-label="Anslutningssidan"><h2>Stjärnhandel</h2><p class="liten">Rumskod KX7P · 3 av 5 platser lediga</p>
+      <div class="falt"><span>Ditt namn</span><input value="Ada"></div>
+      <p class="liten">Ditt namn, dina drag och dina enkätsvar sparas på bordet, inte på dig som person.</p>
+      <button class="prim">Sätt dig</button>${RADEN(false)}</div>
+    <div class="tel" aria-label="Enkätens slut"><p class="tack">Tack, Ada! Svaren är skickade.</p>
+      <button class="sek" style="width:100%">Spara till ditt konto</button>
+      <p class="liten">Ditt namn, dina drag och dina enkätsvar sparas på bordet, inte på dig som person.</p>${RADEN(false)}</div>
+  </div>`
+}
+
+// ── Ritningen per variant ───────────────────────────────────────────────────────────────────────
+function ytan() {
+  const l = lageNu()
+  if (yta === 'villkor' || yta === 'integritet') return v === 'A' ? dokA(yta) : v === 'B' ? dokB(yta) : dokC(yta)
+  if (yta === 'raden') return raden()
+  if (yta === 'ny') {
+    if (l === 'hem') return minaSpel({ tom: true })
+    if (v === 'A') return l === 'vantar' ? minaSpel({ tom: true, kanSkapa: false, over: lasbandA() }) : kortA()
+    if (v === 'B') return l === 'villkor' ? villkorB() : l === 'vantar' ? minaSpel({ tom: true, chip: true }) : namnB()
+    if (v === 'C') return l === 'namn' ? namnB(1).replace('Välkommen till Deckster', 'En sak till') : l === 'ute' ? utloggad() : villkorC()
+  }
+  if (yta === 'inte') {
+    if (v === 'A') return l === 'editor' ? editor({ band: edLasA() }) : l === 'tillbaka' ? kortA({ medNamn: false, rubrik: 'Välkommen tillbaka', ingress: 'Du har inte godkänt villkoren för betan ännu. Tills du gör det kan du läsa, exportera och logga ut.' }) : minaSpel({ kanSkapa: false, over: lasbandA(), meny: l === 'meny' || st.meny })
+    if (v === 'B') {
+      if (l === 'editor') return editor({ dialog: `<div class="slojan">${villkorB({ steg: false, rubrik: 'Godkänn villkoren för att spara', dialog: true }).replace('Version 2026-10-24. Kort sagt:', 'Ändringen «Asteroidbältet» väntar och sparas när du godkänt. Kort sagt:')}</div>` })
+      if (l === 'dialog') return `<div style="position:relative;min-height:100%">${minaSpel({ chip: true })}<div class="slojan">${villkorB({ steg: false, rubrik: 'Godkänn villkoren först', dialog: true }).replace('Version 2026-10-24. Kort sagt:', 'För att skapa ett spel behöver du godkänna villkoren för betan. Kort sagt:')}</div></div>`
+      if (l === 'tillbaka') return minaSpel({ chip: true, over: bandB() })
+      return minaSpel({ chip: true })
+    }
+    if (v === 'C') return l === 'editor' ? editor({ band: edLasA() }) : l === 'tillbaka' ? villkorC({ befintlig: true }) : lasrum()
+  }
+  if (yta === 'befintligt') {
+    const nytt = fall === 'andrad'
+    const medNamn = fall === 'utannamn'
+    if (v === 'A') return kortA({ medNamn, nytt, version: nytt ? NYTT.version : VILLKOR.version, rubrik: nytt ? 'Villkoren har ändrats' : medNamn ? 'Två saker innan du fortsätter' : 'Deckster har fått villkor', ingress: nytt ? `Version ${NYTT.version} gäller från den 1 mars. Godkänn den för att fortsätta skapa och ändra.` : 'Betan har nu villkor. Läs dem och godkänn för att fortsätta skapa och ändra dina spel.' })
+    if (v === 'B') {
+      if (l === 'dialog') return `<div style="position:relative;min-height:100%">${minaSpel({ chip: true })}<div class="slojan">${villkorB({ steg: false, rubrik: nytt ? 'Villkoren har ändrats' : 'Villkoren för betan', nytt, dialog: true })}</div></div>`
+      return minaSpel({ chip: true, over: bandB(nytt) })
+    }
+    if (v === 'C') return villkorC({ nytt, befintlig: true })
+  }
+  return ''
+}
+const bandB = (nytt = false) => `<div class="band" role="region" aria-label="Villkor">${g('doc')}<p><b>${nytt ? 'Villkoren har ändrats.' : 'Deckster har fått villkor.'}</b> ${nytt ? `Version ${NYTT.version} gäller från den 1 mars.` : 'Läs dem och godkänn för att fortsätta skapa och ändra.'}</p><div class="svar"><button class="p" data-do="bdialog">Läs och godkänn</button><button class="s">Inte nu</button></div></div>`
+
+// ── Noterna under ytan: det prototypen påstår och det som är öppet ───────────────────────────────
+function noter() {
+  const n = []
+  const l = lageNu()
+  if (yta === 'ny' && v === 'A' && l === 'kort') n.push('<b>Ett tryck.</b> «Godkänn och fortsätt» sparar namnet och godkännandet i samma svar. Ett tomt fält är #1254:s «Hoppa över»: inget namn sparas och frågan kommer inte tillbaka. «Hoppa över» som eget ord försvinner, eftersom kortet bara har en väg framåt.', '<b>Samma kort efter en passkey och från en inbjudan.</b> Ett konto som redan fått namnfrågan ser kortet utan namnet (se «Befintligt konto»).')
+  if (yta === 'ny' && v === 'B' && l === 'namn') n.push('<b>Steg 1 är det byggda steget</b> (PR #1265) med en stegrad. «Hoppa över» och «Fortsätt» går båda till steg 2; bara namnet hoppas över.')
+  if (yta === 'ny' && v === 'B' && l === 'villkor') n.push('<b>Steg 2 kan inte hoppas över, bara skjutas upp:</b> «Inte nu» går till Mina spel med villkoren ogodkända. «← Namnet» går tillbaka utan att något går förlorat.')
+  if (yta === 'ny' && v === 'C' && l === 'villkor') n.push('<b>Rutan för åldern</b> är ett eget intygande; knappen är grå tills den är ikryssad. En ny användare har inget att läsa ännu, så vägarna är «Godkänn» och «Logga ut»; ett befintligt konto får också «Bara läsa och exportera».')
+  if (yta === 'ny' && l === 'vantar') n.push(v === 'A' ? '<b>En ny användare som väntar</b> har inget att läsa: Mina spel är tomt och läsbandet säger varför «Nytt spel» saknas.' : '<b>En ny användare som väntar</b> ser Mina spel som vanligt, med ett tyst ord i huvudet. «Nytt spel» öppnar villkoren som en dialog (se «Inte godkänt»).')
+  if (yta === 'inte' && v === 'A') n.push('<b>Läsläget från #489:</b> det som bara ändrar ritas inte — «Nytt spel», «Importera», «Starta bord» — och bandet säger varför och vägen dit. Spelets meny har «Öppna» och «Exportera…». Editorn öppnas i läsläge med samma band.', '<b>Servern</b> svarar ändå på varje skrivande väg med ett eget fel (#1270:s grind), så att en editor från före steget säger «godkänn villkoren» i stället för att tappa en redigering tyst.', '<b>Nästa besök:</b> kortet igen, utan namnet, före Mina spel. «Inte nu» gäller ett besök åt gången.')
+  if (yta === 'inte' && v === 'B') n.push('<b>Inget ser låst ut.</b> Varje handling som kräver villkoren öppnar samma dialog; i editorn hålls ändringen och sparas när man godkänt, så ingenting försvinner.', '<b>Nästa besök:</b> ett band på Mina spel, före namn- och passkey-banden (högst ett band åt gången, som #1254 bestämde).')
+  if (yta === 'inte' && v === 'C') n.push('<b>En tredje form av Mina spel:</b> bara läsa och exportera, och «Godkänn villkoren» som enda framåtväg i huvudet. Editorn öppnas i läsläge med samma band som A.', '<b>Nästa besök:</b> villkorssidan igen, med «Bara läsa och exportera».')
+  if (yta === 'befintligt') n.push(v === 'B' ? '<b>Bandet står först i kön</b>: villkor, sedan namn (#1254), sedan passkey (L78), ett åt gången. Tills kontot godkänt gäller dialogen på varje skrivande handling.' : `<b>Samma ${v === 'A' ? 'kort' : 'sida'} som den nya användaren</b>, ${fall === 'andrad' ? 'med «Det här är nytt sedan» den version kontot godkände i stället för sammanfattningen.' : fall === 'utannamn' ? 'och namnfrågan med eftersom kontot aldrig fått den — ett steg, inte två.' : 'utan namnfrågan eftersom kontot redan fått den.'}`, '<b>En redaktionell ändring</b> ger inget steg, bara ett mejl (avsnitt 14).')
+  if (yta === 'villkor' || yta === 'integritet') n.push('<b>Texten är ett utkast</b> efter #1268:s disposition och besluten 1–7 och F1–F7; [hakparenteser] fylls i av beställaren. 9 och 10 står som rubriker från början, så att numreringen aldrig ändras.', '<b>«In English»</b> leder till samma sida på engelska (A4); den engelska texten skrivs när den svenska är godkänd.', v === 'A' ? '<b>Vid 375</b> fälls innehållet ihop till en öppning överst.' : v === 'B' ? '<b>«Visa all text»</b> öppnar varje avsnitt, för den som vill söka eller skriva ut.' : '<b>Vid 375</b> står «Kort sagt» som en grön ruta före varje avsnitt.')
+  if (yta === 'raden') n.push('<b>Samma i alla tre.</b> «Villkor · Integritet» först på #757:s rad, med «Kontakt» och versionen efter. På telefonen utan «Kontakt», som i dag. Gästens mening är dagens; den skrivs om i #1281.')
+  return n.map((t) => `<p>${t}</p>`).join('')
+}
+
+const sida = document.getElementById('sida')
+function skala() {
+  const w = Number(bredd)
+  const z = Math.min(1, (document.documentElement.clientWidth - 32) / w)
+  document.getElementById('ram').style.zoom = z
+}
+function render() {
+  const fl = (id, obj, nu, attr) => { document.getElementById(id).innerHTML = Object.entries(obj).map(([k, n]) => `<button aria-pressed="${k === nu}" data-${attr}="${k}">${n}</button>`).join('') }
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  fl('ytor', YTOR, yta, 'yta')
+  const l = lagen()
+  document.getElementById('steggrupp').hidden = !l || Object.keys(l).length < 2
+  if (l) fl('steg', l, lageNu(), 'lage')
+  document.getElementById('fallgrupp').hidden = yta !== 'befintligt'
+  fl('fall', FALL, fall, 'fall')
+  fl('bredd', { 1280: '1280', 375: '375' }, bredd, 'bredd')
+  document.getElementById('anteckning').innerHTML = `<b>${V[v].namn}.</b> ${V[v].not}`
+  document.getElementById('etikett').innerHTML = `<b>${YTOR[yta]}${l ? ` · ${l[lageNu()]}` : ''}</b> · variant ${v}${yta === 'befintligt' ? ` · ${FALL[fall]}` : ''} · ${bredd} × ${HOJD[bredd]}`
+  sida.dataset.bredd = bredd
+  sida.style.width = `${bredd}px`
+  sida.style.height = `${HOJD[bredd]}px`
+  sida.innerHTML = ytan()
+  sida.scrollTop = 0
+  document.getElementById('noter').innerHTML = noter()
+  document.getElementById('noter').style.maxWidth = `${bredd}px`
+  skala()
+  const p = new URLSearchParams({ v, yta, bredd })
+  if (l) p.set('lage', lageNu())
+  if (yta === 'befintligt') p.set('fall', fall)
+  history.replaceState(null, '', `?${p}`)
+}
+addEventListener('resize', skala)
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; lage = ''; omstart() }
+  if (b.dataset.yta) { yta = b.dataset.yta; lage = ''; omstart() }
+  if (b.dataset.lage) { lage = b.dataset.lage; omstart() }
+  if (b.dataset.fall) { fall = b.dataset.fall; omstart() }
+  if (b.dataset.bredd) bredd = b.dataset.bredd
+  if (b.id === 'omstart') { omstart(); lage = '' }
+  render()
+})
+sida.addEventListener('input', (e) => {
+  if (e.target.matches('[data-namn]')) st.namn = e.target.value
+  if (e.target.matches('[data-alder]')) { st.alder = e.target.checked; render() }
+})
+sida.addEventListener('toggle', (e) => { const d = e.target; if (d.dataset?.id) st.oppna[d.dataset.id] = d.open }, true)
+// Klicken på ytan för flödet framåt, så att «Ny användare» och «Inte godkänt» går att gå igenom.
+sida.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-gaa]')
+  if (a) { e.preventDefault(); yta = a.dataset.gaa; lage = ''; return render() }
+  if (e.target.closest('a[href="#"]')) e.preventDefault()
+  const b = e.target.closest('[data-do]')
+  if (!b) return
+  const d = b.dataset.do
+  const ga = (y, l2) => { yta = y; lage = l2; render() }
+  if (d === 'godkann') return ga('ny', 'hem')
+  if (d === 'vanta') return yta === 'befintligt' || (yta === 'inte' && v === 'C') ? ga('inte', 'hem') : ga(yta === 'inte' ? 'inte' : 'ny', yta === 'inte' ? 'hem' : 'vantar')
+  if (d === 'namn') return ga('ny', v === 'C' ? 'hem' : 'villkor')
+  if (d === 'tillnamn') return ga('ny', 'namn')
+  if (d === 'ut') return ga('ny', 'ute')
+  if (d === 'tillsteg') return v === 'A' ? ga('inte', 'tillbaka') : ga('befintligt', v === 'B' ? 'dialog' : 'yta')
+  if (d === 'editor') return ga('inte', 'editor')
+  if (d === 'meny') { st.meny = !st.meny; return render() }
+  if (d === 'skapa' && v === 'B' && (yta === 'inte' || lage === 'vantar')) return ga('inte', 'dialog')
+  if (d === 'bdialog') return ga('befintligt', 'dialog')
+  if (d === 'alla') { st.alla = !st.alla; return render() }
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    lage = ''; omstart(); render()
+  }
+})
+render()
+</script>
+</body>
+</html>
