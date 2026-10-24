@@ -12,7 +12,7 @@ import { useRolls } from '../table/Die.js'
 import { previewOf } from '../table/rewind.js'
 import { seatColor } from '../table/seatColor.js'
 import { playIntents } from '../player/play.js'
-import { SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
+import { DockedFlag, SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
 import { PlayerSurface, useHandMarks } from '../player/PlayerSurface.js'
 import { useSeatTurned } from '../player/turned.js'
 import { useSitDown } from '../player/useSitDown.js'
@@ -307,6 +307,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             startTile={!waiting}
           />
         </div>
+        {/* Beside the felt and not over it (#1255): the felt gives up the panel's width while it stands. */}
+        {sheet === 'flag' && <DockedFlag client={client} view={view} faces={http} onSheet={setSheet} onToast={setToast} />}
         {/* One hand, one copy of it. While the grid stands the band is still drawn — dimmed,
             under it — but it is out of the tab order and out of the accessibility tree, the way
             the page behind any raised surface is. Two live copies of the same twenty-one
@@ -338,7 +340,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
       </main>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={left} toast={toast} onToast={setToast} version={version} faces={http} stay={stay} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={left} toast={toast} onToast={setToast} version={version} faces={http} stay={stay} flagDocked />
       </div>
       ) : (
         /* A window too small to carry a board gets the player's own surface instead (#99): the
