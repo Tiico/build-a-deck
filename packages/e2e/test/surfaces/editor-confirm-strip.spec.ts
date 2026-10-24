@@ -104,11 +104,22 @@ const controls = (page: Page) =>
 
 const TABS = ['wall', 'template', 'table', 'theme', 'media', 'rules', 'tables'] as const
 
+// What stands in a tab once its own work has come from the server: the Bord tab's list of tables
+// (`TablesTab`), which says «Laddar bord…» until then and drew «Starta nytt bord» and its help
+// inside the six seconds on a loaded gate (#1240).
+const ARRIVED: Partial<Record<(typeof TABS)[number], string>> = { tables: '.byd-tables' }
+
 // Where what just happened is said (#698, beslut B 2026-10-06): in the foot's status place on every
 // tab, in the stead of the foot's quiet line. It lies over nothing and takes no height from the work.
 for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
   test(`what just happened stands in every tab's foot and over no control, at ${width} × ${height}`, async ({ page }) => {
     test.setTimeout(180_000)
+    // The tables list comes late, as it does from a loaded server (#1240): the Bord tab draws its
+    // own work when the list is in, and that is no business of the confirmation's.
+    await page.route('**/projects/*/sessions', async (route) => {
+      if (route.request().method() === 'GET') await new Promise((done) => setTimeout(done, 2_500))
+      await route.fallback()
+    })
     await openTemplate(page, width, height)
     for (const tab of TABS) {
       // A change in the template, and the step back taken on the tab under test: the same news
@@ -121,6 +132,10 @@ for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
       await page.locator(`#byd-editor-tab-${tab}`).click()
       const panel = page.locator(`#byd-editor-panel-${tab}`)
       await expect(panel).toBeVisible()
+      // The tab's own work is in before the line is measured against it: a list still loading
+      // draws its controls when it comes, and they would arrive inside the six seconds (#1240).
+      const arrived = ARRIVED[tab]
+      if (arrived) await expect(panel.locator(arrived), tab).toBeVisible()
       await page.getByRole('button', { name: /^Ångra/ }).first().click()
       const said = panel.locator('.byd-editor-confirm')
       await expect(said, tab).toHaveText('Tog tillbaka: en ändring i mallen')
