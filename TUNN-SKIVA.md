@@ -309,6 +309,25 @@ Priset den svarar med är påhittat och märkt `basis: 'fictional'`.
 Med `files` får sviten plattformens ritade filer för en förberedd order och mäter varje fil ur dess egna bytes mot kraven den förbereddes efter: ett raster i exakt kravens pixlar, en PDF vars sida är snittet plus utfallet (#1207). Servern kör sviten så, mot båda formerna, med filerna från den enda renderaren.
 En riktig adapter kopplas in med en rad i en testfil, mot samma manifest (`CONTRACT_MANIFEST`) med baksidor per grupp, exemplar, kort-id som viks till samma filnamn och tärningar.
 
+### 4.5 Testtryckeriet och tryckpaketet
+
+I betan registrerar servern en enda provider, Testtryckeriet (`packages/server/src/print-providers.ts`, #1208): en fake-provider i QPMN:s form med en order, som låtsas tillverka i Sverige och därför tar emot en order till en EU-adress (F2).
+Dess krav är kortets typ: snittet, utfallet och skyddsmarginalen ur typdefinitionen, en vektor-PDF per sida i sRGB, filnamnet `{cardRef}-{face}`, och varje tärning som lagervara.
+Att utfallet är typens gör att E5 mäter samma utfall i editorn, i `POST /print`, i exporten och i paketet; en partner som vill ha mer är ett beslut för den dag en väljs, och då får editorns kontroll serverns utfall i stället för typens.
+Priset är påhittat, i kronor, och märkt `basis: 'fictional'`.
+
+```
+GET /projects/:id/print-package?to=<land>        → paketet för den provider en order dit dirigeras till, med providerns svar (quote)
+GET /projects/:id/print-package?provider=<id>    → paketet för en namngiven provider, utan svar
+GET /projects/:id/print-package/files/<namn>     → en fil, 202 tills den är ritad
+GET /projects/:id/print-package/zip?provider=<id> → 202 med förloppet tills varje fil är ritad, sedan zippen
+```
+
+Svaret bär `provider`, `requirements` för varje sorts ting i ordern, `order`, filernas och regelhäftets tillstånd, `errors` och `warnings` ur tryckkontrollen, och med `to` även `quote`.
+En destination som ingen provider får trycka för svarar 409 med `no-eu-print` eller `no-provider`.
+Zippen innehåller `LASMIG.md` på läsarens språk, `manifest.json` (formatet `byd-print-package`, version 1, med ordern, kraven, fynden och krediterna), en fil per sida under `tryck/` och `tryck/regelhafte.pdf`.
+Hittar tryckkontrollen ett fel lämnas kortfilerna ute, som i exporten (G5), och manifestet och läsmig säger varför.
+
 ---
 
 ## 5. Åtkomstkontrollerade ansikten

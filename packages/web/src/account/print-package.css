@@ -1,0 +1,178 @@
+/* The print package (#1208, beslut B 2026-10-23, prototype `docs/ux-audits/2026-10-23-tryckpaketet`):
+   five numbered parts and a packing slip beside them that stays, on the account's dark ground. It
+   travels with the page's own chunk, never in the sheet the felt's first frame blocks on. */
+.byd-print {
+  --byd-print-line: #262a35;
+  --byd-print-ink: #e6ecfa;
+  --byd-print-soft: #c3cbdd;
+  --byd-print-quiet: #9aa3b8;
+  --byd-print-ok: #7dd3a0;
+  --byd-print-bad: #ff9c8c;
+  --byd-print-bad-ground: #3a1f22;
+  --byd-print-dialog: #1b1f2a;
+  --byd-print-dialog-line: #3b4358;
+  --byd-print-well: #11141c;
+  /* The example's amber: an answer nobody gave, stamped as such. */
+  --byd-print-ex: #f0b64a;
+  --byd-print-ex-ground: #2e2718;
+  --byd-print-ex-line: #6b5627;
+  --byd-print-ex-ink: #f3e6c8;
+  /* The knife's three edges, as the wall's eyes draw the trim and the safe margin (E5). */
+  --byd-print-bleed: #e0567a;
+  --byd-print-trim: #0aa6d8;
+  --byd-print-safe: #3be89a;
+  width: min(1160px, 100%);
+  display: grid;
+  gap: 22px;
+  color: var(--byd-print-ink);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.byd-print :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-print h1, .byd-print h2, .byd-print p { margin: 0; }
+
+.byd-print-top { display: grid; gap: 6px; }
+.byd-print-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--byd-print-quiet); font-size: 14px; text-decoration: none; }
+.byd-print-back:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.byd-print-title { font-size: 30px; line-height: 1.2; }
+.byd-print-title small { display: block; font-size: 15px; font-weight: 600; color: var(--byd-print-quiet); }
+.byd-print-lead { max-width: 68ch; color: var(--byd-print-soft); }
+.byd-print-refused { padding: 12px 14px; border-radius: 12px; background: var(--byd-print-bad-ground); color: #ffe4ea; }
+/* On a phone the download is offered at the top too; the slip stands last there. */
+.byd-print-quick { display: none; }
+
+.byd-print-columns { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+.byd-print-parts { display: grid; gap: 18px; min-width: 0; }
+.byd-print-part { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 22px; border-radius: 16px; background: var(--byd-account-card-bg); border: 1px solid var(--byd-print-line); min-width: 0; }
+.byd-print-part > header { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px 10px; align-items: baseline; }
+.byd-print-nr { grid-row: span 2; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #262a35; color: var(--byd-print-soft); font-size: 13px; font-weight: 800; }
+.byd-print-part h2 { font-size: 19px; line-height: 1.3; }
+.byd-print-part > header p { color: var(--byd-print-quiet); font-size: 14px; }
+.byd-print-strong { color: #fff; }
+
+.byd-print-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; box-sizing: border-box; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.byd-print-button[aria-disabled='true'] { opacity: 0.6; cursor: progress; }
+
+/* 1 · The knife: the card as its file, its three edges drawn over it in millimetres. */
+.byd-print-cut { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.byd-print-sheet { position: relative; width: 100%; justify-self: center; }
+.byd-print-sheet[data-view='cut'] { outline: 1px dashed #4a5168; outline-offset: 0; }
+.byd-print-sheet-card { position: absolute; inset: 0; overflow: hidden; }
+.byd-print-sheet-card .byd-preview { position: absolute; left: 0; top: 0; }
+.byd-print-marks { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.byd-print-marks pattern rect { fill: var(--byd-print-bleed); }
+.byd-print-paper { fill: #fff; }
+.byd-print-bleed { opacity: 0.85; }
+.byd-print-bleed[data-faint] { opacity: 0.3; }
+.byd-print-edge { fill: none; stroke: var(--byd-print-bleed); stroke-width: 0.35; }
+.byd-print-safe-ground { fill: none; stroke: #0b3d26; stroke-width: 1; }
+.byd-print-safe { fill: none; stroke: var(--byd-print-safe); stroke-width: 0.55; stroke-dasharray: 1.6 1; }
+.byd-print-trim { fill: none; stroke: var(--byd-print-trim); stroke-width: 0.65; }
+.byd-print-tag { position: absolute; padding: 0 6px; border-radius: 4px; color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; white-space: nowrap; }
+.byd-print-tag[data-tag='bleed'] { right: 2px; top: 2px; background: #c23a62; }
+.byd-print-tag[data-tag='trim'] { left: 2px; bottom: 2px; background: #0a7ea6; }
+.byd-print-tag[data-tag='safe'] { background: #157a4c; }
+.byd-print-knife { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.byd-print-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.byd-print-seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); }
+.byd-print-seg button { min-height: 38px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--byd-print-quiet); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.byd-print-seg button[aria-pressed='true'] { background: #2c3242; color: #fff; }
+.byd-print-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--byd-print-soft); font-size: 14px; cursor: pointer; }
+.byd-print-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--byd-print-ok); }
+.byd-print-said { min-height: 3em; color: var(--byd-print-soft); font-size: 14px; }
+.byd-print-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; color: var(--byd-print-soft); }
+.byd-print-legend li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+.byd-print-legend b { color: #fff; }
+.byd-print-swatch { width: 28px; height: 20px; margin-top: 1px; box-sizing: border-box; border-radius: 4px; }
+.byd-print-swatch[data-swatch='bleed'] { background: repeating-linear-gradient(135deg, var(--byd-print-bleed) 0 3px, transparent 3px 7px), #2a1b24; border: 1px solid var(--byd-print-bleed); }
+.byd-print-swatch[data-swatch='trim'] { border: 2.5px solid #4fd1ff; border-radius: 5px; }
+.byd-print-swatch[data-swatch='safe'] { border: 2px dashed var(--byd-print-safe); }
+
+/* 2 · The deck. */
+.byd-print-sums { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--byd-print-quiet); font-size: 14px; }
+.byd-print-sums b { color: #fff; font-variant-numeric: tabular-nums; }
+.byd-print-clean { display: flex; align-items: center; gap: 8px; color: var(--byd-print-ok); font-size: 14px; }
+.byd-print-findings { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--byd-print-bad-ground); border: 1px solid #6a2f36; color: #ffe4ea; font-size: 14px; }
+.byd-print-findings b { color: #fff; }
+.byd-print-fix { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; color: #fff; font-weight: 700; text-underline-offset: 3px; }
+.byd-print-deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 16px 12px; }
+.byd-print-card { display: grid; gap: 6px; justify-items: start; align-content: start; border: 0; padding: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+/* The card's own 63 × 88 at the width the drawing is made at (`PRINT_CARD_W`). */
+.byd-print-card-face { position: relative; display: block; width: 104px; aspect-ratio: 63 / 88; border-radius: 3.5% / 2.5%; overflow: hidden; background: #262a35; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45); }
+.byd-print-card-face .byd-preview { position: absolute; left: 0; top: 0; }
+.byd-print-card[aria-pressed='true'] .byd-print-card-face { outline: 3px solid #4fd1ff; outline-offset: 3px; }
+.byd-print-card[data-error] .byd-print-card-face { outline: 3px solid var(--byd-print-bad); outline-offset: 3px; }
+.byd-print-card-name { font-weight: 650; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+.byd-print-card-count { color: var(--byd-print-quiet); font-size: 13px; font-variant-numeric: tabular-nums; }
+.byd-print-card-count b { color: #fff; }
+
+/* 3 · What is not printed. */
+.byd-print-stock { display: grid; gap: 10px; }
+.byd-print-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font-size: 15px; }
+.byd-print-item b { color: #fff; }
+.byd-print-die { --byd-die: #f3efe6; display: block; width: 44px; height: 44px; margin: 4px; }
+.byd-print-die svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.byd-print-die text { fill: #3a2a1a; font-weight: 800; font-family: system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; }
+.byd-print-die .byd-die-ring { display: none; }
+.byd-print-counter { display: grid; place-items: center; width: 36px; height: 36px; margin: 8px; border-radius: 50%; box-sizing: border-box; border: 2px dashed #6f7a90; background: #2c3242; color: var(--byd-print-soft); font-size: 14px; font-weight: 800; }
+
+/* 4 · The requirements. */
+.byd-print-needs { width: 100%; border-collapse: collapse; font-size: 14px; }
+.byd-print-needs th { text-align: left; font-weight: 600; color: var(--byd-print-quiet); padding: 7px 12px 7px 0; vertical-align: top; white-space: nowrap; }
+.byd-print-needs td { padding: 7px 0; }
+.byd-print-needs tr + tr > * { border-top: 1px solid var(--byd-print-line); }
+
+/* 5 · The zip as a tree. */
+.byd-print-zip { display: grid; padding: 12px 14px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font: 13px/1.6 ui-monospace, Menlo, monospace; color: var(--byd-print-soft); overflow-x: auto; }
+.byd-print-zip > b { color: #fff; font-weight: 600; }
+.byd-print-zip-line { display: flex; gap: 12px; padding-left: 16px; white-space: nowrap; }
+.byd-print-zip-line b { color: #fff; font-weight: 600; }
+.byd-print-zip-line i { color: var(--byd-print-quiet); font-style: normal; }
+
+/* The packing slip: it stays beside the parts while they are read. */
+.byd-print-slip { position: sticky; top: 16px; display: grid; gap: 14px; padding: 20px; border-radius: 16px; background: var(--byd-print-dialog); border: 1px solid var(--byd-print-dialog-line); }
+.byd-print-slip h2 { font-size: 17px; }
+.byd-print-slip dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.byd-print-slip dt { color: var(--byd-print-quiet); }
+.byd-print-slip dd { margin: 0; text-align: right; color: #fff; font-weight: 600; }
+.byd-print-slip dd[data-ok] { color: var(--byd-print-ok); }
+.byd-print-slip dd[data-bad] { color: var(--byd-print-bad); }
+.byd-print-answer { display: grid; gap: 10px; padding: 16px; border-radius: 14px; border: 1px dashed var(--byd-print-ex-line); background: var(--byd-print-ex-ground); color: var(--byd-print-ex-ink); font-size: 14px; }
+.byd-print-stamp { justify-self: start; display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; border: 1.5px solid var(--byd-print-ex); color: var(--byd-print-ex); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.byd-print-answer-rows { display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
+.byd-print-answer-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+.byd-print-answer-row > span:last-child { color: #d9c9a2; white-space: nowrap; }
+.byd-print-answer-row[data-total] { border-top: 1px solid var(--byd-print-ex-line); padding-top: 6px; margin-top: 2px; font-weight: 700; }
+.byd-print-answer-row[data-total] > span:last-child { color: var(--byd-print-ex-ink); }
+.byd-print-unknown { font-style: italic; }
+.byd-print-refusal { padding: 10px 12px; border-radius: 10px; background: var(--byd-print-bad-ground); color: #ffd6cf; }
+.byd-print-eu { color: var(--byd-print-ex-ink); }
+.byd-print-answer-note { font-size: 13px; color: #cdb98a; }
+.byd-print-download { display: grid; gap: 4px; }
+.byd-print-download .byd-print-button { width: 100%; }
+.byd-print-progress { min-height: 1.5em; color: var(--byd-print-quiet); font-size: 13px; }
+.byd-print-progress:empty { min-height: 0; }
+.byd-print-beta { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; font-size: 14px; }
+.byd-print-beta b { color: #fff; }
+.byd-print-info { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; box-sizing: border-box; border: 1.6px solid var(--byd-print-ok); color: var(--byd-print-ok); font: italic 700 11px/1 Georgia, serif; }
+.byd-print-no-order { font-size: 13px; color: var(--byd-print-quiet); }
+
+/* Narrower than the knife and its words side by side: the knife over its words. */
+@media (max-width: 1100px) {
+  .byd-print-cut { grid-template-columns: minmax(0, 1fr); }
+  .byd-print-sheet { max-width: 300px; }
+}
+/* A phone and a narrow window: one column, the slip last and the download first. */
+@media (max-width: 760px) {
+  .byd-print { gap: 18px; }
+  .byd-print-title { font-size: 24px; }
+  .byd-print-columns { grid-template-columns: minmax(0, 1fr); }
+  .byd-print-slip { position: static; }
+  .byd-print-quick { display: grid; gap: 8px; }
+  .byd-print-quick .byd-print-download .byd-print-progress:empty { display: none; }
+  .byd-print-part { padding: 16px; }
+  .byd-print-deck { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; }
+  /* Three to a row in a phone's column: the drawing is made at its desktop width and set smaller. */
+  .byd-print-card-face { zoom: 0.88; }
+  .byd-print-sheet { max-width: none; }
+}

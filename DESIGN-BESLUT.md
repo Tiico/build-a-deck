@@ -1996,6 +1996,13 @@ Reviderat 2026-10-23 (#1199, beställarens beslut): **i betan, innan någon rikt
 - Formen av avgiften beslutas med abonnemangen (A2).
 - Förhållandet till G5, vars export i dag bär tryck-PDF:er med utfall även på gratisnivån, avgörs i samma beslut; G5 ändras inte av det här.
 
+Byggt 2026-10-24 (#1208, beställarens beslut B efter [prototypen](https://github.com/Tiico/build-a-deck/blob/484cf3f48538f1895ae3041c21061b4aff19e003/docs/ux-audits/2026-10-23-tryckpaketet/README.md)): **tryckpaketet är en egen sida med en följesedel.**
+- `/print-package?project=<id>` nås ur spelets ⋯ i Mina spel och i editorn, «Tryckpaketet…» efter «Exportera…», och ur Fysisk kontroll, «Se tryckpaketet ›». Den visas för ägare och medredigerare, som exporten.
+- Sidan har fem numrerade delar: kniven, där kortet ritas som sin fil med utfall, snitt och skyddsmarginal av den enda renderaren och kniven går att pröva; leken med antal och tryckkontrollen; det som inte trycks; Testtryckeriets krav i ord; och zippens träd. Bredvid står följesedeln med antalen, kontrollen, exempelsvaret och nedladdningen.
+- Testtryckeriet är den enda provider servern registrerar i betan: en fake-provider som låtsas trycka i Sverige, inom EU (F2), och ställer exakt de krav kortets typ ställer, så att editorns kontroll, exporten och paketet mäter samma utfall. Sidan frågar efter paketet som en order till Sverige dirigeras, och svaret är stämplat «Exempel · inget riktigt pris», utan tull.
+- Nedladdningen är en zip med `LASMIG.md`, `manifest.json`, en PDF per kortsida under `tryck/` och regelhäftet. Hittar tryckkontrollen ett fel lämnas kortfilerna ute med exportens regel (G5), och sidan, manifestet och läsmig säger varför.
+- Lådans tryckbild och filer i CMYK finns inte, och sidan säger det. Läget «med partner» (#1209) är inte byggt; följesedeln är formad så att den kan bli kostnadsbeskedet (F3).
+
 ### F2. Adapterlager mot flera partner (fråga 11)
 
 Ett generellt stöd där nya tryckpartner läggs på som adaptrar utan att något annat ändras: en intern `PrintProvider`-abstraktion för komponenttyp till partnerns SKU, tryckunderlagskrav, prissättning, orderläggning och spårning.
