@@ -3,7 +3,7 @@ import { NAME_MAX, suggestedName } from '@byd/server/doc'
 import { useT } from '../i18n/index.js'
 import { useSay } from '../status/StatusLive.js'
 import { colourOf, initialOf } from './face.js'
-import { saveName } from './session.js'
+import { saveName } from './me.js'
 
 // «Namn», first on the profile (#1254): what the others call the designer, where it is changed at any
 // time. The field, a line on what the name is for or what standing without one means, and the row the

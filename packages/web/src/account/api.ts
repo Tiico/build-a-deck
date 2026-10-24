@@ -6,7 +6,8 @@ import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
 import { Unauthorized, pageLang, withCredentials } from './session.js'
 import { QuotaReached, quotaOf, type Quota } from './quota.js'
-export { Unauthorized, arrival, claimGuest, claimUrl, loginUrl, logout, myAccount, requestLink, saveName, whoAmI, withCredentials, type Me } from './session.js'
+export { Unauthorized, claimGuest, claimUrl, loginUrl, logout, requestLink, whoAmI, withCredentials } from './session.js'
+export { arrival, myAccount, saveName, type Me } from './me.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
 // test, a surface mounted on its own — gets Swedish, the catalogue's own language.

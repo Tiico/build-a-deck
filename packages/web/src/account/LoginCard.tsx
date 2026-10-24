@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { DecksterMark } from '../brand/DecksterMark.js'
-import { arrival, requestLink } from './session.js'
+import { requestLink } from './session.js'
+import { arrival } from './me.js'
 import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { LanguagePicker, useT, type Key } from '../i18n/index.js'

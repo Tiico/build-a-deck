@@ -103,7 +103,7 @@ describe('two people editing the same project (D3)', () => {
 
     ada.close()
     await new Promise((r) => setTimeout(r, 50))
-    expect((await bo.until('here', (m) => m.here.length === 1)).here.map((p) => p.name)).toEqual(['Bo'])
+    expect((await bo.until('here', (m) => m.here.length === 1)).here.map((p) => p.name)).toEqual(['bo@example.com'])
     bo.close()
   })
 
