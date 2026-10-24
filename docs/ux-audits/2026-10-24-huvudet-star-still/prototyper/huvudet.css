@@ -1,0 +1,380 @@
+/* PROTOTYP #1250 — genererad av matning/extract.mjs ur packages/web/src på 897216cf. Rör inte för hand. */
+/* The one button language (#44, variant B: "en form, lokal färg").
+
+   Three roles, one shape each, and not a single hue moved: the felt stays green, the wizard stays
+   paper, the editor stays blue. What the eye reads first is weight, not colour — so the first
+   action is the only *filled* thing in its view, whatever colour that fill happens to be, and a
+   second action is drawn as an outline beside it.
+
+   Each surface binds the six role tokens below to the accent it already owns; the rules that draw
+   the roles are written once, here, and nowhere else. */
+
+/* ── The felt is a room of its own (K9, L13, #90) ─────────────────────────────────────────────
+   #67 bound `.byd-table` here, beside the account and the seat picker, because it needed exactly
+   one button — the one that keeps a counter's new value — and the alternative was the browser's
+   own grey. Those six tokens came out byte-identical to `.byd-player`'s, so the felt was not
+   given an accent at all: it borrowed the room next door's, by copying the account's. That is the
+   thing #90 was opened to stop, and it is now replaced by a choice.
+   The felt owns the chip's amber. Its own colours are declared in `table.css`, the way the phone's
+   are declared in `player.css`. ────────────────────────────────────────────────────────────── */
+.byd-table {
+  --byd-primary-bg: var(--byd-felt-accent);
+  --byd-primary-ink: var(--byd-felt-on-accent);
+  --byd-secondary-line: var(--byd-felt-chalk);
+  --byd-secondary-ink: var(--byd-felt-chalk);
+  --byd-chosen-bar: var(--byd-felt-accent);
+  --byd-chosen-ink: var(--byd-felt-chalk);
+}
+
+/* ── The account and the seat picker are the same green room (#20, L11). ─────────────────────── */
+.byd-account,
+.byd-join {
+  --byd-primary-bg: #7dd3a0;
+  --byd-primary-ink: #0b2a18;
+  /* No outlined button existed in the tool before this. What looked like one was measured at
+     1.48:1 against its own ground on both dark and paper — invisible to the standard — so the
+     line a secondary is drawn with is a colour of its own, held to 3:1 like any other graphic
+     (L11). */
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: #7dd3a0;
+  --byd-chosen-ink: #ffffff;
+}
+
+/* The player's phone is the same green room again, and it already keeps its colours as tokens.
+   `/online` is that phone with the table on the screen in front of it, and it opens the same
+   sheets, the same survey and the same rewind question — so it is the same room and takes the
+   same roles. `/observe` opens one of them too: when the table is done, the one who only watched
+   is asked the same four questions as the seats were. The survey itself is a root here as well:
+   on an ended table it stands beside the room, which is `inert` by then, and a fixed layer beside
+   a room inherits nothing from it (UX-38, #83). */
+.byd-player,
+.byd-online,
+.byd-observer,
+.byd-survey {
+  --byd-primary-bg: var(--byd-accent);
+  --byd-primary-ink: var(--byd-on-accent);
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: var(--byd-accent);
+  --byd-chosen-ink: var(--byd-ink-strong);
+}
+
+/* ── Paper: the wizard's first action is its own ink, and its ink is not moving (L11). ───────── */
+.byd-wizard {
+  --byd-primary-bg: var(--ink);
+  --byd-primary-ink: #ffffff;
+  --byd-secondary-line: #797d75;
+  --byd-secondary-ink: var(--ink);
+  /* The wizard's red-orange is its own brand and keeps the job it already had: saying what is
+     chosen. B was built deliberately leaving it where it is. */
+  --byd-chosen-bar: var(--accent);
+  --byd-chosen-ink: var(--ink);
+}
+
+/* ── The editor: the blue #22 measured and settled on, and the dark chrome round it. ─────────── */
+.byd-editor {
+  --byd-primary-bg: var(--byd-editor-primary-bg);
+  --byd-primary-ink: var(--byd-editor-primary-ink);
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  /* The lighter of the editor's two blues: a bar is a graphic, so it carries 3:1 and not 4.5:1,
+     and it is the same mark the editor already draws round what is being looked at. */
+  --byd-chosen-bar: var(--byd-editor-primary-mark);
+  --byd-chosen-ink: #ffffff;
+}
+
+/* ── The roles ───────────────────────────────────────────────────────────────────────────────
+   Every root the language is spoken in, written once. A role has to out-rank the surface rule it
+   lands inside, and that matters more than it looks: `.byd-join-observe` already declared a quiet
+   outlined button and lost, silently, to `.byd-join form button` — (0,1,0) against (0,1,2) —
+   which is why "Bara titta" was drawn in the same green as "Sätt dig". `:is()` takes the
+   specificity of its heaviest branch, so a root and a role together are still two classes,
+   (0,2,0), and still win; what it buys is that a seventh room is one word here rather than
+   seven selectors spread over four blocks — which is how `/online` and `/observe` came to be
+   left out of the language while the rules they used to have were being deleted. */
+/* The first action: filled, and the only filled thing in its view. The line is the fill's own
+   colour and shows nowhere — it is there so that a filled button and an outlined one beside it
+   come out the same height, because an outline is drawn outside the shape it wraps. */
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-primary {
+  border: 1px solid var(--byd-primary-bg);
+  background: var(--byd-primary-bg);
+  color: var(--byd-primary-ink);
+  font-weight: 750;
+}
+
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-secondary {
+  background: transparent;
+  border: 1px solid var(--byd-secondary-line);
+  color: var(--byd-secondary-ink);
+  font-weight: 600;
+}
+
+/* A pointer is a state of a button, not a different button. The wizard says something of its own
+   about that state — `.byd-wizard button:hover` lifts the line to `#8d918a` — and at (0,2,1) it
+   out-ranks a role at (0,2,0), so `Skapa spelet och fortsätt i editorn` grew a grey ring round a
+   nearly black pill the moment it was pointed at. On paper that reads as a button coming apart
+   under the mouse. A room, a role and a state together are three classes, so the line the role
+   drew stays the line it drew; the fill is the affordance here and it does not move. */
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-primary:hover {
+  border-color: var(--byd-primary-bg);
+}
+
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-secondary:hover {
+  border-color: var(--byd-secondary-line);
+}
+
+/* One of a set, at rest (#232). The language said at length what a *chosen* thing looks like and
+   nothing whatever about the other four in the row, so they fell through to the browser's own
+   button — grey, square, platform-native, and nothing like anything else in the tool. Measured in
+   Chromium the editor's and the phone's came out `2px solid rgb(0,0,0)`.
+
+   A thing that is merely on offer is a quiet outlined control, which the language already has a
+   word for: it takes the surface's own secondary line and so stays that surface's colour. Never a
+   fill — that belongs to the thing to press — and never the secondary's weight either, because
+   these are a row of equals and not a row of second actions. */
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-choice {
+  background: transparent;
+  border: 1px solid var(--byd-secondary-line);
+  border-radius: 6px;
+  color: var(--byd-secondary-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Chosen. One shape for all of it — a quiet pill with a 3 px bar under it, in whatever accent the
+   surface owns — because the tool drew "this one is on" five different ways, and one of those
+   borrowed another surface's colour: the table filter's chip was painted `#7dd3a0`, the account's
+   green, in the middle of the editor. Never a fill, so a thing that is chosen can never be
+   mistaken for the thing to press. `.byd-choice` marks a control that is one of a set; the
+   platform's own word for which one says the rest. */
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-choice:is([aria-pressed='true'], [aria-selected='true'], [aria-checked='true']) {
+  background: transparent;
+  border-color: transparent;
+  /* The bar is an inset shadow, and an inset shadow follows the corner it is drawn inside: left
+     on a 14 px radius it curves up at both ends and reads as a smile rather than a rule. So a
+     chosen thing squares its own bottom corners while it is chosen. */
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 -3px 0 var(--byd-chosen-bar);
+  color: var(--byd-chosen-ink);
+  font-weight: 700;
+}
+
+/* ── The chip (#648, variant A): a thing with × beside it ─────────────────────────────────────
+   «typ: Playcard ×» in the card table's search field (#617) and «Ada ×» in the table strip (#621)
+   were two forms for one tecken — a 34 px box and a 44 px pill. One form now, drawn here where
+   the button language lives, and each room says only its colours: the field its marking blue as
+   a fill, the strip its green as a line. The × is the table's and the layer list's mark for
+   «take away» and a full square target, named for what it does («Ta bort filtret …», «Sparka
+   Ada»). The line is an outline inside the box, so the chip is exactly a target tall and stands
+   on the same row as the targets beside it. */
+.byd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--byd-s1);
+  height: var(--byd-tap);
+  padding-left: var(--byd-s3);
+  border-radius: 999px;
+  outline: 1px solid var(--byd-chip-line, transparent);
+  outline-offset: -1px;
+  background: var(--byd-chip-bg, transparent);
+  color: var(--byd-chip-ink, inherit);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.byd-chip > button {
+  width: var(--byd-tap);
+  height: var(--byd-tap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  color: var(--byd-chip-mark, inherit);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.byd-chip > button:hover { background: var(--byd-chip-hover, transparent); color: var(--byd-chip-ink, inherit); }
+/* The ring inside the ×, so it lies over neither the word beside it nor the next chip, and
+   follows the chip's round end. */
+.byd-chip > button:focus-visible { outline-offset: -3px; }
+
+/* ── The glyph (#1083): every icon in one hand, on the text's centre line ────────────────────
+   `glyphs.tsx` draws each icon 1em square, the size of the character it stands in for. An SVG
+   sits on the baseline where a character's ink is centred on the x-height, so on a line of text
+   it is lowered by an eighth to stand where the character stood; in a flex row the alignment is
+   the row's and this does nothing. A surface that wants another size says so on its own rule. */
+/* A glyph is the control's drawing and never a target of its own (#1083): the press, and every
+   question about what stands under a point, land on the control it is drawn in. */
+.byd-glyph { flex: none; vertical-align: -0.125em; pointer-events: none; }
+
+/* ── editor.css, huvudets regler ── */
+.byd-editor {
+  position: relative;
+  --byd-editor-chrome-bg: #23262e;
+  --byd-editor-quiet: #868ea3;
+  --byd-editor-quiet-chosen: #a3acc0;
+  --byd-editor-data-rail: rgba(160, 180, 230, 0.09);
+  --byd-editor-data-rail-edge: #7d879c;
+  --byd-editor-data-rail-ink: #b7c0d6;
+  --byd-editor-home-ink: #c3cbdd;
+  --byd-editor-saved-ink: #9aa3b8;
+  --byd-editor-unsaved-ink: #f0b64a;
+  --byd-editor-confirm-ink: #7dd3a0;
+  --byd-editor-card-row-bg: #14161c;
+  --byd-editor-narrow-bg: #2a2417;
+  --byd-editor-narrow-ink: #ffd98a;
+  --byd-editor-notice-bg: #2a2418;
+  --byd-editor-notice-ink: #ffe4b0;
+  --byd-editor-notice-mark: #ffd98a;
+  --byd-editor-stage-bg: #1b1d23;
+  --byd-editor-stage-ink: #9aa3b8;
+  --byd-editor-stage-action-bg: #23262e;
+  --byd-editor-stage-action-ink: #ffffff;
+  --byd-editor-primary-bg: #1f6fd0;
+  --byd-editor-primary-ink: #ffffff;
+  --byd-editor-primary-mark: #3c8ce7;
+  --byd-editor-grip-mark: #ffd98a;
+  --byd-editor-panel-bg: #171a23;
+  --byd-editor-line: #2f333d;
+  --byd-editor-line-soft: #262a33;
+  --byd-editor-catalog-ink: #9ed39e;
+  --byd-editor-catalog-mark: #5f9e6a;
+  --byd-editor-card-edge: rgba(0, 0, 0, 0.55);
+  --byd-editor-card-sheen: rgba(255, 255, 255, 0.07);
+  --byd-editor-card-shadow: rgba(0, 0, 0, 0.5);
+  --byd-editor-blank-paper: #f4f1ea;
+  --byd-editor-placeholder-edge: #5b6274;
+  --byd-editor-placeholder-ring: rgba(255, 255, 255, 0.55);
+  --byd-editor-placeholder-ink: #e6ecfa;
+  --byd-editor-part-bg: #1f2432;
+  --byd-editor-part-template: #ffd08a;
+  --byd-editor-part-setup: #8fd0ef;
+  --byd-editor-part-rules: #d6b9f0;
+  --byd-editor-part-icons: #f5b2be;
+  --byd-editor-part-many: #c3cbdd;
+  --byd-tap: 44px;
+  --byd-tick: 18px;
+  --byd-saved-box: 14px;
+  --byd-s1: 4px;
+  --byd-s2: 8px;
+  --byd-s3: 12px;
+  --byd-s4: 16px;
+  --byd-s5: 24px;
+  --byd-gutter: var(--byd-s4);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--byd-editor-chrome-bg);
+  color: #ddd;
+  font: 13px system-ui, sans-serif;
+}
+.byd-editor > header { flex: none; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
+@media (max-width: 1023px) {
+  .byd-editor > header { flex-wrap: wrap; padding: 4px 12px; }
+  .byd-editor > header > .byd-editor-save { margin-left: auto; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-editor > header { gap: var(--byd-s1); padding: 0 var(--byd-s2); }
+  .byd-editor > header [role='tablist'] { margin-left: 0; padding: 2px; }
+  .byd-editor > header > .byd-editor-saved { font-size: 12px; }
+  .byd-editor > header > .byd-editor-rev { padding: 4px 2px; }
+  .byd-editor > header [role='tab'] { padding: 0 4px; font-size: 12px; }
+  .byd-editor > header > button:where(.byd-primary, .byd-secondary) { padding: 0 8px; }
+  .byd-editor > header > .byd-editor-more { margin-left: -4px; }
+}
+.byd-editor-primary-short { display: none; }
+.byd-editor-saved-mark { display: none; }
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .byd-editor > header > .byd-editor-saved { position: relative; display: inline-grid; place-items: center; flex: none; width: var(--byd-saved-box); height: var(--byd-saved-box); }
+  .byd-editor > header > .byd-editor-saved > .byd-editor-saved-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .byd-editor > header > .byd-editor-saved > .byd-editor-saved-mark { display: block; }
+  .byd-editor > header > .byd-editor-saved > .byd-editor-saved-mark > .byd-glyph { display: block; width: 16px; height: 16px; }
+  .byd-editor > header > .byd-editor-saved[data-unsaved='true'] > .byd-editor-saved-mark { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  .byd-editor-primary-long { display: none; }
+  .byd-editor-primary-short { display: inline; }
+  .byd-editor > header [role='tablist'] { flex: 1000 0 min-content; max-width: max-content; }
+  .byd-editor > header [role='tab'] { flex: 1 0 min-content; max-width: max-content; display: inline-grid; grid-template-columns: minmax(0, var(--byd-tab-air)) max-content minmax(0, var(--byd-tab-air)); align-items: center; }
+  .byd-editor > header [role='tab']::before,
+  .byd-editor > header [role='tab']::after { content: ''; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-editor > header { --byd-tab-air: var(--byd-s2); }
+}
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .byd-editor > header { --byd-tab-air: var(--byd-s1); }
+  .byd-editor > header [role='tab'] { padding: 0 var(--byd-s2); }
+}
+.byd-editor-name { margin: 0; color: #fff; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
+.byd-editor > header strong { color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
+.byd-editor > header button { white-space: nowrap; }
+.byd-editor-rev { display: inline-flex; align-items: center; min-height: var(--byd-tap); border: 0; background: transparent; padding: 4px; border-radius: 6px; color: var(--byd-editor-quiet); white-space: nowrap; font: inherit; cursor: pointer; }
+.byd-editor-rev:hover, .byd-editor-rev[aria-expanded='true'] { background: #1b1d23; color: #dce3f2; }
+.byd-editor-home { display: inline-flex; align-items: center; min-height: var(--byd-tap); color: var(--byd-editor-home-ink); white-space: nowrap; text-decoration: none; font-weight: 600; }
+.byd-editor-home:hover { text-decoration: underline; }
+.byd-editor-home-arrow { display: none; font-size: 18px; }
+@media (max-width: 1279px) {
+  .byd-editor-home { min-width: var(--byd-tap); justify-content: center; }
+  .byd-editor-home-arrow { display: inline; }
+  .byd-editor-home-word { display: none; }
+}
+.byd-editor-saved { color: var(--byd-editor-saved-ink); white-space: nowrap; }
+.byd-editor-saved[data-unsaved='true'] { color: var(--byd-editor-unsaved-ink); font-weight: 700; }
+@media (min-width: 1440px) {
+  .byd-editor > header > .byd-editor-saved { display: inline-flex; flex-direction: column; }
+  .byd-editor > header > .byd-editor-saved::before,
+  .byd-editor > header > .byd-editor-saved::after { height: 0; overflow: hidden; visibility: hidden; }
+  .byd-editor > header > .byd-editor-saved::before { content: attr(data-saved-word); font-weight: 400; }
+  .byd-editor > header > .byd-editor-saved::after { content: attr(data-unsaved-word); font-weight: 700; }
+}
+.byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 4px; margin-left: 12px; }
+.byd-editor [role='tab'] { min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
+.byd-editor-spacer { flex: 1; }
+.byd-editor-here { display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; overflow: hidden; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 12px 4px 4px; background: transparent; cursor: pointer; }
+.byd-editor-here i + i { margin-left: -8px; }
+.byd-editor-here i:nth-of-type(n + 4) { display: none; }
+.byd-editor-here-word { margin-left: 4px; color: #e6ecfa; font: 700 13px system-ui; white-space: nowrap; }
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-editor > header > .byd-editor-here { max-width: var(--byd-tap); margin-left: 0; padding: 0; }
+  .byd-editor > header > .byd-editor-here b, .byd-editor > header > .byd-editor-here .byd-editor-here-word { display: none; }
+}
+.byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
+.byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+.byd-editor-here b { color: #9aa3b8; font: 600 11px system-ui; }
+.byd-editor-steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+.byd-editor-steps button {
+  min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 1px solid #2a2d36; border-radius: 8px;
+  display: inline-grid; place-items: center; background: #0f1115; color: #dce3f2; cursor: pointer;
+}
+.byd-editor-steps svg { width: 20px; height: 20px; }
+.byd-editor-steps svg[data-mirrored] { transform: scaleX(-1); }
+.byd-editor-steps button:hover:not([aria-disabled='true']) { border-color: var(--byd-editor-primary-mark); }
+.byd-editor-steps button[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
+.byd-editor > header > button:where(.byd-primary, .byd-secondary) { flex: none; min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+.byd-editor > header > button:not(.byd-primary):is(:disabled, [aria-disabled='true']) { color: var(--byd-editor-quiet); }
+.byd-editor > header > button:is(:disabled, [aria-disabled='true']) { cursor: default; }
+@media (min-width: 1024px) {
+}
+.byd-editor {
+  --byd-tables-bg: #1b1e27;
+  --byd-tables-ink: #e6ecfa;
+  --byd-tables-quiet: #a9b3c9;
+  --byd-tables-stale-ink: #ffd98a;
+  --byd-tables-live-ink: #8fd6a6;
+  --byd-tables-way-bg: #242938;
+  --byd-tables-way-ink: #e6ecfa;
+  --byd-tables-ask-bg: #3d2632;
+  --byd-tables-ask-ink: #ffe4ea;
+}
+.byd-editor-split { position: relative; display: inline-flex; flex: none; margin-left: -12px; }
+.byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
+.byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 0; padding: 8px 12px; font: inherit; cursor: pointer; }
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-editor-split { margin-left: calc(-1 * var(--byd-s1)); }
+}
+.byd-editor-more { position: relative; flex: none; }
+.byd-editor-more > button { display: inline-grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--byd-editor-quiet); font: inherit; cursor: pointer; }
+.byd-editor-more > button:hover, .byd-editor-more > button[aria-expanded='true'] { background: #1b1d23; color: #dce3f2; }
+.byd-editor-more > .byd-game-menu { left: 0; top: calc(100% + 4px); z-index: 30; width: max-content; }
