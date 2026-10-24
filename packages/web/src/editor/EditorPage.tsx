@@ -108,7 +108,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // there they stay at the end of the strip, the one thing that does not.
   const headerStands = useHeaderStands()
   const actionsInHeader = room === 'desk' || headerStands
-  const [stage, setStage] = useState<Stage>('wall')
+  // The way in from «Väntar på dig» on Mina spel (#1225): `results=rev-N` opens the Bord tab's
+  // Resultat at that version. Read once, and taken out of the address so the editor's address stays
+  // the game's own (L80) and a reload opens the editor as it always opens.
+  const [results] = useState(() => params.get('results'))
+  useEffect(() => {
+    if (!results) return
+    const rest = new URLSearchParams(location.search)
+    rest.delete('results')
+    history.replaceState(history.state, '', `${location.pathname}?${rest.toString()}${location.hash}`)
+  }, [results])
+  const [stage, setStage] = useState<Stage>(results ? 'tables' : 'wall')
   // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
   // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
   const [askingCode, setAskingCode] = useState(false)
@@ -750,7 +760,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
     // «Resultat» is a view of this tab (#1010), switched at the head of its first column.
-    tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />,
+    tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} results={results} />,
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')

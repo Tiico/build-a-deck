@@ -2162,7 +2162,35 @@ Hyllan (A), en tabell (C) och ett appskal med vänstermeny (D) prövades och val
 - **Heron visar en solfjäder med tre kort.** Det ändrar #231 för heron, och bara där: kortet längst fram är lekens första, så att spelet känns igen från raden, och bakom det står mittersta och sista kortet, jämnt spritt som 2026-09-14. Solfjädern hämtas för sig (`GET /projects/:id/fan`) efter listan, och tills den landar står heron med sitt enda kort ur `/me/cards`. Första skärmen väntar alltså fortfarande inte på mer än ett kort per spel.
 - **Övriga spel är kompakta rader** med kortet till vänster, namn, «v7 · 77 kort · 4 spelare» och spelad-raden, i två kolumner på bred skärm och en på telefon.
 - **`GET /projects` bär `cards`, `players` och `savedAt`.** `cards` är exemplaren (`cardsUsed`, #1195), det som läggs på bordet. `players` är uppställningens antal platser. `savedAt` är när den senaste versionen sparades. Alla tre läses ur samma levande dokument som namnet (#909), så listan ljuger aldrig om ett spel som är öppet i en editor.
-- Det som prototypen hade och som väntar: «Väntar på dig» (nya flaggor per spel, enkäter att svara på, en medredigerares version) kräver att varje bords logg läses och att «ny» betyder något. Det byggs för sig, med sitt eget svar efter listan.
+- Det som prototypen hade och som väntar: «Väntar på dig» (nya flaggor per spel, enkäter att svara på, en medredigerares version) kräver att varje bords logg läses och att «ny» betyder något. Det byggs för sig, med sitt eget svar efter listan. **Byggt 2026-10-24 (#1225), se nedan.**
+
+**«Väntar på dig» och heronas två siffror (2026-10-24, #1225).**
+Prototypens panel och heronas «enkätsvar» och «nya flaggor» byggdes som prototypen visar dem.
+- **En ny flagga är en flagga som restes på spelets senaste version.**
+  En flagga hör till versionen den restes på (L70): bordets egen, eller den som en «Uppdatera» (C7) flyttade bordet till före flaggan.
+  En sparad version gör alltså de tidigare flaggorna gamla, eftersom designern då har svarat på dem, och ett bord som spelar vidare på en äldre version reser inga nya.
+  Pågående bord räknas lika väl som avslutade: en flagga är ny från det ögonblick den restes.
+  Den andra vägen, ny sedan designern senast öppnade Bord-fliken, hade krävt en läsmarkering per konto och valdes bort.
+- **Enkätsvar är spelarnas svar vid spelets alla bord, i alla versioner**, som «bord» är alla bord.
+  Observatörernas svar står för sig (L70) och räknas inte.
+- **Heron säger kort, bord, enkätsvar och nya flaggor**, som i prototypen, och antalet spelare står i raden under namnet: «Version 7 sparad i dag · 4 spelare».
+  «Senast spelat» från #1204 lämnade heron för att ge plats åt de två.
+  De två siffrorna står bara för den som får läsa spelets playtest (#524), och de håller sin plats med ett streck tills svaret har kommit.
+  Nya flaggor står i flaggans gula färg när de är fler än noll.
+- **Panelen står i högerspalten mellan «Pågår nu» och «Bord du har spelat vid»**, och på telefon direkt efter «Pågår nu».
+  Den har tre slags rader, i den ordningen: spel med nya flaggor («3 nya flaggor · Sal's Saloon v7 · från bordet i går»), som leder till Bord-flikens Resultat på den versionen; enkäter som kontot inte har svarat på vid avslutade bord, som leder till enkäten (#1143); och spel vars senaste version någon annan sparade («Kim sparade version 5 · Polarnatt · för 4 dagar sedan»), som leder till editorn.
+  Panelen ritas inte när ingenting väntar.
+- **Editorn öppnas på Resultat med `results=rev-N`** i adressen, på den versionen och för den som får läsa playtestet.
+  Ordet tas bort ur adressen när det har lästs, så att editorns adress förblir spelets egen (L80).
+- **`GET /me/waiting` är ett eget svar efter listan**, som `/me/cards`, så att första skärmen aldrig väntar på att varje bords logg läses.
+  Av varje bord läses bara flaggorna och versionsbytena (`readVerbs`), aldrig dragen.
+- **En version vet vem som sparade den** (`project_versions.saved_by`).
+  Den som skapar spelet äger den första versionen; editorns sparning och `PUT` bär kontot som sparar; en import och en sparning utan konto bär ingen.
+  Bakåtfyllnaden gissar inte.
+  Den ger ägaren en version bara där inget annat är möjligt: versionen sparades här (den har `at_seq`, som en import aldrig skriver), och ingen inbjudan att redigera spelet har någonsin antagits, inte heller en som togs tillbaka.
+  Första versionen lämnas okänd, eftersom en import skriver den precis som ett nytt spel gör, och så gör varje version i ett spel som delats med en medredigerare och varje version i ett spel från före konton.
+  En medredigerares version nämns bara när författaren är känd, med det namn adressen ger (#1198) och aldrig med adressen.
+- Grindarna: `packages/server/test/version-author.test.ts` (författaren och bakåtfyllnaden, mot minnet och Postgres), `packages/server/test/waiting.test.ts` (definitionen av ny, svaren, medredigerarens version och behörigheten, mot minnet och Postgres) och `packages/web/test/account-page.test.tsx` och `editor-results.test.tsx` (panelen, heron och vägen in i Resultat).
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 

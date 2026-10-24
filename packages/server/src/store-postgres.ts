@@ -379,11 +379,20 @@ export class PostgresLogStore implements LogStore {
 
   // Lines are lifted to today's schema as they are read (DRIFT §7); the rows stay as written.
   async read(sessionId: string): Promise<Applied[]> {
+    return this.lines(sessionId)
+  }
+
+  // Only the lines of these verbs, chosen in the query, so a long log's moves never travel (#1225).
+  async readVerbs(sessionId: string, verbs: readonly Applied['intent']['v'][]): Promise<Applied[]> {
+    return this.lines(sessionId, verbs)
+  }
+
+  private async lines(sessionId: string, verbs?: readonly string[]): Promise<Applied[]> {
     const rows = await this.sql<
       { seq: number; batch: string; at: Date; by_seat: string | null; intent: unknown; outcome: unknown; schema_version: number | null }[]
     >`
       select seq, batch, at, by_seat, intent, outcome, schema_version
-      from events where session_id = ${sessionId} order by seq
+      from events where session_id = ${sessionId} ${verbs ? this.sql`and intent->>'v' = any(${verbs as string[]})` : this.sql``} order by seq
     `
     return rows.map((r) =>
       liftLine({
@@ -495,7 +504,8 @@ export class PostgresProjectStore implements ProjectStore {
       await within(tx, owner, ceilings?.projects)
       await storing(tx, owner, ceilings?.storageBytes, hashes)
       await tx`insert into projects (id, rev, doc, owner) values (${id}, 1, ${tx.json(doc as never)}, ${owner ?? null})`
-      await tx`insert into project_versions (project_id, rev, doc) values (${id}, 1, ${tx.json(doc as never)})`
+      // The first version is the one who made the game's (#1225).
+      await tx`insert into project_versions (project_id, rev, doc, saved_by) values (${id}, 1, ${tx.json(doc as never)}, ${owner ?? null})`
       await naming(tx, id, hashes)
     })
     return { ...doc, id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
@@ -648,7 +658,7 @@ export class PostgresProjectStore implements ProjectStore {
 
   // One transaction: the edits, the version and what it names are written together after the
   // ceiling is asked, or none of them is (#1233).
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = []): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = [], by?: string): Promise<ProjectRecord | 'conflict' | 'missing'> {
     const hashes = assetHashesOf(doc)
     return this.sql.begin(async (tx) => {
       const [row] = await tx<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id} for update`
@@ -665,17 +675,17 @@ export class PostgresProjectStore implements ProjectStore {
       const rev = row.rev + 1
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
       // The history (B4) grows by one; nothing already in it is ever written again.
-      await tx`insert into project_versions (project_id, rev, doc, at_seq) values (${id}, ${rev}, ${tx.json(doc as never)}, ${atSeq ?? null})`
+      await tx`insert into project_versions (project_id, rev, doc, at_seq, saved_by) values (${id}, ${rev}, ${tx.json(doc as never)}, ${atSeq ?? null}, ${by ?? null})`
       await naming(tx, id, hashes)
       return { ...doc, id, rev }
     })
   }
 
   async versions(id: string): Promise<VersionSummary[]> {
-    const rows = await this.sql<{ rev: number; created_at: Date; label: string | null; at_seq: number | null }[]>`
-      select rev, created_at, label, at_seq from project_versions where project_id = ${id} order by rev desc
+    const rows = await this.sql<{ rev: number; created_at: Date; label: string | null; at_seq: number | null; saved_by: string | null }[]>`
+      select rev, created_at, label, at_seq, saved_by from project_versions where project_id = ${id} order by rev desc
     `
-    return rows.map((r) => ({ rev: r.rev, at: r.created_at.toISOString(), ...(r.label ? { label: r.label } : {}), ...(r.at_seq !== null ? { atSeq: r.at_seq } : {}) }))
+    return rows.map((r) => ({ rev: r.rev, at: r.created_at.toISOString(), ...(r.label ? { label: r.label } : {}), ...(r.at_seq !== null ? { atSeq: r.at_seq } : {}), ...(r.saved_by !== null ? { by: r.saved_by } : {}) }))
   }
 
   async at(id: string, rev: number): Promise<ProjectRecord | null> {
