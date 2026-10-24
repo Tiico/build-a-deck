@@ -45,7 +45,16 @@ describe('the editor’s ⋯ (#738)', () => {
     await ownGame()
     await openEditor()
     const menu = openMenu()
-    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Duplicera', 'Exportera…', 'Ta bort spelet']))
+    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Duplicera', 'Exportera…', 'Tryckpaketet…', 'Ta bort spelet']))
+  })
+
+  // The print package's page (#1208), of the game as it is saved, and leading back here.
+  it('opens the print package from the ⋯, saying it came from the editor', async () => {
+    await ownGame()
+    const went: string[] = []
+    await openEditor((url) => went.push(url))
+    fireEvent.click(within(openMenu()).getByRole('button', { name: 'Tryckpaketet…' }))
+    await waitFor(() => expect(went).toEqual([`/print-package?project=${run.projectId}&from=editor&server=${encodeURIComponent(run.http)}`]))
   })
 
   it('renames the game, and the heading and the tab follow', async () => {
@@ -128,6 +137,6 @@ describe('the editor’s ⋯ (#738)', () => {
     // Until the server has said who this is, the editor assumes the game is everyone's (D3); the
     // menu that is open follows the answer.
     const menu = openMenu()
-    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Duplicera', 'Exportera…']))
+    await waitFor(() => expect(choices(menu)).toEqual(['Dela spelet…', 'Byt namn…', 'Duplicera', 'Exportera…', 'Tryckpaketet…']))
   })
 })

@@ -20,7 +20,7 @@ export const ROUTE_WORDS: readonly string[] = [
   // The server's (packages/server/src).
   'assets', 'auth', 'faces', 'guests', 'health', 'invites', 'me', 'projects', 'rooms', 'sessions',
   // The app's pages (`fetchPage` in packages/web/src/App.tsx).
-  'claim', 'editor', 'join', 'login', 'new', 'observe', 'online', 'play', 'profile', 'survey', 'table',
+  'claim', 'editor', 'join', 'login', 'new', 'observe', 'online', 'play', 'print-package', 'profile', 'survey', 'table',
 ]
 
 // Whether a code would read as one of the app's own addresses, in whatever case it is typed.

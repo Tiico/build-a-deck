@@ -91,6 +91,7 @@ function fetchPage(path: string): Promise<ComponentType> {
   if (path === '/claim') return surface(import('./account/ClaimPage.js').then((m) => m.ClaimPage), ['account'])
   if (path === '/survey') return surface(import('./account/SurveyPage.js').then((m) => m.SurveyPage), ['account', 'play'])
   if (path === '/profile') return surface(import('./account/ProfilePage.js').then((m) => m.ProfilePage), ['account', 'editor'])
+  if (path === '/print-package') return surface(import('./account/PrintPackagePage.js').then((m) => m.PrintPackagePage), ['account', 'editor'])
   if (path.startsWith('/invites/')) return surface(import('./account/InvitePage.js').then((m) => m.InvitePage), ['account'])
   if (path === '/') return surface(import('./account/HomePage.js').then((m) => m.HomePage), ['account', 'editor'])
   // A room's own address (#675): the code is what the television says after the host, and the
