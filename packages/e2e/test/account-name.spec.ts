@@ -2,6 +2,8 @@ import { logIn, makeProject } from '../support/api.js'
 import { DESK, PHONE } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
+test.use({ locale: 'sv-SE' })
+
 // The account's own name (#1254, beställarens beslut 2026-10-24, variant C), the way the box serves
 // it: the welcome step after the first login on the card, «Hoppa över», and the band on Mina spel for
 // an account that was made before the name — and the name where the others then read it.

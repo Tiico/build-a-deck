@@ -61,7 +61,7 @@ describe('the welcome step after the first login', () => {
     const field = screen.getByLabelText('Vad ska andra kalla dig?') as HTMLInputElement
     expect(field.value).toBe('Nicklas')
     expect(field.maxLength).toBe(40)
-    expect(screen.getByText('Namnet står när du delar ett spel och när du är online i det. Vi föreslår det ur din adress. Du kan ändra det i Profil.')).toBeTruthy()
+    expect(screen.getByText('Namnet står när du delar ett spel och när du är online i det. Förslaget kommer ur din adress. Du kan ändra det i Profil.')).toBeTruthy()
     fireEvent.change(field, { target: { value: 'Nicklas Ockelberg' } })
     fireEvent.click(screen.getByRole('button', { name: 'Fortsätt' }))
     await waitFor(() => expect(gone).toEqual(['/editor?project=p1']))

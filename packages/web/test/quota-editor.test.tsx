@@ -99,6 +99,7 @@ describe('a table over the ceiling, under «Starta nytt bord» (#1198)', () => {
   it('says to a test leader that the tables are the owner’s, by name', async () => {
     run = await startServer({ auth: true, authBypass: true, plans: tiers({ openTables: 1 }) })
     await login('ada@example.com')
+    await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
     const other = await made({ ...projectDoc(), name: 'Hamnen' })
     expect((await fetch(`${run.http}/projects/${other}/sessions`, { method: 'POST' })).status).toBe(201)
     const id = await made()

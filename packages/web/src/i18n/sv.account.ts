@@ -470,7 +470,7 @@ export const svAccount = {
   'welcome.field': 'Vad ska andra kalla dig?',
   'welcome.placeholder': 'Till exempel Kim Larsson',
   'welcome.note': 'Namnet står när du delar ett spel och när du är online i det.',
-  'welcome.note.suggested': 'Vi föreslår det ur din adress.',
+  'welcome.note.suggested': 'Förslaget kommer ur din adress.',
   'welcome.note.profile': 'Du kan ändra det i Profil.',
   'welcome.go': 'Fortsätt',
   'welcome.skip': 'Hoppa över',

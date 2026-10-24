@@ -281,7 +281,7 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 /* The name's band (#1254) asks in the band itself: the field stands before its two answers, on the
    band's green, in the band's own line colour. */
 .byd-name-offer .byd-passkey-offer-answers { margin: 0; }
-.byd-name-offer input { width: 200px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid #5f8a70; background: var(--byd-account-field-bg); color: #fff; font: inherit; }
+.byd-name-offer input { width: 200px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font: inherit; }
 .byd-name-offer input:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 .byd-passkey-done { display: flex; align-items: center; gap: 10px; margin: 0; }
 .byd-passkey-done > .byd-glyph { color: #7dd3a0; }

@@ -50,7 +50,8 @@ describe('the login card and HomePage', () => {
     fireEvent.change(email, { target: { value: 'ada@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
 
-    await waitFor(() => expect(gone.at(-1)).toBe(home))
+    // A first login is asked what the others should call it first (#1254), and goes on home after.
+    await waitFor(() => expect(gone.at(-1)).toBe(`/welcome?${new URLSearchParams({ next: home, server: run.http }).toString()}`))
     expect(screen.queryByText(/Kolla din mejl/)).toBeNull()
     expect(run.mail.sent).toHaveLength(0)
 
