@@ -208,155 +208,168 @@ describe('the physical checks on the wall (E5)', () => {
     openBox(/^Fysisk kontroll/)
     expect(within(screen.getByRole('list', { name: 'Fysisk kontroll' })).getAllByRole('listitem')).toHaveLength(1)
   })
-
-  it('shows the deck through another eye, with the trim drawn and at arm\'s length (E5)', () => {
-    const el = wall()
-    expect(el.getAttribute('data-eye')).toBe('normal')
-    // The box says which eye is chosen before it is opened, which is the whole price of putting
-    // the eyes behind a door: a simulation left on unannounced is worse than none (E5).
-    expect(screen.getByRole('button', { name: /^Visning/ }).textContent).toContain('Normal syn')
-    openBox(/^Visning/)
-    fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
-    expect(el.getAttribute('data-eye')).toBe('deuteranopia')
-    expect(screen.getByRole('button', { name: /^Visning/ }).textContent).toContain('Deuteranopi')
-    // The simulation is the same transform the check uses, as a filter over the real cards.
-    expect(document.querySelector('#byd-eye-deuteranopia feColorMatrix')).toBeTruthy()
-
-    expect(el.getAttribute('data-trim')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Guider/ }).textContent).toContain('(0)')
-    openBox(/^Guider/)
-    fireEvent.click(screen.getByLabelText(/snitt och skyddsmarginal/))
-    expect(el.getAttribute('data-trim')).toBe('true')
-    fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
-    expect(el.getAttribute('data-arm')).toBe('true')
-    expect(screen.getByRole('button', { name: /^Guider/ }).textContent).toContain('(2)')
-  })
 })
 
-// Ögonen får läsvyerna (#512, beställarens beslut A): väggen ritas i den bredd en yta håller upp ett
-// kort i för att läsas, och varje kort säger sin minsta text där — efter E6:s krympning, alltså den
-// storlek kortet verkligen får — och säger det i ord när den är under skärmens golv (K26).
-describe('the reading views among the eyes (K26, #512)', () => {
+// Väggens visning står på ett ställe (L81, #1256): en panel bredvid väggen med flikarna Visning och
+// Kontroll. Storleken är ett val och ögonen ett annat, så de går att se tillsammans, och läsbarheten
+// sägs en gång i panelen i stället för under varje kort.
+describe('the wall’s panel: Visning and Kontroll beside the wall (L81, #1256)', () => {
   const wall = (doc = projectDoc()) => {
     render(<DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
     return document.querySelector('[data-wall]') as HTMLElement
   }
-  const readOf = (row: string) => document.querySelector(`[data-card-ref="${row}"] [data-read]`)
-
-  it('draws the wall at the phone’s reading width and says each card’s smallest text there', () => {
-    const doc = projectDoc()
-    // A card whose body is empty is read by its title: an empty box is no text at all.
-    doc.rows[1]!.fields['body'] = ''
-    const el = wall(doc)
-    expect(readOf('dragon')).toBeNull()
-    openBox(/^Visning/)
-    fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
-    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('294px')
-    expect(screen.getByRole('button', { name: /^Visning/ }).textContent).toContain('Telefonens läsvy')
-    // 9 pt body at 294 px is 14,8 px; 14 pt title is 23,0 px.
-    expect(readOf('dragon')?.textContent).toBe('Minsta text 14,8 px')
-    expect(readOf('knight')?.textContent).toBe('Minsta text 23,0 px')
-    expect(readOf('dragon')?.hasAttribute('data-under')).toBe(false)
-  })
-
-  // Där kronan är smal visar en låda bara sitt val (#477, variant B), och läsvyerna är ögonens
-  // längsta ord: bredvid AI-panelen vid 1280 bröt «TV:ns visning» raden (#1047). Det korta
-  // ordet är ytan som håller upp kortet; hela meningen står kvar som lådans namn och tooltip.
-  it('gives each reading view the surface’s name as its short word, and keeps the whole one as the box’s name', () => {
-    wall()
-    openBox(/^Visning/)
-    for (const [name, short] of [
-      ['Telefonens läsvy', 'Telefonen'],
-      ['Bordets läsvy', 'Bordet'],
-      ['TV:ns visning', 'TV:n'],
-    ] as const) {
-      fireEvent.click(screen.getByRole('button', { name }))
-      const box = screen.getByRole('button', { name: /^Visning/ })
-      expect(box.getAttribute('aria-label')).toBe(`Visning: ${name}`)
-      expect(box.getAttribute('title')).toBe(`Visning: ${name}`)
-      expect(box.querySelector('.byd-crown-long')?.textContent).toBe(name)
-      expect(box.querySelector('.byd-crown-short')?.textContent).toBe(short)
-    }
-    // An eye whose word already fits has no second one.
-    fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
-    expect(screen.getByRole('button', { name: /^Visning/ }).querySelector('.byd-crown-short')).toBeNull()
-  })
-
-  it('says it in words when a card’s text falls under the floor, and not by colour alone', () => {
+  const panel = () => screen.queryByRole('complementary', { name: 'Väggens visning och kontroll' })
+  const viewBox = () => screen.getByRole('button', { name: /^Visning/ })
+  const width = (el: HTMLElement) => el.style.getPropertyValue('--byd-wall-card')
+  const tinyBody = () => {
     const doc = projectDoc()
     const face = doc.template.faces['front']!
     face.base = face.base.map((e) => (e.kind === 'text' && e.id === 'body' ? { ...e, font: { ...e.font, sizePt: 6 } } : e))
+    return doc
+  }
+
+  it('opens beside the wall on the tab its box names, and closes with its cross, its box and Escape', () => {
+    wall()
+    expect(panel()).toBeNull()
+    openBox(/^Visning/)
+    expect(panel()).not.toBeNull()
+    expect(viewBox().getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Visning' }).getAttribute('aria-selected')).toBe('true')
+    // The deck stands where it stood: the panel is beside it, not a drawer over it.
+    expect(document.querySelector('.byd-crown-drawer')).toBeNull()
+    expect(panel()!.closest('.byd-wall-work')).not.toBeNull()
+
+    openBox(/^Fysisk kontroll/)
+    expect(screen.getByRole('tab', { name: /^Kontroll/ }).getAttribute('aria-selected')).toBe('true')
+    expect(viewBox().getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(screen.getByRole('tab', { name: 'Visning' }))
+    expect(screen.getByRole('tab', { name: 'Visning' }).getAttribute('aria-selected')).toBe('true')
+
+    // A press on a card leaves it open: what is chosen in it is read on the cards.
+    fireEvent.click(document.querySelector('[data-card-ref="knight"]')!)
+    expect(panel()).not.toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stäng panelen' }))
+    expect(panel()).toBeNull()
+    expect(document.activeElement).toBe(viewBox())
+
+    openBox(/^Visning/)
+    openBox(/^Visning/)
+    expect(panel()).toBeNull()
+    openBox(/^Visning/)
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+    expect(panel()).toBeNull()
+  })
+
+  it('takes the size as one choice and the eye as another, and draws them together', () => {
+    localStorage.setItem('byd.wall.density', '3')
+    const el = wall()
+    expect(width(el)).toBe('150px')
+    expect(viewBox().getAttribute('aria-label')).toBe('Visning: 150 px')
+    openBox(/^Visning/)
+    const size = within(screen.getByRole('radiogroup', { name: 'Storlek' }))
+    expect(size.getAllByRole('radio').map((r) => r.getAttribute('aria-label') ?? r.closest('label')?.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Fritt',
+      'På armlängds avstånd 90 px',
+      'Telefonens läsvy 294 px',
+      'Bordets läsvy 341 px',
+      'TV:ns visning 672 px',
+    ])
+    expect((size.getByRole('radio', { name: 'Fritt' }) as HTMLInputElement).checked).toBe(true)
+
+    fireEvent.click(size.getByRole('radio', { name: /^Telefonens läsvy/ }))
+    expect(width(el)).toBe('294px')
+    fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
+    expect(el.getAttribute('data-eye')).toBe('deuteranopia')
+    expect(width(el)).toBe('294px')
+    expect(screen.getByRole('button', { name: 'Deuteranopi' }).getAttribute('aria-pressed')).toBe('true')
+    expect(viewBox().getAttribute('aria-label')).toBe('Visning: Telefonens läsvy · Deuteranopi')
+    // Where the crown is narrow the box shows the surface's short name (#477 variant B, #1047).
+    expect(viewBox().querySelector('.byd-crown-long')?.textContent).toBe('Telefonens läsvy · Deuteranopi')
+    expect(viewBox().querySelector('.byd-crown-short')?.textContent).toBe('Telefonen · Deuteranopi')
+    // The simulation is the same transform the check uses, as a filter over the real cards, and
+    // each eye's swatch is seen through its own.
+    expect(document.querySelector('#byd-eye-deuteranopia feColorMatrix')).toBeTruthy()
+    expect(document.querySelectorAll('[data-eye-swatch]')).toHaveLength(5)
+
+    // Arm's length is a size and not a guide: it keeps the eye.
+    fireEvent.click(size.getByRole('radio', { name: /^På armlängds avstånd/ }))
+    expect(width(el)).toBe('90px')
+    expect(el.getAttribute('data-eye')).toBe('deuteranopia')
+    expect(el.hasAttribute('data-arm')).toBe(true)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Snitt och skyddsmarginal' }))
+    expect(el.getAttribute('data-trim')).toBe('true')
+    expect(viewBox().getAttribute('aria-label')).toBe('Visning: På armlängds avstånd · Deuteranopi · Snitt')
+  })
+
+  // Pillret låstes förut av läsvyn och armlängden (#701). Nu väljer ett tryck på det fri storlek,
+  // så det aldrig står där utan att svara.
+  it('makes a press on the pill a choice of the free size, so the pill is never held', () => {
+    localStorage.setItem('byd.wall.density', '3')
+    const el = wall()
+    openBox(/^Visning/)
+    fireEvent.click(screen.getByRole('radio', { name: /^Telefonens läsvy/ }))
+    const pill = within(screen.getByRole('group', { name: 'Täthet' }))
+    for (const step of pill.getAllByRole('button')) expect(step.getAttribute('aria-disabled')).toBeNull()
+    fireEvent.click(pill.getByRole('button', { name: 'Färre och större kort' }))
+    expect(width(el)).toBe('180px')
+    expect((screen.getByRole('radio', { name: 'Fritt' }) as HTMLInputElement).checked).toBe(true)
+    expect(localStorage.getItem('byd.wall.density')).toBe('4')
+    expect(viewBox().getAttribute('aria-label')).toBe('Visning: 180 px')
+  })
+
+  it('says the deck’s smallest text once, in the panel, and nothing under each card', () => {
+    const el = wall()
+    openBox(/^Visning/)
+    expect(document.querySelector('[data-legible]')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: /^Telefonens läsvy/ }))
+    // 9 pt body at 294 px is 14,8 px.
+    expect(document.querySelector('[data-legible]')!.textContent).toBe('Minsta text i leken 14,8 px, golvet 12 px. Alla kort klarar golvet.')
+    expect(document.querySelectorAll('[data-card-ref] [data-read]')).toHaveLength(0)
+    expect(el.querySelectorAll('[data-under]')).toHaveLength(0)
+  })
+
+  it('names the cards under the floor in words, frames them, and can leave only them on the wall', () => {
+    const el = wall(tinyBody())
+    openBox(/^Visning/)
+    fireEvent.click(screen.getByRole('radio', { name: /^Telefonens läsvy/ }))
+    expect(document.querySelector('[data-legible]')!.textContent).toContain('Minsta text i leken 9,9 px, golvet 12 px.')
+    const under = within(screen.getByRole('list', { name: 'Kort under golvet' }))
+    expect(under.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Drake — 9,9 px', 'Riddare — 9,9 px', 'Trollkarl — 9,9 px'])
+    // The frame repeats the words; a card under the floor says it to a screen reader as well.
+    const dragon = el.querySelector('[data-card-ref="dragon"]')!
+    expect(dragon.hasAttribute('data-under')).toBe(true)
+    expect(dragon.textContent).toContain('Minsta text 9,9 px · under golvet 12 px')
+
+    // The television holds it up larger: 6 pt there is 22,6 px, still under its 24.
+    fireEvent.click(screen.getByRole('radio', { name: /^TV:ns visning/ }))
+    expect(document.querySelector('[data-legible]')!.textContent).toContain('Minsta text i leken 22,6 px, golvet 24 px.')
+    fireEvent.click(screen.getByRole('radio', { name: /^Bordets läsvy/ }))
+    expect(document.querySelector('[data-legible]')!.textContent).toContain('Minsta text i leken 11,5 px, golvet 12 px.')
+  })
+
+  it('leaves only the cards under the floor on the wall when asked', () => {
+    const doc = tinyBody()
+    // The knight keeps a body the phone can read.
+    doc.rows[1]!.fields['body'] = ''
     wall(doc)
     openBox(/^Visning/)
-    fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
-    expect(readOf('dragon')?.textContent).toBe('Minsta text 9,9 px · under golvet 12 px')
-    expect(readOf('dragon')?.getAttribute('data-under')).toBe('true')
-    // The television holds it up larger: 6 pt there is 22,6 px, still under its 24. The box stays
-    // open while an eye is chosen, so the next one is one press away.
-    fireEvent.click(screen.getByRole('button', { name: /^TV:ns visning/ }))
-    expect(readOf('dragon')?.textContent).toBe('Minsta text 22,6 px · under golvet 24 px')
-    // The pill says the width in whole pixels, as every other width is said: the television's is
-    // 671.5 px and was printed with thirteen decimals. And it is said once, on the pill — the foot
-    // that used to repeat it half a screen away says only the count (#619).
-    expect(within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent).toBe('672 px')
-    expect(document.querySelector('.byd-crown-foot')!.textContent).toContain('3 kort')
-    expect(document.querySelector('.byd-crown-foot')!.textContent).not.toContain('px')
-    fireEvent.click(screen.getByRole('button', { name: /^Bordets läsvy/ }))
-    expect(readOf('dragon')?.textContent).toBe('Minsta text 11,5 px · under golvet 12 px')
-  })
-})
-
-// Tätheten är låst medan något annat bestämmer kortets bredd (#701): guiden «på armlängds avstånd»
-// och läsvyerna ritar kortet i en bredd av sin egen. Då säger pillret varför det inte svarar, och ett
-// tryck på det får inte flytta det sparade steget — annars hoppade väggen till en annan storlek än
-// den hade när låsningen släpptes.
-describe('the density pill while a guide or a reading view holds the width (#701)', () => {
-  const wall = () => {
-    render(<DeckWall doc={projectDoc()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
-    return document.querySelector('[data-wall]') as HTMLElement
-  }
-  const pill = () => within(screen.getByRole('group', { name: 'Täthet' }))
-  const steps = () => [pill().getByRole('button', { name: /Fler kort per rad/ }), pill().getByRole('button', { name: /Färre och större kort/ })]
-  const description = (el: HTMLElement) =>
-    (el.getAttribute('aria-describedby') ?? '')
-      .split(' ')
-      .map((id) => document.getElementById(id)?.textContent ?? '')
-      .join(' ')
-      .trim()
-
-  it('is aria-disabled with the guide on, says why, and a press leaves the remembered step alone', () => {
-    localStorage.setItem('byd.wall.density', '3')
-    const el = wall()
-    for (const step of steps()) expect(step.getAttribute('aria-disabled')).toBeNull()
-    openBox(/^Guider/)
-    fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
-    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('90px')
-    for (const step of steps()) {
-      expect(step.getAttribute('aria-disabled')).toBe('true')
-      expect(description(step)).toBe('Bredden följer guiden')
-    }
-    fireEvent.click(steps()[1]!)
-    fireEvent.click(steps()[1]!)
-    expect(localStorage.getItem('byd.wall.density')).toBe('3')
-    // Släppt står väggen där den stod före guiden.
-    fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
-    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('150px')
-    for (const step of steps()) expect(step.getAttribute('aria-disabled')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: /^Telefonens läsvy/ }))
+    expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(3)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Visa bara de 2 korten' }))
+    expect([...document.querySelectorAll('[data-card-ref]')].map((c) => c.getAttribute('data-card-ref'))).toEqual(['dragon', 'wizard'])
+    // Leaving the reading view lets the deck back.
+    fireEvent.click(screen.getByRole('radio', { name: 'Fritt' }))
+    expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(3)
   })
 
-  it('is aria-disabled in a reading view, says the view holds the width, and keeps the step', () => {
-    localStorage.setItem('byd.wall.density', '3')
-    const el = wall()
-    openBox(/^Visning/)
-    fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
-    for (const step of steps()) {
-      expect(step.getAttribute('aria-disabled')).toBe('true')
-      expect(description(step)).toBe('Bredden följer läsvyn')
-    }
-    fireEvent.click(steps()[0]!)
-    fireEvent.click(steps()[0]!)
-    expect(localStorage.getItem('byd.wall.density')).toBe('3')
-    fireEvent.click(screen.getByRole('button', { name: /^Normal syn/ }))
-    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('150px')
+  it('opens Kontroll from the count of remarks in the foot', () => {
+    const doc = tinyBody()
+    doc.template.faces['front']!.base.push({ kind: 'text', id: 'flavour', x: 6, y: 70, w: 51, h: 10, bind: { field: 'flavour' }, font: { family: 'system-ui', sizePt: 5 }, color: '#111111' })
+    wall(doc)
+    fireEvent.click(within(document.querySelector('.byd-crown-foot') as HTMLElement).getByRole('button', { name: /anmärkning/ }))
+    expect(screen.getByRole('tab', { name: /^Kontroll/ }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('list', { name: 'Fysisk kontroll' })).toBeTruthy()
   })
 })

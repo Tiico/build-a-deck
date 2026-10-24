@@ -115,11 +115,11 @@ for (const locale of ['sv-SE', 'en-GB']) {
         await expect.poll(async () => (await measure(page)).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
         const measured = await measure(page)
         // Non-vacuity: the column stands where the panel will, at its width, and the crown holds
-        // its whole set of tools — the field, four boxes and the stepper's two presses. The fold
-        // stands on the column since #1019, not in the crown.
+        // its whole set of tools — the field and three boxes. The fold stands on the column since
+        // #1019, and the stepper in the wall's panel since L81.
         expect(measured.beside).toBe(PANEL)
         expect(measured.edge).toBe(viewport.width - PANEL)
-        expect(measured.controls).toBeGreaterThanOrEqual(7)
+        expect(measured.controls).toBeGreaterThanOrEqual(4)
         expect(measured.cut, 'every control of the crown is wholly visible, beside the panel and not under it').toEqual([])
         expect(measured.over, 'the crown does not overflow its own box').toBeLessThanOrEqual(0)
         expect(measured.field, 'the search field is wide enough to read what is written in it').toBeGreaterThanOrEqual(FIELD)
@@ -197,7 +197,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
             const measured = await measure(page, '.byd-ai')
             expect(measured.beside).toBe(PANEL)
             expect(measured.edge).toBe(viewport.width - PANEL)
-            expect(measured.controls).toBeGreaterThanOrEqual(7)
+            expect(measured.controls).toBeGreaterThanOrEqual(4)
             expect(measured.cut, `in ${face}, every control of the crown is wholly visible, beside the panel and not under it`).toEqual([])
             expect(measured.over, `in ${face}, the crown does not overflow its own box`).toBeLessThanOrEqual(0)
             expect(measured.field, `in ${face}, the search field is wide enough to read what is written in it`).toBeGreaterThanOrEqual(FIELD)
@@ -210,34 +210,44 @@ for (const locale of ['sv-SE', 'en-GB']) {
   }
 }
 
-// And in every eye (#1047). The box says the eye the deck is read with, and where the crown is
-// narrow it says only that (#477, variant B) — so the row's width is the eye's word as much as the
-// deck's grouping. #1045 measured the row in «Normal syn» only; the reading views (#512) are
-// the eye's longest words, «TV:ns visning» and «The phone’s reading view», and a row that
-// stands in the first eye and breaks in the TV's is a row the designer sees jump as they choose.
-// Measured grouped, where the grouping box says its column, and ungrouped, where it says that
-// nothing groups the wall: the two fullest rows #1045 found.
-const EYE_WORDS: Record<string, { eyes: string; eyeNames: readonly string[] }> = {
+// And in every size (#1047, L81). The box Visning says the size the wall is drawn at, and the eye and
+// the trim when they are on, and where the crown is narrow it says the size's short word (#477,
+// variant B) — so the row's width is the box's words as much as the deck's grouping. Each size is
+// measured with the longest eye and the trim on, the fullest the box gets. Measured grouped, where
+// the grouping box says its column, and ungrouped, where it says that nothing groups the wall: the
+// two fullest rows #1045 found.
+//
+// The wall's own panel opens beside the AI panel too (L81), and there the wall is too narrow for its
+// column, its cards and the panel: the panel lies over the wall's right edge. It must stand wholly
+// in the wall, under the crown, and never push the deck down.
+const SIZE_WORDS: Record<string, { view: string; sizes: readonly string[]; eye: string; trimBox: string; trim: string }> = {
   'sv-SE': {
-    eyes: 'Visning',
-    eyeNames: ['Normal syn', 'Deuteranopi', 'Protanopi', 'Tritanopi', 'Gråskala', 'Telefonens läsvy', 'Bordets läsvy', 'TV:ns visning'],
+    view: 'Visning',
+    sizes: ['Fritt', 'På armlängds avstånd', 'Telefonens läsvy', 'Bordets läsvy', 'TV:ns visning'],
+    eye: 'Deuteranopi',
+    trimBox: 'Snitt och skyddsmarginal',
+    trim: 'Snitt',
   },
   'en-GB': {
-    eyes: 'View',
-    eyeNames: ['Normal vision', 'Deuteranopia', 'Protanopia', 'Tritanopia', 'Greyscale', 'The phone’s reading view', 'The table’s reading view', 'The TV’s view'],
+    view: 'View',
+    sizes: ['Free', 'At arm’s length', 'The phone’s reading view', 'The table’s reading view', 'The TV’s view'],
+    eye: 'Deuteranopia',
+    trimBox: 'Trim and safe margin',
+    trim: 'Trim',
   },
 }
+const PANEL_SIDE = '.byd-wall-panel'
 for (const locale of ['sv-SE', 'en-GB']) {
-  const words = EYE_WORDS[locale]!
+  const words = SIZE_WORDS[locale]!
   for (const viewport of [
     { width: 1280, height: 800 },
     { width: 1440, height: 900 },
   ]) {
-    test.describe(`the wall's crown in every eye beside the open AI panel at ${viewport.width} × ${viewport.height} in ${locale}`, () => {
+    test.describe(`the wall's crown in every size beside the open AI panel at ${viewport.width} × ${viewport.height} in ${locale}`, () => {
       test.use({ viewport, locale })
 
       for (const state of ['grouped', 'ungrouped'] as const) {
-        test(`${state}: stands on one row in every eye, in the machine's face and a wide one`, async ({ page }) => {
+        test(`${state}: stands on one row in every size, in the machine's face and a wide one, and the wall's panel stands in the wall`, async ({ page }) => {
           await logIn(page.request)
           const saved = await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: KEY } })
           expect(saved.status()).toBe(200)
@@ -246,29 +256,43 @@ for (const locale of ['sv-SE', 'en-GB']) {
           await expect(page.locator('.byd-ai[data-open]')).toBeVisible()
           await expect(page.locator('.byd-wall-card').first()).toBeVisible()
           const crown = page.locator('.byd-wall-view .byd-crown')
-          const box = crown.getByRole('button', { name: new RegExp(`^${words.eyes}: `) })
-          // Non-vacuity: the drawer holds every eye the test names, and no other.
+          const box = crown.getByRole('button', { name: new RegExp(`^${words.view}: `) })
+          const side = page.locator(PANEL_SIDE)
+          const deckTop = async () => page.evaluate(() => Math.round(document.querySelector('.byd-wall-deck')!.getBoundingClientRect().top))
+          const top = await deckTop()
           await box.click()
-          const drawer = page.locator('.byd-crown-drawer')
-          await expect(drawer.getByRole('button')).toHaveText([...words.eyeNames])
-          await box.click()
-          await expect(drawer).toHaveCount(0)
+          // Non-vacuity: the panel holds every size the test names, and no other.
+          await expect(side.getByRole('radio')).toHaveCount(words.sizes.length)
+          for (const name of words.sizes) await expect(side.getByRole('radio', { name: new RegExp(`^${name.replace(/[’()]/g, '.')}`) })).toHaveCount(1)
+          await side.getByRole('button', { name: words.eye, exact: true }).click()
+          await side.getByRole('checkbox', { name: words.trimBox }).check()
           const broken: string[] = []
-          for (const name of words.eyeNames) {
+          for (const name of words.sizes) {
+            if (!(await side.isVisible())) await box.click()
+            await side.getByRole('radio', { name: new RegExp(`^${name.replace(/[’()]/g, '.')}`) }).check()
+            // The panel lies in the wall, under the crown, and the deck has not moved down for it.
+            const placed = await page.evaluate((sel) => {
+              const panel = document.querySelector(sel)!.getBoundingClientRect()
+              const wall = document.querySelector('.byd-wall-view')!.getBoundingClientRect()
+              const crown = document.querySelector('.byd-wall-view .byd-crown')!.getBoundingClientRect()
+              return { inWall: panel.left >= wall.left - 0.5 && panel.right <= wall.right + 0.5 && panel.bottom <= wall.bottom + 0.5, underCrown: panel.top >= crown.bottom - 0.5, width: Math.round(panel.width) }
+            }, PANEL_SIDE)
+            if (!placed.inWall || !placed.underCrown || placed.width < 280) broken.push(`the panel in «${name}»: ${JSON.stringify(placed)}`)
+            const moved = (await deckTop()) - top
+            if (moved !== 0) broken.push(`the deck moved ${moved} px for the panel in «${name}»`)
             await box.click()
-            await drawer.getByRole('button', { name, exact: true }).click()
-            await box.click()
-            await expect(drawer).toHaveCount(0)
-            // The box says the eye chosen, whole, as its name — whatever the row shows of it.
-            await expect(box).toHaveAccessibleName(`${words.eyes}: ${name}`)
-            await expect(box).toHaveAttribute('title', `${words.eyes}: ${name}`)
+            await expect(side).toHaveCount(0)
+            // The box says the size, the eye and the trim, whole, as its name — whatever the row shows of it.
+            const said = `${words.view}: ${name === words.sizes[0] ? '' : `${name} · `}${words.eye} · ${words.trim}`
+            if (name !== words.sizes[0]) await expect(box).toHaveAccessibleName(said)
+            else await expect(box).toHaveAccessibleName(new RegExp(`^${words.view}: \\d+ px · ${words.eye} · ${words.trim}$`))
             await expect(page.locator('.byd-wall-view .byd-wall-fold')).toHaveCount(state === 'grouped' ? 1 : 0)
             await expect.poll(async () => (await measure(page, '.byd-ai')).wallRight).toBeLessThanOrEqual(viewport.width - PANEL)
             for (const face of ['system-ui', 'wide']) {
               const wide = face === 'wide' ? await page.addStyleTag({ content: ".byd-wall-crown * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" }) : null
               const measured = await measure(page, '.byd-ai')
               expect(measured.beside).toBe(PANEL)
-              expect(measured.controls).toBeGreaterThanOrEqual(7)
+              expect(measured.controls).toBeGreaterThanOrEqual(4)
               const fault = [
                 measured.rows !== 1 && `${measured.rows} rows`,
                 measured.cut.length > 0 && `cut ${measured.cut.join(', ')}`,
@@ -280,8 +304,8 @@ for (const locale of ['sv-SE', 'en-GB']) {
               await wide?.evaluate((tag) => (tag as Element).remove())
             }
           }
-          // Every eye is measured before the verdict, so a red run names all of them at once.
-          expect(broken, 'in every eye the crown stands on one row, cuts nothing and leaves the field 180 px').toEqual([])
+          // Every size is measured before the verdict, so a red run names all of them at once.
+          expect(broken, 'in every size the crown stands on one row, cuts nothing and leaves the field 180 px, and the panel stands in the wall').toEqual([])
         })
       }
     })
