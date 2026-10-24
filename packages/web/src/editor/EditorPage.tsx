@@ -596,7 +596,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const phone = PHONE_READING
   const unreadable = settled && settled.done + settled.failed.length >= settled.total ? Object.values(settled.smallest ?? {}).filter((pt) => pt < minPtIn(phone)).length : 0
   const showOnWall = () => {
-    wallView.current = { filter: wallView.current?.filter ?? noFilter, scrollTop: 0, eye: `read.${phone.key}` }
+    // In the phone's reading view with the panel on Visning (L81), where the cards under its floor
+    // are named; the eye the designer was reading with stays hers.
+    wallView.current = { filter: wallView.current?.filter ?? noFilter, scrollTop: 0, eye: wallView.current?.eye ?? 'normal', size: `read.${phone.key}`, panel: 'view' }
     setWallMount((n) => n + 1)
     setStage('wall')
   }
