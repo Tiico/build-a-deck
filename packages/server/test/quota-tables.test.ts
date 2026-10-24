@@ -253,11 +253,19 @@ for (const backend of backends) {
       // Bo's own tier has room for any number of tables; it is not his tier that is asked.
       await db.accountPlans.setPlan(bo.id, 'pro', 'operator')
       await started(await startAt(bo.cookie, project))
+      // An owner who has given no name is «the game's owner» (#1254, beslut 2): the word her address
+      // suggests is never said to anyone she has not said yes to it for.
+      const nameless = await startAt(bo.cookie, project)
+      expect(nameless.status).toBe(402)
+      const unsaid = await nameless.text()
+      expect(JSON.parse(unsaid)).toEqual({ error: 'quota', quota: { measure: 'openTables', limit: 1, used: 1, bearer: 'owner' } })
+      expect(unsaid).not.toMatch(/ada/i)
+      await db.auth.setName(ada.id, 'Ada Lovelace')
       for (const who of [bo, cy]) {
         const refused = await startAt(who.cookie, project)
         expect(refused.status).toBe(402)
         const body = await refused.text()
-        expect(JSON.parse(body)).toEqual({ error: 'quota', quota: { measure: 'openTables', limit: 1, used: 1, bearer: 'owner', ownerName: 'Ada' } })
+        expect(JSON.parse(body)).toEqual({ error: 'quota', quota: { measure: 'openTables', limit: 1, used: 1, bearer: 'owner', ownerName: 'Ada Lovelace' } })
         expect(body).not.toContain('ada-')
         expect(body).not.toContain('free')
       }

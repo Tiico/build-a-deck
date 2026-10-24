@@ -7,6 +7,7 @@ import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
 import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
+import { colourOf, initialOf } from '../account/face.js'
 
 // Who has the game (D3), from the prototype: the people in the editor's header are the door.
 // Who is here now and who may be here at all is one question, so one list answers it — the
@@ -75,7 +76,10 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the members again
   }, [http, project, asked])
 
-  const present = new Set(here.map((p) => p.name))
+  // A member as the panel says her in a sentence: by her name, or her address when she has none.
+  const calledBy = (email: string) => members?.find((m) => m.email === email)?.name ?? email
+  // Who is here is matched by address (#1254): the name is what she is called, the address who she is.
+  const present = new Set(here.map((p) => p.email ?? p.name))
   const sorted = [...(members ?? [])].sort((a, b) => Number(present.has(b.email)) - Number(present.has(a.email)))
   const invite = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -137,16 +141,19 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
         <ul>
           {sorted.map((m) => (
             <li key={m.email} data-member={m.email} {...(present.has(m.email) ? { 'data-here': 'true' } : {})}>
-              <i style={{ ['--who' as string]: colourOf(m.email) }}>{m.email.slice(0, 1).toUpperCase()}</i>
+              <i style={{ ['--who' as string]: colourOf(m.email) }}>{initialOf(m.name ?? m.email)}</i>
+              {/* The name she gave, and her address under it (#1254); without a name the address is
+                  the line, as it always was. A long name wraps and stands whole. */}
               <span>
-                <b>{m.email}</b>
+                <b>{m.name ?? m.email}</b>
+                {m.name && <small>{m.email}</small>}
                 <small>
                   {roleWord(m.role, lang)}
                   {present.has(m.email) ? ` · ${t('share.hereNow')}` : ''}
                 </small>
               </span>
               {sharing && m.role !== 'owner' && (
-                <button type="button" aria-label={t('share.remove.of', { email: m.email })} onClick={() => setAsking(m.email)}>
+                <button type="button" aria-label={t('share.remove.of', { email: m.name ?? m.email })} onClick={() => setAsking(m.email)}>
                   {t('share.remove')}
                 </button>
               )}
@@ -157,7 +164,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
       {asking && (
         <Question
           className="byd-share-question"
-          label={t('share.remove.ask', { email: asking })}
+          label={t('share.remove.ask', { email: calledBy(asking) })}
           confirm={t('share.remove.yes')}
           onConfirm={() => {
             setAsking(null)
@@ -168,7 +175,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
             field.current?.focus()
           }}
         >
-          {t('share.remove.ask', { email: asking })}
+          {t('share.remove.ask', { email: calledBy(asking) })}
         </Question>
       )}
       {!sharing && <p>{t('share.ownerOnly')}</p>}
@@ -217,9 +224,5 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
   )
 }
 
-// A colour per person, from their address, so the same face keeps its colour.
-export function colourOf(seed: string): string {
-  let h = 0
-  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) % 360
-  return `hsl(${h} 55% 55%)`
-}
+// The faces are the account's (#1254), drawn the same in Profil as here.
+export { colourOf } from '../account/face.js'

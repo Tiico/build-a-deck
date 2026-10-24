@@ -26,7 +26,8 @@ import { QuotaReached } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
-import { SharePanel, colourOf } from './SharePanel.js'
+import { SharePanel } from './SharePanel.js'
+import { colourOf, initialOf } from '../account/face.js'
 import { onlineUrl, tvUrl } from './tableLinks.js'
 import { editorTab, tableTab } from '../ways.js'
 import { rememberStart, type Seating, type StartAnswer } from './startAnswer.js'
@@ -880,8 +881,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             so it can be spoken to by what it says (#556). */}
         <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.door')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
           {client.here.map((p) => (
-            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
-              {p.name.slice(0, 1).toUpperCase()}
+            // The name's letter and the whole name on the pointer, in the colour of the address, so the
+            // face stays the same when the name changes (#1254).
+            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.email ?? p.name) }}>
+              {initialOf(p.name)}
             </i>
           ))}
           {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}

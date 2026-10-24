@@ -17,6 +17,7 @@ import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
 import { claimUrl } from '../account/session.js'
+import { myAccount } from '../account/me.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -44,12 +45,29 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
-  const name = params.get('name') ?? t('observer.name')
   const token = params.get('token') ?? undefined
   const owner = params.get('owner') === '1'
+  // The owner who watches from the editor is the name she gave her account (#1254), as the table is
+  // told she is; a guest is the name she gave at the door.
+  const [own, setOwn] = useState<string | null>(null)
+  useEffect(() => {
+    if (!owner) return
+    let live = true
+    void myAccount(params.get('server')?.replace(/^ws/, 'http') ?? location.origin).then(
+      (me) => live && setOwn(me?.name ?? null),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [owner, params])
+  // The connection is opened under the link's word, and the server says her own name for it; the
+  // page says the same name once it has it.
+  const asked = params.get('name') ?? t('observer.name')
+  const name = own ?? asked
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: asked, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
   const live = useLiveStatus(conn, 'table', timing)
   // What happens at the table, said in the room's live regions as the table screen says it (#485):

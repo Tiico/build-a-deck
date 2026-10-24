@@ -62,6 +62,11 @@ create table if not exists accounts (
   email       text not null unique,
   created_at  timestamptz not null default now()
 );
+-- The account's own name (#1254): what the others call the designer, null until she gives one, and
+-- whether she has been asked for it. An account from before the name has not, and is asked once on
+-- Mina spel. Its length is held at the door (40 characters); it goes with the account's row.
+alter table accounts add column if not exists name text;
+alter table accounts add column if not exists name_asked boolean not null default false;
 create table if not exists login_tokens (
   token_hash  text primary key,
   email       text not null,

@@ -27,6 +27,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { inviteMail } from './invite-mail.js'
+import { NAME_MAX, nameOf } from './account-name.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
 import { widestBleedMm, type PrintProvider } from '@byd/print'
@@ -39,7 +40,7 @@ import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
-import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, ownerNameOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
+import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 
@@ -103,18 +104,17 @@ const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
 
 // The contract when a ceiling is met (#1192): 402, a code and the numbers, and nothing written.
 // `bearer` is `you` when the one asking bears the cost and `owner` when the game's owner does, with
-// `ownerName` beside it (#1198); the owner's address and tier are never said to anyone else. 402 because no other door uses it: 401 and
+// `ownerName` beside it (#1198, the account's own name since #1254); the owner's address and tier are never said to anyone else. 402 because no other door uses it: 401 and
 // 403 are login and role in the clients, 409 a taken seat or a conflict, and 429 rate limiting. The
 // client says it in the reader's words (A4), never as the status.
 function quotaRefused(res: ServerResponse, met: QuotaMet, bearer: Bearer): void {
   json(res, 402, { error: 'quota', quota: { ...met, ...bearer } })
 }
-// The owner as the contract says her to someone else (#1198): by the name her address gives, and
-// never by the address itself. An owner the box has no account for, or whose address has no word
-// that reads as a name, is said without one.
+// The owner as the contract says her to someone else (#1198): by the name she gave her account
+// (#1254), and never by the address nor by the word the address suggests (beslut 2). An owner the
+// box has no account for, or who has given no name, is said without one.
 async function ownerBearer(opts: ServerOptions, owner: string | undefined): Promise<Bearer> {
-  const email = owner === undefined ? undefined : (await opts.auth?.accountById(owner))?.email
-  const ownerName = email === undefined ? null : ownerNameOf(email)
+  const ownerName = owner === undefined ? null : ((await opts.auth?.accountById(owner))?.name ?? null)
   return ownerName === null ? { bearer: 'owner' } : { bearer: 'owner', ownerName }
 }
 // Who bears a game's cost, in the words of the contract: the one asking, or its owner.
@@ -516,6 +516,23 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 200, { session: claimed.sessionId, seat: claimed.seat, name: claimed.name })
     }
     if (url.pathname === '/me/ai-key' || url.pathname.startsWith('/me/ai-key/')) return await routeAiKey(opts, req, res, url)
+    // The account's own name (#1254): read with who the account is (`/auth/me`), written here. A name,
+    // or none, is the answer to the welcome step's question, and it is not put again.
+    if (req.method === 'PUT' && url.pathname === '/me/name') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      let raw: unknown
+      try {
+        raw = (JSON.parse(await readBody(req)) as { name?: unknown }).name
+      } catch {
+        return json(res, 400, { error: 'that is not a name' })
+      }
+      const named = nameOf(raw)
+      if (!named.ok) return json(res, 400, { error: `a name is text of at most ${NAME_MAX} characters on one line` })
+      await opts.auth.setName(account.id, named.name)
+      return json(res, 200, { name: named.name })
+    }
     if (req.method === 'GET' && url.pathname === '/me/played') {
       if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
       const account = await accountOf(opts.auth, req)
@@ -771,7 +788,11 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
     if (ask.role === 'observer') {
       const name = ask.name?.trim()
-      return name && name.length <= 64 ? { seat: null, observer: name, host: true } : { refused: 'an observer needs a name of at most 64 characters' }
+      if (!name || name.length > 64) return { refused: 'an observer needs a name of at most 64 characters' }
+      // The owner who watches is said by the name she gave her account (#1254), whatever word the
+      // editor sent; without one, by that word, as before — never by her address.
+      const own = opts.auth ? (await accountOf(opts.auth, req))?.name : null
+      return { seat: null, observer: own ?? name, host: true }
     }
     return ask.seat === null ? { seat: null } : { seat: ask.seat, host: true }
   }
@@ -902,7 +923,11 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   // Whose ceiling an edit of this editor's meets (#1195): the owner's whoever edits, and only the
   // owner is told it is her own; anyone else is told whose it is, by name (#1198).
   const bears: Bearer = role === 'owner' ? YOU : await ownerBearer(opts, rec.owner)
-  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
+  // Who the others see (#1254): an account is said by the name it gave, and otherwise by its address,
+  // as the header always said it, and the address rides beside it so a face keeps its colour when the
+  // name changes. The page's own word is only for a game from before accounts, where nobody is anyone.
+  const said = account ? { name: account.name ?? account.email, email: account.email } : { name }
+  const editor = { id: randomUUID(), ...said, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
   ws.on('message', (data) => {
@@ -1490,11 +1515,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const out: Waiting = {}
+    // Who saved it, by the name she gave her account (#1254), and nobody's address nor its word.
     const names = new Map<string, Promise<string | null>>()
-    const nameOf = (id: string): Promise<string | null> => {
+    const calledBy = (id: string): Promise<string | null> => {
       const known = names.get(id)
       if (known) return known
-      const asked = opts.auth ? opts.auth.accountById(id).then((a) => (a ? ownerNameOf(a.email) : null)) : Promise.resolve(null)
+      const asked = opts.auth ? opts.auth.accountById(id).then((a) => a?.name ?? null) : Promise.resolve(null)
       names.set(id, asked)
       return asked
     }
@@ -1512,7 +1538,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
         }
         about.playtest = playtestWaiting(newest.rev, tables)
       }
-      if (newest.by !== undefined && newest.by !== account.id) about.other = { name: await nameOf(newest.by), at: newest.at }
+      if (newest.by !== undefined && newest.by !== account.id) about.other = { name: await calledBy(newest.by), at: newest.at }
       out[p.id] = about
     }
     json(res, 200, out)
@@ -1853,7 +1879,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     await projects.invite({ tokenHash: hash(token), project: gate.rec.id, email: body.email, role: body.role, ...(account ? { by: account.id } : {}), expiresAt })
     const where = opts.appOrigin ?? opts.publicOrigin ?? ''
     // In the login mail's bands (#1107, L72), with the foot it had never had (#757).
-    await opts.mailer?.send(inviteMail(body.email, { from: account?.email, game: gate.rec.name, role: body.role, link: `${where}/invites/${token}`, lang, contact: opts.contact }))
+    await opts.mailer?.send(inviteMail(body.email, { from: account?.email, fromName: account?.name, game: gate.rec.name, role: body.role, link: `${where}/invites/${token}`, lang, contact: opts.contact }))
     json(res, 201, { ok: true })
     return true
   }
@@ -1887,7 +1913,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const rows = await projects.members(gate.rec.id)
-    const named = await Promise.all(rows.map(async (m) => ({ email: (await opts.auth?.accountById(m.account))?.email ?? m.account, role: m.role })))
+    // Each by the name they gave their account beside the address (#1254), which Dela has always shown.
+    const named = await Promise.all(
+      rows.map(async (m) => {
+        const who = await opts.auth?.accountById(m.account)
+        return { email: who?.email ?? m.account, ...(who?.name ? { name: who.name } : {}), role: m.role }
+      }),
+    )
     json(res, 200, named)
     return true
   }
@@ -2522,7 +2554,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     if (opts.authBypass) {
       res.writeHead(200, {
         'content-type': 'application/json',
-        'set-cookie': await createLoginSession(opts, auth, email),
+        'set-cookie': (await createLoginSession(opts, auth, email)).cookie,
       })
       res.end(JSON.stringify({ ok: true, loggedIn: true }))
       return
@@ -2539,9 +2571,13 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const t = url.searchParams.get('token') ?? ''
     const email = t ? await auth.redeemToken(hash(t), now().toISOString()) : null
     if (!email) return json(res, 400, { error: 'the link is spent or too old; ask for a new one' })
+    const { cookie, account } = await createLoginSession(opts, auth, email)
+    const next = safeNext(url.searchParams.get('next') ?? undefined)
+    // An account that has not been asked what the others should call it is asked first, in a step
+    // of its own, and goes on to where the link was going after it (#1254, variant C).
     res.writeHead(302, {
-      'set-cookie': await createLoginSession(opts, auth, email),
-      location: `${opts.appOrigin ?? ''}${safeNext(url.searchParams.get('next') ?? undefined)}`,
+      'set-cookie': cookie,
+      location: `${opts.appOrigin ?? ''}${account.asked ? next : `/welcome?next=${encodeURIComponent(next)}`}`,
     })
     res.end()
     return
@@ -2550,7 +2586,8 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const account = await accountOf(auth, req)
     // Nobody is an answer and not a failure (#744): every guest page asks, a guest is never logged
     // in (G1), and a 401 is written in the browser's console as an error on each of those pages.
-    return json(res, 200, { email: account?.email ?? null })
+    // The account's own name and whether it has been asked for one (#1254) are its own to read.
+    return json(res, 200, account ? { email: account.email, name: account.name ?? null, asked: account.asked === true } : { email: null })
   }
   if (url.pathname.startsWith('/auth/passkeys')) return routePasskeys(opts, auth, req, res, url)
   if (req.method === 'POST' && url.pathname === '/auth/logout') {
@@ -2580,7 +2617,7 @@ async function routePasskeys(opts: ServerOptions, auth: AuthStore, req: Incoming
   if (req.method === 'POST' && url.pathname === '/auth/passkeys/login') {
     const a = await passkeyLogin(c, await bodyOf(req))
     if (!a.login) return answer(a)
-    res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': await createLoginSession(opts, auth, a.login.email) })
+    res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': (await createLoginSession(opts, auth, a.login.email)).cookie })
     res.end(JSON.stringify(a.body))
     return
   }
@@ -2609,13 +2646,13 @@ async function bodyOf(req: IncomingMessage): Promise<unknown> {
   }
 }
 
-async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: string): Promise<string> {
+async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: string): Promise<{ cookie: string; account: Account }> {
   const account: Account = await auth.ensureAccount(email)
   const sid = token()
   const expires = new Date(Date.now() + SESSION_TTL_MS)
   await auth.createSession(hash(sid), account.id, expires.toISOString())
   const secure = (opts.publicOrigin ?? '').startsWith('https://') ? '; Secure' : ''
-  return `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`
+  return { cookie: `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`, account }
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

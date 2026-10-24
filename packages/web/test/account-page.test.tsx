@@ -50,7 +50,8 @@ describe('the login card and HomePage', () => {
     fireEvent.change(email, { target: { value: 'ada@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
 
-    await waitFor(() => expect(gone.at(-1)).toBe(home))
+    // A first login is asked what the others should call it first (#1254), and goes on home after.
+    await waitFor(() => expect(gone.at(-1)).toBe(`/welcome?${new URLSearchParams({ next: home, server: run.http }).toString()}`))
     expect(screen.queryByText(/Kolla din mejl/)).toBeNull()
     expect(run.mail.sent).toHaveLength(0)
 
@@ -654,9 +655,17 @@ describe('what waits for the account on the home page (#1225)', () => {
     satHost.close()
 
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    // Kim has given her account no name (#1254): she is somebody else, and never her address's word.
+    const before = render(<HomePage />)
+    const unnamed = await screen.findByRole('region', { name: 'Väntar på dig' })
+    await waitFor(() => expect(within(unnamed).getAllByRole('link').at(-1)?.textContent).toBe('Någon annan sparade version 2Skogens herrar · i dag'))
+    expect(document.body.textContent).not.toMatch(/Kim sparade/)
+    before.unmount()
+    await run.auth!.setName(kim.id, 'Kim')
     const gone: string[] = []
     render(<HomePage onNavigate={(u) => gone.push(u)} />)
     const panel = await screen.findByRole('region', { name: 'Väntar på dig' })
+    await waitFor(() => expect(within(panel).getAllByRole('link').at(-1)?.textContent).toBe('Kim sparade version 2Skogens herrar · i dag'))
     const rows = within(panel).getAllByRole('link')
     expect(rows.map((row) => row.textContent)).toEqual(['2 nya flaggorSkogens herrar v2 · från bordet i dag', 'Svara på enkätenEtt bord · du spelade som Ada', 'Kim sparade version 2Skogens herrar · i dag'])
     const server = encodeURIComponent(run.http)

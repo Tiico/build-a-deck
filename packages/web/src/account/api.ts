@@ -7,6 +7,7 @@ import { Said } from '../i18n/said.js'
 import { Unauthorized, pageLang, withCredentials } from './session.js'
 import { QuotaReached, quotaOf, type Quota } from './quota.js'
 export { Unauthorized, claimGuest, claimUrl, loginUrl, logout, requestLink, whoAmI, withCredentials } from './session.js'
+export { arrival, myAccount, saveName, type Me } from './me.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
 // test, a surface mounted on its own — gets Swedish, the catalogue's own language.
@@ -55,7 +56,8 @@ export async function myWaiting(http: string): Promise<Record<string, GameWaitin
 }
 
 // Sharing a game (D3): who it is shared with, an invitation to an address, and taking it back.
-export type Member = { email: string; role: Role }
+// `name` is what the member called her account (#1254), when she gave it one.
+export type Member = { email: string; name?: string; role: Role }
 export async function projectMembers(http: string, project: string, t: T = swedish): Promise<Member[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members`, withCredentials())
   if (res.status === 401) throw new Unauthorized()

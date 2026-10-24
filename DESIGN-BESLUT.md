@@ -8296,3 +8296,48 @@ B gav en genomskinlig bild ett färgsken som inte finns på kortet, och C var br
 
 `whole-picture.test.tsx` mäter de målade pixlarna på varje yta: en kvadratisk, en smal och en bred bild ryms hela och i sin egen form, och en bild i den gamla grundens mörker skiljer sig från grunden bredvid.
 `media-crop.test.tsx` lägger ramen på en 2:1-bild med mätning och på en 1:2-bild utan.
+
+### L83. Kontot har ett eget namn: ett välkomststeg efter första inloggningen, ett band för konton som redan finns och kortet «Namn» i Profil (prototypat och beslutat 2026-10-24, #1254)
+
+Ett konto hade inget namn.
+#1198 nämnde ägaren vid namn när en testledare eller medredigerare nådde ägarens tak, och tog namnet ur det första ordet i adressen, så att `info@` blev «Info» och `x92@` blev ingenting.
+Beställaren beslutade att kontot får ett namn som designern själv sätter, föreslaget ur adressen och ändrat i Profil.
+Tre vägar till namnet prövades i [`docs/ux-audits/2026-10-24-visningsnamn/prototyper/index.html`](https://github.com/Tiico/build-a-deck/blob/07521cb23c56c6294dbf7682aec264b796cfbfb6/docs/ux-audits/2026-10-24-visningsnamn/prototyper/index.html) på grenen `proto/1254-visningsnamn`: A sparade förslaget tyst, B frågade första gången någon annan skulle läsa namnet, och C frågade vid första inloggningen.
+Agenten rekommenderade B.
+Beställaren valde **C**: alla nya konton har ett namn från start, och frågan ställs en gång.
+
+**Välkomststeget.** Efter länken, och efter en passkey-inloggning, går ett konto som inte har fått frågan till `/welcome?next=…`: «Välkommen till Deckster», adressen det är inloggat som, fältet «Vad ska andra kalla dig?» med förslaget ur adressen ifyllt, «Fortsätt» och «Hoppa över».
+Sedan går det dit länken var på väg, och steget ersätter sig självt i historiken.
+Länkens väg bestämmer servern (`/auth/verify` skickar dit), och kortets egna inloggningar, passkeyn och utvecklingens genväg, frågar `/auth/me` innan de går vidare.
+
+**«Hoppa över» sparar inget namn, och frågan kommer inte tillbaka**, varken som steg eller som band.
+Kontot har därför två fält: namnet, som är tomt tills designern ger ett, och om kontot har fått frågan.
+Ett namn, eller inget, är svaret; att tömma fältet i Profil är också ett svar.
+
+**Bandet.** Ett konto som fanns före namnet får frågan i ett band på Mina spel, i passkey-bandets form och på dess plats (L78), med förslaget i fältet, «Spara» och «Inte nu».
+**Högst ett band åt gången:** namnets kommer först, och passkey-bandet visas först när namnet är satt eller bandet har passerats.
+
+**Kortet «Namn»** står först i Profil: fältet, en rad om vad namnet är till för, och raden namnet ger i Dela, ritad medan designern skriver.
+Utan namn säger kortet vad det betyder: adressen i Dela och i inbjudningar, och «spelets ägare» i kvotraden.
+Nära taket räknar fältet tecknen.
+«Spara namnet» är en kontur och inte prototypens fyllda knapp: Profils enda fyllda knapp är AI-nyckelns, eller vägen tillbaka till spelet (L13).
+
+**Namnet är högst 40 tecken,** trimmat, på en rad, räknat som läsaren räknar dem (en emoji är ett tecken), och tomt är inget namn.
+Förslaget och taket står i `account-name.ts` och nås av sidorna genom `@byd/server/doc`, så att steget, bandet, kortet och servern säger samma sak.
+
+**Var namnet syns:**
+- **Kvotraden:** `ownerName` i 402 och `refused` är ägarens namn, och **reserven är «spelets ägare»**: adressens ord är bara ett förslag och sägs aldrig till någon annan (beslut 2). Det ersätter #1198:s reserv, och `ownerNameOf` finns inte längre.
+- **Dela:** namnet i fetstil med adressen och rollen under; utan namn är raden adressen, som förut. Ett långt namn bryts och står helt. Adresserna syns för medlemmarna som förut.
+- **Editorns huvud:** servern säger vem som är inne, ur kontot och inte ur sidans egen `?name=`. Ansiktet är namnets första tecken och titeln hela namnet; färgen följer adressen, så ansiktet står kvar när namnet byts. Utan namn är det adressen, som förut.
+- **Bordet:** ägaren som tittar på från editorn heter sitt namn för TV:n och telefonerna («Ada tittar på och ser alla kort»), och utan namn editorns ord som förut, aldrig adressen.
+- **Väntar på dig (#1225):** «Kim sparade version 5» säger den som sparade vid kontots namn, och utan namn «Någon annan sparade version 5».
+- **Inbjudningsmejlet:** «Nicklas Ockelberg (nicklas.ockelberg@…) vill dela spelet …», och ämnesraden «Nicklas Ockelberg bjuder in dig till …» (beslut 3). Namnet är vad avsändaren själv har skrivit, adressen är det mottagaren kan lita på. Utan namn är brevet som förut.
+
+**Namnet är kontots data** och ligger på kontots rad, i Postgres (`accounts.name`, `accounts.name_asked`) och i minnet, och läses med kontot.
+Det går därför med kontot vart kontot går; det finns ännu ingen export eller radering av ett helt konto (GDPR, fas 3), och när den byggs är namnet en kolumn på raden den tar.
+Designern tar själv bort namnet genom att tömma fältet i Profil.
+
+Inte byggt, och inte beslutat att bygga: markörens etikett när ägaren pekar från bordets egen vy (i dag «bordet»), passkeyns `displayName` och avsändarnamnet «… via Deckster».
+
+`account-name.test.ts` och `account-name-postgres.test.ts` håller förslaget, taket, frågan och svaret, Dela, mejlet och närvaron; kvottesterna håller att ett konto utan namn sägs utan namn.
+`account-name.test.tsx` kör steget, bandet, kortet och huvudet mot den riktiga servern, och `account-name.spec.ts` går första inloggningen, «Hoppa över» och bandet i den byggda appen.
