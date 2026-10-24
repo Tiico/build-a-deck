@@ -110,6 +110,12 @@ importers:
         specifier: ^4.20.0
         version: 4.23.13
 
+  packages/screening:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
+
   packages/server:
     dependencies:
       '@byd/engine':
