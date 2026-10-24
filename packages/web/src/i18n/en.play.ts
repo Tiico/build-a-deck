@@ -391,7 +391,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'flag.point.cancel': 'Cancel',
   'flag.panel.title': 'Flag',
   'flag.panel.close': 'Close',
-  'flag.panel.moment': 'The moment',
+  'flag.panel.moment': 'What happened',
   'flag.panel.moment.none': 'Nothing has happened at the table yet.',
   'flag.panel.moment.sub': 'The flag is saved with its time in the log.',
   'flag.panel.card': 'The card',

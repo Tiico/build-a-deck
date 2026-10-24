@@ -475,7 +475,7 @@ export const svPlay = {
   'flag.point.cancel': 'Avbryt',
   'flag.panel.title': 'Flagga',
   'flag.panel.close': 'Stäng',
-  'flag.panel.moment': 'Ögonblicket',
+  'flag.panel.moment': 'Det som hände',
   'flag.panel.moment.none': 'Inget har hänt vid bordet än.',
   'flag.panel.moment.sub': 'Flaggan sparas med tidpunkten i loggen.',
   'flag.panel.card': 'Kortet',

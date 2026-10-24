@@ -2223,7 +2223,7 @@ Tre former prövades på riktiga `/online` (gren `prototype/flag-desktop`): en p
   Under skrivbordets 1023 px, och på telefonen (`/play` och `/online` utan bord), är flaggan arket som förut.
 - **Inga lägen.** Medan panelen står pekar ett tryck på ett kort ut det, och gör inget annat, med samma regler som bandet (#1142): inget läses, spelas, lyfts eller dras, och kontroller som inte är kort står tillbakadragna. Kortet under pekaren ringas, inte alla kort.
   Ett annat kort byter, och «Ta bort kortet» gör flaggan till ögonblickets igen.
-- **Panelen säger vad som stämplas.** Ögonblicket står som loggens senaste rad, och kortet visas 128 px brett med namnet.
+- **Panelen säger vad som stämplas.** «Det som hände» står som loggens senaste rad, utan flaggor och anteckningar, och kortet visas 128 px brett med namnet.
 - **Den är inget modalt fönster.** Fokus går till kommentaren och tillbaka till det som hade det när panelen stängs; Tab lämnar den för korten, och Esc, «Avbryt» och krysset stänger. ⌘↵ eller Ctrl+↵ flaggar.
 
 ### G4. Fysiska playtests mäts inte (fråga 38)
