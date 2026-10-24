@@ -77,6 +77,17 @@
 .byd-profile-question > button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #a39a86; background: transparent; color: var(--byd-secondary-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .byd-profile-question > button[data-kind='danger'] { border-color: #7a3243; background: #7a3243; color: #ffe4ea; font-weight: 700; }
 
+/* «Namn» (#1254): the field, the line under it, and the row the name makes in Dela, drawn in Dela's
+   own form on the account's ground. The card's parts stand at its own 12 px, not a form's 16. */
+.byd-profile-name { gap: 12px; }
+.byd-profile-count { justify-self: end; font-variant-numeric: tabular-nums; }
+.byd-profile-seen { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #1b1f2a; }
+.byd-profile-seen > i { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui, sans-serif; font-style: normal; }
+.byd-profile-seen > span { display: grid; min-width: 0; }
+.byd-profile-seen b { color: #fff; font-size: 13px; overflow-wrap: anywhere; }
+.byd-profile-seen small { color: var(--byd-profile-quiet); font-size: 12px; }
+.byd-profile-ok-line { margin: 0; color: var(--byd-profile-ok); font-size: 13px; }
+
 .byd-profile-facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; }
 .byd-profile-facts dt { color: var(--byd-profile-quiet); }
 .byd-profile-facts dd { margin: 0; overflow-wrap: anywhere; }

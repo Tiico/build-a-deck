@@ -19,8 +19,10 @@ test('a passkey saved after the link logs in without a mail, and is taken away o
     options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true },
   })
 
-  // The link, which the suite's server answers at once.
+  // The link, which the suite's server answers at once, by an account that has said what the others
+  // should call it: until it has, Mina spel's one band is the name's (#1254).
   await logIn(page.request)
+  await page.request.put('/me/name', { data: { name: 'Ada' } })
   await page.goto('/')
   const offer = page.getByRole('region', { name: 'Passkey' })
   await expect(offer).toContainText('Logga in utan mejl nästa gång.')

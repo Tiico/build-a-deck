@@ -35,7 +35,9 @@ export class PostgresAuthStore implements AuthStore {
     const rows = await this.sql<AccountRow[]>`
       insert into accounts (email) values (${email}) on conflict (email) do update set email = excluded.email returning id, email, name, name_asked
     `
-    return accountOf(rows[0]!)
+    const row = rows[0]
+    if (!row) throw new Error('the insert made no account')
+    return accountOf(row)
   }
   async accountById(id: string): Promise<Account | null> {
     const [row] = await this.sql<AccountRow[]>`select id, email, name, name_asked from accounts where id = ${id}`

@@ -787,7 +787,11 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
     if (ask.role === 'observer') {
       const name = ask.name?.trim()
-      return name && name.length <= 64 ? { seat: null, observer: name, host: true } : { refused: 'an observer needs a name of at most 64 characters' }
+      if (!name || name.length > 64) return { refused: 'an observer needs a name of at most 64 characters' }
+      // The owner who watches is said by the name she gave her account (#1254), whatever word the
+      // editor sent; without one, by that word, as before — never by her address.
+      const own = opts.auth ? (await accountOf(opts.auth, req))?.name : null
+      return { seat: null, observer: own ?? name, host: true }
     }
     return ask.seat === null ? { seat: null } : { seat: ask.seat, host: true }
   }

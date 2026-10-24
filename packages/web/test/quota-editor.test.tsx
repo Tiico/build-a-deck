@@ -54,9 +54,11 @@ describe('a card over the ceiling, in the band (#1198)', () => {
     expect(said.querySelector('b')?.textContent).toBe('Kortet lades inte till.')
   })
 
-  it('names the owner to a co-editor, and never her address', async () => {
+  it('names the owner to a co-editor by the name she gave her account, and never her address', async () => {
     run = await startServer({ auth: true, authBypass: true, plans: tiers({ cardRowsPerProject: 3 }) })
     await login('ada@example.com')
+    // The name is the account's own (#1254); an owner without one is «spelets ägare».
+    await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
     const id = await made()
     const bo = await login('bo@example.com')
     await run.projects.share(id, bo, 'editor')

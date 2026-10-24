@@ -391,8 +391,9 @@
 .byd-share li[data-here] { box-shadow: inset 3px 0 0 #7dd3a0; }
 .byd-share li i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
 .byd-share li span { display: grid; min-width: 0; }
-.byd-share li b { color: #fff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
-.byd-share li small { color: #9aa3b8; font-size: 11px; }
+.byd-share li b { color: #fff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; overflow-wrap: anywhere; }
+/* The address under a name (#1254) breaks where it must rather than widen the panel. */
+.byd-share li small { color: #9aa3b8; font-size: 11px; overflow-wrap: anywhere; }
 .byd-share li button { margin-left: auto; border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #9aa3b8; font: 11px system-ui; cursor: pointer; }
 .byd-share form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
 .byd-share form input, .byd-share form select { padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }

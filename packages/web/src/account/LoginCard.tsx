@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { DecksterMark } from '../brand/DecksterMark.js'
-import { requestLink } from './session.js'
+import { arrival, requestLink } from './session.js'
 import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { LanguagePicker, useT, type Key } from '../i18n/index.js'
@@ -39,8 +39,11 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
   const [passkeys] = useState(() => keychain.supported())
   const [passkey, setPasskey] = useState<'open' | 'busy' | 'unknown' | 'failed'>('open')
   const passkeyErrorId = useId()
+  // Signed in on the card itself — by passkey, or the development login — the welcome step comes
+  // first for an account that has not been asked for its name (#1254), as it does after the link.
+  const onward = () => void arrival(http, next).then(onNavigate)
   const arrived = (result: Awaited<ReturnType<typeof loginWithPasskey>>) => {
-    if (result === 'in') onNavigate(next)
+    if (result === 'in') onward()
     else if (result === 'unknown' || result === 'failed') setPasskey(result)
     else setPasskey('open')
   }
@@ -48,7 +51,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
     if (!passkeys) return
     let live = true
     void keychain.autofill().then((yes) => {
-      if (yes && live) void loginWithPasskey(http, keychain, true).then((result) => live && result === 'in' && onNavigate(next))
+      if (yes && live) void loginWithPasskey(http, keychain, true).then((result) => live && result === 'in' && onward())
     }, () => undefined)
     return () => {
       live = false
@@ -72,7 +75,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
     try {
       const result = await requestLink(http, address, next)
       if (result === 'logged-in') {
-        onNavigate(next)
+        onward()
         return
       }
       setState(result)

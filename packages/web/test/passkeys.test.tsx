@@ -23,7 +23,13 @@ afterEach(async () => {
   await run.stop()
 })
 
-const loggedIn = (email = 'ada@example.com') => fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
+const signedIn = (email = 'ada@example.com') => fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
+// Signed in as an account that has answered what the others should call it (#1254), so Mina spel's
+// one band is the passkey's.
+const loggedIn = async (email = 'ada@example.com') => {
+  await signedIn(email)
+  await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
+}
 const loggedOut = () => fetch(`${run.http}/auth/logout`, { method: 'POST' })
 
 // The browser's keychain, as the pages ask it: one that can keep a passkey of its own, unless told.
@@ -112,7 +118,23 @@ describe('«Logga in med passkey» on the login card', () => {
     expect(field.getAttribute('autocomplete')).toBe('email webauthn')
     fireEvent.click(screen.getByRole('button', { name: 'Logga in med passkey' }))
     await waitFor(() => expect(gone).toEqual(['/new']))
-    expect(await (await fetch(`${run.http}/auth/me`)).json()).toEqual({ email: 'ada@example.com' })
+    expect(await (await fetch(`${run.http}/auth/me`)).json()).toMatchObject({ email: 'ada@example.com' })
+  })
+
+  // A passkey saved before the name (#1254): the login with it asks the welcome step's question first,
+  // as the link does, and goes on to where the reader was going after it.
+  it('goes by the welcome step for an account that has not been asked for its name', async () => {
+    const soft = new SoftPasskey(location.origin)
+    await signedIn()
+    const options = await (await fetch(`${run.http}/auth/passkeys/register/options`, { method: 'POST', headers: { origin: location.origin } })).json()
+    await fetch(`${run.http}/auth/passkeys/register`, { method: 'POST', headers: { 'content-type': 'application/json', origin: location.origin }, body: JSON.stringify({ response: soft.create(options) }) })
+    await loggedOut()
+    const gone: string[] = []
+    at(`/login?next=${encodeURIComponent('/new')}`, <LoginPage onNavigate={(u) => gone.push(u)} />, keychainOf(soft))
+    fireEvent.click(await screen.findByRole('button', { name: 'Logga in med passkey' }))
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const url = new URL(gone[0]!, location.origin)
+    expect([url.pathname, url.searchParams.get('next')]).toEqual(['/welcome', '/new'])
   })
 
   it('sends the reader to the mail when the passkey is not known here any more', async () => {
