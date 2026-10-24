@@ -28,6 +28,9 @@ export type PlaytestResultsProps = {
   onTable(id: string | null): void
   // The «Bord · Resultat» switch, at the head of the main column as it is over the Bord view's felt.
   switcher: ReactNode
+  // The version the view was asked to open on, from «Väntar på dig» on Mina spel (#1225), until
+  // the reader picks another.
+  version?: string | null | undefined
 }
 
 const QUESTIONS: { key: PlaytestQuestion; name: Key; sub: Key }[] = [
@@ -36,7 +39,7 @@ const QUESTIONS: { key: PlaytestQuestion; name: Key; sub: Key }[] = [
   { key: 'balance', name: 'results.q.balance', sub: 'survey.q.balance' },
 ]
 
-export function PlaytestResults({ client, table, onTable, switcher }: PlaytestResultsProps) {
+export function PlaytestResults({ client, table, onTable, switcher, version: asked = null }: PlaytestResultsProps) {
   const t = useT()
   const { lang } = useLang()
   const [data, setData] = useState<Playtest | null>(null)
@@ -59,9 +62,9 @@ export function PlaytestResults({ client, table, onTable, switcher }: PlaytestRe
   // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask again
   }, [client])
 
-  // The version opened: the one the reader picked, else the one the table she came from ended on,
-  // else the newest a table has ended on.
-  const [picked, setPicked] = useState<string | null>(null)
+  // The version opened: the one the reader picked — or the one Mina spel asked for — else the one
+  // the table she came from ended on, else the newest a table has ended on.
+  const [picked, setPicked] = useState<string | null>(asked)
   const from = table !== null ? (data?.tables.find((x) => x.id === table)?.version ?? null) : null
   const version = data ? chosenVersion(data.versions, picked ?? from) : null
   const name = (v: string, form: 'name' | 'word' = 'name') => {

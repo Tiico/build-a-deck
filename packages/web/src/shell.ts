@@ -16,8 +16,11 @@ import type { Voice } from './status/notice.js'
 // The markup and its rules are below, and the build writes them into the document it ships: the
 // rules into `<head>`, the markup into `#root`. The source `index.html` keeps an empty `#root`, which
 // the web suite's measurements paste their own markup into. The rules name `#byd-shell`, so the
-// app's stylesheet cannot restyle the shell when it lands, and the shell's ground is on `html` only
-// while the shell stands, so nothing of it lingers under the app. Without JavaScript the loading
+// app's stylesheet cannot restyle the shell when it lands, and the shell's ground is on `html` from
+// the head until the app has drawn into `#root`, so nothing of it lingers under the app. It is not
+// enough to put it there while the shell stands: painting starts as `<body>` opens, and on a slow
+// line the bytes can stop between `<body>` and the shell's markup — the page was then the browser's
+// white canvas until the next bytes came (#1246). Without JavaScript the loading
 // words are hidden — they would be a promise nothing keeps — and a `<noscript>` line says why.
 //
 // Nothing here is part of the app's bundle. `vite.config.ts` reads it when it builds `index.html`:
@@ -45,7 +48,8 @@ export const SHELL_VOICES: Record<string, Exclude<Voice, 'app'>> = {
 // D5's page form in `status.css`, with the wait's tone, at the same measures: the mark, the heading
 // with its ring, the line under it, and a button in the status buttons' dress.
 export const SHELL_STYLE = [
-  'html:has(#byd-shell){background:#1f2637}',
+  // Before `#root` has anything in it, and while the shell stands in it.
+  'html:not(:has(#root>*)),html:has(#byd-shell){background:#1f2637}',
   "#byd-shell{position:fixed;inset:0;display:grid;place-content:center;justify-items:start;gap:14px;box-sizing:border-box;padding:28px;background:#1f2637;color:#dfe7f7;font:14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}",
   '#byd-shell *{box-sizing:border-box;margin:0}',
   'html:not(.js) #byd-shell>:not(noscript){display:none}',

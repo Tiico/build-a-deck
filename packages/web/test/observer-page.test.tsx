@@ -52,9 +52,13 @@ describe('ObserverPage (C8)', () => {
     })
     const card = held.getAttribute('data-component')!
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    // At a desk the flag is the panel standing where the column stands (#1255), and a press on a
+    // card while it stands points it out.
+    const panel = await screen.findByRole('dialog', { name: 'Flagga' })
+    expect(panel.getAttribute('aria-modal')).toBeNull()
     fireEvent.click(held)
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Flagga kortet' })).getByRole('button', { name: 'Flagga' }))
+    expect(within(panel).getByRole('button', { name: 'Ta bort kortet' })).toBeTruthy()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: null, intent: { v: 'flag', component: card, observer: 'Eva' } }))
     ada.close()
   })

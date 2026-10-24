@@ -13,7 +13,7 @@ import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, ha
 import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, paintOf, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
-import { Arriving, AssetImage } from './AssetImage.js'
+import { Arriving, Thumb } from './AssetImage.js'
 import { assetRef, drawnImageFieldsOf, holdIcons, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { fieldLabel, fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
@@ -2494,7 +2494,7 @@ function FixedPicture({ el, pictures, assetBase, onChoose }: { el: Element & { k
   const name = hash === null ? t('canvas.props.picture.none') : (picture?.name ?? t('canvas.props.picture.unnamed'))
   return (
     <div className="byd-props-picture">
-      {hash !== null && assetBase && <AssetImage base={assetBase} hash={hash} alt="" />}
+      {hash !== null && assetBase && <Thumb base={assetBase} hash={hash} alt="" />}
       <span>{name}</span>
       <button type="button" className="byd-secondary" onClick={onChoose}>
         {t('canvas.props.picture.choose')}

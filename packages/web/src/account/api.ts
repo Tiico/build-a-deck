@@ -43,6 +43,18 @@ export async function gameFan(http: string, project: string): Promise<CardFace[]
   return (await res.json()) as CardFace[]
 }
 
+// What waits for the account, game by game (#1225, #1204 beslut B), for «Väntar på dig» and the
+// hero's two last numbers: asked for after the list, as the cards are, since it reads every table of
+// every game. `playtest` only for a game whose playtest the account may read (#524); `other` when
+// someone else saved its newest version, named as the server names her (#1198) or `null`.
+export type GameWaiting = { rev: number; playtest?: { answers: number; flags: number; tables: number; at: string | null }; other?: { name: string | null; at: string } }
+export async function myWaiting(http: string): Promise<Record<string, GameWaiting>> {
+  const res = await fetch(`${http}/me/waiting`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`could not read what is waiting: ${res.status}`)
+  return (await res.json()) as Record<string, GameWaiting>
+}
+
 // Sharing a game (D3): who it is shared with, an invitation to an address, and taking it back.
 // `name` is what the member called her account (#1254), when she gave it one.
 export type Member = { email: string; name?: string; role: Role }

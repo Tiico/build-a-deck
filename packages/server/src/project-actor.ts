@@ -183,19 +183,22 @@ export class ProjectActor {
   // for is not made, and says the ceiling it met; the log and what stands are as they were. It is
   // asked for in the save's own turn of the queue, never before it, so a save takes its place behind exactly
   // the edits sent before it, however long the question takes (#994).
+  // The version is the asking editor's account's (#1225), when it has one.
   async save(from?: string, storage?: OwnerCeilings): Promise<Saved> {
-    return this.serial(() => this.makeVersion(from, storage))
+    const by = [...this.editors].find((editor) => editor.id === from)?.account
+    return this.serial(() => this.makeVersion(from, storage, undefined, by))
   }
   // `edit` is one decided and not yet committed (#1233): it is committed with the version, in the
   // same step of the store and after the ceiling is asked, and applied only once both are written.
   // A version refused leaves it in no log and on no screen.
-  private async makeVersion(from?: string, storage?: OwnerCeilings, edit?: { entry: AppliedEdit; next: ProjectDoc }): Promise<Saved> {
+  // `by` is the account the version is saved by (#1225).
+  private async makeVersion(from?: string, storage?: OwnerCeilings, edit?: { entry: AppliedEdit; next: ProjectDoc }, by?: string): Promise<Saved> {
     let result: Awaited<ReturnType<ProjectStore['replace']>>
     try {
       const ceilings = storage ? await storage() : undefined
       result = edit
-        ? await this.store.replace(this.id, this.rev, edit.next, edit.entry.seq, ceilings, [edit.entry])
-        : await this.store.replace(this.id, this.rev, this.current, this.at, ceilings)
+        ? await this.store.replace(this.id, this.rev, edit.next, edit.entry.seq, ceilings, [edit.entry], by)
+        : await this.store.replace(this.id, this.rev, this.current, this.at, ceilings, [], by)
     } catch (e) {
       if (e instanceof QuotaReached) return { ok: false as const, reason: 'quota', quota: e.quota }
       throw e
@@ -224,8 +227,8 @@ export class ProjectActor {
   async put(expectedRev: number, doc: ProjectDoc, by?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
-      if (stamp(doc) === stamp(this.current)) return this.makeVersion(undefined, storage)
-      return this.makeVersion(undefined, storage, await this.decide({ v: 'restore', doc }, by))
+      if (stamp(doc) === stamp(this.current)) return this.makeVersion(undefined, storage, undefined, by)
+      return this.makeVersion(undefined, storage, await this.decide({ v: 'restore', doc }, by), by)
     })
   }
 

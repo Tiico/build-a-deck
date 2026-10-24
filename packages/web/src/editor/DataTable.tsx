@@ -9,7 +9,7 @@ import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
 import { Lifted } from './Lifted.js'
 import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
-import { AssetImage } from './AssetImage.js'
+import { Thumb } from './AssetImage.js'
 import { ASSET_DRAG_TYPE, assetRef, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { proseChoiceOf, proseFieldsOf } from './body.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
@@ -1472,7 +1472,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             <ul aria-label={t('table.images')}>
               {images.map(({ hash, cards }) => (
                 <li key={hash} data-asset={hash}>
-                  <AssetImage base={assetBase} hash={hash} alt={t('table.image.alt', { cards: cards.join(', ') })} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
+                  <Thumb base={assetBase} hash={hash} alt={t('table.image.alt', { cards: cards.join(', ') })} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
                   <small>{t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
                 </li>
               ))}

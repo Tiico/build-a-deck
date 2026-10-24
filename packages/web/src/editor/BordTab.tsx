@@ -15,12 +15,13 @@ import { useT } from '../i18n/index.js'
 //
 // A viewer runs no tables and reads no playtest (#524), so she has no switch: the tab is the
 // board and its tables, as it always was.
-export type BordTabProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined; motifs?: Record<string, Motif> | undefined; server: string | null; started?: string | null }
+// `results` is the version Resultat was asked to open on from Mina spel (#1225): the tab starts there.
+export type BordTabProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined; motifs?: Record<string, Motif> | undefined; server: string | null; started?: string | null; results?: string | null }
 
 type View = 'tables' | 'results'
 
-export function BordTab({ doc, client, assetBase, motifs, server, started = null }: BordTabProps) {
-  const [view, setView] = useState<View>('tables')
+export function BordTab({ doc, client, assetBase, motifs, server, started = null, results = null }: BordTabProps) {
+  const [view, setView] = useState<View>(results && client.mayStartTables ? 'results' : 'tables')
   // The table the Resultat view was opened for, from its row; null for all of them.
   const [table, setTable] = useState<string | null>(null)
   // A switch pressed keeps the focus: it is drawn again in the other view, in the same place.
@@ -32,7 +33,7 @@ export function BordTab({ doc, client, assetBase, motifs, server, started = null
     setView(next)
   }
   const switcher = client.mayStartTables ? <ViewSwitch view={view} onView={show} focus={moved} /> : null
-  if (view === 'results') return <PlaytestResults client={client} table={table} onTable={setTable} switcher={switcher} />
+  if (view === 'results') return <PlaytestResults client={client} table={table} onTable={setTable} switcher={switcher} version={results} />
   return (
     <SetupEditor
       doc={doc}

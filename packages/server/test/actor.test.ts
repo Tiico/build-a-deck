@@ -103,6 +103,7 @@ function bind(store: MemoryLogStore): LogStore {
     deckOf: (id, version) => store.deckOf(id, version),
     append: (id, lines) => store.append(id, lines),
     read: (id) => store.read(id),
+    readVerbs: (id, verbs) => store.readVerbs(id, verbs),
     staleSessions: (d) => store.staleSessions(d),
     sessionsOf: (project) => store.sessionsOf(project),
     sessionByCode: (code) => store.sessionByCode(code),

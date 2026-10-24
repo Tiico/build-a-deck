@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Hela bilden i Tabell och Media</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ─────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-24: «bilder i spelet på tabell-sidan visas ofta avskurna … samma sak
+     gäller Media-fliken». Varje bricka ritar med `object-fit: cover` i en fast form:
+       Tabell, bildrutan (L75)     66 × 44   editor.css 2325  .byd-picture-tile img
+       Tabell, bildremsan          56 × 38   editor.css 2337  .byd-data-images img
+       Egenskapspanelen            40 × 28   editor.css 2099  .byd-props-picture img
+       Media, brickan              3 : 2     editor.css 3600  .byd-media-tile img
+     En bild som inte är 3:2 tappar därför sina kanter i varje miniatyr, och beskärningsramen
+     på Media-brickan (MediaPanel.tsx 413) ritas i andelar av *brickan* fast beskärningen är i
+     andelar av *filen* — den hamnar fel på varje bild som inte är 3:2.
+
+     Vald riktning: hela bilden ryms (contain). Frågan här är **vad som fyller resten av
+     brickan**, och om formen ska vara densamma i alla fyra ytor. Allt är ritat för hand med
+     editorns värden; inget är den byggda editorn.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root {
+    --panel: #1b1d23; --line: #2f333d; --quiet-2: #9aa3b8; --th: #20232d; --td-line: #2a2e39;
+    --thumb-bg: #14161c; --chosen: #2f3a55;
+  }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  h1 { margin: 0 0 4px; color: #fff; font-size: 15px; }
+  h1 small { color: var(--quiet-2); font-weight: 400; }
+  .scen { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+  @media (max-width: 1100px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .ytor { min-width: 0; display: grid; gap: 16px; }
+  .yta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .yta > h2 { margin: 0 0 10px; color: #fff; font-size: 13px; }
+  .yta > h2 small { color: var(--quiet-2); font-weight: 400; margin-left: 6px; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 8px; line-height: 1.5; color: #c9d1e3; }
+  .ruta .plus { color: #b7dca0; } .ruta .minus { color: #f0a58a; }
+  table.tal { width: 100%; }
+  table.tal td, table.tal th { border-color: var(--line); }
+  table.tal td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ── Tabell ─────────────────────────────────────────────────────────────────────────── */
+  .remsa { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; color: var(--quiet); flex-wrap: wrap; }
+  .remsa > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .remsa ul { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .remsa li { display: grid; justify-items: center; gap: 2px; font-size: 10px; }
+  .scroll { overflow-x: auto; }
+  table.data { border-collapse: separate; border-spacing: 0; width: 100%; background: var(--panel); font-size: 13px; margin: 0; }
+  table.data th { text-align: left; padding: 8px 10px; color: var(--quiet); font-weight: 600; border: 0; border-bottom: 1px solid #3b4358; background: var(--th); font-size: 12px; }
+  table.data td { padding: 0 10px; border: 0; border-bottom: 1px solid var(--td-line); vertical-align: middle; height: 52px; }
+  table.data td.bild { padding: 4px; width: 66px; }
+  table.data td.q { color: var(--quiet-2); font-size: 12px; }
+  .props { display: flex; align-items: center; gap: 8px; color: var(--quiet-2); font-size: 12px; }
+
+  /* ── Media ──────────────────────────────────────────────────────────────────────────── */
+  .grid { list-style: none; margin: 0; padding: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .grid li { display: grid; justify-items: center; gap: 4px; font-size: 11px; color: var(--quiet); }
+  .grid .namn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e6ecfa; }
+  .grid .shot-wrap { width: 100%; padding: 4px; }
+  .grid .shot { width: 100%; aspect-ratio: 3 / 2; border-radius: 6px; }
+
+  /* ── Brickan: det som är gemensamt ──────────────────────────────────────────────────── */
+  .shot { position: relative; display: block; overflow: hidden; background: var(--thumb-bg); flex: none; }
+  .shot > img { position: relative; display: block; width: 100%; height: 100%; outline: 0; max-width: none; }
+  .shot > img.fyll { display: none; }
+  .shot u { position: absolute; box-sizing: border-box; border: 1.5px solid rgba(255,255,255,.85); border-radius: 3px; box-shadow: 0 0 0 999px rgba(8,10,14,.45); z-index: 2; }
+  .s66 { width: 66px; height: 44px; border-radius: 5px; }
+  .s56 { width: 56px; height: 38px; border-radius: 5px; }
+  .s40 { width: 40px; height: 28px; border-radius: 4px; }
+
+  /* Nu — cover */
+  [data-v='nu'] .shot > img.bild { object-fit: cover; }
+  /* A — contain på brickans mörka grund */
+  [data-v='a'] .shot > img.bild { object-fit: contain; }
+  /* B — contain på en suddig, mörkad kopia av bilden själv */
+  [data-v='b'] .shot > img.fyll { display: block; position: absolute; inset: 0; object-fit: cover; filter: blur(8px) brightness(.45) saturate(1.2); transform: scale(1.25); }
+  [data-v='b'] .shot > img.bild { object-fit: contain; }
+  /* C — contain på rutmönster, som säger «här finns ingen bild» och visar genomskinlighet */
+  [data-v='c'] .shot { background: repeating-conic-gradient(#232733 0 25%, #1a1d26 0 50%) 0 0 / 10px 10px; }
+  [data-v='c'] .shot > img.bild { object-fit: contain; }
+  /* D — contain på en ljusare grund, med en hårlinje där bilden slutar */
+  [data-v='d'] .shot { background: #262a35; }
+  [data-v='d'] .shot > img.bild { object-fit: contain; filter: drop-shadow(0 0 0.5px rgba(255,255,255,.55)); }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <h1>Hela bilden <small>— prototyp, kastas när en variant är vald</small></h1>
+  <p>Varje miniatyr i Tabell och Media ritas i dag med <b>cover</b> i en fast 3:2-form och tappar kanterna på varje bild som inte är 3:2. Här ryms hela bilden; frågan är vad som fyller resten av brickan. Växla nere, eller med tangenterna <b>←</b> <b>→</b>.</p>
+</div>
+<div class="anteckning" id="om"></div>
+
+<div class="scen">
+  <div class="ytor" id="ytor">
+    <section class="yta">
+      <h2>Tabell <small>bildremsan 56 × 38 och bildrutan 66 × 44 (L75)</small></h2>
+      <div class="remsa"><span>Spelets bilder</span><ul id="remsa"></ul></div>
+      <div class="scroll"><table class="data"><thead><tr><th>Id</th><th>Namn</th><th>Bild</th><th>Form</th></tr></thead><tbody id="rader"></tbody></table></div>
+    </section>
+    <section class="yta">
+      <h2>Egenskapspanelen <small>40 × 28</small></h2>
+      <div class="props" id="props"></div>
+    </section>
+    <section class="yta">
+      <h2>Media <small>3:2-brickan; de med beskärning bär sin ram</small></h2>
+      <ul class="grid" id="grid"></ul>
+    </section>
+  </div>
+  <aside class="ruta">
+    <h2>Mätt</h2>
+    <p>Andel av bilden som syns i <b>cover</b>, och andel av brickan som bilden fyller i <b>contain</b> — samma tal, åt var sitt håll.</p>
+    <table class="tal"><thead><tr><th>Bild</th><th>Form</th><th>Syns nu</th><th>Fyller sen</th></tr></thead><tbody id="tal"></tbody></table>
+    <p style="margin-top:10px" id="ramtext"></p>
+  </aside>
+</div>
+
+<div class="vaxlare" role="toolbar" aria-label="Variant" id="vaxlare"></div>
+
+<script>
+  // Testbilder med märkta kanter: TOPP, BOTTEN och en vit ram, så att det som skärs bort syns.
+  const svg = (w, h, body) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${body}</svg>`)
+  const kanter = (w, h, ink = '#fff') => {
+    const f = Math.min(w, h) / 9
+    return `<rect x="${f/4}" y="${f/4}" width="${w - f/2}" height="${h - f/2}" fill="none" stroke="${ink}" stroke-width="${f/6}" stroke-dasharray="${f/2} ${f/3}"/>
+      <text x="${w/2}" y="${f*1.1}" font-family="Verdana" font-size="${f*.75}" font-weight="700" fill="${ink}" text-anchor="middle">TOPP</text>
+      <text x="${w/2}" y="${h - f*.45}" font-family="Verdana" font-size="${f*.75}" font-weight="700" fill="${ink}" text-anchor="middle">BOTTEN</text>
+      <text x="${f*.55}" y="${h/2}" font-family="Verdana" font-size="${f*.75}" font-weight="700" fill="${ink}">◀</text>
+      <text x="${w - f*.55}" y="${h/2}" font-family="Verdana" font-size="${f*.75}" font-weight="700" fill="${ink}" text-anchor="end">▶</text>`
+  }
+  const landskap = (w, h, himmel, mark, sol) => `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${himmel[0]}"/><stop offset="1" stop-color="${himmel[1]}"/></linearGradient></defs>
+    <rect width="${w}" height="${h}" fill="url(#g)"/><circle cx="${w*.72}" cy="${h*.34}" r="${Math.min(w,h)*.12}" fill="${sol}"/>
+    <path d="M0 ${h*.72} Q ${w*.25} ${h*.55} ${w*.5} ${h*.7} T ${w} ${h*.66} V ${h} H 0 Z" fill="${mark}"/>`
+  const bilder = [
+    { id: 'mynt', namn: 'mynt.png', w: 1254, h: 1254, alfa: true, src: svg(1254, 1254, `<circle cx="627" cy="627" r="600" fill="#d9a63a"/><circle cx="627" cy="627" r="500" fill="none" stroke="#8a6214" stroke-width="30"/><text x="627" y="740" font-family="Georgia" font-size="360" font-weight="700" fill="#8a6214" text-anchor="middle">5</text><text x="627" y="200" font-family="Verdana" font-size="90" font-weight="700" fill="#5a3e08" text-anchor="middle">TOPP</text><text x="627" y="1130" font-family="Verdana" font-size="90" font-weight="700" fill="#5a3e08" text-anchor="middle">BOTTEN</text>`) },
+    { id: 'riddare', namn: 'riddare-portratt.jpg', w: 800, h: 1200, src: svg(800, 1200, landskap(800, 1200, ['#3b5c8f', '#a7c3e6'], '#3d6b3a', '#ffe08a') + `<path d="M400 360 c-90 0 -130 80 -130 170 v120 h260 v-120 c0 -90 -40 -170 -130 -170z" fill="#6f7685"/><rect x="250" y="650" width="300" height="420" rx="40" fill="#525a6b"/>` + kanter(800, 1200)) },
+    { id: 'slott', namn: 'slottet-16x9.jpg', w: 1920, h: 1080, src: svg(1920, 1080, landskap(1920, 1080, ['#e48a5a', '#f6d29b'], '#5b4636', '#fff3c4') + `<rect x="700" y="380" width="520" height="420" fill="#7a6a5c"/><rect x="640" y="300" width="120" height="500" fill="#6c5d50"/><rect x="1160" y="300" width="120" height="500" fill="#6c5d50"/>` + kanter(1920, 1080)) },
+    { id: 'fana', namn: 'fana-smal.png', w: 400, h: 1200, src: svg(400, 1200, `<rect width="400" height="1200" fill="#7a2232"/><path d="M0 1080 L200 980 L400 1080 V1200 H0Z" fill="#14161c"/><circle cx="200" cy="520" r="110" fill="#e9c46a"/>` + kanter(400, 1200)) },
+    { id: 'skog', namn: 'skog-3x2.jpg', w: 1500, h: 1000, src: svg(1500, 1000, landskap(1500, 1000, ['#9fd3c7', '#e6f4e1'], '#2f6b45', '#fffbe0') + kanter(1500, 1000, '#163d26')) },
+    { id: 'natt', namn: 'natt-panorama.jpg', w: 2400, h: 800, src: svg(2400, 800, landskap(2400, 800, ['#05070d', '#141a2b'], '#0b0d12', '#cfd6e6') + kanter(2400, 800, '#7c8396')) },
+  ]
+  // Sparade beskärningar, i andelar av filen (packages/protocol/src/pictures.ts).
+  const crop = { riddare: { x: .15, y: .2, w: .7, h: .5 }, slott: { x: .3, y: .25, w: .4, h: .6 } }
+
+  const varianter = [
+    { k: 'nu', namn: 'Nu · cover', om: '<b>Som i dag.</b> Brickan är full, men <span class="minus">myntet tappar 33 % av höjden, fanan 78 %</span>, och beskärningsramen på Media ligger fel på riddaren och slottet — den mäts mot brickan, inte mot filen.' },
+    { k: 'a', namn: 'A · mörk grund', om: '<b>Contain på brickans egen mörka grund (#14161c).</b> <span class="plus">Minsta ändringen: en regel per yta, och ramen hamnar rätt.</span> <span class="minus">Natt-panoramat smälter in i grunden; brickans kant försvinner där bilden inte når.</span>' },
+    { k: 'b', namn: 'B · suddig fyllning', om: '<b>Contain på en suddig, mörkad kopia av bilden.</b> <span class="plus">Brickan ser full ut och raden lugn, som foto-appar gör.</span> <span class="minus">Två bilder per bricka (samma fil, ingen extra hämtning), och en genomskinlig bild får ett färgsken bakom sig som inte finns på kortet.</span>' },
+    { k: 'c', namn: 'C · rutmönster', om: '<b>Contain på rutmönster.</b> <span class="plus">Säger ärligt «här finns ingen bild» och visar genomskinlighet, som ett bildprogram.</span> <span class="minus">Mönstret är brus i en tabell med trehundra rader.</span>' },
+    { k: 'd', namn: 'D · ljusare grund + kant', om: '<b>Contain på en något ljusare grund, med en hårlinje där bilden slutar.</b> <span class="plus">Mörka bilder skiljer sig från grunden och bildens form syns, utan mönster.</span> <span class="minus">Hårlinjen följer också en genomskinlig bilds kontur (myntet), vilket är en kant och inte bildens ram.</span>' },
+  ]
+  let v = new URLSearchParams(location.search).get('variant') ?? 'a'
+
+  const shot = (b, cls, med = false) => {
+    const r = b.w / b.h, box = 1.5
+    let u = ''
+    const c = med && crop[b.id]
+    if (c) {
+      // Nu: ramen i andelar av brickan (felet). Contain: i andelar av bildens ritade yta.
+      let ox = 0, oy = 0, cw = 1, ch = 1
+      if (v !== 'nu') { if (r > box) { ch = box / r; oy = (1 - ch) / 2 } else { cw = r / box; ox = (1 - cw) / 2 } }
+      u = `<u style="left:${(ox + c.x * cw) * 100}%;top:${(oy + c.y * ch) * 100}%;width:${c.w * cw * 100}%;height:${c.h * ch * 100}%"></u>`
+    }
+    return `<span class="shot ${cls}"><img class="fyll" src="${b.src}" alt=""><img class="bild" src="${b.src}" alt="${b.namn}">${u}</span>`
+  }
+  const form = (b) => { const r = b.w / b.h; return r === 1 ? '1:1' : r > 1 ? `${+(r).toFixed(2)}:1` : `1:${+(1 / r).toFixed(2)}` }
+
+  function rita() {
+    document.body.dataset.v = v
+    document.querySelectorAll('.ytor').forEach((e) => (e.dataset.v = v))
+    const vv = varianter.find((x) => x.k === v)
+    document.getElementById('om').innerHTML = vv.om
+    document.getElementById('remsa').innerHTML = bilder.map((b) => `<li>${shot(b, 's56')}<span>${b.id}</span></li>`).join('')
+    document.getElementById('rader').innerHTML = bilder.map((b, i) => `<tr><td class="q">${i + 1}</td><td>${b.namn.replace(/\..*/, '')}</td><td class="bild">${shot(b, 's66')}</td><td class="q">${form(b)}</td></tr>`).join('')
+    document.getElementById('props').innerHTML = bilder.map((b) => shot(b, 's40')).join('')
+    document.getElementById('grid').innerHTML = bilder.map((b) => `<li><span class="shot-wrap">${shot(b, '', true)}</span><span class="namn">${b.namn}</span><small>${crop[b.id] ? 'beskuren' : 'på 2 kort'}</small></li>`).join('')
+    document.getElementById('tal').innerHTML = bilder.map((b) => { const r = b.w / b.h, q = Math.min(r, 1.5) / Math.max(r, 1.5); return `<tr><td>${b.id}</td><td>${form(b)}</td><td>${Math.round(q * 100)} %</td><td>${Math.round(q * 100)} %</td></tr>` }).join('')
+    document.getElementById('ramtext').innerHTML = v === 'nu'
+      ? '<span class="minus">Beskärningsramen</span> på riddaren och slottet ligger i andelar av brickan: på riddaren är den 0,7 × 0,5 av en bricka som bara visar mitten av bilden.'
+      : '<span class="plus">Beskärningsramen</span> ligger i andelar av bildens ritade yta och visar alltså vad kortet får.'
+    document.getElementById('vaxlare').innerHTML = varianter.map((x) => `<button type="button" aria-pressed="${x.k === v}" data-k="${x.k}">${x.namn}</button>`).join('')
+  }
+  document.getElementById('vaxlare').addEventListener('click', (e) => { const k = e.target.closest('button')?.dataset.k; if (k) { v = k; history.replaceState(null, '', '?variant=' + k); rita() } })
+  addEventListener('keydown', (e) => {
+    const i = varianter.findIndex((x) => x.k === v)
+    if (e.key === 'ArrowRight') v = varianter[(i + 1) % varianter.length].k
+    else if (e.key === 'ArrowLeft') v = varianter[(i + varianter.length - 1) % varianter.length].k
+    else return
+    history.replaceState(null, '', '?variant=' + v); rita()
+  })
+  rita()
+</script>
+</body>
+</html>

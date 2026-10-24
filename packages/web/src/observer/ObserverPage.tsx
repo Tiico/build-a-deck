@@ -226,6 +226,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
       {sheet && (
         <Suspense fallback={null}>
           <FlagFlow
+            // At a desk the panel stands where the column stands (#1255); below it, the phone's sheet.
+            docked={!narrow}
             client={client}
             view={view}
             faces={http}

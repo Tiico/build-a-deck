@@ -1958,6 +1958,7 @@ Under varje kort står dess minsta text i px där, räknad på den storlek E6 fa
 Frågan är läsvyn och inte vilan, eftersom K26 låter ett kort i vila vara oläsligt så länge en handling visar det i golvets storlek.
 Det som kan gå fel för en designer är därför text mindre än läsvyerna räknar med, satt så eller krympt av E6: under 7,3 pt i telefonens läsvy, 6,3 pt vid bordet och 6,4 pt på TV:n.
 Telefonen säger alltså nej först.
+Reviderat 2026-10-24 ([L81](#l81-kortväggens-visning-står-på-ett-ställe-en-sidopanel-med-visning-och-kontroll-prototypat-och-beslutat-2026-10-24-1256)): läsvyerna är storlekar och inte ögon, så de går att se med varje öga, och den minsta texten sägs en gång i väggens panel i stället för under varje kort.
 Två förkastade varianter: en digital kontroll i rapporten bredvid den fysiska, med en rad per läsvy och korten under golvet som länkar (B), och en remsa under duken i Mall med kortet i alla tre läsvyerna (C).
 Beställaren valde ögonen ensamma, alltså utan B.
 Därmed sägs en text under golvet på kortet självt och inte samlad i rapporten med en länk; E6:s krav på länk till raden gäller tryckets anmärkningar och inte skärmens.
@@ -2162,7 +2163,35 @@ Hyllan (A), en tabell (C) och ett appskal med vänstermeny (D) prövades och val
 - **Heron visar en solfjäder med tre kort.** Det ändrar #231 för heron, och bara där: kortet längst fram är lekens första, så att spelet känns igen från raden, och bakom det står mittersta och sista kortet, jämnt spritt som 2026-09-14. Solfjädern hämtas för sig (`GET /projects/:id/fan`) efter listan, och tills den landar står heron med sitt enda kort ur `/me/cards`. Första skärmen väntar alltså fortfarande inte på mer än ett kort per spel.
 - **Övriga spel är kompakta rader** med kortet till vänster, namn, «v7 · 77 kort · 4 spelare» och spelad-raden, i två kolumner på bred skärm och en på telefon.
 - **`GET /projects` bär `cards`, `players` och `savedAt`.** `cards` är exemplaren (`cardsUsed`, #1195), det som läggs på bordet. `players` är uppställningens antal platser. `savedAt` är när den senaste versionen sparades. Alla tre läses ur samma levande dokument som namnet (#909), så listan ljuger aldrig om ett spel som är öppet i en editor.
-- Det som prototypen hade och som väntar: «Väntar på dig» (nya flaggor per spel, enkäter att svara på, en medredigerares version) kräver att varje bords logg läses och att «ny» betyder något. Det byggs för sig, med sitt eget svar efter listan.
+- Det som prototypen hade och som väntar: «Väntar på dig» (nya flaggor per spel, enkäter att svara på, en medredigerares version) kräver att varje bords logg läses och att «ny» betyder något. Det byggs för sig, med sitt eget svar efter listan. **Byggt 2026-10-24 (#1225), se nedan.**
+
+**«Väntar på dig» och heronas två siffror (2026-10-24, #1225).**
+Prototypens panel och heronas «enkätsvar» och «nya flaggor» byggdes som prototypen visar dem.
+- **En ny flagga är en flagga som restes på spelets senaste version.**
+  En flagga hör till versionen den restes på (L70): bordets egen, eller den som en «Uppdatera» (C7) flyttade bordet till före flaggan.
+  En sparad version gör alltså de tidigare flaggorna gamla, eftersom designern då har svarat på dem, och ett bord som spelar vidare på en äldre version reser inga nya.
+  Pågående bord räknas lika väl som avslutade: en flagga är ny från det ögonblick den restes.
+  Den andra vägen, ny sedan designern senast öppnade Bord-fliken, hade krävt en läsmarkering per konto och valdes bort.
+- **Enkätsvar är spelarnas svar vid spelets alla bord, i alla versioner**, som «bord» är alla bord.
+  Observatörernas svar står för sig (L70) och räknas inte.
+- **Heron säger kort, bord, enkätsvar och nya flaggor**, som i prototypen, och antalet spelare står i raden under namnet: «Version 7 sparad i dag · 4 spelare».
+  «Senast spelat» från #1204 lämnade heron för att ge plats åt de två.
+  De två siffrorna står bara för den som får läsa spelets playtest (#524), och de håller sin plats med ett streck tills svaret har kommit.
+  Nya flaggor står i flaggans gula färg när de är fler än noll.
+- **Panelen står i högerspalten mellan «Pågår nu» och «Bord du har spelat vid»**, och på telefon direkt efter «Pågår nu».
+  Den har tre slags rader, i den ordningen: spel med nya flaggor («3 nya flaggor · Sal's Saloon v7 · från bordet i går»), som leder till Bord-flikens Resultat på den versionen; enkäter som kontot inte har svarat på vid avslutade bord, som leder till enkäten (#1143); och spel vars senaste version någon annan sparade («Kim sparade version 5 · Polarnatt · för 4 dagar sedan»), som leder till editorn.
+  Panelen ritas inte när ingenting väntar.
+- **Editorn öppnas på Resultat med `results=rev-N`** i adressen, på den versionen och för den som får läsa playtestet.
+  Ordet tas bort ur adressen när det har lästs, så att editorns adress förblir spelets egen (L80).
+- **`GET /me/waiting` är ett eget svar efter listan**, som `/me/cards`, så att första skärmen aldrig väntar på att varje bords logg läses.
+  Av varje bord läses bara flaggorna och versionsbytena (`readVerbs`), aldrig dragen.
+- **En version vet vem som sparade den** (`project_versions.saved_by`).
+  Den som skapar spelet äger den första versionen; editorns sparning och `PUT` bär kontot som sparar; en import och en sparning utan konto bär ingen.
+  Bakåtfyllnaden gissar inte.
+  Den ger ägaren en version bara där inget annat är möjligt: versionen sparades här (den har `at_seq`, som en import aldrig skriver), och ingen inbjudan att redigera spelet har någonsin antagits, inte heller en som togs tillbaka.
+  Första versionen lämnas okänd, eftersom en import skriver den precis som ett nytt spel gör, och så gör varje version i ett spel som delats med en medredigerare och varje version i ett spel från före konton.
+  En medredigerares version nämns bara när författaren är känd, med det namn adressen ger (#1198) och aldrig med adressen.
+- Grindarna: `packages/server/test/version-author.test.ts` (författaren och bakåtfyllnaden, mot minnet och Postgres), `packages/server/test/waiting.test.ts` (definitionen av ny, svaren, medredigerarens version och behörigheten, mot minnet och Postgres) och `packages/web/test/account-page.test.tsx` och `editor-results.test.tsx` (panelen, heron och vägen in i Resultat).
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
@@ -2213,6 +2242,18 @@ Beställaren valde B och 1, och komponenter i första leveransen: högar och zon
   `GET /projects/:id/playtest` bär per flagga `card`: komponenten som en observatör såg den, med texturerna ur versionen flaggan restes på, vad flaggaren själv såg (`seen`), var den låg (`place`) och `now` — `same`, `changed` eller `gone` mot spelets senaste version.
   Allt härleds på servern genom att spela upp loggen fram till flaggans rad, och texturerna är innehållsadresserade, så ett kort som skrivits om sedan visas ändå som spelaren hade det.
   Låg kortet nedvänt för flaggaren visar miniatyren baksidan, och lyftet visar framsidan bredvid.
+
+Utvidgat 2026-10-24 (#1255, prototypat och beslutat): **på en skärm med bord flaggar man från en panel bredvid filten, inte från telefonens ark.**
+På en dator öppnade «Flagga» telefonens bottenark i full skärmbredd, med två val på 700 px var och bordet dimmat bakom.
+Tre former prövades på riktiga `/online` (gren `prototype/flag-desktop`): en popover vid knappen, en dockad panel och en centrerad dialog. Beställaren valde panelen (B).
+
+- **Panelen står bredvid filten och täcker den inte.** På `/online` står den i raden mellan filten och handens kolumn, och i en egen kolumn bredvid filten när handen är bandet under den; filten ger upp panelens 360 px medan den står.
+  Observatören vid ett skrivbord får den där TV-kolumnen står, ovanför handtaget.
+  Under skrivbordets 1023 px, och på telefonen (`/play` och `/online` utan bord), är flaggan arket som förut.
+- **Inga lägen.** Medan panelen står pekar ett tryck på ett kort ut det, och gör inget annat, med samma regler som bandet (#1142): inget läses, spelas, lyfts eller dras, och kontroller som inte är kort står tillbakadragna. Kortet under pekaren ringas, inte alla kort.
+  Ett annat kort byter, och «Ta bort kortet» gör flaggan till ögonblickets igen.
+- **Panelen säger vad som stämplas.** «Det som hände» står som loggens senaste rad, utan flaggor och anteckningar, och kortet visas 128 px brett med namnet.
+- **Den är inget modalt fönster.** Fokus går till kommentaren och tillbaka till det som hade det när panelen stängs; Tab lämnar den för korten, och Esc, «Avbryt» och krysset stänger. ⌘↵ eller Ctrl+↵ flaggar.
 
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
@@ -7056,7 +7097,7 @@ D: en stor bricka med ikonverktyg som tonar fram på hovring.
 
 Beställaren valde **A** 2026-10-22.
 
-- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och ett 3:2-fönster på bilden som bibliotekets bricka.
+- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och en 3:2-ruta som bibliotekets bricka, där hela bilden ryms (L82).
   Tom är den en streckad bricka med ett +.
   Knappen heter vad ett tryck gör: «Välj bild för {kort}» tom, «Byt bild för {kort}» med bild.
 - **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» i foten när kortet håller en bild.
@@ -8195,7 +8236,68 @@ Statuslänkarna på bordsytorna säger servern som HTTP till Mina spel och inlog
 `way-back-to-the-editor.spec.ts` går hela vägen i den byggda appen: TV:ns väg tillbaka tar fram editorns flik utan ny flik och utan omladdning, och «Spela härifrån» tryckt två gånger är en flik.
 `way-back-to-the-editor.test.tsx` visar var vägen står på varje yta, vart lämnandet leder och att en gäst inte får den.
 
-### L82. Kontot har ett eget namn: ett välkomststeg efter första inloggningen, ett band för konton som redan finns och kortet «Namn» i Profil (prototypat och beslutat 2026-10-24, #1254)
+### L81. Kortväggens visning står på ett ställe: en sidopanel med Visning och Kontroll (prototypat och beslutat 2026-10-24, #1256)
+
+Beställaren: på kortväggen fanns många val för hur väggen visas, och de stod lite överallt.
+Mätt i den byggda appen stod sex val om väggens utseende på fyra ställen, och två av dem tog över varandra utan att säga det.
+**Visning** blandade färgsyn och läsvy, så Deuteranopi i telefonens storlek gick inte att se.
+Tätheten låstes av läsvyn och av guiden «på armlängds avstånd», och pillret visade då bara ett annat tal.
+**Guider** var två bockar bakom en box, där den ena var en storlek och den andra en guide.
+«Minsta text …» stod under vartenda kort i en läsvy, 77 gånger på Sal's Saloon.
+**Fysisk kontroll** tryckte ner hela väggen när den öppnades, och antalet stod en gång till i foten.
+Tre varianter prövades i [`docs/ux-audits/2026-10-24-kortvaggens-visning/prototyper/index.html`](docs/ux-audits/2026-10-24-kortvaggens-visning/prototyper/index.html): en sidopanel (A), alla val öppet i krönet (B) och en docka i väggens hörn (C).
+Valet blev **A**.
+B kräver en bredd väggen inte har bredvid AI-panelen, där krönet bröts till två rader.
+C lade väggens utseende över korten den visar.
+
+**Krönet** har sökningen, *Grupperad efter*, en box **Visning** som säger vad som gäller, och **Fysisk kontroll**.
+Boxen Visning säger storleken och, när de är på, ögat och snittet: «Visning: 150 px», «Visning: Telefonens läsvy · Deuteranopi».
+
+**Panelen står bredvid väggen och trycker aldrig ner korten.**
+Den har två flikar, Visning och Kontroll, och boxarna Visning och Fysisk kontroll öppnar var sin.
+Den stängs med sitt kryss, med Escape och med samma box igen, men inte av ett tryck i väggen, eftersom det man ändrar i den ska synas på korten medan panelen står öppen.
+Där väggen är för smal för både spalt, kort och panel lägger sig panelen över väggens högerkant.
+Antalet anmärkningar i foten är en knapp till fliken Kontroll.
+Korten en anmärkning ramar in är inramade så länge fliken Kontroll visas, som de var så länge lådan stod öppen (#477).
+
+**Storlek är ett val, och ögonen ett annat.**
+Storleken är fri (täthetens stege, #128), «På armlängds avstånd» (90 px) eller en av de tre läsvyerna (294, 341 och 672 px, K26).
+Ett tryck på pillrets − eller + väljer fri storlek, så pillret är aldrig låst; #701:s låsning och dess två meningar tas bort.
+Ögonen är Normal syn, Deuteranopi, Protanopi, Tritanopi och Gråskala, och de gäller i varje storlek.
+Varje öga visar ett färgprov genom sitt eget filter, så att skillnaden syns innan man väljer.
+«Snitt och skyddsmarginal» är panelens enda guide; armlängden är en storlek och inte längre en guide.
+Det ändrar E5:s tillägg från 2026-09-28: läsvyerna står inte längre bland ögonen utan bland storlekarna.
+
+**Läsbarheten sägs en gång, i panelen.**
+I en läsvy säger panelen den minsta texten i leken och golvet, «Minsta text i leken 9,9 px, golvet 12 px.», och listar korten under golvet med sin minsta text.
+En bock «Visa bara de n korten» lämnar bara dem på väggen.
+Ett kort under golvet bär en ram på väggen och säger det i sitt namn till en skärmläsare; orden står i panelen, och ramen upprepar dem bara.
+Raden under varje kort tas bort.
+«Visa på kortväggen» från bordet (#523) öppnar väggen i telefonens läsvy med panelen på Visning, så att korten under golvet står listade.
+
+`deck-wall.test.tsx` mäter panelen, flikarna, storleken och ögonen var för sig och tillsammans, läsbarheten och foten; `wall-crown-beside.spec.ts` mäter krönet och panelen i den byggda appen bredvid AI-panelen.
+
+### L82. En miniatyr visar hela bilden, på en ljusare grund och med en kant där bilden slutar (prototypat och beslutat 2026-10-24, #1257)
+
+Beställaren: bilderna i Tabell visades ofta avskurna, och i Media likaså.
+Varje miniatyr av spelets bilder ritades med `cover` i en fast 3:2-ruta: bildrutan i Tabell (L75), bildremsan över tabellen, egenskapspanelens rad, Media-brickan och bibliotekets brickor.
+Ett kvadratiskt mynt tappade en tredjedel av höjden och en smal fana fyra femtedelar av bredden, så vad som stod på ett kort gick inte att se i någon av dem.
+Media-brickans beskärningsram låg dessutom i andelar av brickan fast beskärningen är i andelar av filen, och visade fel del av varje bild som inte var 3:2.
+
+Fem former prövades i [`docs/ux-audits/2026-10-24-hela-bilden/prototyper/index.html`](docs/ux-audits/2026-10-24-hela-bilden/prototyper/index.html) med bilder i sex proportioner: Nu (`cover`), A hela bilden på brickans mörka grund, B på en suddig kopia av bilden, C på rutmönster, och D på en ljusare grund med en hårlinje där bilden slutar.
+Valet blev **D**.
+A lät en mörk bild smälta in i grunden, så att den såg tom eller beskuren ut.
+B gav en genomskinlig bild ett färgsken som inte finns på kortet, och C var brus i en tabell med trehundra rader.
+
+- **Rutan behåller sin form, bilden ryms i den.** En rad och ett rutnät står jämna; bilden är så stor den får plats, centrerad, med `contain`.
+- **Grunden är `--byd-editor-thumb-bg`**, ett steg ljusare än de mörkaste grunderna, och bildens kant är en hårlinje i `--byd-editor-thumb-edge`. Grunden ligger på rutan och inte på bilden, annars ritas hårlinjen runt rutan.
+- **En miniatyr är `Thumb`** i `AssetImage.tsx`, eller bildrutan och Media-brickan, som redan har en ruta runt bilden. En ny yta som visar en av spelets bilder tar en av dem.
+- **Beskärningsramen ligger på bilden som den ritas.** Bildens form tas ur bilden själv när den laddat (`naturalWidth`/`naturalHeight`, som inte behöver CORS), annars ur mätningen; utan någon av dem ritas ingen ram, för en ram på en gissning visar fel del av bilden.
+
+`whole-picture.test.tsx` mäter de målade pixlarna på varje yta: en kvadratisk, en smal och en bred bild ryms hela och i sin egen form, och en bild i den gamla grundens mörker skiljer sig från grunden bredvid.
+`media-crop.test.tsx` lägger ramen på en 2:1-bild med mätning och på en 1:2-bild utan.
+
+### L83. Kontot har ett eget namn: ett välkomststeg efter första inloggningen, ett band för konton som redan finns och kortet «Namn» i Profil (prototypat och beslutat 2026-10-24, #1254)
 
 Ett konto hade inget namn.
 #1198 nämnde ägaren vid namn när en testledare eller medredigerare nådde ägarens tak, och tog namnet ur det första ordet i adressen, så att `info@` blev «Info» och `x92@` blev ingenting.
@@ -8228,6 +8330,7 @@ Förslaget och taket står i `account-name.ts` och nås av sidorna genom `@byd/s
 - **Dela:** namnet i fetstil med adressen och rollen under; utan namn är raden adressen, som förut. Ett långt namn bryts och står helt. Adresserna syns för medlemmarna som förut.
 - **Editorns huvud:** servern säger vem som är inne, ur kontot och inte ur sidans egen `?name=`. Ansiktet är namnets första tecken och titeln hela namnet; färgen följer adressen, så ansiktet står kvar när namnet byts. Utan namn är det adressen, som förut.
 - **Bordet:** ägaren som tittar på från editorn heter sitt namn för TV:n och telefonerna («Ada tittar på och ser alla kort»), och utan namn editorns ord som förut, aldrig adressen.
+- **Väntar på dig (#1225):** «Kim sparade version 5» säger den som sparade vid kontots namn, och utan namn «Någon annan sparade version 5».
 - **Inbjudningsmejlet:** «Nicklas Ockelberg (nicklas.ockelberg@…) vill dela spelet …», och ämnesraden «Nicklas Ockelberg bjuder in dig till …» (beslut 3). Namnet är vad avsändaren själv har skrivit, adressen är det mottagaren kan lita på. Utan namn är brevet som förut.
 
 **Namnet är kontots data** och ligger på kontots rad, i Postgres (`accounts.name`, `accounts.name_asked`) och i minnet, och läses med kontot.

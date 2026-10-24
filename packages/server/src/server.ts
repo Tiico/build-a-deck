@@ -22,6 +22,7 @@ import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
 import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
+import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
@@ -1504,6 +1505,45 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 200, faces)
     return true
   }
+  // «Väntar på dig» (#1225, #1204 beslut B): per game, the players' survey answers and the new
+  // flags — for whoever may read the game's playtest (#524) — and the newest version when someone
+  // else saved it. Its own answer after the list, as the cards are, because it reads every table of
+  // every game; and of each table only its flags and version changes (`readVerbs`), never its moves.
+  if (req.method === 'GET' && url.pathname === '/me/waiting') {
+    if (!account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const out: Waiting = {}
+    // Who saved it, by the name she gave her account (#1254), and nobody's address nor its word.
+    const names = new Map<string, Promise<string | null>>()
+    const calledBy = (id: string): Promise<string | null> => {
+      const known = names.get(id)
+      if (known) return known
+      const asked = opts.auth ? opts.auth.accountById(id).then((a) => a?.name ?? null) : Promise.resolve(null)
+      names.set(id, asked)
+      return asked
+    }
+    for (const p of await projects.list(account.id)) {
+      const newest = (await projects.versions(p.id))[0]
+      if (!newest) continue
+      const about: GameWaiting = { rev: newest.rev }
+      if (canStartTables(p.role ?? 'owner')) {
+        const tables: WaitingTable[] = []
+        for (const { id } of await opts.store.sessionsOf(p.id)) {
+          const session = await opts.store.loadSession(id)
+          if (!session) continue
+          const [lines, surveys] = await Promise.all([opts.store.readVerbs(id, WAITING_VERBS), opts.surveys ? opts.surveys.list(id) : []])
+          tables.push({ version: session.version, lines, surveys })
+        }
+        about.playtest = playtestWaiting(newest.rev, tables)
+      }
+      if (newest.by !== undefined && newest.by !== account.id) about.other = { name: await calledBy(newest.by), at: newest.at }
+      out[p.id] = about
+    }
+    json(res, 200, out)
+    return true
+  }
   // The fan the page leads with (#1204): three of one game's cards, asked for after the list and
   // the first cards, so the first screen never waits for it.
   const fan = /^\/projects\/([^/]+)\/fan$/.exec(url.pathname)
@@ -1706,7 +1746,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    json(res, 200, await projects.versions(gate.rec.id))
+    // Who saved each version (#1225) is an account's number, and the history has no use for it.
+    json(res, 200, (await projects.versions(gate.rec.id)).map(({ by: _by, ...v }) => v))
     return true
   }
   // What every version changed, in one answer (#177). A row in the history says what its save

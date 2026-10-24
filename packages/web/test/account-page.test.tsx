@@ -265,7 +265,12 @@ describe('the tables the account sat at (G1)', () => {
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
     render(<HomePage onNavigate={(u) => gone.push(u)} />)
-    const card = (await screen.findByText('du spelade som Ada', { exact: false })).closest(`[data-played="${id}"]`) as HTMLElement
+    // The tile, and not «Väntar på dig», which offers the same survey (#1225).
+    const card = await waitFor(() => {
+      const tile = document.querySelector<HTMLElement>(`[data-played="${id}"]`)
+      expect(tile).not.toBeNull()
+      return tile!
+    })
     expect(card.textContent).toContain('avslutat')
     expect(card.textContent).not.toContain('enkät inte besvarad')
     fireEvent.click(within(card).getByRole('link', { name: 'Svara på enkäten' }))
@@ -473,8 +478,15 @@ describe('a game on the home page (G1)', () => {
     const hero = screen.getByRole('region', { name: 'Fortsätt där du slutade' })
     expect(within(hero).getByText('Vinterspelet')).toBeTruthy()
     expect(within(hero).queryByText('Skogens herrar')).toBeNull()
-    expect(within(hero).getByText('Version 1 sparad i dag')).toBeTruthy()
-    expect(within(hero).getByText('spelare').closest('div')!.textContent).toMatch(/^spelare\d+$/)
+    // The seats it is set for stand in the line under its name, as in the prototype (#1225).
+    expect(within(hero).getByText(/^Version 1 sparad i dag · \d+ spelare$/)).toBeTruthy()
+    // Its numbers are the cards, the tables and — once what is waiting has been read — the players'
+    // survey answers and the new flags (#1225).
+    const stat = (name: string) => within(hero).getByText(name).closest('div')!.textContent
+    expect(stat('kort')).toMatch(/^kort\d+$/)
+    expect(stat('bord')).toBe('bord0')
+    await waitFor(() => expect(stat('enkätsvar')).toBe('enkätsvar0'))
+    expect(stat('nya flaggor')).toBe('nya flaggor0')
     expect(within(hero).getByRole('link', { name: 'Öppna editorn' }).getAttribute('href')).toBe(`/editor?project=${run.otherProjectId}&server=${encodeURIComponent(run.http)}`)
     // The fan lands after the page: the game's own first card in front, two more of its cards behind.
     await waitFor(() => expect(hero.querySelectorAll('.byd-home-fan-back')).toHaveLength(2))
@@ -599,6 +611,85 @@ describe('a game on the home page (G1)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
     await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeNull())
     expect((await (await fetch(`${run.http}/projects/${run.projectId}`)).status)).toBe(404)
+  })
+})
+
+// «Väntar på dig» (#1225, #1204 beslut B): in the column of what is happening, under «Pågår nu»,
+// the new flags on a game's newest version, the surveys the account has left to answer, and a
+// newest version someone else saved. Each a row with its icon, what it is, where it is from and an
+// arrow, leading where it is dealt with: Resultat on that version, the survey, the editor.
+describe('what waits for the account on the home page (#1225)', () => {
+  it('lists the new flags, the survey left to answer and a co-editor’s version, and leads to each', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    const json = { 'content-type': 'application/json' }
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email: 'ada@example.com' }) })
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.otherProjectId, ...projectDoc(), name: 'Vinterspelet' }) })).status).toBe(201)
+    // Kim, a co-editor, saves version 2 of Skogens herrar, which makes it the game saved last.
+    const kim = await run.auth!.ensureAccount('kim@example.com')
+    await run.projects.share(run.projectId, kim.id, 'editor')
+    expect(await run.projects.replace(run.projectId, 1, { ...projectDoc(), rows: [...projectDoc().rows, { id: 'uggla', fields: { title: 'Uggla', antal: 1 } }] }, 0, undefined, [], kim.id)).toMatchObject({ rev: 2 })
+    // A table on version 2: two flags from a seat, and its answer once the table is over.
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const token = await admit(run, made.id, 'A', 'Bo')
+    const seat = TableClient.connect({ url: run.url, sessionId: made.id, seat: 'A', token })
+    await seat.ready()
+    await seat.send({ v: 'seat.claim', seat: 'A', name: 'Bo' })
+    await seat.send({ v: 'flag', note: 'Draken är för stark' })
+    await seat.send({ v: 'flag' })
+    const host = TableClient.connect(await asTable(run, made.id))
+    await host.ready()
+    await host.send({ v: 'session.end' })
+    seat.close()
+    host.close()
+    expect((await fetch(`${run.http}/sessions/${made.id}/survey`, { method: 'POST', headers: json, body: JSON.stringify({ token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 4, change: '' } }) })).status).toBe(201)
+    // A table Ada sat at herself, over and not answered.
+    const sat = await createSession(run, 'satt')
+    const mine = await admit(run, sat, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token: mine }) })).status).toBe(200)
+    const satHost = TableClient.connect(await asTable(run, sat))
+    await satHost.ready()
+    await satHost.send({ v: 'session.end' })
+    satHost.close()
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    // Kim has given her account no name (#1254): she is somebody else, and never her address's word.
+    const before = render(<HomePage />)
+    const unnamed = await screen.findByRole('region', { name: 'Väntar på dig' })
+    await waitFor(() => expect(within(unnamed).getAllByRole('link').at(-1)?.textContent).toBe('Någon annan sparade version 2Skogens herrar · i dag'))
+    expect(document.body.textContent).not.toMatch(/Kim sparade/)
+    before.unmount()
+    await run.auth!.setName(kim.id, 'Kim')
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    const panel = await screen.findByRole('region', { name: 'Väntar på dig' })
+    await waitFor(() => expect(within(panel).getAllByRole('link').at(-1)?.textContent).toBe('Kim sparade version 2Skogens herrar · i dag'))
+    const rows = within(panel).getAllByRole('link')
+    expect(rows.map((row) => row.textContent)).toEqual(['2 nya flaggorSkogens herrar v2 · från bordet i dag', 'Svara på enkätenEtt bord · du spelade som Ada', 'Kim sparade version 2Skogens herrar · i dag'])
+    const server = encodeURIComponent(run.http)
+    expect(rows.map((row) => row.getAttribute('href'))).toEqual([`/editor?project=${run.projectId}&results=rev-2&server=${server}`, `/survey?session=${sat}&server=${server}`, `/editor?project=${run.projectId}&server=${server}`])
+    fireEvent.click(rows[0]!)
+    expect(gone).toEqual([`/editor?project=${run.projectId}&results=rev-2&server=${server}`])
+
+    // The hero is the game Kim saved last, with the players' one answer and its two new flags.
+    const hero = screen.getByRole('region', { name: 'Fortsätt där du slutade' })
+    const stat = (name: string) => within(hero).getByText(name).closest('div')!.textContent
+    expect(stat('enkätsvar')).toBe('enkätsvar1')
+    expect(stat('nya flaggor')).toBe('nya flaggor2')
+  })
+
+  it('stands nowhere when nothing waits', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+    const hero = await screen.findByRole('region', { name: 'Fortsätt där du slutade' })
+    await waitFor(() => expect(within(hero).getByText('enkätsvar').closest('div')!.textContent).toBe('enkätsvar0'))
+    expect(screen.queryByRole('region', { name: 'Väntar på dig' })).toBeNull()
   })
 })
 
