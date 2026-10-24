@@ -336,7 +336,7 @@ describe('the wall’s panel: Visning and Kontroll beside the wall (L81, #1256)'
     fireEvent.click(screen.getByRole('radio', { name: /^Telefonens läsvy/ }))
     expect(document.querySelector('[data-legible]')!.textContent).toContain('Minsta text i leken 9,9 px, golvet 12 px.')
     const under = within(screen.getByRole('list', { name: 'Kort under golvet' }))
-    expect(under.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Drake — 9,9 px', 'Riddare — 9,9 px', 'Trollkarl — 9,9 px'])
+    expect(under.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Drake: 9,9 px', 'Riddare: 9,9 px', 'Trollkarl: 9,9 px'])
     // The frame repeats the words; a card under the floor says it to a screen reader as well.
     const dragon = el.querySelector('[data-card-ref="dragon"]')!
     expect(dragon.hasAttribute('data-under')).toBe(true)

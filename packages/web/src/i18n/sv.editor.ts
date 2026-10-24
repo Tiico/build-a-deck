@@ -418,7 +418,7 @@ export const svEditor = {
   'wall.legible': 'Minsta text i leken {px} px, golvet {floor} px.',
   'wall.legible.ok': 'Alla kort klarar golvet.',
   'wall.legible.list': 'Kort under golvet',
-  'wall.legible.card': '{card} — {px} px',
+  'wall.legible.card': '{card}: {px} px',
   'wall.legible.only.one': 'Visa bara det kortet',
   'wall.legible.only.other': 'Visa bara de {n} korten',
   'wall.trim': 'Snitt och skyddsmarginal',

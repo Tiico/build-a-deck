@@ -374,7 +374,7 @@ export const enEditor = {
   'wall.legible': 'Smallest text in the deck {px} px, the floor {floor} px.',
   'wall.legible.ok': 'Every card clears the floor.',
   'wall.legible.list': 'Cards under the floor',
-  'wall.legible.card': '{card} — {px} px',
+  'wall.legible.card': '{card}: {px} px',
   'wall.legible.only.one': 'Show only that card',
   'wall.legible.only.other': 'Show only those {n} cards',
   'wall.trim': 'Trim and safe margin',
