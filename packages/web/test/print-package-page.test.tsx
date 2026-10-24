@@ -132,7 +132,7 @@ describe('the print package page', () => {
     expect(within(deck).getByRole('button', { name: 'Drake × 2 · fram och bak' })).toBeTruthy()
     const stock = part('Det som inte trycks')
     expect(stock.textContent).toContain('2 × sexsidig tärning')
-    expect(stock.textContent).toContain('Tryckeriet köper vanliga tärningar')
+    expect(stock.textContent).toContain('tryckeriet köper vanliga tärningar')
     const needs = part('Testtryckeriets krav')
     const rows = Object.fromEntries([...needs.querySelectorAll('tr')].map((tr) => [tr.querySelector('th')?.textContent, tr.querySelector('td')?.textContent]))
     expect(rows).toEqual({
@@ -175,7 +175,7 @@ describe('the print package page', () => {
     await made(projectDoc())
     open()
     const deck = await screen.findByRole('region', { name: /^Leken/ })
-    expect(within(deck).getByText(/fel stoppar en riktig beställning\./)).toBeTruthy()
+    expect(within(deck).getByText(/fel skulle stoppa leken hos ett tryckeri\./)).toBeTruthy()
     expect(within(deck).getByText(/Drake, baksidan: når inte utfallet\./)).toBeTruthy()
     expect(within(deck).getByText(/Kortfilerna följer inte med i nedladdningen förrän felen är rättade/)).toBeTruthy()
     // The finding is on the backs, so the back's tile is marked and the fronts are not.

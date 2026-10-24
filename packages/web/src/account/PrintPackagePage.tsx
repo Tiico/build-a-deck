@@ -237,7 +237,7 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
           {part(
             2,
             'deck',
-            t('print.deck.title', { n: deck.total }),
+            t(deck.total === 1 ? 'print.deck.title.one' : 'print.deck.title.other', { n: deck.total }),
             t('print.deck.lead', { cards: deck.total, pairs: deck.cards.length }),
             <DeckPart deck={deck} fronts={fronts} errors={errors} chosen={chosen} onChoose={setChosen} drawing={drawing} editor={editor} go={go} />,
           )}
@@ -260,7 +260,7 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
             ))}
             <dt>{t('print.slip.checks')}</dt>
             <dd data-ok={errors.length === 0 || undefined} data-bad={errors.length > 0 || undefined}>
-              {errors.length === 0 ? t('print.slip.checks.clean') : t('print.slip.checks.errors', { n: errors.length })}
+              {errors.length === 0 ? t('print.slip.checks.clean') : t(errors.length === 1 ? 'print.slip.checks.errors.one' : 'print.slip.checks.errors.other', { n: errors.length })}
             </dd>
           </dl>
           {pkg.quote && <Answer quote={pkg.quote} cards={deck.total} kinds={deck.cards.length} dice={dice} refused={errors.length > 0} />}
@@ -468,10 +468,10 @@ function DeckPart({ deck, fronts, errors, chosen, onChoose, drawing, editor, go 
   return (
     <>
       <p className="byd-print-sums">
-        <span>{marked(t('print.deck.cards'), { n: <b>{deck.total}</b> })}</span>
+        <span>{marked(t(deck.total === 1 ? 'print.deck.cards.one' : 'print.deck.cards.other'), { n: <b>{deck.total}</b> })}</span>
         <span>{marked(t('print.deck.fronts'), { n: <b>{fronts}</b> })}</span>
         <span>{marked(t(deck.backs.length === 1 ? 'print.deck.backs.one' : 'print.deck.backs.other'), { n: <b>{deck.backs.length}</b> })}</span>
-        <span>{marked(t('print.deck.files'), { n: <b>{files}</b> })}</span>
+        <span>{marked(t(files === 1 ? 'print.deck.files.one' : 'print.deck.files.other'), { n: <b>{files}</b> })}</span>
       </p>
       {errors.length === 0 ? (
         <p className="byd-print-clean">
@@ -480,7 +480,7 @@ function DeckPart({ deck, fronts, errors, chosen, onChoose, drawing, editor, go 
         </p>
       ) : (
         <div className="byd-print-findings" role="note">
-          <b>{errors.length === 1 ? t('print.checks.stop') : t('print.checks.stop.other', { n: errors.length })}</b>
+          <b>{t(errors.length === 1 ? 'print.checks.stop.one' : 'print.checks.stop.other', { n: errors.length })}</b>
           {errors.slice(0, FINDINGS_SHOWN).map((e, i) => (
             <span key={i}>{t('print.checks.line', { card: titleOf(e.cardRef), face: t(e.face === 'back' ? 'print.face.back' : 'print.face.front'), issue: t(`wall.issue.${e.code}` as Key) })}</span>
           ))}
@@ -512,7 +512,7 @@ function DeckPart({ deck, fronts, errors, chosen, onChoose, drawing, editor, go 
                 <Side id={`byd-print-back-${i}`} drawing={drawing} cardRef={back.cardRef} face="back" width={PRINT_CARD_W} />
               </span>
               <span className="byd-print-card-name">{name}</span>{' '}
-              <span className="byd-print-card-count">{deck.backs.length === 1 ? t('print.deck.back.all', { n: back.count }) : t('print.deck.back.some', { n: back.count })}</span>
+              <span className="byd-print-card-count">{deck.backs.length === 1 ? t('print.deck.back.all', { n: back.count }) : t(back.count === 1 ? 'print.deck.back.some.one' : 'print.deck.back.some.other', { n: back.count })}</span>
             </button>
           )
         })}

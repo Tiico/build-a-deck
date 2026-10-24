@@ -9,7 +9,9 @@ import { expect, test } from '../support/test.js'
 // The print package from «Mina spel» (#1208, beslut B 2026-10-23): the page with its five parts and
 // its packing slip, prepared by Testtryckeriet as the box registers it, and the zip it hands over
 // once the renderer has drawn every file. The worker runs beside the app as it does on the box.
-test.use({ viewport: DESK.viewport })
+// In Swedish all the way: `?lang=sv` on Mina spel is not carried to the page the menu opens, so the
+// browser's own language is set instead, as a Swedish designer's is.
+test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 
 test.describe('the print package', () => {
   test.skip(process.env['BYD_E2E_STORE'] !== 'postgres', 'the renderer shares the Postgres queue; a memory run has none')
