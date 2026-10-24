@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Kontots visningsnamn (#1254)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1254, beställarens beslut 2026-10-24 efter #1198: kontot får ett visningsnamn som föreslås
+     ur adressen och som designern kan ändra i Profil. Frågan här är var namnet sätts första
+     gången och hur förslaget möter designern, och hur namnet sedan syns i Dela, i närvaron
+     (editorns huvud och bordet), i kvotraden och i inbjudningsmejlet — också tomt och långt.
+     Tre varianter av var det sätts:
+       A  Ett fält i Profil. Förslaget sparas tyst när kontot skapas.
+       B  Frågan när någon annan ska se dig: första inbjudan, och när man går med i ett spel.
+       C  Frågan vid första inloggningen, och ett band på Mina spel för konton som redan finns.
+     Ytorna är ritade för hand med appens egna mått, färger och strängar (account.css,
+     profile.css, editor.css, table.css, mail-bands.ts, sv.*.ts). Det nya är namnet.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  main.scen { flex: 1 1 auto; display: grid; justify-content: safe center; align-content: start; padding: 20px 16px 60px; background: #15171c; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 6px; }
+  .etikett b { color: #e6ecfa; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .g { width: 16px; height: 16px; flex: none; }
+  :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  button { font: inherit; cursor: pointer; }
+  /* Prototypens egna påpekanden på ytan: bärnsten, streckad, aldrig en del av förslaget. */
+  .pk { position: absolute; z-index: 30; max-width: 260px; padding: 6px 10px; border: 1px dashed #c8a24a; border-radius: 8px; background: rgb(42 36 23 / 94%); color: #ffd98a; font: 12px/1.45 system-ui, sans-serif; pointer-events: none; }
+  .pk b { color: #ffe9b8; }
+
+  /* ── Kontots rum (account.css, profile.css) ─────────────────────────────────────────────── */
+  .acc { --card: #171a23; --edge: #262a35; --muted: #9aa3b8; --field: #14161c; --sec-line: #6f7a90; --sec-ink: #dce3f2;
+    height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; box-sizing: border-box; display: grid; justify-content: center; align-content: start; }
+  .acc[data-mitt] { align-content: center; }
+  .profil { width: 640px; max-width: 100%; display: grid; gap: 16px; }
+  .tillbaka { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--muted); font-size: 14px; }
+  .phuvud { display: grid; gap: 4px; margin-bottom: 8px; }
+  .phuvud h1 { margin: 0; font-size: 28px; }
+  .pkort { display: grid; gap: 12px; padding: 24px; border-radius: 16px; border: 1px solid var(--edge); background: var(--card); color: #e6ecfa; font-size: 14px; }
+  .pkort h2 { margin: 0; font-size: 18px; font-weight: 750; }
+  .pkort[data-ny] { border-color: #3b4358; }
+  .lead { margin: 0; line-height: 1.5; color: #c3cbdd; }
+  .liten { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .falt { display: grid; gap: 8px; font-size: 13px; }
+  .falt > label { font-weight: 650; }
+  .falt input { min-height: 44px; box-sizing: border-box; border-radius: 8px; border: 1px solid var(--sec-line); background: var(--field); color: #fff; font: inherit; font-size: 14px; padding: 0 12px; width: 100%; }
+  .falt input:focus { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .falt .rakna { justify-self: end; font-variant-numeric: tabular-nums; }
+  .rad { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .prim { min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: #7dd3a0; color: #0b2a18; font-weight: 700; }
+  .sek { min-height: 44px; padding: 0 16px; border: 1px solid #6f7a90; border-radius: 10px; background: transparent; color: #dce3f2; font-weight: 600; }
+  .klart { margin: 0; color: #7dd3a0; font-size: 13px; }
+  .facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; }
+  .facts dt { color: var(--muted); } .facts dd { margin: 0; overflow-wrap: anywhere; }
+  /* Så här ser andra dig: en rad i Dela-panelens form, i kontots rum. */
+  .syns { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #1b1f2a; }
+  .syns i { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+  .syns span { display: grid; min-width: 0; }
+  .syns b { color: #fff; font-size: 13px; overflow-wrap: anywhere; }
+  .syns small { color: var(--muted); font-size: 12px; }
+  /* Inloggningskortet (account.css .byd-login) */
+  .login { width: 420px; max-width: 100%; background: var(--card); border: 1px solid var(--edge); border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
+  .login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; }
+  .login h1 img { width: 32px; height: 32px; border-radius: 7px; }
+  .login .falt > label { color: #cdd4e4; font-weight: 700; }
+  .login .falt input { padding: 14px 16px; border-radius: 12px; font-size: 16px; }
+  .login .prim, .login .sek { border-radius: 12px; font-size: 16px; padding: 14px 18px; min-height: 0; }
+  .login .knappar { display: grid; gap: 8px; }
+  .lankrad { min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; padding: 0; justify-self: center; }
+  /* Mina spel (account.css .byd-home) */
+  .home { width: 1100px; max-width: 100%; display: grid; gap: 18px; }
+  .hbar { display: flex; align-items: center; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid #262a35; }
+  .hbar .mark { display: inline-flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 700; font-size: 17px; }
+  .hbar .mark img { width: 30px; height: 30px; border-radius: 7px; }
+  .hbar .vem { color: var(--muted); font-size: 13px; }
+  .hbar .gora { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #6f7a90; font-weight: 700; color: #dce3f2; }
+  .band { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; padding: 14px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; }
+  .band > .g { width: 22px; height: 22px; color: #7dd3a0; }
+  .band p { margin: 0; line-height: 1.5; } .band b { color: #fff; }
+  .band .svar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .band .svar input { min-height: 44px; width: 200px; box-sizing: border-box; border-radius: 10px; border: 1px solid #5f8a70; background: #14161c; color: #fff; font: inherit; padding: 0 12px; }
+  .band .sek { border-color: #5f8a70; color: #d8ffe8; border-radius: 12px; }
+  .band .prim { border-radius: 12px; }
+  .hgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .hgrid > div { height: 210px; border-radius: 16px; border: 1px solid #262a35; background: #171a23; padding: 16px; display: grid; align-content: start; gap: 8px; }
+  .hgrid > div i { display: block; height: 110px; aspect-ratio: 63/88; border-radius: 4px; background: var(--c); }
+  .hgrid strong { color: #fff; font-size: 17px; } .hgrid span { color: var(--muted); font-size: 13px; }
+
+  /* ── Editorn (editor.css) ─────────────────────────────────────────────────────────────── */
+  .ed { --panel: #171a23; height: 100%; display: flex; flex-direction: column; background: var(--chrome); color: #dce3f2; font: 13px system-ui, sans-serif; position: relative; }
+  .ed > .ed-huvud { flex: none; height: 57px; gap: 10px; }
+  .ed-huvud .namn { color: #fff; font-size: 15px; font-weight: 800; }
+  .ed-huvud .dorr { min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); }
+  .ed-huvud .ver { color: var(--quiet-2); padding: 0 6px; }
+  .ed-huvud .bock { color: var(--quiet-2); width: 24px; text-align: center; }
+  .ed-huvud .starta { display: inline-flex; padding: 0; overflow: hidden; }
+  .ed-huvud .starta span { padding: 0 18px 0 14px; display: grid; place-items: center; }
+  .ed-huvud .starta em { font-style: normal; display: grid; place-items: center; width: 40px; border-left: 1px solid rgb(255 255 255 / 25%); }
+  /* .byd-editor-here: ansiktena, antalet och ordet; högst tre ansikten, en bredd hur många som än är inne (L63). */
+  .har { display: flex; gap: 4px; align-items: center; flex: none; overflow: hidden; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 12px 4px 4px; background: transparent; color: inherit; }
+  .har[aria-expanded='true'], .har:hover { background: #1b1d23; }
+  .har i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+  .har i + i { margin-left: -8px; }
+  .har b { color: #9aa3b8; font: 600 11px system-ui; }
+  .har .ord { margin-left: 4px; color: #e6ecfa; font: 700 13px system-ui; white-space: nowrap; }
+  .sida[data-bredd='1024'] .ed-huvud { gap: 4px; padding: 0 10px; }
+  .sida[data-bredd='1024'] .ed-flikar button { padding: 0 8px; }
+  .sida[data-bredd='1024'] .har { max-width: 44px; margin-left: 0; padding: 0; justify-content: center; }
+  .sida[data-bredd='1024'] .har b, .sida[data-bredd='1024'] .har .ord, .sida[data-bredd='1024'] .har i + i { display: none; }
+  /* Webbläsarens egen titelruta, ritad för att synas i skärmbilden. */
+  .titel { position: absolute; z-index: 25; padding: 3px 7px; border: 1px solid #999; background: #f6f6f6; color: #111; font: 12px system-ui; box-shadow: 0 2px 6px rgb(0 0 0 / 35%); white-space: nowrap; }
+  /* .byd-share */
+  .dela { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 80%; overflow: auto; padding: 16px; border-radius: 14px; background: var(--panel); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); box-sizing: border-box; }
+  .dela header { display: flex; align-items: center; gap: 10px; }
+  .dela h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #868ea3; }
+  .dela header .hjalp { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #6f7a90; display: grid; place-items: center; color: #dce3f2; font-size: 12px; font-weight: 700; }
+  .dela header button.x { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; padding: 0 4px; }
+  .dela > p { margin: 8px 0 12px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+  .dela ul { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 8px; }
+  .dela li { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; background: #1b1f2a; }
+  .dela li[data-here] { box-shadow: inset 3px 0 0 #7dd3a0; }
+  .dela li i { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+  .dela li span { display: grid; min-width: 0; }
+  .dela li b { color: #fff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .dela li small { color: #9aa3b8; font-size: 11px; overflow-wrap: anywhere; }
+  .dela li button { margin-left: auto; flex: none; border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #9aa3b8; font: 11px system-ui; }
+  .dela form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
+  .dela form input, .dela form select { padding: 8px; border: 1px solid #6f7a90; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
+  .dela form > button { border: 1px solid #1f6fd0; border-radius: 8px; padding: 8px 12px; background: #1f6fd0; color: #fff; font: 700 12px system-ui; }
+  .dela form [role='status'] { grid-column: 1 / -1; margin: 4px 0 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
+  /* B:s rad i formen: namnet som inbjudan bär, en gång. */
+  .dela .fran { grid-column: 1 / -1; display: grid; gap: 6px; margin: 4px 0 2px; padding: 10px; border-radius: 10px; border: 1px solid #3b4358; background: #1b1f2a; }
+  .dela .fran label { color: #dce3f2; font-size: 12px; font-weight: 700; }
+  .dela .fran input { width: 100%; box-sizing: border-box; }
+  .dela .fran small { color: #9aa3b8; font-size: 11px; line-height: 1.45; }
+  .dela .vantar { width: 100%; display: flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 0 12px; border: 1px solid #2f333d; border-radius: 8px; background: transparent; color: #c8cfdc; font: 12px system-ui; text-align: left; }
+  .dela .bara { margin: 8px 0 0; color: #9aa3b8; font-size: 12px; }
+  .arbete { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .notisband { flex: none; display: flex; align-items: center; gap: 12px; padding: 0 4px 0 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.45; }
+  .notisband > .g { width: 18px; height: 18px; color: #ffd98a; }
+  .notisband p { flex: 1; margin: 0; padding: 8px 0; }
+  .notisband p b { color: #fff; }
+  .notisband .stang { flex: none; width: 44px; height: 44px; border: 0; border-radius: 6px; background: transparent; color: #ffd98a; font-size: 20px; }
+  .ed .t-vy { padding-top: 0; }
+  .ed .t-data td { height: 41px; }
+  .fot { flex: none; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin: 0 16px; padding: 10px 0 12px; border-top: 1px solid var(--line); color: #c3cbdd; font-size: 12px; }
+  .fot .tyst { color: var(--quiet); }
+  .tom { flex: 1; display: grid; place-items: center; color: var(--quiet); }
+
+  /* ── Bordet (table.css): TV:ns spalt, filten med en markör, telefonens rad ───────────────── */
+  .bordet { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 380px; background: #0c0e12; color: #e6ecfa; font: 14px system-ui, sans-serif; }
+  .filt { position: relative; margin: 24px; border-radius: 28px; background: radial-gradient(120% 100% at 50% 40%, #2f6b45, #1c4029); border: 10px solid #6b4a2a; }
+  .filt .hog { position: absolute; width: 88px; height: 122px; border-radius: 6px; background: #f3ead8; box-shadow: 0 2px 4px rgb(0 0 0 / 50%); }
+  .markor { position: absolute; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--peer); box-shadow: 0 0 0 4px color-mix(in srgb, var(--peer) 30%, transparent), 0 2px 6px rgba(0, 0, 0, 0.5); }
+  .markor span { position: absolute; left: 22px; top: -2px; font-size: 12px; font-weight: 700; color: var(--peer); white-space: nowrap; text-shadow: 0 1px 2px #000; }
+  .tvspalt { padding: 24px 24px 24px 0; display: grid; align-content: start; gap: 14px; }
+  .tvspalt h3 { margin: 0; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #9aa3b8; }
+  .tvspalt .kod { font: 700 40px ui-monospace, Menlo, monospace; letter-spacing: 6px; color: #fff; }
+  .obs { display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px; background: #2a2417; color: #ffd98a; font-size: 15px; font-weight: 700; justify-self: start; }
+  .obs i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #ffd98a; box-shadow: 0 0 0 4px rgba(255, 217, 138, 0.3); }
+  .tvspalt ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; color: #c3cbdd; font-size: 13px; }
+  .telefon { justify-self: start; width: 300px; border-radius: 28px; border: 8px solid #2a2d36; background: #101217; overflow: hidden; }
+  .telefon .sitt { padding: 10px 14px; background: #1b1f2a; color: #dce3f2; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .telefon .sitt i { width: 12px; height: 12px; border-radius: 50%; background: #e0b14a; }
+  .telefon .obsrad { margin: 10px 14px 14px; padding: 8px 12px; border-radius: 10px; background: #2a2417; color: #ffd98a; font-size: 13px; font-weight: 700; line-height: 1.4; }
+  .telefon .hand { height: 120px; margin: 0 14px 14px; border-radius: 12px; background: #1c4029; }
+
+  /* ── Mejlet: en ritad klient runt riktig mejl-HTML (mail-bands.ts), i en iframe så att
+       proto.css aldrig når mejlets tabeller. ───────────────────────────────────────────────── */
+  .klient { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #f6f8fc; font: 14px Arial, Helvetica, sans-serif; color: #1f1f1f; }
+  .klient .rubrik { padding: 18px 24px 12px; background: #fff; border-bottom: 1px solid #e0e0e0; display: grid; gap: 8px; }
+  .klient .rubrik h2 { margin: 0; font: 400 22px Arial, sans-serif; }
+  .klient .fran { display: flex; gap: 12px; align-items: center; color: #444; font-size: 13px; }
+  .klient .fran i { width: 36px; height: 36px; border-radius: 50%; background: #17120f; display: grid; place-items: center; overflow: hidden; }
+  .klient .fran i img { width: 36px; height: 36px; }
+  .klient .fran b { color: #1f1f1f; }
+  .klient iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP #1254 — kontots visningsnamn.</b> Var namnet sätts första gången, vad som föreslås, och hur det sedan syns för andra. Namnet kan alltid ändras i Profil (beslutet); varianterna skiljer sig i när och var det möter designern först.</p>
+    <p>Växla variant med A/B/C eller ← →. «Där det sätts» är variantens egen yta; de andra fyra visar namnet där det används. Prova adresserna och namnen: «info@» ger förslaget «Info», «x92@» ger inget.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp" id="steggrupp"><span>Steg</span><div class="flikar" id="steg"></div></div>
+  <div class="grupp"><span>Adress</span><div class="flikar" id="adress"></div></div>
+  <div class="grupp"><span>Namnet</span><div class="flikar" id="namnet"></div></div>
+  <div class="grupp" id="breddgrupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <button type="button" id="omstart">Börja om ytan</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen"><div id="ram"><p class="etikett" id="etikett"></p><div class="sida" id="sida"></div></div></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  left: 'M13 8H3M7 4 3 8l4 4',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  warn: 'M8 2.25 14.25 13.25H1.75zM8 6.5v3.25M8 11.6v.01',
+  undo: 'M5.5 3.75 2.75 6.5 5.5 9.25M3 6.5h6.25a3.5 3.5 0 0 1 0 7H7',
+  redo: 'M10.5 3.75l2.75 2.75-2.75 2.75M13 6.5H6.75a3.5 3.5 0 0 0 0 7H9',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+}
+const C = { person: [[8, 5.25, 2.5]] }
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(C[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+// ── Varianterna ─────────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A — ett fält i Profil',
+    not: '<b>Kontot får förslaget när det skapas</b>, utan att någon frågar, och Profil får ett kort «Namn» överst med fältet. Ingen ny fråga någonstans. <span class="plus">+ minst att bygga; ingen tillkommande fråga, inget steg; en designer som aldrig delar märker ingenting</span> <span class="minus">− förslaget når andra utan att en människa sett det: «info@lekverkstan.se» bjuder in som «Info» och blir «fråga Info» i kvotraden; den som vill ändra måste själv hitta kortet i Profil</span>' },
+  B: { namn: 'B — frågan när någon annan ska se dig · rekommenderas',
+    not: '<b>Kontot har inget namn förrän det behövs.</b> Första gången man trycker «Bjud in» står en rad i Dela-formen: «Inbjudan säger vem den är från», med förslaget ifyllt. Den som är inbjuden får samma fråga när hon går med. Profil har fältet också. <span class="plus">+ namnet bekräftas av en människa just när det först ska läsas av någon annan, och de som bara arbetar ensamma får aldrig frågan; kvotraden till en testledare har alltid ett bekräftat namn, eftersom ägaren bjöd in</span> <span class="minus">− två ytor får en rad till (Dela-formen och inbjudans sida, som i dag öppnar spelet direkt); spel som delades före namnet faller tillbaka tills ägaren sätter det</span>' },
+  C: { namn: 'C — frågan vid första inloggningen',
+    not: '<b>Ett steg efter den första länken</b>: «Välkommen till Deckster. Vad ska andra kalla dig?», med förslaget ifyllt, «Fortsätt» och «Hoppa över». Konton som redan finns får ett band på Mina spel en gång, i passkey-bandets form (L78). <span class="plus">+ alla nya konton har ett namn från start; frågan ställs en gång och sedan aldrig</span> <span class="minus">− ett steg till för alla, också för den som aldrig delar; frågan kommer innan läsaren vet vad den är till för, så «Hoppa över» och ett ogenomtänkt «Info» blir vanliga; bandet krockar med passkey-bandet på samma besök</span>' },
+}
+const YTOR = { satt: 'Där det sätts', dela: 'Dela', narvaro: 'Närvaron', kvot: 'Kvotraden', mejl: 'Mejlet' }
+const STEG = { A: { profil: 'Profil' }, B: { bjud: 'Bjud in (ägaren)', ga: 'Gå med (den inbjudna)', profil: 'Profil' }, C: { forsta: 'Första inloggningen', band: 'Konto som redan finns', profil: 'Profil' } }
+const ADR = { nicklas: 'nicklas.ockelberg@gmail.com', info: 'info@lekverkstan.se', x92: 'x92@hotmail.com' }
+const NAMN = { forslag: 'som föreslaget', eget: 'eget: Nicklas O.', tomt: 'tomt', langt: 'långt (39 tecken)' }
+const LANGT = 'Maria-Josefina Wallenberg af Söderström'
+const MAX = 40
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'B').toUpperCase()
+let yta = q.get('yta') || 'satt'
+let steg = q.get('steg') || ''
+let adress = q.get('adr') || 'nicklas'
+let namnet = q.get('namn') || 'forslag'
+let bredd = q.get('bredd') || '1280'
+let st = {}
+const omstart = () => { st = { sparat: false, skickat: false, utkast: null } }
+omstart()
+const stegNu = () => (STEG[v][steg] ? steg : Object.keys(STEG[v])[0])
+
+// ── Namnet ──────────────────────────────────────────────────────────────────────────────────────
+// Förslaget är dagens ownerNameOf (#1198) rakt av: första ordet före @ som är två bokstäver eller
+// fler, med versal. Det är därför «info@» blir «Info» — felet issuet handlar om.
+function forslag(email) {
+  const local = email.split('@')[0] ?? ''
+  const word = local.split(/[._+-]/).find((part) => /^\p{L}{2,}$/u.test(part))
+  return word ? word.charAt(0).toLocaleUpperCase('sv') + word.slice(1).toLocaleLowerCase('sv') : null
+}
+const addr = () => ADR[adress]
+// Det kontot bär. «som föreslaget» i A är förslaget sparat utan fråga; i B och C är det förslaget
+// som en människa har sett och tryckt igenom.
+function namn() {
+  if (namnet === 'eget') return 'Nicklas Ockelberg'
+  if (namnet === 'langt') return LANGT
+  if (namnet === 'tomt') return null
+  return forslag(addr())
+}
+// Det som står i fältet när frågan ställs: förslaget, eller det namn läget säger.
+const ifyllt = () => (namnet === 'forslag' ? forslag(addr()) ?? '' : namn() ?? '')
+// Namnet just nu: det som sparats på ytan, annars lägets.
+const eff = () => (st.sparat && st.utkast !== null ? st.utkast.trim() || null : namn())
+// Svenskans genitiv, som `possessive` i packages/web/src/i18n/index.tsx.
+function gen(name) {
+  const last = name.slice(-1)
+  if (last !== last.toLowerCase()) return `${name}:s`
+  if (last === last.toUpperCase()) return `${name}:s`
+  return 'sxz'.includes(last) ? name : `${name}s`
+}
+// En färg per konto, ur adressen (SharePanel `colourOf`), så att ansiktet behåller sin färg när namnet byts.
+function colourOf(seed) { let h = 0; for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 55% 55%)` }
+const initial = (n, a) => (n ?? a).slice(0, 1).toLocaleUpperCase('sv')
+
+// De andra i spelet.
+const KIM = { namn: 'Kim Larsson', email: 'kim.larsson@outlook.com', roll: 'medredigerare', har: true }
+const OLA = { namn: 'Ola', email: 'ola@spelkafe.se', roll: 'testledare', har: false }
+
+// ── 1. Där namnet sätts ─────────────────────────────────────────────────────────────────────────
+function namnKort() {
+  const n = st.utkast ?? namn() ?? ''
+  const tomt = n.trim() === ''
+  const forsl = forslag(addr())
+  const fran = v === 'A' && namnet === 'forslag' && forsl && !st.sparat
+  const aldrig = v === 'B' && namnet === 'tomt' && !st.sparat
+  const hint = fran ? `Föreslaget ur din adress när kontot skapades. Ändra det om det inte är vad du heter.`
+    : aldrig ? `Inget namn ännu. Du får frågan första gången du bjuder in någon eller går med i ett spel, eller så skriver du det här.`
+    : tomt ? `Utan namn står du som din adress i Dela och i inbjudningar, och som «spelets ägare» för den som når ditt konto tak.`
+    : `Ändra det när du vill. Det som redan sagts, som en skickad inbjudan, ändras inte.`
+  return `<section class="pkort" data-ny aria-labelledby="pn"><h2 id="pn">Namn</h2>
+    <p class="lead">Så står du för dem du delar spel med, och för dem som spelar vid dina bord när du tittar på. Din adress visas aldrig vid bordet.</p>
+    <div class="falt"><label for="pn-f">Ditt namn</label><input id="pn-f" data-utkast maxlength="${MAX}" value="${esc(n)}" placeholder="${forsl ? esc(forsl) : 'Till exempel Kim Larsson'}" autocomplete="name">
+      ${n.length > MAX - 10 ? `<span class="liten rakna">${n.length} av ${MAX} tecken</span>` : ''}</div>
+    <p class="liten">${hint}</p>
+    <div class="syns" style="--who:${colourOf(addr())}"><i>${esc(initial(tomt ? null : n, addr()))}</i><span><b>${esc(tomt ? addr() : n)}</b><small>Så här står du i Dela</small></span></div>
+    <div class="rad"><button class="prim" data-do="spara">Spara namnet</button>${st.sparat ? `<p class="klart" role="status">Namnet är sparat.</p>` : ''}</div>
+  </section>`
+}
+function profil() {
+  return `<div class="acc"><div class="profil"><span class="tillbaka">${g('left')} Mina spel</span>
+    <header class="phuvud"><h1>Profil</h1><p class="liten">${esc(addr())}</p></header>
+    ${namnKort()}
+    <section class="pkort"><h2>AI-nyckel</h2><p class="liten">Anthropic · nyckeln som slutar på <code>x7Qd</code></p></section>
+    <section class="pkort"><h2>Passkeys</h2><p class="liten">iCloud-nyckelring · MacBook · Safari</p></section>
+    <section class="pkort"><h2>Språk</h2><p class="liten">Verktygets språk: Svenska</p></section>
+    <section class="pkort"><h2>Konto</h2><dl class="facts"><dt>E-post</dt><dd>${esc(addr())}</dd></dl></section>
+  </div></div>`
+}
+// C: steget efter den första länken, i inloggningskortets form.
+function forstaInloggning() {
+  const forsl = forslag(addr())
+  const n = st.utkast ?? ifyllt()
+  if (st.sparat) return minaSpel(false)
+  return `<div class="acc" data-mitt><div class="login" role="main">
+    <h1><img src="mark-128.png" alt="">Välkommen till Deckster</h1>
+    <p class="liten" style="font-size:14px">Du är inloggad som ${esc(addr())}.</p>
+    <div class="falt"><label for="c-f">Vad ska andra kalla dig?</label><input id="c-f" data-utkast maxlength="${MAX}" value="${esc(n)}" placeholder="Till exempel Kim Larsson" autocomplete="name"></div>
+    <p class="liten">Namnet står när du delar ett spel och när du är online i det. ${forsl ? 'Vi föreslår det ur din adress.' : ''} Du kan ändra det i Profil.</p>
+    <div class="knappar"><button class="prim" data-do="spara">Fortsätt</button><button class="lankrad" data-do="spara">Hoppa över</button></div>
+  </div></div>`
+}
+function minaSpel(band) {
+  const forsl = forslag(addr())
+  const n = st.utkast ?? ifyllt()
+  const namnBand = band && !st.sparat ? `<div class="band" role="region" aria-label="Namn">${g('person')}<p><b>Vad ska andra kalla dig?</b> Namnet står när du delar ett spel och när du är online i det.</p>
+      <div class="svar"><input data-utkast aria-label="Ditt namn" value="${esc(n)}" placeholder="Ditt namn" maxlength="${MAX}"><button class="prim" data-do="spara">Spara</button><button class="sek" data-do="spara">Inte nu</button></div></div>` : ''
+  const passBand = band ? `<div class="band" role="region" aria-label="Passkey"><svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="5.5" cy="8" r="2.75"/><path d="M8.25 8h5.5M12 8v2.25"/></svg><p><b>Logga in utan mejl nästa gång.</b> Spara en passkey i den här webbläsaren, så räcker fingret eller koden till skärmlåset.</p><div class="svar"><button class="prim">Spara passkey</button><button class="sek">Inte nu</button></div></div>` : ''
+  return `<div class="acc"><div class="home">
+    <div class="hbar"><span class="mark"><img src="mark-128.png" alt="">Deckster</span><span class="gora">Importera</span><span class="gora">Nytt spel</span><span class="vem">${esc(addr())} · ${g('person')} · ${g('exit')}</span></div>
+    ${passBand}${namnBand}
+    <h1 style="margin:0;font-size:30px">Mina spel</h1>
+    <div class="hgrid">${[['Skogens råd', '#3f8f5f', 'v4 · spelat i går'], ['Hamnen', '#b0703f', 'v12 · spelat 18 okt'], ['Stjärnhandel', '#3f6fb0', 'v2 · inte spelat']].map(([t, c, s]) => `<div><i style="--c:${c}"></i><strong>${t}</strong><span>${s}</span></div>`).join('')}</div>
+  </div>${band && !st.sparat ? `<p class="pk" style="right:110px;top:370px;max-width:250px"><b>Två band på samma besök.</b> En inloggning med länken erbjuder passkey (L78), och ett konto utan namn frågar om namnet. Ett av dem måste vänta till nästa gång.</p>` : ''}</div>`
+}
+// B: inbjudans sida, som i dag öppnar spelet direkt («Öppnar spelet…»).
+function gaMed() {
+  const owner = namn() ? `${namn()} (${addr()})` : addr()
+  const kim = st.utkast ?? 'Kim'
+  if (st.sparat) return `<div class="acc" data-mitt><div class="login"><h1><img src="mark-128.png" alt="">Inbjudan</h1><p class="liten" style="font-size:14px">Öppnar spelet…</p></div></div>`
+  return `<div class="acc" data-mitt><div class="login" role="main">
+    <h1><img src="mark-128.png" alt="">Du är inbjuden till Skogens råd</h1>
+    <p class="lead">${esc(owner)} vill dela spelet med dig som medredigerare.</p>
+    <div class="falt"><label for="b-f">Vad ska de andra kalla dig?</label><input id="b-f" data-utkast maxlength="${MAX}" value="${esc(kim)}" placeholder="Till exempel Kim Larsson" autocomplete="name"></div>
+    <p class="liten">Föreslaget ur kim.larsson@outlook.com. Namnet står i Dela och när du är online i spelet. Du kan ändra det i Profil.</p>
+    <div class="knappar"><button class="prim" data-do="spara">Gå med</button></div>
+  </div><p class="pk" style="right:24px;top:24px"><b>Bara utan namn.</b> Ett konto som redan har ett namn går direkt in i spelet, som i dag.</p></div>`
+}
+
+// ── Editorns krom och Dela ──────────────────────────────────────────────────────────────────────
+function huvud({ oppen = false } = {}) {
+  const FLIKAR = ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord']
+  const jag = { namn: eff(), email: addr() }
+  const har = [jag, KIM]
+  return `<header class="ed-huvud"><span class="hem">Mina spel</span><span class="namn">Skogens råd</span><button class="dorr" aria-label="Spelets val">⋯</button><span class="ver">v4</span><span class="bock" title="Sparat">✓</span>
+    <span class="angra" style="display:flex;gap:4px"><button class="dorr" aria-label="Ångra">${g('undo')}</button><button class="dorr" aria-label="Gör om">${g('redo')}</button></span><span class="spacer"></span>
+    <nav class="ed-flikar" role="tablist">${FLIKAR.map((n) => `<button role="tab" aria-selected="${n === 'Tabell'}">${n}</button>`).join('')}</nav><span class="spacer"></span>
+    <button class="har" data-har aria-expanded="${oppen}" aria-label="Dela: vilka som har spelet, 2 online">${har.map((p) => `<i title="${esc(p.namn ?? p.email)}" style="--who:${colourOf(p.email)}">${esc(initial(p.namn, p.email))}</i>`).join('')}<b>2 online</b><span class="ord" aria-hidden="true">Dela</span></button>
+    <button class="ed-knapp kantad">Spara</button><button class="ed-knapp primar starta"><span>Starta</span><em>⌄</em></button></header>`
+}
+function tabell() {
+  const rader = [['skog-01', 'Ekorre', '3', 'Djur'], ['skog-02', 'Räv', '2', 'Djur'], ['skog-03', 'Uggla', '1', 'Djur'], ['skog-04', 'Svamp', '4', 'Mat'], ['skog-05', 'Bär', '6', 'Mat'], ['skog-06', 'Gran', '2', 'Träd'], ['skog-07', 'Björk', '2', 'Träd'], ['skog-08', 'Mossa', '3', 'Mark']]
+  return `<div class="t-vy" style="margin-top:12px"><div class="t-rulla"><table class="t-data"><colgroup><col style="width:44px"><col style="width:120px"><col><col style="width:90px"><col><col style="width:44px"></colgroup>
+    <thead><tr><th class="bock"><input type="checkbox" aria-label="Välj alla"></th><th class="id">id</th><th><span class="sort"><span>namn</span></span></th><th><span class="sort"><span>antal</span></span></th><th><span class="sort"><span>typ</span></span></th><th class="spar"><button>+</button></th></tr></thead>
+    <tbody>${rader.map((r) => `<tr><td class="bock"><input type="checkbox"></td><td class="id">${r[0]}</td><td><input value="${r[1]}"></td><td><input data-tal value="${r[2]}"></td><td><input value="${r[3]}"></td><td class="spar"><button>×</button></td></tr>`).join('')}</tbody></table></div></div>`
+}
+function delaPanel() {
+  const fraga = v === 'B' && yta === 'satt' && !st.skickat
+  const jag = { namn: fraga ? null : eff(), email: addr(), roll: 'ägare', har: true }
+  const rad = (m) => {
+    const n = m.namn
+    return `<li ${m.har ? 'data-here' : ''}><i style="--who:${colourOf(m.email)}">${esc(initial(n, m.email))}</i><span><b>${esc(n ?? m.email)}</b>${n ? `<small>${esc(m.email)}</small>` : ''}<small>${m.roll}${m.har ? ' · online' : ''}</small></span>${m.roll === 'ägare' ? '' : `<button aria-label="Ta bort ${esc(n ?? m.email)}">Ta bort</button>`}</li>`
+  }
+  // B: raden i formen står bara när kontot saknar namn, och bara tills den första inbjudan gått.
+  const forsl = forslag(addr())
+  const utkast = st.utkast ?? ifyllt()
+  const franRad = fraga ? `<div class="fran"><label for="fr">Inbjudan säger vem den är från</label><input id="fr" data-utkast maxlength="${MAX}" value="${esc(utkast)}" placeholder="Ditt namn" autocomplete="name"><small>${forsl ? `Föreslaget ur ${esc(addr())}. ` : ''}Så står du i mejlet och här i listan. Du kan ändra det i Profil.</small></div>` : ''
+  const skickatTill = st.skickat ? `<p role="status">Inbjudan är skickad till sara.berg@gmail.com. Den gäller i en vecka och kan användas en gång.</p>` : ''
+  return `<div class="dela" role="dialog" aria-label="Vilka som har spelet"><header><h2>Vilka som har spelet</h2><span class="hjalp">?</span><button class="x" aria-label="Stäng">×</button></header>
+    <ul>${rad(jag)}${rad(KIM)}${rad(OLA)}</ul>
+    <form onsubmit="return false"><input type="email" aria-label="Adress att bjuda in" placeholder="namn@exempel.se" value="${fraga ? 'sara.berg@gmail.com' : ''}"><select aria-label="Roll"><option>medredigerare</option><option>testledare</option></select>${franRad}<button type="submit" data-do="bjud" ${fraga ? 'style="grid-column:3"' : ''}>Bjud in</button>${skickatTill}</form>
+    <button class="vantar">1 inbjudan väntar ›</button>
+  </div>`
+}
+function editorMedDela() {
+  return `<div class="ed byd-editor">${huvud({ oppen: true })}<div class="arbete">${tabell()}<p class="fot"><span>8 kort · 23 exemplar</span></p></div>${delaPanel()}
+    ${v === 'B' && yta === 'satt' && !st.skickat ? `<p class="pk" style="right:372px;top:330px"><b>En gång.</b> Raden står bara när kontot saknar namn. Efter första inbjudan är formen dagens: adress, roll, Bjud in.</p>` : ''}</div>`
+}
+
+// ── 3. Närvaron: editorns huvud och bordet ─────────────────────────────────────────────────────
+function narvaro() {
+  const n = eff()
+  const tv = n ?? 'observatör'
+  // Kims editor: Nicklas ansikte i huvudet, med titeln som webbläsaren visar.
+  const titel = `<span class="titel" data-titel style="left:0;top:50px">${esc(n ?? addr())}</span>`
+  const pk = `<p class="pk" style="right:24px;top:96px;max-width:330px"><b>Ansiktet är namnets initial</b>, och färgen följer adressen, så den står kvar när namnet byts. Titeln är hela namnet; utan namn är den adressen, som i dag.${bredd === '1024' ? ' Vid 1024 är dörren ett ansikte (L63).' : ''}</p>`
+  return `<div style="display:grid;grid-template-rows:${HOJD[bredd] / 2}px ${HOJD[bredd] / 2}px;height:100%">
+    <div class="ed byd-editor">${huvud()}<div class="arbete">${tabell()}</div>${titel}${pk}</div>
+    <div class="bordet"><div class="filt"><i class="hog" style="left:36%;top:24%"></i><i class="hog" style="left:50%;top:24%"></i>
+      <div class="markor" style="left:44%;top:70%;--peer:#e0b14a"><span>Ada</span></div>
+      <div class="markor" style="left:28%;top:58%;--peer:#8ab4f8"><span>${esc(n ?? 'bordet')}</span></div></div>
+      <div class="tvspalt"><h3>Rumskod</h3><span class="kod">KX7P</span><span class="obs"><i></i><span>${esc(tv)} tittar på och ser alla kort</span></span>
+        <div class="telefon"><div class="sitt"><i></i>Ada · 5 kort</div><p class="obsrad">${esc(tv)} tittar på och ser alla kort</p><div class="hand"></div></div></div>
+    </div></div>
+    <p class="pk" style="left:24px;top:${HOJD[bredd] / 2 + 16}px;max-width:380px"><b>Bordet:</b> ägaren som tittar på från editorn heter i dag «observatör» för alla vid bordet. Med ett namn säger TV:n och telefonerna det. Markören bär namnet när ägaren pekar från bordets egen vy (i dag «bordet»). Långt namn: markörens etikett går över filten utan radbrytning.</p>`
+}
+
+// ── 4. Kvotraden: Kim (medredigerare) når ägarens tak ──────────────────────────────────────────
+function kvot() {
+  const n = eff()
+  const owner = n ?? 'spelets ägare'
+  const why = `Skogens råd har 120 av 120 kort, så många som ${gen(owner)} konto rymmer per spel.`
+  const way = `Ta bort eller slå ihop kort, eller fråga ${owner}. Fler exemplar av ett kort går alltid: ändra antal.`
+  return `<div class="ed byd-editor">${huvud()}<div class="notisband" role="alert">${g('warn')}<p><b>Kortet lades inte till.</b> ${esc(why)} ${esc(way)}</p><button class="stang" aria-label="Stäng meddelandet">×</button></div><div class="arbete">${tabell()}<p class="fot"><span>120 kort · 241 exemplar</span></p></div>
+    <p class="pk" style="right:24px;top:${n && n.length > 30 ? 520 : 500}px;max-width:420px"><b>ownerName = visningsnamnet.</b> ${n ? `Genitiven är språkets: «${esc(gen(owner))}».` : 'Utan namn säger meningen «spelets ägare» (#1198:s reserv). Förslaget ur adressen används inte här när kontot har ett tomt namn — se öppen fråga 2.'}${n && n.length > 30 ? ' Ett långt namn står helt, två gånger: meningen bryts hellre än kortas (#1073).' : ''}</p></div>`
+}
+
+// ── 5. Mejlet: inbjudan i mail-bands.ts:s tre band ──────────────────────────────────────────────
+function mejlHtml(who) {
+  const FONT = `-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`
+  const lead = `${who} vill dela spelet Skogens råd med dig som medredigerare.`
+  const link = 'https://deckster.se/invite?token=7f3c…'
+  return `<!doctype html><html lang="sv"><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#ffffff">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff"><tr><td align="center" style="padding:24px 12px">
+  <table role="presentation" align="center" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;margin:0 auto;border-radius:18px;overflow:hidden">
+    <tr><td align="center" bgcolor="#17120f" style="padding:34px 24px 28px;background:#17120f;background-image:radial-gradient(120% 80% at 70% 10%, #2f2722 0%, #17120f 55%, #0d0b0a 100%)">
+      <img src="mark-128.png" width="64" height="64" alt="" style="display:block;border:0;margin:0 auto">
+      <p style="margin:12px 0 0;font:800 24px/1 ${FONT};color:#f3e9d6;letter-spacing:-.01em">Deckster</p>
+    </td></tr>
+    <tr><td bgcolor="#f4ead8" style="padding:30px 28px 32px;background:#f4ead8;text-align:left">
+      <h1 style="margin:0 0 8px;font:800 26px/1.15 ${FONT};color:#1f1b12;letter-spacing:-.02em">Du är inbjuden till Skogens råd.</h1>
+      <p style="margin:0;font:16px/1.55 ${FONT};color:#3a3528">${esc(lead)}</p>
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0"><tr><td align="center" style="border-radius:999px;background:#f0b64a">
+        <a href="#" style="display:block;padding:15px 26px;font:700 16px/1 ${FONT};color:#1f1b12;text-decoration:none;border-radius:999px">Gå med &rarr;</a>
+      </td></tr></table>
+      <p style="margin:22px 0 0;font:13px/1.6 ${FONT};color:#5b574c">Länken fungerar i sju dagar och bara en gång. Väntade du dig ingen inbjudan kan du ignorera det här mejlet.</p>
+    </td></tr>
+    <tr><td style="padding:20px 28px 24px;background:#ffffff;text-align:left;border:1px solid #e5e2d8;border-top:0;border-radius:0 0 18px 18px">
+      <p style="margin:0;font:13px/1.6 ${FONT};color:#5b574c">Fungerar inte knappen? Klistra in länken i webbläsaren:<br><a href="#" style="color:#1a0dab;word-break:break-all">${link}</a></p>
+      <div style="margin-top:16px"><p style="margin:0;font:13px/1.6 ${FONT};color:#7a7568">Deckster · <a href="#" style="color:#5b574c;text-decoration:none">deckster.se</a></p></div>
+    </td></tr>
+  </table>
+</td></tr></table></body></html>`
+}
+function mejl() {
+  const n = eff()
+  // Namnet och adressen: namnet för att känna igen, adressen för att lita på. Utan namn är det dagens: adressen.
+  const who = n ? `${n} (${addr()})` : addr()
+  return `<div class="klient"><div class="rubrik"><h2>Du är inbjuden till Skogens råd</h2><div class="fran"><i><img src="mark-128.png" alt=""></i><span><b>Deckster</b> &lt;inbjudan@deckster.se&gt; till sara.berg@gmail.com</span></div></div>
+    <iframe title="Inbjudningsmejlet" srcdoc="${esc(mejlHtml(who))}"></iframe>
+    <p class="pk" style="right:24px;top:120px;max-width:300px"><b>Namnet, och adressen inom parentes.</b> Namnet är vad avsändaren själv skrivit och kan vara vad som helst; adressen är det mottagaren kan lita på. Utan namn står adressen ensam, som i dag. Ämnesraden och avsändaren är orörda (öppen fråga 4).</p></div>`
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+const sida = document.getElementById('sida')
+const HOJD = { 1024: 768, 1280: 800 }
+function skala() {
+  const w = Number(bredd)
+  const z = Math.min(1, (document.documentElement.clientWidth - 32) / w)
+  document.getElementById('ram').style.zoom = z
+}
+function ytan() {
+  if (yta === 'dela') return editorMedDela()
+  if (yta === 'narvaro') return narvaro()
+  if (yta === 'kvot') return kvot()
+  if (yta === 'mejl') return mejl()
+  const s = stegNu()
+  if (s === 'profil') return profil()
+  if (s === 'bjud') return editorMedDela()
+  if (s === 'ga') return gaMed()
+  if (s === 'forsta') return forstaInloggning()
+  if (s === 'band') return minaSpel(true)
+  return profil()
+}
+function render() {
+  const fl = (id, obj, nu, attr) => { document.getElementById(id).innerHTML = Object.entries(obj).map(([k, n]) => `<button aria-pressed="${k === nu}" data-${attr}="${k}">${n}</button>`).join('') }
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  fl('ytor', YTOR, yta, 'yta')
+  document.getElementById('steggrupp').hidden = yta !== 'satt'
+  fl('steg', STEG[v], stegNu(), 'steg')
+  fl('adress', Object.fromEntries(Object.entries(ADR).map(([k, a]) => [k, a.split('@')[0] + '@'])), adress, 'adr')
+  fl('namnet', NAMN, namnet, 'namn')
+  fl('bredd', { 1024: '1024', 1280: '1280' }, bredd, 'bredd')
+  document.getElementById('anteckning').innerHTML = `<b>${V[v].namn}.</b> ${V[v].not}`
+  const n = yta === 'satt' && v === 'B' && stegNu() === 'bjud' && !st.skickat ? null : eff()
+  document.getElementById('etikett').innerHTML = `<b>${yta === 'satt' ? STEG[v][stegNu()] : YTOR[yta]}</b> · variant ${v} · ${esc(addr())} · namnet: ${n ? `«${esc(n)}»` : 'inget ännu'} · ${bredd} × ${HOJD[bredd]}`
+  sida.dataset.bredd = bredd
+  sida.style.width = `${bredd}px`
+  sida.style.height = `${HOJD[bredd]}px`
+  sida.innerHTML = ytan()
+  // Titelrutan står där webbläsaren ritar den: under pekaren på ägarens ansikte.
+  const tt = sida.querySelector('[data-titel]'), face = sida.querySelector('.har i')
+  if (tt && face) tt.style.left = `${face.offsetLeft + 14}px`
+  skala()
+  const p = new URLSearchParams({ v, yta, adr: adress, namn: namnet, bredd })
+  if (yta === 'satt') p.set('steg', stegNu())
+  history.replaceState(null, '', `?${p}`)
+}
+addEventListener('resize', skala)
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; steg = ''; omstart() }
+  if (b.dataset.yta) { yta = b.dataset.yta; omstart() }
+  if (b.dataset.steg) { steg = b.dataset.steg; omstart() }
+  if (b.dataset.adr) { adress = b.dataset.adr; omstart() }
+  if (b.dataset.namn) { namnet = b.dataset.namn; omstart() }
+  if (b.dataset.bredd) bredd = b.dataset.bredd
+  if (b.id === 'omstart') omstart()
+  render()
+})
+sida.addEventListener('input', (e) => {
+  if (!e.target.matches('[data-utkast]')) return
+  st.utkast = e.target.value
+  st.sparat = false
+  const pos = e.target.selectionStart
+  const id = e.target.id
+  render()
+  const f = id ? document.getElementById(id) : sida.querySelector('[data-utkast]')
+  f?.focus(); f?.setSelectionRange(pos, pos)
+})
+sida.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-do]')
+  if (!b) return
+  const d = b.dataset.do
+  if (d === 'spara') st.sparat = true
+  if (d === 'bjud') { st.utkast = st.utkast ?? ifyllt(); st.skickat = true; st.sparat = true }
+  if (d === 'spara' && st.utkast === null && b.textContent.trim() !== 'Hoppa över' && b.textContent.trim() !== 'Inte nu') st.utkast = sida.querySelector('[data-utkast]')?.value ?? null
+  render()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    steg = ''; omstart(); render()
+  }
+})
+render()
+</script>
+</body>
+</html>
