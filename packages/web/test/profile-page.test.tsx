@@ -221,7 +221,7 @@ describe('the profile page', () => {
       </Language>,
     )
     expect(await screen.findByRole('heading', { level: 1, name: 'Profile' })).toBeTruthy()
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['AI key', 'Language', 'Account'])
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Name', 'AI key', 'Language', 'Account'])
     expect(screen.getByRole('button', { name: 'Save and test' })).toBeTruthy()
   })
 })

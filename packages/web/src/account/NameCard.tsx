@@ -65,7 +65,9 @@ export function NameCard({ http, email, initial }: { http: string; email: string
           </p>
         )}
         <div className="byd-profile-row">
-          <button type="submit" className="byd-primary byd-profile-button" disabled={state === 'busy'}>
+          {/* The outline, not the fill: the profile's one filled button is the AI key's, or the way back
+              to the game (L13), and a name is saved beside it rather than instead of it. */}
+          <button type="submit" className="byd-secondary byd-profile-button" disabled={state === 'busy'}>
             {t('profile.name.save')}
           </button>
           {state === 'saved' && <p className="byd-profile-ok-line">{t('profile.name.saved')}</p>}
