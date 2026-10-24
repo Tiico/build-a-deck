@@ -1491,9 +1491,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     const out: Waiting = {}
     const names = new Map<string, Promise<string | null>>()
-    const nameOf = (id: string) => {
-      if (!names.has(id)) names.set(id, opts.auth ? opts.auth.accountById(id).then((a) => (a ? ownerNameOf(a.email) : null)) : Promise.resolve(null))
-      return names.get(id)!
+    const nameOf = (id: string): Promise<string | null> => {
+      const known = names.get(id)
+      if (known) return known
+      const asked = opts.auth ? opts.auth.accountById(id).then((a) => (a ? ownerNameOf(a.email) : null)) : Promise.resolve(null)
+      names.set(id, asked)
+      return asked
     }
     for (const p of await projects.list(account.id)) {
       const newest = (await projects.versions(p.id))[0]

@@ -186,7 +186,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         // not a second screen. A card that never arrives takes nothing off the page — the games
         // are the page, and the card is what one of them wears — and its place stops waiting.
         void myCards(http).then(setCards, () => setCardsLost(true))
-        askWaiting()
+        void myWaiting(http).then(setWaiting, () => undefined)
         return Promise.all([myProjects(http).then(setProjects), myPlayed(http).then(setPlayed)])
       })
       .catch(() => setOffline(true))
