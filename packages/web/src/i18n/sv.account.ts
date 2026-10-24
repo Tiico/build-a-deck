@@ -732,6 +732,7 @@ export const svAccount = {
   'print.answer.note': 'Siffrorna kommer från ett tryckeri som inte finns. De visar hur ett svar ser ut, inte vad tryck kostar. Ingen beställning läggs.',
   'print.download': 'Ladda ner tryckpaketet',
   'print.download.preparing': 'Förbereder filerna · {done} av {total}',
+  'print.download.withoutCards': 'Utan kortfilerna, tills felen i tryckkontrollen är rättade.',
   'print.download.done': 'Tryckpaketet är nedladdat.',
   'print.download.failed': 'Det gick inte att ladda ner tryckpaketet. Försök igen.',
   'print.beta': 'Öppet under betan.',

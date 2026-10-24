@@ -214,7 +214,7 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
       {body}
     </section>
   )
-  const download = <Download http={http} project={project} provider={pkg.provider.id} />
+  const download = <Download http={http} project={project} provider={pkg.provider.id} stopped={errors.length > 0} />
   return (
     <div className="byd-print">
       <div className="byd-print-top">
@@ -225,7 +225,7 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
         </h1>
         <p className="byd-print-lead">{t('print.lead', { name: doc.name })}</p>
         <div className="byd-print-quick">
-          <Download http={http} project={project} provider={pkg.provider.id} />
+          <Download http={http} project={project} provider={pkg.provider.id} stopped={errors.length > 0} />
           <span className="byd-muted">{t('print.quick.note')}</span>
         </div>
       </div>
@@ -691,7 +691,7 @@ function Answer({ quote, cards, kinds, dice, refused }: { quote: Quote; cards: n
 // The download: the zip is asked for until every file of it is drawn, with how far they have come,
 // and saved under the name the server gives it.
 type Getting = { state: 'idle' } | { state: 'preparing'; done: number; total: number } | { state: 'failed' }
-function Download({ http, project, provider }: { http: string; project: string; provider: string }) {
+function Download({ http, project, provider, stopped }: { http: string; project: string; provider: string; stopped: boolean }) {
   const t = useT()
   const say = useSay()
   const [getting, setGetting] = useState<Getting>({ state: 'idle' })
@@ -733,6 +733,8 @@ function Download({ http, project, provider }: { http: string; project: string; 
         <ImportGlyph />
         {t('print.download')}
       </button>
+      {/* Beside the button too, so the reader who only downloads is told what is not in it (beslut punkt 2). */}
+      {stopped && <p className="byd-print-without">{t('print.download.withoutCards')}</p>}
       <p className="byd-print-progress" aria-live="polite">
         {getting.state === 'preparing' && getting.total > 0 ? t('print.download.preparing', { done: getting.done, total: getting.total }) : getting.state === 'failed' ? t('print.download.failed') : ''}
       </p>

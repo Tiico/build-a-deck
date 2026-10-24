@@ -150,6 +150,8 @@
 .byd-print-answer-note { font-size: 13px; color: #cdb98a; }
 .byd-print-download { display: grid; gap: 4px; }
 .byd-print-download .byd-print-button { width: 100%; }
+/* What the download leaves out while the print checks find errors. */
+.byd-print-without { color: var(--byd-print-bad); font-size: 13px; }
 .byd-print-progress { min-height: 1.5em; color: var(--byd-print-quiet); font-size: 13px; }
 .byd-print-progress:empty { min-height: 0; }
 .byd-print-beta { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; font-size: 14px; }

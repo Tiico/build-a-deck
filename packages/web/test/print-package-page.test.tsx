@@ -184,6 +184,7 @@ describe('the print package page', () => {
     expect(within(deck).getByRole('link', { name: 'Rätta i editorn ›' }).getAttribute('href')).toBe(`/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     expect(facts(slip().querySelector('dl')!)['Tryckkontrollen']).toMatch(/^\d+ fel$/)
     expect(within(slip()).getByText('Skulle inte tas emot.')).toBeTruthy()
+    expect(within(slip()).getByText('Utan kortfilerna, tills felen i tryckkontrollen är rättade.')).toBeTruthy()
     expect(part('Paketet').textContent).toContain('kortfilerna följer inte med förrän felen är rättade')
     expect(part('Paketet').textContent).not.toContain('dragon-front.pdf')
   })

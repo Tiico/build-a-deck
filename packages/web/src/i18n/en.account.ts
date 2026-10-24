@@ -668,6 +668,7 @@ export const enAccount = {
   'print.answer.note': 'The figures come from a printer that does not exist. They show what an answer looks like, not what printing costs. No order is placed.',
   'print.download': 'Download the print package',
   'print.download.preparing': 'Preparing the files · {done} of {total}',
+  'print.download.withoutCards': 'Without the card files, until the errors the print checks found are fixed.',
   'print.download.done': 'The print package is downloaded.',
   'print.download.failed': 'The print package could not be downloaded. Try again.',
   'print.beta': 'Open during the beta.',
