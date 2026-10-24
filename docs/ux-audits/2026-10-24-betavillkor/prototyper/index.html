@@ -47,11 +47,13 @@
   .bygg { display: inline; padding: 1px 6px; border: 1px dashed #c8a24a; border-radius: 6px; background: #2a2417; color: #ffd98a; font: 600 11px/1.5 system-ui, sans-serif; white-space: normal; }
 
   /* ── Kontots rum (account.css) ─────────────────────────────────────────────────────────── */
-  .acc { --card: #171a23; --edge: #262a35; --muted: #9aa3b8; --field: #14161c; --sec-line: #6f7a90;
-    min-height: 100%; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; box-sizing: border-box; display: grid; justify-content: center; align-content: center; gap: 8px; }
+  /* Kontots färger på hela ytan, så att raden och telefonerna bär samma fält och samma tysta ord. */
+  .sida { --card: #171a23; --edge: #262a35; --muted: #9aa3b8; --field: #14161c; --sec-line: #6f7a90; }
+  .acc { min-height: 100%; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; box-sizing: border-box; display: grid; justify-content: center; align-content: center; gap: 8px; }
   .acc[data-topp] { align-content: start; }
   .login { width: 420px; max-width: 100%; background: var(--card); border: 1px solid var(--edge); border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
-  .login[data-bred] { width: 500px; }
+  .login[data-bred] { width: 500px; gap: 12px; padding: 28px 32px; }
+  .acc:has(.login[data-bred]) { padding: 24px 20px; }
   .login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; color: #fff; line-height: 1.2; }
   .login h1 img { width: 32px; height: 32px; border-radius: 7px; flex: none; }
   .as { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
@@ -72,7 +74,7 @@
   .vk { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--edge); }
   .vk h2 { margin: 0; color: #fff; font-size: 17px; }
   .vk .datum { color: var(--muted); font-size: 13px; font-weight: 400; }
-  .kortlista { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: #c3cbdd; font-size: 14px; line-height: 1.5; }
+  .kortlista { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: #c3cbdd; font-size: 14px; line-height: 1.5; }
   .kortlista b { color: #fff; font-weight: 650; }
   .nytt { margin: 0; padding: 12px 14px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; font-size: 14px; line-height: 1.5; display: grid; gap: 6px; }
   .nytt ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
@@ -83,7 +85,7 @@
   .stegrad .bak { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 13px; padding: 0; }
   .kryss { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; min-height: 44px; color: #dce3f2; font-size: 14px; line-height: 1.5; }
   .kryss input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: #7dd3a0; }
-  .sidfot { margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted); }
+  .sidfot { margin: 10px 0 0; text-align: center; font-size: 12px; color: #9aa3b8; }
   .sidfot a { color: inherit; }
 
   /* C: villkoren som egen sida före namnet. */
@@ -115,8 +117,8 @@
   .hhoger .kodrad { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
   .hhoger input { min-height: 52px; border-radius: 12px; border: 1px solid #6f7a90; background: #14161c; }
   .home h1 { margin: 0; font-size: 34px; color: #fff; }
-  .hero { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; padding: 24px; border-radius: 20px; border: 1px solid #262a35; background: radial-gradient(120% 120% at 0% 100%, #1b2a22 0%, #171a23 50%); }
-  .hero .lek { height: 200px; border-radius: 8px; background: #f3ead8; box-shadow: 0 6px 16px rgb(0 0 0 / 45%); transform: rotate(-3deg); }
+  .hero { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; padding: 24px; border-radius: 20px; border: 1px solid #262a35; background: radial-gradient(120% 120% at 0% 100%, #1b2a22 0%, #171a23 50%); }
+  .hero .lek { width: 136px; height: 190px; justify-self: center; border-radius: 8px; background: #f3ead8; box-shadow: 0 6px 16px rgb(0 0 0 / 45%); transform: rotate(-3deg); }
   .hero small { color: #9aa3b8; letter-spacing: 3px; text-transform: uppercase; font-size: 12px; font-weight: 700; }
   .hero h2 { margin: 6px 0 4px; font-size: 34px; color: #fff; }
   .hero p { margin: 0 0 16px; color: #9aa3b8; }
@@ -131,6 +133,7 @@
   .tomt { padding: 40px 24px; border-radius: 20px; border: 1px dashed #3a4152; color: #9aa3b8; text-align: center; display: grid; gap: 12px; justify-items: center; }
   .tomt b { color: #fff; font-size: 18px; }
   .meny { position: absolute; z-index: 5; width: 220px; padding: 6px; border-radius: 12px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 30px rgb(0 0 0 / 50%); display: grid; }
+  .hgrid > .meny { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 6px; border-radius: 12px; border-color: #3b4358; background: #1b1f2a; }
   .meny button { min-height: 44px; border: 0; border-radius: 8px; background: none; color: #dce3f2; text-align: left; padding: 0 12px; font-size: 14px; }
   .meny button:hover { background: #262a35; }
   .home .sidfot { grid-column: 1 / -1; }
@@ -225,6 +228,7 @@
   .dokB summary .nr { color: #6f7a90; font-weight: 700; font-variant-numeric: tabular-nums; }
   .dokB summary b { color: #fff; font-size: 17px; }
   .dokB summary span.ks { grid-column: 2; color: #c3cbdd; font-size: 15px; line-height: 1.5; }
+  .dokB details[data-vantar] summary .pil { display: none; }
   .dokB summary .pil { grid-column: 3; grid-row: 1; color: #9aa3b8; font-size: 13px; white-space: nowrap; }
   .dokB details[open] summary .pil::after { content: ' ▴'; } .dokB details:not([open]) summary .pil::after { content: ' ▾'; }
   .dokB .hel { display: grid; gap: 10px; padding: 0 16px 16px 56px; color: #dfe4ef; font-size: 15px; }
@@ -240,7 +244,8 @@
   .dokC .nyheter { padding: 16px 18px; border-radius: 14px; border: 1px solid #3b4358; background: #171a23; display: grid; gap: 6px; }
 
   /* ── Telefonbredden: samma ytor vid 375 ─────────────────────────────────────────────────── */
-  .sida[data-bredd='375'] .acc { padding: 24px 12px; align-content: start; }
+  .sida[data-bredd='375'] .acc, .sida[data-bredd='375'] .acc:has(.login[data-bred]) { padding: 24px 12px; align-content: start; justify-content: stretch; grid-template-columns: minmax(0, 1fr); }
+  .sida[data-bredd='375'] .login[data-bred] { width: 100%; }
   .sida[data-bredd='375'] .login { padding: 22px 18px; border-radius: 18px; }
   .sida[data-bredd='375'] .login h1 { font-size: 22px; }
   .sida[data-bredd='375'] .lovar { grid-template-columns: 1fr; }
@@ -464,7 +469,7 @@ const KORT = [
 // ── Varianterna ─────────────────────────────────────────────────────────────────────────────────
 const V = {
   A: { namn: 'A — ett kort · rekommenderas',
-    not: '<b>Namnet och villkoren i samma välkomstkort</b>, ett tryck: «Godkänn och fortsätt». Tomt namn är #1254:s «Hoppa över». /villkor är ett dokument med innehållet bredvid och «Kort sagt» under varje rubrik. Den som väntar får läsläget från #489 på Mina spel och i editorn, och kortet igen vid nästa besök. Befintliga konton får samma kort. <span class="plus">+ ett steg, inte två; återanvänder välkomstkortet och läsbandet; den som väntar ser hela tiden varför och vägen dit</span> <span class="minus">− kortet blir långt (två frågor), och vid 375 hamnar knappen under vecket</span>' },
+    not: '<b>Namnet och villkoren i samma välkomstkort</b>, ett tryck: «Godkänn och fortsätt». Tomt namn är #1254:s «Hoppa över». /villkor är ett dokument med innehållet bredvid och «Kort sagt» under varje rubrik. Den som väntar får läsläget från #489 på Mina spel och i editorn, och kortet igen vid nästa besök. Befintliga konton får samma kort. <span class="plus">+ ett steg, inte två; återanvänder välkomstkortet och läsbandet; den som väntar ser hela tiden varför och vägen dit</span> <span class="minus">− kortet blir långt (två frågor): det ryms precis vid 1280 × 800 och 375 × 812, men på en mindre telefon hamnar knappen under vecket</span>' },
   B: { namn: 'B — två steg i följd',
     not: '<b>Samma kort i två steg</b>, «1 av 2» namnet som byggt i #1265 och «2 av 2» villkoren. /villkor visar «Kort sagt» först och hela texten bakom en öppning per avsnitt, villkor och integritet på en sida. Den som väntar ser Mina spel som vanligt; en handling som kräver villkoren öppnar steget som en dialog. Befintliga konton får ett band. <span class="plus">+ varje steg är kort och har en fråga; inget ser låst ut i onödan; det byggda välkomststeget står orört</span> <span class="minus">− två tryck för den nya; den som väntar får veta först när något nekas; bandkön (namn, passkey) blir tre långa</span>' },
   C: { namn: 'C — villkoren först',
@@ -606,9 +611,9 @@ function lasrum() {
 }
 
 // ── 3. /villkor och integritetssidan ────────────────────────────────────────────────────────────
-function dokBar(vilket) {
+function dokBar(vilket, flikar = true) {
   return `<div class="dok-bar"><a class="mark" href="#"><img src="mark-128.png" alt="">Deckster</a>
-    <nav class="dok-flikar" aria-label="Dokument"><a href="#" data-gaa="villkor" ${vilket === 'villkor' ? 'aria-current="page"' : ''}>Villkor</a><a href="#" data-gaa="integritet" ${vilket === 'integritet' ? 'aria-current="page"' : ''}>Integritet</a></nav>
+    ${flikar ? '' : '<!--'}<nav class="dok-flikar" aria-label="Dokument"><a href="#" data-gaa="villkor" ${vilket === 'villkor' ? 'aria-current="page"' : ''}>Villkor</a><a href="#" data-gaa="integritet" ${vilket === 'integritet' ? 'aria-current="page"' : ''}>Integritet</a></nav>${flikar ? '' : '-->'}
     <a href="#">In English</a><a href="#">${g('left')} Mina spel</a></div>`
 }
 const utkast = `<span class="utkast">UTKAST — inte juridiskt granskat</span>`
@@ -625,7 +630,7 @@ function dokA(vilket) {
 }
 function dokB(vilket) {
   const del = (D, start) => `<ol class="rader">${D.delar.map((d, i) => { const id = `${D === INTEGRITET ? 'i' : 'v'}${i}`; const oppen = st.alla || st.oppna[id]; return `<li><details ${oppen ? 'open' : ''} data-id="${id}" ${d.vantar ? 'data-vantar' : ''}><summary><span class="nr">${start + i}</span><b>${d.h}</b><span class="ks">${d.ks}</span><span class="pil">${d.vantar ? '' : 'Hela texten'}</span></summary><div class="hel">${d.t}</div></details></li>` }).join('')}</ol>`
-  return `<div class="dok">${dokBar(vilket)}<div class="dokB">
+  return `<div class="dok">${dokBar(vilket, false)}<div class="dokB">
     <header style="display:grid;gap:12px">${utkast}<h1>Villkor och integritet</h1>
       <p class="meta"><span>Version ${VILLKOR.version} · gällande</span><a href="#">Tidigare versioner</a></p>
       <p style="color:#c3cbdd">Varje avsnitt börjar med vad det betyder i en mening. Öppna det för hela texten, som är den som gäller.</p></header>
