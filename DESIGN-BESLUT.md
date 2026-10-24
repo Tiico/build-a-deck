@@ -7057,7 +7057,7 @@ D: en stor bricka med ikonverktyg som tonar fram på hovring.
 
 Beställaren valde **A** 2026-10-22.
 
-- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och ett 3:2-fönster på bilden som bibliotekets bricka.
+- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och en 3:2-ruta som bibliotekets bricka, där hela bilden ryms (L82).
   Tom är den en streckad bricka med ett +.
   Knappen heter vad ett tryck gör: «Välj bild för {kort}» tom, «Byt bild för {kort}» med bild.
 - **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» i foten när kortet håller en bild.
@@ -8236,3 +8236,23 @@ Raden under varje kort tas bort.
 «Visa på kortväggen» från bordet (#523) öppnar väggen i telefonens läsvy med panelen på Visning, så att korten under golvet står listade.
 
 `deck-wall.test.tsx` mäter panelen, flikarna, storleken och ögonen var för sig och tillsammans, läsbarheten och foten; `wall-crown-beside.spec.ts` mäter krönet och panelen i den byggda appen bredvid AI-panelen.
+
+### L82. En miniatyr visar hela bilden, på en ljusare grund och med en kant där bilden slutar (prototypat och beslutat 2026-10-24, #1257)
+
+Beställaren: bilderna i Tabell visades ofta avskurna, och i Media likaså.
+Varje miniatyr av spelets bilder ritades med `cover` i en fast 3:2-ruta: bildrutan i Tabell (L75), bildremsan över tabellen, egenskapspanelens rad, Media-brickan och bibliotekets brickor.
+Ett kvadratiskt mynt tappade en tredjedel av höjden och en smal fana fyra femtedelar av bredden, så vad som stod på ett kort gick inte att se i någon av dem.
+Media-brickans beskärningsram låg dessutom i andelar av brickan fast beskärningen är i andelar av filen, och visade fel del av varje bild som inte var 3:2.
+
+Fem former prövades i [`docs/ux-audits/2026-10-24-hela-bilden/prototyper/index.html`](docs/ux-audits/2026-10-24-hela-bilden/prototyper/index.html) med bilder i sex proportioner: Nu (`cover`), A hela bilden på brickans mörka grund, B på en suddig kopia av bilden, C på rutmönster, och D på en ljusare grund med en hårlinje där bilden slutar.
+Valet blev **D**.
+A lät en mörk bild smälta in i grunden, så att den såg tom eller beskuren ut.
+B gav en genomskinlig bild ett färgsken som inte finns på kortet, och C var brus i en tabell med trehundra rader.
+
+- **Rutan behåller sin form, bilden ryms i den.** En rad och ett rutnät står jämna; bilden är så stor den får plats, centrerad, med `contain`.
+- **Grunden är `--byd-editor-thumb-bg`**, ett steg ljusare än de mörkaste grunderna, och bildens kant är en hårlinje i `--byd-editor-thumb-edge`. Grunden ligger på rutan och inte på bilden, annars ritas hårlinjen runt rutan.
+- **En miniatyr är `Thumb`** i `AssetImage.tsx`, eller bildrutan och Media-brickan, som redan har en ruta runt bilden. En ny yta som visar en av spelets bilder tar en av dem.
+- **Beskärningsramen ligger på bilden som den ritas.** Bildens form tas ur bilden själv när den laddat (`naturalWidth`/`naturalHeight`, som inte behöver CORS), annars ur mätningen; utan någon av dem ritas ingen ram, för en ram på en gissning visar fel del av bilden.
+
+`whole-picture.test.tsx` mäter de målade pixlarna på varje yta: en kvadratisk, en smal och en bred bild ryms hela och i sin egen form, och en bild i den gamla grundens mörker skiljer sig från grunden bredvid.
+`media-crop.test.tsx` lägger ramen på en 2:1-bild med mätning och på en 1:2-bild utan.
