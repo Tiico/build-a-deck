@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { blockNames, type BlockName } from './rulesNames.js'
 import { arrangementOf, namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
@@ -42,7 +42,8 @@ import { SetupOverview } from '../rules/SetupOverview.js'
 // and nothing else. The tab draws the same setup in the editable book, so it fetches the sheet
 // itself; otherwise its buttons stood in the browser's Arial until «Som på bordet» had been opened
 // once (#481). The editor is a chunk of its own, so this costs the table's first frame nothing.
-import { ArrowGlyph, PencilGlyph } from '../glyphs.js'
+import { ArrowGlyph, ChevronGlyph, PencilGlyph } from '../glyphs.js'
+import { useDoor, usePressAway } from '../doors.js'
 import '../rules/rules.css'
 import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
 import { rulesWords, type RuleEntry, type RulesView } from './proposals.js'
@@ -60,19 +61,10 @@ export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBas
 export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal }: RulesPanelProps) {
   const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
-  // Vilket block ＋:et står vid (#216). Ett enda ＋ följer det block som har pekaren eller fokus,
-  // i stället för ett per skarv; `null` är dess viloläge, skarven före block ett. Viloläget är
-  // inte en tomhet utan en plats: den första skarven har inget block före sig att hänga på, och
-  // det är där ＋:et står innan något pekats på — och därmed det första tabbstoppet i boken.
-  const [atBlock, setAtBlock] = useState<string | null>(null)
-  // Medan ＋:et självt har fokus flyttar det sig inte: en knapp som lämnar handen i samma ögonblick
-  // man tabbat fram till den är ingen väg in alls.
-  const held = useRef(false)
-  // Om pekaren är i boken. Det är pekaren som styr ＋:et så länge den är där, också när fokus
-  // lämnar boken för något annat — och det är vad som gör att ett tryck på ＋:et aldrig kan rycka
-  // undan knappen mitt i sig självt: musknappen på väg ned tar fokus från blocket, och pekaren är
-  // per definition i boken just då.
-  const inside = useRef(false)
+  // The block last written in (#1258): what the row's «Lägg till» lands after, and what it says it
+  // lands after. It outlives the block's closing on purpose — the row stands above the book, so a
+  // press on it is always a press that has left the block — and it goes with the block it names.
+  const [last, setLast] = useState<string | null>(null)
   // Which of the book's two modes is being read (#227). It is a view and never a fact about the
   // game (L4): it is held here, in this tab, for as long as the tab is open and not a moment
   // longer — nothing is written to the document, and nothing is written to the browser either.
@@ -182,20 +174,41 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     })
     client.spliceRules({ replace: [id], after: null, blocks: made })
   }
-  // Ett tomt block i en skarv, öppnat där det landar. Skarven räknas i block och inte i knappar:
-  // en bok med n block har n + 1 skarvar, och den före block ett är en av dem (#216).
-  const addAt = (index: number) => {
+  // What the row adds, laid after the block last written in or, before anything has been, at the end
+  // of the book, and opened where it lands (#1258). It replaces a ＋ per block (#184), then a ＋ that
+  // followed the pointer (#216): the row is one place to look, and it says where the block goes.
+  const after = rules?.blocks.some((b) => b.id === last) ? last : (rules?.blocks.at(-1)?.id ?? null)
+  const insert = (make: (ids: (taken?: readonly string[]) => string) => RuleBlock[]) => {
     if (!rules) return
-    // Knappen som trycktes finns inte kvar efter det här: den ritas om vid det nya blocket, och en
-    // knapp som försvinner lämnar inget `blur` efter sig. Handen släpps alltså här, annars stod
-    // ＋:et stilla för alltid i tron att den ligger kvar i det.
-    held.current = false
-    const fresh: RuleBlock = { kind: 'text', id: freeId(rules), text: t('rules.newText') }
-    client.spliceRules({ replace: [], after: rules.blocks[index - 1]?.id ?? null, blocks: [fresh] })
-    setEditing(fresh.id)
-    setAtBlock(fresh.id)
+    const taken: string[] = []
+    const made = make((also = []) => {
+      const id = freeId(rules, [...taken, ...also])
+      taken.push(id)
+      return id
+    })
+    client.spliceRules({ replace: [], after, blocks: made })
+    const first = made[0]
+    if (first) open(first.id)
   }
-  const addAfter = (id: string) => rules && addAt(rules.blocks.findIndex((b) => b.id === id) + 1)
+  const add = (kind: Adding) =>
+    insert((id) => {
+      if (kind === 'text') return [{ kind: 'text', id: id(), text: t('rules.newText') }]
+      if (kind === 'list') return [{ kind: 'list', id: id(), ordered: false, items: [''] }]
+      // A section is its heading and a paragraph asking what goes in it (#131), as the template's are.
+      return [
+        { kind: 'heading', id: id(), level: 1, text: t('rules.newSection') },
+        { kind: 'text', id: id(), text: '', ask: t('rules.ask.own') },
+      ]
+    })
+  // A picture of the designer's own, read and taken in as an imported one is (#173): the bytes
+  // decide what it is, and a picture that cannot come in says why where the row's failures stand.
+  const addPicture = async (file: File | undefined) => {
+    if (!file) return
+    const took = await taken(file, client, t)
+    if (!('asset' in took)) return setFailed(t(`rules.import.picture.${took.why}` as Key, { file: file.name }))
+    setFailed(null)
+    insert((id) => [{ kind: 'image', id: id(), asset: took.asset, px: took.px, alt: '' }])
+  }
   // Taking a heading away takes its section away: the heading and everything standing under it
   // until the next one. The template is a proposal and not a form (#131), and a section nobody
   // needs has to go in one act — a heading removed on its own would leave its own question behind.
@@ -213,26 +226,14 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     client.spliceRules({ replace: [...gone], after: null, blocks: [] })
     // The press that took it away came from the block's own foot, which went with it.
     const next = left[Math.min(at, left.length - 1)]
+    setLast(next?.id ?? null)
     close(next?.id ?? '', true)
   }
-  // A section of the designer's own, at the end of the book, opened where it lands. It stands at
-  // the foot of the column the book is found in, because that is where a reader who has read the
-  // disposition notices what it is missing (#131).
-  const addSection = () => {
+  const open = (id: string) => {
     if (!rules) return
-    const head = freeId(rules)
-    const body = freeId(rules, [head])
-    client.spliceRules({
-      replace: [],
-      after: rules.blocks.at(-1)?.id ?? null,
-      blocks: [
-        { kind: 'heading', id: head, level: 1, text: t('rules.newSection') },
-        { kind: 'text', id: body, text: '', ask: t('rules.ask.own') },
-      ],
-    })
-    setEditing(head)
+    setEditing(id)
+    setLast(id)
   }
-  const open = (id: string) => rules && setEditing(id)
   // Where a click on a paragraph landed, in the paragraph as it was read, so the field it opens
   // puts its caret there and not at its start (#972). A key opens the field as before.
   const clicked = useRef<{ id: string; read: string; at: number } | null>(null)
@@ -255,7 +256,9 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     const to =
       land === 'book'
         ? document.querySelector<HTMLElement>("[data-rulebook] [data-block] :is([role='button'], textarea, input, .byd-rules-caption-edit)")
-        : document.querySelector<HTMLElement>('.byd-rules-ways input[type=file]')
+        : // Over a written book the picker stands in the «Boken» box, which is shut when the report is
+          // left, so the hand goes to the button that opens it (#1258); an empty book's picker is on the page.
+          document.querySelector<HTMLElement>('.byd-rules-ways input[type=file], .byd-rules-book > button')
     if (!to) return
     to.focus()
     setLand(null)
@@ -269,7 +272,7 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     if (editing !== null || id === null) return
     back.current = null
     // A book with nothing left in it has no block to stand on, and the way to write one is next.
-    const to = document.querySelector(`[data-block="${CSS.escape(id)}"] :is([role='button'], .byd-block-door, .byd-rules-caption-edit)`) ?? document.querySelector('.byd-rules-own')
+    const to = document.querySelector(`[data-block="${CSS.escape(id)}"] :is([role='button'], .byd-block-door, .byd-rules-caption-edit)`) ?? document.querySelector('.byd-rules-adding button')
     ;(to as HTMLElement | null)?.focus()
   }, [editing, rules])
   // Going to a picture is going there with the keyboard as well as with the eye: the block takes
@@ -319,52 +322,22 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
     setFailed(read.doc.blocks.length === 0 ? nothing.join(' ') : null)
     setProposal(read.doc.blocks.length === 0 ? null : { ...read, file: md.name })
   }
-  // Vilket block ＋:et hör till just nu, och därmed vilken skarv det lägger i (#216). Det block som
-  // skrivs i vinner över det som pekas på: där är handen redan, och ett ＋ som lämnar det öppna
-  // blocket för att pekaren strök förbi ett annat lägger nästa block någon annanstans än där
-  // arbetet pågår. Och ett block som tagits bort tar inte ＋:et med sig: då är viloläget kvar.
-  const meant = editing ?? atBlock
-  const where = out.blocks.some((b) => b.id === meant) ? meant : null
-  const plus = (id: string | null) => (
-    <button
-      type="button"
-      className="byd-rules-add"
-      aria-label={id === null ? t('rules.addFirst') : t('rules.addAfter', { what: called.get(id)?.self ?? '' })}
-      onFocus={() => {
-        held.current = true
-      }}
-      onBlur={() => {
-        held.current = false
-      }}
-      onClick={() => (id === null ? addAt(0) : addAfter(id))}
-    >
-      ＋
-    </button>
-  )
-  // Vad som styr ＋:et: pekaren och fokus, aldrig bara det ena (#184, och #216 som inte får ta
-  // tillbaka det). Båda läses på boken och inte på varje block, för ＋:et är ett och blockens
-  // handtag är många. Pekaren utanför något block — bokens titel, dess marginal — är inte ingen
-  // plats alls: det är den första skarven, och ＋:et går hem dit.
-  const steer = (target: EventTarget | null) => {
-    if (held.current) return
-    const el = target instanceof Element ? target : null
-    if (el?.closest('.byd-rules-add')) return
-    setAtBlock(el?.closest<HTMLElement>('[data-block]')?.dataset.block ?? null)
-  }
   return (
     <div className="byd-rules">
       <div className="byd-rules-bar">
         <h2>{t('rules.title')}</h2>
+        {/* One row, ordered by what its controls do (#1258, variant A): how the book is seen, what is
+            added to it and where, and — at the far end — the book as a file. The switch keeps the
+            place #227 gave it, first after the book's name. */}
         {writing && <Modes mode={mode} onMode={setMode} />}
-        {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
-        {/* While an AI proposal lies in the book nothing in it opens, and the band under says why (#1006). */}
-        {!ai && !rules && <span>{t('rules.empty')}</span>}
-        <Help topic={t('rules.help.topic')}>
-          <p>{t('rules.hint')}</p>
-          <p>{t('rules.help.reach')}</p>
-          <p>{t('rules.help.names')}</p>
-          <p>{t('rules.help.lists')}</p>
-        </Help>
+        {writing && mode === 'edit' && (
+          <Adding
+            where={after !== null && after !== rules?.blocks.at(-1)?.id ? t('rules.add.after', { what: called.get(after)?.self ?? '' }) : t('rules.add.end')}
+            onAdd={add}
+            onPicture={(file) => void addPicture(file)}
+          />
+        )}
+        {writing && mode === 'table' && <span>{t('rules.view.preview')}</span>}
         {failed && (
           <span role="alert" className="byd-rules-warn">
             {failed}
@@ -375,63 +348,31 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
             {t(out.warnings.length === 1 ? 'rules.warnings.one' : 'rules.warnings.other', { n: out.warnings.length })}
           </span>
         )}
-        {client.mayEdit && !rules && !proposal && !ai && (
-          <div className="byd-rules-ways">
-            {/* Three ways in, and each of them does what it says: a control that does nothing yet
-                would be a promise nobody kept. */}
-            <button
-              type="button"
-              className="byd-secondary"
-              onClick={() => {
-                client.spliceRules(begun(startingRules(doc.name, t)))
-                setLand('book')
-              }}
-            >
-              {t('rules.start')}
-            </button>
-            <button
-              type="button"
-              className="byd-secondary"
-              onClick={() => {
-                client.spliceRules(begun(templateRules(doc.name, t)))
-                setLand('book')
-              }}
-            >
-              {t('rules.template')}
-            </button>
-            <PickFile label={t('rules.import')} onPick={pick} />
-          </div>
-        )}
-        {/* Importing over a written book (#131, third slice). The way in that the second slice
-            deliberately left out — a control that replaced a whole book without saying what it
-            took would have been a promise nobody kept — and the way of working the product owner
-            asked to support: write in your own editor, and hand the file over again and again.
-            The book remembers which file it came out of, so the control can name it. */}
-        {/* The tools of a written book, together and apart from the switch (#298). The booklet used
-            to stand right beside the switch, where a pill after two pills reads as a third mode of
-            the book; it is a thing done with the book, like the import, and the two stand behind a
-            divider at the far end of the header. Import and booklet only, because a control that is
-            not a tool of the book — the switch, the hint — would make the group the header with a
-            name on it, not a group. */}
+        {/* The book as a file (#1258): reading it in again, replacing it, and the booklet for print,
+            in one menu at the end of the row, each saying what it does. Importing over a written book
+            is #131's third slice — write in your own editor and hand the file over again and again —
+            and the book remembers which file it came out of, so the menu can name it. */}
         {rules && !proposal && !ai && (
-          <div className="byd-rules-ways byd-rules-tools" role="group" aria-label={t('rules.tools')}>
-            {client.mayEdit && (
-              <PickFile
-                label={rules.source ? t('rules.import.again') : t('rules.import.over')}
-                {...(rules.source ? { spoken: t('rules.import.again.of', { file: rules.source.file }) } : {})}
-                onPick={pick}
-              />
-            )}
-            <Booklet client={client} book={rules} game={doc.name} />
-          </div>
+          <BookMenu
+            client={client}
+            book={rules}
+            game={doc.name}
+            onPick={client.mayEdit ? pick : undefined}
+          />
         )}
+        <Help topic={t('rules.help.topic')}>
+          <p>{t('rules.hint')}</p>
+          <p>{t('rules.help.reach')}</p>
+          <p>{t('rules.help.names')}</p>
+          <p>{t('rules.help.lists')}</p>
+        </Help>
         {/* The AI proposal laid in the book (#1006), said as Tabell says one (#1003): what it is, in
             its own words, and the way to take it off again. It stands in the tools' place, behind
             their divider, because the tools are not offered while it lies in the book (#1054,
             variant AE): as a row of its own under this one it moved the book 32 px down when it came
             and back up when it went, and the reader lost her place in the text. */}
         {ai && (
-          <div className="byd-rules-ways byd-rules-tools byd-rules-ai" role="status" data-proposal="">
+          <div className="byd-rules-ways byd-rules-ai" role="status" data-proposal="">
             <span>
               {t('rules.proposal')}: {rulesWords(ai.added, ai.rewritten, t).join(', ')}
             </span>
@@ -468,21 +409,21 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
         />
       )}
       <div className="byd-rules-spread">
-        {/* `proposed` is the mark that says a section has nothing written in it yet. A section
-            read out of a file has, so only the template's own disposition carries it. The column
-            carries the import's own marks instead when a file is lying in the book (#131). */}
+        {/* The column carries the import's own marks when a file is lying in the book (#131). */}
         {/* `marks` is both ranks of the plan, because the column lists both ranks (#207). They are
             two lists in the plan and one map in the column: the report counts sections and the
             column points at headings, and neither of them wants the other's list. */}
-        <Toc
-          blocks={out.blocks}
-          label={t('rules.toc')}
-          {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
-          {...(plan ? { marks: [...plan.sections, ...plan.subsections] } : {})}
-          {...(ai ? { marks: aiTocMarks(ai.entries) } : {})}
-          {...(writing ? { onAdd: addSection } : proposal || rules || ai ? {} : { proposed: true })}
-          {...(rules?.source ? { source: t('rules.source', { file: rules.source.file, when: when(rules.source.at, Date.now(), t) }) } : {})}
-        />
+        {/* An empty book has no contents to list (#1258): its ways in stand on the page alone. */}
+        {(rules || proposal || ai) && (
+          <Toc
+            blocks={out.blocks}
+            label={t('rules.toc')}
+            {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
+            {...(plan ? { marks: [...plan.sections, ...plan.subsections] } : {})}
+            {...(ai ? { marks: aiTocMarks(ai.entries) } : {})}
+            {...(rules?.source ? { source: t('rules.source', { file: rules.source.file, when: when(rules.source.at, Date.now(), t) }) } : {})}
+          />
+        )}
         {/* The book is read in an area of its own, beside the column's and never inside it (#210).
             Before this the pair shared the tab's single scrolling area and the column hung in it,
             so at the length a rulebook really has its last rows could be read only once the book
@@ -497,7 +438,16 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
             and put back deliberately; a scroll left lying in the box would be exactly the number
             this slice exists to avoid, arriving through the back door. */}
         <div className="byd-rules-reading" data-mode={mode} key={mode} ref={page}>
-          {mode === 'table' ? (
+          {!rules && !proposal && !ai ? (
+            <Ways
+              may={client.mayEdit}
+              onStart={(book) => {
+                client.spliceRules(begun(book === 'template' ? templateRules(doc.name, t) : startingRules(doc.name, t)))
+                setLand('book')
+              }}
+              onPick={pick}
+            />
+          ) : mode === 'table' ? (
             <div className="byd-rules-felt">
               <RuleShelf rules={out} assets={assetBase} placement="table" startOpen body={shelf} />
             </div>
@@ -505,39 +455,11 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
             <article
               className="byd-rulebook"
               {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}
-              {...(writing
-                ? {
-                    onPointerOver: (e: PointerEvent) => {
-                      inside.current = true
-                      steer(e.target)
-                    },
-                    onPointerLeave: () => {
-                      inside.current = false
-                      if (!held.current) setAtBlock(null)
-                    },
-                    onFocus: (e: FocusEvent) => steer(e.target),
-                    // Fokus som lämnar boken för något annat lämnar ＋:et i viloläget, så nästa
-                    // Tabb in i boken möter den första skarven igen. Var fokus tog vägen är känt
-                    // först efteråt — `focusout` kommer före `focusin`, och en Tabb till ＋:et
-                    // självt ser likadan ut som en Tabb ut ur boken tills den landat — så frågan
-                    // ställs en tick senare, och bara när pekaren inte är i boken och styr ändå.
-                    onBlur: (e: FocusEvent) => {
-                      const book = e.currentTarget
-                      setTimeout(() => {
-                        if (!inside.current && !book.contains(document.activeElement)) setAtBlock(null)
-                      }, 0)
-                    },
-                  }
-                : {})}
             >
               {/* The book is read one level under its tab's own heading (#558): the title at 3,
                   the sections at 4 and 5. The tags stay, so the book keeps the look the reader
                   and the print share. */}
               <h1 aria-level={3}>{out.title}</h1>
-              {/* ＋:ets viloläge: skarven före block ett (#216). Den skarven har inget block före
-                  sig att hänga vid, och utan en plats av sitt eget vore den enda skarven i boken
-                  som varken en hand eller ett tangentbord kunde nå. */}
-              {writing && where === null && <div className="byd-rules-first">{plus(null)}</div>}
               {out.blocks.map((b, i) => {
                 const source = shown.blocks.find((x) => x.id === b.id)
                 const planned = marks.get(b.id)
@@ -568,7 +490,6 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
                     data-mark={planned?.mark}
                     data-ai={proposed?.mark ?? undefined}
                     data-open={editing === b.id ? 'true' : undefined}
-                    data-at={where === b.id ? 'true' : undefined}
                     {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
                   >
                     {/* The picture the column took her to says so in a word of the tool's own, never in
@@ -638,7 +559,6 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
                     ) : (
                       <Block block={b} source={source} assetBase={assetBase} />
                     )}
-                    {writing && where === b.id && plus(b.id)}
                   </div>
                 )
               })}
@@ -665,16 +585,20 @@ export function RulesPanel({ doc, client, assetBase, aiProposal, onHideProposal 
 // this repo has already been bitten once by an invisible box catching a click meant for what was
 // under it (#140).
 //
-// `spoken` is what the control is called when the book remembers a file (#131): the picker itself
-// cannot be opened on a name — the web has no such thing short of a file handle, and a handle was
-// decided against because it belongs to one browser and one person while the book travels with the
-// project — so what is built instead is a control that says which file it means.
+// When the book remembers a file (#131) the control is named after it, «Läs in regler.md igen»: the
+// picker itself cannot be opened on a name — the web has no such thing short of a file handle, and a
+// handle was decided against because it belongs to one browser and one person while the book travels
+// with the project — so what is built instead is a control that says which file it means. `says` is
+// the line under the name that says what the control does (#1258); it is drawn and not part of the
+// name, so the name stays the words the eye reads first.
+//
+// `picture` is the row's «＋ Bild» (#1258): one picture and nothing else, through the same control.
 //
 // The control is the receiver as well as the picker (#293, #291 variant B): the book and its
 // pictures are let go on the thing that takes them, and there is no second box beside it and no
 // drop over the whole rulebook. `onPick` already takes a handful of files, so a drop is a second
 // way into the one path and never a path of its own — the same reading, report and confirmation.
-function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | undefined; onPick(files: readonly File[]): void }) {
+function PickFile({ label, says, picture, arrow, onPick }: { label: string; says?: string | undefined; picture?: boolean | undefined; arrow?: boolean | undefined; onPick(files: readonly File[]): void }) {
   const [over, setOver] = useState(false)
   return (
     <label
@@ -693,7 +617,15 @@ function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | 
         onPick([...(e.dataTransfer.files ?? [])])
       }}
     >
-      {label}
+      {says ? (
+        <span>
+          {label}
+          <small>{says}</small>
+        </span>
+      ) : (
+        label
+      )}
+      {arrow && <ArrowGlyph to="right" />}
       <input
         className="byd-offscreen"
         type="file"
@@ -701,9 +633,9 @@ function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | 
         // the designer's, and the web gives no way to read a file a Markdown file merely names.
         // A picture that was not handed over is a line in the report saying exactly that, which is
         // also where the designer learns that she may hand them over at all.
-        multiple
-        accept=".md,.markdown,text/markdown,text/plain,image/png,image/jpeg,image/webp,image/gif"
-        aria-label={spoken ?? label}
+        multiple={!picture}
+        accept={picture ? 'image/png,image/jpeg,image/webp,image/gif' : '.md,.markdown,text/markdown,text/plain,image/png,image/jpeg,image/webp,image/gif'}
+        aria-label={label}
         onChange={(e) => {
           const files = [...(e.target.files ?? [])]
           // The same file picked twice running is no change at all to an input that still holds it,
@@ -905,6 +837,145 @@ function Modes({ mode, onMode }: { mode: Mode; onMode(next: Mode): void }) {
   )
 }
 
+// What the row adds (#1258, variant A): a section, a paragraph, a list and a picture — the four
+// things a book is made of — and after them where the next one lands. Where is said and not shown: a
+// ring on the block it lands after would be one more thing in the book that is not the book, and the
+// words are read by everyone, the screen reader included, through the group's description.
+type Adding = 'section' | 'text' | 'list'
+const ADDING: readonly Adding[] = ['section', 'text', 'list']
+function Adding({ where, onAdd, onPicture }: { where: string; onAdd(kind: Adding): void; onPicture(file: File | undefined): void }) {
+  const t = useT()
+  const said = useId()
+  return (
+    <span className="byd-rules-adding" role="group" aria-label={t('rules.add')} aria-describedby={said}>
+      <span className="byd-rules-adding-name" aria-hidden="true">
+        {t('rules.add')}
+      </span>
+      {ADDING.map((kind) => (
+        <button key={kind} type="button" className="byd-secondary" onClick={() => onAdd(kind)}>
+          {t(`rules.add.${kind}`)}
+        </button>
+      ))}
+      <PickFile label={t('rules.add.image')} picture onPick={(files) => onPicture(files[0])} />
+      <span id={said} className="byd-rules-adding-where" title={where}>
+        {where}
+      </span>
+    </span>
+  )
+}
+
+// The book as a file (#1258): what reads it in and what prints it, in a box under one button at the
+// end of the row. It is a box of controls and not a `menu`: two of its controls are file pickers,
+// which a menu's arrow keys would walk past, so it is Tab and Escape like every box the crown opens.
+// The box stays mounted while it is shut, so a booklet still being made when it closed is still being
+// made when it opens again, and the link it turned into is still there. The button is a receiver
+// too: a file let go on it is read in as though it had been picked (#293).
+function BookMenu({ client, book, game, onPick }: { client: ProjectClient; book: RuleDoc; game: string; onPick?: ((files: readonly File[]) => void) | undefined }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const [over, setOver] = useState(false)
+  const button = useRef<HTMLButtonElement>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const id = useId()
+  usePressAway(open, () => [button.current, box.current], () => setOpen(false))
+  const picked = (files: readonly File[]) => {
+    setOpen(false)
+    onPick?.(files)
+  }
+  return (
+    <span className="byd-rules-book">
+      <button
+        ref={button}
+        type="button"
+        className="byd-secondary"
+        aria-expanded={open}
+        aria-controls={id}
+        data-drop
+        data-over={over ? 'true' : undefined}
+        onClick={() => setOpen(!open)}
+        {...(onPick
+          ? {
+              onDragOver: (e: DragEvent) => {
+                e.preventDefault()
+                setOver(true)
+              },
+              onDragLeave: () => setOver(false),
+              onDrop: (e: DragEvent) => {
+                e.preventDefault()
+                setOver(false)
+                picked([...(e.dataTransfer.files ?? [])])
+              },
+            }
+          : {})}
+      >
+        {t('rules.book')}
+        <ChevronGlyph to="down" />
+      </button>
+      {open && (
+        <Door
+          onEscape={() => {
+            setOpen(false)
+            button.current?.focus()
+          }}
+        />
+      )}
+      <div ref={box} id={id} className="byd-rules-menu" hidden={!open}>
+        {onPick && (
+          <div role="group" aria-labelledby={`${id}-file`}>
+            <b id={`${id}-file`}>{t('rules.book.file')}</b>
+            {book.source && <PickFile label={t('rules.import.again', { file: book.source.file })} says={t('rules.import.again.says')} onPick={picked} />}
+            <PickFile label={t(book.source ? 'rules.import.over' : 'rules.import.first')} says={t('rules.import.over.says')} onPick={picked} />
+          </div>
+        )}
+        <div role="group" aria-labelledby={`${id}-print`}>
+          <b id={`${id}-print`}>{t('rules.book.print')}</b>
+          <Booklet client={client} book={book} game={game} />
+        </div>
+      </div>
+    </span>
+  )
+}
+
+// A door that is there for as long as it is drawn (doors.ts): Escape closes what drew it.
+function Door({ onEscape }: { onEscape(): void }) {
+  useDoor('standing', onEscape)
+  return null
+}
+
+// The empty book's three ways in, on the page the book will be (#1258), each with a line on what it
+// gives — the template first, because it is the one that asks the five questions a book has to answer
+// (B7). A role that may not change the game is told what the rules are for and offered nothing.
+function Ways({ may, onStart, onPick }: { may: boolean; onStart(book: 'template' | 'blank'): void; onPick(files: readonly File[]): void }) {
+  const t = useT()
+  const heading = useId()
+  const way = (book: 'template' | 'blank', key: 'rules.template' | 'rules.start') => (
+    <button type="button" className="byd-rules-way" data-first={book === 'template' ? 'true' : undefined} onClick={() => onStart(book)}>
+      <span>
+        {t(key)}
+        <small>{t(`${key}.says`)}</small>
+      </span>
+      <ArrowGlyph to="right" />
+    </button>
+  )
+  return (
+    <section className="byd-rulebook byd-rules-empty" role="region" aria-labelledby={heading}>
+      <h1 id={heading} aria-level={3}>
+        {t('rules.empty')}
+      </h1>
+      {may && (
+        <>
+          <p>{t('rules.empty.says')}</p>
+          {way('template', 'rules.template')}
+          {way('blank', 'rules.start')}
+          <div className="byd-rules-ways">
+            <PickFile label={t('rules.import')} says={t('rules.import.says')} arrow onPick={onPick} />
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
 // An AI proposal's marks as the column carries them (#1006), in the import's words: a heading it adds
 // is new, one it writes in place of something is rewritten, and one it replaces is going.
 const AI_TOC: Record<RuleEntry['mark'] & string, RulePlanSection['mark']> = { new: 'added', changed: 'changed', gone: 'going' }
@@ -924,13 +995,11 @@ type Heading = Extract<RenderedBlock, { kind: 'heading' }>
 // is — see B7 for the cost that default accepts, and this for what keeps it from being silent.
 const silentImages = (blocks: readonly RenderedBlock[]): string[] => blocks.filter((b) => b.kind === 'image' && b.alt === '').map((b) => b.id)
 
-// The column the book is found in (#131). It is the same column in both states: in the empty tab
-// it carries the disposition being proposed, in the written book the sections that were kept.
+// The column the book is found in (#131): its contents, and nothing that adds to it (#1258) — the
+// row above the book is where a section is added, so the column has one job.
 function Toc({
   blocks,
   label,
-  onAdd,
-  proposed,
   marks,
   silent,
   onFind,
@@ -938,8 +1007,6 @@ function Toc({
 }: {
   blocks: readonly RenderedBlock[]
   label: string
-  onAdd?: (() => void) | undefined
-  proposed?: boolean | undefined
   marks?: readonly Pick<RulePlanSection, 'id' | 'mark'>[] | undefined
   silent?: readonly string[] | undefined
   onFind?: ((id: string) => void) | undefined
@@ -965,10 +1032,8 @@ function Toc({
   }
   const marked = new Map([...(marks ?? [])].map((section) => [section.id, section.mark]))
   const [first] = silent ?? []
-  // A book without a section still has a column while it can be written in: the way to write the
-  // first section stands in it, and a book left with none — emptied, or imported from a file whose
-  // headings are all of the second rank — lost that way along with the column (#481, fynd 8).
-  if (sections.length === 0 && !onAdd) return null
+  // A book without a section has nothing to list; the row adds the first one (#1258).
+  if (sections.length === 0 && !source) return null
   // One row, whichever rank it is. What differs is what the row says about itself before it says
   // its own words: a subheading names its rank out loud, because the indent that shows it is worth
   // nothing to a reader who is not looking at it (L12).
@@ -981,9 +1046,6 @@ function Toc({
             book, so a section named after a pile has to be called in the column what it is called
             in the book — and follow the pile when it is renamed. */}
         <Span nodes={h.children} />
-        {/* A disposition that has not been taken up yet says so where the reader is looking, so
-            a tab that looks like a book is never mistaken for one (#131, variant C). */}
-        {proposed && <span>{t('rules.toc.empty')}</span>}
         {/* And an import marks the column with the same marks it puts in the book, in words
             and never in a colour: the section that is going may be the one below the fold, and
             a reader who moves through the column by keyboard has to meet it there (L12). */}
@@ -1029,11 +1091,6 @@ function Toc({
           <ArrowGlyph to="right" />
         </button>
       )}
-      {onAdd && (
-        <button type="button" className="byd-rules-own" onClick={onAdd}>
-          {t('rules.addSection')}
-        </button>
-      )}
       {/* Which file the book came out of, and when (#131): text in the document, so it travels
           with the project rather than with the browser the file was picked in. It stands at the
           foot of the column and not in the tab's row (#1054, variant AE): in the row it broke the
@@ -1076,6 +1133,7 @@ function Booklet({ client, book, game }: { client: ProjectClient; book: RuleDoc;
   // The button the designer pressed turns into the link she came for, so the focus goes with it
   // rather than falling to <body> with the button (#481).
   const ready = useRef<HTMLAnchorElement>(null)
+  const says = useId()
   const done = typeof state === 'object' && 'hash' in state
   useEffect(() => {
     if (done) ready.current?.focus()
@@ -1092,8 +1150,12 @@ function Booklet({ client, book, game }: { client: ProjectClient; book: RuleDoc;
       {/* `aria-disabled` and not `disabled` while it works (#558): a disabled button lets go of the
           focus, to <body>, and on the error the focus never came back. The press is refused here
           instead, and the status line is there from the start so what it says is heard. */}
-      <button type="button" className="byd-rules-booklet" aria-disabled={state === 'working' ? 'true' : undefined} onClick={() => state !== 'working' && void order()}>
-        {t('rules.booklet')}
+      <button type="button" className="byd-rules-booklet" aria-disabled={state === 'working' ? 'true' : undefined} aria-label={t('rules.booklet')} aria-describedby={says} onClick={() => state !== 'working' && void order()}>
+        {/* What the press gives is said under its name (#1258), and heard as its description. */}
+        <span>
+          {t('rules.booklet')}
+          <small id={says}>{t('rules.booklet.says')}</small>
+        </span>
       </button>
       <span role="status" className={state === 'working' ? undefined : 'byd-offscreen'}>
         {state === 'working' ? t('rules.booklet.rendering') : ''}
@@ -1296,15 +1358,23 @@ function Editing({
           Punktlista · Numrerad lista, on the block being written and on nothing else, so the book
           gains no buttons in its margin. `.byd-choice` with `aria-pressed`, as the book's own
           switch of modes: one of a set is what the button language already has a word for (L13). */}
-      {(block.kind === 'text' || block.kind === 'list') && (
-        <div className="byd-rules-kinds" role="group" aria-label={t('rules.kind', { block: called.self })}>
-          {BLOCK_KINDS.map((kind) => (
-            <button key={kind} type="button" className="byd-choice" aria-pressed={kindOf(block) === kind} onClick={() => recastAs(kind)}>
-              {t(BLOCK_KIND_WORD[kind])}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* The block's head (#1258): what it is, and the way to take it away, in one row at its top —
+          the kinds where #707 put them and the removal beside them rather than in a foot of its own,
+          named after what goes, so a press on it never has to be guessed at. */}
+      <div className="byd-rules-head">
+        {(block.kind === 'text' || block.kind === 'list') && (
+          <div className="byd-rules-kinds" role="group" aria-label={t('rules.kind', { block: called.self })}>
+            {BLOCK_KINDS.map((kind) => (
+              <button key={kind} type="button" className="byd-choice" aria-pressed={kindOf(block) === kind} onClick={() => recastAs(kind)}>
+                {t(BLOCK_KIND_WORD[kind])}
+              </button>
+            ))}
+          </div>
+        )}
+        <button type="button" className="byd-rules-remove" onClick={onRemove}>
+          {t(REMOVAL[block.kind])}
+        </button>
+      </div>
       {/* A section's question is the field's placeholder and never its value (#131), so it is
           gone at the first character rather than being text to select and type over. Under it
           stands the tool's own notice, on a line of its own and always (#215, the approved form
@@ -1435,15 +1505,6 @@ function Editing({
         </>
       )}
       {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { block: called.self })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} />}
-      {/* What is left under an open block once the row of references is gone (#215): the one
-          control that acts on the block itself. It stands in a row of its own rather than loose
-          among the fields, because a block's fields are what is written in it and this is what
-          becomes of the block. */}
-      <div className="byd-rules-foot">
-        <button type="button" className="byd-rules-remove" onClick={onRemove}>
-          {t(block.kind === 'heading' ? 'rules.removeSection' : 'rules.removeBlock')}
-        </button>
-      </div>
     </div>
   )
 }
@@ -1680,6 +1741,9 @@ function templateRules(name: string, t: T): RuleDoc {
     ],
   }
 }
+
+// What taking an open block away is called, after what goes (#1258). A heading takes its section.
+const REMOVAL = { heading: 'rules.removeSection', text: 'rules.remove.text', list: 'rules.remove.list', image: 'rules.remove.image', setup: 'rules.remove.setup' } as const satisfies Record<RuleBlock['kind'], Key>
 
 // The kinds an open paragraph or list can be made (#707), in the order the chooser offers them.
 type BlockKind = 'text' | 'bullets' | 'numbers'

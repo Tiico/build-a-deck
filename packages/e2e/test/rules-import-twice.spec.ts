@@ -29,13 +29,14 @@ test('two imports, the second pressed before the first is answered, keep both na
   await page.goto(project.editorUrl)
   await page.getByRole('tab', { name: 'Regler' }).click()
 
-  await page.getByLabel('Importera från fil').setInputFiles(markdown('skrivet.md', WRITTEN))
+  await page.getByLabel('Läs in en fil').setInputFiles(markdown('skrivet.md', WRITTEN))
   await page.getByRole('region', { name: 'Vad importen gör med filen' }).getByRole('button', { name: 'Gör boken' }).click()
   await expect(page.locator('[data-rulebook]')).toContainText('Fusk och straff')
   // The first version is made, and its answer is at the door.
   await expect.poll(() => held.length).toBe(1)
 
-  await page.getByLabel('Importera samma fil igen: skrivet.md').setInputFiles(markdown('regler-v4.md', FILE))
+  await page.getByRole('button', { name: 'Boken' }).click()
+  await page.getByLabel('Läs in skrivet.md igen').setInputFiles(markdown('regler-v4.md', FILE))
   await page.getByRole('region', { name: 'Vad importen gör med boken du har' }).getByRole('button', { name: 'Gör boken' }).click()
   holding = false
   for (const deliver of held.splice(0)) deliver()
