@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — Tryckpaketet (#1208)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-23 (#1199): «Skapa ett stöd där användaren kan se det som skulle ha skickats
+     till printprovidern på ett pedagogiskt sätt, det ska även gå att ladda ner i betan fram tills vi
+     har en riktig printprovider, då ska det vara krav att man går genom våra partners eller att man
+     betalar en kostnad för att få ut innehållet.»
+     Tre varianter av var paketet nås och hur det förklaras:
+       A  en guidad dialog i fem steg, från spelets ⋯ bredvid «Exportera…»
+       B  en egen sida, som en följesedel: hela paketet i ett svep, nådd från ⋯ och från Fysisk kontroll
+       C  ett läge på kortväggen: «Som tryckeriet får det» bland Visning, med paketet i en sidopanel
+     Samma innehåll i alla tre: kortet med utfall, snitt och skyddsmarginal; leken med antal;
+     tärningarna som lagervara; kraven; vad fake-tryckeriet svarar; nedladdningen.
+     Läget «Med partner» visar formen när #1209 finns: beställning via partnern, eller en avgift.
+     Korten är riktiga: kompilerade med produktens classic-ram, speltemat och `bleed: true`, alltså
+     samma väg som printExportOf, och fotograferade i Chromium vid ~288 dpi (69 × 94 mm).
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  .protorad .grupp button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  main.scen { flex: 1 1 auto; display: grid; justify-content: safe center; align-content: start; padding: 20px 16px 60px; background: #15171c; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .sida[data-bredd='dator'] { width: 1200px; min-height: 760px; }
+  .sida[data-bredd='telefon'] { width: 375px; min-height: 760px; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 6px; }
+  .etikett b { color: #e6ecfa; }
+
+  /* ── Kontot (account.css, game-dialogs.css, game-menu.css, buttons.css) ─────────────────── */
+  .acc { --bg: #0f1117; --card: #171a23; --dlg: #1b1f2a; --dlg-line: #3b4358; --field: #14161c; --edge: #262a35; --muted: #9aa3b8; --ok: #7dd3a0; --ok-ink: #0b2a18; --sec-line: #6f7a90; --sec-ink: #dce3f2;
+    --ex: #f0b64a; --ex-ground: #2e2718; --ex-line: #6b5627; --bad: #ff9c8c; --bad-ground: #3a1f22;
+    min-height: inherit; background: var(--bg); color: #e6ecfa; font: 15px/1.5 system-ui, sans-serif; box-sizing: border-box; }
+  .acc * { box-sizing: border-box; }
+  .acc :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .acc button { font: inherit; cursor: pointer; }
+  .acc h1, .acc h2, .acc h3 { margin: 0; }
+  .acc p { margin: 0; }
+  .prim { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--ok); color: var(--ok-ink); font-weight: 700 !important; display: inline-flex; align-items: center; gap: 8px; justify-content: center; }
+  .sek { min-height: 44px; padding: 0 16px; border: 1px solid var(--sec-line); border-radius: 12px; background: transparent; color: var(--sec-ink); font-weight: 600 !important; display: inline-flex; align-items: center; gap: 8px; justify-content: center; }
+  .lank { min-height: 44px; padding: 0 4px; border: 0; background: none; color: #c3cbdd; text-decoration: underline; text-underline-offset: 3px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .g { width: 16px; height: 16px; flex: none; }
+
+  /* Mina spel bakom dialogen och ingången */
+  .home { padding: 40px 48px; display: grid; gap: 18px; align-content: start; }
+  .sida[data-bredd='telefon'] .home { padding: 24px 16px; }
+  .home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; }
+  .home h1 { font-size: 28px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .sida[data-bredd='telefon'] .grid { grid-template-columns: 1fr 1fr; }
+  .spel { position: relative; background: var(--card); border: 1px solid var(--edge); border-radius: 16px; padding: 16px; display: grid; gap: 6px; align-content: start; }
+  .spel .bild { height: 120px; aspect-ratio: 63 / 88; border-radius: 4px; background: var(--c); overflow: hidden; }
+  .sida[data-bredd='telefon'] .spel .bild { height: 90px; }
+  .spel strong { font-size: 17px; }
+  .spel .mer { position: absolute; right: 8px; top: 8px; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 20px; }
+  .spel .mer[aria-expanded='true'] { background: #262a35; color: #fff; }
+  .meny { position: absolute; z-index: 5; right: 8px; top: 54px; display: grid; padding: 6px; border-radius: 10px; background: var(--dlg); border: 1px solid var(--dlg-line); box-shadow: 0 12px 28px rgb(0 0 0 / 50%); min-width: 200px; }
+  .meny button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; text-align: left; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .meny button:hover, .meny button[data-ny] { background: #262a35; }
+  .meny button[data-ny]::after { content: 'ny'; margin-left: auto; padding: 0 6px; border-radius: 6px; background: #ffd98a; color: #2a2417; font-size: 11px; font-weight: 800; }
+  .meny hr { border: 0; border-top: 1px solid var(--edge); margin: 4px 0; }
+
+  /* ── Kniven: kortet med utfall, snitt och skyddsmarginal ─────────────────────────────────── */
+  .kniv { display: grid; gap: 12px; }
+  .kniv-yta { position: relative; width: 100%; max-width: var(--kniv-max, 360px); justify-self: center; }
+  .kniv-yta svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .kniv .styr { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+  .seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: #11141c; border: 1px solid var(--edge); }
+  .seg button { min-height: 38px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-weight: 600; }
+  .seg button[aria-pressed='true'] { background: #2c3242; color: #fff; }
+  .vaxel { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #c3cbdd; font-size: 14px; }
+  .vaxel input { width: 18px; height: 18px; accent-color: var(--ok); }
+  .forklaring { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .forklaring li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+  .forklaring b { color: #fff; }
+  .forklaring .prov { width: 28px; height: 20px; margin-top: 2px; border-radius: 4px; }
+  .prov.utfall { background: repeating-linear-gradient(135deg, #e0567a 0 3px, transparent 3px 7px), #2a1b24; border: 1px solid #e0567a; }
+  .prov.snitt { border: 2.5px solid #4fd1ff; background: transparent; border-radius: 5px; }
+  .prov.skydd { border: 2px dashed #3be89a; background: transparent; }
+  .kniv .utslag { min-height: 3em; text-align: center; color: #c3cbdd; font-size: 14px; }
+  .kniv .utslag b { color: #fff; }
+  .kniv .utslag .daligt { color: var(--bad); }
+
+  /* ── Leken ───────────────────────────────────────────────────────────────────────────────── */
+  .lek { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 14px 12px; }
+  .lek-kort { display: grid; gap: 6px; justify-items: start; border: 0; background: none; padding: 0; color: inherit; text-align: left; }
+  .lek-kort .kant { position: relative; width: 100%; aspect-ratio: 63 / 88; border-radius: 3.5% / 2.5%; overflow: hidden; box-shadow: 0 1px 0 rgb(255 255 255 / 6%), 0 3px 10px rgb(0 0 0 / 45%); }
+  .lek-kort .kant img { position: absolute; width: calc(69 / 63 * 100%); left: calc(-3 / 63 * 100%); top: calc(-3 / 88 * 100%); }
+  .lek-kort[aria-pressed='true'] .kant { outline: 3px solid #4fd1ff; outline-offset: 3px; }
+  .lek-kort[data-fel] .kant { outline: 3px solid var(--bad); outline-offset: 3px; }
+  .lek-kort .namn { font-weight: 650; font-size: 14px; line-height: 1.3; }
+  .lek-kort .antal { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+  .lek-kort .antal b { color: #fff; }
+  .lek-summa { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 14px; }
+  .lek-summa b { color: #fff; font-variant-numeric: tabular-nums; }
+
+  /* ── Lagervaror ───────────────────────────────────────────────────────────────────────────── */
+  .lager { display: grid; gap: 10px; }
+  .vara { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: #11141c; border: 1px solid var(--edge); }
+  .vara svg { width: 52px; height: 52px; }
+  .vara b { color: #fff; }
+  .vara[data-inte] { opacity: .85; }
+
+  /* ── Kraven ───────────────────────────────────────────────────────────────────────────────── */
+  .krav { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .krav th { text-align: left; font-weight: 600; color: var(--muted); padding: 7px 12px 7px 0; vertical-align: top; white-space: nowrap; }
+  .krav td { padding: 7px 0; color: #e6ecfa; }
+  .krav tr + tr > * { border-top: 1px solid var(--edge); }
+
+  /* ── Svaret: exempel, tydligt märkt ───────────────────────────────────────────────────────── */
+  .svar { position: relative; border-radius: 14px; border: 1px dashed var(--ex-line); background: var(--ex-ground); padding: 16px; display: grid; gap: 10px; color: #f3e6c8; }
+  .svar[data-riktigt] { border: 1px solid var(--edge); background: #11141c; color: #e6ecfa; }
+  .stampel { justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1.5px solid var(--ex); color: var(--ex); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+  .svar .rader { display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
+  .svar .rad { display: grid; grid-template-columns: 1fr auto; gap: 12px; }
+  .svar .rad span:last-child { color: #d9c9a2; }
+  .svar[data-riktigt] .rad span:last-child { color: #fff; font-weight: 650; }
+  .svar .rad.summa { border-top: 1px solid var(--ex-line); padding-top: 6px; margin-top: 2px; font-weight: 700; }
+  .svar[data-riktigt] .rad.summa { border-color: var(--edge); }
+  .svar .okand { font-style: italic; }
+  .svar .not { font-size: 13px; color: #cdb98a; }
+  .svar[data-riktigt] .not { color: var(--muted); }
+  .svar .eu { display: grid; grid-template-columns: 20px 1fr; gap: 8px; font-size: 14px; }
+  .svar .nej { padding: 10px 12px; border-radius: 10px; background: var(--bad-ground); color: #ffd6cf; font-size: 14px; }
+
+  /* ── Fynden ───────────────────────────────────────────────────────────────────────────────── */
+  .fynd { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--bad-ground); border: 1px solid #6a2f36; color: #ffe4ea; font-size: 14px; }
+  .fynd b { color: #fff; }
+  .fynd .ok { color: var(--ok); }
+  .rent { display: flex; gap: 8px; align-items: center; color: var(--ok); font-size: 14px; }
+
+  /* ── Paketet ──────────────────────────────────────────────────────────────────────────────── */
+  .zip { margin: 0; padding: 12px 14px; border-radius: 12px; background: #11141c; border: 1px solid var(--edge); font: 13px/1.6 ui-monospace, Menlo, monospace; color: #c3cbdd; overflow-x: auto; white-space: pre; }
+  .zip b { color: #fff; font-weight: 600; }
+  .zip i { color: var(--muted); font-style: normal; }
+  .beta { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; font-size: 14px; }
+  .beta .g { width: 20px; height: 20px; color: var(--ok); margin-top: 1px; }
+  .beta b { color: #fff; }
+  .later { display: grid; gap: 10px; }
+  .later .avgift { display: inline-flex; align-items: baseline; gap: 6px; }
+  .later .avgift s { color: var(--muted); }
+  .platshallare { display: inline-block; padding: 0 6px; border-radius: 6px; border: 1px dashed var(--ex); color: var(--ex); font-weight: 700; font-size: .92em; }
+  .knapprad { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .ingen-order { font-size: 13px; color: var(--muted); }
+
+  /* ════ Variant A: dialogen ═══════════════════════════════════════════════════════════════════ */
+  .skymning { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 24px; background: rgb(0 0 0 / 55%); }
+  .dialog { width: min(820px, 100%); max-height: 712px; display: grid; grid-template-rows: auto 1fr auto; border-radius: 16px; background: var(--dlg); border: 1px solid var(--dlg-line); box-shadow: 0 24px 60px rgb(0 0 0 / 50%); overflow: hidden; }
+  .dialog > header { padding: 20px 24px 12px; display: grid; gap: 4px; border-bottom: 1px solid var(--edge); }
+  .dialog > header h2 { font-size: 20px; }
+  .dialog .kropp { display: grid; grid-template-columns: 200px 1fr; min-height: 0; }
+  .steg { list-style: none; margin: 0; padding: 12px; display: grid; gap: 2px; align-content: start; border-right: 1px solid var(--edge); background: #171a23; }
+  .steg button { width: 100%; min-height: 44px; display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; border: 0; border-radius: 8px; padding: 6px 10px; background: transparent; color: #c3cbdd; text-align: left; font-weight: 600; }
+  .steg button span:first-child { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #4a5168; font-size: 12px; font-weight: 800; }
+  .steg button[aria-current='step'] { background: #262a35; color: #fff; }
+  .steg button[aria-current='step'] span:first-child { background: #e6ecfa; color: #1b1f2a; border-color: #e6ecfa; }
+  .steg button[data-sedd] span:first-child { border-color: var(--ok); color: var(--ok); }
+  .dialog .innehall { padding: 20px 24px; overflow: auto; display: grid; gap: 14px; align-content: start; }
+  .dialog .innehall h3 { font-size: 18px; }
+  .dialog .innehall .tva { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .dialog > footer { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; padding: 14px 24px; border-top: 1px solid var(--edge); }
+  .dialog > footer .spacer { flex: 1; }
+  .sida[data-bredd='telefon'] .skymning { padding: 0; place-items: stretch; }
+  .sida[data-bredd='telefon'] .dialog { max-height: none; border-radius: 0; border: 0; }
+  .sida[data-bredd='telefon'] .dialog .kropp { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .sida[data-bredd='telefon'] .steg { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--edge); padding: 8px 12px; }
+  .sida[data-bredd='telefon'] .steg li { flex: none; }
+  .sida[data-bredd='telefon'] .steg button { grid-template-columns: 24px; padding: 6px 10px; }
+  .sida[data-bredd='telefon'] .steg button span:last-child { display: none; }
+  .sida[data-bredd='telefon'] .steg button[aria-current='step'] span:last-child { display: inline; }
+  .sida[data-bredd='telefon'] .steg button[aria-current='step'] { grid-template-columns: 24px auto; }
+  .sida[data-bredd='telefon'] .dialog .innehall { padding: 16px; }
+  .sida[data-bredd='telefon'] .dialog .innehall .tva { grid-template-columns: 1fr; }
+  .sida[data-bredd='telefon'] .dialog > header, .sida[data-bredd='telefon'] .dialog > footer { padding-left: 16px; padding-right: 16px; }
+
+  /* ════ Variant B: sidan, som en följesedel ═══════════════════════════════════════════════════ */
+  .tp { padding: 28px 40px 48px; display: grid; gap: 22px; }
+  .tp-topp { display: grid; gap: 6px; }
+  .tp-topp .tillbaka { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; justify-self: start; color: var(--muted); font-size: 14px; text-decoration: none; }
+  .tp-topp h1 { font-size: 30px; line-height: 1.2; }
+  .tp-topp h1 small { display: block; font-size: 15px; font-weight: 600; color: var(--muted); }
+  .tp-topp .ingress { max-width: 68ch; color: #c3cbdd; }
+  .tp-kolumner { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+  .tp-del { display: grid; gap: 14px; padding: 22px; border-radius: 16px; background: var(--card); border: 1px solid var(--edge); }
+  .tp-del + .tp-del { margin-top: 18px; }
+  .tp-del > header { display: grid; grid-template-columns: 30px 1fr; gap: 4px 10px; align-items: baseline; }
+  .tp-del > header .nr { grid-row: span 2; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #262a35; color: #c3cbdd; font-size: 13px; font-weight: 800; }
+  .tp-del > header h2 { font-size: 19px; }
+  .tp-del > header p { color: var(--muted); font-size: 14px; }
+  .tp-del .kniv-rad { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .foljesedel { position: sticky; top: 16px; display: grid; gap: 14px; padding: 20px; border-radius: 16px; background: var(--dlg); border: 1px solid var(--dlg-line); }
+  .foljesedel h2 { font-size: 17px; }
+  .foljesedel dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .foljesedel dt { color: var(--muted); }
+  .foljesedel dd { margin: 0; text-align: right; color: #fff; font-weight: 600; }
+  .foljesedel .prim { width: 100%; }
+  .sida[data-bredd='telefon'] .tp { padding: 16px 16px 40px; gap: 18px; }
+  .sida[data-bredd='telefon'] .tp-topp h1 { font-size: 24px; }
+  .sida[data-bredd='telefon'] .tp-kolumner { grid-template-columns: 1fr; }
+  .sida[data-bredd='telefon'] .foljesedel { position: static; }
+  .tp-snabb { display: none; }
+  .sida[data-bredd='telefon'] .tp-snabb { display: grid; gap: 8px; }
+  .sida[data-bredd='telefon'] .tp-snabb .prim { width: 100%; }
+  .sida[data-bredd='telefon'] .tp-del { padding: 16px; }
+  .sida[data-bredd='telefon'] .tp-del .kniv-rad { grid-template-columns: 1fr; }
+  .sida[data-bredd='telefon'] .lek { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; }
+
+  /* ════ Variant C: kortväggen i editorn ═══════════════════════════════════════════════════════ */
+  .cv { min-height: inherit; display: grid; grid-template-rows: 56px auto 1fr; background: var(--chrome); color: #dce3f2; font: 13px system-ui, sans-serif; }
+  .cv .ed-huvud .namn-mer { color: var(--quiet-2); font-size: 18px; letter-spacing: 1px; }
+  .cv-list { display: flex; align-items: center; gap: 10px; padding: 8px var(--gutter); border-bottom: 1px solid var(--line); background: #1f2229; flex-wrap: wrap; }
+  .cv-list .sok { min-height: 36px; width: 220px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); color: var(--quiet-2); padding: 0 10px; display: flex; align-items: center; }
+  .cv-list .visning { position: relative; }
+  .cv-list .visning > button { min-height: 36px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: var(--sunk); color: #fff; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .cv-list .visning > button[data-tryck] { border-color: #4fd1ff; box-shadow: inset 0 0 0 1px #4fd1ff; }
+  .cv-list .kontroll { min-height: 36px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: var(--sunk); color: #fff; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .cv-list .kontroll[aria-pressed='true'] { background: #2c3242; }
+  .cv-list .kontroll .ok { color: var(--good); }
+  .cv-list .kontroll .bad { color: #ff9c8c; }
+  .cv-meny { position: absolute; z-index: 6; top: 42px; left: 0; display: grid; gap: 2px; padding: 6px; min-width: 250px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgb(0 0 0 / 50%); }
+  .cv-meny .rubrik { padding: 6px 10px 2px; color: var(--quiet); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .cv-meny button { min-height: 40px; border: 0; border-radius: 7px; padding: 0 10px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; display: flex; align-items: center; gap: 8px; }
+  .cv-meny button[aria-checked='true']::before { content: '✓'; color: var(--good); }
+  .cv-meny button[data-ny] { background: #262a35; }
+  .cv-meny button[data-ny]::after { content: 'ny'; margin-left: auto; padding: 0 6px; border-radius: 6px; background: #ffd98a; color: #2a2417; font-size: 11px; font-weight: 800; }
+  .cv-meny hr { border: 0; border-top: 1px solid #262a35; margin: 4px 0; }
+  .cv-kropp { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 0; }
+  .cv-vagg { padding: 20px var(--gutter) 40px; overflow: auto; display: grid; gap: 14px; align-content: start; background: #1b1d23; }
+  .cv-vagg .band { color: var(--quiet-2); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .cv-rader { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 22px 16px; }
+  .cv-kort { display: grid; gap: 6px; border: 0; padding: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .cv-kort .med-utfall { position: relative; width: 100%; aspect-ratio: 69 / 94; }
+  .cv-kort .med-utfall img { width: 100%; display: block; }
+  .cv-kort .med-utfall svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cv-kort[aria-pressed='true'] .med-utfall { outline: 2px solid var(--primary-mark); outline-offset: 4px; border-radius: 2px; }
+  .cv-kort[data-fel] .med-utfall { outline: 2px solid #ff9c8c; outline-offset: 4px; }
+  .cv-kort .namn { display: flex; justify-content: space-between; gap: 8px; color: #e6ecfa; font-weight: 600; }
+  .cv-kort .namn span:last-child { color: var(--quiet-2); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .cv-panel { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; }
+  .cv-panel .acc { min-height: 0; background: transparent; font-size: 14px; }
+  .cv-panel > .acc > header { padding: 16px 16px 12px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); }
+  .cv-panel > .acc > header h2 { font-size: 16px; }
+  .cv-panel details { border-bottom: 1px solid var(--line); }
+  .cv-panel summary { min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 16px; cursor: pointer; list-style: none; font-weight: 650; color: #e6ecfa; }
+  .cv-panel summary::-webkit-details-marker { display: none; }
+  .cv-panel summary::before { content: '▸'; color: var(--quiet-2); transition: rotate .15s; }
+  .cv-panel details[open] > summary::before { rotate: 90deg; }
+  .cv-panel summary small { margin-left: auto; color: var(--quiet-2); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .cv-panel details > div { padding: 2px 16px 16px; display: grid; gap: 12px; }
+  .cv-panel .fot { padding: 16px; display: grid; gap: 10px; }
+  .cv-panel .kniv { --kniv-max: 300px; }
+  .cv-tom { padding: 40px; color: var(--quiet-2); font-size: 15px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens kontroller">
+  <div class="grupp" role="group" aria-label="Variant">
+    <span>Variant</span>
+    <div class="vaxlare" id="vaxlare"></div>
+  </div>
+  <div class="grupp" role="group" aria-label="Läge">
+    <span>Läge</span>
+    <button data-lage="beta">Betan: öppen nedladdning</button>
+    <button data-lage="partner">Senare: med partner (#1209)</button>
+  </div>
+  <div class="grupp" role="group" aria-label="Tryckkontrollen">
+    <span>Kontroll</span>
+    <button data-kontroll="ren">Ren</button>
+    <button data-kontroll="fel">Ett fel</button>
+  </div>
+  <div class="grupp" role="group" aria-label="Visa">
+    <span>Visa</span>
+    <button data-ingang="nej">Ytan</button>
+    <button data-ingang="ja">Ingången</button>
+  </div>
+  <div class="grupp storlek" role="group" aria-label="Bredd">
+    <span>Bredd</span>
+    <button data-bredd="dator">Dator</button>
+    <button data-bredd="telefon">Telefon 375</button>
+  </div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen">
+  <div class="etikett" id="etikett"></div>
+  <div class="sida" id="sida"></div>
+</main>
+
+<script>
+// ── Spelet: Sal's Saloon v7, 54 kort i 9 varianter, två tärningar och en poängräknare ──────────
+const SPEL = { namn: "Sal's Saloon", rev: 7 }
+const KORT = [
+  { id: 'sheriffen', namn: 'Sheriffen', antal: 4 },
+  { id: 'whiskyflaskan', namn: 'Whiskyflaskan', antal: 6 },
+  { id: 'guldmyntet', namn: 'Guldmyntet', antal: 12 },
+  { id: 'revolvern', namn: 'Revolvern', antal: 4 },
+  { id: 'pokerhanden', namn: 'Pokerhanden', antal: 6 },
+  { id: 'diligensen', namn: 'Diligensen', antal: 3 },
+  { id: 'banditen', namn: 'Banditen', antal: 5 },
+  { id: 'saloondorren', namn: 'Saloondörren', antal: 8 },
+  { id: 'pianisten', namn: 'Pianisten', antal: 6 },
+]
+const TOTALT = KORT.reduce((n, k) => n + k.antal, 0)
+const FELKORT = 'revolvern'
+
+const VARIANTER = {
+  A: { namn: 'Guidad dialog', not: '<b>A · En dialog i fem steg</b>, från spelets ⋯ bredvid «Exportera…», i Mina spel och i editorn. Ett steg i taget: kortet, leken, tärningarna, svaret, paketet. <span class="plus">+ Billigast: samma fönster och samma meny som exporten (G5). Leder en nybörjare i ordning.</span> <span class="minus">− Allt syns aldrig på en gång; den som kan tryck klickar sig förbi fyra steg. Ett fönster är trångt för leken.</span>' },
+  B: { namn: 'Egen sida, som en följesedel', not: '<b>B · En egen sida «Tryckpaketet»</b>, nådd från spelets ⋯ och från länken i Fysisk kontroll. Hela paketet i ett svep, med en följesedel som står kvar bredvid: antal, exempelpris och nedladdningen. <span class="plus">+ Plats för det pedagogiska och för hela leken; fungerar på telefonen; följesedeln blir kostnadsbeskedet (F3) när en partner finns.</span> <span class="minus">− En ny route och en ny sida att hålla i två språk.</span>' },
+  C: { namn: 'Läge på kortväggen', not: '<b>C · «Som tryckeriet får det» bland Visning på kortväggen</b>, där snitt och skyddsmarginal redan ritas (E5). Väggen visar varje kort med utfall och antal; paketet ligger i en panel bredvid. <span class="plus">+ Bor där tryckkontrollen bor, och där felet rättas.</span> <span class="minus">− Bara på dator (L12), syns inte från Mina spel, dyrast: väggens ögon, panelen och editorns läge. Ingången är gömd i en meny.</span>' },
+}
+
+const url = new URL(location.href)
+const S = {
+  v: VARIANTER[url.searchParams.get('v')] ? url.searchParams.get('v') : 'B',
+  lage: url.searchParams.get('lage') === 'partner' ? 'partner' : 'beta',
+  kontroll: url.searchParams.get('kontroll') === 'fel' ? 'fel' : 'ren',
+  ingang: url.searchParams.get('ingang') === 'ja' ? 'ja' : 'nej',
+  bredd: url.searchParams.get('bredd') === 'telefon' ? 'telefon' : 'dator',
+  steg: Math.min(4, Math.max(0, Number(url.searchParams.get('steg') ?? 0) || 0)),
+  kort: ['baksida', ...KORT.map((k) => k.id)].includes(url.searchParams.get('kort')) ? url.searchParams.get('kort') : 'sheriffen',
+  sedda: new Set([0]),
+}
+const kniv = { vy: 'fil', utfall: true, dx: 0, dy: 0, skuret: false }
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const kortAv = (id) => (id === 'baksida' ? { id, namn: 'Baksidan', antal: TOTALT } : KORT.find((k) => k.id === id))
+const ikon = {
+  info: '<svg class="g" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.2v4M8 4.8v.1"/></svg>',
+  ner: '<svg class="g" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>',
+  bak: '<svg class="g" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg>',
+  bock: '<svg class="g" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg>',
+  oga: '<svg class="g" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>',
+  jord: '<svg class="g" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c2 2 2 10.4 0 12.4M8 1.8c-2 2-2 10.4 0 12.4"/></svg>',
+}
+const d6 = '<svg viewBox="0 0 52 52"><rect x="7" y="7" width="38" height="38" rx="8" fill="#f3efe6" stroke="#3a2a1a" stroke-width="2"/><g fill="#3a2a1a"><circle cx="17" cy="17" r="3.4"/><circle cx="35" cy="17" r="3.4"/><circle cx="17" cy="26" r="3.4"/><circle cx="35" cy="26" r="3.4"/><circle cx="17" cy="35" r="3.4"/><circle cx="35" cy="35" r="3.4"/></g></svg>'
+const raknare = '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="18" fill="#2c3242" stroke="#6f7a90" stroke-width="2" stroke-dasharray="4 3"/><text x="26" y="31" text-anchor="middle" font-family="system-ui" font-size="14" font-weight="800" fill="#c3cbdd">0</text></svg>'
+
+// ── Kniven ────────────────────────────────────────────────────────────────────────────────────
+// Allt i millimeter: filen är 69 × 94, snittet 63 × 88 med 3 mm hörn, skyddsmarginalen 3 mm innanför.
+const R = (n) => Math.round(n * 100) / 100
+function knivSvg(id, { etiketter = true, liten = false } = {}) {
+  const dx = kniv.dx, dy = kniv.dy
+  const cx = 3 + dx, cy = 3 + dy
+  const cut = `M${R(cx + 3)} ${R(cy)}h57a3 3 0 0 1 3 3v82a3 3 0 0 1-3 3h-57a3 3 0 0 1-3-3v-82a3 3 0 0 1 3-3z`
+  const skuret = kniv.vy === 'skuret'
+  const fel = S.kontroll === 'fel' && id === FELKORT
+  const lw = liten ? 0.55 : 0.4
+  let s = `<svg viewBox="-1 -1 71 96" role="img" aria-label="${esc(kortAv(id).namn)}: ${skuret ? 'det skurna kortet' : 'filen med utfall, snitt och skyddsmarginal'}">`
+  s += `<defs><clipPath id="cp-${id}"><path d="${cut}"/></clipPath><pattern id="hatch-${id}" width="1.4" height="1.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.55" height="1.4" fill="#e0567a"/></pattern></defs>`
+  if (skuret) {
+    s += `<g clip-path="url(#cp-${id})"><image href="bilder/${id}.png" x="0" y="0" width="69" height="94"/>${kniv.utfall ? '' : '<path fill="#fff" fill-rule="evenodd" d="M-5-5h79v104h-79z M3 3h63v88h-63z"/><rect x="3" y="3" width="63" height="88" fill="none" stroke="#9aa3b8" stroke-width="0.2" stroke-dasharray="0.8 0.6"/>'}</g>`
+    s += `<rect x="0" y="0" width="69" height="94" fill="none" stroke="#4a5168" stroke-width="0.3" stroke-dasharray="1 1"/><path d="${cut}" fill="none" stroke="rgb(0 0 0 / 35%)" stroke-width="0.25"/>`
+  } else {
+    s += `<image href="bilder/${id}.png" x="0" y="0" width="69" height="94"/>`
+    if (!kniv.utfall) s += '<path fill="#fff" fill-rule="evenodd" d="M0 0h69v94h-69z M3 3h63v88h-63z"/>'
+    // Utfallet: allt utanför snittet, randat.
+    s += `<path fill="url(#hatch-${id})" fill-opacity="${kniv.utfall ? '.85' : '.3'}" fill-rule="evenodd" d="M0 0h69v94h-69z ${cut}"/>`
+    s += `<rect x="0" y="0" width="69" height="94" fill="none" stroke="#e0567a" stroke-width="${lw * 0.8}"/>`
+    s += `<rect x="6" y="6" width="57" height="82" fill="none" stroke="#0b3d26" stroke-width="${lw * 2.4}"/><rect x="6" y="6" width="57" height="82" fill="none" stroke="#3be89a" stroke-width="${lw * 1.4}" stroke-dasharray="1.6 1"/>`
+    s += `<path d="${cut}" fill="none" stroke="#0aa6d8" stroke-width="${lw * 1.6}"/>`
+    if (fel) s += '<rect x="5.2" y="57.5" width="40" height="7.6" fill="rgb(255 80 80 / 18%)" stroke="#ff5a5a" stroke-width="0.5"/>'
+    if (etiketter) {
+      // Bredden räknas ur texten: 2,6 mm fet system-ui är ungefär 1,55 mm per tecken.
+      const w = (txt) => txt.length * 1.55 + 2
+      const tag = (x, y, txt, fill, ink = '#fff') => `<g font-family="system-ui, sans-serif" font-size="2.6" font-weight="700"><rect x="${R(x)}" y="${y - 2.55}" width="${R(w(txt))}" height="3.5" rx="0.8" fill="${fill}"/><text x="${R(x + 1)}" y="${y}" fill="${ink}">${txt}</text></g>`
+      s += tag(68.4 - w('utfall 3 mm'), 2.9, 'utfall 3 mm', '#c23a62')
+      s += tag(0.6, 93.1, 'snitt 63 × 88 mm', '#0a7ea6')
+      s += tag(62.4 - w('skyddsmarginal'), 86.6, 'skyddsmarginal', '#157a4c')
+    }
+  }
+  return s + '</svg>'
+}
+function knivUtslag() {
+  if (kniv.vy !== 'skuret') return 'Tryck «Skär kortet» för att se kortet som det kommer ur kniven.'
+  const mm = Math.hypot(kniv.dx, kniv.dy)
+  const sida = [kniv.dx > 0.2 ? 'höger' : kniv.dx < -0.2 ? 'vänster' : '', kniv.dy > 0.2 ? 'nedåt' : kniv.dy < -0.2 ? 'uppåt' : ''].filter(Boolean).join(' och ')
+  if (mm < 0.1) return 'Kniven träffade exakt. Det händer sällan.'
+  const vad = kniv.utfall ? '<b>Ingen vit kant:</b> utfallet fyllde ut där kniven missade.' : '<span class="daligt"><b>En vit kant syns</b>, eftersom bakgrunden slutade vid snittet.</span>'
+  return `Kniven slirade ${mm.toFixed(1).replace('.', ',')} mm ${sida}. ${vad} Ramen nära kanten blir lite ojämn; texten innanför skyddsmarginalen klarade sig.`
+}
+function knivBlock(id, { kort = false } = {}) {
+  return `<div class="kniv" data-kniv="${id}">
+    <div class="kniv-yta">${knivSvg(id)}</div>
+    <div class="styr">
+      <div class="seg" role="group" aria-label="Visa"><button data-knivvy="fil" aria-pressed="${kniv.vy === 'fil'}">Filen</button><button data-knivvy="skuret" aria-pressed="${kniv.vy === 'skuret'}">Det skurna kortet</button></div>
+      <button class="sek" data-slira>${kniv.vy === 'skuret' ? 'Skär ett till' : 'Skär kortet'}</button>
+      <label class="vaxel"><input type="checkbox" data-utanutfall ${kniv.utfall ? '' : 'checked'}> Utan utfall</label>
+    </div>
+    <p class="utslag" aria-live="polite">${knivUtslag()}</p>
+    ${kort ? '' : forklaring()}
+  </div>`
+}
+function forklaring() {
+  return `<ul class="forklaring">
+    <li><span class="prov utfall"></span><span><b>Utfall, 3 mm.</b> Bakgrunden fortsätter förbi kanten. Det skärs bort, men om kniven slirar är det utfallet som syns och inte en vit kant.</span></li>
+    <li><span class="prov snitt"></span><span><b>Snitt, 63 × 88 mm.</b> Där kniven ska gå. Hörnen rundas med 3 mm.</span></li>
+    <li><span class="prov skydd"></span><span><b>Skyddsmarginal, 3 mm innanför.</b> Text och viktiga detaljer håller sig innanför, så att kniven aldrig tar dem.</span></li>
+  </ul>`
+}
+const knivIntro = 'Ett kort trycks på ett större ark och skärs sedan ut. Kniven träffar aldrig exakt: den kan slira ungefär en millimeter åt något håll. Därför har varje kortsida tre gränser. Inga passmärken behövs i filen; tryckeriet sätter sina egna.'
+
+// ── Leken, lagret, kraven, svaret, paketet ──────────────────────────────────────────────────────
+function lekGrid({ knapp = true } = {}) {
+  return `<div class="lek">${KORT.map((k) => `<button class="lek-kort" data-valj="${k.id}" aria-pressed="${S.kort === k.id}" ${S.kontroll === 'fel' && k.id === FELKORT ? 'data-fel' : ''}>
+      <span class="kant"><img src="bilder/${k.id}.png" alt=""></span>
+      <span class="namn">${esc(k.namn)}</span><span class="antal"><b>× ${k.antal}</b> · fram och bak</span></button>`).join('')}
+    <button class="lek-kort" data-valj="baksida" aria-pressed="${S.kort === 'baksida'}"><span class="kant"><img src="bilder/baksida.png" alt=""></span><span class="namn">Baksidan</span><span class="antal">samma på alla ${TOTALT}</span></button></div>`
+}
+const lekSumma = () => `<p class="lek-summa"><span><b>${TOTALT}</b> kort</span><span><b>${KORT.length}</b> olika framsidor</span><span><b>1</b> baksida</span><span><b>${KORT.length * 2}</b> filer, en per sida</span></p>`
+const lekText = `Varje kort skickas som två filer, fram- och baksidan, och kopior av samma kort skickas en gång med ett antal. Tryckeriet trycker ${TOTALT} kort av ${KORT.length} filpar.`
+
+function lager() {
+  return `<div class="lager">
+    <div class="vara">${d6}<div><b>2 × sexsidig tärning</b> (d6, 16 mm)<br><span class="muted">Trycks inte. Tryckeriet köper vanliga tärningar och lägger dem i lådan. Ett tryckeri som inte packar tärningar skickar leken utan dem.</span></div></div>
+    <div class="vara" data-inte>${raknare}<div><b>Poäng, en per plats</b><br><span class="muted">Följer inte med. Räknaren finns bara på bordet; vid ett riktigt bord räknar ni på papper eller med marker.</span></div></div>
+  </div>`
+}
+
+function kravTabell() {
+  return `<table class="krav"><tbody>
+    <tr><th>Kortets mått</th><td>63 × 88 mm, rundade hörn 3 mm</td></tr>
+    <tr><th>Utfall</th><td>3 mm per kant, så filen är 69 × 94 mm</td></tr>
+    <tr><th>Skyddsmarginal</th><td>3 mm innanför snittet</td></tr>
+    <tr><th>Filer</th><td>PDF, en per kortsida; text och former som vektor, bilder i 300 dpi</td></tr>
+    <tr><th>Färger</th><td>sRGB; tryckeriet gör om till tryckfärger</td></tr>
+    <tr><th>Passmärken</th><td>Inga</td></tr>
+  </tbody></table>`
+}
+const kravNot = 'Testtryckeriet finns inte på riktigt. Det står i ett riktigt tryckeris ställe och ställer samma krav som kortets typ. Ett riktigt tryckeri ställer sina egna, till exempel bilder i exakta pixlar eller ett annat utfall, och då görs filerna efter dem.'
+const kravNotPartner = '<span class="platshallare">Partnern</span> ställer de här kraven, och filerna i paketet är gjorda efter dem.'
+
+function fyndBlock() {
+  if (S.kontroll !== 'fel') return `<p class="rent">${ikon.bock} Tryckkontrollen hittade inga fel.</p>`
+  return `<div class="fynd" role="note"><b>Ett fel stoppar en riktig beställning.</b><span><b>Revolvern</b>, framsidan: texten ligger 1,2 mm från snittet, för nära kanten. Skyddsmarginalen är 3 mm.</span><span>Rätta det i mallen eller i Tabell. Paketet går att ladda ner ändå, med felet antecknat i manifestet.</span></div>`
+}
+
+function svar({ kort = false } = {}) {
+  if (S.lage === 'partner') {
+    return `<div class="svar" data-riktigt>
+      <div class="rader">
+        <div class="rad"><span>${TOTALT} kort, ${KORT.length} framsidor</span><span>148,00 kr</span></div>
+        <div class="rad"><span>2 tärningar d6</span><span>16,00 kr</span></div>
+        <div class="rad"><span>Frakt till Sverige, 7–12 dagar</span><span>92,00 kr</span></div>
+        <div class="rad"><span>Moms 25 %</span><span>64,00 kr</span></div>
+        <div class="rad"><span>Tull</span><span class="okand">okänd</span></div>
+        <div class="rad summa"><span>Att betala</span><span>från 320,00 kr</span></div>
+      </div>
+      ${S.kontroll === 'fel' ? '<p class="nej">Kan inte beställas förrän felet i tryckkontrollen är rättat.</p>' : ''}
+      <p class="not">Pris från <span class="platshallare">Partnern</span>, gäller till i morgon 18.05. Tullen tas ut vid leveransen om den tas ut.</p>
+    </div>`
+  }
+  return `<div class="svar">
+    <span class="stampel">Exempel · inget riktigt pris</span>
+    <p>Testtryckeriet skulle svara:</p>
+    ${S.kontroll === 'fel' ? '<p class="nej"><b>Skulle inte tas emot.</b> Revolverns framsida har text för nära kanten.</p>' : `<p>«Vi har tagit emot ${TOTALT} kort i ${KORT.length} varianter och 2 tärningar. Filerna håller måtten.»</p>`}
+    <div class="rader">
+      <div class="rad"><span>${TOTALT} kort</span><span>≈ 150 kr</span></div>
+      <div class="rad"><span>2 tärningar d6</span><span>≈ 15 kr</span></div>
+      <div class="rad"><span>Frakt till Sverige</span><span>≈ 90 kr</span></div>
+      <div class="rad"><span>Tull</span><span class="okand">okänd</span></div>
+      <div class="rad summa"><span>Totalt</span><span class="okand">går inte att säga</span></div>
+    </div>
+    ${kort ? '' : `<p class="eu">${ikon.jord}<span>Testtryckeriet låtsas trycka utanför EU. Till en adress i EU skulle svaret i dag bli <b>inget EU-tryck</b>: inget tryckeri i EU kan ta emot en beställning från Deckster ännu.</span></p>`}
+    <p class="not">Siffrorna kommer från ett tryckeri som inte finns. De visar hur ett svar ser ut, inte vad tryck kostar. Ingen beställning läggs.</p>
+  </div>`
+}
+
+function zipTrad() {
+  const filer = KORT.slice(0, 2).map((k) => `  <b>tryck/${k.id}-front.pdf</b>  <i>${esc(k.namn)}, framsidan</i>\n  <b>tryck/${k.id}-back.pdf</b>   <i>${esc(k.namn)}, baksidan</i>`).join('\n')
+  return `<pre class="zip"><b>Sal's Saloon v7 tryckpaket.zip</b>  <i>ca 3,1 MB</i>
+  <b>LASMIG.md</b>      <i>vad som är vad, utfall och snitt förklarade</i>
+  <b>manifest.json</b>  <i>korten med antal, tärningarna, kraven${S.kontroll === 'fel' ? ', felet' : ''}</i>
+${filer}
+  <i>… ${KORT.length * 2 - 4} filer till, fram och bak för varje kort</i>
+  <b>tryck/regelhafte.pdf</b>  <i>regelhäftet, A5</i></pre>`
+}
+
+function nerladdning({ smal = false } = {}) {
+  if (S.lage === 'partner') {
+    return `<div class="later">
+      <div class="knapprad"><button class="prim"${S.kontroll === 'fel' ? ' disabled style="opacity:.45"' : ''}>Fortsätt till beställningen…</button></div>
+      <div class="knapprad"><button class="sek">${ikon.ner} Ladda ner underlaget · 99 kr</button></div>
+      <p class="muted">Tryck går genom <span class="platshallare">Partnern</span>. Den som vill trycka på egen hand betalar för underlaget. <span class="platshallare">99 kr</span> är ett exempel: avgiftens form beslutas med abonnemangen.</p>
+    </div>`
+  }
+  return `<div class="later">
+    <div class="knapprad"><button class="prim">${ikon.ner} Ladda ner tryckpaketet</button>${smal ? '' : '<span class="muted">zip · ca 3,1 MB</span>'}</div>
+    <div class="beta">${ikon.info}<span><b>Öppet under betan.</b> Ta paketet till ett tryckeri på egen hand. När ett tryckeri är kopplat till Deckster beställer du genom det, eller betalar för att ladda ner underlaget.</span></div>
+  </div>`
+}
+const ingenOrder = () => S.lage === 'partner' ? '' : '<p class="ingen-order">Det här är vad som <i>skulle</i> skickas till ett tryckeri. Ingen beställning läggs.</p>'
+
+// ── Mina spel, bakom A och som ingång till A och B ──────────────────────────────────────────────
+function minaSpel({ meny = false } = {}) {
+  const spel = [
+    { n: "Sal's Saloon", rad: 'v7 · senast i går', bild: true },
+    { n: 'Stjärnhandel', rad: 'v3 · inte spelat', c: '#3f6db0' },
+    { n: 'Skogens råd', rad: 'v12 · senast i fredags', c: '#3f8f5e' },
+  ]
+  return `<div class="acc home">
+    <header><h1>Mina spel</h1><span class="muted">ockelberg@gmail.com</span></header>
+    <div class="grid">${spel.map((s, i) => `<div class="spel">
+      <span class="bild" style="--c:${s.c ?? '#222'}">${s.bild ? '<img src="bilder/sheriffen.png" alt="" style="width:110%;margin:-5% 0 0 -5%">' : ''}</span>
+      <strong>${esc(s.n)}</strong><span class="muted">${s.rad}</span>
+      <button class="mer" aria-label="Fler val för ${esc(s.n)}" aria-expanded="${meny && i === 0}">⋯</button>
+      ${meny && i === 0 ? `<div class="meny" role="menu"><button>Öppna bordet KXQP</button><button>Starta nytt bord</button><hr><button>Byt namn…</button><button>Duplicera</button><button>Exportera…</button><button data-ny data-oppna>Tryckpaketet…</button><hr><button>Ta bort spelet</button></div>` : ''}
+    </div>`).join('')}</div></div>`
+}
+
+// ════ A ═════════════════════════════════════════════════════════════════════════════════════════
+const STEG = ['Kortet', 'Leken', 'Det som inte trycks', 'Tryckeriets svar', 'Paketet']
+function variantA() {
+  if (S.ingang === 'ja') return minaSpel({ meny: true })
+  const k = kortAv(S.kort)
+  const innehall = [
+    () => `<h3>Så skärs ett kort</h3><p class="muted">${knivIntro}</p><div class="tva"><div class="kniv" data-kniv="${k.id}"><div class="kniv-yta">${knivSvg(k.id)}</div></div><div class="kniv" style="gap:12px">${knivStyr()}${forklaring()}</div></div>`,
+    () => `<h3>Leken: ${TOTALT} kort</h3><p class="muted">${lekText}</p>${lekSumma()}${fyndBlock()}${lekGrid()}`,
+    () => `<h3>Det som inte trycks</h3><p class="muted">Allt i ett spel är inte papper. Det som köps färdigt kallas lagervaror, och tryckeriet packar dem i stället för att trycka dem.</p>${lager()}`,
+    () => `<h3>Vad tryckeriet skulle svara</h3><p class="muted">Tryckeriet får paketet, kontrollerar filerna mot sina krav och svarar med vad det skulle kosta.</p><div class="tva" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><div style="display:grid;gap:8px"><b>${S.lage === 'partner' ? 'Kraven' : 'Testtryckeriets krav'}</b>${kravTabell()}<p class="muted">${S.lage === 'partner' ? kravNotPartner : kravNot}</p></div>${svar()}</div>`,
+    () => `<h3>Paketet</h3><p class="muted">Allt det här, i en zip som går att öppna utan Deckster: filerna, manifestet och en läsmig.</p>${zipTrad()}${nerladdning()}`,
+  ]
+  return `<div class="acc">${minaSpel()}<div class="skymning"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
+    <header><h2 id="dlg-h">Tryckpaketet för «${esc(SPEL.namn)}» v${SPEL.rev}</h2>${ingenOrder()}</header>
+    <div class="kropp"><ol class="steg">${STEG.map((s, i) => `<li><button data-steg="${i}" ${i === S.steg ? 'aria-current="step"' : ''} ${S.sedda.has(i) && i !== S.steg ? 'data-sedd' : ''}><span>${S.sedda.has(i) && i !== S.steg ? '✓' : i + 1}</span><span>${s}</span></button></li>`).join('')}</ol>
+    <div class="innehall">${innehall[S.steg]()}</div></div>
+    <footer><button class="sek">Stäng</button><span class="spacer"></span>${S.steg > 0 ? '<button class="sek" data-steg-bak>Föregående</button>' : ''}${S.steg < 4 ? '<button class="prim" data-steg-fram>Nästa</button>' : (S.lage === 'partner' ? '<button class="prim">Fortsätt till beställningen…</button>' : `<button class="prim">${ikon.ner} Ladda ner</button>`)}</footer>
+  </div></div></div>`
+}
+function knivStyr() {
+  return `<div class="styr" style="justify-content:flex-start">
+      <div class="seg" role="group" aria-label="Visa"><button data-knivvy="fil" aria-pressed="${kniv.vy === 'fil'}">Filen</button><button data-knivvy="skuret" aria-pressed="${kniv.vy === 'skuret'}">Det skurna kortet</button></div>
+      <button class="sek" data-slira>${kniv.vy === 'skuret' ? 'Skär ett till' : 'Skär kortet'}</button>
+      <label class="vaxel"><input type="checkbox" data-utanutfall ${kniv.utfall ? '' : 'checked'}> Utan utfall</label>
+    </div><p class="utslag" aria-live="polite" style="text-align:left">${knivUtslag()}</p>`
+}
+
+// ════ B ═════════════════════════════════════════════════════════════════════════════════════════
+function variantB() {
+  if (S.ingang === 'ja') return minaSpel({ meny: true })
+  const k = kortAv(S.kort)
+  const del = (nr, h, p, body) => `<section class="tp-del"><header><span class="nr">${nr}</span><h2>${h}</h2><p>${p}</p></header>${body}</section>`
+  return `<div class="acc tp">
+    <div class="tp-topp"><a class="tillbaka" href="#">${ikon.bak} Mina spel</a>
+      <h1>Tryckpaketet<small>${esc(SPEL.namn)} · v${SPEL.rev}</small></h1>
+      <p class="ingress">Det här är vad ett tryckeri skulle få om ${esc(SPEL.namn)} trycktes i dag: korten som filer, en lista över vad som ska tillverkas, och det som köps färdigt.${S.lage === 'partner' ? '' : ' Ingen beställning läggs; inget tryckeri är kopplat ännu.'}</p>
+      <div class="tp-snabb">${S.lage === 'partner' ? '<button class="sek">Till kostnadsbeskedet ↓</button>' : `<button class="prim">${ikon.ner} Ladda ner tryckpaketet</button><span class="muted">zip · ca 3,1 MB · öppet under betan, se längst ner</span>`}</div></div>
+    <div class="tp-kolumner"><div>
+      ${del(1, 'Så skärs ett kort', knivIntro, `<div class="kniv-rad"><div class="kniv" data-kniv="${k.id}"><div class="kniv-yta">${knivSvg(k.id)}</div></div><div class="kniv" style="gap:12px">${knivStyr()}${forklaring()}<p class="muted">Visar <b style="color:#fff">${esc(k.namn)}</b>. Välj ett annat kort i leken nedan.</p></div></div>`)}
+      ${del(2, `Leken: ${TOTALT} kort`, lekText, `${lekSumma()}${fyndBlock()}${lekGrid()}`)}
+      ${del(3, 'Det som inte trycks', 'Det som köps färdigt kallas lagervaror. Tryckeriet packar dem i stället för att trycka dem.', lager())}
+      ${del(4, S.lage === 'partner' ? 'Kraven' : 'Testtryckeriets krav', 'Filerna i paketet är gjorda efter de här kraven.', `${kravTabell()}<p class="muted">${S.lage === 'partner' ? kravNotPartner : kravNot}</p>`)}
+      ${del(5, 'Paketet', 'Allt ovan, i en zip som går att öppna utan Deckster.', zipTrad())}
+    </div>
+    <aside class="foljesedel" aria-label="Följesedel">
+      <h2>${S.lage === 'partner' ? 'Kostnadsbesked' : 'Vad tryckeriet skulle svara'}</h2>
+      <dl><dt>Kort</dt><dd>${TOTALT}</dd><dt>Olika framsidor</dt><dd>${KORT.length}</dd><dt>Tärningar d6</dt><dd>2</dd><dt>Tryckkontrollen</dt><dd style="color:${S.kontroll === 'fel' ? 'var(--bad)' : 'var(--ok)'}">${S.kontroll === 'fel' ? '1 fel' : 'inga fel'}</dd></dl>
+      ${svar({ kort: S.bredd === 'telefon' })}
+      ${nerladdning({ smal: true })}
+      ${ingenOrder()}
+    </aside></div>
+  </div>`
+}
+
+// ════ C ═════════════════════════════════════════════════════════════════════════════════════════
+function variantC() {
+  if (S.bredd === 'telefon') return '<div class="acc cv-tom">Editorn är ett skrivbordsverktyg (L12). På telefonen nås paketet inte i den här varianten; Mina spel har inget sådant val.</div>'
+  const ingang = S.ingang === 'ja'
+  const tryck = !ingang
+  const k = kortAv(S.kort)
+  const visningMeny = ingang ? `<div class="cv-meny" role="menu"><span class="rubrik">Syn</span><button aria-checked="true">Normal syn</button><button>Deuteranopi</button><button>Protanopi</button><button>Tritanopi</button><button>Gråskala</button><hr><span class="rubrik">Läsvyer</span><button>Telefonens läsvy</button><button>Bordets läsvy</button><button>TV:ns visning</button><hr><span class="rubrik">Tryck</span><button data-ny data-oppna>Som tryckeriet får det</button></div>` : ''
+  const kontrollKnapp = `<button class="kontroll">${S.kontroll === 'fel' ? '<span class="bad">●</span> 1 fel' : '<span class="ok">✓</span> Inga anmärkningar'}</button>`
+  const vagg = tryck
+    ? `<div class="band">Som tryckeriet får det · ${TOTALT} kort · utfall, snitt och skyddsmarginal inritade</div><div class="cv-rader">${KORT.map((c) => `<button class="cv-kort" data-valj="${c.id}" aria-pressed="${S.kort === c.id}" ${S.kontroll === 'fel' && c.id === FELKORT ? 'data-fel' : ''}><span class="med-utfall">${knivSvgSmall(c.id)}</span><span class="namn"><span>${esc(c.namn)}</span><span>× ${c.antal}</span></span></button>`).join('')}<button class="cv-kort" data-valj="baksida" aria-pressed="${S.kort === 'baksida'}"><span class="med-utfall">${knivSvgSmall('baksida')}</span><span class="namn"><span>Baksidan</span><span>alla ${TOTALT}</span></span></button></div>`
+    : `<div class="band">Leken · ${TOTALT} kort</div><div class="cv-rader">${KORT.map((c) => `<div class="cv-kort"><span class="lek-kort" style="display:block"><span class="kant" style="display:block"><img src="bilder/${c.id}.png" alt=""></span></span><span class="namn"><span>${esc(c.namn)}</span><span>× ${c.antal}</span></span></div>`).join('')}</div>`
+  const panel = tryck ? `<aside class="cv-panel" aria-label="Tryckpaketet"><div class="acc">
+      <header><h2>Tryckpaketet · v${SPEL.rev}</h2>${ingenOrder()}</header>
+      <details open><summary>${esc(k.namn)}, så skärs det<small>${kniv.vy === 'skuret' ? 'skuret' : 'filen'}</small></summary><div>${knivBlock(k.id)}</div></details>
+      <details ${S.kontroll === 'fel' ? 'open' : ''}><summary>Tryckkontrollen<small>${S.kontroll === 'fel' ? '1 fel' : 'inga fel'}</small></summary><div>${fyndBlock()}</div></details>
+      <details><summary>Det som inte trycks<small>2 tärningar</small></summary><div>${lager()}</div></details>
+      <details><summary>${S.lage === 'partner' ? 'Kraven' : 'Testtryckeriets krav'}</summary><div>${kravTabell()}<p class="muted">${S.lage === 'partner' ? kravNotPartner : kravNot}</p></div></details>
+      <details open><summary>Vad tryckeriet skulle svara</summary><div>${svar({ kort: true })}</div></details>
+      <details><summary>Paketet<small>zip · 3,1 MB</small></summary><div>${zipTrad()}</div></details>
+      <div class="fot">${nerladdning({ smal: true })}</div>
+    </div></aside>` : `<aside class="cv-panel"><div class="acc"><header><h2>Fysisk kontroll</h2><p class="muted">${S.kontroll === 'fel' ? 'Ett fel stoppar beställningen.' : 'Leken klarar kontrollen.'}</p></header><div class="fot"><button class="lank" data-oppna>Se tryckpaketet ›</button></div></div></aside>`
+  return `<div class="cv byd-editor">
+    <div class="ed-huvud"><span class="hem">Mina spel</span><strong>${esc(SPEL.namn)}</strong><span class="namn-mer">⋯</span><span class="rev">v${SPEL.rev}</span><span class="sparat">✓</span>
+      <div class="ed-flikar" role="tablist"><button role="tab" aria-selected="true">Kortvägg</button><button role="tab">Mall</button><button role="tab">Tabell</button><button role="tab">Speltema</button><button role="tab">Media</button><button role="tab">Regler</button><button role="tab">Bord</button></div>
+      <span class="spacer"></span><span class="who">P</span><button class="ed-knapp kantad">Spara</button><button class="ed-knapp primar">Uppdatera ▾</button></div>
+    <div class="cv-list"><span class="sok">Sök bland korten</span><div class="visning"><button ${tryck ? 'data-tryck' : ''} aria-expanded="${ingang}">${ikon.oga} ${tryck ? 'Som tryckeriet får det' : 'Normal syn'} ▾</button>${visningMeny}</div>${kontrollKnapp}</div>
+    <div class="cv-kropp"><div class="cv-vagg">${vagg}</div>${panel}</div>
+  </div>`
+}
+function knivSvgSmall(id) {
+  const src = `bilder/${id}.png`
+  const cut = 'M6 3h57a3 3 0 0 1 3 3v82a3 3 0 0 1-3 3h-57a3 3 0 0 1-3-3v-82a3 3 0 0 1 3-3z'
+  const fel = S.kontroll === 'fel' && id === FELKORT
+  return `<svg viewBox="0 0 69 94"><defs><pattern id="h-${id}" width="1.6" height="1.6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.6" height="1.6" fill="#e0567a"/></pattern></defs><image href="${src}" width="69" height="94"/><path fill="url(#h-${id})" fill-opacity=".8" fill-rule="evenodd" d="M0 0h69v94h-69z ${cut}"/><rect x="6" y="6" width="57" height="82" fill="none" stroke="#0b3d26" stroke-width="1.1"/><rect x="6" y="6" width="57" height="82" fill="none" stroke="#3be89a" stroke-width=".65" stroke-dasharray="1.6 1.1"/><path d="${cut}" fill="none" stroke="#0aa6d8" stroke-width=".8"/>${fel ? '<rect x="5.2" y="57.5" width="40" height="7.6" fill="rgb(255 80 80 / 18%)" stroke="#ff5a5a" stroke-width=".6"/>' : ''}</svg>`
+}
+
+// ── Ritning och växlare ─────────────────────────────────────────────────────────────────────────
+function rita() {
+  const sida = document.getElementById('sida')
+  sida.dataset.bredd = S.bredd
+  if (S.v === 'C' && S.bredd === 'dator') sida.style.width = '1280px'
+  else sida.style.width = ''
+  sida.innerHTML = { A: variantA, B: variantB, C: variantC }[S.v]()
+  document.getElementById('vaxlare').innerHTML = Object.keys(VARIANTER).map((v) => `<button data-v="${v}" aria-pressed="${v === S.v}" title="${VARIANTER[v].namn}">${v}</button>`).join('')
+  document.querySelectorAll('[data-lage]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lage === S.lage)))
+  document.querySelectorAll('[data-kontroll]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kontroll === S.kontroll)))
+  document.querySelectorAll('[data-ingang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ingang === S.ingang)))
+  document.querySelectorAll('[data-bredd]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.bredd === S.bredd)))
+  document.getElementById('anteckning').innerHTML = VARIANTER[S.v].not
+  document.getElementById('etikett').innerHTML = `<b>${S.v} · ${VARIANTER[S.v].namn}</b> · ${S.lage === 'partner' ? 'senare, med partner' : 'betan'} · kontroll ${S.kontroll} · ${S.ingang === 'ja' ? 'ingången' : 'ytan'} · ${S.bredd === 'telefon' ? '375 px' : (S.v === 'C' ? '1280 px' : '1200 px')}`
+  const u = new URL(location.href)
+  u.search = new URLSearchParams({ v: S.v, lage: S.lage, kontroll: S.kontroll, ingang: S.ingang, bredd: S.bredd, ...(S.v === 'A' ? { steg: S.steg } : {}), kort: S.kort }).toString()
+  history.replaceState(null, '', u)
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button, [data-oppna]')
+  if (!b) return
+  if (b.dataset.v) S.v = b.dataset.v
+  else if (b.dataset.lage) S.lage = b.dataset.lage
+  else if (b.dataset.kontroll) S.kontroll = b.dataset.kontroll
+  else if (b.dataset.ingang) S.ingang = b.dataset.ingang
+  else if (b.dataset.bredd) S.bredd = b.dataset.bredd
+  else if ('oppna' in b.dataset) S.ingang = 'nej'
+  else if (b.dataset.steg) { S.steg = Number(b.dataset.steg); S.sedda.add(S.steg) }
+  else if ('stegFram' in b.dataset) { S.steg = Math.min(4, S.steg + 1); S.sedda.add(S.steg) }
+  else if ('stegBak' in b.dataset) S.steg = Math.max(0, S.steg - 1)
+  else if (b.dataset.valj) { S.kort = b.dataset.valj; kniv.dx = 0; kniv.dy = 0; kniv.vy = 'fil' }
+  else if (b.dataset.knivvy) { kniv.vy = b.dataset.knivvy; if (kniv.vy === 'fil') { kniv.dx = 0; kniv.dy = 0 } else if (!kniv.dx && !kniv.dy) slira() }
+  else if ('slira' in b.dataset) { kniv.vy = 'skuret'; slira() }
+  else return
+  rita()
+})
+document.addEventListener('change', (e) => { if (e.target.matches('[data-utanutfall]')) { kniv.utfall = !e.target.checked; rita() } })
+function slira() {
+  const a = Math.random() * Math.PI * 2, r = 0.5 + Math.random() * 0.9
+  kniv.dx = Math.round(Math.cos(a) * r * 10) / 10
+  kniv.dy = Math.round(Math.sin(a) * r * 10) / 10
+}
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea, select')) return
+  const v = Object.keys(VARIANTER), i = v.indexOf(S.v)
+  if (e.key === 'ArrowRight') { S.v = v[(i + 1) % v.length]; rita() }
+  if (e.key === 'ArrowLeft') { S.v = v[(i + v.length - 1) % v.length]; rita() }
+})
+rita()
+</script>
+</body>
+</html>
