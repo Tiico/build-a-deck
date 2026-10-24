@@ -310,7 +310,7 @@ describe('the cards a phone cannot read, said once the table is up (#523)', () =
     await screen.findByText(/laddar kort/i)
   }
 
-  it('counts the cards whose text a 320 px phone shows under the floor, and opens the wall at the phone’s eye', async () => {
+  it('counts the cards whose text a 320 px phone shows under the floor, and opens the wall at the phone’s reading view', async () => {
     await start()
     await run.completeRenders(Infinity, 6.5)
     const said = await screen.findByText(/har text under/)
@@ -319,6 +319,10 @@ describe('the cards a phone cannot read, said once the table is up (#523)', () =
     expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Visa på kortväggen' }))
     expect((await screen.findByRole('button', { name: /^Visning/ })).textContent).toContain('Telefonens läsvy')
+    // The panel stands open on Visning, where the cards under the phone's floor are named (L81).
+    expect(screen.getByRole('tab', { name: 'Visning' }).getAttribute('aria-selected')).toBe('true')
+    // What the wall's own cards carry there is said once, in the panel.
+    await waitFor(() => expect(document.querySelector('[data-legible]')?.textContent).toMatch(/^Minsta text i leken .* px, golvet 12 px\./))
   })
 
   it('says nothing when every card reads', async () => {

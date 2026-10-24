@@ -613,6 +613,65 @@ test.describe('no white frame on the way in (#749)', () => {
         () => expect(page.locator('[data-page="player"]')).toBeVisible({ timeout: 45_000 }),
       )
       expect(white).toEqual([])
+      // And the shell's ground has gone with the shell: nothing of it lingers under the hand.
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)).not.toBe('rgb(31, 38, 55)')
+    } finally {
+      await context.close()
+    }
+  })
+
+  // The same way in, with the document stopped right after `<body>` (#1246). Painting starts as the
+  // body is opened, and on a slow or busy line the bytes can stop there — before `#root` and the
+  // shell's markup have come. The shell's ground stood on `html:has(#byd-shell)` alone then, so that
+  // painting was the browser's white canvas, and it stood until the next bytes: one wholly white
+  // frame half a second in, on CI and on a loaded gate. Here the stop is made certain with a
+  // classic script right after `<body>`, which the parser waits for as it would for the line.
+  test('and when the document stops right after <body>, before the shell has come', async ({ browser, baseURL, request }) => {
+    test.setTimeout(90_000)
+    const table = await makeTable(request)
+    const seat = await admit(request, table, { name: 'Ada', seat: 'A' })
+    const { context, page } = await screen(browser, baseURL, PHONE, { colorScheme: 'light' })
+    try {
+      await page.goto(`/join?code=${table.code}`, { waitUntil: 'load' })
+      await expect(page.locator('[data-page="join"]')).toBeVisible()
+      let release: () => void = () => undefined
+      const held = new Promise<void>((r) => (release = r))
+      await page.route('**/__stop-after-body.js', async (r) => {
+        await held
+        await r.fulfill({ contentType: 'text/javascript', body: '' })
+      })
+      await page.route(
+        (u) => u.pathname === '/play',
+        async (r) => {
+          if (r.request().resourceType() !== 'document') return r.continue()
+          const res = await r.fetch()
+          const body = await res.text()
+          const stopped = body.replace('<body>', '<body><script src="/__stop-after-body.js"></script>')
+          if (stopped === body) throw new Error('the document has no <body> to stop after')
+          const headers = { ...res.headers() }
+          delete headers['content-encoding']
+          delete headers['content-length']
+          await r.fulfill({ status: res.status(), body: stopped, headers })
+        },
+      )
+      const cast = await screencast(page, { width: Math.round(PHONE.viewport.width / 2), height: Math.round(PHONE.viewport.height / 2) })
+      await page.waitForTimeout(300)
+      const t0 = Date.now()
+      await page.evaluate((to) => (location.href = to), seat.playUrl)
+      // The document stands where it was stopped: the body opened, nothing of #root yet. And the
+      // page has painted there — two animation frames — so there is a frame of that moment to read.
+      await page.waitForFunction(() => location.pathname === '/play' && !!document.body && !document.getElementById('root'))
+      const arrived = await page.evaluate(async () => {
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+        return performance.timeOrigin + performance.getEntriesByType('navigation')[0]!.toJSON().responseStart
+      })
+      await expect.poll(() => cast.frames.filter((f) => f.at >= arrived).length).toBeGreaterThan(0)
+      const stopped = cast.frames.filter((f) => f.at >= t0)
+      release()
+      await page.waitForFunction(() => !!document.getElementById('root'))
+      await cast.stop()
+      const shares = await whiteShares(browser, stopped.map((f) => f.data))
+      expect(stopped.map((f, i) => ({ at: Math.round(f.at - t0), share: Math.round(shares[i]! * 100) })).filter((f) => f.share >= 50)).toEqual([])
     } finally {
       await context.close()
     }

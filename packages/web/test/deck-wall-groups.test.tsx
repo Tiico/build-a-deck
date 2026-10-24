@@ -164,7 +164,7 @@ describe('the grouping is the crown’s to change (#179)', () => {
     expect([...document.querySelectorAll('[data-band]')].map((b) => b.getAttribute('data-band'))).toEqual(['Guld', 'Silver'])
     expect(document.querySelector('[data-band="Guld"] [data-band-head]')!.textContent).toContain('154 kort')
     // The density ladder is a separate remembered choice and the regrouping left it alone.
-    expect(within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent).toBe('150 px')
+    expect(box(/^Visning/).getAttribute('aria-label')).toBe('Visning: 150 px')
   })
 
   // A column of prose is not a grouping (#737): grouped by `body`, 77 cards were 76 bands of one
@@ -392,16 +392,16 @@ describe('the crown’s older tools over a grouped wall (E5, #128)', () => {
     wall(doc)
 
     expect(deck().getAttribute('data-eye')).toBe('normal')
+    // The eyes, the guide and the ladder stand in the wall's panel since L81.
     fireEvent.click(box(/^Visning/))
-    fireEvent.click([...document.querySelectorAll('.byd-crown-drawer button')].find((b) => b.textContent === 'Deuteranopi')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
     expect(deck().getAttribute('data-eye')).toBe('deuteranopia')
 
-    fireEvent.click(box(/^Guider/))
-    fireEvent.click(document.querySelector('.byd-crown-drawer input[type="checkbox"]')!)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Snitt och skyddsmarginal' }))
     expect(deck().getAttribute('data-trim')).toBe('true')
 
-    // The ladder still steps, and the pill in the crown says where on it the wall is standing
-    // (#619): the foot used to repeat the number half a screen away, and says it no more.
+    // The ladder still steps, and the pill says where on it the wall is standing (#619): the foot
+    // used to repeat the number half a screen away, and says it no more.
     const width = () => within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent
     expect(width()).toBe('150 px')
     expect(document.querySelector('.byd-crown-foot')!.textContent).not.toContain('px')

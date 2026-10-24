@@ -1958,6 +1958,7 @@ Under varje kort står dess minsta text i px där, räknad på den storlek E6 fa
 Frågan är läsvyn och inte vilan, eftersom K26 låter ett kort i vila vara oläsligt så länge en handling visar det i golvets storlek.
 Det som kan gå fel för en designer är därför text mindre än läsvyerna räknar med, satt så eller krympt av E6: under 7,3 pt i telefonens läsvy, 6,3 pt vid bordet och 6,4 pt på TV:n.
 Telefonen säger alltså nej först.
+Reviderat 2026-10-24 ([L81](#l81-kortväggens-visning-står-på-ett-ställe-en-sidopanel-med-visning-och-kontroll-prototypat-och-beslutat-2026-10-24-1256)): läsvyerna är storlekar och inte ögon, så de går att se med varje öga, och den minsta texten sägs en gång i väggens panel i stället för under varje kort.
 Två förkastade varianter: en digital kontroll i rapporten bredvid den fysiska, med en rad per läsvy och korten under golvet som länkar (B), och en remsa under duken i Mall med kortet i alla tre läsvyerna (C).
 Beställaren valde ögonen ensamma, alltså utan B.
 Därmed sägs en text under golvet på kortet självt och inte samlad i rapporten med en länk; E6:s krav på länk till raden gäller tryckets anmärkningar och inte skärmens.
@@ -7056,7 +7057,7 @@ D: en stor bricka med ikonverktyg som tonar fram på hovring.
 
 Beställaren valde **A** 2026-10-22.
 
-- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och en 3:2-ruta som bibliotekets bricka, där hela bilden ryms (L81).
+- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och en 3:2-ruta som bibliotekets bricka, där hela bilden ryms (L82).
   Tom är den en streckad bricka med ett +.
   Knappen heter vad ett tryck gör: «Välj bild för {kort}» tom, «Byt bild för {kort}» med bild.
 - **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» i foten när kortet håller en bild.
@@ -8195,7 +8196,48 @@ Statuslänkarna på bordsytorna säger servern som HTTP till Mina spel och inlog
 `way-back-to-the-editor.spec.ts` går hela vägen i den byggda appen: TV:ns väg tillbaka tar fram editorns flik utan ny flik och utan omladdning, och «Spela härifrån» tryckt två gånger är en flik.
 `way-back-to-the-editor.test.tsx` visar var vägen står på varje yta, vart lämnandet leder och att en gäst inte får den.
 
-### L81. En miniatyr visar hela bilden, på en ljusare grund och med en kant där bilden slutar (prototypat och beslutat 2026-10-24, #1257)
+### L81. Kortväggens visning står på ett ställe: en sidopanel med Visning och Kontroll (prototypat och beslutat 2026-10-24, #1256)
+
+Beställaren: på kortväggen fanns många val för hur väggen visas, och de stod lite överallt.
+Mätt i den byggda appen stod sex val om väggens utseende på fyra ställen, och två av dem tog över varandra utan att säga det.
+**Visning** blandade färgsyn och läsvy, så Deuteranopi i telefonens storlek gick inte att se.
+Tätheten låstes av läsvyn och av guiden «på armlängds avstånd», och pillret visade då bara ett annat tal.
+**Guider** var två bockar bakom en box, där den ena var en storlek och den andra en guide.
+«Minsta text …» stod under vartenda kort i en läsvy, 77 gånger på Sal's Saloon.
+**Fysisk kontroll** tryckte ner hela väggen när den öppnades, och antalet stod en gång till i foten.
+Tre varianter prövades i [`docs/ux-audits/2026-10-24-kortvaggens-visning/prototyper/index.html`](docs/ux-audits/2026-10-24-kortvaggens-visning/prototyper/index.html): en sidopanel (A), alla val öppet i krönet (B) och en docka i väggens hörn (C).
+Valet blev **A**.
+B kräver en bredd väggen inte har bredvid AI-panelen, där krönet bröts till två rader.
+C lade väggens utseende över korten den visar.
+
+**Krönet** har sökningen, *Grupperad efter*, en box **Visning** som säger vad som gäller, och **Fysisk kontroll**.
+Boxen Visning säger storleken och, när de är på, ögat och snittet: «Visning: 150 px», «Visning: Telefonens läsvy · Deuteranopi».
+
+**Panelen står bredvid väggen och trycker aldrig ner korten.**
+Den har två flikar, Visning och Kontroll, och boxarna Visning och Fysisk kontroll öppnar var sin.
+Den stängs med sitt kryss, med Escape och med samma box igen, men inte av ett tryck i väggen, eftersom det man ändrar i den ska synas på korten medan panelen står öppen.
+Där väggen är för smal för både spalt, kort och panel lägger sig panelen över väggens högerkant.
+Antalet anmärkningar i foten är en knapp till fliken Kontroll.
+Korten en anmärkning ramar in är inramade så länge fliken Kontroll visas, som de var så länge lådan stod öppen (#477).
+
+**Storlek är ett val, och ögonen ett annat.**
+Storleken är fri (täthetens stege, #128), «På armlängds avstånd» (90 px) eller en av de tre läsvyerna (294, 341 och 672 px, K26).
+Ett tryck på pillrets − eller + väljer fri storlek, så pillret är aldrig låst; #701:s låsning och dess två meningar tas bort.
+Ögonen är Normal syn, Deuteranopi, Protanopi, Tritanopi och Gråskala, och de gäller i varje storlek.
+Varje öga visar ett färgprov genom sitt eget filter, så att skillnaden syns innan man väljer.
+«Snitt och skyddsmarginal» är panelens enda guide; armlängden är en storlek och inte längre en guide.
+Det ändrar E5:s tillägg från 2026-09-28: läsvyerna står inte längre bland ögonen utan bland storlekarna.
+
+**Läsbarheten sägs en gång, i panelen.**
+I en läsvy säger panelen den minsta texten i leken och golvet, «Minsta text i leken 9,9 px, golvet 12 px.», och listar korten under golvet med sin minsta text.
+En bock «Visa bara de n korten» lämnar bara dem på väggen.
+Ett kort under golvet bär en ram på väggen och säger det i sitt namn till en skärmläsare; orden står i panelen, och ramen upprepar dem bara.
+Raden under varje kort tas bort.
+«Visa på kortväggen» från bordet (#523) öppnar väggen i telefonens läsvy med panelen på Visning, så att korten under golvet står listade.
+
+`deck-wall.test.tsx` mäter panelen, flikarna, storleken och ögonen var för sig och tillsammans, läsbarheten och foten; `wall-crown-beside.spec.ts` mäter krönet och panelen i den byggda appen bredvid AI-panelen.
+
+### L82. En miniatyr visar hela bilden, på en ljusare grund och med en kant där bilden slutar (prototypat och beslutat 2026-10-24, #1257)
 
 Beställaren: bilderna i Tabell visades ofta avskurna, och i Media likaså.
 Varje miniatyr av spelets bilder ritades med `cover` i en fast 3:2-ruta: bildrutan i Tabell (L75), bildremsan över tabellen, egenskapspanelens rad, Media-brickan och bibliotekets brickor.
