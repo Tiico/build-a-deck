@@ -280,6 +280,7 @@ for (const backend of backends) {
         const bo = await someone('bo')
         const id = await made(ada.cookie, 'Adas', [await uploaded(ada.cookie, freshPicture(240))])
         await db.projects.share(id, bo.id, 'editor')
+        await db.auth.setName(ada.id, 'Ada')
         const res = await upload(bo.cookie, freshPicture(20), id)
         expect(res.status).toBe(402)
         expect(((await res.json()) as Quota).quota).toEqual({ measure: 'storageBytes', limit: 250, used: 240, bearer: 'owner', ownerName: 'Ada' })
@@ -314,6 +315,7 @@ for (const backend of backends) {
         const b = await uploaded(bo.cookie, freshPicture(60))
         const id = await made(ada.cookie, 'Spel', [a])
         await db.projects.share(id, bo.id, 'editor')
+        await db.auth.setName(ada.id, 'Ada')
         const ws = new WebSocket(`${run.base}/projects/${id}/edit?name=Bo`, { headers: { cookie: bo.cookie } })
         const seen: EditorMessage[] = []
         ws.on('message', (data) => seen.push(JSON.parse(data.toString()) as EditorMessage))

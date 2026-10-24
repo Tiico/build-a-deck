@@ -25,7 +25,9 @@ async function login(email: string): Promise<string> {
   if (!link) throw new Error(`no link in ${mail.text}`)
   const res = await get(new URL(link).pathname + new URL(link).search)
   expect(res.status).toBe(302)
-  expect(res.headers.get('location')).toBe('/editor?project=p1')
+  // The account has not been asked what the others should call it, so the welcome step comes first
+  // and then where the link was going (#1254).
+  expect(res.headers.get('location')).toBe(`/welcome?next=${encodeURIComponent('/editor?project=p1')}`)
   const cookie = res.headers.get('set-cookie') ?? ''
   expect(cookie).toMatch(/byd_session=[^;]+; .*HttpOnly/)
   return cookie.split(';')[0] ?? ''
@@ -66,13 +68,13 @@ describe('logging in with a magic link', () => {
     expect(await res.json()).toEqual({ ok: true, loggedIn: true })
     const cookie = res.headers.get('set-cookie') ?? ''
     expect(cookie).toMatch(/byd_session=[^;]+; .*HttpOnly/)
-    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com' })
+    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com', name: null, asked: false })
     expect(run.mail.sent).toHaveLength(0)
   })
 
   it('mails a link, which sets a session cookie once; /auth/me then knows who you are, and logout forgets', async () => {
     const cookie = await login('ada@example.com')
-    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com' })
+    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com', name: null, asked: false })
     // Not being logged in is an answer and not a failure (#744): every guest page asks, and a 401
     // is written in the browser's console as an error on each of them.
     const nobody = await get('/auth/me')
@@ -93,7 +95,7 @@ describe('logging in with a magic link', () => {
     const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
     const res = await get(link)
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe('http://localhost:5173/new')
+    expect(res.headers.get('location')).toBe('http://localhost:5173/welcome?next=%2Fnew')
   })
 
   it('never says whether an address exists, and does not mail the same address more than five times an hour', async () => {
