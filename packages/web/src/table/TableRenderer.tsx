@@ -1601,8 +1601,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             const m = shifted.has(c.id)
             if (isDie(c)) {
               // A die (#1137, K28): its kind's outline from above and the side that is up, drawn
-              // larger than life by the chip's own rule (`DIE_MM`). A die just rolled tumbles on the
-              // spot; under reduced motion it stands still in a ring of the colour of whoever rolled.
+              // larger than life by the chip's own rule (`DIE_MM`). A die just rolled whips round on the
+              // spot, the way its line's number says, so every screen spins alike; under reduced
+              // motion it stands still in a ring of the colour of whoever rolled.
               // The finger's target is the chip's: 44 px on the screen over a die that stays its size.
               const roll = rolling.get(c.id)
               const hit = onAct ? hitOf({ x: a.x + DIE_MM / 2, y: a.y + DIE_MM / 2 }, DIE_MM) : 0
@@ -1616,7 +1617,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                   data-rolling={roll ? (still ? 'ring' : 'tumble') : undefined}
                   {...(onAct ? handlers({ kind: 'die', id: c.id }) : {})}
                   {...keys(`die:${c.id}`)}
-                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)), width: px(DIE_MM), height: px(DIE_MM), ...(roll ? { ['--seat' as string]: colourOf(roll.seat) } : {}) }}
+                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)), width: px(DIE_MM), height: px(DIE_MM), ...(roll ? { ['--seat' as string]: colourOf(roll.seat), ['--spin' as string]: roll.seq % 2 ? -1 : 1 } : {}) }}
                 >
                   <DieFace faces={dieFaces(c) ?? 6} value={c.counter ?? 1} roll={roll?.seq} still={still} />
                   {hit > 0 && <i className="byd-token-hit" style={{ width: hit, height: hit, left: (px(DIE_MM) - hit) / 2, top: (px(DIE_MM) - hit) / 2 }} />}
