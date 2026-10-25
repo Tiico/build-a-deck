@@ -46,7 +46,13 @@ export type AuthStore = {
   // sessions that ran out. `GET /auth/verify` says the same of a spent link, one that ran out and
   // one never given, so no row is kept for its answer. How many of each went.
   sweepSpent(now: string): Promise<{ loginTokens: number; sessions: number }>
+  // What the account's extract says of the account itself (#1280, art. 15): when it was made, the
+  // login sessions it has and the login links sent to its address, by when each lapses. Null for no
+  // such account.
+  accountFacts(accountId: string): Promise<AccountFacts | null>
 }
+
+export type AccountFacts = { createdAt: string; sessions: { expiresAt: string }[]; loginLinks: { expiresAt: string; usedAt: string | null }[] }
 
 export type TermsAcceptance = { version: string; at: string }
 
@@ -72,7 +78,8 @@ export const hash = (s: string): string => createHash('sha256').update(s).digest
 export const token = (): string => randomBytes(32).toString('base64url')
 
 export class MemoryAuthStore implements AuthStore {
-  private readonly tokens = new Map<string, { email: string; expiresAt: string; used: boolean }>()
+  private readonly tokens = new Map<string, { email: string; expiresAt: string; used: boolean; usedAt?: string }>()
+  private readonly created = new Map<string, string>()
   private readonly accounts = new Map<string, Account>()
   private readonly sessions = new Map<string, { accountId: string; expiresAt: string }>()
   private readonly passkeys = new Map<string, PasskeyRecord>()
@@ -84,6 +91,7 @@ export class MemoryAuthStore implements AuthStore {
     const t = this.tokens.get(tokenHash)
     if (!t || t.used || t.expiresAt < now) return null
     t.used = true
+    t.usedAt = now
     return t.email
   }
   async ensureAccount(email: string): Promise<Account> {
@@ -91,6 +99,7 @@ export class MemoryAuthStore implements AuthStore {
     if (existing) return existing
     const account = { id: token(), email, name: null, asked: false }
     this.accounts.set(email, account)
+    this.created.set(account.id, new Date().toISOString())
     return { ...account }
   }
   async accountById(id: string): Promise<Account | null> {
@@ -126,6 +135,28 @@ export class MemoryAuthStore implements AuthStore {
     let sessions = 0
     for (const [h, s] of this.sessions) if (s.expiresAt <= now) sessions += Number(this.sessions.delete(h))
     return { loginTokens, sessions }
+  }
+
+  async accountFacts(accountId: string): Promise<AccountFacts | null> {
+    const a = [...this.accounts.values()].find((a) => a.id === accountId)
+    if (!a) return null
+    const sessions = [...this.sessions.values()].filter((s) => s.accountId === accountId).map((s) => ({ expiresAt: s.expiresAt }))
+    const loginLinks = [...this.tokens.values()].filter((t) => t.email === a.email).map((t) => ({ expiresAt: t.expiresAt, usedAt: t.usedAt ?? null }))
+    return { createdAt: this.created.get(accountId) ?? new Date(0).toISOString(), sessions, loginLinks }
+  }
+
+  // An account that deleted itself (#1280): the account, its sessions, its passkeys, the terms it
+  // accepted and the login links sent to its address. True when there was one.
+  forget(accountId: string): boolean {
+    const a = [...this.accounts.values()].find((a) => a.id === accountId)
+    if (!a) return false
+    this.accounts.delete(a.email)
+    this.created.delete(accountId)
+    this.acceptances.delete(accountId)
+    for (const [h, s] of this.sessions) if (s.accountId === accountId) this.sessions.delete(h)
+    for (const [id, p] of this.passkeys) if (p.accountId === accountId) this.passkeys.delete(id)
+    for (const [h, t] of this.tokens) if (t.email.toLowerCase() === a.email.toLowerCase()) this.tokens.delete(h)
+    return true
   }
 
   async addPasskey(passkey: PasskeyRecord): Promise<void> {

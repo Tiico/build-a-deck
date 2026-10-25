@@ -4,7 +4,8 @@ import { AboutLine } from './AboutLine.js'
 import { KeyBox, type WayBack } from './KeyBox.js'
 import { PasskeyBox } from './PasskeyBox.js'
 import { UsageCard } from './UsageCard.js'
-import { logout, myAccount, myProjects } from './api.js'
+import { myAccount, myProjects } from './api.js'
+import { AccountCard } from './AccountCard.js'
 import { NameCard } from './NameCard.js'
 import { readAiKey, type AiKey } from './ai-key.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -16,7 +17,8 @@ import './account.css'
 import './profile.css'
 
 // /profile — the logged-in designer's own page (#999, #998 variant A): one column, the name first
-// (#1254), then the AI key, the passkeys, what the account uses once a ceiling is set (#1198), the language and the account. An account has three things today, and one column is what three
+// (#1254), then the AI key, the passkeys, what the account uses once a ceiling is set (#1198), the language and the account,
+// which carries the account's extract and its deletion (#1280). An account has three things today, and one column is what three
 // things need. The way in is a word in Mina spel's line, «e-post · Profil · logga ut», and the
 // language picker moved here from that line.
 //
@@ -35,6 +37,8 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
   const [loaded, setLoaded] = useState<Loaded | null | undefined>(undefined)
   const [offline, setOffline] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  // The address of an account that has just deleted itself, for the door's one sentence (#1280).
+  const [erased, setErased] = useState<string | null>(null)
   useEffect(() => {
     let live = true
     setOffline(false)
@@ -69,10 +73,21 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
 
   if (offline) return <StatusNotice notice={noticeFor('offline', 'app', t)} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
   if (loaded === undefined) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
-  if (loaded === null) {
+  if (loaded === null || erased !== null) {
+    // After «Ja, radera kontot» (#1280) she lands at the door, told what happened.
+    const notice = erased === null ? undefined : (
+      <p className="byd-login-done" role="status">
+        <span className="byd-login-tick" aria-hidden="true">
+          ✓
+        </span>
+        <span>
+          <b>{t('login.erased.title')}</b> {t('login.erased.body', { email: erased })}
+        </span>
+      </p>
+    )
     return (
       <main className="byd-account byd-account-door" data-page="profile">
-        <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} />
+        <LoginCard http={http} next={erased === null ? location.pathname + location.search : '/'} onNavigate={onNavigate} notice={notice} />
       </main>
     )
   }
@@ -105,19 +120,8 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
           </div>
           <p className="byd-profile-quiet byd-profile-small">{t('profile.lang.note')}</p>
         </section>
-        <section className="byd-profile-card" aria-labelledby="byd-profile-account">
-          <h2 id="byd-profile-account">{t('profile.account.title')}</h2>
-          <dl className="byd-profile-facts">
-            <dt>{t('profile.account.email')}</dt>
-            <dd>{loaded.email}</dd>
-          </dl>
-          <p className="byd-profile-quiet byd-profile-small">{t('profile.account.note')}</p>
-          <div className="byd-profile-row">
-            <button type="button" className="byd-secondary byd-profile-button" onClick={() => void logout(http).then(() => setLoaded(null))}>
-              {t('profile.account.logout')}
-            </button>
-          </div>
-        </section>
+        {/* The account itself, and its two rights (#1280): the extract and the deletion. */}
+        <AccountCard http={http} email={loaded.email} onLoggedOut={() => setLoaded(null)} onErased={() => setErased(loaded.email)} />
         <AboutLine http={http} />
       </div>
     </main>

@@ -2564,6 +2564,32 @@ Operatörsskriptet är `pnpm --filter @byd/server erase`, med `table <session> [
 Ytorna säger ännu inte det maskade värdet med egna ord: en maskad plats visar platshållaren som den är, och det hör till kontots och gästens skivor (#1280, #1281).
 Grinden är `packages/server/test/erase.test.ts`, mot båda lagren, med en återställning i Postgres som körs om ur liggaren.
 
+Byggt 2026-10-25 (#1280, beställarens beslut A ur [prototypen](https://github.com/Tiico/build-a-deck/blob/c19d6c02/docs/ux-audits/2026-10-25-gdpr-ytor/prototyper/index.html), `?iss=konto&v=A`): **Konto-kortet i Profil bär kontots två rättigheter.**
+- Under adressen och «Logga ut» står «Dina uppgifter» och «Radera kontot», var och en under sin rubrik och en linje, i samma kort.
+- «Ladda ner mina uppgifter» hämtar utdraget som en fil direkt (art. 15 och 20), och kortet säger sedan vilken fil det blev.
+  Utdraget är `GET /me/data`, en zip i formen av G5:s export: `uppgifter.json`, dess `schema.json` ur samma zod-schema och en `LASMIG.md` på läsarens språk (A4), under namnet `deckster-uppgifter-<dag>.zip`.
+  Det innehåller kontot (adress, namn, när det skapades, nivå och varje godkänd villkorsversion), passkeys utan nyckel, inloggningarna och inloggningslänkarna, AI-nyckelns leverantör och fyra sista tecken, spelen med rollen, versionerna hon sparat och hur många ändringar hon gjort, inbjudningarna hon skickat och fått, borden hon claimat med namnet, flaggorna, anteckningarna och enkätsvaret, och hur många bord och renderingar hon bär.
+  Spelens innehåll är spelets export, och ingenting om ett annat konto står i det: ett spel står med hennes roll, aldrig med medlemmarna.
+  Formatet står i `packages/server/src/account-data.ts`, och grinden `packages/server/test/account-data.test.ts` håller varje personlig kolumn i kolumnkartan (#1276) mot en plats i utdraget eller ett skäl, så att en ny personlig kolumn som utdraget saknar ger rött.
+- «Radera kontot…» frågar först i L9:s remsa, där frågan ställdes (`Question`, med en lista under meningen): varje spel som försvinner, vem mer som förlorar ett delat spel, bord som pågår och avslutas, spelen hon lämnar och vems de är, och att hon loggas ut överallt.
+  Remsan öppnar på «Avbryt»; «Ja, radera kontot» står i rött ett tabbsteg bort.
+  Det remsan namnger frågas av servern (`GET /me/deletion`): en medlem sägs med sitt namn eller sin adress, som Dela säger dem till ägaren, och ägaren av ett spel hon lämnar bara med sitt namn (#1198).
+- **Spel med medredigerare tas bort**, som när ägaren tar bort dem ett och ett: borden avslutas först, så att koden inte öppnar något och telefonerna får veta det, editorerna stängs, och medredigerarna förlorar spelet.
+  Vill de ha det kvar exporterar ägaren det först.
+- `DELETE /me` gör raderingen i en transaktion som liggarens nya slag `account`, bredvid ett `game` per spel.
+  Hennes claimade inträden maskas som en gästs, hennes spel försvinner med sin historik, och inget i databasen säger hennes id eller adress efteråt utom liggaren — inte bärarna (`sessions.account_id`, som blir tom, och `render_log`, vars rader går), inte versionerna och ändringarna hon gjort i andras spel, inte inbjudningarna hon skickat eller fått, inte inloggningslänkarna till hennes adress.
+  Kontot försvinner med passkeys, kakor, AI-nyckel, nivå, villkorsgodkännanden och medlemskap; varje enhet är utloggad, och svaret tar också bort kakan i den här webbläsaren.
+  Vägen är öppen också för ett konto som inte har godkänt villkoren (`OPEN_WRITES`), eftersom raderingen är hennes rätt vad hon än godkänt.
+  En återställning till en tidigare punkt kör om `account`-raden först i sin stund och raderar kontot igen.
+- Bilder, typsnitt och renderingar som bara hennes spel nämnde skrivs upp i `asset_sweeps` i samma transaktion, medan spelen finns kvar att fråga, och sopas efter 30 dygn (`PostgresAssetSweep`, i sopningens varv).
+  En bild eller ett typsnitt går när inget spel som finns nämner den, inget bord vars spel finns spelar med den och inget jobb i kön väntar på den; en rendering går när inget annat konto burit den.
+  Hennes egna spels bord frågas inte, eftersom deras spel är borta och de aldrig ritas igen.
+  Raden går före bytesen i R2, så att bytes som inte går att radera lämnar raden till nästa varv.
+- Hon landar vid dörren med «Ditt konto är raderat.» och att ett mejl bekräftar det, och mejlet i inloggningsmejlets tre band (L72), utan knapp, säger när, vilka spel som försvann, att bilderna sopas inom 30 dagar och att säkerhetskopiorna sparas i åtta dygn och raderar kontot igen om något återställs.
+- Integritetstexten säger att kontot raderas i Profil och vad ett raderat konto lämnar efter sig; gästens väg är #1281:s.
+- Prototypens band på medredigerarens Mina spel («Skogens råd är borttaget. Ägaren raderade sitt konto.») är inte byggt: ett borttaget spel säger i dag ingenting till sina medlemmar, vem som än tog bort det, och ett sådant besked är en egen yta.
+Grindarna är `packages/server/test/account-erase.test.ts` (båda lagren, med en sökning i varje personlig och pseudonym kolumn efter hennes id och adress, och sopningen i Postgres), `packages/web/test/profile-account.test.tsx` och `packages/e2e/test/account-delete.spec.ts`.
+
 Skivorna (alla öppna 2026-10-24):
 - #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
 - #1277 det som inte längre kan användas rensas — byggd.

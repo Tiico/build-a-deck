@@ -8,6 +8,9 @@ import { createHash, createHmac } from 'node:crypto'
 export type ObjectStore = {
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>
   get(key: string): Promise<Uint8Array | null>
+  // Takes an object away; a key that holds nothing is no error. The one deletion there is: a
+  // deleted account's pictures and renderings that nothing else names, 30 days on (#1280, G6).
+  delete(key: string): Promise<void>
   // A URL a browser may fetch the object from directly for `ttlSeconds`; null when the bytes
   // have to come through the server instead. With `disposition` the store answers with that
   // Content-Disposition, so a file opened from the link is called what it is (#678).
@@ -27,6 +30,9 @@ export class MemoryObjectStore implements ObjectStore {
   }
   async get(key: string): Promise<Uint8Array | null> {
     return this.objects.get(key)?.bytes ?? null
+  }
+  async delete(key: string): Promise<void> {
+    this.objects.delete(key)
   }
   async link(): Promise<string | null> {
     return null
@@ -75,6 +81,13 @@ export class S3ObjectStore implements ObjectStore {
     if (res.status === 404) return null
     if (!res.ok) throw new Error(`get ${key}: ${res.status} ${await res.text()}`)
     return new Uint8Array(await res.arrayBuffer())
+  }
+
+  // S3 answers 204 whether or not there was an object, which is what `delete` promises.
+  async delete(key: string): Promise<void> {
+    const s = this.signed('DELETE', this.url(key), {}, EMPTY_SHA256)
+    const res = await fetch(s.url, { method: 'DELETE', headers: s.headers })
+    if (!res.ok && res.status !== 404) throw new Error(`delete ${key}: ${res.status} ${await res.text()}`)
   }
 
   async link(key: string, ttlSeconds: number, disposition?: string): Promise<string | null> {

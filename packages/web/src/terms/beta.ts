@@ -4,8 +4,9 @@
 //
 // The terms follow #1268's outline section by section, with the same numbering, so 9 and 10 stand as
 // headings from the start and no number ever changes. The privacy text follows #1269's maps and F1–F7,
-// and says only what is true today (beställarens beslut 3, 2026-10-24): erasure goes through Kontakt,
-// and the text is brought up to date with each slice that changes that (#1277, #1279–#1281).
+// and says only what is true today (beställarens beslut 3, 2026-10-24): an account downloads its data
+// and deletes itself in Profil (#1280), a guest's erasure goes through Kontakt, and the text is
+// brought up to date with each slice that changes that (#1277, #1279–#1281).
 //
 // This is legal text and not the tool's catalogue: «vi» here is the one who runs Deckster, a party to
 // an agreement, which is why it lives outside `i18n/` and is not held to L73's voice
@@ -199,13 +200,14 @@ const privacy: Document = {
             '**Ditt konto och dina spel:** så länge kontot finns. Ett konto som inte används raderas inte under betan.',
             '**Gäst utan konto:** namn och fritext tas bort 12 månader efter att bordet avslutades. Spelet och enkätens siffror står kvar utan namn.',
             '**Gäst som sparat till ett konto:** så länge kontot finns.',
+            '**Ett raderat konto:** försvinner direkt, med sina spel. Bilder och typsnitt som bara dess spel använde tas bort inom 30 dagar.',
             '**Ett borttaget spel:** namnen och fritexten vid dess bord, och enkätsvaren, tas bort direkt.',
             '**Inloggningslänkar och kakor:** en länk gäller i 15 minuter och kakan i 30 dagar, och vi tar bort dem när de inte längre går att använda.',
             '**Inbjudningar:** 30 dagar efter att de använts eller gått ut.',
             '**Säkerhetskopior:** åtta dagar. Efter en återställning tar vi bort det som raderats igen.',
           ],
         },
-        'Vill du att något raderas tidigare, ditt konto eller det du lämnat som gäst, skriver du till {contact}. Den här texten ändras när det finns fler vägar.',
+        'Ditt konto raderar du själv i Profil. Vill du att något du lämnat som gäst raderas tidigare, skriver du till {contact}. Den här texten ändras när det finns fler vägar.',
       ],
     },
     {
@@ -232,7 +234,7 @@ const privacy: Document = {
       ks: 'Du kan få se, rätta, flytta och radera det vi har om dig. Skriv till oss.',
       body: [
         'Du har rätt att få veta vad vi har om dig, få det rättat, raderat eller utlämnat i ett format du kan ta med dig, och att invända mot det vi gör på ett berättigat intresse.',
-        '**Med konto:** skriv till {contact}. Ditt namn kan du själv ändra eller ta bort i Profil.',
+        '**Med konto:** i Profil laddar du ner det vi har om dig och raderar kontot. Ditt namn kan du själv ändra eller ta bort där.',
         '**Som gäst:** skriv till {contact} med spelets namn, ungefär när ni spelade och namnet du satt under.',
         'Är du inte nöjd med hur vi svarar kan du klaga hos Integritetsskyddsmyndigheten, imy.se.',
       ],

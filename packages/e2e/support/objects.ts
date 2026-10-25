@@ -11,7 +11,7 @@ import { free } from './ports.js'
  * and `/faces/<hash>` answer with a redirect to another origin, and the page's policy (DRIFT §14)
  * and CORS both have that origin to reckon with. So the stack runs with one.
  *
- * It speaks the four requests `S3ObjectStore` makes — a PUT, a GET, the empty listing `/health`
+ * It speaks the requests `S3ObjectStore` makes — a PUT, a GET, a DELETE (#1280), the empty listing `/health`
  * asks and the presigned GET a browser follows — and it answers the way R2 does where the page
  * can tell: on its own origin, with the object's type, and with no `access-control-allow-origin`
  * on anything. Signatures are not checked; what they say is `objects.test.ts`'s question in
@@ -46,6 +46,11 @@ export async function objectStore(dir: string): Promise<{ endpoint: string; env:
       if (req.method === 'PUT' && key) {
         objects.set(key, { bytes, type: String(req.headers['content-type'] ?? 'application/octet-stream') })
         res.writeHead(200).end()
+        return
+      }
+      if (req.method === 'DELETE' && key) {
+        objects.delete(key)
+        res.writeHead(204).end()
         return
       }
       if (req.method === 'GET' && key === '' && url.searchParams.get('list-type') === '2') {

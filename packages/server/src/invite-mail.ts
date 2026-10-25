@@ -33,7 +33,7 @@ export function inviteMail(to: string, a: Asked): Mail {
       to,
       subject,
       text: `Hello!\n\n${lead}\n\nClick to join: ${a.link}\n\n${fine}${textFoot(site, a.contact, 'Contact')}`,
-      html: bands({ lang: 'en', subject, pre: 'The link works for seven days and only once.', hello: `You are invited to ${a.game}.`, lead, button: 'Join', fine, pasteIt: 'Button not working? Paste the link into your browser:', contactWord: 'Contact', link: a.link, contact: a.contact }),
+      html: bands({ lang: 'en', subject, pre: 'The link works for seven days and only once.', hello: `You are invited to ${a.game}.`, lead, action: { button: 'Join', pasteIt: 'Button not working? Paste the link into your browser:', link: a.link }, fine, contactWord: 'Contact', contact: a.contact }),
     }
   }
   const who = named ? `${named} (${a.from})` : (a.from ?? 'Någon')
@@ -44,6 +44,6 @@ export function inviteMail(to: string, a: Asked): Mail {
     to,
     subject,
     text: `Hej!\n\n${lead}\n\nKlicka för att gå med: ${a.link}\n\n${fine}${textFoot(site, a.contact, 'Kontakt')}`,
-    html: bands({ lang: 'sv', subject, pre: 'Länken fungerar i sju dagar och bara en gång.', hello: `Du är inbjuden till ${a.game}.`, lead, button: 'Gå med', fine, pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', contactWord: 'Kontakt', link: a.link, contact: a.contact }),
+    html: bands({ lang: 'sv', subject, pre: 'Länken fungerar i sju dagar och bara en gång.', hello: `Du är inbjuden till ${a.game}.`, lead, action: { button: 'Gå med', pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', link: a.link }, fine, contactWord: 'Kontakt', contact: a.contact }),
   }
 }

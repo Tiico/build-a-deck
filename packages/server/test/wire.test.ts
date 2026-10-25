@@ -258,6 +258,7 @@ describe('connections', () => {
     const unreachable: ObjectStore = {
       put: objects.put.bind(objects),
       get: objects.get.bind(objects),
+      delete: objects.delete.bind(objects),
       link: async (key: string, ttl: number) => `https://r2.test/byd-assets/${key}?X-Amz-Expires=${ttl}`,
       check: async () => {
         throw new Error('bucket byd-assets: 503')
@@ -410,6 +411,7 @@ describe('faces in R2 (DRIFT §4)', () => {
     const r2 = {
       put: objects.put.bind(objects),
       get: objects.get.bind(objects),
+      delete: objects.delete.bind(objects),
       link: async (key: string, ttl: number) => `https://r2.test/byd-assets/${key}?X-Amz-Expires=${ttl}`,
       check: async () => {
         if (!reachable) throw new Error('bucket byd-assets: 503')

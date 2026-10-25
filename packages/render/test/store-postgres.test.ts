@@ -74,7 +74,7 @@ describe.skipIf(!url)('PostgresRenderStore with an object store (DRIFT §4)', ()
   it('puts the output in the object store with its content type, keeps no bytes in Postgres, and links to it', async () => {
     const objects = new MemoryObjectStore()
     const links: string[] = []
-    const linking = { put: objects.put.bind(objects), get: objects.get.bind(objects), check: objects.check.bind(objects), link: async (key: string, ttl: number) => (links.push(`${key}:${ttl}`), `https://r2.test/${key}`) }
+    const linking = { put: objects.put.bind(objects), get: objects.get.bind(objects), delete: objects.delete.bind(objects), check: objects.check.bind(objects), link: async (key: string, ttl: number) => (links.push(`${key}:${ttl}`), `https://r2.test/${key}`) }
     // Its own schema too: the first describe drops its own when it is done.
     const own = `${schema}_r2`
     const sql = postgres(url!, { max: 2, onnotice: () => undefined, connection: { search_path: own } })

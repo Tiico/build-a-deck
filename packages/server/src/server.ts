@@ -47,6 +47,8 @@ import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, type ErasureStore } from './erase.js'
+import { deletionOf, packPersonalData, personalDataDisposition, personalDataOf } from './account-data.js'
+import { erasedMail } from './erased-mail.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -587,6 +589,67 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (!named.ok) return json(res, 400, { error: `a name is text of at most ${NAME_MAX} characters on one line` })
       await opts.auth.setName(account.id, named.name)
       return json(res, 200, { name: named.name })
+    }
+    // «Ladda ner mina uppgifter» (#1280, G6, art. 15 och 20): everything kept about the account, as
+    // a zip in the form of a game's export (`account-data.ts`).
+    if (req.method === 'GET' && url.pathname === '/me/data') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const at = clock(opts)
+      const data = await personalDataOf(opts, opts.auth, account, at)
+      const zip = packPersonalData(data, langOf(url.searchParams.get('lang')))
+      res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': personalDataDisposition(at), 'cache-control': 'no-store', 'content-length': zip.byteLength })
+      res.end(zip)
+      return
+    }
+    // What «Radera kontot…» asks about (#1280, variant A): each game that goes with the account, who
+    // else loses it and whether a table at it is playing, the games it leaves, and how many tables
+    // it claimed. The question names every game, so it is asked of the server and not guessed.
+    if (req.method === 'GET' && url.pathname === '/me/deletion') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      return json(res, 200, await deletionOf(opts, account))
+    }
+    // «Ja, radera kontot» (#1280, G6, art. 17): the account and everything that says it, in one
+    // transaction (`ErasureStore`, kind `account`). Its games go as «Ta bort spelet» takes one: the
+    // tables are ended first, so their codes open nothing and the phones are told, and then masked
+    // (`game`). Every browser it was logged in on is logged out with the sessions, this one by its
+    // cookie too, and the last letter says what went.
+    if (req.method === 'DELETE' && url.pathname === '/me') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      if (!opts.erasures) return json(res, 503, { error: 'erasure unavailable' })
+      const now = clock(opts)
+      const projects = opts.projects
+      const owned = projects ? await projects.ownedIds(account.id) : []
+      const names: string[] = []
+      for (const id of owned) {
+        names.push((await projects?.load(id))?.name ?? id)
+        for (const table of await opts.store.sessionsOf(id)) await opts.host.end(table.id)
+      }
+      const shared = projects ? (await projects.list(account.id)).filter((p) => !owned.includes(p.id)).map((p) => p.id) : []
+      const done = await opts.erasures.erase([entry({ kind: 'account', account: account.id }, 'request', now), ...owned.map((project) => entry({ kind: 'game', project }, 'removed', now))])
+      await opts.host.reload(done.sessions)
+      if (projects) {
+        const host = editors(opts, projects)
+        for (const id of owned) {
+          ;(await host.running(id))?.shutDown()
+          host.forget(id)
+        }
+        for (const id of shared) (await host.running(id))?.dismiss(account.id)
+      }
+      try {
+        await opts.mailer?.send(erasedMail(account.email, langOf(url.searchParams.get('lang')), { at: now, games: names, site: opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`, contact: opts.contact }))
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'erased-mail-failed', error: err instanceof Error ? err.message : String(err) }))
+      }
+      console.log(JSON.stringify({ msg: 'account-erased', games: owned.length, tables: done.sessions.length, lines: done.lines, guests: done.guests }))
+      res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` })
+      res.end(JSON.stringify({ ok: true }))
+      return
     }
     if (req.method === 'GET' && url.pathname === '/me/played') {
       if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
