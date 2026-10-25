@@ -737,6 +737,46 @@ describe('what waits for the account on the home page (#1225)', () => {
     }
   })
 
+  // Two tables of one game, both over and neither answered, were two rows that said the same thing
+  // to the letter (#1282). The panel has one row of each kind per game, as the flags have had from
+  // the start: the surveys are counted, and the row leads to the table sat at last. Each table is
+  // still a tile of its own under «Bord du har spelat vid», with its own way to its survey.
+  it('says two surveys left at one game in one row that counts them, and leads to the newest', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    const json = { 'content-type': 'application/json' }
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email: 'ada@example.com' }) })
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
+    const sessions: string[] = []
+    for (const _ of [1, 2]) {
+      const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
+      registerRoom(made.id, made)
+      // A millisecond apart at least, so which table was sat at last is a fact and not a tie.
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      const token = await admit(run, made.id, 'A', 'Ada')
+      expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token }) })).status).toBe(200)
+      const host = TableClient.connect(await asTable(run, made.id))
+      await host.ready()
+      expect(await host.send({ v: 'session.end' })).toMatchObject({ ok: true })
+      host.close()
+      sessions.push(made.id)
+    }
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    const panel = await screen.findByRole('region', { name: 'Väntar på dig' })
+    const rows = within(panel).getAllByRole('link')
+    expect(rows.map((row) => row.textContent)).toEqual(['Svara på 2 enkäterSkogens herrar · 2 bord, senast i dag'])
+    const to = `/survey?session=${sessions[1]}&server=${encodeURIComponent(run.http)}`
+    expect(rows[0]!.getAttribute('href')).toBe(to)
+    fireEvent.click(rows[0]!)
+    expect(gone).toEqual([to])
+    // The tables themselves are still two tiles, each with its own way to its own survey.
+    const sat = screen.getByRole('region', { name: 'Bord du har spelat vid' })
+    expect(within(sat).getAllByRole('link', { name: 'Svara på enkäten' }).map((a) => a.getAttribute('href'))).toEqual(expect.arrayContaining(sessions.map((s) => `/survey?session=${s}&server=${encodeURIComponent(run.http)}`)))
+  })
+
   it('stands nowhere when nothing waits', async () => {
     await run.stop()
     run = await startServer({ auth: true, authBypass: true })

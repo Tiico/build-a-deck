@@ -424,7 +424,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       return w?.playtest && w.playtest.flags > 0 ? [{ game: p, rev: w.rev, ...w.playtest }] : []
     })
     .sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
-  const unanswered = (played ?? []).filter((p) => p.ended && !p.surveyed && !p.deleted)
+  const unanswered = surveysLeft(played ?? [])
   const savedByOthers = (projects ?? [])
     .flatMap((p) => {
       const w = waiting?.[p.id]
@@ -769,14 +769,15 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   </a>
                 )
               })}
-              {unanswered.map((p) => {
+              {unanswered.map(({ newest: p, count }) => {
                 const to = `/survey?${suffix(new URLSearchParams({ session: p.session }))}`
+                const at = when(t, lang, p.at)
                 return (
                   <a key={`survey-${p.session}`} href={to} onClick={go(to)} data-waiting="survey">
                     <span className="byd-home-waiting-icon"><PencilGlyph /></span>
                     <span className="byd-home-waiting-text">
-                      <b>{t('home.played.answer')}</b>
-                      <small>{t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: p.name })}</small>
+                      <b>{count === 1 ? t('home.played.answer') : t('home.waiting.surveys', { n: count })}</b>
+                      <small>{count === 1 ? t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: p.name }) : p.game === null ? t('home.waiting.surveys.some', { n: count, when: at }) : t('home.waiting.surveys.line', { game: p.game, n: count, when: at })}</small>
                     </span>
                     <span className="byd-home-waiting-arrow"><ChevronGlyph to="right" /></span>
                   </a>
@@ -983,6 +984,24 @@ function playedLine(t: T, lang: Lang, p: ProjectSummary): string {
   if (tables === 0) return t('home.card.never')
   const at = p.lastPlayed ? t('home.card.last', { when: when(t, lang, p.lastPlayed) }) : t('home.card.nothing')
   return t(tables === 1 ? 'home.card.tables.one' : 'home.card.tables.other', { n: tables, at })
+}
+
+// The surveys left to answer in «Väntar på dig» (#1225), one row per game (#1282): two tables of one
+// game made two rows that said the same thing to the letter, so the panel holds to what its flags and
+// versions already do, one row of each kind per game. The row counts them and leads to the table sat
+// at last, the one best remembered; each table keeps its own tile, and its own way to its survey,
+// under «Bord du har spelat vid». The game is known here by the name the row says (`/me/played`
+// carries no game's id), so two games of one name are one row, as they would read as one anyway.
+// The tables of no game are counted together. In the order the first of each game stands in.
+function surveysLeft(played: readonly Played[]): { newest: Played; count: number }[] {
+  const games = new Map<string | null, { newest: Played; count: number }>()
+  for (const p of played) {
+    if (!p.ended || p.surveyed || p.deleted) continue
+    const seen = games.get(p.game)
+    if (!seen) games.set(p.game, { newest: p, count: 1 })
+    else games.set(p.game, { newest: p.at > seen.newest.at ? p : seen.newest, count: seen.count + 1 })
+  }
+  return [...games.values()]
 }
 
 // Seats are lettered from A; the colour follows the letter, as it does on the table.
