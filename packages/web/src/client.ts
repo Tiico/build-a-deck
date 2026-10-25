@@ -1,5 +1,6 @@
-import { ServerMessage, guestProtocols, type Activity, type Envelope, type Intent, type Presence, type PresenceFrom, type SeatId, type Snapshot } from '@byd/protocol'
+import { ServerMessage, tableProtocols, type Activity, type PersonalHolds, type Envelope, type Intent, type Presence, type PresenceFrom, type SeatId, type Snapshot } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
+import { maskedWord, sayLine, sayView, type MaskedWords } from './masked.js'
 
 export type ClientStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
 // Why the client has stopped trying. A status says what it is doing; a trouble says that it is
@@ -31,6 +32,10 @@ export type ConnectOptions = {
   // when the plan is spent, because there is nobody at it (#722, D5 reviderat 2026-10-05): it goes on
   // trying this often, and at once when the browser says the network is back.
   keepTryingMs?: number
+  // How a masked name or a person's masked words are said to this reader (#1281, G6): every name
+  // and note the client hands a screen goes through it, so no screen draws the placeholder. Asked
+  // each time something arrives, so a language switched mid-table is the one said from then on.
+  masked?: MaskedWords
 }
 export type SendResult = { ok: true; seqs: number[] } | { ok: false; reason: string }
 export type Listener = (view: Snapshot | null, status: ClientStatus) => void
@@ -284,11 +289,10 @@ export class TableClient {
       // none, names itself.
       if (token === undefined) q.set('name', observer)
     } else if (seat !== null) q.set('seat', seat)
-    const key = this.hostKey ?? host
-    if (key !== undefined) q.set('host', key)
     if (owner) q.set('owner', '1')
-    // The token is never in the address (#1278): it rides in the protocol header.
-    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`, token === undefined ? undefined : guestProtocols(token))
+    // Neither the token (#1278) nor the host key (#1306) is ever in the address: the upgrade is a
+    // request a proxy logs. They ride in the protocol header.
+    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`, tableProtocols({ token, host: this.hostKey ?? host }))
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))
     ws.addEventListener('error', () => undefined) // `close` follows; nothing to do here
@@ -329,7 +333,7 @@ export class TableClient {
   private receive(msg: ServerMessage): void {
     switch (msg.t) {
       case 'snapshot':
-        this.view = msg.snapshot
+        this.view = this.said(msg.snapshot)
         // The snapshot carries the lines before it. Merging rather than replacing keeps what a
         // reconnecting client already had beyond the server's window.
         this.remember(msg.activity)
@@ -346,7 +350,7 @@ export class TableClient {
         this.settleSeqWaiters()
         break
       case 'patch':
-        if (this.view) this.view = applyPatch(this.view, msg.patch)
+        if (this.view) this.view = this.said(applyPatch(this.view, msg.patch))
         this.settleSeqWaiters()
         this.notify()
         break
@@ -384,11 +388,11 @@ export class TableClient {
         for (const l of this.presenceListeners) l(msg.from, msg.presence)
         break
       case 'roster':
-        this.observers = msg.observers
+        this.observers = msg.observers.map((o) => ({ ...o, name: this.word(o.name, 'observer-name') }))
         this.notify()
         break
       case 'admitted':
-        this.admitted = msg.name
+        this.admitted = this.word(msg.name, 'seat-name')
         this.notify()
         break
     }
@@ -398,10 +402,19 @@ export class TableClient {
   // identity, so saying the same line twice adds nothing. Returns whether anything was new.
   private remember(lines: readonly Activity[]): boolean {
     const known = new Set(this.activity.map((l) => l.seq))
-    const fresh = lines.filter((l) => !known.has(l.seq))
+    const masked = this.opts.masked
+    const fresh = lines.filter((l) => !known.has(l.seq)).map((l) => (masked ? sayLine(l, masked) : l))
     if (fresh.length === 0) return false
     this.activity = [...this.activity, ...fresh].sort((a, b) => a.seq - b.seq).slice(-ACTIVITY_LIMIT)
     return true
+  }
+
+  // What arrives, with its masked names and words said (`masked`, #1281).
+  private said(view: Snapshot): Snapshot {
+    return this.opts.masked ? sayView(view, this.opts.masked) : view
+  }
+  private word(value: string, holds: PersonalHolds): string {
+    return this.opts.masked ? maskedWord(value, holds, this.opts.masked) : value
   }
 
   private settle(id: string, result: SendResult): void {

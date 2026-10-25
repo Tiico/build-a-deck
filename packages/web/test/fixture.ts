@@ -295,6 +295,9 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const projects = new MemoryProjectStore(assets)
   const renders = new MemoryRenderStore()
   const surveys = new MemorySurveyStore()
+  // A guest's own erasure (#1281) is a door on the server like any other, and the erasure in the
+  // store is #1279's.
+  const erasures = store.erasures(surveys, projects)
   const mail = new MemoryMailer()
   const auth = opts.auth ? new MemoryAuthStore() : undefined
   let http = ''

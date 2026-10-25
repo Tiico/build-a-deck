@@ -1,3 +1,5 @@
+import { forgetMe } from '../player/forget.js'
+import { ForgottenPage } from '../player/SessionSheets.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Intent, VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
@@ -18,6 +20,7 @@ import { useSeatTurned } from '../player/turned.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/session.js'
 import { takeGuestToken } from '../guestAddress.js'
+import { dropOwnerName, hostSeatAt } from '../hostSeat.js'
 import { SeatLine } from './SeatLine.js'
 import { LastMove } from './LastMove.js'
 import { NOTES_OPEN_PX, NOTES_RAIL_PX, NotesColumn } from './NotesColumn.js'
@@ -85,15 +88,24 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const sessionId = params.get('session')
   const seat = params.get('seat')
   const owner = params.get('owner') === '1'
-  // A guest's token, from the fragment (#1278); the owner's own seat has none, and keeps its name.
+  // A guest's token, from the fragment (#1278); the owner's own seat has none.
   const token = useMemo(() => (owner ? undefined : takeGuestToken()), [owner])
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
   const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
-  // A guest sits down as the name her token was bought with, which the table tells her (#1278); the
-  // owner's own seat has no token, and its name is in its address.
-  const name = token === undefined ? params.get('name') : (client?.admitted ?? null)
+  // A guest sits down as the name her token was bought with, which the table tells her (#1278). The
+  // owner's own seat has no token and no name in its address (#1306): she sits down under the name
+  // she gave «Hur sitter ni?» in this browser (L77), else under her account's, which the table tells
+  // her, else as the designer.
+  // A link from before that named her in its query, and the name is taken out of the address in
+  // the same history entry, as a guest's is (#1278).
+  const [kept] = useState(() => {
+    if (!owner) return null
+    dropOwnerName()
+    return sessionId ? (hostSeatAt(sessionId)?.name ?? null) : null
+  })
+  const name = token === undefined ? (owner ? (kept ?? client?.admitted ?? (view ? t('online.designer') : null)) : null) : (client?.admitted ?? null)
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
@@ -183,7 +195,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // The room's code: the one the server tells this connection — the owner's own seat is told it,
   // and told the new one after «Ny kod» — or else the one a guest arrived with.
   const code = conn.room?.code ?? params.get('code')
+  // She left with her name removed (#1281), ahead of the door the release shut behind her.
+  const [forgotten, setForgotten] = useState(false)
 
+  if (forgotten) return <ForgottenPage home={links.home ?? '/'} />
   if (!sessionId || !seat) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
   if (refused === 'kicked') return <StatusNotice notice={kickedNotice(roomOpen === true, t)} surface="page" links={links} />
@@ -191,6 +206,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
+  // A guest's way to leave with her name removed (#1281); the owner's own seat is her account's (#1280).
+  const forget = token ? { name: me?.name ?? name ?? seat, run: () => forgetMe(http, sessionId, token) } : undefined
   // Which shape the hand takes (K17's revision of 2026-09-14, #77). In a landscape window it is a
   // column at the window's inline end and the felt keeps the height; in a portrait one the band
   // under the felt stands exactly as it was — there the window's short side is the width, the
@@ -346,7 +363,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
       </main>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={left} toast={toast} onToast={setToast} version={version} faces={http} stay={stay} flagDocked />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={left} toast={toast} onToast={setToast} version={version} faces={http} stay={stay} flagDocked forget={forget} onForgotten={() => setForgotten(true)} />
       </div>
       ) : (
         /* A window too small to carry a board gets the player's own surface instead (#99): the
@@ -368,6 +385,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             openHand={kbd.openHand}
             onLeft={left}
             stay={stay}
+            forget={forget}
+            onForgotten={() => setForgotten(true)}
             away
           />
           {kbd.panel}

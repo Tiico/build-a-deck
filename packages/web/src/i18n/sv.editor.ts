@@ -2005,7 +2005,6 @@ export const svEditor = {
   'zone.hand': 'Hand',
   'zone.new.pile': 'Hög {n}',
   'zone.new.area': 'Yta {n}',
-  'tables.designer': 'Designern',
   // Playtestets svar (#1010, beställarens val 2026-10-18): Bord-flikens andra vy, «Resultat».
   'results.switch': 'Bord-flikens vy',
   'results.switch.tables': 'Bord',
@@ -2079,6 +2078,7 @@ export const svEditor = {
   'results.flag.when': 'drag {n} av {of}',
   'results.flag.table': 'Bordet',
   'results.flag.silent': 'flaggade utan kommentar',
+  'results.flag.masked': 'flaggade, och kommentaren är borttagen',
   'results.card.show': 'Visa {title} som kortet såg ut',
   'results.card.lifted': '{title} som kortet såg ut',
   'results.card.by': 'när {who} flaggade',

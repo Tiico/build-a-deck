@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, SEATINGS, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -232,6 +232,8 @@ const StartBody = z.object({ seating: z.enum(SEATINGS).optional() })
 const JoinBody = z.object({ name: z.string().trim().min(1).max(64).refine((name) => name !== REDACTED, 'the placeholder of a masked name is nobody’s name'), seat: z.string().min(1).optional() })
 const KickBody = z.object({ seat: z.string().min(1) })
 const ClaimBody = z.object({ token: z.string().min(1) })
+// The guest's own erasure (#1281): the token her phone was given, and nothing else.
+const EraseBody = z.object({ token: z.string().min(1) })
 
 // The tables an account sat at (G1), newest first, each with what came of it: the game's name,
 // whether it ended, whether the survey was answered from that seat, how many moments were flagged
@@ -377,17 +379,17 @@ export function createServer(given: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const q = url.searchParams
-    // The token rides in the protocol header (#1278); an address with one is a page loaded before
-    // that, which still gets in.
-    const carried = tokenOfProtocols(req.headers['sec-websocket-protocol'])
+    // The token rides in the protocol header (#1278), and the host key beside it (#1306); an address
+    // with either is a page loaded before that, which still gets in.
+    const offered = req.headers['sec-websocket-protocol']
     const ask: Admission = {
       seat: q.get('seat'),
       role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null,
       name: q.get('name'),
-      token: carried ?? q.get('token'),
-      host: q.get('host'),
+      token: tokenOfProtocols(offered) ?? q.get('token'),
+      host: hostKeyOfProtocols(offered) ?? q.get('host'),
       owner: q.get('owner') === '1',
-      carried: carried !== null,
+      fresh: offersTableProtocol(offered),
     }
     wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, req, ws, sessionId, ask))
   })
@@ -894,13 +896,15 @@ async function fileAt(path: string): Promise<string | null> {
   }
 }
 
-// What a connection asks to be (DRIFT §9), from its query string.
-type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; carried: boolean }
+// What a connection asks to be (DRIFT §9), from its query string and the protocols it offers.
+// `fresh` is a client that offers the table's protocol, and so knows `admitted` (#1278, #1306).
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; fresh: boolean }
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
 // `host` marks the project owner's own seat or watch (L77): not the table's screen, but hers.
-// `guest` is the name on the admission a token bought, for the connection to be told (#1278).
-type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; guest?: string }
+// `told` is the name the connection is told it sits as: a guest's, on the admission her token bought
+// (#1278), and the owner's own seat's, the name she gave her account (#1306).
+type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; told?: string }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
@@ -919,7 +923,11 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
       const own = opts.auth ? (await accountOf(opts.auth, req))?.name : null
       return { seat: null, observer: own ?? name, host: true }
     }
-    return ask.seat === null ? { seat: null } : { seat: ask.seat, host: true }
+    if (ask.seat === null) return { seat: null }
+    // Her seat sits down under a name her page knows, the one she gave «Hur sitter ni?» (L77); where
+    // it knows none, under the name she gave her account (#1254). Never one from the address.
+    const named = opts.auth ? (await accountOf(opts.auth, req))?.name : null
+    return { seat: ask.seat, host: true, ...(named ? { told: named } : {}) }
   }
   // The table's own view (DRIFT §9): the host key opens it, and so does the login of whoever may
   // open the game's tables (#748) — the server already knows who she is, so an owner who arrives
@@ -937,8 +945,8 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
     : null
-  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, guest: live.name } : { refused: 'an observer needs a token' }
-  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, guest: live.name } : { refused: 'a seat needs its token' }
+  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, told: live.name } : { refused: 'an observer needs a token' }
+  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, told: live.name } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
 }
 
@@ -970,6 +978,24 @@ async function surveySender(opts: ServerOptions, req: IncomingMessage, session: 
   if (observer) return seat === null && body.who ? { who: body.who, seat: null, observer: true } : null
   if (seat === null || !session.setup.seats.includes(seat)) return null
   return { who: actor.seats().find((s) => s.id === seat)?.name ?? seat, seat }
+}
+
+// `POST /sessions/:id/erase` (#1281): what the guest's own erasure answers, and does.
+async function eraseGuest(opts: ServerOptions, erasures: ErasureStore, sessionId: string, raw: string): Promise<[number, unknown]> {
+  if (!(await opts.store.loadSession(sessionId))) return [404, { error: 'unknown session' }]
+  let given: unknown
+  try {
+    given = JSON.parse(raw || '{}')
+  } catch {
+    given = null
+  }
+  const parsed = EraseBody.safeParse(given)
+  if (!parsed.success) return [400, { error: 'a token is needed' }]
+  const guest = await opts.store.guestByToken(sessionId, hash(parsed.data.token))
+  if (!guest) return [403, { error: 'the token admits nobody at this table' }]
+  const done = await erasures.erase([entry({ kind: 'guest', session: sessionId, seat: guest.seat, issuedAt: guest.issuedAt }, 'request', clock(opts))])
+  await opts.host.reload(done.sessions)
+  return [200, { ok: true }]
 }
 
 // One editor on one project (D3). Only the account that owns the project may edit it; roles for
@@ -1186,7 +1212,7 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
   }
   const seat = who.seat
   // Told before the snapshot, so the page has its name by the time it sees the seat it sits down in.
-  if (ask.carried && who.guest !== undefined) send({ t: 'admitted', name: who.guest })
+  if (ask.fresh && who.told !== undefined) send({ t: 'admitted', name: who.told })
   // The door shuts once this turn's answers have gone out. A seat that asks for its own way out
   // (#31) is emptied as part of that very commit, and is still owed the ack for it; `ws.close`
   // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro
@@ -2610,6 +2636,18 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     await opts.surveys.put({ sessionId, version: actor.version, at: clock(opts).toISOString(), ...sender, answers: body.answers })
     json(res, 201, { ok: true })
+    return true
+  }
+  // A guest erases herself (#1281, G6, F5): her phone asks with the token her seat or her watch was
+  // bought with, and that admission is erased as the operator's script erases one through Kontakt
+  // (#1279) — her name, what she wrote from it and her survey answers. The token is looked up and
+  // not tried as the door tries it: a guest who has left, was kicked, or whose table is over is still
+  // the one the token was given to, and her way to be forgotten does not close with the door. A
+  // token is nobody at any other table, so it erases nothing there.
+  const erase = /^\/sessions\/([^/]+)\/erase$/.exec(url.pathname)
+  if (erase && req.method === 'POST' && opts.erasures) {
+    const [status, body] = await eraseGuest(opts, opts.erasures, decodeURIComponent(erase[1] ?? ''), await readBody(req))
+    json(res, status, body)
     return true
   }
   const surveys = /^\/sessions\/([^/]+)\/surveys$/.exec(url.pathname)

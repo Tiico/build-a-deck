@@ -1,3 +1,4 @@
+import { forgetMe } from '../player/forget.js'
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { ChevronGlyph } from '../glyphs.js'
@@ -245,7 +246,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         </Suspense>
       )}
       </div>
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} onward={back} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} />}
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} onward={back} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} watched {...(token ? { onForget: () => forgetMe(http, sessionId, token) } : {})} />}
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: asObserver(guestNotice('missing', t), t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

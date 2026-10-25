@@ -252,6 +252,11 @@
    written for somebody saying the words on the screen out loud to reach (WCAG 2.5.3). */
 .byd-join-name { display: grid; gap: 6px; }
 .byd-join-name > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+/* What is kept, who sees it and how long (#1281, variant C): three short rows by the field rather
+   than one long sentence, the words that answer the question in the quiet register beside them. */
+.byd-join-kept { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; line-height: 1.45; }
+.byd-join-kept dt { color: #9aa3b8; }
+.byd-join-kept dd { margin: 0; color: #dfe4ee; }
 /* What the page answers with, said at the field and in a tone of its own: a refusal written in the
    ink the prose around it uses is a caption, and the eye sorts it away. The wizard already says
    this of every `[role='alert']` on paper; this is the same sentence in the phone's own colour. */

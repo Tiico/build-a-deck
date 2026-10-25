@@ -4,9 +4,8 @@
 //
 // The terms follow #1268's outline section by section, with the same numbering, so 9 and 10 stand as
 // headings from the start and no number ever changes. The privacy text follows #1269's maps and F1–F7,
-// and says only what is true today (beställarens beslut 3, 2026-10-24): an account downloads its data
-// and deletes itself in Profil (#1280), a guest's erasure goes through Kontakt, and the text is
-// brought up to date with each slice that changes that (#1277, #1279–#1281).
+// and says only what is true today (beställarens beslut 3, 2026-10-24), brought up to date with each
+// slice that changes that (#1277, #1279–#1281).
 //
 // This is legal text and not the tool's catalogue: «vi» here is the one who runs Deckster, a party to
 // an agreement, which is why it lives outside `i18n/` and is not held to L73's voice
@@ -151,9 +150,9 @@ const terms: Document = {
 
 // What is true today (beställarens beslut 3, 2026-10-24). What can no longer be used is swept (#1277),
 // and a guest's names and free text are masked after twelve months and with a game taken away, with
-// the ledger run again after a restore (#1279). Profil's download and erase (#1280) and the guest's
-// own way from her phone (#1281) are not built, so the text does not say them: any other erasure is a
-// letter to Kontakt. Each slice brings its own line in here when it lands.
+// the ledger run again after a restore (#1279). A guest removes her own name and words from her
+// phone, where she leaves the table and under the thanks (#1281). An account downloads what is kept
+// about it and deletes itself in Profil (#1280). Each slice brings its own line in here when it lands.
 const privacy: Document = {
   title: 'Integritet i Decksters beta',
   sections: [
@@ -184,7 +183,7 @@ const privacy: Document = {
     },
     {
       h: 'Om du är gäst vid ett bord',
-      ks: 'Namnet du skriver, dina drag, anteckningar, flaggor och enkätsvar. Alla vid bordet ser dem medan ni spelar, och spelets ägare efteråt.',
+      ks: 'Namnet du skriver, dina drag, anteckningar, flaggor och enkätsvar. Alla vid bordet ser dem medan ni spelar, och spelets ägare efteråt. Namnet och det du skriver tas bort efter ett år, eller när du ber om det.',
       body: [
         'När du sätter dig vid ett bord sparar vi namnet du skriver, dina drag, dina anteckningar och flaggor, och dina enkätsvar.',
         'Medan ni spelar ser alla vid bordet dem. Efteråt ser spelets ägare och de hen delar spelet med dem. Ingen annan.',
@@ -193,7 +192,7 @@ const privacy: Document = {
     },
     {
       h: 'Hur länge vi sparar',
-      ks: 'En gästs namn och fritext tas bort efter ett år, och direkt när spelet tas bort. Vill du att något annat raderas, skriv till oss.',
+      ks: 'En gästs namn och fritext tas bort efter ett år, direkt när spelet tas bort, och när gästen själv tar bort dem på telefonen. Vill du att något annat raderas, skriv till oss.',
       body: [
         {
           list: [
@@ -207,7 +206,7 @@ const privacy: Document = {
             '**Säkerhetskopior:** åtta dagar. Efter en återställning tar vi bort det som raderats igen.',
           ],
         },
-        'Ditt konto raderar du själv i Profil. Vill du att något du lämnat som gäst raderas tidigare, skriver du till {contact}. Den här texten ändras när det finns fler vägar.',
+        'Ditt konto raderar du själv i Profil. Vill du att det du lämnat som gäst raderas tidigare gör du det själv på telefonen: när du lämnar bordet, eller under tacket när bordet har avslutats. Har telefonen inte länken kvar, skriver du till {contact}.',
       ],
     },
     {
@@ -235,7 +234,7 @@ const privacy: Document = {
       body: [
         'Du har rätt att få veta vad vi har om dig, få det rättat, raderat eller utlämnat i ett format du kan ta med dig, och att invända mot det vi gör på ett berättigat intresse.',
         '**Med konto:** i Profil laddar du ner det vi har om dig och raderar kontot. Ditt namn kan du själv ändra eller ta bort där.',
-        '**Som gäst:** skriv till {contact} med spelets namn, ungefär när ni spelade och namnet du satt under.',
+        '**Som gäst:** ta bort ditt namn och dina svar på telefonen, när du lämnar bordet eller under tacket när bordet har avslutats. Annars skriver du till {contact} med spelets namn, ungefär när ni spelade och namnet du satt under.',
         'Är du inte nöjd med hur vi svarar kan du klaga hos Integritetsskyddsmyndigheten, imy.se.',
       ],
     },

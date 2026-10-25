@@ -2,6 +2,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { questions, type SurveyAnswers } from './surveyApi.js'
 import { useT } from '../i18n/index.js'
 import { versionWord } from '../i18n/version.js'
+import type { SendResult } from '../client.js'
+import { CheckGlyph } from '../glyphs.js'
+import { useRefusal } from '../status/Refusal.js'
+import { ForgetSheet } from './SessionSheets.js'
+import { markForgotten, wasForgotten } from './forget.js'
 
 // `saveUrl` (G1): where the guest goes to keep this session on an account; absent without a token.
 // It is offered on the thanks only, once the answers are sent (#690, beslut 2026-10-06): a guest
@@ -13,12 +18,29 @@ import { versionWord } from '../i18n/version.js'
 // so it is the thanks that stand — in a tab of its own too, where `remember` knows nothing — and
 // they say it is saved in place of offering it again. `onward`: the way on under the thanks, for a
 // survey answered from the account (#1143), which has a page to go back to where the phone has not.
-export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined; remember?: string | undefined; rulebook?: boolean | null | undefined; saved?: boolean | undefined; onward?: ReactNode }
+// `onForget`: a guest's way to have her name and her answers removed (#1281, G6), offered under the
+// thanks after the sentence on why keeping them helps, as a quieter button than the save; absent
+// without a token. `watched`: she watched the table rather than sat at it, for the question to say.
+export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined; remember?: string | undefined; rulebook?: boolean | null | undefined; saved?: boolean | undefined; onward?: ReactNode; onForget?: (() => Promise<SendResult>) | undefined; watched?: boolean }
 
 // The survey after a session (G3, prototype A): one question at a time with big buttons, a free
 // line last, then thanks. Answers are tied to the version the session ended on.
-export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, saved = false, onward }: SurveyProps) {
+export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, saved = false, onward, onForget, watched = false }: SurveyProps) {
   const t = useT()
+  const [forgotten, setForgotten] = useState(() => remember !== undefined && wasForgotten(remember))
+  const [asking, setAsking] = useState(false)
+  const [forgetting, setForgetting] = useState(false)
+  const forgot = useRefusal('phone')
+  const forget = async () => {
+    if (!onForget || forgetting) return
+    setForgetting(true)
+    const done = await forgot.watch(onForget())
+    setForgetting(false)
+    if (!done.ok) return
+    if (remember !== undefined) markForgotten(remember)
+    setAsking(false)
+    setForgotten(true)
+  }
   const [step, setStep] = useState(0)
   const [scales, setScales] = useState<Partial<Record<'fun' | 'clarity' | 'balance', number>>>({})
   const [change, setChange] = useState('')
@@ -26,7 +48,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, sa
   // The survey takes the focus when it appears (#483): it replaces the view whose button ended the
   // table, and a focus left on that button is a focus on nothing.
   const here = useRef<HTMLDivElement>(null)
-  useEffect(() => here.current?.focus(), [state])
+  useEffect(() => here.current?.focus(), [state, forgotten])
   const q = questions(rulebook)[step]
   const send = async () => {
     const { fun, clarity, balance } = scales
@@ -45,20 +67,53 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, sa
       <div className="byd-survey" data-survey="sent" ref={here} tabIndex={-1}>
         <div />
         <div className="byd-survey-thanks">
-          <strong>{t('survey.thanks', { who })}</strong>
+          <strong>{forgotten ? t('forget.thanks.after') : t('survey.thanks', { who })}</strong>
           <span>{t('survey.tied', { version: versionWord(version, t) })}</span>
-          {saved ? <span>{t('survey.saved')}</span> : saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
-          {/* What a guest leaves behind, said where she saves it (#757). */}
-          {!saved && saveUrl && <p className="byd-muted">{t('guest.kept')}</p>}
-          {/* The row's first two (#757, #1272), where she saves what she left. */}
-          {!saved && saveUrl && (
-            <p className="byd-trust">
-              <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
-            </p>
+          {forgotten ? (
+            // Done, in place of the save: a table whose name is gone has nothing to keep (#1281).
+            <div className="byd-forget-done" role="status">
+              <CheckGlyph />
+              <strong>{t('forget.done')}</strong>
+              <span>{t('forget.done.body', { masked: t('masked.name') })}</span>
+            </div>
+          ) : (
+            <>
+              {saved ? <span>{t('survey.saved')}</span> : saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
+              {/* What saving keeps, and for how long, said where she saves it (#757, #1281). */}
+              {!saved && saveUrl && <p className="byd-muted">{t('guest.kept.account')}</p>}
+              {/* The row's first two (#757, #1272), where she saves what she left. */}
+              {!saved && saveUrl && (
+                <p className="byd-trust">
+                  <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
+                </p>
+              )}
+              {onForget && (
+                <div className="byd-forget-way">
+                  <p>{t('forget.why')}</p>
+                  <button type="button" data-kind="forget" onClick={() => setAsking(true)}>
+                    {t('forget.thanks')}
+                  </button>
+                </div>
+              )}
+            </>
           )}
           {onward}
         </div>
         <div />
+        {asking && !forgotten && (
+          <ForgetSheet
+            name={who}
+            leaving={false}
+            watched={watched}
+            refusal={forgot}
+            busy={forgetting}
+            onYes={() => void forget()}
+            onClose={() => {
+              forgot.clear()
+              setAsking(false)
+            }}
+          />
+        )}
       </div>
     )
   }

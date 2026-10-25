@@ -108,7 +108,8 @@ describe('Starta on a game without a table (L77)', () => {
     await waitFor(() => expect(tab.location.href).toMatch(new RegExp(`^${location.origin}/online\\?`)))
     const q = new URL(tab.location.href).searchParams
     expect(q.get('seat')).toBe('A')
-    expect(q.get('name')).toBe('Vera')
+    // Her name is in no address (#1306): this browser remembers it for the seat.
+    expect(q.has('name')).toBe(false)
     expect(q.get('owner')).toBe('1')
     expect(q.get('code')).toBe(code)
     expect(q.get('session')).toBeTruthy()
@@ -129,7 +130,9 @@ describe('Starta on a game without a table (L77)', () => {
     await waitFor(() => expect(tab.location.href).toMatch(new RegExp(`^${location.origin}/table\\?`)))
     const q = new URL(tab.location.href).searchParams
     expect(q.get('mode')).toBe('tv')
-    expect(q.get('host')).toBeTruthy()
+    // The key is in the fragment, which goes in no request (#1306).
+    expect(q.has('host')).toBe(false)
+    expect(new URLSearchParams(new URL(tab.location.href).hash.slice(1)).get('host')).toBeTruthy()
   })
 
   it('says so in the band, with the way in as a link, when the browser stops the new window', async () => {
@@ -149,7 +152,7 @@ describe('Starta on a game without a table (L77)', () => {
     })
     const link = await within(band).findByRole('link', { name: 'Sätt dig vid bordet' })
     expect(band.textContent).toContain('Webbläsaren öppnade inget nytt fönster')
-    expect(link.getAttribute('href')).toMatch(/^\/online\?.*name=Vera/)
+    expect(link.getAttribute('href')).toMatch(/^\/online\?.*owner=1/)
     // Bordets egen flik för platsen (#1217): ett andra tryck tar fram den i stället för en till.
     expect(link.getAttribute('target')).toMatch(/^byd-online-/)
   })
