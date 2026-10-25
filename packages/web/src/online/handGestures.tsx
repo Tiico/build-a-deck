@@ -113,7 +113,9 @@ export function useHandGestures({ cards, faces, onPlay, locked = false, onCarry,
       ref: item.ref,
       onFocus: (e: { currentTarget: HTMLElement }) => {
         item.onFocus()
-        if (pressed.current !== c.id) setPointed(readingOf(c, e.currentTarget, 'key'))
+        // Only a focus the keyboard can see lifts the card: the one a program gives after a mouse
+        // played the card beside it (#1310) is not the reader's, and would cover the targets.
+        if (pressed.current !== c.id && keyboardSees(e.currentTarget)) setPointed(readingOf(c, e.currentTarget, 'key'))
         // A card the arrows reach must be a card the eye reaches: L10's rule for a strip that
         // scrolls, applied to the hand that now does.
         e.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
@@ -161,6 +163,17 @@ export function useHandGestures({ cards, faces, onPlay, locked = false, onCarry,
     </>
   )
   return { container, cardProps, overlays }
+}
+
+// Whether a focus is one the keyboard put there: `:focus-visible` once the element has it, which a
+// browser answers from how the reader last moved, and yes where there is no answer to be had.
+function keyboardSees(el: HTMLElement): boolean {
+  if (document.activeElement !== el) return true
+  try {
+    return el.matches(':focus-visible')
+  } catch {
+    return true
+  }
 }
 
 // A mouse or a keyboard reads a card with nothing on it to say what it answers to, so the lift

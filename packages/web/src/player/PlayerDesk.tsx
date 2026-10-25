@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HandFace, TURNED_GROUND } from './HandFace.js'
@@ -10,6 +10,7 @@ import { overviewOf, type Placement } from './PlaySheet.js'
 import { emptyHandText } from './HandGrid.js'
 import { LastMove } from '../online/LastMove.js'
 import { useHandGestures } from '../online/handGestures.js'
+import { FAN_MIN_PX } from '../online/fan.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Texture } from '../table/Texture.js'
@@ -73,6 +74,8 @@ export function PlayerDesk(props: PlayerDeskProps) {
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`).reverse()
   const groups = deskTargets(view, t)
   const [aimed, setAimed] = useState<string | null>(null)
+  const targets = useRef<HTMLElement>(null)
+  const rows = useStackRows(targets)
   const atOf = (zone: string): Placement => [...groups.lead, ...groups.mine, ...groups.piles, ...groups.rest].find((z) => z.id === zone)?.at ?? 'top'
   const tile = (z: DeskTarget) => <Target key={z.id} z={z} {...props} aimed={aimed === z.id} t={t} />
   return (
@@ -105,11 +108,11 @@ export function PlayerDesk(props: PlayerDeskProps) {
           <ExitButton view={view} raise={raiseMore} words />
         </div>
       </header>
-      <main className="byd-desk-targets" {...behind}>
+      <main className="byd-desk-targets" ref={targets} {...behind}>
         {groups.lead.map(tile)}
         {groups.mine.length > 0 && <div className="byd-desk-mine">{groups.mine.map(tile)}</div>}
-        {groups.piles.length > 0 && <div className="byd-desk-stack" data-stack="piles">{groups.piles.map(tile)}</div>}
-        {groups.rest.length > 0 && <div className="byd-desk-stack" data-stack="rest">{groups.rest.map(tile)}</div>}
+        {groups.piles.length > 0 && <div className="byd-desk-stack" data-stack="piles" style={stackStyle(groups.piles.length, rows)}>{groups.piles.map(tile)}</div>}
+        {groups.rest.length > 0 && <div className="byd-desk-stack" data-stack="rest" style={stackStyle(groups.rest.length, rows)}>{groups.rest.map(tile)}</div>}
       </main>
       <HandRow
         view={view}
@@ -135,15 +138,19 @@ export function PlayerDesk(props: PlayerDeskProps) {
 // the floor last as the table itself. The tiles are the overview's (`overviewOf`, L48): every zone
 // this reader may look into that is not a hand, a counters strip or the floor.
 //
-// A pile is never guessed at by its name or id (C4, #79): the first pile is first because the setup
-// lists it first, and the wizard lists the draw pile first. Another seat's area is a target because
+// A pile is never guessed at by its name or id (C4, #79). The one that leads is the pile this
+// seat's hand returns to (`returnTo`), which the designer set and which is the deck at the wizard's
+// table; a setup whose hand returns nowhere leads with its first pile. Another seat's area is a target because
 // the beställare's decision names it one (#1308) and because the felt already lets a card be dropped
 // there (#65); the phone's sheet still does not offer it (C4).
 export type DeskTarget = { id: string; name: string; at: Placement; kind: 'pile' | 'area'; count: number; mine: boolean }
 export function deskTargets(view: Snapshot, t: T): { lead: DeskTarget[]; mine: DeskTarget[]; piles: DeskTarget[]; rest: DeskTarget[] } {
   const owner = new Map(view.zones.map((z) => [z.id, z.owner]))
   const tiles: DeskTarget[] = overviewOf(view).flatMap((z) => (z.kind === 'hand' ? [] : [{ id: z.id, name: z.name, at: z.at, kind: z.kind, count: z.count, mine: owner.get(z.id) === view.seat }]))
-  const piles = tiles.filter((z) => z.kind === 'pile')
+  const back = view.zones.find((z) => z.kind === 'hand' && z.owner === view.seat)?.returnTo
+  const all = tiles.filter((z) => z.kind === 'pile')
+  const first = all.find((z) => z.id === back) ?? all[0]
+  const piles = first ? [first, ...all.filter((z) => z !== first)] : []
   const floor: DeskTarget = { id: view.floor, name: t('play.table'), at: 'top', kind: 'area', count: view.components.filter((c) => c.zone === view.floor && !isPiece(c)).length, mine: false }
   return {
     lead: piles.slice(0, 1),
@@ -151,6 +158,35 @@ export function deskTargets(view: Snapshot, t: T): { lead: DeskTarget[]; mine: D
     piles: piles.slice(1),
     rest: [...tiles.filter((z) => z.kind === 'area' && !z.mine), floor],
   }
+}
+
+// How many targets a column of them holds: as many as the row's height has room for at a target's
+// floor, `STACK_FLOOR_PX`. A column holding more opens a second one beside it, so every target is
+// on the screen at once (measured with eight seats and four piles, `desk-density.spec.ts`). Worked
+// out from the row's own height rather than left to the browser, because a grid that flows into
+// columns cannot say how wide it is before it knows how tall.
+const STACK_FLOOR_PX = 96
+const STACK_GAP_PX = 14
+const TARGETS_PAD_PX = 16
+function useStackRows(ref: { current: HTMLElement | null }): number {
+  const [rows, setRows] = useState(1)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setRows(Math.max(1, Math.floor((el.clientHeight - 2 * TARGETS_PAD_PX + STACK_GAP_PX) / (STACK_FLOOR_PX + STACK_GAP_PX))))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(measure)
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [ref])
+  return rows
+}
+function stackStyle(n: number, rows: number): CSSProperties {
+  // As few columns as the height allows, and the targets shared evenly between them: four piles in
+  // a column that holds three are two and two, not three and one.
+  const across = Math.ceil(n / Math.max(1, Math.min(n, rows)))
+  return { gridTemplateRows: `repeat(${Math.ceil(n / across)}, minmax(0, 1fr))`, gridTemplateColumns: `repeat(${across}, var(--byd-desk-stack-col))` }
 }
 
 type TargetProps = PlayerDeskProps & { z: DeskTarget; aimed: boolean; t: T }
@@ -173,6 +209,7 @@ function Target({ z, aimed, t, view, faces, onDraw, drawn, refusedPile, dropped,
             <button
               type="button"
               data-zone-draw={z.id}
+              aria-label={`${z.name}, ${t(z.count === 1 ? 'play.cards.one' : 'play.cards.other', { n: z.count })}, ${t('kbd.verb.toHand')}`}
               className={refusedPile === z.id ? 'byd-status-refused-control' : undefined}
               {...(refusedPile === z.id ? drawn.control : {})}
               onClick={() => onDraw(z.id)}
@@ -230,6 +267,15 @@ type HandRowProps = {
 // nothing. The ghost is drawn without a pointer, so it is never what is under it.
 const targetAt = (x: number, y: number): string | null => document.elementFromPoint?.(x, y)?.closest('[data-drop-zone]')?.getAttribute('data-drop-zone') ?? null
 
+// How far one card stands from the next: the card and a gap while the row has room, closing up
+// until every card fits the window, and never below a fingertip (#6), past which the row scrolls.
+// Worked out here and not by the browser's shrinking, as `fan.ts` does it for the band, because an
+// overlapped card's name has to know how much of it shows.
+const ROW_PAD_PX = 24
+function rowStyle(n: number): CSSProperties {
+  return n > 1 ? { ['--byd-desk-step' as string]: `clamp(${FAN_MIN_PX}px, (100vw - ${2 * ROW_PAD_PX}px - var(--fan-card)) / ${n - 1}, var(--fan-card) + 8px)` } : {}
+}
+
 // The hand along the foot (prototype A): every card in full size side by side, overlapping when
 // the row runs out of room and scrolling in its own box past a fingertip's step, never the page
 // (L10). The last card is always whole.
@@ -254,7 +300,7 @@ function HandRow({ view, cards, faces, locked, turnedHand, onOpen, onAim, onPlay
   if (cards.length === 0) body = <p className="byd-desk-hand-empty">{emptyHandText(view, t)}</p>
   else
     body = (
-      <div ref={hand.container} className="byd-desk-row" data-hand-fan role="group" aria-label={t('desk.hand', { cards: t(cards.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: cards.length }) })}>
+      <div ref={hand.container} className="byd-desk-row" data-hand-fan role="group" aria-label={t('desk.hand', { cards: t(cards.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: cards.length }) })} style={rowStyle(cards.length)}>
         {cards.map((c) => (
           <div className="byd-desk-slot" key={c.id}>
             <button className="byd-hand-face byd-desk-card" {...hand.cardProps(c)}>
