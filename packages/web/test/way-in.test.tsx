@@ -106,7 +106,7 @@ describe('every start in the editor asks how you sit, and the table keeps the an
     await answer('computer', 'Vera')
     await waitFor(() => expect(tab.location.href).toMatch(/\/online\?/))
     const q = at(tab.location.href).searchParams
-    expect([q.get('seat'), q.get('name'), q.get('owner')]).toEqual(['A', 'Vera', '1'])
+    expect([q.get('seat'), q.has('name'), q.get('owner')]).toEqual(['A', false, '1'])
     const [table] = await listed(run.projectId)
     expect(table?.seating).toBe('computer')
   })
@@ -171,7 +171,7 @@ describe('every start in the editor asks how you sit, and the table keeps the an
     await user.click(screen.getByRole('tab', { name: 'Bord' }))
     const row = await rowOf(table!.id)
     const href = at(within(row).getByRole('link', { name: /^Öppna bordet/ }).getAttribute('href')!)
-    expect([href.pathname, href.searchParams.get('seat'), href.searchParams.get('name'), href.searchParams.get('owner')]).toEqual(['/online', 'A', 'Vera', '1'])
+    expect([href.pathname, href.searchParams.get('seat'), href.searchParams.has('name'), href.searchParams.get('owner')]).toEqual(['/online', 'A', false, '1'])
   })
 
   it('opens a table of computers it did not start here at the room’s own address, where a seat is chosen', async () => {
@@ -217,7 +217,7 @@ describe('Mina spel starts a table the same way (#1286)', () => {
     await answer('computer', 'Vera')
     await waitFor(() => expect(tab.location.href).toMatch(/\/online\?/))
     const q = at(tab.location.href).searchParams
-    expect([q.get('seat'), q.get('name'), q.get('owner')]).toEqual(['A', 'Vera', '1'])
+    expect([q.get('seat'), q.has('name'), q.get('owner')]).toEqual(['A', false, '1'])
     const [table] = await listed(run.projectId)
     expect(table?.seating).toBe('computer')
     // Och «Öppna bordet» leder sedan tillbaka till samma plats.
