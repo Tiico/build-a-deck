@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp: /play-arken på en dator (#1376)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1376 punkt 3: /play i ett brett fönster (#1310, PR #1339) öppnar fortfarande telefonens
+     bottenark för Flagga, Lämna och «Avsluta bordet?», och enkäten och tacket står i telefonens
+     spalt. Beställaren (2026-10-25): de får en form för datorn, och avslutsfrågan påstår inte
+     «på telefonen». Tre radikalt olika former, och dagens som 0.
+     Det som ligger fast: G3 (flaggan, #1142 kortet, #1255 panelen bredvid filten på /online),
+     C9 och #31 (Lämna med två vägar ut, Avsluta frågar först och öppnar på «Avbryt»), L80 (ägarens
+     «sitt kvar»), L87 (gästens «Lämna och ta bort mitt namn…» som tyst andra knapp, och samma rad
+     under tacket), G3 #1021 (enkätens fyra frågor). Skrivbordet är #1310:s, ritat för hand med
+     desk.css och player.css egna mått och färger.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  main.scen { flex: 1 1 auto; padding: 22px 16px 40px; background: #15171c; }
+  .ram { display: grid; gap: 6px; justify-content: center; }
+  .skala { transform-origin: 0 0; }
+
+  /* ── Fönstret och skrivbordet (desk.css, player.css) ─────────────────────────────────────── */
+  .fonster { --bg: #14161c; --surface: #1b1e27; --control: #242938; --ink: #eee; --strong: #fff; --muted: #9aa3b8; --quiet: #7d8597; --accent: #7dd3a0; --on-accent: #0b2a18; --warn: #ffd98a; --warn-bg: #2a2417; --danger: #ff9a9a; --danger-bg: #3a2a2d; --rule: #262a35; --line: #2c3242; --tile: #171a21; --edge: #3b4152; --back: repeating-linear-gradient(45deg, #3a4d7a 0 6px, #2f4068 6px 12px);
+    position: relative; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 14px system-ui, sans-serif; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); user-select: none; }
+  .fonster button { font: inherit; color: inherit; cursor: pointer; }
+  .fonster :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .g { width: 16px; height: 16px; flex: none; }
+  .huvud { flex: none; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 16px; border-bottom: 1px solid var(--rule); position: relative; }
+  .vem { flex: none; padding: 4px 14px; border-radius: 999px; background: var(--surface); border-left: 3px solid #e0544b; line-height: 1.25; }
+  .vem strong { color: var(--strong); font-size: 15px; } .vem span { color: var(--muted); font-size: 13px; }
+  .raknare { flex: none; display: grid; grid-template-columns: 36px auto 36px; align-items: center; border-radius: 12px; background: var(--surface); }
+  .raknare button { min-height: 44px; border: 0; background: none; color: #fff; font-size: 18px; }
+  .raknare span { min-width: 3.5em; text-align: center; font-size: 13px; color: var(--muted); } .raknare b { color: #fff; font-size: 16px; margin-left: 4px; }
+  .tur { flex: none; padding: 6px 12px; border-radius: 999px; background: #1d2a3f; color: #cfe0ff; font-size: 13px; font-weight: 700; }
+  .var { flex: 1 1 0; min-width: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .verktyg { flex: none; display: flex; gap: 8px; }
+  .verktyg button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--control); color: #fff; font-weight: 700; white-space: nowrap; }
+  .verktyg button[aria-expanded='true'] { background: #343a4c; box-shadow: inset 0 -3px 0 var(--warn); }
+  .fonster[data-w='1024'] .verktyg .ord { display: none; }
+  .arbete { flex: 1 1 auto; min-height: 0; display: flex; }
+  .vanster { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  .kropp { flex: 1 1 auto; min-height: 0; display: flex; }
+  .mal { flex: 1 1 auto; min-width: 0; display: flex; gap: 14px; padding: 16px; overflow: hidden; }
+  .malyta { flex: 0 0 150px; position: relative; display: flex; flex-direction: column; gap: 8px; padding: 12px; min-width: 0; border: 1.5px dashed var(--edge); border-radius: 14px; background: var(--tile); }
+  .malyta.mine { flex: 1 1 0; min-width: 200px; }
+  .malyta > header { display: flex; gap: 8px; align-items: baseline; } .malyta h2 { margin: 0; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .malyta header span { color: var(--muted); font-size: 12px; }
+  .malyta .hint { margin-top: auto; color: var(--quiet); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .malyta .inne { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center; gap: 8px; }
+  .malyta.hog .inne { align-content: center; }
+  .kort { --w: 60px; position: relative; flex: none; width: var(--w); aspect-ratio: 63 / 88; padding: 0; border: 0; border-radius: calc(var(--w) * .08); overflow: hidden; text-align: left; background: hsl(var(--hue) 40% 86%); color: #1c1c1c; box-shadow: 0 3px 10px rgb(0 0 0 / 45%); font-size: calc(var(--w) * .1); }
+  .kort .fram { position: absolute; inset: 0; display: flex; flex-direction: column; color: #1c1c1c; }
+  .kort .fram b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kort b { display: block; padding: .5em .6em; background: hsl(var(--hue) 55% 35%); color: #fff; font: 800 1.15em/1.15 Georgia, serif; }
+  .kort small { display: block; padding: .4em .7em 0; font-size: .85em; line-height: 1.3; }
+  .kort[data-bak] { background: var(--back); border: 1px solid #4b5f8e; }
+  .kort[data-bak] .fram { display: none; }
+  .kort[data-pekad] { outline: 3px solid var(--warn); outline-offset: 3px; }
+  .pekbar .kort:hover { outline: 3px solid var(--warn); outline-offset: 3px; cursor: crosshair; }
+  .hand { flex: none; position: relative; border-top: 1px solid var(--rule); background: linear-gradient(#171920, #111217); padding: 8px 0 14px; }
+  .hand > header { display: flex; justify-content: space-between; padding: 0 16px; color: var(--muted); font-size: 12px; }
+  .rad { display: flex; justify-content: center; padding: 24px 24px 0; }
+  .slot { position: relative; min-width: 0; flex: 0 1 calc(var(--fan) + 8px); height: calc(var(--fan) * 88 / 63); }
+  .slot:last-child { flex: 0 0 var(--fan); }
+  .slot .kort { --w: var(--fan); position: absolute; left: 0; bottom: 0; transition: transform .12s; }
+  .slot:hover { z-index: 2; } .slot:hover .kort { transform: translateY(-18px); }
+  .kropp, .hand { transition: opacity .2s, filter .2s; }
+  .fonster[data-slut] .mal, .fonster[data-slut] .hand, .fonster[data-slut] .huvud { opacity: .35; filter: saturate(.4); pointer-events: none; }
+  .vanster { position: relative; }
+  .slutstampel { position: absolute; z-index: 3; left: 50%; top: 40%; transform: translate(-50%, -50%); padding: 10px 18px; border-radius: 999px; background: #2a2e3a; color: #fff; font-weight: 700; font-size: 15px; box-shadow: 0 8px 24px rgb(0 0 0 / 40%); }
+  .knapp { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; font-weight: 700; font-size: 15px; }
+  .knapp.prim { background: var(--accent); color: var(--on-accent); }
+  .knapp.flagga { background: var(--warn); color: var(--warn-bg); }
+  .knapp.nej { background: var(--danger-bg); color: var(--danger); }
+  .knapp.tyst { background: var(--control); color: #fff; }
+  .knapp:disabled { opacity: .35; cursor: default; }
+  .glom { display: grid; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule); }
+  .glom p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .glom button { min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; }
+  textarea { width: 100%; min-height: 84px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: #fff; padding: 10px 12px; font: 15px/1.4 system-ui; resize: vertical; }
+  kbd { font: 600 11px system-ui; padding: 1px 5px; border-radius: 4px; background: var(--control); border: 1px solid #3a4152; color: var(--ink); }
+  .tyst-text { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .lista { margin: 0 0 4px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; line-height: 1.45; }
+  .toast { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); z-index: 60; padding: 8px 14px; border-radius: 999px; background: var(--warn); color: var(--warn-bg); font-size: 13px; font-weight: 700; }
+  .pekrad { position: absolute; z-index: 55; left: 50%; top: 66px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; border-radius: 999px; background: var(--warn); color: var(--warn-bg); font-weight: 700; box-shadow: 0 8px 24px rgb(0 0 0 / 40%); }
+  .pekrad button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--warn-bg); color: var(--warn); font-weight: 700; }
+
+  /* Det som valet säger om sig självt: rubrik, följd, och knappen. */
+  .vag { display: grid; gap: 6px; }
+  .vag p { margin: 0 2px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .vag a, .vag button { display: block; width: 100%; min-height: 48px; padding: 0 14px; border: 0; border-radius: 12px; font-weight: 700; font-size: 15px; text-align: center; text-decoration: none; }
+  .vag [data-k='lamna'], .vag [data-k='sitt'] { background: var(--control); color: #fff; line-height: 48px; }
+  .vag [data-k='slut'] { background: var(--danger-bg); color: var(--danger); }
+  .kortrad { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 12px; background: var(--bg); }
+  .kortrad .kort { --w: 64px; }
+  .kortrad > div { flex: 1; display: grid; gap: 2px; } .kortrad b { color: #fff; } .kortrad span { color: var(--muted); font-size: 13px; }
+  .kortrad .x { width: 44px; height: 44px; border: 0; border-radius: 10px; background: var(--control); color: #fff; font-size: 16px; }
+  .valja { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .valja button { min-height: 64px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: #fff; font-weight: 700; text-align: left; display: grid; gap: 2px; }
+  .valja button[aria-pressed='true'] { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+  .valja small { color: var(--muted); font-weight: 400; font-size: 13px; }
+
+  /* Enkätens delar: skalan och dess ändar. */
+  .skala5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .skala5 button { min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: #fff; font-size: 18px; font-weight: 700; position: relative; }
+  .skala5 button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .skala5 button kbd { position: absolute; right: 6px; top: 5px; font-size: 10px; padding: 0 4px; opacity: .7; }
+  .andar { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .prickar { display: flex; gap: 6px; } .prickar i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); } .prickar i[data-on] { background: var(--accent); }
+  .tack { display: grid; justify-items: center; text-align: center; gap: 8px; }
+  .tack > strong { font-size: 26px; color: #fff; }
+  .tack .spara { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 700; text-decoration: none; }
+  .tack .tyst-text { max-width: 420px; }
+  .tack .tillit { color: var(--muted); font-size: 13px; } .tack .tillit a { color: inherit; }
+  .tack .glom { width: 100%; max-width: 420px; text-align: left; }
+  .klart { display: grid; justify-items: center; gap: 4px; padding: 12px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; max-width: 420px; }
+  .klart strong { color: #fff; }
+
+  /* ── 0 · Idag: telefonens bottenark och spalt, oförändrade ─────────────────────────────────── */
+  .ark-bak { position: absolute; inset: 0; z-index: 42; display: grid; align-content: end; background: rgb(0 0 0 / 60%); }
+  .ark { background: var(--surface); border-radius: 20px 20px 0 0; padding: 18px 18px 30px; }
+  .ark .titel { font-size: 16px; color: #fff; margin: 0 0 10px; }
+  .ark p { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .ark textarea { min-height: 70px; font-size: 14px; }
+  .ark .knappar { display: flex; gap: 8px; margin-top: 10px; } .ark .knappar .knapp { flex: 1; min-height: 50px; }
+  .ark .vag { margin-top: 18px; } .ark .vag p { font-size: 13px; }
+  .ark .glom p { font-size: 13px; }
+  .ark .valja button small { font-size: 12px; }
+  .enkat0 { position: absolute; inset: 0; z-index: 45; display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; background: var(--bg); }
+  .enkat0 > * { width: 100%; max-width: 520px; margin: 0 auto; }
+  .enkat0 h1 { margin: 0; font-size: 22px; } .enkat0 .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .enkat0 .fragan { display: grid; align-content: center; gap: 16px; } .enkat0 h2 { margin: 0; font-size: 20px; }
+  .enkat0 .skala5 button { aspect-ratio: 1; } .enkat0 .andar { font-size: 11px; color: var(--quiet); }
+  .enkat0 .nav { display: flex; align-items: center; gap: 8px; } .enkat0 .prickar { flex: 1; }
+  .enkat0 .tack { align-content: center; } .enkat0 .tack > span, .enkat0 .tack .tyst-text { font-size: 13px; }
+
+  /* ── A · Panelen bredvid (som #1255 på /online) ────────────────────────────────────────────── */
+  .panel { flex: 0 0 var(--pw, 380px); min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--rule); background: var(--surface); box-shadow: -12px 0 30px rgb(0 0 0 / 25%); }
+  .fonster[data-w='1024'] .panel { --pw: 340px; }
+  .panel[data-bred] { --pw: 480px; } .fonster[data-w='1024'] .panel[data-bred] { --pw: 440px; }
+  .panel > header { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 20px; border-bottom: 1px solid var(--rule); }
+  .panel > header h2 { flex: 1; margin: 0; font-size: 17px; color: #fff; }
+  .panel > header button { width: 44px; height: 44px; border: 0; border-radius: 10px; background: none; color: var(--muted); font-size: 18px; }
+  .panel .inne { flex: 1; min-height: 0; overflow: auto; padding: 18px 20px; display: grid; align-content: start; gap: 16px; }
+  .panel .rubrik { margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .panel .rubrik i { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .panel .handelse { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg); color: #fff; font-size: 14px; }
+  .panel .handelse small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .panel .peka { padding: 12px; border-radius: 12px; border: 1.5px dashed var(--edge); color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .panel .peka b { color: #fff; }
+  .panel > footer { flex: none; display: flex; gap: 8px; align-items: center; padding: 14px 20px; border-top: 1px solid var(--rule); }
+  .panel > footer .hint { flex: 1; color: var(--muted); font-size: 13px; }
+  .panel .fraga h3 { margin: 0 0 10px; font-size: 19px; color: #fff; }
+
+  /* ── B · Dialogen mitt på ──────────────────────────────────────────────────────────────────── */
+  .skymning { position: absolute; inset: 0; z-index: 42; display: grid; place-items: center; padding: 40px; background: rgb(5 7 12 / 66%); }
+  .dialog { width: min(var(--dw, 520px), 100%); max-height: 100%; overflow: auto; display: grid; gap: 16px; padding: 26px 28px; border-radius: 20px; background: var(--surface); border: 1px solid #343a4a; box-shadow: 0 20px 60px rgb(0 0 0 / 60%); }
+  .dialog > h2 { margin: 0; font-size: 21px; color: #fff; }
+  .dialog .knappar { display: flex; gap: 8px; justify-content: flex-end; }
+  .dialog .vagar { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); gap: 12px; }
+  .dialog .vagar .vag { align-content: start; padding: 14px; border-radius: 14px; background: var(--bg); }
+  .dialog .vagar .vag p { order: 2; }
+  .form { display: grid; gap: 20px; }
+  .form .rad5 { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: center; }
+  .form .rad5 h3 { margin: 0; font-size: 16px; color: #fff; font-weight: 650; }
+  .form .rad5 .skala5 button { min-height: 44px; font-size: 16px; }
+  .form .rad5 .andar { font-size: 12px; }
+
+  /* ── C · Från knappen, och enkäten som sida ────────────────────────────────────────────────── */
+  .pop { position: absolute; z-index: 44; top: 60px; width: var(--popw, 400px); display: grid; gap: 14px; padding: 18px; border-radius: 16px; background: #23262f; border: 1px solid #3a3f4e; box-shadow: 0 18px 40px rgb(0 0 0 / 55%); }
+  .pop::before { content: ''; position: absolute; top: -7px; right: var(--pil, 40px); width: 12px; height: 12px; background: #23262f; border-left: 1px solid #3a3f4e; border-top: 1px solid #3a3f4e; transform: rotate(45deg); }
+  .pop h2 { margin: 0; font-size: 16px; color: #fff; }
+  .pop .knappar { display: flex; gap: 8px; justify-content: flex-end; }
+  .meny { display: grid; margin: -6px; }
+  .meny button, .meny a { display: grid; grid-template-columns: 20px 1fr; gap: 2px 12px; align-items: start; padding: 12px; border: 0; border-radius: 10px; background: none; color: #fff; text-align: left; text-decoration: none; font-weight: 700; font-size: 15px; }
+  .meny button:hover, .meny a:hover { background: #2d313c; }
+  .meny .g { margin-top: 2px; }
+  .meny small { grid-column: 2; color: var(--muted); font-weight: 400; font-size: 13px; line-height: 1.4; }
+  .meny [data-k='slut'] { color: var(--danger); }
+  .meny hr { border: 0; border-top: 1px solid #3a3f4e; margin: 6px 12px; }
+  .meny .varfor { margin: 4px 12px 2px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .meny [data-k='glom'] { color: var(--muted); font-weight: 600; font-size: 14px; }
+  .sidan { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 560px); gap: 48px; padding: 40px 56px; align-content: start; }
+  .sidan .slutet { display: grid; gap: 14px; align-content: start; }
+  .sidan .slutet h1 { margin: 0; font-size: 28px; color: #fff; }
+  .sidan .slutet .fakta { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; } .sidan .slutet dt { color: var(--muted); }
+  .sidan .slutet dd { margin: 0; }
+  .sidan .slutet ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: #c9ced9; font-size: 14px; }
+  .sidan .slutet .handen { display: flex; gap: 6px; flex-wrap: wrap; } .sidan .slutet .handen .kort { --w: 54px; }
+  .sidan .ruta { display: grid; gap: 22px; align-content: start; padding: 28px; border-radius: 18px; background: var(--surface); }
+  .sidan .ruta h2 { margin: 0; font-size: 20px; color: #fff; }
+  .fonster[data-w='1024'] .sidan { grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 28px; padding: 28px 28px; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP #1376 punkt 3: /play i ett brett fönster.</b> Klicka Flagga och Lämna i huvudet, eller välj en yta. «Avsluta för alla» leder till frågan, frågan till enkäten och enkäten till tacket. Medan flaggan står går ett kort att peka ut.</p>
+    <p>Växla variant med 0/A/B/C eller ← →. «Börja om» nollställer.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp"><span>Fönster</span><div class="flikar" id="bredd"></div></div>
+  <div class="grupp"><span>Språk</span><div class="flikar" id="lang"></div></div>
+  <div class="grupp"><span>Vid bordet</span><div class="flikar" id="vem"></div></div>
+  <button type="button" id="omstart">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen" id="scen"></main>
+
+<script>
+const V = {
+  0: { namn: '0 · Idag',
+    not: 'Telefonens ark ur <code>SessionSheets.tsx</code> som de står på skrivbordet i dag: bottenarket över hela bredden med två knappar på drygt 600 px var, 13 px text, och enkäten i en spalt på 520 px med 11 px ändord. Avslutsfrågan säger «Alla spelare får enkäten på sin telefon». <span class="minus">− det issuet beskriver</span>' },
+  A: { namn: 'A · Panelen bredvid · rekommenderas',
+    not: 'Allt står i en panel till höger om målen, den form #1255 gav flaggan på /online. <b>Flaggan</b> är inget läge: medan panelen står pekar ett klick på ett kort i handen eller på ett mål ut det, och ⌘↵ flaggar. <b>Lämna</b> och <b>Avsluta</b> är samma panel med frågan, fokus på «Avbryt». <b>Enkäten</b> står i panelen, bredare, en fråga i taget med 1 till 5 på tangenterna, bredvid bordet som det låg när det slutade; tacket likaså. <span class="plus">+ samma flagga på samma dator i /online och /play; handen syns och går att peka i; inget nytt mönster</span> <span class="minus">− målen ger upp 380 px medan panelen står (vid 1024 ryms färre mål); en fråga som inte går att ångra står i en icke-modal panel</span>' },
+  B: { namn: 'B · Dialogen mitt på',
+    not: 'Varje ark blir en dialog mitt i fönstret, bordet skymt bakom, knapparna till höger som i editorns frågor (#1286). <b>Flaggan</b> frågar först som telefonen gör (#1142, B), och «Ett kort…» lägger undan dialogen tills ett kort är klickat. <b>Lämna</b> ställer vägarna ut bredvid varandra, var och en med sin följd. <b>Enkäten</b> är ett formulär: alla fyra frågor på en gång, skalan till höger om frågan, en «Skicka». <span class="plus">+ datorns vanligaste form för en fråga; enkäten går på en skärm; frågorna som inte går att ångra är modala</span> <span class="minus">− flaggan är ett läge igen, vilket #1255 valde bort på /online; dialogen täcker handen man flaggar om</span>' },
+  C: { namn: 'C · Från knappen, och enkäten som sida',
+    not: '<b>Flaggan</b> fälls ut under sin knapp, liten: kommentaren har fokus, och ett klick på ett kort pekar ut det utan läge. <b>Lämna</b> är en meny under sin knapp, en rad per väg ut med följden under, och L87:s rad sist efter en linje; <b>Avsluta</b> frågar i samma ruta. <b>Enkäten</b> tar hela fönstret som en sida: bordet som det slutade till vänster, frågorna till höger. <span class="plus">+ minst över bordet medan man spelar; enkäten får en datorsidas mått; slutet syns medan man svarar</span> <span class="minus">− en meny för att lämna bordet läses som en sällanmeny och döljer följderna i småtext; tre olika former för fem ytor</span>' },
+}
+const YTOR = { flagga: 'Flagga', lamna: 'Lämna', avsluta: 'Avsluta', enkat: 'Enkäten', tack: 'Tacket' }
+const FONSTER = { 1280: [1280, 800], 1024: [1024, 768], 1440: [1440, 900] }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let w = q.get('w') || '1280'
+let lang = q.get('lang') || 'sv'
+let vem = q.get('vem') || 'gast'
+let st
+const omstart = (yta = null) => { st = { yta, kort: null, pekar: false, note: '', steg: 0, svar: {}, andra: '', tackGlom: false, glomt: false, flaggat: false } }
+omstart(q.get('yta'))
+const en = () => lang === 'en'
+const L = (sv, eng) => (en() ? eng : sv)
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+// ── Glyferna: #1083:s, 16-rutnät, 1,6 rund linje ─────────────────────────────────────────────
+const P = {
+  flag: 'M3.75 14V2.5M3.75 3h8l-1.75 3 1.75 3h-8',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+  undo: 'M5.5 6H10a3 3 0 0 1 0 6H6M7.75 3.75 5.5 6l2.25 2.25',
+  book: 'M2.75 3.25h4a1.25 1.25 0 0 1 1.25 1.25v9a1 1 0 0 0-1-1h-4.25zM13.25 3.25h-4A1.25 1.25 0 0 0 8 4.5v9a1 1 0 0 1 1-1h4.25z',
+  stop: 'M4 4h8v8H4z',
+  edit: 'M3 13l1-3.5L10.5 3 13 5.5 6.5 12zM9 4.5 11.5 7',
+}
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/></svg>`
+
+// ── Bordet: Skogens råd v7, Ada vid en dator, Bo och Cleo vid telefoner ──────────────────────────
+const HAND = [['ravn', 'Räven', 20], ['ugg', 'Ugglan', 45], ['hare', 'Haren', 95], ['varg', 'Vargen', 210], ['alg', 'Älgen', 160], ['lo', 'Lodjuret', 30], ['igel', 'Igelkotten', 280]]
+const MINA = [['myra', 'Myrstacken', 130], ['bi', 'Bikupan', 50]]
+const KAST = ['gran', 'Granen', 120]
+const BOS = [['bjorn', 'Björnen', 15]]
+const ALLA = Object.fromEntries([...HAND, ...MINA, KAST, ...BOS].map(([id, n, h]) => [id, { n, h }]))
+const kort = ([id, n, hue], w, extra = '') => `<button type="button" class="kort" data-kort="${id}" style="--hue:${hue};${w ? `--w:${w}px` : ''}" ${st.kort === id ? 'data-pekad' : ''} ${extra}><span class="fram"><b>${n}</b><small>${L('Lägg 1 poäng', 'Lägg 1 poäng')}</small></span></button>`
+const version = () => L('version 7', 'version 7')
+const sista = () => L('Bo spelade Björnen till Framför Bo', 'Bo played Björnen to Framför Bo')
+
+function skrivbord({ panel = '', slut = false } = {}) {
+  const W = +w
+  const fan = Math.min(150, Math.max(112, Math.round(FONSTER[w][1] * 0.19)))
+  const pekbar = (v === 'A' || v === 'C') && st.yta === 'flagga' || st.pekar
+  return `
+  <div class="huvud">
+    <div class="vem"><strong>Ada</strong> <span>· ${HAND.length} ${L('kort', 'cards')}</span></div>
+    <div class="raknare"><button type="button" aria-label="−">−</button><span>${'Poäng'}<b>12</b></span><button type="button" aria-label="+">+</button></div>
+    <span class="tur">${L('Din tur', 'Your turn')}</span>
+    <div class="var">${L('Bordet står på TV:n', 'The table is on the TV')} · ${L('Senast', 'Last')}: ${sista()}</div>
+    <div class="verktyg">
+      <button type="button" aria-label="${L('Ångra', 'Undo')}">${g('undo')}</button>
+      <button type="button" aria-label="${L('Hjälp', 'Help')}">?</button>
+      <button type="button">${g('book')}<span class="ord">${L('Regelbok', 'Rulebook')}</span></button>
+      <button type="button" data-oppna="flagga" aria-expanded="${['flagga'].includes(st.yta) || st.pekar}">${g('flag')}<span class="ord">${L('Flagga', 'Flag')}</span></button>
+      <button type="button" data-oppna="lamna" aria-expanded="${['lamna', 'avsluta', 'glom-lamna'].includes(st.yta)}">${g('exit')}<span class="ord">${L('Lämna', 'Leave')}</span></button>
+    </div>
+  </div>
+  <div class="arbete"><div class="vanster">${slut ? `<span class="slutstampel">${L('Bordet är avslutat', 'This table has ended')}</span>` : ''}
+  <div class="kropp">
+    <div class="mal ${pekbar ? 'pekbar' : ''}">
+      <section class="malyta hog"><header><h2>${'Draghög'}</h2><span>31</span></header><div class="inne"><button type="button" class="kort" data-bak style="--w:96px" aria-label="${L('Dra 1 till min hand', 'Draw 1 to my hand')}"></button></div><p class="hint">${L('Klicka för att dra', 'Click to draw')}</p></section>
+      <section class="malyta mine"><header><h2>${L('Framför mig', 'In front of me')}</h2><span>${MINA.length}</span></header><div class="inne" style="justify-content:flex-start">${MINA.map((c) => kort(c, 84)).join('')}</div><p class="hint">${L('Dra hit för att spela framför dig', 'Drag here to play in front of you')}</p></section>
+      <section class="malyta hog"><header><h2>${'Kasthög'}</h2><span>9</span></header><div class="inne">${kort(KAST, 96)}</div></section>
+      ${W >= 1280 ? `<section class="malyta"><header><h2>${'Framför Bo'}</h2><span>1</span></header><div class="inne">${BOS.map((c) => kort(c, 60)).join('')}</div></section>` : ''}
+      ${W >= 1440 ? `<section class="malyta"><header><h2>${'Framför Cleo'}</h2><span>0</span></header><div class="inne"></div></section>` : ''}
+    </div>
+  </div>
+  <div class="hand ${pekbar ? 'pekbar' : ''}" style="--fan:${fan}px">
+    <header><span>${L('Din hand', 'Your hand')} · ${HAND.length}</span><span>${L('Vila läser · klick vänder · dra spelar', 'Rest reads · click flips · drag plays')}</span></header>
+    <div class="rad">${HAND.map((c) => `<div class="slot">${kort(c)}</div>`).join('')}</div>
+  </div>
+  </div>${panel}</div>`
+}
+
+// ── Innehållet, gemensamt för varianterna så långt det går ──────────────────────────────────────
+const AVSLUT_BODY = () => L('Spelet avslutas för alla och kan inte fortsätta. Alla spelare får enkäten där de håller sin hand.',
+  'The game ends for everyone and cannot go on. Every player gets the survey where they hold their hand.')
+const AVSLUT_BODY_IDAG = () => L('Spelet avslutas för alla och kan inte fortsätta. Alla spelare får enkäten på sin telefon.',
+  'The game ends for everyone and cannot go on. Every player gets the survey on their phone.')
+const FRAGOR = [
+  ['fun', L('Hur kul var det?', 'How much fun was it?'), L('segt', 'a slog'), L('jättekul', 'great fun')],
+  ['clarity', L('Hur tydliga var reglerna?', 'How clear were the rules?'), L('förvirrande', 'confusing'), L('glasklara', 'crystal clear')],
+  ['balance', L('Hur balanserat kändes det?', 'How balanced did it feel?'), L('ojämnt', 'uneven'), L('jämnt', 'even')],
+]
+const kortvalt = () => st.kort ? `<div class="kortrad">${kort([st.kort, ALLA[st.kort].n, ALLA[st.kort].h])}<div><b>${ALLA[st.kort].n}</b><span>${L('Designern ser kortet som det ser ut nu.', 'The designer sees the card as it looks now.')}</span></div><button type="button" class="x" data-do="slapp" aria-label="${L('Ta bort kortet', 'Remove the card')}">✕</button></div>` : ''
+const anteckning = (ph) => `<textarea data-note placeholder="${ph}" maxlength="280">${esc(st.note)}</textarea>`
+const vagLamna = () => `<div class="vag"><button type="button" data-k="lamna" data-do="lamnat">${L('Lämna bordet', 'Leave the table')}</button><p>${L('Din plats blir ledig och dina kort läggs tillbaka i Draghög. De andra kan spela vidare.', 'Your seat opens up and your cards go back to Draghög. The others can play on.')}</p></div>`
+const vagSlut = () => `<div class="vag"><button type="button" data-k="slut" data-do="avsluta">${L('Avsluta för alla', 'End for everyone')}</button><p>${L('Spelet avslutas för alla och enkäten skickas ut. Du får bekräfta först.', 'The game ends for everyone and the survey is sent out. You will be asked to confirm.')}</p></div>`
+const vagSitt = () => vem === 'agare' ? `<div class="vag"><a href="#" data-k="sitt" data-do="sitt">${L('Till Skogens råd, sitt kvar', 'To Skogens råd, keep my seat')}</a><p>${L('Du behåller din plats och dina kort, och bordet står kvar i sin flik.', 'You keep your seat and your cards, and the table stays open in its tab.')}</p></div>` : ''
+const glomLamna = () => vem === 'gast' ? `<div class="glom"><p>${L('Med ditt namn kvar vet designern vem som gjorde och sa vad.', 'With your name kept, the designer knows who did and said what.')}</p><button type="button" data-do="glom-lamna">${L('Lämna och ta bort mitt namn…', 'Leave and remove my name…')}</button></div>` : ''
+const glomFraga = (lamnar) => `
+  <p class="tyst-text">${L('Det här tas bort från bordet:', 'This is removed from the table:')}</p>
+  <ul class="lista"><li>${L('namnet du satt under, Ada', 'the name you sat under, Ada')}</li><li>${L('det du skrivit i anteckningsblocket och i flaggor', 'what you wrote on the notepad and in flags')}</li>${lamnar ? '' : `<li>${L('dina enkätsvar', 'your survey answers')}</li>`}</ul>
+  <p class="tyst-text">${L('Dragen står kvar vid bordet under «Utan namn». Det går inte att ångra.', 'Your moves stay at the table under “No name”. It cannot be undone.')}</p>`
+
+function tackInnehall() {
+  return `<div class="tack">
+    <strong>${st.tackGlom ? L('Tack.', 'Thank you.') : L('Tack, Ada.', 'Thank you, Ada.')}</strong>
+    <span class="tyst-text">${L(`Dina svar är kopplade till ${version()}.`, `Your answers are tied to ${version()}.`)}</span>
+    ${st.tackGlom ? `<div class="klart" role="status"><strong>${L('Ditt namn och dina svar är borttagna.', 'Your name and your answers are removed.')}</strong><span>${L('Dragen står kvar vid bordet under «Utan namn». Säkerhetskopiorna glömmer dem inom åtta dagar.', 'Your moves stay at the table under “No name”. The backups forget them within eight days.')}</span></div>`
+      : vem === 'agare' ? `<a class="spara" href="#">${L('Till Skogens råd', 'To Skogens råd')}</a>`
+      : `<a class="spara" href="#">${L('Spara till ditt konto', 'Save to your account')}</a>
+         <p class="tyst-text">${L('Sparar du bordet till ett konto står ditt namn och dina svar kvar så länge kontot finns, i stället för ett år.', 'If you save the table to an account, your name and answers stay as long as the account does, instead of a year.')}</p>
+         <p class="tillit"><a href="#">${L('Villkor', 'Terms')}</a> · <a href="#">${L('Integritet', 'Privacy')}</a> · <a href="#">${L('Anmäl', 'Report')}</a></p>
+         <div class="glom"><p>${L('Med ditt namn kvar vet designern vem som gjorde och sa vad.', 'With your name kept, the designer knows who did and said what.')}</p><button type="button" data-do="glom-tack">${L('Ta bort mitt namn och mina svar…', 'Remove my name and my answers…')}</button></div>`}
+  </div>`
+}
+// En fråga i taget, telefonens ordning, med tangenterna 1 till 5 på datorn.
+function stegvis({ tangenter = true } = {}) {
+  const f = FRAGOR[st.steg]
+  const prickar = `<div class="prickar">${[0, 1, 2, 3].map((i) => `<i ${i <= st.steg ? 'data-on' : ''}></i>`).join('')}</div>`
+  if (f) {
+    return { kropp: `<div><h3 style="margin:0 0 14px;font-size:20px;color:#fff">${f[1]}</h3>
+      <div class="skala5">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-svar="${f[0]}:${n}" aria-pressed="${st.svar[f[0]] === n}">${n}${tangenter ? `<kbd>${n}</kbd>` : ''}</button>`).join('')}</div>
+      <div class="andar"><span>${f[2]}</span><span>${f[3]}</span></div></div>`,
+      fot: `${prickar}<span style="flex:1"></span>${tangenter ? `<span class="tyst-text" style="font-size:13px"><kbd>1</kbd>–<kbd>5</kbd> ${L('svarar', 'answer')} · <kbd>↵</kbd> ${L('nästa', 'next')}</span>` : ''}<button type="button" class="knapp prim" data-do="nasta" ${st.svar[f[0]] ? '' : 'disabled'}>${L('Nästa', 'Next')}</button>` }
+  }
+  return { kropp: `<div><h3 style="margin:0 0 14px;font-size:20px;color:#fff">${L('Vad skulle du ändra?', 'What would you change?')}</h3><textarea data-andra placeholder="${L('En mening räcker', 'One sentence is enough')}" style="min-height:120px">${esc(st.andra)}</textarea></div>`,
+    fot: `${prickar}<span style="flex:1"></span><button type="button" class="knapp prim" data-do="skicka">${L('Skicka', 'Send')}</button>` }
+}
+// Alla fyra på en gång, som ett formulär.
+function formular() {
+  const klara = FRAGOR.every(([k]) => st.svar[k])
+  return `<div class="form">${FRAGOR.map(([k, t, lo, hi]) => `<div class="rad5"><h3>${t}</h3><div><div class="skala5">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-svar="${k}:${n}" aria-pressed="${st.svar[k] === n}">${n}</button>`).join('')}</div><div class="andar"><span>${lo}</span><span>${hi}</span></div></div></div>`).join('')}
+    <div><h3 style="margin:0 0 10px;font-size:16px;color:#fff;font-weight:650">${L('Vad skulle du ändra?', 'What would you change?')}</h3><textarea data-andra placeholder="${L('En mening räcker', 'One sentence is enough')}">${esc(st.andra)}</textarea></div>
+    <div class="knappar" style="display:flex;justify-content:flex-end;align-items:center;gap:12px"><span class="tyst-text" style="font-size:13px">${klara ? '' : L('Svara på de tre första för att skicka.', 'Answer the first three to send.')}</span><button type="button" class="knapp prim" data-do="skicka" ${klara ? '' : 'disabled'}>${L('Skicka', 'Send')}</button></div></div>`
+}
+
+// ── 0 · Idag ─────────────────────────────────────────────────────────────────────────────────────
+function V0() {
+  const ark = (inne) => `<div class="ark-bak" data-do="stang"><div class="ark" data-inne>${inne}</div></div>`
+  if (st.yta === 'enkat' || st.yta === 'tack' || st.yta === 'glom-tack') {
+    const s = stegvis({ tangenter: false })
+    const inne = st.yta === 'enkat'
+      ? `<div><h1>${L('Bordet är avslutat', 'This table has ended')}</h1><div class="sub">${L(`Fyra frågor, en minut. Svaren kopplas till ${version()}.`, `Four questions, one minute. The answers are tied to ${version()}.`)}</div></div><div class="fragan">${s.kropp}</div><div class="nav">${s.fot}</div>`
+      : `<div></div>${tackInnehall()}<div></div>`
+    return skrivbord({ slut: true }) + `<div class="enkat0">${inne}</div>` + (st.yta === 'glom-tack' ? ark(`<p class="titel">${L('Ta bort ditt namn och dina svar?', 'Remove your name and your answers?')}</p>${glomFraga(false)}<div class="knappar"><button type="button" class="knapp tyst" data-do="stang-glom">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt-tack">${L('Ja, ta bort', 'Yes, remove')}</button></div>`) : '')
+  }
+  let inne = ''
+  if (st.yta === 'flagga') inne = `<p class="titel">${L(st.kort ? 'Flagga kortet' : 'Flagga det som hände', st.kort ? 'Flag the card' : 'Flag what happened')}</p>
+    ${st.kort ? kortvalt() : `<p>${L('Flaggan sparas med tidpunkten i loggen. En kommentar är frivillig.', 'The flag is saved with its time in the log. A note is optional.')}</p>
+    <div class="valja"><button type="button" aria-pressed="true">${L('Det som händer', 'The moment')}<small>${L('i spelet just nu', 'what is happening now')}</small></button><button type="button" data-do="peka">${L('Ett kort…', 'A card…')}<small>${L('peka ut det', 'point it out')}</small></button></div>`}
+    <div style="margin-top:12px">${anteckning(L('Vad hände? (frivilligt)', 'What happened? (optional)'))}</div>
+    <div class="knappar"><button type="button" class="knapp flagga" data-do="flagga">${L('Flagga', 'Flag')}</button><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button></div>`
+  if (st.yta === 'lamna') inne = `<p class="titel">${L('Lämna bordet?', 'Leave the table?')}</p>${vagSitt()}${vagLamna()}${vagSlut()}${glomLamna()}<div class="knappar" style="margin-top:20px"><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button></div>`
+  if (st.yta === 'avsluta') inne = `<p class="titel">${L('Avsluta bordet?', 'End the table?')}</p><p>${AVSLUT_BODY_IDAG()}</p><div class="knappar"><button type="button" class="knapp nej" data-do="slutat">${L('Avsluta för alla', 'End for everyone')}</button><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button></div>`
+  if (st.yta === 'glom-lamna') inne = `<p class="titel">${L('Lämna och ta bort ditt namn?', 'Leave and remove your name?')}</p>${glomFraga(true)}<div class="knappar"><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt">${L('Ja, lämna och ta bort', 'Yes, leave and remove')}</button></div>`
+  return skrivbord() + (inne && !st.pekar ? ark(inne) : '') + (st.pekar ? `<div class="pekrad">${L('Tryck på kortet det gäller', 'Tap the card it is about')}<button type="button" data-do="sluta-peka">${L('Avbryt', 'Cancel')}</button></div>` : '')
+}
+
+// ── A · Panelen bredvid ─────────────────────────────────────────────────────────────────────────
+function VA() {
+  const panel = (titel, inne, fot = '', bred = false) => `<aside class="panel" ${bred ? 'data-bred' : ''} role="${['avsluta', 'glom-lamna', 'glom-tack'].includes(st.yta) ? 'alertdialog' : 'complementary'}" aria-label="${titel}"><header><h2>${titel}</h2><button type="button" data-do="stang" aria-label="${L('Stäng', 'Close')}">✕</button></header><div class="inne">${inne}</div>${fot ? `<footer>${fot}</footer>` : ''}</aside>`
+  let p = ''
+  if (st.yta === 'flagga') p = panel(L('Flagga', 'Flag'), `
+    <div><p class="rubrik">${L('Det som hände', 'What happened')}</p><p class="handelse">${sista()}<small>${L('Flaggan sparas med tidpunkten i loggen.', 'The flag is saved with its time in the log.')}</small></p></div>
+    <div><p class="rubrik">${L('Kortet', 'The card')} <i>· ${L('valfritt', 'optional')}</i></p>${st.kort ? kortvalt() + `<p class="tyst-text" style="font-size:13px;margin-top:6px">${L('Klicka på ett annat kort för att byta.', 'Click another card to change it.')}</p>` : `<div class="peka"><b>${L('Klicka på ett kort', 'Click a card')}</b> ${L('i handen eller på ett mål för att flagga just det.', 'in your hand or on a target to flag that one.')}</div>`}</div>
+    <div><p class="rubrik">${L('Kommentar', 'Note')}</p>${anteckning(L('Vad hände? (frivilligt)', 'What happened? (optional)'))}</div>`,
+    `<span class="hint"><kbd>⌘</kbd><kbd>↵</kbd> ${L('flaggar', 'flags')}</span><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp flagga" data-do="flagga">${L('Flagga', 'Flag')}</button>`)
+  if (st.yta === 'lamna') p = panel(L('Lämna bordet?', 'Leave the table?'), `${vagSitt()}${vagLamna()}${vagSlut()}${glomLamna()}`, `<span class="hint"><kbd>Esc</kbd> ${L('stannar', 'stays')}</span><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button>`)
+  if (st.yta === 'avsluta') p = panel(L('Avsluta bordet?', 'End the table?'), `<p class="tyst-text" style="font-size:15px;color:#e6e8ee">${AVSLUT_BODY()}</p>`, `<span class="hint"></span><button type="button" class="knapp tyst" data-do="stang" data-forst>${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="slutat">${L('Avsluta för alla', 'End for everyone')}</button>`)
+  if (st.yta === 'glom-lamna') p = panel(L('Lämna och ta bort ditt namn?', 'Leave and remove your name?'), glomFraga(true), `<span class="hint"></span><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt">${L('Ja, lämna och ta bort', 'Yes, leave and remove')}</button>`)
+  if (st.yta === 'enkat') {
+    const s = stegvis()
+    p = panel(L('Bordet är avslutat', 'This table has ended'), `<p class="tyst-text">${L(`Fyra frågor, en minut. Svaren kopplas till ${version()}.`, `Four questions, one minute. The answers are tied to ${version()}.`)}</p>${s.kropp}`, s.fot, true).replace('data-do="stang" aria-label', 'hidden aria-label')
+  }
+  if (st.yta === 'tack' || st.yta === 'glom-tack') {
+    p = panel(L('Bordet är avslutat', 'This table has ended'), st.yta === 'glom-tack'
+      ? `<div class="fraga"><h3>${L('Ta bort ditt namn och dina svar?', 'Remove your name and your answers?')}</h3>${glomFraga(false)}</div>`
+      : `<div style="padding-top:40px">${tackInnehall()}</div>`,
+      st.yta === 'glom-tack' ? `<span class="hint"></span><button type="button" class="knapp tyst" data-do="stang-glom">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt-tack">${L('Ja, ta bort', 'Yes, remove')}</button>` : '', true).replace('data-do="stang" aria-label', 'hidden aria-label')
+  }
+  return skrivbord({ panel: p, slut: ['enkat', 'tack', 'glom-tack'].includes(st.yta) })
+}
+
+// ── B · Dialogen mitt på ────────────────────────────────────────────────────────────────────────
+function VB() {
+  const dlg = (titel, inne, knappar, bredd = 520, roll = 'dialog') => `<div class="skymning" data-do="stang"><div class="dialog" role="${roll}" aria-modal="true" data-inne style="--dw:${bredd}px"><h2>${titel}</h2>${inne}${knappar ? `<div class="knappar">${knappar}</div>` : ''}</div></div>`
+  const slut = ['enkat', 'tack', 'glom-tack'].includes(st.yta)
+  let d = ''
+  if (st.yta === 'flagga' && !st.pekar) d = dlg(L(st.kort ? 'Flagga kortet' : 'Flagga det som hände', st.kort ? 'Flag the card' : 'Flag what happened'),
+    `${st.kort ? kortvalt() : `<p class="tyst-text">${L('Flaggan sparas med tidpunkten i loggen. En kommentar är frivillig.', 'The flag is saved with its time in the log. A note is optional.')}</p>
+     <div class="valja"><button type="button" aria-pressed="true">${L('Det som händer', 'The moment')}<small>${sista()}</small></button><button type="button" data-do="peka">${L('Ett kort…', 'A card…')}<small>${L('klicka på det efteråt', 'click it next')}</small></button></div>`}
+     ${anteckning(L('Vad hände? (frivilligt)', 'What happened? (optional)'))}`,
+    `<button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp flagga" data-do="flagga">${L('Flagga', 'Flag')}</button>`)
+  if (st.yta === 'lamna') d = dlg(L('Lämna bordet?', 'Leave the table?'),
+    `<div class="vagar" style="--n:${vem === 'agare' ? 3 : 2}">${vagSitt()}${vagLamna()}${vagSlut()}</div>${glomLamna()}`,
+    `<button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button>`, vem === 'agare' ? 860 : 640)
+  if (st.yta === 'avsluta') d = dlg(L('Avsluta bordet?', 'End the table?'), `<p class="tyst-text" style="font-size:15px;color:#e6e8ee">${AVSLUT_BODY()}</p>`,
+    `<button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="slutat">${L('Avsluta för alla', 'End for everyone')}</button>`, 460, 'alertdialog')
+  if (st.yta === 'glom-lamna') d = dlg(L('Lämna och ta bort ditt namn?', 'Leave and remove your name?'), glomFraga(true),
+    `<button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt">${L('Ja, lämna och ta bort', 'Yes, leave and remove')}</button>`, 480, 'alertdialog')
+  if (st.yta === 'enkat') d = dlg(L('Bordet är avslutat', 'This table has ended'), `<p class="tyst-text" style="margin-top:-8px">${L(`Fyra frågor, en minut. Svaren kopplas till ${version()}.`, `Four questions, one minute. The answers are tied to ${version()}.`)}</p>${formular()}`, '', 720).replace('data-do="stang"', '')
+  if (st.yta === 'tack') d = dlg('', tackInnehall(), '', 560).replace('data-do="stang"', '').replace('<h2></h2>', '')
+  if (st.yta === 'glom-tack') d = dlg('', tackInnehall(), '', 560).replace('data-do="stang"', '').replace('<h2></h2>', '') + dlg(L('Ta bort ditt namn och dina svar?', 'Remove your name and your answers?'), glomFraga(false),
+    `<button type="button" class="knapp tyst" data-do="stang-glom">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt-tack">${L('Ja, ta bort', 'Yes, remove')}</button>`, 480, 'alertdialog').replace('data-do="stang"', 'data-do="stang-glom"')
+  return skrivbord({ slut }) + d + (st.pekar ? `<div class="pekrad">${L('Klicka på kortet det gäller', 'Click the card it is about')}<button type="button" data-do="sluta-peka">${L('Avbryt', 'Cancel')}</button></div>` : '')
+}
+
+// ── C · Från knappen, och enkäten som sida ──────────────────────────────────────────────────────
+function VC() {
+  // Pilen pekar på knappen: Flagga står näst sist i huvudet, Lämna sist.
+  const pop = (inne, vilken, bredd) => `<div class="pop" data-inne style="--popw:${bredd}px;right:${vilken === 'flagga' ? (w === '1024' ? 66 : 112) : 16}px;--pil:${vilken === 'flagga' ? 40 : 30}px">${inne}</div>`
+  let p = ''
+  if (st.yta === 'flagga') p = pop(`<h2>${L(st.kort ? 'Flagga kortet' : 'Flagga det som hände', st.kort ? 'Flag the card' : 'Flag what happened')}</h2>
+    ${st.kort ? kortvalt() : `<p class="tyst-text" style="font-size:13px">${sista()}. ${L('Gäller det ett kort? Klicka på det.', 'Is it about a card? Click it.')}</p>`}
+    ${anteckning(L('Vad hände? (frivilligt)', 'What happened? (optional)'))}
+    <div class="knappar" style="align-items:center"><span class="tyst-text" style="flex:1;font-size:13px"><kbd>⌘</kbd><kbd>↵</kbd> ${L('flaggar', 'flags')}</span><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp flagga" data-do="flagga">${L('Flagga', 'Flag')}</button></div>`, 'flagga', 400)
+  if (st.yta === 'lamna') p = pop(`<div class="meny" role="menu">
+    ${vem === 'agare' ? `<a href="#" role="menuitem" data-do="sitt">${g('edit')}<span>${L('Till Skogens råd, sitt kvar', 'To Skogens råd, keep my seat')}</span><small>${L('Du behåller din plats och dina kort.', 'You keep your seat and your cards.')}</small></a>` : ''}
+    <button type="button" role="menuitem" data-do="lamnat">${g('exit')}<span>${L('Lämna bordet', 'Leave the table')}</span><small>${L('Din plats blir ledig och dina kort läggs tillbaka i Draghög.', 'Your seat opens up and your cards go back to Draghög.')}</small></button>
+    <button type="button" role="menuitem" data-k="slut" data-do="avsluta">${g('stop')}<span>${L('Avsluta för alla…', 'End for everyone…')}</span><small>${L('Spelet avslutas för alla och enkäten skickas ut.', 'The game ends for everyone and the survey is sent out.')}</small></button>
+    ${vem === 'gast' ? `<hr><p class="varfor">${L('Med ditt namn kvar vet designern vem som gjorde och sa vad.', 'With your name kept, the designer knows who did and said what.')}</p><button type="button" role="menuitem" data-k="glom" data-do="glom-lamna"><span></span><span>${L('Lämna och ta bort mitt namn…', 'Leave and remove my name…')}</span></button>` : ''}
+  </div>`, 'lamna', 380)
+  if (st.yta === 'avsluta') p = pop(`<h2>${L('Avsluta bordet?', 'End the table?')}</h2><p class="tyst-text">${AVSLUT_BODY()}</p><div class="knappar"><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="slutat">${L('Avsluta för alla', 'End for everyone')}</button></div>`, 'lamna', 380)
+  if (st.yta === 'glom-lamna') p = pop(`<h2>${L('Lämna och ta bort ditt namn?', 'Leave and remove your name?')}</h2>${glomFraga(true)}<div class="knappar"><button type="button" class="knapp tyst" data-do="stang">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt">${L('Ja, lämna och ta bort', 'Yes, leave and remove')}</button></div>`, 'lamna', 400)
+  if (['enkat', 'tack', 'glom-tack'].includes(st.yta)) {
+    const hoger = st.yta === 'enkat'
+      ? `<h2>${L('Fyra frågor, en minut', 'Four questions, one minute')}</h2>${formular()}`
+      : st.yta === 'glom-tack'
+        ? `<h2>${L('Ta bort ditt namn och dina svar?', 'Remove your name and your answers?')}</h2>${glomFraga(false)}<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="knapp tyst" data-do="stang-glom">${L('Avbryt', 'Cancel')}</button><button type="button" class="knapp nej" data-do="glomt-tack">${L('Ja, ta bort', 'Yes, remove')}</button></div>`
+        : `<div style="padding:40px 0">${tackInnehall()}</div>`
+    return `<div class="huvud"><div class="vem"><strong>Ada</strong> <span>· Skogens råd</span></div><div class="var"></div></div>
+      <div class="sidan"><div class="slutet">
+        <h1>${L('Bordet är avslutat', 'This table has ended')}</h1>
+        <dl class="fakta"><dt>${L('Spelet', 'Game')}</dt><dd>Skogens råd, ${version()}</dd><dt>${L('Vid bordet', 'At the table')}</dt><dd>Ada, Bo, Cleo</dd><dt>${L('Spelat', 'Played')}</dt><dd>${L('42 minuter, 118 drag', '42 minutes, 118 moves')}</dd></dl>
+        <p class="tyst-text">${L('De sista dragen', 'The last moves')}</p>
+        <ol><li>${sista()}</li><li>${L('Cleo drog 1 kort', 'Cleo drew 1 card')}</li><li>${L('Ada flaggade: «Älgen känns för stark»', 'Ada flagged: “The elk feels too strong”')}</li></ol>
+        <p class="tyst-text">${L('Din hand när det slutade', 'Your hand when it ended')}</p>
+        <div class="handen">${HAND.map((c) => kort(c, 54)).join('')}</div>
+      </div><div class="ruta">${hoger}</div></div>`
+  }
+  return skrivbord() + p
+}
+
+// ── Prototypens rad och händelser ───────────────────────────────────────────────────────────────
+const scen = document.getElementById('scen')
+let toastTid = null
+function render() {
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button type="button" data-v="${k}" aria-pressed="${k === v}">${k}</button>`).join('')
+  document.getElementById('ytor').innerHTML = Object.entries(YTOR).map(([k, n]) => `<button type="button" data-yta="${k}" aria-pressed="${st.yta === k || (k === 'tack' && st.yta === 'glom-tack') || (k === 'lamna' && st.yta === 'glom-lamna')}">${n}</button>`).join('')
+  document.getElementById('bredd').innerHTML = Object.keys(FONSTER).map((k) => `<button type="button" data-w="${k}" aria-pressed="${k === w}">${FONSTER[k].join(' × ')}</button>`).join('')
+  document.getElementById('lang').innerHTML = ['sv', 'en'].map((k) => `<button type="button" data-lang="${k}" aria-pressed="${k === lang}">${k}</button>`).join('')
+  document.getElementById('vem').innerHTML = [['gast', 'Gäst'], ['agare', 'Ägaren']].map(([k, n]) => `<button type="button" data-vem="${k}" aria-pressed="${k === vem}">${n}</button>`).join('')
+  document.getElementById('anteckning').innerHTML = `<b>${V[v].namn}.</b> ${V[v].not}`
+  const [W, H] = FONSTER[w]
+  const inne = st.glomt
+    ? `<div style="flex:1;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;padding:24px"><svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="#7dd3a0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 6.5 12 13 4.5"/></svg><h1 style="margin:0;max-width:440px;font-size:24px;color:#fff">${L('Du har lämnat bordet, och ditt namn är borttaget.', 'You have left the table, and your name is removed.')}</h1><p class="tyst-text" style="max-width:440px;font-size:15px">${L('Anteckningarna och flaggornas kommentarer är borttagna. Dragen står kvar vid bordet under «Utan namn».', 'Your notes and flag comments are removed. Your moves stay at the table under “No name”.')}</p><p class="tyst-text" style="max-width:440px;font-size:15px">${L('Säkerhetskopiorna glömmer dem inom åtta dagar.', 'The backups forget them within eight days.')}</p><a class="knapp tyst" style="display:inline-flex;align-items:center;text-decoration:none" href="#">${L('Till startsidan', 'To the start page')}</a></div>`
+    : { 0: V0, A: VA, B: VB, C: VC }[v]()
+  const plats = scen.clientWidth - 32
+  const s = Math.min(1, plats / W)
+  scen.innerHTML = `<div class="ram"><p class="etikett"><b>/play</b> · ${L('variant', 'variant')} ${v} · ${W} × ${H}${s < 1 ? ` · ${L('ritad i', 'drawn at')} ${Math.round(s * 100)} %` : ''} · ${lang} · ${vem === 'gast' ? L('gäst', 'guest') : L('ägaren', 'the owner')}</p>
+    <div style="width:${W * s}px;height:${H * s}px"><div class="skala" style="transform:scale(${s})"><div class="fonster" data-w="${w}" style="width:${W}px;height:${H}px" ${['enkat', 'tack', 'glom-tack'].includes(st.yta) && v !== 'C' ? 'data-slut' : ''}>${inne}${st.flaggat ? `<div class="toast" role="status">${L('Flaggat', 'Flagged')}</div>` : ''}</div></div></div></div>`
+  history.replaceState(null, '', `?v=${v}&w=${w}&lang=${lang}&vem=${vem}${st.yta ? `&yta=${st.yta}` : ''}`)
+  const forst = scen.querySelector('[data-note], [data-forst], .panel [data-do="stang"]:not([hidden]), .dialog .knapp.tyst')
+  if (forst && st.fokus) { forst.focus(); st.fokus = false }
+}
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; const y = st.yta; omstart(y === 'glom-lamna' ? 'lamna' : y === 'glom-tack' ? 'tack' : y) }
+  if (b.dataset.yta) omstart(b.dataset.yta)
+  if (b.dataset.w) w = b.dataset.w
+  if (b.dataset.lang) lang = b.dataset.lang
+  if (b.dataset.vem) vem = b.dataset.vem
+  if (b.id === 'omstart') omstart()
+  render()
+})
+scen.addEventListener('input', (e) => {
+  if (e.target.matches('[data-note]')) st.note = e.target.value
+  if (e.target.matches('[data-andra]')) st.andra = e.target.value
+})
+scen.addEventListener('click', (e) => {
+  const oppna = e.target.closest('[data-oppna]')
+  if (oppna) { const y = oppna.dataset.oppna; omstart(st.yta === y ? null : y); st.fokus = true; render(); return }
+  const k = e.target.closest('[data-kort]')
+  // Medan flaggan står (A, C) eller i pekläget (0, B) pekar ett klick på ett kort ut det och gör inget annat.
+  if (k && ((st.yta === 'flagga' && (v === 'A' || v === 'C')) || st.pekar) && !e.target.closest('.kortrad')) { st.kort = k.dataset.kort; st.pekar = false; render(); return }
+  const sv = e.target.closest('[data-svar]')
+  if (sv) { const [f, n] = sv.dataset.svar.split(':'); st.svar[f] = +n; render(); return }
+  const d = e.target.closest('[data-do]')
+  if (!d) return
+  if (d.matches('.skymning, .ark-bak') && e.target.closest('[data-inne]')) return
+  e.preventDefault()
+  const g = d.dataset.do
+  if (g === 'stang') { omstart(); }
+  if (g === 'peka') st.pekar = true
+  if (g === 'sluta-peka') st.pekar = false
+  if (g === 'slapp') st.kort = null
+  if (g === 'flagga') { omstart(); st.flaggat = true; clearTimeout(toastTid); toastTid = setTimeout(() => { st.flaggat = false; render() }, 1600) }
+  if (g === 'avsluta') { st.yta = 'avsluta'; st.fokus = true }
+  if (g === 'slutat') { omstart('enkat') }
+  if (g === 'lamnat' || g === 'sitt') omstart()
+  if (g === 'glom-lamna') st.yta = 'glom-lamna'
+  if (g === 'glomt') { omstart(); st.glomt = true }
+  if (g === 'nasta') st.steg++
+  if (g === 'skicka') st.yta = 'tack'
+  if (g === 'glom-tack') st.yta = 'glom-tack'
+  if (g === 'stang-glom') st.yta = 'tack'
+  if (g === 'glomt-tack') { st.yta = 'tack'; st.tackGlom = true }
+  render()
+})
+addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && st.yta === 'flagga') { scen.querySelector('[data-do="flagga"]')?.click(); return }
+  if (e.key === 'Escape' && st.yta && !['enkat', 'tack'].includes(st.yta)) { if (st.pekar) st.pekar = false; else if (st.yta === 'glom-tack') st.yta = 'tack'; else omstart(); render(); return }
+  if (e.target.closest('input, textarea, select')) return
+  if (st.yta === 'enkat' && (v === 'A' || v === '0')) {
+    const f = FRAGOR[st.steg]
+    if (f && /^[1-5]$/.test(e.key)) { st.svar[f[0]] = +e.key; render(); return }
+    if (f && e.key === 'Enter' && st.svar[f[0]]) { st.steg++; render(); return }
+  }
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    render()
+  }
+})
+addEventListener('resize', render)
+render()
+</script>
+</body>
+</html>
