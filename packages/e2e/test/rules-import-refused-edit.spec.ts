@@ -68,7 +68,7 @@ test('an edit refused beside an import leaves the import its version and its nam
 
   // And he imports the book, behind the edit that is still on its way.
   await page.getByRole('tab', { name: 'Regler' }).click()
-  await page.getByLabel('Importera från fil').setInputFiles(markdown('regler.md', BOOK))
+  await page.getByLabel('Läs in en fil').setInputFiles(markdown('regler.md', BOOK))
   await page.getByRole('region', { name: 'Vad importen gör med filen' }).getByRole('button', { name: 'Gör boken' }).click()
   await expect(page.locator('[data-rulebook]')).toContainText('En tur')
 

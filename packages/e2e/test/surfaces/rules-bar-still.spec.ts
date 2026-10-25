@@ -22,9 +22,9 @@ const GAME = 'Skogens regler'
 const FILE = ['# Skogens regler', '', '# Översikt', '', 'Två till sex spelare.', '', '# En tur', '', 'Dra ett kort.'].join('\n')
 const WIDE = ".byd-rules-bar *, .byd-rules-toc * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }"
 
-const WORDS: Record<string, { tab: string; ask: string; rules: string; hide: string; over: string; report: string; make: string; source: RegExp }> = {
-  'sv-SE': { tab: 'Regler', ask: 'Fråga om spelet', rules: 'Visa i regelboken', hide: 'Dölj förslaget', over: 'Importera över boken', report: 'Vad importen gör med boken du har', make: 'Gör boken', source: /^Boken kom ur regler\.md, / },
-  'en-GB': { tab: 'Rules', ask: 'Ask about the game', rules: 'Show in the rulebook', hide: 'Hide the proposal', over: 'Import over the book', report: 'What the import does to the book you have', make: 'Make the book', source: /^The book came out of regler\.md, / },
+const WORDS: Record<string, { tab: string; ask: string; rules: string; hide: string; book: string; add: string; over: string; report: string; make: string; source: RegExp }> = {
+  'sv-SE': { tab: 'Regler', ask: 'Fråga om spelet', rules: 'Visa i regelboken', hide: 'Dölj förslaget', book: 'Boken', add: 'Lägg till', over: 'Ersätt med en fil…', report: 'Vad importen gör med boken du har', make: 'Gör boken', source: /^Boken kom ur regler\.md, / },
+  'en-GB': { tab: 'Rules', ask: 'Ask about the game', rules: 'Show in the rulebook', hide: 'Hide the proposal', book: 'The book', add: 'Add', over: 'Replace with a file…', report: 'What the import does to the book you have', make: 'Make the book', source: /^The book came out of regler\.md, / },
 }
 
 // Where the book stands, and the row over it: its height, and the rows its children stand in,
@@ -77,8 +77,9 @@ for (const locale of ['sv-SE', 'en-GB']) {
           const bar = page.locator('.byd-rules-bar')
           const seen: Record<string, Awaited<ReturnType<typeof measure>>> = {}
 
-          // Written: the switch and the tools stand in the row.
-          await expect(bar.getByRole('group', { name: /^(Verktyg|Tools)$/ })).toBeVisible()
+          // Written: the switch, the adding and the book's own button stand in the row (#1258).
+          await expect(bar.getByRole('group', { name: words.add })).toBeVisible()
+          await expect(bar.getByRole('button', { name: words.book })).toBeVisible()
           seen['written'] = await measure(page)
 
           // A proposal shown in the book: its line stands in the row, in the tools' place.
@@ -96,6 +97,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
           seen['hidden'] = await measure(page)
 
           // Made from a file: the line saying which file stands in the contents column's foot.
+          await bar.getByRole('button', { name: words.book }).click()
           await page.getByLabel(words.over).setInputFiles({ name: 'regler.md', mimeType: 'text/markdown', buffer: Buffer.from(FILE) })
           const report = page.getByRole('region', { name: words.report })
           await report.getByRole('button', { name: words.make }).click()

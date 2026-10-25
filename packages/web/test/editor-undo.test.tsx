@@ -537,7 +537,7 @@ describe('a rule written as one step back', () => {
   it('takes the whole sentence back in one press, and the paragraph before it is its own step', async () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Börja skriva reglerna' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Ett tomt blad/ }))
 
     // A section begun this way carries a question until it is answered (#131), so the question is
     // both where the writing starts and what standing one step back has to bring back.

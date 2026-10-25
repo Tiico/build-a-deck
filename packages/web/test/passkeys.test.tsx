@@ -112,7 +112,7 @@ describe('«Logga in med passkey» on the login card', () => {
     expect(field.getAttribute('autocomplete')).toBe('email webauthn')
     fireEvent.click(screen.getByRole('button', { name: 'Logga in med passkey' }))
     await waitFor(() => expect(gone).toEqual(['/new']))
-    expect(await (await fetch(`${run.http}/auth/me`)).json()).toEqual({ email: 'ada@example.com' })
+    expect(await (await fetch(`${run.http}/auth/me`)).json()).toEqual({ email: 'ada@example.com', terms: { current: null, accepted: null, due: false } })
   })
 
   it('sends the reader to the mail when the passkey is not known here any more', async () => {

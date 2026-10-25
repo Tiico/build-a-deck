@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -101,8 +102,9 @@ describe('the way a reference is put into a rule (#215)', () => {
     const names = within(blockOf('t1'))
       .getAllByRole('button')
       .map((b) => b.getAttribute('aria-label') ?? b.textContent)
-    // What is left is the block's own controls: its kind (#707), take it away, and add one after it.
-    expect(names).toEqual(['Stycke', 'Punktlista', 'Numrerad lista', 'Ta bort blocket', 'Lägg till efter texten 1 under Så spelar ni'])
+    // What is left is the block's own head: its kind (#707) and the way to take it away, named after
+    // what goes (#1258). Adding stands in the tab's row, above the book, and not in the block.
+    expect(names).toEqual(['Stycke', 'Punktlista', 'Numrerad lista', 'Ta bort stycket'])
   })
 
   it('opens a list of what the game has when [[ is written, and adds no stop to the tab order', async () => {
@@ -350,5 +352,34 @@ describe('what an empty block says about the way in (#215)', () => {
     await openBook()
     const field = await openBlock('t3', 'Text 3 under Så spelar ni')
     expect(field.getAttribute('placeholder')).toBe('[[ hämtar en zon eller ett kort.')
+  })
+})
+
+// Adding a block is reached by a keyboard as well as by a hand (#184, #216). The follower ＋ in the
+// margin that had to be steered there by the focus is gone (#1258): what adds is the row above the
+// book, which says where the next block lands, and that place is the block last written in — so a
+// keyboard that opened a block and left it again has put the next one where it was working.
+describe('adding a block from the keyboard (#1258)', () => {
+  it('lays it after the block the keyboard last opened, says so, and opens it there', async () => {
+    const user = userEvent.setup()
+    await openBook()
+    const ids = () => [...book().querySelectorAll('[data-block]')].map((b) => b.getAttribute('data-block'))
+    const adding = within(document.querySelector('.byd-rules-bar') as HTMLElement).getByRole('group', { name: 'Lägg till' })
+    const where = () => document.getElementById(adding.getAttribute('aria-describedby') ?? '')?.textContent
+    expect(where()).toBe('sist i boken')
+    blockOf('t2').querySelector<HTMLElement>('[role="button"]')!.focus()
+    await user.keyboard('{Enter}')
+    await within(book()).findByLabelText('Text 2 under Så spelar ni')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(book().querySelector('textarea')).toBeNull())
+    expect(where()).toBe('efter texten 2 under Så spelar ni')
+    within(adding).getByRole('button', { name: '＋ Text' }).focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(ids()).toHaveLength(6))
+    expect(ids().slice(0, 3)).toEqual(['h1', 't1', 't2'])
+    expect(ids().slice(4)).toEqual(['t3', 'l1'])
+    // The hand is in what was added, ready to write, and not left on the row.
+    await waitFor(() => expect(document.activeElement?.closest('[data-block]')?.getAttribute('data-block')).toBe(ids()[3]))
+    expect(document.activeElement?.tagName).toBe('TEXTAREA')
   })
 })

@@ -1041,8 +1041,10 @@
 .byd-crown-box,
 .byd-rules-ways button,
 .byd-rules-ways label,
+.byd-rules-adding > button,
+.byd-rules-adding > label,
+.byd-rules-book > button,
 .byd-rules-report button,
-.byd-rules-own,
 .byd-rules-silent,
 .byd-rules-booklet {
   flex: 0 0 auto;
@@ -1088,7 +1090,7 @@
    dragmarkeringens token (#291, L22) — samma ton på varje mottagande yta, och nu på ett ställe
    — medan formen är kontrollens egen: a ring rather than a fill, så att märket går att läsa som
    ett märke och inte bara som en nyans. */
-.byd-rules-ways label[data-over='true'] { outline: 2px dashed var(--byd-drop-mark); outline-offset: 2px; background: var(--byd-drop-wash); }
+:is(.byd-rules-ways label, .byd-rules-adding > label, .byd-rules-book > button, .byd-rules-menu label)[data-over='true'] { outline: 2px dashed var(--byd-drop-mark); outline-offset: 2px; background: var(--byd-drop-wash); }
 .byd-crown-end { margin-left: auto; }
 /* A search is a tool of the row like any other, and is held to the same height as a box so the
    crown reads as one row rather than as a field with buttons round it. It never gives up more than
@@ -3776,15 +3778,47 @@ img[data-arriving] { opacity: 0; }
 .byd-theme [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
-.byd-rules { display: flex; flex-direction: column; gap: var(--byd-s3); height: 100%; box-sizing: border-box; padding: var(--byd-gutter); }
-/* The ways in, at the end of the bar, and in the written book its tools (#298). */
+.byd-rules { display: flex; flex-direction: column; gap: var(--byd-s3); height: 100%; box-sizing: border-box; padding: var(--byd-gutter); container: byd-rules / inline-size; }
+/* The tab's one row (#1258, variant A): how the book is seen · what is added and where · the book as
+   a file. «Lägg till» stands behind a hairline with a rung of air after it, one step longer than the
+   air between its own pills, so the line reads as the edge of a group and not as a pill's border —
+   the crown's own hairline (#128), and the measure #298 gave the tools that stood here before. */
+.byd-rules-adding { display: flex; align-items: center; gap: var(--byd-s2); border-left: 1px solid #2f333d; padding-left: var(--byd-s3); }
+.byd-rules-bar .byd-rules-adding-where { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); }
+/* The row is one row (#1054), and beside the AI panel at 1280 it has some 860 px. What gives way is
+   what the eye can spare: first where the next block lands, then the group's own word — both stay in
+   the group's name and description for a reader who hears it, and «＋» already says what the pills do.
+   The thresholds are the row's measured need in Verdana, which is DejaVu's width (#1045). */
+@container byd-rules (max-width: 1080px) { .byd-rules-bar .byd-rules-adding-where { display: none; } }
+@container byd-rules (max-width: 900px) { .byd-rules-adding-name { display: none; } }
+/* The book as a file, at the far end of the row, and the box its button opens under it. The box is a
+   box of controls and not a menu (see BookMenu): each row is a control and the line under its name
+   says what it does. It stands over the book rather than pushing it, as the crown's drawers do. */
+.byd-rules-book { position: relative; margin-left: auto; }
+/* The help ends the row, so its 44 px target is held inside the row rather than hung over its edge. */
+.byd-rules-bar > .byd-help { padding-inline: calc((var(--byd-tap) - 22px) / 2); } /* undantag: ringens 22 px mot träffytans 44 är inget avstånd på stegen. */
+/* The AI proposal's band stands in the book's place at the row's end while it lies in the book (#1054). */
 .byd-rules-ways { display: flex; gap: var(--byd-s2); margin-left: auto; }
-/* The written book's tools — import and booklet — stand behind a hairline with a rung of air
-   after it, one step longer than the air between the tools themselves: that is what makes the
-   line read as the edge of a group and not as a third pill's border. The hairline is the crown's
-   own (#128), and the booklet stood beside the switch before this, where a pill after two pills
-   read as a third mode of the book. The switch keeps its place (#227); only the booklet moved. */
-.byd-rules-tools { border-left: 1px solid #2f333d; padding-left: var(--byd-s3); }
+.byd-rules-menu { position: absolute; right: 0; top: calc(100% + var(--byd-s1)); z-index: 30; min-width: 300px; display: grid; gap: var(--byd-s2); padding: var(--byd-s2); border: 1px solid #3b414e; border-radius: 10px; background: #1b1d23; box-shadow: 0 12px 32px rgb(0 0 0 / 50%); }
+.byd-rules-menu[hidden] { display: none; }
+.byd-rules-menu > div { display: grid; gap: var(--byd-s1); }
+.byd-rules-menu b { padding: var(--byd-s1) var(--byd-s2) 0; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--byd-editor-quiet); }
+.byd-rules-book .byd-rules-menu :is(label, button, a) { display: flex; align-items: center; min-height: var(--byd-tap); padding: var(--byd-s1) var(--byd-s2); border: 0; border-radius: 6px; background: transparent; color: #dce3f2; font: inherit; font-size: 13px; font-weight: 700; text-align: left; white-space: normal; text-decoration: none; cursor: pointer; }
+.byd-rules-book .byd-rules-menu :is(label, button, a):hover { background: #262b3a; }
+.byd-rules-menu :is(label, button) > span, .byd-rules-way > span, .byd-rules-empty label > span { display: flex; flex-direction: column; gap: 2px; }
+.byd-rules-menu small { font-weight: 400; font-size: 12px; color: #9aa3b8; }
+.byd-rules-menu :is([role='status'], [role='alert']) { padding: 0 var(--byd-s2); font-size: 12px; }
+/* The empty book's three ways in, on the paper the book will be (#1258), each with what it gives.
+   The template's way is marked as the first, because it asks the five questions B7 says a book has to
+   answer; the file is the third way and drawn as one, not as a pill. */
+.byd-rules-empty { display: grid; gap: var(--byd-s3); align-content: start; }
+.byd-rules-empty h1 { margin: 0; }
+.byd-rules-empty p { margin: 0 0 var(--byd-s2); color: #5e574b; }
+.byd-rules-empty .byd-rules-ways { display: block; margin-left: 0; }
+.byd-rules-way, .byd-rules-empty .byd-rules-ways label { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s3); width: 100%; min-height: var(--byd-tap); box-sizing: border-box; padding: var(--byd-s3) var(--byd-s4); border: 1px solid #d8ccb5; border-radius: 12px; background: #fffaf0; color: #23201a; font: 700 14px system-ui, sans-serif; text-align: left; white-space: normal; cursor: pointer; }
+.byd-rules-way:hover, .byd-rules-empty .byd-rules-ways label:hover { border-color: #a99a7f; background: #fff; }
+.byd-rules-way[data-first] { border-color: #8fb79a; background: #f3faf1; }
+.byd-rules-way small, .byd-rules-empty label small { font-weight: 400; font-size: 12px; color: #5e574b; }
 /* The book and the column it is found in, as one pair that moves together (#131): the column
    that carries the disposition of an empty tab is the column that carries a written book, so
    the two states are one surface.
@@ -3845,7 +3879,6 @@ img[data-arriving] { opacity: 0; }
    is the panel's own hairline and carries no bar of its own. */
 .byd-rules-toc a[data-level='2']::before { content: ''; flex: none; width: 6px; height: 1px; margin-left: -12px; background: #3b414e; }
 .byd-rules-toc span { color: var(--byd-editor-quiet); }
-.byd-rules-own { margin-top: var(--byd-s2); }
 /* The count in the contents' foot (#173): the same button language the column's own control
    speaks, so a way into the book is never a different kind of thing from the way to add to it. */
 .byd-rules-silent { margin-top: var(--byd-s2); }
@@ -3963,7 +3996,6 @@ img[data-arriving] { opacity: 0; }
    the editor draws on every control with it. */
 .byd-rules-block h2 > .byd-block-door, .byd-rules-block h3 > .byd-block-door { display: block; width: calc(100% + 8px); box-sizing: border-box; margin: 0 -4px; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: text; }
 .byd-rules-block h2 > .byd-block-door:hover, .byd-rules-block h3 > .byd-block-door:hover { background: #ece5d8; }
-.byd-rules-block[data-at] :is(h2, h3) > .byd-block-door:not(:hover) { background: #f0e9db; }
 /* A list or a picture is opened from a pencil in the left margin (#580), the ＋'s mirror; a click
    on the block itself still opens it for a pointer. */
 .byd-rules-pen { position: absolute; left: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; }
@@ -3982,10 +4014,9 @@ img[data-arriving] { opacity: 0; }
 .byd-rules-row .byd-rules-field { flex: 1; min-width: 0; }
 .byd-rules-row select { width: 150px; }
 .byd-rules-edit > button { justify-self: start; border: 1px solid #2f333d; border-radius: 8px; padding: 4px 8px; background: #1b1d23; color: #fff; font: 700 12px system-ui; cursor: pointer; }
-/* Vad som står under ett öppet block sedan raden med en knapp per referens är borta (#215).
-   Kvar är blockets egen kontroll, längst ut åt det håll läsningen slutar — där raden redan lade
-   den, så ingen hand behöver leta upp den på ett nytt ställe. */
-.byd-rules-foot { display: flex; }
+/* The open block's head (#1258): its kinds and the way to take it away, in one row at its top. */
+.byd-rules-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s2); }
+.byd-rules-head .byd-rules-remove { min-height: var(--byd-tap); padding: 0 var(--byd-s3); font-size: 12px; }
 /* Det öppna blockets slag: Stycke · Punktlista · Numrerad lista (#707, beslut 2026-10-06: C med
    A:s genväg). Ett val bland tre och därför `.byd-choice`, som bokens växel (#227), först i blocket
    där prototypen ritade det. Bara stycket och listan har raden, och bara medan de skrivs i.
@@ -4019,33 +4050,6 @@ img[data-arriving] { opacity: 0; }
 .byd-rules-refs button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-rules-refs button > small { margin-left: auto; flex: none; color: var(--byd-editor-quiet); font-size: 11px; }
 .byd-rules-remove { margin-left: auto; border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #ff9a9a; font: 11px system-ui; cursor: pointer; }
-/* The way to add a block after this one. It used to be painted only while a pointer rested over
-   its block, which is no way at all for a thumb — a screen with no hover to give had a control it
-   could only hit by luck — and for a keyboard it was `:focus-visible` painting back what the rest
-   of the rule had taken away (#184, and #144 before it on the canvas). It is simply drawn now, in
-   the book's own quiet colours, which is what it should have been.
-
-   The `width` and `height` here are the drawn box and not the target: every button in the editor
-   stands on `--byd-tap` through the floor declared once at the top of this file, which is why this
-   one measures 44 across however small a square it asks for.
-
-   Sedan #216 är det ett enda ＋ och inte ett per skarv: det står kvar i marginalen där det alltid
-   stått, men bara vid det block som har pekaren eller fokus. Var det står är Reacts att veta och
-   inte stilmallens — ett ＋ som gömdes med CSS vore tio tabbstopp ändå, vilket är exakt vad #184
-   rättade. Blockets `min-height` ovan står kvar med ＋:et: boken är satt efter den sedan #246, och
-   ingen har bett om en bok som byter höjd. */
-.byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; }
-/* ＋:ets viloläge: skarven före block ett (#216). En bok med n block har n + 1 skarvar, och den
-   första hör inte till något block — alltså har den en plats av sitt eget, hög noll, så boken inte
-   blir en rad längre av att stå tom. ＋:et hänger över den på samma avstånd från marginalen som
-   överallt annars, och en bit högre upp än ett blocks eget, så skarven före block ett och skarven
-   efter det aldrig ritas på samma punkt. */
-.byd-rules-first { position: relative; height: 0; }
-.byd-rules-first .byd-rules-add { top: -30px; }
-/* Blocket ＋:et hör till just nu. Tyst nog att inte tävla med fokusramen, tydligt nog att svara på
-   frågan «efter vad hamnar det nya blocket?» — som med ett ＋ per skarv aldrig behövde ställas. */
-.byd-rules-block[data-at] > [role='button']:not(:hover) { background: #f0e9db; }
-
 /* The way to an icon (#33): the brace made visible in the cell being worked in. Which cell that is
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab
    order, and there would be one per cell. */
@@ -4700,7 +4704,7 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-rules-ai-mark + :is(h2, h3) { margin-top: var(--byd-s1); }
 /* The proposal's line, in the tools' place behind their divider (#1054): its words in the band's
    own lighter ink, and its one press drawn as a tool, since that is the place it stands in. */
-.byd-rules-ai { align-items: center; }
+.byd-rules-ai { align-items: center; border-left: 1px solid #2f333d; padding-left: var(--byd-s3); }
 .byd-rules-bar .byd-rules-ai > span { color: #cfd5e3; }
 
 /* «Bord · Resultat» (#1010, beställarens val 2026-10-18): the Bord tab's two views, switched at the

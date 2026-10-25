@@ -528,6 +528,7 @@ Uppställningsavsnittet kommer med uppställningen i sig, eftersom den är spele
 Mallen är ett förslag och inte en form: ett avsnitt går att ta bort utan att först skrivas i — rubriken och allt under den till nästa rubrik i ett enda steg — och spaltens fot lägger till ett eget.
 Båda vägarna in, `Börja skriva reglerna` och `Börja från en mall`, är en enda ändring var och därmed ett steg tillbaka (B4, L14).
 Den tredje vägen in är `Importera från fil`.
+*Ändrat 2026-10-24 (L83, #1258):* tomläget är de tre vägarna in på sidan, «Fem avsnitt med frågor», «Ett tomt blad» och «Läs in en fil», och ett eget avsnitt läggs till från verktygsraden och inte från spaltens fot.
 
 Spalten får egen skrollyta, byggt 2026-09-17 (#210):
 Regelfliken har två skrollytor — bokens och spaltens — sida vid sida, och ingen av dem ligger inuti den andra.
@@ -579,7 +580,7 @@ Ett märke bärs aldrig av färg eller överstrykning ensam (L12): varje märkt 
 Ett förslag går inte att skriva i. Boken är en yta som läses tills den besvarats, och svaren är `Avbryt` — också Escape — och `Gör boken`.
 "Samma avsnitt" över en import är rubrikens ord, lästa utan hänsyn till mellanrum och versaler; inuti ett avsnitt är det den längsta gemensamma följden av block, och inuti ett stycke den längsta gemensamma följden av meningar. En Markdown-fil bär inga id:n, så innehållet är det enda två böcker som aldrig varit samma dokument har gemensamt.
 Skyddet är detsamma som i tomläget och betyder mest här: importen skriver aldrig över utan lägger en namngiven version, `Importerad: <filnamn>`. Det som ersätts kan vara en hel handskriven bok, och ångerstacken bor i en flik.
-Boken minns filnamnet i dokumentet, så kontrollen heter `Importera samma fil igen` och säger vilken fil den menar. Den öppnar en vanlig filväljare: webben kan inte öppna en väljare förifylld på ett namn utan ett filgrepp, och ett grepp hör till en webbläsare och en person medan boken följer med projektet.
+Boken minns filnamnet i dokumentet, så kontrollen heter `Läs in <fil> igen` (L83; före #1258 `Importera samma fil igen`) och säger vilken fil den menar. Den öppnar en vanlig filväljare: webben kan inte öppna en väljare förifylld på ett namn utan ett filgrepp, och ett grepp hör till en webbläsare och en person medan boken följer med projektet.
 
 **Undantaget från "filen bestämmer": uppställningsblocket kan aldrig importeras bort.**
 Det är inte text utan spelets egna zoner, ritade ur tillståndet (B5), och ingen Markdown-fil har det i sig. En fil som aldrig nämner uppställningen har därför ingenting att säga om den, och alternativet — att en fil som inte kan skriva blocket ändå raderar det — vore en fil som tar bort något den aldrig kunde skapa.
@@ -2125,6 +2126,20 @@ Screeningens resultat lagras per hash, klassificerare och version, och en ny mod
 Referenslistan ligger i databasen och inte i det publika repot.
 Anmälan och spärren (#1274) och granskningskön (#1275) prototypas före implementation.
 Integritetspolicyn och kontoborttagningen hör till G6 (#1269), och villkoren hänvisar dit.
+
+Byggt 2026-10-25 (#1270): villkorens versioner och godkännandet på servern, utan text, yta eller grind.
+Registret är `TERMS` i `packages/server/src/terms.ts`: en version heter efter dagen den börjar gälla (`ÅÅÅÅ-MM-DD`, i UTC) och säger om ändringen är väsentlig.
+Den som gäller är den senaste vars dag har kommit, så en version kan skrivas in före sin dag medan den förra gäller, vilket ett mejl 30 dagar i förväg behöver.
+Ett register som inte är riktiga dagar i stigande ordning stoppar starten.
+Registret är tomt, och då gäller inga villkor och ingenting ändras för någon.
+`GET /terms` svarar `{ current: { version, material } }`, eller `{ current: null }` utan villkor; vägen är öppen, eftersom villkoren läses innan de godkänns.
+`POST /me/terms` med `{ version }` registrerar att kontot godkänt versionen och svarar 204; 401 utan kaka, 400 utan version, och 409 med `current` när versionen inte är den gällande, så att en flik från före en ändring aldrig godkänner något läsaren inte har sett.
+`GET /auth/me` säger för ett inloggat konto `terms: { current, accepted, due }`: gällande version, den senaste kontot har godkänt, och om det måste godkänna nu; för den som inte är inloggad är svaret `{ email: null }` som förut.
+Ett konto som godkänt en version behöver godkänna igen bara när en senare gällande version är väsentlig, och de första villkoren frågar alla.
+Godkännandet ligger i tabellen `terms_acceptances` och i minneslagret: konto, version och tidpunkt, en rad per konto och version, och det skrivs aldrig om.
+Ett konto från före villkoren har ingen rad och har alltså inte godkänt något, och ett raderat konto tar sina rader med sig.
+Grinden på de stängda vägarna och dess egna fel, texten, `/villkor` och steget hör till #1272; `due` är det steget frågar efter.
+Grinden är `packages/server/test/terms.test.ts`, mot båda lagren.
 
 ---
 
@@ -8434,3 +8449,31 @@ B gav en genomskinlig bild ett färgsken som inte finns på kortet, och C var br
 
 `whole-picture.test.tsx` mäter de målade pixlarna på varje yta: en kvadratisk, en smal och en bred bild ryms hela och i sin egen form, och en bild i den gamla grundens mörker skiljer sig från grunden bredvid.
 `media-crop.test.tsx` lägger ramen på en 2:1-bild med mätning och på en 1:2-bild utan.
+
+### L83. Regelbokens knappar: en ordnad verktygsrad och ord som säger vad de gör (prototypat och beslutat 2026-10-24, #1258)
+
+Beställaren: regelbokens knappar stod lite överallt och begreppen var otydliga.
+Kartläggningen fann knapparna på fyra ställen — huvudraden, innehållets spalt («＋ Eget avsnitt»), ett ＋ i sidans marginal som följde pekaren (#216) och det öppna blockets fot — och ord som sa vad en kontroll var snarare än vad den gjorde: «Redigerbar», «Importera över boken», «Häfte för tryck».
+Tomläget visade mallens fem avsnitt i boken medan «Börja skriva reglerna» gav ett.
+Fyra varianter prövades i [`docs/ux-audits/2026-10-24-regelbokens-knappar/prototyper/index.html`](docs/ux-audits/2026-10-24-regelbokens-knappar/prototyper/index.html), med dagens sida som jämförelse: en ordnad verktygsrad (A), knapparna där de verkar (B), en sidopanel (C) och flikarna Skriv · Läs · Fil (D).
+Valet blev **A**.
+B gömde vägen in tills pekaren hittade den och hade ingenting att ge en tumme; C tog 280 px från boken; D lade import och tryck ett klick längre bort.
+
+**En rad, ordnad efter vad kontrollerna gör.** Först hur boken visas, «Skriv · Förhandsvisa» (#227:s växel på sin plats); sedan «Lägg till» med «＋ Avsnitt · ＋ Text · ＋ Lista · ＋ Bild» och var det nya hamnar, «efter …» eller «sist i boken»; sist «Boken», som öppnar en ruta med filen och trycket.
+Det nya läggs efter det block som senast skrevs i, eller sist när inget har det, och öppnas där det landar.
+Var det hamnar sägs i ord och inte med en ring i boken, och raden beskriver gruppen för en skärmläsare.
+I förhandsvisningen står «Så ser spelarna boken vid bordet.» i lägg-till-gruppens ställe.
+Marginalens ＋ och spaltens «＋ Eget avsnitt» är borta: spalten är innehållet och filens källa, inget annat.
+Det ersätter #216:s följande ＋ och #131:s «spaltens fot lägger till ett eget».
+
+**«Boken» är en ruta med kontroller och ingen meny**, eftersom två av dem är filväljare som en menys piltangenter skulle gå förbi; den öppnas och stängs som kronans rutor (Escape lämnar tillbaka fokus).
+Under «Fil» står «Läs in *fil* igen» när boken minns en fil och «Ersätt med en annan fil…» (utan källa «Ersätt med en fil…»); under «Tryck» «Ladda ner PDF-häfte».
+Varje rad säger under sitt namn vad den gör.
+Rutan står kvar monterad när den är stängd, så ett häfte som håller på att skapas fortsätter, och knappen tar emot en släppt fil som väljaren gör (#293).
+
+**Det öppna blockets huvud** bär slaget och borttagningen på en rad, och borttagningen heter efter vad som går: «Ta bort stycket», «listan», «bilden», «uppställningen» eller «avsnittet».
+
+**Den tomma boken** visar sina tre vägar in på sidan, var och en med en rad om vad den ger: «Fem avsnitt med frågor» (först, eftersom den ställer B7:s fem frågor), «Ett tomt blad» och «Läs in en fil».
+Det ersätter #131:s tomläge med mallen utlagd i boken; avsnitten, frågorna och de två böckerna vägarna skriver är desamma.
+
+`rules-toolbar.test.tsx` visar radens ordning, var ett tillägg hamnar, rutans innehåll och Escape, huvudet och tomläget, på svenska och engelska.
