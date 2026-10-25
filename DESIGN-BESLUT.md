@@ -8468,7 +8468,7 @@ Förslaget och taket står i `account-name.ts` och nås av sidorna genom `@byd/s
 - **Inbjudningsmejlet:** «Nicklas Ockelberg (nicklas.ockelberg@…) vill dela spelet …», och ämnesraden «Nicklas Ockelberg bjuder in dig till …» (beslut 3). Namnet är vad avsändaren själv har skrivit, adressen är det mottagaren kan lita på. Utan namn är brevet som förut.
 
 **Namnet är kontots data** och ligger på kontots rad, i Postgres (`accounts.name`, `accounts.name_asked`) och i minnet, och läses med kontot.
-Det går därför med kontot vart kontot går; det finns ännu ingen export eller radering av ett helt konto (GDPR, fas 3), och när den byggs är namnet en kolumn på raden den tar.
+Det går därför med kontot vart kontot går; radering och export av ett helt konto är inte byggda än, och när de byggs är namnet en kolumn på raden som G6 säger försvinner direkt med kontot.
 Designern tar själv bort namnet genom att tömma fältet i Profil.
 
 Inte byggt, och inte beslutat att bygga: markörens etikett när ägaren pekar från bordets egen vy (i dag «bordet»), passkeyns `displayName` och avsändarnamnet «… via Deckster».
