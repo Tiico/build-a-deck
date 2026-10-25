@@ -1,6 +1,6 @@
 import { sheetPlaces } from './PlaySheet.js'
 import { playIntents } from './play.js'
-import { lazy, Suspense, useMemo } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { PlayerSurface, useHandMarks } from './PlayerSurface.js'
 import { useSeatTurned } from './turned.js'
@@ -22,6 +22,8 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useSessionName } from '../status/sessionName.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
 import { useActivityLive } from '../table/useActivityLive.js'
+import { ForgottenPage } from './SessionSheets.js'
+import { forgetMe } from './forget.js'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlayerPrototype.js')) : null
 
@@ -89,7 +91,11 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // Sit down on first contact, and only on first contact: claim the seat with the name the token
   // was bought with, if it is still free.
   useSitDown(client, view, seat, name)
+  // She left with her name removed (#1281): the page says it is done, ahead of the door the release
+  // shut behind her.
+  const [forgotten, setForgotten] = useState(false)
 
+  if (forgotten) return <ForgottenPage home={links.home ?? '/'} />
   if (watching) return <StatusNotice notice={watchingNotice(t)} surface="page" links={{ ...links, observe: `/observe${location.search}${location.hash}` }} />
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9). The door is shut, so it is the `forbidden` state — said
@@ -120,6 +126,8 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           openHand={kbd.openHand}
           onLeft={() => onLeave(wayBack(links))}
           desk={desk}
+          forget={token ? { name: me?.name ?? name ?? seat, run: () => forgetMe(faces, sessionId, token) } : undefined}
+          onForgotten={() => setForgotten(true)}
         />
         {kbd.panel}
       </div>

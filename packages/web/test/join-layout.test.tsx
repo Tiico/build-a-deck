@@ -260,8 +260,8 @@ async function ink(markup: string): Promise<Record<string, { letter: string; wor
 // grid row of its own with slack above and below it, so it may grow a long way before any of these
 // three move — but "may" is not "does", and a picker that pushes "Sätt dig" off a phone is worse
 // than one that cuts a name.
-async function frame(markup: string): Promise<{ sideways: number; height: number; submit: string }> {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+async function frame(markup: string, height = 844): Promise<{ sideways: number; height: number; submit: string }> {
+  const page = await browser.newPage({ viewport: { width: 390, height } })
   try {
     await page.setContent(document_(markup), { waitUntil: 'load' })
     return await page.evaluate(() => {
@@ -586,10 +586,14 @@ describe('a table whose seats share a side (#42)', () => {
   // And the felt grows on the phone's sufferance, not at its expense. The picker is the one screen
   // that is only ever met with a thumb, and everything it is for is below the felt.
   it('costs the phone nothing: no sideways scroll, and "Sätt dig" where it was', async () => {
-    const shared = await frame(await picker(recipeSetup(8), ORDINARY))
-    const alone = await frame(await picker(recipeSetup(4)))
+    // Measured in a window tall enough for the whole page, so that the height compared is the
+    // page's own and not the window's: the page says what is kept by the name field (#1281), and a
+    // phone of 844 px may scroll the last way in into view either way.
+    const shared = await frame(await picker(recipeSetup(8), ORDINARY), 1400)
+    const alone = await frame(await picker(recipeSetup(4)), 1400)
     expect(shared.sideways).toBe(0)
-    expect(shared.height).toBe(844)
+    // As tall as the page of a table nobody shares an edge at: the felt costs nothing.
+    expect(shared.height).toBe(alone.height)
     expect(shared.submit).toBe(alone.submit)
   }, 120_000)
 

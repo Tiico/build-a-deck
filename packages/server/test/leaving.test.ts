@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryLogStore } from '../src/index.js'
 import { createRoom, start, type Running } from './fixture.js'
 import { WireClient } from './client.js'
 
@@ -53,6 +54,32 @@ describe('a seat leaves the table (#31)', () => {
 
     // And the door agrees: somebody else can buy the seat that was left.
     expect((await post(`/rooms/${code}/join`, { name: 'Bo', seat: 'A' })).status).toBe(201)
+  })
+
+  // The answer to leaving reaches the phone that left (#1281). The seat is emptied in the same
+  // turn as the line is committed, and emptying it tells the seat's connections they have left and
+  // closes them; the ack came after that, on a socket already closing, so the phone's way out never
+  // heard that it had gone through. A store that answers in the time a database does — Postgres,
+  // on the box — lost it every time, and the phone stood on the sheet it had pressed.
+  it('acks the seat.release before it closes the connection that sent it, however slow the store', async () => {
+    class SlowStore extends MemoryLogStore {
+      override async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
+        await new Promise((r) => setTimeout(r, 40))
+        return super.revokeGuests(sessionId, seat, at)
+      }
+    }
+    await run.stop()
+    run = await start({ store: new SlowStore() })
+    const { id, code } = await createRoom(run.http)
+    const token = ((await (await post(`/rooms/${code}/join`, { name: 'Ada', seat: 'A' })).json()) as { token: string }).token
+    const ada = keep(await WireClient.connect(run.base, id, 'A', undefined, { token }))
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    const answer = await ada.send('A', { v: 'seat.release', seat: 'A' })
+    expect(answer).toMatchObject({ t: 'ack' })
+    // And the ack is before the word that the seat was left, so the phone reads its own leaving
+    // as done rather than as a door shut in its face.
+    const order = ada.messages.flatMap((m) => (m.t === 'ack' || m.t === 'refused' ? [m.t] : []))
+    expect(order.slice(-2)).toEqual(['ack', 'refused'])
   })
 
   // The other half of the same sentence, and the one that must not change: losing the net is not

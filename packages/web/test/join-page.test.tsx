@@ -82,6 +82,41 @@ describe('JoinPage', () => {
   })
 })
 
+// What a guest leaves behind, where she sits down (#757, #1281, variant C): what is saved, who sees
+// it and for how long, on three short lines by the name field.
+describe('what is kept, said by the name field (#1281)', () => {
+  it('says what is saved, who sees it and how long, and links the privacy page', async () => {
+    const id = await createSession(run)
+    await open(id)
+    const said = document.querySelector('.byd-join-kept')!
+    const rows = [...said.querySelectorAll('dt')].map((dt) => [dt.textContent, dt.nextElementSibling?.textContent])
+    expect(rows).toEqual([
+      ['Sparas', 'ditt namn, dina drag, anteckningar, flaggor och enkätsvar'],
+      ['Ser det', 'alla vid bordet nu, spelets ägare efteråt'],
+      ['Hur länge', 'namnet och det du skriver i ett år, eller tills du tar bort det'],
+    ])
+    expect(screen.getByRole('link', { name: 'Integritet' }).getAttribute('href')).toBe('/villkor#integritet')
+  })
+
+  // A seat whose guest erased herself (#1279) is still taken, under the masked name: the picker says
+  // so in words, and never draws the placeholder.
+  it('shows a seat taken under a masked name as «Utan namn»', async () => {
+    const id = await createSession(run)
+    const ada = await asSeat(run, id, 'A', 'Adelina Raderas')
+    const phone = TableClient.connect(ada)
+    await phone.ready()
+    await phone.send({ v: 'seat.claim', seat: 'A', name: 'Adelina Raderas' })
+    expect((await fetch(`${run.http}/sessions/${id}/erase`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: ada.token }) })).status).toBe(200)
+    await open(id)
+    const a = document.querySelector('[data-seat="A"]')!
+    expect(a.textContent).toContain('Utan namn')
+    expect(a.getAttribute('aria-label')).toContain('Utan namn')
+    expect(document.body.textContent).not.toContain('\uE000')
+    expect(document.body.textContent).not.toContain('Adelina')
+    phone.close()
+  })
+})
+
 describe('sitting down', () => {
   it('navigates to /play with the chosen seat, the name and the server; a taken seat cannot be picked', async () => {
     const id = await createSession(run)

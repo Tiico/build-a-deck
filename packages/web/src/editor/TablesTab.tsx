@@ -1,3 +1,4 @@
+import { maskedWords, sayPlaytest } from '../masked.js'
 import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
@@ -83,12 +84,13 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
     if (!reads) return
     let live = true
     client.playtest().then(
-      (read) => live && setResults(Object.fromEntries(read.tables.map((x) => [x.id, x]))),
+      (read) => live && setResults(Object.fromEntries(sayPlaytest(read, maskedWords(t)).tables.map((x) => [x.id, x]))),
       () => undefined,
     )
     return () => {
       live = false
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask again
   }, [client, asked, reads])
   // After the list has come back and the group has opened — a frame later, because the group opens
   // in an effect of its own — the ended table's row takes the focus again, on its one way in: an

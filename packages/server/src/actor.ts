@@ -183,9 +183,17 @@ export class TableActor {
   // socket left at a seat somebody else then takes is dealt that somebody's hand — which is the
   // one thing D1 does not allow. Emptying is therefore one path, not two that can drift: the
   // bug was precisely that `kick` knew something the way out did not.
-  private async emptied(seat: SeatId, reason: string): Promise<void> {
+  //
+  // `answer` is the ack owed to the envelope that emptied it, when the seat left of its own accord
+  // (#1281): told before the refusal and the close, because the door's own ack comes after the
+  // envelope is handled, and by then the socket is closing and a frame sent on it is lost. A store
+  // that takes a database's time to revoke the reservation lost it every time, and the phone's way
+  // out never heard that it had gone through. The door's ack still follows, and a client that has
+  // its answer already lets a second one go.
+  private async emptied(seat: SeatId, reason: string, answer?: { id: string; seqs: number[] }): Promise<void> {
     for (const sub of [...this.subscribers.keys()]) {
       if (sub.seat !== seat) continue
+      if (answer) sub.send({ t: 'ack', id: answer.id, seqs: answer.seqs })
       sub.send({ t: 'refused', reason })
       this.unsubscribe(sub)
       sub.close?.()
@@ -302,8 +310,9 @@ export class TableActor {
     // Whoever empties the seat — a kick, or the player's own way out (#31) — empties all of it.
     // `by` says which it was, and the connection is owed the true reason: only the table can
     // take a seat off somebody, and only the seat itself can leave.
+    const answer = { id: env.id, seqs: decision.applied.map((l) => l.seq) }
     for (const line of decision.applied) {
-      if (line.intent.v === 'seat.release') await this.emptied(line.intent.seat, line.by === null ? 'kicked' : 'left')
+      if (line.intent.v === 'seat.release') await this.emptied(line.intent.seat, line.by === null ? 'kicked' : 'left', line.by === line.intent.seat ? answer : undefined)
     }
     return decision
   }
