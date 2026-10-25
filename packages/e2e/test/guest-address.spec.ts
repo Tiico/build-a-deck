@@ -1,4 +1,4 @@
-import type { BrowserContext, Page, Response } from '@playwright/test'
+import type { BrowserContext, Page } from '@playwright/test'
 import { PHONE } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -40,6 +40,7 @@ const spellings = (value: string): string[] => [...new Set([value, encodeURIComp
 
 function neverIn(seen: Seen[], what: string, value: string): void {
   expect(seen.length, 'the journey made requests to read').toBeGreaterThan(10)
+  expect(seen.some(({ url }) => url.startsWith('ws')), 'the table’s WebSocket was among them').toBe(true)
   for (const { url, referer } of seen) {
     for (const s of spellings(value)) {
       expect(url, `${what} in the address of a request`).not.toContain(s)
@@ -48,17 +49,21 @@ function neverIn(seen: Seen[], what: string, value: string): void {
   }
 }
 
-// The token the picker bought, read off the answer to the request that bought it. The body is read
-// as the answer arrives: the picker leaves the page at once, and the browser lets the body go with it.
-function tokenBought(page: Page): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const heard = (res: Response) => {
-      if (!/\/rooms\/[^/]+\/join$/.test(new URL(res.url()).pathname) || res.request().method() !== 'POST') return
-      page.off('response', heard)
-      res.json().then((body: { token: string }) => resolve(body.token), reject)
-    }
-    page.on('response', heard)
+// The token the picker bought, read off the answer to the request that bought it as the answer
+// passes through to the page. Asked for afterwards, the body is already gone: the picker leaves the
+// page the moment it has the token, and Chromium lets the body go with the page.
+async function tokenBought(page: Page): Promise<() => string> {
+  let token: string | null = null
+  await page.route('**/rooms/*/join', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    const answer = await route.fetch()
+    token = ((await answer.json()) as { token: string }).token
+    await route.fulfill({ response: answer })
   })
+  return () => {
+    if (token === null) throw new Error('the picker bought no token')
+    return token
+  }
 }
 
 async function answerSurvey(page: Page): Promise<void> {
@@ -88,10 +93,10 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
     expect(page1?.headers()['referrer-policy'], 'the page says to send only its origin').toBe('strict-origin')
     await page.locator('button[data-seat="A"]').click()
     await page.getByLabel('Your name').fill(NAME)
-    const bought = tokenBought(page)
+    const bought = await tokenBought(page)
     await page.getByRole('button', { name: 'Sit down' }).click()
-    const token = await bought
     await page.waitForURL('**/play*')
+    const token = bought()
 
     // The search works: the name is on the table's own wire, the token in the page's fragment.
     await wire.until((frame) => frame.includes(NAME))
@@ -133,10 +138,10 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
 
     await page.goto(`/join?code=${table.code}`)
     await page.getByLabel('Your name').fill(NAME)
-    const bought = tokenBought(page)
+    const bought = await tokenBought(page)
     await page.getByRole('button', { name: /^Just watch/ }).click()
-    const token = await bought
     await page.waitForURL('**/observe*')
+    const token = bought()
 
     // The search works: the table announces her by name on its own wire (C8).
     await wire.until((frame) => frame.includes(NAME))
