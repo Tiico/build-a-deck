@@ -2,6 +2,7 @@ import { svEditor } from './sv.editor.js'
 import { svPlay } from './sv.play.js'
 import { svAccount } from './sv.account.js'
 import { svStatus } from './sv.status.js'
+import { svOnline } from './sv.online.js'
 
 // Svenska är katalogen (A4): varje meddelande skrivs här först, och varje annat språk skrivs mot
 // den nyckel för nyckel. En text som saknas i ett språk är ett typfel, inte en tom ruta.
@@ -19,6 +20,7 @@ export const sv = {
   ...svPlay,
   ...svAccount,
   ...svStatus,
+  ...svOnline,
 } as const
 
 export type Key = keyof typeof sv

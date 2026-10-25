@@ -1391,6 +1391,13 @@ Listan är sluten och hålls av ett test (#1276); ett nytt fält som bär en mä
 Maskningen byter värdet mot ett reserverat värde och bevarar att det finns och att det inte är tomt, så `decide` säger samma sak om varje rad och spelet blir detsamma.
 Ingenting annat i en rad skrivs någonsin om, och det är DRIFT §7:s enda undantag.
 
+Byggt 2026-10-25 (#1276):
+Listan är `PERSONAL_FIELDS` i `packages/protocol`, och `IMPERSONAL_FIELDS` bredvid den säger för varje annat textfält i ett intent eller ett utfall varför det inte är en persons.
+`test/personal.test.ts` där går igenom schemana och faller för ett textfält som inte står i någon av dem, och korpusens anonymisering läser samma lista.
+`redactLine` och `redactLog` i motorn maskar till `REDACTED`, och en maskad logg spelar upp till samma spel och samma vyer, med namnen och texterna maskade; att skriva den maskade raden i lagret är #1279.
+En tillbakaspolnings sparade bord är zoner och komponenter och har aldrig burit platserna (`Table` i motorn), så det har inga namn att maska; `redact.test.ts` håller det, och `outcome.table` står i `IMPERSONAL_FIELDS`.
+Kolumnerna i de två schemana är klassade i `packages/server/test/personal-columns.test.ts`, som faller för en kolumn som inte är det.
+
 Byggt 2026-09-18:
 E2E-lagret ovanpå återspelningen är `packages/e2e`, en egen Playwright-svit med `@playwright/test`.
 Den kör mot produkten som lådan kör den (DRIFT §2): webben byggd och serverad av servern ur `STATIC_DIR`, allt på ett ursprung, inga `server=`-parametrar någonstans.
@@ -2467,7 +2474,7 @@ En integritetspolicy med en förteckning över behandlingar och biträden står 
 Kontots och gästens vägar är nya ytor och prototypas först.
 
 Skivorna (alla öppna 2026-10-24):
-- #1276 personfälten och kolumnerna som sluten, testad karta — pågår.
+- #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
 - #1277 det som inte längre kan användas rensas — pågår.
 - #1278 gästens namn och token ur adressraden och `Referer` — pågår.
 - #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
@@ -2946,6 +2953,19 @@ Valet blev den första, eftersom det är det beställaren bad om och eftersom ha
 - Spelningen vänder kortet nedåt medan det fortfarande ligger i handen (`flip` före `move` i samma kuvert), så det ligger aldrig uppvänt i en publik zon. `faceDown` i `player/play.ts` är regeln för varje väg en hand spelar på: knapparna, arket, dragningen ut på filten och adresspanelen.
 - Lagt framför sig själv följer en `peek` med, som när man vänder ner ett eget kort där (#483): ägaren vet vilket kort det är, rummet vet att ett kort ligger där. Lagt någon annanstans följer ingen kunskap med (B6).
 - Grindar: `packages/web/test/turned-in-hand.test.ts` (motorn och projektionen), `player-page.test.tsx` och `online-keyboard.test.tsx` (ytorna), och `packages/e2e/test/turned-in-hand.spec.ts`, som läser de råa ramarna.
+
+Reviderat 2026-10-25 (#1291, beställarens beslut A efter prototyp): **i `/online`s hand vänder ett klick kortet, och handen skickar ingenting med musen.**
+Beställaren kallade handen på datorn klumpig: man behöver inte kunna skicka kort direkt från handen, det räcker att kunna vända dem.
+Med musen var klicket det långsamma sättet att spela (klick håller kortet, klick till öppnar adresspanelen, välj zon) bredvid draget, och «Vänd» gick bara att nå som F.
+Tre former prototypades i [`docs/ux-audits/2026-10-25-handen-pa-datorn/`](docs/ux-audits/2026-10-25-handen-pa-datorn/README.md): klick vänder, en vändknapp i kortets hörn, och «Vänd» under det lyfta kortet.
+Valet blev den första, eftersom musen redan läser kortet genom att vila på det och klicket då är ledigt, och eftersom varje kort förblir ett enda mål.
+
+- Med musen i spalten, solfjädern och «Visa alla»: att vila på kortet läser det, klick vänder det, och att dra det till bordet spelar det. Klicket håller inte kortet lyft och öppnar ingen panel.
+- Under det lyfta kortet står en rad om vad klicket och draget gör («Klick vänder · dra till bordet spelar», och «… vänder upp · … spelar nedvänt» för ett vänt kort); för tangentbordets fokus «Mellanslag vänder · Enter öppnar handlingar».
+- Tangentbordet behåller Enter till adresspanelen, eftersom ett tangentbord inte kan dra och panelen är dess enda väg att spela ett handkort (K16). Mellanslag är klicket och vänder, liksom F.
+- Ett finger behåller sitt tryck (#484 fynd 10, #510): ett finger har ingen hovring att läsa med, så trycket läser och öppnar som förut. Beslutet gäller musen.
+- Prototypens avvägning står kvar: ett klick som var tänkt att läsa vänder kortet, vilket är ofarligt eftersom vändningen inte skickar något och ett klick till vänder tillbaka.
+- Grindar: `packages/web/test/online-hand-turn.test.tsx` och `packages/e2e/test/online-hand-read.spec.ts`.
 
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
@@ -4486,6 +4506,10 @@ Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysi
 Med den mindre toppytan måste «17» ritas en storlek mindre än alla andra tärningars siffror för att rymmas (#1170).
 `die-figure-fit.test.tsx` håller att varje värde ryms på sin toppyta, och att d20:ns tvåsiffriga värden är minst 0,85 av d12:ans höjd.
 Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
+*Reviderat 2026-10-25 (#1288, beställarens beslut D efter [prototyp](https://github.com/Tiico/build-a-deck/blob/c63a310ee7a4a72a7be7446d567fd18a48dd9c93/docs/ux-audits/2026-10-25-tarningsslaget/prototyper/index.html)):* slaget ska gå fort och ändå kännas, så tärningen piskas två varv på 0,45 s med en hård inbromsning och ett litet bakslag, med tre efterbilder av silhuetten som släpar efter i snurret.
+Siffrorna hoppar allt långsammare och står still de sista 0,15 s, och när tärningen stannar drar en ring i platsens färg ihop sig om den.
+Hållet den snurrar åt följer slagets nummer i loggen, så att bordet och TV:n snurrar likadant.
+Ett jämnt varv på 0,7 s, ett kast med studsar, ett snurr som bromsar in i 1,1 s, en vältning i 3D, en smäll med chockvåg och ett utbrott med gnistor prövades; de långa kändes sega och de korta utan kraft i resultatet.
 Med tangentbordet slår Enter eller Space en fokuserad tärning, och M öppnar «Flytta till» med filtens ytor, så att tangentbordet når det pekaren når (K16; beställarens beslut 2026-10-23, #1169).
 Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
 Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
@@ -7631,6 +7655,8 @@ Valet blev **C**.
 - **Fliken börjar med ett galleri av färdiga teman**, samma galleri som wizarden visar.
   Ett tema är ett utgångsläge, inte ett lås.
 - **Det som avviker från det valda temat sägs på en rad**, med en väg tillbaka till temat som det var.
+
+Reviderat 2026-10-25 (L84, #1287): fliken börjar med spelets eget tema, galleriet är exempel i ett ark bakom «Titta i exemplen», och avvikelseraden och «Återställ» är borta.
 - **Justeringen ligger fälld, ett klick bort per del**: Typsnitt, Färger och betydelser, Spelets ikoner.
   Ett stängt huvud bär sitt värde, som L25:s sektioner, så inget döljs utan att sägas.
 - **Hela symbolbiblioteket öppnas ur Spelets ikoner**, och en symbol som tas in därifrån blir en av temats ikoner.
@@ -7685,7 +7711,7 @@ Ingenting väljs genom att titta, och ingen fil blir spelets förrän ett tema t
 B valdes bort för att det hade gjort varje besök på fliken till en förfrågan till Google; A för att typsnittet är halva skälet att välja ett tema.
 `font-catalog.spec.ts` läser på trafiken att fliken öppnas utan Google och att proven hämtas först efter trycket.
 
-**Mallens typsnittslista börjar med temat (#634:s följduppgift).**
+**Mallens typsnittslista börjar med temat (#634:s följduppgift).** Reviderat 2026-10-25 (L84): med spelets rubrik- och brödtextfamilj, lästa ur korten.
 I ett spel som utgår från ett tema står temats rubrikfamilj först i en textlagers lista och brödtextens därefter, och spelets övriga typsnitt följer i den ordning spelet har dem.
 En temafamilj spelet inte längre bär erbjuds inte, eftersom den vore ett namn utan fil (#420).
 
@@ -8510,3 +8536,33 @@ Rutan står kvar monterad när den är stängd, så ett häfte som håller på a
 Det ersätter #131:s tomläge med mallen utlagd i boken; avsnitten, frågorna och de två böckerna vägarna skriver är desamma.
 
 `rules-toolbar.test.tsx` visar radens ordning, var ett tillägg hamnar, rutans innehåll och Escape, huvudet och tomläget, på svenska och engelska.
+
+### L84. Speltema är spelets eget tema, och de färdiga temana är exempel i ett ark (prototypat och beslutat 2026-10-25, #1287)
+
+Beställaren: Speltema användes knappt.
+Fliken började med L57:s galleri av fyra färdiga teman, där ett tryck bytte spelets tema, och det spelet självt hade — typsnitten, betydelserna, ikonerna — låg fällt under galleriet.
+Fliken lästes som ett ställe där man väljer bland fyra färdiga, inte som spelets eget utseende.
+Beslutet är att fliken handlar om **spelets eget tema**, och att de färdiga temana blir **exempel att utgå ifrån** som inte är valbara direkt i fliken.
+
+Fyra former prövades: exemplen i ett ark bakom en knapp (A), exemplens delar som idéer under varje del av spelets tema (B), ett startläge där ett nytt spel väljer mellan att börja tomt och att utgå från ett exempel (C), och spelets tema och ett exempel sida vid sida med en pil per rad (D).
+Valet blev **A**.
+
+- **Fliken börjar med spelets tema**: typsnitten, färgerna och betydelserna och spelets ikoner, utfällda från början, och spelets första kort bredvid dem, ritat av den enda renderaren (E2) och ändrat i samma stund som temat.
+  En del går fortfarande att fälla, och det som fällts minns webbläsaren som förut.
+- **Exemplen ligger bakom «Titta i exemplen»**, ett ark över flikens högra del som biblioteket och katalogen, en sak i taget och med fokus tillbaka till knappen.
+  I arket går exemplen bara att läsa: brickan är ingen knapp och har inget nedtryckt läge.
+  «Visa temana i sina typsnitt» står kvar i arket, med L57:s gräns mot Google: att öppna arket hämtar ingenting.
+- **«Kopiera till spelets tema…» visar först vad som byts ut**, rad för rad: rubrik, brödtext, de betydelser som får ny färg eller tillkommer, och ikonerna som läggs till.
+  Först trycket på «Kopiera till spelets tema» skickar redigeringen, samma `setTheme` som förut, och det är ett steg tillbaka (B4).
+- **En kopia blir spelets egen.** Spelet minns inte vilket exempel det kom ifrån: `setTheme` skriver inte längre `theme.from`, och en redigering utan det tar bort ett gammalt.
+  Därmed går L57:s avvikelserad («Ditt tema är Skogssaga med 2 ändringar») och dess «Återställ»; ångra täcker en kopia man ångrar.
+  Ett dokument med `theme.from` från före beslutet läses som förut och visas som vilket spel som helst.
+- **Mallens typsnittslista börjar med spelets rubrik- och brödtextfamilj, läst ur korten** och inte ur ett exempel: den familj spelets rubriker står i först, brödtextens därefter, och spelets övriga typsnitt i den ordning spelet har dem.
+- **Den guidade starten står kvar** med «Tema — hur det känns» (L57, #633, #687): i wizarden väntar man sig ett val, och temat som tas där blir spelets eget tema på samma sätt som en kopia.
+
+`theme-examples.test.tsx` läser att fliken öppnar utfälld med kortet och utan valbara brickor, att arket öppnas utan trafik till Google, och att kopian frågar först; `theme-edit.test.ts` att ett nytt byte inte skriver `theme` och att ett gammalt spelas upp som det skrevs.
+`theme-proof.spec.ts` mäter temaprovet i arket, där en bricka står ensam på sin rad och brödtexten når 12 px vid både 1280 och 1024.
+
+B gav aldrig en bild av ett exempel som helhet, C gjorde exemplen valbara i fliken en gång och gömde dem sedan, och D var den tyngsta ytan för den som bara vill ändra en färg.
+
+Prototypen står i [`docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html`](docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html).

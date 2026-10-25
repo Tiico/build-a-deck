@@ -371,7 +371,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       return w?.other ? [{ game: p, rev: w.rev, ...w.other }] : []
     })
     .sort((a, b) => b.at.localeCompare(a.at))
-  const waits = waiting !== null && flagged.length + unanswered.length + savedByOthers.length > 0
+  // It stands only once both of its sources have answered: drawn on `waiting` alone, the surveys
+  // left to answer arrived a moment later and the rows jumped down under the reader.
+  const waits = waiting !== null && played !== null && flagged.length + unanswered.length + savedByOthers.length > 0
   // A row of it is a link, and a plain press goes through the page's own way of leaving.
   const go = (url: string) => (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return

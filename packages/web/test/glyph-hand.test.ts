@@ -140,7 +140,7 @@ const allowed = (hit: Shown, char: string) => ALLOWED.find((a) => a.file === hit
 const DRAWINGS: Record<string, { count: number; why: string }> = {
   'src/brand/mark.ts': { count: 4, why: 'the brand mark, as the files the favicon, the app icons and the share image are made of (A6, #1084)' },
   'src/brand/DecksterMark.tsx': { count: 1, why: 'the brand mark on the page, the fan of cards the product is named by' },
-  'src/table/Die.tsx': { count: 1, why: 'a die on the felt, its kind’s outline seen from above with the side that is up (#1137, K28)' },
+  'src/table/Die.tsx': { count: 3, why: 'a die on the felt, its kind’s outline seen from above with the side that is up (#1137, K28), and while it whips round the after-images of that outline and the ring in the seat’s colour that closes round it (#1288)' },
   'src/editor/DeckWall.tsx': { count: 1, why: 'the colour-vision filters the eyes box looks at cards through; it draws nothing' },
   'src/editor/symbols.ts': { count: 1, why: 'the symbol library: card art, drawn on cards by the card renderer' },
   'src/editor/icon-catalog.ts': { count: 1, why: 'the icon catalogue: card art, drawn on cards by the card renderer' },
