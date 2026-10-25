@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp: kvittot på /login (#1360)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1360: kvittot «Kolla din mejl» på /login får «Fel adress?», som går tillbaka till fältet med
+     adressen kvar, och «Skicka igen» med begränsarens besked (beställarens beslut 2026-10-25).
+     Inloggningskortets rader är beslutade (L36, #691): märket och namnet, säljtexten första
+     gången, leadraden med frågetecknet, fältet eller kvittot, passkeyn, språket och raden om
+     villkoren. Varianterna ändrar bara det som står där kvittot står.
+     Begränsaren är LoginLimiter i packages/server/src/auth.ts: fem länkar i timmen per adress.
+     Kortet är ritat för hand med account.css egna mått och färger.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  main.scen { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 28px; justify-content: safe center; align-content: start; align-items: start; padding: 20px 16px 60px; background: #15171c; }
+  .ram { display: grid; gap: 6px; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .sida[data-bredd='dator'] { width: 1040px; min-height: 720px; display: grid; }
+  .sida[data-bredd='375'] { width: 375px; min-height: 740px; display: grid; }
+  .sida[data-bredd='320'] { width: 320px; min-height: 568px; display: grid; }
+
+  /* ── Kontots sida och kortet (account.css, buttons.css, help.css) ───────────────────────── */
+  .acc { --bg: #0f1117; --card: #171a23; --field: #14161c; --sec-line: #6f7a90; --sec-ink: #dce3f2; --muted: #9aa3b8;
+    display: grid; place-items: center; align-content: center; gap: 8px; padding: 40px 20px; background: var(--bg); color: #e6e6e6; font: 14px system-ui, sans-serif; }
+  .sida:not([data-bredd='dator']) .acc { padding: 24px 12px; align-content: start; }
+  .acc :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .acc button { font: inherit; cursor: pointer; }
+  .hem { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--muted); font-size: 14px; text-decoration: none; }
+  .login { width: min(420px, 100%); background: var(--card); border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; }
+  .sida[data-bredd='320'] .login { padding: 22px 18px; }
+  .login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; }
+  .mark { width: 32px; height: 32px; flex: none; }
+  .muted { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
+  .hjalprad { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
+  .q { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; margin: -10px -10px 0 0; border: 0; background: none; }
+  .q i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #6f7a90; color: #dce3f2; font: 700 12px system-ui; font-style: normal; }
+  form { display: grid; gap: 10px; margin: 0; }
+  .falt { display: grid; gap: 6px; }
+  .falt > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+  .falt input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--sec-line); background: var(--field); color: #fff; font-size: 16px; }
+  .falt input:focus { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .login .knapp { padding: 14px 18px; border-radius: 12px; font-size: 16px; }
+  .prim { border: 0; background: #7dd3a0; color: #0b2a18; font-weight: 700; }
+  .sek { border: 1px solid var(--sec-line); background: transparent; color: var(--sec-ink); font-weight: 600; }
+  .login .knapp:disabled { opacity: .4; cursor: default; }
+  .eller { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 0; color: var(--muted); font-size: 13px; }
+  .eller::before, .eller::after { content: ''; height: 1px; background: #262a35; }
+  .passkey { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .g { width: 16px; height: 16px; flex: none; }
+  .lang { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .lang select { min-height: 44px; border: 1px solid var(--sec-line); border-radius: 8px; padding: 4px 8px; background: var(--field); color: #e6e6e6; font: inherit; }
+  .about { margin-top: 24px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; color: var(--muted); font-size: 12px; white-space: pre; }
+  .about a { color: inherit; display: inline-flex; align-items: center; min-height: 44px; }
+  .fel { color: #ff9a9a; font-size: 13px; margin: 0; line-height: 1.45; }
+
+  /* Kvittot som det står i dag: .byd-login-sent. */
+  .sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+  .sent strong { font-size: 16px; color: #fff; }
+  .sent b { color: #fff; font-weight: 700; overflow-wrap: anywhere; }
+  /* Knapparna på den gröna grunden: passkey-erbjudandets (#1180) linje och bläck. */
+  .sent .rad { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .sent .rad button { flex: 1 1 120px; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #5f8a70; background: transparent; color: #d8ffe8; font-size: 14px; font-weight: 600; }
+  .sent .rad button:disabled { opacity: .45; cursor: default; }
+  .sent .igen { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 0; font-size: 13px; color: #d8ffe8; }
+  .bock { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; margin-top: 1px; border-radius: 50%; background: #7dd3a0; color: #0b2a18; font-size: 11px; font-weight: 800; }
+  .sent .sparr { margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #3b3222; color: #ffeccc; font-size: 13px; line-height: 1.45; }
+
+  /* B: fältet står kvar, låst, med «Fel adress?» i sin högra kant. */
+  .last input { color: #cdd4e4; background: #11131a; border-style: dashed; text-overflow: ellipsis; }
+  .andra { justify-self: end; min-height: 44px; margin: -6px 0 -4px; padding: 0 2px; border: 0; background: none; color: #dce3f2; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .sent.smal { padding: 12px 14px; gap: 2px; font-size: 13px; }
+  .sent.smal strong { font-size: 15px; }
+  .nedrakning { font-variant-numeric: tabular-nums; }
+
+  /* C: adressen som egen rad med sin rättelse, och sändningen igen som en tyst rad under rutan. */
+  .adressrad { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 2px 0; }
+  .adressrad b { font-size: 16px; }
+  .lankknapp { min-height: 44px; padding: 0; border: 0; background: none; color: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .sent .lankknapp { color: #a9e8c3; }
+  .tyst { margin: -2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .tyst .lankknapp { color: #dce3f2; font-size: 13px; min-height: 0; padding: 12px 0; margin: -12px 0; }
+  .tyst .lankknapp:disabled { color: var(--muted); text-decoration: none; cursor: default; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP #1360: kvittot «Kolla din mejl» på /login.</b> Skriv en adress och skicka. Kvittot har «Fel adress?» och «Skicka igen»; den sjätte länken inom en timme svarar begränsaren på.</p>
+    <p>Växla variant med A/B/C eller ← →. «Läge» hoppar direkt till ett tillstånd; «Börja om» nollställer.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <div class="grupp"><span>Språk</span><div class="flikar" id="lang"></div></div>
+  <div class="grupp"><span>Läge</span><div class="flikar" id="lage"></div></div>
+  <button type="button" id="omstart">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen" id="scen"></main>
+
+<script>
+const V = {
+  A: { namn: 'A · I kvittot · rekommenderas',
+    not: 'Kvittot står där det står i dag och får en rad med två knappar längst ner, i passkey-erbjudandets form på den gröna grunden. <b>Fel adress?</b> lägger tillbaka formuläret med adressen kvar och markören sist i fältet. <b>Skicka igen</b> skickar direkt; raden under texten säger när, och att den förra länken också fungerar. Den sjätte inom en timme får begränsarens besked i kvittot, med hur länge det dröjer, och knappen vilar. <span class="plus">+ inget nytt på kortet utanför kvittot; båda vägarna står där ögat redan är; inga timers</span> <span class="minus">− två knappar av samma vikt, fast «Fel adress?» är den vanligare</span>' },
+  B: { namn: 'B · Fältet står kvar',
+    not: 'Efter sändningen står formuläret kvar: fältet låst med adressen, <b>Fel adress?</b> direkt under fältets högra kant, kvittot kort under det, och huvudknappen blir <b>Skicka igen</b> som andra knapp. Den vilar i 30 sekunder och räknar ner, så att två tryck i otålighet inte äter två av fem länkar. Begränsarens besked står under knappen som fältets andra fel. <span class="plus">+ adressen syns där den skrevs, så felstavningen ses utan att läsas i en mening</span> <span class="minus">− fältet får ett tredje läge (låst), och kortet växer med knappen; en nedräkning är en ny sak att förstå; en lång adress kapas i fältet vid 320</span>' },
+  C: { namn: 'C · Adressen som egen rad',
+    not: 'Kvittot ställer adressen på en egen rad, stort, med <b>Fel adress?</b> som länk bredvid. Under rutan står en tyst rad: «Ingen länk efter en minut? Titta i skräpposten eller <b>skicka igen</b>.» Länken vilar den första minuten. Begränsarens besked byter ut den tysta raden. <span class="plus">+ rättelsen sitter på det den rättar; att skicka igen är tydligt den andra handlingen, efter skräpposten</span> <span class="minus">− «skicka igen» är en länk i en mening och syns sämst; en minuts väntan kan kännas som att knappen är död (L-minnet om osynliga svar)</span>' },
+}
+const BREDD = { dator: 'Dator', 375: '375', 320: '320' }
+const LAGEN = { open: 'Fältet', sent: 'Skickat', igen: 'Skickat igen', sparr: 'Spärrad' }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let bredd = q.get('bredd') || 'dator'
+let lang = q.get('lang') || 'sv'
+let st
+const omstart = () => { st = { fas: 'open', email: '', skickade: [], sparr: false, fel: null, vila: 0, fokus: true, igen: null } }
+omstart()
+const en = () => lang === 'en'
+const L = (sv, eng) => (en() ? eng : sv)
+const klocka = (d) => d.toLocaleTimeString(en() ? 'en-GB' : 'sv-SE', { hour: '2-digit', minute: '2-digit' })
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+// Hur länge till nästa länk: den äldsta av de fem faller ur timmen. Prototypen låtsas 23 minuter.
+const MINUTER = 23
+
+const MARK = `<svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="8" width="13" height="18" rx="2" transform="rotate(-14 11 17)" fill="#e0a73a" stroke="#171a23" stroke-width="1.5"/><rect x="10" y="6" width="13" height="18" rx="2" fill="#3f8f5f" stroke="#171a23" stroke-width="1.5"/><rect x="15" y="8" width="13" height="18" rx="2" transform="rotate(14 21 17)" fill="#efe8d8" stroke="#171a23" stroke-width="1.5"/></svg>`
+const KEY = `<svg class="g" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3"/><path d="M7.6 8.4 13 3M11 5l1.75 1.75M9.5 6.5l1.25 1.25"/></svg>`
+
+// ── Det som är gemensamt för alla varianter: kortets beslutade rader (L36, #691) ──────────────
+function kort(mitten, passkey) {
+  return `
+  <a class="hem" href="#">‹ ${L('Till startsidan', 'To the start page')}</a>
+  <div class="login">
+    <h1>${MARK}Deckster</h1>
+    <div class="muted hjalprad"><span>${L('Logga in för att komma till dina spel.', 'Log in to get to your games.')}</span><button type="button" class="q" aria-label="${L('Om inloggningen', 'About signing in')}"><i>?</i></button></div>
+    ${mitten}
+    ${passkey ? `<p class="eller">${L('eller', 'or')}</p><button type="button" class="knapp sek passkey">${KEY}${L('Logga in med passkey', 'Sign in with a passkey')}</button>` : ''}
+    <label class="lang">${L('Språk', 'Language')} <select><option>${L('Svenska', 'Svenska')}</option><option>English</option></select></label>
+    <p class="about"><a href="#">${L('Villkor', 'Terms')}</a> · <a href="#">${L('Integritet', 'Privacy')}</a> · <a href="#">${L('Anmäl', 'Report')}</a> · <a href="#">${L('Kontakt', 'Contact')}</a> · Deckster 0.9</p>
+  </div>`
+}
+
+function formular(knapp = 'submit') {
+  const felen = { empty: L('Skriv in din e‑postadress först.', 'Type your email address first.'), at: L('Adressen behöver ett @.', 'The address needs an @.') }
+  return `<form data-form>
+    <label class="falt"><span>${L('E-post', 'Email')}</span>
+      <input type="email" data-email value="${esc(st.email)}" placeholder="${L('din@epost.se', 'you@example.com')}" autocomplete="off" ${st.fel ? 'aria-invalid="true"' : ''}></label>
+    <button type="submit" class="knapp prim">${L('Skicka inloggningslänk', 'Send sign-in link')}</button>
+    ${st.fel ? `<p class="fel" role="alert">${felen[st.fel]}</p>` : ''}
+  </form>`
+}
+
+const brodtext = () => L(`Vi har skickat en inloggningslänk till <b>${esc(st.email)}</b>. Den gäller i 15 minuter och kan användas en gång.`,
+  `We have sent a sign-in link to <b>${esc(st.email)}</b>. It is valid for 15 minutes and can be used once.`)
+const igenrad = () => st.igen ? `<p class="igen" role="status"><span class="bock">✓</span><span>${L(`En ny länk skickades ${klocka(st.igen)}. Den förra fungerar också.`, `A new link went out at ${klocka(st.igen)}. The earlier one works too.`)}</span></p>` : ''
+const sparrtext = () => L(`Fem länkar har gått till den adressen den senaste timmen. Nästa kan skickas om ${MINUTER} minuter.`,
+  `Five links have gone to that address in the last hour. The next can be sent in ${MINUTER} minutes.`)
+
+// ── A · I kvittot ──────────────────────────────────────────────────────────────────────────────
+function A() {
+  if (st.fas === 'open') return kort(formular(), true)
+  return kort(`<div class="sent" role="status">
+      <strong>${L('Kolla din mejl', 'Check your email')}</strong>
+      <span>${brodtext()}</span>
+      ${igenrad()}
+      ${st.sparr ? `<p class="sparr" role="alert">${sparrtext()}</p>` : ''}
+      <div class="rad">
+        <button type="button" data-do="fel">${L('Fel adress?', 'Wrong address?')}</button>
+        <button type="button" data-do="igen" ${st.sparr ? 'disabled' : ''}>${L('Skicka igen', 'Send again')}</button>
+      </div>
+    </div>`, false)
+}
+
+// ── B · Fältet står kvar ───────────────────────────────────────────────────────────────────────
+function B() {
+  if (st.fas === 'open') return kort(formular(), true)
+  const vilar = st.vila > 0
+  return kort(`<form data-form>
+      <label class="falt"><span>${L('E-post', 'Email')}</span>
+        <span class="last"><input type="email" value="${esc(st.email)}" readonly aria-readonly="true"></span></label>
+      <button type="button" class="andra" data-do="fel">${L('Fel adress?', 'Wrong address?')}</button>
+      <div class="sent smal" role="status">
+        <strong>${L('Kolla din mejl', 'Check your email')}</strong>
+        <span>${L('Länken gäller i 15 minuter och kan användas en gång.', 'The link is valid for 15 minutes and can be used once.')}</span>
+        ${igenrad()}
+      </div>
+      <button type="button" class="knapp sek" data-do="igen" ${vilar || st.sparr ? 'disabled' : ''}>${vilar ? `<span class="nedrakning">${L(`Skicka igen om ${st.vila} s`, `Send again in ${st.vila} s`)}</span>` : L('Skicka igen', 'Send again')}</button>
+      ${st.sparr ? `<p class="fel" role="alert">${sparrtext()}</p>` : ''}
+    </form>`, false)
+}
+
+// ── C · Adressen som egen rad ──────────────────────────────────────────────────────────────────
+function C() {
+  if (st.fas === 'open') return kort(formular(), true)
+  const vilar = st.vila > 0
+  return kort(`<div class="sent" role="status">
+      <strong>${L('Kolla din mejl', 'Check your email')}</strong>
+      <span>${L('En inloggningslänk är på väg till', 'A sign-in link is on its way to')}</span>
+      <span class="adressrad"><b>${esc(st.email)}</b><button type="button" class="lankknapp" data-do="fel">${L('Fel adress?', 'Wrong address?')}</button></span>
+      <span>${L('Den gäller i 15 minuter och kan användas en gång.', 'It is valid for 15 minutes and can be used once.')}</span>
+      ${igenrad()}
+    </div>
+    ${st.sparr
+      ? `<p class="fel" role="alert">${sparrtext()}</p>`
+      : `<p class="tyst">${L('Ingen länk efter en minut? Titta i skräpposten eller', 'No link after a minute? Look in your spam folder or')} <button type="button" class="lankknapp" data-do="igen" ${vilar ? 'disabled' : ''}>${vilar ? L(`skicka igen om ${st.vila} s`, `send again in ${st.vila} s`) : L('skicka igen', 'send again')}</button>.</p>`}`, false)
+}
+
+// ── Prototypens rad och tillstånd ─────────────────────────────────────────────────────────────
+const vaxlare = document.getElementById('vaxlare')
+const scen = document.getElementById('scen')
+let tick = null
+function vila(s) {
+  st.vila = s
+  clearInterval(tick)
+  if (!s) return
+  tick = setInterval(() => { st.vila = Math.max(0, st.vila - 1); if (!st.vila) clearInterval(tick); render(false) }, 1000)
+}
+const VILA = { A: 0, B: 30, C: 60 }
+function skicka() {
+  const nu = new Date()
+  if (st.skickade.length >= 5) { st.sparr = true; return }
+  st.skickade.push(nu)
+  if (st.skickade.length > 1) st.igen = nu
+  vila(VILA[v])
+}
+function hoppa(lage) {
+  omstart(); clearInterval(tick)
+  if (lage === 'open') return
+  st.email = 'ada.lindqvist@exempel.se'; st.fas = 'sent'; st.skickade = [new Date()]
+  if (lage === 'igen') { st.skickade.push(new Date()); st.igen = new Date() }
+  if (lage === 'sparr') { st.skickade = [1, 2, 3, 4, 5].map(() => new Date()); st.igen = new Date(); st.sparr = true }
+}
+function render(fokus = true) {
+  vaxlare.innerHTML = Object.keys(V).map((k) => `<button type="button" data-v="${k}" aria-pressed="${k === v}">${k}</button>`).join('')
+  document.getElementById('bredd').innerHTML = Object.entries(BREDD).map(([k, n]) => `<button type="button" data-bredd="${k}" aria-pressed="${k === bredd}">${n}</button>`).join('')
+  document.getElementById('lang').innerHTML = ['sv', 'en'].map((k) => `<button type="button" data-lang="${k}" aria-pressed="${k === lang}">${k}</button>`).join('')
+  const aktuellt = st.fas === 'open' ? 'open' : st.sparr ? 'sparr' : st.igen ? 'igen' : 'sent'
+  document.getElementById('lage').innerHTML = Object.entries(LAGEN).map(([k, n]) => `<button type="button" data-lage="${k}" aria-pressed="${k === aktuellt}">${n}</button>`).join('')
+  document.getElementById('anteckning').innerHTML = `<b>${V[v].namn}.</b> ${V[v].not}`
+  const yta = { A, B, C }[v]()
+  const aktivt = document.activeElement
+  const varFokus = aktivt && scen.contains(aktivt) ? aktivt.dataset.do : null
+  scen.innerHTML = `<div class="ram"><p class="etikett"><b>/login</b> · ${L('variant', 'variant')} ${v} · ${bredd === 'dator' ? '1040 px' : bredd + ' px'} · ${lang} · ${st.skickade.length} ${L('av 5 länkar den här timmen', 'of 5 links this hour')}</p>
+    <div class="sida" data-bredd="${bredd}"><div class="acc">${yta}</div></div></div>`
+  history.replaceState(null, '', `?v=${v}&bredd=${bredd}&lang=${lang}`)
+  if (varFokus) scen.querySelector(`[data-do="${varFokus}"]:not(:disabled)`)?.focus()
+  if (fokus && st.fokus && st.fas === 'open') {
+    const i = scen.querySelector('[data-email]')
+    if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length) } catch {} }
+    st.fokus = false
+  }
+}
+
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; const lage = st.fas === 'open' ? 'open' : st.sparr ? 'sparr' : st.igen ? 'igen' : 'sent'; hoppa(lage) }
+  if (b.dataset.bredd) bredd = b.dataset.bredd
+  if (b.dataset.lang) lang = b.dataset.lang
+  if (b.dataset.lage) hoppa(b.dataset.lage)
+  if (b.id === 'omstart') { clearInterval(tick); omstart() }
+  render()
+})
+scen.addEventListener('input', (e) => { if (e.target.matches('[data-email]')) { st.email = e.target.value; if (st.fel) { st.fel = null; render(false); const i = scen.querySelector('[data-email]'); i.focus(); try { i.setSelectionRange(p, p) } catch {} } } })
+scen.addEventListener('submit', (e) => {
+  e.preventDefault()
+  const a = st.email.trim()
+  if (!a || !a.includes('@')) { st.fel = a ? 'at' : 'empty'; st.fokus = true; render(); return }
+  // Begränsaren räknar per adress: en rättad adress har sina egna fem.
+  if (a !== st.sist) st.skickade = []
+  st.email = a; st.sist = a; st.fas = 'sent'; st.igen = null; st.sparr = false
+  skicka()
+  render()
+  scen.querySelector('.sent')?.setAttribute('tabindex', '-1')
+})
+scen.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-do]')
+  if (!b) return
+  e.preventDefault()
+  // «Fel adress?»: tillbaka till fältet med adressen kvar och markören sist. Länkarna som gått
+  // räknas fortfarande mot den adressen, men en ny adress har sina egna fem.
+  if (b.dataset.do === 'fel') { st.fas = 'open'; st.igen = null; st.sparr = false; st.fokus = true; vila(0) }
+  if (b.dataset.do === 'igen') skicka()
+  render()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select')) return
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    render()
+  }
+})
+render()
+</script>
+</body>
+</html>
