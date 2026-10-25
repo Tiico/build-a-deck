@@ -9,9 +9,14 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "fetch-models": "tsx scripts/fetch-models.ts"
   },
   "dependencies": {
+    "onnxruntime-node": "1.30.0",
     "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0"
   }
 }

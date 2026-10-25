@@ -15,6 +15,11 @@ COPY packages/screening/package.json packages/screening/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile
+# onnxruntime-node (#1273) carries its binaries for every platform, ~290 MB. The app never runs a
+# model — the render worker does — but the workspace installs it, so the image keeps only its own.
+RUN set -eu; arch=$(node -p process.arch); for d in node_modules/.pnpm/onnxruntime-node@*/node_modules/onnxruntime-node/bin/napi-v*; do \
+      rm -rf "$d/darwin" "$d/win32"; find "$d/linux" -mindepth 1 -maxdepth 1 ! -name "$arch" -exec rm -rf {} +; \
+    done
 COPY packages ./packages
 # `vite build` loads `vite.config.ts` first, and that config imports the run's own reporter from
 # here (#111). The build context has to carry it or the image fails before it compiles a line.

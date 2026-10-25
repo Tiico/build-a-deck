@@ -1,0 +1,61 @@
+// Writes `src/clip-prompts.json` (#1273): the prompts the violence score is read against, and their
+// CLIP text embeddings, so that the box runs CLIP's image encoder alone and never its text side.
+// Changing a prompt changes what a score means, so it is a new version of the classifier
+// (`BOX_CLASSIFIER` in src/box-classifier.ts), and the version test says so.
+//
+// The text encoder is not a dependency of the platform; run this from a directory where it is
+// installed, with the prompts edited below:
+//   npm i @huggingface/transformers@3.8.1
+//   node <repo>/packages/screening/scripts/clip-prompts.mjs > <repo>/packages/screening/src/clip-prompts.json
+import { createRequire } from 'node:module'
+
+const PROMPTS = {
+  // What a picture is when it is not the category: many kinds of picture, card art among them, so
+  // that a picture is held against the nearest ordinary thing it could be.
+  neutral: [
+    'a fantasy illustration for a card game',
+    'a painting of a landscape',
+    'a portrait of a person wearing clothes',
+    'a drawing of a warrior in armor',
+    'a picture of an animal',
+    'a black icon on a white background',
+    'a playing card',
+    'a still life painting',
+    'a photo of everyday objects',
+    'a drawing of a monster',
+    'a painting of a battle',
+    'a classical painting of a nude figure',
+  ],
+  violence: ['graphic gore with blood and exposed organs', 'a photo of a mutilated corpse', 'a bloody violent killing', 'a dismembered body lying in blood'],
+}
+const MODEL = 'Xenova/clip-vit-base-patch32'
+const REVISION = 'd15189d7028b43f1d3e65039190477f6af591c2a'
+
+const require = createRequire(`${process.cwd()}/`)
+const loaded = await import(require.resolve('@huggingface/transformers'))
+const { AutoTokenizer, CLIPTextModelWithProjection } = loaded.AutoTokenizer ? loaded : loaded.default
+const tokenizer = await AutoTokenizer.from_pretrained(MODEL, { revision: REVISION })
+const model = await CLIPTextModelWithProjection.from_pretrained(MODEL, { revision: REVISION, dtype: 'fp32' })
+const all = [...PROMPTS.neutral, ...PROMPTS.violence]
+const { text_embeds: embeds } = await model(tokenizer(all, { padding: true, truncation: true }))
+const [, dims] = embeds.dims
+const vectors = new Float32Array(all.length * dims)
+for (let i = 0; i < all.length; i++) {
+  const v = embeds.data.slice(i * dims, (i + 1) * dims)
+  const norm = Math.hypot(...v)
+  for (let d = 0; d < dims; d++) vectors[i * dims + d] = v[d] / norm
+}
+process.stdout.write(
+  JSON.stringify(
+    {
+      about: 'Written by scripts/clip-prompts.mjs (#1273): CLIP text embeddings, unit length, float32 in base64, neutral then violence.',
+      model: `${MODEL}@${REVISION}`,
+      dims,
+      logitScale: 100,
+      ...PROMPTS,
+      vectors: Buffer.from(vectors.buffer).toString('base64'),
+    },
+    null,
+    1,
+  ) + '\n',
+)

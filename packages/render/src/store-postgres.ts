@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
-import { ScreeningResult, type ClassifierRef } from '@byd/screening'
+import { ScreeningReference, ScreeningResult, type ClassifierRef } from '@byd/screening'
 import type { RenderKind } from './hash.js'
 import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type Fit, type JobStatus, type Priority, type RenderRequest, type RenderStore, type ScreeningFailure } from './store.js'
 import type { ObjectStore } from './objects.js'
@@ -187,6 +187,24 @@ export class PostgresRenderStore implements RenderStore {
         and kind->'classifier'->>'id' = ${classifier.id} and kind->'classifier'->>'version' = ${classifier.version}
       order by kind->>'asset'
     `.then((rows) => rows.map(({ asset, error }) => ({ asset, error })))
+  }
+
+  async addScreeningReference(reference: ScreeningReference): Promise<'added' | 'known'> {
+    const { imageHash, source, addedAt } = ScreeningReference.parse(reference)
+    const added = await this.sql`
+      insert into screening_references (algorithm, bits, quality, source, added_at)
+      values (${imageHash.algorithm}, ${imageHash.bits}, ${imageHash.quality ?? null}, ${source}, ${addedAt})
+      on conflict do nothing
+      returning 1
+    `
+    return added.length > 0 ? 'added' : 'known'
+  }
+
+  async screeningReferences(): Promise<ScreeningReference[]> {
+    const rows = await this.sql<{ algorithm: 'pdq-256'; bits: string; quality: number | null; source: string; added_at: string | number }[]>`
+      select * from screening_references order by added_at, bits
+    `
+    return rows.map((r) => ({ imageHash: { algorithm: r.algorithm, bits: r.bits, ...(r.quality === null ? {} : { quality: r.quality }) }, source: r.source, addedAt: Number(r.added_at) }))
   }
 
   async reap(olderThanMs: number, now: number): Promise<string[]> {

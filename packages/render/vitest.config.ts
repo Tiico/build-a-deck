@@ -12,6 +12,8 @@ import { TEST_CEILING } from '../../test-support/own-time.js'
 // vitest's own timeout is a ceiling and not the budget (#848): `test/setup.ts` holds every test
 // to `PG_TEST_BUDGET` of the worker's own time, which a machine that stops running the worker
 // cannot spend for it. `test-support/own-time.ts` has what was measured.
+// The worker screens with the box classifier (#1273), whose models the run fetches first, once per
+// machine (`test-support/screening-models.ts`).
 export default defineConfig({
-  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'], ...reporting() },
+  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts', '../../test-support/screening-models.ts'], ...reporting() },
 })
