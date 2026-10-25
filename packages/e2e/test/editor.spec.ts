@@ -29,6 +29,11 @@ test.describe('from the editor to a table', () => {
 
     await page.locator('#byd-editor-tab-tables').click()
     await page.locator('.byd-tables-new').click()
+    // Every start asks how you sit (#1286); around one screen, the TV opens in a tab of its own.
+    const asked = page.getByRole('dialog', { name: /^(Starta ett bord|Start a table)$/ })
+    const tv = page.context().waitForEvent('page')
+    await asked.getByRole('button', { name: /^(Starta|Start)$/ }).click()
+    await (await tv).close()
 
     // A table just started has not been played at, so it is filed under the fold for tables that
     // were started and never touched (#176) — and that fold opens by itself for the table this
@@ -42,12 +47,10 @@ test.describe('from the editor to a table', () => {
     const session = await row.getAttribute('data-table')
     expect(session, 'the row names the table it is a row for').toBeTruthy()
 
-    // The ways into a table live in the row's own menu (beslut 2026-09-17), with the one that
-    // stands ready outside it. The television is in the menu, so it is opened as a designer opens
-    // it rather than reached around.
-    await row.locator('.byd-tables-more').click()
-    const way = row.locator('.byd-tables-menu a[href*="/table"]').first()
-    await expect(way, 'the menu offers the television').toBeVisible()
+    // A table has one way in, «Öppna bordet» (#1286), and a table around one screen opens at its
+    // television, so it is opened as a designer opens it rather than reached around.
+    const way = row.locator('.byd-tables-go > a[href*="/table"]')
+    await expect(way, 'the row opens the television').toBeVisible()
     const href = await way.getAttribute('href')
     expect(href).toContain(session!)
 

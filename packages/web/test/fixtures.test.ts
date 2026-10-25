@@ -229,13 +229,13 @@ describe('the surfaces `editor-viewport.test.tsx` builds (#149)', () => {
     expect(unasked.map((at) => `editor-viewport.test.tsx:${at + 1}`)).toEqual([])
   })
 
-  // The Bord tab waits on something standing behind the server and not on the server itself: the
-  // `Spela härifrån` link is drawn from a free seat, and a free seat is known only to the table's
-  // own snapshot, which arrives over the row's own socket. Asking `/health` says the server is
+  // The Bord tab waits on something standing behind the server and not on the server itself: who
+  // sits at the table is known only to the table's own snapshot, which arrives over the row's own
+  // socket. Asking `/health` says the server is
   // there; it says nothing about whether the actor behind that table is. Both fell — the server
   // once, the table once — so both are asked.
   it('asks the table’s own door where a surface waits on the table’s answer', () => {
-    const at = lines.findIndex((line) => /findByRole\('link', \{ name: \/Spela härifrån\//.test(line))
+    const at = lines.findIndex((line) => /findByText\('ingen sitter än'\)/.test(line))
     expect(at).toBeGreaterThan(0)
     expect(lines.slice(0, at).filter((line) => /await run\.answering\(`\/sessions\//.test(line)).length).toBe(1)
   })

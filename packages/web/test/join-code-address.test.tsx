@@ -211,3 +211,56 @@ describe('on a laptop (#675)', () => {
     expect(sit.classList.contains('byd-primary')).toBe(true)
   })
 })
+
+// Bordet minns hur ni sitter (#1286, variant B). Anslutningssidan har ett enda «Gå med» på varje
+// skärm, och det är bordets svar och inte skärmens bredd som säger vart det leder: handen vid ett
+// bord runt en TV — i telefonen eller i datorn — och bordet med handen vid ett bord där var och en
+// sitter vid sin dator. Ett bord som startades utan svar gör som förut (ovan).
+describe('a table that remembers how you sit (#1286)', () => {
+  const wide = (matches: boolean) =>
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('min-width: 1024px') ? matches : false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }))
+  const join = async (seating: 'screen' | 'computer', isWide: boolean) => {
+    wide(isWide)
+    const id = await createNamedSession(run, 'Fredagskort', 's1', seating)
+    at(`/${roomOf(id).code}`)
+    const went: string[] = []
+    render(<JoinPage onSit={(url) => went.push(url)} />)
+    const go = await screen.findByRole('button', { name: 'Gå med' })
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Ali' } })
+    return { go, went }
+  }
+  const buttons = () => [...document.querySelectorAll('form .byd-primary, form .byd-secondary')]
+
+  for (const isWide of [false, true]) {
+    const where = isWide ? 'on a laptop' : 'on a phone'
+
+    it(`gives the hand at a table around a TV, ${where}`, async () => {
+      const { go, went } = await join('screen', isWide)
+      expect(buttons()).toEqual([go])
+      expect(screen.getByText('Du får handen. Bordet står på TV:n.')).toBeTruthy()
+      expect(screen.queryByRole('button', { name: /Sätt dig|Spela på den här skärmen|telefonen som hand/ })).toBeNull()
+      fireEvent.click(go)
+      await waitFor(() => expect(went).toHaveLength(1))
+      expect(new URL(went[0] ?? '', 'http://x').pathname).toBe('/play')
+    })
+
+    it(`keeps a quiet way to the whole table for the one who is not in the room, ${where}`, async () => {
+      const { went } = await join('screen', isWide)
+      const away = screen.getByRole('button', { name: 'Inte på plats? Spela med hela bordet' })
+      expect(away.classList.contains('byd-join-link')).toBe(true)
+      fireEvent.click(away)
+      await waitFor(() => expect(went).toHaveLength(1))
+      expect(new URL(went[0] ?? '', 'http://x').pathname).toBe('/online')
+    })
+
+    it(`gives the table and the hand at a table of computers, ${where}`, async () => {
+      const { go, went } = await join('computer', isWide)
+      expect(buttons()).toEqual([go])
+      expect(screen.queryByRole('button', { name: /Sätt dig|Spela på den här skärmen|telefonen som hand|Inte på plats/ })).toBeNull()
+      expect(screen.getByRole('button', { name: /Bara titta/ }).classList.contains('byd-join-link')).toBe(true)
+      fireEvent.click(go)
+      await waitFor(() => expect(went).toHaveLength(1))
+      expect(new URL(went[0] ?? '', 'http://x').pathname).toBe('/online')
+    })
+  }
+})

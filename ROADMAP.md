@@ -123,6 +123,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Tärningar d4–d20, slagna från bordet och telefonen, i spelets setup med antal per spelare (K28, #1129). Typerna, setupen och aktivitetsraden med värden (#1136), telefonens ark «Tärningar» med flerslag i ett kuvert (#1138), fliken Bord med en rad per tärning (#1139), bordet som ritar och slår dem (#1137), och trycket, där en tärning är en köpt lagervara som partnern packar och som går att välja bort (#1140).
 - ✅ Vägen tillbaka mellan editorn och borden (L80, #1217): varje bordsyta leder ägaren till editorns egen flik, ett bord öppnas i sin egen flik i stället för en ny, ägaren som lämnar `/online` landar i spelet, och Mina spel, `/join` och `/login` har en väg vidare.
 - ✅ Materialets plats (K31, #1292): tärningar och räknare dras i fliken Bords filt dit de ska ligga, och en punkt i en yta vid platserna vänds mot varje plats kant.
+- ✅ Vägen in till ett bord (L86, #1286): två sätt att sitta, runt en TV eller vid varsin dator. Varje start frågar vilket och bordet minns svaret, så ett bord har en väg in, «Öppna bordet», och anslutningssidan ett enda «Gå med» på varje skärm. Genvägarna där designern hoppade in själv är borta ur editorn.
 - ❓ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
 
@@ -164,7 +165,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
 - ⬜ GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
   Inget är byggt än.
-  Skivorna: personfälten som sluten karta (#1276), rensning av det som inte längre kan användas (#1277) och namn och token ur adressraden (#1278) pågår; radering i lagret med liggare och operatörsskript (#1279) väntar på #1276; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på #1279 och på prototyper.
+  Skivorna: personfälten som sluten karta (#1276) och rensningen av det som inte längre kan användas (#1277) är byggda; namn och token ur adressraden (#1278) pågår; radering i lagret med liggare och operatörsskript (#1279) väntar på #1276; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på #1279 och på prototyper.
 - ⬜ Villkor med garantiklausul om IP, godkända i ett eget steg efter första inloggningen; korta betavillkor i betan och en releaseversion på ett aktiebolag (F4, reviderad 2026-10-24, #1268).
   Villkorsversion och godkännande på servern (#1270) pågår; texten, sidan och steget (#1272) prototypas efter #1270.
 

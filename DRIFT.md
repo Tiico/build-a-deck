@@ -396,6 +396,8 @@ Själva den gamla adressen har redan nått lådan när den öppnas; det går int
 `packages/e2e/test/guest-address.spec.ts` läser varje anrops adress och `Referer` och varje WebSockets adress genom en plats resa (ansluta, sätta sig, ladda om, spela, enkäten, «Spara till ditt konto», logga in) och en observatörs, och hittar varken namnet eller token, sedan den visat att sökningen hittar namnet i bordets egna ramar.
 Värdnyckeln i bordsvyns WebSocket-adress (`?host=`) är inte en gästs och ligger utanför detta; den är ute ur adressraden sedan #758.
 
+Byggt 2026-10-25 (#1277, DESIGN-BESLUT G6): ett inträde som aldrig öppnades rensas av sveparen när dess två minuter gått, med namnet det köptes under; ett öppnat, ett sparkat och ett claimat inträde står kvar, eftersom de är bordets historik, och tas bara av raderingen (#1279).
+
 ## 10. Administration: Tailscale
 
 Lådan och administratörens enheter i samma privata nät.
@@ -415,6 +417,8 @@ Byggt 2026-09-06: eget, litet — inga beroenden.
 Tokens och sessions-id:n är slumpade och lagras hashade (`login_tokens`, `auth_sessions`, `accounts`); fem länkar i timmen per adress innanför Cloudflares gräns (§9).
 Mejl går genom Resend (`RESEND_API_KEY`, `MAIL_FROM`); utan nyckel hamnar länken i loggen, vilket är utvecklingsläget.
 `PUBLIC_ORIGIN` styr vart länkarna pekar och om kakan får `Secure`.
+Sedan 2026-10-25 (#1277, DESIGN-BESLUT G6) rensar sveparen i `main.ts`, när appen startar och varje timme, inloggningslänkar som är använda eller har gått ut, kakor som har gått ut, och inbjudningar 30 dygn efter att de använts eller gått ut (`INVITE_KEEP_MS`, som kan korta tiden men aldrig förlänga den); startraden och timraden `swept` säger hur många rader som gick per tabell, aldrig vilka (§8).
+En länk behöver ingen rad kvar för sitt svar, eftersom `GET /auth/verify` säger samma sak om en använd, en utgången och en aldrig given länk.
 
 Passkeys byggda 2026-10-23 (#1180, DESIGN-BESLUT L78): en bekvämlighet bredvid länken, aldrig i stället för den, och mejlet är återställningen.
 WebAuthn-kontrollerna görs av `@simplewebauthn/server`, som enda undantag från «inga beroenden»: CBOR, COSE och signaturer skrivs inte här.

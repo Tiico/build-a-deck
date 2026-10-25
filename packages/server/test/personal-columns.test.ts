@@ -19,6 +19,8 @@ const COLUMNS: Readonly<Record<string, Class>> = {
   'sessions.code': 'none',
   'sessions.code_expires_at': 'none',
   'sessions.host_key_hash': 'none',
+  // How the people at it sit, 'screen' or 'computer' (#1286): about the table, not about anybody.
+  'sessions.seating': 'none',
   'sessions.account_id': 'pseudonymous',
   'events.session_id': 'pseudonymous',
   'events.seq': 'none',

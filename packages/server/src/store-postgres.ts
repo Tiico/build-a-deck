@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { ObjectStore } from '@byd/render'
-import { PHYSICAL_VERBS, type Applied } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied, type Seating } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import { checkedHistory, liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
@@ -63,6 +63,11 @@ export class PostgresAuthStore implements AuthStore {
     `
     const row = rows[0]
     return row ? accountOf(row) : null
+  }
+  async sweepSpent(now: string): Promise<{ loginTokens: number; sessions: number }> {
+    const tokens = await this.sql`delete from login_tokens where used_at is not null or expires_at <= ${now} returning 1`
+    const sessions = await this.sql`delete from auth_sessions where expires_at <= ${now} returning 1`
+    return { loginTokens: tokens.length, sessions: sessions.length }
   }
   async deleteSession(sessionHash: string): Promise<void> {
     await this.sql`delete from auth_sessions where session_hash = ${sessionHash}`
@@ -201,9 +206,9 @@ export class PostgresLogStore implements LogStore {
         if (met) throw new QuotaReached(met.measure === 'tablesPer30Days' ? withFrees(met, await startIn(tx, bearer, ceilings.since, startThatFrees(met))) : met)
       }
       await tx`
-        insert into sessions (id, version, setup, deck, project, account_id, code, code_expires_at, host_key_hash)
+        insert into sessions (id, version, setup, deck, project, account_id, code, code_expires_at, host_key_hash, seating)
         values (${record.id}, ${record.version}, ${tx.json(record.setup as never)}, ${record.deck ? tx.json(record.deck as never) : null}, ${record.project ?? null},
-                ${record.accountId ?? null}, ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null})
+                ${record.accountId ?? null}, ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null}, ${record.seating ?? null})
       `
     })
   }
@@ -228,8 +233,8 @@ export class PostgresLogStore implements LogStore {
 
   // Never the deck (#1012): see `SessionInfo`. It is `deckOf`'s, for the one reader that deals.
   async loadSession(id: string): Promise<SessionInfo | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; account_id: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
-      select id, version, setup, project, account_id, code, code_expires_at, host_key_hash from sessions where id = ${id}
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; account_id: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null; seating: Seating | null }[]>`
+      select id, version, setup, project, account_id, code, code_expires_at, host_key_hash, seating from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
@@ -242,6 +247,7 @@ export class PostgresLogStore implements LogStore {
       ...(row.code ? { code: row.code } : {}),
       ...(row.code_expires_at ? { codeExpiresAt: row.code_expires_at.toISOString() } : {}),
       ...(row.host_key_hash ? { hostKeyHash: row.host_key_hash } : {}),
+      ...(row.seating ? { seating: row.seating } : {}),
     }
   }
 
@@ -335,6 +341,17 @@ export class PostgresLogStore implements LogStore {
       returning session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
     `
     return row ? played(row) : null
+  }
+
+  async sweepGuests(now: string, pendingMs: number): Promise<number> {
+    const rows = await this.sql`
+      delete from guest_tokens
+      where account_id is null and expires_at <= ${now}
+        and expires_at <= issued_at + ${pendingMs} * interval '1 millisecond'
+        and (revoked_at is null or revoked_at >= expires_at)
+      returning 1
+    `
+    return rows.length
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
@@ -650,9 +667,18 @@ export class PostgresProjectStore implements ProjectStore {
     return row?.project_id ?? null
   }
 
+  async sweepInvites(before: string): Promise<number> {
+    const rows = await this.sql`
+      delete from project_invites
+      where (accepted_at is not null and accepted_at < ${before}) or (accepted_at is null and expires_at < ${before})
+      returning 1
+    `
+    return rows.length
+  }
+
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {
     const [row] = await this.sql<{ project_id: string; email: string; role: string }[]>`
-      update project_invites set accepted_at = now()
+      update project_invites set accepted_at = ${now}
       where token_hash = ${tokenHash} and accepted_at is null and expires_at > ${now}
       returning project_id, email, role
     `

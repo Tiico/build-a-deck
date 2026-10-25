@@ -56,6 +56,11 @@ describe('the stack hands the app its configuration', () => {
     expect(env['BYD_OPERATOR']).toBe('${BYD_OPERATOR:-}')
   })
 
+  // How long an invitation is kept (#1277, G6) is the box's to shorten; unset is the decided month.
+  it('passes how long an invitation is kept through, empty when unset', () => {
+    expect(serviceEnvironment(compose, 'app')['INVITE_KEEP_MS']).toBe('${INVITE_KEEP_MS:-}')
+  })
+
   // Where a beta tester turns (#757, DRIFT §8) is the box's to say. Left out of the stack, the
   // contact line, the mail's foot and /health.contact stayed empty on the box from the day they
   // were built, and every test of them passed because none ran the stack.
