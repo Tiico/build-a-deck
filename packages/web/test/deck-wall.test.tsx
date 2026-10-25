@@ -389,7 +389,7 @@ describe('the wall’s panel: Visning and Kontroll beside the wall (L81, #1256)'
     doc.template.faces['front']!.base.push({ kind: 'text', id: 'flavour', x: 6, y: 70, w: 51, h: 10, bind: { field: 'flavour' }, font: { family: 'system-ui', sizePt: 5 }, color: '#111111' })
     wall(doc)
     fireEvent.click(within(document.querySelector('.byd-crown-foot') as HTMLElement).getByRole('button', { name: /anmärkning/ }))
-    expect(screen.getByRole('tab', { name: /^Kontroll/ }).getAttribute('aria-selected')).toBe('true')
+    expect(panel('Fysisk kontroll')).not.toBeNull()
     expect(screen.getByRole('list', { name: 'Fysisk kontroll' })).toBeTruthy()
   })
 })
