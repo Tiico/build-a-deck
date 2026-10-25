@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { randomUUID } from 'node:crypto'
 import { CardQuery, FaceId, Picture, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
@@ -617,8 +616,9 @@ export class MemoryProjectStore implements ProjectStore {
     const rec = this.docs.get(id)
     if (rec?.owner !== undefined) {
       const at = new Date().toISOString()
+      // The web bundle reads this module too, so the id is Web Crypto's and not `node:crypto`'s.
       for (const account of this.shared.get(id)?.keys() ?? []) {
-        if (account !== rec.owner) this.gone.set(account, [...(this.gone.get(account) ?? []), { id: randomUUID(), name: rec.name, why, at }])
+        if (account !== rec.owner) this.gone.set(account, [...(this.gone.get(account) ?? []), { id: crypto.randomUUID(), name: rec.name, why, at }])
       }
     }
     const had = this.docs.delete(id)
