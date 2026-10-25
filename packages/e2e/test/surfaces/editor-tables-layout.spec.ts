@@ -137,17 +137,18 @@ test.describe('the words on a table’s row', () => {
       if (!(await row.isVisible())) await page.locator('.byd-tables-fold').first().click()
       await expect(row).toBeVisible({ timeout: 1000 })
     }).toPass()
-    await row.getByRole('button', { name: /^Fler val för bordet / }).click()
-    await row.getByRole('menuitem', { name: /Avsluta bordet/ }).click()
+    // By what the controls are and not by their words: this project reads the page in English.
+    await row.locator('.byd-tables-more').click()
+    await row.getByRole('menuitem').last().click()
     const question = row.getByRole('alertdialog')
     await expect(question).toBeVisible()
     const size = (locator: ReturnType<Page['locator']>) => locator.evaluate((el) => getComputedStyle(el).fontSize)
     const column = await size(page.locator('.byd-tables-new'))
     const sizes = {
-      open: await size(row.getByRole('link', { name: /^Öppna bordet/ })),
+      open: await size(row.locator('.byd-tables-go > a')),
       question: await size(question.locator('p')),
-      yes: await size(question.getByRole('button', { name: 'Ja, avsluta' })),
-      cancel: await size(question.getByRole('button', { name: 'Avbryt' })),
+      yes: await size(question.locator('button[data-kind="danger"]')),
+      cancel: await size(question.locator('button:not([data-kind])')),
     }
     expect(sizes).toEqual({ open: column, question: column, yes: column, cancel: column })
   })
