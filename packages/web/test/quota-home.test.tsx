@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
 import { ProfilePage } from '../src/account/ProfilePage.js'
 import { ImportDialog } from '../src/account/GameDialogs.js'
@@ -159,9 +159,31 @@ describe('the usage on the profile (#1198)', () => {
     run = await startServer({ auth: true, authBypass: true, ai: true })
     await login('ada@example.com')
     await made()
+    // Every answer the profile asks for comes late, as from a loaded server (#1299): the name and the
+    // passkeys are each drawn when their own answer is in, and the usage is decided by its own. So
+    // the test waits for what it reads — every section that comes, the usage's answer read, and
+    // nothing else asked after it — rather than for a fixed time.
+    const real = globalThis.fetch
+    let usageRead = false
+    let asking = 0
+    vi.stubGlobal('fetch', async (...args: Parameters<typeof fetch>) => {
+      asking += 1
+      const res = await real(...args).finally(() => new Promise((r) => setTimeout(r, 150)).then(() => (asking -= 1)))
+      if (String(args[0]).endsWith('/me/usage')) {
+        const json = res.json.bind(res)
+        res.json = async () => {
+          const body: unknown = await json()
+          usageRead = true
+          return body
+        }
+      }
+      return res
+    })
     open()
-    await screen.findByRole('heading', { level: 1, name: 'Profil' })
-    await new Promise((r) => setTimeout(r, 50))
+    await waitFor(() => expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Namn', 'AI-nyckel', 'Passkeys', 'Språk', 'Konto']))
+    await waitFor(() => expect({ usageRead, asking }).toEqual({ usageRead: true, asking: 0 }))
+    await act(async () => undefined)
+    expect(asking).toBe(0)
     expect(screen.queryByRole('region', { name: 'Förbrukning' })).toBeNull()
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Namn', 'AI-nyckel', 'Passkeys', 'Språk', 'Konto'])
   })

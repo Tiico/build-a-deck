@@ -5,7 +5,7 @@ import { start, type Running } from './fixture.js'
 
 // The terms' versions and who accepted them (#1270, F4, #1268): a register the box runs with, the
 // version in force at `GET /terms`, an account's acceptance at `POST /me/terms`, and where the
-// account stands in `GET /auth/me`. No door is gated on it and nothing is drawn: that is #1272.
+// account stands in `GET /auth/me`. The doors it closes are #1272's (`terms-gate.test.ts`).
 //
 // Against the memory store and against Postgres, which is where the box keeps the acceptances.
 // The Postgres half runs only with DATABASE_URL=postgres://... pnpm test.
@@ -156,8 +156,8 @@ describe.skipIf(!url)('the acceptances table in Postgres (#1270)', () => {
 })
 
 describe('the register of the terms\' versions (#1270)', () => {
-  it('ships empty, because no terms apply yet, and in order', () => {
-    expect(TERMS).toEqual([])
+  it('ships in order, with the beta\'s terms (#1272)', () => {
+    expect(TERMS.length).toBeGreaterThan(0)
     expect(() => checkRegister(TERMS)).not.toThrow()
   })
 

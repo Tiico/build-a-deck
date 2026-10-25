@@ -150,12 +150,26 @@ export function withQuery(url: string, extra: string): string {
  * (`LoginLimiter`), so a suite that logged everyone in as `test@example.com` would start handing
  * out 429s once it got wide enough, in whichever test happened to be last.
  */
-export async function logIn(request: APIRequestContext, email = `e2e-${crypto.randomUUID()}@example.com`): Promise<string> {
+export async function logIn(request: APIRequestContext, email = `e2e-${crypto.randomUUID()}@example.com`, { terms = true }: { terms?: boolean } = {}): Promise<string> {
   const res = await request.post('/auth/login', { data: { email } })
   if (!res.ok()) throw new Error(`login failed for ${email}: ${res.status()} ${await res.text()}`)
   const body = (await res.json()) as { loggedIn?: boolean }
   if (!body.loggedIn) throw new Error('the server is not running with AUTH_BYPASS; the suite cannot log anyone in')
+  if (terms) await acceptTerms(request)
   return email
+}
+
+/**
+ * The terms in force accepted (#1272), as an account that has been through the step has them: the box
+ * closes every way that writes until they are. `logIn` does it unless told not to, so a spec about
+ * something else meets the product as a designer who has accepted does; a spec about the terms
+ * themselves logs in with `{ terms: false }`.
+ */
+export async function acceptTerms(request: APIRequestContext, origin = ''): Promise<void> {
+  const { current } = (await (await request.get(`${origin}/terms`)).json()) as { current: { version: string } | null }
+  if (!current) return
+  const res = await request.post(`${origin}/me/terms`, { data: { version: current.version } })
+  if (res.status() !== 204) throw new Error(`the terms were not accepted: ${res.status()} ${await res.text()}`)
 }
 
 /**

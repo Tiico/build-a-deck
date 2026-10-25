@@ -1,6 +1,7 @@
 import { TypeRegistry, STANDARD_TYPES } from '@byd/engine'
 import { TableHost } from './actor.js'
 import { createServer } from './server.js'
+import { TERMS } from './terms.js'
 import { MemoryLogStore, type LogStore } from './store.js'
 import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { MemorySurveyStore, type SurveyStore } from './surveys.js'
@@ -172,7 +173,7 @@ const printProviders = printProvidersOf(STANDARD_TYPES)
 // Screening in shadow mode (F4, beslut 10; #1273): every new picture is queued for the render
 // worker's classifier, where there is a worker to drain the queue. Nothing waits for it or sees it.
 const screening = databaseUrl ? { screening: { classifier: CURRENT_CLASSIFIER } } : {}
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures, ...screening })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders, terms: TERMS,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures, ...screening })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

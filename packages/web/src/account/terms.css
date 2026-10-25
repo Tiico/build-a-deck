@@ -1,0 +1,49 @@
+/* The terms' step and its dialog (#1272, variant B): the welcome card's form (#1254), 500 px wide
+   as the prototype draws it, and the account's green room wherever it stands — the editor's blue
+   included, since it is the same card a new account met at its first login. Its own tokens, so it
+   reads the same over Mina spel, the editor and the guide. */
+.byd-terms-card {
+  --byd-primary-bg: #7dd3a0;
+  --byd-primary-ink: #0b2a18;
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  width: min(500px, 100%); box-sizing: border-box; display: grid; gap: 12px; padding: 28px 32px;
+  border: 1px solid #262a35; border-radius: 20px; background: #171a23; color: #e6e6e6;
+  font: 14px system-ui, sans-serif; text-align: left;
+}
+.byd-terms-card h1, .byd-terms-card h2 { margin: 0; display: flex; align-items: center; gap: 12px; color: #fff; font-size: 26px; line-height: 1.2; }
+.byd-terms-mark { width: 32px; height: 32px; flex: none; }
+/* The heading takes the focus when the card opens, and it cannot be pressed, so it wears no ring (#555). */
+.byd-terms-card h1:focus-visible, .byd-terms-card h2:focus-visible { outline: none; }
+.byd-terms-card :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-terms-steps { display: flex; align-items: center; gap: 8px; margin: -4px 0 0; color: #9aa3b8; font-size: 13px; }
+.byd-terms-steps i { width: 8px; height: 8px; border-radius: 50%; background: #3a4152; }
+.byd-terms-steps i[data-now] { background: #7dd3a0; }
+.byd-terms-back { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; border: 0; background: none; color: #9aa3b8; font: inherit; cursor: pointer; }
+.byd-terms-back:hover { color: #fff; }
+.byd-terms-back .byd-glyph { width: 14px; height: 14px; }
+.byd-terms-lead { margin: 0; color: #9aa3b8; font-size: 14px; line-height: 1.5; }
+.byd-terms-note { margin: 0; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
+.byd-terms-summary { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: #c3cbdd; font-size: 14px; line-height: 1.5; }
+.byd-terms-summary b { color: #fff; font-weight: 650; }
+.byd-terms-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; font-size: 14px; }
+.byd-terms-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #cdd4e4; text-underline-offset: 3px; }
+.byd-terms-links .byd-glyph { width: 14px; height: 14px; color: #9aa3b8; }
+.byd-terms-error { margin: 0; color: #ff9a9a; font-size: 13px; }
+.byd-terms-answers { display: grid; gap: 8px; }
+.byd-terms-answers .byd-primary { width: 100%; padding: 14px 18px; border-radius: 12px; font-size: 16px; }
+.byd-terms-answers button:disabled { opacity: 0.4; cursor: default; }
+.byd-terms-later { justify-self: center; min-height: 44px; padding: 0; border: 0; background: none; color: #9aa3b8; font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.byd-terms-later:hover { color: #fff; }
+
+/* The dialog: the card over a scrim, as the game's windows are (`game-dialogs.css`). The scrim
+   scrolls, so a card taller than a small screen is read to its last button. */
+.byd-terms-scrim { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; overflow-y: auto; padding: 16px; box-sizing: border-box; background: rgb(5 6 9 / 66%); }
+.byd-terms-dialog { width: min(500px, 100%); }
+.byd-terms-dialog .byd-terms-card { border-color: #3b4358; box-shadow: 0 24px 60px rgb(0 0 0 / 60%); }
+
+@media (max-width: 480px) {
+  .byd-terms-card { padding: 22px 18px; border-radius: 18px; }
+  .byd-terms-card h1, .byd-terms-card h2 { font-size: 22px; }
+}
+

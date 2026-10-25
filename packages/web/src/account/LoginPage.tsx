@@ -37,7 +37,8 @@ export function LoginPage({ onNavigate = go }: LoginPageProps) {
   // to her claim, which `loginUrl` put there rather than in the query.
   const next = safeNext(params.get('next')) + location.hash
   const way = useMemo(() => wayIn(next), [next])
-  const naming = params.get('step') === 'name'
+  // `step=terms` is the same card's second step (#1272), drawn by the same page.
+  const naming = params.get('step') === 'name' || params.get('step') === 'terms'
   // The game an invitation leads to is asked for beside who is here, and the card waits for both:
   // a line that gains a name after it has been read is a line that moved under the reader.
   const [known, setKnown] = useState<{ game: string | null; signedIn?: true } | null>(null)

@@ -7,6 +7,7 @@ import { oversetWords, useCut } from '../editor/overset.js'
 import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
 import { loginUrl, whoAmI, withCredentials } from '../account/api.js'
+import { TermsDue, refusedForTerms } from '../account/terms-due.js'
 import { assetRef, bytesOfDataUrl, imageTypeOf } from '../editor/assets.js'
 import { ASSET_MAX_BYTES, assetAccept } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
@@ -37,6 +38,8 @@ const OversetMarks = lazy(() => import('../editor/OversetMarks.js').then((m) => 
 // The question the door past the guided start asks (#732) is drawn only after a press, so it too is
 // fetched when it is first needed (L40).
 const BlankAsk = lazy(() => import('./BlankAsk.js').then((m) => ({ default: m.BlankAsk })))
+// The terms' step as a dialog (#1272), for an account that makes its first game before accepting them.
+const TermsDialog = lazy(() => import('../account/TermsStep.js').then((m) => ({ default: m.TermsDialog })))
 
 // The first card is the designer's own content from the moment it appears, so its title is the
 // game's language and not the tool's; the fields around it are the tool's suggestion.
@@ -256,6 +259,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   }
   // `state` is what is made: the page's own, or — on the way back from a login — the draft as its
   // store gave it back, pictures and all (#686), since the page's own may not have them yet.
+  const [termsAsked, setTermsAsked] = useState<{ current: string; again(): void } | null>(null)
   const toEditor = async (door: Via = 'guided', state: WizardState = s) => {
     const s = state
     // A second press while the first is on its way is not a second game.
@@ -309,6 +313,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
       if (res.status === 401) throw await login()
+      await refusedForTerms(res, t)
       // A met ceiling (#1193, #1198): why and the way out, after «Spelet skapades inte.» as every reason is.
       const quota = await quotaOf(res)
       if (quota) {
@@ -321,6 +326,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       leaving.current = true
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
     } catch (err) {
+      // The terms (#1272, variant B): an account that has not accepted them is asked in the dialog,
+      // and the game is made from the same press once they are. Nothing is said as a failure.
+      if (err instanceof TermsDue) {
+        setBusy(false)
+        setTermsAsked({ current: err.current, again: () => void toEditor(door, s) })
+        return
+      }
       // Said as what did not happen and what to do (#476): a reason of the wizard's own, the
       // service out of reach (the browser's words for that are a `TypeError`), or a sentence the
       // catalogue already wrote — and never a status code.
@@ -867,6 +879,22 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           </nav>
         </main>
       )}
+      {termsAsked && (
+        <Suspense fallback={null}>
+          <TermsDialog
+            http={http}
+            version={termsAsked.current}
+            title={t('terms.dialog.title')}
+            lead={t('terms.dialog.lead')}
+            onAccepted={() => {
+              const again = termsAsked.again
+              setTermsAsked(null)
+              again()
+            }}
+            onLater={() => setTermsAsked(null)}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }
@@ -922,6 +950,7 @@ async function uploadImages(t: T, http: string, state: WizardState): Promise<Wiz
       if (!image) continue
       const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': image.type }, body: image.bytes }))
       if (res.status === 401) return 'login'
+      await refusedForTerms(res, t)
       if (!res.ok) throw new NotMade(res.status === 413 ? 'wizard.error.too-big' : 'wizard.error.upload')
       next[key] = assetRef(((await res.json()) as { hash: string }).hash)
     }
