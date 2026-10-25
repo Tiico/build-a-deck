@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { REF_WORD, parseInline, type InlineNode, type RefKind } from './inline.js'
+import { MM_PER_EM, round, ruleEm } from './units.js'
 
 // The rulebook (B7): a document that lives in the project, is versioned in the same history as
 // the cards (B4) and locked into a session at start like everything else, and that knows the game
@@ -37,14 +38,12 @@ export const BOOKLET_MARGIN_MM = { block: 14, inline: 15 }
 //
 // The same frame is given in `em` of the book's own type, because a screen has no millimetres it
 // can be held to: what carries across is the picture's size relative to the words beside it.
-const BOOKLET_PT = 10.5
-const MM_PER_EM = (BOOKLET_PT * 25.4) / 72
-const round = (n: number): number => Math.round(n * 10) / 10
 const COLUMN_MM = BOOKLET_PAGE_MM.w - 2 * BOOKLET_MARGIN_MM.inline
 const CEILING_MM = 120
 export const RULE_IMAGE_FRAME = { wMm: COLUMN_MM, hMm: CEILING_MM, wEm: round(COLUMN_MM / MM_PER_EM), hEm: round(CEILING_MM / MM_PER_EM) }
-// Millimetres as the book's own type reads them, which is what a screen can be held to.
-export const ruleEm = (mm: number): number => round(mm / MM_PER_EM)
+// Millimetres as the book's own type reads them, which is what a screen can be held to. It lives in
+// `units.ts`, which the phone's rule drawer reads without this module's schemas (#1304).
+export { ruleEm }
 // The resolution the press asks for. A picture is never enlarged past its own pixels at it: a
 // 700 px sketch pulled out to the full column would be printed at 150 DPI and be porridge in the
 // hand, while on a screen it would have looked well right up to delivery. Rather a small sharp
