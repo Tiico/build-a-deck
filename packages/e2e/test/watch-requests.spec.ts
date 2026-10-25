@@ -1,5 +1,5 @@
-import { createServer, type ServerResponse } from 'node:http'
-import type { AddressInfo } from 'node:net'
+import { createServer, type Server, type ServerResponse } from 'node:http'
+import { free } from '../support/ports.js'
 import { watchRequests } from '../support/requests.js'
 import { expect, test } from '../support/test.js'
 
@@ -15,20 +15,22 @@ import { expect, test } from '../support/test.js'
 // route: a routed request has its headers the moment it is paused, and would prove nothing.
 test('a request never answered is read, with its Referer, and the watcher still settles', async ({ browser }) => {
   const held: ServerResponse[] = []
-  let asked: () => void = () => {}
+  let asked: (() => void) | undefined
   const askedFor = new Promise<void>((resolve) => (asked = resolve))
   const server = createServer((req, res) => {
     if (req.url === '/held') {
       held.push(res)
-      asked()
+      asked?.()
       return
     }
     // `unsafe-url`, so the page's full address stands in the Referer and the read can be seen to find it.
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy': 'unsafe-url' })
     res.end('<!doctype html><title>held</title><img src="/held" alt="">')
   })
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
-  const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+  // On a number from the suite's own band, walking on past one a peer took meanwhile (`support/ports.ts`).
+  let port = await free()
+  while (!(await listening(server, port))) port = await free(port + 1)
+  const origin = `http://127.0.0.1:${port}`
   const context = await browser.newContext()
   try {
     const page = await context.newPage()
@@ -46,3 +48,13 @@ test('a request never answered is read, with its Referer, and the watcher still 
     await new Promise<void>((resolve) => server.close(() => resolve()))
   }
 })
+
+const listening = (server: Server, port: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    const taken = () => resolve(false)
+    server.once('error', taken)
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', taken)
+      resolve(true)
+    })
+  })
