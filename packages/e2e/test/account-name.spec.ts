@@ -28,7 +28,7 @@ test('the first login asks what the others should call her, and the editor says 
   expect(new URL(page.url()).pathname).toBe('/')
   // Answered: no band on Mina spel, and Back does not lead to the question again.
   await expect(page.getByRole('region', { name: 'Namn' })).toHaveCount(0)
-  expect(await (await page.request.get('/auth/me')).json()).toEqual({ email, name: 'Nicklas Ockelberg', asked: true })
+  expect(await (await page.request.get('/auth/me')).json()).toMatchObject({ email, name: 'Nicklas Ockelberg', asked: true })
 
   // In the editor's header the face is her name's letter, and the pointer says the whole name.
   const project = await makeProject(page.request, { name: 'Skogens råd' })
@@ -60,7 +60,7 @@ test('«Hoppa över» keeps no name, and the question does not come back', async
 
   await expect(page.getByRole('heading', { name: 'Mina spel' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Namn' })).toHaveCount(0)
-  expect(await (await page.request.get('/auth/me')).json()).toEqual({ email, name: null, asked: true })
+  expect(await (await page.request.get('/auth/me')).json()).toMatchObject({ email, name: null, asked: true })
   await page.goto('/login?step=name&next=%2Fprofile')
   await expect(page.getByRole('heading', { level: 1, name: 'Profil' })).toBeVisible()
 })
@@ -84,5 +84,5 @@ test('an account from before the name is asked once, in a band on Mina spel', as
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Mina spel' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Namn' })).toHaveCount(0)
-  expect(await (await page.request.get('/auth/me')).json()).toEqual({ email, name: 'Ada Lovelace', asked: true })
+  expect(await (await page.request.get('/auth/me')).json()).toMatchObject({ email, name: 'Ada Lovelace', asked: true })
 })

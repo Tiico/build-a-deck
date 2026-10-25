@@ -16,8 +16,7 @@ import { useRolls } from '../table/Die.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
-import { claimUrl } from '../account/session.js'
-import { myAccount } from '../account/api.js'
+import { claimUrl, withCredentials } from '../account/session.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -53,10 +52,14 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   useEffect(() => {
     if (!owner) return
     let live = true
-    void myAccount(params.get('server')?.replace(/^ws/, 'http') ?? location.origin).then(
-      (me) => live && setOwn(me?.name ?? null),
-      () => undefined,
-    )
+    // Asked here and not through the account's client, which speaks the account's words and the
+    // observer's page fetches only its own (#760).
+    void fetch(`${params.get('server')?.replace(/^ws/, 'http') ?? location.origin}/auth/me`, withCredentials())
+      .then((res) => res.json() as Promise<{ name?: string | null }>)
+      .then(
+        (me) => live && setOwn(me.name ?? null),
+        () => undefined,
+      )
     return () => {
       live = false
     }
