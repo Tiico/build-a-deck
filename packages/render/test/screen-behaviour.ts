@@ -67,5 +67,28 @@ export function screenQueueBehaviour(name: string, store: () => Promise<RenderSt
       expect(await q.enqueue(screenRequest(OTHER, FAKE_CLASSIFIER, 12))).toBe('queued')
       expect(await q.screeningFailures(FAKE_CLASSIFIER)).toEqual([])
     })
+
+    // PDQ says how much the picture had in it (#1273), and a match is never made on a hash that
+    // says too little, so the quality is kept with the hash.
+    it('behåller bildhashens kvalitet', async () => {
+      const q = await store()
+      const kept = { ...result(ASSET, 4), imageHash: { algorithm: 'pdq-256', bits: 'ab'.repeat(32), quality: 73 } }
+      await q.enqueue(screenRequest(ASSET, FAKE_CLASSIFIER, 1))
+      await q.completeScreening((await q.claim(2))!.hash, kept)
+      expect(await q.screeningOf(ASSET, FAKE_CLASSIFIER)).toEqual(kept)
+    })
+
+    // The reference list (F4, beslut 9; #1273), in the database and never in the repo: a hash is on
+    // it once, with the source it was first put there from.
+    it('håller referenslistan, en gång per hash', async () => {
+      const q = await store()
+      expect(await q.screeningReferences()).toEqual([])
+      const first = { imageHash: { algorithm: 'pdq-256' as const, bits: 'cd'.repeat(32), quality: 88 }, source: 'borttagen 2026-10-25', addedAt: 5 }
+      const second = { imageHash: { algorithm: 'pdq-256' as const, bits: '12'.repeat(32) }, source: 'lista', addedAt: 6 }
+      expect(await q.addScreeningReference(first)).toBe('added')
+      expect(await q.addScreeningReference({ ...first, source: 'igen', addedAt: 7 })).toBe('known')
+      expect(await q.addScreeningReference(second)).toBe('added')
+      expect(await q.screeningReferences()).toEqual([first, second])
+    })
   })
 }

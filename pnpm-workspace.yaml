@@ -3,3 +3,5 @@ packages:
 
 allowBuilds:
   esbuild: true
+  # Its script fetches CUDA binaries the box has no use for; the CPU ones are in the package (#1273).
+  onnxruntime-node: false

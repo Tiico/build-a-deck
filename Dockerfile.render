@@ -13,6 +13,17 @@ COPY packages/screening/package.json packages/screening/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile --filter @byd/render...
+# onnxruntime-node (#1273) carries its binaries for every platform, ~290 MB; the image keeps its own.
+RUN set -eu; arch=$(node -p process.arch); for d in node_modules/.pnpm/onnxruntime-node@*/node_modules/onnxruntime-node/bin/napi-v*; do \
+      rm -rf "$d/darwin" "$d/win32"; find "$d/linux" -mindepth 1 -maxdepth 1 ! -name "$arch" -exec rm -rf {} +; \
+    done
+# The screening classifier's models (F4, #1273), fetched here and never kept in the repo: each from
+# its pinned revision, and kept only if its sha256 is the one models.ts names. Only that list and
+# the script are copied first, so this layer is fetched again only when the list changes.
+ENV BYD_MODELS_DIR=/app/models
+COPY packages/screening/src/models.ts packages/screening/src/
+COPY packages/screening/scripts/fetch-models.ts packages/screening/scripts/
+RUN node packages/render/node_modules/tsx/dist/cli.mjs packages/screening/scripts/fetch-models.ts
 COPY packages/protocol packages/protocol
 COPY packages/engine packages/engine
 COPY packages/template packages/template

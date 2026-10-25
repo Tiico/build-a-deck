@@ -38,6 +38,7 @@ import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
+import { screenOnUpload, type ScreeningOnUpload } from './screening.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
@@ -107,6 +108,11 @@ export type ServerOptions = {
   // The erasure (#1279, G6): a game taken away masks its tables with it. Without it a game's tables
   // are masked by the sweeper's next round, which finds the tables of every game that is gone.
   erasures?: ErasureStore
+  // Screening in shadow mode (F4, beslut 10; #1273): every new picture uploaded is queued to be
+  // screened by this classifier, in the background, and nothing waits for it or is told of it. The
+  // box screens with `CURRENT_CLASSIFIER`; without it nothing is queued, as in a test about
+  // something else, or a server whose renders go nowhere.
+  screening?: ScreeningOnUpload
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -1409,6 +1415,9 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       }
     }
     const hash = await assets.put(bytes, format.type)
+    // Queued after the answer is decided and never waited for (#1273): an upload is never slower
+    // for being screened, and a queue that is down or slow stops nothing.
+    if (opts.screening && opts.renders) screenOnUpload(opts.renders, opts.screening, hash, format.type, clock(opts).getTime())
     json(res, 201, { hash })
     return true
   }

@@ -1,4 +1,4 @@
-import { ScreeningResult, type ClassifierRef } from '@byd/screening'
+import { ScreeningReference, ScreeningResult, type ClassifierRef } from '@byd/screening'
 import type { CompiledLike, RenderKind } from './hash.js'
 import { MemoryObjectStore, type ObjectStore } from './objects.js'
 
@@ -57,6 +57,11 @@ export type RenderStore = {
   screenings(classifier: ClassifierRef): Promise<ScreeningResult[]>
   // The screenings of a classifier version that failed and have not been asked for again.
   screeningFailures(classifier: ClassifierRef): Promise<ScreeningFailure[]>
+  // The reference list (F4, beslut 9; #1273): PDQ hashes of pictures that must not be printed, in
+  // the database and never in the repo. A hash is listed once, with the source it was first listed
+  // from; listing it again is `known` and changes nothing. Read in the order it was filled.
+  addScreeningReference(reference: ScreeningReference): Promise<'added' | 'known'>
+  screeningReferences(): Promise<ScreeningReference[]>
 }
 
 const RANK: Record<Priority, number> = { texture: 0, print: 1, screen: 2 }
@@ -84,6 +89,7 @@ export class MemoryRenderStore implements RenderStore {
   // The render log (#1197): who bore each job that was queued, and when it was asked for.
   private readonly log: { bearer: string; hash: string; at: number }[] = []
   private readonly screened = new Map<string, ScreeningResult>()
+  private readonly references = new Map<string, ScreeningReference>()
 
   constructor(private readonly objects: ObjectStore = new MemoryObjectStore()) {}
 
@@ -178,6 +184,18 @@ export class MemoryRenderStore implements RenderStore {
     const failed: ScreeningFailure[] = []
     for (const job of this.jobs.values()) if (job.kind.kind === 'screen' && job.state === 'failed' && sameClassifier(job.kind.classifier, classifier)) failed.push({ asset: job.kind.asset, error: job.error ?? '' })
     return failed.sort((a, b) => a.asset.localeCompare(b.asset))
+  }
+
+  async addScreeningReference(reference: ScreeningReference): Promise<'added' | 'known'> {
+    const kept = ScreeningReference.parse(reference)
+    const key = `${kept.imageHash.algorithm}:${kept.imageHash.bits}`
+    if (this.references.has(key)) return 'known'
+    this.references.set(key, structuredClone(kept))
+    return 'added'
+  }
+
+  async screeningReferences(): Promise<ScreeningReference[]> {
+    return [...this.references.values()].sort((a, b) => a.addedAt - b.addedAt || a.imageHash.bits.localeCompare(b.imageHash.bits)).map((r) => structuredClone(r))
   }
 
   async reap(olderThanMs: number, now: number): Promise<string[]> {

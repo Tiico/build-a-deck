@@ -26,8 +26,14 @@ export const classifierKey = (ref: ClassifierRef): string => `${ref.id}@${ref.ve
 
 // A perceptual hash of the picture, compared to another of the same algorithm by Hamming distance
 // (#1268, pipeline step 4): close for the same picture at another size, far for another picture.
-// The algorithm is named because PDQ and pHash are not comparable with each other.
-export const PerceptualHash = z.object({ algorithm: z.string().min(1), bits: z.string().regex(/^(?:[0-9a-f]{2})+$/, 'the bits are whole bytes in lower-case hex') })
+// The algorithm is named because PDQ and pHash are not comparable with each other. `quality`, from
+// 0 to 100, is how much the picture had in it for the hash to say, where the algorithm says so
+// (PDQ does, #1273): a hash of a picture with nothing in it is never a match.
+export const PerceptualHash = z.object({
+  algorithm: z.string().min(1),
+  bits: z.string().regex(/^(?:[0-9a-f]{2})+$/, 'the bits are whole bytes in lower-case hex'),
+  quality: z.number().int().min(0).max(100).optional(),
+})
 export type PerceptualHash = z.infer<typeof PerceptualHash>
 
 // What a classifier answers for one picture.

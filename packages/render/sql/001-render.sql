@@ -65,3 +65,16 @@ create table if not exists screenings (
   screened_at  bigint not null,
   primary key (asset_hash, classifier, version)
 );
+
+-- The reference list (F4, beslut 9; #1273): PDQ hashes of pictures that must not be printed — what
+-- has been taken down, and hashes from lists others keep — compared with every screened picture's
+-- hash by Hamming distance. It lives here and never in the public repo. A hash is listed once, with
+-- the source it was first listed from and its PDQ quality when that is known.
+create table if not exists screening_references (
+  algorithm  text not null,
+  bits       text not null,
+  quality    int,
+  source     text not null,
+  added_at   bigint not null,
+  primary key (algorithm, bits)
+);

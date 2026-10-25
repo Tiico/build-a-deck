@@ -2201,6 +2201,29 @@ En engelsk läsare får sidans och stegets ord på engelska och en mening om att
 Inte byggt: mejlet 30 dagar före en väsentlig ändring, den engelska texten, «Det här är nytt sedan …» och versionsväljaren, som väntar på en andra version.
 Grindarna är `packages/server/test/terms-gate.test.ts` mot båda lagren, `packages/web/test/terms-step.test.tsx` mot den riktiga servern och `packages/e2e/test/terms.spec.ts` i den byggda appen.
 
+Byggt 2026-10-25 (#1273): lådans klassificerare, PDQ, referenslistan och screeningen vid uppladdning i skuggläge.
+Klassificeraren heter `vit-nsfw.clip-violence@1` och körs med onnxruntime i renderworkern, så att ingen bild lämnar lådan (beslut 8).
+`sexual` är AdamCodd/vit-base-nsfw-detector (Apache-2.0), en ViT-B/16 vid 384 px som tränats på teckningar och foton, i int8.
+`violence` är OpenAI:s CLIP ViT-B/32 (MIT), bara bildkodaren i int8, läst noll-skott mot fyra våldsprompter och tolv vanliga slags bilder vars textvektorer bäddats in en gång (`clip-prompts.ts`); poängen är det högsta av bildens kvadrater längs den långa sidan.
+Våld tillåts (beslut 7), så den poängen sparas och används till ingenting.
+Valet gjordes på en mätning mot kortkonst, som står i #1273: CLIP noll-skott för `sexual` gav 14 av 50 fantasybilder och 5 av 50 vanliga bilder 0,5 eller mer, och NSFW-modellen gav ingen fantasy-, vålds- eller spelkortsbild 0,5, och sina högsta poäng åt nakenhet i konst.
+Med den valda klassificeraren nådde 1 av 256 bilder utan nakenhet 0,5 i `sexual`, ett halsband med blommor, och ingen 0,6, medan 2 av 40 nakenbilder i konst nådde 0,6; 0,6 är tröskeln att börja pröva med i `screening report`.
+Täckningen för explicit innehåll är inte mätt, eftersom inget explicit material hämtades.
+Falconsai/nsfw_image_detection mättes inte, eftersom den saknar en ONNX-export och bygget då hade behövt Python; NudeNet står på YOLOv8 under AGPL.
+Modellerna ligger inte i git: de hämtas från en fäst revision och behålls bara med den sha256 som `packages/screening/src/models.ts` anger, vid bygget av render-imagen och en gång per maskin för testerna, i användarens cache.
+Versionen hålls ihop med modellerna och prompterna av ett fingeravtryck i testet, så att en ändrad modell eller prompt utan ny version blir rött.
+Bildhashen är PDQ, skriven efter Metas C++-referens i `pdq.ts` och bit för bit densamma som den på testvektorerna, med sin kvalitet från 0 till 100.
+Referenslistan är PDQ-hashar i tabellen `screening_references`, aldrig i repot; den är tom i dag och fylls med `screening reference add <asset> <källa>`, som listar en bild på lådan med dess screenings hash, och `reference import <fil> <källa>`, som läser hashar ur en lista någon annan för, utan att en enda bild hämtas.
+En träff är ett Hamming-avstånd på högst 31 av 256, PDQ:s egen tröskel, och bara när båda hasharna har kvalitet 50 eller mer, så att en bild utan innehåll aldrig träffar en annan.
+Listan läses som den står när rapporten skrivs, så en referens som läggs till i dag hittar en bild som laddades upp förra månaden utan att den screenas om.
+Ett test ritar en bild genom workern, listar den, och hittar den igen i mindre än halva storleken och sparad som JPEG, men inte en annan kortbild.
+Ingen kommersiell kortkonst är hämtad till listan: ingen källa som har prövats säger uttryckligen att det är tillåtet, och Scryfalls villkor gör det inte.
+En ny bild köar ett `screen`-jobb när `POST /assets` har tagit emot den, utan att uppladdningen väntar: ett köande som vägrar eller aldrig svarar ändrar ingenting i svaret, och samma bytes två gånger är ett jobb.
+Ett typsnitt köas inte, och servern köar bara när den har en Postgres-kö som en worker tömmer.
+`screening run --alla` köar de bilder som fanns före, en gång (fråga 10), och `screening report` säger nu andelen per kategori och vilka bilder som ligger nära något på referenslistan.
+Ingenting visas för designern och ingenting stoppas.
+Under arbetet visade det sig att varje svg-screening föll på lådan: `renderPicture` namngav hjälpare inne i sidan, och tsx slår in dem i en `__name` som sidan inte har; nu bärs funktionen in som `fitInDocument`, och ett test kör renderaren under tsx.
+
 ---
 
 ## G. Data, feedback och förtroende
