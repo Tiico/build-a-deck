@@ -198,6 +198,11 @@ Texturhashen bestäms fortfarande av det som ritas: en asset skrivs aldrig om oc
 Varje textur och tryckfil av ett kort med en uppladdad bild, symbol eller ett uppladdat typsnitt fick en ny hash när sidan bytte form, och renderas om en gång efter deployen, vilket beställaren godtog.
 Bord som startades före ändringen har kvar sin lek med data-URL:er och spelar som förut; workern ritar en sida utan hashar precis som den alltid gjort.
 
+Två undantag från «raderas aldrig», beslutade av beställaren 2026-10-24.
+Bilder, typsnitt och renderingar efter ett raderat konto, som inget annat spel eller bord nämner, sopas efter 30 dygn (G6, #1269).
+Olagligt innehåll som spärrats efter en anmälan rensas ur R2 och Postgres; annat spärrat innehåll står kvar som bytes, och servern, renderaren, trycket och exporten behandlar hashen som om den inte fanns (F4, #1268, fråga 12).
+Ingen av dem skriver om en asset, så hashen avgör fortfarande bytesen, och en referens till en hash som inte längre finns blir tom som ovan.
+
 En bilds hash går aldrig till en klient.
 Hashen är en kapabilitet (`GET /assets/<hash>`), och på tråden skulle den visa vilket kort som ligger i någon annans hand lika säkert som texturen; projektionen bär texturernas hashar och inget annat.
 Det visas på råa frames i `packages/server/test/assets.test.ts`.
@@ -218,6 +223,19 @@ Postgres-bilden (`ops/Dockerfile.postgres`) är fortfarande Alpine — lådans d
 `backup`-containern är samma bild över datavolymen: en basbackup per natt, de senaste `BACKUP_KEEP` behålls med sitt WAL.
 `ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tom katalog i backup-bilden, startar Postgres där, räknar, och spelar upp den senaste sessionens logg genom motorn i app-bilden.
 Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är densamma.
+
+### Bevarandetiden och raderingarna (#1269)
+
+Beställarens beslut 2026-10-24 (G6, F4): **backuperna sparas i åtta dygn.**
+Det är dagens ordning: `BACKUP_KEEP=7` behåller sju nattliga basbackuper med WAL efter den äldsta, så det som raderas i databasen ligger kvar i R2 i högst ungefär åtta dygn och försvinner sedan av sig självt.
+Integritetspolicyn säger det, och backuperna används bara för återställning.
+Att höja `BACKUP_KEEP` förlänger alltså en lagringstid som policyn lovar, och är ett ändrat beslut och inte en driftinställning.
+
+En återställning till `LATEST` (RUNBOOK §6) tar med raderingarna, eftersom de ligger i WAL.
+Det enda som kan väcka en raderad eller maskad uppgift är en återställning till en tidigare punkt.
+Därför skrivs varje radering och maskning i en raderingsliggare — vad, vilket id och när, utan personuppgifter — i samma transaktion som raderingen.
+Efter en återställning till en tidigare punkt körs liggaren om innan tjänsten släpps på igen, och RUNBOOK säger det i samma steg som återställningen (#1279).
+Det följer att liggaren inte får gå förlorad med den punkt som återställs: raderingarna efter den punkten måste gå att läsa.
 
 ### Huvudnyckeln för AI-nycklarna (#999)
 
@@ -259,6 +277,12 @@ CI har ingen väg in i huset.
 Migrering är två olika saker:
 Databasschema migreras med vanligt verktyg innan appen startar.
 Händelseschemat migreras aldrig på disk; varje `Applied` bär `schemaVersion` och motorn har upcasters som lyfter gamla rader vid inläsning.
+
+Ett undantag, beslutat av beställaren 2026-10-24 (#1269, F7, G6): **maskningen av personfälten är den enda skrivning som någonsin rör en befintlig rad i loggen.**
+En radering eller en gallring byter `seat.claim.name`, `flag.note`, `flag.observer`, `note.add.text`, `note.edit.text` och platsernas namn i en tillbakaspolnings `outcome.table` mot ett reserverat värde, och rör ingenting annat i raden.
+Maskningen är ingen migrering: raden behåller sin `schemaVersion`, och värdet byts mot ett av samma form, så upcasters och uppspelning läser den som förut.
+Loggen spelar därefter upp identiskt med avseende på spelet (D4), och fältlistan är densamma som korpusens anonymisering läser (#1276).
+Korpusens filer berörs inte: de är redan anonymiserade (#540) och bär inga personuppgifter.
 
 Ingen permanent staging på lådan.
 Grinden är replay-korpusen i CI: anonymiserade riktiga loggar som måste spela upp identiskt.

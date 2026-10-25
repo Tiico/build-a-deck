@@ -145,3 +145,33 @@ describe('a flag about a card in Resultat (#1142)', () => {
     expect(document.activeElement).toBe(thumb)
   })
 })
+
+// The way in from «Väntar på dig» on Mina spel (#1225): `results=rev-N` opens the editor on the
+// Bord tab's Resultat view, at that version — the one whose flags are new — and leaves the editor's
+// address as it always is, so the tab it is in is still the game's own (L80).
+describe('opened on Resultat from Mina spel (#1225)', () => {
+  it('starts on Resultat at the version the address names, and takes the word out of the address', async () => {
+    await playedAndAnswered()
+    // A second version whose table still runs: Resultat opens on the newest version a table has
+    // ended on, so without the address it would open on version 1.
+    const next = { rev: 1, ...projectDoc(), rows: [...projectDoc().rows, { id: 'uggla', fields: { title: 'Uggla', antal: 1 } }] }
+    expect((await fetch(`${run.http}/projects/${run.projectId}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(next) })).status).toBe(200)
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const seat = TableClient.connect(await asSeat(run, made.id, 'A', 'Dan'))
+    await seat.ready()
+    await seat.send({ v: 'seat.claim', seat: 'A', name: 'Dan' })
+    await seat.send({ v: 'flag', note: 'Ny version, ny flagga' })
+    seat.close()
+
+    history.replaceState(null, '', `/editor?project=${run.projectId}&results=rev-2&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    const versions = await screen.findByRole('radiogroup', { name: 'Versioner' })
+    expect(within(versions).getByRole('radio', { name: /Version 2/, checked: true })).toBeTruthy()
+    expect(within(versions).getByRole('radio', { name: /Version 1/, checked: false })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Bord', selected: true })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Resultat', pressed: true })).toBeTruthy()
+    expect(new URLSearchParams(location.search).get('results')).toBeNull()
+    expect(new URLSearchParams(location.search).get('project')).toBe(run.projectId)
+  })
+})

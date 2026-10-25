@@ -1466,6 +1466,7 @@ describe('every suite that measures a surface', () => {
       'tv-plate-names.test.tsx',
       'tv-show.test.tsx',
       'wall-card-look.test.tsx',
+      'whole-picture.test.tsx',
       'wizard-viewport.test.tsx',
     ])
   }, 60_000)

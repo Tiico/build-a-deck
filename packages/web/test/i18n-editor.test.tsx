@@ -41,16 +41,18 @@ describe('the editor in the reader\'s own language (A4)', () => {
 
     // The wall's crown (#128): a box says its name and what is chosen inside it, in the reader's
     // language, and what it opens is in that language too.
-    expect(screen.getByRole('button', { name: 'View: Normal vision' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Guides (0)' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View: 150 px' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Physical check/ })).toBeTruthy()
+    // What it opens, the wall's panel (L81), is in that language too.
     fireEvent.click(screen.getByRole('button', { name: /^View:/ }))
-    expect(screen.getByRole('group', { name: 'View' })).toBeTruthy()
+    expect(screen.getByRole('complementary', { name: 'The wall’s view and check' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Size' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /^The phone’s reading view/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /^At arm’s length/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Normal vision' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Greyscale' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /^Guides/ }))
-    expect(screen.getByLabelText(/trim and safe margin/i)).toBeTruthy()
-    expect(screen.getByLabelText(/at arm’s length/i)).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: 'Trim and safe margin' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Close the panel' })).toBeTruthy()
     // The deck itself is the designer's: a card keeps its title in either language.
     expect(screen.getByText('Drake')).toBeTruthy()
   })

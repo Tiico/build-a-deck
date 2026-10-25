@@ -181,6 +181,26 @@ create table if not exists project_invites (
   created_at  timestamptz not null default now()
 );
 
+-- Who saved a version (#1225): the account, as text like `projects.owner`, so «Väntar på dig» can
+-- say that a co-editor saved one. Null is «not known», and nothing is guessed. The column is filled
+-- once, the start it is made on, and only where the answer is certain: a version saved here — it
+-- has `at_seq`, which an import never writes — in a game with an owner that nobody else could ever
+-- edit, since no invitation to edit it was ever accepted (one accepted and later taken back still
+-- counts). There the owner saved every version. The first version is left unknown, since an import
+-- writes one exactly like `create` does; so is every version of a game shared with a co-editor,
+-- whose saves the log does not tell apart, and of a game from before accounts.
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = current_schema() and table_name = 'project_versions' and column_name = 'saved_by') then
+    alter table project_versions add column saved_by text;
+    update project_versions v set saved_by = p.owner
+      from projects p
+      where v.project_id = p.id and p.owner is not null and v.at_seq is not null
+        and not exists (select 1 from project_invites i where i.project_id = p.id and i.accepted_at is not null and i.role in ('owner', 'editor'))
+        and not exists (select 1 from project_members m where m.project_id = p.id and m.role in ('owner', 'editor'));
+  end if;
+end $$;
+
 -- The deck of each version «Uppdatera» moved a table to (C7, #677). The session row keeps the deck
 -- the table started with; a table reloaded after a refresh takes its faces from the version its
 -- log says it plays.

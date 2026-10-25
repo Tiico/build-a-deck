@@ -202,7 +202,10 @@ export type ProjectSummary = { id: string; name: string; rev: number; tables?: n
 // order — and nothing else needs naming: the user never has to commit.
 // `atSeq` is how far the edit log had come when the version was made (D3), so an actor knows
 // which edits are already in it.
-export type VersionSummary = { rev: number; at: string; label?: string; atSeq?: number }
+// `by` is the account that saved it (#1225), so «Väntar på dig» can say that a co-editor saved a
+// version. A version without it has nobody known: one brought in with an import, one saved without
+// an account, and most of those saved before the field — none is ever guessed at.
+export type VersionSummary = { rev: number; at: string; label?: string; atSeq?: number; by?: string }
 export type RestoredVersion = { rev: number; at: string; label?: string; doc: ProjectDoc }
 
 // A history is one save after another from 1 (B4); what would read otherwise is refused whole.
@@ -250,12 +253,13 @@ export type ProjectStore = {
   // goes through here, so this is where the rule holds rather than at each of the doors.
   // `ceilings.storageBytes` is the owner's ceiling on what its games name (#1197), held as for
   // `create`; a version that names nothing new is never refused.
+  // `by` is the account that saves (#1225), kept with the version and never asked for again.
   // `edits` go into the log in the same step as the version, after the ceiling is asked (#1233):
   // the document a `PUT` restores is in the log exactly when its version is answered, so one
   // refused for the ceiling, or as a conflict, has left no trace. A document that is already the
   // stored one makes no version, but its edits are still logged: they are what the log says now.
-  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits?: readonly AppliedEdit[]): Promise<ProjectRecord | 'conflict' | 'missing'>
-  // The history, newest first.
+  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits?: readonly AppliedEdit[], by?: string): Promise<ProjectRecord | 'conflict' | 'missing'>
+  // The history, newest first. The first version is the one who made the game's (#1225).
   versions(id: string): Promise<VersionSummary[]>
   // The project as it stood at a revision; null when there is no such version.
   at(id: string, rev: number): Promise<ProjectRecord | null>
@@ -286,7 +290,7 @@ export type ProjectStore = {
 export class MemoryProjectStore implements ProjectStore {
   private readonly docs = new Map<string, ProjectRecord>()
   // The history (B4), by project: one entry per save, appended and never rewritten.
-  private readonly history = new Map<string, { rev: number; at: string; label?: string; atSeq?: number; doc: ProjectDoc }[]>()
+  private readonly history = new Map<string, { rev: number; at: string; label?: string; atSeq?: number; by?: string; doc: ProjectDoc }[]>()
   // The edit log between saves (D3), by project.
   private readonly edits = new Map<string, AppliedEdit[]>()
   // Who else a project is shared with (D3), by project.
@@ -314,7 +318,7 @@ export class MemoryProjectStore implements ProjectStore {
       () => {
         const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
         this.docs.set(id, rec)
-        this.history.set(id, [{ rev: 1, at: new Date().toISOString(), doc: structuredClone(doc) }])
+        this.history.set(id, [{ rev: 1, at: new Date().toISOString(), ...(owner !== undefined ? { by: owner } : {}), doc: structuredClone(doc) }])
         return structuredClone(rec)
       },
     )
@@ -480,7 +484,7 @@ export class MemoryProjectStore implements ProjectStore {
     return { project: found.project, email: found.email, role: found.role }
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = []): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = [], by?: string): Promise<ProjectRecord | 'conflict' | 'missing'> {
     return this.storing<ProjectRecord | 'conflict' | 'missing'>(
       this.docs.get(id)?.owner,
       ceilings?.storageBytes,
@@ -502,7 +506,7 @@ export class MemoryProjectStore implements ProjectStore {
         this.logged(id, edits)
         const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
         this.docs.set(id, next)
-        this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), doc: structuredClone(doc) })
+        this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), ...(by !== undefined ? { by } : {}), doc: structuredClone(doc) })
         return structuredClone(next)
       },
     )
@@ -522,7 +526,7 @@ export class MemoryProjectStore implements ProjectStore {
   async versions(id: string): Promise<VersionSummary[]> {
     return [...(this.history.get(id) ?? [])]
       .sort((a, b) => b.rev - a.rev)
-      .map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), ...(v.atSeq !== undefined ? { atSeq: v.atSeq } : {}) }))
+      .map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), ...(v.atSeq !== undefined ? { atSeq: v.atSeq } : {}), ...(v.by !== undefined ? { by: v.by } : {}) }))
   }
 
   async at(id: string, rev: number): Promise<ProjectRecord | null> {

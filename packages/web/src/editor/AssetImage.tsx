@@ -20,3 +20,13 @@ export function AssetImage({ base, hash, ...rest }: { base: string; hash: string
   const early = useArriving(hash)
   return <img {...rest} {...(early ? { 'data-arriving': 'true' } : { src: assetUrl(base, hash) })} />
 }
+
+// A thumbnail of one of the project's pictures (#1257): the whole picture, fitted inside a box the
+// surface sizes, on the ground every thumbnail stands on.
+export function Thumb(props: Parameters<typeof AssetImage>[0]) {
+  return (
+    <span className="byd-thumb">
+      <AssetImage {...props} />
+    </span>
+  )
+}

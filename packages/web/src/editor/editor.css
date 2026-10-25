@@ -29,6 +29,12 @@
   --byd-editor-confirm-ink: #7dd3a0;
   /* The canvas' foot, the card row, where the template's confirmation is said. */
   --byd-editor-card-row-bg: #14161c;
+  /* What a thumbnail of one of the game's pictures stands on where the picture does not reach
+     (#1257): every thumbnail shows the whole picture, so a picture that is not the thumbnail's
+     shape leaves ground beside it. A step lighter than the darkest grounds, so a night picture is
+     told from it; and a hairline where the picture ends, so its shape is read. */
+  --byd-editor-thumb-bg: #262a35;
+  --byd-editor-thumb-edge: rgba(255, 255, 255, 0.55);
   /* What a phone cannot hold, said in the amber the editor says everything it wants looked at in
      (L10) — and the strip of stages under it: the open one, the rest, and the two actions. */
   --byd-editor-narrow-bg: #2a2417;
@@ -1152,6 +1158,12 @@
 .byd-wall-work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 var(--byd-s3); transition: grid-template-columns 200ms cubic-bezier(0.4, 0, 0.2, 1); }
 .byd-wall-work[data-fold='open'] { grid-template-columns: 172px minmax(0, 1fr); }
 .byd-wall-work[data-fold='folded'] { grid-template-columns: 66px minmax(0, 1fr); }
+/* The wall's panel stands in a column of its own beside the deck (L81), so opening it narrows the
+   wall and never pushes it down. Where the wall has no room for both, it lies over the wall's right
+   edge instead — below. */
+.byd-wall-work[data-panel] { grid-template-columns: minmax(0, 1fr) 320px; }
+.byd-wall-work[data-fold='open'][data-panel] { grid-template-columns: 172px minmax(0, 1fr) 320px; }
+.byd-wall-work[data-fold='folded'][data-panel] { grid-template-columns: 66px minmax(0, 1fr) 320px; }
 @media (prefers-reduced-motion: reduce) {
   .byd-wall-work { transition: none; }
 }
@@ -1224,6 +1236,50 @@
    radius — both are this one shape's geometry and not a distance between things. */
 .byd-wall-rail [data-tile][aria-current='true']::before { content: ''; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--byd-editor-primary-mark); }
 
+/* The wall's panel (L81): Visning and Kontroll, two tabs beside the wall. */
+.byd-wall-view { container: byd-wall-view / inline-size; }
+.byd-wall-work { position: relative; }
+.byd-wall-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid #2f333d; border-radius: 14px; background: var(--byd-editor-panel-bg); overflow: hidden; }
+.byd-wall-panel-head { flex: none; display: flex; align-items: center; border-bottom: 1px solid #2f333d; }
+.byd-wall-panel-head [role='tablist'] { flex: 1 1 auto; display: flex; min-width: 0; }
+.byd-wall-panel-head [role='tab'] { flex: 1 1 0; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 0; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.byd-wall-panel-head [role='tab']:hover { color: #fff; }
+.byd-wall-panel-head [role='tab'][aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
+/* The panel clips to its rounded edge, so the head's ring is drawn inside the control. */
+.byd-wall-panel-head [role='tab']:focus-visible, .byd-wall-panel-close:focus-visible { outline-offset: -3px; }
+.byd-wall-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--byd-s3) var(--byd-s3); }
+.byd-wall-panel-body h3 { margin: var(--byd-s4) 0 var(--byd-s1); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-wall-panel-body .byd-wall-checks { padding-top: var(--byd-s3); }
+.byd-wall-size { display: flex; align-items: center; gap: var(--byd-s2); }
+.byd-wall-size label { flex: 1 1 auto; display: flex; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); color: #e6ecfa; font-size: 13px; cursor: pointer; }
+.byd-wall-size input { width: 18px; height: 18px; margin: 0; accent-color: var(--byd-editor-primary-mark); }
+.byd-wall-size small { margin-left: auto; color: var(--byd-editor-quiet); font-size: 12px; font-variant-numeric: tabular-nums; }
+.byd-wall-eyes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--byd-s2); }
+.byd-wall-eyes button { display: flex; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #e6ecfa; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+.byd-wall-eyes button:hover { background: #1b1f2a; }
+.byd-wall-eyes button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); background: #1b2436; }
+/* Each eye's swatch is seen through its own filter, the one the wall is seen through. */
+.byd-wall-swatch { flex: none; display: inline-flex; width: 28px; height: 12px; border-radius: 3px; overflow: hidden; }
+.byd-wall-swatch i { flex: 1; }
+.byd-wall-swatch[data-eye-swatch='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
+.byd-wall-swatch[data-eye-swatch='protanopia'] { filter: url(#byd-eye-protanopia); }
+.byd-wall-swatch[data-eye-swatch='tritanopia'] { filter: url(#byd-eye-tritanopia); }
+.byd-wall-swatch[data-eye-swatch='gray'] { filter: grayscale(1); }
+.byd-wall-legible { margin: var(--byd-s2) 0 0; padding: var(--byd-s2) var(--byd-s3); border-radius: 10px; background: #1b1f2a; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
+.byd-wall-legible[data-under] { box-shadow: inset 3px 0 0 #ff8a80; }
+.byd-wall-legible p { margin: 0; }
+.byd-wall-legible ul { margin: var(--byd-s1) 0 0; padding: 0 0 0 var(--byd-s4); }
+/* The count of remarks in the foot is the door to Kontroll (L81): a word, underlined, never a box. */
+.byd-wall-foot-door { min-height: 24px; padding: 0; border: 0; background: transparent; color: #cfd5e3; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.byd-wall-foot-door:hover { color: #fff; }
+/* Where the wall is too narrow for its column, its cards and the panel, the panel lies over the
+   wall's right edge rather than leaving the cards a sliver. */
+@container byd-wall-view (max-width: 860px) {
+  .byd-wall-work[data-panel] { grid-template-columns: minmax(0, 1fr); }
+  .byd-wall-work[data-fold='open'][data-panel] { grid-template-columns: 172px minmax(0, 1fr); }
+  .byd-wall-work[data-fold='folded'][data-panel] { grid-template-columns: 66px minmax(0, 1fr); }
+  .byd-wall-panel { position: absolute; z-index: 3; top: 0; right: 0; bottom: 0; width: min(320px, 100%); box-shadow: -16px 0 40px rgba(0, 0, 0, 0.5); }
+}
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
 .byd-wall-checks { flex: 1 1 auto; min-width: 0; }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
@@ -1233,7 +1289,7 @@
 .byd-wall-checks li[data-severity='error'] { border-left-color: #e05c5c; }
 .byd-wall-checks li > button { display: flex; width: 100%; align-items: center; gap: 10px; border: 0; background: transparent; padding: 8px 12px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
 .byd-wall-checks li > button b { color: #fff; }
-.byd-wall-checks li > button span { color: #9aa3b8; }
+.byd-wall-checks li > button span { color: #9aa3b8; white-space: nowrap; }
 .byd-wall-checks li > button small { margin-left: auto; color: var(--byd-editor-quiet); text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
 .byd-wall-check-detail { padding: 0 12px 8px; display: grid; gap: 6px; }
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
@@ -1307,11 +1363,9 @@
    K16's second band outside it — the wall's own colour past the ring, then the focus blue. On one
    outline the two blues were one ring, and the focus could not be seen. */
 .byd-wall-card[aria-selected='true']:focus-visible { box-shadow: 0 0 0 8px var(--byd-editor-chrome-bg), 0 0 0 11px #9cc6ff; }
-/* What a card carries in a reading view (#512): a line under the card, in the card's width. Under
-   the floor it says so in words, and the colour and the mark only repeat it (K26). */
-.byd-wall-read { margin: var(--byd-s2) 0 0; max-width: var(--byd-wall-card); font-size: 12px; font-weight: 600; color: var(--byd-editor-quiet); }
-.byd-wall-read[data-under] { color: #ff8a80; font-weight: 700; }
-.byd-wall-read[data-under]::before { content: '▲ ' / ''; }
+/* A card whose text falls under the reading view's floor (L81): framed, dashed so it is not the
+   chosen ring's or the check's mark. The panel says it in words; the frame only repeats it (K26). */
+.byd-wall-card[data-under] { outline: 3px dashed #ff8a80; outline-offset: 3px; }
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 0 4px; }
 .byd-wall-copies { bottom: -6px; right: -6px; background: #1b1d23; color: #fff; border: 1px solid #444; }
 .byd-wall-warnings { top: -6px; right: -6px; background: #f0b64a; color: #1c1c1c; }
@@ -2098,8 +2152,8 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-props-source label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .byd-props-source input { width: auto; margin: 0; }
 .byd-props-picture { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e6ecfa; }
-.byd-props-picture img { width: 40px; height: 28px; object-fit: cover; border-radius: 4px; background: #14161c; }
-.byd-props-picture span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-props-picture .byd-thumb { width: 40px; height: 28px; border-radius: 4px; }
+.byd-props-picture > span:not(.byd-thumb) { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-props-picture button { min-height: var(--byd-tap); padding: 0 12px; border-radius: 6px; font: inherit; cursor: pointer; }
 .byd-props-field:has(.byd-newfield) { grid-column: 1 / -1; }
 /* A text layer's column, on a line of its own under the panel's heading (#736): «Visar fältet»
@@ -2320,11 +2374,22 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-picture-tile, .byd-data .byd-picture-tile, .byd-data-bulk .byd-picture-tile { flex: none; display: grid; grid-template: 100% / 100%; place-items: center; box-sizing: border-box; width: 66px; height: var(--byd-tap); padding: 0; border: 1px dashed #4a5163; border-radius: 5px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 16px; line-height: 1; overflow: hidden; }
 button.byd-picture-tile { cursor: pointer; }
 button.byd-picture-tile:hover, .byd-data button.byd-picture-tile:hover, .byd-data-bulk button.byd-picture-tile:hover { border-color: #9aa3b8; }
-.byd-picture-tile[data-has], .byd-data .byd-picture-tile[data-has], .byd-data-bulk .byd-picture-tile[data-has] { border-style: solid; border-color: transparent; background: #14161c; }
+.byd-picture-tile[data-has], .byd-data .byd-picture-tile[data-has], .byd-data-bulk .byd-picture-tile[data-has] { border-style: solid; border-color: transparent; background: var(--byd-editor-thumb-bg); }
 /* The one grid area is the whole tile, declared so: a picture's `height: 100%` in an auto-sized
    row is `auto`, and a square picture was laid out 64 wide and 64 tall in a tile 44 tall, then
    clipped — not the window on the picture the tile promises. */
-.byd-picture-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.byd-picture-tile img { display: block; width: 100%; height: 100%; }
+/* Every thumbnail of one of the game's pictures shows the whole picture (#1257, prototyped in
+   docs/ux-audits/2026-10-24-hela-bilden, variant D). They were `cover` in a 3:2 box, and a square
+   coin lost a third of its height in Tabell, Media and the library alike: what was on a card could
+   not be told from any of them. The box keeps its shape, so a row and a grid stay even; the
+   picture is fitted inside it, on the thumbnail ground, with a hairline at its own edge.
+
+   The ground is on the box around the picture and not on the picture, or the hairline would be
+   drawn around the box. */
+.byd-thumb { display: block; flex: none; overflow: hidden; background: var(--byd-editor-thumb-bg); }
+.byd-thumb img { display: block; width: 100%; height: 100%; }
+.byd-thumb img, .byd-picture-tile img, .byd-media-tile img { object-fit: contain; filter: drop-shadow(0 0 0.5px var(--byd-editor-thumb-edge)); }
 /* Text från när kolumnen var text (#1085): ingen bild och inte ritad som en, men inte borta. Den
    står i rutan, överstruken och dämpad, och kommer tillbaka när kolumnen blir text igen. */
 .byd-picture-tile .byd-data-kept { max-width: 100%; padding: 0 var(--byd-s1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); font-size: 11px; }
@@ -2336,7 +2401,8 @@ button.byd-picture-tile:hover, .byd-data button.byd-picture-tile:hover, .byd-dat
 .byd-data-images > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-data-images ul { display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .byd-data-images li { display: grid; justify-items: center; gap: 2px; font-size: 10px; }
-.byd-data-images img { width: 56px; height: 38px; object-fit: cover; border-radius: 5px; background: #14161c; cursor: grab; }
+.byd-data-images .byd-thumb { width: 56px; height: 38px; border-radius: 5px; }
+.byd-data-images img { cursor: grab; }
 .byd-data-images [role='alert'] { color: #f0b64a; }
 /* Held against an older version (B4): what moved, and the cards that came or went. */
 .byd-data-compare { margin: 0 0 8px; color: #cfd5e3; font-size: 12px; }
@@ -3598,8 +3664,8 @@ p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height:
 .byd-media-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-home-ink); }
 .byd-media-grid li[data-unused] small { color: #f0b64a; }
 .byd-media-tile { width: 100%; padding: var(--byd-s1); }
-.byd-media-tile-shot { position: relative; display: block; overflow: hidden; border-radius: 6px; }
-.byd-media-tile img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: #14161c; }
+.byd-media-tile-shot { position: relative; display: block; overflow: hidden; border-radius: 6px; background: var(--byd-editor-thumb-bg); }
+.byd-media-tile img { display: block; width: 100%; aspect-ratio: 3 / 2; border-radius: 6px; }
 /* A picture the browser could not fetch, or one still on its way (#481): the glyph goes and the
    words stand in the picture's own frame. */
 .byd-media-tile img[data-missing] { visibility: hidden; }
@@ -4386,14 +4452,14 @@ img[data-arriving] { opacity: 0; }
 .byd-library-grid { list-style: none; margin: 0; padding: var(--byd-s1); display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--byd-s3); }
 .byd-library-grid li[data-unused] small { color: #f0b64a; }
 .byd-library-tile { display: grid; gap: var(--byd-s1); width: 100%; padding: var(--byd-s1); border-radius: 8px; font: inherit; text-align: left; cursor: pointer; }
-.byd-library-tile img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: #14161c; }
-.byd-library-tile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #e6ecfa; }
+.byd-library-tile .byd-thumb { width: 100%; aspect-ratio: 3 / 2; border-radius: 6px; }
+.byd-library-tile > span:not(.byd-thumb) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #e6ecfa; }
 .byd-library-tile small { font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-library-empty { margin: var(--byd-s5) 0; color: var(--byd-editor-quiet); }
 .byd-library-foot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s3); margin: var(--byd-s3) 0 0; padding-top: var(--byd-s3); border-top: 1px solid #2f333d; }
 .byd-library-said { display: flex; align-items: center; gap: var(--byd-s2); flex: 1 1 240px; min-height: var(--byd-tap); font-size: 12px; color: var(--byd-editor-quiet); }
-.byd-library-said img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
-.byd-library-said span { color: #e6ecfa; }
+.byd-library-said .byd-thumb { width: 60px; height: 40px; border-radius: 5px; }
+.byd-library-said > span:not(.byd-thumb) { color: #e6ecfa; }
 .byd-library-said em { font-style: normal; color: #f0b64a; }
 .byd-library-foot > button { min-height: var(--byd-tap); padding: 0 16px; border-radius: 8px; font: inherit; cursor: pointer; }
 .byd-library-foot > button:disabled { cursor: default; opacity: 0.55; }
@@ -4506,8 +4572,8 @@ img[data-arriving] { opacity: 0; }
 .byd-ai-who { min-width: 0; display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s2); overflow: hidden; color: var(--byd-editor-saved-ink); font-size: 12px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .byd-ai-who:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 /* The jump column's fold is this same control, mirrored on the wall's other side (#1019). */
-.byd-ai-close, .byd-wall-fold { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 18px; cursor: pointer; }
-.byd-ai-close:hover, .byd-wall-fold:hover { background: #1b1d23; color: #fff; }
+.byd-ai-close, .byd-wall-fold, .byd-wall-panel-close { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 18px; cursor: pointer; }
+.byd-ai-close:hover, .byd-wall-fold:hover, .byd-wall-panel-close:hover { background: #1b1d23; color: #fff; }
 .byd-ai-log { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--byd-s4); }
 .byd-ai-empty { display: grid; gap: var(--byd-s3); line-height: 1.5; color: #c3cbdd; }
 .byd-ai-empty p { margin: 0; }
