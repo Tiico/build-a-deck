@@ -7637,6 +7637,8 @@ Valet blev **C**.
 - **Fliken börjar med ett galleri av färdiga teman**, samma galleri som wizarden visar.
   Ett tema är ett utgångsläge, inte ett lås.
 - **Det som avviker från det valda temat sägs på en rad**, med en väg tillbaka till temat som det var.
+
+Reviderat 2026-10-25 (L84, #1287): fliken börjar med spelets eget tema, galleriet är exempel i ett ark bakom «Titta i exemplen», och avvikelseraden och «Återställ» är borta.
 - **Justeringen ligger fälld, ett klick bort per del**: Typsnitt, Färger och betydelser, Spelets ikoner.
   Ett stängt huvud bär sitt värde, som L25:s sektioner, så inget döljs utan att sägas.
 - **Hela symbolbiblioteket öppnas ur Spelets ikoner**, och en symbol som tas in därifrån blir en av temats ikoner.
@@ -7691,7 +7693,7 @@ Ingenting väljs genom att titta, och ingen fil blir spelets förrän ett tema t
 B valdes bort för att det hade gjort varje besök på fliken till en förfrågan till Google; A för att typsnittet är halva skälet att välja ett tema.
 `font-catalog.spec.ts` läser på trafiken att fliken öppnas utan Google och att proven hämtas först efter trycket.
 
-**Mallens typsnittslista börjar med temat (#634:s följduppgift).**
+**Mallens typsnittslista börjar med temat (#634:s följduppgift).** Reviderat 2026-10-25 (L84): med spelets rubrik- och brödtextfamilj, lästa ur korten.
 I ett spel som utgår från ett tema står temats rubrikfamilj först i en textlagers lista och brödtextens därefter, och spelets övriga typsnitt följer i den ordning spelet har dem.
 En temafamilj spelet inte längre bär erbjuds inte, eftersom den vore ett namn utan fil (#420).
 
@@ -8516,3 +8518,33 @@ Rutan står kvar monterad när den är stängd, så ett häfte som håller på a
 Det ersätter #131:s tomläge med mallen utlagd i boken; avsnitten, frågorna och de två böckerna vägarna skriver är desamma.
 
 `rules-toolbar.test.tsx` visar radens ordning, var ett tillägg hamnar, rutans innehåll och Escape, huvudet och tomläget, på svenska och engelska.
+
+### L84. Speltema är spelets eget tema, och de färdiga temana är exempel i ett ark (prototypat och beslutat 2026-10-25, #1287)
+
+Beställaren: Speltema användes knappt.
+Fliken började med L57:s galleri av fyra färdiga teman, där ett tryck bytte spelets tema, och det spelet självt hade — typsnitten, betydelserna, ikonerna — låg fällt under galleriet.
+Fliken lästes som ett ställe där man väljer bland fyra färdiga, inte som spelets eget utseende.
+Beslutet är att fliken handlar om **spelets eget tema**, och att de färdiga temana blir **exempel att utgå ifrån** som inte är valbara direkt i fliken.
+
+Fyra former prövades: exemplen i ett ark bakom en knapp (A), exemplens delar som idéer under varje del av spelets tema (B), ett startläge där ett nytt spel väljer mellan att börja tomt och att utgå från ett exempel (C), och spelets tema och ett exempel sida vid sida med en pil per rad (D).
+Valet blev **A**.
+
+- **Fliken börjar med spelets tema**: typsnitten, färgerna och betydelserna och spelets ikoner, utfällda från början, och spelets första kort bredvid dem, ritat av den enda renderaren (E2) och ändrat i samma stund som temat.
+  En del går fortfarande att fälla, och det som fällts minns webbläsaren som förut.
+- **Exemplen ligger bakom «Titta i exemplen»**, ett ark över flikens högra del som biblioteket och katalogen, en sak i taget och med fokus tillbaka till knappen.
+  I arket går exemplen bara att läsa: brickan är ingen knapp och har inget nedtryckt läge.
+  «Visa temana i sina typsnitt» står kvar i arket, med L57:s gräns mot Google: att öppna arket hämtar ingenting.
+- **«Kopiera till spelets tema…» visar först vad som byts ut**, rad för rad: rubrik, brödtext, de betydelser som får ny färg eller tillkommer, och ikonerna som läggs till.
+  Först trycket på «Kopiera till spelets tema» skickar redigeringen, samma `setTheme` som förut, och det är ett steg tillbaka (B4).
+- **En kopia blir spelets egen.** Spelet minns inte vilket exempel det kom ifrån: `setTheme` skriver inte längre `theme.from`, och en redigering utan det tar bort ett gammalt.
+  Därmed går L57:s avvikelserad («Ditt tema är Skogssaga med 2 ändringar») och dess «Återställ»; ångra täcker en kopia man ångrar.
+  Ett dokument med `theme.from` från före beslutet läses som förut och visas som vilket spel som helst.
+- **Mallens typsnittslista börjar med spelets rubrik- och brödtextfamilj, läst ur korten** och inte ur ett exempel: den familj spelets rubriker står i först, brödtextens därefter, och spelets övriga typsnitt i den ordning spelet har dem.
+- **Den guidade starten står kvar** med «Tema — hur det känns» (L57, #633, #687): i wizarden väntar man sig ett val, och temat som tas där blir spelets eget tema på samma sätt som en kopia.
+
+`theme-examples.test.tsx` läser att fliken öppnar utfälld med kortet och utan valbara brickor, att arket öppnas utan trafik till Google, och att kopian frågar först; `theme-edit.test.ts` att ett nytt byte inte skriver `theme` och att ett gammalt spelas upp som det skrevs.
+`theme-proof.spec.ts` mäter temaprovet i arket, där en bricka står ensam på sin rad och brödtexten når 12 px vid både 1280 och 1024.
+
+B gav aldrig en bild av ett exempel som helhet, C gjorde exemplen valbara i fliken en gång och gömde dem sedan, och D var den tyngsta ytan för den som bara vill ändra en färg.
+
+Prototypen står i [`docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html`](docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html).

@@ -54,16 +54,18 @@ describe('the Speltema tab (L57)', () => {
     expect(tabs.indexOf('Speltema')).toBe(tabs.indexOf('Tabell') + 1)
   })
 
-  it('folds typefaces, meanings and icons, each closed head carrying its value', async () => {
+  it('stands open on typefaces, meanings and icons, each folding to a head that carries its value (L84)', async () => {
     await run.projects.create(run.projectId, themed())
     await openTheme()
     const fonts = head(/^Typsnitt/)
     const colours = head(/^Färger och betydelser/)
     const icons = head(/^Spelets ikoner/)
     for (const h of [fonts, colours, icons]) {
-      expect(h.getAttribute('aria-expanded')).toBe('false')
+      expect(h.getAttribute('aria-expanded')).toBe('true')
       expect(h.closest('h2')).not.toBeNull()
     }
+    expect(screen.getByRole('list', { name: 'Symboler i spelet' })).toBeTruthy()
+    for (const h of [fonts, colours, icons]) fireEvent.click(h)
     expect(fonts.textContent).toContain('sans-serif · system-ui')
     expect(colours.textContent).toContain('kostnad · vinst')
     expect(icons.textContent).toContain('2 st')
@@ -71,25 +73,29 @@ describe('the Speltema tab (L57)', () => {
     expect(screen.queryByRole('list', { name: 'Symboler i spelet' })).toBeNull()
   })
 
-  it('opens a section on a press, keeps it open on the next visit, and drops the value from its head', async () => {
+  it('folds a section on a press, keeps it folded on the next visit, and opens it again on the next press', async () => {
     await run.projects.create(run.projectId, themed())
     await openTheme()
     fireEvent.click(head(/^Spelets ikoner/))
-    expect(head(/^Spelets ikoner/).getAttribute('aria-expanded')).toBe('true')
+    expect(head(/^Spelets ikoner/).getAttribute('aria-expanded')).toBe('false')
+    expect(head(/^Spelets ikoner/).textContent).toContain('2 st')
+
+    // Back to the tab later: the section the designer folded is still folded, and the rest open.
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Speltema' }))
+    expect(head(/^Spelets ikoner/).getAttribute('aria-expanded')).toBe('false')
+    expect(head(/^Typsnitt/).getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.click(head(/^Spelets ikoner/))
     expect(head(/^Spelets ikoner/).textContent).not.toContain('2 st')
     const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
     expect(within(set).getByText('{guld}')).toBeTruthy()
-
-    // Back to the tab later: the section the designer opened is still open.
-    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Speltema' }))
-    expect(head(/^Spelets ikoner/).getAttribute('aria-expanded')).toBe('true')
-    expect(head(/^Typsnitt/).getAttribute('aria-expanded')).toBe('false')
   })
 
   it('says a section is empty in its head rather than showing a blank value', async () => {
     await run.projects.create(run.projectId, { ...projectDoc(), fonts: {} })
     await openTheme()
+    for (const name of [/^Typsnitt/, /^Färger och betydelser/, /^Spelets ikoner/]) fireEvent.click(head(name))
     expect(head(/^Typsnitt/).textContent).toContain('inga egna')
     expect(head(/^Färger och betydelser/).textContent).toContain('inga än')
     expect(head(/^Spelets ikoner/).textContent).toContain('inga än')
@@ -100,7 +106,6 @@ describe('the library, opened from Spelets ikoner (L57, E4)', () => {
   it('opens beside the sections, takes a symbol into the set, and closes back onto its button', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openTheme()
-    fireEvent.click(head(/^Spelets ikoner/))
     // Not drawn until it is asked for.
     expect(screen.queryByRole('searchbox', { name: 'Sök symbol' })).toBeNull()
     const opener = screen.getByRole('button', { name: /Ur biblioteket/ })
@@ -120,7 +125,6 @@ describe('the library, opened from Spelets ikoner (L57, E4)', () => {
   it('closes on Escape too, and hands the focus back the same way', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openTheme()
-    fireEvent.click(head(/^Spelets ikoner/))
     fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
     const library = await screen.findByRole('region', { name: 'Symbolbibliotek' })
     fireEvent.keyDown(within(library).getByRole('searchbox', { name: 'Sök symbol' }), { key: 'Escape' })
@@ -135,7 +139,6 @@ describe('the library, opened from Spelets ikoner (L57, E4)', () => {
     const spy = vi.spyOn(ProjectClient.prototype, 'useIcon').mockRejectedValue(new Error('icon sköld already exists'))
     try {
       await openTheme()
-      fireEvent.click(head(/^Spelets ikoner/))
       fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
       const library = await screen.findByRole('region', { name: 'Symbolbibliotek' })
       fireEvent.click(within(library).getByRole('button', { name: 'Lägg till sköld' }))
@@ -151,7 +154,6 @@ describe('the game’s typefaces live in Speltema, and Mall says so (L57)', () =
   it('keeps the shelf — upload, catalog and licence — under Typsnitt', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openTheme()
-    fireEvent.click(head(/^Typsnitt/))
     const shelf = screen.getByRole('list', { name: 'Typsnitt i spelet' })
     expect(within(shelf).getByText('sans-serif')).toBeTruthy()
     expect(screen.getByLabelText('Licens för sans-serif')).toBeTruthy()

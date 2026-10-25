@@ -45,7 +45,6 @@ const base = (): ProjectDoc => {
 
 const skogssaga = (over: Partial<Extract<EditIntent, { v: 'setTheme' }>> = {}): Extract<EditIntent, { v: 'setTheme' }> => ({
   v: 'setTheme',
-  theme: { from: 'skogssaga' },
   heading: 'Cinzel',
   body: 'EB Garamond',
   prose: ['body'],
@@ -78,8 +77,14 @@ describe('ett temabyte är en redigering (L57, #632)', () => {
     expect(title).toMatchObject({ font: { family: 'Cinzel', sizePt: 13, weight: 800 }, color: '#1c1c1c' })
   })
 
-  it('minns vilket tema spelet utgår från, och dokumentet läser tillbaka med det', () => {
-    const doc = applyEdit(base(), skogssaga())
+  it('minns inte vilket exempel temat kom ifrån, och glömmer ett som ett äldre byte skrev (L84)', () => {
+    const doc = applyEdit({ ...base(), theme: { from: 'ren' } }, skogssaga())
+    expect(doc).not.toHaveProperty('theme')
+    expect(ProjectDoc.parse(doc)).not.toHaveProperty('theme')
+  })
+
+  it('spelar upp ett äldre byte som skrev sitt tema precis som det skrevs, så loggen spelas upp identiskt', () => {
+    const doc = applyEdit(base(), skogssaga({ theme: { from: 'skogssaga' } }))
     expect(doc.theme).toEqual({ from: 'skogssaga' })
     expect(ProjectDoc.parse(doc).theme).toEqual({ from: 'skogssaga' })
   })
@@ -92,7 +97,7 @@ describe('ett temabyte är en redigering (L57, #632)', () => {
   it('tar bort en familj bytet tog av korten, men låter en familj ingen text stod i stå kvar', () => {
     const egen = { stack: '"Min", serif', asset: 'asset:ddd' }
     const was = { ...base(), fonts: { 'EB Garamond': garamond, Min: egen } }
-    const doc = applyEdit(was, skogssaga({ theme: { from: 'ren' }, heading: 'Inter', body: 'Inter', fonts: { Inter: inter } }))
+    const doc = applyEdit(was, skogssaga({ heading: 'Inter', body: 'Inter', fonts: { Inter: inter } }))
     expect(doc.fonts).toEqual({ Inter: inter, Min: egen })
   })
 
