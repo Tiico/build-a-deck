@@ -47,6 +47,8 @@ for (const device of [LAPTOP, SMALL_TV, DESK, TV]) {
             left: box.left + parseFloat(cs.paddingLeft),
             right: box.right - parseFloat(cs.paddingRight),
             words,
+            head: rect('.byd-tv-join [data-join-head]'),
+            headLine: rect('.byd-tv-join [data-join-head] > span'),
             address: rect('.byd-tv-join [data-address]'),
             code: rect('.byd-tv-join strong'),
             square: rect('.byd-tv-join .byd-qr'),
@@ -67,6 +69,10 @@ for (const device of [LAPTOP, SMALL_TV, DESK, TV]) {
         expect(row.ring.left - row.words.right, `the «?» beside the heading's words at ${where}`).toBeGreaterThanOrEqual(0)
         expect(row.ring.left - row.words.right, `the «?» beside the heading's words at ${where}`).toBeLessThanOrEqual(16)
         expect(row.ring.bottom, `the «?» above the host at ${where}`).toBeLessThanOrEqual(row.address.top)
+        // And the ring costs the heading no height: the line is as tall as its words, since every
+        // pixel the foot grows comes off the stage's card, which stands on K26's 24 px of body text
+        // at 1920 × 1080 (tv-brand.spec.ts) with less than a pixel to spare on Linux.
+        expect(row.head.height, `the heading's line with its «?» at ${where}`).toBeLessThanOrEqual(row.headLine.height + 0.5)
         // The code and the square on one line under the host, the square after the code.
         const squareMiddle = (row.square.top + row.square.bottom) / 2
         expect(squareMiddle, `the square on the code's line at ${where}`).toBeGreaterThan(row.code.top)

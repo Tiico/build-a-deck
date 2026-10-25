@@ -2923,7 +2923,8 @@ Vid 1024 och 1280 står scenen på sitt golv på 360 px, och foten har 320 px in
 Tre former prototypades: «?» på rubriken (A), «?» efter värden (B), och en tätare kodplatta vid golvet (C). A valdes.
 - Det är L32:s egen form, rubriken och dess frågetecken, och den står på samma plats vid varje bredd.
 - Koden och rutan är orörda (K26) och har sin rad för sig, med 13 px över vid golvet.
-- Foten blir 36 px lägre vid golvet och 8 px högre vid 1440 och 1920, eftersom ringen är högre än rubrikens rad. Det betalar scenens kort.
+- Foten blir 44 px lägre vid golvet och är lika hög som förut vid 1440 och 1920.
+  Ringen på 36 px står på rubrikens rad på 24 px utan att göra den högre: prototypens 8 px skulle ha tagits från scenens kort, och det kortet håller K26:s 24 px brödtext vid 1920 × 1080 med mindre än en bildpunkt till godo på Linux. Träffytan är kvar på 44 px.
 - B hade lagt ringen på raden vars längd beror på värdens namn, och C krympte kodens platta med 32 px och lämnade 7 px.
 
 Grinden: `packages/e2e/test/surfaces/tv-join-help-fit.spec.ts`, vid 1024, 1280, 1440 och 1920 på sv och en, i maskinens typsnitt och med Verdana/DejaVu på allt utom koden, som har ett typsnitt med fast bredd på varje maskin.
