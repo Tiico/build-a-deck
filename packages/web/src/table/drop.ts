@@ -1,5 +1,5 @@
 import type { Intent, Snapshot, SplitRow, VisibleComponentState, ZoneBeside, ZoneView } from '@byd/protocol'
-import { CHIP_MM, DIE_MM as RECIPE_DIE_MM } from '@byd/server/doc'
+import { CHIP_MM, DIE_MM as RECIPE_DIE_MM } from '@byd/server/felt-sizes'
 import { zoneAt, type Drop } from '../zones.js'
 import { isCounter, isDie } from '../components.js'
 import { union, type Rect } from './camera.js'
