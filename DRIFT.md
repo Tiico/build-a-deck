@@ -267,6 +267,9 @@ Klassificerarna körs alltså i renderworkern, på lådan, och ingen bild lämna
 Det som sparas är ett resultat och inget utdata: en rad per bild, klassificerare och version i `screenings`, med poängen, bildhashen och tidpunkten, och ett andra jobb för samma är en no-op.
 En bild som saknas eller inte går att avkoda är ett misslyckat jobb med hashen i felet, inte ett resultat.
 Ett screeningjobb skrivs aldrig i `render_log`, så det räknas inte på någon designers renderingar (§12).
+Klassificeraren är `vit-nsfw.clip-violence@1` (#1273): två int8-modeller i onnxruntime, en NSFW-ViT och CLIP:s bildkodare, ~89 MB vardera, som hämtas vid bygget av render-imagen till `/app/models` (`BYD_MODELS_DIR`) med kontrollsumma och aldrig ligger i repot.
+De laddas första gången workern screenar en bild och blir kvar, med en tråd var, utan minnesarena och utan förpackade vikter; en bild tar ~2 sekunder av en kärna.
+Varje ny bild köas vid uppladdningen, och de som fanns före köas en gång med `screening run --alla` (§12).
 En reaper återställer jobb vars `started_at` är äldre än en gräns, eftersom Chromium ibland hänger utan att dö.
 
 ## 7. Deploy: CI bygger, lådan hämtar
@@ -451,6 +454,10 @@ Renderingar (`rendersPer30Days`) läses ur renderköns logg `render_log` i samma
 Screeningen (F4, #1271, §6) har två skript av samma slag, som inte heller skickar något någonstans:
 `pnpm --filter @byd/server screening run <spel>` köar en screening av varje bild som spelets sparade version namnger, i den klassificerare lådan screenar med nu, och `screening report <tröskel>` skriver hur många bilder den klassificerarversionen har screenat, hur många som misslyckats, och vilka som når tröskeln, en poäng från 0 till 1, i någon kategori, högst först.
 Tröskeln ges varje gång och sparas ingenstans, eftersom den är operatörens att pröva mot riktig kortkonst.
+Sedan #1273 köar en uppladdning sin bild själv, och `screening run --alla` köar varje bild på lådan som inte redan har ett resultat eller ett jobb, en gång efter deployen.
+Rapporten säger också andelen som når tröskeln per kategori och vilka bilder som ligger nära något på referenslistan.
+Referenslistan är PDQ-hashar i tabellen `screening_references`, aldrig i repot: `screening reference add <asset> <källa>` listar en bild på lådan med dess screenings hash, till exempel det som tagits ned, `screening reference import <fil> <källa>` läser hashar ur en fil med ett JSON-objekt per rad (`{"bits": "<64 hex>", "quality": …, "source": …}`), och `screening reference list` skriver listan.
+Ingen bild hämtas till listan, och ingen kommersiell kortkonst ligger där innan en källa uttryckligen tillåter det.
 
 E-post: Resend, Postmark eller motsvarande — en bostads-IP är i praktiken svartlistad.
 POD-partnerns API.
