@@ -1,11 +1,10 @@
-import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { stillRendering, useTextures, type Textures } from '../table/textures.js'
 import { tvUrl } from './tableLinks.js'
 import { tableTab, tableWay } from '../ways.js'
 import { roomAddress } from '../table/roomAddress.js'
-import { StartQuestion } from './StartQuestion.js'
 import { rememberedStart, type StartAnswer } from './startAnswer.js'
 import { startInTab, type Started } from '../startWay.js'
 import type { Seating } from '@byd/protocol'
@@ -37,6 +36,10 @@ import { ChevronGlyph, PlayGlyph } from '../glyphs.js'
 //
 // `onResults` opens the tab's Resultat view on a table (#1010): an ended table's row says what came
 // of it in one line, and the line is the way there.
+// «Hur sitter ni?» (L77, #1286), loaded with its stylesheet when a table is about to start, as the
+// header loads it: the editor's first frame weighs its own sheet and nothing else (#186).
+const StartQuestion = lazy(() => import('./StartQuestion.js').then((m) => ({ default: m.StartQuestion })))
+
 export type TablesTabProps = { client: ProjectClient; server: string | null; started?: string | null; onResults?: ((id: string) => void) | undefined }
 
 export function TablesTab({ client, server, started = null, onResults }: TablesTabProps) {
@@ -207,13 +210,15 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
         </Question>
       )}
       {asking && (
-        <StartQuestion
-          onStart={(answer) => void startAs(answer)}
-          onCancel={() => {
-            setAsking(false)
-            newButton.current?.focus()
-          }}
-        />
+        <Suspense fallback={null}>
+          <StartQuestion
+            onStart={(answer) => void startAs(answer)}
+            onCancel={() => {
+              setAsking(false)
+              newButton.current?.focus()
+            }}
+          />
+        </Suspense>
       )}
       {/* A table started from a deck with no cards has nothing to deal and nothing to draw (#751).
           The button stays — the deck may be filled in a minute — but the tab says so, and where
