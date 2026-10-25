@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { NAME_MAX, suggestedName } from '@byd/server/account-name'
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 import { loginUrl } from './session.js'
-import { myAccount, saveName, type Me } from './me.js'
+import { NAME_MAX, myAccount, saveName, suggestedName, type Me } from './api.js'
 import { safeNext } from './next.js'
 import './account.css'
 

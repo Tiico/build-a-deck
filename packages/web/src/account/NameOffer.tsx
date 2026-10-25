@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { NAME_MAX, suggestedName } from '@byd/server/account-name'
 import { useT } from '../i18n/index.js'
 import { useSay } from '../status/StatusLive.js'
 import { PersonGlyph } from '../glyphs.js'
-import { saveName } from './me.js'
+import { NAME_MAX, saveName, suggestedName } from './api.js'
 
 // The question on Mina spel for an account that was made before the name (#1254, variant C): the
 // welcome step's question, in the passkey band's form (L78) and in its place, with the suggestion

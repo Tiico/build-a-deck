@@ -1,13 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { canShare, ROLES, roleWord, type Role } from '@byd/server/doc'
-import { inviteToProject, projectMembers, unshareProject, waitingInvites, withdrawInvite, type Member, type WaitingInvite } from '../account/api.js'
+import { colourOf, initialOf, inviteToProject, projectMembers, unshareProject, waitingInvites, withdrawInvite, type Member, type WaitingInvite } from '../account/api.js'
 import type { Presence } from '@byd/server'
 import { useLang, useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
 import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
-import { colourOf, initialOf } from '../account/face.js'
 
 // Who has the game (D3), from the prototype: the people in the editor's header are the door.
 // Who is here now and who may be here at all is one question, so one list answers it — the
@@ -225,4 +224,4 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
 }
 
 // The faces are the account's (#1254), drawn the same in Profil as here.
-export { colourOf } from '../account/face.js'
+export { colourOf } from '../account/api.js'
