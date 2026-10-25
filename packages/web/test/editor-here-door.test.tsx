@@ -237,7 +237,7 @@ async function ringOf(page: Page, index: number): Promise<{ what: string; sample
   const shot = (await capture(page, {})).toString('base64')
   const hide = await page.addStyleTag({ content: '.byd-editor-here-others { visibility: hidden !important; }' })
   const bare = (await capture(page, {})).toString('base64')
-  await hide.evaluate((el) => el.remove())
+  await hide.evaluate((el) => (el as Element).remove())
   return page.evaluate(
     async ({ shot, bare, index }) => {
       const el = document.querySelectorAll<HTMLElement>('[data-hung-over]')[index]!
