@@ -4,15 +4,7 @@
 // (#760, `phone-bundle.spec.ts`). Telefonläget av `/online` hämtar den här delen också, eftersom
 // det är `/online` som hämtar.
 export const svOnline = {
-  // Raden under kortet som läses i handen (#1291): vad klicket och draget gör.
-  'online.hand.says.mouse': 'Klick vänder · dra till bordet spelar',
-  'online.hand.says.mouse.turned': 'Klick vänder upp · dra till bordet spelar nedvänt',
-  'online.hand.says.key': 'Mellanslag vänder · Enter öppnar handlingar',
   'online.hand.back': 'Tillbaka till handen',
-  'online.last': 'Senast:',
-  'online.last.now': 'nyss',
-  'online.last.s': 'för {n} s sedan',
-  'online.last.min': 'för {n} min sedan',
   'online.spread.title': 'Hela handen',
   'online.spread.label.one': 'Hela handen, {n} kort',
   'online.spread.label.other': 'Hela handen, {n} kort',

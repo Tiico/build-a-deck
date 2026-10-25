@@ -4,6 +4,7 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { PlayerSurface, useHandMarks } from './PlayerSurface.js'
 import { useSeatTurned } from './turned.js'
+import { useDesk } from './desk.js'
 import { SeatSurvey, refusedText, useSessionVersion } from './SessionOverlays.js'
 import { useSitDown } from './useSitDown.js'
 import { claimUrl } from '../account/session.js'
@@ -58,6 +59,8 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const faces = url.replace(/^ws/, 'http')
 
   const marks = useHandMarks()
+  // A wide window draws the desk and not the tabs (#1310): the window `/online` draws a board in.
+  const desk = useDesk()
   const turned = useSeatTurned(sessionId, seat, view)
   const version = useSessionVersion(faces, sessionId, view?.ended === true)
   // The phone has no felt, so the keyboard here is the hand and the address panel it opens (#1).
@@ -108,7 +111,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     <>
       {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
           acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
-      <div className={`byd-player${live.stale ? ' byd-status-stale' : ''}`} data-page="player" data-status={status} {...(live.stale || view.ended ? { inert: true } : {})}>
+      <div className={`byd-player${live.stale ? ' byd-status-stale' : ''}`} data-page="player" data-status={status} data-desk={desk ? '' : undefined} {...(live.stale || view.ended ? { inert: true } : {})}>
         <PlayerSurface
           client={client}
           view={view}
@@ -122,6 +125,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           turnedHand={turned}
           openHand={kbd.openHand}
           onLeft={() => onLeave(wayBack(links))}
+          desk={desk}
           forget={token ? { name: me?.name ?? name ?? seat, run: () => forgetMe(faces, sessionId, token) } : undefined}
           onForgotten={() => setForgotten(true)}
         />
