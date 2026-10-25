@@ -8012,8 +8012,10 @@ Reviderat 2026-10-24 (#1250, beställarens beslut, variant B av tre): **dörren 
 Dörren höll förut upp till tre ansikten och «2 online», och när en medredaktör kom in blev den omkring 70 px bredare.
 Raden flyttade då under pekaren: vid 1280 gled flikarna 58–81 px, och vid 1440 i CI:s typsnitt 69–89 px medan spelets namn klipptes till «S…».
 En flik som glider mellan tryck och släpp väljs inte (#1231), så kravet är att ingenting till vänster om «Dela» flyttar sig en pixel.
-De andra ritas som en stapel av ansikten på 20 px, med mitten på huvudets underkant: under ordet från 1280 och under ansiktet mellan 1024 och 1279.
+De andra ritas som en stapel av ansikten på 18 px, som överlappar varandra med sin ring och inget mer, med mitten på huvudets underkant: under ordet från 1280 och under ansiktet mellan 1024 och 1279.
 Stapeln når 9 px ned i det som står under huvudet, bordsremsan, notisen, läsbandet eller arbetet, och ritas över det.
+En fokusring ritas ändå hel: dörrens egen ritas över stapeln, och en kontroll med tangentbordets fokus i raden eller i banden under lyfts över den (#1321).
+Stapeln ligger aldrig över notisbandets × eller läsbandets ord (`editor-here-bands.spec.ts`).
 Den tar ingen bredd i raden och ingen höjd ur arbetet.
 Högst tre andra ritas, och från fyra andra är det sista «+N».
 Stapeln är en del av dörren, så ett tryck på den öppnar panelen, och den är dold för skärmläsaren: antalet står i dörrens namn, «Dela: vilka som har spelet, 2 online», och inte som ett ord i raden.
