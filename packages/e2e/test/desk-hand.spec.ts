@@ -26,7 +26,7 @@ test.describe('the hand at a computer by a table around a TV (#1310)', () => {
       await page.waitForURL('**/play*')
 
       // The desk and not the phone: no tabs, the hand in a row, the targets over it.
-      await expect(page.locator('[data-desk]')).toBeVisible()
+      await expect(page.locator('.byd-desk')).toBeVisible()
       await expect(page.getByRole('tablist')).toHaveCount(0)
       const cards = page.locator('[data-hand-row] [data-hand-card]')
       await expect(cards).toHaveCount(3)
@@ -70,6 +70,6 @@ test.describe('the hand at a computer by a table around a TV (#1310)', () => {
     await page.getByRole('button', { name: 'Gå med', exact: true }).click()
     await page.waitForURL('**/play*')
     await expect(page.getByRole('tablist')).toBeVisible()
-    await expect(page.locator('[data-desk]')).toHaveCount(0)
+    await expect(page.locator('.byd-desk')).toHaveCount(0)
   })
 })

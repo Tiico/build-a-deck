@@ -79,7 +79,7 @@ export function PlayerDesk(props: PlayerDeskProps) {
   const atOf = (zone: string): Placement => [...groups.lead, ...groups.mine, ...groups.piles, ...groups.rest].find((z) => z.id === zone)?.at ?? 'top'
   const tile = (z: DeskTarget) => <Target key={z.id} z={z} {...props} aimed={aimed === z.id} t={t} />
   return (
-    <div className="byd-desk" data-desk style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
+    <div className="byd-desk" style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
       <header className="byd-desk-head" {...behind}>
         <h1 className="byd-offscreen">{t('desk.heading')}</h1>
         <span className="byd-player-who byd-desk-who">

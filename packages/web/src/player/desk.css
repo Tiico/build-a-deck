@@ -28,7 +28,7 @@
 .byd-desk-where > .byd-online-last { flex: 1 1 0; min-width: 0; margin: 0; font-size: 13px; }
 .byd-desk-where > .byd-online-last::before { content: ' · '; white-space: pre; color: var(--byd-ink-muted); }
 .byd-desk-tools { flex: none; display: flex; align-items: center; gap: 8px; }
-.byd-desk-tools > button, .byd-desk-tools .byd-rules-open {
+.byd-desk-tools > button, .byd-desk-tools > .byd-rules-drawer > button {
   display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; padding: 0 14px; box-sizing: border-box;
   border: 0; border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer;
 }
