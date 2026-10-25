@@ -75,9 +75,14 @@ export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
   if (problem === 'other') return status(spent(t('claim.taken.heading'), t('claim.error.other'), t))
   if (email === undefined) return status(noticeFor('loading', 'app', t))
   if (email === null) {
+    // The card's way back is this very page, fragment and all. A browser sent to the address it
+    // already stands on, with a fragment, does not load it again (#1278), so a login made here is
+    // taken up here: the page asks again who is here, and the claim follows.
+    const here = location.pathname + location.search + location.hash
+    const back = (url: string) => (url === here ? setAttempt((n) => n + 1) : onNavigate(url))
     return (
       <main className="byd-account" data-page="claim">
-        <LoginCard http={http} next={location.pathname + location.search + location.hash} onNavigate={onNavigate} lead={t('claim.lead')} help={t('claim.help')} />
+        <LoginCard http={http} next={here} onNavigate={back} lead={t('claim.lead')} help={t('claim.help')} />
       </main>
     )
   }

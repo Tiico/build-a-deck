@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { join, tableOf as tableFromSetup } from '../support/api.js'
+import { join, tableOf as tableFromSetup, withQuery } from '../support/api.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
@@ -177,7 +177,7 @@ for (const surface of ['bordsläget', '/online'] as const) {
           server.send(message)
         })
       })
-      await page.goto(`${url}&lang=sv`)
+      await page.goto(withQuery(url, 'lang=sv'))
       if (surface === '/online') await pastTheWaitingRoom(page)
       const deck = page.locator('.byd-pile[data-zone="draw"]')
       await expect(deck).toHaveAttribute('data-count', '12')

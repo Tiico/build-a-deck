@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { join } from '../../support/api.js'
+import { join, withQuery } from '../../support/api.js'
 import { PHONE, SMALL_TV, TV, type Device } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -96,7 +96,7 @@ for (const device of [SMALL_TV, TV] as Device[]) {
         { v: 'split', pile: 'draw', at: 1, to: seen.floor, x: 120, y: 0 } as never,
       ])
       const eva = await join(request, table, { name: 'Eva' })
-      const { page } = await open(device, `${eva.observeUrl}&lang=sv`)
+      const { page } = await open(device, withQuery(eva.observeUrl, `lang=sv`))
 
       const seats = page.locator('.byd-tv-seats > ul').first().locator('> li')
       await expect(seats).toHaveCount(4)
@@ -124,7 +124,7 @@ test('observatörens rader har namn med skiljetecken mellan delarna (#745)', asy
   const dealer = await host(table)
   await dealer.send([{ v: 'seat.claim', seat: 'A', name: 'Ada' } as never, { v: 'draw', from: 'draw', to: 'hand:A', count: 3 } as never])
   const eva = await join(request, table, { name: 'Eva' })
-  const { page } = await open(PHONE, `${eva.observeUrl}&lang=sv`)
+  const { page } = await open(PHONE, withQuery(eva.observeUrl, `lang=sv`))
   await page.locator('.byd-observer-more').tap()
   const seats = page.locator('.byd-tv-seats')
   await expect(seats.getByRole('button', { name: /^Ada, 3 kort på hand(,|$)/ })).toBeVisible()

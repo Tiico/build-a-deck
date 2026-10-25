@@ -3,7 +3,7 @@ import type { Intent } from '@byd/protocol'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
 import { spelkortDoc } from '../../../server/scripts/spelkort.js'
-import { join, tableOf, type Table } from '../../support/api.js'
+import { join, tableOf, type Table, withQuery } from '../../support/api.js'
 import { PHONE, SMALL_TV } from '../../support/devices.js'
 import type { Host } from '../../support/host.js'
 import { expect, test } from '../../support/test.js'
@@ -228,7 +228,7 @@ test.describe('namn och skyltar läggs ut igen när kasthögens bildtext blir br
   test('observatören 390, fyra platser', async ({ request, open, host }) => {
     const { table, dealer } = await dealt(request, host, { x: 180, y: -75, w: 70, h: 30, rot: 0 })
     const eva = await join(request, table, { name: 'Eva' })
-    const { page } = await open(PHONE, `${eva.observeUrl}&lang=sv`)
+    const { page } = await open(PHONE, withQuery(eva.observeUrl, `lang=sv`))
     await waiting(page)
     await expect(page.locator('.byd-pile[data-zone="discard"]')).toBeVisible({ timeout: 20_000 })
     await lengthened(page, dealer, 'observatören 390, fyra platser')

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import type { Device } from '../support/devices.js'
 import { TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
@@ -65,7 +65,7 @@ test.describe('the felt’s arrows follow the screen (K16, #572)', () => {
     const table = await tableOf({ players: 4, counters: [], cards: 16, copies: 1 })
     await laid(await host(table), ['A', 'B', 'C', 'D'])
     const seat = await join(request, table, { name: 'Bo', seat: 'B' })
-    const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
     await expect(page.locator('[data-kbd^="pile:"]').first()).toBeAttached()
     const { stops, walks } = await walk(page)
     expect(stops).toBeGreaterThanOrEqual(8)
