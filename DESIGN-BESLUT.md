@@ -4559,6 +4559,15 @@ Priset är erkänt: brickans text är filtskalad och ligger under 24 px på TV:n
 Grindarna: `packages/web/test/start-waits-for-textures.test.tsx` (spaltens rad, den släckta brickan, att den tänds när sista kortet landar, «Starta ändå» vid stillastående kö och distansvyns bricka) och `packages/e2e/test/tv-chrome-floor.spec.ts` (raden vid golvet i den byggda produkten, där sviten inte kör någon renderare).
 Sviter vars fråga är starten och inte renderingen öppnar TV:n med `facesReady`, som svarar att korten är klara.
 
+**Tillägg 2026-10-25 (#1344): platsernas skyltar står fritt från brickan.**
+Pillren under högarna trycker ned brickan i pixlar, mot platserna, och platsens skylt på TV:n (#683) står i pixlar ovanför platsens zoner.
+Vid 1024, 1280 och 1440 låg brickan därför över plats A:s skylt med två till fyra platser, och vid 1440 och 1920 över E:s med fem och sex.
+Brickans plats och form är orörda.
+Det som ändrats är att brickan och dess skugga är en sak till som skylten ska stå fri från när den söker sin plats, i #683:s egen ordning; när spelet startat och brickan gått till hörnet läggs skyltarna ut igen och står på sina egna platser.
+Från 1280 och uppåt hittar varje skylt en fri plats som hel skylt.
+Vid 1024 med två till fyra platser ryms den inte någonstans på filten som den är inpassad, och A står som sin bricka med platsens mark tills spelet startat, vilket är #750:s sista utväg och inte en ny form.
+Grind: `packages/e2e/test/surfaces/start-tile-clear-of-piles.spec.ts`, som mäter ritade pixlar mot varje skylt vid 2–8 platser, 1024–1920, sv och en, och i ett typsnitt lika brett som CI:s.
+
 ### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
 
 E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
