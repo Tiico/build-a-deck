@@ -199,5 +199,12 @@ export function safeNext(next: string | undefined): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
 }
 
+// A landing's path and query, and its fragment with the `#` — percent-encoded as a URL would hold
+// it, so that it cannot leave an attribute in the mail — or '' when it has none.
+export function splitFragment(next: string): [string, string] {
+  const at = next.indexOf('#')
+  return at < 0 ? [next, ''] : [next.slice(0, at), new URL(next.slice(at), 'http://next.invalid').hash]
+}
+
 // The mail itself, text and HTML, is `login-mail.ts`'s (#757, #1098).
 export { loginMail } from './login-mail.js'

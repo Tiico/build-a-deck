@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, sniffAsset, type Applied, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -23,7 +23,7 @@ import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from
 import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
-import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
+import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, splitFragment, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { inviteMail } from './invite-mail.js'
@@ -39,7 +39,7 @@ import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
-import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
+import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, ownerNameOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
@@ -339,7 +339,9 @@ export function createServer(given: ServerOptions): Server {
     })
     void route(opts, req, res)
   })
-  const wss = new WebSocketServer({ noServer: true })
+  // A client that offers the table's protocol is answered with it (#1278): one that offers protocols
+  // and hears none back is hung up on by the browser. The token beside it is read at the door.
+  const wss = new WebSocketServer({ noServer: true, handleProtocols: (offered) => (offered.has(TABLE_PROTOCOL) ? TABLE_PROTOCOL : false) })
 
   http.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
@@ -358,13 +360,17 @@ export function createServer(given: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const q = url.searchParams
+    // The token rides in the protocol header (#1278); an address with one is a page loaded before
+    // that, which still gets in.
+    const carried = tokenOfProtocols(req.headers['sec-websocket-protocol'])
     const ask: Admission = {
       seat: q.get('seat'),
       role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null,
       name: q.get('name'),
-      token: q.get('token'),
+      token: carried ?? q.get('token'),
       host: q.get('host'),
       owner: q.get('owner') === '1',
+      carried: carried !== null,
     }
     wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, req, ws, sessionId, ask))
   })
@@ -735,7 +741,10 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
   // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
   // hashes of the file being sent, and the edge's by a nonce made for this response (#1043).
-  if (type.startsWith('text/html')) head['content-security-policy'] = policy(await scriptHashesOf(file))
+  if (type.startsWith('text/html')) {
+    head['content-security-policy'] = policy(await scriptHashesOf(file))
+    head['referrer-policy'] = REFERRER_POLICY
+  }
   // The box compresses what it serves (DRIFT §13, #372): the blocking stylesheet uncompressed is
   // the single largest item in the first painting's price. `Vary` goes on everything that *could*
   // have been compressed rather than on what was, because a cache between here and the browser
@@ -779,11 +788,12 @@ async function fileAt(path: string): Promise<string | null> {
 }
 
 // What a connection asks to be (DRIFT §9), from its query string.
-type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean }
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; carried: boolean }
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
 // `host` marks the project owner's own seat or watch (L77): not the table's screen, but hers.
-type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true }
+// `guest` is the name on the admission a token bought, for the connection to be told (#1278).
+type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; guest?: string }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
@@ -816,8 +826,8 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
     : null
-  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name } : { refused: 'an observer needs a token' }
-  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
+  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, guest: live.name } : { refused: 'an observer needs a token' }
+  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, guest: live.name } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
 }
 
@@ -1032,6 +1042,8 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
     return
   }
   const seat = who.seat
+  // Told before the snapshot, so the page has its name by the time it sees the seat it sits down in.
+  if (ask.carried && who.guest !== undefined) send({ t: 'admitted', name: who.guest })
   // The door shuts once this turn's answers have gone out. A seat that asks for its own way out
   // (#31) is emptied as part of that very commit, and is still owed the ack for it; `ws.close`
   // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro
@@ -2630,7 +2642,11 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     await auth.issueToken(hash(t), email, new Date(Date.now() + TOKEN_TTL_MS).toISOString())
     // The link must come back to this API, where the cookie lives: never the page's origin.
     const base = opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`
-    const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
+    // A fragment on `next` — the claim's, which holds a guest's token (#1278) — becomes the link's
+    // own: it is in the mail, never in the request the link makes, and the browser keeps it through
+    // the redirect below, which names no fragment of its own (RFC 9110 §10.2.2).
+    const [path, fragment] = splitFragment(safeNext(parsed.data.next))
+    const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(path)}${fragment}`
     await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang), opts.contact))
     return json(res, 200, { ok: true })
   }
@@ -2640,7 +2656,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     if (!email) return json(res, 400, { error: 'the link is spent or too old; ask for a new one' })
     res.writeHead(302, {
       'set-cookie': await createLoginSession(opts, auth, email),
-      location: `${opts.appOrigin ?? ''}${safeNext(url.searchParams.get('next') ?? undefined)}`,
+      location: `${opts.appOrigin ?? ''}${splitFragment(safeNext(url.searchParams.get('next') ?? undefined))[0]}`,
     })
     res.end()
     return

@@ -4,6 +4,8 @@
 // has a sentence of the reader's to say, so the account catalogue's messages stay with the pages
 // that do (#760).
 
+import { guestAddress } from '../guestAddress.js'
+
 export class Unauthorized extends Error {
   constructor() {
     super('not logged in')
@@ -53,11 +55,12 @@ export async function claimGuest(http: string, token: string): Promise<{ ok: tru
 
 // The phone's way to save a session (G1): the claim page, which asks for a login first when
 // there is none. The phone names its server as a WebSocket origin; the account pages speak HTTP.
-// `next` is the page the guest came from, which the claim goes back to once it is made (#690).
+// `next` is the page the guest came from, which the claim goes back to once it is made (#690). The
+// token is in the claim's fragment, never its query (#1278), and goes back to `next` with it.
 export function claimUrl(token: string, server: string | null, next: string = location.pathname + location.search): string {
-  const claim = new URLSearchParams({ token, next })
+  const claim = new URLSearchParams({ next })
   if (server) claim.set('server', server.replace(/^ws/, 'http'))
-  return `/claim?${claim.toString()}`
+  return guestAddress('/claim', claim, token)
 }
 
 // Where to log in from a page, and come back to it after.

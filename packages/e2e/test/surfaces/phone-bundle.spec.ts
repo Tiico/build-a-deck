@@ -1,3 +1,4 @@
+import { withQuery } from '../../support/api.js'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
@@ -192,7 +193,7 @@ test.describe('every surface speaks only its own words, in its reader’s langua
       const { page, admission } = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
       const asked = scriptsAskedFor(page)
       const missing = missingWords(page)
-      await page.goto(`${admission.playUrl}&lang=${lang}`)
+      await page.goto(withQuery(admission.playUrl, `lang=${lang}`))
       await expect(page.locator('[data-page="player"]')).toBeVisible()
       expect(catalogues(asked)).toEqual([`${lang}.play`, `${lang}.status`])
       expect(missing).toEqual([])

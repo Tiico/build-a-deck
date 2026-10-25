@@ -51,8 +51,9 @@ describe('the live routes', () => {
   it('/play with a viewer s token and no seat says she is only watching, and leads to the observer', async () => {
     const id = await createSession(run)
     const token = await admit(run, id, null, 'Eva')
-    const q = new URLSearchParams({ session: id, token, code: roomOf(id).code, name: 'Eva', server: run.url })
-    history.replaceState(null, '', `/play?${q.toString()}`)
+    // The token in the fragment, as the picker sends her (#1278); the link on carries it there too.
+    const q = new URLSearchParams({ session: id, code: roomOf(id).code, server: run.url })
+    history.replaceState(null, '', `/play?${q.toString()}#token=${token}`)
     render(<PlayerPage />)
     expect(screen.getByRole('heading', { name: 'Du kan bara titta' })).toBeTruthy()
     expect(notice()!.textContent).not.toMatch(/finns inte|avslutats/)
@@ -60,5 +61,6 @@ describe('the live routes', () => {
     const href = new URL(out.getAttribute('href')!, location.origin)
     expect(href.pathname).toBe('/observe')
     expect(Object.fromEntries(href.searchParams)).toEqual(Object.fromEntries(q))
+    expect(href.hash).toBe(`#token=${token}`)
   })
 })

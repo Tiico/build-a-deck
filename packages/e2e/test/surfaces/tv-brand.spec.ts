@@ -1,5 +1,5 @@
 import { SMALL_TV, TV } from '../../support/devices.js'
-import { join } from '../../support/api.js'
+import { join, withQuery } from '../../support/api.js'
 import { expect, test } from '../../support/test.js'
 
 // Deckster's hand on the room's television (#1084, beslut B 2026-10-22): the mark and the name on a
@@ -55,7 +55,7 @@ for (const device of [SMALL_TV, TV]) {
 // The observer's screen is not the room's (#573): it goes without the line.
 test('the observer’s screen goes without the hand', async ({ table, request, open }) => {
   const vera = await join(request, table, { name: 'Vera' })
-  const { page } = await open(TV, `${vera.observeUrl}&lang=sv`)
+  const { page } = await open(TV, withQuery(vera.observeUrl, `lang=sv`))
   await expect(page.locator('[data-tv] > aside')).toBeVisible()
   await expect(page.locator('[data-brand]')).toHaveCount(0)
 })

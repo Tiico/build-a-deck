@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -8,7 +8,7 @@ import { expect, test } from '../support/test.js'
 test('the ball on each plate is the seat’s letter, not the first letter of who sits there (#1171)', async ({ tableOf, open, request }) => {
   const table = await tableOf({ players: 2, counters: [], cards: 4 })
   const bo = await join(request, table, { name: 'Bo', seat: 'A' })
-  await open(DESK, `${bo.onlineUrl}&lang=sv`)
+  await open(DESK, withQuery(bo.onlineUrl, `lang=sv`))
   const { page: tv } = await open(DESK, `${table.tvUrl}&lang=sv`)
 
   const a = tv.locator('[data-seat-plate="A"] > b')
