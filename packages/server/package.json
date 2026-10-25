@@ -14,7 +14,8 @@
     "plan": "tsx scripts/plan.ts",
     "usage": "tsx scripts/usage.ts",
     "erase": "tsx scripts/erase.ts",
-    "screening": "tsx scripts/screening.ts"
+    "screening": "tsx scripts/screening.ts",
+    "report": "tsx scripts/report.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",

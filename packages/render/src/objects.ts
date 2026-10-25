@@ -17,6 +17,10 @@ export type ObjectStore = {
   readonly origin?: string
   // Throws when the store cannot be reached: what /health asks (DRIFT §2).
   check(): Promise<void>
+  // Takes an object out of the bucket; an object that is not there is no error. The one way bytes
+  // ever leave it: a picture purged after a report because it was illegal, and the textures and print
+  // files drawn from a picture that was blocked (#1274, DRIFT §4).
+  delete?(key: string): Promise<void>
 }
 
 // In the process, for development and tests: nothing to link to.
@@ -27,6 +31,9 @@ export class MemoryObjectStore implements ObjectStore {
   }
   async get(key: string): Promise<Uint8Array | null> {
     return this.objects.get(key)?.bytes ?? null
+  }
+  async delete(key: string): Promise<void> {
+    this.objects.delete(key)
   }
   async link(): Promise<string | null> {
     return null
@@ -75,6 +82,12 @@ export class S3ObjectStore implements ObjectStore {
     if (res.status === 404) return null
     if (!res.ok) throw new Error(`get ${key}: ${res.status} ${await res.text()}`)
     return new Uint8Array(await res.arrayBuffer())
+  }
+
+  async delete(key: string): Promise<void> {
+    const s = this.signed('DELETE', this.url(key), {}, EMPTY_SHA256)
+    const res = await fetch(s.url, { method: 'DELETE', headers: s.headers })
+    if (!res.ok && res.status !== 404) throw new Error(`delete ${key}: ${res.status} ${await res.text()}`)
   }
 
   async link(key: string, ttlSeconds: number, disposition?: string): Promise<string | null> {

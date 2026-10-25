@@ -789,6 +789,41 @@ export const svAccount = {
   'print.noOrder': 'Det här är vad som {would} skickas till ett tryckeri. Ingen beställning läggs.',
   'print.noOrder.would': 'skulle',
 
+  // Anmälan av en bild (#1274, beställarens beslut 2026-10-25, variant A): «Anmäl» på raden och i
+  // villkorens avsnitt 11 leder till /villkor/anmal, fem fält och god tro i den ordning DSA art. 16
+  // räknar dem. Bara bilder i betan; en text anmäls via Kontakt. I Tabell är en spärrad bild «Spärrad»,
+  // och remsan säger varför och hur man invänder: genom att svara på mejlet.
+  'about.report': 'Anmäl',
+  'report.title': 'Anmäl en bild',
+  'report.back': 'Villkor, avsnitt 11',
+  'report.lead': 'Anmäl en bild i Deckster som du tror är olaglig eller gör intrång i din rätt. En människa läser anmälan inom två arbetsdagar.',
+  'report.text': 'Gäller det en text och inte en bild, skriv till {contact}.',
+  'report.what': 'Vilken bild är det?',
+  'report.what.hint': 'Till exempel: bilden på kortet Skogsvaktaren',
+  'report.where': 'Var finns den?',
+  'report.where.hint': 'Rumskoden, en länk eller spelets namn',
+  'report.where.note': 'En rumskod gäller i tre timmar. Skriv gärna spelets och kortets namn också.',
+  'report.why': 'Varför får den inte finnas?',
+  'report.why.hint': 'Är det ditt verk, säg vilket och var det är publicerat.',
+  'report.name': 'Ditt namn',
+  'report.email': 'Din e-post',
+  'report.email.note': 'Kvittot och beslutet går hit.',
+  'report.goodFaith': 'Jag lämnar uppgifterna i god tro, och de är riktiga och fullständiga så långt jag vet.',
+  'report.children': 'Gäller anmälan sexuellt innehåll som rör barn behöver du inte skriva namn eller e-post.',
+  'report.send': 'Skicka anmälan',
+  'report.sending': 'Skickar anmälan',
+  'report.missing.what': 'Säg vilken bild det är, till exempel kortets namn.',
+  'report.missing.where': 'Säg var bilden finns.',
+  'report.missing.why': 'Säg varför den inte får finnas.',
+  'report.missing.goodFaith': 'Kryssa i rutan för att skicka.',
+  'report.missing.email': 'Adressen ser inte ut som en e-postadress.',
+  'report.failed': 'Anmälan gick inte att skicka. Försök igen om en stund.',
+  'report.sent': 'Anmälan är skickad',
+  'report.sent.receipt': 'Ett kvitto med det du skrev har gått till {email}. Anmälan heter {id}.',
+  'report.sent.none': 'Anmälan heter {id}. Utan e-post får du inget kvitto och inget beslut.',
+  'report.sent.next': 'En människa läser anmälan inom två arbetsdagar och mejlar dig beslutet.',
+  'report.home': 'Till start',
+
   // Betans villkor (#1272, beställarens beslut 2026-10-24, variant B): raden, sidan /villkor, steget
   // efter namnet i välkomstkortet, dialogen på en handling som kräver villkoren och bandet för ett
   // konto som fanns före dem. Själva villkorstexten är juridisk text och står i `terms/beta.ts`.

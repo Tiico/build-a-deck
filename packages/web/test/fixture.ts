@@ -5,6 +5,7 @@ import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDA
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore, COOKIE, SESSION_TTL_MS, hash } from '@byd/server'
 import { openingSetup, type Recipe } from '@byd/server/doc'
 import { MemoryRenderStore } from '@byd/render/queue'
+import { MemoryReportStore, blocking } from '../../server/src/reports.js'
 import { AiKeyVault, MemoryAiKeyStore } from '../../server/src/ai-keys.js'
 import { providersFromEnv } from '../../server/src/ai-providers.js'
 import type { Plans } from '../../server/src/quotas.js'
@@ -239,6 +240,8 @@ export type Running = {
   store: MemoryLogStore
   projects: MemoryProjectStore
   mail: MemoryMailer
+  // Reports and blocks (#1274): a block written here is not there for the server from then on.
+  reports: MemoryReportStore
   /**
    * This fixture's project id, and no other fixture's (#109, #119).
    *
@@ -291,7 +294,9 @@ let fixtures = 0
 export async function startServer(opts: { auth?: boolean; authBypass?: boolean; ai?: boolean; appOrigin?: string; plans?: Plans; print?: boolean; terms?: TermsRegister } = {}): Promise<Running> {
   const store = new MemoryLogStore()
   // The assets weigh what the games store (#1197), as on the box: the store is handed them.
-  const assets = new MemoryAssetStore()
+  // A picture blocked after a report (#1274) is not there for the server, as on the box.
+  const reports = new MemoryReportStore()
+  const assets = blocking(new MemoryAssetStore(), () => reports.blocked())
   const projects = new MemoryProjectStore(assets)
   const renders = new MemoryRenderStore()
   const surveys = new MemorySurveyStore()
@@ -306,7 +311,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const vault = fake ? new AiKeyVault(new MemoryAiKeyStore(), randomBytes(32)) : null
   const ai = vault ? { vault, providers: providersFromEnv({ AI_ANTHROPIC_URL: `${fakeUrl}/anthropic`, AI_OPENAI_URL: `${fakeUrl}/openai` }) } : null
   const make = () => {
-    const made = createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}) })
+    const made = createServer({ host: new TableHost(registry, store, undefined, renders, () => reports.blocked()), store, registry, renders, projects, assets, surveys, reports, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}) })
     // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
     // client in this same process sends its next request on the connection it pooled: on a box
     // where a worker is descheduled for longer than that, the two meet on one socket and the
@@ -337,6 +342,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
     store,
     projects,
     mail,
+    reports,
     projectId: `p1-f${nth}`,
     otherProjectId: `p2-f${nth}`,
     answering: (door = '/health') => untilAnswering(`http://127.0.0.1:${port}`, door),

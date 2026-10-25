@@ -29,9 +29,11 @@ describe('the foot of the login card (#757)', () => {
       if (!el) throw new Error('no foot yet')
       return el
     })
-    await waitFor(() => expect(foot.textContent).toBe('Villkor · Integritet · Kontakt · Deckster v0.9.3'))
+    await waitFor(() => expect(foot.textContent).toBe('Villkor · Integritet · Anmäl · Kontakt · Deckster v0.9.3'))
     expect(screen.getByRole('link', { name: 'Villkor' }).getAttribute('href')).toBe('/villkor')
     expect(screen.getByRole('link', { name: 'Integritet' }).getAttribute('href')).toBe('/villkor#integritet')
+    // A report of a picture (#1274) has a page of its own.
+    expect(screen.getByRole('link', { name: 'Anmäl' }).getAttribute('href')).toBe('/villkor/anmal')
     expect(screen.getByRole('link', { name: 'Kontakt' }).getAttribute('href')).toBe('mailto:beta@example.com')
     expect(document.querySelector('.byd-login')!.lastElementChild).toBe(foot)
   })
@@ -39,7 +41,7 @@ describe('the foot of the login card (#757)', () => {
   it('leaves «Kontakt» out when the box was given no contact', async () => {
     health({ ok: true, release: 'v0.9.3', tables: 0 })
     card()
-    await waitFor(() => expect(document.querySelector('[data-about]')?.textContent).toBe('Villkor · Integritet · Deckster v0.9.3'))
+    await waitFor(() => expect(document.querySelector('[data-about]')?.textContent).toBe('Villkor · Integritet · Anmäl · Deckster v0.9.3'))
     expect(screen.queryByRole('link', { name: 'Kontakt' })).toBeNull()
   })
 
@@ -69,6 +71,8 @@ describe('what a guest leaves behind, said where she saves (#757)', () => {
     // The row's first two beside it (#1272), to the page of their own.
     expect(screen.getByRole('link', { name: 'Villkor' }).getAttribute('href')).toBe('/villkor')
     expect(screen.getByRole('link', { name: 'Integritet' }).getAttribute('href')).toBe('/villkor#integritet')
+    // A report of a picture (#1274) has a page of its own.
+    expect(screen.getByRole('link', { name: 'Anmäl' }).getAttribute('href')).toBe('/villkor/anmal')
   })
 
   it('says nothing more once the answers are saved', () => {

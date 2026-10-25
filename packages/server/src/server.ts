@@ -33,6 +33,8 @@ import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-fil
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
 import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
+import { BlockedAsset, ReportBody, type ReportStore } from './reports.js'
+import { operatorMail, receiptMail } from './report-mail.js'
 import { MotifBody, assetHash, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
@@ -113,6 +115,11 @@ export type ServerOptions = {
   // box screens with `CURRENT_CLASSIFIER`; without it nothing is queued, as in a test about
   // something else, or a server whose renders go nowhere.
   screening?: ScreeningOnUpload
+  // Reports and blocks (#1274): `POST /reports` keeps what was reported and sends the receipt, and the
+  // owners and co-editors of a game ask which of its pictures are blocked. The asset store the server is
+  // handed is already the one that treats a blocked hash as not there (`blocking`). Without it nobody
+  // can report anything here.
+  reports?: ReportStore
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -555,6 +562,29 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     // The terms in force (#1270): which version, and whether it changed anything material. Public,
     // since the terms are read before anyone accepts them; null while there are none.
     if (req.method === 'GET' && url.pathname === '/terms') return json(res, 200, { current: termsInForce(registerOf(opts), clock(opts)) })
+    // A report (#1274, DSA art. 16): open to everyone, since whoever saw a picture need not have an
+    // account. The receipt goes to the address given, if one was, and the note to Kontakt when Kontakt is
+    // an address. Neither waits on the other, and a mail that fails is said in the log, not to the
+    // reporter: the report is kept, and the operator reads every one.
+    if (req.method === 'POST' && url.pathname === '/reports') {
+      if (!opts.reports) return json(res, 404, { error: 'reports are off' })
+      let raw: unknown
+      try {
+        raw = JSON.parse(await readBody(req))
+      } catch {
+        return json(res, 400, { error: 'not JSON' })
+      }
+      const body = ReportBody.safeParse(raw)
+      if (!body.success) return json(res, 400, { error: 'not a report', fields: [...new Set(body.error.issues.map((i) => String(i.path[0] ?? '')))] })
+      const { lang, ...said } = body.data
+      const report = await opts.reports.add({ ...said, lang: lang ?? 'sv', at: clock(opts).toISOString() })
+      const link = `${opts.appOrigin ?? opts.publicOrigin ?? ''}/villkor#villkor`
+      const sends: Promise<void>[] = []
+      if (report.email !== '' && opts.mailer) sends.push(opts.mailer.send(receiptMail(report, link, opts.contact)))
+      if (opts.contact && /^[^@\s]+@[^@\s]+$/.test(opts.contact) && opts.mailer) sends.push(opts.mailer.send(operatorMail(opts.contact, report)))
+      for (const done of await Promise.allSettled(sends)) if (done.status === 'rejected') console.error(JSON.stringify({ msg: 'report-mail', report: report.id, error: (done.reason as Error).message }))
+      return json(res, 201, { id: report.id })
+    }
     // Accepting the terms (#1270): only the version in force, so a tab opened before a change never
     // accepts what its reader has not read. 409 says which version that is, null when there is none.
     if (req.method === 'POST' && url.pathname === '/me/terms') {
@@ -1414,7 +1444,18 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
         return true
       }
     }
-    const hash = await assets.put(bytes, format.type)
+    let hash: string
+    try {
+      hash = await assets.put(bytes, format.type)
+    } catch (e) {
+      // A picture blocked after a report (#1274) is not stored again. 451, as for content withheld
+      // for legal reasons: the uploader is told this picture cannot be in Deckster, and nothing more.
+      if (e instanceof BlockedAsset) {
+        json(res, 451, { error: 'blocked' })
+        return true
+      }
+      throw e
+    }
     // Queued after the answer is decided and never waited for (#1273): an upload is never slower
     // for being screened, and a queue that is down or slow stops nothing.
     if (opts.screening && opts.renders) screenOnUpload(opts.renders, opts.screening, hash, format.type, clock(opts).getTime())
@@ -1710,6 +1751,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     if (opts.assets) {
       for (const [hash, asset] of read.assets) {
+        // A picture blocked after a report (#1274) is left out, and the game comes in without it.
+        if (opts.reports?.blocked().has(hash)) continue
         if ((await opts.assets.put(asset.bytes, asset.contentType)) !== hash) throw new Error(`asset ${hash} stored under another name`)
         if (asset.motif) await opts.assets.setMotif(hash, asset.motif as never)
       }
@@ -2319,7 +2362,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const assetFiles = new Map<string, Uint8Array>()
     const assets = []
     const absent: string[] = []
+    // A picture blocked after a report (#1274) is not in the zip, and the manifest says so: which, since
+    // when, and that it is the reason it is missing, so it is never mistaken for one the box lost.
+    const blocked = opts.reports ? await opts.reports.blocksOf(hashes) : []
+    const withheld = new Set(blocked.map((b) => b.hash))
     for (const hash of hashes) {
+      if (withheld.has(hash)) continue
       const got = opts.assets ? await opts.assets.get(hash) : null
       if (!got) {
         absent.push(hash)
@@ -2344,11 +2392,26 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       versions,
       assets,
       absent,
+      ...(blocked.length > 0 ? { blocked: blocked.map((b) => ({ hash: b.hash, since: b.at })) } : {}),
       print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed },
     })
     const zip = packExport({ manifest, readme: readmeOf(lang, manifest), assets: assetFiles, prints })
     res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': exportDisposition(rec.name, rec.rev), 'cache-control': 'no-store' })
     res.end(zip)
+    return true
+  }
+  // Which of a game's pictures are blocked after a report (#1274), and why: for the owner and the
+  // co-editors, who see «Spärrad» in Tabell and the reasons behind it (beslut 1). A tester, a reader
+  // and a guest are never told; for them a blocked picture is one that is not there.
+  const blockedOf = /^\/projects\/([^/]+)\/blocked$/.exec(url.pathname)
+  if (blockedOf && req.method === 'GET') {
+    const gate = await allowed(decodeURIComponent(blockedOf[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const blocks = opts.reports ? await opts.reports.blocksOf(assetHashesOf(gate.rec)) : []
+    json(res, 200, { blocked: blocks.map((b) => ({ hash: b.hash, reason: b.reason, at: b.at })) })
     return true
   }
   // «Dubblera» (#738): a second game made of the first, the duplicating account's own. It is taken by

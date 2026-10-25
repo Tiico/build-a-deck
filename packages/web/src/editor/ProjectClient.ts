@@ -1,3 +1,4 @@
+import type { BlockReason, Withheld } from './withheld.js'
 import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind, type SeatId, type Seating } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
@@ -1465,6 +1466,8 @@ export class ProjectClient {
     if (quota) throw new QuotaSaid(quotaWords(quota, { kind: 'upload', file: kind === 'font' ? 'font' : kind === 'image' ? 'picture' : 'file', size: file.size }, t))
     if (res.status === 415) throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
     if (res.status === 413) throw new Said(t('upload.tooBig'))
+    // A picture blocked after a report is not stored again (#1274).
+    if (res.status === 451) throw new Said(t('upload.blocked'))
     if (!res.ok) throw new Said(t('upload.failed'))
     return ((await res.json()) as { hash: string }).hash
   }
@@ -1583,6 +1586,21 @@ export class ProjectClient {
   // Where the textures a flag about a card was raised on are served from (#1142): the API itself.
   get facesOrigin(): string {
     return this.http
+  }
+
+  // Which of the game's pictures are blocked after a report, and why (#1274): asked once the game is
+  // open, by its owner or a co-editor, who see «Spärrad» where the picture was. Anyone else is never
+  // told, and an answer that does not come is taken as nothing blocked, since a blocked picture is
+  // drawn empty whatever the editor knows.
+  async blocked(): Promise<Withheld> {
+    try {
+      const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/blocked`, withCredentials())
+      if (!res.ok) return new Map()
+      const body = (await res.json()) as { blocked?: { hash: string; reason: BlockReason; at: string }[] }
+      return new Map((body.blocked ?? []).map((b) => [b.hash, { reason: b.reason, at: b.at }]))
+    } catch {
+      return new Map()
+    }
   }
 
   async playtest(): Promise<Playtest> {

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import { join } from 'node:path'
 import { free } from './ports.js'
@@ -11,7 +11,7 @@ import { free } from './ports.js'
  * and `/faces/<hash>` answer with a redirect to another origin, and the page's policy (DRIFT §14)
  * and CORS both have that origin to reckon with. So the stack runs with one.
  *
- * It speaks the four requests `S3ObjectStore` makes — a PUT, a GET, the empty listing `/health`
+ * It speaks the five requests `S3ObjectStore` makes — a PUT, a GET, a DELETE, the empty listing `/health`
  * asks and the presigned GET a browser follows — and it answers the way R2 does where the page
  * can tell: on its own origin, with the object's type, and with no `access-control-allow-origin`
  * on anything. Signatures are not checked; what they say is `objects.test.ts`'s question in
@@ -30,6 +30,10 @@ export async function objectStore(dir: string): Promise<{ endpoint: string; env:
       writeFileSync(at(key), o.bytes)
       writeFileSync(`${at(key)}.type`, o.type)
     },
+    remove: (key: string) => {
+      rmSync(at(key), { force: true })
+      rmSync(`${at(key)}.type`, { force: true })
+    },
     get: (key: string): { bytes: Buffer; type: string } | undefined => {
       try {
         return { bytes: readFileSync(at(key)), type: readFileSync(`${at(key)}.type`, 'utf8') }
@@ -46,6 +50,12 @@ export async function objectStore(dir: string): Promise<{ endpoint: string; env:
       if (req.method === 'PUT' && key) {
         objects.set(key, { bytes, type: String(req.headers['content-type'] ?? 'application/octet-stream') })
         res.writeHead(200).end()
+        return
+      }
+      // A purge after a report (#1274): R2 answers 204 whether or not the key was there.
+      if (req.method === 'DELETE' && key) {
+        objects.remove(key)
+        res.writeHead(204).end()
         return
       }
       if (req.method === 'GET' && key === '' && url.searchParams.get('list-type') === '2') {

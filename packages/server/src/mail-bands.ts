@@ -44,7 +44,18 @@ export type Letter = {
   contactWord: string
   link: string
   contact?: string | undefined
+  // What the letter is about, said as a list under the lead (#1274): a report repeated to whoever
+  // made it, a block's reasons to the owner. Each is a label and what somebody wrote or what was
+  // decided, and both are text.
+  facts?: readonly (readonly [string, string])[] | undefined
 }
+
+// The list under the lead, on a lighter paper inside the paper band, one label over what it says.
+// A line break somebody wrote is kept as a line break and nothing else.
+const factsOf = (facts: readonly (readonly [string, string])[]): string =>
+  `      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0 0;background:#fffaf0;border-radius:12px"><tr><td style="padding:14px 16px;font:14px/1.55 ${FONT};color:#3a3528;text-align:left">` +
+  facts.map(([label, text], i) => `<p style="margin:${i === 0 ? '0' : '10px'} 0 0"><b style="color:#1f1b12">${esc(label)}</b><br>${esc(text).replace(/\r?\n/g, '<br>')}</p>`).join('') +
+  `</td></tr></table>\n`
 
 export function bands(l: Letter): string {
   const site = siteOf(l.link)
@@ -81,7 +92,7 @@ export function bands(l: Letter): string {
     <tr><td bgcolor="#f4ead8" style="padding:30px 28px 32px;background:#f4ead8;text-align:left">
       <h1 style="margin:0 0 8px;font:800 26px/1.15 ${FONT};color:#1f1b12;letter-spacing:-.02em">${esc(l.hello)}</h1>
       <p style="margin:0;font:16px/1.55 ${FONT};color:#3a3528">${esc(l.lead)}</p>
-      <table role="presentation" cellspacing="0" cellpadding="0" border="0" class="byd-button" style="margin:24px 0 0"><tr><td align="center" style="border-radius:999px;background:#f0b64a">
+${l.facts && l.facts.length > 0 ? factsOf(l.facts) : ''}      <table role="presentation" cellspacing="0" cellpadding="0" border="0" class="byd-button" style="margin:24px 0 0"><tr><td align="center" style="border-radius:999px;background:#f0b64a">
         <a href="${href}" style="display:block;padding:15px 26px;font:700 16px/1 ${FONT};color:#1f1b12;text-decoration:none;border-radius:999px">${esc(l.button)} &rarr;</a>
       </td></tr></table>
       <p style="margin:22px 0 0;font:13px/1.6 ${FONT};color:#5b574c">${esc(l.fine)}</p>

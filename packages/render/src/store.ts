@@ -62,6 +62,12 @@ export type RenderStore = {
   // from; listing it again is `known` and changes nothing. Read in the order it was filled.
   addScreeningReference(reference: ScreeningReference): Promise<'added' | 'known'>
   screeningReferences(): Promise<ScreeningReference[]>
+
+  // Every job and output whose page names this asset (`asset:<hash>`), taken out of the queue and the
+  // bucket (#1274): what is drawn from a picture that has been blocked is not handed out under its old
+  // hash, and a deck drawn without the picture has pages of other hashes. Says which hashes went. The
+  // render log keeps its lines: what was rendered was rendered, and is counted.
+  forgetPagesNaming(asset: string): Promise<string[]>
 }
 
 const RANK: Record<Priority, number> = { texture: 0, print: 1, screen: 2 }
@@ -156,6 +162,19 @@ export class MemoryRenderStore implements RenderStore {
 
   async output(hash: string): Promise<Uint8Array | null> {
     return this.outputs.has(hash) ? this.objects.get(outputKey(hash)) : null
+  }
+
+  async forgetPagesNaming(asset: string): Promise<string[]> {
+    const ref = `asset:${asset}`
+    const gone: string[] = []
+    for (const [hash, job] of this.jobs) {
+      if (!job.compiled.html.includes(ref) && !job.compiled.css.includes(ref)) continue
+      this.jobs.delete(hash)
+      this.outputs.delete(hash)
+      await this.objects.delete?.(outputKey(hash))
+      gone.push(hash)
+    }
+    return gone.sort()
   }
 
   async link(hash: string, ttlSeconds: number, disposition?: string): Promise<string | null> {

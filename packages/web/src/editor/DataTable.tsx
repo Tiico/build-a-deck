@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
 import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
@@ -16,6 +16,8 @@ import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 import { PictureSlot } from './PictureSlot.js'
+import { WithheldPictures, blockOf } from './withheld.js'
+import { WithheldStrip } from './WithheldStrip.js'
 import { decksterIcons, loadIconCatalog, type CatalogIcon } from './icon-catalog.js'
 import { RoleList, roleOptionId, symbolListKey } from './SymbolList.js'
 import { SymbolBox, meaningsOf, type Pickable } from './SymbolBox.js'
@@ -745,6 +747,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // take a card out of the deck on the way past it; it asks the same question the action row
   // asks, and names the card, because one card is not "1 kort" to the person who drew it.
   const [removing, setRemoving] = useState<string | null>(null)
+  // The blocked picture the foot is saying why about (#1274, beslut 1): its card and field. It stands
+  // where a row's × asks (L58), which is the table's one place to say something about a row.
+  const [withholding, setWithholding] = useState<{ cardRef: string; field: string } | null>(null)
+  const withheld = useContext(WithheldPictures)
   // A question that takes the focus has to give it back: to the button that asked it, or — when
   // the cards it was about are gone with it — to the header's own checkbox above the rows.
   // A column's × goes with the column, so the head's own button — the one thing there that was
@@ -1747,6 +1753,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       onFiles={(files) => void upload(cardRef, f, files)}
                       onClear={() => onCell(cardRef, f, '')}
                       reading={reading}
+                      onWithheld={() => setWithholding({ cardRef, field: f })}
+                      explaining={withholding?.cardRef === cardRef && withholding.field === f}
                       {...stop(cardRef)}
                     />
                   </td>
@@ -2021,7 +2029,19 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
           that had just pressed it. In the foot it takes the toolbar's place while it stands. The
           column door's × asks in the door itself (#1061). */}
-      {removing !== null ? (
+      {withholding !== null && blockOf(doc.rows, withholding, withheld) ? (
+        <WithheldStrip
+          block={blockOf(doc.rows, withholding, withheld)!}
+          onSwap={() => {
+            setLibrary({ kind: 'cell', cardRef: withholding.cardRef, field: withholding.field })
+            setWithholding(null)
+          }}
+          onClose={() => {
+            setWithholding(null)
+            setRefocus({ cardRef: withholding.cardRef })
+          }}
+        />
+      ) : removing !== null ? (
         <Question
           className="byd-data-bulk"
           label={t('table.remove.card', { cardRef: removing })}

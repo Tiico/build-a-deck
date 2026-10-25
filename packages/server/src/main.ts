@@ -19,6 +19,7 @@ import { printProvidersOf } from './print-providers.js'
 import { CURRENT_CLASSIFIER } from '@byd/screening'
 import { inviteKeepFrom, sweepSpent } from './sweep.js'
 import { sweepErasures, type ErasureStore } from './erase.js'
+import { MemoryReportStore, blocking, type ReportStore } from './reports.js'
 
 // The tiers stop the start when they cannot be read (#1192): an error must never quietly become
 // unlimited, nor quietly become closed. Said in the log, then out — before anything else is opened,
@@ -91,6 +92,7 @@ let assets: AssetStore
 let aiKeys: AiKeyStore
 let accountPlans: AccountPlanStore
 let erasures: ErasureStore
+let reports: ReportStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -107,6 +109,7 @@ if (databaseUrl) {
   aiKeys = pg.aiKeys()
   accountPlans = pg.accountPlans()
   erasures = pg.erasures()
+  reports = pg.reports()
   closeStore = async () => {
     await pg.close()
     await rq.close()
@@ -116,6 +119,7 @@ if (databaseUrl) {
   const memory = new MemoryLogStore()
   store = memory
   renders = new MemoryRenderStore()
+  reports = new MemoryReportStore()
   assets = new MemoryAssetStore()
   // Weighs the pictures its games name in the same asset store (#1197).
   projects = new MemoryProjectStore(assets)
@@ -128,7 +132,17 @@ if (databaseUrl) {
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
-const host = new TableHost(registry, store, undefined, renders)
+// A picture blocked after a report (#1274) is not there for anything but the operator's script: the
+// store everything else is handed treats it so, and every table draws it empty.
+assets = blocking(assets, () => reports.blocked())
+const host = new TableHost(registry, store, undefined, renders, () => reports.blocked())
+// A block or an unblock, whoever wrote it (the operator's script, in another process, which Postgres
+// tells about when it commits): every loaded table deals its deck again. The line says that it
+// happened and how many are blocked, never which picture.
+await reports.listen(() => {
+  console.log(JSON.stringify({ msg: 'blocked', assets: reports.blocked().size }))
+  void host.redeal().catch((e: unknown) => void console.error(JSON.stringify({ msg: 'redeal', error: (e as Error).message })))
+})
 // A table an erasure masked is read again if it is loaded (#1279, G6), whoever erased: this process,
 // or the operator's script in another, which Postgres tells about when it commits. The line says
 // which table, never whose.
@@ -173,7 +187,7 @@ const printProviders = printProvidersOf(STANDARD_TYPES)
 // Screening in shadow mode (F4, beslut 10; #1273): every new picture is queued for the render
 // worker's classifier, where there is a worker to drain the queue. Nothing waits for it or sees it.
 const screening = databaseUrl ? { screening: { classifier: CURRENT_CLASSIFIER } } : {}
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders, terms: TERMS,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures, ...screening })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders, terms: TERMS,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures, reports, ...screening })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

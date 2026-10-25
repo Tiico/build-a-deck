@@ -12,7 +12,8 @@
 // (`catalog-tone.test.ts`). The words of the step and the page around it are the catalogue's.
 //
 // `{name}`, `{address}`, `{contact}`, `{processors}` and `{transfer}` are read from `operator.ts`.
-// `**…**` is bold, and `[…](#integritet)` and `[…](#villkor)` lead to the other half of the page.
+// `**…**` is bold, `[…](#integritet)` and `[…](#villkor)` lead to the other half of the page, and
+// `[…](#anmal)` to the report page (#1274).
 // The text is Swedish only for now: the English is written once the Swedish is approved (#1272,
 // beslut 2026-10-24), and an English page says so above it.
 
@@ -104,10 +105,11 @@ const terms: Document = {
     { h: 'Tryck och leverans', ks: 'Under betan trycks ingenting.', waits: true, body: ['Skrivs när tryck kan beställas.'] },
     {
       h: 'Anmälan och borttagning',
-      ks: 'Ser du något som inte får finnas, skriv till oss. Tar vi bort något får du veta varför och kan invända.',
+      ks: 'Ser du en bild som inte får finnas, anmäl den. Spärrar vi något får du veta varför och kan invända.',
       body: [
-        'Anmäl innehåll som du tror är olagligt eller gör intrång i dina rättigheter till {contact}. Skriv vad det är, var det finns, varför det inte får finnas och vem du är, och att du lämnar uppgifterna i god tro.',
-        'Håller anmälan spärrar vi innehållet och berättar för den som laddade upp det varför. Hen kan invända, och vi prövar invändningen.',
+        'Anmäl en bild som du tror är olaglig eller gör intrång i dina rättigheter på [anmälningssidan](#anmal). Där skriver du vad det är, var det finns, varför det inte får finnas och vem du är, och att du lämnar uppgifterna i god tro. Gäller det en text, skriv till {contact}.',
+        'Vi läser varje anmälan inom två arbetsdagar och mejlar beslutet till den adress du lämnat.',
+        'Håller anmälan spärrar vi bilden i varje spel som använder den och berättar för varje ägare varför. Ägaren kan invända genom att svara på mejlet, och vi prövar beslutet igen inom två arbetsdagar.',
         'Den som gör intrång upprepade gånger får sitt konto stängt. Misstanke om brott som hotar någons liv eller säkerhet anmäler vi till polisen.',
       ],
     },
