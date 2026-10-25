@@ -1,0 +1,91 @@
+/* `/play` in a wide window (#1310, beställarens beslut A i #1308): the head, the targets a card is
+   played to, and the hand along the foot in full size. Fetched with the desk and not in the first
+   frame's sheet, which has no room to spare (felt-font.spec.ts); the phone never asks for it. */
+.byd-player[data-desk] { max-width: none; height: 100svh; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; }
+.byd-desk {
+  /* The hand's card, which the row, the ghost carried out of it and the fan's own faces read. Bound
+     by the window's height (K9): a card on a 600 px window is the column's 112 px, on 800 the
+     prototype's 150 px, and never larger. */
+  --fan-card: clamp(112px, 19svh, 150px);
+  --byd-desk-tile: #171a21;
+  --byd-desk-edge: #3b4152;
+  flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+}
+
+/* The head: who, the counters and the turn, where the table is and what just happened there, and
+   the tools. Nothing in it wraps: the line in the middle gives way behind an ellipsis first. */
+.byd-desk-head { flex: none; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 16px; border-bottom: 1px solid var(--byd-rule); }
+.byd-desk-who { flex: none; min-width: 0; max-width: 16em; padding: 4px 14px; border-radius: 999px; background: var(--byd-surface); border-left: 3px solid var(--seat, #666); }
+.byd-desk-who strong { color: var(--byd-ink-strong); font-size: 15px; }
+.byd-desk-who > span { color: var(--byd-ink-muted); }
+.byd-desk-head .byd-counters { flex: none; display: flex; gap: 8px; }
+.byd-desk-head .byd-counter { grid-template-columns: 36px auto 36px; }
+.byd-desk-head .byd-counter button { min-height: 44px; min-width: 36px; }
+.byd-desk-head .byd-counter .byd-counter-value { min-width: 3.5em; }
+.byd-desk-head .byd-turn-row { flex: none; padding: 0; }
+.byd-desk-where { flex: 1 1 0; min-width: 0; display: flex; align-items: baseline; gap: 0; color: var(--byd-ink-muted); font-size: 13px; white-space: nowrap; overflow: hidden; }
+.byd-desk-where > span { flex: none; }
+.byd-desk-where > .byd-online-last { flex: 1 1 0; min-width: 0; margin: 0; font-size: 13px; }
+.byd-desk-where > .byd-online-last::before { content: ' · '; white-space: pre; color: var(--byd-ink-muted); }
+.byd-desk-tools { flex: none; display: flex; align-items: center; gap: 8px; }
+.byd-desk-tools > button, .byd-desk-tools .byd-rules-open {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; padding: 0 14px; box-sizing: border-box;
+  border: 0; border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.byd-desk-tools > button:disabled, .byd-desk-tools > button[aria-disabled='true'] { opacity: 0.35; }
+.byd-desk-tools .byd-glyph { width: 16px; height: 16px; flex: none; }
+
+/* The targets: the first pile, what lies in front of the seat, the other piles, and the rest of
+   the table with the floor last. Each column is as tall as the row; a column holding several
+   targets shares its height between them, and scrolls in its own box only past a target's floor. */
+.byd-desk-targets { flex: 1 1 auto; min-height: 0; display: flex; gap: 14px; padding: 16px; }
+.byd-desk-targets > .byd-desk-target { flex: 0 1 170px; min-width: 120px; }
+.byd-desk-mine { flex: 1 1 0; min-width: 240px; display: flex; flex-direction: column; gap: 14px; }
+.byd-desk-stack { flex: 0 1 170px; min-width: 120px; min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow: hidden auto; overscroll-behavior: contain; }
+.byd-desk-stack[data-stack='rest'] { flex-basis: 210px; min-width: 170px; }
+.byd-desk-mine > .byd-desk-target, .byd-desk-stack > .byd-desk-target { flex: 1 1 0; min-height: 96px; }
+.byd-desk-target {
+  position: relative; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  border: 1.5px dashed var(--byd-desk-edge); border-radius: 14px; background: var(--byd-desk-tile);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.byd-desk-target[data-aim] { border-style: solid; border-color: var(--byd-warn); box-shadow: 0 0 0 3px rgba(255, 217, 138, 0.3), inset 0 0 30px rgba(255, 217, 138, 0.12); }
+.byd-desk-target > header { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.byd-desk-target h2 { margin: 0; min-width: 0; color: var(--byd-ink-strong); font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-desk-target > header > span { flex: none; color: var(--byd-ink-muted); font-size: 12px; }
+.byd-desk-hint { margin: auto 0 0; color: var(--byd-ink-quiet); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.byd-desk-target .byd-status-refusal { margin-top: auto; }
+
+/* A pile: its top, which draws when it holds a card (#79), centred in what the tile leaves. */
+.byd-desk-pile { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
+.byd-desk-pile > button { display: grid; justify-items: center; gap: 8px; min-width: 44px; padding: 4px; border: 0; border-radius: 10px; background: transparent; color: var(--byd-ink-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.byd-desk-pile > button em { font-style: normal; }
+.byd-desk-pile > button:hover em { color: var(--byd-ink-strong); }
+.byd-desk-top, .byd-desk-empty { position: relative; display: block; width: 96px; aspect-ratio: 63 / 88; border-radius: 7px; overflow: hidden; background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); }
+.byd-desk-top[data-back] { border: 1px solid #4b5f8e; box-shadow: 0 3px 0 #22304f, 0 6px 0 #1b2742; }
+.byd-desk-empty { background: transparent; border: 1.5px dashed var(--byd-desk-edge); }
+.byd-desk-top img, .byd-desk-card-small img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+
+/* What lies in an area, small, each card a press that holds it up to be read (#507). */
+.byd-desk-cards { flex: 1 1 auto; min-height: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow: hidden auto; }
+.byd-desk-card-small {
+  position: relative; flex: none; width: 60px; aspect-ratio: 63 / 88; padding: 4px; box-sizing: border-box; overflow: hidden;
+  border: 0; border-radius: 5px; background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
+  font: 700 10px system-ui, sans-serif; text-align: left; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45); cursor: pointer;
+}
+.byd-desk-mine .byd-desk-card-small { width: 84px; border-radius: 7px; }
+.byd-desk-card-small img ~ strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* The hand along the foot: every card in full size, side by side, the step giving way to a
+   fingertip's and the row scrolling in its own box after that (L10). The last card is whole. */
+.byd-desk-hand { flex: none; position: relative; border-top: 1px solid var(--byd-rule); background: linear-gradient(#171920, #111217); padding: 8px 0 14px; }
+.byd-desk-hand-head { display: flex; justify-content: space-between; gap: 16px; padding: 0 16px; color: var(--byd-ink-muted); font-size: 12px; }
+.byd-desk-row { display: flex; justify-content: safe center; overflow: auto hidden; overscroll-behavior-x: contain; scrollbar-width: thin; padding: 24px 24px 0; }
+.byd-desk-slot { position: relative; flex: 0 1 calc(var(--fan-card) + 8px); min-width: 44px; height: calc(var(--fan-card) * 88 / 63); }
+.byd-desk-slot:last-child { flex: 0 0 var(--fan-card); }
+.byd-desk-card { position: absolute; left: 0; bottom: 0; touch-action: pan-x; transition: transform 0.12s; }
+.byd-desk-slot:hover, .byd-desk-slot:focus-within { z-index: 2; }
+.byd-desk-card:hover, .byd-desk-card:focus-visible { transform: translateY(-18px); }
+.byd-desk-card[data-lifted] { opacity: 0.3; transform: none; }
+.byd-desk-card:focus-visible { outline: 3px solid var(--byd-kbd-ring, #9cc6ff); outline-offset: 2px; }
+.byd-desk-hand-empty { margin: 0; padding: 40px 16px; text-align: center; color: var(--byd-ink-muted); font-size: 14px; }

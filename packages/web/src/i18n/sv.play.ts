@@ -631,4 +631,23 @@ export const svPlay = {
   // Raden där en gäst ansluter och där hon sparar (#757, #1272): villkoren och integriteten.
   'trust.terms': 'Villkor',
   'trust.privacy': 'Integritet',
+
+  // Handen vid en dator: raden under kortet som läses (#1291) och vad någon annan senast gjorde
+  // (#484 fynd 12), i spelets del sedan `/play` ritar dem i ett brett fönster (#1310).
+  'online.hand.says.mouse': 'Klick vänder · dra till bordet spelar',
+  'online.hand.says.mouse.turned': 'Klick vänder upp · dra till bordet spelar nedvänt',
+  'online.hand.says.key': 'Mellanslag vänder · Enter öppnar handlingar',
+  'online.last': 'Senast:',
+  'online.last.now': 'nyss',
+  'online.last.s': 'för {n} s sedan',
+  'online.last.min': 'för {n} min sedan',
+  'desk.heading': 'Din hand',
+  'desk.where': 'Bordet står på TV:n',
+  'desk.hand': 'Din hand · {cards}',
+  'desk.hint': 'Vila läser · klick vänder · dra till en yta spelar',
+  'desk.drop': 'Dra ett kort hit',
+  'desk.says.mouse': 'Klick vänder · dra till en yta spelar',
+  'desk.says.mouse.turned': 'Klick vänder upp · dra till en yta spelar nedvänt',
+  'desk.help.read': 'Vila musen på ett kort för att läsa det. Ett klick vänder det, och ett vänt kort spelas nedvänt.',
+  'desk.help.play': 'Dra ett kort till en yta ovanför handen för att spela det dit. Klicka på en hög för att dra ett kort.',
 } as const

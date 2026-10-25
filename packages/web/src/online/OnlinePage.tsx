@@ -44,6 +44,7 @@ import { useT } from '../i18n/index.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useStartFocus } from '../table/StartButton.js'
 import { WaitingRoom } from './WaitingRoom.js'
+import { BOARD_FLOOR, UPRIGHT_BOARD_FLOOR } from '../player/desk.js'
 
 // /online?session=…&seat=A&code=…&server=ws://…#token=…  — and the owner's own seat from the editor,
 // /online?session=…&seat=A&name=Bo&owner=1, which has no token and names itself.
@@ -58,26 +59,8 @@ import { WaitingRoom } from './WaitingRoom.js'
 // `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
 export type OnlinePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: number }; onLeave?(url: string): void }
 
-// The shortest side a window must have before a board is drawn in it at all (C2's revision of
-// 2026-09-16, #99).
-//
-// The short side and not the width, because a phone turned over is still a phone: 844 × 390 puts
-// four hands on the same little felt as 390 × 844 does, which is exactly why "ask for a landscape
-// window" was rejected as an answer rather than chosen as one.
-//
-// Six hundred is the smallest short side the audit measures a board in — 1024 × 600, the netbook
-// `online-column.test.tsx` holds the hand's column to. It is drawn there today and this is not the
-// issue that takes it away: #99 is about the screen a hand is held in, and a phone's 390 is well
-// under the line whichever way it is turned. The closest call is that netbook, and it is left
-// where it stands rather than settled in passing.
-const BOARD_FLOOR = 600
-
-// The narrowest upright window that gets a board (#484 fynd 9, beslut A). An upright felt is bound
-// by the window's width, and its card reaches K9's 45 px only here: measured on the painted card's
-// short side in Chromium, 27 px at 600 × 900, 36 at 768 × 1024, 45 at 960 × 1280. A felt whose card
-// cannot be played is the 16 px of #99 at a larger size, so the window below it gets the player's own
-// surface, as a phone does (C2). Landscape windows keep `BOARD_FLOOR` alone.
-const UPRIGHT_BOARD_FLOOR = 960
+// Which windows get a board at all (C2, #99, #484 fynd 9): `BOARD_FLOOR` and `UPRIGHT_BOARD_FLOOR`,
+// in `player/desk.ts` since `/play` draws its desk in exactly those windows (#1310).
 
 export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: OnlinePageProps = {}) {
   const t = useT()
