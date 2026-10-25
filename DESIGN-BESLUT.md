@@ -2659,8 +2659,17 @@ Byggt 2026-10-25 (#1280, beställarens beslut A ur [prototypen](https://github.c
   Raden går före bytesen i R2, så att bytes som inte går att radera lämnar raden till nästa varv.
 - Hon landar vid dörren med «Ditt konto är raderat.» och att ett mejl bekräftar det, och mejlet i inloggningsmejlets tre band (L72), utan knapp, säger när, vilka spel som försvann, att bilderna sopas inom 30 dagar och att säkerhetskopiorna sparas i åtta dygn och raderar kontot igen om något återställs.
 - Integritetstexten säger att kontot raderas i Profil och vad ett raderat konto lämnar efter sig; gästens väg är #1281:s.
-- Prototypens band på medredigerarens Mina spel («Skogens råd är borttaget. Ägaren raderade sitt konto.») är inte byggt: ett borttaget spel säger i dag ingenting till sina medlemmar, vem som än tog bort det, och ett sådant besked är en egen yta (#1334).
+- Prototypens band på medredigerarens Mina spel («Skogens råd är borttaget. Ägaren raderade sitt konto.») är byggt i #1334, se nedan.
 Grindarna är `packages/server/test/account-erase.test.ts` (båda lagren, med en sökning i varje personlig och pseudonym kolumn efter hennes id och adress, och sopningen i Postgres), `packages/web/test/profile-account.test.tsx` och `packages/e2e/test/account-delete.spec.ts`.
+
+Byggt 2026-10-25 (#1334, beställarens beslut samma dag, i prototypens form ovan, ytan «Efteråt»): **ett spel som försvinner lämnar ett besked till varje medlem utom ägaren.**
+- Det gäller både när ägaren tar bort spelet («Ägaren tog bort spelet.») och när ägaren raderar sitt konto («Ägaren raderade sitt konto.»), och texten följer orsaken.
+- Beskedet är en rad i `gone_games`: spelets namn, orsaken och datumet, aldrig ägaren och inte spelets id, så att det inte leder tillbaka till henne (G6, «försvinner direkt»).
+  Det skrivs i samma transaktion som tar spelet: `ProjectStore.remove` och kontots radering i liggaren.
+- På Mina spel står ett band per besked under rubriken tills hon stänger det med krysset; då raderas beskedet (`DELETE /me/gone/:id`) och kommer inte tillbaka.
+  Beskedet går också med hennes eget konto.
+- Så länge beskedet finns står det i hennes utdrag, som `goneGames`.
+Grindarna är `packages/server/test/gone-games.test.ts`, `packages/web/test/home-gone.test.tsx` och `packages/e2e/test/gone-band.spec.ts`.
 
 Skivorna (alla öppna 2026-10-24):
 - #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
