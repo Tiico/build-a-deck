@@ -36,6 +36,7 @@
     ".": "./src/index.ts",
     "./doc": "./src/doc.ts",
     "./account-name": "./src/account-name.ts",
-    "./proposal": "./src/proposal.ts"
+    "./proposal": "./src/proposal.ts",
+    "./felt-sizes": "./src/felt-sizes.ts"
   }
 }
