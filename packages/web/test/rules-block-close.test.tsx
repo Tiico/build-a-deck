@@ -4,8 +4,12 @@
 // The block closed on the field's blur, and a press on «Ta bort blocket» blurs the field before
 // it clicks: the button was gone from the page by the time the click arrived, so no block could be
 // taken away with a pointer, and Tab from the field landed on <body>. The line the block keeps is
-// now the block's own edge — everything inside it, the foot included, is staying — and a list
+// now the block's own edge — everything inside it, its head included, is staying — and a list
 // block, which had no way out at all, answers to the same edge and to Escape like the others.
+//
+// The removal stood in a foot of its own under the fields; it now stands in the block's head, beside
+// its kinds, and is named after what goes (#1258). The head is above the field, so the keyboard
+// reaches it going back with Shift+Tab rather than on with Tab.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -43,12 +47,12 @@ const book = () => document.querySelector('[data-rulebook]') as HTMLElement
 const blocks = () => [...book().querySelectorAll('[data-block]')].map((b) => b.getAttribute('data-block'))
 const open = () => book().querySelector('.byd-rules-edit')
 
-// What the designer presses to open each kind of block, and the button its foot carries.
+// What the designer presses to open each kind of block, and the removal its head carries (#1258).
 const KINDS = [
   { id: 'h1', press: 'Så spelar ni', remove: 'Ta bort avsnittet' },
-  { id: 't1', press: 'Dra ett kort.', remove: 'Ta bort blocket' },
-  { id: 'l1', press: 'Spela.', remove: 'Ta bort blocket' },
-  { id: 's1', press: 'Så ställs bordet upp', remove: 'Ta bort blocket' },
+  { id: 't1', press: 'Dra ett kort.', remove: 'Ta bort stycket' },
+  { id: 'l1', press: 'Spela.', remove: 'Ta bort listan' },
+  { id: 's1', press: 'Så ställs bordet upp', remove: 'Ta bort uppställningen' },
 ] as const
 
 describe('an open block of the rulebook', () => {
@@ -59,19 +63,19 @@ describe('an open block of the rulebook', () => {
     await waitFor(() => expect(open()).not.toBeNull())
     await user.click(within(book()).getByRole('button', { name: remove }))
     await waitFor(() => expect(blocks()).not.toContain(id))
-    // The foot went with the block, so the focus goes to the block now standing in its place —
-    // or, when the section was the whole book, to the way to write a new one.
-    await waitFor(() => expect(document.activeElement?.closest('[data-block], .byd-rules-own')).not.toBeNull())
+    // The head went with the block, so the focus goes to the block now standing in its place —
+    // or, when the section was the whole book, to the row's way to add a new one (#1258).
+    await waitFor(() => expect(document.activeElement?.closest('[data-block], .byd-rules-adding')).not.toBeNull())
   })
 
-  it.each(KINDS)('reaches the foot of block $id with Tab, and stays open doing it', async ({ press, remove }) => {
+  it.each(KINDS)('reaches the removal in the head of block $id with Shift+Tab, and stays open doing it', async ({ press, remove }) => {
     const user = userEvent.setup()
     await openRules()
     await user.click(within(book()).getByText(press))
     await waitFor(() => expect(open()).not.toBeNull())
-    const foot = within(book()).getByRole('button', { name: remove })
-    for (let i = 0; i < 8 && document.activeElement !== foot; i++) await user.tab()
-    expect(document.activeElement).toBe(foot)
+    const removal = within(book()).getByRole('button', { name: remove })
+    for (let i = 0; i < 8 && document.activeElement !== removal; i++) await user.tab({ shift: true })
+    expect(document.activeElement).toBe(removal)
     expect(open()).not.toBeNull()
   })
 
