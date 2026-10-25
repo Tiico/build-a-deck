@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -22,6 +22,10 @@ import { useT } from '../i18n/index.js'
 import { TurnBadge } from './TurnBadge.js'
 import { useRoving } from '../editor/roving.js'
 import type { TurnedHand } from './turned.js'
+
+// The desk a wide window draws instead of the tabs (#1310), with its sheet: fetched only where it
+// is drawn, so neither the phone's script nor the first frame's sheet carries it.
+const PlayerDesk = lazy(() => import('./PlayerDesk.js').then((m) => ({ default: m.PlayerDesk })))
 
 // What a player is given on a screen that cannot carry the board: the seat's own hand, the
 // counters, the private zones, and the table itself as names and counts rather than as a felt. It
@@ -93,9 +97,12 @@ export type PlayerSurfaceProps = {
   // A guest's way to leave with her name removed (#1281), and where it leads once done.
   forget?: Forget | undefined
   onForgotten?: () => void
+  // A wide window (`useDesk`, #1310): the hand along the foot and the targets over it, in place of
+  // the four tabs. The sheets, the held card and the questions are the same in both.
+  desk?: boolean
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false, stay, forget, onForgotten }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false, stay, forget, onForgotten, desk = false }: PlayerSurfaceProps) {
   const ids = useId()
   const t = useT()
   const [tab, setTab] = useState<Tab>('hand')
@@ -223,111 +230,142 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
 
   return (
     <>
-      <header {...behind}>
-        {/* Who is holding the phone, over how many cards: stacked, so the name has the width of the
-            row that is left and gives way behind an ellipsis before the controls do (#483). */}
-        <span className="byd-player-who">
-          <strong>{name}</strong>
-          <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
-        </span>
-        <UndoButton client={client} view={view} raise={raiseHead} />
-      </header>
-      {/* Whose turn it is (K30), on a row of its own under the head and over every tab: the head
-          holds the name and Ångra, and a badge and a button there would take the name's room. */}
-      <div className="byd-turn-strip" {...behind}>
-        <TurnBadge view={view} seat={seat} onGive={(next) => void client.send({ v: 'turn.give', seat: next })} />
-      </div>
-      <main className="byd-panels" {...behind}>
-        <section {...panel('hand')}>
-          {/* The piles first, because they are what fills a hand (#79), and the hand under them,
-              whole. */}
-          <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
-          <HandGrid view={view} selected={marks.selected} faces={faces} onToggle={marks.toggle} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} turned={turned} onTurn={(c) => turnedHand.toggle(c.id)} />
-        </section>
-        <section {...panel('mine')}>
-          {/* The counters, and the dice's pill among them (#1138): the things a seat keeps count
-              of and rolls, which a phone in the hand reaches without looking up. */}
-          <CountersRow
+      {desk ? (
+        <Suspense fallback={null}>
+          <PlayerDesk
+            client={client}
             view={view}
-            onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })}
-            extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
-          />
-          <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
-          {quickSource !== 'hand' && <Refusal handle={quick} />}
-        </section>
-        <section {...panel('table')}>
-          {/* Played from afar with no felt (C2, #484): where the whole table is, first. */}
-          {away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}
-          {/* Every zone this reader may look into that is not a pile: the piles stand on the
-              hand's tab, where the draw is, and no tile stands in two places (#465). The area in
-              front of another seat is public since #414, so it is read here — and never acted on. */}
-          <TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} />
-          <h2 className="byd-panel-title">{t('play.latest')}</h2>
-          <RecentActivity view={view} activity={activity} />
-        </section>
-        <section {...panel('more')}>
-          {/* The one help pattern (L32), on a narrower screen (#305), as a line with its question
-              mark. It stands here and not in the head (#1147): from the head the box hung over
-              the hand's first row of cards, and here it covers nothing a thumb plays with. */}
-          <p className="byd-help-row">
-            <span>{t('player.more.help')}</span>
-            <Help topic={t('play.help.hand.topic')}>
-              <p>{t('play.help.hand.pick')}</p>
-              <p>{t('play.help.hand.play')}</p>
-              <p>{t('play.help.hand.hidden')}</p>
-            </Help>
-          </p>
-          {/* The rules this table plays by (B7). The living number (#226) reads this seat's own
-              view. Out of the way when the table asks something of everyone (#483). */}
-          {playing && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
-          <FlagButton view={view} raise={raiseMore} words />
-          <ExitButton view={view} raise={raiseMore} words />
-        </section>
-      </main>
-      {/* What the table just said to this seat, over the bar and the tabs (#715). */}
-      {toast && <p className="byd-phone-said" role="status">{toast}</p>}
-      {tab === 'hand' && (
-        <div className="byd-bar" {...behind}>
-          <HandBar
-            view={view}
-            cards={marked}
-            down={allDown(marked)}
-            pending={quickPending}
-            refusal={quickSource === 'hand' ? quick : undefined}
+            activity={activity}
+            seat={seat}
+            name={name}
+            sessionId={sessionId}
+            faces={faces}
+            turnedHand={turnedHand}
+            openHand={(c) => openHand(c, [])}
+            onDraw={draw}
+            drawn={drawn}
+            refusedPile={refusedPile}
+            onDrop={(card, zone, at) => void playDirect([card], zone, at)}
+            dropped={quick}
             refusedZone={quickTarget}
-            onPlay={(zone, at) => void playDirect(marked, zone, at)}
-            onMore={setLifted}
-            onRead={(card) => hold(card, 'hand')}
-            onClear={marks.clear}
+            onRead={(card, row) => hold(card, row)}
+            raiseHead={raiseHead}
+            raiseMore={raiseMore}
+            rolling={rolling}
+            onRoll={() => setRolling(true)}
+            behind={behind}
           />
-          {quickSource === 'hand' && <Refusal handle={quick} />}
+          {toast && <p className="byd-phone-said" role="status">{toast}</p>}
+        </Suspense>
+      ) : (
+      <>
+      <header {...behind}>
+          {/* Who is holding the phone, over how many cards: stacked, so the name has the width of the
+              row that is left and gives way behind an ellipsis before the controls do (#483). */}
+          <span className="byd-player-who">
+            <strong>{name}</strong>
+            <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
+          </span>
+          <UndoButton client={client} view={view} raise={raiseHead} />
+        </header>
+        {/* Whose turn it is (K30), on a row of its own under the head and over every tab: the head
+            holds the name and Ångra, and a badge and a button there would take the name's room. */}
+        <div className="byd-turn-strip" {...behind}>
+          <TurnBadge view={view} seat={seat} onGive={(next) => void client.send({ v: 'turn.give', seat: next })} />
         </div>
+        <main className="byd-panels" {...behind}>
+          <section {...panel('hand')}>
+            {/* The piles first, because they are what fills a hand (#79), and the hand under them,
+                whole. */}
+            <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
+            <HandGrid view={view} selected={marks.selected} faces={faces} onToggle={marks.toggle} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} turned={turned} onTurn={(c) => turnedHand.toggle(c.id)} />
+          </section>
+          <section {...panel('mine')}>
+            {/* The counters, and the dice's pill among them (#1138): the things a seat keeps count
+                of and rolls, which a phone in the hand reaches without looking up. */}
+            <CountersRow
+              view={view}
+              onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })}
+              extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
+            />
+            <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
+            {quickSource !== 'hand' && <Refusal handle={quick} />}
+          </section>
+          <section {...panel('table')}>
+            {/* Played from afar with no felt (C2, #484): where the whole table is, first. */}
+            {away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}
+            {/* Every zone this reader may look into that is not a pile: the piles stand on the
+                hand's tab, where the draw is, and no tile stands in two places (#465). The area in
+                front of another seat is public since #414, so it is read here — and never acted on. */}
+            <TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} />
+            <h2 className="byd-panel-title">{t('play.latest')}</h2>
+            <RecentActivity view={view} activity={activity} />
+          </section>
+          <section {...panel('more')}>
+            {/* The one help pattern (L32), on a narrower screen (#305), as a line with its question
+                mark. It stands here and not in the head (#1147): from the head the box hung over
+                the hand's first row of cards, and here it covers nothing a thumb plays with. */}
+            <p className="byd-help-row">
+              <span>{t('player.more.help')}</span>
+              <Help topic={t('play.help.hand.topic')}>
+                <p>{t('play.help.hand.pick')}</p>
+                <p>{t('play.help.hand.play')}</p>
+                <p>{t('play.help.hand.hidden')}</p>
+              </Help>
+            </p>
+            {/* The rules this table plays by (B7). The living number (#226) reads this seat's own
+                view. Out of the way when the table asks something of everyone (#483). */}
+            {playing && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
+            <FlagButton view={view} raise={raiseMore} words />
+            <ExitButton view={view} raise={raiseMore} words />
+          </section>
+        </main>
+        {/* What the table just said to this seat, over the bar and the tabs (#715). */}
+        {toast && <p className="byd-phone-said" role="status">{toast}</p>}
+        {tab === 'hand' && (
+          <div className="byd-bar" {...behind}>
+            <HandBar
+              view={view}
+              cards={marked}
+              down={allDown(marked)}
+              pending={quickPending}
+              refusal={quickSource === 'hand' ? quick : undefined}
+              refusedZone={quickTarget}
+              onPlay={(zone, at) => void playDirect(marked, zone, at)}
+              onMore={setLifted}
+              onRead={(card) => hold(card, 'hand')}
+              onClear={marks.clear}
+            />
+            {quickSource === 'hand' && <Refusal handle={quick} />}
+          </div>
+        )}
+        <div role="tablist" aria-label={t('player.tabs')} className="byd-tabs" {...behind}>
+          {tabs.map((x) => {
+            const item = roving.itemProps(x.id)
+            return (
+              <button
+                key={x.id}
+                type="button"
+                role="tab"
+                id={`${ids}-tab-${x.id}`}
+                data-tab={x.id}
+                aria-selected={tab === x.id}
+                aria-controls={`${ids}-${x.id}`}
+                tabIndex={item.tabIndex}
+                ref={item.ref}
+                onFocus={item.onFocus}
+                onKeyDown={item.onKeyDown}
+                onClick={() => setTab(x.id)}
+              >
+                {x.label}
+                {/* Heard as «Framför mig, 1»: the comma is for the ear, the pill for the eye. */}
+                {x.count !== undefined && <><span className="byd-offscreen">, </span><span className="byd-tab-count">{x.count}</span></>}
+              </button>
+            )
+          })}
+        </div>
+      </>
       )}
-      <div role="tablist" aria-label={t('player.tabs')} className="byd-tabs" {...behind}>
-        {tabs.map((x) => {
-          const item = roving.itemProps(x.id)
-          return (
-            <button
-              key={x.id}
-              type="button"
-              role="tab"
-              id={`${ids}-tab-${x.id}`}
-              data-tab={x.id}
-              aria-selected={tab === x.id}
-              aria-controls={`${ids}-${x.id}`}
-              tabIndex={item.tabIndex}
-              ref={item.ref}
-              onFocus={item.onFocus}
-              onKeyDown={item.onKeyDown}
-              onClick={() => setTab(x.id)}
-            >
-              {x.label}
-              {/* Heard as «Framför mig, 1»: the comma is for the ear, the pill for the eye. */}
-              {x.count !== undefined && <><span className="byd-offscreen">, </span><span className="byd-tab-count">{x.count}</span></>}
-            </button>
-          )
-        })}
-      </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
           puts the card down as it goes: what it did is read off the row behind it. */}
       {held && (() => {

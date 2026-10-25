@@ -1,14 +1,7 @@
 import type { svOnline } from './sv.online.js'
 
 export const enOnline: Record<keyof typeof svOnline, string> = {
-  'online.hand.says.mouse': 'Click turns it over · drag it to the table to play',
-  'online.hand.says.mouse.turned': 'Click turns it up · drag it to the table to play it face down',
-  'online.hand.says.key': 'Space turns it over · Enter opens actions',
   'online.hand.back': 'Back to the hand',
-  'online.last': 'Last:',
-  'online.last.now': 'just now',
-  'online.last.s': '{n} s ago',
-  'online.last.min': '{n} min ago',
   'online.spread.title': 'The whole hand',
   'online.spread.label.one': 'The whole hand, {n} card',
   'online.spread.label.other': 'The whole hand, {n} cards',

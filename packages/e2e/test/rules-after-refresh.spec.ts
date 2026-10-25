@@ -1,6 +1,6 @@
 import { logIn, makeProject, startTable, withQuery } from '../support/api.js'
 import { gameDoc } from '../support/game.js'
-import { TV } from '../support/devices.js'
+import { PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
 // «Uppdatera» flyttar ett bord som spelar till projektets nuvarande rev (C7), och boken följer med
@@ -14,7 +14,12 @@ test('a table updated to a version with rules hands out the book and names the v
   const table = await startTable(request, project.id)
   const seats = gameDoc({ players: 2 }).setup.seats
   const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
-  const ada = await player({ ...table, seats }, { name: 'Ada', seat: seats[0]! })
+  // The phone in a hand (C4): a computer's window draws the desk since #1310, with the book in its head.
+  const ada = await player({ ...table, seats }, { name: 'Ada', seat: seats[0]!, device: PHONE })
+  // And a computer at the same table, whose desk carries the book in its head (#1310).
+  const bo = await player({ ...table, seats }, { name: 'Bo', seat: seats[1]! })
+  await expect(bo.page.locator('.byd-desk')).toBeVisible()
+  await expect(bo.page.getByRole('button', { name: 'Rules', exact: true })).toHaveCount(0)
   await expect(tv.page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar version 1')
   await expect(ada.page.locator('.byd-player > header')).toBeVisible()
   // On the phone the rules stand in «More» (#1147), which is open for both readings.
@@ -34,4 +39,5 @@ test('a table updated to a version with rules hands out the book and names the v
   await tv.page.getByRole('button', { name: 'Regler', exact: true }).click()
   await expect(tv.page.locator('.byd-rules-panel').getByRole('heading', { name: 'Så spelar ni' })).toBeVisible()
   await expect(ada.page.getByRole('button', { name: 'Rules', exact: true })).toBeVisible()
+  await expect(bo.page.locator('.byd-desk-head').getByRole('button', { name: 'Rules', exact: true })).toBeVisible()
 })
