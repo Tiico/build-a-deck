@@ -1,4 +1,4 @@
-import type { Browser, Page } from '@playwright/test'
+import type { APIRequestContext, Browser, Page } from '@playwright/test'
 import type { ProjectDoc, RuleDoc } from '@byd/server'
 import { logIn, mailTo, makeProjectOf } from './api.js'
 import { DESK } from './devices.js'
@@ -89,4 +89,34 @@ export async function openTogether(ada: Page, bo: Page, url: string): Promise<vo
   await ada.goto(url)
   await bo.goto(url)
   for (const page of [ada, bo]) await expect(page.locator('[data-here]')).toHaveAccessibleName(/, 2 online$/)
+}
+
+// Fler som har spelet öppet (D3), utan att var och en behöver en editor: varje person är ett eget
+// konto, inbjudet som medredigerare genom mejlet, i en egen webbläsare med en linje till projektets
+// aktör. Aktören räknar personer och inte flikar, så det är så många fler som huvudet visar (#1321).
+export async function alsoHere(browser: Browser, baseURL: string | undefined, owner: APIRequestContext, projectId: string, n: number): Promise<{ close(): Promise<void> }> {
+  const contexts = await Promise.all(
+    Array.from({ length: n }, async () => {
+      const email = `e2e-${crypto.randomUUID()}@example.com`
+      const invited = await owner.post(`/projects/${encodeURIComponent(projectId)}/invites`, { data: { email, role: 'editor' } })
+      expect(invited.status()).toBe(201)
+      const token = /\/invites\/([A-Za-z0-9_-]+)/.exec((await mailTo(email)).text)?.[1]
+      expect(token, 'the mail carries the invitation').toBeTruthy()
+      const context = await browser.newContext(baseURL ? { baseURL } : {})
+      const page = await context.newPage()
+      await logIn(page.request, email)
+      expect((await page.request.post(`/invites/${token}`)).ok()).toBe(true)
+      await page.goto('/health')
+      await page.evaluate((id) => {
+        const socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/projects/${encodeURIComponent(id)}/edit`)
+        return new Promise<void>((resolve, reject) => {
+          socket.onopen = () => resolve()
+          socket.onerror = () => reject(new Error('the line to the actor did not open'))
+          Object.assign(window, { line: socket })
+        })
+      }, projectId)
+      return context
+    }),
+  )
+  return { close: async () => void (await Promise.all(contexts.map((c) => c.close()))) }
 }
