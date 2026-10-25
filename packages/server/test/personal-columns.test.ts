@@ -146,6 +146,14 @@ const COLUMNS: Readonly<Record<string, Class>> = {
   'render_log.hash': 'none',
   'render_log.priority': 'none',
   'render_log.requested_at': 'none',
+  // A picture's screening (#1271): what a classifier made of an asset, by its hash, and when. It
+  // says nothing about who uploaded it, as `assets` does not.
+  'screenings.asset_hash': 'none',
+  'screenings.classifier': 'none',
+  'screenings.version': 'none',
+  'screenings.scores': 'none',
+  'screenings.image_hash': 'none',
+  'screenings.screened_at': 'none',
 }
 
 const root = join(import.meta.dirname, '../../..')
