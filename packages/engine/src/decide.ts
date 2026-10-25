@@ -220,6 +220,10 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
         if (!registry.get(spec.type).faces.includes(spec.face)) return `${spec.type.id} has no face ${spec.face}`
         if (state.zones[spec.zone]?.kind === 'hand' && isMaterial(registry.get(spec.type))) return `${spec.type.id} cannot be held in a hand`
       }
+      for (const def of it.zones ?? []) {
+        const zone = state.zones[def.id]
+        if (zone && zone.kind !== def.kind) return `zone ${def.id} is a ${zone.kind} at the table, not a ${def.kind}`
+      }
       return null
     }
     case 'undo.self':
