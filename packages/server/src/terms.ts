@@ -45,6 +45,6 @@ export function termsStanding(register: TermsRegister, accepted: readonly string
   const newest = [...accepted].sort().at(-1) ?? null
   if (current === null) return { current, accepted: newest, due: false }
   const inForce = register.filter((v) => v.version <= current)
-  const needed = inForce.findLast((v) => v.material)?.version ?? inForce[0]!.version
+  const needed = inForce.findLast((v) => v.material)?.version ?? inForce[0]?.version ?? current
   return { current, accepted: newest, due: !accepted.some((v) => v >= needed && v <= current) }
 }
