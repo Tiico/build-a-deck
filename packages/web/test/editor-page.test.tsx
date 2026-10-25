@@ -221,6 +221,8 @@ describe('the table follows the editor (C7, L5)', () => {
     await within(await screen.findByRole('group', { name: 'Bordet' })).findByRole('listitem')
     fireEvent.click(await screen.findByRole('button', { name: /nytt bord/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Starta ett nytt ändå' }))
+    // And then how you sit, as every start asks (#1286).
+    await answerStart()
     await screen.findByText(/nytt bord startat/i)
     const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
     expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)

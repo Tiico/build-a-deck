@@ -84,6 +84,9 @@ alter table sessions add column if not exists code text;
 alter table sessions add column if not exists code_expires_at timestamptz;
 alter table sessions add column if not exists host_key_hash text;
 create unique index if not exists sessions_code on sessions (code) where code is not null;
+-- How the people at the table sit (#1286): 'screen' or 'computer', the host's answer when the table
+-- started. Tables from before the question, and from the raw door, have none.
+alter table sessions add column if not exists seating text;
 -- Guests' admissions: the token a phone or an observer connects with, hashed; a kick revokes.
 create table if not exists guest_tokens (
   session_id  text not null references sessions(id) on delete cascade,

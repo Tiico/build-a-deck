@@ -35,17 +35,29 @@ test('the TV started from the editor leads back to the editor tab, and a way in 
   expect(page.context().pages(), 'no tab was opened for the way back').toHaveLength(tabs)
   expect(await kept(page), 'the editor was not loaded again').toBe(1)
 
-  // «Spela härifrån» in the Bord tab opens the seat beside the editor, once: pressed again, the
-  // same tab is brought out rather than a second one opened.
+  // «Öppna bordet» in the Bord tab opens the table in the tab it already has: the TV's.
   await page.getByRole('tab', { name: /^(Bord|Tables)$/ }).click()
-  const play = page.getByRole('link', { name: /^(Spela härifrån|Play from here)/ }).first()
+  await Promise.all([tv.waitForEvent('load'), page.getByRole('link', { name: /^(Öppna bordet|Open the table)/ }).first().click()])
+  expect(page.context().pages(), 'the table that has a tab opens in it').toHaveLength(tabs)
+
+  // A table of computers seats the host beside the editor (#1286), and its «Öppna bordet» is that
+  // seat, once: pressed again, the same tab is brought out rather than a second one opened.
+  await page.locator('header').getByRole('button', { name: /^(Fler sätt att öppna bordet|More ways to open the table)$/ }).click()
+  // The menu asks after the game's tables when it opens; «Nytt bord» says a table runs once it knows.
+  await expect(page.getByRole('group', { name: /^(Bordet|The table)$/ }).getByRole('listitem')).toBeVisible()
+  await page.getByRole('button', { name: /^(Nytt bord|New table)$/ }).click()
+  await page.getByRole('button', { name: /^(Starta ett nytt ändå|Start a new one anyway)$/ }).click()
+  const computers = page.getByRole('dialog', { name: /^(Starta ett bord|Start a table)$/ })
+  await computers.getByRole('radio', { name: /^(Var och en vid sin dator|Each at their own computer)$/ }).check()
+  await computers.getByRole('textbox').fill('Vera')
   const seated = page.context().waitForEvent('page')
-  await play.click()
+  await computers.getByRole('button', { name: /^(Starta och sätt dig|Start and sit down)$/ }).click()
   const online = await seated
   await online.waitForURL(/\/online\?/)
+  await expect(online.locator('.byd-seat-name[data-me="true"]')).toBeAttached()
   const withSeat = page.context().pages().length
-  // Pressed again, the way loads in the seat's own tab.
-  await Promise.all([online.waitForEvent('load'), play.click()])
+  const mine = page.locator(`.byd-table-row[data-table="${new URL(online.url()).searchParams.get('session')}"]`).getByRole('link', { name: /^(Öppna bordet|Open the table)/ })
+  await Promise.all([online.waitForEvent('load'), mine.click()])
   expect(page.context().pages(), 'the seat that has a tab opens in it').toHaveLength(withSeat)
   await expect(online.locator('.byd-seat-name[data-me="true"]')).toBeAttached()
 

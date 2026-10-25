@@ -131,38 +131,37 @@ describe('the three groups in the table column (#176, C9)', () => {
 
 const playingRow = async (): Promise<HTMLElement> => within(await screen.findByRole('list', { name: 'Bord som spelas' })).getByRole('listitem')
 
-describe('the one way that stands ready and the five in the row’s menu (#176)', () => {
-  it('stands "Spela härifrån" ready in the row, because the designer playtesting alone is the one sitting down', async () => {
+describe('the one way that stands ready and the row’s menu (#176, #1286)', () => {
+  it('stands «Öppna bordet» ready in the row, the one way in a table has', async () => {
     const id = await played()
     await openTables()
     const row = await playingRow()
     const name = roomOf(id).code
 
-    // The seat comes from the table itself (K12), so the ready way is complete once it answers.
-    const ready = await within(row).findByRole('link', { name: `Spela härifrån för bordet ${name} (öppnas i bordets egen flik)` })
+    const ready = await within(row).findByRole('link', { name: `Öppna bordet ${name} (öppnas i bordets egen flik)` })
     // And it is the only way standing in the row: everything else is one press away, not six.
     expect(within(row).getAllByRole('link')).toEqual([ready])
   })
 
-  it('holds the other five — the TV view among them — in a menu that opens from the row', async () => {
+  it('holds what the row does — the link to send and the end — in a menu that opens from the row', async () => {
     const user = userEvent.setup()
     const id = await played()
     await openTables()
     const row = await playingRow()
     const name = roomOf(id).code
-    await within(row).findByRole('link', { name: /Spela härifrån/ })
+    await within(row).findByRole('link', { name: /^Öppna bordet/ })
 
-    const more = within(row).getByRole('button', { name: `Fler sätt att öppna ${name}` })
+    const more = within(row).getByRole('button', { name: `Fler val för bordet ${name}` })
     expect(more.getAttribute('aria-haspopup')).toBe('menu')
     expect(more.getAttribute('aria-expanded')).toBe('false')
     expect(within(row).queryByRole('menu')).toBeNull()
 
     await user.click(more)
     expect(more.getAttribute('aria-expanded')).toBe('true')
-    const menu = within(row).getByRole('menu', { name: `Sätt att öppna bordet ${name}` })
-    // The three links say on the screen what they are; the two that act on the row carry the
-    // table's name where a screen reader picks them out of a list of controls.
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Öppna TV-vyn', 'Bordsläge', 'Titta på', `QR för telefoner ${name}`, `Avsluta bordet ${name}`])
+    const menu = within(row).getByRole('menu', { name: `Val för bordet ${name}` })
+    // Both act on the row, so both carry the table's name where a screen reader picks them out of
+    // a list of controls.
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([`Kopiera länk ${name}`, `Avsluta bordet ${name}`])
     // Ending a table cannot be taken back (C9), so it is not one of the ways in: it stands after
     // a line of its own, and says in words that it is something else.
     expect(within(menu).getAllByRole('separator')).toHaveLength(1)
@@ -173,8 +172,8 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     await played()
     await openTables()
     const row = await playingRow()
-    await within(row).findByRole('link', { name: /Spela härifrån/ })
-    const more = within(row).getByRole('button', { name: /Fler sätt att öppna (?!bordet)/ })
+    await within(row).findByRole('link', { name: /^Öppna bordet/ })
+    const more = within(row).getByRole('button', { name: /^Fler val för bordet / })
 
     await user.click(more)
     // The keys land inside the menu the moment it opens, so the first arrow moves within it.
@@ -194,8 +193,8 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     await played()
     await openTables()
     const row = await playingRow()
-    await within(row).findByRole('link', { name: /Spela härifrån/ })
-    const more = within(row).getByRole('button', { name: /Fler sätt att öppna (?!bordet)/ })
+    await within(row).findByRole('link', { name: /^Öppna bordet/ })
+    const more = within(row).getByRole('button', { name: /^Fler val för bordet / })
 
     await user.click(more)
     expect(within(row).getByRole('menu')).toBeTruthy()
@@ -212,8 +211,8 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     await played()
     await openTables()
     const row = await playingRow()
-    await within(row).findByRole('link', { name: /Spela härifrån/ })
-    await user.click(within(row).getByRole('button', { name: /Fler sätt att öppna (?!bordet)/ }))
+    await within(row).findByRole('link', { name: /^Öppna bordet/ })
+    await user.click(within(row).getByRole('button', { name: /^Fler val för bordet / }))
 
     // A link in a menu is a menu item, and a menu item answers Enter and Space (APG). Space is
     // the one the browser would otherwise spend on scrolling the page out from under the menu.
@@ -223,7 +222,7 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     expect(space.defaultPrevented).toBe(true)
   })
 
-  it('stands the TV view ready on a table that is over, because an ended table cannot be played', async () => {
+  it('opens a table that is over at its screen, and has no menu, because there is nothing left to send or end', async () => {
     const user = userEvent.setup()
     const id = await ended()
     await openTables()
@@ -234,11 +233,9 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     // the list is drawn first, so the row is waited for under its code rather than read at once.
     const name = roomOf(id).code
 
-    expect(await within(row).findByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i bordets egen flik)` })).toBeTruthy()
-    expect(within(row).queryByRole('link', { name: /Spela härifrån/ })).toBeNull()
-    // And its menu has neither of the two an ended table has no use for.
-    await user.click(within(row).getByRole('button', { name: `Fler sätt att öppna ${name}` }))
-    expect(within(row).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Bordsläge', 'Titta på'])
+    const open = await within(row).findByRole('link', { name: `Öppna bordet ${name} (öppnas i bordets egen flik)` })
+    expect(new URL(open.getAttribute('href')!, 'http://x').searchParams.get('mode')).toBe('tv')
+    expect(within(row).queryByRole('button', { name: /^Fler val för bordet / })).toBeNull()
   })
 })
 
@@ -250,6 +247,7 @@ describe('a table started or ended from the column (#480)', () => {
     const user = userEvent.setup()
     await openTables()
     await user.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    await answerStart()
     const said = await screen.findByText(/Nytt bord startat:/)
     expect(said.closest('[role="status"]')).not.toBeNull()
     const { id, code } = await waitFor(async () => {
@@ -267,8 +265,8 @@ describe('a table started or ended from the column (#480)', () => {
     const id = await played()
     await openTables()
     const row = await playingRow()
-    await within(row).findByRole('link', { name: /Spela härifrån/ })
-    await user.click(within(row).getByRole('button', { name: `Fler sätt att öppna ${roomOf(id).code}` }))
+    await within(row).findByRole('link', { name: /^Öppna bordet/ })
+    await user.click(within(row).getByRole('button', { name: `Fler val för bordet ${roomOf(id).code}` }))
     await user.click(within(row).getByRole('menuitem', { name: `Avsluta bordet ${roomOf(id).code}` }))
     await user.click(await screen.findByRole('button', { name: 'Ja, avsluta' }))
     expect(await screen.findByRole('button', { name: 'Avslutade bord · 1' })).toBeTruthy()

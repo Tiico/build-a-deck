@@ -18,6 +18,7 @@ import { capture } from '@byd/render'
 import { projectDoc } from './project-doc.js'
 import { TableClient } from '../src/client.js'
 import { admit, asSeat, asTable, createSession, registerRoom, startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -58,6 +59,7 @@ async function started(): Promise<string> {
   const card = document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement
   fireEvent.click(within(card).getByRole('button', { name: 'Fler val för Skogens herrar' }))
   fireEvent.click(within(await screen.findByRole('group', { name: 'Val för Skogens herrar' })).getByRole('button', { name: 'Starta bord' }))
+  await answerStart()
   await within(await screen.findByRole('region', { name: 'Pågår nu' })).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i/ })
   return container.innerHTML
 }

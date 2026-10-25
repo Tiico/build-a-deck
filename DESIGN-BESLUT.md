@@ -799,6 +799,11 @@ Följdkrav:
 `/online` på en telefonbredd visar spelarvyn och inte filten, och säger var bordet i sin helhet finns — på TV:n, eller på en skärm som rymmer det.
 Ingen yta hindrar någon från att spela på en telefon; den erbjuder bara inte bordet på en skärm som inte kan bära det.
 Handen på en telefon är K10:s remsa oavsett vilken route den nåddes från.
+
+Reviderat 2026-10-25 (#1286, L86): **bordet minns hur ni sitter, och anslutningssidan väljer vy efter det.**
+Sessionen och vyrollerna är desamma som förut, och inget spelläge finns.
+Men svaret värden gav när bordet startade, «Runt en skärm» eller «Var och en vid sin dator», sparas på bordet, och anslutningssidan erbjuder den vy svaret säger i stället för den skärmens bredd säger.
+Ett blandat bord fungerar fortfarande: den som inte är i rummet vid ett TV-bord har en tyst länk till hela bordet.
 Grinden som #77 och K17 avstod från kan därmed skrivas, men om en annan sak: vid 390 px ska ingen filt ritas, i stället för att ett kort på filten ska vara 45 px.
 
 Tillägg 2026-09-28 (#484 fynd 9, prototyp 24, beslut A):
@@ -4985,6 +4990,7 @@ Loggen ska få ett segment per medvetet beslut.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med B:s meny som snabbväg):
 Editorn har en fjärde flik, "Bord", som listar spelets alla bord — miniatyr, vilken version bordet kör, vem som sitter och tittar på, när det senast rörde sig — och vägarna in: TV-vyn, bordsläget, spela härifrån (`/online`), titta på (`/observe`) och QR-koden telefonerna läser.
+Reviderat 2026-10-25 (#1286, L86): raden har en väg in, «Öppna bordet», och i sin meny «Kopiera länk» och «Avsluta bordet»; de andra vägarna in är borta ur editorn.
 Flera bord per spel är verkligheten så fort man testat två gånger, vilket är varför fliken och inte "det senaste bordet" blev hemmet för dem; en statusrad längst ner (variant C) valdes bort för att den stjäl höjd från duken på mallfliken.
 Från de andra flikarna når man samma sak genom en pil bredvid "Uppdatera bordet" som fäller ut det nyaste bordets rad, alltså samma komponent och inte en andra beskrivning av bordet.
 Listan är serverns svar: `GET /projects/:id/sessions` säger vilka sessioner som startats ur projektet, med versionen aktören faktiskt kör och om loggen är låst.
@@ -8357,6 +8363,7 @@ Frågan har två svar: «Runt en skärm» (TV:n eller en stor skärm, med telefo
 Det senare frågar efter värdens namn vid bordet och sätter värden direkt på en ledig plats på `/online`, under det namnet.
 Svaret och namnet minns till nästa gång.
 Frågan ställs bara när det inte finns något bord: «Uppdatera» och menyns andra vägar in är orörda.
+Reviderat 2026-10-25 (#1286, L86): frågan ställs av varje start, också «Nytt bord», Bord-flikens «Starta nytt bord» och Mina spels, och svaret sparas på bordet.
 
 **Distansvyn börjar i ett väntrum.**
 Tills något har hänt vid bordet ligger ett väntrum över filten på `/online`.
@@ -8627,3 +8634,45 @@ Inte byggt, och inte beslutat att bygga: markörens etikett när ägaren pekar f
 
 `account-name.test.ts` och `account-name-postgres.test.ts` håller förslaget, taket, frågan och svaret, Dela, mejlet och närvaron; kvottesterna håller att ett konto utan namn sägs utan namn.
 `account-name.test.tsx` kör steget, bandet, kortet och huvudet mot den riktiga servern, och `account-name.spec.ts` går första inloggningen, «Hoppa över» och bandet i den byggda appen.
+
+### L86. Vägen in: två sätt att sitta, och bordet minns vilket (prototypat och beslutat 2026-10-25, #1286)
+
+Beställaren: «Vägen in till ett bord har fortfarande för många olika varianter. Jag tror vi bara har behovet av dator till dator eller på en gemensam tv + dator eller mobil. Genvägar där designern hoppar in skapar mer förvirring än vinning.»
+Kartläggningen i koden fann sjutton vägar in.
+L77:s fråga «Hur sitter ni?» ställdes bara av editorns Starta, medan tre andra startknappar startade utan att fråga och utan att öppna något: Mina spels «Starta bord», pilmenyns «Nytt bord» och Bord-flikens «Starta nytt bord».
+Fyra genvägar lät designern hoppa in själv: «Spela härifrån», som satte henne vid bordet som «Designern» utan att fråga, bordsläget, «Titta på» och QR-panelen, i pilmenyn och på varje rad.
+Ägarens «Öppna bordet» öppnade alltid TV-vyn, också för ett bord startat för varsin dator.
+En gäst med dator vid TV:n fick hela bordet en gång till, och värden vid ett TV-bord nådde sin egen hand bara genom «Spela härifrån», som gav henne ett andra bord.
+
+Tre varianter prövades i [`docs/ux-audits/2026-10-25-vagen-in/prototyper/index.html`](docs/ux-audits/2026-10-25-vagen-in/prototyper/index.html), med en karta över varje väg in: **A**, samma fråga vid varje start; **B**, som A och bordet minns svaret; och **C**, ingen fråga och en hall där skärmen väljer.
+Valet blev **B**.
+C lät gästens vy bero på något gästen inte ser, om en TV var ansluten.
+A lämnade datorn vid TV:n med en länk att hitta för att bara få handen.
+
+**Varje start frågar hur ni sitter, och bordet minns svaret.**
+Editorns «Starta bord» och «Nytt bord», Bord-flikens «Starta nytt bord» och Mina spels «Starta bord» ställer samma fråga, i samma fönster (L77).
+Svaret skickas med starten (`POST /projects/:id/sessions` med `{ seating }`) och sparas på bordet (`sessions.seating`); `GET /rooms/:kod` och spelets bordslista säger det.
+Värden får det svaret ger, i bordets egen flik (L80): TV-vyn vid «Runt en skärm», och sin plats på `/online` under sitt namn vid «Var och en vid sin dator».
+Servern säger vilken plats det är (`hostSeat`, den första), så att Mina spel kan sätta henne där utan spelets uppställning.
+
+**Ett bord har en väg in, «Öppna bordet», och den öppnar det bordet är.**
+Ett TV-bord öppnas på sin skärm.
+Ett datorbord öppnas på värdens egen plats när hon satte sig i den här webbläsaren (`byd.hostSeat`), och annars på rummets adress, där hon väljer plats som en gäst.
+Ett bord från före frågan öppnas på sin skärm, som alla bord gjorde.
+Det gäller raden på Bord-fliken, pilmenyn, bandets «öppna bordet» och Mina spels hjälte, meny och «Pågår nu».
+Radens meny har två val, «Kopiera länk», som kopierar `värd/KOD` (L77), och «Avsluta bordet».
+«Spela härifrån», bordsläget, «Titta på» och QR-panelen finns inte längre i editorn: designern kommer in som alla andra.
+
+**Anslutningssidan har ett enda «Gå med» på varje skärm.**
+Vid ett TV-bord ger det handen, i telefonen och i datorn, under raden «Du får handen. Bordet står på TV:n.», och en tyst länk «Inte på plats? Spela med hela bordet» leder till `/online`.
+Vid ett datorbord ger det bordet och handen på `/online`; en telefon får där handen ensam (C2, #99).
+«Bara titta» står kvar som länk vid båda.
+Ett bord utan svar har sidan som förut, efter skärmens bredd.
+
+Förhållandet till C2:
+Svaret är inte ett spelläge.
+Sessionen och vyrollerna är desamma, och ett blandat bord fungerar som förut; det som ändras är vilken vy en väg in föreslår.
+
+`packages/server/test/seating.test.ts` visar att svaret sparas, sägs på koden och i bordslistan, överlever en omstart och avvisas när det inte finns, mot minnet och Postgres.
+`packages/web/test/way-in.test.tsx` visar frågan vid varje start i editorn och på Mina spel, radens enda väg in och dess meny, kopian och vart «Öppna bordet» leder.
+`join-code-address.test.tsx` visar anslutningssidans enda «Gå med» för båda svaren på telefon och dator.
