@@ -133,6 +133,9 @@ importers:
       '@byd/render':
         specifier: workspace:*
         version: link:../render
+      '@byd/screening':
+        specifier: workspace:*
+        version: link:../screening
       '@byd/template':
         specifier: workspace:*
         version: link:../template
