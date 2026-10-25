@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -67,7 +68,7 @@ test.describe('a connection that goes away', () => {
 // says the network is back it tries at once.
 test('the TV goes on trying after its plan, and comes back when the network does (#722)', async ({ table, open }) => {
   test.setTimeout(90_000)
-  const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+  const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
   await expect(tv.page.locator('[data-seat-plate]').first()).toBeVisible()
   await tv.line.cut()
   await expect(tv.page.locator('.byd-status-stale')).toBeVisible({ timeout: 30_000 })

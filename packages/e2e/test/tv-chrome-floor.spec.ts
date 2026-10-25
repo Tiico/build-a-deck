@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import type { ProjectDoc } from '@byd/server'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { tableOf as tableFromSetup, tableWithRules } from '../support/api.js'
+import { tableOf as tableFromSetup, tableWithRules, withQuery } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -46,7 +46,7 @@ async function underTarget(page: Page, root: string): Promise<string[]> {
 test.describe('the television chrome that opens (#684)', () => {
   test('lays out the shortcuts with each key and its sentence on one line, at the floor', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await expect(page.locator('.byd-pile').first()).toBeVisible()
     await page.locator('.byd-shortcut-open').click()
     const panel = page.locator('[data-shortcut-panel]')
@@ -86,7 +86,7 @@ test.describe('the television chrome that opens (#684)', () => {
     const doc = { ...recipe, rows: recipe.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'])} ${nonce}` } })) }
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     const line = page.locator('.byd-tv-render')
     await expect(line).toHaveText(/^Laddar kort\d+ av \d+$/)
     expect(await underFloor(page, '.byd-tv-render')).toEqual([])
@@ -96,7 +96,7 @@ test.describe('the television chrome that opens (#684)', () => {
 
   test('opens the way in’s help at the floor', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await page.locator('.byd-tv-join .byd-help-ask').click()
     const box = page.locator('.byd-help-box')
     await expect(box).toBeVisible()
@@ -112,7 +112,7 @@ test.describe('the television chrome that opens (#684)', () => {
 
   test('says the two «?» apart in what they show, and not only to a screen reader', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     const keys = page.locator('.byd-shortcut-open')
     const join = page.locator('.byd-tv-join .byd-help-ask')
     await expect(keys).toBeVisible()
@@ -125,7 +125,7 @@ test.describe('the television chrome that opens (#684)', () => {
 
   test('draws the camera’s corner at the floor', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await expect(page.locator('.byd-pile').first()).toBeVisible()
     // The corner stands only while the view is the viewer's own (#325): one step in makes it so.
     await page.keyboard.press('+')
@@ -144,7 +144,7 @@ test.describe('the television chrome that opens (#684)', () => {
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
     await player(table, { name: 'Bo', seat: 'B' })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
     const tile = page.locator('[data-table-start]')
     await tile.click()
     await expect(tile).toHaveText('Starta om')
@@ -156,7 +156,7 @@ test.describe('the television chrome that opens (#684)', () => {
 
   test('names the rulebook in the header at the floor', async ({ request, open }) => {
     const table = await tableWithRules(request, { players: 2 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     // Waited for by its name: the button is drawn while the book is asked for, and stays when the
     // table answers that it has one.
     await expect(page.getByRole('button', { name: 'Regler', exact: true })).toBeVisible()
@@ -166,7 +166,7 @@ test.describe('the television chrome that opens (#684)', () => {
 
   test('ends at the floor', async ({ tableOf, open, host }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await expect(page.locator('.byd-pile').first()).toBeVisible()
     const hosting = await host(table)
     await hosting.send([{ v: 'session.end' } as never])

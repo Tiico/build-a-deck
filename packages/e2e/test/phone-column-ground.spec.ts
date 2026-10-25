@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { expect, test } from '../support/test.js'
 
 // The phone's column is 580 px wide and stands in the middle of a wider window, and the page
@@ -30,7 +30,7 @@ for (const route of ['onlineUrl', 'playUrl'] as const) {
     const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
     await host(table)
     const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await open({ name: 'd', viewport: { width: 853, height: 533 } }, `${seat[route]}&lang=sv`)
+    const { page } = await open({ name: 'd', viewport: { width: 853, height: 533 } }, withQuery(seat[route], 'lang=sv'))
     const column = page.locator('.byd-player')
     await expect(column).toBeVisible()
     const box = (await column.boundingBox())!

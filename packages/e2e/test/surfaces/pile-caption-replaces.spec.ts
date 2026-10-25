@@ -181,7 +181,7 @@ test.describe('namn och skyltar läggs ut igen när kasthögens bildtext blir br
   test('rummets TV 1280, fyra platser', async ({ request, open, host, player }) => {
     const { table, dealer } = await dealt(request, host, { x: 200, y: 60, w: 100, h: 40, rot: 0 })
     await player(table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(SMALL_TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(SMALL_TV, withQuery(table.tvUrl, 'lang=sv'))
     await waiting(page)
     await expect(page.locator('[data-seat-plate]')).toHaveCount(table.seats.length, { timeout: 20_000 })
     await settled(page)
@@ -209,7 +209,7 @@ test.describe('namn och skyltar läggs ut igen när kasthögens bildtext blir br
   test('rummets TV 1280, fyra platser, när bilden kommer', async ({ request, open, host, player }) => {
     const { table, dealer } = await dealt(request, host, { x: 200, y: 60, w: 100, h: 40, rot: 0 })
     await player(table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(SMALL_TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(SMALL_TV, withQuery(table.tvUrl, 'lang=sv'))
     await waiting(page)
     await expect(page.locator('[data-seat-plate]')).toHaveCount(table.seats.length, { timeout: 20_000 })
     await settled(page)

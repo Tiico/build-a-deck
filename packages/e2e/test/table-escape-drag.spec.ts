@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import type { Page } from '@playwright/test'
 import { DESK } from '../support/devices.js'
 import type { Wire } from '../support/frames.js'
@@ -28,7 +29,7 @@ test.describe('Escape under ett drag på bordsläget (#681)', () => {
 
   test('lägger tillbaka högens topp och skickar inget', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
-    const { page, wire } = await open(DESK, `${table.tableUrl}&lang=sv`)
+    const { page, wire } = await open(DESK, withQuery(table.tableUrl, 'lang=sv'))
     const pile = page.locator('.byd-pile[data-zone="draw"]')
     await expect(pile).toHaveAttribute('data-count', '4')
     const before = envelopes(wire).length
@@ -42,7 +43,7 @@ test.describe('Escape under ett drag på bordsläget (#681)', () => {
 
   test('lägger tillbaka ett löst kort där det låg och skickar inget', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
-    const { page, wire } = await open(DESK, `${table.tableUrl}&lang=sv`)
+    const { page, wire } = await open(DESK, withQuery(table.tableUrl, 'lang=sv'))
     // Ett löst kort på golvet: högens topp dragen en bit ut på filten.
     const top = centre((await page.locator('.byd-pile[data-zone="draw"] .byd-pile-top').boundingBox())!)
     await page.mouse.move(top.x, top.y)

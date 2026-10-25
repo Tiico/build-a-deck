@@ -1,4 +1,4 @@
-import type { Intent, Presence } from '@byd/protocol'
+import { tableProtocols, type Intent, type Presence } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 import type { Table } from './api.js'
 
@@ -39,8 +39,10 @@ export class Host {
   }
 
   static async open(origin: string, table: Table): Promise<Host> {
-    const url = `${origin.replace(/^http/, 'ws')}/sessions/${encodeURIComponent(table.session)}?host=${encodeURIComponent(table.hostKey)}`
-    const ws = new WebSocket(url)
+    // The key in the protocol header, as the screen itself hands it over (#1306): the address of
+    // the upgrade is a request a proxy logs.
+    const url = `${origin.replace(/^http/, 'ws')}/sessions/${encodeURIComponent(table.session)}`
+    const ws = new WebSocket(url, tableProtocols({ host: table.hostKey }))
     await new Promise<void>((resolve, reject) => {
       ws.addEventListener('open', () => resolve(), { once: true })
       ws.addEventListener('error', () => reject(new Error(`the host could not open ${url}`)), { once: true })

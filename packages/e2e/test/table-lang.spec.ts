@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -8,7 +9,7 @@ import { expect, test } from '../support/test.js'
 // Raden som bevisar språket är scenens väntande kort (#1290): rummets TV har inget flöde.
 test('TV:n minns språket den öppnades på, också utan ?lang= nästa gång (#756)', async ({ tableOf, open }) => {
   const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
-  const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+  const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
   await expect(page.locator('html')).toHaveAttribute('lang', 'sv')
   await expect(page.getByText(/peka på ett kort/)).toBeVisible()
 

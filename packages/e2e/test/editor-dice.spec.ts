@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { logIn, makeProject, startTable } from '../support/api.js'
+import { logIn, makeProject, startTable, withQuery } from '../support/api.js'
 import { DESK, TV } from '../support/devices.js'
 import { watchWire } from '../support/frames.js'
 import { expect, test } from '../support/test.js'
@@ -71,7 +71,7 @@ test.describe('tärningarna i fliken Bord', () => {
     const tv = await browser.newContext({ viewport: TV.viewport, ...(baseURL ? { baseURL } : {}) })
     const screen = await tv.newPage()
     const wire = watchWire(screen)
-    await screen.goto(`${table.tvUrl}&lang=sv`)
+    await screen.goto(withQuery(table.tvUrl, 'lang=sv'))
     await expect(screen.locator('.byd-tv-head')).toContainText('Tärningsspelet')
 
     for (const seat of ['A', 'B', 'C']) await expect.poll(() => diceIn(wire.received(), `mine:${seat}`, 'd6'), { message: `två d6 framför ${seat}` }).toBe(2)
