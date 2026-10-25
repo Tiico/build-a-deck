@@ -261,6 +261,12 @@ En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 
 Sidan namnger sina bilder och typsnitt med hash, och workern läser bytesen själv ur Postgres eller R2 (§4, #1028).
 Utdata i R2 under hash av mall, rad, typversion och fontset; ett jobb vars hash redan finns är en no-op.
 En partners tryckfil (#1207) har utfallet i den kompilerade sidan och pixlarna och formatet i jobbslaget, så samma kort i två partners krav är två renderingar och i samma krav en.
+Screening (F4, #1271) är jobbslaget `screen` och den tredje prioriteten, efter texturer och tryck: ingen väntar på den, och ett bord som läggs väntar aldrig bakom den.
+Ett sådant jobb är en sida som namnger en uppladdad bild med sin hash; workern läser bytesen som för ett kort (§4), ritar bilden i Chromium till högst 512 px, svg med i sin egen form, och ger pixlarna till den klassificerare och version jobbet namnger.
+Klassificerarna körs alltså i renderworkern, på lådan, och ingen bild lämnar huset (F4, beslut 8).
+Det som sparas är ett resultat och inget utdata: en rad per bild, klassificerare och version i `screenings`, med poängen, bildhashen och tidpunkten, och ett andra jobb för samma är en no-op.
+En bild som saknas eller inte går att avkoda är ett misslyckat jobb med hashen i felet, inte ett resultat.
+Ett screeningjobb skrivs aldrig i `render_log`, så det räknas inte på någon designers renderingar (§12).
 En reaper återställer jobb vars `started_at` är äldre än en gräns, eftersom Chromium ibland hänger utan att dö.
 
 ## 7. Deploy: CI bygger, lådan hämtar
@@ -441,6 +447,10 @@ I dag sätter operatören den över Tailscale (§10), med lådans egen `BYD_PLAN
 `pnpm --filter @byd/server usage` skriver varje kontos nivå, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
 Lagring (`storageBytes`, #1197) är det kontots spel nämner i någon version, räknat ur databasen; ett borttaget spel frigör sitt, men bytesen ligger kvar i R2 (§4).
 Renderingar (`rendersPer30Days`) läses ur renderköns logg `render_log` i samma databas, så skriptet behöver ingen annan anslutning.
+
+Screeningen (F4, #1271, §6) har två skript av samma slag, som inte heller skickar något någonstans:
+`pnpm --filter @byd/server screening run <spel>` köar en screening av varje bild som spelets sparade version namnger, i den klassificerare lådan screenar med nu, och `screening report <tröskel>` skriver hur många bilder den klassificerarversionen har screenat, hur många som misslyckats, och vilka som når tröskeln, en poäng från 0 till 1, i någon kategori, högst först.
+Tröskeln ges varje gång och sparas ingenstans, eftersom den är operatörens att pröva mot riktig kortkonst.
 
 E-post: Resend, Postmark eller motsvarande — en bostads-IP är i praktiken svartlistad.
 POD-partnerns API.

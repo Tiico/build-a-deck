@@ -12,13 +12,15 @@
     "seed": "tsx scripts/seed.ts",
     "seed:project": "tsx scripts/seed-project.ts",
     "plan": "tsx scripts/plan.ts",
-    "usage": "tsx scripts/usage.ts"
+    "usage": "tsx scripts/usage.ts",
+    "screening": "tsx scripts/screening.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",
     "@byd/print": "workspace:*",
     "@byd/protocol": "workspace:*",
     "@byd/render": "workspace:*",
+    "@byd/screening": "workspace:*",
     "@byd/template": "workspace:*",
     "@simplewebauthn/server": "^14.0.3",
     "fflate": "^0.8.3",

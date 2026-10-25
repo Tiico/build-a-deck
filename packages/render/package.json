@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@byd/engine": "workspace:*",
+    "@byd/screening": "workspace:*",
     "@byd/template": "workspace:*",
     "playwright": "^1.55.0",
     "postgres": "^3.4.5",

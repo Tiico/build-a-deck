@@ -9,6 +9,7 @@ COPY packages/engine/package.json packages/engine/
 COPY packages/print/package.json packages/print/
 COPY packages/template/package.json packages/template/
 COPY packages/render/package.json packages/render/
+COPY packages/screening/package.json packages/screening/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile --filter @byd/render...
@@ -16,5 +17,6 @@ COPY packages/protocol packages/protocol
 COPY packages/engine packages/engine
 COPY packages/template packages/template
 COPY packages/render packages/render
+COPY packages/screening packages/screening
 USER pwuser
 CMD ["node", "packages/render/node_modules/tsx/dist/cli.mjs", "packages/render/src/main.ts"]

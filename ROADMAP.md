@@ -224,7 +224,7 @@ Beställaren beslutade 2026-10-23 (#1199) att stödet för fler partner och tryc
 - 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; partnerns krav i pixlar och utfall är byggda (#1207); kvar är tryckprofil per typ (B2) och CMYK.
 - ⬜ Kassa med kostnadsbesked först i flödet, ingen prisvisning i editorn (F3).
 - ⬜ Automatisk IP-screening med manuell eskalering före tryck (F4, reviderad 2026-10-24, #1268): klassificerare och bildhash på lådan, i skuggläge vid uppladdning redan i betan, och grind först i kassan.
-  Screeningkontraktet och jobbslaget (#1271) pågår; klassificeraren och bildhashen mätta mot kortkonst (#1273) efter #1271; anmälan och spärr per hash (#1274) och granskningen före tryck (#1275) prototypas först, och #1275 väntar på kassan och en partner.
+  Screeningkontraktet, cachen per hash och jobbslaget `screen` är byggda med en fake-klassificerare och operatörens `screening run` och `report` (#1271); klassificeraren och bildhashen mätta mot kortkonst (#1273) efter #1271; anmälan och spärr per hash (#1274) och granskningen före tryck (#1275) prototypas först, och #1275 väntar på kassan och en partner.
 - ⬜ Moms, tull och leveransvillkor för EU-kunder: DDP eller DDU, IOSS (I, ekonomi).
 - ⬜ Fontlicensiering för tryck (I).
 - ⬜ En riktig order som landar i brevlådan (H1, TUNN-SKIVA).
