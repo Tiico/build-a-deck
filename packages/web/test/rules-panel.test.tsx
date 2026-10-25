@@ -72,12 +72,16 @@ describe('the rulebook in the editor (B7)', () => {
   it('adds a block after the one it is asked for, and takes one away', async () => {
     await openRules()
     const before = book().querySelectorAll('[data-block]').length
-    // The one ＋ the book draws stands at the block the hand is on (#216), so the hand goes there
-    // first; where it stands and what it does with a keyboard is `rules-one-plus`'s.
-    fireEvent.pointerOver(book().querySelector('[data-block="h1"]')!)
-    fireEvent.click(await within(book()).findByRole('button', { name: 'Lägg till efter Så spelar ni' }))
+    // The row above the book adds after the block last written in (#1258), so the hand opens that
+    // block first; where it lands and what it says about it is `rules-toolbar`'s.
+    fireEvent.click(within(within(book()).getByRole('heading', { name: 'Så spelar ni' })).getByRole('button'))
+    fireEvent.keyDown(await within(book()).findByLabelText('Rubrik 1'), { key: 'Escape' })
+    await waitFor(() => expect(within(book()).queryByLabelText('Rubrik 1')).toBeNull())
+    const adding = within(document.querySelector('.byd-rules-bar') as HTMLElement).getByRole('group', { name: 'Lägg till' })
+    fireEvent.click(within(adding).getByRole('button', { name: '＋ Text' }))
     await waitFor(() => expect(book().querySelectorAll('[data-block]')).toHaveLength(before + 1))
-    fireEvent.click(within(book()).getByRole('button', { name: 'Ta bort blocket' }))
+    expect(book().querySelectorAll('[data-block]')[1]?.querySelector('textarea')).toBeTruthy()
+    fireEvent.click(within(book()).getByRole('button', { name: 'Ta bort stycket' }))
     await waitFor(() => expect(book().querySelectorAll('[data-block]')).toHaveLength(before))
   })
 
@@ -125,7 +129,7 @@ describe('the rulebook in the editor (B7)', () => {
   // What this holds on to is that a book begun there is a book the project keeps.
   it('writes a rulebook into the document when the game has none', async () => {
     await openRules(false)
-    fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ett tomt blad/ }))
     expect(await within(book()).findByRole('heading', { name: 'Skogens herrar' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rules?.blocks.length).toBeGreaterThan(0))
@@ -285,9 +289,15 @@ describe('the rulebook as a booklet (B7)', () => {
   // booklet in it. Working it at once rendered nothing, and passed only while a 202 was taken for
   // a finished file (#678).
   const renderBooklet = () => waitFor(async () => expect(await run.completeRenders()).toBe(1), { timeout: 3000 })
+  // The booklet stands in the box «Boken» opens at the end of the row (#1258).
+  const booklet = async (): Promise<HTMLElement> => {
+    const menu = await screen.findByRole('button', { name: 'Boken' })
+    if (menu.getAttribute('aria-expanded') !== 'true') fireEvent.click(menu)
+    return screen.getByRole('button', { name: 'Ladda ner PDF-häfte' })
+  }
   it('is ordered from the rules and opens when it is rendered', async () => {
     await openRules()
-    const order = screen.getByRole('button', { name: 'Häfte för tryck' })
+    const order = await booklet()
     fireEvent.click(order)
     expect(await screen.findByText(/Häftet skapas/)).toBeTruthy()
 
@@ -301,8 +311,8 @@ describe('the rulebook as a booklet (B7)', () => {
   // (#481, fynd 4). The tables' own ways save first, and so does this one.
   it('saves a book that has not been saved yet, and hands the focus to the booklet when it is ready', async () => {
     await openRules(false)
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
-    const order = await screen.findByRole('button', { name: 'Häfte för tryck' })
+    fireEvent.click(screen.getByRole('button', { name: /^Fem avsnitt med frågor/ }))
+    const order = await booklet()
     order.focus()
     fireEvent.click(order)
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rules?.blocks.length).toBeGreaterThan(0))
@@ -317,7 +327,7 @@ describe('the rulebook as a booklet (B7)', () => {
   // orders nothing.
   it('keeps the focus on the button while it works, and a second press orders nothing', async () => {
     await openRules()
-    const order = screen.getByRole('button', { name: 'Häfte för tryck' })
+    const order = await booklet()
     order.focus()
     fireEvent.click(order)
     expect(await screen.findByText(/Häftet skapas/)).toBeTruthy()
@@ -342,7 +352,7 @@ describe('the rulebook as a booklet (B7)', () => {
     })
     try {
       await openRules()
-      fireEvent.click(screen.getByRole('button', { name: 'Häfte för tryck' }))
+      fireEvent.click(await booklet())
       await waitFor(() => expect(asked.filter((s) => s === 202).length).toBeGreaterThanOrEqual(2), { timeout: 3000 })
       expect(screen.queryByRole('link', { name: 'Öppna häftet' })).toBeNull()
       expect(screen.getByText(/Häftet skapas/)).toBeTruthy()
@@ -357,7 +367,7 @@ describe('the rulebook as a booklet (B7)', () => {
   // The file is opened under the game's name (#678): the tab and the saved file say what it is.
   it('opens the booklet under the game’s own name', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Häfte för tryck' }))
+    fireEvent.click(await booklet())
     await renderBooklet()
     const link = await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
     expect(new URL(link.getAttribute('href')!).searchParams.get('name')).toBe('Skogens herrar – regler.pdf')
@@ -367,18 +377,20 @@ describe('the rulebook as a booklet (B7)', () => {
   // is the order again, and the next booklet is the book as it now stands.
   it('takes the link back when the book is changed after it was rendered', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Häfte för tryck' }))
+    fireEvent.click(await booklet())
     await renderBooklet()
     await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
     fireEvent.click(within(book()).getByText(/Dra ett kort ur/))
     fireEvent.change(await within(book()).findByLabelText('Text under Så spelar ni'), { target: { value: 'Dra två kort ur [[zon:draw]].' } })
     await waitFor(() => expect(screen.queryByRole('link', { name: 'Öppna häftet' })).toBeNull())
-    expect(screen.getByRole('button', { name: 'Häfte för tryck' })).toBeTruthy()
+    expect(await booklet()).toBeTruthy()
   })
 
   it('is not offered at all before there are any rules', async () => {
     await openRules(false)
-    expect(screen.queryByRole('button', { name: 'Häfte för tryck' })).toBeNull()
+    await screen.findByRole('region', { name: 'Reglerna hör till spelet' })
+    expect(screen.queryByRole('button', { name: 'Boken' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ladda ner PDF-häfte', hidden: true })).toBeNull()
   })
 })
 

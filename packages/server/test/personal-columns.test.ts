@@ -78,6 +78,10 @@ const COLUMNS: Readonly<Record<string, Class>> = {
   'passkeys.device': 'personal',
   'passkeys.created_at': 'none',
   'passkeys.last_used_at': 'none',
+  // What she agreed to and when (#1270): about her, and hers in an extract (art. 15, #1280).
+  'terms_acceptances.account_id': 'pseudonymous',
+  'terms_acceptances.version': 'none',
+  'terms_acceptances.accepted_at': 'personal',
   'account_plans.account_id': 'pseudonymous',
   'account_plans.plan': 'none',
   'account_plans.since': 'none',
@@ -163,7 +167,7 @@ const unclassed = (sqls: readonly string[]) => sqls.flatMap(columnsOf).filter((c
 describe('the columns of the database, classed (#1276, #1269)', () => {
   it('reads every table of both schemas, the personal ones #1269 found among them', () => {
     const columns = SCHEMAS.flatMap(columnsOf)
-    for (const known of ['accounts.email', 'login_tokens.email', 'project_invites.email', 'guest_tokens.name', 'surveys.who', 'surveys.answers', 'events.intent', 'sessions.account_id', 'project_versions.saved_by', 'render_log.account_id']) expect(columns).toContain(known)
+    for (const known of ['terms_acceptances.accepted_at', 'accounts.email', 'login_tokens.email', 'project_invites.email', 'guest_tokens.name', 'surveys.who', 'surveys.answers', 'events.intent', 'sessions.account_id', 'project_versions.saved_by', 'render_log.account_id']) expect(columns).toContain(known)
   })
 
   it('classes every column there is, and nothing that is not there', () => {

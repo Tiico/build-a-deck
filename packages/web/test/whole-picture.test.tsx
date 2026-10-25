@@ -15,7 +15,7 @@ import { join } from 'node:path'
 import { deflateSync } from 'node:zlib'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
-import { chromium, type Browser } from 'playwright'
+import { chromium, type Browser, type Page } from 'playwright'
 import type { ProjectDoc } from '@byd/server'
 import { MediaPanel } from '../src/editor/MediaPanel.js'
 import { PictureLibraryDialog } from '../src/editor/PictureLibrary.js'
@@ -110,11 +110,22 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
+// The tiles in Media and the library load their pictures lazily, and \`load\` does not wait for a
+// lazy image: a photograph taken then can hold an empty tile. Wait until the picture is decoded
+// and two frames have been drawn with it before the page is photographed.
+async function painted(page: Page, img: string): Promise<void> {
+  await page.locator(img).evaluate(async (el: HTMLImageElement) => {
+    await el.decode()
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+  })
+}
+
 // The thumbnail's box, and the box the picture's own colour covers in the photograph of it.
 async function seen(html: string, img: string, picture: string): Promise<Seen> {
   const page = await browser.newPage({ viewport: { width: 1000, height: 800 } })
   try {
     await page.setContent(page_(html, picture), { waitUntil: 'load' })
+    await painted(page, img)
     const shot = (await page.screenshot({ scale: 'css' })).toString('base64')
     return await page.evaluate(
       async ({ shot, img, red }) => {
@@ -181,6 +192,7 @@ describe('a dark picture stands out from its ground (#1257)', () => {
       const page = await browser.newPage({ viewport: { width: 1000, height: 800 } })
       try {
         await page.setContent(page_(surface.html(), png(100, 300, NIGHT)), { waitUntil: 'load' })
+        await painted(page, surface.img)
         const shot = (await page.screenshot({ scale: 'css' })).toString('base64')
         const [picture, ground] = await page.evaluate(
           async ({ shot, img }) => {

@@ -7,8 +7,8 @@ import type { CorpusEntry } from '../scripts/corpus.js'
 import { Harness, registry } from './fixture.js'
 
 // Masking a line (#1276, #1269): the personal fields of the log — and only they — become
-// `REDACTED`, and the game is the same game. Nothing masks a line in operation; whether the store
-// ever does is F7 in #1269. This is the function and the proof that it could.
+// `REDACTED`, and the game is the same game (D4 as G6 put it). This is the function and the proof
+// that it may; the erasure that writes a masked line in the store is #1279.
 
 // Every personal value a log carries, read off the same list the masking reads.
 const wordsOf = (log: readonly Applied[]): Set<string> => {

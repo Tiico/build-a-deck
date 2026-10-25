@@ -1,0 +1,494 @@
+<!doctype html>
+<!-- PROTOTYP. Kastas när varianten är vald. ?v=A|B|C|D&bok=tom|skriven, ←/→ byter variant. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regelbokens knappar — prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #1c2030; --panel: #232838; --ink: #e6ecfa; --quiet: #8b93a7; --line: #3a4152; --btn: #262b3a; --blue: #2f7de1; --gold: #f0b64a; --paper: #f7f2e8; --paper-ink: #1d1a16; --paper-quiet: #6f675b; --felt: #1f4a33; --danger: #f0a58a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #14161c; color: var(--ink); font: 14px system-ui, sans-serif; }
+body { padding: 16px 16px 96px; }
+.rubrik { max-width: 1400px; margin: 0 0 10px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; }
+.anteckning { max-width: 1400px; margin: 0 0 12px; padding: 10px 14px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.anteckning table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+.anteckning td { padding: 2px 8px 2px 0; vertical-align: top; }
+.anteckning td:first-child { color: #b8a77f; text-decoration: line-through; text-decoration-color: #7a6a48; white-space: nowrap; }
+.anteckning td:nth-child(2) { color: #8f7f5a; }
+.anteckning td:last-child { color: #ffe9b8; font-weight: 600; }
+.proto { max-width: 1400px; margin: 0 0 12px; display: flex; gap: 10px; align-items: center; font-size: 13px; color: #ffd98a; flex-wrap: wrap; }
+.proto button { min-height: 30px; font-size: 12px; background: #2a2414; border-color: #4a4230; color: #ffd98a; }
+.proto button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; }
+
+button, .knapp { font: inherit; color: var(--ink); background: var(--btn); border: 1px solid var(--line); border-radius: 8px; min-height: 40px; padding: 0 14px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+button:hover { border-color: #56607a; }
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+button.tyst { background: transparent; border-color: transparent; color: #c3cada; }
+button.tyst:hover { background: #2a3042; }
+button.fara { color: var(--danger); }
+.primar { background: #8fd19e; color: #102016; border-color: #8fd19e; }
+
+/* Editorns skal, så att varianterna står där de ska stå. */
+.skal { max-width: 1400px; border-radius: 10px; overflow: hidden; outline: 1px solid #2a2d36; background: var(--bg); }
+.topp { height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: #171a24; border-bottom: 1px solid #2a2f3e; font-size: 13px; }
+.topp .namn { font-weight: 700; font-size: 15px; }
+.topp .flikar { display: flex; gap: 2px; margin: 0 auto; background: #11131a; border-radius: 8px; padding: 3px; }
+.topp .flikar span { padding: 8px 10px; color: #a9b1c4; font-weight: 600; }
+.topp .flikar span.vald { color: #fff; box-shadow: inset 0 -2px 0 var(--blue); }
+.topp .upd { background: var(--blue); border-color: var(--blue); color: #fff; }
+.yta { height: 720px; display: flex; flex-direction: column; padding: 14px 16px 0; gap: 12px; }
+.rad { flex: none; display: flex; align-items: center; gap: 12px; min-height: 42px; flex-wrap: wrap; }
+.rad h2 { margin: 0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--quiet); }
+.rad .fyll { flex: 1; }
+.skilje { width: 1px; align-self: stretch; background: var(--line); margin: 6px 2px; }
+.etikett { font-size: 12px; color: var(--quiet); }
+.segment { display: inline-flex; background: #151823; border: 1px solid var(--line); border-radius: 9px; padding: 3px; gap: 2px; }
+.segment button { min-height: 32px; border: 0; background: transparent; color: #aab2c6; padding: 0 12px; border-radius: 6px; }
+.segment button[aria-pressed='true'] { background: #33405e; color: #fff; }
+.hjalp { width: 28px; min-height: 28px; height: 28px; padding: 0; justify-content: center; border-radius: 50%; }
+
+.uppslag { flex: 1; min-height: 0; display: grid; gap: 22px; }
+.kolumn { overflow: auto; padding: 4px 0 20px; display: flex; flex-direction: column; gap: 2px; }
+.kolumn b { font-size: 11px; letter-spacing: 2px; color: var(--quiet); text-transform: uppercase; margin: 0 0 8px 10px; }
+.toc a { display: block; color: #c3cada; text-decoration: none; padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+.toc a.under { padding-left: 24px; color: #9aa3b8; }
+.toc a:hover { background: #262c3c; }
+.toc a .tomt { color: var(--quiet); }
+.kolumn .kalla { margin: 14px 10px 0; color: var(--quiet); font-size: 12px; line-height: 1.45; }
+
+.lasning { overflow: auto; border-radius: 12px 12px 0 0; }
+.lasning.filt { background: radial-gradient(ellipse at 50% 30%, #2b6346, var(--felt) 70%); padding: 28px 0 0; display: flex; justify-content: center; }
+.sida { background: var(--paper); color: var(--paper-ink); border-radius: 12px 12px 0 0; padding: 30px 40px 60px; font-family: 'Source Serif 4', Georgia, serif; font-size: 15px; line-height: 1.55; max-width: 620px; margin: 0 auto; min-height: 100%; position: relative; }
+.filt .sida { width: 380px; padding: 22px 24px 40px; font-size: 14px; border-radius: 14px 14px 0 0; box-shadow: 0 -6px 30px rgba(0,0,0,.4); }
+.sida h1 { font-size: 28px; margin: 0 0 18px; }
+.sida h3 { font-size: 21px; margin: 26px 0 8px; }
+.sida h4 { font-size: 16px; margin: 18px 0 6px; }
+.sida p, .sida ol, .sida ul { margin: 0 0 10px; }
+.sida .fraga { color: var(--paper-quiet); font-style: italic; }
+.sida .ref { background: #e8dfcd; border-radius: 4px; padding: 0 4px; font-style: normal; }
+.sida .upp { display: inline-flex; min-height: 34px; padding: 0 12px; border-radius: 8px; background: #ebe4d6; border: 1px solid #b9ad97; color: var(--paper-ink); font: 600 13px system-ui; }
+.sida .upp-text { color: var(--paper-quiet); font-style: italic; font-size: 13px; margin: 4px 0 10px; }
+.block { position: relative; border-radius: 6px; margin: 0 -10px; padding: 2px 10px; cursor: text; }
+.skrivlage .block:hover { background: #efe7d8; }
+.block.oppen { background: transparent; cursor: default; }
+.redigera { background: #1c2030; color: var(--ink); border-radius: 10px; padding: 10px; font-family: system-ui; font-size: 13px; display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.redigera textarea { width: 100%; min-height: 70px; resize: vertical; background: #12141c; color: var(--ink); border: 1.5px solid #7aa0e0; border-radius: 8px; padding: 8px 10px; font: 14px/1.5 system-ui; }
+.redigera .fot { display: flex; gap: 8px; align-items: center; }
+.redigera .fot .fyll { flex: 1; }
+.redigera .kind { display: flex; gap: 4px; }
+.redigera .kind button { min-height: 32px; padding: 0 10px; }
+.redigera .kind button[aria-pressed='true'] { background: #33405e; border-color: #5d78b0; }
+.hint { color: var(--quiet); font-size: 12px; }
+
+/* Dagens plus i marginalen, för jämförelse i varianten "I dag". */
+.marg-plus { position: absolute; right: -54px; top: 2px; width: 32px; min-height: 32px; padding: 0; justify-content: center; background: #ebe4d6; color: #5a5245; border-color: #c9bda7; }
+
+/* Variant B: inläggslinjen mellan blocken. */
+.lagg { position: relative; height: 14px; margin: 0 -10px; display: flex; align-items: center; opacity: 0; transition: opacity .12s; }
+.skrivlage .lagg:hover, .lagg.visas { opacity: 1; }
+.lagg::before { content: ''; position: absolute; left: 10px; right: 10px; top: 50%; border-top: 1.5px dashed #b9ad97; }
+.lagg .ett { position: relative; margin: 0 auto; width: 24px; min-height: 24px; height: 24px; padding: 0; justify-content: center; border-radius: 50%; background: #ebe4d6; color: #5a5245; border-color: #c9bda7; font-size: 14px; }
+.lagg.utfalld { opacity: 1; height: 34px; }
+.lagg .meny { position: relative; margin: 0 auto; display: flex; gap: 4px; background: var(--paper); padding: 0 6px; }
+.lagg .meny button { min-height: 26px; padding: 0 9px; font: 600 12px system-ui; background: #ebe4d6; color: #3d362c; border-color: #c9bda7; border-radius: 13px; }
+.lagg .meny button:hover { background: #e0d6c3; }
+.flytbar { position: relative; width: max-content; margin: 6px 0 -2px; display: flex; gap: 2px; align-items: center; background: #1c2030; border-radius: 9px; padding: 3px; box-shadow: 0 6px 18px rgba(0,0,0,.3); font-family: system-ui; z-index: 2; }
+.flytbar button { min-height: 32px; border: 0; background: transparent; color: #cfd5e3; padding: 0 10px; font-size: 12.5px; }
+.flytbar button[aria-pressed='true'] { background: #33405e; color: #fff; }
+.flytbar .skilje { margin: 4px 3px; }
+.bokkort { margin: 16px 6px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); display: flex; flex-direction: column; gap: 8px; }
+.bokkort h5 { margin: 0; font-size: 11px; letter-spacing: 1.5px; color: var(--quiet); text-transform: uppercase; }
+.bokkort b { all: unset; font-weight: 700; color: #e6ecfa; }
+.bokkort p { margin: 0; color: #c3cada; font-size: 12.5px; line-height: 1.45; }
+.bokkort .knappar { display: flex; gap: 6px; flex-wrap: wrap; }
+.bokkort button { min-height: 34px; font-size: 12.5px; padding: 0 10px; }
+
+/* Variant C: inspektören. */
+.insp { overflow: auto; border-left: 1px solid #2c3242; padding: 4px 0 20px 18px; display: flex; flex-direction: column; gap: 18px; }
+.insp section { display: flex; flex-direction: column; gap: 8px; }
+.insp h5 { margin: 0; font-size: 11px; letter-spacing: 1.5px; color: var(--quiet); text-transform: uppercase; }
+.insp .vad { font-size: 15px; font-weight: 700; }
+.insp .vad small { display: block; font-weight: 400; color: var(--quiet); font-size: 12px; margin-top: 2px; }
+.insp .lista { display: flex; flex-direction: column; gap: 4px; }
+.insp .lista button { justify-content: flex-start; min-height: 36px; }
+.insp .lista button[aria-pressed='true'] { background: #33405e; border-color: #5d78b0; }
+.insp .tva { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.insp p { margin: 0; color: #aab2c6; font-size: 12.5px; line-height: 1.5; }
+
+/* Variant D: flikar för tre sysslor. */
+.flikrad { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+.flikrad button { border: 0; border-radius: 8px 8px 0 0; background: transparent; color: #aab2c6; min-height: 40px; padding: 0 16px; }
+.flikrad button[aria-selected='true'] { color: #fff; box-shadow: inset 0 -2px 0 var(--gold); }
+.verktyg { display: flex; gap: 6px; align-items: center; padding: 6px; background: #20253a; border: 1px solid var(--line); border-radius: 10px; flex-wrap: wrap; }
+.verktyg button { min-height: 34px; padding: 0 10px; }
+.verktyg button[aria-pressed='true'] { background: #33405e; border-color: #5d78b0; }
+.filsida { overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-content: start; padding-bottom: 20px; }
+.ruta { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.ruta h3 { margin: 0; font-size: 16px; }
+.ruta p { margin: 0; color: #b5bdd0; line-height: 1.5; font-size: 13px; }
+.ruta .knappar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.a5 { width: 148px; height: 210px; background: var(--paper); border-radius: 3px; box-shadow: 4px 4px 0 #11131a; padding: 12px; color: var(--paper-ink); font: 7px/1.4 'Source Serif 4', serif; overflow: hidden; }
+.a5 b { font-size: 11px; display: block; margin-bottom: 6px; }
+
+/* Tom bok. */
+.tomt-val { max-width: 560px; margin: 70px auto 0; display: flex; flex-direction: column; gap: 10px; font-family: system-ui; }
+.tomt-val h2 { font-family: 'Source Serif 4', serif; font-size: 26px; margin: 0 0 2px; }
+.tomt-val > p { margin: 0 0 8px; color: var(--paper-quiet); line-height: 1.5; }
+.val { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; text-align: left; border: 1px solid #d8ccb5; background: #fffaf0; border-radius: 12px; padding: 14px; min-height: 0; color: var(--paper-ink); font-weight: 400; white-space: normal; }
+.val:hover { border-color: #a99a7f; background: #fff; }
+.val .ik { width: 40px; height: 40px; border-radius: 10px; background: #ebe4d6; display: grid; place-items: center; font-size: 18px; }
+.val b { display: block; font-size: 14px; margin-bottom: 2px; }
+.val span { color: var(--paper-quiet); font-size: 12.5px; line-height: 1.4; }
+.val .pil { color: var(--paper-quiet); font-size: 18px; }
+.val.forst { border-color: #8fb79a; background: #f3faf1; }
+
+.dropp { position: absolute; z-index: 20; min-width: 270px; background: #232838; border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 2px; }
+.dropp button { justify-content: flex-start; border: 0; background: transparent; min-height: 38px; text-align: left; }
+.dropp button:hover { background: #2f3650; }
+.dropp small { display: block; color: var(--quiet); font-weight: 400; font-size: 11.5px; }
+.dropp hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+.dropp .rubr { font-size: 11px; color: var(--quiet); letter-spacing: 1px; text-transform: uppercase; padding: 6px 10px 2px; }
+.dropp button span { display: flex; flex-direction: column; }
+
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #2f3650; color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 70; }
+.toast.syns { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>Prototyp · Regelbokens knappar och begrepp.</b> I dag står bokens knappar på fyra ställen — huvudraden, innehållets kolumn, ett plus i sidans marginal och det öppna blockets fot — och flera av orden säger inte vad de gör («Redigerbar», «Importera över boken», «Häfte för tryck», «Eget avsnitt»). Fyra varianter ordnar dem på fyra sätt; «I dag» finns med för jämförelse. Klicka i boken för att öppna ett block.</div>
+<div class="anteckning" id="anteckning"></div>
+<div class="proto">
+  <span>Prototyp — boken:</span>
+  <button data-bok="skriven" aria-pressed="true">Skriven bok</button>
+  <button data-bok="tom" aria-pressed="false">Tom bok (första besöket)</button>
+</div>
+<div class="skal">
+  <div class="topp">
+    <span>←</span><span class="namn">Sal's Saloon</span><span class="etikett">v1</span>
+    <div class="flikar"><span>Kortvägg</span><span>Mall</span><span>Tabell</span><span>Speltema</span><span>Media</span><span class="vald">Regler</span><span>Bord</span></div>
+    <button>Spara</button><button class="upd">Uppdatera bordet</button>
+  </div>
+  <div class="yta" id="yta"></div>
+</div>
+<nav class="vaxlare" aria-label="Prototypväxlare">
+  <button id="prev" aria-label="Föregående">←</button>
+  <button data-v="0" aria-pressed="false">I dag</button>
+  <button data-v="A" aria-pressed="true">A · En ordnad verktygsrad</button>
+  <button data-v="B" aria-pressed="false">B · Knapparna där de verkar</button>
+  <button data-v="C" aria-pressed="false">C · Sidopanel</button>
+  <button data-v="D" aria-pressed="false">D · Skriv · Läs · Fil</button>
+  <button id="next" aria-label="Nästa">→</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script>
+const VARIANTS = ['0', 'A', 'B', 'C', 'D']
+const qs = new URLSearchParams(location.search)
+let V = VARIANTS.includes(qs.get('v')) ? qs.get('v') : 'A'
+let bok = qs.get('bok') === 'tom' ? 'tom' : 'skriven'
+let lage = 'skriv'        // skriv | las
+let oppen = null          // id för det öppna blocket
+let flikD = 'skriv'
+let dropp = null          // vilken meny som är öppen
+let utfalld = undefined   // variant B: vilken inläggslinje som visar sina val
+
+const START = () => [
+  { id: 1, k: 'h', t: 'Översikt' },
+  { id: 2, k: 'p', t: 'Sal’s Saloon är ett spel för 2–5 cowboys. Den som har mest guld när leken tar slut vinner.' },
+  { id: 3, k: 'h', t: 'Uppställning' },
+  { id: 4, k: 'setup' },
+  { id: 5, k: 'p', t: 'Lägg [[Leken]] mitt på bordet och [[Saloonen]] bredvid. Var och en drar fem kort.' },
+  { id: 6, k: 'h', t: 'En tur' },
+  { id: 7, k: 'ol', t: 'Dra ett kort från [[Leken]].\nSpela ett kort, eller släng ett i [[Saloonen]].' },
+  { id: 8, k: 'h2', t: 'Dueller' },
+  { id: 9, k: 'p', t: 'Spelar du en [[Revolver]] mot någon får den svara med en egen, eller ge dig ett guld.' },
+  { id: 10, k: 'h', t: 'Spelet tar slut' },
+  { id: 11, k: 'p', t: '', ask: 'När tar spelet slut, och vem har vunnit?' },
+]
+let blocks = START()
+let nextId = 100
+
+const NOTES = {
+  '0': {
+    idé: 'Så ser det ut i dag. Läget («Redigerbar / Som på bordet») står till vänster och ser ut som en flik bredvid en knapp; filens och tryckets knappar står längst till höger; «＋ Eget avsnitt» står i innehållets kolumn; ＋ i marginalen lägger till text efter blocket; «Ta bort blocket» står i blockets fot och slaget i dess huvud. Tomt läge: tre knappar högst upp till höger, långt från den tomma boken — och boken visar redan mallens fem avsnitt, fast «Börja skriva reglerna» bara ger ett.',
+    ord: [],
+  },
+  A: {
+    idé: '<b>En rad, ordnad efter vad knapparna gör:</b> hur du ser boken · vad du lägger till · vad du gör med boken som fil. Allt som lägger till står på ett ställe och säger vad det lägger till och var («efter Översikt»). Kolumnen är bara innehåll, marginalens plus försvinner, och fil och tryck samlas i en meny «Boken ▾». Tomt läge: de tre vägarna in står i sidan, som val med en rad om vad var och en ger.',
+    plus: 'Lättast att lära: ett ställe för allt, och raden ser likadan ut varje gång.',
+    minus: 'Raden blir lång; «Lägg till» står långt från blocket du står i.',
+    ord: [['Redigerbar', 'läge', 'Skriv'], ['Som på bordet', 'läge', 'Förhandsvisa'], ['＋ Eget avsnitt', 'kolumnen', '＋ Avsnitt'], ['＋ (marginal)', 'text efter', '＋ Text'], ['Importera över boken', '', 'Ersätt med en fil…'], ['Importera samma fil igen', '', 'Läs in regler.md igen'], ['Häfte för tryck', '', 'Ladda ner PDF-häfte (A5)'], ['Ta bort blocket', '', 'Ta bort stycket']],
+  },
+  B: {
+    idé: '<b>Varje knapp står där den verkar.</b> Huvudraden har bara läget. Mellan två block visar en streckad linje «＋ Rubrik · Underrubrik · Text · Lista · Bild» när du pekar dit — och alltid under blocket du står i. Det öppna blocket får en liten svävande rad: slag, flytta, ta bort. Fil och tryck flyttar till ett kort «Boken» i kolumnens fot, med filens namn och när den lästes in.',
+    plus: 'Kortast väg från tanke till klick; huvudraden blir lugn.',
+    minus: 'Linjen syns inte förrän man pekar — svårare att upptäcka, och ingenting på pekskärm.',
+    ord: [['Redigerbar', 'läge', 'Skriv'], ['Som på bordet', 'läge', 'Som spelarna ser den'], ['＋ Eget avsnitt', '', '＋ Rubrik'], ['＋ (marginal)', '', '＋ Text / Lista / Bild'], ['Importera över boken', '', 'Byt fil…'], ['Importera samma fil igen', '', 'Läs in igen'], ['Häfte för tryck', '', 'Ladda ner A5-häfte'], ['Ta bort blocket', '', 'Ta bort']],
+  },
+  C: {
+    idé: '<b>En sidopanel till höger svarar för det du valt.</b> Inget valt: panelen handlar om boken — hur den visas, var den kom ifrån, trycket, och hjälpen som text i stället för bakom «?». Ett block valt: panelen säger vad det är («Stycke under Översikt») och har slaget, flytta, lägga till efter och ta bort. Huvudraden försvinner nästan helt.',
+    plus: 'Samma mönster som Mall-fliken; plats för förklaringar, så begreppen kan sägas i hela meningar.',
+    minus: 'Tar 280 px från boken; två steg (välj, sedan panel) för det som i dag är ett.',
+    ord: [['Redigerbar / Som på bordet', '', 'Visning: Skriv · Förhandsvisa'], ['Importera över boken', '', 'Ersätt med en fil…'], ['Häfte för tryck', '', 'Ladda ner PDF'], ['Blockets slag', '', 'Det här är: Stycke · Punktlista · …'], ['＋ / Eget avsnitt', '', 'Lägg till efter: Rubrik · Text · …']],
+  },
+  D: {
+    idé: '<b>Tre sysslor, tre flikar:</b> Skriv · Läs som spelarna · Fil och tryck. I Skriv står en verktygsrad likt ett ordbehandlingsprogram — slaget på det du står i och allt du kan lägga till. «Läs som spelarna» är filten, utan några verktyg alls. «Fil och tryck» är en egen sida som förklarar import, Markdown och häftet med en förhandsbild, i stället för två kryptiska knappar.',
+    plus: 'Begreppen får plats att förklaras; skriv- och läsläget blandas aldrig.',
+    minus: 'Import och tryck hamnar ett klick längre bort; fler flikar inne i en flik.',
+    ord: [['Redigerbar', '', 'Skriv'], ['Som på bordet', '', 'Läs som spelarna'], ['Importera över boken', '', 'Fil och tryck → Ersätt boken med en fil'], ['Häfte för tryck', '', 'Fil och tryck → Ladda ner häftet'], ['＋ Eget avsnitt / ＋', '', 'Verktygsraden: ＋ Rubrik · Text · Lista · Bild']],
+  },
+}
+
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+const refs = (s) => esc(s).replace(/\[\[(.+?)\]\]/g, '<span class="ref">$1</span>')
+const KIND_NAME = { h: 'Rubrik', h2: 'Underrubrik', p: 'Stycke', ul: 'Punktlista', ol: 'Numrerad lista', setup: 'Uppställning', img: 'Bild' }
+const sectionOf = (id) => { let s = null; for (const b of blocks) { if (b.k === 'h') s = b; if (b.id === id) return s } return s }
+const blockName = (id) => {
+  const b = blocks.find((x) => x.id === id); if (!b) return ''
+  if (b.k === 'h' || b.k === 'h2') return `«${b.t}»`
+  const s = sectionOf(id); return `${KIND_NAME[b.k].toLowerCase()} under «${s ? s.t : 'början'}»`
+}
+
+function renderBlock(b, opts = {}) {
+  const ask = b.ask && !b.t ? `<p class="fraga">${esc(b.ask)}</p>` : ''
+  switch (b.k) {
+    case 'h': return `<h3>${esc(b.t)}</h3>`
+    case 'h2': return `<h4>${esc(b.t)}</h4>`
+    case 'p': return b.t ? `<p>${refs(b.t)}</p>` : ask || '<p class="fraga">Tom text.</p>'
+    case 'ul': case 'ol': { const tag = b.k; return `<${tag}>${b.t.split('\n').map((l) => `<li>${refs(l)}</li>`).join('')}</${tag}>` }
+    case 'setup': return `<span class="upp">Visa uppställningen</span><div class="upp-text">Så ställs bordet upp</div>`
+    case 'img': return `<div style="height:120px;border-radius:8px;background:repeating-linear-gradient(45deg,#e6dccb 0 10px,#efe7d8 10px 20px);display:grid;place-items:center;font:12px system-ui;color:#6f675b">Bild — välj en fil</div>`
+  }
+}
+
+function editor(b, slots) {
+  const kinds = b.k === 'p' || b.k === 'ul' || b.k === 'ol'
+    ? `<div class="kind">${['p', 'ul', 'ol'].map((k) => `<button data-kind="${k}" aria-pressed="${b.k === k}">${KIND_NAME[k]}</button>`).join('')}</div>`
+    : b.k === 'h' || b.k === 'h2'
+      ? `<div class="kind">${['h', 'h2'].map((k) => `<button data-kind="${k}" aria-pressed="${b.k === k}">${KIND_NAME[k]}</button>`).join('')}</div>`
+      : ''
+  const value = b.k === 'setup' ? 'Så ställs bordet upp' : b.t
+  return `<div class="redigera">
+    ${slots.top ? slots.top(kinds) : ''}
+    <textarea placeholder="${esc((b.ask || '') + (b.ask ? '\n' : '') + '[[ hämtar en zon eller ett kort.')}">${esc(value || '')}</textarea>
+    ${slots.foot ? `<div class="fot">${slots.foot(kinds)}</div>` : ''}
+  </div>`
+}
+
+function page(o) {
+  const presenting = lage === 'las'
+  if (bok === 'tom') return `<div class="sida">${o.tom()}</div>`
+  let html = '<h1>Sal’s Saloon</h1>'
+  if (o.between && !presenting) html += o.between(null)
+  for (const b of blocks) {
+    const open = !presenting && oppen === b.id
+    html += `<div class="block${open ? ' oppen' : ''}" data-block="${b.id}">`
+    if (open && o.above) html += o.above(b)
+    html += open ? o.editor(b) : renderBlock(b)
+    if (!presenting && o.margin) html += o.margin(b)
+    html += '</div>'
+    if (o.between && !presenting) html += o.between(b.id)
+  }
+  return `<div class="sida">${html}</div>`
+}
+const reading = (o) => `<div class="lasning${lage === 'las' ? ' filt' : ''} ${lage === 'skriv' ? 'skrivlage' : ''}">${page(o)}</div>`
+
+function toc(extra = '') {
+  if (bok === 'tom') return `<nav class="kolumn toc"><b>Innehåll</b><span class="etikett" style="padding:0 10px">Boken är tom.</span>${extra}</nav>`
+  return `<nav class="kolumn toc"><b>Innehåll</b>${blocks.filter((b) => b.k === 'h' || b.k === 'h2').map((b) => {
+    const i = blocks.indexOf(b), nxt = blocks[i + 1]
+    const tom = nxt && nxt.k === 'p' && !nxt.t ? ' <span class="tomt">· tomt</span>' : ''
+    return `<a href="#" class="${b.k === 'h2' ? 'under' : ''}" data-goto="${b.id}">${esc(b.t)}${tom}</a>`
+  }).join('')}${extra}</nav>`
+}
+
+const TOM_VAL = (o = {}) => `<div class="tomt-val">
+  <h2>Reglerna hör till spelet</h2>
+  <p>Spelarna läser dem på telefonen, på TV:n och i det tryckta häftet. Välj hur du vill börja — allt går att ändra efteråt.</p>
+  <button class="val forst" data-start="mall"><span class="ik">☰</span><span><b>Fem avsnitt med frågor</b><span>Översikt, Uppställning, En tur, Handlingar, Spelet tar slut — var och en med en fråga att svara på.</span></span><span class="pil">→</span></button>
+  <button class="val" data-start="tom"><span class="ik">✎</span><span><b>Ett tomt blad</b><span>Bara en översikt. Du lägger till avsnitten själv.</span></span><span class="pil">→</span></button>
+  <button class="val" data-start="fil"><span class="ik">⇪</span><span><b>Läs in en fil</b><span>En Markdown-fil (.md) med sina bilder. Du ser vad som blir vad innan något sparas.</span></span><span class="pil">→</span></button>
+</div>`
+
+/* ------------------------------------------------------------------ I DAG */
+function V0() {
+  const head = bok === 'tom'
+    ? `<h2>Regelboken</h2><span class="etikett">Reglerna hör till spelet.</span><button class="tyst hjalp">?</button><span class="fyll"></span><button>Börja skriva reglerna</button><button>Börja från en mall</button><button>Importera från fil</button>`
+    : `<h2>Regelboken</h2><span class="segment" style="background:none;border:0;padding:0;gap:6px"><button aria-pressed="${lage === 'skriv'}" data-lage="skriv" style="${lage === 'skriv' ? 'background:none;box-shadow:inset 0 -2px 0 var(--blue)' : 'border:1px solid var(--line)'}">Redigerbar</button><button aria-pressed="${lage === 'las'}" data-lage="las" style="${lage === 'las' ? 'background:none;box-shadow:inset 0 -2px 0 var(--blue)' : 'border:1px solid var(--line)'}">Som på bordet</button></span><button class="tyst hjalp">?</button><span class="fyll"></span><button>Importera över boken</button><button>Häfte för tryck</button>`
+  const o = {
+    tom: () => blocksTemplatePreview(),
+    editor: (b) => editor(b, { top: (k) => k, foot: () => `<span class="fyll"></span><button class="fara" data-del>Ta bort blocket</button>` }),
+    margin: (b) => oppen === b.id || (oppen === null && b.id === 2) ? `<button class="marg-plus" data-add-after="${b.id}" data-add="p" title="Lägg till efter">＋</button>` : '',
+  }
+  return `<div class="rad">${head}</div>
+    <div class="uppslag" style="grid-template-columns: 220px minmax(0,1fr) 60px">${toc(bok === 'tom' ? '' : '<button style="margin:14px 0 0 0;align-self:flex-start">＋ Eget avsnitt</button>')}${reading(o)}<div></div></div>`
+}
+function blocksTemplatePreview() {
+  return '<h1>Sal’s Saloon</h1>' + [['Översikt', 'Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?'], ['Uppställning', 'Vad ligger var när ni börjar, och vad får var och en på hand?'], ['En tur', 'Vad gör man först? Och sedan?'], ['Handlingar', 'Vad får man göra på sin tur, och vad kostar det?']].map(([h, q]) => `<h3>${h}</h3><p class="fraga">${q}</p>`).join('')
+}
+
+/* ------------------------------------------------------------------ A */
+function VA() {
+  const after = oppen ?? blocks[blocks.length - 1]?.id
+  const where = oppen ? `efter ${blockName(oppen)}` : 'sist i boken'
+  const head = bok === 'tom'
+    ? `<h2>Regelboken</h2><span class="fyll"></span><button class="tyst hjalp">?</button>`
+    : `<h2>Regelboken</h2>
+       <span class="segment" role="group" aria-label="Visa boken"><button data-lage="skriv" aria-pressed="${lage === 'skriv'}">✎ Skriv</button><button data-lage="las" aria-pressed="${lage === 'las'}">◱ Förhandsvisa</button></span>
+       ${lage === 'skriv' ? `<span class="skilje"></span>
+       <span class="etikett">Lägg till</span>
+       <button data-add="h" data-add-after="${after}">＋ Avsnitt</button><button data-add="p" data-add-after="${after}">＋ Text</button><button data-add="ul" data-add-after="${after}">＋ Lista</button><button data-add="img" data-add-after="${after}">＋ Bild</button>
+       <span class="etikett">${esc(where)}</span>` : `<span class="etikett">Så ser spelarna boken vid bordet.</span>`}
+       <span class="fyll"></span>
+       <button data-dropp="bok">Boken ▾</button><button class="tyst hjalp">?</button>`
+  const o = {
+    tom: TOM_VAL,
+    editor: (b) => editor(b, { top: (k) => `<div class="fot">${k}<span class="fyll"></span><button class="tyst fara" data-del>Ta bort ${KIND_NAME[b.k].toLowerCase()}</button></div>` }),
+  }
+  return `<div class="rad" style="position:relative">${head}${dropp === 'bok' ? bokMeny('right:40px;top:46px') : ''}</div>
+    <div class="uppslag" style="grid-template-columns: 220px minmax(0,1fr) 60px">${toc(bok === 'tom' ? '' : '<p class="kalla">Från regler.md, i går 21:14.</p>')}${reading(o)}<div></div></div>`
+}
+function bokMeny(pos) {
+  return `<div class="dropp" style="${pos}">
+    <div class="rubr">Fil</div>
+    <button data-toast="Läser in regler.md igen — du ser vad som ändras innan något sparas."><span>Läs in regler.md igen<small>Samma fil, nyare version från din dator</small></span></button>
+    <button data-toast="Väljer en ny fil…"><span>Ersätt med en annan fil…<small>Du ser vad som försvinner innan något sparas</small></span></button>
+    <hr><div class="rubr">Tryck</div>
+    <button data-toast="Häftet skapas…"><span>Ladda ner PDF-häfte<small>A5, för att skriva ut och vika</small></span></button>
+  </div>`
+}
+
+/* ------------------------------------------------------------------ B */
+function VB() {
+  const head = `<h2>Regelboken</h2>${bok === 'tom' ? '' : `<span class="segment" role="group" aria-label="Visa boken"><button data-lage="skriv" aria-pressed="${lage === 'skriv'}">Skriv</button><button data-lage="las" aria-pressed="${lage === 'las'}">Som spelarna ser den</button></span>`}<span class="fyll"></span><button class="tyst hjalp">?</button>`
+  const o = {
+    tom: TOM_VAL,
+    between: (id) => utfalld === id
+      ? `<div class="lagg utfalld"><div class="meny">${[['h', 'Rubrik'], ['h2', 'Underrubrik'], ['p', 'Text'], ['ul', 'Lista'], ['img', 'Bild']].map(([k, n]) => `<button data-add="${k}" data-add-after="${id ?? 'forst'}">＋ ${n}</button>`).join('')}</div></div>`
+      : `<div class="lagg${oppen !== null && oppen === id ? ' visas' : ''}"><button class="ett" data-utfall="${id ?? 'forst'}" title="Lägg till här">＋</button></div>`,
+    above: (b) => `<div class="flytbar">${b.k === 'p' || b.k === 'ul' || b.k === 'ol' ? ['p', 'ul', 'ol'].map((k) => `<button data-kind="${k}" aria-pressed="${b.k === k}">${KIND_NAME[k]}</button>`).join('') : b.k === 'h' || b.k === 'h2' ? ['h', 'h2'].map((k) => `<button data-kind="${k}" aria-pressed="${b.k === k}">${KIND_NAME[k]}</button>`).join('') : `<button aria-pressed="true">${KIND_NAME[b.k]}</button>`}<span class="skilje"></span><button data-move="-1" title="Flytta upp">↑</button><button data-move="1" title="Flytta ned">↓</button><span class="skilje"></span><button data-del style="color:var(--danger)">Ta bort</button></div>`,
+    editor: (b) => editor(b, {}),
+  }
+  const kort = bok === 'tom' ? '' : `<div class="bokkort"><h5>Boken som fil</h5><p>Inläst från <b>regler.md</b>, i går 21:14.</p><div class="knappar"><button data-toast="Läser in regler.md igen…">Läs in igen</button><button data-toast="Väljer en ny fil…">Byt fil…</button></div></div>
+    <div class="bokkort"><h5>Tryck</h5><p>Ett A5-häfte att skriva ut och vika.</p><div class="knappar"><button data-toast="Häftet skapas…">Ladda ner A5-häfte</button></div></div>`
+  return `<div class="rad">${head}</div>
+    <div class="uppslag" style="grid-template-columns: 240px minmax(0,1fr) 40px">${toc(kort)}${reading(o)}<div></div></div>`
+}
+
+/* ------------------------------------------------------------------ C */
+function VC() {
+  const o = { tom: TOM_VAL, editor: (b) => editor(b, {}) }
+  let panel
+  if (bok === 'tom') {
+    panel = `<section><h5>Regelboken</h5><p>Reglerna sparas med varje version, och spelarna läser dem på telefonen, TV:n och i observatörsvyn.</p><p>Välj hur du vill börja i boken till vänster.</p></section>`
+  } else if (oppen && lage === 'skriv') {
+    const b = blocks.find((x) => x.id === oppen)
+    const kinds = b.k === 'p' || b.k === 'ul' || b.k === 'ol' ? ['p', 'ul', 'ol'] : b.k === 'h' || b.k === 'h2' ? ['h', 'h2'] : [b.k]
+    panel = `<section><h5>Valt</h5><div class="vad">${KIND_NAME[b.k]}<small>${b.k === 'h' || b.k === 'h2' ? 'avsnittets rubrik' : 'under «' + esc(sectionOf(b.id)?.t ?? '') + '»'}</small></div><button class="tyst" data-close style="align-self:flex-start;min-height:30px;padding:0 8px">← Tillbaka till boken</button></section>
+      <section><h5>Det här är</h5><div class="lista">${kinds.map((k) => `<button data-kind="${k}" aria-pressed="${b.k === k}">${KIND_NAME[k]}</button>`).join('')}</div></section>
+      <section><h5>Flytta</h5><div class="tva"><button data-move="-1">↑ Upp</button><button data-move="1">↓ Ned</button></div></section>
+      <section><h5>Lägg till efter</h5><div class="tva">${[['h', 'Rubrik'], ['h2', 'Underrubrik'], ['p', 'Text'], ['ul', 'Lista'], ['img', 'Bild']].map(([k, n]) => `<button data-add="${k}" data-add-after="${b.id}">＋ ${n}</button>`).join('')}</div></section>
+      <section style="margin-top:auto"><button class="fara" data-del>Ta bort ${KIND_NAME[b.k].toLowerCase()}</button></section>`
+  } else {
+    panel = `<section><h5>Visning</h5><span class="segment"><button data-lage="skriv" aria-pressed="${lage === 'skriv'}">Skriv</button><button data-lage="las" aria-pressed="${lage === 'las'}">Förhandsvisa</button></span><p>${lage === 'skriv' ? 'Klicka på ett block i boken för att skriva i det.' : 'Så ser spelarna boken vid bordet.'}</p></section>
+      <section><h5>Lägg till sist</h5><div class="tva">${[['h', 'Avsnitt'], ['p', 'Text'], ['ul', 'Lista'], ['img', 'Bild']].map(([k, n]) => `<button data-add="${k}" data-add-after="${blocks[blocks.length - 1].id}">＋ ${n}</button>`).join('')}</div></section>
+      <section><h5>Fil</h5><p>Boken kom från <b>regler.md</b>, i går 21:14.</p><div class="lista"><button data-toast="Läser in regler.md igen…">Läs in filen igen</button><button data-toast="Väljer en ny fil…">Ersätt med en annan fil…</button></div></section>
+      <section><h5>Tryck</h5><p>Ett A5-häfte att skriva ut och vika.</p><div class="lista"><button data-toast="Häftet skapas…">Ladda ner PDF</button></div></section>
+      <section><h5>Bra att veta</h5><p>En regel som nämner en zon eller ett kort följer med när det byter namn. Skriv [[ för att hämta ett.</p></section>`
+  }
+  return `<div class="rad"><h2>Regelboken</h2>${oppen && bok !== 'tom' && lage === 'skriv' ? `<span class="etikett">› ${esc(blockName(oppen))}</span>` : ''}</div>
+    <div class="uppslag" style="grid-template-columns: 200px minmax(0,1fr) 290px">${toc()}${reading(o)}<aside class="insp">${panel}</aside></div>`
+}
+
+/* ------------------------------------------------------------------ D */
+function VD() {
+  const tabs = bok === 'tom' ? '' : `<div class="flikrad" role="tablist">${[['skriv', '✎ Skriv'], ['las', '◱ Läs som spelarna'], ['fil', '⇅ Fil och tryck']].map(([k, n]) => `<button role="tab" data-flik="${k}" aria-selected="${flikD === k}">${n}</button>`).join('')}<span class="fyll"></span><button class="tyst hjalp" style="align-self:center">?</button></div>`
+  lage = flikD === 'las' ? 'las' : 'skriv'
+  if (bok !== 'tom' && flikD === 'fil') {
+    return `<div class="rad"><h2>Regelboken</h2></div>${tabs}
+      <div class="filsida">
+        <div class="ruta"><h3>Skriv i ett eget program</h3><p>Boken kom från <b>regler.md</b>, i går 21:14. Ändrar du filen kan du läsa in den igen: du ser vad som försvinner, skrivs om och är nytt innan något sparas, och den gamla boken finns kvar som en version.</p><div class="knappar"><button class="primar" data-toast="Läser in regler.md igen…">Läs in regler.md igen</button><button data-toast="Väljer en ny fil…">Ersätt med en annan fil…</button></div><p class="etikett">Markdown: # blir avsnitt, ## underrubriker, bilder följer med om du väljer dem tillsammans med filen.</p></div>
+        <div class="ruta" style="flex-direction:row;gap:18px"><div class="a5"><b>Sal’s Saloon</b>Översikt<br>Sal’s Saloon är ett spel för 2–5 cowboys…<br><br>Uppställning<br>Lägg Leken mitt på bordet…</div><div style="display:flex;flex-direction:column;gap:10px"><h3>Tryckt häfte</h3><p>Boken som A5-sidor att skriva ut, vika och lägga i lådan. Samma text som vid bordet.</p><div class="knappar"><button class="primar" data-toast="Häftet skapas…">Ladda ner PDF</button></div></div></div>
+      </div>`
+  }
+  const b = blocks.find((x) => x.id === oppen)
+  const kinds = !b ? ['h', 'h2', 'p', 'ul', 'ol'] : b.k === 'h' || b.k === 'h2' ? ['h', 'h2'] : ['p', 'ul', 'ol']
+  const bar = bok === 'tom' || flikD !== 'skriv' ? '' : `<div class="verktyg">
+      <span class="etikett" style="padding:0 4px">${b ? 'Det här är' : 'Välj ett block'}</span>
+      ${kinds.map((k) => `<button ${b ? `data-kind="${k}"` : 'disabled style="opacity:.45"'} aria-pressed="${b?.k === k}">${KIND_NAME[k]}</button>`).join('')}
+      <span class="skilje"></span><span class="etikett" style="padding:0 4px">Lägg till</span>
+      ${[['h', 'Avsnitt'], ['p', 'Text'], ['ul', 'Lista'], ['img', 'Bild']].map(([k, n]) => `<button data-add="${k}" data-add-after="${oppen ?? blocks[blocks.length - 1].id}">＋ ${n}</button>`).join('')}
+      <span class="fyll"></span>
+      ${b ? `<button data-move="-1" title="Flytta upp">↑</button><button data-move="1" title="Flytta ned">↓</button><button class="fara" data-del>Ta bort</button>` : ''}
+    </div>`
+  const o = { tom: TOM_VAL, editor: (bb) => editor(bb, {}) }
+  return `<div class="rad"><h2>Regelboken</h2></div>${tabs}${bar}
+    <div class="uppslag" style="grid-template-columns: 220px minmax(0,1fr) 60px">${toc()}${reading(o)}<div></div></div>`
+}
+
+const RENDER = { '0': V0, A: VA, B: VB, C: VC, D: VD }
+
+function note() {
+  const n = NOTES[V]
+  const ord = n.ord.length ? `<table><tbody>${n.ord.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td><td>→ ${esc(c)}</td></tr>`).join('')}</tbody></table>` : '<span>Inga ord ändras.</span>'
+  document.getElementById('anteckning').innerHTML = `<div>${n.idé}${n.plus ? `<br><span class="plus">＋ ${n.plus}</span><br><span class="minus">− ${n.minus}</span>` : ''}</div><div><b>Begreppen</b>${ord}</div>`
+}
+function render() {
+  if (V !== 'D' && lage === 'las' && flikD === 'fil') flikD = 'skriv'
+  document.getElementById('yta').innerHTML = RENDER[V]()
+  note()
+  document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === V)))
+  document.querySelectorAll('[data-bok]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.bok === bok)))
+  const u = new URL(location); u.searchParams.set('v', V); u.searchParams.set('bok', bok); history.replaceState(null, '', u)
+  document.querySelector('.redigera textarea')?.focus()
+}
+let t
+function toast(s) { const el = document.getElementById('toast'); el.textContent = s; el.classList.add('syns'); clearTimeout(t); t = setTimeout(() => el.classList.remove('syns'), 1800) }
+
+function add(kind, afterId) {
+  const fresh = { id: nextId++, k: kind, t: kind === 'h' ? 'Nytt avsnitt' : kind === 'h2' ? 'Ny underrubrik' : '', ask: kind === 'h' ? undefined : 'Vad ska stå här?' }
+  if (kind === 'ul' || kind === 'ol') fresh.t = 'Första punkten'
+  const at = afterId === 'forst' ? 0 : blocks.findIndex((b) => b.id === Number(afterId)) + 1
+  const extra = kind === 'h' ? [fresh, { id: nextId++, k: 'p', t: '', ask: 'Vad ska stå i det här avsnittet?' }] : [fresh]
+  blocks.splice(afterId === 'forst' ? 0 : at || blocks.length, 0, ...extra)
+  oppen = fresh.id
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button, a, [data-block]')
+  if (!el) { if (dropp) { dropp = null; render() } return }
+  const d = el.dataset
+  if (d.v !== undefined) { V = d.v; oppen = null; dropp = null; lage = 'skriv'; flikD = 'skriv'; render(); return }
+  if (el.id === 'prev' || el.id === 'next') { const i = VARIANTS.indexOf(V); V = VARIANTS[(i + (el.id === 'next' ? 1 : -1) + VARIANTS.length) % VARIANTS.length]; oppen = null; dropp = null; lage = 'skriv'; flikD = 'skriv'; render(); return }
+  if (d.bok) { bok = d.bok; oppen = null; if (bok === 'skriven' && blocks.length === 0) blocks = START(); render(); return }
+  if (d.start) { if (d.start === 'fil') { toast('Väljer en Markdown-fil…'); return } blocks = d.start === 'mall' ? START().map((b) => ({ ...b, t: b.k === 'p' || b.k === 'ol' ? '' : b.t, ask: b.k === 'p' || b.k === 'ol' ? 'Vad ska stå här?' : undefined, k: b.k === 'ol' ? 'p' : b.k })) : [{ id: 1, k: 'h', t: 'Översikt' }, { id: 2, k: 'p', t: '', ask: 'Vad handlar spelet om, i två meningar?' }]; bok = 'skriven'; oppen = 2; render(); return }
+  if (d.lage) { lage = d.lage; oppen = null; render(); return }
+  if (d.flik) { flikD = d.flik; oppen = null; render(); return }
+  if (d.dropp) { dropp = dropp === d.dropp ? null : d.dropp; render(); return }
+  if (d.toast) { dropp = null; toast(d.toast); render(); return }
+  if (d.utfall) { utfalld = d.utfall === 'forst' ? null : Number(d.utfall); render(); return }
+  if (d.add) { e.stopPropagation(); utfalld = undefined; add(d.add, d.addAfter); render(); return }
+  if (d.kind) { const b = blocks.find((x) => x.id === oppen); if (b) b.k = d.kind; render(); return }
+  if (d.del !== undefined) { blocks = blocks.filter((b) => b.id !== oppen); toast('Borttaget — Ctrl+Z ångrar'); oppen = null; render(); return }
+  if (d.move) { const i = blocks.findIndex((b) => b.id === oppen), j = i + Number(d.move); if (j >= 0 && j < blocks.length) { [blocks[i], blocks[j]] = [blocks[j], blocks[i]] } render(); return }
+  if (d.close !== undefined) { oppen = null; render(); return }
+  if (d.goto) { e.preventDefault(); document.querySelector(`[data-block="${d.goto}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return }
+  if (utfalld !== undefined) { utfalld = undefined }
+  if (d.block && lage === 'skriv' && !e.target.closest('.redigera, .flytbar')) { oppen = Number(d.block); dropp = null; render(); return }
+})
+document.addEventListener('input', (e) => { if (e.target.matches('.redigera textarea')) { const b = blocks.find((x) => x.id === oppen); if (b && b.k !== 'setup') b.t = e.target.value } })
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) { if (e.key === 'Escape') { oppen = null; render() } return }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const i = VARIANTS.indexOf(V); V = VARIANTS[(i + (e.key === 'ArrowRight' ? 1 : -1) + VARIANTS.length) % VARIANTS.length]; oppen = null; dropp = null; lage = 'skriv'; flikD = 'skriv'; render() }
+})
+render()
+</script>
+</body>
+</html>

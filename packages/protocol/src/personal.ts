@@ -8,8 +8,8 @@ import type { Intent } from './intents.js'
 //
 // None of them is play. The engine asks only whether a seat has a name, whether a flag has an
 // observer and whether a note is blank — so a field may be masked to `REDACTED` and every line
-// still decides and applies as it did (`redactLine` in `@byd/engine`). Whether and when a line in
-// the store is ever masked is F7 in #1269 and not decided; nothing masks in operation.
+// still decides and applies as it did (`redactLine` in `@byd/engine`). Masking a line where it lies
+// in the store is the one rewrite DRIFT §7 allows (G6, F7); the erasure that does it is #1279.
 //
 // `holds` says what kind of words they are, which is what a reader of an anonymised log needs to
 // know to put a pseudonym in its place: the corpus numbers seats' names and says «(kommentar)» for

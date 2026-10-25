@@ -5,9 +5,8 @@ import { PERSONAL_FIELDS, REDACTED, type Applied } from '@byd/protocol'
 // there, so a seat stays taken, a flag stays an observer's and a note still says something, which
 // is all the engine ever asks of them: the masked line decides and applies as the line did.
 //
-// Pure and without I/O. Nothing masks a line in operation; whether the store ever does is F7 in
-// #1269. A line without a personal field comes back as the same object, and masking twice is
-// masking once.
+// Pure and without I/O: the store masks its lines with this when an erasure asks it to (G6, #1279).
+// A line without a personal field comes back as the same object, and masking twice is masking once.
 export function redactLine(line: Applied): Applied {
   const intent = line.intent as Record<string, unknown>
   let masked: Record<string, unknown> | null = null
