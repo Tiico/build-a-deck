@@ -10,7 +10,7 @@ import { creditOf, decksterIcons, loadIconCatalog, searchIcons, type CatalogIcon
 import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { FontShelf } from './FontShelf.js'
-import { ThemeGallery } from './ThemeGallery.js'
+import { ThemeExamples } from './ThemeExamples.js'
 import { FontCatalog } from './FontCatalog.js'
 import { contrastRatio, elementsFor, isSymbolName } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
@@ -27,22 +27,26 @@ import { CloseGlyph } from '../glyphs.js'
 // a head that carries its value while it is closed — as L25's panel sections do (#478) — so
 // nothing is hidden without being said. The library is no longer the tab: it opens from Spelets
 // ikoner, and a symbol taken in from it becomes one of the game's icons, its licence with it (E4).
+//
+// Since L84 (#1287) the tab is the game's own theme: the parts open from the start, the game's
+// first card stands beside them and changes as they do, and the ready-made themes are examples in
+// a sheet behind «Titta i exemplen», to read and to copy from but not to choose.
 export type ThemePanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase: string }
 
 export type ThemeSectionId = 'fonts' | 'colours' | 'icons'
 const SECTION_IDS: readonly ThemeSectionId[] = ['fonts', 'colours', 'icons']
 
 // What is open belongs to this browser and not to the game (L4's pattern for a view), and every
-// part starts folded: the tab is calm for the designer who is content with her theme, and one
-// press away for the one who is not (L57). One store for the whole editor, so Mall can open the
-// typefaces before it hands the designer over (`revealThemeSection`).
+// part starts open: the tab is the game's own theme, and its parts are what the tab is for (L84).
+// A part folded stays folded. One store for the whole editor, so Mall can open the typefaces
+// before it hands the designer over (`revealThemeSection`).
 const OPEN_KEY = 'byd.theme-open'
 const listeners = new Set<() => void>()
 // Read from the browser every time and parsed only when what is kept has changed, so the snapshot
 // is the same object until it is not — and a store cleared under the editor is believed.
 let kept: { raw: string | null; open: ReadonlySet<ThemeSectionId> } | null = null
 // Where the browser keeps nothing, what is open lives here for the visit.
-let unkept: ReadonlySet<ThemeSectionId> = new Set()
+let unkept: ReadonlySet<ThemeSectionId> = new Set(SECTION_IDS)
 function openSections(): ReadonlySet<ThemeSectionId> {
   let raw: string | null
   try {
@@ -51,12 +55,12 @@ function openSections(): ReadonlySet<ThemeSectionId> {
     return unkept
   }
   if (kept?.raw === raw) return kept.open
-  let open: ReadonlySet<ThemeSectionId> = new Set()
+  let open: ReadonlySet<ThemeSectionId> = new Set(SECTION_IDS)
   try {
     const list = JSON.parse(raw ?? 'null') as unknown
     if (Array.isArray(list)) open = new Set(SECTION_IDS.filter((id) => list.includes(id)))
   } catch {
-    // Something else under the key: start folded.
+    // Something else under the key: start open.
   }
   kept = { raw, open }
   return open
@@ -100,13 +104,15 @@ const SHOWN_PX = CARD_PX * SHOWN
 export function ThemePanel({ doc, client, assetBase }: ThemePanelProps) {
   const t = useT()
   const open = useOpenSections()
-  // What stands beside the sections: the symbol library, or the typeface catalog. One at a time,
-  // in the same place, and each hands the focus back to what opened it.
-  const [sheet, setSheet] = useState<'library' | 'catalog' | null>(null)
+  // What stands beside the sections: the game's first card, or in its place the symbol library,
+  // the typeface catalog or the examples. One at a time, in the same place, and each hands the
+  // focus back to what opened it.
+  const [sheet, setSheet] = useState<'library' | 'catalog' | 'examples' | null>(null)
   const libraryOpener = useRef<HTMLButtonElement>(null)
   const catalogOpener = useRef<HTMLButtonElement>(null)
+  const examplesOpener = useRef<HTMLButtonElement>(null)
   const closeSheet = () => {
-    const back = sheet === 'library' ? libraryOpener.current : catalogOpener.current
+    const back = { library: libraryOpener, catalog: catalogOpener, examples: examplesOpener }[sheet ?? 'library'].current
     setSheet(null)
     back?.focus()
   }
@@ -126,9 +132,14 @@ export function ThemePanel({ doc, client, assetBase }: ThemePanelProps) {
   return (
     <div className="byd-theme" data-theme-panel {...(sheet ? { 'data-sheet': sheet } : {})}>
       <div className="byd-theme-work">
-        {/* The gallery of ready themes, and the line that says what departs from the chosen one,
-            stand here above the parts a theme is made of (L57, #632). */}
-        <ThemeGallery doc={doc} client={client} assetBase={assetBase} />
+        {/* The examples are a sheet and not the tab's first thing (L84): the game's theme is its own. */}
+        {!reading && (
+          <div className="byd-theme-top">
+            <button type="button" ref={examplesOpener} className="byd-theme-examples-open byd-secondary" aria-expanded={sheet === 'examples'} onClick={() => setSheet(sheet === 'examples' ? null : 'examples')}>
+              {t('theme.examples.open')}
+            </button>
+          </div>
+        )}
         <ThemeSection id="fonts" open={open.has('fonts')} name={t('theme.fonts')} value={families.length === 0 ? t('theme.fonts.none') : families.join(' · ')}>
           {reading ? (
             <fieldset className="byd-reading-set" disabled>
@@ -162,6 +173,8 @@ export function ThemePanel({ doc, client, assetBase }: ThemePanelProps) {
           <IconDeck doc={doc} assetBase={assetBase} icons={icons} />
         </ThemeSection>
       </div>
+      {sheet === null && <LiveCard doc={doc} icons={icons} assetBase={assetBase} />}
+      {sheet === 'examples' && <ThemeExamples doc={doc} client={client} assetBase={assetBase} onClose={closeSheet} />}
       {sheet === 'library' && <SymbolLibrary doc={doc} client={client} onClose={closeSheet} />}
       {sheet === 'catalog' && (
         <div className="byd-theme-sheet">
@@ -169,6 +182,26 @@ export function ThemePanel({ doc, client, assetBase }: ThemePanelProps) {
         </div>
       )}
     </div>
+  )
+}
+
+// The game's first card beside its theme (L84), drawn by the one renderer (E2) from the document
+// as it stands, so a family, a colour or an icon changed in a part is seen on the card at once.
+const LIVE_PX = 260
+function LiveCard({ doc, icons, assetBase }: { doc: ProjectDoc; icons: ReturnType<typeof previewIcons>; assetBase: string }) {
+  const t = useT()
+  const named = useId()
+  const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, assetBase), [doc.template, doc.fonts, assetBase])
+  const front = doc.template.faces['front']
+  const first = doc.rows[0]
+  if (!front || !first) return null
+  return (
+    <aside className="byd-theme-side">
+      <h3 id={named}>{t('theme.card')}</h3>
+      <div className="byd-theme-live" role="img" aria-labelledby={named} style={{ width: LIVE_PX, borderRadius: cornerPx(LIVE_PX) }}>
+        <CardPreview id="theme-live" face={front} row={first.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={LIVE_PX / CARD_PX} />
+      </div>
+    </aside>
   )
 }
 

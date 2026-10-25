@@ -81,10 +81,14 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
 // edge says where you will sit, not what lies on the felt. A seat the table gives no hand has no
 // edge, and says so rather than quietly picking one.
 function seatEdge(state: TableState, seat: SeatId): SeatEdge | null {
-  const floor = state.zones[state.setup.floor]
-  const hands = Object.values(state.zones)
-    .filter((z) => z.kind === 'hand' && z.owner === seat)
-    .sort((a, b) => a.id.localeCompare(b.id))
+  return seatEdgeOf(Object.values(state.zones), state.setup.floor, seat)
+}
+
+// The same question asked of a setup's zones before there is a table (#1292): the setup lays a
+// seat's material turned to the edge it sits at, and the edge is this rule's and no other's.
+export function seatEdgeOf(zones: readonly { id: string; kind: string; owner?: string | undefined; geometry: Zone['geometry'] }[], floorId: string, seat: SeatId): SeatEdge | null {
+  const floor = zones.find((z) => z.id === floorId)
+  const hands = zones.filter((z) => z.kind === 'hand' && z.owner === seat).sort((a, b) => a.id.localeCompare(b.id))
   const hand = hands[0]
   if (!floor || !hand) return null
   const dx = hand.geometry.x + hand.geometry.w / 2 - (floor.geometry.x + floor.geometry.w / 2)

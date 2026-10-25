@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { applyEdit } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
@@ -9,27 +9,28 @@ import { previewFonts } from './fonts.js'
 import { catalogFaceSource } from './font-catalog.js'
 import type { ProjectClient } from './ProjectClient.js'
 import { ThemeTile } from './ThemeTile.js'
-import { THEMES, departures, sayDeparture, themeFamilies, themeIntent, themeOf, type Theme } from './themes.js'
-import { useLang, useT } from '../i18n/index.js'
+import { THEMES, copyChanges, themeFamilies, themeIntent, type CopyChange, type Theme } from './themes.js'
+import { useT } from '../i18n/index.js'
 import { Said, saidOr } from '../i18n/said.js'
 import { useSay } from '../status/StatusLive.js'
 
-// The ready-made themes, first in Speltema (L57, #632), and the line under them that says what the
-// game has made of the one it started from.
+// The examples to start from (L84, #1287): the ready-made themes in a sheet beside Speltema, to
+// read and not to choose. The game's theme is its own, so an example is never pressed here; it is
+// copied, and the copy says first what it replaces, line by line, and is made only on the second
+// press — the same `setTheme` the guided start sends, and one step back (B4).
 //
-// A tile (`ThemeTile`) shows what a theme is without reaching Google — the same line the guided
-// start draws for its themes (#476, #633). Choosing a theme is one handling; «Visa temana i sina typsnitt» is the
-// other (beställarens val C, 2026-10-01): it asks the catalog for each family's sheet and draws the
-// game's own first card on every tile, in the theme's faces, without choosing anything.
-export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; client: ProjectClient; assetBase: string }) {
+// A tile (`ThemeTile`) shows what an example is without reaching Google — the same line the guided
+// start draws for its themes (#476, #633), and opening the sheet asks for nothing. «Visa temana i
+// sina typsnitt» is the handling that does (beställarens val C, 2026-10-01): it asks the catalog
+// for each family's sheet and draws the game's own first card on every tile, in the example's
+// faces, without copying anything.
+export function ThemeExamples({ doc, client, assetBase, onClose }: { doc: ProjectDoc; client: ProjectClient; assetBase: string; onClose(): void }) {
   const t = useT()
-  const { lang } = useLang()
+  const [asking, setAsking] = useState<Theme | null>(null)
   const [busy, setBusy] = useState<Theme | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Said to the reader once the theme is laid over the game; the line below already shows it, so
-  // it is not written on the screen a second time.
+  // Said to the reader once the copy is the game's; the sheet folds away, so it is not written.
   const say = useSay()
-  const from = themeOf(doc)
   // Where each family's face is drawn from once the faces are asked for; null until then.
   const [faces, setFaces] = useState<Record<string, { stack: string; src?: string }> | null>(null)
   const [looking, setLooking] = useState(false)
@@ -47,76 +48,116 @@ export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; clie
       .catch((err: unknown) => setError(saidOr(err, t('fonts.catalog.silent'))))
       .finally(() => setLooking(false))
   }
-  // One theme at a time: a press while one is on its way is not a second theme, and the status line
-  // already says which one is coming, so the press is told to wait rather than ignored unseen.
-  const choose = (theme: Theme) => {
+  // One copy at a time: a press while one is on its way is not a second copy.
+  const copy = (theme: Theme) => {
     if (busy) return
     setBusy(theme)
     setError(null)
     void client
       .useTheme(theme, t)
-      .then(() => say?.('polite', t('theme.gallery.chosen', { name: t(theme.name) })))
-      .catch((err: unknown) => setError(saidOr(err, t('theme.gallery.failed', { name: t(theme.name) }))))
+      .then(() => {
+        say?.('polite', t('theme.examples.copied', { name: t(theme.name) }))
+        onClose()
+      })
+      .catch((err: unknown) => setError(saidOr(err, t('theme.examples.failed', { name: t(theme.name) }))))
       .finally(() => setBusy(null))
   }
   return (
-    <section className="byd-theme-gallery" aria-label={t('theme.gallery')}>
-      {client.mayEdit && (
-        <div className="byd-theme-tiles" role="group" aria-label={t('theme.gallery')}>
-          {THEMES.map((theme) => (
-            <ThemeTile key={theme.id} theme={theme} pressed={from?.id === theme.id} busy={busy === theme} waiting={busy !== null} onPress={() => choose(theme)}>
-              {faces && <ThemeCard doc={doc} theme={theme} faces={faces} assetBase={assetBase} />}
-            </ThemeTile>
-          ))}
-        </div>
-      )}
-      {client.mayEdit && !faces && (
-        <button type="button" className="byd-theme-show byd-secondary" aria-busy={looking} onClick={show}>
-          {t(looking ? 'theme.gallery.show.busy' : 'theme.gallery.show')}
+    <section
+      className="byd-theme-sheet byd-theme-examples"
+      aria-label={t('theme.examples')}
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape') return
+        e.preventDefault()
+        // A question open on a copy is the nearer thing Escape takes back.
+        if (asking) setAsking(null)
+        else onClose()
+      }}
+    >
+      <header>
+        <h2>{t('theme.examples')}</h2>
+        <button type="button" className="byd-theme-sheet-done" onClick={onClose}>
+          {t('theme.library.done')}
         </button>
-      )}
-      <div className="byd-theme-gallery-line">
-        <Departures doc={doc} client={client} lang={lang} busy={busy !== null} onReset={choose} />
-        <p className="byd-theme-gallery-said" role="status">
-          {busy ? t('theme.gallery.busy', { name: t(busy.name) }) : ''}
-        </p>
+      </header>
+      <p className="byd-theme-examples-lead">{t('theme.examples.lead')}</p>
+      <div className="byd-theme-sheet-scroll">
+        <ul className="byd-theme-examples-list">
+          {THEMES.map((theme) => (
+            <li key={theme.id}>
+              <ThemeTile theme={theme}>{faces && <ThemeCard doc={doc} theme={theme} faces={faces} assetBase={assetBase} />}</ThemeTile>
+              {asking === theme ? (
+                <CopyQuestion doc={doc} theme={theme} busy={busy === theme} onCopy={() => copy(theme)} onCancel={() => setAsking(null)} />
+              ) : (
+                <button type="button" className="byd-theme-copy byd-secondary" aria-label={t('theme.examples.copy.name', { name: t(theme.name) })} onClick={() => setAsking(theme)}>
+                  {t('theme.examples.copy')}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {!faces && (
+          <button type="button" className="byd-theme-show byd-secondary" aria-busy={looking} onClick={show}>
+            {t(looking ? 'theme.gallery.show.busy' : 'theme.gallery.show')}
+          </button>
+        )}
+        {error && <p role="alert">{error}</p>}
       </div>
-      {error && <p role="alert">{error}</p>}
     </section>
   )
 }
 
-// The one line (L57): unchanged, or how many changes and which, with the way back to the theme as
-// it was. «Återställ» is choosing the theme again, so it takes back exactly what the line names.
-function Departures({ doc, client, lang, busy, onReset }: { doc: ProjectDoc; client: ProjectClient; lang: ReturnType<typeof useLang>['lang']; busy: boolean; onReset(theme: Theme): void }) {
+// What a copy replaces, said before it is made, with the press that makes it. The hand lands on
+// that press, so the question is answered from where it was asked. Both presses are secondary:
+// the primary fill is the table's alone.
+function CopyQuestion({ doc, theme, busy, onCopy, onCancel }: { doc: ProjectDoc; theme: Theme; busy: boolean; onCopy(): void; onCancel(): void }) {
   const t = useT()
-  const theme = themeOf(doc)
-  if (!theme) return <p className="byd-theme-departs" data-testid="theme-departs">{t('theme.departs.none')}</p>
-  const away = departures(doc)
-  const name = t(theme.name)
-  if (away.length === 0)
-    return (
-      <p className="byd-theme-departs" data-testid="theme-departs">
-        {t('theme.departs.same', { name })}
-      </p>
-    )
+  const changes = useMemo(() => copyChanges(doc, theme, t), [doc, theme, t])
+  const go = useRef<HTMLButtonElement>(null)
+  useEffect(() => go.current?.focus(), [])
   return (
-    <p className="byd-theme-departs" data-testid="theme-departs" data-away="true">
-      <b>{t(away.length === 1 ? 'theme.departs.one' : 'theme.departs.other', { name, n: away.length })}</b> {away.map((d) => sayDeparture(d, lang)).join(', ')}.
-      {client.mayEdit && (
-        <>
-          {' '}
-          <button type="button" className="byd-theme-reset" aria-label={t('theme.departs.reset.name', { name })} aria-disabled={busy} onClick={() => onReset(theme)}>
-            {t('theme.departs.reset')}
-          </button>
-        </>
+    <div className="byd-theme-question" role="group" aria-label={t('theme.examples.replaces', { name: t(theme.name) })}>
+      {changes.length === 0 ? (
+        <p>{t('theme.examples.same')}</p>
+      ) : (
+        <ul>
+          {changes.map((c, i) => (
+            <li key={i}>
+              {sayChange(c, t)}
+              {'colour' in c && <i className="byd-theme-question-ink" style={{ background: c.colour }} aria-hidden="true" />}
+            </li>
+          ))}
+        </ul>
       )}
-    </p>
+      <span className="byd-theme-question-acts">
+        <button ref={go} type="button" className="byd-secondary" aria-busy={busy} aria-disabled={busy} onClick={onCopy}>
+          {t('theme.examples.copy.go')}
+        </button>
+        <button type="button" className="byd-secondary" onClick={onCancel}>
+          {t('theme.examples.cancel')}
+        </button>
+      </span>
+    </div>
   )
 }
 
-// The game's own first card as the theme would set it: the theme laid over a copy of the document
-// by the very edit that choosing it sends, so the tile cannot show what the choice would not do.
+function sayChange(c: CopyChange, t: ReturnType<typeof useT>): string {
+  switch (c.kind) {
+    case 'heading':
+      return t('theme.examples.heading', { from: c.from, to: c.to })
+    case 'body':
+      return t('theme.examples.body', { from: c.from, to: c.to })
+    case 'colour':
+      return t('theme.examples.colour', { meaning: c.meaning })
+    case 'meaning':
+      return t('theme.examples.meaning', { meaning: c.meaning })
+    case 'icons':
+      return t(c.names.length === 1 ? 'theme.examples.icons.one' : 'theme.examples.icons.other', { n: c.names.length, names: c.names.join(', ') })
+  }
+}
+
+// The game's own first card as the example would set it: the example laid over a copy of the
+// document by the very edit that copying it sends, so the tile cannot show what the choice would not do.
 //
 // The tile draws a crop of it (#741, beställarens val A 2026-10-04): the title band and the first
 // lines of the prose, at the size the prose can be read at, centred on the prose box. The card is

@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest'
 import { svAccount } from '../src/i18n/sv.account.js'
 import { svEditor } from '../src/i18n/sv.editor.js'
 import { svPlay } from '../src/i18n/sv.play.js'
+import { svOnline } from '../src/i18n/sv.online.js'
 import { svStatus } from '../src/i18n/sv.status.js'
 import { enAccount } from '../src/i18n/en.account.js'
 import { enEditor } from '../src/i18n/en.editor.js'
 import { enPlay } from '../src/i18n/en.play.js'
+import { enOnline } from '../src/i18n/en.online.js'
 import { enStatus } from '../src/i18n/en.status.js'
 import { PARTS, type Part } from '../src/i18n/index.js'
 import { routesOf } from '../scripts/route-table.js'
@@ -26,8 +28,8 @@ import { routesOf } from '../scripts/route-table.js'
 // browser, in both languages, with an eye on the console.
 const SRC = join(import.meta.dirname, '..', 'src')
 
-const SV: Record<Part, Record<string, string>> = { status: svStatus, play: svPlay, account: svAccount, editor: svEditor }
-const EN: Record<Part, Record<string, string>> = { status: enStatus, play: enPlay, account: enAccount, editor: enEditor }
+const SV: Record<Part, Record<string, string>> = { status: svStatus, play: svPlay, online: svOnline, account: svAccount, editor: svEditor }
+const EN: Record<Part, Record<string, string>> = { status: enStatus, play: enPlay, online: enOnline, account: enAccount, editor: enEditor }
 
 const partOf = new Map<string, Part>()
 for (const part of PARTS) for (const key of Object.keys(SV[part])) partOf.set(key, part)
@@ -101,6 +103,7 @@ describe('every surface fetches the words it draws (#760)', () => {
     expect(routes.find((r) => r.path === '/play')?.parts).toEqual(['status', 'play'])
     expect(routes.find((r) => r.path === '/join')?.parts).toEqual(['status', 'play'])
     expect(routes.find((r) => r.path === '/KOD')?.parts).toEqual(['status', 'play'])
+    expect(routes.find((r) => r.path === '/online')?.parts).toEqual(['status', 'play', 'online'])
   })
 
   it('lets the shell say only what every route fetches', () => {
