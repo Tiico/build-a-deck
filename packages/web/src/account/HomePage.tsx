@@ -317,6 +317,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               >
                 {t('home.menu.export')}
               </button>
+              {/* What would be sent to a printer, on a page of its own (#1208, beslut B). */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenu(null)
+                  onNavigate(`/print-package?${suffix(new URLSearchParams({ project: p.id }))}`)
+                }}
+              >
+                {t('home.menu.print')}
+              </button>
             </>
           )}
           {canDelete(roleOf(p)) && (

@@ -408,6 +408,7 @@ export const enEditor = {
   'wall.checks.warningsOnly': 'Only warnings. The deck is print-ready.',
   'wall.checks.help': 'A remark is usually about the template, not the card, and then shows on every card that uses the element.',
   'wall.checks.help.topic': 'the remarks',
+  'wall.checks.print': 'See the print package ›',
   'wall.checks.fix': 'Mend it in the template',
   'wall.checks.fix.said': '{what} mended in the template.',
   'wall.checks.fix.none': 'This one is your own choice and cannot be fixed automatically.',

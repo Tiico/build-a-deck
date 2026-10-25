@@ -908,8 +908,8 @@ describe('the game menu follows the role (D3, #689)', () => {
   }
 
   it.each([
-    ['owner', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…', 'Ta bort spelet']],
-    ['editor', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…']],
+    ['owner', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…', 'Tryckpaketet…', 'Ta bort spelet']],
+    ['editor', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…', 'Tryckpaketet…']],
     ['tester', ['Starta bord']],
     ['viewer', []],
   ] as const)('offers the %s only what the role may do', async (role, offered) => {

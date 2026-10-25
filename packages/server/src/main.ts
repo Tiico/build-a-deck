@@ -14,6 +14,7 @@ import { providersFromEnv } from './ai-providers.js'
 import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore } from '@byd/render/queue'
 import { MemoryAccountPlanStore, plansAtStart, type AccountPlanStore } from './account-plans.js'
 import { plansFromEnv, plansLine } from './quotas.js'
+import { printProvidersOf } from './print-providers.js'
 
 // The tiers stop the start when they cannot be read (#1192): an error must never quietly become
 // unlimited, nor quietly become closed. Said in the log, then out — before anything else is opened,
@@ -129,7 +130,10 @@ if (corpus) console.log(JSON.stringify({ msg: 'corpus', accounts: corpus.account
 // the default and whether any ceiling is set at all; never who has which (DRIFT §8).
 const plans = await plansAtStart(process.env, accountPlans).catch(refusePlans)
 console.log(JSON.stringify(plansLine(plans)))
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans })
+// Testtryckeriet stands where a print partner will (F1, F2, #1208): the print package is prepared
+// by it, so what the designer sees and downloads is what a partner would be sent.
+const printProviders = printProvidersOf(STANDARD_TYPES)
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

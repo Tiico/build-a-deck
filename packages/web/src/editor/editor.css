@@ -1289,6 +1289,9 @@
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
 .byd-wall-checks { flex: 1 1 auto; min-width: 0; }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
+/* The way to the print package (#1208), under the checks: what would be sent with them applied. */
+.byd-wall-print { display: inline-flex; align-items: center; min-height: 44px; color: #c3cbdd; text-decoration: underline; text-underline-offset: 3px; }
+.byd-wall-print:hover { color: #fff; }
 .byd-wall-lead { margin: 0 0 8px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
 .byd-wall-checks ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .byd-wall-checks li { border-radius: 10px; overflow: hidden; border-left: 3px solid #f0b64a; background: #1b1f2a; }
