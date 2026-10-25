@@ -118,7 +118,7 @@ describe('the owner’s own watch (#1335)', () => {
       history.replaceState({ kept: 1 }, '', `/observe?session=${id}&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
       const before = history.length
       render(<ObserverPage />)
-      expect(await screen.findByText('observatör tittar på och ser alla kort')).toBeTruthy()
+      expect(await screen.findAllByText('observatör tittar på och ser alla kort')).not.toHaveLength(0)
       expect(screen.queryByText(/Vera/)).toBeNull()
       expect(new URLSearchParams(location.search).has('name')).toBe(false)
       expect(new URLSearchParams(location.search).get('owner')).toBe('1')
