@@ -16,7 +16,7 @@ afterEach(() => {
 
 describe('the ways to the table carry the host’s language (#756)', () => {
   it('puts ?lang= on the television and on the host’s own seat', () => {
-    for (const url of [tvUrl('s1', null, undefined, true, 'en'), onlineUrl('s1', null, 'A', true, undefined, 'en')]) {
+    for (const url of [tvUrl('s1', null, undefined, true, 'en'), onlineUrl('s1', null, 'A', true, 'en')]) {
       expect(new URL(url, 'http://x').searchParams.get('lang')).toBe('en')
     }
   })

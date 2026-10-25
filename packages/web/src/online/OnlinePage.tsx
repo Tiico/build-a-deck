@@ -18,6 +18,7 @@ import { useSeatTurned } from '../player/turned.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/session.js'
 import { takeGuestToken } from '../guestAddress.js'
+import { dropOwnerName, hostSeatAt } from '../hostSeat.js'
 import { SeatLine } from './SeatLine.js'
 import { LastMove } from './LastMove.js'
 import { NOTES_OPEN_PX, NOTES_RAIL_PX, NotesColumn } from './NotesColumn.js'
@@ -85,7 +86,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const sessionId = params.get('session')
   const seat = params.get('seat')
   const owner = params.get('owner') === '1'
-  // A guest's token, from the fragment (#1278); the owner's own seat has none, and keeps its name.
+  // A guest's token, from the fragment (#1278); the owner's own seat has none.
   const token = useMemo(() => (owner ? undefined : takeGuestToken()), [owner])
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
@@ -99,7 +100,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // the same history entry, as a guest's is (#1278).
   const [kept] = useState(() => {
     if (!owner) return null
-    dropName()
+    dropOwnerName()
     return sessionId ? (hostSeatAt(sessionId)?.name ?? null) : null
   })
   const name = token === undefined ? (owner ? (kept ?? client?.admitted ?? (view ? t('online.designer') : null)) : null) : (client?.admitted ?? null)

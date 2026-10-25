@@ -1,6 +1,7 @@
-import type { BrowserContext, Page, Request } from '@playwright/test'
-import { logIn, makeProject } from '../support/api.js'
+import type { BrowserContext, Page } from '@playwright/test'
+import { logIn, makeProject, startTable } from '../support/api.js'
 import { DESK } from '../support/devices.js'
+import { watchRequests, type Seen } from '../support/requests.js'
 import { expect, test } from '../support/test.js'
 
 // The host key and the owner's name in no address (#1306, DRIFT §9), as #1278 did for a guest.
@@ -14,55 +15,12 @@ import { expect, test } from '../support/test.js'
 //
 // Proved on the network, as hidden information is (CLAUDE.md): every request each tab makes — the
 // editor's, the table's and the seat's, their WebSockets included — is read for its address and its
-// `Referer`, and none of the three is in any of them. The search is shown to work first, on the
-// answer that handed out the key, on the account's own answer and on the table's frames.
+// `Referer` (`support/requests.ts`), and none of the three is in any of them. The search is shown
+// to work first: the key in the address the editor handed the new tab, in its fragment; her name
+// and her address in the account's own answer and her name in the table's frames.
 
 // Words no word of the product's contains, so that finding one means finding her.
 const NAME = 'Ottilia Wennerqvist'
-
-type Seen = { url: string; referer: string | undefined }
-
-// Every request the context makes, in every tab, and every WebSocket its tabs open, whose handshake
-// is a request too. The `Referer` is read as Chromium sent it once the request has finished, and the
-// read is bounded by the request's own fate (#1320): a request a navigation cut off never gets its
-// raw headers, and a read that waited for them waited for ever. The provisional headers, which the
-// browser reports as it sends the request, stand in for them then.
-function watchRequests(context: BrowserContext): { seen: Seen[]; frames: string[]; settled: () => Promise<void> } {
-  const seen: Seen[] = []
-  const frames: string[] = []
-  const reading: Promise<void>[] = []
-  const settles = new Map<Request, (referer: string | undefined) => void>()
-  const provisional = (request: Request) => request.headers()['referer']
-  context.on('request', (request) => {
-    reading.push(
-      new Promise<void>((resolve) => {
-        const settle = (referer: string | undefined) => {
-          if (!settles.delete(request)) return
-          seen.push({ url: request.url(), referer })
-          resolve()
-        }
-        settles.set(request, settle)
-        // Whatever happens to it, the request is read once and its read is over.
-        setTimeout(() => settle(provisional(request)), 5_000)
-      }),
-    )
-  })
-  context.on('requestfinished', (request) => {
-    void request.allHeaders().then(
-      (headers) => settles.get(request)?.(headers['referer']),
-      () => settles.get(request)?.(provisional(request)),
-    )
-  })
-  context.on('requestfailed', (request) => settles.get(request)?.(provisional(request)))
-  const watch = (page: Page) =>
-    page.on('websocket', (ws) => {
-      seen.push({ url: ws.url(), referer: undefined })
-      ws.on('framereceived', ({ payload }) => void frames.push(String(payload)))
-    })
-  for (const page of context.pages()) watch(page)
-  context.on('page', watch)
-  return { seen, frames, settled: () => Promise.all(reading).then(() => undefined) }
-}
 
 // The forms a value takes in an address: as it is, and encoded as a query or a path encodes it.
 const spellings = (value: string): string[] => [...new Set([value, encodeURIComponent(value), value.replace(/ /g, '+'), value.split(' ')[0] ?? value])]
@@ -98,7 +56,8 @@ async function keyHandedOut(page: Page): Promise<() => string> {
   }
 }
 
-// A designer who has named her account, in the editor of her own game.
+// A designer who has named her account, in the editor of her own game, with every request of the
+// context watched from before the editor's first one.
 async function designerInTheEditor(open: (device: typeof DESK, url: string) => Promise<{ page: Page; context: BrowserContext }>) {
   const { page, context } = await open(DESK, 'about:blank')
   const requests = watchRequests(context)
@@ -115,37 +74,46 @@ async function designerInTheEditor(open: (device: typeof DESK, url: string) => P
   return { page, context, requests, email, project }
 }
 
-async function startAs(page: Page, seating: 'screen' | 'computer'): Promise<Page> {
+// Starts a table from the editor's header, and answers with the tab it opened and every address
+// that tab's main frame was at, in the order it was there.
+async function startAs(page: Page, seating: 'screen' | 'computer'): Promise<{ tab: Page; at: string[] }> {
   await page.locator('header').getByRole('button', { name: 'Start a table' }).click()
   const dialog = page.getByRole('dialog', { name: 'Start a table' })
   await dialog.getByRole('radio', { name: seating === 'screen' ? 'Around one screen' : 'Each at their own computer' }).check()
   if (seating === 'computer') await dialog.getByRole('textbox', { name: 'Your name at the table' }).fill(NAME)
-  const opened = page.context().waitForEvent('page')
+  const at: string[] = []
+  const opened = page.context().waitForEvent('page').then((tab) => {
+    tab.on('framenavigated', (frame) => void (frame === tab.mainFrame() && at.push(frame.url())))
+    return tab
+  })
   await dialog.getByRole('button', { name: seating === 'screen' ? 'Start' : 'Start and sit down', exact: true }).click()
-  return opened
+  return { tab: await opened, at }
 }
 
 test.describe('the host key and the owner’s name in no address (#1306)', () => {
   test('the table’s screen: started from the editor, opened and reloaded', async ({ open }) => {
     const { page, requests, email } = await designerInTheEditor(open)
     const handed = await keyHandedOut(page)
-    const tv = await startAs(page, 'screen')
+    const { tab: tv, at } = await startAs(page, 'screen')
     await tv.waitForURL(/\/table\?/)
-    // The table's own view, which only the key opens here: the room code stands on it.
-    const code = page.locator('[data-room-code]')
-    await expect(code).toHaveText(/\S+/)
-    await expect(tv.getByText((await code.textContent()) ?? '').first()).toBeVisible()
+    // The table's own view, which only the key opens: the table is on the felt and the room code
+    // the editor shows stands on the screen.
+    await expect(tv.locator('.byd-pile').first()).toBeVisible()
+    const code = (await page.locator('[data-room-code]').textContent()) ?? ''
+    expect(code).toMatch(/\S+/)
+    await expect(tv.getByText(code).first()).toBeVisible()
     const key = handed()
-    expect(key.length).toBeGreaterThan(20)
-    // The search works: the key is in the answer that handed it out.
+    // The search works: the tab was handed the key, in the fragment of its address, and the
+    // screen took it out of the address on arrival.
+    expect(at.some((url) => new URL(url).hash === `#host=${key}`), 'the tab was opened with the key in its fragment').toBe(true)
     expect(tv.url()).not.toContain(key)
 
     // A reload opens the table again, with the key the tab kept.
     await tv.reload()
     await expect(tv.locator('.byd-pile').first()).toBeVisible()
-    await expect(tv.locator('[data-status-notice]')).toHaveCount(0)
+    await expect(tv.getByText(code).first()).toBeVisible()
 
-    await requests.settled()
+    await requests.closeAndRead()
     readSomething(requests.seen, ['/sessions/', '/edit'])
     neverIn(requests.seen, 'the host key', key)
     neverIn(requests.seen, 'her name', NAME)
@@ -155,21 +123,67 @@ test.describe('the host key and the owner’s name in no address (#1306)', () =>
   test('the owner’s own seat: started from the editor at her own computer, seated and reloaded', async ({ open }) => {
     const { page, requests, email } = await designerInTheEditor(open)
     const handed = await keyHandedOut(page)
-    const seat = await startAs(page, 'computer')
+    const { tab: seat } = await startAs(page, 'computer')
     await seat.waitForURL(/\/online\?/)
     expect(new URL(seat.url()).searchParams.get('owner')).toBe('1')
-    // Seated under the name she gave, which the table says on its own wire: the search works.
-    await expect(seat.locator('.byd-seat-name[data-me="true"]', { hasText: NAME })).toBeAttached()
+    // Seated under her name, which the table says on its own wire: the search works.
+    const mine = seat.locator('.byd-seat-name[data-me="true"]', { hasText: NAME })
+    await expect(mine).toBeAttached()
     await expect.poll(() => requests.frames.some((frame) => frame.includes(NAME))).toBe(true)
     const key = handed()
 
+    // A browser that does not remember her seat's name — storage cleared, or another computer —
+    // still sits her down under it: the table tells her the name she gave her account.
+    await seat.evaluate(() => localStorage.removeItem('byd.hostSeat'))
+    const told = requests.frames.length
     await seat.reload()
-    await expect(seat.locator('.byd-seat-name[data-me="true"]', { hasText: NAME })).toBeAttached()
+    await expect(mine).toBeAttached()
+    expect(requests.frames.slice(told).some((frame) => frame.includes('"admitted"') && frame.includes(NAME)), 'the table told her the name').toBe(true)
 
-    await requests.settled()
+    await requests.closeAndRead()
     readSomething(requests.seen, ['/sessions/', '/edit'])
     neverIn(requests.seen, 'the host key', key)
     neverIn(requests.seen, 'her name', NAME)
     neverIn(requests.seen, 'her address', email)
   })
+
+  // A page that loaded before the box was updated still runs the old client: the table's screen
+  // says its key in the socket's address and offers no protocol, and the owner's seat says her name
+  // there. Both still get in, as they did, and the seat is told nothing its client does not know.
+  test('a page loaded before the deploy still connects the old way', async ({ open }) => {
+    const { page } = await open(DESK, 'about:blank')
+    await logIn(page.request)
+    const project = await makeProject(page.request, { name: 'Fredagskort', players: 2, cards: 3 })
+    const table = await startTable(page.request, project.id)
+    await page.goto('/')
+    const origin = new URL(page.url()).origin.replace(/^http/, 'ws')
+    const at = (query: string) => `${origin}/sessions/${encodeURIComponent(table.session)}?${query}`
+    const screen = await page.evaluate(oldSocket, at(`host=${encodeURIComponent(table.hostKey)}`))
+    const types = (frames: string[]) => frames.map((frame) => (JSON.parse(frame) as { t: string }).t)
+    expect(types(screen)).not.toContain('refused')
+    expect(screen.some((frame) => frame.includes(`"code":"${table.code}"`)), 'the old screen is the table’s and hears its code').toBe(true)
+
+    const owner = await page.evaluate(oldSocket, at(`seat=A&name=${encodeURIComponent(NAME)}&owner=1`))
+    expect(types(owner)).not.toContain('refused')
+    expect(types(owner)).toContain('snapshot')
+    expect(types(owner), 'an old client is not told a message it does not know').not.toContain('admitted')
+  })
 })
+
+// The old client's socket: an address, no protocol. Resolves with every frame once the table has let
+// it in (its snapshot, and for the table's screen also the room) or turned it away.
+function oldSocket(address: string): Promise<string[]> {
+  return new Promise<string[]>((resolve, reject) => {
+    const got: string[] = []
+    const ws = new WebSocket(address)
+    ws.onmessage = (ev) => {
+      got.push(String(ev.data))
+      const types = got.map((frame) => (JSON.parse(frame) as { t: string }).t)
+      if (types.includes('refused') || (types.includes('snapshot') && (!address.includes('host=') || types.includes('room')))) {
+        ws.close()
+        resolve(got)
+      }
+    }
+    ws.onerror = () => reject(new Error(`could not open ${address}`))
+  })
+}
