@@ -252,8 +252,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
   const [stoodOn, setStoodOn] = useState<readonly string[]>([])
   const askedAbout = (target: EventTarget | null): string[] => {
     if (!(target instanceof Element)) return []
-    const one = target.closest('[data-zone-row], [data-zone-handle]')
-    const id = one?.getAttribute('data-zone-row') ?? one?.getAttribute('data-zone-handle')
+    // A piece of material lights the zone it lies in (#1292): it lies over the zone's handle.
+    const one = target.closest('[data-zone-row], [data-zone-handle], [data-material-zone]')
+    const id = one?.getAttribute('data-zone-row') ?? one?.getAttribute('data-zone-handle') ?? one?.getAttribute('data-material-zone')
     if (id) return [id]
     const role = target.closest('[data-zone-family]')?.getAttribute('data-zone-family')
     return role ? setup.zones.filter((z) => familyRole(z) === role).map((z) => z.id) : []
@@ -1186,6 +1187,7 @@ function Felt({
         aria-label={t('setup.material.handle', { what: whatOf(h, t), zone: h.zoneName })}
         aria-describedby={onPlace ? materialKeysId : undefined}
         data-material={h.key}
+        data-material-zone={h.zone}
         style={{ left: fit.left(h.box.x), top: fit.top(h.box.y), width: fit.px(h.box.w), height: fit.px(h.box.h) }}
         onPointerDown={(e) => carry(e, h)}
         onPointerMove={carrying}
@@ -1304,7 +1306,7 @@ const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
 
 // One handle for a line's pieces in one zone (#1292): the box around them on the felt, and the
 // middle a drag or an arrow moves.
-type MaterialHandle = { key: string; line: MaterialLine; zoneName: string; faces?: number; name?: string; box: { x: number; y: number; w: number; h: number }; center: { x: number; y: number } }
+type MaterialHandle = { key: string; line: MaterialLine; zone: string; zoneName: string; faces?: number; name?: string; box: { x: number; y: number; w: number; h: number }; center: { x: number; y: number } }
 function materialHandles(setup: Setup): MaterialHandle[] {
   const byKey = new Map<string, MaterialHandle>()
   for (const p of layMaterial(setup)) {
@@ -1315,7 +1317,7 @@ function materialHandles(setup: Setup): MaterialHandle[] {
     const y = zone.geometry.y + p.y
     const was = byKey.get(key)
     const box = was ? { x: Math.min(was.box.x, x), y: Math.min(was.box.y, y), w: Math.max(was.box.x + was.box.w, x + p.size) - Math.min(was.box.x, x), h: Math.max(was.box.y + was.box.h, y + p.size) - Math.min(was.box.y, y) } : { x, y, w: p.size, h: p.size }
-    byKey.set(key, { key, line: p.line, zoneName: zone.name, ...(p.faces !== undefined ? { faces: p.faces } : {}), ...(p.name !== undefined ? { name: p.name } : {}), box, center: { x: box.x + box.w / 2, y: box.y + box.h / 2 } })
+    byKey.set(key, { key, line: p.line, zone: zone.id, zoneName: zone.name, ...(p.faces !== undefined ? { faces: p.faces } : {}), ...(p.name !== undefined ? { name: p.name } : {}), box, center: { x: box.x + box.w / 2, y: box.y + box.h / 2 } })
   }
   return [...byKey.values()]
 }

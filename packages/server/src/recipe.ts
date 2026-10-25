@@ -507,27 +507,6 @@ export function counterSpots(zone: Geometry, counters: number): { x: number; y: 
   })
 }
 
-// A point said from seat A's chair, in the zone a seat at `edge` has (#1292): along the rim from
-// the seat's left, and inwards from the far side, turned so that every seat finds its piece where
-// A finds hers. A seat whose edge nobody knows reads the point as it is written.
-export function seatPoint(at: { x: number; y: number }, zone: Geometry, edge: 'N' | 'E' | 'S' | 'W' | null): { x: number; y: number } {
-  if (edge === 'N') return { x: zone.w - at.x, y: zone.h - at.y }
-  if (edge === 'E') return { x: at.y, y: zone.h - at.x }
-  if (edge === 'W') return { x: zone.w - at.y, y: at.x }
-  return { x: at.x, y: at.y }
-}
-
-// Where `count` pieces `size` across lie in a zone around a point (#1292): a row a piece and a gap
-// apart with its middle on the point, kept inside the zone, as the top left corners the table lays.
-export function piecesAt(at: { x: number; y: number }, zone: Geometry, count: number, size: number): { x: number; y: number }[] {
-  const pitch = size * 1.3
-  return Array.from({ length: Math.max(0, count) }, (_, i) => {
-    const x = at.x + (i - (count - 1) / 2) * pitch - size / 2
-    const y = at.y - size / 2
-    return { x: Math.round(Math.max(0, Math.min(zone.w - size, x))), y: Math.round(Math.max(0, Math.min(zone.h - size, y))) }
-  })
-}
-
 // Where a zone's dice lie when the table is laid (#1136): a row a die's width and a gap apart,
 // wrapping to the next row when the zone is too narrow for them all, in the zone's own millimetres.
 // The felt draws a die larger than life (`DIE_MM` is what it reserves), so they are spaced for that.

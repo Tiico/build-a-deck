@@ -1,5 +1,5 @@
 import { seatEdgeOf } from '@byd/engine'
-import { CHIP_MM, DIE_MM, counterSpots, diceSpots, piecesAt, seatPoint, type Counter, type Die, type Geometry, type Setup, type Zone } from './recipe.js'
+import { CHIP_MM, DIE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Setup, type Zone } from './recipe.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // Where the game's material lies when a table is laid (#1292): the counters (C4) and the dice
@@ -21,6 +21,28 @@ export type MaterialPiece = {
   faces?: number
   counter?: number
   name?: string
+}
+
+// A point said from seat A's chair, in the zone a seat at `edge` has (#1292): along the rim from
+// the seat's left, and inwards from the far side, turned so that every seat finds its piece where
+// A finds hers. A seat whose edge nobody knows reads the point as it is written.
+export function seatPoint(at: { x: number; y: number }, zone: Geometry, edge: 'N' | 'E' | 'S' | 'W' | null): { x: number; y: number } {
+  if (edge === 'N') return { x: zone.w - at.x, y: zone.h - at.y }
+  if (edge === 'E') return { x: at.y, y: zone.h - at.x }
+  if (edge === 'W') return { x: zone.w - at.y, y: at.x }
+  return { x: at.x, y: at.y }
+}
+
+// Where `count` pieces `size` across lie in a zone around a point (#1292): a row a piece and a gap
+// apart with its middle on the point, kept inside the zone, as the top left corners the table lays.
+// Kept here and not in the recipe: the phone loads the recipe, and never lays a table.
+export function piecesAt(at: { x: number; y: number }, zone: Geometry, count: number, size: number): { x: number; y: number }[] {
+  const pitch = size * 1.3
+  return Array.from({ length: Math.max(0, count) }, (_, i) => {
+    const x = at.x + (i - (count - 1) / 2) * pitch - size / 2
+    const y = at.y - size / 2
+    return { x: Math.round(Math.max(0, Math.min(zone.w - size, x))), y: Math.round(Math.max(0, Math.min(zone.h - size, y))) }
+  })
 }
 
 const zoneOf = (setup: Setup, id: string): Zone | undefined => setup.zones.find((z) => z.id === id)
