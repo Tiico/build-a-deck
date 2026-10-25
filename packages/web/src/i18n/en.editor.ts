@@ -88,7 +88,6 @@ export const enEditor = {
   'editor.edit.refused': 'A change could not be made and has been removed. The game now shows the same thing to everyone.',
   'editor.rev': 'v{n}',
   'editor.here.name': 'Share: who has the game, {n} online',
-  'editor.here.count': '{n} online',
   'editor.here.someone': 'Someone',
   'editor.saved': 'Saved',
   // One word and not two (#5): nothing in the header may wrap and the game's name is already

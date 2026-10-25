@@ -38,7 +38,8 @@ import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
-import { colourOf, initialOf, loginUrl, myAccount, removeProject } from '../account/api.js'
+import { loginUrl, myAccount, removeProject } from '../account/api.js'
+import { HereFaces } from './HereDoor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
@@ -893,18 +894,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             bottom of the screen, and mounting both would put two of every tab in the document. */}
         {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
         {/* The people in the header are the door to who has the game at all (D3): who is here
-            now and who may be here is one question. The name carries the count the button shows,
-            so it can be spoken to by what it says (#556). */}
+            now and who may be here is one question. The door is the designer's own face and «Dela»
+            whoever is here, and the others hang from the header's edge, so nothing in the row
+            moves when someone comes in (L63, #1250). The name carries the count (#556). */}
         <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.door')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
-          {client.here.map((p) => (
-            // The name's letter and the whole name on the pointer, in the colour of the address, so the
-            // face stays the same when the name changes (#1254).
-            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.email ?? p.name) }}>
-              {initialOf(p.name)}
-            </i>
-          ))}
-          {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}
-          <span className="byd-editor-here-word" aria-hidden="true">{t('share.word')}</span>
+          <HereFaces here={client.here} self={client.you} word={t('share.word')} />
         </button>
         <span className="byd-editor-spacer" />
         <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} onReading={() => sayReading(t('editor.reading.nothing'))} />

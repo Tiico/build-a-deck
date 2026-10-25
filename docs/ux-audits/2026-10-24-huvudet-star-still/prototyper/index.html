@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 1250 — huvudet står still (#1250)</title>
+<!-- PROTOTYP, #1250. Kastas när en variant är vald.
+     Editorns huvud när en, två, fyra och åtta personer har spelet öppet. Fråga: hur står allt till
+     vänster om «Dela» still när någon kommer in, vid 1024, 1280 och 1440, i Macens typsnitt och i
+     CI:s bredare?
+     Huvudet ritas med appens EGNA regler: huvudet.css är genererad ur packages/web/src (buttons.css
+     och huvudets regler i editor.css) av matning/extract.mjs. Varje rad är en <iframe> i fönstrets
+     bredd, så att appens @media gäller som i appen. Markupen följer EditorPage.tsx rad för rad.
+     ?v=A|B|C&w=1024|1280|1440&font=mac|bred&lang=sv|en&bord=utan|med&namn=skogen|sal|langt
+     Ingenting här importeras av appen. -->
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { min-height: 100vh; display: flex; flex-direction: column; }
+  .protorad .grupp { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; margin-right: 2px; }
+  .protorad button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; border-color: #ffd98a; font-weight: 700; }
+  .protorad .anteckning { min-height: 0; }
+  .protorad .anteckning p { margin: 0 0 4px; }
+  .scen { flex: 1; padding: var(--s4) var(--s4) 96px; display: grid; gap: var(--s5); align-content: start; }
+  .block > h2 { margin: 0 0 8px; color: #fff; font-size: 13px; font-weight: 700; }
+  .block > h2 small { color: var(--quiet-2); font-weight: 400; margin-left: 6px; }
+  .block > h2 .rek { color: #9be3b5; font-weight: 700; }
+  .stapel { position: relative; display: grid; grid-template-columns: 112px minmax(0, 1fr); row-gap: 6px; }
+  .radnamn { align-self: center; color: #c8b98d; font-size: 11px; line-height: 1.35; padding-right: 8px; font-variant-numeric: tabular-nums; }
+  .radnamn b { display: block; color: #ffe9b8; font-size: 12px; }
+  .radnamn .ok { color: #9be3b5; }
+  .radnamn .nej { color: #ff9a8a; font-weight: 700; }
+  .ramar { position: relative; grid-column: 2; grid-row: 1 / span 4; }
+  .ram { position: relative; overflow: hidden; outline: 1px solid #3a3f4b; }
+  .ram + .ram { margin-top: 6px; }
+  .ram iframe { display: block; border: 0; transform-origin: 0 0; background: #23262e; }
+  .linje { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 1px dashed #ff6a5a; pointer-events: none; z-index: 3; opacity: .85; }
+  .linje.dorr { border-left-color: #6ea8ff; }
+  table.matris { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+  table.matris th, table.matris td { border: 1px solid #2f333d; padding: 5px 9px; text-align: left; vertical-align: top; }
+  table.matris th { color: #fff; background: #1b1f2a; font-weight: 600; }
+  table.matris td.ok { background: #16301f; color: #9be3b5; }
+  table.matris td.nej { background: #3a1c1c; color: #ffb3a8; }
+  table.matris td.mitt { background: #2e2716; color: #f0d7a0; }
+  table.matris tr.valt th:first-child { box-shadow: inset 3px 0 0 #ffd98a; }
+  .forkl { color: var(--quiet-2); font-size: 12px; line-height: 1.5; margin: 6px 0 0; max-width: 1100px; }
+  .flytande { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .flytande button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .flytande .namn { padding: 0 12px; min-width: 340px; text-align: center; font-size: 12.5px; }
+  #mätframar { position: absolute; left: -99999px; top: 0; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <div class="protorad">
+    <div class="fraga">
+      <p><b>#1250 — huvudet står still när någon kommer in.</b> Raderna är samma huvud med 1, 2, 4 och 8 närvarande; de röda strecken står vid varje fliks vänsterkant när du är ensam, det blå vid dörrens.</p>
+      <p>Huvudet ritas med appens egna regler (genererade ur <code>editor.css</code> och <code>buttons.css</code>), en iframe per rad i fönstrets bredd, så att @media slår till som i appen.</p>
+    </div>
+    <span class="grupp" id="g-v"><span>Variant</span></span>
+    <span class="grupp" id="g-w"><span>Bredd</span></span>
+    <span class="grupp" id="g-font"><span>Typsnitt</span></span>
+    <span class="grupp" id="g-lang"><span>Språk</span></span>
+    <span class="grupp" id="g-bord"><span>Bord</span></span>
+    <span class="grupp" id="g-namn"><span>Spelets namn</span></span>
+    <div class="anteckning" id="anteckning"></div>
+  </div>
+  <div class="scen">
+    <section class="block" id="fore"></section>
+    <section class="block" id="efter"></section>
+    <section class="block">
+      <h2>Alla bredder och båda typsnitten <small id="matrisom"></small></h2>
+      <table class="matris" id="matris"></table>
+      <p class="forkl">Varje ruta: hur långt det längst flyttade av hemvägen, namnet, ⋯, versionen, sparstatusen, ångra/gör om och de sju flikarna går när 2, 4 och 8 är inne jämfört med ensam (största värdet), och spelets namn ensam → med 8 (synliga/hela px). Grön: 0 px och helt namn. Gul: 0 px, men namnet är klippt redan ensam, eller (C) ingen av de andra syns i raden. Röd: något flyttar.</p>
+    </section>
+  </div>
+</div>
+<div class="flytande" role="toolbar" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">←</button>
+  <span class="namn" id="vnamn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">→</button>
+</div>
+<div id="mätframar" aria-hidden="true"></div>
+<script>
+// ── Ord, ur packages/web/src/i18n (sv.editor.ts, en.editor.ts, sv.*.ts för share.word) ──────────
+const ORD = {
+  sv: { home: 'Mina spel', saved: 'Sparat', unsaved: 'Osparat', save: 'Spara', start: 'Starta bord', startShort: 'Starta', update: 'Uppdatera bordet', updateShort: 'Uppdatera', share: 'Dela', door: 'Dela · vilka som har spelet', here: (n) => `Dela: vilka som har spelet, ${n} online`, count: (n) => `${n} online`, tabs: ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'], tablist: 'Editorlägen', more: (g) => `Mer för ${g}`, ways: 'Fler vägar till bordet', running: 'Bordet kör v1 —', open: 'öppna bordet', undo: 'Inget att ångra', redo: 'Inget att göra om' },
+  en: { home: 'My games', saved: 'Saved', unsaved: 'Unsaved', save: 'Save', start: 'Start a table', startShort: 'Start', update: 'Update the table', updateShort: 'Update', share: 'Share', door: 'Share · who has the game', here: (n) => `Share: who has the game, ${n} online`, count: (n) => `${n} online`, tabs: ['Card wall', 'Template', 'Data', 'Theme', 'Media', 'Rules', 'Tables'], tablist: 'Editor modes', more: (g) => `More for ${g}`, ways: 'More ways to the table', running: 'The table runs v1 —', open: 'open the table', undo: 'Nothing to undo', redo: 'Nothing to redo' },
+}
+const NAMN = { skogen: 'Skogens herrar', sal: "Sal's Saloon", langt: 'Skogens herrar och drottningarnas sista vinter' }
+// De närvarande. I dag är namnet kontots adress (D3); med #1254 blir det visningsnamnet, men
+// ansiktet är fortfarande en bokstav och titeln hela namnet, så bredden ändras inte av det.
+const FOLK = ['ada', 'bo', 'cia', 'dan', 'eva', 'fia', 'gus', 'hed'].map((n) => `${n}@lekverkstan.se`)
+const colourOf = (seed) => { let h = 0; for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 55% 55%)` }
+
+// ── Glyferna, ur glyphs.tsx ─────────────────────────────────────────────────────────────────────
+const svg = (name, inner, mirrored) => `<svg class="byd-glyph" viewBox="0 0 16 16" width="1em" height="1em" aria-hidden="true" focusable="false" data-glyph="${name}"${mirrored ? ' data-mirrored="true"' : ''}>${inner}</svg>`
+const line = (d) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`
+const G = {
+  arrow: svg('arrow-left', line('M13 8H3M7 4 3 8l4 4')),
+  more: svg('more', [[3.5, 8], [8, 8], [12.5, 8]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.25" fill="currentColor"/>`).join('')),
+  check: svg('check', line('M3 8.5l3.25 3.25L13 5')),
+  hook: (m) => svg('hook', line('M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7'), m),
+  chevron: svg('chevron-down', line('M4 6l4 4 4-4')),
+}
+
+// ── Varianterna ─────────────────────────────────────────────────────────────────────────────────
+const VARIANTER = {
+  A: {
+    namn: 'A — fast ruta för tre ansikten',
+    kort: 'Dörren håller tre ansiktens plats från start; från fyra inne blir det tredje «+N».',
+    text: '<p><b>A, fast ruta.</b> Dörren är lika bred ensam som i en folkmassa: rummet för tre överlappande ansikten står där från början, som tom luft före ditt eget, och «Dela» står där det står. «2 online» försvinner ur raden — antalet står i dörrens namn som i dag, och från fyra inne är det tredje ansiktet «+N». Vid 1024 är dörren exakt en tummyta, ditt ansikte och den andras eller «+N».</p>'
+      + '<p><span class="plus">+ Rent och förutsägbart: ingenting i raden beror på hur många som är inne, i något typsnitt.</span> <span class="minus">− Kostar 40 px av raden alltid, också ensam, och där raden är trång tas de från spelets namn: i CI:s typsnitt klipps «Skogens herrar» ensam till 112/129 px vid 1280, och med ett bord igång till 86/129 vid 1440 och 80/129 vid 1280. Ändrar L63:s «antalet» till «+N».</span></p>',
+  },
+  B: {
+    namn: 'B — de andra hänger på huvudets kant',
+    kort: 'Dörren är ditt ansikte och «Dela», alltid; de andra ritas på huvudets underkant under den.',
+    text: '<p><b>B, ut ur raden.</b> Dörren ser ut som i dag när du är ensam, och den ändras aldrig. De som kommer in ritas som en liten stapel på huvudets underkant, under dörren: de tar ingen bredd i raden och ingen höjd ur arbetet, och från fyra andra är den sista «+N». Antalet står i dörrens namn.</p>'
+      + '<p><span class="plus">+ Kostar ingenting i raden, ensam eller inte, i något typsnitt, med eller utan bord; samma form vid alla tre bredderna, också 1024, där dagens dörr klipper ansiktena i sin tummyta.</span> <span class="minus">− Stapeln når 9 px ned i det som står under huvudet (bordsremsan, notisen, läsbandet eller arbetet), i deras egen luft men ovanpå dem; huvudet blir en yta som ritar utanför sig själv. Ändrar L63:s «antalet» i raden till stapeln.</span></p>',
+  },
+  C: {
+    namn: 'C — de andra står i radens rest',
+    kort: 'Dörren flyttar efter mellanrummet; de andra och «N online» visas bara så långt resten räcker.',
+    text: '<p><b>C, namnet först.</b> Mellanrummet före «Spara» blir platsen för de andra: dörren (ditt ansikte och «Dela») står efter det, och de andras ansikten och «N online» står i mellanrummet, så långt det räcker. Det som inte ryms faller bort i ordning — först antalet, sedan ansiktena — och tar aldrig en pixel från namnet eller flikarna. Vid 1024 är dörren exakt en tummyta som i L63.</p>'
+      + '<p><span class="plus">+ Inget rum reserveras: ensam är huvudet exakt dagens, och på en bred skärm ser det ut som i dag.</span> <span class="minus">− Det som visas beror på typsnittet, språket, bordet och namnets längd: i CI:s typsnitt syns ingen av de andra vid 1280 (flikarnas luft från #668 tar resten först), och inte heller vid 1440 med ett bord igång eller ett långt namn — då bara i panelen. Ansiktena i resten är inte knappen, men ett tryck på dem öppnar samma panel.</span></p>',
+  },
+}
+const NUTEXT = '<p><b>I dag.</b> Dörren växer med de närvarande: ett ansikte till och «2 online», sedan ett tredje. Där mellanrummet före «Spara» inte räcker krymper spelets namn, och allt till vänster om «Dela» glider åt vänster. Mellan 1280 och 1439 tar flikarnas luft (#668) resten först, så där flyttar flikarna redan för några pixlar; vid 1024 är dörren 24 px ensam och 44 px med tre, och flikarna flyttar 16–20 px.</p>'
+
+const q = new URLSearchParams(location.search)
+const pick = (k, ok, d) => (ok.includes(q.get(k)) ? q.get(k) : d)
+const st = {
+  v: pick('v', ['A', 'B', 'C'], 'A'),
+  w: Number(pick('w', ['1024', '1280', '1440'], '1440')),
+  font: pick('font', ['mac', 'bred'], 'bred'),
+  lang: pick('lang', ['sv', 'en'], 'sv'),
+  bord: pick('bord', ['utan', 'med'], 'utan'),
+  namn: pick('namn', ['skogen', 'sal', 'langt'], 'skogen'),
+}
+const ANTAL = [1, 2, 4, 8]
+
+// ── Huvudet, som EditorPage.tsx ritar det ───────────────────────────────────────────────────────
+function face(who, extra = '') { return `<i title="${who}" style="--who:${colourOf(who)}"${extra}>${who.slice(0, 1).toUpperCase()}</i>` }
+function plus(n) { return `<i class="plus" style="--who:#3b4358">+${n}</i>` }
+
+function door(v, n, w, o) {
+  const here = FOLK.slice(0, n)
+  const name = n > 1 ? o.here(n) : o.door
+  const word = `<span class="byd-editor-here-word" aria-hidden="true">${o.share}</span>`
+  const count = n > 1 ? `<b>${o.count(n)}</b>` : ''
+  const btn = (inner, attrs = '') => `<button type="button" class="byd-editor-here" data-here aria-label="${name}" aria-expanded="false"${attrs}>${inner}</button>`
+  if (v === 'nu') return { before: btn(here.map((p) => face(p)).join('') + count + word), after: '' }
+  if (v === 'A') {
+    const room = w < 1280 ? 2 : 3
+    const slots = n <= room ? here.map((p) => face(p)) : [...here.slice(0, room - 1).map((p) => face(p)), plus(n - room + 1)]
+    return { before: btn(slots.join('') + word, ` style="--k:${slots.length}"`), after: '' }
+  }
+  if (v === 'B') {
+    const others = here.slice(1)
+    const hang = others.length === 0 ? '' : `<span class="haeng" aria-hidden="true">${(others.length <= 3 ? others.map((p) => face(p)) : [...others.slice(0, 2).map((p) => face(p)), plus(others.length - 2)]).join('')}</span>`
+    return { before: btn(face(here[0]) + word + hang), after: '' }
+  }
+  // C: dörren efter mellanrummet; de andra och antalet i mellanrummet.
+  if (w < 1280) return { before: '', after: btn(here.map((p) => face(p)).join('') + word), rest: '' }
+  const rest = n > 1 ? `<span class="rest" aria-hidden="true">${here.slice(1, 3).map((p) => face(p)).join('')}${count}</span>` : ''
+  return { before: '', after: btn(face(here[0]) + word), rest }
+}
+
+function header(v, n, w, font) {
+  const o = ORD[st.lang]
+  const game = NAMN[st.namn]
+  const table = st.bord === 'med'
+  const d = door(v, n, w, o)
+  const tabs = o.tabs.map((t, i) => `<button class="byd-choice" role="tab" type="button" aria-selected="${i === 0}">${t}</button>`).join('')
+  return `<div class="byd-editor" data-page="editor" data-mode="wall" data-room="desk" data-v="${v}">`
+    + '<header>'
+    + `<a class="byd-editor-home" href="#" aria-label="${o.home}"><span class="byd-editor-home-arrow" aria-hidden="true">${G.arrow}</span><span class="byd-editor-home-word">${o.home}</span></a>`
+    + `<h1 class="byd-editor-name"><strong>${game}</strong></h1>`
+    + `<span class="byd-editor-more"><button type="button" aria-label="${o.more(game)}" aria-expanded="false">${G.more}</button></span>`
+    + `<button type="button" class="byd-editor-rev" aria-expanded="false">v1</button>`
+    + `<span class="byd-editor-saved" role="status" data-unsaved="false" data-saved-word="${o.saved}" data-unsaved-word="${o.unsaved}"><span class="byd-editor-saved-word">${o.saved}</span><span class="byd-editor-saved-mark" aria-hidden="true">${G.check}</span></span>`
+    + `<span class="byd-editor-steps"><button type="button" aria-label="${o.undo}" aria-disabled="true">${G.hook(false)}</button><button type="button" aria-label="${o.redo}" aria-disabled="true">${G.hook(true)}</button></span>`
+    + `<nav role="tablist" aria-label="${o.tablist}">${tabs}</nav>`
+    + d.before
+    + `<span class="byd-editor-spacer">${d.rest ?? ''}</span>`
+    + d.after
+    + `<button type="button" class="byd-secondary byd-editor-save" aria-disabled="true">${o.save}</button>`
+    + `<button type="button" class="byd-editor-primary byd-primary" data-table-kind="${table ? 'running' : 'none'}" aria-label="${table ? o.update : o.start}"><span class="byd-editor-primary-long">${table ? o.update : o.start}</span><span class="byd-editor-primary-short" aria-hidden="true">${table ? o.updateShort : o.startShort}</span></button>`
+    + `<span class="byd-editor-split"><button type="button" class="byd-editor-primary byd-primary byd-editor-caret" aria-label="${o.ways}" aria-expanded="false" data-drop>${G.chevron}</button></span>`
+    + '</header>'
+    + (table ? `<div class="strip">${o.running} <a href="#">${o.open}</a></div>` : '')
+    + `<div class="arbete">${o.tabs[0]}</div>`
+    + '</div>'
+}
+
+// Prototypens egna regler, lagda efter appens. Inget av «nu» ändras.
+const BAS = `
+  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #23262e; }
+  .byd-editor { height: auto; min-height: 100%; }
+  .strip { display: flex; gap: 4px; padding: 8px 16px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; font-size: 13px; }
+  .strip a { color: #fff; }
+  .arbete { flex: 1; background: #1b1d23; color: #5d6577; font-size: 12px; padding: 10px 16px; background-image: repeating-linear-gradient(90deg, transparent 0 139px, #22252d 139px 140px); }
+  .byd-editor-here i.plus { color: #e6ecfa; font-size: 10px; letter-spacing: -0.02em; }
+`
+// Vid 1024–1279 är dörren i alla tre exakt en tummyta (i dag: högst en, så 24 px ensam och 44 px
+// med tre). Ur L63: «Mellan 1024 och 1279 är dörren ett ansikte, en tummyta bred».
+const TUMME = `
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .byd-editor > header > .byd-editor-here { width: var(--byd-tap); max-width: none; min-height: var(--byd-tap); justify-content: flex-start; }
+  }
+`
+const VCSS = {
+  nu: '',
+  A: TUMME + `
+  @media (min-width: 1280px) {
+    /* Tre ansiktens rum, alltid: det som saknas står som luft före dörren. */
+    .byd-editor > header > .byd-editor-here { margin-left: calc(8px + (3 - var(--k)) * 20px); }
+  }`,
+  B: TUMME + `
+  .byd-editor > header { position: relative; z-index: 2; }
+  .byd-editor > header > .byd-editor-here { position: relative; overflow: visible; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .byd-editor > header > .byd-editor-here { justify-content: center; } }
+  /* Stapeln står med sin mitt på huvudets underkant: dörren slutar 12 px ovanför den. */
+  .byd-editor-here .haeng { position: absolute; top: calc(100% + 2px); right: 10px; display: flex; pointer-events: auto; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .byd-editor-here .haeng { right: auto; left: 50%; transform: translateX(-50%); top: calc(100% - 4px); } }
+  .byd-editor-here .haeng i { width: 20px; height: 20px; font-size: 10px; box-shadow: 0 0 0 2px var(--byd-editor-chrome-bg); }
+  .byd-editor-here .haeng i + i { margin-left: -6px; }
+  `,
+  C: TUMME + `
+  @media (min-width: 1280px) {
+    /* Resten är mellanrummet själv: flex 1 från noll, så det som står i det kan aldrig göra raden
+       bredare. Det som inte ryms bryts till en andra rad som inte syns. */
+    .byd-editor > header > .byd-editor-spacer { display: flex; justify-content: flex-end; min-width: 0; height: 24px; overflow: hidden; }
+    .byd-editor-spacer .rest { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; column-gap: 4px; min-width: 0; height: 24px; }
+    .byd-editor-spacer .rest i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+    .byd-editor-spacer .rest i + i { margin-left: -8px; }
+    .byd-editor-spacer .rest b { color: #9aa3b8; font: 600 11px system-ui; white-space: nowrap; line-height: 24px; }
+    .byd-editor > header > .byd-editor-here { margin-left: 0; }
+  }`,
+}
+const BRED = `.byd-editor, .byd-editor * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }`
+
+function srcdoc(v, n, w, font) {
+  return `<!doctype html><html lang="${st.lang}"><head><meta charset="utf-8"><link rel="stylesheet" href="huvudet.css"><style>${BAS}${VCSS[v]}${font === 'bred' ? BRED : ''}</style></head><body>${header(v, n, w, font)}</body></html>`
+}
+
+// ── Mätningen ───────────────────────────────────────────────────────────────────────────────────
+let loads = 0
+function load(frame, html) {
+  return new Promise((res) => {
+    frame.onload = async () => { await frame.contentDocument.fonts.ready; requestAnimationFrame(() => requestAnimationFrame(() => res(frame.contentDocument))) }
+    frame.srcdoc = html + `<!-- ${++loads} -->`
+  })
+}
+function measure(doc) {
+  const h = doc.querySelector('header')
+  const r = (el) => { const b = el.getBoundingClientRect(); return [b.left, b.right] }
+  const left = {
+    'hemvägen': doc.querySelector('.byd-editor-home'),
+    'namnet': doc.querySelector('.byd-editor-name'),
+    '⋯': doc.querySelector('.byd-editor-more'),
+    'versionen': doc.querySelector('.byd-editor-rev'),
+    'sparstatusen': doc.querySelector('.byd-editor-saved'),
+    'ångra/gör om': doc.querySelector('.byd-editor-steps'),
+  }
+  doc.querySelectorAll('[role=tab]').forEach((t) => (left[t.textContent] = t))
+  const at = Object.fromEntries(Object.entries(left).map(([k, el]) => [k, r(el)]))
+  const nm = doc.querySelector('.byd-editor-name')
+  const dr = doc.querySelector('.byd-editor-here')
+  const db = dr.getBoundingClientRect()
+  let below = 0
+  for (const el of h.querySelectorAll('*')) below = Math.max(below, el.getBoundingClientRect().bottom - h.getBoundingClientRect().bottom)
+  // Vad som syns av de andra: ansikten och antal som står på radens första rad i resten (C).
+  let shown = null
+  const rest = doc.querySelector('.rest')
+  // Synligt = helt inom mellanrummets klipp, både på bredden och höjden.
+  if (rest) { const clip = rest.parentElement.getBoundingClientRect(); shown = [...rest.children].filter((c) => { const b = c.getBoundingClientRect(); return b.width > 0 && b.left >= clip.left - 0.5 && b.right <= clip.right + 0.5 && b.top >= clip.top - 0.5 && b.bottom <= clip.bottom + 0.5 }).map((c) => c.textContent) }
+  const tabsAt = [...doc.querySelectorAll('[role=tab]')].map((t) => t.getBoundingClientRect().left)
+  return { at, tabsAt, name: [nm.clientWidth, nm.scrollWidth], door: [db.left, db.right, db.width], below: Math.max(0, Math.round(below)), over: h.scrollWidth - h.clientWidth, shown }
+}
+function shift(a, b) {
+  let max = 0, what = ''
+  for (const k of Object.keys(a.at)) for (const i of [0, 1]) { const d = Math.abs(b.at[k][i] - a.at[k][i]); if (d > max) { max = d; what = k } }
+  return { max: Math.round(max * 10) / 10, what }
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+let gen = 0
+async function block(el, v, title, sub) {
+  const my = gen
+  const avail = el.clientWidth - 112
+  const s = Math.min(1, avail / st.w)
+  const H = st.bord === 'med' ? 120 : 92
+  el.innerHTML = `<h2>${title} <small>${sub}</small></h2><div class="stapel">${ANTAL.map((n, i) => `<div class="radnamn" style="grid-row:${i + 1}" data-n="${n}"><b>${n === 1 ? 'ensam' : n + ' inne'}</b><span></span></div>`).join('')}<div class="ramar">${ANTAL.map(() => `<div class="ram" style="width:${st.w * s}px;height:${H * s}px"><iframe style="width:${st.w}px;height:${H}px;transform:scale(${s})" title="Huvudet"></iframe></div>`).join('')}</div></div>`
+  const frames = [...el.querySelectorAll('iframe')]
+  const docs = []
+  for (let i = 0; i < ANTAL.length; i++) docs.push(await load(frames[i], srcdoc(v, ANTAL[i], st.w, st.font)))
+  if (my !== gen) return
+  // Raderna står 6 px isär; låt ramarnas höjd styra radnamnens.
+  const stapel = el.querySelector('.stapel')
+  stapel.style.gridTemplateRows = `repeat(4, ${H * s}px)`
+  const m = docs.map(measure)
+  const ramar = el.querySelector('.ramar')
+  for (const x of m[0].tabsAt) ramar.insertAdjacentHTML('beforeend', `<div class="linje" style="left:${x * s}px"></div>`)
+  ramar.insertAdjacentHTML('beforeend', `<div class="linje dorr" style="left:${m[0].door[0] * s}px"></div>`)
+  m.forEach((mm, i) => {
+    const span = el.querySelector(`.radnamn[data-n="${ANTAL[i]}"] span`)
+    const nameTxt = `namnet ${mm.name[0]}/${mm.name[1]} px`
+    const extra = []
+    if (v === 'B' && mm.below > 0) extra.push(`hänger ${mm.below} px under`)
+    if (mm.shown) extra.push(mm.shown.length ? `syns: ${mm.shown.join(' ')}` : '<span class="nej">ingen av de andra syns</span>')
+    if (mm.over > 0) extra.push(`<span class="nej">raden ${mm.over} px för bred</span>`)
+    if (i === 0) { span.innerHTML = `${nameTxt}<br>dörren ${Math.round(mm.door[2])} px${extra.length ? '<br>' + extra.join('<br>') : ''}`; return }
+    const sh = shift(m[0], mm)
+    span.innerHTML = (sh.max >= 0.5 ? `<span class="nej">flyttar ${sh.max} px</span> (${sh.what})` : '<span class="ok">flyttar 0 px</span>') + `<br>${nameTxt}<br>dörren ${Math.round(mm.door[2])} px` + (extra.length ? '<br>' + extra.join('<br>') : '')
+  })
+}
+
+async function matris() {
+  const my = gen
+  const host = document.getElementById('mätframar')
+  const fonts = [['mac', 'Macens system-ui'], ['bred', 'Verdana (CI:s bredd)']]
+  const ws = [1024, 1280, 1440]
+  const rows = [['nu', 'I dag'], ['A', 'A'], ['B', 'B'], ['C', 'C']]
+  const t = document.getElementById('matris')
+  t.innerHTML = `<tr><th></th><th>typsnitt</th>${ws.map((w) => `<th>${w}</th>`).join('')}</tr>` + rows.flatMap(([v, n]) => fonts.map(([f, fn], j) => `<tr class="${v === st.v || (v === 'nu') ? '' : ''}${v === st.v ? 'valt' : ''}">${j === 0 ? `<th rowspan="2">${n}</th>` : ''}<td>${fn}</td>${ws.map((w) => `<td data-k="${v}-${f}-${w}">…</td>`).join('')}</tr>`)).join('')
+  document.getElementById('matrisom').textContent = `· ${st.lang}, ${st.bord === 'med' ? 'med bord' : 'utan bord'}, «${NAMN[st.namn]}»`
+  host.innerHTML = ''
+  const pool = Array.from({ length: 6 }, () => { const f = document.createElement('iframe'); f.style.cssText = 'width:1500px;height:100px;border:0'; host.append(f); return f })
+  const jobs = []
+  for (const [v] of rows) for (const [f] of fonts) for (const w of ws) jobs.push({ v, f, w })
+  let next = 0
+  await Promise.all(pool.map(async (frame) => {
+    while (next < jobs.length) {
+      const job = jobs[next++]
+      frame.style.width = job.w + 'px'
+      const ms = []
+      for (const n of ANTAL) ms.push(measure(await load(frame, srcdoc(job.v, n, job.w, job.f))))
+      if (my !== gen) return
+      const worst = Math.max(...ms.slice(1).map((x) => shift(ms[0], x).max))
+      const clipped = ms[0].name[0] < ms[0].name[1]
+      const td = t.querySelector(`[data-k="${job.v}-${job.f}-${job.w}"]`)
+      const hidden = job.v === 'C' && job.w >= 1280 && ms.slice(1).some((x) => x.shown && x.shown.length === 0)
+      td.className = worst >= 0.5 ? 'nej' : clipped || hidden ? 'mitt' : 'ok'
+      let txt = `flyttar ${worst} px<br>namnet ${ms[0].name[0]}/${ms[0].name[1]} → ${ms[3].name[0]}/${ms[3].name[1]}`
+      if (job.v === 'C' && job.w >= 1280) txt += `<br>syns med 8: ${ms[3].shown.length ? ms[3].shown.join(' ') : 'ingen'}`
+      if (job.v === 'B') txt += `<br>hänger ${ms[1].below} px under`
+      td.innerHTML = txt
+    }
+  }))
+}
+
+function knappar() {
+  const grp = (id, key, list) => {
+    const g = document.getElementById(id)
+    g.querySelectorAll('button').forEach((b) => b.remove())
+    for (const [val, label] of list) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = label
+      b.setAttribute('aria-pressed', String(String(st[key]) === String(val)))
+      b.onclick = () => { st[key] = key === 'w' ? Number(val) : val; rita() }
+      g.append(b)
+    }
+  }
+  grp('g-v', 'v', [['A', 'A · fast ruta'], ['B', 'B · på kanten'], ['C', 'C · i resten']])
+  grp('g-w', 'w', [[1024, '1024'], [1280, '1280'], [1440, '1440']])
+  grp('g-font', 'font', [['mac', 'Macens'], ['bred', 'Verdana (CI)']])
+  grp('g-lang', 'lang', [['sv', 'sv'], ['en', 'en']])
+  grp('g-bord', 'bord', [['utan', 'utan'], ['med', 'igång']])
+  grp('g-namn', 'namn', [['skogen', 'Skogens herrar'], ['sal', "Sal's Saloon"], ['langt', 'långt']])
+}
+
+async function rita() {
+  gen++
+  knappar()
+  const V = VARIANTER[st.v]
+  document.getElementById('anteckning').innerHTML = V.text
+  const ks = Object.keys(VARIANTER)
+  document.getElementById('vnamn').textContent = `${V.namn}  (${ks.indexOf(st.v) + 1}/${ks.length})`
+  history.replaceState(null, '', `?v=${st.v}&w=${st.w}&font=${st.font}&lang=${st.lang}&bord=${st.bord}&namn=${st.namn}`)
+  const fn = st.font === 'bred' ? 'Verdana, CI:s bredd' : 'Macens system-ui'
+  const my = gen
+  delete document.body.dataset.klar
+  await block(document.getElementById('fore'), 'nu', `Före — i dag · ${st.w} px`, fn)
+  if (my !== gen) return
+  await block(document.getElementById('efter'), st.v, `Efter — ${V.namn} · ${st.w} px`, `${fn} · ${V.kort}`)
+  if (my !== gen) return
+  document.body.dataset.klar = 'block'
+  await matris()
+  if (my === gen) document.body.dataset.klar = 'allt'
+}
+function byt(d) { const ks = Object.keys(VARIANTER); st.v = ks[(ks.indexOf(st.v) + d + ks.length) % ks.length]; rita() }
+document.getElementById('bak').onclick = () => byt(-1)
+document.getElementById('fram').onclick = () => byt(1)
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return
+  if (e.key === 'ArrowLeft') byt(-1)
+  if (e.key === 'ArrowRight') byt(1)
+})
+let rt
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(rita, 200) })
+rita()
+</script>
+</body>
+</html>

@@ -105,7 +105,6 @@ export const svEditor = {
   'editor.rev': 'v{n}',
   // Dörren säger «Dela» (#727), och ordet står först i namnet, som det står på knappen.
   'editor.here.name': 'Dela: vilka som har spelet, {n} online',
-  'editor.here.count': '{n} online',
   // Namnet en redigerare utan konto visas som för de andra (D3). Se A4:s gräns: ett namn tillhör
   // den det namnger, så ordet skrivs på det språk den som kommer in läser verktyget i och blir
   // sedan hennes — det kan inte följa varje läsare, för det går över tråden en gång och läses av

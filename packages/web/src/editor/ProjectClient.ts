@@ -216,6 +216,9 @@ export class ProjectClient {
   public here: Presence[] = []
   // This editor's own connection, so a view can leave itself out of the list.
   public who: string | null = null
+  // Who this editor is, as the actor names it: the connection and the address, so a second tab of
+  // the same account can find itself among the people here, where it is listed as its first (L63).
+  public you: Presence | null = null
   // What this account may do with the project (D3): a viewer or a test leader may not edit it.
   public role: Role | null = null
   // The document as the server holds it, in a form two documents can be compared in. "Unsaved"
@@ -328,6 +331,7 @@ export class ProjectClient {
       case 'project': {
         this.me = message.you.id
         this.who = message.you.id
+        this.you = message.you
         this.role = message.you.role ?? null
         this.rev = message.rev
         this.here = message.here
