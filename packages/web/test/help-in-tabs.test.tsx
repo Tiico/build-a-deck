@@ -124,14 +124,12 @@ describe('Speltema', () => {
     await openEditor('Speltema')
     absent(/Fritt licensierade symboler/)
     absent(/En betydelse, en färg/)
-    // The meanings' question mark stands in their head once the part is open (L57).
-    fireEvent.click(screen.getByRole('button', { name: /^Färger och betydelser/ }))
+    // The meanings' question mark stands in their head while the part is open (L57, L84).
     expect((await opened('betydelserna')).textContent).toMatch(/slår igenom på alla kort som använder den/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     // Kept: an empty state that says what an unnamed meaning draws as.
     expect(screen.getByText(/En symbol utan betydelse ritas i bläck/)).toBeTruthy()
     // And the library's, at the library's own head, which opens from the game's icons.
-    fireEvent.click(screen.getByRole('button', { name: /^Spelets ikoner/ }))
     fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
     await screen.findByRole('heading', { name: 'Symbolbibliotek' })
     expect((await opened('biblioteket')).textContent).toMatch(/Licensen följer med in i trycket/)

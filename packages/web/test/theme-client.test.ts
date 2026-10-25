@@ -32,7 +32,7 @@ afterEach(async () => {
 const skogssaga = THEMES.find((th) => th.id === 'skogssaga')!
 const ren = THEMES.find((th) => th.id === 'ren')!
 
-describe('choosing a ready-made theme (L57, #632)', () => {
+describe('copying an example into the game’s theme (L57, #632, L84)', () => {
   it('brings both families in out of the catalog as the project’s own files, and the check has nothing to say about type', async () => {
     const client = await openClient()
     await client.useTheme(skogssaga)
@@ -63,10 +63,10 @@ describe('choosing a ready-made theme (L57, #632)', () => {
     const client = await openClient()
     const before = client.doc
     await client.useTheme(skogssaga)
-    expect(client.doc.theme).toEqual({ from: 'skogssaga' })
+    expect(client.doc.fonts).toHaveProperty('Cinzel')
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
     expect((await client.versions()).map((v) => v.rev)).toEqual([2, 1])
-    expect((await run.projects.load(run.projectId))?.theme).toEqual({ from: 'skogssaga' })
+    expect((await run.projects.load(run.projectId))?.fonts).toHaveProperty('Cinzel')
 
     expect(client.undo()).toBe('undo.what.theme')
     expect(client.doc).toEqual(before)

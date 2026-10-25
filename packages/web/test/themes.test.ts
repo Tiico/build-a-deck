@@ -1,9 +1,9 @@
-// De färdiga temana (L57, #632): vad de är, att de håller E5:s egna mått, och vad ett spel som
-// valt ett av dem avviker med.
+// Exemplen (L57, #632, L84): vad de är, att de håller E5:s egna mått, och vad en kopia av ett
+// byter ut i spelets tema.
 import { describe, expect, it } from 'vitest'
 import { applyEdit } from '@byd/server/doc'
 import { translate } from '../src/i18n/index.js'
-import { THEMES, departures, sayDeparture, themeIntent, themeOf, type Theme } from '../src/editor/themes.js'
+import { THEMES, copyChanges, themeIntent, type Theme } from '../src/editor/themes.js'
 import { ROLE_MIN_CONTRAST, paletteIssues } from '../src/editor/palette.js'
 import { INKS } from '../src/editor/ThemePanel.js'
 import { parseCatalog } from '../src/editor/font-catalog.js'
@@ -22,7 +22,6 @@ const carried = (theme: Theme): Record<string, ProjectFont> =>
     [theme.heading, theme.body].map((f, i) => [f.family, { stack: `"${f.family}", serif`, asset: `asset:${String(i).repeat(64)}`, licence: { licence: f.licence, by: f.by }, source: 'catalog' as const }]),
   )
 const chosen = (doc: ProjectDoc, theme: Theme, tr = t): ProjectDoc => applyEdit(doc, themeIntent(doc, theme, carried(theme), tr))
-const said = (doc: ProjectDoc): string[] => departures(doc).map((d) => sayDeparture(d, 'sv'))
 const byId = (id: string): Theme => THEMES.find((th) => th.id === id) as Theme
 
 describe('the ready-made themes (L57, #632)', () => {
@@ -64,12 +63,11 @@ describe('the ready-made themes (L57, #632)', () => {
   }
 })
 
-describe('choosing a theme', () => {
+describe('copying an example', () => {
   it('sets the prose in the body family and the rest in the heading family', () => {
     const doc = chosen(projectDoc(), byId('skogssaga'))
     const fonts = doc.template.faces['front']?.base.flatMap((el) => (el.kind === 'text' ? [[el.id, el.font.family]] : []))
     expect(Object.fromEntries(fonts ?? [])).toMatchObject({ title: 'Cinzel', body: 'EB Garamond' })
-    expect(themeOf(doc)?.id).toBe('skogssaga')
   })
 
   it('names the theme’s meanings in the designer’s language', () => {
@@ -84,55 +82,51 @@ describe('choosing a theme', () => {
   })
 })
 
-describe('what departs from the chosen theme', () => {
-  it('is nothing for a game that has just chosen it', () => {
-    expect(said(chosen(projectDoc(), byId('skogssaga')))).toEqual([])
+describe('copying an example into the game’s theme (L84, #1287)', () => {
+  it('leaves the game without any memory of the example it came from', () => {
+    const doc = projectDoc()
+    expect(themeIntent(doc, byId('skogssaga'), carried(byId('skogssaga')), t)).not.toHaveProperty('theme')
+    expect(chosen({ ...doc, theme: { from: 'ren' } }, byId('skogssaga'))).not.toHaveProperty('theme')
   })
 
-  it('is nothing to say for a game that has chosen no theme', () => {
-    expect(said(projectDoc())).toEqual([])
+  it('says beforehand what it replaces: the families, the meanings it repaints or adds, and the icons it brings', () => {
+    const doc = { ...projectDoc(), palette: { kostnad: '#8f2d20', vinst: '#155e75' } }
+    expect(copyChanges(doc, byId('skogssaga'), t)).toEqual([
+      { kind: 'heading', from: 'sans-serif', to: 'Cinzel' },
+      { kind: 'body', from: 'sans-serif', to: 'EB Garamond' },
+      { kind: 'colour', meaning: 'vinst', colour: '#2f6136' },
+      { kind: 'meaning', meaning: 'försvar', colour: '#155e75' },
+      { kind: 'meaning', meaning: 'anfall', colour: '#a8410c' },
+      { kind: 'icons', names: ['mynt', 'sköld', 'svärd', 'hjärta', 'kristall', 'dra'] },
+    ])
   })
 
-  it('names a heading set in another family, and a meaning painted in another colour', () => {
-    const doc = chosen(projectDoc(), byId('skogssaga'))
-    const front = doc.template.faces['front']
-    const moved: ProjectDoc = {
-      ...doc,
-      palette: { ...doc.palette, vinst: '#155e75' },
-      template: { faces: { ...doc.template.faces, front: { ...front!, base: front!.base.map((el) => (el.kind === 'text' && el.id === 'title' ? { ...el, font: { ...el.font, family: 'Lora' } } : el)) } } },
-    }
-    expect(said(moved)).toEqual(['rubrik Lora', 'vinsts färg'])
-  })
-
-  it('names a meaning of the theme that the game no longer has', () => {
-    const doc = chosen(projectDoc(), byId('ren'))
-    const { anfall: _gone, ...palette } = doc.palette ?? {}
-    expect(said({ ...doc, palette })).toEqual(['utan anfall'])
-  })
-
-  it('is nothing again once the theme is chosen anew — which is what Återställ does', () => {
+  it('is nothing to replace once the game’s theme is already the example', () => {
     const doc = chosen(projectDoc(), byId('krönika'))
-    const moved = { ...doc, palette: { ...doc.palette, kostnad: '#1c1c1c' } }
-    expect(said(moved)).toHaveLength(1)
-    expect(said(chosen(moved, byId('krönika')))).toEqual([])
+    expect(copyChanges({ ...doc, icons: { mynt: 'asset:x' } }, byId('krönika'), t)).toEqual([])
+  })
+
+  it('brings no icons into a game that has a set of its own, as the edit does not', () => {
+    expect(copyChanges({ ...projectDoc(), icons: { blad: 'asset:x' } }, byId('ren'), t).filter((c) => c.kind === 'icons')).toEqual([])
   })
 })
 
-// #634 left the order of Mall's family list to one function so the theme could take its head.
-describe('the family a text layer is offered first in Mall (#634)', () => {
-  it('is the theme’s heading family, then its body family, then the game’s other typefaces', () => {
+// #634 left the order of Mall's family list to one function; since L84 the game remembers no
+// theme, so the head of the list is read off the cards themselves.
+describe('the family a text layer is offered first in Mall (#634, L84)', () => {
+  it('is the family the game’s headings are set in, then its text’s, then the game’s other typefaces', () => {
     const doc = chosen(projectDoc(), byId('krönika'))
     // A family of the designer's own that the game had before the theme, listed ahead of it.
     const fonts = { Min: { stack: '"Min", serif', asset: `asset:${'c'.repeat(64)}` }, ...doc.fonts }
-    expect(familyChoices({ fonts, theme: doc.theme }, 'Lora').game).toEqual(['Lora', 'Merriweather', 'Min', 'system-ui'])
+    expect(familyChoices({ ...doc, fonts }, 'Lora').game).toEqual(['Lora', 'Merriweather', 'Min', 'system-ui'])
   })
 
-  it('names a theme family only once when heading and body are the same', () => {
+  it('names a family only once when headings and text are set in the same', () => {
     const doc = chosen(projectDoc(), byId('ren'))
     expect(familyChoices(doc, 'Inter').game.filter((f) => f === 'Inter')).toHaveLength(1)
   })
 
-  it('is the game’s own order for a game that started from no theme', () => {
+  it('is the game’s own order when the cards are set in nothing the game carries', () => {
     expect(familyChoices(projectDoc(), 'sans-serif').game).toEqual(['sans-serif', 'system-ui'])
   })
 })

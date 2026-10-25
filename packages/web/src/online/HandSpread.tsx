@@ -11,8 +11,10 @@ import { spreadStyle } from './fan.js'
 export type HandSpreadProps = {
   cards: readonly VisibleComponentState[]
   faces?: string | undefined
-  // Enter, Space or a click on a card: the same address panel every other surface opens (#2).
+  // Enter or a finger's tap on a card: the same address panel every other surface opens (#2).
   onOpen(card: VisibleComponentState): void
+  // A mouse's click, Space or F: the card turned over, as in the hand it was raised from (#1291).
+  onTurn?: ((card: VisibleComponentState) => void) | undefined
   onClose(): void
   // How many cards a row holds, when the grid is an overview rather than a reading (the phone, #767).
   columns?: number | undefined
@@ -38,11 +40,13 @@ export type HandSpreadProps = {
 // they are and stay reachable; a surface that covers the only Ångra on the page has made it
 // unreachable and not merely hidden. When the hand is larger than the screen the grid scrolls in
 // its own box and the page never does, which is L10's rule for the data table applied here.
-export function HandSpread({ cards, faces, onOpen, onClose, columns, turned }: HandSpreadProps) {
+export function HandSpread({ cards, faces, onOpen, onTurn, onClose, columns, turned }: HandSpreadProps) {
   const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'both' })
   const first = cards[0]?.id
+  // What pressed the card, read at the click: a mouse turns it, anything else opens it.
+  const pressedBy = useRef('')
   // Raising the grid is the whole gesture; the focus goes with it, once.
   const raised = useRef(false)
   useEffect(() => {
@@ -86,11 +90,17 @@ export function HandSpread({ cards, faces, onOpen, onClose, columns, turned }: H
                 tabIndex={item.tabIndex}
                 ref={item.ref}
                 onFocus={item.onFocus}
-                onClick={() => onOpen(c)}
+                onPointerDown={(e) => (pressedBy.current = e.pointerType)}
+                onClick={() => (pressedBy.current === 'mouse' && onTurn ? onTurn(c) : onOpen(c))}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.key === 'Enter') {
                     e.preventDefault()
                     onOpen(c)
+                    return
+                  }
+                  if ((e.key === ' ' || e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                    onTurn(c)
                     return
                   }
                   item.onKeyDown(e)
