@@ -107,7 +107,7 @@ export function ownerMail(to: string, a: { game: string; cards: readonly string[
     ['Skälet', why[a.reason]],
     ['Så beslutades det', `Av en människa på Deckster, ${a.at.slice(0, 10)}, efter en anmälan. Ingen automatik.`],
     ['Det här händer', a.purged ? 'Bilden är borttagen ur Deckster för gott. Korten står kvar utan den, i alla versioner.' : 'Bilden syns inte i spelet, på borden, i trycket eller i exporten, och korten står kvar utan den. Den ligger kvar hos Deckster och kommer tillbaka om invändningen håller.'],
-    ['Vill du invända?', 'Svara på det här mejlet och berätta varför, till exempel att du har licens till bilden. Deckster prövar beslutet igen inom två arbetsdagar.'],
+    ['Så invänder du', 'Svara på det här mejlet och berätta varför, till exempel att du har licens till bilden. Deckster prövar beslutet igen inom två arbetsdagar.'],
   ]
   const subject = `En bild i ${a.game} är spärrad`
   const hello = 'En bild i ditt spel är spärrad'

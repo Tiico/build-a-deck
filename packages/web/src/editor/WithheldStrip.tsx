@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
-import { useLang, useT } from '../i18n/index.js'
+import { readerLocale, useLang, useT } from '../i18n/index.js'
 import { RefreshGlyph } from '../glyphs.js'
-import { dayWord } from './when.js'
 import type { Block } from './withheld.js'
 
 // Why a picture is blocked (#1274, beslut 1): the L9 strip in Tabell's foot, where a row's × asks
@@ -14,7 +13,8 @@ export function WithheldStrip({ block, onSwap, onClose }: { block: Block; onSwap
   const { lang } = useLang()
   const first = useRef<HTMLButtonElement | null>(null)
   useLayoutEffect(() => first.current?.focus(), [])
-  const why = t(`picture.blocked.${block.reason}`, { date: dayWord(block.at, Date.now(), lang, t) })
+  // The day as a date, «25 oktober», since the sentence goes on after it.
+  const why = t(`picture.blocked.${block.reason}`, { date: new Date(block.at).toLocaleDateString(readerLocale(lang), { day: 'numeric', month: 'long' }) })
   return (
     <div
       className="byd-data-bulk"

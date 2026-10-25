@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ReportPage } from '../src/terms/ReportPage.js'
 import { TermsPage } from '../src/terms/TermsPage.js'
@@ -22,7 +23,7 @@ afterEach(async () => {
   await run.stop()
 })
 
-function at(path: string, page: JSX.Element) {
+function at(path: string, page: ReactNode) {
   history.replaceState(null, '', `${path}${path.includes('?') ? '&' : '?'}server=${encodeURIComponent(run.http)}`)
   render(<StatusLive>{page}</StatusLive>)
 }
@@ -62,7 +63,7 @@ describe('the report page (#1274)', () => {
 
 describe('a blocked picture in Tabell (#1274)', () => {
   const HASH = 'b'.repeat(64)
-  const block = { reason: 'rights' as const, at: new Date().toISOString() }
+  const block = { reason: 'rights' as const, at: '2026-10-25T12:00:00.000Z' }
 
   it('is the word «Spärrad» on its tile, and a press asks for the reasons rather than opening the library', () => {
     const onChoose = vi.fn()
@@ -86,7 +87,7 @@ describe('a blocked picture in Tabell (#1274)', () => {
     const onClose = vi.fn()
     render(<WithheldStrip block={block} onSwap={onSwap} onClose={onClose} />)
     const strip = screen.getByRole('dialog', { name: 'Bilden är spärrad efter en anmälan' })
-    expect(strip.textContent).toContain('Den som äger rätten till bilden anmälde den, och en människa beslutade i dag.')
+    expect(strip.textContent).toContain('Den som äger rätten till bilden anmälde den, och en människa beslutade 25 oktober.')
     expect(strip.textContent).toContain('Vill du invända, svara på mejlet du fick.')
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Byt bilden' })))
     fireEvent.click(screen.getByRole('button', { name: 'Byt bilden' }))

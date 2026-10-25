@@ -511,4 +511,5 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
 
   'trust.terms': 'Terms',
   'trust.privacy': 'Privacy',
+  'trust.report': 'Report',
 }

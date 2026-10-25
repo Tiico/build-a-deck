@@ -55,7 +55,7 @@ describe('the foot of the login card (#757)', () => {
     health({ ok: true, tables: 0 })
     card()
     await new Promise((r) => setTimeout(r, 50))
-    expect(document.querySelector('[data-about]')?.textContent).toBe('Villkor · Integritet')
+    expect(document.querySelector('[data-about]')?.textContent).toBe('Villkor · Integritet · Anmäl')
   })
 })
 

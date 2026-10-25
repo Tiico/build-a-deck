@@ -631,4 +631,6 @@ export const svPlay = {
   // Raden där en gäst ansluter och där hon sparar (#757, #1272): villkoren och integriteten.
   'trust.terms': 'Villkor',
   'trust.privacy': 'Integritet',
+  // En anmälan av en bild (#1274): gästen är den som ser bilderna vid bordet.
+  'trust.report': 'Anmäl',
 } as const

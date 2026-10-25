@@ -751,6 +751,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // where a row's × asks (L58), which is the table's one place to say something about a row.
   const [withholding, setWithholding] = useState<{ cardRef: string; field: string } | null>(null)
   const withheld = useContext(WithheldPictures)
+  // The block behind the field, while the picture in it is still blocked; a picture swapped since is not.
+  const explained = withholding ? blockOf(doc.rows, withholding, withheld) : undefined
   // A question that takes the focus has to give it back: to the button that asked it, or — when
   // the cards it was about are gone with it — to the header's own checkbox above the rows.
   // A column's × goes with the column, so the head's own button — the one thing there that was
@@ -2029,9 +2031,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
           that had just pressed it. In the foot it takes the toolbar's place while it stands. The
           column door's × asks in the door itself (#1061). */}
-      {withholding !== null && blockOf(doc.rows, withholding, withheld) ? (
+      {withholding !== null && explained ? (
         <WithheldStrip
-          block={blockOf(doc.rows, withholding, withheld)!}
+          block={explained}
           onSwap={() => {
             setLibrary({ kind: 'cell', cardRef: withholding.cardRef, field: withholding.field })
             setWithholding(null)
