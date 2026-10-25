@@ -40,8 +40,10 @@
 .byd-terms-row b { color: #fff; font-size: 17px; line-height: 1.4; }
 .byd-terms-ks { grid-column: 2; color: #c3cbdd; font-size: 15px; line-height: 1.5; }
 .byd-terms-open { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; gap: 4px; align-self: start; color: #9aa3b8; font-size: 13px; white-space: nowrap; }
+/* A disclosure's mark: pointing on while the section is shut, and down once it is open (#1144 keeps
+   a chevron that points down for good to the buttons that drop something). */
 .byd-terms-open .byd-glyph { width: 12px; height: 12px; }
-.byd-terms-row[open] .byd-terms-open .byd-glyph { transform: rotate(180deg); }
+.byd-terms-row[open] .byd-terms-open .byd-glyph { transform: rotate(90deg); }
 .byd-terms-full { display: grid; gap: 10px; padding: 0 16px 16px 56px; color: #dfe4ef; font-size: 15px; }
 .byd-terms-full p { margin: 0; }
 .byd-terms-full ul { margin: 0; padding-left: 22px; display: grid; gap: 4px; }

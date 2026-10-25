@@ -140,7 +140,7 @@ function Row({ open, n, section, href, full }: { open: boolean; n: number; secti
         <Head n={n} section={section} href={href} />
         <span className="byd-terms-open" aria-hidden="true">
           {full}
-          <ChevronGlyph to="down" />
+          <ChevronGlyph to="right" />
         </span>
       </summary>
       <div className="byd-terms-full">
