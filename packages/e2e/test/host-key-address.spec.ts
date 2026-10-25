@@ -1,4 +1,6 @@
+import { withQuery } from '../support/api.js'
 import { TV } from '../support/devices.js'
+import { watchRequests } from '../support/requests.js'
 import { expect, test } from '../support/test.js'
 
 // The host key in the television's address bar (#758, DRIFT §9). The key opens the table's own
@@ -9,7 +11,7 @@ import { expect, test } from '../support/test.js'
 test.describe('the host key in the address (#758)', () => {
   test('is gone from the address once the table is open, and a reload still opens it', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await expect(page.locator('.byd-pile').first()).toBeVisible()
 
     const shown = new URL(page.url())
@@ -32,7 +34,7 @@ test.describe('the host key in the address (#758)', () => {
 // rotation — and a telephone at the same table never has the key on its wire.
 test.describe('a new code takes the host key with it (#820)', () => {
   test('the open television keeps the table through a reload, the old address is shut, and a phone never hears the key', async ({ table, open, player, request }) => {
-    const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+    const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await expect(tv.page.getByText(table.code)).toBeVisible()
     const ada = await player(table, { name: 'Ada', ...(table.seats[0] ? { seat: table.seats[0] } : {}) })
     await ada.wire.until((frame) => frame.includes('"snapshot"'))
@@ -54,8 +56,32 @@ test.describe('a new code takes the host key with it (#820)', () => {
     expect(tv.page.url()).not.toContain(hostKey)
 
     // The address that leaked opens nothing now.
-    const leaked = await open(TV, `${table.tvUrl}&lang=sv`)
+    const leaked = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await expect(leaked.page.locator('[data-status-notice]').getByRole('heading', { level: 1 })).toHaveText('Bordet kräver värdens länk eller ägarens inloggning')
     await expect(leaked.page.getByText(code)).toHaveCount(0)
+  })
+})
+
+// The suite opens the table the way the product hands it out (#1335): the editor puts the key in
+// the fragment since #1306, so a helper that built `?host=` tried only the old form, and every
+// journey that opened a screen passed on a road no new link takes. `owner-address.spec.ts` is the
+// one that still tries the old form, on purpose.
+test.describe('the suite’s own way to the table (#1335)', () => {
+  test('carries the key in the fragment, and no request the screen makes says it', async ({ tableOf, open }) => {
+    const table = await tableOf({ players: 2, counters: [], cards: 4 })
+    const given = new URL(table.tvUrl, 'http://x.invalid')
+    expect(given.searchParams.has('host'), 'the helper puts no key in the query').toBe(false)
+    expect(given.hash).toBe(`#host=${table.hostKey}`)
+
+    const { page, context } = await open(TV, 'about:blank')
+    const requests = watchRequests(context)
+    await page.goto(table.tvUrl)
+    await expect(page.getByText(table.code), 'the key in the fragment opens the table').toBeVisible()
+    await requests.closeAndRead()
+    expect(requests.seen.some(({ url }) => url.startsWith('ws') && url.includes('/sessions/')), 'the table’s socket was read').toBe(true)
+    for (const { url, referer } of requests.seen) {
+      expect(url, 'the key in the address of a request').not.toContain(table.hostKey)
+      expect(referer ?? '', `the key in the Referer of ${url}`).not.toContain(table.hostKey)
+    }
   })
 })

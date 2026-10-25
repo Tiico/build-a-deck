@@ -8,7 +8,7 @@ import { expect, test } from '../../support/test.js'
 // at K26's 24 px.
 for (const device of [SMALL_TV, TV]) {
   test(`the room's television wears the hand above the game's name at ${device.viewport.width}`, async ({ table, open }) => {
-    const { page } = await open(device, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(device, withQuery(table.tvUrl, 'lang=sv'))
     const brand = page.locator('[data-tv] > aside .byd-tv-foot [data-brand]')
     await expect(brand).toBeVisible()
     const seen = await page.evaluate(() => {

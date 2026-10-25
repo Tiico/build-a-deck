@@ -1,3 +1,4 @@
+import { withQuery } from '../../support/api.js'
 import type { Page } from '@playwright/test'
 import { TV_OVERSCAN } from '../../../web/src/table/camera.js'
 import { TV } from '../../support/devices.js'
@@ -81,7 +82,7 @@ const outside = (b: Badge, w: { w: number; h: number }) => ({
 /** Ett bord med fyra platser och kort på hand vid var och en av kanterna, sett på en TV. */
 async function dealtTable({ tableOf, open, host }: Pick<Fixtures, 'tableOf' | 'open' | 'host'>, win: { width: number; height: number }): Promise<Reading> {
   const table = await tableOf({ players: 4, cards: 24, copies: 2 })
-  const tv = await open({ name: `tv-${win.width}`, viewport: win }, `${table.tvUrl}&lang=sv`)
+  const tv = await open({ name: `tv-${win.width}`, viewport: win }, withQuery(table.tvUrl, 'lang=sv'))
   const dealer = await host(table)
   await dealer.send([{ v: 'shuffle', pile: 'draw' }])
   // Kort på hand vid *varje* kant, vilket är vad kriteriet begär: det är platsen vid överkanten som

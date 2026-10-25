@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
 import { spelkortDoc } from '../../../server/scripts/spelkort.js'
-import { tableOf, type Table } from '../../support/api.js'
+import { tableOf, type Table, withQuery } from '../../support/api.js'
 import { expect, test, type Fixtures } from '../../support/test.js'
 
 // What stands in the TV's corner — «Starta om» and the help's disc beside it (#482, #684) — covers
@@ -62,7 +62,7 @@ test.describe('the TV’s corner covers nothing on the table (#875)', () => {
   for (const cell of CELLS)
     test(`TV ${cell.width}, ${cell.seats} seats`, async ({ request, open, host, player }) => {
       const table = await played(request, host, player, cell.seats)
-      const { page } = await open({ name: `tv-${cell.width}`, viewport: { width: cell.width, height: cell.height } }, `${table.tvUrl}&lang=sv`)
+      const { page } = await open({ name: `tv-${cell.width}`, viewport: { width: cell.width, height: cell.height } }, withQuery(table.tvUrl, 'lang=sv'))
       await expect(page.locator('.byd-table-restart')).toBeVisible()
       await expect(page.locator('[data-seat-plate]')).toHaveCount(table.seats.length)
       // The camera glides to its frame (#325); read once two readings 300 ms apart agree.

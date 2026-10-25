@@ -13,11 +13,22 @@ export type Table = {
   code: string
   /** What opens the table's own screen. A seatless connection without it is refused. */
   hostKey: string
-  /** The big screen, in the mode a group in one room uses. */
+  /** The big screen, in the mode a group in one room uses, with the key in its fragment. */
   tableUrl: string
   /** The big screen in television mode, which is the one that shows the code and the QR. */
   tvUrl: string
   seats: string[]
+}
+
+/**
+ * The big screen's two addresses, in the form the editor hands them out (#1306, DRIFT §9): the host
+ * key in the fragment, which the browser sends in no request and no `Referer`, and the screen takes
+ * out of the address on arrival. A spec that adds to the query does it with `withQuery`, which keeps
+ * the words ahead of the fragment; `owner-address.spec.ts` is the one that tries the old query form.
+ */
+function screensOf(session: string, hostKey: string): Pick<Table, 'tableUrl' | 'tvUrl'> {
+  const at = (mode: string) => `/table?${new URLSearchParams({ session, mode }).toString()}#host=${encodeURIComponent(hostKey)}`
+  return { tableUrl: at('table'), tvUrl: at('tv') }
 }
 
 /** Admission bought with a code: a seat, or a chair by the wall. */
@@ -57,15 +68,7 @@ export async function tableOf(request: APIRequestContext, setup: unknown, deck?:
   if (res.status !== 201) throw new Error(`the table was not created: ${res.status} ${res.text}`)
   const { id, code, hostKey } = JSON.parse(res.text) as { id: string; code: string; hostKey: string }
   const seats = (setup as { seats?: string[] }).seats ?? []
-  const host = encodeURIComponent(hostKey)
-  return {
-    session: id,
-    code,
-    hostKey,
-    seats,
-    tableUrl: `/table?session=${encodeURIComponent(id)}&host=${host}&mode=table`,
-    tvUrl: `/table?session=${encodeURIComponent(id)}&host=${host}&mode=tv`,
-  }
+  return { session: id, code, hostKey, seats, ...screensOf(id, hostKey) }
 }
 
 /**
@@ -130,8 +133,8 @@ export async function join(request: APIRequestContext, table: Table, who: { name
 
 /**
  * An address with more in its query — a language, a code — kept ahead of its fragment, where a
- * guest's token is (#1278). Appending `&lang=sv` to a guest's address would put it in the token's
- * fragment, and the page would never read it.
+ * guest's token is (#1278) and the big screen's host key (#1306). Appending `&lang=sv` to such an
+ * address would put it in the fragment, and the page would never read it.
  */
 export function withQuery(url: string, extra: string): string {
   const at = url.indexOf('#')
@@ -185,14 +188,7 @@ export async function startTable(request: APIRequestContext, projectId: string, 
   const res = await request.post(`/projects/${encodeURIComponent(projectId)}/sessions`, seating ? { data: { seating } } : {})
   if (!res.ok()) throw new Error(`could not start a table on ${projectId}: ${res.status()} ${await res.text()}`)
   const started = (await res.json()) as { id: string; code: string; hostKey: string }
-  const host = encodeURIComponent(started.hostKey)
-  return {
-    session: started.id,
-    code: started.code,
-    hostKey: started.hostKey,
-    tableUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=table`,
-    tvUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=tv`,
-  }
+  return { session: started.id, code: started.code, hostKey: started.hostKey, ...screensOf(started.id, started.hostKey) }
 }
 
 /** A project of one's own, owned by whoever this context is logged in as. */
@@ -251,13 +247,5 @@ export async function tableWithRules(request: APIRequestContext, game: Game = {}
   const res = await request.post(`/projects/${encodeURIComponent(project.id)}/sessions`)
   if (!res.ok()) throw new Error(`could not start a table on ${project.id}: ${res.status()} ${await res.text()}`)
   const started = (await res.json()) as { id: string; code: string; hostKey: string }
-  const host = encodeURIComponent(started.hostKey)
-  return {
-    session: started.id,
-    code: started.code,
-    hostKey: started.hostKey,
-    seats: doc.setup.seats,
-    tableUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=table`,
-    tvUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=tv`,
-  }
+  return { session: started.id, code: started.code, hostKey: started.hostKey, seats: doc.setup.seats, ...screensOf(started.id, started.hostKey) }
 }

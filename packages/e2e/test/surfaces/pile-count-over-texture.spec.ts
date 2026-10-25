@@ -101,7 +101,7 @@ for (const device of [TV, SMALL_TV, UHD]) {
     for (const state of STATES) {
       test(`stands on the pile while its picture is ${state}`, async ({ browser, baseURL, tableOf }) => {
         const table = await tableOfFour(tableOf)
-        const page = await screen(browser, baseURL, device, `${table.tvUrl}&lang=sv`, state)
+        const page = await screen(browser, baseURL, device, withQuery(table.tvUrl, 'lang=sv'), state)
         const now = await read(page)
         expect(now.count).toBe('24')
         expect({ hit: now.hit, covers: now.covers }).toEqual({ hit: now.hit, covers: true })

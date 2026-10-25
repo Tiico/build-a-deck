@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import type { Page } from '@playwright/test'
 import { DESK, PHONE } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
@@ -44,7 +45,7 @@ test('on the table, Escape from a card held up gives focus back to the card on t
   const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
-  const { page } = await open(DESK, `${table.tableUrl}&lang=sv`)
+  const { page } = await open(DESK, withQuery(table.tableUrl, 'lang=sv'))
   const card = page.locator('.byd-card[data-component][data-kbd]').first()
   await expect(card).toBeVisible()
   const key = await card.getAttribute('data-kbd')
@@ -60,7 +61,7 @@ test('on the table, Escape from a face-up card held up gives focus back to the c
   const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
-  const { page } = await open(DESK, `${table.tableUrl}&lang=sv`)
+  const { page } = await open(DESK, withQuery(table.tableUrl, 'lang=sv'))
   const card = page.locator('.byd-card[data-component][data-kbd]').first()
   await expect(card).toBeVisible()
   await dealer.send([{ v: 'flip', component: (await card.getAttribute('data-component'))!, face: 'front' }])
