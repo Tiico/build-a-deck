@@ -210,6 +210,27 @@ test.describe('platsens skylt på rummets TV står fritt och säger bokstav, nam
       expect({ where: `${where}, 15 % bredare`, badges: wide.plates.filter((p) => p.form !== 'plate').map((p) => p.seat) }).toEqual({ where: `${where}, 15 % bredare`, badges: [] })
     })
 
+  // Skyltarna läggs ut i filtens inpassade skala, och var kameran står när de läggs ut ändrar inte var
+  // de hamnar. På CI läste filten först en större ram, scenen blev 760 px (#1290) och sedan 360 igen,
+  // och skyltarna lades ut medan kameran ännu gled från den första, inzoomade bilden: B blev en bricka
+  // (#1312). En kamera som står inzoomad när fönstret byter storlek är samma sak, utan klocka.
+  test('var kameran står när skyltarna läggs ut ändrar inte var de hamnar', async ({ request, open, host, player }) => {
+    const table = await dealt(request, host, player, 8)
+    const page = await television(open, CELLS[1].device, table)
+    await settled(page)
+    const at = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-seat-plate]')].map((p) => [p.dataset['seatPlate'], p.dataset['plateAt']])))
+    const fresh = await at()
+    expect(Object.values(fresh).filter((t) => t?.startsWith('badge'))).toEqual([])
+    await page.locator('[data-table]').hover()
+    for (let i = 0; i < 6; i++) await page.keyboard.press('+')
+    await settled(page)
+    await page.setViewportSize({ width: 1300, height: 820 })
+    await settled(page)
+    await page.setViewportSize(CELLS[1].device.viewport)
+    await settled(page)
+    expect(await at()).toEqual(fresh)
+  })
+
   // Räknarens tal står på platsens egen mark igen, i rummets 24 px-pill, som en mark utan ägare
   // redan bär på TV:n. Räknarens namn skrivs inte längre på filten.
   test('räknarens tal står på platsens mark, i 24 px', async ({ request, open, host, player }) => {
