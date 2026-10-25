@@ -34,7 +34,7 @@ import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvi
 import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { BlockedAsset, ReportBody, type ReportStore } from './reports.js'
-import { operatorMail, receiptMail } from './report-mail.js'
+import { REPORT_SECTION, operatorMail, receiptMail } from './report-mail.js'
 import { MotifBody, assetHash, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
@@ -585,7 +585,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (!body.success) return json(res, 400, { error: 'not a report', fields: [...new Set(body.error.issues.map((i) => String(i.path[0] ?? '')))] })
       const { lang, ...said } = body.data
       const report = await opts.reports.add({ ...said, lang: lang ?? 'sv', at: clock(opts).toISOString() })
-      const link = `${opts.appOrigin ?? opts.publicOrigin ?? ''}/villkor#villkor`
+      const link = `${opts.appOrigin ?? opts.publicOrigin ?? ''}${REPORT_SECTION}`
       const sends: Promise<void>[] = []
       if (report.email !== '' && opts.mailer) sends.push(opts.mailer.send(receiptMail(report, link, opts.contact)))
       if (opts.contact && /^[^@\s]+@[^@\s]+$/.test(opts.contact) && opts.mailer) sends.push(opts.mailer.send(operatorMail(opts.contact, report)))

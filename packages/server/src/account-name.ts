@@ -14,10 +14,24 @@ export const NAME_MAX = 40
 // or more, nothing else — with a capital. «nicklas.ockelberg@…» suggests Nicklas; «x92@…» suggests
 // nothing. It is only ever a suggestion: shown to the designer, filled in for her, and said to
 // nobody else until she has said yes to it (beslut 2).
+//
+// A double name is one word (#1364): words joined by a hyphen are kept together, so «anna-karin.
+// johansson@…» suggests Anna-Karin, each half with its capital. A hyphen that joins a word to
+// something that is not one ends the name there: «ada-3@…» is Ada, and «e2e-owner@…» is Owner.
 export function suggestedName(email: string): string | null {
   const local = email.split('@')[0] ?? ''
-  const word = local.split(/[._+-]/).find((part) => /^\p{L}{2,}$/u.test(part))
-  return word ? word.charAt(0).toLocaleUpperCase('sv') + word.slice(1).toLocaleLowerCase('sv') : null
+  const word = (part: string) => /^\p{L}{2,}$/u.test(part)
+  for (const piece of local.split(/[._+]/)) {
+    const halves = piece.split('-')
+    const from = halves.findIndex(word)
+    if (from < 0) continue
+    const to = halves.findIndex((half, i) => i > from && !word(half))
+    return halves
+      .slice(from, to < 0 ? undefined : to)
+      .map((half) => half.charAt(0).toLocaleUpperCase('sv') + half.slice(1).toLocaleLowerCase('sv'))
+      .join('-')
+  }
+  return null
 }
 
 // A name as the account keeps it: trimmed, and nothing but space is no name. Text of at most

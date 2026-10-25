@@ -3,7 +3,7 @@ import { assetHashesOf, type AssetStore } from './assets.js'
 import type { AuthStore, Mailer } from './auth.js'
 import { titleOfFields } from './names.js'
 import type { ProjectStore } from './projects.js'
-import { decisionMail, ownerMail } from './report-mail.js'
+import { REPORT_SECTION, decisionMail, ownerMail } from './report-mail.js'
 import { BLOCK_REASONS, type BlockReason, type ReportStore } from './reports.js'
 
 // The operator's side of a report (#1274, RUNBOOK §8): run by hand over Tailscale against the box's
@@ -136,7 +136,7 @@ export async function runReport(args: readonly string[], stores: ReportStores, i
       say({ id: target, error: 'no such report' })
       return 1
     }
-    if (r.email !== '') await stores.mailer.send(decisionMail(r, arg, `${stores.origin}/villkor#villkor`, stores.contact))
+    if (r.email !== '') await stores.mailer.send(decisionMail(r, arg, `${stores.origin}${REPORT_SECTION}`, stores.contact))
     say({ id: r.id, decision: arg, mailed: r.email !== '' })
     return 0
   }

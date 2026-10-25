@@ -43,9 +43,8 @@ const COPY: Record<Lang, Copy> = {
 export function loginMail(to: string, link: string, lang: Lang = 'sv', contact?: string): Mail {
   const c = COPY[lang]
   const site = siteOf(link)
-  const text =
-    lang === 'en'
-      ? `Hello!\n\nClick to sign in: ${link}\n\n${c.fine}${textFoot(site, contact, c.contact)}`
-      : `Hej!\n\nKlicka för att logga in: ${link}\n\n${c.fine}${textFoot(site, contact, c.contact)}`
+  // The text part says what the HTML says (#1374): a reader of plain mail, and every inbox's preview,
+  // is told that the link makes the account the first time.
+  const text = `${c.hello}\n\n${c.lead}\n\n${c.button}: ${link}\n\n${c.fine}${textFoot(site, contact, c.contact)}`
   return { to, subject: c.subject, text, html: bands({ lang, subject: c.subject, pre: c.pre, hello: c.hello, lead: c.lead, fine: c.fine, action: { button: c.button, pasteIt: c.pasteIt, link }, contactWord: c.contact, contact }) }
 }

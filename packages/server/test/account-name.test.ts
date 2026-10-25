@@ -16,6 +16,15 @@ describe('the name the address suggests (#1198, #1254)', () => {
     expect(suggestedName('åsa_lind@example.se')).toBe('Åsa')
   })
 
+  it('keeps a double name whole: a hyphen between two words is one name (#1364)', () => {
+    expect(suggestedName('anna-karin.johansson@example.se')).toBe('Anna-Karin')
+    expect(suggestedName('lars-erik@example.se')).toBe('Lars-Erik')
+    expect(suggestedName('ANNA-KARIN@example.se')).toBe('Anna-Karin')
+    expect(suggestedName('kim.larsson@example.se')).toBe('Kim')
+    expect(suggestedName('ada-3@example.com')).toBe('Ada')
+    expect(suggestedName('e2e-owner+1198@example.com')).toBe('Owner')
+  })
+
   it('suggests nothing for an address with no such word', () => {
     expect(suggestedName('x1@example.com')).toBeNull()
     expect(suggestedName('12345@example.com')).toBeNull()

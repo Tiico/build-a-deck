@@ -8,6 +8,8 @@ import { loginUrl } from './session.js'
 import { NAME_MAX, myAccount, saveName, suggestedName, type Me } from './api.js'
 import { safeNext } from './next.js'
 import { TermsStep } from './TermsStep.js'
+import { Address } from './Address.js'
+import { marked } from './marked.js'
 import './account.css'
 
 // /login?step=name&next=… — the step after the first link (#1254, beställarens beslut 2026-10-24, variant C),
@@ -123,7 +125,7 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
             <span>{t('terms.step.of', { n: 1, total: 2 })}</span>
           </p>
         )}
-        <p className="byd-welcome-as">{t('welcome.as', { email: me.email })}</p>
+        <p className="byd-welcome-as">{marked(t('welcome.as'), { email: <Address email={me.email} /> })}</p>
         <form noValidate onSubmit={go}>
           <label className="byd-login-email">
             <span>{t('welcome.field')}</span>

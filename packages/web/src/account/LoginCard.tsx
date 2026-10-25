@@ -2,10 +2,12 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { requestLink } from './session.js'
 import { arrival } from './api.js'
-import { markPitchSeen, pitchSeen } from './pitch.js'
+import { firstVisitSeen, markFirstVisitSeen, markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { LanguagePicker, useT, type Key } from '../i18n/index.js'
 import { AboutLine } from './AboutLine.js'
+import { Address } from './Address.js'
+import { marked } from './marked.js'
 import { KeyGlyph } from '../glyphs.js'
 import { letGoOfSuggestion, loginWithPasskey, useKeychain } from './passkey.js'
 
@@ -22,9 +24,13 @@ import { letGoOfSuggestion, loginWithPasskey, useKeychain } from './passkey.js'
 export function LoginCard({ http, next, onNavigate = (url) => location.assign(url), lead, help, notice }: { http: string; next: string; onNavigate?(url: string): void; lead?: string | undefined; help?: string | undefined; notice?: ReactNode }) {
   const t = useT()
   const [pitch] = useState(() => lead === undefined && notice === undefined && !pitchSeen())
+  // The first visit's line has a memory of its own (#1358): the landing page sells, and never says
+  // that the link makes the account.
+  const [first] = useState(() => lead === undefined && notice === undefined && !firstVisitSeen())
   useEffect(() => {
     if (pitch) markPitchSeen()
-  }, [pitch])
+    if (first) markFirstVisitSeen()
+  }, [pitch, first])
   const [email, setEmail] = useState('')
   const [state, setState] = useState<State>('open')
   const field = useRef<HTMLInputElement>(null)
@@ -97,7 +103,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
       {pitch && <p className="byd-muted" data-pitch>{t('login.pitch')}</p>}
       {/* The field and its button are under this row, and the box never lands on them (#726). */}
       <div className="byd-muted byd-help-row" data-help-explains=".byd-login form">
-        <span>{lead ?? t(pitch ? 'login.lead.first' : 'login.lead')}</span>
+        <span>{lead ?? t(first ? 'login.lead.first' : 'login.lead')}</span>
         <Help topic={t('login.help.topic')}>
           {help && <p>{help}</p>}
           <p>{t('login.pitch')}</p>
@@ -108,7 +114,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
       {state === 'sent' ? (
         <div className="byd-login-sent" role="status">
           <strong>{t('login.sent.title')}</strong>
-          <span>{t('login.sent.body', { email: email.trim() })}</span>
+          <span>{marked(t('login.sent.body'), { email: <Address email={email.trim()} /> })}</span>
         </div>
       ) : (
         // The browser's own bubble is not the product's voice and says nothing a screen reader

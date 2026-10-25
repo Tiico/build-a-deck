@@ -177,6 +177,8 @@ for (const backend of backends) {
       expect(receipt.html).toContain('Bilden på &lt;Skogsvaktaren&gt;')
       expect(receipt.html).not.toContain('<Skogsvaktaren>')
       expect(receipt.text).toMatch(/två arbetsdagar/)
+      // The button leads to section 11, which says how a report is handled, and not to the top (#1361).
+      expect(receipt.text).toContain('/villkor#villkor-11')
       expect(mails.find((m) => m.to === CONTACT)?.text).toContain(`report show ${id}`)
       // Without an address there is nobody to receipt, and the report is kept all the same.
       const quiet = run.mail.sent.length
@@ -278,6 +280,7 @@ for (const backend of backends) {
       expect(JSON.parse((await script('decide', id, 'held')).out)).toMatchObject({ id, decision: 'held', mailed: true })
       const mail = run.mail.sent.slice(sent).find((m) => m.to === 'beslut@example.com')!
       expect(mail.subject).toBe(`Your report ${id}: the report held`)
+      expect(mail.text + (mail.html ?? '')).toContain('/villkor#villkor-11')
       expect((await script('list')).out).toContain(`"id":"${id}","at"`)
       expect((await script('decide', 'A-9999', 'held')).code).toBe(1)
       expect((await script('block', 'nope', 'rights')).code).toBe(2)

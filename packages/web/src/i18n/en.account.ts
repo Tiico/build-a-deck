@@ -48,7 +48,7 @@ export const enAccount = {
   'landing.rows.type': 'Type',
   'landing.step.rows': 'Write the cards',
   'landing.step.rows.body': 'Every card is a row in a table. A hundred cards take as long to change as one.',
-  'landing.step.template': 'Draw one card, get them all',
+  'landing.step.template': 'Design one card, get them all',
   'landing.step.template.body': 'Design a template once. Every row becomes a card with its own title, picture and text.',
   'landing.step.table': 'Build the table',
   'landing.step.table.body': 'Decide piles and seats. The TV becomes the table and the phones become the hands, so hidden cards stay hidden.',

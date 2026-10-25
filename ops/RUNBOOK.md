@@ -339,3 +339,94 @@ Spärra och rensa först, och spara anmälans nummer och bildens hash till polis
 
 **Det som inte går att ta tillbaka.** En signerad R2-länk som redan lämnats ut lever sin timme ut, och en webbläsare kan ha bilden i sin cache.
 En spärr stänger varje ny väg till bilden; en rensning tar bort bytesen bakom länken.
+
+## 9. Inbjudan till betan och samtycket till korpusen
+
+**Utkast.** Beställaren läser och justerar texten innan något skickas; den är inte godkänd.
+
+Samtycket till replay-korpusen ges i inbjudan och inte i produkten (DESIGN-BESLUT I, DRIFT §7, #1011).
+Varje betadesigner får frågan i sitt eget mejl, och svaret i mejlet är det som gäller.
+Spara svaret: mejlet är beviset på ett ja, och på när ett ja ångrades.
+
+### Inbjudan på svenska
+
+> **Ämne:** Välkommen till betan av Deckster
+>
+> Hej!
+>
+> Du är inbjuden att prova Deckster under betan.
+> Deckster är ett verktyg för att bygga ett eget kortspel och speltesta det med vänner: korten skrivs som rader i en tabell, bordet står på TV:n och var och en håller sin hand i telefonen.
+>
+> Du loggar in med din e‑post på https://deckster.se, och första gången skapar länken i mejlet ditt konto.
+> Det kostar ingenting under betan.
+> Villkoren och hur vi hanterar dina uppgifter står på https://deckster.se/villkor.
+>
+> En fråga, som du svarar på i ett svar på det här mejlet:
+>
+> **Får vi använda anonymiserade loggar från dina testbord i vår testkorpus? Svara ja eller nej; du kan ångra dig när som helst.**
+>
+> Testkorpusen är bord som vi spelar upp igen för att hitta fel i Deckster innan de når någon.
+> Innan ett bord sparas där byts alla namn och all fritext ut, och den råa kopian sparas aldrig.
+> Svarar du nej, eller inte alls, används inga bord ur dina spel, och Deckster fungerar precis likadant för dig.
+> Vill du ångra ett ja, svara på det här mejlet eller skriv till <BYD_CONTACT>.
+>
+> Välkommen!
+
+### Inbjudan på engelska
+
+> **Subject:** Welcome to the Deckster beta
+>
+> Hello!
+>
+> You are invited to try Deckster during the beta.
+> Deckster is a tool for building your own card game and playtesting it with friends: the cards are written as rows in a table, the table stands on the TV, and everyone holds their hand in their phone.
+>
+> You sign in with your email at https://deckster.se, and the first time, the link in the mail creates your account.
+> It costs nothing during the beta.
+> The terms, and how we handle your data, are at https://deckster.se/villkor.
+> They are in Swedish while they are a draft.
+>
+> One question, which you answer by replying to this mail:
+>
+> **May we use anonymised logs from your test tables in our test corpus? Answer yes or no; you can change your mind at any time.**
+>
+> The test corpus is tables we play back to find faults in Deckster before they reach anyone.
+> Before a table is kept there, every name and every free text is replaced, and the raw copy is never kept.
+> If you answer no, or not at all, no table from your games is used, and Deckster works exactly the same for you.
+> To take back a yes, reply to this mail or write to <BYD_CONTACT>.
+>
+> Welcome!
+
+`<BYD_CONTACT>` är lådans kontaktadress (§2); skriv in den innan mejlet skickas.
+
+### Ett ja
+
+1. Spara svarsmejlet.
+2. Skriv in kontots adress i `BYD_CORPUS_ACCOUNTS` i lådans `.env`, kommaseparerad med de andra och utan mellanslag:
+
+   ```sh
+   BYD_CORPUS_ACCOUNTS=ada@example.com,bo@example.com
+   ```
+
+   Adressen ska vara den betadesignern loggar in med, alltså kontots adress och inte nödvändigtvis den mejlet kom från.
+   `BYD_OPERATOR` ska stå satt till operatörens adress (§2).
+3. Starta om appen, `docker compose up -d app`, eller låt nästa deploy göra det.
+   Raderna läses bara när appen startar.
+4. Kontrollera: `corpus` med operatörens kaka i `BYD_COOKIE` mot ett bord i ett av kontots spel tar bordet, och exporten säger `consented`.
+
+Ett ja gäller bord ur spel som kontot äger; ett spel där hen bara är medredigerare hör till ägaren och dennes svar.
+
+### Ett nej, inget svar eller ett ångrat ja
+
+Ett nej och ett uteblivet svar skrivs inte in någonstans: utan adressen i listan tas inget bord ur kontots spel.
+
+Ett ångrat ja:
+
+1. Spara mejlet där ja:et ångras.
+2. Stryk adressen ur `BYD_CORPUS_ACCOUNTS`, och stryk hela raden om den var den enda.
+3. Starta om appen.
+   Från omstarten får operatörens inloggning inte längre läsa exporten av kontots bord; före den kan den det.
+4. Ta bort de bord ur `corpus/` som hämtades ur kontots spel, i en egen PR, och svara betadesignern att det är gjort.
+   Filerna är redan anonymiserade och bär inga personuppgifter (DRIFT §7), men ett ångrat ja ska betyda att borden inte används.
+
+**Att avgöra före utskick.** Om redan hämtade, anonymiserade bord ska tas bort ur korpusen vid ett ångrat ja (steg 4), eller bara inga nya hämtas, är beställarens beslut; utkastet tar bort dem.

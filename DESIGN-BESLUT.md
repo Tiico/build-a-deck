@@ -6796,6 +6796,8 @@ Den enda mening L36 lämnade kvar — «Logga in för att komma till dina spel»
 Första besöket säger «Logga in eller skapa konto med din e-post — länken i mejlet räcker», en inbjudan «Logga in för att öppna spelet du bjudits in till» med spelets namn (D3), och guidens utkast «Ditt spel skapas när du loggat in»; claim har sin egen sedan tidigare.
 Utloggad säger guiden tidigt, i rutan som säger att den är startpunkten, att spelet sparas på ett konto.
 Det är samma rad på samma plats, inte en ny form.
+Rättat 2026-10-25 (#1358): första besökets rad har ett eget minne i webbläsaren, skilt från säljtextens.
+Landningssidan räknas som att säljtexten är sedd, men den säger aldrig att länken skapar kontot, så den som går in via landningssidan får första besökets rad ändå.
 Reviderat 2026-10-06 (#687, beställarens beslut efter prototyp): rutan bär nu bara den meningen — «**Spelet sparas på ett konto.** Du loggar in med e-post när du skapar det, och det du skrivit här följer med.» — och finns inte alls för den som är inloggad.
 Etiketten «Wizarden är startpunkten» är borta, och med den ordet «wizard» från ytan: den heter «guidad start» överallt.
 Meningen står här och bara här; inloggningskortets leads är #691:s.
@@ -8936,6 +8938,8 @@ Agenten rekommenderade A med C:s remsa i Tabell och invändningen som ett svar p
   «Var» tar rumskod, länk eller spelets namn, eftersom en rumskod bara gäller i tre timmar.
   Det som saknas sägs under fältet när man trycker «Skicka anmälan», och det första får fokus.
   När den är skickad säger sidan anmälans nummer och vart kvittot gick.
+  Tillägg 2026-10-25 (#1376 punkt 2, beställarens beslut): är anmälaren inloggad står kontots namn och adress ifyllda, synligt, och båda kan tömmas.
+  Avsnitt 11 har adressen `#villkor-11` och öppnas när man kommer dit (#1361); sidans väg tillbaka och kvittots knapp leder dit.
 - **Kvittot är ett mejl i L72:s band** med anmälan upprepad som en lista på papperet.
 - **I Tabell är en spärrad bild ordet «Spärrad» på en randig bärnstensgrund,** aldrig en tom ruta som ser ut som en bild som inte laddade.
   Rutan öppnar remsan i Tabells fot, där en rads × frågar (L58): vem som anmälde och när en människa beslutade, att bilden inte syns någonstans, och att man invänder genom att svara på mejlet.

@@ -30,6 +30,10 @@
 .byd-login button, .byd-code-row > button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+/* An address in a sentence (#1359, Address.tsx): each part between the breaks stands whole on its line, and
+   gives way inside only when it alone is wider than the card. */
+.byd-address { overflow-wrap: anywhere; }
+.byd-address > span { display: inline-block; max-width: 100%; }
 /* What happened just before the card (#1280): an account deleted, said in the room's green, with the
    tick the profile says a done thing with. */
 .byd-login-done { margin: 0; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
@@ -39,11 +43,21 @@
    filled in, «Fortsätt» across the card and «Hoppa över» as a quiet word under it. */
 .byd-welcome form { gap: 14px; }
 .byd-welcome .byd-login-email { gap: 8px; }
-.byd-welcome-as { margin: 0; color: #9aa3b8; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.byd-welcome-as { margin: 0; color: #9aa3b8; font-size: 14px; line-height: 1.5; }
 .byd-welcome-note { margin: 0; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
 .byd-welcome-answers { display: grid; gap: 8px; }
 .byd-login .byd-welcome-skip { justify-self: center; min-height: 44px; padding: 0; border: 0; background: none; color: #9aa3b8; font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .byd-login .byd-welcome-skip:hover { color: #fff; }
+/* The welcome card's first step is the same card as its second (F4 «i samma kort», #1373): the terms
+   step's width, padding, gap, heading and ring (terms.css), so the card does not change under the
+   reader when she presses «Fortsätt». */
+.byd-login.byd-welcome { width: min(500px, 100%); gap: 12px; padding: 28px 32px; }
+.byd-welcome h1 { color: #fff; line-height: 1.2; }
+.byd-welcome :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+@media (max-width: 480px) {
+  .byd-login.byd-welcome { padding: 22px 18px; border-radius: 18px; }
+  .byd-welcome h1 { font-size: 22px; }
+}
 /* The door for whoever came to play (#675, beslut C): a row with the room's code, which stood under
    the login card and now stands on the landing page (#1009). */
 .byd-code-row { width: min(420px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
