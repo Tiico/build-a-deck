@@ -8431,6 +8431,7 @@ B gav en genomskinlig bild ett färgsken som inte finns på kortet, och C var br
 
 `whole-picture.test.tsx` mäter de målade pixlarna på varje yta: en kvadratisk, en smal och en bred bild ryms hela och i sin egen form, och en bild i den gamla grundens mörker skiljer sig från grunden bredvid.
 `media-crop.test.tsx` lägger ramen på en 2:1-bild med mätning och på en 1:2-bild utan.
+
 ### L83. Regelbokens knappar: en ordnad verktygsrad och ord som säger vad de gör (prototypat och beslutat 2026-10-24, #1258)
 
 Beställaren: regelbokens knappar stod lite överallt och begreppen var otydliga.
