@@ -151,7 +151,9 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
   const head = (
     <div className="byd-tv-head">
       <h1>
-        {title ?? t('play.table')}
+        {/* The name is one piece (#1340): where the line runs out it breaks before the version and
+            not inside the game's name. */}
+        <span>{title ?? t('play.table')}</span>
         {version !== undefined && <em> {version}</em>}
       </h1>
       {/* The rulebook, beside the game's own name rather than over the felt (#30). */}
