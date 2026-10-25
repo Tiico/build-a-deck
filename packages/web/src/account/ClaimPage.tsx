@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoginCard } from './LoginCard.js'
 import { claimGuest, whoAmI } from './session.js'
 import { safeNext } from './next.js'
-import { landingWith, takeGuestToken } from '../guestAddress.js'
+import { takeGuestToken } from '../guestAddress.js'
 import { useT } from '../i18n/index.js'
 import { noticeFor } from '../status/notice.js'
 import { AccountStatus, spent, waiting } from './AccountStatus.js'
@@ -21,10 +21,32 @@ export type ClaimPageProps = { onNavigate?(url: string): void }
 // Back from where the claim lands goes to the page before it rather than claiming again (#690).
 const go = (url: string): void => location.replace(url)
 
+// The token of a claim link. One handed out before #1278 carried it twice: its own, and the phone's
+// in the `next` it goes back to, beside her name. The page it goes back to is cleaned the way the
+// phone cleans its own address, and in the same history entry; then the link's own token moves.
+function takeClaimToken(): string | undefined {
+  const q = new URLSearchParams(location.search)
+  const next = q.get('next')
+  if (next !== null && safeNext(next) === next) {
+    const inner = new URL(next, location.origin).searchParams
+    const carried = inner.get('token')
+    const named = inner.has('name') && inner.get('owner') !== '1'
+    if (carried !== null || named) {
+      inner.delete('token')
+      if (named) inner.delete('name')
+      q.set('next', `${next.split('?')[0]}?${inner}`)
+      const fragment = new URLSearchParams(location.hash.slice(1))
+      if (carried && !q.has('token') && !fragment.has('token')) fragment.set('token', carried)
+      history.replaceState(history.state, '', `${location.pathname}?${q}#${fragment}`)
+    }
+  }
+  return takeGuestToken()
+}
+
 export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
   const t = useT()
   // The token first: an old link's query is cleaned before anything else reads it.
-  const token = useMemo(() => takeGuestToken() ?? null, [])
+  const token = useMemo(() => takeClaimToken() ?? null, [])
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const next = params.get('next')
@@ -51,7 +73,8 @@ export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
     void claimGuest(http, token).then((r) => {
       if (!live) return
       if (r.ok) {
-        if (next !== null && safeNext(next) === next) return onNavigate(landingWith(next, { saved: '1' }, location.hash))
+        // Back to the phone, told it is saved, with the token it is carried with in its fragment.
+        if (next !== null && safeNext(next) === next) return onNavigate(`${next}${next.includes('?') ? '&' : '?'}saved=1${location.hash}`)
         const q = new URLSearchParams({ claimed: r.session })
         if (server) q.set('server', server)
         onNavigate(`/?${q.toString()}`)

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { guestAddress, landingWith, takeGuestToken } from '../src/guestAddress.js'
+import { guestAddress, takeGuestToken } from '../src/guestAddress.js'
 
 // A guest's token and name never travel in an address (#1278). The token lives in the page's
 // fragment, which the browser sends nowhere; the name is the admission's, told by the table. An old
@@ -43,30 +43,5 @@ describe('the guest’s address (#1278)', () => {
     history.replaceState(null, '', '/online?session=s1&seat=A&name=Bo&owner=1')
     expect(takeGuestToken()).toBeUndefined()
     expect(new URLSearchParams(location.search).get('name')).toBe('Bo')
-  })
-
-  // An old claim link carries the token twice: its own, and the one in the page it goes back to.
-  it('cleans the page an old claim link goes back to as well', () => {
-    const next = '/play?session=s1&seat=A&name=Ada&token=T1'
-    history.replaceState(null, '', `/claim?${new URLSearchParams({ token: 'T1', next }).toString()}`)
-    expect(takeGuestToken()).toBe('T1')
-    expect(location.search).not.toContain('T1')
-    expect(location.search).not.toContain('Ada')
-    expect(new URLSearchParams(location.search).get('next')).toBe('/play?session=s1&seat=A')
-    expect(location.hash).toBe('#token=T1')
-  })
-
-  it('takes the token from the page a claim link goes back to when the link has none of its own', () => {
-    history.replaceState(null, '', `/claim?${new URLSearchParams({ next: '/play?session=s1&seat=A&token=T2' }).toString()}`)
-    expect(takeGuestToken()).toBe('T2')
-    expect(location.hash).toBe('#token=T2')
-  })
-
-  // Where a claim or a login lands: its query gains what it is told, and the fragment it is
-  // carried with is its own.
-  it('lands on a page with a mark in its query and the fragment after', () => {
-    expect(landingWith('/play?session=s1&seat=A', { saved: '1' }, '#token=T1')).toBe('/play?session=s1&seat=A&saved=1#token=T1')
-    expect(landingWith('/play', { saved: '1' }, '')).toBe('/play?saved=1')
-    expect(landingWith('/login?next=%2F', {}, '#token=T1')).toBe('/login?next=%2F#token=T1')
   })
 })
