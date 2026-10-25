@@ -90,7 +90,45 @@ describe('the library says which pictures are cropped (#222)', () => {
     expect(lit?.getAttribute('style')).toContain('width: 50%')
     expect(plain!.querySelector('[data-window]')).toBeNull()
   })
+
+  // The tile shows the whole picture (#1257), so a file that is not 3:2 does not fill it: the
+  // window is a share of the file, and it is laid on the part of the tile the file is drawn in.
+  // This file is 2:1, so it is drawn the tile's full width and three quarters of its height.
+  it('lays the window on the picture as it is drawn in the tile, not on the tile', () => {
+    const doc = deckWithArt()
+    doc.pictures = { [SKOG]: { crop: { x: 0.25, y: 0.1, w: 0.5, h: 0.8 } } }
+    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+
+    expect(windowOf(screen.getAllByRole('listitem')[0]!)).toEqual({ left: 25, top: 20, width: 50, height: 60 })
+  })
+
+  // In production the measurement is missing (#468), and a window laid on a guess is the bug.
+  // So without one the window waits for the picture itself, which knows its own size once it
+  // has loaded — no canvas, no CORS.
+  it('takes the shape from the loaded picture when there is no measurement', () => {
+    const doc = deckWithArt()
+    doc.pictures = { [SKOG]: { crop: { x: 0.25, y: 0.1, w: 0.5, h: 0.8 } } }
+    render(<MediaPanel doc={doc} assetBase={BASE} motifs={{}} onCrop={() => undefined} />)
+    const item = screen.getAllByRole('listitem')[0]!
+    expect(item.querySelector('[data-window]')).toBeNull()
+
+    // A 1:2 file: drawn the tile's full height and a third of its width, in the middle.
+    const img = item.querySelector('img')!
+    Object.defineProperty(img, 'naturalWidth', { value: 200 })
+    Object.defineProperty(img, 'naturalHeight', { value: 400 })
+    fireEvent.load(img)
+
+    expect(windowOf(item)).toEqual({ left: 41.667, top: 10, width: 16.667, height: 80 })
+  })
 })
+
+// The lit window's box, in percent of the tile, to three decimals.
+function windowOf(item: HTMLElement): Record<'left' | 'top' | 'width' | 'height', number> {
+  const style = (item.querySelector('[data-window]') as HTMLElement | null)?.style
+  if (!style) throw new Error('no window on the tile')
+  const at = (v: string) => Math.round(parseFloat(v) * 1000) / 1000
+  return { left: at(style.left), top: at(style.top), width: at(style.width), height: at(style.height) }
+}
 
 // The prototype's own point: the crop is judged against the card, not against the file. So the
 // card stands beside the window and is a real compile — the same one the table's textures and the

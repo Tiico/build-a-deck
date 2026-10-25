@@ -50,13 +50,11 @@ const SHELL = `
       <div class="byd-wall-view">
         <div class="byd-crown">
           <input type="search" class="byd-crown-search" aria-label="Sök i alla fält" data-stop="the wall's search" />
-          <button class="byd-crown-box" aria-expanded="false" data-stop="the eyes box">Ögon: Normal syn ▾</button>
-          <button class="byd-crown-box" aria-expanded="false" data-stop="the guides box">Guider (0) ▾</button>
-          <div class="byd-pill" role="group"><button class="byd-pill-step" data-stop="packing the wall closer">−</button><output class="byd-pill-value">150 px</output><button class="byd-pill-step" data-stop="larger cards">+</button></div>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the grouping box">Grupperad efter: typ ▾</button>
-          <button class="byd-crown-box byd-crown-end" aria-expanded="false" data-stop="the checks box">Fysisk kontroll (1) ▾</button>
+          <button class="byd-crown-box byd-crown-end" aria-expanded="true" data-stop="the view box">Visning: 150 px ▾</button>
+          <button class="byd-crown-box" aria-expanded="false" data-stop="the checks box">Fysisk kontroll (1) ▾</button>
         </div>
-        <div class="byd-wall-work" data-fold="open">
+        <div class="byd-wall-work" data-fold="open" data-panel="view">
           <nav class="byd-wall-jump" aria-label="Grupper i leken">
             <div class="byd-wall-jump-head"><h2>Leken</h2><button class="byd-wall-fold" aria-expanded="true" aria-label="Fäll ihop gruppspalten" data-stop="folding the jump column"><span aria-hidden="true">&#x27E8;</span></button></div>
             <div class="byd-wall-jump-scroll">
@@ -65,8 +63,26 @@ const SHELL = `
             </div>
           </nav>
           <div class="byd-wall-deck"><div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div></div>
+          <aside class="byd-wall-panel" aria-label="Väggens visning och kontroll">
+            <div class="byd-wall-panel-head">
+              <div role="tablist"><button role="tab" aria-selected="true" data-stop="the panel's open tab">Visning</button><button role="tab" aria-selected="false" tabindex="-1">Kontroll (1)</button></div>
+              <button class="byd-wall-panel-close" aria-label="Stäng panelen" data-stop="closing the wall's panel"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="byd-wall-panel-body" role="tabpanel">
+              <h3>Storlek</h3>
+              <div class="byd-wall-sizes" role="radiogroup">
+                <div class="byd-wall-size"><label><input type="radio" name="size" checked data-stop="a size" /> Fritt</label>
+                  <div class="byd-pill" role="group"><button class="byd-pill-step" data-stop="packing the wall closer">−</button><output class="byd-pill-value">150 px</output><button class="byd-pill-step" data-stop="larger cards">+</button></div></div>
+                <div class="byd-wall-size"><label><input type="radio" name="size" /> Telefonens läsvy <small>294 px</small></label></div>
+              </div>
+              <h3>Ögon</h3>
+              <div class="byd-wall-eyes" role="group"><button aria-pressed="true" data-stop="an eye"><span class="byd-wall-swatch" aria-hidden="true"><i style="background:#e0442e"></i></span>Normal syn</button></div>
+              <h3>Guider</h3>
+              <label class="byd-crown-tick"><input type="checkbox" data-stop="the trim guide" /> Snitt och skyddsmarginal</label>
+            </div>
+          </aside>
         </div>
-        <div class="byd-crown-foot"><span>3 kort</span></div>
+        <div class="byd-crown-foot"><span>3 kort</span><button class="byd-wall-foot-door" data-stop="the remarks in the foot">En anmärkning</button></div>
       </div>
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the template panel">
@@ -237,14 +253,19 @@ test.describe('the editor under a keyboard', () => {
       'the way back into the editor',
       'the wall panel',
       "the wall's search",
-      'the eyes box',
-      'the guides box',
-      'packing the wall closer',
-      'larger cards',
       'the grouping box',
+      'the view box',
       'the checks box',
       'folding the jump column',
       'the band the wall is standing in',
+      "the panel's open tab",
+      "closing the wall's panel",
+      'a size',
+      'packing the wall closer',
+      'larger cards',
+      'an eye',
+      'the trim guide',
+      'the remarks in the foot',
       'the template panel',
       'a tool',
       'the selected layer',

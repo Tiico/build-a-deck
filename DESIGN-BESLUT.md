@@ -1382,6 +1382,14 @@ Följdkrav:
 Händelseschemat är ett kontrakt som måste versioneras och migreras vid varje ändring.
 Migreringsstrategin är beslutad i DRIFT §7 och byggd 2026-09-07: version per rad, upcasters vid inläsning.
 
+Preciserat 2026-10-24 av beställaren (#1269, F7, se G6): **loggen spelar upp identiskt med avseende på spelet.**
+Uppspelningen ger samma tillstånd, samma utfall och samma synlighet för varje plats vid varje steg, och det är vad återspelningen jämför.
+Det enda undantaget är personfälten: de fält i loggen som bär en människas egna ord och inte påverkar spelet får maskas på plats när en radering eller gallring kräver det.
+De är `seat.claim.name`, `flag.note`, `flag.observer`, `note.add.text` och `note.edit.text`, och platsernas namn i en tillbakaspolnings sparade bord (`outcome.table`).
+Listan är sluten och hålls av ett test (#1276); ett nytt fält som bär en människas ord läggs till i den i samma ändring som fältet.
+Maskningen byter värdet mot ett reserverat värde och bevarar att det finns och att det inte är tomt, så `decide` säger samma sak om varje rad och spelet blir detsamma.
+Ingenting annat i en rad skrivs någonsin om, och det är DRIFT §7:s enda undantag.
+
 Byggt 2026-09-18:
 E2E-lagret ovanpå återspelningen är `packages/e2e`, en egen Playwright-svit med `@playwright/test`.
 Den kör mot produkten som lådan kör den (DRIFT §2): webben byggd och serverad av servern ur `STATIC_DIR`, allt på ett ursprung, inga `server=`-parametrar någonstans.
@@ -1663,6 +1671,10 @@ Modellen skriver aldrig HTML eller CSS, och ett förslag som inte går att till�
 Det som skickas till leverantören sägs med vanliga ord innan nyckeln sparas.
 Servern loggar aldrig en nyckel, en kontext eller ett svar.
 Hur ytan ser ut prototypas innan den byggs (#940).
+
+Preciserat 2026-10-24 av beställaren (#1268, fråga 8): **«kör aldrig en modell» gäller AI-hjälpen och inte screeningen.**
+Tjänsten står fortfarande aldrig för en token och kör aldrig en modell för att föreslå något i editorn.
+Klassificeraren som screenar uppladdade bilder före tryck (F4) är något annat: den körs på lådan, i renderworkern, så att ingen bild lämnar huset.
 
 Ytan, prototypad 2026-10-07 och vald av beställaren 2026-10-18 (#940): **en samtalspanel bredvid arbetsytan, och nyckeln på en egen profilsida.**
 Tre former prövades i den riktiga editorn med en låtsas-AI: en samtalspanel bredvid ytan (A), riktade handlingar där arbetet redan sker (B), och förslaget lagt som spöken direkt i kortväggen och tabellen (C).
@@ -1958,6 +1970,7 @@ Under varje kort står dess minsta text i px där, räknad på den storlek E6 fa
 Frågan är läsvyn och inte vilan, eftersom K26 låter ett kort i vila vara oläsligt så länge en handling visar det i golvets storlek.
 Det som kan gå fel för en designer är därför text mindre än läsvyerna räknar med, satt så eller krympt av E6: under 7,3 pt i telefonens läsvy, 6,3 pt vid bordet och 6,4 pt på TV:n.
 Telefonen säger alltså nej först.
+Reviderat 2026-10-24 ([L81](#l81-kortväggens-visning-står-på-ett-ställe-en-sidopanel-med-visning-och-kontroll-prototypat-och-beslutat-2026-10-24-1256)): läsvyerna är storlekar och inte ögon, så de går att se med varje öga, och den minsta texten sägs en gång i väggens panel i stället för under varje kort.
 Två förkastade varianter: en digital kontroll i rapporten bredvid den fysiska, med en rad per läsvy och korten under golvet som länkar (B), och en remsa under duken i Mall med kortet i alla tre läsvyerna (C).
 Beställaren valde ögonen ensamma, alltså utan B.
 Därmed sägs en text under golvet på kortet självt och inte samlad i rapporten med en länk; E6:s krav på länk till raden gäller tryckets anmärkningar och inte skärmens.
@@ -2064,6 +2077,62 @@ Följdkrav:
 Screening cachas per assets innehållshash, så samma bild granskas en gång.
 Falska positiva mitt i ett köpflöde är en verklig kostnad.
 
+Reviderat 2026-10-24 av beställaren (#1268, frågorna 1–15): **korta villkor redan i betan, och screeningen i skuggläge på lådan tills kassan finns.**
+Två saker hade ändrats sedan F4 skrevs.
+Tryckpaketet (#1208) lämnar redan i betan tryckfärdiga filer till vem som helst med ett konto, och betan är öppen för alla (I, 2026-10-18), så innehållet på lådan kommer från främlingar och inte bara från inbjudna.
+#1268 har villkorens disposition, var de godkänns, screeningens pipeline och alternativen med sina kostnader.
+
+Villkoren:
+1. **«Vi» i betans villkor är den som driver tjänsten i dag.**
+   Ett aktiebolag bildas före första betalande order, och releaseversionen skrivs på det, eftersom ansvarsbegränsningen inte skyddar en enskild näringsidkare personligen.
+2. **Korta betavillkor före inbjudningarna.**
+   Betan krävde tidigare inga villkor; nu gör den det, och ROADMAP:s avsnitt om betan säger det.
+3. **En jurist läser releaseversionen, inte betans.**
+4. **Villkoren godkänns i ett eget steg efter första inloggningen.**
+   Kontot skapas när den magiska länken löses in (G1), så det finns inget formulär att kryssa i före kontot.
+   Steget samordnas med välkomststeget för visningsnamnet (#1254, variant C), så att en ny användare inte möter två steg i rad som inte hänger ihop.
+5. **Ett konto som inte har godkänt kan läsa, exportera och logga ut, och inget annat.**
+6. **Ett konto kräver 18 år.**
+   Gäster har ingen åldersgräns (G6).
+7. **Innehållet.**
+   Våld och mörka teman tillåts både i tryck och digitalt, eftersom de hör till genren.
+   Explicit sexuellt innehåll trycks inte, men får finnas digitalt om det är lagligt.
+   Sexuellt innehåll om verkliga personer utan deras samtycke får aldrig finnas.
+   Nolltolerans gäller mot sexuellt innehåll som rör barn.
+
+Screeningen:
+
+8. **Klassificeraren körs på lådan, i renderworkern**, så att ingen bild lämnar huset.
+   E4:s «kör aldrig en modell» gäller AI-hjälpen och inte screeningen.
+9. **«Kända varumärken» är i första versionen bildhash mot en egen referenslista**, med kommersiella kortspels konst och allt som tagits ned.
+   Logotyper lämnas åt granskningen av första ordern, och en extern logotypdetektor prövas först om granskningen visar att den behövs.
+   Ingen textlista i första versionen.
+10. **Screeningen körs i skuggläge vid uppladdning, och grinden kopplas in först i kassan (F3).**
+    I betan klassificeras varje uppladdad bild i bakgrunden, och ingenting stoppas, inte heller tryckpaketet.
+11. **Ingen träff visas för designern i betan.**
+    Vid release blir en träff en varning i den fysiska kontrollen (E5), att bilden granskas manuellt före tryck, och aldrig ett stopp.
+12. **En borttagning är en spärr per hash.**
+    Servern, renderaren, trycket och exporten behandlar hashen som om den inte fanns, och historiken står kvar och ritar bilden tom.
+    Bytesen ligger kvar, utom när innehållet är olagligt; då rensas de ur R2 och Postgres (DRIFT §4).
+13. **Granskningen sker på en liten operatörssida**, bakom en lista med operatörsadresser i lådans `.env`, eftersom bilderna måste ses i full storlek.
+14. **Betalningen reserveras i kassan och dras först när ordern godkänts**, inom två arbetsdagar; ett avslag släpper reservationen.
+15. **PhotoDNA söks när tryck byggs.**
+    Till dess fångar den manuella granskningen av första ordern det som är värst.
+
+Motivering:
+Tryckpaketet och den öppna betan gör att lådan redan lämnar tryckfärdiga filer av innehåll från främlingar, och skuggscreeningen behöver stöd i villkoren.
+Skugglaget kalibrerar trösklarna mot riktig kortkonst, som är full av svärd, blod och monster, innan en falsk träff kan kosta ett köp.
+En grind framför tryckpaketet hade bara flyttat trafiken till exporten, som lämnar samma tryck-PDF:er fritt (G5).
+Bildhash hittar en bild som kopierats hel eller nästan hel, inte en logotyp i ett hörn eller en figur som ritats av på nytt, och proxyer av kommersiella kortspels konst är den vanligaste IP-risken för en kortspelstjänst.
+
+Följdkrav:
+Godkännandet lagras med kontot, villkorens version och tidpunkten, och servern svarar på de stängda vägarna med ett eget fel, så att en editor från före steget inte tyst förlorar en redigering (#1270).
+Villkorstexten står på en egen sida på svenska och engelska (A4), med datum och tidigare versioner, och «Villkor · Integritet» läggs på #757:s rad; sidan och steget prototypas först (#1272).
+Screeningens resultat lagras per hash, klassificerare och version, och en ny modellversion klassificerar om när en order behöver det (#1271, #1273).
+Referenslistan ligger i databasen och inte i det publika repot.
+Anmälan och spärren (#1274) och granskningskön (#1275) prototypas före implementation.
+Integritetspolicyn och kontoborttagningen hör till G6 (#1269), och villkoren hänvisar dit.
+
 ---
 
 ## G. Data, feedback och förtroende
@@ -2169,7 +2238,35 @@ Hyllan (A), en tabell (C) och ett appskal med vänstermeny (D) prövades och val
 - **Heron visar en solfjäder med tre kort.** Det ändrar #231 för heron, och bara där: kortet längst fram är lekens första, så att spelet känns igen från raden, och bakom det står mittersta och sista kortet, jämnt spritt som 2026-09-14. Solfjädern hämtas för sig (`GET /projects/:id/fan`) efter listan, och tills den landar står heron med sitt enda kort ur `/me/cards`. Första skärmen väntar alltså fortfarande inte på mer än ett kort per spel.
 - **Övriga spel är kompakta rader** med kortet till vänster, namn, «v7 · 77 kort · 4 spelare» och spelad-raden, i två kolumner på bred skärm och en på telefon.
 - **`GET /projects` bär `cards`, `players` och `savedAt`.** `cards` är exemplaren (`cardsUsed`, #1195), det som läggs på bordet. `players` är uppställningens antal platser. `savedAt` är när den senaste versionen sparades. Alla tre läses ur samma levande dokument som namnet (#909), så listan ljuger aldrig om ett spel som är öppet i en editor.
-- Det som prototypen hade och som väntar: «Väntar på dig» (nya flaggor per spel, enkäter att svara på, en medredigerares version) kräver att varje bords logg läses och att «ny» betyder något. Det byggs för sig, med sitt eget svar efter listan.
+- Det som prototypen hade och som väntar: «Väntar på dig» (nya flaggor per spel, enkäter att svara på, en medredigerares version) kräver att varje bords logg läses och att «ny» betyder något. Det byggs för sig, med sitt eget svar efter listan. **Byggt 2026-10-24 (#1225), se nedan.**
+
+**«Väntar på dig» och heronas två siffror (2026-10-24, #1225).**
+Prototypens panel och heronas «enkätsvar» och «nya flaggor» byggdes som prototypen visar dem.
+- **En ny flagga är en flagga som restes på spelets senaste version.**
+  En flagga hör till versionen den restes på (L70): bordets egen, eller den som en «Uppdatera» (C7) flyttade bordet till före flaggan.
+  En sparad version gör alltså de tidigare flaggorna gamla, eftersom designern då har svarat på dem, och ett bord som spelar vidare på en äldre version reser inga nya.
+  Pågående bord räknas lika väl som avslutade: en flagga är ny från det ögonblick den restes.
+  Den andra vägen, ny sedan designern senast öppnade Bord-fliken, hade krävt en läsmarkering per konto och valdes bort.
+- **Enkätsvar är spelarnas svar vid spelets alla bord, i alla versioner**, som «bord» är alla bord.
+  Observatörernas svar står för sig (L70) och räknas inte.
+- **Heron säger kort, bord, enkätsvar och nya flaggor**, som i prototypen, och antalet spelare står i raden under namnet: «Version 7 sparad i dag · 4 spelare».
+  «Senast spelat» från #1204 lämnade heron för att ge plats åt de två.
+  De två siffrorna står bara för den som får läsa spelets playtest (#524), och de håller sin plats med ett streck tills svaret har kommit.
+  Nya flaggor står i flaggans gula färg när de är fler än noll.
+- **Panelen står i högerspalten mellan «Pågår nu» och «Bord du har spelat vid»**, och på telefon direkt efter «Pågår nu».
+  Den har tre slags rader, i den ordningen: spel med nya flaggor («3 nya flaggor · Sal's Saloon v7 · från bordet i går»), som leder till Bord-flikens Resultat på den versionen; enkäter som kontot inte har svarat på vid avslutade bord, som leder till enkäten (#1143); och spel vars senaste version någon annan sparade («Kim sparade version 5 · Polarnatt · för 4 dagar sedan»), som leder till editorn.
+  Panelen ritas inte när ingenting väntar.
+- **Editorn öppnas på Resultat med `results=rev-N`** i adressen, på den versionen och för den som får läsa playtestet.
+  Ordet tas bort ur adressen när det har lästs, så att editorns adress förblir spelets egen (L80).
+- **`GET /me/waiting` är ett eget svar efter listan**, som `/me/cards`, så att första skärmen aldrig väntar på att varje bords logg läses.
+  Av varje bord läses bara flaggorna och versionsbytena (`readVerbs`), aldrig dragen.
+- **En version vet vem som sparade den** (`project_versions.saved_by`).
+  Den som skapar spelet äger den första versionen; editorns sparning och `PUT` bär kontot som sparar; en import och en sparning utan konto bär ingen.
+  Bakåtfyllnaden gissar inte.
+  Den ger ägaren en version bara där inget annat är möjligt: versionen sparades här (den har `at_seq`, som en import aldrig skriver), och ingen inbjudan att redigera spelet har någonsin antagits, inte heller en som togs tillbaka.
+  Första versionen lämnas okänd, eftersom en import skriver den precis som ett nytt spel gör, och så gör varje version i ett spel som delats med en medredigerare och varje version i ett spel från före konton.
+  En medredigerares version nämns bara när författaren är känd, med det namn adressen ger (#1198) och aldrig med adressen.
+- Grindarna: `packages/server/test/version-author.test.ts` (författaren och bakåtfyllnaden, mot minnet och Postgres), `packages/server/test/waiting.test.ts` (definitionen av ny, svaren, medredigerarens version och behörigheten, mot minnet och Postgres) och `packages/web/test/account-page.test.tsx` och `editor-results.test.tsx` (panelen, heron och vägen in i Resultat).
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
@@ -2220,6 +2317,18 @@ Beställaren valde B och 1, och komponenter i första leveransen: högar och zon
   `GET /projects/:id/playtest` bär per flagga `card`: komponenten som en observatör såg den, med texturerna ur versionen flaggan restes på, vad flaggaren själv såg (`seen`), var den låg (`place`) och `now` — `same`, `changed` eller `gone` mot spelets senaste version.
   Allt härleds på servern genom att spela upp loggen fram till flaggans rad, och texturerna är innehållsadresserade, så ett kort som skrivits om sedan visas ändå som spelaren hade det.
   Låg kortet nedvänt för flaggaren visar miniatyren baksidan, och lyftet visar framsidan bredvid.
+
+Utvidgat 2026-10-24 (#1255, prototypat och beslutat): **på en skärm med bord flaggar man från en panel bredvid filten, inte från telefonens ark.**
+På en dator öppnade «Flagga» telefonens bottenark i full skärmbredd, med två val på 700 px var och bordet dimmat bakom.
+Tre former prövades på riktiga `/online` (gren `prototype/flag-desktop`): en popover vid knappen, en dockad panel och en centrerad dialog. Beställaren valde panelen (B).
+
+- **Panelen står bredvid filten och täcker den inte.** På `/online` står den i raden mellan filten och handens kolumn, och i en egen kolumn bredvid filten när handen är bandet under den; filten ger upp panelens 360 px medan den står.
+  Observatören vid ett skrivbord får den där TV-kolumnen står, ovanför handtaget.
+  Under skrivbordets 1023 px, och på telefonen (`/play` och `/online` utan bord), är flaggan arket som förut.
+- **Inga lägen.** Medan panelen står pekar ett tryck på ett kort ut det, och gör inget annat, med samma regler som bandet (#1142): inget läses, spelas, lyfts eller dras, och kontroller som inte är kort står tillbakadragna. Kortet under pekaren ringas, inte alla kort.
+  Ett annat kort byter, och «Ta bort kortet» gör flaggan till ögonblickets igen.
+- **Panelen säger vad som stämplas.** «Det som hände» står som loggens senaste rad, utan flaggor och anteckningar, och kortet visas 128 px brett med namnet.
+- **Den är inget modalt fönster.** Fokus går till kommentaren och tillbaka till det som hade det när panelen stängs; Tab lämnar den för korten, och Esc, «Avbryt» och krysset stänger. ⌘↵ eller Ctrl+↵ flaggar.
 
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
@@ -2283,6 +2392,72 @@ Tillägg 2026-10-06 (#909, beställarens beslut C, efter #738):
 - **Mina spel läser namnet ur det levande dokumentet** (D3: loggen är sanningen): aktörens dokument om spelet är öppet, annars den sparade versionen med loggens svans efter den uppspelad. Listan stämmer alltså direkt, och även efter en omstart av servern.
 - **«Dubblera» kopierar samma levande dokument** genom `POST /projects/:id/duplicate`, och listan läses om med korten så att kopians ruta ritas direkt.
 - Grindarna är `packages/server/test/rename-from-home.test.ts` och `packages/web/test/account-page.test.tsx`.
+
+### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
+
+Beställarens beslut 2026-10-24 på frågorna F1–F7 i #1269.
+Där står också kartorna över vad en gäst och ett konto lämnar efter sig, var det ligger och vem som ser det.
+
+- **Ansvaret (F1, F2).** Deckster är personuppgiftsansvarig för allt på plattformen, också för gästernas uppgifter vid en designers bord.
+  Designern är mottagare av playtestdatan och binds av villkoren att bara använda det gästerna lämnar för att utveckla sitt spel (F4, #1268).
+  Det finns inget biträdesavtal med designern.
+  Deckster behöver egna biträdesavtal med Cloudflare och Resend.
+- **Den rättsliga grunden (F3).** Gäster behandlas på berättigat intresse, utan samtyckesruta, för namn, drag, anteckningar, flaggor och enkätsvar.
+  Konton behandlas på avtal, och på berättigat intresse för säkerhet och backup.
+  Replay-korpusen behandlas på berättigat intresse, och den råa exporten som anonymiseringen läser (DRIFT §7) sparas aldrig.
+  Samtycket i inbjudan (#1011) står kvar som designerns ja för hennes spel och är inte gästernas grund.
+- **Lagringstiderna (F4).**
+  - En gäst utan konto maskas tolv månader efter att bordet avslutades: namn och fritext byts, och spelet, utfallen och enkätens siffror står kvar.
+  - Ett claimat inträde (G1) sparas så länge kontot finns.
+  - Ett borttaget spel maskar sina bord och raderar deras enkätsvar direkt, också för de bord som redan ligger kvar efter spel som tagits bort.
+    Sessionsraden och dess bärare står kvar, eftersom kvoterna räknar dem (#1196).
+  - Ett raderat konto försvinner direkt: adress, namn, passkeys, AI-nyckel, nivå och kakor.
+    Hennes spel tas bort som ovan, och hennes claimade inträden maskas.
+    Bilder, typsnitt och renderingar som inget annat spel eller bord nämner sopas efter 30 dygn.
+  - Inloggningslänkar, oaktiverade inträden och kakor rensas när de inte längre kan användas.
+  - Inbjudningar rensas 30 dygn efter att de använts eller gått ut.
+  - Backuperna sparas i åtta dygn (DRIFT §5).
+  - Inaktiva konton raderas inte i betan, eftersom G5 lovar läsläge och aldrig radering; frågan tas upp igen med abonnemangen (A2).
+- **Hur en gäst begär radering (F5).** Hon raderar själv på sin telefon med sin token, så länge telefonen har bordets länk; token bevisar att det är hon.
+  Eller så skriver hon via Kontakt (`BYD_CONTACT`), och operatören kör ett skript.
+- **Ålder och tredje land (F6).** Gäster åldersprövas inte; en familj vid köksbordet ska inte stoppas av en ålderskontroll.
+  Ett konto kräver 18 år (F4, #1268).
+  Resend kontrolleras mot EU–US Data Privacy Framework eller standardavtalsklausuler.
+  Integritetspolicyn säger att typsnittsväljaren hämtar från Google Fonts, eftersom DRIFT §12 redan har sagt nej till en proxy.
+- **Loggen (F7): väg A, maskning på plats.** En radering skriver om personfälten i de berörda raderna till ett reserverat värde, i samma transaktion som `guest_tokens` och `surveys` rensas.
+  D4 är preciserad till att loggen spelar upp identiskt med avseende på spelet, och DRIFT §7 har maskningen som sitt enda undantag.
+
+Motivering:
+Gästen har ingen relation till designern utöver en delad länk, bara Deckster kan radera något, och många designers är privatpersoner som inte rimligen kan svara på en begäran om registerutdrag.
+Ett samtycke hade stängt bordet för den som säger nej, och varje återkallelse hade ändå varit en radering.
+Designern arbetar med sitt spel i flera år (G5), så det som raderas är namnen och fritexten och inte spelet som spelades.
+Personfälten påverkar inte spelet: motorn frågar bara om en plats har ett namn, om en flagga har en observatör och om en anteckning är tom.
+Korpusens anonymisering (#540) har redan visat att loggar med utbytta personfält spelar upp på varje commit.
+Väg A kostar att en loggrad skrivs om för första gången, och att en radering blir en skanning över hennes rader i stället för en enda borttagning.
+Den köper att det inte finns någon nyckelhantering, ingen ny läsväg och samma fältlista som korpusen redan använder.
+En nyckel per person (väg B) hade lämnat D4 och DRIFT §7 orörda ordagrant, men varje väg som läser loggen hade fått öppna fälten först, och nyckeltabellen hade legat i samma backuper.
+Att flytta personfälten ur loggen (väg C) hade varit en protokollmigrering av tre verb, och loggen hade inte längre räckt för att spela upp vad bordet såg.
+
+Följdkrav:
+Personfälten i loggen och kolumnerna med personuppgifter i schemat är en sluten karta som ett test håller, och korpusens anonymisering och maskningen läser samma lista (#1276).
+Ett nytt fritextfält i protokollet kan därmed inte gå rakt in i den publika korpusen eller förbi en radering.
+Maskningen bevarar att ett fält finns och att det inte är tomt, så `decide` säger samma sak om varje rad (D4).
+Ett bord som står laddat i minnet får den maskade loggen, så att ingen vy visar det gamla namnet efter en radering, och ett bord som pågår förlorar inte sin plats.
+Varje radering och maskning skrivs i en raderingsliggare utan personuppgifter, som körs om efter en återställning till en tidigare punkt (DRIFT §5, #1279).
+Sopningen av ett raderat kontos assets är ett undantag från DRIFT §4:s «raderas aldrig».
+Gästens namn och token lämnar adressraden och `Referer` (#1278).
+Meningen där gästen sätter sig (#757) säger att anteckningar och flaggor sparas, hur länge och vem som ser dem; «inte på dig som person» stämmer inte efter en claim.
+Ett konto kan ladda ner sina uppgifter och radera sig självt (art. 15 och 20); G5:s export är ett spels och inte en persons.
+En integritetspolicy med en förteckning över behandlingar och biträden står på «Villkor · Integritet» på #757:s rad.
+Kontots och gästens vägar är nya ytor och prototypas först.
+
+Skivorna (alla öppna 2026-10-24):
+- #1276 personfälten och kolumnerna som sluten, testad karta — pågår.
+- #1277 det som inte längre kan användas rensas — pågår.
+- #1278 gästens namn och token ur adressraden och `Referer` — pågår.
+- #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
+- #1280 kontot laddar ner sina uppgifter och raderar sig i Profil — efter #1279 och #1254, prototyp först.
+- #1281 gästens väg: meningen, radering från telefonen och integritetssidan — efter #1279 och villkorens rad (#1272), prototyp först.
 
 ---
 
@@ -7063,7 +7238,7 @@ D: en stor bricka med ikonverktyg som tonar fram på hovring.
 
 Beställaren valde **A** 2026-10-22.
 
-- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och ett 3:2-fönster på bilden som bibliotekets bricka.
+- **Brickan är hela kontrollen.** Rutan är en enda knapp, miniatyren själv, 66 × 44 — golvet i båda riktningar, som «Välj» höll det (#50, #193) — och en 3:2-ruta som bibliotekets bricka, där hela bilden ryms (L82).
   Tom är den en streckad bricka med ett +.
   Knappen heter vad ett tryck gör: «Välj bild för {kort}» tom, «Byt bild för {kort}» med bild.
 - **Biblioteket är vägen till en fil och vägen ut ur en bild.** Ett tryck öppnar biblioteksrutan (#296), som redan tar en fil i sitt krön (L22) och nu får «Ta bort bilden från kortet» i foten när kortet håller en bild.
@@ -7092,7 +7267,7 @@ Grindarna: `picture-slot.test.tsx`, `data-table.test.tsx`, `data-table-library.t
 Ekonomi och juridik:
 Moms, tull och leveransvillkor för fysiska varor till EU-kunder från amerikansk eller asiatisk partner — DDP eller DDU, vem står för tullavgiften, IOSS-registrering.
 Prisnivåernas exakta tak och gratisnivåns gränser.
-GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan konto.
+GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan konto: **beslutat 2026-10-24 för gäster och konton, se G6 (#1269).**
 Betans minsta förtroendeyta, innan villkoren och GDPR för gäster är lösta: **beslutat 2026-10-06 (#757, prototyp A).** En tyst rad sist i inloggningskortet och sist på Mina spel säger «Kontakt» (lådans `BYD_CONTACT`, utelämnad utan) och versionen ur `/health.release`; där en gäst ansluter och där hon sparar sina enkätsvar till ett konto står «Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.»; inloggningsmejlet har en fot med tjänstens namn, sajten och kontakten. «Villkor · Integritet» läggs på samma rad när de finns. `trust-surfaces.test.tsx`, `login-mail.test.ts` och `wire.test.ts` håller raden, meningen, foten och `/health.contact`.
 Vem betan är öppen för: **beslutat 2026-10-18, för alla.** Vem som helst med en e-postadress kan skapa konto, som i dag, utan inbjudningslista och utan kvoter; A2:s tak är inte byggda och beslutas inte för betan.
 Konsekvens att vara medveten om: ingenting begränsar hur många projekt, kort eller renderingar ett konto tar på en låda som delas med ett trettiotal andra containrar, så minnesbudgeten under last (#1012) och lådans egen rate limiting (DRIFT §9) är det enda skyddet tills A2 byggs.
@@ -8201,3 +8376,64 @@ Statuslänkarna på bordsytorna säger servern som HTTP till Mina spel och inlog
 
 `way-back-to-the-editor.spec.ts` går hela vägen i den byggda appen: TV:ns väg tillbaka tar fram editorns flik utan ny flik och utan omladdning, och «Spela härifrån» tryckt två gånger är en flik.
 `way-back-to-the-editor.test.tsx` visar var vägen står på varje yta, vart lämnandet leder och att en gäst inte får den.
+
+### L81. Kortväggens visning står på ett ställe: en sidopanel med Visning och Kontroll (prototypat och beslutat 2026-10-24, #1256)
+
+Beställaren: på kortväggen fanns många val för hur väggen visas, och de stod lite överallt.
+Mätt i den byggda appen stod sex val om väggens utseende på fyra ställen, och två av dem tog över varandra utan att säga det.
+**Visning** blandade färgsyn och läsvy, så Deuteranopi i telefonens storlek gick inte att se.
+Tätheten låstes av läsvyn och av guiden «på armlängds avstånd», och pillret visade då bara ett annat tal.
+**Guider** var två bockar bakom en box, där den ena var en storlek och den andra en guide.
+«Minsta text …» stod under vartenda kort i en läsvy, 77 gånger på Sal's Saloon.
+**Fysisk kontroll** tryckte ner hela väggen när den öppnades, och antalet stod en gång till i foten.
+Tre varianter prövades i [`docs/ux-audits/2026-10-24-kortvaggens-visning/prototyper/index.html`](docs/ux-audits/2026-10-24-kortvaggens-visning/prototyper/index.html): en sidopanel (A), alla val öppet i krönet (B) och en docka i väggens hörn (C).
+Valet blev **A**.
+B kräver en bredd väggen inte har bredvid AI-panelen, där krönet bröts till två rader.
+C lade väggens utseende över korten den visar.
+
+**Krönet** har sökningen, *Grupperad efter*, en box **Visning** som säger vad som gäller, och **Fysisk kontroll**.
+Boxen Visning säger storleken och, när de är på, ögat och snittet: «Visning: 150 px», «Visning: Telefonens läsvy · Deuteranopi».
+
+**Panelen står bredvid väggen och trycker aldrig ner korten.**
+Den har två flikar, Visning och Kontroll, och boxarna Visning och Fysisk kontroll öppnar var sin.
+Den stängs med sitt kryss, med Escape och med samma box igen, men inte av ett tryck i väggen, eftersom det man ändrar i den ska synas på korten medan panelen står öppen.
+Där väggen är för smal för både spalt, kort och panel lägger sig panelen över väggens högerkant.
+Antalet anmärkningar i foten är en knapp till fliken Kontroll.
+Korten en anmärkning ramar in är inramade så länge fliken Kontroll visas, som de var så länge lådan stod öppen (#477).
+
+**Storlek är ett val, och ögonen ett annat.**
+Storleken är fri (täthetens stege, #128), «På armlängds avstånd» (90 px) eller en av de tre läsvyerna (294, 341 och 672 px, K26).
+Ett tryck på pillrets − eller + väljer fri storlek, så pillret är aldrig låst; #701:s låsning och dess två meningar tas bort.
+Ögonen är Normal syn, Deuteranopi, Protanopi, Tritanopi och Gråskala, och de gäller i varje storlek.
+Varje öga visar ett färgprov genom sitt eget filter, så att skillnaden syns innan man väljer.
+«Snitt och skyddsmarginal» är panelens enda guide; armlängden är en storlek och inte längre en guide.
+Det ändrar E5:s tillägg från 2026-09-28: läsvyerna står inte längre bland ögonen utan bland storlekarna.
+
+**Läsbarheten sägs en gång, i panelen.**
+I en läsvy säger panelen den minsta texten i leken och golvet, «Minsta text i leken 9,9 px, golvet 12 px.», och listar korten under golvet med sin minsta text.
+En bock «Visa bara de n korten» lämnar bara dem på väggen.
+Ett kort under golvet bär en ram på väggen och säger det i sitt namn till en skärmläsare; orden står i panelen, och ramen upprepar dem bara.
+Raden under varje kort tas bort.
+«Visa på kortväggen» från bordet (#523) öppnar väggen i telefonens läsvy med panelen på Visning, så att korten under golvet står listade.
+
+`deck-wall.test.tsx` mäter panelen, flikarna, storleken och ögonen var för sig och tillsammans, läsbarheten och foten; `wall-crown-beside.spec.ts` mäter krönet och panelen i den byggda appen bredvid AI-panelen.
+
+### L82. En miniatyr visar hela bilden, på en ljusare grund och med en kant där bilden slutar (prototypat och beslutat 2026-10-24, #1257)
+
+Beställaren: bilderna i Tabell visades ofta avskurna, och i Media likaså.
+Varje miniatyr av spelets bilder ritades med `cover` i en fast 3:2-ruta: bildrutan i Tabell (L75), bildremsan över tabellen, egenskapspanelens rad, Media-brickan och bibliotekets brickor.
+Ett kvadratiskt mynt tappade en tredjedel av höjden och en smal fana fyra femtedelar av bredden, så vad som stod på ett kort gick inte att se i någon av dem.
+Media-brickans beskärningsram låg dessutom i andelar av brickan fast beskärningen är i andelar av filen, och visade fel del av varje bild som inte var 3:2.
+
+Fem former prövades i [`docs/ux-audits/2026-10-24-hela-bilden/prototyper/index.html`](docs/ux-audits/2026-10-24-hela-bilden/prototyper/index.html) med bilder i sex proportioner: Nu (`cover`), A hela bilden på brickans mörka grund, B på en suddig kopia av bilden, C på rutmönster, och D på en ljusare grund med en hårlinje där bilden slutar.
+Valet blev **D**.
+A lät en mörk bild smälta in i grunden, så att den såg tom eller beskuren ut.
+B gav en genomskinlig bild ett färgsken som inte finns på kortet, och C var brus i en tabell med trehundra rader.
+
+- **Rutan behåller sin form, bilden ryms i den.** En rad och ett rutnät står jämna; bilden är så stor den får plats, centrerad, med `contain`.
+- **Grunden är `--byd-editor-thumb-bg`**, ett steg ljusare än de mörkaste grunderna, och bildens kant är en hårlinje i `--byd-editor-thumb-edge`. Grunden ligger på rutan och inte på bilden, annars ritas hårlinjen runt rutan.
+- **En miniatyr är `Thumb`** i `AssetImage.tsx`, eller bildrutan och Media-brickan, som redan har en ruta runt bilden. En ny yta som visar en av spelets bilder tar en av dem.
+- **Beskärningsramen ligger på bilden som den ritas.** Bildens form tas ur bilden själv när den laddat (`naturalWidth`/`naturalHeight`, som inte behöver CORS), annars ur mätningen; utan någon av dem ritas ingen ram, för en ram på en gissning visar fel del av bilden.
+
+`whole-picture.test.tsx` mäter de målade pixlarna på varje yta: en kvadratisk, en smal och en bred bild ryms hela och i sin egen form, och en bild i den gamla grundens mörker skiljer sig från grunden bredvid.
+`media-crop.test.tsx` lägger ramen på en 2:1-bild med mätning och på en 1:2-bild utan.

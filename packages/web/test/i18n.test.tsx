@@ -321,6 +321,7 @@ describe('every count in front of a noun has a singular to be chosen', () => {
     'setup.family.some': 'some of the seats, and not all of them, is two seats or more',
     'fonts.catalog.search': 'the count is the whole font catalogue, hundreds of families',
     'icons.catalog.search': 'the count is the whole icon catalogue, thousands of icons',
+    'home.waiting.flags.tables': 'one table says home.waiting.flags.table',
   }
 
   it('pairs each one', () => {
