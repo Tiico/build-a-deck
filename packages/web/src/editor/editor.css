@@ -377,9 +377,10 @@
 .byd-editor-here-word { margin-left: 4px; color: #e6ecfa; font: 700 13px system-ui; white-space: nowrap; }
 /* At the width the desk begins the row has no air to give (UX-KONTROLLER: 1024), so here the
    button is exactly one target wide whoever is here: the faces overlap under it and the count
-   goes, because pressing it opens the list that says all of it anyway. */
+   goes, because pressing it opens the list that says all of it anyway. A width and not a ceiling
+   (#1250): the ceiling held only where it met every button's floor. */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header > .byd-editor-here { max-width: var(--byd-tap); margin-left: 0; padding: 0; }
+  .byd-editor > header > .byd-editor-here { width: var(--byd-tap); margin-left: 0; padding: 0; }
   .byd-editor > header > .byd-editor-here b, .byd-editor > header > .byd-editor-here .byd-editor-here-word { display: none; }
 }
 .byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
