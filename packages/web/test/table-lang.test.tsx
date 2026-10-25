@@ -5,7 +5,7 @@
 // speaks it too. There is no language picker on the felt.
 import { afterEach, describe, expect, it } from 'vitest'
 import { onlineUrl, tvUrl } from '../src/editor/tableLinks.js'
-import { roomPath } from '../src/ways.js'
+import { roomPath } from '../src/startWay.js'
 import { chosenLang } from '../src/i18n/index.js'
 import { rememberTableLang } from '../src/table/tableLang.js'
 

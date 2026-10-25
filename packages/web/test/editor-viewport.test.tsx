@@ -596,9 +596,9 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
         }),
       tablesTab,
     )
-    // The fold, the way standing ready, the button that opens the menu, the five ways in it, and
-    // the button that starts another table, and the question mark beside the lead (L32, #303).
-    expect(measured).toEqual({ Bord: { controls: 10, small: [] } })
+    // The fold, the way standing ready, the button that opens the menu, the two in it (#1286), the
+    // button that starts another table, and the question mark beside the lead (L32, #303).
+    expect(measured).toEqual({ Bord: { controls: 7, small: [] } })
   }, 90_000)
 
   it('never makes the page scroll sideways', async () => {

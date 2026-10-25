@@ -8585,7 +8585,7 @@ Radens meny har två val, «Kopiera länk», som kopierar `värd/KOD` (L77), och
 «Spela härifrån», bordsläget, «Titta på» och QR-panelen finns inte längre i editorn: designern kommer in som alla andra.
 
 **Anslutningssidan har ett enda «Gå med» på varje skärm.**
-Vid ett TV-bord ger det handen, i telefonen och i datorn, under raden «Du får handen. Bordet står på TV:n.», och en tyst länk «Inte i rummet? Spela med hela bordet» leder till `/online`.
+Vid ett TV-bord ger det handen, i telefonen och i datorn, under raden «Du får handen. Bordet står på TV:n.», och en tyst länk «Inte på plats? Spela med hela bordet» leder till `/online`.
 Vid ett datorbord ger det bordet och handen på `/online`; en telefon får där handen ensam (C2, #99).
 «Bara titta» står kvar som länk vid båda.
 Ett bord utan svar har sidan som förut, efter skärmens bredd.

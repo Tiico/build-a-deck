@@ -8,6 +8,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { plansFromEnv, type Plans } from '../../server/src/quotas.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 // A met ceiling where the press was, in Mina spel and the profile (#1198, variant A): the box under
 // the heading for «＋ Nytt spel», «Duplicera» and «Starta bord», the import's own failure line, and
@@ -97,6 +98,7 @@ describe('Mina spel at a ceiling on games (#1198)', () => {
     home()
     await screen.findByText('Skogens råd')
     fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     expect((await notice()).textContent).toBe('Bordet startades inte. Ada har 1 av 1 bord öppna, och bord i spelet räknas mot Adas konto. Be Ada avsluta ett bord.')
     expect(document.body.textContent).not.toContain('ada@example.com')
   })

@@ -246,7 +246,7 @@ describe('a table that remembers how you sit (#1286)', () => {
 
     it(`keeps a quiet way to the whole table for the one who is not in the room, ${where}`, async () => {
       const { went } = await join('screen', isWide)
-      const away = screen.getByRole('button', { name: 'Inte i rummet? Spela med hela bordet' })
+      const away = screen.getByRole('button', { name: 'Inte på plats? Spela med hela bordet' })
       expect(away.classList.contains('byd-join-link')).toBe(true)
       fireEvent.click(away)
       await waitFor(() => expect(went).toHaveLength(1))
@@ -256,7 +256,7 @@ describe('a table that remembers how you sit (#1286)', () => {
     it(`gives the table and the hand at a table of computers, ${where}`, async () => {
       const { go, went } = await join('computer', isWide)
       expect(buttons()).toEqual([go])
-      expect(screen.queryByRole('button', { name: /Sätt dig|Spela på den här skärmen|telefonen som hand|Inte i rummet/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Sätt dig|Spela på den här skärmen|telefonen som hand|Inte på plats/ })).toBeNull()
       expect(screen.getByRole('button', { name: /Bara titta/ }).classList.contains('byd-join-link')).toBe(true)
       fireEvent.click(go)
       await waitFor(() => expect(went).toHaveLength(1))

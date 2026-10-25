@@ -574,7 +574,7 @@ export const svPlay = {
   'join.go': 'Gå med',
   'join.phone': 'Sitter ni runt en TV? Använd telefonen som hand',
   'join.screen.lead': 'Du får handen. Bordet står på TV:n.',
-  'join.away': 'Inte i rummet? Spela med hela bordet',
+  'join.away': 'Inte på plats? Spela med hela bordet',
   // Att alla ser observatören står på ytan, inte bara i lådan (L32).
   'join.observe': 'Bara titta (du ser allt, alla ser dig)',
 

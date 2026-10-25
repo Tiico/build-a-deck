@@ -466,7 +466,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'join.go': 'Join',
   'join.phone': 'Sitting around a TV? Use your phone as your hand',
   'join.screen.lead': 'You get your hand. The table is on the TV.',
-  'join.away': 'Not in the room? Play with the whole table',
+  'join.away': 'Not here with the others? Play with the whole table',
   'join.observe': 'Just watch (you see everything, everyone sees you)',
 
   'notes.title': 'Notes',

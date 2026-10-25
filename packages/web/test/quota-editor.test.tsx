@@ -6,6 +6,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { plansFromEnv, type Plans } from '../../server/src/quotas.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 // A met ceiling where the press was, in the editor (#1198, variant A): the band under the header for
 // an edit or a save, the line under «Starta nytt bord» in the Bord tab (L31), and the upload's own
@@ -87,6 +88,7 @@ describe('a table over the ceiling, under «Starta nytt bord» (#1198)', () => {
     const id = await made()
     await editor(id, 'Bord')
     fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    await answerStart()
     await waitFor(() => expect(document.querySelector('.byd-tables-failed')).not.toBeNull())
     const line = document.querySelector<HTMLElement>('.byd-tables-failed')!
     expect(line.getAttribute('role')).toBe('alert')
@@ -104,6 +106,7 @@ describe('a table over the ceiling, under «Starta nytt bord» (#1198)', () => {
     await run.projects.share(id, bo, 'tester')
     await editor(id, 'Bord')
     fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    await answerStart()
     await waitFor(() => expect(document.querySelector('.byd-tables-failed span')).not.toBeNull())
     expect(document.querySelector('.byd-tables-failed span')?.textContent).toBe('Bordet startades inte. Ada har 1 av 1 bord öppna, och bord i spelet räknas mot Adas konto. Be Ada avsluta ett bord.')
   })
