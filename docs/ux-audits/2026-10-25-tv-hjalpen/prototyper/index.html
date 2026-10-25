@@ -92,9 +92,9 @@
 const BREDD = { 1024: 320, 1280: 320, 1440: 448, 1920: 720 }
 const VARIANTER = {
   Nu: { titel: 'Nu · main i dag', text: '<b>Nu.</b> Koden, rutan och «?» på en rad efter värden. <span class="minus">Vid 1024 och 1280 behöver raden 361 px av 320, och «?» står ensam på en egen rad under koden.</span>' },
-  A: { titel: 'A · på rubrikens rad', text: '<b>A · «?» på radens rubrik</b> («Öppna på telefonen ?»), vid alla bredder. L32:s vanliga form: rubriken och dess frågetecken. <span class="plus">Samma plats vid varje bredd, kod och ruta orörda, och raden med koden har 33 px över vid golvet.</span> <span class="minus">«?» står före koden, mot #305:s «efter koden och rutan», och rubrikraden blir 36 px hög i stället för 29.</span>' },
-  B: { titel: 'B · på adressens rad', text: '<b>B · «?» efter värden</b> («deckster.se ?»), vid alla bredder. <span class="plus">Står intill adressen hjälpen förklarar, och kod och ruta är orörda.</span> <span class="minus">Värden kan bli längre (deck.ockelberg.com mättes in med 15 % marginal), och ringen tar 48 px av den raden; adressraden blir 36 px hög.</span>' },
-  C: { titel: 'C · tätare platta vid golvet', text: '<b>C · samma rad, tätare</b>: bara där kolumnen står på sitt golv blir spärren 2 px, luften 10 px och mellanrummen 10. <span class="plus">«?» står kvar efter rutan, som #305 sa, och inget flyttar.</span> <span class="minus">Kodens platta blir 32 px smalare och läses tätare från soffan, och raden har bara 7 px över vid golvet: en längre kod eller ett bredare typsnitt bryter den igen.</span>' },
+  A: { titel: 'A · på rubrikens rad', text: '<b>A · «?» på radens rubrik</b> («Öppna på telefonen ?»), vid alla bredder. L32:s vanliga form: rubriken och dess frågetecken. <span class="plus">Samma plats vid varje bredd, kod och ruta orörda, kodens rad har 13 px över vid golvet, och foten blir 36 px lägre där (302 mot 338).</span> <span class="minus">«?» står före koden, mot #305:s «efter koden och rutan», och vid 1440 och 1920 blir foten 8 px högre, som scenens kort betalar.</span>' },
+  B: { titel: 'B · på adressens rad', text: '<b>B · «?» efter värden</b> («deckster.se ?»), vid alla bredder. <span class="plus">Står intill adressen hjälpen förklarar, och kod och ruta är orörda.</span> <span class="minus">Värden kan bli längre (deck.ockelberg.com mättes in med 15 % marginal), och ringen tar 48 px av den raden; foten som i A, 36 px lägre vid golvet och 8 px högre vid 1440 och 1920.</span>' },
+  C: { titel: 'C · tätare platta vid golvet', text: '<b>C · samma rad, tätare</b>: bara där kolumnen står på sitt golv blir spärren 2 px, luften 10 px och mellanrummen 10. <span class="plus">«?» står kvar efter rutan, som #305 sa, inget flyttar, och foten blir 44 px lägre vid golvet utan att växa någon annanstans.</span> <span class="minus">Kodens platta blir 32 px smalare och läses tätare från soffan, och raden har bara 7 px över vid golvet: en längre kod eller ett bredare typsnitt bryter den igen.</span>' },
 }
 const ORD = {
   sv: { lbl: 'Öppna på telefonen', genvag: 'Kortkommandon', bord: 'Bordet', tom: 'peka på ett kort', hjalp: 'Hjälp om att gå med', stang: 'Stäng hjälpen',
@@ -173,7 +173,9 @@ function matt() {
   const mitt = (ring.top + ring.bottom) / 2
   const paKodrad = mitt > kod.top && mitt < kod.bottom
   const ensam = !paKodrad && ring.top > kod.bottom - 1
-  const kodrad = (v === 'Nu' || v === 'C') ? ring.right - kod.left : qrr.right - kod.left
+  // Vad kodens rad behöver, summerat och inte läst av, eftersom en rad som brutits inte är en rad.
+  const gap = parseFloat(getComputedStyle(document.getElementById('join')).columnGap)
+  const kodrad = kod.width + gap + qrr.width + ((v === 'Nu' || v === 'C') ? gap + ring.width : 0)
   const fot = document.querySelector('.tv .fot').getBoundingClientRect().height
   const r = Math.round
   const plats = ensam ? '<span class="fel">ensam på egen rad under koden</span>' : paKodrad ? '<span class="ok">på kodens rad</span>' : `<span class="ok">på ${v === 'A' ? 'rubrikens' : 'adressens'} rad</span>`
