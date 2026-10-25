@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vägen in · prototyp</title>
+<!--
+  PROTOTYPE — throwaway (2026-10-25). Vägen in till ett bord, städad till beställarens två behov:
+  «var och en vid sin dator» och «en gemensam TV, med datorn eller telefonen som hand». Genvägarna
+  där designern hoppar in själv tas bort. Växla variant med ?v=0|A|B|C (eller ← →) och hur ni sitter
+  med ?s=dator|tv (eller 1/2). 0 är dagens app. Ytorna är ritade efter appens mått och färger
+  (editor.css, join.css, online.css) och efter skärmbilderna i 2026-10-22-distansspel; ingenting här
+  importeras av appen.
+-->
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { background: #0b0c10; color: #e6e8ee; font: 13px system-ui, sans-serif; padding-bottom: 40px; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+
+  /* --- prototypens egen rad: aldrig en del av förslaget ---------------------------------- */
+  .protorad { position: sticky; top: 0; z-index: 50; display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; }
+  .protorad .fraga { flex: 1 1 360px; min-width: 0; }
+  .protorad button { min-height: 30px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; cursor: pointer; }
+  .vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+  .protorad .vaxlare button { border: 0; min-width: 34px; font-weight: 700; }
+  .protorad .vaxlare button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .anteckning { flex: 1 1 100%; margin: 0; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; }
+  .protorad .plus { color: #b7dca0; } .protorad .minus { color: #f0a58a; }
+
+  /* --- storyboarden ----------------------------------------------------------------------- */
+  main { padding: 16px; display: grid; gap: 28px; }
+  .bord { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .steg { display: grid; gap: 6px; width: 460px; }
+  .steg.tel { width: 200px; }
+  .steg h3 { margin: 0; font-size: 12px; color: #ffd98a; font-weight: 700; }
+  .steg h3 small { color: #a99a74; font-weight: 400; }
+  .steg .text { margin: 0; color: #b9bfcd; font-size: 12px; line-height: 1.45; min-height: 3em; }
+  .steg .text .minus { color: #f0a58a; } .steg .text .plus { color: #b7dca0; }
+  .pil { align-self: center; color: #5b6070; font-size: 22px; }
+
+  .fonster { width: 460px; height: 288px; border-radius: 8px; overflow: hidden; border: 1px solid #2c2f3a; box-shadow: 0 8px 30px #000a; display: flex; flex-direction: column; background: #111217; position: relative; font-size: 11px; }
+  .fonster .url { flex: none; height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 8px; background: #262933; color: #8f95a5; font: 10.5px ui-monospace, monospace; white-space: nowrap; overflow: hidden; }
+  .fonster .url::before { content: ''; width: 24px; height: 6px; border-radius: 3px; background: radial-gradient(circle at 3px 3px, #555a68 2.5px, transparent 3px) 0 0 / 9px 6px repeat-x; flex: none; }
+  .fonster .sida { flex: 1; position: relative; overflow: hidden; }
+  .telefon { width: 200px; height: 400px; border-radius: 24px; border: 6px solid #2a2d36; overflow: hidden; background: #111217; position: relative; font-size: 11px; box-shadow: 0 8px 30px #000a; }
+  .telefon .sida { position: absolute; inset: 0; overflow: hidden; padding: 22px 12px 12px; }
+
+  /* --- appens delar, i liten skala ---------------------------------------------------------- */
+  .knapp { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3a3f4d; background: #1d2029; color: #e6e8ee; font-weight: 600; white-space: nowrap; font-size: 11px; }
+  .knapp.bla { background: #3b6fd8; border-color: #3b6fd8; color: #fff; }
+  .knapp.gron { background: #8fd19e; border-color: #8fd19e; color: #10261a; }
+  .knapp.bred { width: 100%; min-height: 32px; }
+  .lank { color: #9cc3ff; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  .gra { color: #8a90a0; }
+  .kod { font: 700 11px ui-monospace, monospace; letter-spacing: .12em; }
+  .ny { outline: 2px dashed #ffd98a; outline-offset: 2px; border-radius: 6px; }
+  .borta { position: relative; opacity: .5; }
+  .borta::after { content: ''; position: absolute; left: -2px; right: -2px; top: 50%; border-top: 2px solid #f0a58a; }
+
+  /* Editorn */
+  .ehead { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px; background: #13151c; border-bottom: 1px solid #262a35; }
+  .ehead .namn { font-weight: 800; white-space: nowrap; }
+  .ehead .flikar span { white-space: nowrap; }
+  .ehead .flikar { display: flex; gap: 6px; color: #8a90a0; font-weight: 600; font-size: 10px; }
+  .ehead .flikar .vald { color: #fff; box-shadow: inset 0 -2px 0 #3b6fd8; }
+  .ehead .hoger { margin-left: auto; display: flex; gap: 4px; }
+  .split { display: inline-flex; }
+  .split .knapp:first-child { border-radius: 6px 0 0 6px; }
+  .split .knapp:last-child { border-radius: 0 6px 6px 0; border-left: 1px solid #2c58b3; padding: 0 7px; }
+  .vagg { padding: 10px; display: flex; gap: 8px; }
+  .vagg i { width: 62px; height: 86px; border-radius: 4px; background: #efe6d2; border: 2px solid #d9cdb2; }
+  .band { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: #1d3325; color: #b9e6c4; font-size: 10.5px; }
+  .meny { position: absolute; right: 8px; top: 40px; z-index: 5; width: 250px; padding: 5px; border-radius: 8px; background: #1d2029; border: 1px solid #3a3f4d; box-shadow: 0 10px 30px #000c; display: grid; gap: 2px; }
+  .meny .rad { display: flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 7px; border-radius: 5px; font-weight: 600; }
+  .meny .rad.hl { background: #2a2e3a; }
+  .meny .rad .kod { margin-left: auto; color: #b9e6c4; }
+  .meny .rubrik { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 7px 2px; font-size: 9.5px; color: #8a90a0; font-weight: 700; letter-spacing: .06em; }
+  .meny hr { border: 0; border-top: 1px solid #2c303c; margin: 3px 0; width: 100%; }
+  .meny .bordsrad { display: flex; gap: 6px; align-items: center; padding: 5px; border-radius: 6px; background: #161820; }
+  .meny .bordsrad .mini { width: 34px; height: 22px; border-radius: 3px; background: radial-gradient(#2f7a4b, #1d5a36); border: 2px solid #6b4529; }
+  .meny .bordsrad .knappar { display: flex; gap: 3px; margin-top: 3px; }
+  .dialog { position: absolute; inset: 0; display: grid; place-items: center; background: #0009; z-index: 6; }
+  .dialog > div { width: 330px; padding: 12px; border-radius: 10px; background: #1d2029; border: 1px solid #3a3f4d; }
+  .dialog h4 { margin: 0 0 2px; font-size: 13px; }
+  .dialog .val { display: flex; gap: 6px; margin: 8px 0; }
+  .dialog .val > div { flex: 1; padding: 7px; border-radius: 8px; border: 1px solid #3a3f4d; color: #a8adbb; font-size: 10px; line-height: 1.35; }
+  .dialog .val > div b { display: block; color: #fff; font-size: 11px; margin-bottom: 2px; }
+  .dialog .val > div.vald { border-color: #3b6fd8; box-shadow: inset 0 0 0 1px #3b6fd8; }
+  .dialog .falt { display: grid; gap: 3px; margin-bottom: 8px; font-size: 10px; color: #a8adbb; }
+  .dialog .falt span { height: 24px; border-radius: 5px; border: 1px solid #3a3f4d; background: #111217; display: flex; align-items: center; padding: 0 7px; color: #fff; }
+  .dialog .knappar { display: flex; justify-content: flex-end; gap: 6px; }
+
+  /* Filten */
+  .filt { position: absolute; inset: 0; display: grid; place-items: center; background: #0f1116; }
+  .filt .tra { width: 82%; aspect-ratio: 16/10; border-radius: 16px; background: linear-gradient(#7a5032, #563620); padding: 2.2%; }
+  .filt .gront { width: 100%; height: 100%; border-radius: 10px; background: radial-gradient(ellipse at 50% 40%, #2f7a4b, #1d5a36 75%); display: grid; place-items: center; }
+  .filt .hogar { display: flex; gap: 22px; }
+  .filt .hogar i { width: 30px; height: 42px; border-radius: 3px; background: repeating-linear-gradient(45deg, #2b3d78 0 2px, #34478a 2px 4px); border: 1px solid #1a2650; }
+  .filt .hogar i + i { background: transparent; border: 1.5px dashed #ffffff55; }
+
+  /* TV */
+  .tv { position: absolute; inset: 0; display: flex; background: #12141a; }
+  .tv .yta { flex: 1; position: relative; }
+  .tv aside { flex: none; width: 128px; padding: 8px; background: #191b22; border-left: 1px solid #262a35; display: flex; flex-direction: column; gap: 6px; }
+  .tv aside h4 { margin: 0; font-size: 12px; }
+  .tv .stor { font: 700 14px ui-monospace, monospace; letter-spacing: .1em; padding: 3px 5px; border-radius: 4px; background: #0f1116; text-align: center; }
+  .qr { width: 70px; height: 70px; align-self: center; border: 5px solid #fff; background:
+    conic-gradient(#000 25%, #fff 0 50%, #000 0 75%, #fff 0) 0 0 / 10px 10px; image-rendering: pixelated; }
+  .qr.stor { width: 96px; height: 96px; }
+
+  /* /online med väntrum */
+  .otop { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border-bottom: 1px solid #222631; }
+  .seatpill { display: flex; align-items: center; gap: 4px; min-height: 22px; padding: 0 8px; border-radius: 999px; background: #1d2029; border-left: 3px solid #e06a5a; font-weight: 700; }
+  .vantrum { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; width: 230px; padding: 10px; border-radius: 10px; background: #1d2029f2; border: 1px solid #3a3f4d; display: grid; gap: 6px; }
+  .vantrum h4 { margin: 0; font-size: 12px; }
+  .adressrad { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 8px; border-radius: 6px; background: #111217; }
+  .adressrad .kod { flex: 1; letter-spacing: .04em; font-weight: 600; }
+  .platser { display: grid; gap: 2px; font-size: 10.5px; }
+  .platser span { display: flex; gap: 5px; align-items: center; }
+  .platser span::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c, #e06a5a); }
+  .hand { position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%); display: flex; }
+  .hand i { width: 34px; height: 48px; margin: 0 -6px; border-radius: 3px; background: #efe6d2; border: 1px solid #c9bc9c; transform: rotate(var(--r)); transform-origin: 50% 120%; }
+
+  /* Anslutningssidan och handen */
+  .join { position: absolute; inset: 0; display: grid; place-items: center; background: #111217; }
+  .join .kort { width: 260px; padding: 12px; border-radius: 10px; background: #1b1d25; display: grid; gap: 7px; }
+  .join h4 { margin: 0; font-size: 13px; }
+  .falt2 { height: 26px; border-radius: 5px; border: 1px solid #3a3f4d; background: #111217; display: flex; align-items: center; padding: 0 7px; color: #fff; }
+  .seatval { display: flex; gap: 4px; }
+  .seatval span { flex: 1; padding: 4px; border-radius: 5px; border: 1px solid #3a3f4d; text-align: center; font-size: 10px; }
+  .seatval span.vald { border-color: #e06a5a; box-shadow: inset 0 0 0 1px #e06a5a; }
+  .seatval span.tagen { color: #6b7182; }
+  .telefon .kort { display: grid; gap: 7px; }
+  .telefon h4 { margin: 0; font-size: 13px; }
+  .telhand { position: absolute; inset: 0; display: flex; flex-direction: column; background: #111217; padding: 22px 10px 10px; gap: 8px; }
+  .telhand .remsa { margin-top: auto; display: flex; gap: 4px; overflow: hidden; }
+  .telhand .remsa i { flex: none; width: 48px; height: 68px; border-radius: 4px; background: #efe6d2; border: 1px solid #c9bc9c; }
+  .telhand .zoner { display: grid; gap: 4px; }
+  .telhand .zoner span { padding: 6px; border-radius: 6px; background: #1d2029; color: #a8adbb; }
+  .dathand { position: absolute; inset: 0; display: flex; flex-direction: column; background: #111217; }
+  .dathand .mitt { flex: 1; display: grid; place-items: center; color: #8a90a0; text-align: center; padding: 10px; line-height: 1.5; }
+  .dathand .remsa { display: flex; justify-content: center; gap: 6px; padding: 10px; background: #161820; border-top: 1px solid #262a35; }
+  .dathand .remsa i { width: 62px; height: 88px; border-radius: 5px; background: #efe6d2; border: 1px solid #c9bc9c; }
+
+  /* Hallen (C) */
+  .hall { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 150px; gap: 12px; padding: 14px; background: #111217; }
+  .hall h4 { margin: 0 0 4px; font-size: 14px; }
+  .hall .val2 { display: grid; gap: 6px; margin-top: 10px; }
+  .hall .val2 > div { padding: 8px; border-radius: 8px; border: 1px solid #3a3f4d; background: #1b1d25; }
+  .hall .val2 > div b { display: block; font-size: 11.5px; margin-bottom: 2px; }
+
+  /* Mina spel */
+  .home { position: absolute; inset: 0; padding: 12px 16px; background: #111217; }
+  .home h4 { margin: 0 0 8px; font-size: 14px; }
+  .hjalte { display: flex; gap: 10px; padding: 10px; border-radius: 10px; background: #1b1d25; }
+  .hjalte .bild { width: 52px; height: 72px; border-radius: 4px; background: #efe6d2; }
+  .hjalte .knappar { display: flex; gap: 5px; margin-top: 8px; }
+  .notis { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 6px 10px; border-radius: 6px; background: #1d3325; color: #b9e6c4; white-space: nowrap; }
+
+  .bubbla { position: absolute; z-index: 9; max-width: 210px; padding: 5px 7px; border-radius: 6px; background: #ffd98a; color: #2a2417; font-size: 10.5px; line-height: 1.35; box-shadow: 0 6px 20px #000a; }
+
+  /* --- kartan över vägarna in ------------------------------------------------------------- */
+  .karta h2 { margin: 0 0 4px; font-size: 15px; color: #ffd98a; }
+  .karta > p { margin: 0 0 10px; color: #b9bfcd; max-width: 980px; line-height: 1.5; }
+  .karta table { border-collapse: collapse; font-size: 12px; width: 100%; max-width: 1400px; }
+  .karta th, .karta td { border: 1px solid #2c2f3a; padding: 5px 8px; text-align: left; vertical-align: top; line-height: 1.4; }
+  .karta th { background: #191b22; color: #ffd98a; font-weight: 700; }
+  .karta td:first-child { color: #e6e8ee; width: 22%; }
+  .karta td.vald, .karta th.vald { background: #1f1b12; }
+  .karta .k { color: #b9bfcd; } .karta .a { color: #b7dca0; } .karta .x { color: #f0a58a; text-decoration: line-through; text-decoration-thickness: 1px; }
+  .karta .grupp td { background: #14161c; color: #8a90a0; font-weight: 700; font-size: 11px; letter-spacing: .06em; }
+  .karta tfoot td { font-weight: 700; color: #ffe9b8; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <p class="fraga"><b>Vägen in till ett bord.</b> Beställaren: bara två behov — <b>var och en vid sin dator</b>, eller <b>en gemensam TV</b> med datorn eller telefonen som hand. Genvägarna där designern hoppar in själv ska bort. <span class="gra">← → byter variant, 1 / 2 byter hur ni sitter.</span></p>
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button data-v="0">Idag</button><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Hur ni sitter">
+    <button data-s="dator">1 · Varsin dator</button><button data-s="tv">2 · TV i rummet</button>
+  </div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main>
+  <section class="bord" id="bord" aria-live="polite"></section>
+  <section class="karta">
+    <h2>Alla vägar in, och vad som händer med dem</h2>
+    <p>Inventerat i koden 2026-10-25. <span class="a">Grönt</span> är ändrat, <span class="x">överstruket</span> försvinner, grått står kvar som idag. Vald variant är markerad.</p>
+    <table id="karta"></table>
+  </section>
+</main>
+
+<script>
+const V = ['0', 'A', 'B', 'C']
+const q = new URLSearchParams(location.search)
+let v = V.includes(q.get('v')) ? q.get('v') : 'B'
+let s = q.get('s') === 'tv' ? 'tv' : 'dator'
+
+// --- små byggstenar ---------------------------------------------------------------------
+const fonster = (url, inner) => `<div class="fonster"><div class="url">${url}</div><div class="sida">${inner}</div></div>`
+const telefon = (inner) => `<div class="telefon"><div class="sida">${inner}</div></div>`
+const filt = (extra = '') => `<div class="filt"><div class="tra"><div class="gront"><div class="hogar"><i></i><i></i></div></div></div></div>${extra}`
+const bubbla = (x, y, t) => `<div class="bubbla" style="left:${x}px;top:${y}px">${t}</div>`
+const vagg = '<div class="vagg"><i></i><i></i><i></i><i></i></div>'
+
+function editor({ knapp = 'Starta bord', band = '', meny = '', overlay = '' }) {
+  return `<div class="ehead"><span class="namn">Fredagskort</span>
+    <span class="flikar"><span class="vald">Kortvägg</span><span>Mall</span><span>Bord</span></span>
+    <span class="hoger"><span class="knapp">Spara</span><span class="split"><span class="knapp bla">${knapp}</span><span class="knapp bla">▾</span></span></span></div>
+    ${band}${vagg}${meny}${overlay}`
+}
+
+function fragan(val, { namn = true, rubrik = 'Starta ett bord', ny = false, tv = 'Runt en TV', tvText = 'Bordet på TV:n. Var och en har handen i sin telefon eller dator.' } = {}) {
+  const dator = val === 'dator'
+  return `<div class="dialog"><div class="${ny ? 'ny' : ''}"><h4>${rubrik}</h4><span class="gra">Hur sitter ni?</span>
+    <div class="val"><div class="${dator ? '' : 'vald'}"><b>${tv}</b>${tvText}</div>
+    <div class="${dator ? 'vald' : ''}"><b>Var och en vid sin dator</b>Alla ser bordet och sin hand i sitt fönster. Du skickar en länk.</div></div>
+    ${dator && namn ? '<div class="falt">Ditt namn vid bordet<span>Vera</span></div>' : ''}
+    <div class="knappar"><span class="knapp">Avbryt</span><span class="knapp bla">${dator ? 'Starta och sätt dig' : 'Starta och visa bordet'}</span></div></div></div>`
+}
+
+function vantrum(namn = 'Vera') {
+  return `<div class="otop"><span class="gra">‹ Fredagskort</span><span class="seatpill">${namn} <span class="gra">Plats A</span></span></div>
+    <div style="position:absolute;inset:30px 0 0">${filt(`<div class="hand">${[-14, -5, 5, 14].map((r) => `<i style="--r:${r}deg"></i>`).join('')}</div>`)}
+    <div class="vantrum"><h4>Väntar på spelare · 1 av 3</h4><span class="gra">Skicka länken till dem som ska spela.</span>
+    <div class="adressrad"><span class="kod">deckster.se/M7CG38</span><span class="knapp">Kopiera länk</span></div>
+    <div class="platser"><span>${namn} (du)</span><span style="--c:#5aa0e0" class="gra">väntar…</span><span style="--c:#e0c05a" class="gra">väntar…</span></div>
+    <span class="knapp gron">Börja spela</span></div></div>`
+}
+
+function tv({ text = 'Öppna på telefonen', under = '', ny = false } = {}) {
+  return `<div class="tv"><div class="yta">${filt()}</div><aside><h4>Fredagskort</h4><span class="gra ${ny ? 'ny' : ''}">${text}</span>
+    <div class="qr"></div><div class="stor">M7CG38</div><span class="gra">deckster.se/M7CG38</span>${under}</aside></div>`
+}
+
+function joinDator({ titel = 'Rum M7CG38', knapp = 'Gå med', lankar = [], kvar = '2 av 3 platser kvar', ny = false }) {
+  return `<div class="join"><div class="kort ${ny ? 'ny' : ''}"><h4>${titel}</h4><span class="gra">Du går med i Fredagskort · ${kvar}</span>
+    <div class="seatval"><span class="tagen">A · Vera</span><span class="vald">B</span><span>C</span></div>
+    <div class="falt2">Ditt namn</div><span class="knapp bla bred">${knapp}</span>
+    ${lankar.map((l) => `<span class="lank">${l}</span>`).join('')}</div></div>`
+}
+
+function joinTelefon({ knappar = ['Gå med'], lankar = [], ny = false }) {
+  return `<div class="kort ${ny ? 'ny' : ''}"><h4>Rum M7CG38</h4><span class="gra">Du går med i Fredagskort</span>
+    <div class="seatval"><span class="tagen">A</span><span class="vald">B</span><span>C</span></div>
+    <div class="falt2">Ditt namn</div>
+    ${knappar.map((k, i) => `<span class="knapp ${i === 0 ? 'bla' : ''} bred">${k}</span>`).join('')}
+    ${lankar.map((l) => `<span class="lank">${l}</span>`).join('')}</div>`
+}
+
+const telHand = (not = '') => `<div class="telhand"><span class="seatpill">Ali <span class="gra">Plats B</span></span>
+  <div class="zoner"><span>Vera · 5 kort</span><span>Kim · 5 kort</span><span>Draghög · 34</span></div>${not}
+  <div class="remsa"><i></i><i></i><i></i><i></i></div></div>`
+
+const datorHand = (not) => `<div class="otop"><span class="seatpill">Kim <span class="gra">Plats C</span></span><span class="gra" style="margin-left:auto">Bordet står på TV:n</span></div>
+  <div class="dathand" style="top:30px"><div class="mitt">${not}</div><div class="remsa"><i></i><i></i><i></i><i></i><i></i></div></div>`
+
+const home = ({ knapp = 'Starta bord', notis = '', ny = false, overlay = '' }) =>
+  `<div class="home"><h4>Mina spel</h4><div class="hjalte"><div class="bild"></div><div><b>Fredagskort</b><br><span class="gra">Fortsätt där du slutade</span>
+   <div class="knappar"><span class="knapp">Öppna editorn</span><span class="knapp bla ${ny ? 'ny' : ''}">${knapp}</span></div></div></div>${notis}${overlay}</div>`
+
+const pilmeny = (rader) => `<div class="meny">${rader}</div>`
+const idagMeny = pilmeny(`<div class="bordsrad"><span class="mini"></span><div><span class="kod">M7CG38</span> <span class="gra">v1 · ingen sitter än</span>
+  <div class="knappar"><span class="knapp">Spela härifrån</span><span class="knapp">⋯</span></div></div></div>
+  <div class="rad hl">Öppna TV-vyn</div><div class="rad hl">Bordsläge</div><div class="rad hl">Titta på</div><div class="rad hl">QR för telefoner</div>
+  <hr><div class="rad">Nytt bord <span class="gra" style="margin-left:auto">frågar inget</span></div><div class="rad">Alla bord</div>`)
+
+// --- varianterna: steg per sätt att sitta -------------------------------------------------
+const VARIANTER = {
+  0: {
+    namn: 'Idag',
+    not: '<b>Idag.</b> Frågan «Hur sitter ni?» (L77) finns bara på editorns Starta. <span class="minus">Mina spel, «Nytt bord» och Bord-flikens «Starta nytt bord» startar utan att fråga och öppnar ingenting.</span> Bredvid står fyra genvägar där designern hoppar in: «Spela härifrån» (sätter dig som «Designern»), Bordsläge, Titta på och QR-panelen. Anslutningssidan har tre knappar på telefonen och en knapp plus två länkar på datorn.',
+    dator: [
+      ['Värden startar', 'Editorns Starta frågar hur ni sitter.', fonster('deckster.se/editor?project=…', editor({ overlay: fragan('dator') }))],
+      ['…eller någon annanstans', '<span class="minus">Mina spel «Starta bord» frågar inget och öppnar inget</span> — bara en rad: «Bordet är igång».', fonster('deckster.se/', home({ notis: '<div class="notis">Bordet är igång. Rumskoden är M7CG38.</div>' }))],
+      ['Pilmenyn bredvid Starta', '<span class="minus">«Spela härifrån» sätter dig som «Designern» utan att fråga</span>, och ⋯ har fyra vyer till.', fonster('deckster.se/editor?project=…', editor({ knapp: 'Uppdatera bordet', band: '<div class="band">Bordet kör version 1 — <u>öppna bordet</u> · rumskod <b class="kod">M7CG38</b></div>', meny: idagMeny }))],
+      ['Gästen, dator', 'En knapp och två länkar.', fonster('deckster.se/M7CG38', joinDator({ lankar: ['Sitter ni runt en TV? Använd telefonen som hand', 'Bara titta (du ser allt, alla ser dig)'] }))],
+      ['Gästen, telefon', '<span class="minus">Tre knappar</span> utan att säga vad som skiljer de två första.', telefon(joinTelefon({ knappar: ['Sätt dig', 'Spela på den här skärmen', 'Bara titta'] })), 'tel'],
+    ],
+    tv: [
+      ['Värden startar', '«Runt en skärm» öppnar TV-vyn.', fonster('deckster.se/editor?project=…', editor({ overlay: fragan('tv', { tv: 'Runt en skärm', tvText: 'Bordet på en TV eller stor skärm, var och en har handen i sin telefon.' }) }))],
+      ['TV:n', 'Säger bara «Öppna på telefonen».', fonster('deckster.se/table?session=…&mode=tv', tv())],
+      ['Värden vill spela själv', '<span class="minus">Närmaste vägen är «Spela härifrån» i pilmenyn: ett andra bord på datorn bredvid TV:n</span>, som «Designern».', fonster('deckster.se/online?seat=A&name=Designern', vantrum('Designern'))],
+      ['Gästen, dator', '<span class="minus">«Gå med» ger hela bordet en gång till</span>; handen ensam ligger bakom en länk som säger «telefonen».', fonster('deckster.se/M7CG38', joinDator({ lankar: ['Sitter ni runt en TV? Använd telefonen som hand', 'Bara titta (du ser allt, alla ser dig)'] }))],
+      ['Gästen, telefon', 'Tre knappar.', telefon(joinTelefon({ knappar: ['Sätt dig', 'Spela på den här skärmen', 'Bara titta'] })), 'tel'],
+    ],
+  },
+  A: {
+    namn: 'A · En fråga, överallt',
+    not: '<b>A · En fråga, överallt.</b> <span class="plus">Varje knapp som startar ett bord — editorn, Mina spel, Bord-fliken, «Nytt bord» — ställer samma fråga och öppnar det svaret säger.</span> <span class="minus">Spela härifrån, Bordsläge, Titta på och QR-panelen går ur editorn</span>; ett bord har «Öppna bordet» (det du valde), «Kopiera länk» och «Avsluta». Vid TV:n går värden med som alla andra, via QR:n. Anslutningssidan: en knapp efter skärmen du håller, och en länk för den andra vägen. <span class="minus">Kvar: datorn vid TV:n måste hitta länken för att bara få handen.</span>',
+    dator: [
+      ['Värden startar — var som helst', 'Samma fråga från Mina spel som från editorn.', fonster('deckster.se/', home({ overlay: fragan('dator', { ny: true }) }))],
+      ['Värden vid bordet', 'Väntrummet som idag (L77), under ditt namn.', fonster('deckster.se/online?…', vantrum())],
+      ['Bordets meny i editorn', '<span class="plus">Tre rader.</span> <span class="minus">Inga vyer att välja bland.</span>', fonster('deckster.se/editor?project=…', editor({ knapp: 'Uppdatera bordet', meny: pilmeny('<div class="rubrik">BORDET M7CG38 · 1 AV 3</div><div class="rad hl ny">Öppna bordet <span class="gra" style="margin-left:auto">din plats</span></div><div class="rad">Kopiera länk</div><div class="rad">Avsluta bordet</div><hr><div class="rad">Nytt bord…</div><div class="rad">Alla bord</div>') }))],
+      ['Gästen, dator', 'En knapp.', fonster('deckster.se/M7CG38', joinDator({ lankar: ['Bara titta'] }))],
+      ['Gästen, telefon', '<span class="plus">En knapp: handen.</span> Hela bordet bakom en länk.', telefon(joinTelefon({ ny: true, lankar: ['Spela med hela bordet här', 'Bara titta'] })), 'tel'],
+    ],
+    tv: [
+      ['Värden startar — var som helst', '«Runt en TV» öppnar TV-vyn, i den här fliken eller på TV:n.', fonster('deckster.se/editor?project=…', editor({ overlay: fragan('tv', { ny: true }) }))],
+      ['TV:n', '<span class="plus">Säger att datorn också duger som hand.</span>', fonster('deckster.se/table?…&mode=tv', tv({ text: 'Gå med med telefonen eller datorn', ny: true }))],
+      ['Värden går med', '<span class="plus">Som alla andra: QR:n eller länken.</span> <span class="minus">Ingen «Spela härifrån».</span>', telefon(joinTelefon({ lankar: ['Spela med hela bordet här', 'Bara titta'] })), 'tel'],
+      ['Gästen, dator', '<span class="minus">Knappen ger fortfarande hela bordet</span>; handen ensam är länken.', fonster('deckster.se/M7CG38', joinDator({ lankar: ['Sitter du vid TV:n? Bara handen', 'Bara titta'], ny: true }))],
+      ['Gästen, telefon', 'Handen.', telefon(telHand()), 'tel'],
+    ],
+  },
+  B: {
+    namn: 'B · Bordet minns hur ni sitter',
+    not: '<b>B · Bordet minns hur ni sitter</b> (rekommenderas). Som A, och svaret följer med bordet. <span class="plus">Anslutningssidan har då en enda knapp, «Gå med», på varje skärm: vid ett datorbord får du bordet och handen, vid ett TV-bord får du handen — i telefonen eller i datorn.</span> Värden vid TV:n går med via QR:n. Den som sitter på distans vid ett TV-bord har en tyst länk. <span class="minus">Rör C2 (inga spellägen): bordet blir inte ett annat, men sidan väljer vy efter svaret och inte efter skärmen. Det skrivs om i DESIGN-BESLUT.</span>',
+    dator: [
+      ['Värden startar — var som helst', 'Samma fråga överallt. Svaret sparas på bordet.', fonster('deckster.se/editor?project=…', editor({ overlay: fragan('dator', { ny: true }) }))],
+      ['Värden vid bordet', 'Väntrummet, under ditt namn.', fonster('deckster.se/online?…', vantrum())],
+      ['Bordets meny i editorn', '<span class="plus">Tre rader</span>, som A.', fonster('deckster.se/editor?project=…', editor({ knapp: 'Uppdatera bordet', meny: pilmeny('<div class="rubrik">BORDET M7CG38 · VARSIN DATOR · 1 AV 3</div><div class="rad hl ny">Öppna bordet <span class="gra" style="margin-left:auto">din plats</span></div><div class="rad">Kopiera länk</div><div class="rad">Avsluta bordet</div><hr><div class="rad">Nytt bord…</div><div class="rad">Alla bord</div>') }))],
+      ['Gästen, dator', '<span class="plus">En knapp, inga länkar</span> utom att titta.', fonster('deckster.se/M7CG38', joinDator({ titel: 'Vera bjuder in till Fredagskort', lankar: ['Bara titta'], ny: true }))],
+      ['Gästen, telefon', '<span class="plus">Samma knapp.</span> Telefonen får handen och bordet som antal (#99).', telefon(joinTelefon({ lankar: ['Bara titta'], ny: true })), 'tel'],
+    ],
+    tv: [
+      ['Värden startar — var som helst', '«Runt en TV». Svaret sparas på bordet.', fonster('deckster.se/', home({ overlay: fragan('tv', { ny: true }) }))],
+      ['TV:n', 'QR:n och adressen, som idag.', fonster('deckster.se/table?…&mode=tv', tv({ text: 'Gå med med telefonen eller datorn', ny: true }))],
+      ['Gästen, dator', '<span class="plus">«Gå med» ger handen på datorn</span>, eftersom bordet står på TV:n.', fonster('deckster.se/M7CG38', joinDator({ lankar: ['Inte i rummet? Spela med hela bordet', 'Bara titta'], ny: true }))],
+      ['…och det hon får', '<span class="plus">Handen i full storlek, bordet på TV:n.</span> Samma spelarroll som telefonen (C2), bredare.', fonster('deckster.se/play?…', datorHand('Bordet står på TV:n.<br>Dra ett kort uppåt för att spela det.'))],
+      ['Gästen, telefon', '<span class="plus">Samma knapp</span>, handen.', telefon(telHand()), 'tel'],
+    ],
+  },
+  C: {
+    namn: 'C · Ingen fråga — skärmen bestämmer',
+    not: '<b>C · Ingen fråga — skärmen bestämmer.</b> <span class="plus">Starta frågar inget, var det än trycks: bordet öppnas i sin flik som en hall med adress, QR och platser, och två val — «Sätt dig här» eller «Gör den här skärmen till bordet».</span> Gästen har en knapp: finns en TV ansluten får hon handen, annars hela bordet. <span class="minus">Vyn beror på något gästen inte ser, och en gäst som går med innan TV:n är uppe får fel vy.</span>',
+    dator: [
+      ['Värden startar — var som helst', '<span class="plus">Ingen dialog:</span> bordets flik öppnas med hallen.', fonster('deckster.se/M7CG38?host', `<div class="hall"><div><h4>Fredagskort är öppet</h4><span class="gra">Skicka länken. Platserna fylls här.</span>
+        <div class="adressrad" style="margin-top:8px"><span class="kod">deckster.se/M7CG38</span><span class="knapp">Kopiera länk</span></div>
+        <div class="val2 ny"><div><b>Sätt dig här</b><span class="gra">Bordet och din hand i det här fönstret.</span></div><div><b>Gör den här skärmen till bordet</b><span class="gra">För TV:n. Alla har handen i sin telefon eller dator.</span></div></div></div>
+        <div style="display:grid;gap:6px;align-content:start"><div class="qr stor"></div><div class="platser"><span>A · ledig</span><span style="--c:#5aa0e0">B · ledig</span><span style="--c:#e0c05a">C · ledig</span></div></div></div>`)],
+      ['Värden sätter sig', 'Väntrummet, under det namn hallen frågar efter.', fonster('deckster.se/online?…', vantrum())],
+      ['Gästen, dator', 'En knapp. <span class="minus">Ingen TV ansluten → hela bordet.</span>', fonster('deckster.se/M7CG38', joinDator({ lankar: ['Bara titta'], ny: true }))],
+      ['Gästen, telefon', 'En knapp, handen.', telefon(joinTelefon({ lankar: ['Bara titta'], ny: true })), 'tel'],
+    ],
+    tv: [
+      ['Värden startar — var som helst', 'Samma hall; värden väljer «Gör den här skärmen till bordet» på TV:n.', fonster('deckster.se/M7CG38?host', `<div class="hall"><div><h4>Fredagskort är öppet</h4><span class="gra">Skicka länken. Platserna fylls här.</span>
+        <div class="val2"><div><b>Sätt dig här</b><span class="gra">Bordet och din hand i det här fönstret.</span></div><div class="ny"><b>Gör den här skärmen till bordet</b><span class="gra">För TV:n. Alla har handen i sin telefon eller dator.</span></div></div></div>
+        <div style="display:grid;gap:6px;align-content:start"><div class="qr stor"></div></div></div>`)],
+      ['TV:n', 'Hallen blir TV-vyn.', fonster('deckster.se/M7CG38?host', tv({ text: 'Gå med med telefonen eller datorn' }))],
+      ['Gästen, dator', '<span class="plus">TV ansluten → handen.</span>', fonster('deckster.se/play?…', datorHand('Bordet står på TV:n.'))],
+      ['Gästen, telefon', 'Handen.', telefon(telHand()), 'tel'],
+    ],
+  },
+}
+
+// --- kartan -------------------------------------------------------------------------------
+const K = (t) => `<span class="k">${t}</span>`, Ä = (t) => `<span class="a">${t}</span>`, X = (t) => `<span class="x">${t}</span>`
+const KARTA = [
+  ['EDITORN'],
+  ['Starta bord (huvudet)', K('Frågar hur ni sitter'), K('Frågar'), Ä('Frågar; svaret sparas på bordet'), Ä('Öppnar hallen, ingen fråga')],
+  ['Bandet «öppna bordet»', K('TV-vyn, alltid'), Ä('«Öppna bordet»: det du valde'), Ä('Som A'), Ä('Hallen / det du valde')],
+  ['Pilmenyn «Spela härifrån»', K('Plats som «Designern», utan fråga'), X('Bort'), X('Bort'), X('Bort')],
+  ['Pilmenyn ⋯: TV-vyn, Bordsläge, Titta på, QR', K('Fyra vyer'), X('Bort') + ' — ' + Ä('«Kopiera länk»'), X('Bort') + ' — ' + Ä('«Kopiera länk»'), X('Bort') + ' — ' + Ä('«Kopiera länk»')],
+  ['Pilmenyn «Nytt bord»', K('Startar utan fråga, öppnar inget'), Ä('Frågan'), Ä('Frågan'), Ä('Hallen')],
+  ['Bord-fliken «Starta nytt bord»', K('Startar utan fråga, öppnar inget'), Ä('Frågan'), Ä('Frågan'), Ä('Hallen')],
+  ['Bord-flikens rad: «Spela härifrån» + ⋯ (fem val)', K('Sex val per bord'), Ä('Öppna · Kopiera länk · Avsluta'), Ä('Som A, och raden säger hur ni sitter'), Ä('Öppna · Kopiera länk · Avsluta')],
+  ['MINA SPEL'],
+  ['Hjältens «Starta bord»', K('Startar, öppnar inget'), Ä('Frågan, öppnar bordet'), Ä('Frågan, öppnar bordet'), Ä('Öppnar hallen')],
+  ['Hjälten / ⋯ / «Pågår nu»: «Öppna bordet»', K('TV-vyn, alltid'), Ä('Det du valde'), Ä('Det bordet är'), Ä('Det du valde i hallen')],
+  ['«Spelat»: «Öppna bordet» (gäst)', K('Efter skärmbredd'), K('Efter skärmbredd'), Ä('Det bordet är'), Ä('Efter om TV finns')],
+  ['«Har du en rumskod?»', K('→ anslutningssidan'), K('Kvar'), K('Kvar'), K('Kvar')],
+  ['GÄSTEN'],
+  ['Anslutningssidan, telefon', K('Tre knappar'), Ä('«Gå med» (hand) + länk + titta'), Ä('«Gå med» + titta'), Ä('«Gå med» + titta')],
+  ['Anslutningssidan, dator', K('«Gå med» + två länkar'), Ä('«Gå med» (bordet) + länk + titta'), Ä('«Gå med» + titta; vid TV-bord en distanslänk'), Ä('«Gå med» + titta')],
+  ['TV:ns QR och adress', K('«Öppna på telefonen»'), Ä('«…telefonen eller datorn»'), Ä('Som A'), Ä('Som A')],
+  ['Värden vid TV-bordet', K('Spela härifrån → ett andra bord'), Ä('Via QR, som alla'), Ä('Via QR, som alla'), Ä('Via QR, som alla')],
+]
+const FOT = ['Val på anslutningssidan (telefon · dator), «Bara titta» oräknad', '2 knappar · 1 knapp + 1 länk', '1 knapp + 1 länk · 1 knapp + 1 länk', '1 knapp · 1 knapp (+ distanslänk vid TV-bord)', '1 knapp · 1 knapp']
+
+function ritaKarta() {
+  const cols = ['Väg in', 'Idag', 'A', 'B', 'C']
+  const vi = V.indexOf(v) + 1
+  const cls = (i) => (i === vi ? ' class="vald"' : '')
+  document.getElementById('karta').innerHTML =
+    `<thead><tr>${cols.map((c, i) => `<th${cls(i)}>${c}</th>`).join('')}</tr></thead><tbody>` +
+    KARTA.map((r) => (r.length === 1 ? `<tr class="grupp"><td colspan="5">${r[0]}</td></tr>` : `<tr>${r.map((c, i) => `<td${cls(i)}>${c}</td>`).join('')}</tr>`)).join('') +
+    `</tbody><tfoot><tr>${FOT.map((c, i) => `<td${cls(i)}>${c}</td>`).join('')}</tr></tfoot>`
+}
+
+function rita() {
+  const vv = VARIANTER[v]
+  document.getElementById('anteckning').innerHTML = vv.not
+  const steg = vv[s]
+  document.getElementById('bord').innerHTML = steg.map(([titel, text, yta, typ], i) =>
+    `<div class="steg ${typ || ''}"><h3>${i + 1}. ${titel}</h3><p class="text">${text}</p>${yta}</div>`).join('')
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === v))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s))
+  ritaKarta()
+  const u = new URL(location.href); u.searchParams.set('v', v); u.searchParams.set('s', s); history.replaceState(null, '', u)
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) v = b.dataset.v
+  if (b.dataset.s) s = b.dataset.s
+  rita()
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') v = V[(V.indexOf(v) + (e.key === 'ArrowRight' ? 1 : V.length - 1)) % V.length]
+  else if (e.key === '1') s = 'dator'
+  else if (e.key === '2') s = 'tv'
+  else return
+  rita()
+})
+rita()
+</script>
+</body>
+</html>

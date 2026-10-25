@@ -61,6 +61,8 @@ test('a designer who reaches her ceilings is told each one where she pressed, an
   await page.getByRole('tab', { name: 'Bord' }).click()
   await page.getByRole('button', { name: 'Starta nytt bord' }).click()
   await page.getByRole('button', { name: 'Starta ett nytt ändå' }).click()
+  // Every start asks how you sit (#1286); around one screen is the answer a new browser stands on.
+  await page.getByRole('dialog', { name: 'Starta ett bord' }).getByRole('button', { name: 'Starta', exact: true }).click()
   const failed = page.locator('.byd-tables-failed[data-quota]')
   await expect(failed).toContainText('Bordet startades inte. Du har 1 av 1 bord öppna, 1 av dem i det här spelet. Avsluta ett bord som ingen spelar vid, eller öppna ett som redan kör och uppdatera det till version 1.')
   await expect(failed.getByRole('button', { name: 'Försök igen' })).toBeVisible()

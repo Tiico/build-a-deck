@@ -27,3 +27,4 @@ export function editorWay(project: string, server: string | null): { href: strin
   if (server) q.set('server', server.replace(/^ws/, 'http'))
   return { href: `/editor?${q.toString()}#`, target: editorTab(project) }
 }
+

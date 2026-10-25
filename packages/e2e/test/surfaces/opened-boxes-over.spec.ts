@@ -130,13 +130,17 @@ test('a slot in a zone’s actions opens its choices over the panel it stands in
   await liftedWhereItStood(panel.locator('.byd-slot-pop'))
 })
 
-test('a table’s menu of ways in opens over the list it hangs in', async ({ page }) => {
+test('a table’s menu opens over the list it hangs in', async ({ page }) => {
   await logIn(page.request)
   const project = await makeProject(page.request, { name: 'Skogens herrar', players: 4, cards: 9 })
   await page.goto(project.editorUrl)
   await expect(page.getByText('Skogens herrar').first()).toBeVisible()
   await page.locator('#byd-editor-tab-tables').click()
   await page.locator('.byd-tables-new').click()
+  // Every start asks how you sit (#1286); around one screen, the TV opens in a tab of its own.
+  const tv = page.context().waitForEvent('page')
+  await page.getByRole('dialog', { name: /^(Starta ett bord|Start a table)$/ }).getByRole('button', { name: /^(Starta|Start)$/ }).click()
+  await (await tv).close()
   const row = page.locator('.byd-table-row').first()
   await row.locator('.byd-tables-more').click()
   await liftedWhereItStood(row.locator('.byd-tables-menu'))

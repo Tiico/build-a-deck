@@ -336,3 +336,7 @@
 }
 .byd-join form .byd-join-link:hover { color: #fff; }
 .byd-join form .byd-join-link:disabled { color: #8a93a8; text-decoration: none; cursor: default; }
+
+/* What «Gå med» gives at a table around a TV (#1286): the hand, here, and the table up on the TV. One
+   quiet line over the button, in the seat line's own grey, so it reads before the press. */
+.byd-join-lead { margin: 0 0 8px; color: #9aa3b8; font-size: 14px; text-align: center; }

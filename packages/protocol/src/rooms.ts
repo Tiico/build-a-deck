@@ -23,6 +23,14 @@ export const ROUTE_WORDS: readonly string[] = [
   'claim', 'editor', 'join', 'login', 'new', 'observe', 'online', 'play', 'print-package', 'profile', 'survey', 'table', 'villkor',
 ]
 
+// How the people at a table sit (L77, #1286): around one screen, with a hand each in a phone or a
+// computer, or each at a computer of their own. The host answers it once, when the table starts,
+// and the table keeps it, so that every way in leads to the one view that fits — the hand at a
+// table around a screen, the table and the hand at a table of computers. It is not a mode of the
+// table (C2): the session and its view roles are the same either way.
+export const SEATINGS = ['screen', 'computer'] as const
+export type Seating = (typeof SEATINGS)[number]
+
 // Whether a code would read as one of the app's own addresses, in whatever case it is typed.
 export const isRouteWord = (code: string): boolean => ROUTE_WORDS.includes(code.toLowerCase())
 

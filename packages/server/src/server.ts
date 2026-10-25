@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, SEATINGS, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -212,6 +212,10 @@ const DeckBody = z.object({
 })
 
 // Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
+// What a game's table is started with (#1286): how the people at it sit, when the host was asked.
+// The body may be empty, as it was before the question.
+const StartBody = z.object({ seating: z.enum(SEATINGS).optional() })
+
 // The placeholder a masked name says (#1276) is nobody's name, at a seat or watching.
 const JoinBody = z.object({ name: z.string().trim().min(1).max(64).refine((name) => name !== REDACTED, 'the placeholder of a masked name is nobody’s name'), seat: z.string().min(1).optional() })
 const KickBody = z.object({ seat: z.string().min(1) })
@@ -497,7 +501,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       // new — and the project it came from stays out of it.
       const session = await opts.store.loadSession(found.id)
       const named = session?.project && opts.projects ? await opts.projects.load(session.project) : null
-      return json(res, 200, { session: found.id, ...(named ? { name: named.name } : {}) })
+      // How the people at it sit (#1286), which picks the one way in the join page offers.
+      return json(res, 200, { session: found.id, ...(named ? { name: named.name } : {}), ...(session?.seating ? { seating: session.seating } : {}) })
     }
     // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
     const join = /^\/rooms\/([^/]+)\/join$/.exec(url.pathname)
@@ -2352,13 +2357,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // it, and a table that has ended has none to show.
     const admits = canStartTables(gate.role)
     const now = clock(opts).getTime()
-    const tables: { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }[] = []
+    const tables: { id: string; version: string; ended: boolean; lastAt: string | null; code?: string; seating?: Seating }[] = []
     for (const summary of summaries) {
       const actor = await opts.host.get(summary.id)
       if (!actor) continue
-      const session = admits && !actor.ended ? await opts.store.loadSession(summary.id) : null
-      const code = session?.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > now ? session.code : undefined
-      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}) })
+      // How it was started to be sat at (#1286) says which view «Öppna bordet» opens.
+      const session = await opts.store.loadSession(summary.id)
+      const code = admits && !actor.ended && session?.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > now ? session.code : undefined
+      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}), ...(session?.seating ? { seating: session.seating } : {}) })
     }
     json(res, 200, tables)
     return true
@@ -2397,16 +2403,22 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const rec = gate.rec
+    const raw = await readBody(req)
+    const { seating } = StartBody.parse(raw.trim() === '' ? {} : JSON.parse(raw))
     const id = randomUUID()
     const room = admission(opts)
     // Borne by the game's owner, whoever pressed (A2: the creator bears the cost of her own
     // testers, #1194). A game from before accounts has no owner, and its table no bearer.
     // And held to the owner's ceilings on tables (#1196): a test leader or a co-editor who presses
     // is told it is the owner's ceiling, never whose or which tier.
-    const record = { id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record }
+    const record = { id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record, ...(seating ? { seating } : {}) }
     if (!(await openTable(opts, res, record, () => bearerOf(opts, account, rec.owner)))) return true
     await opts.host.get(id)
-    json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
+    // The host of a table of computers sits down at its first seat (L77), which every seat is
+    // free to be when it starts; it is said here so that a page without the game's setup at hand,
+    // as Mina spel is, can seat her.
+    const hostSeat = seating === 'computer' ? record.setup.seats[0] : undefined
+    json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey, ...(hostSeat ? { hostSeat } : {}) })
     return true
   }
   // The whole log for the replay corpus (DRIFT §7): version, setup and every line with its

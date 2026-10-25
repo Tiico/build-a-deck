@@ -19,6 +19,7 @@ import { startServer, type Running } from './fixture.js'
 // quiet word and the band first in the queue, the dialog a press opens, the editor holding an edit
 // until the terms are accepted, and /villkor with «Kort sagt» per section.
 const BETA = [{ version: '2026-10-25', material: true }]
+const START_TITLE = translate('sv', 'editor.start.title')
 let run: Running
 const opened: ProjectClient[] = []
 beforeEach(async () => {
@@ -145,14 +146,16 @@ describe('Mina spel for an account that has not accepted (#1272)', () => {
     expect(screen.queryByRole('dialog', { name: 'Godkänn villkoren först' })).toBeNull()
   })
 
-  it('starts the table a press asked for once the dialog is accepted', async () => {
+  it('goes on with the press it asked for once the dialog is accepted', async () => {
     await loggedIn('ada@example.com')
     await ownGame('ada@example.com')
     home()
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
     const dialog = await screen.findByRole('dialog', { name: 'Godkänn villkoren först' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Godkänn och fortsätt' }))
-    await waitFor(async () => expect((await fetch(`${run.http}/projects/${run.projectId}/sessions`).then((r) => r.json())) as unknown[]).toHaveLength(1))
+    // «Starta bord» asks how you sit next (#1286), as it does for anyone who has accepted.
+    expect(await screen.findByRole('dialog', { name: START_TITLE })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Godkänn villkoren först' })).toBeNull()
   })
 })
 
