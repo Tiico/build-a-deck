@@ -540,7 +540,7 @@ describe('the room’s television wears Deckster’s hand (#1084)', () => {
         <div />
       </TvChrome>,
     )
-    const brand = container.querySelector('[data-tv] > aside > [data-brand]')
+    const brand = container.querySelector('[data-tv] > aside [data-brand]')
     expect(brand?.textContent).toBe('Deckster')
     // The favicon's own cards, amber, green and paper, from the one drawing (A6).
     expect([...(brand?.querySelectorAll('svg rect') ?? [])].map((r) => r.getAttribute('fill'))).toEqual([HAND.amber, HAND.green, HAND.paper])
@@ -554,5 +554,77 @@ describe('the room’s television wears Deckster’s hand (#1084)', () => {
       </TvChrome>,
     )
     expect(container.querySelector('[data-brand]')).toBeNull()
+  })
+})
+
+// The room's television is a stage (#1290, beställarens beslut A 2026-10-25): the card the latest
+// line was about, large, with that line under it — and no feed. «Senast» held three sentences over
+// two or three lines each beside a card of 190 px, and the room looked at the words. The code, the
+// game's name and the corner's buttons stand in a foot under the card. The observer's screen is
+// read at a desk and keeps its column.
+describe('the room’s television is a stage (#1290)', () => {
+  const room = (props: Partial<Parameters<typeof TvChrome>[0]> = {}) => {
+    const { view, log } = buildScene()
+    const snapshot = view(null)
+    const lines = log.map(projectActivity)
+    const out = render(
+      <TvChrome view={snapshot} activity={lines} roomCode="KX7P" title="Sal's Saloon" room {...props}>
+        <div />
+      </TvChrome>,
+    )
+    return { ...out, snapshot, lines }
+  }
+
+  it('holds up the latest card with its line under it, and keeps no feed', () => {
+    const { container, lines } = room()
+    expect(screen.queryByRole('list', { name: /senast/i })).toBeNull()
+    const stage = screen.getByRole('region', { name: /^kortet$/i })
+    expect(stage.classList.contains('byd-tv-stage')).toBe(true)
+    const last = lines.at(-1)!.intent as { component: string }
+    expect(stage.querySelector(`[data-inspect="${last.component}"]`)).toBeTruthy()
+    // The line is the one the card came from, said as the feed said it, in the seat's colour.
+    const caption = stage.querySelector('figcaption')!
+    expect(caption.textContent).toMatch(/^Bordet vände (?!ett kort)\S/)
+    expect(container.querySelector('.byd-tv-feed')).toBeNull()
+  })
+
+  it('names a card somebody points at, and nothing about the feed', () => {
+    const { snapshot, rerender, lines } = room()
+    const pointed = snapshot.components.find((c) => c.cardRef !== null && c.counter === undefined && c.id !== (lines.at(-1)!.intent as { component: string }).component)!
+    rerender(
+      <TvChrome view={snapshot} activity={lines} roomCode="KX7P" room inspecting={pointed}>
+        <div />
+      </TvChrome>,
+    )
+    const stage = screen.getByRole('region', { name: /^kortet$/i })
+    expect(stage.querySelector(`[data-inspect="${pointed.id}"]`)).toBeTruthy()
+    expect(stage.querySelector('figcaption')!.textContent).not.toMatch(/vände/)
+  })
+
+  it('stands the way in, the game and the brand in a foot under the card', () => {
+    const { container } = room()
+    const foot = container.querySelector('[data-tv] > aside > .byd-tv-foot')!
+    expect(foot).toBeTruthy()
+    expect(within(foot as HTMLElement).getByText('KX7P')).toBeTruthy()
+    expect(foot.querySelector('[data-brand]')).toBeTruthy()
+    expect(within(foot as HTMLElement).getByRole('heading', { level: 1 }).textContent).toMatch(/^Sal's Saloon/)
+    const stage = container.querySelector('.byd-tv-stage')!
+    expect(stage.compareDocumentPosition(foot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('is as wide as the screen measured it', () => {
+    const { container } = room({ stage: 640 })
+    expect((container.querySelector('[data-tv]') as HTMLElement).style.getPropertyValue('--byd-tv-stage')).toBe('640px')
+  })
+
+  it('leaves the observer’s column as it was', () => {
+    const { view, log } = buildScene()
+    const { container } = render(
+      <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P">
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.getByRole('list', { name: /senast/i })).toBeTruthy()
+    expect(container.querySelector('.byd-tv-stage, .byd-tv-foot')).toBeNull()
   })
 })

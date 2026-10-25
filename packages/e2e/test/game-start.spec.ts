@@ -117,10 +117,10 @@ test.describe('bordet ett nytt spel föds med', () => {
     await tile.click()
 
     // Att ordningen faktiskt ändras är motorns grind. Det här är att blandningen kom hela vägen
-    // fram: bordets egen händelselista säger att draghögen blandades, med designerns eget namn
-    // på högen (A4), och inga kort har lämnat den.
-    const feed = screen.page.locator('ol[aria-labelledby="tv-feed"] li')
-    await expect(feed.first()).toHaveText(/blandade Draghög/)
+    // fram: högen säger själv att den blandades (#718), med designerns eget namn på högen (A4), och
+    // inga kort har lämnat den. Rummets TV har ingen händelselista sedan scenen (#1290).
+    const said = screen.page.locator(`[data-zone="${doc.setup.deckZone}"] .byd-pile-said`).first()
+    await expect(said).toHaveText(/^Draghög blandad$/)
     expect(await screen.page.locator(`[data-zone="${doc.setup.deckZone}"]`).first().getAttribute('data-count')).toBe('8')
   })
 })

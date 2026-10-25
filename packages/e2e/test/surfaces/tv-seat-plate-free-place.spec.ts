@@ -168,7 +168,8 @@ async function drawnWith(page: Page, selector: string): Promise<{ family: string
 const CELLS = [
   { device: { name: 'tv-1280', viewport: { width: 1280, height: 800 } }, seats: 4, card: 46 },
   { device: { name: 'tv-1280', viewport: { width: 1280, height: 800 } }, seats: 8, card: 31 },
-  { device: { name: 'tv-1920', viewport: { width: 1920, height: 1080 } }, seats: 4, card: 77 },
+  // The room's stage takes the felt's width down to 57 px at four seats (#1290, beslut A).
+  { device: { name: 'tv-1920', viewport: { width: 1920, height: 1080 } }, seats: 4, card: 57 },
   { device: { name: 'tv-1920', viewport: { width: 1920, height: 1080 } }, seats: 8, card: 45 },
 ] as const
 
