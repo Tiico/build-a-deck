@@ -186,7 +186,7 @@ function zodWithoutJsonSchema(): Plugin {
       const off = `const off = () => { throw new Error('JSON Schema is not built into the browser (vite.config.ts, zodWithoutJsonSchema, #1304)') }`
       // The processors are called as they are, the methods are made per schema and called later.
       if (real.endsWith('json-schema-processors.js')) {
-        const names = [...readFileSync(real, 'utf8').matchAll(/^export (?:const|function) (\w+)/gm)].map((m) => m[1]!)
+        const names = [...readFileSync(real, 'utf8').matchAll(/^export (?:const|function) (\w+)/gm)].flatMap((m) => (m[1] ? [m[1]] : []))
         if (names.length < 10) throw new Error(`read only ${names.length} exports out of ${real}; zod has changed how it writes them`)
         return `${off}\nexport const ${names.map((n) => `${n} = off`).join(', ')}`
       }
