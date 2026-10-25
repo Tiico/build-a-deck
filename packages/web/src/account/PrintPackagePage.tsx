@@ -115,7 +115,7 @@ export function PrintPackagePage({ onNavigate = (url) => location.assign(url) }:
       live = false
     }
   }, [http, pictures])
-  usePageTitle({ state: offline ? 'offline' : loaded === undefined ? 'loading' : null, route: loaded === null ? 'login' : null, game: doc?.name ?? null })
+  usePageTitle({ state: offline ? 'offline' : loaded === undefined ? 'loading' : null, route: loaded === null ? 'login' : null, game: doc?.name ?? null, part: doc ? t('print.title') : null })
 
   const withServer = (path: string, q: URLSearchParams) => {
     if (server) q.set('server', server)

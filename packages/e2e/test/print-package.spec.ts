@@ -38,7 +38,7 @@ test.describe('the print package', () => {
     await page.getByRole('button', { name: 'Tryckpaketet…' }).click()
     await expect(page).toHaveURL(new RegExp(`/print-package\\?project=${id}`))
     await expect(page.getByRole('heading', { level: 1, name: /^Tryckpaketet/ })).toBeVisible()
-    await expect(page).toHaveTitle('Tryckpaketet · Skogens herrar · Deckster')
+    await expect(page).toHaveTitle('Skogens herrar · Tryckpaketet · Deckster')
     for (const name of ['Så skärs ett kort', 'Leken: 3 kort', 'Det som inte trycks', 'Testtryckeriets krav', 'Paketet']) await expect(page.getByRole('region', { name })).toBeVisible()
     const slip = page.getByRole('complementary', { name: 'Följesedel' })
     await expect(slip).toContainText('Exempel · inget riktigt pris')
