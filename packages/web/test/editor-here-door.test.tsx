@@ -31,6 +31,7 @@ const document_ = (html: string, extra: string) =>
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
 const OTHERS = ['Bo', 'Lo', 'Mi', 'Ylva', 'Gus', 'Åsa', 'Pim']
+const COUNTS = [1, 2, 4, 8] as const
 
 let run: Running
 let browser: Browser
@@ -62,6 +63,7 @@ async function withIn(width: number, n: number): Promise<string> {
     const door = await screen.findByRole('button', { name: 'Dela · vilka som har spelet' })
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(1))
     for (const name of OTHERS.slice(0, n - 1)) others.push(await ProjectClient.open({ http: run.http, id: run.projectId, name }))
+    // The door's name says how many are here: the stack is hidden from a reader.
     if (n > 1) await screen.findByRole('button', { name: `Dela: vilka som har spelet, ${n} online` })
     return document.querySelector('.byd-editor')!.outerHTML
   } finally {
@@ -70,7 +72,8 @@ async function withIn(width: number, n: number): Promise<string> {
   }
 }
 
-// Where every piece of the header stands, left and right edge, by what it is.
+// Where every piece of the header stands, left and right edge, by what it is, and what the door
+// hangs from the header's edge.
 const row = (page: Page) =>
   page.evaluate(() => {
     const header = document.querySelector('.byd-editor > header')!
@@ -89,9 +92,33 @@ const row = (page: Page) =>
       const b = el.getBoundingClientRect()
       at[name] = [b.left, b.right]
     }
-    const door = header.querySelector(':scope > .byd-editor-here')!.getBoundingClientRect()
+    const doorEl = header.querySelector(':scope > .byd-editor-here')!
+    const door = doorEl.getBoundingClientRect()
     const tap = parseFloat(getComputedStyle(document.querySelector('.byd-editor')!).getPropertyValue('--byd-tap'))
-    return { at, door: { left: door.left, width: door.width }, tap }
+    const tabs = [...header.querySelectorAll('[role=tab]')]
+    const lastTab = tabs[tabs.length - 1]!.getBoundingClientRect()
+    const save = header.querySelector(':scope > .byd-editor-save')!.getBoundingClientRect()
+    const edge = header.getBoundingClientRect().bottom
+    const stackEl = doorEl.querySelector('.byd-editor-here-others')
+    const stack = stackEl && (() => {
+      const b = stackEl.getBoundingClientRect()
+      // Each face, and whether it is what is drawn at its own middle: a face under a strip that
+      // stands below the header is a face nobody sees.
+      const faces = [...stackEl.children].map((face) => {
+        const f = face.getBoundingClientRect()
+        const top = document.elementFromPoint(f.left + f.width / 2, f.top + f.height / 2)
+        return { said: face.textContent, drawn: top !== null && face.contains(top) }
+      })
+      return { left: b.left, right: b.right, middle: b.top + b.height / 2, below: b.bottom - edge, faces, hidden: stackEl.getAttribute('aria-hidden') }
+    })()
+    return {
+      at,
+      door: { left: door.left, width: door.width, faces: doorEl.querySelectorAll(':scope > i').length },
+      tap,
+      room: { after: lastTab.right, before: save.left },
+      edge,
+      stack,
+    }
   })
 
 async function laid(html: string, width: number, extra: string) {
@@ -123,3 +150,36 @@ describe('the door to who has the game at 1024 (L63, #1250)', () => {
   }, 60_000)
 })
 
+// The others hang from the header's edge (L63, reviderat 2026-10-24, variant B). With 2, 4 and 8
+// in, at the three widths the desk is judged at and in both faces, nothing before «Dela» is a
+// pixel from where it stood alone — at 1280 the tabs slid 58–81 px and at 1440 in the wide face
+// 69–89 px, and the game's name was cut to «S…» (#1250). The door keeps its width, the stack is
+// drawn where the decision put it, over whatever stands under the header, and never under the
+// neighbours in the row.
+describe('the people in the header stand still (L63, #1250)', () => {
+  for (const width of [1024, 1280, 1440]) {
+    it(`moves nothing before «Dela» at ${width} with 1, 2, 4 and 8 in`, async () => {
+      const html: Record<number, string> = {}
+      for (const n of COUNTS) html[n] = await withIn(width, n)
+      for (const [face, extra] of Object.entries(FACES)) {
+        const alone = await laid(html[1]!, width, extra)
+        expect(alone.stack, 'alone, nothing hangs from the header').toBeNull()
+        expect(alone.door.faces).toBe(1)
+        for (const n of COUNTS.slice(1)) {
+          const m = await laid(html[n]!, width, extra)
+          expect({ face, n, door: m.door, at: m.at }).toEqual({ face, n, door: alone.door, at: alone.at })
+          const others = n - 1
+          const said = others <= 3 ? OTHERS.slice(0, others).map((who) => who[0]) : [...OTHERS.slice(0, 2).map((who) => who[0]), `+${others - 2}`]
+          const stack = m.stack!
+          expect({ face, n, said: stack.faces.map((f) => f.said), drawn: stack.faces.every((f) => f.drawn), hidden: stack.hidden }).toEqual({ face, n, said, drawn: true, hidden: 'true' })
+          // Its middle on the header's lower edge, reaching at most ten pixels under it.
+          expect(Math.abs(stack.middle - m.edge), `${face} ${n}: the stack's middle on the edge`).toBeLessThanOrEqual(1.5)
+          expect(stack.below).toBeLessThanOrEqual(10)
+          // Between the last tab and «Spara»: under the door and nothing else in the row.
+          expect(stack.left, `${face} ${n}: clear of the tabs`).toBeGreaterThanOrEqual(m.room.after - 0.5)
+          expect(stack.right, `${face} ${n}: clear of «Spara»`).toBeLessThanOrEqual(m.room.before + 0.5)
+        }
+      }
+    }, 120_000)
+  }
+})

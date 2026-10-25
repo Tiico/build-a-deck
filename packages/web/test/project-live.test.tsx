@@ -171,7 +171,9 @@ describe('who else is in the editor (D3)', () => {
 
     const bo = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Bo' })
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(2))
-    expect(door.textContent).toContain('2 online')
+    // The door's name says the count; Bo hangs from the header's edge (L63, #1250).
+    expect(door.getAttribute('aria-label')).toBe('Dela: vilka som har spelet, 2 online')
+    expect(door.querySelector('.byd-editor-here-others')?.textContent).toBe('B')
     bo.close()
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(1))
   })
