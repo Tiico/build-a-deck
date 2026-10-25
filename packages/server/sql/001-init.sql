@@ -315,3 +315,30 @@ create table if not exists erasures (
   issued_at   timestamptz,
   project_id  text
 );
+
+-- An account that deleted itself (#1280, G6) is an entry too: named by its id, which nothing else
+-- in the database says afterwards, so that a restore to an earlier point deletes it again. A ledger
+-- made before it checks its kinds without it; the check is replaced once, and only then.
+alter table erasures add column if not exists account_id text;
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'erasures'::regclass and conname = 'erasures_kind_check'
+      and pg_get_constraintdef(oid) not like '%account%'
+  ) then
+    alter table erasures drop constraint erasures_kind_check;
+    alter table erasures add constraint erasures_kind_check check (kind in ('guest', 'table', 'game', 'account'));
+  end if;
+end $$;
+
+-- What a deleted account's games named, put down for the sweep (#1280, G6, DRIFT §4): a picture or
+-- a typeface by its hash (`asset`), and a rendering the account bore (`render`), each with the day
+-- it may go. When the day comes it goes only if nothing still there names it; either way the row
+-- goes. A hash says nothing about anybody.
+create table if not exists asset_sweeps (
+  hash    text not null,
+  kind    text not null check (kind in ('asset', 'render')),
+  due_at  timestamptz not null,
+  primary key (hash, kind)
+);

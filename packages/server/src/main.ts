@@ -8,7 +8,9 @@ import { MemorySurveyStore, type SurveyStore } from './surveys.js'
 import { MemoryAuthStore, mailerFromEnv, type AuthStore } from './auth.js'
 import { corpusFromEnv } from './corpus.js'
 import { MemoryAssetStore, type AssetStore } from './assets.js'
-import { PostgresLogStore } from './store-postgres.js'
+import { PostgresLogStore, type AssetSweep } from './store-postgres.js'
+import type { AccountForgetting } from './store.js'
+import { memoryForgetting } from './forget-memory.js'
 import { randomBytes } from 'node:crypto'
 import { AiKeyVault, MemoryAiKeyStore, masterKeyFrom, type AiKeyStore } from './ai-keys.js'
 import { providersFromEnv } from './ai-providers.js'
@@ -91,6 +93,12 @@ let assets: AssetStore
 let aiKeys: AiKeyStore
 let accountPlans: AccountPlanStore
 let erasures: ErasureStore
+// What a deleted account's games named, swept 30 days on (#1280); Postgres only, since nothing in
+// memory lives that long.
+let assetSweep: AssetSweep | null = null
+// The memory stores' share of an account that deletes itself (#1280), filled in once the key vault
+// is made below.
+let forgetting: AccountForgetting = { forget: async () => false }
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -107,6 +115,7 @@ if (databaseUrl) {
   aiKeys = pg.aiKeys()
   accountPlans = pg.accountPlans()
   erasures = pg.erasures()
+  assetSweep = pg.assetSweep(objects)
   closeStore = async () => {
     await pg.close()
     await rq.close()
@@ -124,7 +133,7 @@ if (databaseUrl) {
   auth = new MemoryAuthStore()
   aiKeys = new MemoryAiKeyStore()
   accountPlans = new MemoryAccountPlanStore()
-  erasures = memory.erasures(answers, projects)
+  erasures = memory.erasures(answers, projects, { forget: (account) => forgetting.forget(account) })
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
@@ -146,6 +155,7 @@ const contact = process.env['BYD_CONTACT']
 const mailer = mailerFromEnv(process.env)
 const master = masterKeyFrom(process.env['AI_KEY_SECRET']) ?? (databaseUrl ? null : randomBytes(32))
 const ai = { vault: new AiKeyVault(aiKeys, master), providers: providersFromEnv(process.env) }
+if (!databaseUrl) forgetting = memoryForgetting({ auth: auth instanceof MemoryAuthStore ? auth : null, projects: projects instanceof MemoryProjectStore ? projects : null, vault: ai.vault, plans: accountPlans })
 // Whether keys can be kept, said once at start; never the secret, and never a key (DRIFT §8).
 console.log(JSON.stringify({ msg: 'ai-keys', sealing: master !== null, ...(master === null ? { warning: 'AI_KEY_SECRET is unset or not 32 bytes; AI keys cannot be saved' } : {}) }))
 // Read once: an account taken off the list is shut out at the next start (#1011). The log says how
@@ -160,11 +170,13 @@ console.log(JSON.stringify(plansLine(plans)))
 // stale tables below. The line says how many went from each table, never which (DRIFT §8). A sweep
 // that fails is said and does not keep the door shut: the next one comes within the hour.
 // The guests whose twelve months are over, and the tables of games taken away before #1279, are
-// masked in the same round (G6, F4); the first round after the deploy is the one-off run over every
+// masked in the same round (G6, F4), and a deleted account's pictures and renderings that nothing
+// else names once their 30 days are over (#1280); the first round after the deploy is the one-off run over every
 // game ever taken away, and every later one finds only what it has not done.
 const sweep = async () => {
   await sweepSpent({ auth, projects, store }, new Date(), inviteKeepMs).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'sweep', error: (e as Error).message })))
   await sweepErasures(erasures, new Date()).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'erase', error: (e as Error).message })))
+  await assetSweep?.sweep(new Date()).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'sweep-assets', error: (e as Error).message })))
 }
 await sweep()
 // Testtryckeriet stands where a print partner will (F1, F2, #1208): the print package is prepared

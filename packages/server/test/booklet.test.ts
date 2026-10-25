@@ -294,6 +294,7 @@ describe('ordering the booklet (B7)', () => {
       objects: {
         put: objects.put.bind(objects),
         get: objects.get.bind(objects),
+        delete: objects.delete.bind(objects),
         check: objects.check.bind(objects),
         link: async (key: string, ttl: number, disposition?: string) => {
           asked.push(disposition)

@@ -14,7 +14,10 @@ import type { SurveyRecord } from './surveys.js'
 //   from it;
 // - a table (`table`): every admission at it, and every line;
 // - a game (`game`): every table started from it, while the sessions and their bearer stay for the
-//   quotas (#1196).
+//   quotas (#1196);
+// - an account (`account`, #1280): the account deleted itself. Its tables claimed (G1) are masked as
+//   a guest's are, its games go, and nothing in the database says its id or its address afterwards
+//   but this ledger; the pictures and renderings only its games named are swept 30 days later.
 //
 // Every erasure is written in the ledger (`erasures`) in the transaction that does it: what, which
 // id and when, and never a name. A restore to a point before it is put right by running the ledger
@@ -30,9 +33,14 @@ export type Erasure =
   | { kind: 'guest'; session: string; seat: string | null; issuedAt: string }
   | { kind: 'table'; session: string }
   | { kind: 'game'; project: string }
+  | { kind: 'account'; account: string }
 export type LedgerEntry = Erasure & { id: string; at: string; reason: ErasureReason }
 // What an erasure changed, counted: never what it changed from.
-export type Erased = { sessions: string[]; lines: number; guests: number; surveys: number }
+export type Erased = { sessions: string[]; lines: number; guests: number; surveys: number; accounts: number }
+export const NOTHING_ERASED: Erased = { sessions: [], lines: 0, guests: 0, surveys: 0, accounts: 0 }
+// How long a deleted account's pictures, typefaces and renderings stay before the sweep takes the
+// ones nothing else names (G6, F4): the 30 days the privacy policy and the goodbye mail promise.
+export const ACCOUNT_SWEEP_DAYS = 30
 
 export type ErasureStore = {
   // Applies the entries in one transaction and writes each in the ledger, once per id: an entry
@@ -116,9 +124,15 @@ function linesOf(log: readonly Applied[], guests: readonly GuestRecord[], g: Gue
     .flatMap((s) => s.lines)
 }
 
+// The lines an admission wrote, every one of them: what an account's extract says of a table it
+// claimed (#1280), and what an erasure asked for masks.
+export const ownLines = (log: readonly Applied[], guests: readonly GuestRecord[], g: GuestRecord): Applied[] => linesOf(log, guests, g, () => false)
+// Whether a survey was answered under the admission (#1021).
+export { answeredBy }
+
 // What an erasure changes at one table. Only what is not masked yet is named, so running an
 // erasure again names nothing.
-export function changesAt(data: TableData, erasure: Erasure, reason: ErasureReason): Changes {
+export function changesAt(data: TableData, erasure: Exclude<Erasure, { kind: 'account' }>, reason: ErasureReason): Changes {
   const changed = (line: Applied) => redactLine(line) !== line
   if (erasure.kind !== 'guest') {
     return {
@@ -179,7 +193,7 @@ export async function sweepErasures(erasures: ErasureStore, now: Date): Promise<
   const retained = await erasures.retained(retentionCutoff(now).toISOString())
   const orphans = await erasures.orphans()
   const entries = [...retained.map((g) => entry(g, 'retention', now)), ...orphans.map((project) => entry({ kind: 'game', project }, 'removed', now))]
-  const done = entries.length > 0 ? await erasures.erase(entries) : { sessions: [], lines: 0, guests: 0, surveys: 0 }
+  const done = entries.length > 0 ? await erasures.erase(entries) : { ...NOTHING_ERASED, sessions: [] }
   console.log(JSON.stringify({ msg: 'erased', retained: retained.length, orphans: orphans.length, tables: done.sessions.length, lines: done.lines, guests: done.guests, surveys: done.surveys }))
   return { ...done, retained: retained.length, orphans: orphans.length }
 }
@@ -189,8 +203,11 @@ export async function sweepErasures(erasures: ErasureStore, now: Date): Promise<
 // entry written back in the ledger it may be missing from. `entries` are the ledger as it was read before the restore; without
 // them, the database's own.
 export async function replayLedger(stores: { erasures: ErasureStore; projects?: Projects | null }, entries?: readonly LedgerEntry[]): Promise<Erased & { entries: number }> {
-  const all = [...(entries ?? (await stores.erasures.ledger()))].sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.id.localeCompare(b.id))
-  const sum: Erased = { sessions: [], lines: 0, guests: 0, surveys: 0 }
+  // An account goes before the games it took with it in the same moment: what only its games named
+  // is read out of those games, so they must still be there when the account is erased again.
+  const rank = (e: LedgerEntry) => (e.kind === 'account' ? 0 : 1)
+  const all = [...(entries ?? (await stores.erasures.ledger()))].sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || rank(a) - rank(b) || a.id.localeCompare(b.id))
+  const sum: Erased = { ...NOTHING_ERASED, sessions: [] }
   for (const e of all) {
     if (e.kind === 'game' && e.reason === 'removed' && stores.projects) await stores.projects.remove(e.project)
     const done = await stores.erasures.erase([e])
@@ -198,6 +215,7 @@ export async function replayLedger(stores: { erasures: ErasureStore; projects?: 
     sum.lines += done.lines
     sum.guests += done.guests
     sum.surveys += done.surveys
+    sum.accounts += done.accounts
   }
   return { ...sum, entries: all.length }
 }
@@ -221,10 +239,12 @@ export function parseLedger(text: string): LedgerEntry[] {
       if (id === null || at === null || reason === null || !['request', 'retention', 'removed'].includes(reason)) throw new Error(`not a ledger line: ${l.slice(0, 80)}`)
       const session = text('session')
       const project = text('project')
+      const account = text('account')
       const issuedAt = text('issuedAt')
       if (e['kind'] === 'guest' && session !== null && issuedAt !== null) return { id, at, reason, kind: 'guest', session, seat: text('seat'), issuedAt }
       if (e['kind'] === 'table' && session !== null) return { id, at, reason, kind: 'table', session }
       if (e['kind'] === 'game' && project !== null) return { id, at, reason, kind: 'game', project }
+      if (e['kind'] === 'account' && account !== null) return { id, at, reason, kind: 'account', account }
       throw new Error(`not a ledger line: ${l.slice(0, 80)}`)
     })
 }

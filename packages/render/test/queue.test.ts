@@ -69,7 +69,7 @@ describe('render queue (DRIFT §6)', () => {
 describe('outputs in an object store (DRIFT §4)', () => {
   it('keeps outputs in the object store under the hash, and links to them when the store can', async () => {
     const objects = new MemoryObjectStore()
-    const linking = { ...objects, put: objects.put.bind(objects), get: objects.get.bind(objects), check: objects.check.bind(objects), link: async (key: string, ttl: number) => `https://r2.test/${key}?ttl=${ttl}` }
+    const linking = { ...objects, put: objects.put.bind(objects), get: objects.get.bind(objects), delete: objects.delete.bind(objects), check: objects.check.bind(objects), link: async (key: string, ttl: number) => `https://r2.test/${key}?ttl=${ttl}` }
     const q = new MemoryRenderStore(linking)
     await q.enqueue(req('a', 'texture', 1))
     const job = await q.claim(5)

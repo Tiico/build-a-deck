@@ -249,6 +249,7 @@ describe('which writes stay open to an account that has not accepted (#1272)', (
       'POST ^\\/me\\/terms$',
       'PUT ^\\/me\\/name$',
       'DELETE ^\\/me\\/ai-key$',
+      'DELETE ^\\/me$',
       'POST ^\\/projects\\/[^/]+\\/export$',
       'POST ^\\/projects\\/[^/]+\\/print$',
       'POST ^\\/rooms\\/[^/]+\\/join$',
@@ -263,6 +264,9 @@ describe('which writes stay open to an account that has not accepted (#1272)', (
     expect(openToTheDue('POST', '/projects/x/export/more')).toBe(false)
     expect(openToTheDue('POST', '/projects')).toBe(false)
     expect(openToTheDue('PATCH', '/me/name')).toBe(false)
+    // Deleting the account is her right whatever she has agreed to (#1280, G6); nothing under it is.
+    expect(openToTheDue('DELETE', '/me')).toBe(true)
+    expect(openToTheDue('DELETE', '/me/played')).toBe(false)
     expect(openToTheDue('PUT', '/me/ai-key')).toBe(false)
   })
 })
