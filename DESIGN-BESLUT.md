@@ -1382,6 +1382,12 @@ Följdkrav:
 Händelseschemat är ett kontrakt som måste versioneras och migreras vid varje ändring.
 Migreringsstrategin är beslutad i DRIFT §7 och byggd 2026-09-07: version per rad, upcasters vid inläsning.
 
+Byggt 2026-10-24 (#1276, del av #1269):
+Fälten i en rad som bär en människas egna ord är en sluten lista, `PERSONAL_FIELDS` i `packages/protocol`: `seat.claim.name`, `flag.note`, `flag.observer`, `note.add.text` och `note.edit.text`.
+Ett test faller för varje nytt textfält i ett intent eller ett utfall som varken står där eller i `IMPERSONAL_FIELDS`, och korpusens anonymisering läser samma lista.
+`redactLine` i motorn byter de fälten mot ett reserverat värde, och en maskad logg spelar upp till samma spel och samma vyer, med namnen och texterna maskade.
+Det ändrar inte det här beslutet: ingenting maskar en rad i drift, och om loggen någonsin skrivs om är F7 i #1269, som beställaren inte har avgjort.
+
 Byggt 2026-09-18:
 E2E-lagret ovanpå återspelningen är `packages/e2e`, en egen Playwright-svit med `@playwright/test`.
 Den kör mot produkten som lådan kör den (DRIFT §2): webben byggd och serverad av servern ur `STATIC_DIR`, allt på ett ursprung, inga `server=`-parametrar någonstans.

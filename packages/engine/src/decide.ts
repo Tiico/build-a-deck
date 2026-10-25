@@ -1,4 +1,4 @@
-import { NOTE_MAX, PHYSICAL_VERBS, SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
+import { NOTE_MAX, PHYSICAL_VERBS, REDACTED, SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
 import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import { sees } from './project.js'
@@ -167,6 +167,8 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'seat.claim': {
       const s = state.seats[it.seat]
       if (!s) return `unknown seat ${it.seat}`
+      // What a masked name says (#1276) is nobody's name, so nobody sits down under it.
+      if (it.name.trim() === REDACTED) return 'the placeholder of a masked name is nobody’s name'
       return s.name === null ? null : `seat ${it.seat} is already claimed`
     }
     case 'seat.release': {

@@ -556,11 +556,14 @@ Deploy är pull-baserad (§7): `ops/deploy.sh` via en systemd-timer hämtar tagg
 CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgres och Chromium på varje pull request, med replay-korpusen i `corpus/` som grind, och bygger bilderna till GHCR när en `v*`-tagg pushas.
 Trunken har ingen CI framför sig; `.githooks/pre-push` kör samma grindar lokalt innan något når `main`.
 Korpusen anonymiserar både människorna och spelet (#540, beställarens beslut 2026-09-28), eftersom repot är publikt och en riktig logg bär designerns opublicerade spel.
-Människorna: gästernas namn blir `Spelare N`, och flaggornas text och observatörerna tas bort.
+Människorna: gästernas namn blir `Spelare N`, flaggornas kommentarer `(kommentar)`, observatörernas namn `Observatör` och anteckningsblockets rader `(anteckning)`.
+Vilka fält det är står på ett ställe sedan 2026-10-24 (#1276): `PERSONAL_FIELDS` i `packages/protocol`, som `anonymise` går igenom i stället för att räkna upp verben, så att ett personfält som läggs till i protokollet anonymiseras samma dag som det listas.
+Ett test i protokollet går igenom varje fält i varje intent och utfall som kan bära text och faller för ett som varken är listat där eller uttryckligen sagt inte vara en persons (`IMPERSONAL_FIELDS`), och ett test i servern gör detsamma för varje kolumn i de två schemana.
+`redactLine` och `redactLog` i motorn maskar samma fält till ett reserverat värde, `REDACTED`, utan att spelet ändras; ingenting maskar i drift, eftersom om och när loggen någonsin skrivs om är F7 i #1269 och inte beslutat.
 Spelet: kortens id blir `kort-N` i den ordning de först förekommer, kortens kolumner blir `fält-N` och deras innehåll `värde-N` (kolumn för kolumn, så att en fråga till korten hittar samma kort), och zonernas, genvägarnas och åtgärdernas text blir `Zon N`, `Genväg N` och `Åtgärd N`.
 Zonernas id står kvar, eftersom intents och motorn pekar på dem och editorn ger dem generiska namn.
 Tidsstämplarna står kvar som de loggades.
-Anonymiseringen går igenom hela posten, också en tillbakaspolnings lagrade bord.
+Spelets anonymisering går igenom hela posten, också en tillbakaspolnings lagrade bord; det bordet är zoner och komponenter och bär inga platser och inga namn, vilket motorns `redact.test.ts` håller.
 `pnpm --filter @byd/engine corpus <namn> <https://…/sessions/:id/export>` lägger till en riktig logg, med ägarens kaka i `BYD_COOKIE`, och tar bara bord ur spel som kontot äger tills villkoren säger något annat.
 Exporten och enkätsvaren (`GET /sessions/:id/surveys`) lämnas bara till ett konto som projektet låter öppna sina bord som värd, eftersom loggen bär varje hand, gästernas namn och flaggornas text; skriptet tar kontots kaka i `BYD_COOKIE`.
 Undantaget med samtycke, och hur det blir en behörighet på lådan, står i §7 (#1011).
