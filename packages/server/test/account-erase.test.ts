@@ -72,7 +72,8 @@ for (const backend of accountBackends) {
       // The ledger names the account by its id, and nothing else does.
       const ledger = await db.run.erasures!.ledger()
       expect(ledger.filter((e) => e.kind === 'account')).toEqual([expect.objectContaining({ account: w.id, reason: 'request' })])
-      expect(ledger.filter((e) => e.kind === 'game').map((e) => (e.kind === 'game' ? e.project : '')).sort()).toEqual([w.ids.forest, w.ids.star].sort())
+      // Her two games, beside every world's Månskugga, which Sara took away (#1334).
+      expect(ledger.filter((e) => e.kind === 'game').map((e) => (e.kind === 'game' ? e.project : '')).filter((p) => !p.startsWith('moon-')).sort()).toEqual([w.ids.forest, w.ids.star].sort())
       expect(JSON.stringify(ledger)).not.toContain(w.nicklas.email)
 
       if (db.rows) {
