@@ -1,4 +1,4 @@
-import { PHYSICAL_VERBS, type Applied, type GameVersionId } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied, type GameVersionId, type Seating } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import type { Deck } from './faces.js'
 import { QuotaReached, startThatFrees, tableGrowth, withFrees, type TableCeilings, type TableUse } from './quotas.js'
@@ -18,7 +18,7 @@ export type { Deck }
 // the test leader who pressed; one opened at the raw door by the account that opened it. It stays
 // when the game is taken away, which is why it is written down rather than read through `project`.
 // A table from a game from before accounts, or from a server without accounts, has none.
-export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; accountId?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
+export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; accountId?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string; seating?: Seating }
 // A session as it is read back: everything but its decks (#1012). A deck names its pictures and
 // typefaces by hash since #1028, but one made before that carries them as data URLs, tens of
 // megabytes for a game with art on every card — and the session is read by every door a table has:
