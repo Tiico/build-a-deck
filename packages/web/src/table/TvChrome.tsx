@@ -66,6 +66,9 @@ export type TvChromeProps = {
   // The owner's way back to the game's editor (#1217, L80): on the brand's line, at its end, so it
   // costs the column no height on the room's television; alone on that line on the observer's.
   back?: ReactNode
+  // How wide the room's stage stands beside the felt (#1290), as `stageWidth` measured it from the
+  // felt's fit. Without it the stage is the old column's 360 px.
+  stage?: number | undefined
   children: ReactNode
 }
 
@@ -81,7 +84,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, back, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, back, stage, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
@@ -130,8 +133,100 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
   // looked up in the very snapshot being drawn, so a line about a card this screen can no longer
   // see leaves the panel where it was rather than naming something that is not there.
   const shown = inspecting ?? lastCard(view, activity)
+  // The line under the room's stage (#1290): the one the card came from, said as the feed said it
+  // and in its seat's colour, for as long as the card is the latest. A card somebody points at is
+  // named and nothing more — no line of the log is about the pointing.
+  const told = inspecting ? null : lineOf(view, activity, shown)
+
+  const brand = room && (
+    // Deckster's hand on the room's television (#1084, beslut B 2026-10-22): the mark and the name
+    // on a line of their own above the game's. The observer's screen is not the room's and goes
+    // without it.
+    <div className="byd-tv-brand" data-brand>
+      <DecksterMark />
+      <span>Deckster</span>
+      {back}
+    </div>
+  )
+  const head = (
+    <div className="byd-tv-head">
+      <h1>
+        {title ?? t('play.table')}
+        {version !== undefined && <em> {version}</em>}
+      </h1>
+      {/* The rulebook, beside the game's own name rather than over the felt (#30). */}
+      {rules}
+    </div>
+  )
+  const join = (
+    <>
+      {/* An ended table takes nobody in, so its code opens nothing (#717, #938): the row says
+          it has ended instead, and the help about joining goes with the code it was about. */}
+      {(roomCode || joinUrl) && view.ended && (
+        <div className="byd-tv-join" data-join-ended>
+          <span>{t('ended.title')}</span>
+        </div>
+      )}
+      {(roomCode || joinUrl) && !view.ended && (
+        <div className="byd-tv-join byd-help-row">
+          <span>{t('tv.join')}</span>
+          {/* The code is the address (#675, beslut C): the host on its own line, and `/KOD` on the
+              line under it, large, as the rest of one address — what a phone types is what the
+              room reads, and it lands in the seat picker. The host is the screen's own origin, so
+              the box says its own name and a development stack says its own. The slash is drawn
+              by the stylesheet, so the code read off the screen is the code. */}
+          {roomCode && host && (
+            <p className="byd-tv-address" data-address>
+              {host}
+            </p>
+          )}
+          {roomCode && <strong>{roomCode}</strong>}
+          {/* One line of the TV's own heading, and nobody presses a television: the code stays a
+              picture there (#225). The room's code stands beside it in plain figures anyway. */}
+          {joinUrl && <QrCode text={joinUrl} label={t('qr.join.alt', { code: roomCode ?? '', url: joinUrl })} size={52} enlarge={false} />}
+          {/* The one help pattern (L32, #305), after the code and the square rather than in
+              front of them: what the room reads from across it comes first, and what a joined
+              phone becomes is behind the question mark instead of on a second line over the
+              felt. The row is the box's anchor, so a box that turns upward clears the code and
+              not merely the ring. */}
+          <Help topic={t('tv.join.help.topic')}>
+            <p>{t('tv.join.help.how')}</p>
+            <p>{t('tv.join.help.phone')}</p>
+          </Help>
+        </div>
+      )}
+    </>
+  )
+  const progress = rendering && (
+    <div className="byd-tv-render" role="status" {...(rendering.stalled ? { 'data-stalled': '' } : {})}>
+      <span>{t(rendering.stalled ? 'tv.render.stalled' : 'tv.render')}</span>
+      <b>{t('tv.render.count', { done: rendering.done, total: rendering.total })}</b>
+      <i aria-hidden="true" style={{ ['--byd-render-done' as string]: `${(100 * rendering.done) / Math.max(1, rendering.total)}%` }} />
+    </div>
+  )
+  const cornerEl = corner && <div className="byd-tv-corner" ref={corner} />
+  const card = shown ? (
+    <div
+      data-inspect={shown.id}
+      data-face={shown.cardRef === null ? 'back' : 'front'}
+      style={shown.cardRef === null ? undefined : { ['--hue' as string]: hue(shown.cardRef) }}
+    >
+      <Texture faces={faces} c={shown} />
+      <span>{cardWord(shown) ?? t('tv.inspect.hidden')}</span>
+    </div>
+  ) : (
+    <div data-empty>
+      <span>{t('tv.inspect.empty')}</span>
+    </div>
+  )
+  const watching = observers.length > 0 && (
+    <div className="byd-tv-observers" data-observers>
+      <i />
+      <span>{t(observers.length === 1 ? 'tv.observers.one' : 'tv.observers.other', { names: observers.map((o) => o.name).join(', ') })}</span>
+    </div>
+  )
   return (
-    <div data-tv {...(room ? { 'data-room': '' } : {})}>
+    <div data-tv {...(room ? { 'data-room': '' } : {})} style={room && stage !== undefined ? { ['--byd-tv-stage' as string]: `${stage}px` } : undefined}>
       <main>
         {children}
         {/* «Visa för alla» (#508, beslut B): over the felt and not in the column, because the felt
@@ -152,123 +247,81 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
           </div>
         )}
       </main>
-      <aside>
-        {/* The observer's screen has no brand's line, so the way back stands alone above her note. */}
-        {!room && back && <div className="byd-tv-brand">{back}</div>}
-        {note}
-        {/* Deckster's hand on the room's television (#1084, beslut B 2026-10-22): the mark and the
-            name on a line of their own above the game's. The column is the felt's neighbour, so the
-            line costs the card being looked at its height and never the felt. The observer's screen
-            is not the room's and goes without it. */}
-        {room && (
-          <div className="byd-tv-brand" data-brand>
-            <DecksterMark />
-            <span>Deckster</span>
-            {back}
-          </div>
-        )}
-        <div className="byd-tv-head">
-          <h1>
-            {title ?? t('play.table')}
-            {version !== undefined && <em> {version}</em>}
-          </h1>
-          {/* The rulebook, beside the game's own name rather than over the felt (#30). */}
-          {rules}
-        </div>
-        {/* An ended table takes nobody in, so its code opens nothing (#717, #938): the row says
-            it has ended instead, and the help about joining goes with the code it was about. */}
-        {(roomCode || joinUrl) && view.ended && (
-          <div className="byd-tv-join" data-join-ended>
-            <span>{t('ended.title')}</span>
-          </div>
-        )}
-        {(roomCode || joinUrl) && !view.ended && (
-          <div className="byd-tv-join byd-help-row">
-            <span>{t('tv.join')}</span>
-            {/* The code is the address (#675, beslut C): the host on its own line, and `/KOD` on the
-                line under it, large, as the rest of one address — what a phone types is what the
-                room reads, and it lands in the seat picker. The host is the screen's own origin, so
-                the box says its own name and a development stack says its own. The slash is drawn
-                by the stylesheet, so the code read off the screen is the code. */}
-            {roomCode && host && (
-              <p className="byd-tv-address" data-address>
-                {host}
-              </p>
-            )}
-            {roomCode && <strong>{roomCode}</strong>}
-            {/* One line of the TV's own heading, and nobody presses a television: the code stays a
-                picture there (#225). The room's code stands beside it in plain figures anyway. */}
-            {joinUrl && <QrCode text={joinUrl} label={t('qr.join.alt', { code: roomCode ?? '', url: joinUrl })} size={52} enlarge={false} />}
-            {/* The one help pattern (L32, #305), after the code and the square rather than in
-                front of them: what the room reads from across it comes first, and what a joined
-                phone becomes is behind the question mark instead of on a second line over the
-                felt. The row is the box's anchor, so a box that turns upward clears the code and
-                not merely the ring. */}
-            <Help topic={t('tv.join.help.topic')}>
-              <p>{t('tv.join.help.how')}</p>
-              <p>{t('tv.join.help.phone')}</p>
-            </Help>
-          </div>
-        )}
-        {rendering && (
-          <div className="byd-tv-render" role="status" {...(rendering.stalled ? { 'data-stalled': '' } : {})}>
-            <span>{t(rendering.stalled ? 'tv.render.stalled' : 'tv.render')}</span>
-            <b>{t('tv.render.count', { done: rendering.done, total: rendering.total })}</b>
-            <i aria-hidden="true" style={{ ['--byd-render-done' as string]: `${(100 * rendering.done) / Math.max(1, rendering.total)}%` }} />
-          </div>
-        )}
-        {corner && <div className="byd-tv-corner" ref={corner} />}
-        <section className="byd-tv-inspect" aria-labelledby="tv-inspect">
-          <h2 id="tv-inspect">{t('tv.inspect')}</h2>
-          {shown ? (
-            <div
-              data-inspect={shown.id}
-              data-face={shown.cardRef === null ? 'back' : 'front'}
-              style={shown.cardRef === null ? undefined : { ['--hue' as string]: hue(shown.cardRef) }}
-            >
-              <Texture faces={faces} c={shown} />
-              <span>{cardWord(shown) ?? t('tv.inspect.hidden')}</span>
+      {room ? (
+        // The room's television (#1290, beställarens beslut A 2026-10-25): the column is a stage for
+        // the card the latest line was about, as large as the column less its line and its foot,
+        // and the feed is gone from it — the whole history is on every phone, and three sentences
+        // beside a card of 190 px were what the room ended up reading. What remains of the column
+        // stands in a foot under the card.
+        <aside>
+          <section className="byd-tv-stage" aria-label={t('tv.inspect')}>
+            <figure>
+              {card}
+              <figcaption style={!told || told.by === null ? undefined : { ['--seat' as string]: seatColor(seatIndex(told.by)) }}>
+                {told ? describeActivity(told, view, t) : shown ? cardWord(shown) ?? t('tv.inspect.hidden') : null}
+              </figcaption>
+            </figure>
+          </section>
+          <div className="byd-tv-foot">
+            <div className="byd-tv-way">
+              {join}
+              {cornerEl}
             </div>
-          ) : (
-            <div data-empty>
-              <span>{t('tv.inspect.empty')}</span>
+            <div className="byd-tv-name">
+              {brand}
+              {head}
+              {watching}
             </div>
-          )}
-        </section>
-        {/* On the room's television each seat's words stand on its plate on the felt (#573, beslut
-            C), and the column gives their height to the card being looked at and the latest moves. */}
-        {!room && (
+            {progress}
+          </div>
+        </aside>
+      ) : (
+        <aside>
+          {/* The observer's screen has no brand's line, so the way back stands alone above her note. */}
+          {back && <div className="byd-tv-brand">{back}</div>}
+          {note}
+          {head}
+          {join}
+          {progress}
+          {cornerEl}
+          <section className="byd-tv-inspect" aria-labelledby="tv-inspect">
+            <h2 id="tv-inspect">{t('tv.inspect')}</h2>
+            {card}
+          </section>
           <section className="byd-tv-seats" aria-labelledby="tv-seats">
             <h2 id="tv-seats">{t('tv.seats')}</h2>
             <PlaceLists view={view} activity={activity} dense={dense} onRead={onRead} />
           </section>
-        )}
-        <section className="byd-tv-feed" ref={feedRef}>
-          <h2 id="tv-feed">{t('play.latest')}</h2>
-          {/* A table nobody has touched yet (UX-16): the heading says what will fill it, rather
-              than standing over an empty list. The list itself comes back with the first line. */}
-          {recent.length === 0 ? (
-            <p data-empty>{t('tv.latest.empty')}</p>
-          ) : (
-            <ol aria-labelledby="tv-feed">
-              {recent.map((l) => (
-                <li key={l.seq} style={l.by === null ? undefined : { ['--seat' as string]: seatColor(seatIndex(l.by)) }}>
-                  <b>{l.seq}</b>
-                  <span>{describeActivity(l, view, t)}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-        {observers.length > 0 && (
-          <div className="byd-tv-observers" data-observers>
-            <i />
-            <span>{t(observers.length === 1 ? 'tv.observers.one' : 'tv.observers.other', { names: observers.map((o) => o.name).join(', ') })}</span>
-          </div>
-        )}
-      </aside>
+          <section className="byd-tv-feed" ref={feedRef}>
+            <h2 id="tv-feed">{t('play.latest')}</h2>
+            {/* A table nobody has touched yet (UX-16): the heading says what will fill it, rather
+                than standing over an empty list. The list itself comes back with the first line. */}
+            {recent.length === 0 ? (
+              <p data-empty>{t('tv.latest.empty')}</p>
+            ) : (
+              <ol aria-labelledby="tv-feed">
+                {recent.map((l) => (
+                  <li key={l.seq} style={l.by === null ? undefined : { ['--seat' as string]: seatColor(seatIndex(l.by)) }}>
+                    <b>{l.seq}</b>
+                    <span>{describeActivity(l, view, t)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+          {watching}
+        </aside>
+      )}
     </div>
   )
+}
+
+// The line the stage's card came from: the newest said line about it. `sayable` folds a played
+// card's flip into its move, so the line is the move that names where the card went.
+function lineOf(view: Snapshot, activity: readonly Activity[], card: VisibleComponentState | null) {
+  if (card === null) return null
+  const said = sayable(activity)
+  return said.findLast((line) => componentOf(line) === card.id) ?? null
 }
 
 // The newest line that is about a card the screen can still draw. Walked from the end rather than

@@ -2712,6 +2712,21 @@ Ett kort TV:n ser nedvänt behåller K8:s vy, eftersom en baksida upphållen fö
 Telefonens knapp «Visa för alla» (#518) står i läsvyn under kortet, på andras kort under «Ytorna» och som ett fjärde verb på ens egna kort i ett publikt område, och säger «Visas för alla» en stund efter trycket; den erbjuds bara på ett kort bordet ser uppvänt (`forTheRoom`: uppvänt i en zon som visar för alla, eller överst i en hög, K15), aldrig på ett handkort eller i ett område bara ägaren ser. Bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
 Grindarna: `packages/web/test/tv-show.test.tsx` (kortets bredd mot K26:s TV-golv vid 1920 × 1080 med fyra och åtta platser, skrivbordets vid 1280 × 800, och spalten orörd), `presence.test.ts` (meddelandet, tiden och att bara ett uppvänt kort ritas), `tv-chrome.test.tsx`, `table-page.test.tsx` (en telefon visar, ett nedvänt kort ritas inte), `table-keyboard.test.tsx` och `table-renderer.test.tsx` («Titta» på TV:n, från panelen och från ringen).
 
+Reviderat 2026-10-25 (#1290, beställarens beslut A, [prototyp](https://github.com/Tiico/build-a-deck/blob/e6a6999b9acaa5e60955d1ad722de209348b7ff6/docs/ux-audits/2026-10-25-tv-vyn/README.md)): **rummets TV är en scen för det senaste kortet.**
+Beställaren: «Hela TV-vyn fokuserar på fel saker, händelseloggen tar för lång tid och den förstorade visningen är för liten.»
+Spalten höll ett kort i 190 px (9 px brödtext) och SENAST tre meningar på två–tre rader var, så det rummet läste var orden och inte kortet.
+Tre omdesigner prototypades — scenen, en strålkastare som lyfte varje spelat kort över filten, och en logg av kort i stället för meningar — och scenen valdes.
+
+- Spalten är en scen: kortet den senaste raden handlade om, så stort som spalten ger efter sin rad och sin fot, med raden under det i platsens färg, sagd som flödet sa den. En pekare skriver över det som förut, och då står kortets namn under det.
+- SENAST står inte längre på rummets TV. Hela historiken finns på varje telefon; en rad om något som inte är ett kort (en blandning, en giv, en uppdatering) syns på filten och i rubriken, inte i spalten.
+- Koden, QR-koden, handen och spelets namn står i en fot under kortet, och där står också «Starta om», snabbkommandona och raden om kort som ritas. De lämnade inte TV:n, som prototypen föreslog, eftersom ingen annan skärm har «Starta om» (#875).
+- **Scenens bredd är filtens att ge.** Filten är höjdbunden bara så länge den har bredd över, och åttaplatsbordets kort stod redan på K9:s 45 px bredvid den gamla spalten. Scenen är därför så bred som filten kan ge och behålla 45 px, upp till 760 px, och aldrig smalare än spaltens 360 (`stageWidth` i `packages/web/src/table/stage.ts`, frågad genom `onFit` som `/online` frågar sitt anteckningsblock, #1131). Mätt på det byggda bordet vid 1920 × 1080: med två och fyra platser får scenen sina 760 px och kortet 538 px (26 px brödtext, över K26:s golv på 24), och kortet på filten går från 78 till 57 px vid fyra platser. Vid åtta platser står scenen kvar på 360 och kortet är 319 px; vid 1280 × 800 är det 198 px, där panelen var 190.
+Kortet på filten räknas inom kamerans overscan (C5, #322), som `onFit` inte räknar med: utan den gav scenen 592 px vid åtta platser och kortet på filten 44 px.
+- «Visa för alla» är orört: ett kort som hålls upp står över filten i 672 px och 32 px brödtext, större än scenen, och scenen under står kvar.
+- Observatörens skärm läses vid ett skrivbord och behåller sin spalt med INSPEKTION, platserna och SENAST.
+
+Grindarna: `packages/web/test/tv-stage-width.test.ts` (bredden mot kortets golv), `tv-chrome.test.tsx` (scenen, raden, foten och observatörens spalt), `tv-show.test.tsx` (scenens kort mot K26:s golv vid 1920 × 1080 och skrivbordets vid 1280 × 800), och `packages/e2e/test/surfaces/tv-feed-rows.spec.ts` på det byggda bordet.
+
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
 Tre prototyper byggdes och jämfördes: planritning, filtbord med perspektiv, och en mörk sändningslayout.

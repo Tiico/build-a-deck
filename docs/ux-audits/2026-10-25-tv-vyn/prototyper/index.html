@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — TV-vyn från grunden</title>
+<style>
+  /* ── Frågan ─────────────────────────────────────────────────────────────────────────────
+     Beställaren 2026-10-25: «Hela TV-vyn fokuserar på fel saker, t.ex. händelseloggen tar för
+     lång tid och den förstorade visningen är för liten.»
+     I dag (TvChrome.tsx): filten till vänster och en 360 px spalt med märke, titel, kod + QR,
+     «Starta om», snabbkommandon, INSPEKTION (≈190 px bred, 9 px brödtext) och SENAST, där varje
+     rad är en hel mening över två–tre rader. Kortet rummet borde se är det minsta på skärmen.
+
+     Tre omdesigner, var och en ritad i 1920 × 1080 CSS-px och skalad till fönstret. Allt är
+     ritat för hand: filten följer dagens geometri (fyra platser), korten är påhittade men har
+     8,5 pt brödtext i kortets egen skala (0,048 × kortbredden, K26), så siffran i hörnet är
+     den brödtext rummet faktiskt får. TV:ns golv är 24 px.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root {
+    --bg: #0e1117; --felt: #161b26; --line: #39404f; --ink: #e8eaf0; --quiet: #8b93a7;
+    --A: #e05a4f; --B: #3c8ce7; --C: #3aa76d; --D: #d99a1f; --accent: #f3c86b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #05070a; color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #viewport { position: absolute; inset: 0 0 64px 0; }
+  #tv { width: 1920px; height: 1080px; position: absolute; left: 50%; top: 50%; background: var(--bg); overflow: hidden; transform-origin: center; box-shadow: 0 0 0 1px #222; }
+
+  /* ── Filten ── */
+  .felt { position: absolute; background: var(--felt); border: 1px solid #262c3a; border-radius: 18px; }
+  .felt .z { position: absolute; border: 2px solid var(--line); border-radius: 10px; }
+  .felt .count { position: absolute; display: grid; place-items: center; }
+  .felt .count b { background: #0b0d12; color: #fff; border-radius: 99px; min-width: 1.6em; padding: .1em .35em; text-align: center; font-size: 24px; }
+  .felt .plate { position: absolute; display: flex; align-items: center; gap: 10px; background: #0d1017; border-radius: 10px; padding: 6px 14px 6px 6px; font-size: 24px; white-space: nowrap; border-left: 4px solid var(--seat); }
+  .felt .plate i { font-style: normal; width: 36px; height: 36px; border-radius: 50%; background: var(--seat); color: #111; font-weight: 800; display: grid; place-items: center; }
+  .felt .plate b { font-weight: 700; }
+  .felt .plate span { color: #c3c8d4; }
+  .felt .plate.stack { flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 14px; }
+  .felt .plate.stack .row { display: flex; gap: 10px; align-items: center; }
+  .felt .pile-name { position: absolute; font-size: 24px; font-weight: 600; color: #aab2c4; text-align: center; width: 200px; }
+  .felt .fan { position: absolute; width: 0; height: 0; }
+  .felt .fan div { position: absolute; width: 1em; height: 1.4em; left: -0.5em; top: -0.7em; border-radius: .08em; background: repeating-linear-gradient(45deg, #3a4f86 0 .04em, #33467a .04em .08em); border: .02em solid #5a6fa8; }
+  .felt .back { position: absolute; border-radius: 6px; background: repeating-linear-gradient(45deg, #3a4f86 0 3px, #33467a 3px 6px); border: 1px solid #5a6fa8; }
+  .felt .hot { outline: 4px solid var(--seat); outline-offset: 3px; box-shadow: 0 0 0 10px color-mix(in srgb, var(--seat) 25%, transparent); }
+
+  /* ── Kortet ── 1em = 1 mm på kortet; kortet är 63 × 88 mm. */
+  .card { --m: 1em; position: relative; width: calc(63 * var(--m)); height: calc(88 * var(--m)); border-radius: calc(3.2 * var(--m)); background: hsl(var(--hue) 35% 90%); color: #1d1b18; overflow: hidden; flex: none; font-family: Georgia, "Iowan Old Style", serif; box-shadow: 0 .6em 2em rgb(0 0 0 / .35); }
+  .card > * { position: absolute; left: calc(4 * var(--m)); right: calc(4 * var(--m)); }
+  .card .t { top: calc(3.6 * var(--m)); font-size: calc(4.23 * var(--m)); font-weight: 700; line-height: 1.15; }
+  .card .ty { top: calc(9.4 * var(--m)); font-size: calc(2.6 * var(--m)); font-style: italic; color: #5b544b; }
+  .card .art { top: calc(14 * var(--m)); height: calc(34 * var(--m)); border-radius: calc(1.6 * var(--m)); background: radial-gradient(circle at 30% 30%, hsl(var(--hue) 55% 72%), hsl(var(--hue) 45% 38%)); }
+  .card .art::after { content: ""; position: absolute; left: 50%; top: 50%; width: 40%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: hsl(var(--hue) 40% 25% / .5); }
+  .card .bd { top: calc(51 * var(--m)); font-size: calc(3 * var(--m)); line-height: 1.32; }
+  .card .ft { bottom: calc(3.5 * var(--m)); font-size: calc(2.2 * var(--m)); color: #7a7266; display: flex; justify-content: space-between; }
+  .card.down { background: repeating-linear-gradient(45deg, #3a4f86 0 1.4em, #33467a 1.4em 2.8em); border: .4em solid #5a6fa8; }
+  .card.down > * { display: none; }
+  .measure { position: absolute; font: 600 16px/1 system-ui; color: #0e1117; background: #9fe0b0; padding: 4px 8px; border-radius: 6px; z-index: 5; pointer-events: none; }
+  .measure.low { background: #f0a58a; }
+
+  /* ── Delade bitar ── */
+  .join { display: flex; align-items: center; gap: 16px; }
+  .join .addr { font-size: 24px; color: var(--quiet); line-height: 1.2; }
+  .join .addr strong { display: block; font-size: 44px; letter-spacing: 6px; color: #fff; font-weight: 800; }
+  .qr { width: 104px; height: 104px; background: #fff; padding: 8px; border-radius: 8px; flex: none; }
+  .qr div { width: 100%; height: 100%; background:
+      conic-gradient(from 90deg at 30% 30%, #000 25%, #fff 0) 0 0 / 22% 22%,
+      repeating-linear-gradient(0deg, #000 0 6%, #fff 6% 12%),
+      repeating-linear-gradient(90deg, #000 0 8%, transparent 8% 14%); background-blend-mode: multiply; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 700; }
+  .brand .m { width: 30px; height: 24px; background: linear-gradient(100deg, #f3c86b 0 33%, #e8eaf0 33% 66%, #7fc6a4 66%); border-radius: 3px; transform: skewX(-8deg); }
+  .title { font-size: 28px; font-weight: 700; }
+  .title em { font-style: normal; color: var(--quiet); font-weight: 400; }
+  .more { width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3b4252; display: grid; place-items: center; font-size: 28px; color: #c3c8d4; }
+  .who { display: inline-flex; align-items: center; gap: 10px; }
+  .who i { font-style: normal; width: 40px; height: 40px; border-radius: 50%; background: var(--seat); color: #111; font-weight: 800; display: grid; place-items: center; font-size: 24px; }
+  .note { position: absolute; z-index: 9; font: 14px/1.45 system-ui; color: #0e1117; background: #fef3c7; border-radius: 8px; padding: 10px 12px; max-width: 360px; box-shadow: 0 6px 18px rgb(0 0 0 / .4); }
+  .note b { display: block; margin-bottom: 2px; }
+  body.clean .note, body.clean .measure { display: none; }
+
+  /* ── Växlaren (inte en del av designen) ── */
+  #switch { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; background: #fff; color: #111; border-radius: 99px; padding: 6px; font: 600 14px system-ui; box-shadow: 0 6px 24px rgb(0 0 0 / .5); z-index: 100; }
+  #switch button { white-space: nowrap; border: 0; background: #eef0f4; border-radius: 99px; height: 36px; min-width: 36px; padding: 0 12px; font: inherit; cursor: pointer; }
+  #switch button:hover { background: #dfe3ea; }
+  #switch #label { padding: 0 12px; min-width: 200px; white-space: nowrap; text-align: center; }
+</style>
+</head>
+<body>
+<div id="viewport"><div id="tv"></div></div>
+<div id="switch">
+  <button id="prev" aria-label="Föregående variant">←</button>
+  <span id="label"></span>
+  <button id="next" aria-label="Nästa variant">→</button>
+  <button id="play" title="Spela nästa kort (mellanslag)">Spela ett kort</button>
+  <button id="clean" title="Dölj anteckningar och mått (N)">Anteckningar</button>
+</div>
+<script>
+// ── Data: ett bord mitt i ett spel ──────────────────────────────────────────────────────────
+const SEATS = { A: 'Ada', B: 'Bertil', C: 'Cleo', D: 'Dani' }
+const CARDS = {
+  varg:   { t: 'Vargtimmen', ty: 'Händelse', hue: 6, bd: 'Varje annan spelare lägger ett kort från handen i kasthögen. Kan någon inte det drar du ett kort.', ft: ['Skogens herrar', '12'] },
+  sten:   { t: 'Mossig sten', ty: 'Skydd', hue: 120, bd: 'Skydd 2. När ett angrepp riktas mot dig minskar det med 2. Ligger kvar tills någon flyttar den.', ft: ['Skogens herrar', '31'] },
+  uggla:  { t: 'Uggleögat', ty: 'Förmåga', hue: 262, bd: 'Titta på de tre översta korten i draghögen och lägg tillbaka dem i valfri ordning.', ft: ['Skogens herrar', '18'] },
+  ekorre: { t: 'Ekorrens förråd', ty: 'Förmåga', hue: 34, bd: 'Ta upp till två kort från kasthögen till handen. Visa dem för bordet först.', ft: ['Skogens herrar', '07'] },
+  vakt:   { t: 'Granskogens väktare', ty: 'Varelse', hue: 150, bd: 'Väktare 3. Kan inte flyttas av andra spelares kort. När den spelas drar du ett kort.', ft: ['Skogens herrar', '44'] },
+  rav:    { t: 'Rävens list', ty: 'Händelse', hue: 22, bd: 'Byt ett kort i din spelyta mot ett i en annan spelares spelyta. Ingen av dem vänds.', ft: ['Skogens herrar', '26'] },
+}
+// Händelserna, nyast sist. `card` = kortet raden handlar om, `to` = var det hamnade på filten.
+const BASE_LOG = [
+  { seq: 9,  by: null, verb: 'blandade', what: 'Draghög' },
+  { seq: 10, by: 'D', verb: 'spelade', card: 'uggla', to: 'D' },
+  { seq: 11, by: 'B', verb: 'drog', what: '1 kort', down: true },
+  { seq: 12, by: 'C', verb: 'spelade', card: 'sten', to: 'C' },
+  { seq: 13, by: 'A', verb: 'spelade', card: 'varg', to: 'A' },
+]
+const NEXT = [
+  { by: 'B', verb: 'spelade', card: 'ekorre', to: 'B' },
+  { by: 'C', verb: 'spelade', card: 'vakt', to: 'C' },
+  { by: 'D', verb: 'spelade', card: 'rav', to: 'D' },
+]
+let log = BASE_LOG.slice()
+let nextIx = 0
+let spotAt = Date.now()
+
+// ── Ritverktyg ──────────────────────────────────────────────────────────────────────────────
+const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild }
+function cardEl(key, widthPx, opts = {}) {
+  const c = CARDS[key]
+  const el = h(`<div class="card${opts.down ? ' down' : ''}" style="--hue:${c ? c.hue : 0}; --m:${widthPx / 63}px">
+    ${c ? `<div class="t">${c.t}</div><div class="ty">${c.ty}</div><div class="art"></div><div class="bd">${c.bd}</div><div class="ft"><span>${c.ft[0]}</span><span>${c.ft[1]}</span></div>` : ''}
+  </div>`)
+  return el
+}
+function feltMeasure(parent, x, y, widthPx) {
+  parent.append(h(`<div class="measure" style="left:${x}px; top:${y}px; background:#c9d1e3">kort på filten ${Math.round(widthPx)} px (i dag 76)</div>`))
+}
+function measure(parent, x, y, widthPx) {
+  const px = (0.048 * widthPx).toFixed(0)
+  parent.append(h(`<div class="measure${px < 24 ? ' low' : ''}" style="left:${x}px; top:${y}px">kort ${Math.round(widthPx)} px · brödtext ${px} px</div>`))
+}
+function note(x, y, title, body, w) {
+  document.getElementById('tv').append(h(`<div class="note" style="left:${x}px; top:${y}px;${w ? `max-width:${w}px` : ''}"><b>${title}</b>${body}</div>`))
+}
+const who = (s) => s === null ? `<span class="who" style="--seat:#9aa3b8"><i>·</i><b>Bordet</b></span>` : `<span class="who" style="--seat:var(--${s})"><i>${s}</i><b>${SEATS[s]}</b></span>`
+const latest = () => log[log.length - 1]
+const lastCardLine = () => [...log].reverse().find((l) => l.card)
+
+// Filten i dagens geometri: 1450 × 968 «u» där ett kort är 76 × 106 u. Ritas i skala `s`.
+function felt(x, y, s) {
+  const el = h(`<div class="felt" style="left:${x}px; top:${y}px; width:${1450 * s}px; height:${968 * s}px"></div>`)
+  const R = (l, t, w, hh) => `left:${l * s}px; top:${t * s}px; width:${w * s}px; height:${hh * s}px`
+  const add = (html) => el.append(h(html))
+  const CW = 76, CH = 106
+  // Zoner per plats: spelyta + räknare, skylt, solfjäder.
+  const seats = {
+    B: { area: [424, 85, 440, 120], ctr: [877, 85, 150, 120], plate: [425, 214], fan: [725, 18] },
+    A: { area: [424, 762, 440, 120], ctr: [877, 762, 150, 120], plate: [425, 708], fan: [725, 950] },
+    D: { area: [85, 181, 120, 441], ctr: [85, 635, 120, 150], plate: [215, 445], fan: [20, 500], side: true },
+    C: { area: [1246, 181, 120, 441], ctr: [1246, 635, 120, 150], plate: [1105, 445], fan: [1430, 500], side: true },
+  }
+  for (const [k, z] of Object.entries(seats)) {
+    add(`<div class="z" style="${R(...z.area)}"></div>`)
+    add(`<div class="z count" style="${R(...z.ctr)}"><b>20</b></div>`)
+    const hand = { A: 3, B: 2, C: 3, D: 3 }[k]
+    add(z.side
+      ? `<div class="plate stack" style="--seat:var(--${k}); left:${z.plate[0] * s}px; top:${z.plate[1] * s}px"><div class="row"><i>${k}</i><b>${SEATS[k]}</b></div><span>${hand} kort</span></div>`
+      : `<div class="plate" style="--seat:var(--${k}); left:${z.plate[0] * s}px; top:${z.plate[1] * s}px"><i>${k}</i><b>${SEATS[k]}</b><span>${hand} kort</span></div>`)
+    const fan = h(`<div class="fan" style="left:${z.fan[0] * s}px; top:${z.fan[1] * s}px; font-size:${70 * s}px"></div>`)
+    for (let i = 0; i < hand; i++) fan.append(h(`<div style="transform: rotate(${z.side ? 90 + (i - 1) * 8 : (i - 1) * 8}deg) translate(${(i - 1) * 0.25}em, 0)"></div>`))
+    el.append(fan)
+  }
+  // Högarna.
+  add(`<div class="back" style="${R(519, 425, CW, CH)}"></div>`)
+  add(`<div class="count" style="${R(519, 425, CW, 60)}"><b>31</b></div>`)
+  add(`<div class="pile-name" style="left:${(557 - 100) * s}px; top:${545 * s}px; font-size:${Math.max(24, 24 * s)}px">Draghög</div>`)
+  add(`<div class="z" style="${R(857, 425, CW, CH)}; border-style:dashed"></div>`)
+  add(`<div class="pile-name" style="left:${(895 - 100) * s}px; top:${545 * s}px">Kasthög</div>`)
+  // Korten i spelytorna: vad loggen har lagt där.
+  const inArea = { A: [], B: [], C: [], D: [] }
+  for (const l of log) if (l.card && l.to) inArea[l.to].push(l.card)
+  inArea.A.unshift('vakt'); inArea.B.unshift('rav')
+  const hot = lastCardLine()
+  for (const [k, list] of Object.entries(inArea)) {
+    const z = seats[k]
+    list.forEach((key, i) => {
+      const [ax, ay] = z.area
+      const cx = z.side ? ax + 22 : ax + 16 + i * (CW + 12)
+      const cy = z.side ? ay + 14 + i * (CH * 0.62 + 10) : ay + 7
+      const c = cardEl(key, CW * s)
+      c.style.position = 'absolute'; c.style.left = cx * s + 'px'; c.style.top = cy * s + 'px'
+      c.style.setProperty('--seat', `var(--${k})`)
+      if (z.side) { c.style.transform = 'rotate(90deg)'; c.style.transformOrigin = '50% 50%'; c.style.top = (cy - 12) * s + 'px' }
+      if (hot && hot.card === key) c.classList.add('hot')
+      el.append(c)
+    })
+  }
+  return el
+}
+
+// ── Variant A — Scenen ──────────────────────────────────────────────────────────────────────
+function variantA(tv) {
+  const COL = 760
+  const s = (1920 - COL - 72) / 1450
+  tv.append(felt(36, (1080 - 968 * s) / 2, s))
+  const col = h(`<div style="position:absolute; right:0; top:0; width:${COL}px; height:1080px; border-left:1px solid #1e2330; padding:36px 40px 32px; display:grid; grid-template-rows: minmax(0,1fr) auto; gap:24px"></div>`)
+  const l = lastCardLine()
+  const stage = h(`<div style="display:grid; justify-items:center; align-content:start; gap:20px; min-height:0"></div>`)
+  const W = 570
+  stage.append(cardEl(l.card, W))
+  stage.append(h(`<div style="font-size:32px; display:flex; gap:14px; align-items:center; justify-content:center; width:100%">${who(l.by)}<span style="color:#c3c8d4">${l.verb} · ${CARDS[l.card].t}</span></div>`))
+  col.append(stage)
+  col.append(h(`<div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #1e2330; padding-top:20px">
+    <div class="join"><div class="qr"><div></div></div><div class="addr">deckster.se<strong>/ZT6RVK</strong></div></div>
+    <div style="display:grid; justify-items:end; gap:10px"><div class="brand"><span class="m"></span>Deckster</div><div class="title">Skogens herrar <em>v3</em></div></div>
+  </div>`))
+  tv.append(col)
+  measure(tv, 1920 - COL + 40 + 16, 52, W)
+  feltMeasure(tv, 80, 60, 76 * s)
+  note(1920 - COL - 400, 820, 'A — Scenen', `Det senaste kortet <b style="display:inline">är</b> skärmens andra halva: 570 px, 27 px brödtext, alltid uppe utan att någon ber om det. Loggen är borta – en rad under kortet säger vem och vad. Koden och titeln flyttar ner. <i>Kostnad:</i> filten blir bredd­bunden, kort på filten 76 → ${Math.round(76 * s)} px.`)
+  note(1920 - 760 - 400, 60, 'Borta från TV:n', '«Starta om», snabbkommandon och ?-hjälpen ligger bakom tangentbordet / värdens telefon – ingen i soffan trycker på dem.', 360)
+}
+
+// ── Variant B — Strålkastaren ───────────────────────────────────────────────────────────────
+function variantB(tv) {
+  const COL = 300
+  const s = Math.min((1920 - COL - 64) / 1450, (1080 - 56) / 968)
+  const fx = 28, fy = (1080 - 968 * s) / 2
+  tv.append(felt(fx, fy, s))
+  const l = lastCardLine()
+  const col = h(`<div style="position:absolute; right:0; top:0; width:${COL}px; height:1080px; padding:32px 28px; display:grid; align-content:space-between"></div>`)
+  col.append(h(`<div style="display:grid; gap:18px"><div class="brand"><span class="m"></span>Deckster</div><div class="title">Skogens herrar <em>v3</em></div></div>`))
+  // Turordningen / platserna som en lodrät rad: vem som just gjorde något lyser.
+  const seats = h(`<div style="display:grid; gap:14px"></div>`)
+  for (const k of ['A', 'B', 'C', 'D']) seats.append(h(`<div style="font-size:28px; padding:10px 14px; border-radius:12px; ${latest().by === k ? 'background:#1d2433; box-shadow: inset 4px 0 var(--' + k + ')' : ''}">${who(k)}</div>`))
+  col.append(seats)
+  col.append(h(`<div style="display:grid; gap:14px"><div class="qr" style="width:132px; height:132px"><div></div></div><div class="join"><div class="addr">deckster.se<strong>/ZT6RVK</strong></div></div></div>`))
+  tv.append(col)
+  // Strålkastaren: varje spelat kort lyfts över filten av sig självt i åtta sekunder.
+  const age = (Date.now() - spotAt) / 1000
+  const W = 650
+  const spot = h(`<div style="position:absolute; left:0; top:0; width:${1920 - COL}px; height:1080px; background:rgb(8 10 14 / .72); display:grid; justify-items:center; align-content:center; gap:18px; transition: opacity .4s"></div>`)
+  spot.append(cardEl(l.card, W))
+  spot.append(h(`<div style="font-size:32px; display:flex; gap:14px; align-items:center; position:relative; padding-bottom:12px">${who(l.by)}<span style="color:#c3c8d4">${l.verb} · ${CARDS[l.card].t}</span><span style="position:absolute; left:0; right:0; bottom:0; height:5px; border-radius:3px; background:var(--accent); transform-origin:left; animation: run 8s linear forwards"></span></div>`))
+  tv.append(spot)
+  const style = h(`<style>@keyframes run { from { transform: scaleX(${Math.max(0, 1 - age / 8)}) } to { transform: scaleX(0) } }</style>`)
+  tv.append(style)
+  clearTimeout(window.__spotTimer)
+  window.__spotTimer = setTimeout(() => { spot.style.opacity = 0; setTimeout(() => spot.remove(), 400) }, Math.max(0, 8000 - age * 1000))
+  measure(tv, (1920 - COL - W) / 2 + 16, 44, W)
+  note(30, 30, 'B — Strålkastaren', `Filten får hela höjden och nästan hela bredden (kort på filten 76 → ${Math.round(76 * s)} px). Varje spelat kort lyfts av sig självt över filten i 650 px (31 px brödtext) i åtta sekunder, sedan är filten tillbaka. «Visa för alla» blir regeln, inte undantaget. Ingen logg alls – platslistan visar vem som gjorde senast. Tryck <b style="display:inline">Spela ett kort</b> för att se flödet.`, 400)
+}
+
+// ── Variant C — Kortloggen ──────────────────────────────────────────────────────────────────
+function variantC(tv) {
+  const COL = 700
+  const s = (1920 - COL - 64) / 1450
+  tv.append(felt(32, (1080 - 968 * s) / 2, s))
+  const col = h(`<div style="position:absolute; right:0; top:0; width:${COL}px; height:1080px; border-left:1px solid #1e2330; padding:28px 32px; display:grid; grid-template-rows:auto minmax(0,1fr); gap:20px"></div>`)
+  col.append(h(`<div style="display:flex; justify-content:space-between; align-items:center">
+    <div class="join"><div class="qr" style="width:88px; height:88px; padding:6px"><div></div></div><div class="addr">deckster.se<strong style="font-size:38px">/ZT6RVK</strong></div></div>
+    <div style="display:grid; justify-items:end; gap:6px"><div class="brand"><span class="m"></span>Deckster</div><div class="title" style="font-size:24px">Skogens herrar <em>v3</em></div></div>
+  </div>`))
+  const body = h(`<div style="display:grid; grid-template-columns: auto 1fr; gap:22px; min-height:0"></div>`)
+  const l = lastCardLine()
+  const W = 500
+  const main = h(`<div style="display:grid; gap:16px; align-content:start"></div>`)
+  main.append(cardEl(l.card, W))
+  main.append(h(`<div style="font-size:30px; display:flex; gap:12px; align-items:center">${who(l.by)}<span style="color:#c3c8d4">${l.verb} · ${CARDS[l.card].t}</span></div>`))
+  body.append(main)
+  // Loggen som kort: de fyra föregående raderna som miniatyrer, nyast överst, i platsens färg.
+  const strip = h(`<div style="display:grid; gap:14px; align-content:start; justify-items:center"></div>`)
+  const before = log.slice(0, -1).filter((x) => x !== l).reverse().concat(log[log.length - 1] === l ? [] : [log[log.length - 1]]).slice(0, 4)
+  for (const x of before) {
+    const tile = h(`<div style="display:grid; justify-items:center; gap:6px; --seat:${x.by ? `var(--${x.by})` : '#9aa3b8'}"></div>`)
+    const box = h(`<div style="position:relative; border-radius:10px; outline:3px solid var(--seat); outline-offset:2px"></div>`)
+    if (x.card) box.append(cardEl(x.card, 96))
+    else box.append(h(`<div style="width:96px; height:134px; border-radius:6px; display:grid; place-items:center; background:#1a1f2b; font-size:44px; color:#aab2c4">${x.down ? '' : '⟳'}</div>`))
+    if (x.down) box.lastChild.replaceChildren(h('<div style="width:60px; height:84px; border-radius:5px; background:repeating-linear-gradient(45deg,#3a4f86 0 4px,#33467a 4px 8px); border:1px solid #5a6fa8"></div>'))
+    box.append(h(`<i style="position:absolute; left:-12px; top:-12px; width:34px; height:34px; border-radius:50%; background:var(--seat); color:#111; font:800 20px/34px system-ui; text-align:center; font-style:normal">${x.by ?? '·'}</i>`))
+    tile.append(box)
+    tile.append(h(`<span style="font-size:24px; color:#c3c8d4">${x.verb}</span>`))
+    strip.append(tile)
+  }
+  body.append(strip)
+  col.append(body)
+  tv.append(col)
+  measure(tv, 1920 - COL + 32, 122, W)
+  feltMeasure(tv, 80, 60, 76 * s)
+  note(1920 - COL - 420, 760, 'C — Kortloggen', `Loggen är kort i stället för meningar: det senaste i 500 px (24 px brödtext), de fyra före som miniatyrer med platsens bokstav och ett verb. Rummet känner igen kortet på bilden, inte på ordet. Blandningar och dragningar blir en ikonbricka. <i>Kostnad:</i> kort på filten 76 → ${Math.round(76 * s)} px.`)
+}
+
+// ── 0 — I dag, för jämförelse (efter skärmbilden i 2026-10-22-tv-handen/B) ──────────────────
+function variantToday(tv) {
+  tv.append(felt(55, 57, 1))
+  const col = h(`<div style="position:absolute; left:1560px; top:0; width:360px; height:1080px; border-left:1px solid #1e2330; padding:22px 20px; display:grid; align-content:start; gap:14px; font-size:20px"></div>`)
+  col.append(h(`<div class="brand" style="border-bottom:1px solid #1e2330; padding-bottom:12px"><span class="m"></span>Deckster</div>`))
+  col.append(h(`<div class="title">Skogens herrar <em>v3</em></div>`))
+  col.append(h(`<div style="color:var(--quiet); font-size:24px">öppna på telefonen<br><b style="color:#fff">deckster.se</b><div style="display:flex; gap:14px; align-items:center"><b style="font-size:44px; letter-spacing:6px; color:#fff">/ZT6RVK</b><div class="qr" style="width:56px; height:56px; padding:4px"><div></div></div></div></div>`))
+  col.append(h(`<div style="display:flex; gap:12px; align-items:center"><span class="more" style="width:40px;height:40px;font-size:22px">?</span><span style="border:2px solid #3b4252; border-radius:99px; padding:10px 20px; font-weight:700">Starta om</span></div>`))
+  col.append(h(`<div style="color:#c3c8d4">? Snabbkommandon</div>`))
+  col.append(h(`<div style="font-size:15px; letter-spacing:2px; color:#7d8597; margin-top:8px">INSPEKTION</div>`))
+  const l = lastCardLine()
+  col.append(cardEl(l.card, 190))
+  col.append(h(`<div style="font-size:15px; letter-spacing:2px; color:#7d8597; margin-top:8px">SENAST</div>`))
+  for (const x of log.slice().reverse().slice(0, 3)) col.append(h(`<div style="display:grid; grid-template-columns:28px 1fr; gap:10px; font-size:${x === latest() ? 24 : 20}px; line-height:1.3; border-bottom:1px solid #1e2330; padding-bottom:8px"><span style="color:var(--quiet)">${x.seq}</span><span>${x.by ? SEATS[x.by] : 'Bordet'} ${x.verb} ${x.card ? CARDS[x.card].t + ' från handen till ' + SEATS[x.to] + 's spelyta' : x.what + (x.down ? ' från Draghög till handen' : ' och lade tillbaka den på bordet')}</span></div>`))
+  tv.append(col)
+  measure(tv, 1580, 470, 190)
+  note(1100, 30, '0 — I dag', 'Ritad efter skärmbilden från 22/10. Kortet rummet borde se är det minsta på skärmen (190 px, 9 px brödtext), och SENAST lägger en mening på tre rader per händelse.', 400)
+}
+
+// ── Växlaren ────────────────────────────────────────────────────────────────────────────────
+const VARIANTS = [['0', 'I dag', variantToday], ['A', 'Scenen', variantA], ['B', 'Strålkastaren', variantB], ['C', 'Kortloggen', variantC]]
+const tv = document.getElementById('tv')
+let current = VARIANTS.findIndex((v) => v[0] === new URLSearchParams(location.search).get('variant'))
+if (current < 0) current = 1
+function render() {
+  tv.replaceChildren()
+  const [k, name, draw] = VARIANTS[current]
+  draw(tv)
+  document.getElementById('label').textContent = `${k} — ${name}`
+  fit()
+}
+function go(d) {
+  current = (current + d + VARIANTS.length) % VARIANTS.length
+  const u = new URL(location.href); u.searchParams.set('variant', VARIANTS[current][0]); history.replaceState(null, '', u)
+  spotAt = Date.now()
+  render()
+}
+function play() {
+  const n = NEXT[nextIx++ % NEXT.length]
+  log = log.concat([{ ...n, seq: latest().seq + 1 }])
+  if (nextIx % NEXT.length === 0) { log = BASE_LOG.slice() }
+  spotAt = Date.now()
+  render()
+}
+function fit() {
+  const vp = document.getElementById('viewport').getBoundingClientRect()
+  tv.style.transform = `translate(-50%, -50%) scale(${Math.min(vp.width / 1920, vp.height / 1080)})`
+}
+document.getElementById('prev').onclick = () => go(-1)
+document.getElementById('next').onclick = () => go(1)
+document.getElementById('play').onclick = play
+document.getElementById('clean').onclick = () => document.body.classList.toggle('clean')
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  if (e.key === 'ArrowLeft') go(-1)
+  if (e.key === 'ArrowRight') go(1)
+  if (e.key === ' ') { e.preventDefault(); play() }
+  if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('clean')
+})
+addEventListener('resize', fit)
+render()
+</script>
+</body>
+</html>
