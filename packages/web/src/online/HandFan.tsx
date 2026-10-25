@@ -20,15 +20,17 @@ export type HandFanProps = {
   // felt's own card size while it is over the table (#484).
   onCarry?: HandDragOptions['onCarry']
   aim?: { size: { w: number } | null } | undefined
-  // The cards turned over in the hand, played face down, and F on a card turning it (#1133).
+  // The cards turned over in the hand, played face down (#1133); a click, Space or F turns one (#1291).
   turned?: ReadonlySet<string> | undefined
   onTurn?: ((card: VisibleComponentState) => void) | undefined
-  // Enter on a card: the address panel, the same one the felt opens (#2, variant C).
+  // Enter on a card, or a finger's tap: the address panel, the same one the felt opens (#2,
+  // variant C). A mouse's click turns the card instead (#1291).
   onOpen(card: VisibleComponentState): void
 }
 
 // The online player's hand in a portrait window (C2, prototype B, K17): a fan in the band under
-// the felt. Hover lifts a card to read it; drag it up onto the table to play it. Every card is
+// the felt. Hover lifts a card to read it, a click turns it over (#1291), and dragging it up onto
+// the table plays it. Every card is
 // also a real control with the projection's name and one tab stop for the whole fan (#2).
 //
 // The band scrolls sideways when the hand is wider than it, and a card is played by dragging it
@@ -42,7 +44,7 @@ export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, on
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'horizontal' })
-  const { drag, handlers, cancel } = useHandDrag('up', onPlay, { locked, onTap: onOpen, onCarry })
+  const { drag, handlers, cancel } = useHandDrag('up', onPlay, { locked, onTap: (c, by) => (by === 'mouse' ? onTurn?.(c) : onOpen(c)), onCarry })
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-band" data-hand-fan style={fanStyle(n)}>
@@ -63,7 +65,7 @@ export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, on
                   data-hand-card={c.id}
                   data-lifted={drag?.id === c.id ? 'true' : undefined}
                   aria-label={handLabel(c, false, t, turned?.has(c.id) === true)}
-                data-turned={turned?.has(c.id) === true ? 'true' : undefined}
+                  data-turned={turned?.has(c.id) === true ? 'true' : undefined}
                   style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true ? TURNED_GROUND : {}), ['--i' as string]: `${i}`, ['--fan' as string]: `${tilt}deg`, ['--dip' as string]: `${dip}` }}
                   tabIndex={item.tabIndex}
                   ref={item.ref}
@@ -74,17 +76,19 @@ export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, on
                     e.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'center' })
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    // Enter is the keyboard's way to play, since it cannot drag (K16); Space is the
+                    // click, and turns the card as the click does (#1291).
+                    if (e.key === 'Enter') {
                       e.preventDefault()
                       onOpen(c)
                       return
                     }
-                    if ((e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
-                    e.preventDefault()
-                    onTurn(c)
-                    return
-                  }
-                  item.onKeyDown(e)
+                    if ((e.key === ' ' || e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault()
+                      onTurn(c)
+                      return
+                    }
+                    item.onKeyDown(e)
                   }}
                   {...handlers(c)}
                 >

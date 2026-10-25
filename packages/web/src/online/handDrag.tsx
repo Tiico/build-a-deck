@@ -26,9 +26,10 @@ export type HandPlay = (card: VisibleComponentState, clientX: number, clientY: n
 // the felt and a card comes *across* out of it. K17's axis split is traded, not broken.
 //
 // A tap plays nothing, in either shape. The hand is never over the table, so the point a tap
-// releases at is not a place on the table to put a card (section I). It opens the card instead
-// (#484 fynd 10, beslut A): the address panel, as a tap in «Visa alla» already did, so a finger can
-// read and play a card without raising the whole hand first.
+// releases at is not a place on the table to put a card (section I). What it does instead is the
+// shape's to say, and it depends on what pressed: a mouse reads by resting on a card, so its click
+// turns the card over (#1291), while a finger has no hover and its tap reads (#484 fynd 10, #510).
+// `onTap` is told which.
 //
 // A locked hand lifts nothing (#484 fynd 13): the press still scrolls and a tap still opens the
 // card, but no card rises out of a hand that cannot play it.
@@ -37,7 +38,7 @@ export type HandPlay = (card: VisibleComponentState, clientX: number, clientY: n
 // the page that owns the table answers what lies under it, which the hand cannot know.
 export type HandDragOptions = {
   locked?: boolean | undefined
-  onTap?: ((card: VisibleComponentState) => void) | undefined
+  onTap?: ((card: VisibleComponentState, pointerType: string) => void) | undefined
   onCarry?: ((carried: { card: VisibleComponentState; x: number; y: number } | null) => void) | undefined
 }
 export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, { locked = false, onTap, onCarry }: HandDragOptions = {}) {
@@ -45,6 +46,7 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, { locked =
   // Where the press started and whether it may still become a play; a press that turned out to be
   // a scroll is forgotten here and nothing downstream can revive it.
   const aim = useRef<Held | null>(null)
+  const pressedBy = useRef('')
   const stop = () => {
     aim.current = null
     setDrag(null)
@@ -57,6 +59,7 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, { locked =
   const handlers = (c: VisibleComponentState) => ({
     onPointerDown: (e: RPointerEvent) => {
       aim.current = { id: c.id, x: e.clientX, y: e.clientY }
+      pressedBy.current = e.pointerType
     },
     onPointerMove: (e: RPointerEvent) => {
       if (drag?.id === c.id) {
@@ -83,7 +86,7 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, { locked =
     },
     onPointerUp: (e: RPointerEvent) => {
       if (drag?.id === c.id) onPlay(c, e.clientX, e.clientY)
-      else if (aim.current?.id === c.id) onTap?.(c)
+      else if (aim.current?.id === c.id) onTap?.(c, pressedBy.current)
       stop()
     },
     onPointerCancel: () => stop(),
