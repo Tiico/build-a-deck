@@ -69,6 +69,25 @@ Med tre bord ritas de 309 texturerna per bord på 113, 227 och 340 sekunder: en 
 
 Workerns hämtning ur objektbutiken prövades samma dag mot MinIO i stället för R2: bilden låg bara i bucketen, workern läste den därifrån och texturen visade den.
 
+### Med klassificeraren igång (#1273)
+
+Samma lasttest kördes 2026-10-25 med screeningen vid uppladdning.
+Varje bild designerna laddade upp köade alltså ett `screen`-jobb, och workern laddade lådans klassificerare, två int8-modeller i onnxruntime, mellan texturerna.
+Maskinen var densamma, men den var hårt belastad av parallella testkörningar, med en last runt 30–50, så tiderna är långsammare än lådans.
+
+| Scenario | app (tak 512 MB) | render (tak 1 500 MB) | postgres (tak 768 MB) |
+|---|---|---|---|
+| 1 bord, 308 kort på 308 bilder à 250 kB | 188 | 973 | 182 |
+| 3 bord, 308 kort på 308 bilder | 187 | 847 | 207 |
+
+Talen är toppar i MiB av arbetsmängden.
+Ingen container kom inom en tiondel av sitt tak, ingen dödades och ingen startades om.
+Render bär nu ~250–370 MiB mer än efter #1028, vilket är modellerna och det de rör.
+I render-imagen håller de två sessionerna ~255 MiB för sig, utan minnesarena och utan förpackade vikter.
+Med arenan växte de med ytterligare ~85 MiB vid de första bilderna.
+Det är render som ligger närmast sitt tak nu, med 527 MiB kvar i det tyngsta scenariot.
+Ett bord till eller en större modell bör mätas här innan det läggs till.
+
 ### AI-frågornas kostnad för lådan (#1007)
 
 Mätt 2026-10-19 med `pnpm --filter @byd/e2e load:ai` (`packages/e2e/load/ai.ts`), som startar appen ur källkoden som containern startar den, mot Postgres, och låter den falska leverantören svara ett ord var 1,5 sekund så att varje svar håller sin anslutning i femton sekunder, som ett riktigt svar gör.
