@@ -117,6 +117,7 @@ function bind(store: MemoryLogStore): LogStore {
     claimGuest: (h, a) => store.claimGuest(h, a),
     guestsOf: (a) => store.guestsOf(a),
     returnGuest: (id, a, h, now) => store.returnGuest(id, a, h, now),
+    sweepGuests: (now, pending) => store.sweepGuests(now, pending),
   }
 }
 

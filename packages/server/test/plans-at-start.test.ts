@@ -1,49 +1,12 @@
-import { spawn } from 'node:child_process'
-import { createServer } from 'node:http'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { listenInBand } from './fixture.js'
+import { bootMain } from './boot.js'
 
 // The tiers as the box's process reads them (#1193, #1192), held as `main.ts` starts and not as a
 // fixture does: without `BYD_PLANS` the app starts and says that nothing is limited, and with one it
 // cannot read it does not start at all, and its log says why. In memory, so no database is touched;
 // what a tier an account has does to the start is asked of `plansAtStart` against both stores in
 // `account-plans.test.ts`.
-const MAIN = fileURLToPath(new URL('../src/main.ts', import.meta.url))
-
-// A port out of this worker's slice, let go again for the process to take.
-async function aPort(): Promise<number> {
-  const probe = createServer()
-  const port = await listenInBand(probe)
-  await new Promise((resolve) => probe.close(resolve))
-  return port
-}
-
-// The process until it says it listens or until it exits, whichever comes first, and what it wrote.
-async function boot(plans: string | undefined): Promise<{ code: number | null; lines: Record<string, unknown>[] }> {
-  const env: Record<string, string> = { ...(process.env as Record<string, string>), PORT: String(await aPort()) }
-  delete env['DATABASE_URL']
-  delete env['BYD_PLANS']
-  if (plans !== undefined) env['BYD_PLANS'] = plans
-  const child = spawn(process.execPath, ['--import', 'tsx', MAIN], { env, stdio: ['ignore', 'pipe', 'pipe'] })
-  let out = ''
-  child.stdout.on('data', (b: Buffer) => (out += String(b)))
-  child.stderr.on('data', (b: Buffer) => (out += String(b)))
-  const code = await new Promise<number | null>((resolve) => {
-    child.on('exit', (c) => resolve(c))
-    const listening = setInterval(() => {
-      if (!out.includes('"msg":"listening"')) return
-      clearInterval(listening)
-      child.kill('SIGTERM')
-    }, 50)
-    child.on('exit', () => clearInterval(listening))
-  })
-  const lines = out
-    .split('\n')
-    .filter((l) => l.startsWith('{'))
-    .map((l) => JSON.parse(l) as Record<string, unknown>)
-  return { code, lines }
-}
+const boot = (plans: string | undefined) => bootMain(plans === undefined ? {} : { BYD_PLANS: plans })
 
 describe('the tiers at start (#1193)', () => {
   it('without BYD_PLANS, starts and says no ceiling is set', async () => {
