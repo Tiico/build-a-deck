@@ -135,53 +135,59 @@ export class Renderer {
     try {
       const page = await context.newPage()
       await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
-      const drawn = await page.evaluate(async (maxPx) => {
-        const doc = globalThis.document
-        const img = doc.querySelector('img[data-screen]')
-        if (!(img instanceof HTMLImageElement)) return { error: 'the page has no img[data-screen]' }
-        try {
-          await img.decode()
-        } catch {
-          return { error: 'Chromium could not decode it' }
-        }
-        const vector = img.src.startsWith('data:image/svg+xml')
-        let w = img.naturalWidth
-        let h = img.naturalHeight
-        if (vector) {
-          // Chromium sizes an svg without its own size at a rounded 150 px, which bends its shape;
-          // the file's own size, or else its viewBox, is the shape it was drawn in.
-          const text = new TextDecoder().decode(Uint8Array.from(atob(img.src.slice(img.src.indexOf(',') + 1)), (c) => c.charCodeAt(0)))
-          const root = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement
-          const length = (name: string) => {
-            const m = /^\s*([0-9.]+)\s*(px)?\s*$/.exec(root.getAttribute(name) ?? '')
-            return m ? Number(m[1]) : NaN
-          }
-          const [, , vw, vh] = (root.getAttribute('viewBox') ?? '').trim().split(/[\s,]+/).map(Number)
-          if (length('width') > 0 && length('height') > 0) [w, h] = [length('width'), length('height')]
-          else if (vw && vh && vw > 0 && vh > 0) [w, h] = [vw, vh]
-        }
-        if (!(w > 0 && h > 0)) return { error: `it has no size (${w} × ${h})` }
-        const scale = vector ? maxPx / Math.max(w, h) : Math.min(1, maxPx / Math.max(w, h))
-        const width = Math.max(1, Math.round(w * scale))
-        const height = Math.max(1, Math.round(h * scale))
-        const canvas = doc.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return { error: 'there is no 2d canvas' }
-        ctx.imageSmoothingQuality = 'high'
-        ctx.drawImage(img, 0, 0, width, height)
-        const data = ctx.getImageData(0, 0, width, height).data
-        let bytes = ''
-        for (let i = 0; i < data.length; i += 0x8000) bytes += String.fromCharCode(...data.subarray(i, i + 0x8000))
-        return { width, height, base64: btoa(bytes) }
-      }, opts.maxPx)
+      const drawn = (await page.evaluate(`(() => { const __name = (fn) => fn; return (${drawForScreening.toString()})(${JSON.stringify(opts.maxPx)}) })()`)) as Drawn
       if ('error' in drawn) throw new Error(`the picture could not be drawn: ${drawn.error}`)
       return { width: drawn.width, height: drawn.height, data: new Uint8ClampedArray(Buffer.from(drawn.base64, 'base64')) }
     } finally {
       await context.close()
     }
   }
+}
+
+// What `renderPicture` runs in the page. It is carried in as source text inside a scope that has
+// `__name`, as `fitInDocument` is (`FIT_IN_PAGE`): under tsx, as on the box, the helpers it names
+// inside are wrapped in a `__name` the page does not have, and every svg failed to draw (#1273).
+type Drawn = { error: string } | { width: number; height: number; base64: string }
+async function drawForScreening(maxPx: number): Promise<Drawn> {
+  const doc = globalThis.document
+  const img = doc.querySelector('img[data-screen]')
+  if (!(img instanceof HTMLImageElement)) return { error: 'the page has no img[data-screen]' }
+  try {
+    await img.decode()
+  } catch {
+    return { error: 'Chromium could not decode it' }
+  }
+  const vector = img.src.startsWith('data:image/svg+xml')
+  let w = img.naturalWidth
+  let h = img.naturalHeight
+  if (vector) {
+    // Chromium sizes an svg without its own size at a rounded 150 px, which bends its shape;
+    // the file's own size, or else its viewBox, is the shape it was drawn in.
+    const text = new TextDecoder().decode(Uint8Array.from(atob(img.src.slice(img.src.indexOf(',') + 1)), (c) => c.charCodeAt(0)))
+    const root = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement
+    const length = (name: string) => {
+      const m = /^\s*([0-9.]+)\s*(px)?\s*$/.exec(root.getAttribute(name) ?? '')
+      return m ? Number(m[1]) : NaN
+    }
+    const [, , vw, vh] = (root.getAttribute('viewBox') ?? '').trim().split(/[\s,]+/).map(Number)
+    if (length('width') > 0 && length('height') > 0) [w, h] = [length('width'), length('height')]
+    else if (vw && vh && vw > 0 && vh > 0) [w, h] = [vw, vh]
+  }
+  if (!(w > 0 && h > 0)) return { error: `it has no size (${w} × ${h})` }
+  const scale = vector ? maxPx / Math.max(w, h) : Math.min(1, maxPx / Math.max(w, h))
+  const width = Math.max(1, Math.round(w * scale))
+  const height = Math.max(1, Math.round(h * scale))
+  const canvas = doc.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return { error: 'there is no 2d canvas' }
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, 0, 0, width, height)
+  const data = ctx.getImageData(0, 0, width, height).data
+  let bytes = ''
+  for (let i = 0; i < data.length; i += 0x8000) bytes += String.fromCharCode(...data.subarray(i, i + 0x8000))
+  return { width, height, base64: btoa(bytes) }
 }
 
 // The card's box in CSS pixels, without waiting: a compiled output that has no card is an
