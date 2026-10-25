@@ -42,6 +42,7 @@ import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, 
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, ownerNameOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
+import { TERMS, checkRegister, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -97,6 +98,8 @@ export type ServerOptions = {
   // without accounts nobody bears anything.
   plans?: Plans
   accountPlans?: AccountPlanStore
+  // The terms' versions (#1270, `terms.ts`): the box runs with `TERMS`, and a test with its own.
+  terms?: TermsRegister
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -322,6 +325,8 @@ const HEADERS_TIMEOUT_MS = KEEP_ALIVE_MS + 1_000
 // HTTP for the few things that are not a table (health, creating a session), and one
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
 export function createServer(given: ServerOptions): Server {
+  // A register that cannot say which version is in force stops the start, rather than a request.
+  checkRegister(given.terms ?? TERMS)
   const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter(), passkeyChallenges: given.passkeyChallenges ?? new PasskeyChallenges(), ...(given.ai ? { ai: { limiter: new KeyTryLimiter(), ...given.ai } } : {}) }
   const http = createHttpServer({ keepAliveTimeout: KEEP_ALIVE_MS, headersTimeout: HEADERS_TIMEOUT_MS }, (req, res) => {
     // A closing server lets go of a connection as soon as it goes quiet. Node hangs up the idle
@@ -521,6 +526,24 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (claimed === 'other') return json(res, 409, { error: 'another account has this session' })
       return json(res, 200, { session: claimed.sessionId, seat: claimed.seat, name: claimed.name })
     }
+    // The terms in force (#1270): which version, and whether it changed anything material. Public,
+    // since the terms are read before anyone accepts them; null while there are none.
+    if (req.method === 'GET' && url.pathname === '/terms') return json(res, 200, { current: termsInForce(registerOf(opts), clock(opts)) })
+    // Accepting the terms (#1270): only the version in force, so a tab opened before a change never
+    // accepts what its reader has not read. 409 says which version that is, null when there is none.
+    if (req.method === 'POST' && url.pathname === '/me/terms') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const { version } = TermsBody.parse(JSON.parse(await readBody(req)))
+      const now = clock(opts)
+      const current = termsInForce(registerOf(opts), now)?.version ?? null
+      if (version !== current) return json(res, 409, { error: 'not the terms in force', current })
+      await opts.auth.acceptTerms(account.id, current, now.toISOString())
+      res.writeHead(204)
+      res.end()
+      return
+    }
     if (url.pathname === '/me/ai-key' || url.pathname.startsWith('/me/ai-key/')) return await routeAiKey(opts, req, res, url)
     if (req.method === 'GET' && url.pathname === '/me/played') {
       if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
@@ -696,7 +719,7 @@ const FACE_LINK_SLACK_S = 600
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
-const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites']
+const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites', '/terms']
 // The one API path that is also a page: the invitation link in the mail (D3, #475). A browser
 // following it asks for HTML and gets the app, which accepts the invitation with a POST to the
 // same path; anything else asking gets the API's answer.
@@ -2566,7 +2589,9 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const account = await accountOf(auth, req)
     // Nobody is an answer and not a failure (#744): every guest page asks, a guest is never logged
     // in (G1), and a 401 is written in the browser's console as an error on each of those pages.
-    return json(res, 200, { email: account?.email ?? null })
+    if (!account) return json(res, 200, { email: null })
+    // Where the account stands against the terms (#1270): what the step in #1272 is asked from.
+    return json(res, 200, { email: account.email, terms: await standingOf(opts, auth, account.id) })
   }
   if (url.pathname.startsWith('/auth/passkeys')) return routePasskeys(opts, auth, req, res, url)
   if (req.method === 'POST' && url.pathname === '/auth/logout') {
@@ -2577,6 +2602,12 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     return
   }
   json(res, 404, { error: 'not found' })
+}
+
+const registerOf = (opts: ServerOptions): TermsRegister => opts.terms ?? TERMS
+const TermsBody = z.object({ version: z.string().max(32) })
+async function standingOf(opts: ServerOptions, auth: AuthStore, accountId: string): Promise<TermsStanding> {
+  return termsStanding(registerOf(opts), (await auth.termsAccepted(accountId)).map((a) => a.version), clock(opts))
 }
 
 // Passkeys (#1180): saving one needs the session the link made; logging in with one makes a

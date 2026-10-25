@@ -81,7 +81,7 @@ function fetchPage(path: string): Promise<ComponentType> {
   if (path === '/play') return surface(import('./player/PlayerPage.js').then((m) => m.PlayerPage), ['play'])
   if (path === '/join') return surface(import('./join/JoinPage.js').then((m) => m.JoinPage), ['play'])
   if (path === '/observe') return surface(import('./observer/ObserverPage.js').then((m) => m.ObserverPage), ['play'])
-  if (path === '/online') return surface(import('./online/OnlinePage.js').then((m) => m.OnlinePage), ['play'])
+  if (path === '/online') return surface(import('./online/OnlinePage.js').then((m) => m.OnlinePage), ['play', 'online'])
   if (path === '/editor') return surface(Promise.resolve(EditorRoute), ['play', 'account', 'editor'])
   // The crossroads and the guide behind its first door are one page at two addresses (L79), each
   // on a line of its own so the route table reads as the tests read it.

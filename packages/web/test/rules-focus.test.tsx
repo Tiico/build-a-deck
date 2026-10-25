@@ -2,7 +2,8 @@
 // Where the hand is after the Regler tab has done what it was asked (#481, fynd 12; L12). Each of
 // these controls goes away with the press that used it — the ways in once there is a book, the
 // report once it is answered — and the focus went with them, to <body>, so the next Tab started
-// from the top of the page.
+// from the top of the page. Since #1258 the ways in stand on the empty page itself, each named with
+// a line on what it gives, and the file picker among them is «Läs in en fil».
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -29,17 +30,17 @@ const inBook = () => document.activeElement?.closest('[data-rulebook] [data-bloc
 const FILE = '# Skogens herrar\n\n## En tur\n\nDra ett kort.'
 
 describe('the focus after a press in the Regler tab', () => {
-  it.each(['Börja skriva reglerna', 'Börja från en mall'])('lands in the book after «%s»', async (way) => {
+  it.each([/^Ett tomt blad/, /^Fem avsnitt med frågor/])('lands in the book after «%s»', async (way) => {
     const user = userEvent.setup()
     await openRules(user)
-    await user.click(screen.getByRole('button', { name: way }))
+    await user.click(await screen.findByRole('button', { name: way }))
     await waitFor(() => expect(inBook()).not.toBeNull())
   })
 
   it('lands in the book after «Gör boken»', async () => {
     const user = userEvent.setup()
     await openRules(user)
-    fireEvent.change(screen.getByLabelText('Importera från fil'), { target: { files: [new File([FILE], 'regler.md', { type: 'text/markdown' })] } })
+    fireEvent.change(await screen.findByLabelText('Läs in en fil'), { target: { files: [new File([FILE], 'regler.md', { type: 'text/markdown' })] } })
     await user.click(await screen.findByRole('button', { name: 'Gör boken' }))
     await waitFor(() => expect(inBook()).not.toBeNull())
   })
@@ -47,10 +48,10 @@ describe('the focus after a press in the Regler tab', () => {
   it.each(['Avbryt', 'Escape'])('goes back to the import after the report is left with %s', async (how) => {
     const user = userEvent.setup()
     await openRules(user)
-    fireEvent.change(screen.getByLabelText('Importera från fil'), { target: { files: [new File([FILE], 'regler.md', { type: 'text/markdown' })] } })
+    fireEvent.change(await screen.findByLabelText('Läs in en fil'), { target: { files: [new File([FILE], 'regler.md', { type: 'text/markdown' })] } })
     const report = await screen.findByRole('region', { name: 'Vad importen gör med filen' })
     if (how === 'Escape') fireEvent.keyDown(report, { key: 'Escape' })
     else await user.click(screen.getByRole('button', { name: 'Avbryt' }))
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Importera från fil')))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Läs in en fil')))
   })
 })

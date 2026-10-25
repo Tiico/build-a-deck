@@ -2,6 +2,9 @@
 // The import from a Markdown file (#131, second slice). A designer who writes her rules in her own
 // editor should be able to hand the file over, and what the file loses on the way in must be read
 // before the book is made — not afterwards, and not in a log.
+//
+// Since #1258 the empty tab's way in is «Läs in en fil», one of three on the empty page itself, and
+// over a written book the import lives in the «Boken» box at the end of the row.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -61,16 +64,18 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 const picture = (name: string, bytes: BlobPart = PNG) => new File([bytes], name, { type: 'image/png' })
 
 async function pick(text = FILE, name = 'regler-v4.md', beside: File[] = [picture('bordet.png')]): Promise<HTMLElement> {
-  fireEvent.change(screen.getByLabelText('Importera från fil'), { target: { files: [new File([text], name, { type: 'text/markdown' }), ...beside] } })
+  fireEvent.change(await screen.findByLabelText('Läs in en fil'), { target: { files: [new File([text], name, { type: 'text/markdown' }), ...beside] } })
   return await screen.findByRole('region', { name: 'Vad importen gör med filen' })
 }
 
 describe('the third way in (#131)', () => {
   it('stands beside the two that were already there, on the empty tab', async () => {
     await openRules()
-    expect(screen.getByRole('button', { name: 'Börja skriva reglerna' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Börja från en mall' })).toBeTruthy()
-    expect(screen.getByLabelText('Importera från fil')).toBeTruthy()
+    // On the empty page since #1258, each way named with a line on what it gives.
+    const ways = await screen.findByRole('region', { name: 'Reglerna hör till spelet' })
+    expect(within(ways).getByRole('button', { name: /^Ett tomt blad/ })).toBeTruthy()
+    expect(within(ways).getByRole('button', { name: /^Fem avsnitt med frågor/ })).toBeTruthy()
+    expect(within(ways).getByLabelText('Läs in en fil')).toBeTruthy()
   })
 })
 
@@ -94,8 +99,8 @@ describe('the report, which is the last thing read before the book (#131)', () =
   it('shows the proposed book in the column too, and never marks its sections empty', async () => {
     await openRules()
     await pick()
-    // The disposition says “· tomt” beside a section nobody has written in. A section read out of
-    // a file has been written in, and the column must not say otherwise.
+    // The column lists the file's sections as written ones — the template's «· tomt» marks are gone
+    // with the template laid out in the empty tab (#1258), and nothing here may bring them back.
     //
     // And the column has something to list at all (#202). A file that spends its `#` on its own
     // title writes its sections as `##`; with the title swallowed and nothing raised, the book had
@@ -198,7 +203,7 @@ describe('what the report says about the pictures (#173)', () => {
   // file, she would never learn that the pictures were the thing she left behind.
   it('says why there is nothing to make a book of, when the pictures were the something', async () => {
     await openRules()
-    fireEvent.change(screen.getByLabelText('Importera från fil'), {
+    fireEvent.change(await screen.findByLabelText('Läs in en fil'), {
       target: { files: [new File(['# Skogens herrar\n\n![Bordet](bordet.png)'], 'regler-v4.md', { type: 'text/markdown' })] },
     })
     const said = (await screen.findByRole('alert')).textContent ?? ''
@@ -243,11 +248,12 @@ describe('the two answers the report stands beside (#131)', () => {
     fireEvent.click(within(report).getByRole('button', { name: 'Avbryt' }))
     await gone()
     expect(document.querySelector('[data-rulebook]')).toBeNull()
-    // The disposition and all three ways in are standing there again, unchanged.
-    expect(screen.getByLabelText('Importera från fil')).toBeTruthy()
-    expect(within(screen.getByRole('navigation', { name: 'Innehåll' })).getAllByRole('link').map((a) => a.textContent)).toEqual(
-      ['Översikt', 'Uppställning', 'En tur', 'Handlingar', 'Spelet tar slut'].map((s) => `${s}\u00b7 tomt`),
-    )
+    // All three ways in are standing there again, unchanged, and the column has nothing of the
+    // file's left in it (since #1258 an empty book lays out nothing in the column either).
+    const ways = screen.getByRole('region', { name: 'Reglerna hör till spelet' })
+    expect(within(ways).getByLabelText('Läs in en fil')).toBeTruthy()
+    expect(within(ways).getAllByRole('button')).toHaveLength(2)
+    expect(screen.queryByRole('navigation', { name: 'Innehåll' })).toBeNull()
   })
 
   it('writes the book the report described when the answer is Gör boken', async () => {
@@ -345,7 +351,9 @@ describe('what the book remembers of the file it came from (#131)', () => {
   it('says in the tab itself which file the book came out of', async () => {
     await openRules()
     await makeTheBook()
-    expect(await screen.findByText(/regler-v4\.md/)).toBeTruthy()
+    // Said as where the book came from; the «Boken» box names the same file since #1258, but as
+    // the control that reads it in again, not as the book's origin.
+    expect(await screen.findByText(/^Boken kom ur regler-v4\.md/)).toBeTruthy()
   })
 })
 
@@ -363,19 +371,21 @@ describe('the protection an import lays down (#131, B4)', () => {
 describe('where the import is offered (#131)', () => {
   it('stands over a written book too, under the name that slice built for it', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Fem avsnitt med frågor/ }))
     await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
     // The second slice shipped no control here on purpose: one that replaced a whole book without
     // saying what it took would have been a promise nobody kept. The third slice keeps the promise,
     // and `rules-reimport` is where what it now says is tested. The empty tab's own control is a
-    // third way in and not this one, so it is gone with the empty tab.
-    expect(screen.queryByLabelText('Importera från fil')).toBeNull()
-    expect(screen.getByLabelText('Importera över boken')).toBeTruthy()
+    // third way in and not this one, so it is gone with the empty tab. Since #1258 it stands in the
+    // «Boken» box, and a book that came from no file is offered one: «Ersätt med en fil…».
+    expect(screen.queryByLabelText('Läs in en fil')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Boken' }))
+    expect(screen.getByLabelText('Ersätt med en fil…')).toBeTruthy()
   })
 
   it('says so, rather than doing nothing, when the file has nothing to make a book of', async () => {
     await openRules()
-    fireEvent.change(screen.getByLabelText('Importera från fil'), { target: { files: [new File(['\n---\n'], 'tom.md', { type: 'text/markdown' })] } })
+    fireEvent.change(await screen.findByLabelText('Läs in en fil'), { target: { files: [new File(['\n---\n'], 'tom.md', { type: 'text/markdown' })] } })
     expect((await screen.findByRole('alert')).textContent).toContain('tom.md')
     expect(document.querySelector('[data-rulebook]')).toBeNull()
   })
@@ -466,7 +476,7 @@ describe('when the save behind the import collides with someone else (#131)', ()
 // take the pictures out of the report and out of the project's assets, and these would go red.
 describe('dropping the book and its pictures on the import (#293)', () => {
   const carrying = (given: File[]) => ({ dataTransfer: { files: given, items: given.map((f) => ({ kind: 'file', type: f.type, getAsFile: () => f })), types: ['Files'], getData: () => '' } })
-  const control = (name = 'Importera från fil') => screen.getByLabelText(name).closest('label') as HTMLLabelElement
+  const control = (name = 'Läs in en fil') => screen.getByLabelText(name).closest('label') as HTMLLabelElement
   const book = (text = FILE, name = 'regler-v4.md') => new File([text], name, { type: 'text/markdown' })
 
   it('reads the dropped book and its picture into the report the picker would have made', async () => {

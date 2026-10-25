@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { svStatus } from '../src/i18n/sv.status.js'
 import { svPlay } from '../src/i18n/sv.play.js'
+import { svOnline } from '../src/i18n/sv.online.js'
 import { svAccount } from '../src/i18n/sv.account.js'
 import { svEditor } from '../src/i18n/sv.editor.js'
 import { enStatus } from '../src/i18n/en.status.js'
 import { enPlay } from '../src/i18n/en.play.js'
+import { enOnline } from '../src/i18n/en.online.js'
 import { enAccount } from '../src/i18n/en.account.js'
 import { enEditor } from '../src/i18n/en.editor.js'
 
@@ -22,6 +24,7 @@ import { enEditor } from '../src/i18n/en.editor.js'
 const PARTS: Record<string, [Record<string, string>, Record<string, string>]> = {
   status: [svStatus, enStatus],
   play: [svPlay, enPlay],
+  online: [svOnline, enOnline],
   account: [svAccount, enAccount],
   editor: [svEditor, enEditor],
 }

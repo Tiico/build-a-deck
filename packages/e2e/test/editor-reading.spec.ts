@@ -33,7 +33,7 @@ const EDITS: Record<string, readonly string[]> = {
   table: ['.byd-data-add', '.byd-data-tick', 'td.byd-data-remove button', 'th.byd-data-remove button', '.byd-data-icon', '.byd-data-bulk'],
   theme: ['.byd-theme-tile', '.byd-theme-reset', '.byd-theme-show', '.byd-theme-library-open', '.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child', '.byd-fonts-upload', '.byd-fonts-catalog'],
   media: ['.byd-media-add', '.byd-media-remove'],
-  rules: ['.byd-rules-ways:not(.byd-rules-tools)', '.byd-rules-tools label', '.byd-rules-add', '.byd-rules-own', '.byd-rules-block > div[role="button"]'],
+  rules: ['.byd-rules-ways', '.byd-rules-adding', '.byd-rules-menu label', '.byd-rules-block > div[role="button"]'],
   tables: ['.byd-setup-tools', '.byd-setup-x', '.byd-setup-corner', '.byd-zone-action-new'],
 }
 // What must stay alive for a reader, so the page is not simply empty.

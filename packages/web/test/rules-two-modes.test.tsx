@@ -2,6 +2,8 @@
 // The rulebook's two modes (#227, approved 2026-09-19: A's toggle, A's column, C's felt). One
 // switch in the rules tab's own header turns the reading area from the book the designer writes
 // in into the drawer the players are handed — the same drawer, drawn by the table's own code.
+// Since #1258 the switch is called «Visa boken» and its two modes «Skriv» and «Förhandsvisa»; what
+// they do and where the switch stands are #227's and unchanged.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -32,7 +34,7 @@ const rules: RuleDoc = {
   ],
 }
 
-const toggle = () => within(document.querySelector('.byd-rules-bar') as HTMLElement).getByRole('group', { name: 'Läge' })
+const toggle = () => within(document.querySelector('.byd-rules-bar') as HTMLElement).getByRole('group', { name: 'Visa boken' })
 const press = (mode: string) => fireEvent.click(within(toggle()).getByRole('button', { name: mode }))
 // Det presenterade läget är bordets egen lucka, och luckan hämtas med sin stilmall sedan #346 —
 // den står alltså inte i DOM:en i samma bildruta som trycket. Väntan ligger i växlingen och inte
@@ -40,7 +42,7 @@ const press = (mode: string) => fireEvent.click(within(toggle()).getByRole('butt
 // växling och inte bara i den första: annars vore proven gröna bara i den ordning de råkar köras
 // i, eftersom modulen är hämtad efter det första trycket i filen.
 const pressPresented = async () => {
-  press('Som på bordet')
+  press('Förhandsvisa')
   await waitFor(() => expect(document.querySelector('.byd-rules-panel')).not.toBeNull())
 }
 const lucka = () => document.querySelector('.byd-rules-panel') as HTMLElement
@@ -101,12 +103,12 @@ const bar = () => document.querySelector('.byd-rules-bar') as HTMLElement
 describe('the switch in the rules tab’s own header (#227)', () => {
   it('stands first in the header, directly after REGELBOKEN, with the two modes and the editable one on', async () => {
     await openRules()
-    const toggle = within(bar()).getByRole('group', { name: 'Läge' })
+    const toggle = within(bar()).getByRole('group', { name: 'Visa boken' })
     // Directly after the heading: the switch is the header's first control and not one more pill
     // among the ways in at its tail.
     expect(bar().querySelector('h2')!.nextElementSibling).toBe(toggle)
     const modes = within(toggle).getAllByRole('button')
-    expect(modes.map((b) => b.textContent)).toEqual(['Redigerbar', 'Som på bordet'])
+    expect(modes.map((b) => b.textContent)).toEqual(['Skriv', 'Förhandsvisa'])
     expect(modes.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false'])
   })
 
@@ -137,7 +139,7 @@ describe('the switch in the rules tab’s own header (#227)', () => {
     fireEvent.click(within(book).getByRole('button', { name: 'Visa uppställningen' }))
     expect(zonesOf(book)).toEqual(inTheEditor)
 
-    press('Redigerbar')
+    press('Skriv')
     expect(document.querySelector('[data-rulebook]')).not.toBeNull()
   })
 
@@ -164,7 +166,7 @@ describe('the switch in the rules tab’s own header (#227)', () => {
     await user.keyboard('{Enter}')
     // Samma väntan som `pressPresented` gör, men här är trycket en tangent (#346).
     await waitFor(() => expect(document.querySelector('.byd-rules-panel')).not.toBeNull())
-    expect(document.activeElement).toBe(within(toggle()).getByRole('button', { name: 'Som på bordet' }))
+    expect(document.activeElement).toBe(within(toggle()).getByRole('button', { name: 'Förhandsvisa' }))
 
     await user.tab({ shift: true })
     await user.keyboard(' ')
@@ -184,7 +186,7 @@ describe('the reader’s place over the switch (#227)', () => {
     // The proof that it is not a number that travelled: the two heights are 226 px apart.
     expect(BOOK['h2']!.top - DRAWER['h2']!.top).toBe(226)
 
-    press('Redigerbar')
+    press('Skriv')
     expect(reading().scrollTop).toBe(BOOK['h2']!.top)
   })
 
@@ -196,9 +198,9 @@ describe('the reader’s place over the switch (#227)', () => {
 
     reading().scrollTop = BOOK['h2']!.top
     await pressPresented()
-    expect(said()).toBe('Som på bordet. Samma avsnitt: Skogens väsen.')
-    press('Redigerbar')
-    expect(said()).toBe('Redigerbar. Samma avsnitt: Skogens väsen.')
+    expect(said()).toBe('Förhandsvisa. Samma avsnitt: Skogens väsen.')
+    press('Skriv')
+    expect(said()).toBe('Skriv. Samma avsnitt: Skogens väsen.')
   })
 
   // The question box is the table's own and is not switched off here: turning it off would be a
@@ -216,8 +218,8 @@ describe('the reader’s place over the switch (#227)', () => {
     expect(hits[0]!.textContent).toContain('Väsendet vaknar')
     expect(lucka().querySelectorAll('[data-block]')).toHaveLength(0)
 
-    press('Redigerbar')
-    expect(said()).toBe('Redigerbar. Samma avsnitt: Skogens väsen.')
+    press('Skriv')
+    expect(said()).toBe('Skriv. Samma avsnitt: Skogens väsen.')
     expect(reading().scrollTop).toBe(BOOK['h2']!.top)
   })
 })
@@ -235,10 +237,10 @@ describe('the mode remembers nothing (#227, L4)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
     expect(document.querySelector('[data-rulebook]')).not.toBeNull()
     expect(document.querySelector('.byd-rules-panel')).toBeNull()
-    expect(within(toggle()).getByRole('button', { name: 'Redigerbar' }).getAttribute('aria-pressed')).toBe('true')
+    expect(within(toggle()).getByRole('button', { name: 'Skriv' }).getAttribute('aria-pressed')).toBe('true')
 
     // Not in the browser, and not in the document: nothing about the switch was ever stored.
     expect(Object.keys(localStorage).filter((k) => /rule/i.test(k))).toEqual([])
-    expect(JSON.stringify(await run.projects.load(run.projectId))).not.toMatch(/Som på bordet|"view"/)
+    expect(JSON.stringify(await run.projects.load(run.projectId))).not.toMatch(/Förhandsvisa|"view"/)
   })
 })
