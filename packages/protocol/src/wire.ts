@@ -70,13 +70,30 @@ export type ServerMessage = z.infer<typeof ServerMessage>
 // proxy that logs requests logs their query. `Sec-WebSocket-Protocol` is the one header a page may
 // set on a WebSocket, so the token rides there, as a second protocol beside the table's own, which
 // the server answers with. A token is base64url, which a protocol name may hold as it is.
+//
+// The host key rides the same way (#1306), as `deckster.host.<key>`: it opens the table's own view,
+// and the upgrade of the table's screen is a request like any other. Every client of this protocol
+// offers `deckster`, with or without a secret beside it, which is how the server knows a client
+// that understands what it says since #1278 (`admitted`) from one loaded before.
 export const TABLE_PROTOCOL = 'deckster'
 const TOKEN_PROTOCOL = `${TABLE_PROTOCOL}.token.`
-export const guestProtocols = (token: string): string[] => [TABLE_PROTOCOL, `${TOKEN_PROTOCOL}${token}`]
-export function tokenOfProtocols(header: string | undefined): string | null {
-  for (const offered of (header ?? '').split(',')) {
-    const name = offered.trim()
-    if (name.startsWith(TOKEN_PROTOCOL) && name.length > TOKEN_PROTOCOL.length) return name.slice(TOKEN_PROTOCOL.length)
-  }
-  return null
+const HOST_PROTOCOL = `${TABLE_PROTOCOL}.host.`
+// A protocol name is an HTTP token, and a browser throws on any other; a secret this product made is
+// base64url and always is one. Anything else — a key mistyped into an address — is not offered, and
+// the door says it needs the key, as it would have of a wrong one.
+const sayable = (secret: string | undefined): secret is string => secret !== undefined && /^[A-Za-z0-9_-]+$/.test(secret)
+export const tableProtocols = ({ token, host }: { token?: string | undefined; host?: string | undefined } = {}): string[] => [
+  TABLE_PROTOCOL,
+  ...(sayable(token) ? [`${TOKEN_PROTOCOL}${token}`] : []),
+  ...(sayable(host) ? [`${HOST_PROTOCOL}${host}`] : []),
+]
+export const guestProtocols = (token: string): string[] => tableProtocols({ token })
+const offered = (header: string | undefined): string[] => (header ?? '').split(',').map((name) => name.trim())
+const secretOf = (header: string | undefined, prefix: string): string | null => {
+  const name = offered(header).find((n) => n.startsWith(prefix) && n.length > prefix.length)
+  return name === undefined ? null : name.slice(prefix.length)
 }
+export const tokenOfProtocols = (header: string | undefined): string | null => secretOf(header, TOKEN_PROTOCOL)
+export const hostKeyOfProtocols = (header: string | undefined): string | null => secretOf(header, HOST_PROTOCOL)
+// Whether the client speaks the protocol at all: one loaded before #1278 offers nothing.
+export const offersTableProtocol = (header: string | undefined): boolean => offered(header).includes(TABLE_PROTOCOL)

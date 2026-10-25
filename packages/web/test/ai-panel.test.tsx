@@ -106,7 +106,7 @@ describe('the AI panel with a key', () => {
     enter()
     await waitFor(() => expect(live()).toHaveLength(2))
     await waitFor(() => expect(lastAnswer().textContent).toMatch(/«Andra\?»/))
-    const messages = (run.ai!.fake.calls.at(-1)!.body as { messages: { role: string; content: string }[] }).messages
+    const messages = (run.ai!.fake.calls.filter((call) => call.body !== undefined).at(-1)!.body as { messages: { role: string; content: string }[] }).messages
     expect(messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user'])
     expect(messages[0]!.content).toBe('Första?')
     expect(messages[2]!.content).toBe('Andra?')
@@ -296,7 +296,7 @@ describe('in English', () => {
     enter('Ask about the game')
     await waitFor(() => expect(lastAnswer().getAttribute('aria-busy')).toBe('false'))
     expect(lastAnswer().textContent).toMatch(/Skogens herrar/)
-    expect(((run.ai!.fake.calls.at(-1)!.body as { system: { text: string }[] }).system[0]!.text)).toMatch(/uses the tool in English/)
+    expect(((run.ai!.fake.calls.filter((call) => call.body !== undefined).at(-1)!.body as { system: { text: string }[] }).system[0]!.text)).toMatch(/uses the tool in English/)
     type('Elakt [refuse]', 'Ask about the game')
     enter('Ask about the game')
     expect((await within(aside).findByRole('alert')).textContent).toContain('Anthropic would not answer')

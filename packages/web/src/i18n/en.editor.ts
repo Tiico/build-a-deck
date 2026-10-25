@@ -1817,7 +1817,6 @@ export const enEditor = {
   'zone.hand': 'Hand',
   'zone.new.pile': 'Pile {n}',
   'zone.new.area': 'Area {n}',
-  'tables.designer': 'The designer',
   // The playtest's answers (#1010): the Tables tab's second view, “Results”.
   'results.switch': 'Tables tab view',
   'results.switch.tables': 'Tables',

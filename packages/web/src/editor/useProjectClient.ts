@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ProjectClient, ProjectUnavailable, type ProjectFault } from './ProjectClient.js'
-import { Unauthorized, whoAmI } from '../account/api.js'
+import { Unauthorized } from '../account/api.js'
 import { useT } from '../i18n/index.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { waitBegan } from '../status/waitClock.js'
@@ -58,12 +58,12 @@ export function useProjectClient(http: string | null, id: string | null, timing:
       settled = true
     }
     const start = async () => {
-      // The name the others see is the account's own; without one the editor is simply someone,
-      // which is what a game from before accounts has. That word is the reader's own, taken
-      // where she arrives and frozen there — see A4's boundary and the note on `open`.
-      const email = await whoAmI(http).catch(() => null)
-      if (!live || settled) return
-      const client = await ProjectClient.open({ http, id, dropAfterMs, t: reader.current, ...(email ? { name: email } : {}) })
+      // The name the others see is the account's own, which the server knows from the cookie and
+      // which is in no address (#1306): the socket's address is a request a proxy logs. The page only
+      // says the word for someone, which is all a game from before accounts has. That word is the
+      // reader's own, taken where she arrives and frozen there — see A4's boundary and the note on
+      // `open`.
+      const client = await ProjectClient.open({ http, id, dropAfterMs, t: reader.current })
       if (!live || settled) {
         client.close()
         return

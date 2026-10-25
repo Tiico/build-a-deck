@@ -421,7 +421,7 @@ Nu står bordet, platsen och rumskoden i frågan, och token i fragmentet (`#toke
 Det gäller `/play`, `/online`, `/observe` och `/claim` (`packages/web/src/guestAddress.ts`).
 Rumskoden står kvar i frågan: den är det adressen är till för (K12).
 Namnet står ingenstans: servern säger anslutningen namnet på inträdet dess token köptes för, i meddelandet `admitted`, och telefonen sätter sig med det.
-Ägarens egen plats och tittarplats från editorn (`owner=1`) har inget inträde och bär fortfarande sitt namn i adressen; det är designerns namn, inte en gästs.
+Ägarens egen plats och tittarplats från editorn (`owner=1`) har inget inträde; hennes namn står sedan #1306 inte heller i adressen (nedan).
 Bordets WebSocket tar token i `Sec-WebSocket-Protocol` och inte i adressen, eftersom uppgraderingen också är ett anrop som en proxy loggar: klienten erbjuder protokollen `deckster` och `deckster.token.<token>`, och servern svarar med `deckster`.
 En sida som laddades före ändringen ansluter med `?token=` och släpps fortfarande in, men får inte `admitted`, som dess klient inte känner till.
 Inloggningen bär fragmentet vidare: `loginUrl` lägger en `next`s fragment som inloggningssidans eget fragment, sidan lämnar det till kortet, och servern lägger det efter länken i inloggningsmejlet och aldrig i dess fråga.
@@ -430,7 +430,23 @@ Token står därmed i mejlet, som förut, men aldrig i ett anrop.
 En gammal länk med `?token=` eller `?name=` fungerar fortfarande: sidan flyttar token till fragmentet, tar bort namnet, gör detsamma med sidan en gammal claim-länk går tillbaka till, och ersätter historikposten med `history.replaceState`, så att den gamla formen inte blir kvar.
 Själva den gamla adressen har redan nått lådan när den öppnas; det går inte att göra ogjort, bara att den inte skickas igen.
 `packages/e2e/test/guest-address.spec.ts` läser varje anrops adress och `Referer` och varje WebSockets adress genom en plats resa (ansluta, sätta sig, ladda om, spela, enkäten, «Spara till ditt konto», logga in) och en observatörs, och hittar varken namnet eller token, sedan den visat att sökningen hittar namnet i bordets egna ramar.
-Värdnyckeln i bordsvyns WebSocket-adress (`?host=`) är inte en gästs och ligger utanför detta; den är ute ur adressraden sedan #758.
+Värdnyckeln i bordsvyns WebSocket-adress (`?host=`) var inte en gästs och låg utanför detta; den flyttades av #1306 (nedan).
+
+Byggt 2026-10-25 (#1306): värdnyckeln och ägarens namn står i ingen adress.
+Bordsskärmen var `/table?session=…&host=<nyckel>`, och bordets WebSocket sa nyckeln i sin adress (`?host=`) vid varje anslutning.
+Nyckeln öppnar bordet, roterar koden och sparkar platser, och sidans eget anrop och uppgraderingen bar den till lådan och in i proxyns och Cloudflares loggar, om de loggar adresser; att skärmen tog den ur adressraden vid ankomsten (#758) gjorde inget åt det.
+Nu lämnar editorn den i fragmentet, `/table?session=…&mode=tv#host=<nyckel>`, som webbläsaren aldrig skickar i ett anrop eller en `Referer`, och skärmen tar den därifrån, sparar den i fliken och ersätter historikposten som förut (`packages/web/src/table/hostKey.ts`).
+Bordets WebSocket tar nyckeln i `Sec-WebSocket-Protocol` som gästens token: klienten erbjuder `deckster` och `deckster.host.<nyckel>`, och servern svarar med `deckster`.
+En nyckel som inte kan vara ett protokollnamn erbjuds inte, och dörren säger då att nyckeln behövs, som för en fel nyckel.
+Varje klient erbjuder nu `deckster`, med eller utan hemlighet bredvid, och det är så servern vet att klienten känner `admitted`.
+Ägarens egen plats från editorn var `/online?…&name=<hennes namn>&owner=1`.
+Nu står inget namn i adressen: platsen sätter sig under namnet hon gav i «Hur sitter ni?», som webbläsaren som startade bordet minns per bord (`packages/web/src/hostSeat.ts`), och annars under kontots visningsnamn (#1254), som servern säger hennes anslutning i `admitted` utifrån kontokakan, aldrig utifrån adressen.
+Har kontot inget namn heter hon «Designern», och hennes e-postadress sägs aldrig.
+Editorns egen WebSocket (`/projects/:id/edit`) bar hennes e-postadress i `?name=`; servern tog redan namnet ur kontot, så editorn säger nu bara ordet för någon där, vilket är allt ett spel från före konton har.
+Den gamla formen läses en övergångstid: en sida som laddades före ändringen ansluter med `?host=` och släpps in, och ägarens gamla plats ansluter med `?name=` utan protokoll och får inte `admitted`, som dess klient inte känner till.
+En gammal länk med `?host=` eller `?name=` öppnar samma vy, och sidan tar bort dem ur adressen i samma historikpost.
+`packages/e2e/test/owner-address.spec.ts` läser varje anrops adress och `Referer` och varje WebSockets adress i editorns, bordsskärmens och platsens flikar, från starten i editorn till en omladdning, och hittar varken nyckeln, hennes namn eller hennes e-postadress, sedan den visat att sökningen hittar nyckeln i fragmentet fliken öppnades med, och namnet och adressen i kontots eget svar och namnet i bordets ramar.
+Samma spec visar att en sida från före ändringen ansluter med den gamla formen, och `packages/server/test/owner-address.test.ts` prövar dörren med nyckeln i huvudet och namnet från kontot.
 
 Byggt 2026-10-25 (#1277, DESIGN-BESLUT G6): ett inträde som aldrig öppnades rensas av sveparen när dess två minuter gått, med namnet det köptes under; ett öppnat, ett sparkat och ett claimat inträde står kvar, eftersom de är bordets historik, och tas bara av raderingen (#1279).
 
@@ -616,7 +632,8 @@ Det sviten hittade när policyn slogs på, och vad som gjordes:
 Byggt 2026-10-25 (#1278): varje HTML-svar bär också `Referrer-Policy: strict-origin` (`REFERRER_POLICY` i `csp.ts`), satt på samma ställe som policyn.
 En sida säger då bara sitt origin som `Referer`, aldrig sökvägen eller frågan, till lådan, till objektlagrets signerade länkar och till Googles typsnitt, och ingenting alls från https till http.
 Bordets och platsens id i en telefons adress följer därmed inte med något anrop.
-Som policyn reser huvudet med bygget och vilar inte på proxyn; `packages/server/test/guest-address.test.ts` kräver det på sidorna och E2E-resan i `guest-address.spec.ts` läser det på svaret.
+Värdnyckeln står sedan #1306 i bordsskärmens fragment och aldrig i dess fråga (§9), så den följer inte heller med något anrop; policyn hade redan hållit den ur `Referer`, men inte ur sidans egen begäran.
+Som policyn reser huvudet med bygget och vilar inte på proxyn; `packages/server/test/guest-address.test.ts` kräver det på sidorna och E2E-resan i `guest-address.spec.ts` läser det på svaret, och resan i `owner-address.spec.ts` läser varje `Referer` från editorn, bordsskärmen och ägarens plats.
 Lådans middleware får gärna strama åt det (`no-referrer`) men inte lätta på det.
 
 Följdkrav:

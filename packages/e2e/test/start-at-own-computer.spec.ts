@@ -28,7 +28,8 @@ test('Starta → «Var och en vid sin dator» seats the host at /online under th
   const seat = await opened
   await seat.waitForURL(/\/online\?/)
   const q = new URL(seat.url()).searchParams
-  expect(q.get('name')).toBe('Vera')
+  // Her name is in no address (#1306): the browser that started the table remembers it.
+  expect(q.has('name')).toBe(false)
   expect(q.get('owner')).toBe('1')
 
   // Seated for real: the table itself says the seat is hers, under her name.

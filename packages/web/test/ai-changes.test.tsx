@@ -61,8 +61,10 @@ const ask = (question: string) => {
 const chips = () => [...panel().querySelectorAll('.byd-ai-chip')].map((chip) => chip.textContent)
 const wallCard = (cardRef: string) => document.querySelector<HTMLElement>(`.byd-wall-card[data-card-ref="${cardRef}"]`)!
 const toTab = (mode: 'wall' | 'table') => fireEvent.click(document.getElementById(tabId(mode))!)
+// The last question asked, not the last call: the panel's list of models is a GET without a body,
+// and under load it can reach the fake after the question did.
 const lastQuestion = () => {
-  const body = run.ai!.fake.calls.at(-1)!.body as { messages: { content: string }[] }
+  const body = run.ai!.fake.calls.filter((call) => call.body !== undefined).at(-1)!.body as { messages: { content: string }[] }
   return body.messages.at(-1)!.content
 }
 const proposal = () => within(panel()).getByRole('group', { name: /^Förslag/ })
