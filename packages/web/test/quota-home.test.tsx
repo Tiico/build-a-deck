@@ -89,6 +89,8 @@ describe('Mina spel at a ceiling on games (#1198)', () => {
   it('says to a test leader, by the owner’s name, that the owner’s tables are all open', async () => {
     run = await startServer({ auth: true, authBypass: true, plans: tiers({ openTables: 1 }) })
     await login('ada@example.com')
+    // The owner's own name (#1254); without one she is «spelets ägare».
+    await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
     const first = await made('Hamnen')
     const second = await made('Skogens råd')
     expect((await fetch(`${run.http}/projects/${first}/sessions`, { method: 'POST' })).status).toBe(201)
@@ -130,7 +132,7 @@ describe('the usage on the profile (#1198)', () => {
     await made('Skogens råd')
     open()
     const usage = await screen.findByRole('region', { name: 'Förbrukning' })
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['AI-nyckel', 'Passkeys', 'Förbrukning', 'Språk', 'Konto'])
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Namn', 'AI-nyckel', 'Passkeys', 'Förbrukning', 'Språk', 'Konto'])
     const rows = [...usage.querySelectorAll('dt')].map((dt) => `${dt.textContent} = ${dt.parentElement?.querySelector(':scope > dd > .byd-usage-n')?.textContent ?? ''}`)
     expect(rows).toEqual([
       'Spel = 1 av 3',
@@ -159,6 +161,6 @@ describe('the usage on the profile (#1198)', () => {
     await screen.findByRole('heading', { level: 1, name: 'Profil' })
     await new Promise((r) => setTimeout(r, 50))
     expect(screen.queryByRole('region', { name: 'Förbrukning' })).toBeNull()
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['AI-nyckel', 'Passkeys', 'Språk', 'Konto'])
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Namn', 'AI-nyckel', 'Passkeys', 'Språk', 'Konto'])
   })
 })

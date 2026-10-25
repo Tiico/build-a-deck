@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PHYSICAL_VERBS, type Intent, type VisibleComponentState } from '@byd/protocol'
 import './table.css'
-import { TableRenderer, type TableMode } from './TableRenderer.js'
+import { TableRenderer, type FeltRoom, type TableMode } from './TableRenderer.js'
+import { STAGE_MIN_PX, stageWidth } from './stage.js'
 import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
 import { previewOf, standingRewind } from './rewind.js'
@@ -102,6 +103,10 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   // The TV's column holds what the felt's corner holds on the other screens (#875).
   const [corner, setCorner] = useState<HTMLElement | null>(null)
+  // How wide the room's stage stands (#1290): as wide as the felt can give and keep K9's card,
+  // asked of the felt every time it is fitted, against the stage it was fitted beside.
+  const [stage, setStage] = useState(STAGE_MIN_PX)
+  const onFit = useCallback((felt: FeltRoom) => setStage((beside) => stageWidth(felt, beside)), [])
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   // Which piles are being shuffled right now (L35): played by the line, on this screen as on
@@ -180,6 +185,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       {...(sessionId ? { remember: `table:${sessionId}` } : {})}
       onInspect={mode === 'tv' ? setInspecting : undefined}
       onShow={mode === 'tv' ? shown.show : undefined}
+      onFit={mode === 'tv' ? onFit : undefined}
     />
   )
   // The version as people read it (#703), never the id «rev-5».
@@ -240,7 +246,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} host={site} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner} rendering={rendering} back={back}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} host={site} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner} rendering={rendering} back={back} stage={stage}>
           {table}
         </TvChrome>
       ) : (

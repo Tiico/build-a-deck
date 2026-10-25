@@ -31,6 +31,15 @@
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
 .byd-login-error { color: #ff9a9a; font-size: 13px; margin: 0; }
+/* The welcome step (#1254, variant C): the login card's form, one question with the suggestion
+   filled in, «Fortsätt» across the card and «Hoppa över» as a quiet word under it. */
+.byd-welcome form { gap: 14px; }
+.byd-welcome .byd-login-email { gap: 8px; }
+.byd-welcome-as { margin: 0; color: #9aa3b8; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.byd-welcome-note { margin: 0; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
+.byd-welcome-answers { display: grid; gap: 8px; }
+.byd-login .byd-welcome-skip { justify-self: center; min-height: 44px; padding: 0; border: 0; background: none; color: #9aa3b8; font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.byd-login .byd-welcome-skip:hover { color: #fff; }
 /* The door for whoever came to play (#675, beslut C): a row with the room's code, which stood under
    the login card and now stands on the landing page (#1009). */
 .byd-code-row { width: min(420px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
@@ -292,6 +301,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-passkey-failed { color: #ffb4c4; }
 .byd-passkey-offer-answers { display: flex; flex-wrap: wrap; gap: 8px; }
 .byd-passkey-offer-answers > button { min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
+/* The name's band (#1254) asks in the band itself: the field stands before its two answers, on the
+   band's green, in the band's own line colour. */
+.byd-name-offer .byd-passkey-offer-answers { margin: 0; }
+.byd-name-offer input { width: 200px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font: inherit; }
+.byd-name-offer input:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 .byd-passkey-done { display: flex; align-items: center; gap: 10px; margin: 0; }
 .byd-passkey-done > .byd-glyph { color: #7dd3a0; }
 .byd-home-hero .byd-home-more { right: 12px; top: 12px; }

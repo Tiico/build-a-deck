@@ -4,7 +4,8 @@ import { AboutLine } from './AboutLine.js'
 import { KeyBox, type WayBack } from './KeyBox.js'
 import { PasskeyBox } from './PasskeyBox.js'
 import { UsageCard } from './UsageCard.js'
-import { logout, myProjects, whoAmI } from './api.js'
+import { logout, myAccount, myProjects } from './api.js'
+import { NameCard } from './NameCard.js'
 import { readAiKey, type AiKey } from './ai-key.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
@@ -14,8 +15,8 @@ import { ArrowGlyph } from '../glyphs.js'
 import './account.css'
 import './profile.css'
 
-// /profile — the logged-in designer's own page (#999, #998 variant A): one column, the AI key first,
-// then the passkeys, what the account uses once a ceiling is set (#1198), the language and the account. An account has three things today, and one column is what three
+// /profile — the logged-in designer's own page (#999, #998 variant A): one column, the name first
+// (#1254), then the AI key, the passkeys, what the account uses once a ceiling is set (#1198), the language and the account. An account has three things today, and one column is what three
 // things need. The way in is a word in Mina spel's line, «e-post · Profil · logga ut», and the
 // language picker moved here from that line.
 //
@@ -23,7 +24,7 @@ import './profile.css'
 // and, once the key is saved, is the one filled button on the page.
 export type ProfilePageProps = { onNavigate?(url: string): void }
 
-type Loaded = { email: string; key: AiKey | null; game: { id: string; name: string } | null }
+type Loaded = { email: string; name: string | null; key: AiKey | null; game: { id: string; name: string } | null }
 
 export function ProfilePage({ onNavigate = (url) => location.assign(url) }: ProfilePageProps) {
   const t = useT()
@@ -37,13 +38,13 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
   useEffect(() => {
     let live = true
     setOffline(false)
-    void whoAmI(http)
-      .then(async (email) => {
-        if (!email) return null
+    void myAccount(http)
+      .then(async (me) => {
+        if (!me) return null
         // The game the editor sent her from is asked of her own list, so a game she may not open
         // names nothing, and a list that cannot be read only costs the way back its name.
         const [{ key }, game] = await Promise.all([readAiKey(http), from ? myProjects(http).then((list) => list.find((p) => p.id === from) ?? null, () => null) : null])
-        return { email, key, game: game ? { id: game.id, name: game.name } : null }
+        return { email: me.email, name: me.name, key, game: game ? { id: game.id, name: game.name } : null }
       })
       .then(
         (state) => live && setLoaded(state),
@@ -90,6 +91,8 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
           <h1>{t('profile.title')}</h1>
           <p className="byd-muted">{loaded.email}</p>
         </header>
+        {/* What the others call her (#1254), first: it is the one thing here other people read. */}
+        <NameCard http={http} email={loaded.email} initial={loaded.name} />
         <KeyBox http={http} initial={loaded.key} wayBack={wayBack} />
         <PasskeyBox http={http} />
         {/* What the account uses (#1198, variant A), only once a ceiling is set. */}

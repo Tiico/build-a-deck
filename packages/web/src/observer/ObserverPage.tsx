@@ -16,7 +16,7 @@ import { useRolls } from '../table/Die.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
-import { claimUrl } from '../account/session.js'
+import { claimUrl, withCredentials } from '../account/session.js'
 import { takeGuestToken } from '../guestAddress.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
@@ -54,8 +54,25 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const http = url.replace(/^ws/, 'http')
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: given ?? t('observer.name'), ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
+  // The owner who watches from the editor is the name she gave her account (#1254), as the table is
+  // told she is. Asked here and not through the account's client, which speaks the account's words,
+  // and the observer's page fetches only its own (#760).
+  const [own, setOwn] = useState<string | null>(null)
+  useEffect(() => {
+    if (!owner) return
+    let live = true
+    void fetch(`${http}/auth/me`, withCredentials())
+      .then((res) => res.json() as Promise<{ name?: string | null }>)
+      .then(
+        (me) => live && setOwn(me.name ?? null),
+        () => undefined,
+      )
+    return () => {
+      live = false
+    }
+  }, [owner, http])
   // A guest watches as the name on her admission, which the table tells her (#1278).
-  const name = (token === undefined ? given : client?.admitted) ?? t('observer.name')
+  const name = (token === undefined ? (own ?? given) : client?.admitted) ?? t('observer.name')
   const live = useLiveStatus(conn, 'table', timing)
   // What happens at the table, said in the room's live regions as the table screen says it (#485):
   // hers were silent the whole session. She sits at no seat, so nothing is said as «du».
