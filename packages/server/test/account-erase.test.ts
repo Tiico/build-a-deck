@@ -94,7 +94,7 @@ for (const backend of accountBackends) {
 
     // The sweep (G6, F4, DRIFT §4): what only her games named goes 30 days later, from Postgres and
     // from the bucket; what another game names stays. Only Postgres keeps anything for 30 days.
-    it.skipIf(backend.name !== 'Postgres')('sweeps the pictures and renderings only her games named, 30 days on, and keeps what another game names', async () => {
+    if (backend.name === 'Postgres') it('sweeps the pictures and renderings only her games named, 30 days on, and keeps what another game names', async () => {
       const w = await aWorld(db, `s${backend.name}`)
       const upload = async (cookie: string, bytes: Uint8Array<ArrayBuffer>) => ((await (await fetch(`${db.run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: bytes })).json()) as { hash: string }).hash
       const png = (n: number) => new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, n, w.id.length, 3])

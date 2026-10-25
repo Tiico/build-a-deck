@@ -2597,7 +2597,7 @@ Byggt 2026-10-25 (#1280, beställarens beslut A ur [prototypen](https://github.c
   Raden går före bytesen i R2, så att bytes som inte går att radera lämnar raden till nästa varv.
 - Hon landar vid dörren med «Ditt konto är raderat.» och att ett mejl bekräftar det, och mejlet i inloggningsmejlets tre band (L72), utan knapp, säger när, vilka spel som försvann, att bilderna sopas inom 30 dagar och att säkerhetskopiorna sparas i åtta dygn och raderar kontot igen om något återställs.
 - Integritetstexten säger att kontot raderas i Profil och vad ett raderat konto lämnar efter sig; gästens väg är #1281:s.
-- Prototypens band på medredigerarens Mina spel («Skogens råd är borttaget. Ägaren raderade sitt konto.») är inte byggt: ett borttaget spel säger i dag ingenting till sina medlemmar, vem som än tog bort det, och ett sådant besked är en egen yta.
+- Prototypens band på medredigerarens Mina spel («Skogens råd är borttaget. Ägaren raderade sitt konto.») är inte byggt: ett borttaget spel säger i dag ingenting till sina medlemmar, vem som än tog bort det, och ett sådant besked är en egen yta (#1334).
 Grindarna är `packages/server/test/account-erase.test.ts` (båda lagren, med en sökning i varje personlig och pseudonym kolumn efter hennes id och adress, och sopningen i Postgres), `packages/web/test/profile-account.test.tsx` och `packages/e2e/test/account-delete.spec.ts`.
 
 Skivorna (alla öppna 2026-10-24):

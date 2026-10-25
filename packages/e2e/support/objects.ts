@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import { join } from 'node:path'
 import { free } from './ports.js'
@@ -36,6 +36,10 @@ export async function objectStore(dir: string): Promise<{ endpoint: string; env:
       } catch {
         return undefined
       }
+    },
+    delete: (key: string): void => {
+      rmSync(at(key), { force: true })
+      rmSync(`${at(key)}.type`, { force: true })
     },
   }
   const server: Server = createServer((req, res) => {

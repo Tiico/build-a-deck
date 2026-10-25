@@ -1,7 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Question } from '../editor/Question.js'
 import { useLang, useT, type Lang } from '../i18n/index.js'
-import { useSay } from '../status/StatusLive.js'
 import { ImportGlyph, TrashGlyph } from '../glyphs.js'
 import { marked } from './marked.js'
 import { deleteAccount, downloadMyData, myDeletion, type Deletion } from './api.js'
@@ -15,7 +14,6 @@ import { logout } from './session.js'
 export function AccountCard({ http, email, onLoggedOut, onErased }: { http: string; email: string; onLoggedOut(): void; onErased(): void }) {
   const t = useT()
   const { lang } = useLang()
-  const say = useSay()
   const [data, setData] = useState<{ state: 'idle' | 'busy' | 'failed' } | { state: 'done'; name: string }>({ state: 'idle' })
   const [asking, setAsking] = useState<Deletion | null>(null)
   const [deleting, setDeleting] = useState<'idle' | 'busy' | 'failed'>('idle')
@@ -89,10 +87,8 @@ export function AccountCard({ http, email, onLoggedOut, onErased }: { http: stri
             onConfirm={() => {
               setDeleting('busy')
               void deleteAccount(http, lang).then(
-                () => {
-                  say?.('polite', t('login.erased.title'))
-                  onErased()
-                },
+                // The door says it in a status of its own, so it is not said twice here.
+                () => onErased(),
                 () => {
                   setDeleting('failed')
                   setAsking(null)

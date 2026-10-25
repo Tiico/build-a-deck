@@ -36,7 +36,7 @@ test('downloads the account’s data as a file, then deletes the account and lan
   await expect(strip.getByRole('button', { name: 'Avbryt' })).toBeFocused()
   await strip.getByRole('button', { name: 'Ja, radera kontot' }).click()
 
-  await expect(page.getByRole('status').filter({ hasText: 'Ditt konto är raderat.' })).toContainText(`ett mejl till ${email} bekräftar det`)
+  await expect(page.locator('.byd-login-done[role="status"]')).toHaveText(`✓Ditt konto är raderat. Du är utloggad på alla enheter, och ett mejl till ${email} bekräftar det.`)
   await expect(page.getByLabel('E-post')).toBeVisible()
   expect(await (await page.request.get('/auth/me')).json()).toMatchObject({ email: null })
   expect((await page.request.get(`/projects/${encodeURIComponent(game.id)}`)).status()).toBe(401)
