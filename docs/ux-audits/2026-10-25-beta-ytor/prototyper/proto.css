@@ -1,0 +1,45 @@
+/* Slit-och-släng-prototyper för betaytorna 2026-10-25 (#1360, #1376). Protoraden ur
+   `docs/ux-audits/2026-10-25-gdpr-ytor/prototyper/proto.css`; det som är eget för varje prototyp
+   står i dess egen <style>. Ingenting här importeras av appen. */
+:root {
+  --quiet-2: #9aa3b8;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: #15171c; color: #ddd; font: 13px system-ui, sans-serif; }
+
+/* --- prototypens egen rad ---------------------------------------------- */
+/* Aldrig en del av ett förslag: den bär växlaren, anteckningen om varianten och det prototypen
+   behöver för att låtsas. Bärnsten, så att den aldrig kan förväxlas med produkten. */
+.protorad { flex: none; display: flex; align-items: flex-start; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s4); background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+.protorad b { color: #ffe9b8; }
+.protorad p { margin: 0; }
+.protorad .fraga { flex: 1 1 320px; min-width: 0; }
+.protorad .fraga p + p { margin-top: 2px; color: #c8b98d; }
+.protorad button { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+.protorad button:hover { border-color: #ffd98a; }
+.protorad button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+.protorad a { color: #ffe9b8; }
+.protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.protorad .grupp > span { color: #c8b98d; }
+.protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+.protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+
+/* A / B / C — växlaren. Pilarna vänster/höger byter också, utom när ett fält har fokus. */
+.vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+.protorad .vaxlare button { border: 0; min-height: 30px; min-width: 34px; font-weight: 700; }
+.protorad .vaxlare button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+/* Tre rader reserverade, så att ytan under inte hoppar när en variant har kortare anteckning. */
+.protorad .anteckning { flex: 1 1 100%; min-height: calc(3 * 1.5em + 14px); margin: 0; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; }
+.protorad .anteckning b { color: #ffe9b8; }
+.protorad .anteckning .plus { color: #b7dca0; }
+.protorad .anteckning .minus { color: #f0a58a; }
+
+.etikett { color: var(--quiet-2); font-size: 11px; margin: 0; }
+.etikett b { color: #e6ecfa; }
