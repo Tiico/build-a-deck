@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import type { Device } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -22,7 +22,7 @@ for (const device of [
       const dealer = await host(table)
       await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 4 }])
       const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-      const { page } = await open(device, `${seat.onlineUrl}&lang=sv`)
+      const { page } = await open(device, withQuery(seat.onlineUrl, `lang=sv`))
       const cards = page.locator('[data-hand-card]')
       await expect(cards).toHaveCount(4)
       const card = cards.nth(1)
@@ -74,7 +74,7 @@ for (const device of [
       const dealer = await host(table)
       await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 13 }])
       const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-      const { page } = await open(device, `${seat.onlineUrl}&lang=sv`)
+      const { page } = await open(device, withQuery(seat.onlineUrl, `lang=sv`))
       await expect(page.locator('[data-hand-card]')).toHaveCount(13)
       await page.getByRole('button', { name: 'Visa alla' }).click()
       const grid = page.locator('[data-spread-card]')

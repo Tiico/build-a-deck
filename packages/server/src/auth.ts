@@ -6,7 +6,11 @@ import type { PasskeyRecord } from './passkeys.js'
 // Accounts for creators (G1, DRIFT §11): a magic link by mail, a session cookie, no passwords.
 // Tokens and session ids are random and stored hashed; a token is one use and short-lived.
 
-export type Account = { id: string; email: string }
+// `name` is what the others call the account (#1254), null until the designer gives one, and
+// `asked` whether she has been asked for it: answered or passed by, the question is never put again.
+// Every store fills both; they are optional only so that an account written by hand in a test, or
+// by a store from before the name, reads as one that has none and has not been asked.
+export type Account = { id: string; email: string; name?: string | null; asked?: boolean }
 export type AuthStore = {
   issueToken(tokenHash: string, email: string, expiresAt: string): Promise<void>
   // The email behind an unused, unexpired token; marks it used.
@@ -19,6 +23,9 @@ export type AuthStore = {
   accountByEmail(email: string): Promise<Account | null>
   // Every account, oldest first, for the operator's usage report (#1193).
   listAccounts(): Promise<Account[]>
+  // The account's own name (#1254): null for none. Setting it, or setting none, is the answer to the
+  // question, so the account is asked no more.
+  setName(accountId: string, name: string | null): Promise<void>
   createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void>
   sessionAccount(sessionHash: string, now: string): Promise<Account | null>
   deleteSession(sessionHash: string): Promise<void>
@@ -78,18 +85,24 @@ export class MemoryAuthStore implements AuthStore {
   async ensureAccount(email: string): Promise<Account> {
     const existing = this.accounts.get(email)
     if (existing) return existing
-    const account = { id: token(), email }
+    const account = { id: token(), email, name: null, asked: false }
     this.accounts.set(email, account)
-    return account
+    return { ...account }
   }
   async accountById(id: string): Promise<Account | null> {
-    return [...this.accounts.values()].find((a) => a.id === id) ?? null
+    const a = [...this.accounts.values()].find((a) => a.id === id)
+    return a ? { ...a } : null
   }
   async accountByEmail(email: string): Promise<Account | null> {
-    return this.accounts.get(email) ?? null
+    const a = this.accounts.get(email)
+    return a ? { ...a } : null
   }
   async listAccounts(): Promise<Account[]> {
-    return [...this.accounts.values()]
+    return [...this.accounts.values()].map((a) => ({ ...a }))
+  }
+  async setName(accountId: string, name: string | null): Promise<void> {
+    const a = [...this.accounts.values()].find((a) => a.id === accountId)
+    if (a) Object.assign(a, { name, asked: true })
   }
   async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
     this.sessions.set(sessionHash, { accountId, expiresAt })
@@ -97,7 +110,8 @@ export class MemoryAuthStore implements AuthStore {
   async sessionAccount(sessionHash: string, now: string): Promise<Account | null> {
     const s = this.sessions.get(sessionHash)
     if (!s || s.expiresAt < now) return null
-    return [...this.accounts.values()].find((a) => a.id === s.accountId) ?? null
+    const a = [...this.accounts.values()].find((a) => a.id === s.accountId)
+    return a ? { ...a } : null
   }
   async deleteSession(sessionHash: string): Promise<void> {
     this.sessions.delete(sessionHash)
@@ -197,6 +211,13 @@ export async function accountOf(store: AuthStore, req: IncomingMessage): Promise
 // Only a path on this site may be the landing after login: never an open redirect.
 export function safeNext(next: string | undefined): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+}
+
+// A landing's path and query, and its fragment with the `#` — percent-encoded as a URL would hold
+// it, so that it cannot leave an attribute in the mail — or '' when it has none.
+export function splitFragment(next: string): [string, string] {
+  const at = next.indexOf('#')
+  return at < 0 ? [next, ''] : [next.slice(0, at), new URL(next.slice(at), 'http://next.invalid').hash]
 }
 
 // The mail itself, text and HTML, is `login-mail.ts`'s (#757, #1098).

@@ -800,7 +800,7 @@ Följdkrav:
 Ingen yta hindrar någon från att spela på en telefon; den erbjuder bara inte bordet på en skärm som inte kan bära det.
 Handen på en telefon är K10:s remsa oavsett vilken route den nåddes från.
 
-Reviderat 2026-10-25 (#1286, L85): **bordet minns hur ni sitter, och anslutningssidan väljer vy efter det.**
+Reviderat 2026-10-25 (#1286, L86): **bordet minns hur ni sitter, och anslutningssidan väljer vy efter det.**
 Sessionen och vyrollerna är desamma som förut, och inget spelläge finns.
 Men svaret värden gav när bordet startade, «Runt en skärm» eller «Var och en vid sin dator», sparas på bordet, och anslutningssidan erbjuder den vy svaret säger i stället för den skärmens bredd säger.
 Ett blandat bord fungerar fortfarande: den som inte är i rummet vid ett TV-bord har en tyst länk till hela bordet.
@@ -1395,6 +1395,13 @@ De är `seat.claim.name`, `flag.note`, `flag.observer`, `note.add.text` och `not
 Listan är sluten och hålls av ett test (#1276); ett nytt fält som bär en människas ord läggs till i den i samma ändring som fältet.
 Maskningen byter värdet mot ett reserverat värde och bevarar att det finns och att det inte är tomt, så `decide` säger samma sak om varje rad och spelet blir detsamma.
 Ingenting annat i en rad skrivs någonsin om, och det är DRIFT §7:s enda undantag.
+
+Byggt 2026-10-25 (#1276):
+Listan är `PERSONAL_FIELDS` i `packages/protocol`, och `IMPERSONAL_FIELDS` bredvid den säger för varje annat textfält i ett intent eller ett utfall varför det inte är en persons.
+`test/personal.test.ts` där går igenom schemana och faller för ett textfält som inte står i någon av dem, och korpusens anonymisering läser samma lista.
+`redactLine` och `redactLog` i motorn maskar till `REDACTED`, och en maskad logg spelar upp till samma spel och samma vyer, med namnen och texterna maskade; att skriva den maskade raden i lagret är #1279.
+En tillbakaspolnings sparade bord är zoner och komponenter och har aldrig burit platserna (`Table` i motorn), så det har inga namn att maska; `redact.test.ts` håller det, och `outcome.table` står i `IMPERSONAL_FIELDS`.
+Kolumnerna i de två schemana är klassade i `packages/server/test/personal-columns.test.ts`, som faller för en kolumn som inte är det.
 
 Byggt 2026-09-18:
 E2E-lagret ovanpå återspelningen är `packages/e2e`, en egen Playwright-svit med `@playwright/test`.
@@ -2015,6 +2022,13 @@ Reviderat 2026-10-23 (#1199, beställarens beslut): **i betan, innan någon rikt
 - Formen av avgiften beslutas med abonnemangen (A2).
 - Förhållandet till G5, vars export i dag bär tryck-PDF:er med utfall även på gratisnivån, avgörs i samma beslut; G5 ändras inte av det här.
 
+Byggt 2026-10-24 (#1208, beställarens beslut B efter [prototypen](https://github.com/Tiico/build-a-deck/blob/484cf3f48538f1895ae3041c21061b4aff19e003/docs/ux-audits/2026-10-23-tryckpaketet/README.md)): **tryckpaketet är en egen sida med en följesedel.**
+- `/print-package?project=<id>` nås ur spelets ⋯ i Mina spel och i editorn, «Tryckpaketet…» efter «Exportera…», och ur Fysisk kontroll, «Se tryckpaketet ›». Den visas för ägare och medredigerare, som exporten.
+- Sidan har fem numrerade delar: kniven, där kortet ritas som sin fil med utfall, snitt och skyddsmarginal av den enda renderaren och kniven går att pröva; leken med antal och tryckkontrollen; det som inte trycks; Testtryckeriets krav i ord; och zippens träd. Bredvid står följesedeln med antalen, kontrollen, exempelsvaret och nedladdningen.
+- Testtryckeriet är den enda provider servern registrerar i betan: en fake-provider som låtsas trycka i Sverige, inom EU (F2), och ställer exakt de krav kortets typ ställer, så att editorns kontroll, exporten och paketet mäter samma utfall. Sidan frågar efter paketet som en order till Sverige dirigeras, och svaret är stämplat «Exempel · inget riktigt pris», utan tull.
+- Nedladdningen är en zip med `LASMIG.md`, `manifest.json`, en PDF per kortsida under `tryck/` och regelhäftet. Hittar tryckkontrollen ett fel lämnas kortfilerna ute med exportens regel (G5), och sidan, manifestet och läsmig säger varför.
+- Lådans tryckbild och filer i CMYK finns inte, och sidan säger det. Läget «med partner» (#1209) är inte byggt; följesedeln är formad så att den kan bli kostnadsbeskedet (F3).
+
 ### F2. Adapterlager mot flera partner (fråga 11)
 
 Ett generellt stöd där nya tryckpartner läggs på som adaptrar utan att något annat ändras: en intern `PrintProvider`-abstraktion för komponenttyp till partnerns SKU, tryckunderlagskrav, prissättning, orderläggning och spårning.
@@ -2465,7 +2479,7 @@ En integritetspolicy med en förteckning över behandlingar och biträden står 
 Kontots och gästens vägar är nya ytor och prototypas först.
 
 Skivorna (alla öppna 2026-10-24):
-- #1276 personfälten och kolumnerna som sluten, testad karta — pågår.
+- #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
 - #1277 det som inte längre kan användas rensas — pågår.
 - #1278 gästens namn och token ur adressraden och `Referer` — pågår.
 - #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
@@ -2702,6 +2716,21 @@ Ett kort TV:n ser nedvänt behåller K8:s vy, eftersom en baksida upphållen fö
 **TV:n visar bara vad den själv ser.** `show` bär ett id och inget annat, och skärmen slår upp det i sin egen ögonblicksbild och ritar det bara om den bär kortets framsida (`shownCard`), så ett meddelande aldrig kan visa ett kort på hand eller ett nedvänt.
 Telefonens knapp «Visa för alla» (#518) står i läsvyn under kortet, på andras kort under «Ytorna» och som ett fjärde verb på ens egna kort i ett publikt område, och säger «Visas för alla» en stund efter trycket; den erbjuds bara på ett kort bordet ser uppvänt (`forTheRoom`: uppvänt i en zon som visar för alla, eller överst i en hög, K15), aldrig på ett handkort eller i ett område bara ägaren ser. Bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
 Grindarna: `packages/web/test/tv-show.test.tsx` (kortets bredd mot K26:s TV-golv vid 1920 × 1080 med fyra och åtta platser, skrivbordets vid 1280 × 800, och spalten orörd), `presence.test.ts` (meddelandet, tiden och att bara ett uppvänt kort ritas), `tv-chrome.test.tsx`, `table-page.test.tsx` (en telefon visar, ett nedvänt kort ritas inte), `table-keyboard.test.tsx` och `table-renderer.test.tsx` («Titta» på TV:n, från panelen och från ringen).
+
+Reviderat 2026-10-25 (#1290, beställarens beslut A, [prototyp](https://github.com/Tiico/build-a-deck/blob/e6a6999b9acaa5e60955d1ad722de209348b7ff6/docs/ux-audits/2026-10-25-tv-vyn/README.md)): **rummets TV är en scen för det senaste kortet.**
+Beställaren: «Hela TV-vyn fokuserar på fel saker, händelseloggen tar för lång tid och den förstorade visningen är för liten.»
+Spalten höll ett kort i 190 px (9 px brödtext) och SENAST tre meningar på två–tre rader var, så det rummet läste var orden och inte kortet.
+Tre omdesigner prototypades — scenen, en strålkastare som lyfte varje spelat kort över filten, och en logg av kort i stället för meningar — och scenen valdes.
+
+- Spalten är en scen: kortet den senaste raden handlade om, så stort som spalten ger efter sin rad och sin fot, med raden under det i platsens färg, sagd som flödet sa den. En pekare skriver över det som förut, och då står kortets namn under det.
+- SENAST står inte längre på rummets TV. Hela historiken finns på varje telefon; en rad om något som inte är ett kort (en blandning, en giv, en uppdatering) syns på filten och i rubriken, inte i spalten.
+- Koden, QR-koden, handen och spelets namn står i en fot under kortet, och där står också «Starta om», snabbkommandona och raden om kort som ritas. De lämnade inte TV:n, som prototypen föreslog, eftersom ingen annan skärm har «Starta om» (#875).
+- **Scenens bredd är filtens att ge.** Filten är höjdbunden bara så länge den har bredd över, och åttaplatsbordets kort stod redan på K9:s 45 px bredvid den gamla spalten. Scenen är därför så bred som filten kan ge och behålla 45 px, upp till 760 px, och aldrig smalare än spaltens 360 (`stageWidth` i `packages/web/src/table/stage.ts`, frågad genom `onFit` som `/online` frågar sitt anteckningsblock, #1131). Mätt på det byggda bordet vid 1920 × 1080: med två och fyra platser får scenen sina 760 px och kortet 538 px (26 px brödtext, över K26:s golv på 24), och kortet på filten går från 78 till 57 px vid fyra platser. Vid åtta platser står scenen kvar på 360 och kortet är 319 px; vid 1280 × 800 är det 198 px, där panelen var 190.
+Kortet på filten räknas inom kamerans overscan (C5, #322), som `onFit` inte räknar med: utan den gav scenen 592 px vid åtta platser och kortet på filten 44 px.
+- «Visa för alla» är orört: ett kort som hålls upp står över filten i 672 px och 32 px brödtext, större än scenen, och scenen under står kvar.
+- Observatörens skärm läses vid ett skrivbord och behåller sin spalt med INSPEKTION, platserna och SENAST.
+
+Grindarna: `packages/web/test/tv-stage-width.test.ts` (bredden mot kortets golv), `tv-chrome.test.tsx` (scenen, raden, foten och observatörens spalt), `tv-show.test.tsx` (scenens kort mot K26:s golv vid 1920 × 1080 och skrivbordets vid 1280 × 800), och `packages/e2e/test/surfaces/tv-feed-rows.spec.ts` på det byggda bordet.
 
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
@@ -4497,6 +4526,10 @@ Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysi
 Med den mindre toppytan måste «17» ritas en storlek mindre än alla andra tärningars siffror för att rymmas (#1170).
 `die-figure-fit.test.tsx` håller att varje värde ryms på sin toppyta, och att d20:ns tvåsiffriga värden är minst 0,85 av d12:ans höjd.
 Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
+*Reviderat 2026-10-25 (#1288, beställarens beslut D efter [prototyp](https://github.com/Tiico/build-a-deck/blob/c63a310ee7a4a72a7be7446d567fd18a48dd9c93/docs/ux-audits/2026-10-25-tarningsslaget/prototyper/index.html)):* slaget ska gå fort och ändå kännas, så tärningen piskas två varv på 0,45 s med en hård inbromsning och ett litet bakslag, med tre efterbilder av silhuetten som släpar efter i snurret.
+Siffrorna hoppar allt långsammare och står still de sista 0,15 s, och när tärningen stannar drar en ring i platsens färg ihop sig om den.
+Hållet den snurrar åt följer slagets nummer i loggen, så att bordet och TV:n snurrar likadant.
+Ett jämnt varv på 0,7 s, ett kast med studsar, ett snurr som bromsar in i 1,1 s, en vältning i 3D, en smäll med chockvåg och ett utbrott med gnistor prövades; de långa kändes sega och de korta utan kraft i resultatet.
 Med tangentbordet slår Enter eller Space en fokuserad tärning, och M öppnar «Flytta till» med filtens ytor, så att tangentbordet når det pekaren når (K16; beställarens beslut 2026-10-23, #1169).
 Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
 Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
@@ -4957,7 +4990,7 @@ Loggen ska få ett segment per medvetet beslut.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med B:s meny som snabbväg):
 Editorn har en fjärde flik, "Bord", som listar spelets alla bord — miniatyr, vilken version bordet kör, vem som sitter och tittar på, när det senast rörde sig — och vägarna in: TV-vyn, bordsläget, spela härifrån (`/online`), titta på (`/observe`) och QR-koden telefonerna läser.
-Reviderat 2026-10-25 (#1286, L85): raden har en väg in, «Öppna bordet», och i sin meny «Kopiera länk» och «Avsluta bordet»; de andra vägarna in är borta ur editorn.
+Reviderat 2026-10-25 (#1286, L86): raden har en väg in, «Öppna bordet», och i sin meny «Kopiera länk» och «Avsluta bordet»; de andra vägarna in är borta ur editorn.
 Flera bord per spel är verkligheten så fort man testat två gånger, vilket är varför fliken och inte "det senaste bordet" blev hemmet för dem; en statusrad längst ner (variant C) valdes bort för att den stjäl höjd från duken på mallfliken.
 Från de andra flikarna når man samma sak genom en pil bredvid "Uppdatera bordet" som fäller ut det nyaste bordets rad, alltså samma komponent och inte en andra beskrivning av bordet.
 Listan är serverns svar: `GET /projects/:id/sessions` säger vilka sessioner som startats ur projektet, med versionen aktören faktiskt kör och om loggen är låst.
@@ -8330,7 +8363,7 @@ Frågan har två svar: «Runt en skärm» (TV:n eller en stor skärm, med telefo
 Det senare frågar efter värdens namn vid bordet och sätter värden direkt på en ledig plats på `/online`, under det namnet.
 Svaret och namnet minns till nästa gång.
 Frågan ställs bara när det inte finns något bord: «Uppdatera» och menyns andra vägar in är orörda.
-Reviderat 2026-10-25 (#1286, L85): frågan ställs av varje start, också «Nytt bord», Bord-flikens «Starta nytt bord» och Mina spels, och svaret sparas på bordet.
+Reviderat 2026-10-25 (#1286, L86): frågan ställs av varje start, också «Nytt bord», Bord-flikens «Starta nytt bord» och Mina spels, och svaret sparas på bordet.
 
 **Distansvyn börjar i ett väntrum.**
 Tills något har hänt vid bordet ligger ett väntrum över filten på `/online`.
@@ -8556,7 +8589,53 @@ B gav aldrig en bild av ett exempel som helhet, C gjorde exemplen valbara i flik
 
 Prototypen står i [`docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html`](docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html).
 
-### L85. Vägen in: två sätt att sitta, och bordet minns vilket (prototypat och beslutat 2026-10-25, #1286)
+### L85. Kontot har ett eget namn: ett välkomststeg efter första inloggningen, ett band för konton som redan finns och kortet «Namn» i Profil (prototypat och beslutat 2026-10-24, #1254)
+
+Ett konto hade inget namn.
+#1198 nämnde ägaren vid namn när en testledare eller medredigerare nådde ägarens tak, och tog namnet ur det första ordet i adressen, så att `info@` blev «Info» och `x92@` blev ingenting.
+Beställaren beslutade att kontot får ett namn som designern själv sätter, föreslaget ur adressen och ändrat i Profil.
+Tre vägar till namnet prövades i [`docs/ux-audits/2026-10-24-visningsnamn/prototyper/index.html`](https://github.com/Tiico/build-a-deck/blob/07521cb23c56c6294dbf7682aec264b796cfbfb6/docs/ux-audits/2026-10-24-visningsnamn/prototyper/index.html) på grenen `proto/1254-visningsnamn`: A sparade förslaget tyst, B frågade första gången någon annan skulle läsa namnet, och C frågade vid första inloggningen.
+Agenten rekommenderade B.
+Beställaren valde **C**: alla nya konton har ett namn från start, och frågan ställs en gång.
+
+**Välkomststeget.** Efter länken, och efter en passkey-inloggning, går ett konto som inte har fått frågan till `/login?step=name&next=…`, inloggningens eget steg i kortets form: «Välkommen till Deckster», adressen det är inloggat som, fältet «Vad ska andra kalla dig?» med förslaget ur adressen ifyllt, «Fortsätt» och «Hoppa över».
+Sedan går det dit länken var på väg, och steget ersätter sig självt i historiken.
+Steget har ingen egen adress, eftersom varje sökväg är en rad i ingången som telefonen också hämtar (#760), och nästa steg i samma kort (villkoren, #1272) läggs till som ett nytt `step`.
+Länkens väg bestämmer servern (`/auth/verify` skickar dit), och kortets egna inloggningar, passkeyn och utvecklingens genväg, frågar `/auth/me` innan de går vidare.
+
+**«Hoppa över» sparar inget namn, och frågan kommer inte tillbaka**, varken som steg eller som band.
+Kontot har därför två fält: namnet, som är tomt tills designern ger ett, och om kontot har fått frågan.
+Ett namn, eller inget, är svaret; att tömma fältet i Profil är också ett svar.
+
+**Bandet.** Ett konto som fanns före namnet får frågan i ett band på Mina spel, i passkey-bandets form och på dess plats (L78), med förslaget i fältet, «Spara» och «Inte nu».
+**Högst ett band åt gången:** namnets kommer först, och passkey-bandet visas först när namnet är satt eller bandet har passerats.
+
+**Kortet «Namn»** står först i Profil: fältet, en rad om vad namnet är till för, och raden namnet ger i Dela, ritad medan designern skriver.
+Utan namn säger kortet vad det betyder: adressen i Dela och i inbjudningar, och «spelets ägare» i kvotraden.
+Nära taket räknar fältet tecknen.
+«Spara namnet» är en kontur och inte prototypens fyllda knapp: Profils enda fyllda knapp är AI-nyckelns, eller vägen tillbaka till spelet (L13).
+
+**Namnet är högst 40 tecken,** trimmat, på en rad, räknat som läsaren räknar dem (en emoji är ett tecken), och tomt är inget namn.
+Förslaget och taket står i `account-name.ts` och nås av sidorna genom `@byd/server/doc`, så att steget, bandet, kortet och servern säger samma sak.
+
+**Var namnet syns:**
+- **Kvotraden:** `ownerName` i 402 och `refused` är ägarens namn, och **reserven är «spelets ägare»**: adressens ord är bara ett förslag och sägs aldrig till någon annan (beslut 2). Det ersätter #1198:s reserv, och `ownerNameOf` finns inte längre.
+- **Dela:** namnet i fetstil med adressen och rollen under; utan namn är raden adressen, som förut. Ett långt namn bryts och står helt. Adresserna syns för medlemmarna som förut.
+- **Editorns huvud:** servern säger vem som är inne, ur kontot och inte ur sidans egen `?name=`. Ansiktet är namnets första tecken och titeln hela namnet; färgen följer adressen, så ansiktet står kvar när namnet byts. Utan namn är det adressen, som förut.
+- **Bordet:** ägaren som tittar på från editorn heter sitt namn för TV:n och telefonerna («Ada tittar på och ser alla kort»), och utan namn editorns ord som förut, aldrig adressen.
+- **Väntar på dig (#1225):** «Kim sparade version 5» säger den som sparade vid kontots namn, och utan namn «Någon annan sparade version 5».
+- **Inbjudningsmejlet:** «Nicklas Ockelberg (nicklas.ockelberg@…) vill dela spelet …», och ämnesraden «Nicklas Ockelberg bjuder in dig till …» (beslut 3). Namnet är vad avsändaren själv har skrivit, adressen är det mottagaren kan lita på. Utan namn är brevet som förut.
+
+**Namnet är kontots data** och ligger på kontots rad, i Postgres (`accounts.name`, `accounts.name_asked`) och i minnet, och läses med kontot.
+Det går därför med kontot vart kontot går; radering och export av ett helt konto är inte byggda än, och när de byggs är namnet en kolumn på raden som G6 säger försvinner direkt med kontot.
+Designern tar själv bort namnet genom att tömma fältet i Profil.
+
+Inte byggt, och inte beslutat att bygga: markörens etikett när ägaren pekar från bordets egen vy (i dag «bordet»), passkeyns `displayName` och avsändarnamnet «… via Deckster».
+
+`account-name.test.ts` och `account-name-postgres.test.ts` håller förslaget, taket, frågan och svaret, Dela, mejlet och närvaron; kvottesterna håller att ett konto utan namn sägs utan namn.
+`account-name.test.tsx` kör steget, bandet, kortet och huvudet mot den riktiga servern, och `account-name.spec.ts` går första inloggningen, «Hoppa över» och bandet i den byggda appen.
+
+### L86. Vägen in: två sätt att sitta, och bordet minns vilket (prototypat och beslutat 2026-10-25, #1286)
 
 Beställaren: «Vägen in till ett bord har fortfarande för många olika varianter. Jag tror vi bara har behovet av dator till dator eller på en gemensam tv + dator eller mobil. Genvägar där designern hoppar in skapar mer förvirring än vinning.»
 Kartläggningen i koden fann sjutton vägar in.

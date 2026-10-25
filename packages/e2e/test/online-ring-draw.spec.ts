@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
@@ -14,7 +14,7 @@ test.describe('the deck’s «Dra 1» on the distance view (#746)', () => {
   test('draws a card to the hand and says so', async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
     const seat = await join(request, table, { name: 'Bo', seat: 'A' })
-    const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
     await pastTheWaitingRoom(page)
     await expect(page.locator('[data-hand-card]')).toHaveCount(0)
 

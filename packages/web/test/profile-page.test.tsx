@@ -45,12 +45,12 @@ describe('the profile page', () => {
     expect(screen.queryByRole('heading', { name: 'Profil' })).toBeNull()
   })
 
-  it('stands in one column: the key, the language and the account, under the way back to Mina spel', async () => {
+  it('stands in one column: the name (#1254), the key, the language and the account, under the way back to Mina spel', async () => {
     await loggedIn()
     open()
     expect(await screen.findByRole('heading', { level: 1, name: 'Profil' })).toBeTruthy()
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-    expect(headings).toEqual(['AI-nyckel', 'Språk', 'Konto'])
+    expect(headings).toEqual(['Namn', 'AI-nyckel', 'Språk', 'Konto'])
     const back = screen.getByRole('link', { name: /Mina spel/ })
     expect(back.getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
     expect(screen.getByRole('combobox', { name: /^Verktygets språk — Språk \/ Language$/ }).tagName).toBe('SELECT')
@@ -221,7 +221,7 @@ describe('the profile page', () => {
       </Language>,
     )
     expect(await screen.findByRole('heading', { level: 1, name: 'Profile' })).toBeTruthy()
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['AI key', 'Language', 'Account'])
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Name', 'AI key', 'Language', 'Account'])
     expect(screen.getByRole('button', { name: 'Save and test' })).toBeTruthy()
   })
 })

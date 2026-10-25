@@ -20,7 +20,7 @@ export const ROUTE_WORDS: readonly string[] = [
   // The server's (packages/server/src).
   'assets', 'auth', 'faces', 'guests', 'health', 'invites', 'me', 'projects', 'rooms', 'sessions', 'terms',
   // The app's pages (`fetchPage` in packages/web/src/App.tsx).
-  'claim', 'editor', 'join', 'login', 'new', 'observe', 'online', 'play', 'profile', 'survey', 'table',
+  'claim', 'editor', 'join', 'login', 'new', 'observe', 'online', 'play', 'print-package', 'profile', 'survey', 'table',
 ]
 
 // How the people at a table sit (L77, #1286): around one screen, with a hand each in a phone or a

@@ -27,8 +27,7 @@ describe('TablePage', () => {
     const other = TableClient.connect(await asTable(run, id))
     await other.ready()
     await other.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
-    expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
-    expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('7')
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('7'))
     expect(document.querySelector('[data-zone="hand:A"]')!.getAttribute('data-count')).toBe('3')
     // The seat's words stand on its plate on the felt (#573, beslut C), not in the column.
     await waitFor(() => expect(document.querySelector('[data-seat-plate="A"]')?.textContent).toMatch(/Ada.*3 kort$/))
@@ -45,7 +44,8 @@ describe('the screen says which game it runs (C)', () => {
   })
 
   // «Uppdatera» (C7) moves the table to the next rev while the TV stands there (#677): the title
-  // follows the very patch that writes «Spelet uppdaterades till version 2» in SENAST, not a reload.
+  // follows the very patch that writes «Spelet uppdaterades till version 2» in the log, not a
+  // reload. The room's television keeps no feed since the stage (#1290), so the title is the word.
   it('follows a version change live, as the log line arrives', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
@@ -54,8 +54,7 @@ describe('the screen says which game it runs (C)', () => {
     const doc = (await run.projects.load('p-s1'))!
     expect(await run.projects.replace('p-s1', 1, { name: doc.name, template: doc.template, rows: [...doc.rows, { id: 'ny', fields: { title: 'Nytt kort' } }], icons: doc.icons, setup: doc.setup })).not.toBe('conflict')
     expect((await fetch(`${run.http}/sessions/${id}/refresh`, { method: 'POST' })).status).toBe(200)
-    expect(await screen.findByText(/Spelet uppdaterades till version 2/)).toBeTruthy()
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 2')
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 2'))
   })
 })
 
@@ -73,24 +72,27 @@ describe('the table mode names the game too (B)', () => {
 })
 
 describe('a screen that joins mid-game (#20)', () => {
-  it('fills SENAST from the log the moment it connects, not only with what happens afterwards', async () => {
+  // The log the snapshot brings is what the stage reads (#1290, K8): a television switched on in
+  // the middle of a game holds up the card the latest line was about, with that line under it,
+  // and not an empty card until somebody plays the next one.
+  it('holds up the latest card from the log the moment it connects, not only with what happens afterwards', async () => {
     const id = await createSession(run)
     const played = TableClient.connect(await asTable(run, id))
     await played.ready()
     await played.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
-    await played.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    await played.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    const card = played.view!.components.find((c) => c.zone === 'table')!
+    await played.send({ v: 'flip', component: card.id, face: 'front' })
     played.close()
 
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
 
-    const feed = screen.getByRole('list', { name: /senast/i })
-    await waitFor(() => expect(within(feed).getAllByRole('listitem')).toHaveLength(2))
-    expect(within(feed).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
-      expect.stringMatching(/^2.*Bordet drog 2 kort från Draghög/),
-      expect.stringMatching(/^1.*Ada satte sig/),
-    ])
+    const stage = screen.getByRole('region', { name: /^kortet$/i })
+    await waitFor(() => expect(stage.querySelector(`[data-inspect="${card.id}"]`)).toBeTruthy())
+    expect(stage.querySelector('figcaption')!.textContent).toMatch(/^Bordet vände /)
+    expect(screen.queryByRole('list', { name: /senast/i })).toBeNull()
   })
 })
 
@@ -114,21 +116,6 @@ describe('pointing at a card on the TV (C)', () => {
     fireEvent.pointerLeave(card)
     await waitFor(() => expect(panel.textContent).toMatch(/peka på ett kort/))
     other.close()
-  })
-})
-
-describe('a screen that joins mid-game', () => {
-  it('shows what has happened so far in the feed, not an empty list', async () => {
-    const id = await createSession(run)
-    const other = TableClient.connect(await asTable(run, id))
-    await other.ready()
-    await other.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
-    other.close()
-
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
-    render(<TablePage />)
-    expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
-    expect(screen.getByText(/drog 2 kort från Draghög/)).toBeTruthy()
   })
 })
 

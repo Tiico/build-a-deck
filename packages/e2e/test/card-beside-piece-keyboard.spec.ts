@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test, type Fixtures } from '../support/test.js'
 
@@ -45,7 +45,7 @@ async function opened({ tableOf, host, open, request }: Given): Promise<Page> {
   // One card loose on the floor, for the keyboard to send.
   await (await host(table)).send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
   const seat = await join(request, table, { name: 'Bo', seat: 'A' })
-  const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+  const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
   await expect(page.locator('.byd-card[data-component]')).toHaveCount(1)
   return page
 }

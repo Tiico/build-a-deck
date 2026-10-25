@@ -7,7 +7,7 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { duplicateProject, gameFan, logout, myCards, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type GameWaiting, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { duplicateProject, gameFan, logout, myAccount, myCards, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { QuotaReached } from './quota.js'
 import { quotaWords, type QuotaWords } from './quota-words.js'
 import { startInTab, tableWay } from '../startWay.js'
@@ -15,6 +15,7 @@ import type { StartAnswer } from '../editor/startAnswer.js'
 import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
+import { guestAddress } from '../guestAddress.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -26,6 +27,7 @@ import { CheckGlyph, ChevronGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph,
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { PasskeyOffer } from './PasskeyOffer.js'
+import { NameOffer } from './NameOffer.js'
 import { CodeRow } from './CodeRow.js'
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { WOOD_EDGE } from '../brand/mark.js'
@@ -59,6 +61,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const server = params.get('server')
   const http = server ?? location.origin
   const [email, setEmail] = useState<string | null | undefined>(undefined)
+  // Whether the account has been asked what the others should call it (#1254): until it has, the
+  // question is the page's one band.
+  const [asked, setAsked] = useState(true)
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   // The game being exported, and whether a game is being brought in (G5, #529).
   const [exporting, setExporting] = useState<ProjectSummary | null>(null)
@@ -196,8 +201,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   }, [leading, http])
   useEffect(() => {
     setOffline(false)
-    void whoAmI(http)
-      .then((e) => {
+    void myAccount(http)
+      .then((me) => {
+        const e = me?.email ?? null
+        setAsked(me?.asked ?? true)
         setEmail(e)
         if (!e) return undefined
         // The cards are asked for beside the list rather than after it: they are a second answer,
@@ -228,9 +235,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     const picker = `/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`
     const seat = await returnToTable(http, p.session).catch(() => null)
     if (!seat) return onNavigate(picker)
-    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }), name: seat.name, token: seat.token })
+    // The token in the fragment and her name in no address (#1278), as from the picker.
+    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }) })
     if (server) q.set('server', server.replace(/^http/, 'ws'))
-    onNavigate(`${seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play'}?${q.toString()}`)
+    onNavigate(guestAddress(seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play', q, seat.token))
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
   // The banner is drawn with its text, so it is said once in the page's live region (4.1.3, #555).
@@ -335,6 +343,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               >
                 {t('home.menu.export')}
               </button>
+              {/* What would be sent to a printer, on a page of its own (#1208, beslut B). */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenu(null)
+                  onNavigate(`/print-package?${suffix(new URLSearchParams({ project: p.id }))}`)
+                }}
+              >
+                {t('home.menu.print')}
+              </button>
             </>
           )}
           {canDelete(roleOf(p)) && (
@@ -379,7 +397,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       return w?.other ? [{ game: p, rev: w.rev, ...w.other }] : []
     })
     .sort((a, b) => b.at.localeCompare(a.at))
-  const waits = waiting !== null && flagged.length + unanswered.length + savedByOthers.length > 0
+  // It stands only once both of its sources have answered: drawn on `waiting` alone, the surveys
+  // left to answer arrived a moment later and the rows jumped down under the reader.
+  const waits = waiting !== null && played !== null && flagged.length + unanswered.length + savedByOthers.length > 0
   // A row of it is a link, and a plain press goes through the page's own way of leaving.
   const go = (url: string) => (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
@@ -457,8 +477,20 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t('home.title')}
             </h1>
           </header>
-          {/* The offer after the link (#1180, beslut A): under the heading, once per browser. */}
-          <PasskeyOffer http={http} />
+          {/* One band at a time (#1254): the name for an account that has not been asked, and the
+              passkey after the link (#1180, beslut A) once it has — under the heading, once per browser. */}
+          {asked ? (
+            <PasskeyOffer http={http} />
+          ) : (
+            <NameOffer
+              http={http}
+              email={email}
+              onAnswered={() => {
+                setAsked(true)
+                heading.current?.focus()
+              }}
+            />
+          )}
           {typeof notice === 'string' && (
             <p className="byd-home-notice" role="alert">
               {notice}

@@ -1,6 +1,6 @@
 import type { Device } from '../support/devices.js'
 import { SMALL_TV, TV } from '../support/devices.js'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { expect, test } from '../support/test.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from '../../web/test/legibility.js'
 
@@ -20,7 +20,7 @@ for (const device of [SMALL_TV, TV] as Device[]) {
       const dealer = await host(table)
       await dealer.send([{ v: 'seat.claim', seat: 'A', name: 'Ada' } as never, { v: 'draw', from: 'draw', to: 'hand:A', count: 3 } as never])
       const eva = await join(request, table, { name: 'Eva' })
-      const { page } = await open(device, `${eva.observeUrl}&lang=sv`)
+      const { page } = await open(device, withQuery(eva.observeUrl, `lang=sv`))
 
       const card = page.locator('[data-zone="hand:A"] .byd-hand-card').last()
       await expect(card).toHaveAttribute('data-face', 'front')

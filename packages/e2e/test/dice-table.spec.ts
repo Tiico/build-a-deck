@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
@@ -13,7 +13,7 @@ test.describe('a die rolled from the felt (#1137)', () => {
   test('a click rolls it, it tumbles, and both screens land on the value the log tells', async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, dice: [{ faces: 6, count: 2, zone: 'table' }] })
     const seat = await join(request, table, { name: 'Bo', seat: 'A' })
-    const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
     const { page: tv } = await open(DESK, `${table.tvUrl}&lang=sv`)
     // Nothing has happened at the table yet, so the waiting room lies over the dice (L77).
     await pastTheWaitingRoom(page)
@@ -43,7 +43,7 @@ test.describe('a die rolled from the felt (#1137)', () => {
   test('Enter on a die with the keyboard’s focus rolls it, and the focus stays on it', async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, dice: [{ faces: 20, count: 1, zone: 'table' }] })
     const seat = await join(request, table, { name: 'Bo', seat: 'A' })
-    const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
     const die = page.locator('.byd-die[data-kind="d20"]')
     await expect(die).toHaveCount(1)
 
@@ -60,7 +60,7 @@ test.describe('a die rolled from the felt (#1137)', () => {
   test('M on a die with the keyboard’s focus moves it to the place chosen, and the focus goes with it', async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, dice: [{ faces: 20, count: 1, zone: 'table' }] })
     const seat = await join(request, table, { name: 'Bo', seat: 'A' })
-    const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
     const die = page.locator('.byd-die[data-kind="d20"]')
     await expect(die).toHaveCount(1)
     const id = await die.getAttribute('data-die')

@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -12,8 +12,8 @@ test.describe('the notepad between two computers (#1131)', () => {
     const table = await tableOf({ players: 2, counters: [], cards: 8, copies: 1 })
     const ada = await join(request, table, { name: 'Ada', seat: 'A' })
     const bo = await join(request, table, { name: 'Bo', seat: 'B' })
-    const { page: adas } = await open(DESK, `${ada.onlineUrl}&lang=sv`)
-    const { page: bos } = await open(DESK, `${bo.onlineUrl}&lang=sv`)
+    const { page: adas } = await open(DESK, withQuery(ada.onlineUrl, `lang=sv`))
+    const { page: bos } = await open(DESK, withQuery(bo.onlineUrl, `lang=sv`))
     const notesOf = (page: typeof adas) => page.getByRole('complementary', { name: 'Anteckningar' })
 
     // The column stands beside the felt, and the page still never scrolls sideways (L10).

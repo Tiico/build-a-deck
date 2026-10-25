@@ -372,6 +372,24 @@ Byggt 2026-10-23 (#1194): den råa dörren kräver konto.
 Med konton påslagna, vilket lådan alltid har, svarar den 401 utan inloggat konto och skriver ingenting, och med en kaka bärs bordet av det kontot.
 Webben startar bord genom `POST /projects/:id/sessions`, som redan krävde en roll i spelet; den råa dörren används bara av E2E-sviten och `seed`-skriptet, som loggar in med `AUTH_BYPASS` först.
 
+Byggt 2026-10-25 (#1278): gästens namn och token står i ingen adress.
+Förut var platsen `/play?session=…&seat=…&name=…&token=…`, och claim-länken bar token vidare.
+Hennes namn och hennes bärartoken stod då i historiken, i varje omladdning till lådan och som `Referer` på varje anrop, alltså i proxyns och Cloudflares loggar om de loggar adresser.
+Nu står bordet, platsen och rumskoden i frågan, och token i fragmentet (`#token=…`), som webbläsaren aldrig skickar i ett anrop eller en `Referer`.
+Det gäller `/play`, `/online`, `/observe` och `/claim` (`packages/web/src/guestAddress.ts`).
+Rumskoden står kvar i frågan: den är det adressen är till för (K12).
+Namnet står ingenstans: servern säger anslutningen namnet på inträdet dess token köptes för, i meddelandet `admitted`, och telefonen sätter sig med det.
+Ägarens egen plats och tittarplats från editorn (`owner=1`) har inget inträde och bär fortfarande sitt namn i adressen; det är designerns namn, inte en gästs.
+Bordets WebSocket tar token i `Sec-WebSocket-Protocol` och inte i adressen, eftersom uppgraderingen också är ett anrop som en proxy loggar: klienten erbjuder protokollen `deckster` och `deckster.token.<token>`, och servern svarar med `deckster`.
+En sida som laddades före ändringen ansluter med `?token=` och släpps fortfarande in, men får inte `admitted`, som dess klient inte känner till.
+Inloggningen bär fragmentet vidare: `loginUrl` lägger en `next`s fragment som inloggningssidans eget fragment, sidan lämnar det till kortet, och servern lägger det efter länken i inloggningsmejlet och aldrig i dess fråga.
+Webbläsaren behåller fragmentet genom omdirigeringen från `/auth/verify`, som inte anger något eget (RFC 9110 §10.2.2).
+Token står därmed i mejlet, som förut, men aldrig i ett anrop.
+En gammal länk med `?token=` eller `?name=` fungerar fortfarande: sidan flyttar token till fragmentet, tar bort namnet, gör detsamma med sidan en gammal claim-länk går tillbaka till, och ersätter historikposten med `history.replaceState`, så att den gamla formen inte blir kvar.
+Själva den gamla adressen har redan nått lådan när den öppnas; det går inte att göra ogjort, bara att den inte skickas igen.
+`packages/e2e/test/guest-address.spec.ts` läser varje anrops adress och `Referer` och varje WebSockets adress genom en plats resa (ansluta, sätta sig, ladda om, spela, enkäten, «Spara till ditt konto», logga in) och en observatörs, och hittar varken namnet eller token, sedan den visat att sökningen hittar namnet i bordets egna ramar.
+Värdnyckeln i bordsvyns WebSocket-adress (`?host=`) är inte en gästs och ligger utanför detta; den är ute ur adressraden sedan #758.
+
 ## 10. Administration: Tailscale
 
 Lådan och administratörens enheter i samma privata nät.
@@ -535,6 +553,12 @@ Det sviten hittade när policyn slogs på, och vad som gjordes:
   Det var inget policyfel utan ett produktionsfel som syntes först när stacken fick ett objektlager; nu räcker omdirigeringen själv som svar.
 - Två specar hämtade sina egna data-URL:er eller spelade R2 med en påhittad adress; de läser nu sina bytes utan att ansluta, och använder stackens objektlager.
 
+Byggt 2026-10-25 (#1278): varje HTML-svar bär också `Referrer-Policy: strict-origin` (`REFERRER_POLICY` i `csp.ts`), satt på samma ställe som policyn.
+En sida säger då bara sitt origin som `Referer`, aldrig sökvägen eller frågan, till lådan, till objektlagrets signerade länkar och till Googles typsnitt, och ingenting alls från https till http.
+Bordets och platsens id i en telefons adress följer därmed inte med något anrop.
+Som policyn reser huvudet med bygget och vilar inte på proxyn; `packages/server/test/guest-address.test.ts` kräver det på sidorna och E2E-resan i `guest-address.spec.ts` läser det på svaret.
+Lådans middleware får gärna strama åt det (`no-referrer`) men inte lätta på det.
+
 Följdkrav:
 **Lådans egna middleware får inte skicka en andra CSP.**
 Två policyer gäller båda samtidigt, så en till kan bara strama åt, och en som inte känner till hasharna stänger av skalet.
@@ -580,11 +604,14 @@ Deploy är pull-baserad (§7): `ops/deploy.sh` via en systemd-timer hämtar tagg
 CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgres och Chromium på varje pull request, med replay-korpusen i `corpus/` som grind, och bygger bilderna till GHCR när en `v*`-tagg pushas.
 Trunken har ingen CI framför sig; `.githooks/pre-push` kör samma grindar lokalt innan något når `main`.
 Korpusen anonymiserar både människorna och spelet (#540, beställarens beslut 2026-09-28), eftersom repot är publikt och en riktig logg bär designerns opublicerade spel.
-Människorna: gästernas namn blir `Spelare N`, och flaggornas text och observatörerna tas bort.
+Människorna: gästernas namn blir `Spelare N`, flaggornas kommentarer `(kommentar)`, observatörernas namn `Observatör` och anteckningsblockets rader `(anteckning)`.
+Vilka fält det är står på ett ställe sedan 2026-10-25 (#1276): `PERSONAL_FIELDS` i `packages/protocol`, som `anonymise` går igenom i stället för att räkna upp verben, så att ett personfält som läggs till i protokollet anonymiseras samma dag som det listas.
+Ett test i protokollet går igenom varje fält i varje intent och utfall som kan bära text och faller för ett som varken är listat där eller uttryckligen sagt inte vara en persons (`IMPERSONAL_FIELDS`), och ett test i servern gör detsamma för varje kolumn i de två schemana.
+`redactLine` och `redactLog` i motorn maskar samma fält till ett reserverat värde, `REDACTED`, utan att spelet ändras; det är den maskning som G6 (F7, väg A) tillåter som §7:s enda undantag, och att skriva den i lagret är #1279.
 Spelet: kortens id blir `kort-N` i den ordning de först förekommer, kortens kolumner blir `fält-N` och deras innehåll `värde-N` (kolumn för kolumn, så att en fråga till korten hittar samma kort), och zonernas, genvägarnas och åtgärdernas text blir `Zon N`, `Genväg N` och `Åtgärd N`.
 Zonernas id står kvar, eftersom intents och motorn pekar på dem och editorn ger dem generiska namn.
 Tidsstämplarna står kvar som de loggades.
-Anonymiseringen går igenom hela posten, också en tillbakaspolnings lagrade bord.
+Spelets anonymisering går igenom hela posten, också en tillbakaspolnings lagrade bord; det bordet är zoner och komponenter och bär inga platser och inga namn, vilket motorns `redact.test.ts` håller.
 `pnpm --filter @byd/engine corpus <namn> <https://…/sessions/:id/export>` lägger till en riktig logg, med ägarens kaka i `BYD_COOKIE`, och tar bara bord ur spel som kontot äger tills villkoren säger något annat.
 Exporten och enkätsvaren (`GET /sessions/:id/surveys`) lämnas bara till ett konto som projektet låter öppna sina bord som värd, eftersom loggen bär varje hand, gästernas namn och flaggornas text; skriptet tar kontots kaka i `BYD_COOKIE`.
 Undantaget med samtycke, och hur det blir en behörighet på lådan, står i §7 (#1011).

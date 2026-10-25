@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import type { Device } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -24,7 +24,7 @@ for (const device of [
         const dealer = await host(table)
         await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 5 }])
         const seat = await join(request, table, { name: 'Di', seat: 'A' })
-        const { page } = await open(device, `${view === 'play' ? seat.playUrl : seat.onlineUrl}&lang=sv`)
+        const { page } = await open(device, withQuery(view === 'play' ? seat.playUrl : seat.onlineUrl, `lang=sv`))
         await expect(page.locator('[data-hand-card]')).toHaveCount(5)
         expect(await page.evaluate('window.scrollY')).toBe(0)
         expect(await page.evaluate(whole)).toBeGreaterThanOrEqual(1)
@@ -44,7 +44,7 @@ test(`the head of the hand keeps one row at ${width} (#716)`, async ({ tableOf, 
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 25 }])
   const seat = await join(request, table, { name: 'Spelaren med ett långt namn', seat: 'A' })
-  const { page } = await open({ name: `phone-${width}`, viewport: { width, height: 640 }, hasTouch: true, isMobile: true }, `${seat.playUrl}&lang=sv`)
+  const { page } = await open({ name: `phone-${width}`, viewport: { width, height: 640 }, hasTouch: true, isMobile: true }, withQuery(seat.playUrl, `lang=sv`))
   await expect(page.locator('[data-hand-card]')).toHaveCount(25)
   const head = (await page.locator('.byd-player > header').boundingBox())!
   expect(head.height).toBeLessThanOrEqual(60)

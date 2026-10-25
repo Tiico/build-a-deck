@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import type { Device } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -19,7 +19,7 @@ test.describe('a finger on the distance view (#484)', () => {
     const dealer = await host(table)
     await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
     const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(TABLET, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(TABLET, withQuery(seat.onlineUrl, `lang=sv`))
     const card = page.locator('.byd-online-felt .byd-card[data-component]').first()
     await expect(card).toBeVisible()
     const box = (await card.boundingBox())!
@@ -43,7 +43,7 @@ test.describe('a finger on the distance view (#484)', () => {
     const dealer = await host(table)
     await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 2 }])
     const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(TABLET, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(TABLET, withQuery(seat.onlineUrl, `lang=sv`))
     const card = page.locator('[data-hand-card]').first()
     await expect(card).toBeVisible()
     const box = (await card.boundingBox())!

@@ -55,6 +55,7 @@ Bordet och telefonen:
 - ✅ Filtbord i bordsläge och sändningslayout i TV-läge med rumskod och QR (C5, K9).
 - ✅ Telefonens hand som remsa med tryck, dra upp, håll; zongenvägar; spela vänder kortet om målet är publikt (C4, K4, K10, K11).
 - ✅ Telefonen mot TV:n tagen om från grunden: fyra flikar (Handen, Framför mig, Bordet, Mer), handen som rutnät och verben i en rad över flikarna (C4 2026-10-23, #1147).
+- ✅ Rummets TV som scen för det senaste kortet: kortet stort i spalten med sin rad under, ingen logg, koden och namnet i en fot, och scenen så bred som filten kan ge och behålla K9:s kort (K8 2026-10-25, #1290).
 - ✅ Vänd ett kort i handen så spelas det nedvänt, vart det än går (K11 reviderad, #1133).
 - ✅ Anslutning: bordet som platsväljare, "Bara titta", "Spela på den här skärmen" (K12, C8, C2).
 - ✅ Bordet spelas direkt: dra, släpp, håll för en ring med verb; perspektivet projiceras exakt (K14, C1).
@@ -122,7 +123,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Tärningar d4–d20, slagna från bordet och telefonen, i spelets setup med antal per spelare (K28, #1129). Typerna, setupen och aktivitetsraden med värden (#1136), telefonens ark «Tärningar» med flerslag i ett kuvert (#1138), fliken Bord med en rad per tärning (#1139), bordet som ritar och slår dem (#1137), och trycket, där en tärning är en köpt lagervara som partnern packar och som går att välja bort (#1140).
 - ✅ Vägen tillbaka mellan editorn och borden (L80, #1217): varje bordsyta leder ägaren till editorns egen flik, ett bord öppnas i sin egen flik i stället för en ny, ägaren som lämnar `/online` landar i spelet, och Mina spel, `/join` och `/login` har en väg vidare.
 - ✅ Materialets plats (K31, #1292): tärningar och räknare dras i fliken Bords filt dit de ska ligga, och en punkt i en yta vid platserna vänds mot varje plats kant.
-- ✅ Vägen in till ett bord (L85, #1286): två sätt att sitta, runt en TV eller vid varsin dator. Varje start frågar vilket och bordet minns svaret, så ett bord har en väg in, «Öppna bordet», och anslutningssidan ett enda «Gå med» på varje skärm. Genvägarna där designern hoppade in själv är borta ur editorn.
+- ✅ Vägen in till ett bord (L86, #1286): två sätt att sitta, runt en TV eller vid varsin dator. Varje start frågar vilket och bordet minns svaret, så ett bord har en väg in, «Öppna bordet», och anslutningssidan ett enda «Gå med» på varje skärm. Genvägarna där designern hoppade in själv är borta ur editorn.
 - ❓ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
 
@@ -160,6 +161,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - 🔶 Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11). Passkeys är byggda (#1180, L78): bandet på Mina spel efter länken, knappen och förslaget på inloggningskortet och kortet på profilen, med mejlet som återställning; OAuth återstår.
+- ✅ Kontots eget namn: ett välkomststeg efter första inloggningen med förslaget ur adressen, ett band på Mina spel för konton som fanns före det, kortet «Namn» i Profil, och namnet i Dela, i editorns huvud, för ägaren som tittar på vid bordet, i inbjudningsmejlet och i kvotraden med «spelets ägare» som reserv (#1254, L85).
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
 - ⬜ GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
   Inget är byggt än.
@@ -213,7 +215,7 @@ Beställaren beslutade 2026-10-23 (#1199) att stödet för fler partner och tryc
 
 - ✅ `PrintProvider`-abstraktionen i `packages/print`: komponenttyp till SKU, tryckunderlagskrav, prissättning, orderläggning och spårning, formad efter The Game Crafter och QPMN, med ett förberedelsesteg, regiondirigering för EU-kravet och kraven som data ur `requirements()`, en fake-provider och en kontraktssvit som varje adapter ska klara (F2, TUNN-SKIVA §4, #1206). Ingen serverväg anropar `submit` eller `track` ännu.
 - ✅ Tryckfiler efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()` i stället för typens fasta 3 mm, från den enda renderaren (E2, F2, #1207). Servern förbereder en providers order och ritar dess filer, och `GET /projects/:id/print-package` lämnar dem med regelhäftet; CMYK är inte byggt och väntar på en riktig partner.
-- ⬜ Tryckpaketet: designern ser vad som skulle skickas till tryckeriet, förklarat, och laddar ner det i betan; prototypas först (F1, #1208).
+- ✅ Tryckpaketet: designern ser vad som skulle skickas till tryckeriet, förklarat, och laddar ner det i betan (F1, #1208, beslut B). En egen sida, `/print-package`, med kniven, leken, lagervarorna, kraven och zippen i fem delar och en följesedel med Testtryckeriets exempelsvar; nås ur spelets ⋯ och ur Fysisk kontroll. Testtryckeriet är den provider servern registrerar, en fake-provider som låtsas trycka i Sverige och ställer typens krav.
 - ⬜ Tryckpaketet kostar att ladda ner när en riktig partner finns, i en form som beslutas med abonnemangen (F1, A2, #1209).
 - ⬜ En verklig POD-partner integrerad; all beställning går via plattformen (F1). Ingen partner är vald: #1199 fann inget tryckeri som både tillverkar i EU och har ett order-API, och EU-kunder går till EU-tryck (F2).
 - 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; partnerns krav i pixlar och utfall är byggda (#1207); kvar är tryckprofil per typ (B2) och CMYK.

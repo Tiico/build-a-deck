@@ -26,7 +26,7 @@ import { QuotaReached } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
-import { SharePanel, colourOf } from './SharePanel.js'
+import { SharePanel } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
 import { editorTab, tableTab } from '../ways.js'
 import { type Seating, type StartAnswer } from './startAnswer.js'
@@ -38,7 +38,7 @@ import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
-import { loginUrl, removeProject } from '../account/api.js'
+import { colourOf, initialOf, loginUrl, removeProject } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
@@ -472,6 +472,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     onNavigate(url)
   }
   const goHome = () => goTo(home)
+  // The print package's page (#1208): of the game as it is saved, so unsaved work is asked about
+  // first, as any way out of the editor is; and it leads back here.
+  const printPackage = (() => {
+    const q = new URLSearchParams({ project: projectId ?? '', from: 'editor' })
+    const server = params.get('server')
+    if (server) q.set('server', server)
+    return `/print-package?${q.toString()}`
+  })()
   // The way out is asked about wherever it starts: «Mina spel» in the header, or the profile from
   // the AI panel (#1001). The question stands where it always stands, and staying hands the keys back
   // to whatever was pressed.
@@ -628,6 +636,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // One check mended across the whole deck (#233). Every patch carries the same gesture, so
         // the edits land as one version and one step back: a designer who presses this once and
         // changes her mind presses undo once.
+        {...(client.mayEdit ? { printPackage: { href: printPackage, onGo: (from: HTMLElement) => leave(printPackage, from) } } : {})}
         onFixChecks={(fixes) => {
           const gesture = `fix-check-${Date.now()}`
           for (const fix of fixes) client?.patchElement(fix.face, fix.element, fix.patch, undefined, gesture)
@@ -840,6 +849,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             onSaid={confirmation.confirm}
             onFailed={say}
             {...(client.mayDelete ? { onRemove: () => setRemoving('asking') } : {})}
+            onPrintPackage={() => leave(printPackage, moreRef.current)}
           />
         )}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
@@ -867,8 +877,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             so it can be spoken to by what it says (#556). */}
         <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.door')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
           {client.here.map((p) => (
-            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
-              {p.name.slice(0, 1).toUpperCase()}
+            // The name's letter and the whole name on the pointer, in the colour of the address, so the
+            // face stays the same when the name changes (#1254).
+            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.email ?? p.name) }}>
+              {initialOf(p.name)}
             </i>
           ))}
           {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}

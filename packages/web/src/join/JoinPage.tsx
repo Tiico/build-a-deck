@@ -13,6 +13,7 @@ import { noticeFor } from '../status/notice.js'
 import { useT } from '../i18n/index.js'
 import { useCodeField } from './codeField.js'
 import { useWide } from './wide.js'
+import { guestAddress } from '../guestAddress.js'
 import { ArrowGlyph } from '../glyphs.js'
 import './join.css'
 
@@ -209,10 +210,11 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
       }
     }
     if (!token) return
-    // The code travels with them: it is the only way back to this picker (#12, DRIFT §9).
-    const next = new URLSearchParams({ session: sessionId, code, ...(seat === null ? {} : { seat }), name: name.trim(), token })
+    // The code travels with them: it is the only way back to this picker (#12, DRIFT §9). The token
+    // goes in the fragment and the name nowhere (#1278): the table knows it from the token.
+    const next = new URLSearchParams({ session: sessionId, code, ...(seat === null ? {} : { seat }) })
     if (server) next.set('server', server)
-    onSit(`${page}?${next.toString()}`)
+    onSit(guestAddress(page, next, token))
   }
 
   // The suggested way in is the first button and the one Enter takes: «Sätt dig» on a phone, and

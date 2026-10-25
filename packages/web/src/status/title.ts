@@ -19,6 +19,8 @@ const PATHS: Record<string, Route> = {
   [GUIDED]: 'new',
   '/claim': 'claim',
   '/profile': 'profile',
+  // The print package is a part of a game, named as the editor's tabs are (#1208): «game · Tryckpaketet».
+  '/print-package': 'editor',
   '/editor': 'editor',
   '/table': 'table',
   '/join': 'join',
@@ -59,7 +61,8 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
     case 'landing':
       return [t('title.landing')]
     case 'login':
-      return [t('title.login')]
+      // The welcome step is the login's own (#1254), and names its tab itself.
+      return [ctx.part ?? t('title.login')]
     case 'new':
       return [t('title.new')]
     case 'claim':

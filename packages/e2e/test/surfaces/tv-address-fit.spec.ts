@@ -8,9 +8,8 @@ import { expect, test } from '../../support/test.js'
 // the line the page drew — and with a seventh more width again, which is what a Linux machine's
 // fallback face costs against this Mac's (memory: felt measurements must not pin Mac pixels).
 //
-// What the address costs is paid by INSPEKTION, the card panel under it, which the prototype
-// measured at 227 px at 1280 × 800 for this variant against 265 before it. Deckster's hand above
-// the game's name is paid for the same way (#1084).
+// Since the stage (#1290) the address stands in the foot under the room's card, in a block as wide
+// as the old column at most, and what it costs is paid by the card above it.
 const BOX = 'deck.ockelberg.com'
 
 for (const device of [SMALL_TV, TV]) {
@@ -33,7 +32,7 @@ for (const device of [SMALL_TV, TV]) {
       const qr = document.querySelector('.byd-tv-join img.byd-qr')
       // The code shares its line with the square, as it always has.
       const codeLine = code.getBoundingClientRect().width + (qr ? qr.getBoundingClientRect().width + parseFloat(cs.columnGap || '0') : 0)
-      const inspect = document.querySelector('.byd-tv-inspect')!.getBoundingClientRect().height
+      const inspect = document.querySelector('.byd-tv-stage figure > div')!.getBoundingClientRect().height
       return { room, host: width(host), codeLine, lines: host.getClientRects().length, inspect, sameLine: !qr || Math.abs(qr.getBoundingClientRect().top - code.getBoundingClientRect().top) < code.getBoundingClientRect().height }
     })
     expect(fit.lines, 'the host is one line').toBe(1)
@@ -43,10 +42,8 @@ for (const device of [SMALL_TV, TV]) {
     // width on any machine and is held to the column as it is, with a few pixels to spare.
     expect(fit.codeLine, `the code and the square (${Math.round(fit.codeLine)} px) in ${fit.room} px`).toBeLessThanOrEqual(fit.room - 8)
     expect(fit.sameLine, 'the square stands beside the code').toBe(true)
-    console.log(`${device.viewport.width}: host ${Math.round(fit.host)} px, code line ${Math.round(fit.codeLine)} px, column ${fit.room} px, INSPEKTION ${Math.round(fit.inspect)} px`)
-    // INSPEKTION keeps the room the prototype measured for it, give or take a face's line height:
-    // 227 px for the address, less the line Deckster's hand stands on above the game's name, which
-    // #1084's prototype measured at 168 px (beslut B 2026-10-22, the cost chosen with it).
-    if (device === SMALL_TV) expect(fit.inspect, 'INSPEKTION at 1280 × 800').toBeGreaterThanOrEqual(156)
+    console.log(`${device.viewport.width}: host ${Math.round(fit.host)} px, code line ${Math.round(fit.codeLine)} px, column ${fit.room} px, card ${Math.round(fit.inspect)} px tall`)
+    // The stage's card is never smaller than the old panel's: 168 px tall at 1280 × 800 (#1084).
+    if (device === SMALL_TV) expect(fit.inspect, 'the stage’s card at 1280 × 800').toBeGreaterThanOrEqual(168)
   })
 }

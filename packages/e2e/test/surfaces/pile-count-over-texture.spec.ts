@@ -1,5 +1,5 @@
 import type { Browser, Page } from '@playwright/test'
-import { join, type Table } from '../../support/api.js'
+import { join, type Table, withQuery } from '../../support/api.js'
 import { PHONE, SMALL_TV, TV, type Device } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -120,7 +120,7 @@ test.describe(`the draw pile's count on the observer's felt at ${PHONE.viewport.
     test(`stands on the pile while its picture is ${state}`, async ({ browser, baseURL, tableOf, request }) => {
       const table = await tableOfFour(tableOf)
       const eva = await join(request, table, { name: 'Eva' })
-      const page = await screen(browser, baseURL, PHONE, `${eva.observeUrl}&lang=sv`, state)
+      const page = await screen(browser, baseURL, PHONE, withQuery(eva.observeUrl, `lang=sv`), state)
       const now = await read(page)
       expect(now.count).toBe('24')
       expect({ hit: now.hit, covers: now.covers }).toEqual({ hit: now.hit, covers: true })

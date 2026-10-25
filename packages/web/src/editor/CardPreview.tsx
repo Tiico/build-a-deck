@@ -39,11 +39,14 @@ export type CardPreviewProps = {
   // left it out drew the game's symbols uncoloured while the wall painted them, so Mall and
   // Kortväggen showed two different cards from one game (E2). A card with no game behind it says so.
   palette: Record<string, string> | undefined
+  // The bleed in millimetres, the compiler's one print option: the card drawn as the file a printer
+  // is sent, with the background carried past the trim (#1208). Nothing else draws it that way.
+  bleed?: number | undefined
 }
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
-export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, onFitted, onMeasured, overlay, assetBase, motifs, palette }: CardPreviewProps) {
+export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, onFitted, onMeasured, overlay, assetBase, motifs, palette, bleed }: CardPreviewProps) {
   // The face's own pictures resolved once per face (#320), for the same reason the icons are
   // resolved once per document: a fresh face every render is a fresh compile every render.
   const drawnFace = useMemo(() => (assetBase ? resolveAssetFace(face, assetBase) : face), [face, assetBase])
@@ -59,8 +62,9 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
         ...(fs ? { fonts: fs } : {}),
         ...(motifs ? { motifs } : {}),
         ...(palette ? { palette } : {}),
+        ...(bleed !== undefined ? { bleed } : {}),
       }),
-    [id, motifs, palette],
+    [id, motifs, palette, bleed],
   )
   // The card as it is once every byte it names has landed. Compiling is pure and asks nothing of
   // the service; only the markup put into the page does.

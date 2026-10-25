@@ -453,6 +453,7 @@ export const svEditor = {
   'wall.checks.warningsOnly': 'Bara varningar. Leken är tryckfärdig.',
   'wall.checks.help': 'En anmärkning gäller oftast mallen, inte kortet, och syns då på alla kort som använder elementet.',
   'wall.checks.help.topic': 'anmärkningarna',
+  'wall.checks.print': 'Se tryckpaketet ›',
   'wall.checks.fix': 'Rätta i mallen',
   'wall.checks.fix.said': '{what} rättad i mallen.',
   'wall.checks.fix.none': 'Det här är ett eget val och kan inte rättas automatiskt.',

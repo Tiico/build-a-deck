@@ -39,8 +39,9 @@ const sentences = (text: string) => (text.match(/[.!?](?=\s|$)/g) ?? []).length
 const RETIRED_SV = ['dukar', 'dukas', 'dröjer', 'ögonblick', 'letar upp', 'uppkopplad', 'står stilla', 'av sig själv', 'på väg ut']
 const RETIRED_EN = ['setting the table', 'taking its time', 'on our own', 'no longer yours', 'on your way out', 'coming up']
 
-// «Vi» stays only where somebody actually did something: the mail that was sent.
-const WE_MAY = new Set(['login.sent.body'])
+// «Vi» stays only where somebody actually did something: the mail that was sent, and the test
+// printer's own answer, quoted in its voice on the print package (#1208).
+const WE_MAY = new Set(['login.sent.body', 'print.answer.taken'])
 
 const offenders = (catalogue: Record<string, string>, breaks: (text: string, key: string) => boolean) =>
   Object.entries(catalogue)
@@ -107,7 +108,10 @@ describe('the tool speaks plain Swedish (L73, #1101)', () => {
 // what it says; the booklet is made, not ordered.
 const ORDER_SV = /beställ/i
 const ORDER_EN = /\bordered\b|\bordering\b|\bstops? the order\b|\ban order\b|\bto order\b/i
-const ordersSv = (t: string) => ORDER_SV.test(t)
+// The print package (#1208, beslut B) is where the beta says outright that no order is placed: these
+// two say it in the prototype's own words, and say nothing that can be ordered.
+const NO_ORDER = new Set(['print.lead', 'print.noOrder'])
+const ordersSv = (t: string, key?: string) => !(key !== undefined && NO_ORDER.has(key) && /\bIngen beställning läggs\b/.test(t)) && ORDER_SV.test(t)
 const ordersEn = (t: string) => ORDER_EN.test(t)
 
 describe('promises no order before phase 5 (#1223)', () => {
