@@ -56,7 +56,8 @@ export async function myWaiting(http: string): Promise<Record<string, GameWaitin
 }
 
 // Sharing a game (D3): who it is shared with, an invitation to an address, and taking it back.
-export type Member = { email: string; role: Role }
+// `name` is what the member called her account (#1254), when she gave it one.
+export type Member = { email: string; name?: string; role: Role }
 export async function projectMembers(http: string, project: string, t: T = swedish): Promise<Member[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
@@ -296,4 +297,62 @@ export async function myUsage(http: string): Promise<Usage | null> {
   const res = await fetch(`${http}/me/usage`, withCredentials()).catch(() => null)
   if (!res?.ok) return null
   return (await res.json().catch(() => null)) as Usage | null
+}
+
+// The account's own name (#1254), here and not in `session.ts`: that module travels with every
+// surface, the phone's included (#760), and only the account's pages, the login card, the editor and
+// the observer's page ever ask what the account is called or draw its face. Here and not in a module
+// of its own, because every chunk a route needs is named in the entry the phone fetches too.
+
+// The suggestion out of the address and the ceiling on the name's length, the server's own.
+export { NAME_MAX, suggestedName } from '@byd/server/account-name'
+
+// Who is signed in, with the name the account goes by to others (#1254) and whether it has been asked
+// for one; null for nobody.
+export type Me = { email: string; name: string | null; asked: boolean }
+export async function myAccount(http: string): Promise<Me | null> {
+  const res = await fetch(`${http}/auth/me`, withCredentials())
+  if (!res.ok) throw new Error(`could not read the account: ${res.status}`)
+  const me = (await res.json()) as { email: string | null; name?: string | null; asked?: boolean }
+  // A server from before the name has asked nobody and has nowhere to keep an answer, so its
+  // accounts are taken as asked rather than sent to a step that could not be saved.
+  return me.email === null ? null : { email: me.email, name: me.name ?? null, asked: me.asked ?? true }
+}
+
+// The account's name (#1254), or none: either is the answer to the question, which is not put again.
+// `false` when the server would not keep it.
+export async function saveName(http: string, name: string | null): Promise<{ name: string | null } | false> {
+  const res = await fetch(`${http}/me/name`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }))
+  if (res.status === 400) return false
+  if (!res.ok) throw new Error(`could not save the name: ${res.status}`)
+  return (await res.json()) as { name: string | null }
+}
+
+// Where a login made on the page goes on to (#1254, variant C): the welcome step first for an account
+// that has not been asked what the others should call it, and `next` after it. The link's own way in
+// is the server's (`/auth/verify`); this is the passkey's and the development login's.
+export async function arrival(http: string, next: string): Promise<string> {
+  const me = await myAccount(http).catch(() => null)
+  if (!me || me.asked) return next
+  // A fragment is never put in a query (#1278): it goes on after the step's own address.
+  const cut = next.indexOf('#')
+  const q = new URLSearchParams({ step: 'name', next: cut < 0 ? next : next.slice(0, cut) })
+  const server = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('server')
+  if (server) q.set('server', server)
+  return `/login?${q.toString()}${cut < 0 ? '' : next.slice(cut)}`
+}
+
+// A person's face where the others see who has a game (D3): a coloured circle with one letter.
+// The colour comes from the address, so it stays the same face when the name is changed (#1254),
+// and the letter from what she is called — her name, or the address when she has given none.
+export function colourOf(seed: string): string {
+  let h = 0
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) % 360
+  return `hsl(${h} 55% 55%)`
+}
+
+// The first letter as a reader sees it, an emoji or a letter with its accent whole.
+export function initialOf(name: string): string {
+  const first = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(name)[Symbol.iterator]().next().value?.segment ?? ''
+  return first.toLocaleUpperCase()
 }

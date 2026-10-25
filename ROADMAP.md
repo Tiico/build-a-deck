@@ -55,6 +55,7 @@ Bordet och telefonen:
 - ✅ Filtbord i bordsläge och sändningslayout i TV-läge med rumskod och QR (C5, K9).
 - ✅ Telefonens hand som remsa med tryck, dra upp, håll; zongenvägar; spela vänder kortet om målet är publikt (C4, K4, K10, K11).
 - ✅ Telefonen mot TV:n tagen om från grunden: fyra flikar (Handen, Framför mig, Bordet, Mer), handen som rutnät och verben i en rad över flikarna (C4 2026-10-23, #1147).
+- ✅ Rummets TV som scen för det senaste kortet: kortet stort i spalten med sin rad under, ingen logg, koden och namnet i en fot, och scenen så bred som filten kan ge och behålla K9:s kort (K8 2026-10-25, #1290).
 - ✅ Vänd ett kort i handen så spelas det nedvänt, vart det än går (K11 reviderad, #1133).
 - ✅ Anslutning: bordet som platsväljare, "Bara titta", "Spela på den här skärmen" (K12, C8, C2).
 - ✅ Bordet spelas direkt: dra, släpp, håll för en ring med verb; perspektivet projiceras exakt (K14, C1).
@@ -159,6 +160,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - 🔶 Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11). Passkeys är byggda (#1180, L78): bandet på Mina spel efter länken, knappen och förslaget på inloggningskortet och kortet på profilen, med mejlet som återställning; OAuth återstår.
+- ✅ Kontots eget namn: ett välkomststeg efter första inloggningen med förslaget ur adressen, ett band på Mina spel för konton som fanns före det, kortet «Namn» i Profil, och namnet i Dela, i editorns huvud, för ägaren som tittar på vid bordet, i inbjudningsmejlet och i kvotraden med «spelets ägare» som reserv (#1254, L85).
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
 - ⬜ GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
   Inget är byggt än.

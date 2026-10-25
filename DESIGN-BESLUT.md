@@ -2712,6 +2712,21 @@ Ett kort TV:n ser nedvänt behåller K8:s vy, eftersom en baksida upphållen fö
 Telefonens knapp «Visa för alla» (#518) står i läsvyn under kortet, på andras kort under «Ytorna» och som ett fjärde verb på ens egna kort i ett publikt område, och säger «Visas för alla» en stund efter trycket; den erbjuds bara på ett kort bordet ser uppvänt (`forTheRoom`: uppvänt i en zon som visar för alla, eller överst i en hög, K15), aldrig på ett handkort eller i ett område bara ägaren ser. Bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
 Grindarna: `packages/web/test/tv-show.test.tsx` (kortets bredd mot K26:s TV-golv vid 1920 × 1080 med fyra och åtta platser, skrivbordets vid 1280 × 800, och spalten orörd), `presence.test.ts` (meddelandet, tiden och att bara ett uppvänt kort ritas), `tv-chrome.test.tsx`, `table-page.test.tsx` (en telefon visar, ett nedvänt kort ritas inte), `table-keyboard.test.tsx` och `table-renderer.test.tsx` («Titta» på TV:n, från panelen och från ringen).
 
+Reviderat 2026-10-25 (#1290, beställarens beslut A, [prototyp](https://github.com/Tiico/build-a-deck/blob/e6a6999b9acaa5e60955d1ad722de209348b7ff6/docs/ux-audits/2026-10-25-tv-vyn/README.md)): **rummets TV är en scen för det senaste kortet.**
+Beställaren: «Hela TV-vyn fokuserar på fel saker, händelseloggen tar för lång tid och den förstorade visningen är för liten.»
+Spalten höll ett kort i 190 px (9 px brödtext) och SENAST tre meningar på två–tre rader var, så det rummet läste var orden och inte kortet.
+Tre omdesigner prototypades — scenen, en strålkastare som lyfte varje spelat kort över filten, och en logg av kort i stället för meningar — och scenen valdes.
+
+- Spalten är en scen: kortet den senaste raden handlade om, så stort som spalten ger efter sin rad och sin fot, med raden under det i platsens färg, sagd som flödet sa den. En pekare skriver över det som förut, och då står kortets namn under det.
+- SENAST står inte längre på rummets TV. Hela historiken finns på varje telefon; en rad om något som inte är ett kort (en blandning, en giv, en uppdatering) syns på filten och i rubriken, inte i spalten.
+- Koden, QR-koden, handen och spelets namn står i en fot under kortet, och där står också «Starta om», snabbkommandona och raden om kort som ritas. De lämnade inte TV:n, som prototypen föreslog, eftersom ingen annan skärm har «Starta om» (#875).
+- **Scenens bredd är filtens att ge.** Filten är höjdbunden bara så länge den har bredd över, och åttaplatsbordets kort stod redan på K9:s 45 px bredvid den gamla spalten. Scenen är därför så bred som filten kan ge och behålla 45 px, upp till 760 px, och aldrig smalare än spaltens 360 (`stageWidth` i `packages/web/src/table/stage.ts`, frågad genom `onFit` som `/online` frågar sitt anteckningsblock, #1131). Mätt på det byggda bordet vid 1920 × 1080: med två och fyra platser får scenen sina 760 px och kortet 538 px (26 px brödtext, över K26:s golv på 24), och kortet på filten går från 78 till 57 px vid fyra platser. Vid åtta platser står scenen kvar på 360 och kortet är 319 px; vid 1280 × 800 är det 198 px, där panelen var 190.
+Kortet på filten räknas inom kamerans overscan (C5, #322), som `onFit` inte räknar med: utan den gav scenen 592 px vid åtta platser och kortet på filten 44 px.
+- «Visa för alla» är orört: ett kort som hålls upp står över filten i 672 px och 32 px brödtext, större än scenen, och scenen under står kvar.
+- Observatörens skärm läses vid ett skrivbord och behåller sin spalt med INSPEKTION, platserna och SENAST.
+
+Grindarna: `packages/web/test/tv-stage-width.test.ts` (bredden mot kortets golv), `tv-chrome.test.tsx` (scenen, raden, foten och observatörens spalt), `tv-show.test.tsx` (scenens kort mot K26:s golv vid 1920 × 1080 och skrivbordets vid 1280 × 800), och `packages/e2e/test/surfaces/tv-feed-rows.spec.ts` på det byggda bordet.
+
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
 Tre prototyper byggdes och jämfördes: planritning, filtbord med perspektiv, och en mörk sändningslayout.
@@ -8566,3 +8581,49 @@ Valet blev **A**.
 B gav aldrig en bild av ett exempel som helhet, C gjorde exemplen valbara i fliken en gång och gömde dem sedan, och D var den tyngsta ytan för den som bara vill ändra en färg.
 
 Prototypen står i [`docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html`](docs/ux-audits/2026-10-25-eget-tema/prototyper/01-eget-tema.html).
+
+### L85. Kontot har ett eget namn: ett välkomststeg efter första inloggningen, ett band för konton som redan finns och kortet «Namn» i Profil (prototypat och beslutat 2026-10-24, #1254)
+
+Ett konto hade inget namn.
+#1198 nämnde ägaren vid namn när en testledare eller medredigerare nådde ägarens tak, och tog namnet ur det första ordet i adressen, så att `info@` blev «Info» och `x92@` blev ingenting.
+Beställaren beslutade att kontot får ett namn som designern själv sätter, föreslaget ur adressen och ändrat i Profil.
+Tre vägar till namnet prövades i [`docs/ux-audits/2026-10-24-visningsnamn/prototyper/index.html`](https://github.com/Tiico/build-a-deck/blob/07521cb23c56c6294dbf7682aec264b796cfbfb6/docs/ux-audits/2026-10-24-visningsnamn/prototyper/index.html) på grenen `proto/1254-visningsnamn`: A sparade förslaget tyst, B frågade första gången någon annan skulle läsa namnet, och C frågade vid första inloggningen.
+Agenten rekommenderade B.
+Beställaren valde **C**: alla nya konton har ett namn från start, och frågan ställs en gång.
+
+**Välkomststeget.** Efter länken, och efter en passkey-inloggning, går ett konto som inte har fått frågan till `/login?step=name&next=…`, inloggningens eget steg i kortets form: «Välkommen till Deckster», adressen det är inloggat som, fältet «Vad ska andra kalla dig?» med förslaget ur adressen ifyllt, «Fortsätt» och «Hoppa över».
+Sedan går det dit länken var på väg, och steget ersätter sig självt i historiken.
+Steget har ingen egen adress, eftersom varje sökväg är en rad i ingången som telefonen också hämtar (#760), och nästa steg i samma kort (villkoren, #1272) läggs till som ett nytt `step`.
+Länkens väg bestämmer servern (`/auth/verify` skickar dit), och kortets egna inloggningar, passkeyn och utvecklingens genväg, frågar `/auth/me` innan de går vidare.
+
+**«Hoppa över» sparar inget namn, och frågan kommer inte tillbaka**, varken som steg eller som band.
+Kontot har därför två fält: namnet, som är tomt tills designern ger ett, och om kontot har fått frågan.
+Ett namn, eller inget, är svaret; att tömma fältet i Profil är också ett svar.
+
+**Bandet.** Ett konto som fanns före namnet får frågan i ett band på Mina spel, i passkey-bandets form och på dess plats (L78), med förslaget i fältet, «Spara» och «Inte nu».
+**Högst ett band åt gången:** namnets kommer först, och passkey-bandet visas först när namnet är satt eller bandet har passerats.
+
+**Kortet «Namn»** står först i Profil: fältet, en rad om vad namnet är till för, och raden namnet ger i Dela, ritad medan designern skriver.
+Utan namn säger kortet vad det betyder: adressen i Dela och i inbjudningar, och «spelets ägare» i kvotraden.
+Nära taket räknar fältet tecknen.
+«Spara namnet» är en kontur och inte prototypens fyllda knapp: Profils enda fyllda knapp är AI-nyckelns, eller vägen tillbaka till spelet (L13).
+
+**Namnet är högst 40 tecken,** trimmat, på en rad, räknat som läsaren räknar dem (en emoji är ett tecken), och tomt är inget namn.
+Förslaget och taket står i `account-name.ts` och nås av sidorna genom `@byd/server/doc`, så att steget, bandet, kortet och servern säger samma sak.
+
+**Var namnet syns:**
+- **Kvotraden:** `ownerName` i 402 och `refused` är ägarens namn, och **reserven är «spelets ägare»**: adressens ord är bara ett förslag och sägs aldrig till någon annan (beslut 2). Det ersätter #1198:s reserv, och `ownerNameOf` finns inte längre.
+- **Dela:** namnet i fetstil med adressen och rollen under; utan namn är raden adressen, som förut. Ett långt namn bryts och står helt. Adresserna syns för medlemmarna som förut.
+- **Editorns huvud:** servern säger vem som är inne, ur kontot och inte ur sidans egen `?name=`. Ansiktet är namnets första tecken och titeln hela namnet; färgen följer adressen, så ansiktet står kvar när namnet byts. Utan namn är det adressen, som förut.
+- **Bordet:** ägaren som tittar på från editorn heter sitt namn för TV:n och telefonerna («Ada tittar på och ser alla kort»), och utan namn editorns ord som förut, aldrig adressen.
+- **Väntar på dig (#1225):** «Kim sparade version 5» säger den som sparade vid kontots namn, och utan namn «Någon annan sparade version 5».
+- **Inbjudningsmejlet:** «Nicklas Ockelberg (nicklas.ockelberg@…) vill dela spelet …», och ämnesraden «Nicklas Ockelberg bjuder in dig till …» (beslut 3). Namnet är vad avsändaren själv har skrivit, adressen är det mottagaren kan lita på. Utan namn är brevet som förut.
+
+**Namnet är kontots data** och ligger på kontots rad, i Postgres (`accounts.name`, `accounts.name_asked`) och i minnet, och läses med kontot.
+Det går därför med kontot vart kontot går; radering och export av ett helt konto är inte byggda än, och när de byggs är namnet en kolumn på raden som G6 säger försvinner direkt med kontot.
+Designern tar själv bort namnet genom att tömma fältet i Profil.
+
+Inte byggt, och inte beslutat att bygga: markörens etikett när ägaren pekar från bordets egen vy (i dag «bordet»), passkeyns `displayName` och avsändarnamnet «… via Deckster».
+
+`account-name.test.ts` och `account-name-postgres.test.ts` håller förslaget, taket, frågan och svaret, Dela, mejlet och närvaron; kvottesterna håller att ett konto utan namn sägs utan namn.
+`account-name.test.tsx` kör steget, bandet, kortet och huvudet mot den riktiga servern, och `account-name.spec.ts` går första inloggningen, «Hoppa över» och bandet i den byggda appen.

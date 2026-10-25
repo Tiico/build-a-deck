@@ -433,6 +433,33 @@ describe('the tables a project has (#19)', () => {
     foreign.close()
   })
 
+  // The owner who watches from the editor is said by the name she gave her account (#1254): the TV and
+  // the phones say «Ada Lovelace tittar på och ser alla kort». Without a name she is the editor's word,
+  // as before — never her address.
+  it('says the owner who watches by the name she gave her account, and by the editor\'s word without one', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    const watch = async () => {
+      const ws = new WebSocket(`${run.base}/sessions/${sessionId}?role=observer&name=Designern&owner=1`, { headers: { cookie, origin: 'http://test.local' } })
+      await firstMessage(ws)
+      return ws
+    }
+    // The table keeps every message it was sent, so each wait names what it waits for.
+    const watchers = (names: string[]) => (m: { t: string; observers?: { name: string }[] }) => m.t === 'roster' && JSON.stringify(m.observers?.map((o) => o.name)) === JSON.stringify(names)
+    const nameless = await watch()
+    expect(await table.waitFor(watchers(['Designern']))).toBeTruthy()
+    nameless.close()
+
+    expect((await json('PUT', '/me/name', { name: 'Ada Lovelace' })).status).toBe(200)
+    const named = await watch()
+    expect(await table.waitFor(watchers(['Ada Lovelace']))).toBeTruthy()
+    named.close()
+    // Never the address, in any roster the table was told.
+    expect(JSON.stringify(table.messages)).not.toContain('ada@example.com')
+    await table.close()
+  })
+
   // The host who sits at her own table from a distance (L77, #1130) is the one who sends the room's
   // address on, so her seat is told the code as the table's screen is — and told the new one when
   // she presses «Ny kod». The host key stays the table screen's: her login is her key. A guest's

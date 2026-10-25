@@ -706,11 +706,6 @@
    pays for this line's height (#1084), and a way back is no reason for it to pay more. */
 [data-tv] .byd-tv-brand > .byd-editor-way { margin: -6px 0 -6px auto; font-size: 18px; }
 [data-tv][data-room] .byd-tv-brand > .byd-editor-way { font-size: 24px; }
-/* The card pays for the line, not «Senast» (#1084, beslut B): where the column has room the card
-   stands at its own 266 px and the feed takes what is over, so its height is lowered by the line's
-   own — the mark's 34, the 14 under it, the rule's 1 and the column's gap of 18. Where the column is
-   short the card was already giving, and this changes nothing there. */
-[data-tv][data-room]:has(> aside > [data-brand]) .byd-tv-inspect > div { height: calc(266px - 34px - 14px - 1px - 18px); }
 [data-tv] .byd-tv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 [data-tv] .byd-tv-head h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
 [data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; white-space: nowrap; }
@@ -803,6 +798,54 @@
 }
 [data-tv] .byd-tv-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 [data-tv] .byd-tv-inspect > div > img ~ span:not([data-texture]) { visibility: hidden; }
+
+/* The room's stage (#1290, beställarens beslut A 2026-10-25): the column is as wide as the felt can
+   give and keep K9's 45 px (`stage.ts`), and holds the card the latest line was about as large as
+   the column less its line and its foot — 538 px and 26 px of body at 1920 × 1080 beside a
+   four-seat table, where the panel it replaced was 190 px and 9. The card is sized off the stage's
+   own box, so it keeps 63 × 88 whichever of its height and its width runs out first. */
+[data-tv][data-room] { grid-template-columns: minmax(0, 1fr) var(--byd-tv-stage, 360px); }
+[data-tv][data-room] > aside { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 16px; padding: 24px 20px; }
+[data-tv] .byd-tv-stage { min-height: 0; container-type: size; }
+[data-tv] .byd-tv-stage figure {
+  margin: 0; height: 100%; min-height: 0;
+  /* The line follows the card rather than the stage's foot: where the card is bound by the stage's
+     width it is shorter than the stage, and the line stands under it, not under the empty height. */
+  display: grid; grid-template-rows: auto 40px; gap: 16px; justify-items: center; align-content: start;
+}
+[data-tv] .byd-tv-stage figure > div {
+  position: relative; overflow: hidden; box-sizing: border-box;
+  height: min(calc(100cqh - 56px), calc(100cqw * 88 / 63)); aspect-ratio: 63 / 88;
+  border-radius: 16px; padding: 24px; box-shadow: 0 24px 64px rgb(0 0 0 / 0.6);
+  font-size: 32px; font-weight: 700; color: #1c1c1c; background: hsl(var(--hue, 0) 40% 86%);
+}
+[data-tv] .byd-tv-stage figure > div[data-face='back'] { background: #33405a; color: #ddd; }
+/* Nothing about a card has happened yet: the same quiet voice the observer's panel waits in, at the
+   room's floor, at the top of the empty card. */
+[data-tv] .byd-tv-stage figure > div[data-empty] {
+  display: grid; align-content: start; text-align: center; box-shadow: none;
+  background: #1a1e29; border: 1px dashed #2c3242; color: #7d8597; font-size: 24px; font-weight: 400; line-height: 1.2;
+}
+[data-tv] .byd-tv-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+[data-tv] .byd-tv-stage figure > div > img ~ span:not([data-texture]) { visibility: hidden; }
+/* One line, always: what happened to the card, in the colour of the seat that did it. */
+[data-tv] .byd-tv-stage figcaption {
+  max-width: 100%; font-size: 24px; line-height: 40px; height: 40px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--seat, #e8eaf0);
+}
+/* The foot, in two columns where the stage is wide and one where it is not: the way in and the
+   corner's buttons to the left, on the column's edge (#921); the brand, the game's name and who is
+   watching to the right; and the cards still drawing, while they are, on a line under both. The
+   way in keeps the old column's form but brings its «?» up beside the code and the square, where
+   it costs no line of its own. */
+[data-tv] .byd-tv-foot {
+  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px;
+  border-top: 1px solid #232733; padding-top: 16px; min-width: 0;
+}
+[data-tv] .byd-tv-foot > .byd-tv-way { flex: 1 1 440px; min-width: 0; display: grid; justify-items: start; gap: 12px; }
+[data-tv] .byd-tv-foot > .byd-tv-name { flex: 1 1 240px; min-width: 0; display: grid; justify-items: end; gap: 8px; text-align: right; }
+[data-tv] .byd-tv-foot .byd-tv-brand { padding-bottom: 0; border-bottom: 0; }
+[data-tv] .byd-tv-foot > .byd-tv-render { flex: 1 0 100%; }
 
 /* «Visa för alla» (#508, beslut B, K26): a card somebody holds up, over the felt. The felt is bound
    by its height and the column is 360 px, and a card the room reads from three metres is 504 px
@@ -1347,11 +1390,6 @@
 /* The room's code at the size beslut C set (#675): 40 px, under the host at K26's 24. */
 [data-tv][data-room] .byd-tv-join strong { font-size: 40px; line-height: 1.1; }
 [data-tv][data-room] .byd-tv-render { font-size: 24px; }
-[data-tv][data-room] .byd-tv-inspect { --byd-inspect-head: 30px; --byd-inspect-gap: 8px; }
-[data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }
-[data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li { font-size: 24px; }
-[data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li b { flex-basis: 36px; }
-[data-tv][data-room] .byd-tv-feed > p[data-empty] { font-size: 24px; }
 [data-tv][data-room] .byd-tv-observers { font-size: 24px; }
 [data-tv][data-room] .byd-table-restart { font-size: 24px; min-height: 56px; padding: 0 20px; }
 [data-tv][data-room] .byd-shortcut-open { width: 56px; height: 56px; }

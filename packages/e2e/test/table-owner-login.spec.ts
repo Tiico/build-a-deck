@@ -24,6 +24,8 @@ test.describe('a table opened without its key (#748)', () => {
 
     await tv.page.getByLabel('Email').fill(email)
     await tv.page.getByRole('button', { name: 'Send sign-in link' }).click()
+    // An account not yet asked what the others should call it is asked first (#1254).
+    await tv.page.getByRole('button', { name: 'Skip' }).click()
     // Back at the same address, and the table is open: the room code stands on it.
     await expect(tv.page.getByText(table.code)).toBeVisible()
     expect(new URL(tv.page.url()).pathname).toBe('/table')

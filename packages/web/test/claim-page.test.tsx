@@ -54,12 +54,33 @@ describe('ClaimPage', () => {
     const play = `/play?session=${id}&seat=A`
     history.replaceState(null, '', `/claim?${new URLSearchParams({ next: play, server: run.http }).toString()}#token=${token}`)
     const here = location.pathname + location.search + location.hash
+    // An account that has answered the welcome step (#1254); a first login is asked its name first.
+    await run.auth!.setName((await run.auth!.ensureAccount('bo@example.com')).id, 'Bo')
     const gone: string[] = []
     render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
     fireEvent.change(await screen.findByLabelText('E-post'), { target: { value: 'bo@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Skicka inloggningslänk' }))
     await waitFor(() => expect(gone.at(-1)).toBe(`${play}&saved=1#token=${token}`))
     expect(gone).not.toContain(here)
+  })
+
+  // A first login on the claim's card is asked its name first (#1254): the step stands between, with
+  // the claim as where it goes on to and the token still in the fragment, never in a query (#1278).
+  it('goes by the welcome step on a first login, with the token kept in the fragment', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    const claim = `/claim?${new URLSearchParams({ next: `/play?session=${id}&seat=A`, server: run.http }).toString()}`
+    history.replaceState(null, '', `${claim}#token=${token}`)
+    const gone: string[] = []
+    render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
+    fireEvent.change(await screen.findByLabelText('E-post'), { target: { value: 'cy@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka inloggningslänk' }))
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const [address, fragment] = gone[0]!.split('#')
+    expect(fragment).toBe(`token=${token}`)
+    expect(address).not.toContain(token)
+    const step = new URL(address!, location.origin)
+    expect([step.pathname, step.searchParams.get('step'), step.searchParams.get('next')]).toEqual(['/login', 'name', claim])
   })
 
   // A claim link handed out before #1278 carried the token in its query twice: its own, and the

@@ -6,6 +6,7 @@ import { TABLE_PROTOCOL, guestProtocols } from '@byd/protocol'
 import { TableHost, createServer, MemoryLogStore } from '../src/index.js'
 import { createRoom, listenInBand, registry, start, type Running } from './fixture.js'
 import { WireClient } from './client.js'
+import { MemoryAuthStore } from '../src/auth.js'
 
 // A guest's name and token never travel in an address (#1278, DRIFT §9). The page's address keeps
 // the token in its fragment, which the browser sends nowhere; what is left in the address is the
@@ -123,6 +124,20 @@ describe('a sign-in link keeps next’s fragment out of its query (#1278)', () =
     const landed = await fetch(`${run.http}${link.pathname}${link.search}`, { redirect: 'manual' })
     expect(landed.status).toBe(302)
     const location = landed.headers.get('location') ?? ''
+    expect(location).not.toContain('GUESTTOKEN')
+    // A first login is asked its name first (#1254), with next beside it, and the browser carries the
+    // fragment on to the step, which hands it on with next.
+    expect(location).toBe(`/login?step=name&next=${encodeURIComponent(path)}`)
+  })
+
+  it('lands an account that has answered the welcome step on next itself, without the fragment', async () => {
+    const auth = new MemoryAuthStore()
+    run = await start({ auth })
+    const path = `/claim?${new URLSearchParams({ next: '/play?session=s1&seat=A' }).toString()}`
+    await auth.setName((await auth.ensureAccount('ada@example.com')).id, 'Ada')
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com', next: `${path}#token=GUESTTOKEN` }) })
+    const link = new URL(/https?:\/\/\S+\/auth\/verify\?\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? 'http://none.invalid')
+    const location = (await fetch(`${run.http}${link.pathname}${link.search}`, { redirect: 'manual' })).headers.get('location') ?? ''
     expect(location).not.toContain('GUESTTOKEN')
     expect(location.endsWith(path)).toBe(true)
   })

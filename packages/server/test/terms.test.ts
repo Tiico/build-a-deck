@@ -65,7 +65,7 @@ for (const backend of backends) {
       await open()
       expect(await call('GET', '/terms')).toMatchObject({ status: 200, json: { current: null } })
       const cookie = await login('ada@example.com')
-      expect((await call('GET', '/auth/me', undefined, cookie)).json).toEqual({ email: 'ada@example.com', terms: { current: null, accepted: null, due: false } })
+      expect((await call('GET', '/auth/me', undefined, cookie)).json).toMatchObject({ email: 'ada@example.com', terms: { current: null, accepted: null, due: false } })
       // There is nothing to accept, so no version is the one in force.
       expect(await call('POST', '/me/terms', { version: '2026-11-01' }, cookie)).toMatchObject({ status: 409 })
       expect(await db.auth.termsAccepted((await db.auth.accountByEmail('ada@example.com'))!.id)).toEqual([])
@@ -75,10 +75,10 @@ for (const backend of backends) {
       await open({ terms: [{ version: '2026-11-01', material: true }], at: '2026-11-05T10:00:00Z' })
       expect(await call('GET', '/terms')).toMatchObject({ status: 200, json: { current: { version: '2026-11-01', material: true } } })
       const cookie = await login('ada@example.com')
-      expect((await call('GET', '/auth/me', undefined, cookie)).json).toEqual({ email: 'ada@example.com', terms: { current: '2026-11-01', accepted: null, due: true } })
+      expect((await call('GET', '/auth/me', undefined, cookie)).json).toMatchObject({ email: 'ada@example.com', terms: { current: '2026-11-01', accepted: null, due: true } })
 
       expect(await call('POST', '/me/terms', { version: '2026-11-01' }, cookie)).toEqual({ status: 204, json: undefined, cookie: '' })
-      expect((await call('GET', '/auth/me', undefined, cookie)).json).toEqual({ email: 'ada@example.com', terms: { current: '2026-11-01', accepted: '2026-11-01', due: false } })
+      expect((await call('GET', '/auth/me', undefined, cookie)).json).toMatchObject({ email: 'ada@example.com', terms: { current: '2026-11-01', accepted: '2026-11-01', due: false } })
       const id = (await db.auth.accountByEmail('ada@example.com'))!.id
       expect(await db.auth.termsAccepted(id)).toEqual([{ version: '2026-11-01', at: '2026-11-05T10:00:00.000Z' }])
 
