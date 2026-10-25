@@ -18,19 +18,21 @@ export const LANG_NAMES: Record<Lang, string> = { sv: 'Svenska', en: 'English' }
 //
 // `sv.ts` and `en.ts` still merge the whole catalogue, and are still where a key's type and the
 // promise that both languages hold the same keys live; nothing at runtime imports them.
-export const PARTS = ['status', 'play', 'account', 'editor'] as const
+export const PARTS = ['status', 'play', 'online', 'account', 'editor'] as const
 export type Part = (typeof PARTS)[number]
 
 const FETCH: Record<Lang, Record<Part, () => Promise<Partial<Messages>>>> = {
   sv: {
     status: () => import('./sv.status.js').then((m) => m.svStatus),
     play: () => import('./sv.play.js').then((m) => m.svPlay),
+    online: () => import('./sv.online.js').then((m) => m.svOnline),
     account: () => import('./sv.account.js').then((m) => m.svAccount),
     editor: () => import('./sv.editor.js').then((m) => m.svEditor),
   },
   en: {
     status: () => import('./en.status.js').then((m) => m.enStatus),
     play: () => import('./en.play.js').then((m) => m.enPlay),
+    online: () => import('./en.online.js').then((m) => m.enOnline),
     account: () => import('./en.account.js').then((m) => m.enAccount),
     editor: () => import('./en.editor.js').then((m) => m.enEditor),
   },

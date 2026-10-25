@@ -14,7 +14,7 @@ import { QuotaReached, growth, startThatFrees, tableGrowth, withFrees, type Limi
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
-import type { Account, AuthStore } from './auth.js'
+import type { Account, AuthStore, TermsAcceptance } from './auth.js'
 import type { PasskeyRecord } from './passkeys.js'
 
 type AccountRow = { id: string; email: string; name: string | null; name_asked: boolean }
@@ -85,6 +85,13 @@ export class PostgresAuthStore implements AuthStore {
   }
   async removePasskey(accountId: string, id: string): Promise<boolean> {
     return (await this.sql`delete from passkeys where id = ${id} and account_id = ${accountId}`).count > 0
+  }
+  async acceptTerms(accountId: string, version: string, at: string): Promise<void> {
+    await this.sql`insert into terms_acceptances (account_id, version, accepted_at) values (${accountId}, ${version}, ${at}) on conflict (account_id, version) do nothing`
+  }
+  async termsAccepted(accountId: string): Promise<TermsAcceptance[]> {
+    const rows = await this.sql<{ version: string; accepted_at: Date }[]>`select version, accepted_at from terms_acceptances where account_id = ${accountId} order by accepted_at, version`
+    return rows.map((r) => ({ version: r.version, at: r.accepted_at.toISOString() }))
   }
 }
 

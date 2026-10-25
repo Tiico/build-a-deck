@@ -959,6 +959,12 @@
    target it took the hover from the handle: the zone went dark, the name went with it, the handle
    was pointed at again, and the name flickered. */
 .byd-setup-felt .byd-zone > span { pointer-events: none; }
+/* A handle on every piece of material (#1292), over the zone it lies in: the piece is the felt's
+   drawing, and the handle draws a ring only when it is pointed at or has the keyboard. */
+.byd-setup-material { position: absolute; z-index: 2; box-sizing: border-box; border-radius: 6px; cursor: grab; outline: none; touch-action: none; }
+.byd-setup-material:hover { box-shadow: 0 0 0 2px rgba(255, 217, 138, 0.55); }
+.byd-setup-material:focus-visible { outline: none; box-shadow: 0 0 0 2px #ffd98a, 0 0 0 5px rgba(255, 217, 138, 0.25); }
+.byd-setup-material:active { cursor: grabbing; }
 .byd-setup-handle[data-kind='pile'] { border: 0; outline: 2px solid rgba(255, 217, 138, 0.55); outline-offset: 2px; }
 .byd-setup-handle[data-kind='pile'][aria-pressed='true'], .byd-setup-handle[data-kind='pile']:focus-visible { outline-color: #ffd98a; box-shadow: 0 0 0 7px rgba(255, 217, 138, 0.25); }
 /* The handle says no name at all (K19). The felt underneath names every area, every pile and

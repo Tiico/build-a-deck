@@ -68,13 +68,13 @@ describe('logging in with a magic link', () => {
     expect(await res.json()).toEqual({ ok: true, loggedIn: true })
     const cookie = res.headers.get('set-cookie') ?? ''
     expect(cookie).toMatch(/byd_session=[^;]+; .*HttpOnly/)
-    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com', name: null, asked: false })
+    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com', name: null, asked: false, terms: { current: null, accepted: null, due: false } })
     expect(run.mail.sent).toHaveLength(0)
   })
 
   it('mails a link, which sets a session cookie once; /auth/me then knows who you are, and logout forgets', async () => {
     const cookie = await login('ada@example.com')
-    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com', name: null, asked: false })
+    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com', name: null, asked: false, terms: { current: null, accepted: null, due: false } })
     // Not being logged in is an answer and not a failure (#744): every guest page asks, and a 401
     // is written in the browser's console as an error on each of them.
     const nobody = await get('/auth/me')

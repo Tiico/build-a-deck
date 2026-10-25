@@ -8,6 +8,8 @@ export * from './edits.js'
 // Personlig ångra (#1056): vad en redigering ändrade, och steget tillbaka från det.
 export { cellColumn, changeOf, joined, revertOf, type Change, type Reverted, type Revert } from './undo.js'
 export * from './setup.js'
+// Where the game's material lies (#1292): the table is laid from it and the editor drags it.
+export * from './material.js'
 // The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
 export * from './roles.js'
 // What the profile page says about a designer's AI key (#999): the words only, never the vault.

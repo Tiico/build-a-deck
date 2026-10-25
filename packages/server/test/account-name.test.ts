@@ -73,7 +73,7 @@ describe('the name over the wire (#1254)', () => {
   it('lands the first login on the welcome step, with where it was going beside it', async () => {
     const { location, cookie } = await follow('nicklas.ockelberg@example.com')
     expect(location).toBe(`/login?step=name&next=${encodeURIComponent('/editor?project=p1')}`)
-    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toEqual({ email: 'nicklas.ockelberg@example.com', name: null, asked: false })
+    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toMatchObject({ email: 'nicklas.ockelberg@example.com', name: null, asked: false })
   })
 
   it('keeps the name it is given, and asks no more once it has been answered', async () => {
@@ -81,7 +81,7 @@ describe('the name over the wire (#1254)', () => {
     const saved = await call('PUT', '/me/name', { name: '  Nicklas Ockelberg ' }, cookie)
     expect(saved.status).toBe(200)
     expect(await saved.json()).toEqual({ name: 'Nicklas Ockelberg' })
-    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toEqual({ email: 'nicklas.ockelberg@example.com', name: 'Nicklas Ockelberg', asked: true })
+    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toMatchObject({ email: 'nicklas.ockelberg@example.com', name: 'Nicklas Ockelberg', asked: true })
     // The next link goes where it was going.
     expect((await follow('nicklas.ockelberg@example.com')).location).toBe('/editor?project=p1')
   })
@@ -89,7 +89,7 @@ describe('the name over the wire (#1254)', () => {
   it('passes by with no name, and the question does not come back (Hoppa över)', async () => {
     const { cookie } = await follow('info@lekverkstan.se')
     expect((await call('PUT', '/me/name', { name: null }, cookie)).status).toBe(200)
-    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toEqual({ email: 'info@lekverkstan.se', name: null, asked: true })
+    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toMatchObject({ email: 'info@lekverkstan.se', name: null, asked: true })
     expect((await follow('info@lekverkstan.se')).location).toBe('/editor?project=p1')
   })
 
@@ -112,7 +112,7 @@ describe('the name over the wire (#1254)', () => {
     const cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
     // The page goes on by itself after this answer, so the answer is where it reads that the account
     // has not been asked.
-    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toEqual({ email: 'ada@example.com', name: null, asked: false })
+    expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toMatchObject({ email: 'ada@example.com', name: null, asked: false })
   })
 })
 

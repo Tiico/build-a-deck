@@ -118,7 +118,7 @@ describe('«Logga in med passkey» on the login card', () => {
     expect(field.getAttribute('autocomplete')).toBe('email webauthn')
     fireEvent.click(screen.getByRole('button', { name: 'Logga in med passkey' }))
     await waitFor(() => expect(gone).toEqual(['/new']))
-    expect(await (await fetch(`${run.http}/auth/me`)).json()).toMatchObject({ email: 'ada@example.com' })
+    expect(await (await fetch(`${run.http}/auth/me`)).json()).toEqual({ email: 'ada@example.com', name: 'Ada', asked: true, terms: { current: null, accepted: null, due: false } })
   })
 
   // A passkey saved before the name (#1254): the login with it asks the welcome step's question first,

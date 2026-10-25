@@ -43,7 +43,7 @@ describe.skipIf(!url)('the account name in Postgres', () => {
       const cookie = (followed.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
       const put = await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'Cy' }) })
       expect(put.status).toBe(200)
-      expect(await (await fetch(`${run.http}/auth/me`, { headers: { cookie } })).json()).toEqual({ email: 'cy@example.com', name: 'Cy', asked: true })
+      expect(await (await fetch(`${run.http}/auth/me`, { headers: { cookie } })).json()).toMatchObject({ email: 'cy@example.com', name: 'Cy', asked: true })
     } finally {
       await run.stop()
     }

@@ -65,7 +65,7 @@ describe('the welcome step after the first login', () => {
     fireEvent.change(field, { target: { value: 'Nicklas Ockelberg' } })
     fireEvent.click(screen.getByRole('button', { name: 'Fortsätt' }))
     await waitFor(() => expect(gone).toEqual(['/editor?project=p1']))
-    expect(await me()).toEqual({ email: 'nicklas.ockelberg@example.com', name: 'Nicklas Ockelberg', asked: true })
+    expect(await me()).toMatchObject({ email: 'nicklas.ockelberg@example.com', name: 'Nicklas Ockelberg', asked: true })
   })
 
   it('keeps no name on «Hoppa över», and asks no more', async () => {
@@ -74,7 +74,7 @@ describe('the welcome step after the first login', () => {
     expect(((await screen.findByLabelText('Vad ska andra kalla dig?')) as HTMLInputElement).value).toBe('Info')
     fireEvent.click(screen.getByRole('button', { name: 'Hoppa över' }))
     await waitFor(() => expect(gone).toEqual(['/']))
-    expect(await me()).toEqual({ email: 'info@lekverkstan.se', name: null, asked: true })
+    expect(await me()).toMatchObject({ email: 'info@lekverkstan.se', name: null, asked: true })
 
     // Asked once: the step goes straight on.
     cleanup()

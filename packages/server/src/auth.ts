@@ -37,7 +37,14 @@ export type AuthStore = {
   usePasskey(id: string, counter: number, at: string): Promise<void>
   // Only the account's own; false when it had none by that id.
   removePasskey(accountId: string, id: string): Promise<boolean>
+  // The terms (#1270): the account accepted this version at `at`. One row per account and version,
+  // and never written over: accepting a version again leaves the first time where it was.
+  acceptTerms(accountId: string, version: string, at: string): Promise<void>
+  // Every version the account has accepted, oldest first, with when.
+  termsAccepted(accountId: string): Promise<TermsAcceptance[]>
 }
+
+export type TermsAcceptance = { version: string; at: string }
 
 // `text` is the part every reader gets; `html` (#1098) is the letter a client that draws HTML shows
 // instead, and a mail without one is sent as text alone.
@@ -65,6 +72,7 @@ export class MemoryAuthStore implements AuthStore {
   private readonly accounts = new Map<string, Account>()
   private readonly sessions = new Map<string, { accountId: string; expiresAt: string }>()
   private readonly passkeys = new Map<string, PasskeyRecord>()
+  private readonly acceptances = new Map<string, TermsAcceptance[]>()
   async issueToken(tokenHash: string, email: string, expiresAt: string): Promise<void> {
     this.tokens.set(tokenHash, { email, expiresAt, used: false })
   }
@@ -126,6 +134,13 @@ export class MemoryAuthStore implements AuthStore {
   async removePasskey(accountId: string, id: string): Promise<boolean> {
     if (this.passkeys.get(id)?.accountId !== accountId) return false
     return this.passkeys.delete(id)
+  }
+  async acceptTerms(accountId: string, version: string, at: string): Promise<void> {
+    const rows = this.acceptances.get(accountId) ?? []
+    if (!rows.some((r) => r.version === version)) this.acceptances.set(accountId, [...rows, { version, at }])
+  }
+  async termsAccepted(accountId: string): Promise<TermsAcceptance[]> {
+    return (this.acceptances.get(accountId) ?? []).map((r) => ({ ...r })).sort((a, b) => a.at.localeCompare(b.at) || a.version.localeCompare(b.version))
   }
 }
 

@@ -2127,6 +2127,20 @@ Referenslistan ligger i databasen och inte i det publika repot.
 Anmälan och spärren (#1274) och granskningskön (#1275) prototypas före implementation.
 Integritetspolicyn och kontoborttagningen hör till G6 (#1269), och villkoren hänvisar dit.
 
+Byggt 2026-10-25 (#1270): villkorens versioner och godkännandet på servern, utan text, yta eller grind.
+Registret är `TERMS` i `packages/server/src/terms.ts`: en version heter efter dagen den börjar gälla (`ÅÅÅÅ-MM-DD`, i UTC) och säger om ändringen är väsentlig.
+Den som gäller är den senaste vars dag har kommit, så en version kan skrivas in före sin dag medan den förra gäller, vilket ett mejl 30 dagar i förväg behöver.
+Ett register som inte är riktiga dagar i stigande ordning stoppar starten.
+Registret är tomt, och då gäller inga villkor och ingenting ändras för någon.
+`GET /terms` svarar `{ current: { version, material } }`, eller `{ current: null }` utan villkor; vägen är öppen, eftersom villkoren läses innan de godkänns.
+`POST /me/terms` med `{ version }` registrerar att kontot godkänt versionen och svarar 204; 401 utan kaka, 400 utan version, och 409 med `current` när versionen inte är den gällande, så att en flik från före en ändring aldrig godkänner något läsaren inte har sett.
+`GET /auth/me` säger för ett inloggat konto `terms: { current, accepted, due }`: gällande version, den senaste kontot har godkänt, och om det måste godkänna nu; för den som inte är inloggad är svaret `{ email: null }` som förut.
+Ett konto som godkänt en version behöver godkänna igen bara när en senare gällande version är väsentlig, och de första villkoren frågar alla.
+Godkännandet ligger i tabellen `terms_acceptances` och i minneslagret: konto, version och tidpunkt, en rad per konto och version, och det skrivs aldrig om.
+Ett konto från före villkoren har ingen rad och har alltså inte godkänt något, och ett raderat konto tar sina rader med sig.
+Grinden på de stängda vägarna och dess egna fel, texten, `/villkor` och steget hör till #1272; `due` är det steget frågar efter.
+Grinden är `packages/server/test/terms.test.ts`, mot båda lagren.
+
 ---
 
 ## G. Data, feedback och förtroende
@@ -2925,6 +2939,19 @@ Valet blev den första, eftersom det är det beställaren bad om och eftersom ha
 - Spelningen vänder kortet nedåt medan det fortfarande ligger i handen (`flip` före `move` i samma kuvert), så det ligger aldrig uppvänt i en publik zon. `faceDown` i `player/play.ts` är regeln för varje väg en hand spelar på: knapparna, arket, dragningen ut på filten och adresspanelen.
 - Lagt framför sig själv följer en `peek` med, som när man vänder ner ett eget kort där (#483): ägaren vet vilket kort det är, rummet vet att ett kort ligger där. Lagt någon annanstans följer ingen kunskap med (B6).
 - Grindar: `packages/web/test/turned-in-hand.test.ts` (motorn och projektionen), `player-page.test.tsx` och `online-keyboard.test.tsx` (ytorna), och `packages/e2e/test/turned-in-hand.spec.ts`, som läser de råa ramarna.
+
+Reviderat 2026-10-25 (#1291, beställarens beslut A efter prototyp): **i `/online`s hand vänder ett klick kortet, och handen skickar ingenting med musen.**
+Beställaren kallade handen på datorn klumpig: man behöver inte kunna skicka kort direkt från handen, det räcker att kunna vända dem.
+Med musen var klicket det långsamma sättet att spela (klick håller kortet, klick till öppnar adresspanelen, välj zon) bredvid draget, och «Vänd» gick bara att nå som F.
+Tre former prototypades i [`docs/ux-audits/2026-10-25-handen-pa-datorn/`](docs/ux-audits/2026-10-25-handen-pa-datorn/README.md): klick vänder, en vändknapp i kortets hörn, och «Vänd» under det lyfta kortet.
+Valet blev den första, eftersom musen redan läser kortet genom att vila på det och klicket då är ledigt, och eftersom varje kort förblir ett enda mål.
+
+- Med musen i spalten, solfjädern och «Visa alla»: att vila på kortet läser det, klick vänder det, och att dra det till bordet spelar det. Klicket håller inte kortet lyft och öppnar ingen panel.
+- Under det lyfta kortet står en rad om vad klicket och draget gör («Klick vänder · dra till bordet spelar», och «… vänder upp · … spelar nedvänt» för ett vänt kort); för tangentbordets fokus «Mellanslag vänder · Enter öppnar handlingar».
+- Tangentbordet behåller Enter till adresspanelen, eftersom ett tangentbord inte kan dra och panelen är dess enda väg att spela ett handkort (K16). Mellanslag är klicket och vänder, liksom F.
+- Ett finger behåller sitt tryck (#484 fynd 10, #510): ett finger har ingen hovring att läsa med, så trycket läser och öppnar som förut. Beslutet gäller musen.
+- Prototypens avvägning står kvar: ett klick som var tänkt att läsa vänder kortet, vilket är ofarligt eftersom vändningen inte skickar något och ett klick till vänder tillbaka.
+- Grindar: `packages/web/test/online-hand-turn.test.tsx` och `packages/e2e/test/online-hand-read.spec.ts`.
 
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
@@ -4564,6 +4591,36 @@ Följdkrav:
 `packages/engine/test/turn.test.ts` håller verbet, vem som tar turen och vart den går när platsen lämnas.
 `packages/server/test/wire.test.ts` visar att turen når varje vy i en patch.
 Webbens tester håller raden i Bord, kanten och knappen på filten och brickan på telefonen.
+
+### K31. Materialets plats: tärningar och räknare dras dit de ska ligga (prototypat och beslutat 2026-10-25, #1292)
+
+Beställaren: «Det ska gå att välja vart tärningar och annat material ska läggas på brädet.»
+En tärningsrad valde en yta (K28), och bordet lade raden i ytans fria mitt; räknarna låg alltid i räknarytan, i spår som receptet räknade ut.
+Designern kunde alltså välja yta men aldrig plats.
+Tre varianter prototypades på bordets riktiga geometri ([`index.html`](https://github.com/Tiico/build-a-deck/blob/e0671ede5aaadbb034e521fd7ae1b5553bf88d44/docs/ux-audits/2026-10-25-materialets-plats/prototyper/index.html)): A dra fritt, B ett läge 3 × 3 i ytan, C x och y i fält som en yta.
+Beställaren valde A.
+
+**En bit ligger i en yta och på en punkt.**
+En tärningsrad och en räknare har `at: { x, y }`, mitten på biten i ytans egna millimeter.
+En rad med flera tärningar ligger i en rad med sin mitt på punkten, och biten hålls inne i ytan.
+Utan `at` lägger bordet som förut, så ett spel och en logg från före beslutet läggs likadant.
+Ytan finns kvar för att «en per plats» ska betyda något: en punkt i en yta varje plats har (`role`) sägs från plats A:s stol, längs kanten från platsens vänster och inåt från den bortre sidan, och vänds mot varje plats kant.
+Kanten är `seatEdgeOf` i `packages/engine`, samma regel som projektionen härleder platsens kant med, så att bordet och vyn inte kan vara oense om var en plats sitter.
+
+**Räknarna är material som tärningarna.**
+En räknare har `role`, en yta varje plats har, och räknarytan när den saknas; utan `at` lägger räknarytan sina brickor längs kanten som förut.
+En räknare är varje plats per natur, så den kan bara ligga i en yta varje plats har; släppt i en delad yta ligger den kvar där den låg.
+
+**I editorn dras biten i filten.**
+Varje bit som bordet läggs med har ett handtag i fliken Bords filt, ur samma lista som bordet läggs ur (`layMaterial`), så det designern tar i är det spelarna får.
+En rads tärningar i en yta är ett handtag, och varje plats kopia är sitt eget handtag; den dras vid vilken plats som helst och läses tillbaka från den platsens stol.
+Den innersta ytan under bitens mitt blir dess yta (`placeLine`), och den lyser medan biten dras.
+Ett grepp är ett steg tillbaka (L14).
+Pilarna flyttar en fokuserad bit 10 mm, Skift 50, och sidan säger var den hamnade.
+Att byta yta i radens väljare tar bort punkten, eftersom en punkt i en yta inte betyder något i en annan.
+
+**Nya typer väntar.**
+Meeple, kub och bricka visades i prototypen för att se att listan rymmer dem, men varje typ är ett eget registerbeslut som tärningen var (B1–B3), och de byggs inte här.
 
 ## L. Editorn (grillad 2026-09-06)
 
