@@ -84,7 +84,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [renaming, setRenaming] = useState<ProjectSummary | null>(null)
   const listed = useRef<ProjectSummary[] | null>(null)
   listed.current = projects
-  const [played, setPlayed] = useState<Played[] | null>(null)
+  // The tables the account sat at, with a name she removed (#1281) said in the reader's words once,
+  // here, so that no line that names her draws the placeholder (#1349).
+  const [heard, setPlayed] = useState<Played[] | null>(null)
+  const played = useMemo(() => heard && heard.map((p) => ({ ...p, name: maskedWord(p.name, 'seat-name', maskedWords(t)) })), [heard, t])
   // What it takes to draw each game's first card (G1, #231). It is asked for apart from the list
   // and lands after it, so the first screen is drawn on the list's own answer and never waits for
   // a single template, font or picture. Until it lands the tile holds the card's place.
@@ -800,7 +803,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <span className="byd-home-waiting-icon"><PencilGlyph /></span>
                     <span className="byd-home-waiting-text">
                       <b>{count === 1 ? t('home.played.answer') : t('home.waiting.surveys', { n: count })}</b>
-                      <small>{count === 1 ? t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: maskedWord(p.name, 'seat-name', maskedWords(t)) }) : p.game === null ? t('home.waiting.surveys.some', { n: count, when: at }) : t('home.waiting.surveys.line', { game: p.game, n: count, when: at })}</small>
+                      <small>{count === 1 ? t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: p.name }) : p.game === null ? t('home.waiting.surveys.some', { n: count, when: at }) : t('home.waiting.surveys.line', { game: p.game, n: count, when: at })}</small>
                     </span>
                     <span className="byd-home-waiting-arrow"><ChevronGlyph to="right" /></span>
                   </a>
@@ -833,7 +836,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
                   <strong>{p.deleted ? t('home.played.deleted') : (p.game ?? t('home.played.some-table'))}</strong>
-                  <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: maskedWord(p.name, 'seat-name', maskedWords(t)) })}</span>
+                  <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: p.name })}</span>
                   {/* What the player can do with the table (#1143, variant B): open it while it runs,
                       answer its survey once it is over, and otherwise nothing but a quiet tick. A
                       game taken away has no survey worth answering (#676). */}
