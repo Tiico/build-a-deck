@@ -2160,6 +2160,18 @@ Ett konto från före villkoren har ingen rad och har alltså inte godkänt någ
 Grinden på de stängda vägarna och dess egna fel, texten, `/villkor` och steget hör till #1272; `due` är det steget frågar efter.
 Grinden är `packages/server/test/terms.test.ts`, mot båda lagren.
 
+Byggt 2026-10-25 (#1271): screeningens kontrakt, cachen per hash och jobbslaget `screen`, med en fake-klassificerare och utan riktig modell, referenslista eller koppling till uppladdningen.
+Kontraktet är `Classifier` i paketet `packages/screening`, på samma sätt som `PrintProvider` (#1206): ett id, en version och `classify(pixlar)`, som svarar med en poäng från 0 till 1 för varje kategori i en sluten lista, `sexual` och `violence`, och en perceptuell hash med sin algoritm namngiven.
+Kontraktssviten, `@byd/screening/contract`, kräver svarets form för varje form en bild kan ha, samma svar för samma pixlar, och att samma bild i en annan storlek ger en närliggande hash och en annan bild en avlägsen; den kan inte säga om en klassificerare har rätt, vilket mäts mot kortkonst i #1273.
+Fake-klassificeraren gör sina poäng av färg, stark röd som våld och stark magenta som sexuellt, så att ett test kan göra en bild som ger utslag med flit, och har en riktig om än enkel dHash på 64 bitar.
+Screeningen är renderköns tredje prioritet, efter texturer och tryck (DRIFT §6), och körs i renderworkern på lådan (beslut 8): workern läser bildens bytes som för ett kort, ritar den i Chromium till högst 512 px, svg med i sin egen form, och ger pixlarna till den klassificerare och version jobbet namnger.
+Resultatet hålls per bild, klassificerare och version, i tabellen `screenings` och i minneslagret, med poängen, bildhashen och tidpunkten; ett andra jobb för samma är en no-op, och en ny version screenar om.
+En bild som saknas eller inte går att avkoda är ett misslyckat jobb med hashen i felet, inte ett resultat.
+Workern på lådan har bara fake-klassificeraren, vars resultat heter `fake@1`, så att operatören kan pröva hela vägen på lådan innan en riktig modell väljs; att välja en lägger till den och gör den till den som gäller.
+Operatören köar en spelversions bilder med `screening run <spel>` och läser utfallet med `screening report <tröskel>` (DRIFT §12); ingenting visas för designern, ingenting stoppas, och ett screeningjobb räknas aldrig på någons renderingar.
+Allt som är en bild screenas, också en symbol ur det kurerade biblioteket (E4), eftersom den ligger som en uppladdad svg; den screenas en gång för alla spel som använder den, eftersom cachen är per hash.
+Ingen bildhash når en klient: ingenting i projektionen ändrades.
+
 ---
 
 ## G. Data, feedback och förtroende

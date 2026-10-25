@@ -1,15 +1,16 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
+import { ScreeningResult, type ClassifierRef } from '@byd/screening'
 import type { RenderKind } from './hash.js'
-import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type Fit, type JobStatus, type RenderRequest, type RenderStore } from './store.js'
+import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type Fit, type JobStatus, type Priority, type RenderRequest, type RenderStore, type ScreeningFailure } from './store.js'
 import type { ObjectStore } from './objects.js'
 import { assetKey, type AssetBytes, type AssetSource } from './assets.js'
 
 type Row = {
   hash: string
   kind: RenderKind
-  priority: 'texture' | 'print'
+  priority: Priority
   compiled: { html: string; css: string }
   requested_at: string | number
   state: 'queued' | 'running' | 'done' | 'failed'
@@ -54,6 +55,11 @@ export class PostgresRenderStore implements RenderStore {
     return this.sql.begin(async (tx) => {
       const cached = await tx`select 1 from render_outputs where hash = ${req.hash}`
       if (cached.length > 0) return 'cached'
+      if (req.kind.kind === 'screen') {
+        const { asset, classifier } = req.kind
+        const screened = await tx`select 1 from screenings where asset_hash = ${asset} and classifier = ${classifier.id} and version = ${classifier.version}`
+        if (screened.length > 0) return 'cached'
+      }
       const [existing] = await tx<{ state: Row['state'] }[]>`select state from render_jobs where hash = ${req.hash} for update`
       if (existing && (existing.state === 'queued' || existing.state === 'running')) return 'queued-already'
       await tx`
@@ -79,7 +85,7 @@ export class PostgresRenderStore implements RenderStore {
       update render_jobs set state = 'running', started_at = ${now}, error = null
       where hash = (
         select hash from render_jobs where state = 'queued'
-        order by (priority = 'print'), requested_at
+        order by case priority when 'texture' then 0 when 'print' then 1 else 2 end, requested_at
         limit 1 for update skip locked
       )
       returning *
@@ -148,6 +154,41 @@ export class PostgresRenderStore implements RenderStore {
     return { get: (hash) => assetFromPostgres(this.sql, this.objects, hash) }
   }
 
+  async completeScreening(hash: string, result: ScreeningResult): Promise<void> {
+    const kept = ScreeningResult.parse(result)
+    await this.sql.begin(async (tx) => {
+      const [job] = await tx<Pick<Row, 'kind'>[]>`select kind from render_jobs where hash = ${hash} for update`
+      const kind = job?.kind
+      if (kind?.kind !== 'screen' || kind.asset !== kept.asset || kind.classifier.id !== kept.classifier.id || kind.classifier.version !== kept.classifier.version) throw new Error(`job ${hash} is not a screening of ${kept.asset}`)
+      // The first result is the result: a second for the same picture and version keeps it.
+      await tx`
+        insert into screenings (asset_hash, classifier, version, scores, image_hash, screened_at)
+        values (${kept.asset}, ${kept.classifier.id}, ${kept.classifier.version}, ${tx.json(kept.scores)}, ${tx.json(kept.imageHash)}, ${kept.screenedAt})
+        on conflict do nothing
+      `
+      await tx`update render_jobs set state = 'done' where hash = ${hash}`
+    })
+  }
+
+  async screeningOf(asset: string, classifier: ClassifierRef): Promise<ScreeningResult | null> {
+    const [row] = await this.sql<ScreeningRow[]>`select * from screenings where asset_hash = ${asset} and classifier = ${classifier.id} and version = ${classifier.version}`
+    return row ? screeningOfRow(row) : null
+  }
+
+  async screenings(classifier: ClassifierRef): Promise<ScreeningResult[]> {
+    const rows = await this.sql<ScreeningRow[]>`select * from screenings where classifier = ${classifier.id} and version = ${classifier.version} order by asset_hash`
+    return rows.map(screeningOfRow)
+  }
+
+  async screeningFailures(classifier: ClassifierRef): Promise<ScreeningFailure[]> {
+    return this.sql<ScreeningFailure[]>`
+      select kind->>'asset' as asset, coalesce(error, '') as error from render_jobs
+      where state = 'failed' and kind->>'kind' = 'screen'
+        and kind->'classifier'->>'id' = ${classifier.id} and kind->'classifier'->>'version' = ${classifier.version}
+      order by kind->>'asset'
+    `.then((rows) => rows.map(({ asset, error }) => ({ asset, error })))
+  }
+
   async reap(olderThanMs: number, now: number): Promise<string[]> {
     const rows = await this.sql<{ hash: string }[]>`
       update render_jobs set state = 'queued', started_at = null
@@ -157,6 +198,15 @@ export class PostgresRenderStore implements RenderStore {
     return rows.map((r) => r.hash)
   }
 }
+
+type ScreeningRow = { asset_hash: string; classifier: string; version: string; scores: ScreeningResult['scores']; image_hash: ScreeningResult['imageHash']; screened_at: string | number }
+const screeningOfRow = (row: ScreeningRow): ScreeningResult => ({
+  asset: row.asset_hash,
+  classifier: { id: row.classifier, version: row.version },
+  scores: row.scores,
+  imageHash: row.image_hash,
+  screenedAt: Number(row.screened_at),
+})
 
 // One asset out of the app's `assets` table (DRIFT §4): the bytes are in the row without an
 // object store, and under `assets/<hash>` in it with one. The app's store and the render worker

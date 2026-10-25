@@ -1,12 +1,13 @@
+import { ScreeningResult, type ClassifierRef } from '@byd/screening'
 import type { CompiledLike, RenderKind } from './hash.js'
 import { MemoryObjectStore, type ObjectStore } from './objects.js'
 
-// The render queue (DRIFT §6): jobs keyed by content hash, textures before prints, oldest
-// first, one worker at a time per job, and a reaper for jobs whose Chromium hung.
+// The render queue (DRIFT §6): jobs keyed by content hash, textures before prints and prints
+// before screenings (#1271), oldest first, one worker at a time per job, and a reaper for jobs whose Chromium hung.
 // Outputs are stored under the hash; a hash already rendered is a no-op forever. They live in
 // an object store (DRIFT §4) — R2 on the box, memory in tests — under `renders/<hash>`.
 
-export type Priority = 'texture' | 'print'
+export type Priority = 'texture' | 'print' | 'screen'
 export type RenderRequest = { hash: string; kind: RenderKind; priority: Priority; compiled: CompiledLike; requestedAt: number }
 export type JobState = 'queued' | 'running' | 'done' | 'failed'
 export type JobStatus = { state: JobState; error?: string; startedAt?: number }
@@ -15,6 +16,9 @@ export type EnqueueResult = 'queued' | 'queued-already' | 'cached'
 // What a texture's text was fitted to (#523): its smallest text in pt once E6 had fitted it, or
 // null for a card with no words — and for every output made before this was kept.
 export type Fit = { smallestPt: number | null }
+// A screening that did not come to a result, and why (#1271): a picture that is not there, or
+// that Chromium could not decode, with the hash in the error.
+export type ScreeningFailure = { asset: string; error: string }
 
 export type RenderStore = {
   // `bearer` is the account the rendering is counted against (#1197, A2): a page is content-addressed
@@ -43,9 +47,21 @@ export type RenderStore = {
   link(hash: string, ttlSeconds: number, disposition?: string): Promise<string | null>
   // Jobs running longer than `olderThanMs` as of `now` go back to the queue; returns their hashes.
   reap(olderThanMs: number, now: number): Promise<string[]>
+
+  // Screening (F4, #1271). A job of the kind `screen` ends in a result and not an output: one per
+  // picture, classifier and version, which is what makes a second job for the same `cached`. The
+  // job is done in the step the result is kept, and `output` has nothing under it.
+  completeScreening(hash: string, result: ScreeningResult): Promise<void>
+  screeningOf(asset: string, classifier: ClassifierRef): Promise<ScreeningResult | null>
+  // Every result of a classifier version, by picture.
+  screenings(classifier: ClassifierRef): Promise<ScreeningResult[]>
+  // The screenings of a classifier version that failed and have not been asked for again.
+  screeningFailures(classifier: ClassifierRef): Promise<ScreeningFailure[]>
 }
 
-const RANK: Record<Priority, number> = { texture: 0, print: 1 }
+const RANK: Record<Priority, number> = { texture: 0, print: 1, screen: 2 }
+const screeningKey = (asset: string, c: ClassifierRef) => `${asset}\n${c.id}@${c.version}`
+const sameClassifier = (a: ClassifierRef, b: ClassifierRef) => a.id === b.id && a.version === b.version
 
 export const outputKey = (hash: string): string => `renders/${hash}`
 export function contentTypeOf(kind: RenderKind | undefined): string {
@@ -67,11 +83,13 @@ export class MemoryRenderStore implements RenderStore {
   private readonly outputs = new Map<string, Fit>()
   // The render log (#1197): who bore each job that was queued, and when it was asked for.
   private readonly log: { bearer: string; hash: string; at: number }[] = []
+  private readonly screened = new Map<string, ScreeningResult>()
 
   constructor(private readonly objects: ObjectStore = new MemoryObjectStore()) {}
 
   async enqueue(req: RenderRequest, bearer?: string): Promise<EnqueueResult> {
     if (this.outputs.has(req.hash)) return 'cached'
+    if (req.kind.kind === 'screen' && this.screened.has(screeningKey(req.kind.asset, req.kind.classifier))) return 'cached'
     const existing = this.jobs.get(req.hash)
     if (existing && (existing.state === 'queued' || existing.state === 'running')) return 'queued-already'
     this.jobs.set(req.hash, { ...req, state: 'queued' })
@@ -136,6 +154,30 @@ export class MemoryRenderStore implements RenderStore {
 
   async link(hash: string, ttlSeconds: number, disposition?: string): Promise<string | null> {
     return this.outputs.has(hash) ? this.objects.link(outputKey(hash), ttlSeconds, disposition) : null
+  }
+
+  async completeScreening(hash: string, result: ScreeningResult): Promise<void> {
+    const kept = ScreeningResult.parse(result)
+    const job = this.jobs.get(hash)
+    if (job?.kind.kind !== 'screen' || job.kind.asset !== kept.asset || !sameClassifier(job.kind.classifier, kept.classifier)) throw new Error(`job ${hash} is not a screening of ${kept.asset}`)
+    const key = screeningKey(kept.asset, kept.classifier)
+    if (!this.screened.has(key)) this.screened.set(key, structuredClone(kept))
+    job.state = 'done'
+  }
+
+  async screeningOf(asset: string, classifier: ClassifierRef): Promise<ScreeningResult | null> {
+    const found = this.screened.get(screeningKey(asset, classifier))
+    return found ? structuredClone(found) : null
+  }
+
+  async screenings(classifier: ClassifierRef): Promise<ScreeningResult[]> {
+    return [...this.screened.values()].filter((r) => sameClassifier(r.classifier, classifier)).sort((a, b) => a.asset.localeCompare(b.asset)).map((r) => structuredClone(r))
+  }
+
+  async screeningFailures(classifier: ClassifierRef): Promise<ScreeningFailure[]> {
+    const failed: ScreeningFailure[] = []
+    for (const job of this.jobs.values()) if (job.kind.kind === 'screen' && job.state === 'failed' && sameClassifier(job.kind.classifier, classifier)) failed.push({ asset: job.kind.asset, error: job.error ?? '' })
+    return failed.sort((a, b) => a.asset.localeCompare(b.asset))
   }
 
   async reap(olderThanMs: number, now: number): Promise<string[]> {

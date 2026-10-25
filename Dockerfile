@@ -11,6 +11,7 @@ COPY packages/engine/package.json packages/engine/
 COPY packages/print/package.json packages/print/
 COPY packages/template/package.json packages/template/
 COPY packages/render/package.json packages/render/
+COPY packages/screening/package.json packages/screening/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile

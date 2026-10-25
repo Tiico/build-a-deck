@@ -1430,6 +1430,7 @@ describe('every suite that measures a surface', () => {
       'data-table-widths.test.tsx',
       'die-figure-fit.test.tsx',
       'editor-crown.test.tsx',
+      'editor-here-door.test.tsx',
       'editor-props-density.test.tsx',
       'editor-spacing.test.tsx',
       'editor-tables-density.test.tsx',

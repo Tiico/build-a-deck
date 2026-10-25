@@ -27,6 +27,9 @@ export type AssetStore = {
   // How many bytes each of these weighs, for the ones the store has (#1197): what storage is
   // summed out of. A hash the store does not have is left out, and weighs nothing.
   sizes(hashes: readonly string[]): Promise<Record<string, number>>
+  // What type each of these is, for the ones the store has (#1271): which of a game's assets are
+  // pictures to screen and which are typefaces. Asked without reading a byte.
+  contentTypes(hashes: readonly string[]): Promise<Record<string, string>>
   // A URL a browser may fetch the asset from directly for `ttlSeconds`; null when the bytes
   // have to come through the server.
   link(hash: string, ttlSeconds: number): Promise<string | null>
@@ -71,6 +74,15 @@ export class MemoryAssetStore implements AssetStore {
     for (const hash of hashes) {
       const size = this.lengths.get(hash)
       if (size !== undefined) out[hash] = size
+    }
+    return out
+  }
+
+  async contentTypes(hashes: readonly string[]): Promise<Record<string, string>> {
+    const out: Record<string, string> = {}
+    for (const hash of hashes) {
+      const type = this.types.get(hash)
+      if (type !== undefined) out[hash] = type
     }
     return out
   }
@@ -140,6 +152,12 @@ export class PostgresAssetStore implements AssetStore {
     if (hashes.length === 0) return {}
     const rows = await this.sql<{ hash: string; size: number }[]>`select hash, size from assets where hash in ${this.sql(hashes as string[])}`
     return Object.fromEntries(rows.map((r) => [r.hash, r.size]))
+  }
+
+  async contentTypes(hashes: readonly string[]): Promise<Record<string, string>> {
+    if (hashes.length === 0) return {}
+    const rows = await this.sql<{ hash: string; content_type: string }[]>`select hash, content_type from assets where hash in ${this.sql(hashes as string[])}`
+    return Object.fromEntries(rows.map((r) => [r.hash, r.content_type]))
   }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {
