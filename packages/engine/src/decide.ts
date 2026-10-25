@@ -209,6 +209,10 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
         if (!registry.has(spec.type)) return `unknown component type ${spec.type.id}@${spec.type.version}`
         if (!registry.get(spec.type).faces.includes(spec.face)) return `${spec.type.id} has no face ${spec.face}`
       }
+      for (const def of it.zones ?? []) {
+        const zone = state.zones[def.id]
+        if (zone && zone.kind !== def.kind) return `zone ${def.id} is a ${zone.kind} at the table, not a ${def.kind}`
+      }
       return null
     }
     case 'undo.self':

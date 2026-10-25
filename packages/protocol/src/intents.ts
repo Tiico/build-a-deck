@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { ComponentId, FaceId, GameVersionId, SeatId, TypeRef, ZoneId } from './ids.js'
 import { CardQuery } from './query.js'
+import { ZoneAction, ZoneBeside } from './actions.js'
+import { Geometry, ZoneKind, ZoneShortcut } from './patch.js'
 
 // A component as a setup lists it. `version.change` carries the whole new list so that the
 // line replays without the project it came from (C7).
@@ -15,6 +17,24 @@ export const ComponentSpec = z.object({
   counter: z.number().int().optional(),
 })
 export type ComponentSpec = z.infer<typeof ComponentSpec>
+
+// A zone as a setup defines it: what it is called, who sees it, where it lies and what it may be
+// asked for. `version.change` carries the setup's zones for the reason it carries the components
+// (C7): a pile's actions are the version's, and the line has to replay without the project.
+export const ZoneSpec = z.object({
+  id: ZoneId,
+  kind: ZoneKind,
+  name: z.string(),
+  visibility: z.enum(['all', 'owner', 'none']),
+  geometry: Geometry,
+  owner: SeatId.optional(),
+  returnTo: ZoneId.optional(),
+  shortcut: ZoneShortcut.optional(),
+  beside: ZoneBeside.optional(),
+  actions: z.array(ZoneAction).optional(),
+  bottom: z.object({ cardRef: z.string().min(1), face: FaceId }).optional(),
+})
+export type ZoneSpec = z.infer<typeof ZoneSpec>
 
 // The top of a pile, named without its id (K15). A hidden pile never tells a view which card
 // lies on top, so a verb that acts on it names the pile instead; the engine resolves the top
@@ -135,7 +155,9 @@ export const SessionIntent = z.discriminatedUnion('v', [
   // The deck follows the project mid-session (C7). `cards` is what each row says in its own
   // columns, which has to travel with the components for the same reason they do: a question
   // asked after the change must be asked of the deck being played, not of the one that was.
-  z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec), cards: z.record(z.string(), z.record(z.string(), z.string())).optional() }),
+  // `zones` is the setup's zones, so a pile asks for what the new version says it does; a line
+  // written before it travelled carries none and leaves the zones as they were.
+  z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec), cards: z.record(z.string(), z.record(z.string(), z.string())).optional(), zones: z.array(ZoneSpec).optional() }),
   // A flagged moment (G3): a line in the log, with an optional note. `observer` names a
   // watcher (C8), whose flags weigh differently than a player's; the server stamps it.
   // `component` is the card the flag is about (#1142), one the flagger's own view holds; which

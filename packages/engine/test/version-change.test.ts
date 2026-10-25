@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARD, CARDS, Harness, inZone, zoneView } from './fixture.js'
+import { CARD, CARDS, Harness, inZone, twoSeatSetup, zoneView } from './fixture.js'
 import { applyPatch, diff } from '../src/index.js'
 
 const spec = (cardRef: string) => ({ type: CARD, cardRef, zone: 'draw', face: 'back' })
@@ -61,5 +61,42 @@ describe('version.change (C7): the deck follows the project, the table stays whe
     const patch = diff(before, after)
     expect(patch.ops).toContainEqual({ op: 'version', version: 'v2' })
     expect(applyPatch(before, patch)).toEqual(after)
+  })
+
+  // A pile's own actions are the version's (K14), as its name, its shortcut and where it shows its
+  // cards are: «Uppdatera bordet» after rewriting what the deck asks for left the table offering
+  // the start version's action until it was opened anew. The line carries the setup's zones, and
+  // a zone the table has takes them; its cards, and the piles stacked during play, stay.
+  it('gives every zone the table has its definition in the new version, and keeps its cards', () => {
+    const h = new Harness()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    const before = h.view('A')
+    const deal = { id: 'a1', label: 'Dela ut tre', steps: [{ v: 'deal' as const, each: { of: 'number' as const, n: 3 }, to: { at: 'hands' as const }, face: 'keep' as const }] }
+    const zones = twoSeatSetup().zones.map((z) => (z.id === 'draw' ? { ...z, name: 'Leken', actions: [deal], shortcut: { label: 'Lägg under', at: 'bottom' as const } } : z))
+    h.do(null, { v: 'version.change', to: 'v2', components: CARDS.map(spec), zones })
+
+    expect(zoneView(h.view('A'), 'draw')).toMatchObject({ name: 'Leken', actions: [deal], shortcut: { label: 'Lägg under', at: 'bottom' }, count: 8 })
+    expect(inZone(h.view('A'), 'hand:A')).toHaveLength(2)
+    const patch = diff(before, h.view('A'))
+    expect(applyPatch(before, patch)).toEqual(h.view('A'))
+    // And a reset deals the new version's piles, not the start's.
+    h.do(null, { v: 'setup.reset' })
+    expect(zoneView(h.view('A'), 'draw')).toMatchObject({ name: 'Leken', actions: [deal] })
+  })
+
+  // A line written before zones travelled carries none, and leaves the piles as it found them —
+  // which is what such a line meant, so an old log replays as it did.
+  it('leaves the zones as they were when the line carries none', () => {
+    const h = new Harness()
+    h.do(null, { v: 'version.change', to: 'v2', components: CARDS.map(spec) })
+    expect(zoneView(h.view('A'), 'draw')).toMatchObject({ name: 'Draghög' })
+  })
+
+  // A pile with cards in it cannot become an area under them: what lies there has an order and
+  // no place, and the line would leave a zone the cards do not fit.
+  it('refuses a zone that changes kind under the table', () => {
+    const h = new Harness()
+    const zones = twoSeatSetup().zones.map((z) => (z.id === 'draw' ? { ...z, kind: 'area' as const } : z))
+    expect(h.try(null, { v: 'version.change', to: 'v2', components: CARDS.map(spec), zones })).toMatchObject({ ok: false, reason: expect.stringMatching(/zone draw is a pile/) })
   })
 })

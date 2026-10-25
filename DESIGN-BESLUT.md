@@ -1178,6 +1178,11 @@ Följdkrav:
 Tillbakaspolning förbi ett versionsbyte måste återställa korten också.
 Enkäten måste kunna fråga om två versioner.
 
+Byggt 2026-10-25 (beställarens fynd):
+`version.change` bär uppställningens zoner bredvid komponenterna, så en hög som «Uppdatera» flyttar till en ny version heter, visar och erbjuder det den versionen säger — dess egna åtgärder (K14) med.
+En zon bordet har tar den nya definitionen och behåller sina kort; en zon bordet saknar läggs inte ut mitt i spelet, och en hög som staplats under spelet är ingens definition.
+En zon som byter slag under bordet avvisas, och en rad från före fältet lämnar zonerna som de var, så en gammal logg spelas upp som förut.
+
 ### C8. Observatörsrollen: full insyn, alltid synlig (fråga 37)
 
 Observatören ser allt — alla händer, alla dolda högar — och alla vid bordet ser att hon är där och vad rollen innebär.
