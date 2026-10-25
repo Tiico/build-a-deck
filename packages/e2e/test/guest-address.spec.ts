@@ -79,6 +79,8 @@ async function saveAndLogIn(page: Page): Promise<void> {
   await page.getByRole('link', { name: 'Save to your account' }).click()
   await page.getByLabel('Email').fill(`e2e-${crypto.randomUUID()}@example.com`)
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  // A first login is asked its name (#1254); the step carries the fragment on with the claim.
+  await page.getByRole('button', { name: 'Skip' }).click()
   await expect(page.getByText('Saved to your account.')).toBeVisible()
 }
 
