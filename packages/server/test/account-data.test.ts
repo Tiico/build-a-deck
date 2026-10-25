@@ -91,7 +91,11 @@ for (const backend of accountBackends) {
       // Her own table; the one at Sara's game is borne by Sara.
       expect(data.borne.tables).toBe(1)
       // Nothing of the key itself, and nothing about the others: Kim is only the address she invited.
-      for (const other of ['sk-ant-api03-hemligx7Qd', 'Kim Kvar', 'Sara', w.sara.email, 'Bo', BO_NOTE]) expect([other, text.includes(other)]).toEqual([other, false])
+      // Each as a word of its own: in memory an account's id is 43 random base64url characters, and
+      // one in a hundred or so of them holds «Bo» somewhere inside it.
+      const said = (word: string) => new RegExp(`(?<![\\w-])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(text)
+      expect([NICKLAS, 'Månskugga', w.nicklas.email].map(said)).toEqual([true, true, true])
+      for (const other of ['sk-ant-api03-hemligx7Qd', 'Kim Kvar', 'Sara', w.sara.email, 'Bo', BO_NOTE]) expect([other, said(other)]).toEqual([other, false])
     })
   })
 }
