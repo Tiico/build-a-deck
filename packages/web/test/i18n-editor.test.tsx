@@ -45,7 +45,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('button', { name: /^Physical check/ })).toBeTruthy()
     // What it opens, the wall's panel (L81), is in that language too.
     fireEvent.click(screen.getByRole('button', { name: /^View:/ }))
-    expect(screen.getByRole('complementary', { name: 'The wall’s view and check' })).toBeTruthy()
+    expect(screen.getByRole('complementary', { name: 'View' })).toBeTruthy()
     expect(screen.getByRole('radiogroup', { name: 'Size' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /^The phone’s reading view/ })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /^At arm’s length/ })).toBeTruthy()

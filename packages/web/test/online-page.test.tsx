@@ -97,6 +97,9 @@ describe('OnlinePage (C2): both roles in one window', () => {
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
+    // The server has the flag before the page has its answer, and until then the panel stands and
+    // catches every press outside it (#1142), the way out included (#1315). Wait on the page.
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Flagga' })).toBeNull())
     fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))

@@ -1266,12 +1266,9 @@
 .byd-wall-work { position: relative; }
 .byd-wall-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid #2f333d; border-radius: 14px; background: var(--byd-editor-panel-bg); overflow: hidden; }
 .byd-wall-panel-head { flex: none; display: flex; align-items: center; border-bottom: 1px solid #2f333d; }
-.byd-wall-panel-head [role='tablist'] { flex: 1 1 auto; display: flex; min-width: 0; }
-.byd-wall-panel-head [role='tab'] { flex: 1 1 0; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 0; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
-.byd-wall-panel-head [role='tab']:hover { color: #fff; }
-.byd-wall-panel-head [role='tab'][aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
+.byd-wall-panel-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; padding: 0 var(--byd-s3); font-size: 13px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The panel clips to its rounded edge, so the head's ring is drawn inside the control. */
-.byd-wall-panel-head [role='tab']:focus-visible, .byd-wall-panel-close:focus-visible { outline-offset: -3px; }
+.byd-wall-panel-close:focus-visible { outline-offset: -3px; }
 .byd-wall-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--byd-s3) var(--byd-s3); }
 .byd-wall-panel-body h3 { margin: var(--byd-s4) 0 var(--byd-s1); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-wall-panel-body .byd-wall-checks { padding-top: var(--byd-s3); }

@@ -742,7 +742,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           )}
         </div>
         {panel && (
-          <WallPanel side={panel} onSide={showPanel} onClose={closePanel} checksCount={groups.length} t={t}>
+          <WallPanel title={t(panel === 'view' ? 'wall.eyes' : 'wall.checks.title')} onClose={closePanel} t={t}>
             {panel === 'view' ? (
               <ViewTab
                 size={size}
@@ -990,41 +990,23 @@ function EyeFilters() {
   )
 }
 
-// The wall's panel (L81): how the wall looks and what the check made of it, beside the wall and never
-// over the deck's top. Two tabs, because the two boxes in the crown open one side each. It closes
-// with its cross, with Escape and with its box again — not with a press on the wall, since what is
-// chosen in it is read on the cards while it stands open.
-function WallPanel({ side, onSide, onClose, checksCount, t, children }: { side: Panel; onSide(side: Panel): void; onClose(): void; checksCount: number; t: T; children: ReactNode }) {
-  const id = useId()
+// The wall's panel (L81): how the wall looks or what the check made of it, beside the wall and never
+// over the deck's top. Each of the crown's two boxes opens it as itself, and the boxes are the way
+// between the two, so the panel names what it shows rather than repeating them as tabs (#1328). It
+// closes with its cross, with Escape and with its box again — not with a press on the wall, since
+// what is chosen in it is read on the cards while it stands open.
+function WallPanel({ title, onClose, t, children }: { title: string; onClose(): void; t: T; children: ReactNode }) {
+  const head = useId()
   useDoor('standing', onClose)
-  const tabs = useRoving({ ids: ['view', 'checks'], selected: side, orientation: 'horizontal', followFocus: true, onActivate: (to) => onSide(to as Panel) })
-  const tab = (which: Panel, label: string) => (
-    <button
-      type="button"
-      role="tab"
-      id={`${id}-${which}`}
-      aria-selected={side === which}
-      aria-controls={`${id}-panel`}
-      {...tabs.itemProps(which)}
-      onClick={() => onSide(which)}
-    >
-      {label}
-    </button>
-  )
   return (
-    <aside className="byd-wall-panel" aria-label={t('wall.panel')}>
+    <aside className="byd-wall-panel" aria-labelledby={head}>
       <div className="byd-wall-panel-head">
-        <div role="tablist" aria-label={t('wall.panel')}>
-          {tab('view', t('wall.eyes'))}
-          {tab('checks', t('crown.box.count', { name: t('wall.checks.short'), n: checksCount }))}
-        </div>
+        <h2 id={head}>{title}</h2>
         <button type="button" className="byd-wall-panel-close" aria-label={t('wall.panel.close')} title={t('wall.panel.close')} onClick={onClose}>
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <div className="byd-wall-panel-body" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${side}`}>
-        {children}
-      </div>
+      <div className="byd-wall-panel-body">{children}</div>
     </aside>
   )
 }
