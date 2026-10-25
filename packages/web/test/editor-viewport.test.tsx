@@ -118,8 +118,10 @@ async function cardFiles(width: number): Promise<Record<string, string>> {
 // The rulebook as it is once somebody has written in it (#184). The fixture deck has no rules, so
 // the Regler tab in the sweep above is the empty state and always was — which is how a control in
 // the written book came to be 24 px across, half a target, with nothing measuring it. The book is
-// opened here the way a designer opens it, through the empty state's own button, so what is
-// measured is the surface she meets.
+// opened here the way a designer opens it, through the empty state's own way in, so what is
+// measured is the surface she meets. It is read twice since #1258: once as it stands, and once with
+// the «Boken» box open, because a box that is shut is three targets nobody has ever measured —
+// which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
 async function writtenRules(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
@@ -128,11 +130,15 @@ async function writtenRules(width: number): Promise<Record<string, string>> {
   try {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
-    // The book the empty state makes, with the one ＋ it draws (#216). Since #481 the hand lands on
-    // the book's first block, and the ＋ follows the focus there rather than resting before it.
-    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Lägg till / })).toHaveLength(1))
-    return { 'Regler · skriven': document.querySelector('.byd-editor')!.outerHTML }
+    fireEvent.click(screen.getByRole('button', { name: /^Ett tomt blad/ }))
+    // The book the empty state makes, with the row that adds to it (#1258).
+    await screen.findByRole('group', { name: 'Lägg till' })
+    const out: Record<string, string> = { 'Regler · skriven': document.querySelector('.byd-editor')!.outerHTML }
+    const book = screen.getByRole('button', { name: 'Boken' })
+    fireEvent.click(book)
+    await waitFor(() => expect(book.getAttribute('aria-expanded')).toBe('true'))
+    out['Regler · boken öppen'] = document.querySelector('.byd-editor')!.outerHTML
+    return out
   } finally {
     unmount()
   }
@@ -195,13 +201,13 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
     // A table nobody has played lies behind a fold (#176), and a fold is where this sweep would
     // otherwise stop: it would find two controls, measure them and call the tab clean.
     fireEvent.click(await screen.findByRole('button', { name: /Startade, aldrig spelade/ }))
-    // Waited for by the one way that is not there until the table itself has answered: sitting
-    // down needs a free seat, and a free seat is something only the table's own snapshot knows.
-    // Waiting for it is what puts every way into the markup rather than most of them.
-    await screen.findByRole('link', { name: /Spela härifrån/ })
-    // The other five are in the row's menu, and a menu that is shut is five targets nobody has
-    // ever measured — which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
-    fireEvent.click(screen.getByRole('button', { name: /Fler sätt att öppna (?!bordet)/ }))
+    // Waited for by the line that is not there until the table itself has answered: who sits is
+    // something only the table's own snapshot knows. Waiting for it is what puts the row as it
+    // stands into the markup rather than the row as it connects.
+    await screen.findByText('ingen sitter än')
+    // The rest is in the row's menu, and a menu that is shut is targets nobody has ever measured —
+    // which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
+    fireEvent.click(screen.getByRole('button', { name: /^Fler val för bordet / }))
     return { Bord: document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()
@@ -444,8 +450,8 @@ describe.each(WIDTHS)('the written rulebook, at %ipx', (width) => {
         }),
       writtenRules,
     )
-    expect(Object.values(measured).map((m) => m.small)).toEqual([[]])
-    expect(Object.values(measured).map((m) => m.controls > 4)).toEqual([true])
+    expect(Object.fromEntries(Object.entries(measured).map(([name, m]) => [name, m.small]))).toEqual({ 'Regler · skriven': [], 'Regler · boken öppen': [] })
+    expect(Object.values(measured).map((m) => m.controls > 4)).toEqual([true, true])
   }, 90_000)
 
   // And that a reader can see them without a pointer (#184, and #144 before it on the canvas). A
@@ -469,13 +475,14 @@ describe.each(WIDTHS)('the written rulebook, at %ipx', (width) => {
     expect(measured).toEqual(nothing(measured, [] as string[]))
   }, 90_000)
 
-  // The picker the third way in asks for, held to what every file picker in the tool is held to
-  // (#193). It is the one that was built right first (#131), and the corner it stands in and the
+  // The pickers the written book offers, held to what every file picker in the tool is held to
+  // (#193): the row's «＋ Bild», and with the «Boken» box open the file that replaces the book
+  // (#1258). The first of them was built right first (#131), and the corner it stands in and the
   // ring it lights are the editor's rule now rather than the book's own two lines — so this is
-  // also the thing that says the move cost the book nothing.
-  it('names the file picker, hands it the pointer through its label, and rings it when it takes focus', async () => {
+  // also the thing that says the move cost the book nothing. A box that is shut draws no picker.
+  it('names the file pickers, hands them the pointer through their labels, and rings them when they take focus', async () => {
     const measured = await measure(width, (page) => page.$$eval("input[type='file']", filePickerFaults), writtenRules)
-    expect(measured).toEqual({ 'Regler · skriven': { pickers: 1, faults: [] } })
+    expect(measured).toEqual({ 'Regler · skriven': { pickers: 1, faults: [] }, 'Regler · boken öppen': { pickers: 2, faults: [] } })
   }, 90_000)
 
   it('never makes the page scroll sideways', async () => {
@@ -589,9 +596,9 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
         }),
       tablesTab,
     )
-    // The fold, the way standing ready, the button that opens the menu, the five ways in it, and
-    // the button that starts another table, and the question mark beside the lead (L32, #303).
-    expect(measured).toEqual({ Bord: { controls: 10, small: [] } })
+    // The fold, the way standing ready, the button that opens the menu, the two in it (#1286), the
+    // button that starts another table, and the question mark beside the lead (L32, #303).
+    expect(measured).toEqual({ Bord: { controls: 7, small: [] } })
   }, 90_000)
 
   it('never makes the page scroll sideways', async () => {

@@ -62,6 +62,11 @@ create table if not exists accounts (
   email       text not null unique,
   created_at  timestamptz not null default now()
 );
+-- The account's own name (#1254): what the others call the designer, null until she gives one, and
+-- whether she has been asked for it. An account from before the name has not, and is asked once on
+-- Mina spel. Its length is held at the door (40 characters); it goes with the account's row.
+alter table accounts add column if not exists name text;
+alter table accounts add column if not exists name_asked boolean not null default false;
 create table if not exists login_tokens (
   token_hash  text primary key,
   email       text not null,
@@ -79,6 +84,9 @@ alter table sessions add column if not exists code text;
 alter table sessions add column if not exists code_expires_at timestamptz;
 alter table sessions add column if not exists host_key_hash text;
 create unique index if not exists sessions_code on sessions (code) where code is not null;
+-- How the people at the table sit (#1286): 'screen' or 'computer', the host's answer when the table
+-- started. Tables from before the question, and from the raw door, have none.
+alter table sessions add column if not exists seating text;
 -- Guests' admissions: the token a phone or an observer connects with, hashed; a kick revokes.
 create table if not exists guest_tokens (
   session_id  text not null references sessions(id) on delete cascade,
@@ -181,6 +189,26 @@ create table if not exists project_invites (
   created_at  timestamptz not null default now()
 );
 
+-- Who saved a version (#1225): the account, as text like `projects.owner`, so «Väntar på dig» can
+-- say that a co-editor saved one. Null is «not known», and nothing is guessed. The column is filled
+-- once, the start it is made on, and only where the answer is certain: a version saved here — it
+-- has `at_seq`, which an import never writes — in a game with an owner that nobody else could ever
+-- edit, since no invitation to edit it was ever accepted (one accepted and later taken back still
+-- counts). There the owner saved every version. The first version is left unknown, since an import
+-- writes one exactly like `create` does; so is every version of a game shared with a co-editor,
+-- whose saves the log does not tell apart, and of a game from before accounts.
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = current_schema() and table_name = 'project_versions' and column_name = 'saved_by') then
+    alter table project_versions add column saved_by text;
+    update project_versions v set saved_by = p.owner
+      from projects p
+      where v.project_id = p.id and p.owner is not null and v.at_seq is not null
+        and not exists (select 1 from project_invites i where i.project_id = p.id and i.accepted_at is not null and i.role in ('owner', 'editor'))
+        and not exists (select 1 from project_members m where m.project_id = p.id and m.role in ('owner', 'editor'));
+  end if;
+end $$;
+
 -- The deck of each version «Uppdatera» moved a table to (C7, #677). The session row keeps the deck
 -- the table started with; a table reloaded after a refresh takes its faces from the version its
 -- log says it plays.
@@ -260,3 +288,14 @@ begin
       where k ~ '^[0-9a-f]{64}$';
   end if;
 end $$;
+
+-- The terms an account has accepted (#1270, F4, #1268): one row per account and version, with when,
+-- and never written over. Which versions there are, and which is in force, is the register in
+-- `src/terms.ts` and never stored. An account from before the terms has no row, and so has
+-- accepted nothing, which is what it has done.
+create table if not exists terms_acceptances (
+  account_id   bigint not null references accounts(id) on delete cascade,
+  version      text not null,
+  accepted_at  timestamptz not null,
+  primary key (account_id, version)
+);

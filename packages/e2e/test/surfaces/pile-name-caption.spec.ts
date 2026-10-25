@@ -1,7 +1,7 @@
 import type { APIRequestContext, Browser, Page } from '@playwright/test'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { join, tableOf as tableFrom, type Table } from '../../support/api.js'
+import { join, tableOf as tableFrom, type Table, withQuery } from '../../support/api.js'
 import { PHONE, SMALL_TV, TV, type Device } from '../../support/devices.js'
 import { mentions, watchWire, type Wire } from '../../support/frames.js'
 import { contrastRatio } from '../../../web/src/player/contrast.js'
@@ -201,7 +201,7 @@ for (const device of [PHONE, SMALL_PHONE]) {
         const { table } = await tableWithNames(request)
         await deal(baseURL!, table)
         const eva = await join(request, table, { name: 'Eva' })
-        const { page } = await screen(browser, baseURL, device, `${eva.observeUrl}&lang=sv`, state)
+        const { page } = await screen(browser, baseURL, device, withQuery(eva.observeUrl, `lang=sv`), state)
         // The observer sees everything (C8), the draw pile's top card included.
         expectReadable(await read(page, 'discard'), LONG, 12)
         expectReadable(await read(page, 'draw'), SHORT, 12)
@@ -212,7 +212,7 @@ for (const device of [PHONE, SMALL_PHONE]) {
       const { table } = await tableWithNames(request)
       await deal(baseURL!, table)
       const eva = await join(request, table, { name: 'Eva' })
-      const { page } = await screen(browser, baseURL, device, `${eva.observeUrl}&lang=sv`, 'ready')
+      const { page } = await screen(browser, baseURL, device, withQuery(eva.observeUrl, `lang=sv`), 'ready')
       for (const zone of ['discard', 'draw']) expect((await read(page, zone)).shown, zone).toBe(false)
       await page.context().close()
     })
@@ -293,7 +293,7 @@ for (const s of tableScreens) {
         const { table } = await tableWithNames(request)
         await deal(baseURL!, table)
         const player = await join(request, table, { name: 'Bo', seat: s.seat })
-        const { page } = await screen(browser, baseURL, s.device, `${player.onlineUrl}&lang=sv`, state)
+        const { page } = await screen(browser, baseURL, s.device, withQuery(player.onlineUrl, `lang=sv`), state)
         // Non-vacuity: the felt is the one this reading is about, turned or not.
         await expect(page.locator('.byd-table-frame')).toHaveAttribute('data-mode', 'table')
         await expect(page.locator('[data-table]')).toHaveAttribute('data-rotate', s.turned ? '180' : '0')
@@ -308,7 +308,7 @@ for (const s of tableScreens) {
       const { table } = await tableWithNames(request)
       await deal(baseURL!, table)
       const player = await join(request, table, { name: 'Bo', seat: s.seat })
-      const { page } = await screen(browser, baseURL, s.device, `${player.onlineUrl}&lang=sv`, 'ready')
+      const { page } = await screen(browser, baseURL, s.device, withQuery(player.onlineUrl, `lang=sv`), 'ready')
       expect((await read(page, 'discard')).shown).toBe(false)
       await page.context().close()
     })
@@ -404,7 +404,7 @@ for (const t of turns) {
       const { table } = await tableWithNames(request)
       await deal(baseURL!, table)
       const player = await join(request, table, { name: 'Bo', seat: t.seat })
-      const { page } = await screen(browser, baseURL, t.device, `${player.onlineUrl}&lang=sv`, 'pending')
+      const { page } = await screen(browser, baseURL, t.device, withQuery(player.onlineUrl, `lang=sv`), 'pending')
       // Non-vacuity: the felt is turned the way this reading is about, and the discard pile is
       // named in a caption, so the caption is measured and not skipped.
       await expect(page.locator('.byd-table-frame')).toHaveAttribute('data-mode', 'table')

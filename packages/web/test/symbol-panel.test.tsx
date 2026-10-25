@@ -26,7 +26,6 @@ async function openSymbols(): Promise<void> {
   )
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Speltema' }))
-  fireEvent.click(screen.getByRole('button', { name: /^Spelets ikoner/ }))
   fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
 }
 const tile = (name: string) => screen.getByRole('button', { name: `Lägg till ${name}` })
@@ -156,7 +155,6 @@ describe('the symbol library in the editor (E4)', () => {
 
     localStorage.clear()
     fireEvent.click(screen.getByRole('tab', { name: 'Speltema' }))
-    fireEvent.click(screen.getByRole('button', { name: /^Spelets ikoner/ }))
     fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
     fireEvent.click(tile('sköld'))
     await waitFor(() => expect(document.querySelector('[data-card-ref="dragon"] img.byd-icon')).toBeTruthy())

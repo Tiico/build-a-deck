@@ -38,9 +38,8 @@ test.describe('the typeface catalog reaches Google only when the designer asks (
     await logIn(page.request)
     const project = await makeProject(page.request)
     await page.goto(project.editorUrl, { waitUntil: 'load' })
-    // The typefaces are the game theme's since L57 (#630), folded until the part is opened.
+    // The typefaces are the game theme's since L57 (#630), and stand open since L84.
     await page.locator('#byd-editor-tab-theme').click()
-    await page.getByRole('button', { name: /^Fonts/ }).click()
     const open = page.getByRole('button', { name: /search google fonts/i })
     await expect(open).toBeVisible()
     // The editor is up, the typefaces are drawn, the way in is on the screen — and
@@ -76,7 +75,6 @@ test.describe('the typeface catalog reaches Google only when the designer asks (
     const project = await makeProject(page.request)
     await page.goto(project.editorUrl, { waitUntil: 'load' })
     await page.locator('#byd-editor-tab-theme').click()
-    await page.getByRole('button', { name: /^Fonts/ }).click()
     await page.getByRole('button', { name: /search google fonts/i }).click()
     await page.getByRole('searchbox', { name: /search google fonts/i }).fill('cinzel')
     await page.getByRole('button', { name: /^add cinzel$/i }).click()
@@ -93,10 +91,10 @@ test.describe('the typeface catalog reaches Google only when the designer asks (
     await expect(row.getByLabel(/creator of cinzel/i)).toHaveValue('Natanael Gama')
   })
 
-  // Speltema's ready-made themes (L57, #632, beställarens val C): the tiles stand without Google,
-  // and the themes are drawn in their own faces only once «Show the themes in their typefaces» is
-  // pressed. Read off the traffic, as the rest of this file is.
-  test('draws the ready-made themes in their own faces only once the designer asks', async ({ page }) => {
+  // Speltema's examples (L57, #632, beställarens val C; a sheet since L84): neither the tab nor the
+  // sheet asks Google for anything, and the examples are drawn in their own faces only once «Show
+  // the themes in their typefaces» is pressed. Read off the traffic, as the rest of this file is.
+  test('draws the examples in their own faces only once the designer asks', async ({ page }) => {
     const asked: string[] = []
     await page.route(GOOGLE, async (route) => {
       const url = route.request().url()
@@ -109,9 +107,10 @@ test.describe('the typeface catalog reaches Google only when the designer asks (
     const project = await makeProject(page.request)
     await page.goto(project.editorUrl, { waitUntil: 'load' })
     await page.locator('#byd-editor-tab-theme').click()
+    await page.getByRole('button', { name: 'Look at the examples' }).click()
     const show = page.getByRole('button', { name: 'Show the themes in their typefaces' })
     await expect(show).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Choose the theme/ })).toHaveCount(4)
+    await expect(page.getByRole('button', { name: /^Copy .+ into the game’s theme…$/ })).toHaveCount(4)
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     expect(asked).toEqual([])
 

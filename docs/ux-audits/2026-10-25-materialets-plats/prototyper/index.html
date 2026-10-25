@@ -1,0 +1,304 @@
+<!doctype html>
+<!-- PROTOTYP: var material läggs på filten. Kastas när varianten är vald. ?v=A|B|C, ←/→ byter. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Materialets plats på filten — prototyp</title>
+<style>
+:root { --bg: #14161c; --panel: #1a1d25; --ink: #e6ecfa; --quiet: #8b93a7; --line: #343a48; --btn: #232733; --blue: #2f7de1; --die: #f3e9d6; --die-ink: #1c1c1c; --amber: #f0b64a; --felt: #1d4a36; --felt-edge: #163a2a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px system-ui, sans-serif; }
+body { padding: 16px 16px 96px; }
+.rubrik { max-width: 1200px; margin: 0 0 10px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; }
+.anteckning { max-width: 1200px; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.editor { max-width: 1180px; display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 16px; outline: 1px solid #2a2d36; border-radius: 8px; padding: 16px; }
+.kol { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+h4 { margin: 8px 0 0; font-size: 13px; letter-spacing: .12em; color: var(--quiet); }
+.rad { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-height: 40px; border-radius: 8px; padding: 2px 4px; }
+.rad.vald { background: #2a2f3c; outline: 1px solid var(--amber); }
+.rad .namn { min-width: 0; flex: 1; white-space: nowrap; }
+.rad .x { margin-left: auto; }
+.rad .var { color: var(--quiet); font-size: 12px; }
+input, select { background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; height: 36px; padding: 0 8px; font: inherit; }
+input[type=number] { width: 64px; }
+button { font: inherit; color: var(--ink); background: var(--btn); border: 1px solid var(--line); border-radius: 8px; min-height: 36px; padding: 0 10px; cursor: pointer; font-weight: 600; }
+button.x { width: 36px; padding: 0; background: transparent; border-color: transparent; color: var(--quiet); }
+button:focus-visible, input:focus-visible, select:focus-visible, .bit:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ny { font-size: 10px; letter-spacing: .08em; color: #1f1b12; background: #ffd98a; border-radius: 999px; padding: 1px 6px; font-weight: 700; }
+.meny { display: none; flex-direction: column; gap: 2px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.meny.open { display: flex; }
+.meny button { text-align: left; background: transparent; border-color: transparent; display: flex; gap: 8px; align-items: center; }
+.meny button:hover { background: var(--btn); }
+.ankare { display: inline-grid; grid-template-columns: repeat(3, 14px); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; }
+.ankare button { min-height: 14px; width: 14px; height: 14px; padding: 0; border-radius: 3px; background: #2a2f3c; border: 0; }
+.ankare button[aria-pressed=true] { background: var(--amber); }
+.falt { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); min-height: 48px; }
+.falt label { display: flex; gap: 4px; align-items: center; color: var(--quiet); font-size: 12px; }
+.falt .tom { color: var(--quiet); font-size: 13px; }
+.felt { position: relative; width: 100%; aspect-ratio: 3 / 2; background: var(--felt); border-radius: 14px; box-shadow: inset 0 0 0 6px var(--felt-edge); user-select: none; touch-action: none; }
+.z { position: absolute; border: 1.5px dashed #e9dcb499; border-radius: 6px; }
+.z span { position: absolute; left: 5px; top: 3px; font-size: 10px; color: #d9e7dccc; white-space: nowrap; }
+.z.hand { border-style: dotted; border-color: #e9dcb455; }
+.z.lys { border-color: var(--amber); background: #f0b64a1f; }
+.z.mal { border-color: var(--amber); border-style: solid; background: #f0b64a2e; }
+.pile { position: absolute; width: 41px; height: 57px; margin: -28px 0 0 -20px; border-radius: 4px; background: #2a3c63; border: 1px solid #5d74a8; }
+.pile span { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #d9e7dccc; white-space: nowrap; }
+.bit { position: absolute; transform: translate(-50%, -50%); cursor: grab; border-radius: 6px; }
+.bit.spegel { opacity: .55; cursor: default; pointer-events: none; }
+.bit.vald { filter: drop-shadow(0 0 0 var(--amber)) drop-shadow(0 0 3px var(--amber)); }
+.bit.drar { cursor: grabbing; z-index: 5; }
+.bit svg { display: block; overflow: visible; }
+.hint { margin-top: 8px; color: var(--quiet); font-size: 12px; }
+.tip { position: absolute; transform: translate(-50%, -150%); background: #111; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>Materialets plats.</b> Tärningar, räknare och nya sorters material läggs på en exakt punkt i filten, inte bara i en rad mitt i en yta.
+I alla tre ligger materialet i en yta (så att «en per plats» fortfarande betyder något), och punkten sparas i ytans egna millimeter.
+En bit i en platsyta ritas i alla platsernas ytor; de andra platsernas kopior är bleka och vända mot sin egen kant.
+Meeple, kub och bricka är <span class="ny">NY TYP</span>: de visar hur nya typer hamnar i samma lista, men varje typ är ett eget beslut (B1–B3).</div>
+<div class="anteckning" id="anteckning"></div>
+<div class="editor">
+  <div class="kol" id="kol"></div>
+  <div>
+    <div class="felt" id="felt"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+<div class="vaxlare" role="group" aria-label="Variant">
+  <button id="prev" aria-label="Föregående variant">←</button>
+  <button data-v="A">A · Dra fritt</button>
+  <button data-v="B">B · Läge i ytan</button>
+  <button data-v="C">C · Som en yta</button>
+  <button id="next" aria-label="Nästa variant">→</button>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+let V = new URL(location).searchParams.get('v') ?? 'A'
+if (!['A', 'B', 'C'].includes(V)) V = 'A'
+const NOTES = {
+  A: `<b>A — Dra fritt.</b> Varje bit står i filten och dras dit den ska; ytan den släpps i blir dess yta, och raden i listan säger det («i Framför · varje plats»). Pilarna flyttar en fokuserad bit 10 mm.
+  <span class="plus">+ Snabbast, och det enda sättet som är en exakt punkt utan att räkna.</span> <span class="plus">+ Samma grepp som en yta har redan i filten.</span>
+  <span class="minus">− En bit som släpps lite fel byter yta utan att man märker det; ytan lyser medan man drar för att säga det.</span>`,
+  B: `<b>B — Läge i ytan.</b> Raden väljer yta som i dag, och ett rutnät 3 × 3 bredvid väljer var i ytan biten ligger: ett hörn, en kant eller mitten. Inget dras.
+  <span class="plus">+ Fungerar lika bra med tangentbord som med pekare, och kan aldrig hamna fel.</span> <span class="plus">+ Ett läge tål att ytan ändrar storlek.</span>
+  <span class="minus">− Inte en exakt punkt: två bitar i samma hörn läggs bredvid varandra av bordet, och designern bestämmer inte var.</span>`,
+  C: `<b>C — Som en yta.</b> En bit väljs som en yta väljs, i listan eller i filten, och fälten över filten säger x och y i millimeter i ytan. Biten kan dras, men bara inom sin yta; ytan byts i raden.
+  <span class="plus">+ Exakt, och samma fält som en yta redan har över filten (L50).</span> <span class="plus">+ Kan inte byta yta av misstag.</span>
+  <span class="minus">− Två steg för att flytta något till en annan yta: välj ytan i raden, dra sedan på plats.</span>`,
+}
+// Bordets riktiga geometri för fyra platser och en räknare, ur openingSetup (mm, origo i mitten).
+const FELT = { w: 1200, h: 800 }
+let S = 0.65
+const ZONES = [
+  { id: 'table', name: 'Spelyta', kind: 'area', g: [-600, -400, 1200, 800] },
+  { id: 'mine:A', name: 'Framför A', kind: 'area', role: 'mine', seat: 'A', g: [-250, 230, 365, 100] },
+  { id: 'mine:B', name: 'Framför B', kind: 'area', role: 'mine', seat: 'B', g: [-250, -330, 365, 100] },
+  { id: 'mine:C', name: 'Framför C', kind: 'area', role: 'mine', seat: 'C', g: [430, -250, 100, 365] },
+  { id: 'mine:D', name: 'Framför D', kind: 'area', role: 'mine', seat: 'D', g: [-530, -250, 100, 365] },
+  { id: 'counters:A', name: 'Räknare A', kind: 'area', role: 'counters', seat: 'A', g: [125, 230, 125, 100] },
+  { id: 'counters:B', name: 'Räknare B', kind: 'area', role: 'counters', seat: 'B', g: [125, -330, 125, 100] },
+  { id: 'counters:C', name: 'Räknare C', kind: 'area', role: 'counters', seat: 'C', g: [430, 125, 100, 125] },
+  { id: 'counters:D', name: 'Räknare D', kind: 'area', role: 'counters', seat: 'D', g: [-530, 125, 100, 125] },
+  { id: 'hand:A', name: 'Hand', kind: 'hand', g: [-250, 340, 500, 60] },
+  { id: 'hand:B', name: 'Hand', kind: 'hand', g: [-250, -400, 500, 60] },
+  { id: 'hand:C', name: 'Hand', kind: 'hand', g: [540, -250, 60, 500] },
+  { id: 'hand:D', name: 'Hand', kind: 'hand', g: [-600, -250, 60, 500] },
+]
+const PILES = [{ name: 'Draghög', x: -140, y: 0 }, { name: 'Kasthög', x: 140, y: 0 }]
+const EDGE = { A: 'S', B: 'N', C: 'E', D: 'W' }
+const FAMILY = { mine: 'Framför', counters: 'Räknare' }
+const z = (id) => ZONES.find((q) => q.id === id)
+// Where an item lies: a place (a shared zone, or a role every seat has) and a point in the zone's
+// own millimetres. A role's point is said in seat A's zone and turned to face each seat's edge.
+let items = [
+  { id: 1, kind: 'd6', place: 'zone:table', at: { x: 560, y: 470 }, anchor: 'mm' },
+  { id: 2, kind: 'd6', place: 'zone:table', at: { x: 600, y: 470 }, anchor: 'mm' },
+  { id: 3, kind: 'counter', name: 'Guld', place: 'role:counters', at: { x: 62, y: 50 }, anchor: 'mm' },
+  { id: 4, kind: 'meeple', place: 'role:mine', at: { x: 40, y: 50 }, anchor: 'ml' },
+]
+let nextId = 5, selected = null, menuOpen = false, lit = null, drag = null
+const KINDS = {
+  d4: { label: 'd4', group: 'Tärning', size: 30 }, d6: { label: 'd6', group: 'Tärning', size: 30 }, d8: { label: 'd8', group: 'Tärning', size: 30 },
+  d10: { label: 'd10', group: 'Tärning', size: 30 }, d12: { label: 'd12', group: 'Tärning', size: 30 }, d20: { label: 'd20', group: 'Tärning', size: 30 },
+  counter: { label: 'Räknare', group: 'Räknare', size: 24 },
+  meeple: { label: 'Meeple', group: 'Meeple', size: 30, ny: true }, cube: { label: 'Kub', group: 'Kub', size: 16, ny: true }, token: { label: 'Bricka', group: 'Bricka', size: 28, ny: true },
+}
+const seatOf = (zone) => zone.seat
+const dims = (zone) => ({ w: zone.g[2], h: zone.g[3] })
+// A point in seat A's frame turned to the frame of the seat whose zone this is.
+function turned(at, zone, from) {
+  const { w: wA, h: hA } = dims(from)
+  const e = EDGE[seatOf(zone)]
+  if (e === 'S') return { ...at }
+  if (e === 'N') return { x: wA - at.x, y: hA - at.y }
+  if (e === 'E') return { x: at.y, y: wA - at.x }
+  return { x: hA - at.y, y: at.x }
+}
+function untilted(at, zone, to) {
+  const { w: wA, h: hA } = dims(to)
+  const e = EDGE[seatOf(zone)]
+  if (e === 'S') return { ...at }
+  if (e === 'N') return { x: wA - at.x, y: hA - at.y }
+  if (e === 'E') return { x: wA - at.y, y: at.x }
+  return { x: at.y, y: hA - at.x }
+}
+const zonesOf = (place) => place.startsWith('zone:') ? [z(place.slice(5))] : ZONES.filter((q) => q.role === place.slice(5))
+const anchorAt = (a, zone) => { const { w, h } = dims(zone); const fx = { l: 0.2, m: 0.5, r: 0.8 }[a[1]], fy = { t: 0.25, m: 0.5, b: 0.75 }[a[0]]; return { x: w * fx, y: h * fy } }
+// Every drawn copy of an item: its own point in each zone its place names.
+function copies(it) {
+  const zs = zonesOf(it.place)
+  const first = zs[0]
+  return zs.map((zone, i) => {
+    const local = V === 'B' ? anchorAt(it.anchor, zone) : first.role ? turned(it.at, zone, first) : it.at
+    const ix = V === 'B' ? spreadIn(it, zone) : 0
+    return { zone, mirror: i > 0, x: zone.g[0] + local.x + ix, y: zone.g[1] + local.y }
+  })
+}
+// In B two items in one spot lie side by side; the table decides, not the designer.
+function spreadIn(it, zone) {
+  const same = items.filter((o) => o.place === it.place && o.anchor === it.anchor)
+  const i = same.indexOf(it)
+  return (i - (same.length - 1) / 2) * 34
+}
+const px = (mm, axis) => (mm + (axis === 'x' ? FELT.w : FELT.h) / 2) * S
+const mm = (p, axis) => p / S - (axis === 'x' ? FELT.w : FELT.h) / 2
+function piece(kind, size) {
+  const s = size
+  if (kind.startsWith('d')) {
+    const n = +kind.slice(1)
+    const shape = { 4: `<polygon points="${s / 2},2 ${s - 2},${s - 3} 2,${s - 3}"/>`, 6: `<rect x="2" y="2" width="${s - 4}" height="${s - 4}" rx="5"/>`, 8: `<polygon points="${s / 2},1 ${s - 1},${s / 2} ${s / 2},${s - 1} 1,${s / 2}"/>` }[n] ?? `<polygon points="${Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 3 * i - Math.PI / 2; return `${s / 2 + (s / 2 - 1) * Math.cos(a)},${s / 2 + (s / 2 - 1) * Math.sin(a)}` }).join(' ')}"/>`
+    return `<svg width="${s}" height="${s}"><g fill="var(--die)" stroke="#00000055">${shape}</g><text x="${s / 2}" y="${s / 2 + (n === 4 ? 4 : 0)}" font-size="${s * 0.42}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="var(--die-ink)">1</text></svg>`
+  }
+  if (kind === 'counter') return `<svg width="${s}" height="${s}"><circle cx="${s / 2}" cy="${s / 2}" r="${s / 2 - 1}" fill="#c9a23a" stroke="#00000066"/><text x="${s / 2}" y="${s / 2}" font-size="${s * 0.5}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#1c1c1c">0</text></svg>`
+  if (kind === 'meeple') return `<svg width="${s}" height="${s}" viewBox="0 0 30 30"><path d="M15 3a4.5 4.5 0 0 1 4.5 4.5c0 1.4-.6 2.6-1.6 3.4l7.6 3.6c1.4.7 1.6 2.6.3 3.4l-4.3 2.4 3 6.2c.4.9-.2 1.5-1.1 1.5h-5l-3.4-5-3.4 5h-5c-.9 0-1.5-.6-1.1-1.5l3-6.2-4.3-2.4c-1.3-.8-1.1-2.7.3-3.4l7.6-3.6A4.5 4.5 0 0 1 15 3z" fill="#d6603f" stroke="#00000066"/></svg>`
+  if (kind === 'cube') return `<svg width="${s}" height="${s}"><rect x="1" y="1" width="${s - 2}" height="${s - 2}" rx="2" fill="#4f8fe0" stroke="#00000066"/></svg>`
+  return `<svg width="${s}" height="${s}"><polygon points="${Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 3 * i; return `${s / 2 + (s / 2 - 1) * Math.cos(a)},${s / 2 + (s / 2 - 1) * Math.sin(a)}` }).join(' ')}" fill="#8a6fd1" stroke="#00000066"/></svg>`
+}
+const label = (it) => it.kind === 'counter' ? `Räknare «${it.name}»` : KINDS[it.kind].label
+const placeName = (place) => place.startsWith('role:') ? `${FAMILY[place.slice(5)]} · varje plats` : z(place.slice(5)).name
+const PLACES = [['zone:table', 'Spelyta'], ['role:mine', 'Framför · varje plats'], ['role:counters', 'Räknare · varje plats']]
+const ANCHORS = ['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br']
+const ANCHOR_NAMES = { t: 'övre', m: 'mitten', b: 'nedre', l: 'vänster', r: 'höger' }
+function renderKol() {
+  const k = $('#kol')
+  const rows = items.map((it) => {
+    const kind = KINDS[it.kind]
+    const kindSel = it.kind.startsWith('d') ? `<select data-kind="${it.id}" aria-label="Sort">${['d4', 'd6', 'd8', 'd10', 'd12', 'd20'].map((d) => `<option ${d === it.kind ? 'selected' : ''}>${d}</option>`).join('')}</select>` : `<span class="namn">${label(it)} ${kind.ny ? '<span class="ny">NY TYP</span>' : ''}</span>`
+    const where = V === 'A'
+      ? `<span class="var">i ${placeName(it.place)}</span>`
+      : `<span class="var">i</span><select data-place="${it.id}" aria-label="Yta">${PLACES.map(([v, n]) => `<option value="${v}" ${v === it.place ? 'selected' : ''}>${n}</option>`).join('')}</select>`
+    const grid = V === 'B' ? `<span class="ankare" role="group" aria-label="Läge i ytan">${ANCHORS.map((a) => `<button data-anchor="${it.id}:${a}" aria-pressed="${a === it.anchor}" aria-label="${a === 'mm' ? 'mitten' : `${ANCHOR_NAMES[a[0]]} ${ANCHOR_NAMES[a[1]]}`.replace('mitten mitten', 'mitten')}"></button>`).join('')}</span>` : ''
+    return `<div class="rad ${selected === it.id ? 'vald' : ''}" data-row="${it.id}" data-hover="${it.place}">${kindSel}${where}${grid}<button class="x" data-remove="${it.id}" aria-label="Ta bort">×</button></div>`
+  }).join('')
+  const menu = Object.entries(KINDS).filter(([key]) => !['d4', 'd8', 'd10', 'd12', 'd20'].includes(key)).map(([key, k]) => `<button data-add="${key}">${piece(key, 18)} ${key === 'd6' ? 'Tärning' : k.label} ${k.ny ? '<span class="ny">NY TYP</span>' : ''}</button>`).join('')
+  const sel = items.find((i) => i.id === selected)
+  const fields = V === 'C' ? `<h4>VALD BIT</h4><div class="falt">${sel ? `<b>${label(sel)}</b><span class="var">i ${placeName(sel.place).replace(' · varje plats', ' A')}</span><label>x <input type="number" step="10" data-fx value="${Math.round(sel.at.x)}"> mm</label><label>y <input type="number" step="10" data-fy value="${Math.round(sel.at.y)}"> mm</label>` : '<span class="tom">Välj en bit i listan eller i filten.</span>'}</div>` : ''
+  k.innerHTML = `<h4>MATERIAL PÅ BORDET</h4>${rows}<div><button data-menu aria-expanded="${menuOpen}">＋ Material</button></div><div class="meny ${menuOpen ? 'open' : ''}">${menu}</div>${fields}`
+  k.querySelectorAll('[data-row]').forEach((r) => {
+    r.onclick = (e) => { if (e.target.closest('select,button,input')) return; selected = +r.dataset.row; render() }
+    r.onmouseenter = () => { lit = r.dataset.hover; renderFelt() }; r.onmouseleave = () => { lit = null; renderFelt() }
+  })
+  k.querySelectorAll('[data-kind]').forEach((s) => s.onchange = () => { items.find((i) => i.id === +s.dataset.kind).kind = s.value; render() })
+  k.querySelectorAll('[data-place]').forEach((s) => s.onchange = () => { const it = items.find((i) => i.id === +s.dataset.place); it.place = s.value; const zone = zonesOf(it.place)[0]; it.at = { x: zone.g[2] / 2, y: zone.g[3] / 2 }; render() })
+  k.querySelectorAll('[data-anchor]').forEach((b) => b.onclick = () => { const [id, a] = b.dataset.anchor.split(':'); items.find((i) => i.id === +id).anchor = a; render() })
+  k.querySelectorAll('[data-remove]').forEach((b) => b.onclick = () => { items = items.filter((i) => i.id !== +b.dataset.remove); if (selected === +b.dataset.remove) selected = null; render() })
+  k.querySelector('[data-menu]').onclick = () => { menuOpen = !menuOpen; renderKol() }
+  k.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => {
+    const key = b.dataset.add
+    const place = key === 'counter' ? 'role:counters' : key === 'meeple' || key === 'cube' ? 'role:mine' : 'zone:table'
+    const zone = zonesOf(place)[0]
+    items.push({ id: nextId, kind: key, name: 'Ny', place, at: { x: zone.g[2] / 2, y: zone.g[3] / 2 }, anchor: 'mm' })
+    selected = nextId++; menuOpen = false; render()
+  })
+  const fx = k.querySelector('[data-fx]'), fy = k.querySelector('[data-fy]')
+  if (fx) { const clampSet = () => { const zone = zonesOf(sel.place)[0]; sel.at = { x: clamp(+fx.value, 0, zone.g[2]), y: clamp(+fy.value, 0, zone.g[3]) }; renderFelt() }; fx.oninput = clampSet; fy.oninput = clampSet }
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const inside = (zone, x, y) => x >= zone.g[0] && y >= zone.g[1] && x <= zone.g[0] + zone.g[2] && y <= zone.g[1] + zone.g[3]
+// The innermost area under a point: a seat's area before the shared play area it lies in.
+const under = (x, y) => ZONES.filter((q) => q.kind === 'area' && inside(q, x, y)).sort((a, b) => a.g[2] * a.g[3] - b.g[2] * b.g[3])[0]
+function renderFelt() {
+  const f = $('#felt')
+  S = f.clientWidth / FELT.w
+  const target = drag?.target
+  let html = ZONES.filter((q) => q.id !== 'table').map((q) => {
+    const on = target ? q.id === target.id : lit && (lit === `zone:${q.id}` || lit === `role:${q.role}`)
+    return `<div class="z ${q.kind === 'hand' ? 'hand' : ''} ${on ? (target ? 'mal' : 'lys') : ''}" style="left:${px(q.g[0], 'x')}px;top:${px(q.g[1], 'y')}px;width:${q.g[2] * S}px;height:${q.g[3] * S}px"><span>${q.name}</span></div>`
+  }).join('')
+  if (target?.id === 'table' || lit === 'zone:table') html += `<div class="z ${target ? 'mal' : 'lys'}" style="inset:0;border-radius:14px"></div>`
+  html += PILES.map((p) => `<div class="pile" style="left:${px(p.x, 'x')}px;top:${px(p.y, 'y')}px"><span>${p.name}</span></div>`).join('')
+  for (const it of items) {
+    const size = KINDS[it.kind].size * S * 1.4
+    for (const c of copies(it)) {
+      const movable = !c.mirror && V !== 'B'
+      html += `<div class="bit ${c.mirror ? 'spegel' : ''} ${selected === it.id && !c.mirror ? 'vald' : ''} ${drag?.id === it.id && !c.mirror ? 'drar' : ''}" ${movable ? `tabindex="0" data-bit="${it.id}" aria-label="${label(it)} i ${placeName(it.place)}"` : 'aria-hidden="true"'} style="left:${px(c.x, 'x')}px;top:${px(c.y, 'y')}px">${piece(it.kind, Math.round(size))}</div>`
+    }
+  }
+  if (drag) html += `<div class="tip" style="left:${px(drag.x, 'x')}px;top:${px(drag.y, 'y')}px">${drag.tip}</div>`
+  $('#hint').textContent = `${V === 'B' ? 'Läget väljs i listan; bitarna ritas där bordet lägger dem.' : V === 'A' ? 'Dra en bit dit den ska ligga. Pilar flyttar 10 mm.' : 'Välj en bit och dra den inom sin yta, eller skriv x och y.'}`
+  f.innerHTML = html
+  f.querySelectorAll('[data-bit]').forEach((b) => {
+    b.onpointerdown = (e) => startDrag(e, +b.dataset.bit)
+    b.onkeydown = (e) => nudge(e, +b.dataset.bit)
+    b.onfocus = () => { if (selected !== +b.dataset.bit) { selected = +b.dataset.bit; renderKol() } }
+  })
+}
+function feltPoint(e) { const r = $('#felt').getBoundingClientRect(); return { x: mm(e.clientX - r.left, 'x'), y: mm(e.clientY - r.top, 'y') } }
+function startDrag(e, id) {
+  e.preventDefault()
+  const it = items.find((i) => i.id === id)
+  selected = id
+  const home = zonesOf(it.place)[0]
+  drag = { id, x: 0, y: 0, target: null, tip: '' }
+  const move = (ev) => {
+    let { x, y } = feltPoint(ev)
+    if (V === 'C') { x = clamp(x, home.g[0], home.g[0] + home.g[2]); y = clamp(y, home.g[1], home.g[1] + home.g[3]); drag.target = home }
+    else drag.target = under(clamp(x, -600, 600), clamp(y, -400, 400)) ?? z('table')
+    drag.x = x; drag.y = y
+    const t = drag.target
+    place(it, t, x, y)
+    drag.tip = `${t.role ? `${FAMILY[t.role]} · varje plats` : t.name} · ${Math.round(it.at.x)}, ${Math.round(it.at.y)} mm`
+    renderFelt()
+  }
+  const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); drag = null; render(); document.querySelector(`[data-bit="${id}"]`)?.focus() }
+  addEventListener('pointermove', move); addEventListener('pointerup', up)
+  render()
+}
+// Lay an item at a felt point in a zone: a seat's zone writes the point back in seat A's frame.
+function place(it, zone, x, y) {
+  const local = { x: clamp(x - zone.g[0], 0, zone.g[2]), y: clamp(y - zone.g[1], 0, zone.g[3]) }
+  if (zone.role) { it.place = `role:${zone.role}`; it.at = untilted(local, zone, z(`${zone.role}:A`)) }
+  else { it.place = `zone:${zone.id}`; it.at = local }
+}
+function nudge(e, id) {
+  const step = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, -10], ArrowDown: [0, 10] }[e.key]
+  if (!step) return
+  e.preventDefault()
+  const it = items.find((i) => i.id === id)
+  const zone = zonesOf(it.place)[0]
+  it.at = { x: clamp(it.at.x + step[0], 0, zone.g[2]), y: clamp(it.at.y + step[1], 0, zone.g[3]) }
+  render(); document.querySelector(`[data-bit="${id}"]`)?.focus()
+}
+const ORDER = ['A', 'B', 'C']
+function render() {
+  $('#anteckning').innerHTML = NOTES[V]
+  document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === V)))
+  renderKol(); renderFelt()
+}
+function go(v) { V = v; const u = new URL(location); u.searchParams.set('v', v); history.replaceState(null, '', u); render() }
+document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.onclick = () => go(b.dataset.v))
+$('#prev').onclick = () => go(ORDER[(ORDER.indexOf(V) + 2) % 3])
+$('#next').onclick = () => go(ORDER[(ORDER.indexOf(V) + 1) % 3])
+addEventListener('keydown', (e) => { if (e.target.closest('input,textarea,select,[contenteditable],[data-bit]')) return; if (e.key === 'ArrowLeft') $('#prev').click(); if (e.key === 'ArrowRight') $('#next').click() })
+addEventListener('resize', renderFelt)
+render()
+</script>
+</body>
+</html>

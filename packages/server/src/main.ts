@@ -14,6 +14,8 @@ import { providersFromEnv } from './ai-providers.js'
 import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore } from '@byd/render/queue'
 import { MemoryAccountPlanStore, plansAtStart, type AccountPlanStore } from './account-plans.js'
 import { plansFromEnv, plansLine } from './quotas.js'
+import { printProvidersOf } from './print-providers.js'
+import { inviteKeepFrom, sweepSpent } from './sweep.js'
 
 // The tiers stop the start when they cannot be read (#1192): an error must never quietly become
 // unlimited, nor quietly become closed. Said in the log, then out — before anything else is opened,
@@ -55,6 +57,19 @@ try {
 //                    number or null, and a measure a tier does not name is unlimited. Unset or empty,
 //                    nothing is limited — the beta's state. Set and unreadable, or missing a tier an
 //                    account has, the app does not start, and the log says why
+//   INVITE_KEEP_MS — how long an invitation is kept after it was used or ran out (#1277, G6);
+//                    default and most 30 days. Unreadable, the app does not start, and the log
+//                    says why
+
+// Read before anything is opened, like the tiers: a keep the box cannot read must not quietly
+// become the default.
+let inviteKeepMs: number
+try {
+  inviteKeepMs = inviteKeepFrom(process.env)
+} catch (e) {
+  console.error(JSON.stringify({ msg: 'sweep', error: (e as Error).message }))
+  process.exit(1)
+}
 
 const port = Number(process.env['PORT'] ?? 8080)
 const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
@@ -129,7 +144,15 @@ if (corpus) console.log(JSON.stringify({ msg: 'corpus', accounts: corpus.account
 // the default and whether any ceiling is set at all; never who has which (DRIFT §8).
 const plans = await plansAtStart(process.env, accountPlans).catch(refusePlans)
 console.log(JSON.stringify(plansLine(plans)))
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans })
+// What can no longer be used (#1277): swept once before the door opens, and every hour with the
+// stale tables below. The line says how many went from each table, never which (DRIFT §8). A sweep
+// that fails is said and does not keep the door shut: the next one comes within the hour.
+const sweep = () => sweepSpent({ auth, projects, store }, new Date(), inviteKeepMs).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'sweep', error: (e as Error).message })))
+await sweep()
+// Testtryckeriet stands where a print partner will (F1, F2, #1208): the print package is prepared
+// by it, so what the designer sees and downloads is what a partner would be sent.
+const printProviders = printProvidersOf(STANDARD_TYPES)
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {
@@ -137,11 +160,13 @@ const evictor = setInterval(() => {
     if (ids.length > 0) console.log(JSON.stringify({ msg: 'evicted', tables: ids }))
   })
 }, 60_000)
-// The timeout in C9: a table nobody has touched for a day ends for the group that forgot it.
+// The timeout in C9: a table nobody has touched for a day ends for the group that forgot it. And
+// what can no longer be used goes (#1277).
 const sweeper = setInterval(() => {
   void host.endStale(new Date(Date.now() - idleEndMs)).then((ids) => {
     if (ids.length > 0) console.log(JSON.stringify({ msg: 'ended-stale', tables: ids }))
   })
+  void sweep()
 }, 3600_000)
 
 // Drain (DRIFT §3): stop accepting, let in-flight envelopes commit, tell clients to

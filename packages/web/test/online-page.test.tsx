@@ -103,9 +103,41 @@ describe('OnlinePage (C2): both roles in one window', () => {
     expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
   })
 
-  // A flag about a card (#1142): pointing it out on the felt is a press that neither lifts it, opens
-  // its ring nor starts a drag, and the flag carries it.
-  it('points out a card on the felt with the next press, and flags it', async () => {
+  // On a screen with a board the flag is a panel beside the felt and not the phone's sheet over it
+  // (#1255, beställarens val B): nothing is dimmed, the panel says which moment it stamps, and the
+  // note is sent from the keyboard.
+  it('flags from a panel docked beside the felt, with the moment said and the note sent by Ctrl+Enter', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await open(id, 'A', 'Ada')
+    // Shuffled once Ada sits, so it is the last thing that happened and not her sitting down.
+    await table.send({ v: 'shuffle', pile: 'draw' })
+    await screen.findByText(/blandade/)
+    const flag = screen.getByRole('button', { name: /Flagga/ })
+    fireEvent.click(flag)
+    const panel = await screen.findByRole('dialog', { name: 'Flagga' })
+    expect(panel.closest('.byd-online-play')).not.toBeNull()
+    expect(panel.getAttribute('aria-modal')).toBeNull()
+    expect(document.querySelector('.byd-sheet-backdrop')).toBeNull()
+    expect(within(panel).getByText(/blandade/)).toBeTruthy()
+    const note = within(panel).getByPlaceholderText(/Vad hände/)
+    await waitFor(() => expect(document.activeElement).toBe(note))
+    fireEvent.change(note, { target: { value: 'Oklar regel' } })
+    fireEvent.keyDown(note, { key: 'Enter', ctrlKey: true })
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', note: 'Oklar regel' } }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Flagga' })).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(flag))
+    // The moment is the last thing that happened at the table, and a flag is not one: a second flag
+    // still stamps the shuffle, not «Du flaggade».
+    fireEvent.click(flag)
+    expect(within(await screen.findByRole('dialog', { name: 'Flagga' })).getByText(/blandade/)).toBeTruthy()
+    table.close()
+  })
+
+  // A flag about a card (#1142): while the panel stands, a press on a card points it out and does
+  // nothing else — it neither lifts it, opens its ring nor starts a drag — with no mode in between.
+  it('points out a card on the felt with a press while the panel stands, and flags it', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
@@ -118,15 +150,29 @@ describe('OnlinePage (C2): both roles in one window', () => {
     })
     const card = felt.getAttribute('data-component')!
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Ett kort/ }))
+    const panel = await screen.findByRole('dialog', { name: 'Flagga' })
+    expect(within(panel).getByText('Klicka på ett kort')).toBeTruthy()
     fireEvent.pointerDown(felt, { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerUp(felt, { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.click(felt)
     expect(document.querySelector('[role="menu"], .byd-ring')).toBeNull()
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Flagga kortet' })).getByRole('button', { name: 'Flagga' }))
+    expect(within(panel).getByRole('button', { name: 'Ta bort kortet' })).toBeTruthy()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', component: card } }))
     expect((await run.store.read(id)).filter((l) => l.intent.v !== 'flag' && l.intent.v !== 'seat.claim')).toHaveLength(1)
     table.close()
+  })
+
+  it('closes the panel on Escape, flags nothing, and gives the focus back to «Flagga»', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    const flag = screen.getByRole('button', { name: /Flagga/ })
+    fireEvent.click(flag)
+    const note = within(await screen.findByRole('dialog', { name: 'Flagga' })).getByPlaceholderText(/Vad hände/)
+    fireEvent.keyDown(note, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Flagga' })).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(flag))
+    expect((await run.store.read(id)).some((l) => l.intent.v === 'flag')).toBe(false)
   })
 
   // The same need and the same way out (#31): distance mode shares the phone's session controls,

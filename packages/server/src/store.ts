@@ -1,4 +1,4 @@
-import { PHYSICAL_VERBS, type Applied, type GameVersionId } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied, type GameVersionId, type Seating } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import type { Deck } from './faces.js'
 import { QuotaReached, startThatFrees, tableGrowth, withFrees, type TableCeilings, type TableUse } from './quotas.js'
@@ -18,7 +18,7 @@ export type { Deck }
 // the test leader who pressed; one opened at the raw door by the account that opened it. It stays
 // when the game is taken away, which is why it is written down rather than read through `project`.
 // A table from a game from before accounts, or from a server without accounts, has none.
-export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; accountId?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
+export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; accountId?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string; seating?: Seating }
 // A session as it is read back: everything but its decks (#1012). A deck names its pictures and
 // typefaces by hash since #1028, but one made before that carries them as data URLs, tens of
 // megabytes for a game with art on every card — and the session is read by every door a table has:
@@ -51,6 +51,10 @@ export type LogStore = {
   deckOf(sessionId: string, version: GameVersionId): Promise<Deck | null>
   append(sessionId: string, lines: readonly Applied[]): Promise<void>
   read(sessionId: string): Promise<Applied[]>
+  // The lines whose verb is one of `verbs`, in order (#1225): what «Väntar på dig» reads of every
+  // table of every game — its flags and the versions they were raised on — without the moves
+  // between them, which are most of a long log.
+  readVerbs(sessionId: string, verbs: readonly Applied['intent']['v'][]): Promise<Applied[]>
   // Sessions whose latest line (or creation, if none) is older than `olderThan` and that have
   // not ended: what the timeout in C9 ends for a group that forgot.
   staleSessions(olderThan: Date): Promise<string[]>
@@ -81,11 +85,24 @@ export type LogStore = {
   // «Tillbaka till bordet» (#690): the account's newest live admission at a table is given a new
   // token in place of its old one, keeping its seat, name and account; null when there is none.
   returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null>
+  // The admissions never opened whose wait ran out before `now` (#1277, G6): opening one makes it
+  // live for longer than `pendingMs`, so one that still expires within `pendingMs` of being issued
+  // was never opened. Its name was never written anywhere else. One kicked before it was opened
+  // (revoked before it ran out), and one claimed to an account, are the table's and stay. How many
+  // went.
+  sweepGuests(now: string, pendingMs: number): Promise<number>
 }
 
 // A table as a list can show it before anyone opens it: which session, and the moment of its
 // latest line — null while nothing has happened yet.
 export type SessionSummary = { id: string; lastAt: string | null }
+
+// An admission given and never opened, whose wait is over: what `sweepGuests` takes.
+function neverOpened(g: GuestRecord, now: string, pendingMs: number): boolean {
+  const expires = Date.parse(g.expiresAt)
+  if (g.accountId !== undefined || expires > Date.parse(now) || expires > Date.parse(g.issuedAt) + pendingMs) return false
+  return g.revokedAt === undefined || Date.parse(g.revokedAt) >= expires
+}
 
 export class SeqConflictError extends Error {
   constructor(sessionId: string, expected: number, got: number) {
@@ -176,6 +193,10 @@ export class MemoryLogStore implements LogStore {
     return structuredClone(log)
   }
 
+  async readVerbs(sessionId: string, verbs: readonly Applied['intent']['v'][]): Promise<Applied[]> {
+    return (await this.read(sessionId)).filter((line) => verbs.includes(line.intent.v))
+  }
+
   async sessionsOf(project: string): Promise<SessionSummary[]> {
     const out: SessionSummary[] = []
     for (const [id, record] of this.sessions) {
@@ -263,6 +284,16 @@ export class MemoryLogStore implements LogStore {
     if (!live) return null
     live.tokenHash = tokenHash
     return structuredClone(live)
+  }
+
+  async sweepGuests(now: string, pendingMs: number): Promise<number> {
+    let n = 0
+    for (const [sessionId, guests] of this.guests) {
+      const kept = guests.filter((g) => !neverOpened(g, now, pendingMs))
+      n += guests.length - kept.length
+      this.guests.set(sessionId, kept)
+    }
+    return n
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {

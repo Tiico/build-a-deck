@@ -1,7 +1,8 @@
+import { withQuery } from '../../support/api.js'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
-import type { Page } from '@playwright/test'
+import type { Page, Request } from '@playwright/test'
 import { PHONE } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -36,6 +37,13 @@ if (!OUT) throw new Error('the stack did not say where the built web app is (BYD
 // spent the way it was left for: features the phone draws. Dice on the phone (#1163) and the turn
 // row (K30), each under the line on its own branch, met on main at 165.8 kB. What the turn costs
 // on the phone, about 0.9 kB, is its schema on the wire, its words, the tab's title and the row.
+//
+// Left where it stands by #1304, which took the phone back under it instead. The hand stood 18 bytes
+// under the line on CI when the issue was taken, and 15 kB of that was code a phone never runs: the
+// project document and the rulebook's parser, reached for two felt sizes and one unit, and zod's
+// JSON Schema writer (`vite.config.ts`, `phone-reach.test.ts`). Measured on a Mac after it, 148.6
+// kB before the hand is drawn, and 2.9 kB of help box after. What is above the mark is again room
+// for features the phone draws (the display name's welcome #1254, the beta terms #1272).
 const PHONE_JS_GZ = 167_000
 const JOIN_JS_GZ = 122_000
 
@@ -52,6 +60,53 @@ const scriptsAskedFor = (page: Page): string[] => {
   return asked
 }
 
+// What is weighed is what the page asked for *before* the surface stood in the document (#1304).
+// Until then the sum was taken at whatever moment the assertion ran, so a part the page fetches on
+// purpose once it has painted — the help box's inside, which L32 and #346 send after the first
+// painting so it is there before anyone presses — was counted or not by a race with the browser's
+// idle time: 2.9 kB either side of the line. Now the page writes down when the surface first stood
+// in the document, the wire is let go quiet, and each script is weighed by when it was asked for.
+// A script asked for before the surface was drawn is the surface's, whether or not it was needed.
+const DRAWN_AT = '__bydDrawnAt'
+const watchDrawn = async (page: Page, selector: string): Promise<void> => {
+  await page.addInitScript(
+    ({ selector, key }) => {
+      const store = window as unknown as Record<string, number>
+      const look = () => {
+        if (store[key] !== undefined || !document.querySelector(selector)) return false
+        store[key] = Date.now()
+        return true
+      }
+      new MutationObserver((_, watch) => look() && watch.disconnect()).observe(document, { childList: true, subtree: true })
+    },
+    { selector, key: DRAWN_AT },
+  )
+}
+type Weighed = { before: string[]; after: string[] }
+const scriptsBeforeDrawn = (page: Page): (() => Promise<Weighed>) => {
+  const asked = new Map<string, Request>()
+  page.on('request', (r) => {
+    const path = new URL(r.url()).pathname
+    if (path.endsWith('.js') && !asked.has(path)) asked.set(path, r)
+  })
+  return async () => {
+    await page.waitForLoadState('networkidle')
+    const drawn = await page.evaluate((key) => (window as unknown as Record<string, number | undefined>)[key], DRAWN_AT)
+    if (drawn === undefined) throw new Error('the page never wrote down when the surface was drawn; nothing here can be weighed')
+    const before: string[] = []
+    const after: string[] = []
+    for (const [path, r] of asked) {
+      const at = r.timing().startTime
+      if (!(at > 0)) throw new Error(`${path} has no start time to weigh it by (${at})`)
+      ;(at <= drawn ? before : after).push(path)
+    }
+    return { before, after }
+  }
+}
+const weightOf = (paths: string[]): number => paths.reduce((sum, p) => sum + gz(p), 0)
+const account = ({ before, after }: Weighed): string =>
+  [...before.map((p) => `${p} ${gz(p)}`), ...after.map((p) => `${p} ${gz(p)} (after the first frame, not weighed)`)].join('\n')
+
 // The surfaces a phone never draws, by the chunk each one is fetched in. Read off the build so a
 // renamed page fails here as missing rather than passing as absent.
 const NEVER_ON_A_PHONE = ['TablePage', 'ObserverPage', 'OnlinePage', 'EditorPage', 'NewProjectPage', 'HomePage']
@@ -65,25 +120,29 @@ test.describe('the phone fetches the phone and not the whole app (#760)', () => 
   test('draws the hand on /play from its own chunks, and none of them is the felt', async ({ table, player }) => {
     const { page } = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
     // The fixture opened the address already; open it again with the wire watched from the start.
-    const asked = scriptsAskedFor(page)
+    await watchDrawn(page, '[data-page="player"]')
+    const asked = scriptsBeforeDrawn(page)
     await page.reload()
     await expect(page.locator('[data-page="player"]')).toBeVisible()
-    // Not vacuous: the page did go to the network for script, and for the hand's own chunk.
-    expect(asked).toContain(chunkOf('PlayerPage'))
-    expect(asked.filter((p) => NEVER_ON_A_PHONE.some((name) => p === chunkOf(name)))).toEqual([])
-    const weight = asked.reduce((sum, p) => sum + gz(p), 0)
-    expect(weight, asked.map((p) => `${p} ${gz(p)}`).join('\n')).toBeLessThan(PHONE_JS_GZ)
+    const weighed = await asked()
+    // Not vacuous: the page did go to the network for script, and for the hand's own chunk; and the
+    // help box's inside, which comes once the hand has painted, is told apart from it.
+    expect(weighed.before).toContain(chunkOf('PlayerPage'))
+    expect(weighed.after).toContain(chunkOf('HelpBox'))
+    expect([...weighed.before, ...weighed.after].filter((p) => NEVER_ON_A_PHONE.some((name) => p === chunkOf(name)))).toEqual([])
+    expect(weightOf(weighed.before), account(weighed)).toBeLessThan(PHONE_JS_GZ)
   })
 
   test('draws the seat picker on /join from its own chunks, under an alarm of its own', async ({ table, open }) => {
     const { page } = await open(PHONE, 'about:blank')
-    const asked = scriptsAskedFor(page)
+    await watchDrawn(page, '[data-page="join"]')
+    const asked = scriptsBeforeDrawn(page)
     await page.goto(`/join?code=${table.code}`)
     await expect(page.locator('[data-page="join"]')).toBeVisible()
-    expect(asked).toContain(chunkOf('JoinPage'))
-    expect(asked.filter((p) => NEVER_ON_A_PHONE.some((name) => p === chunkOf(name)))).toEqual([])
-    const weight = asked.reduce((sum, p) => sum + gz(p), 0)
-    expect(weight, asked.map((p) => `${p} ${gz(p)}`).join('\n')).toBeLessThan(JOIN_JS_GZ)
+    const weighed = await asked()
+    expect(weighed.before).toContain(chunkOf('JoinPage'))
+    expect([...weighed.before, ...weighed.after].filter((p) => NEVER_ON_A_PHONE.some((name) => p === chunkOf(name)))).toEqual([])
+    expect(weightOf(weighed.before), account(weighed)).toBeLessThan(JOIN_JS_GZ)
   })
 
   // Splitting the script must not buy its bytes back in time. A chunk the entry asks for once it
@@ -192,7 +251,7 @@ test.describe('every surface speaks only its own words, in its reader’s langua
       const { page, admission } = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
       const asked = scriptsAskedFor(page)
       const missing = missingWords(page)
-      await page.goto(`${admission.playUrl}&lang=${lang}`)
+      await page.goto(withQuery(admission.playUrl, `lang=${lang}`))
       await expect(page.locator('[data-page="player"]')).toBeVisible()
       expect(catalogues(asked)).toEqual([`${lang}.play`, `${lang}.status`])
       expect(missing).toEqual([])

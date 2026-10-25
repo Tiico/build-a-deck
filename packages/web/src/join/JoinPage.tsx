@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { codeOfAddress, type SeatView } from '@byd/protocol'
+import { codeOfAddress, type Seating, type SeatView } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
@@ -13,6 +13,7 @@ import { noticeFor } from '../status/notice.js'
 import { useT } from '../i18n/index.js'
 import { useCodeField } from './codeField.js'
 import { useWide } from './wide.js'
+import { guestAddress } from '../guestAddress.js'
 import { ArrowGlyph } from '../glyphs.js'
 import './join.css'
 
@@ -66,6 +67,8 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   const [sessionId, setSessionId] = useState<string | null>(null)
   // The game the code leads into (#675), when the table was started from one.
   const [game, setGame] = useState<string | null>(null)
+  // How the people at the table sit (#1286), when the host was asked: it picks the one way in.
+  const [seating, setSeating] = useState<Seating | null>(null)
   const [lookup, setLookup] = useState<'gone' | 'offline' | null>(null)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
@@ -79,8 +82,9 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
         if (!alive) return
         clearTimeout(deadline)
         if (r.ok) {
-          const found = (await r.json()) as { session: string; name?: string }
+          const found = (await r.json()) as { session: string; name?: string; seating?: Seating }
           setGame(found.name ?? null)
+          setSeating(found.seating ?? null)
           setSessionId(found.session)
         }
         // A code the server will not honour is a room that is gone — never issued, lapsed, rotated
@@ -206,15 +210,16 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
       }
     }
     if (!token) return
-    // The code travels with them: it is the only way back to this picker (#12, DRIFT §9).
-    const next = new URLSearchParams({ session: sessionId, code, ...(seat === null ? {} : { seat }), name: name.trim(), token })
+    // The code travels with them: it is the only way back to this picker (#12, DRIFT §9). The token
+    // goes in the fragment and the name nowhere (#1278): the table knows it from the token.
+    const next = new URLSearchParams({ session: sessionId, code, ...(seat === null ? {} : { seat }) })
     if (server) next.set('server', server)
-    onSit(`${page}?${next.toString()}`)
+    onSit(guestAddress(page, next, token))
   }
 
   // The suggested way in is the first button and the one Enter takes: «Sätt dig» on a phone, and
   // playing on this screen on a laptop (#675, beslut 3).
-  const suggested = wide ? '/online' : '/play'
+  const suggested = seating === 'screen' ? '/play' : seating === 'computer' || wide ? '/online' : '/play'
   const room = t('join.room', { code: code.toUpperCase() })
   // A phone says which seat is chosen; a laptop says how many are left (L77), because whoever
   // opens a link at a desk is asking whether there is room for her. The picker shows the choice.
@@ -235,7 +240,29 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   // only watching are the lines under it — still ways in, but not a second and a third button the
   // reader has to tell apart before she has played at all. They are buttons drawn as links: each
   // buys a seat or a look before it goes anywhere, so neither is an address.
-  const ways = wide ? (
+  // A table that knows how its people sit has one way in on every screen (#1286, variant B): the
+  // hand at a table around a TV — in a phone or a computer alike, since the table is on the TV —
+  // and the table with the hand at a table of computers, where a phone gets the hand alone (#99).
+  // The one at a TV table who is not in the room has a quiet line to the whole table. A table
+  // started before the question asks the screen instead, as below.
+  const ways = seating ? (
+    <>
+      {seating === 'screen' && <p className="byd-join-lead">{t('join.screen.lead')}</p>}
+      <button type="submit" className="byd-primary" disabled={!chosen || lost} {...working(busy !== null && busy !== '/observe')}>
+        {t('join.go')}
+      </button>
+      <div className="byd-join-links">
+        {seating === 'screen' && (
+          <button type="button" className="byd-join-link" disabled={!chosen || lost} {...working(busy === '/online')} onClick={() => void go('/online', chosen)}>
+            {t('join.away')}
+          </button>
+        )}
+        <button type="button" className="byd-join-observe byd-join-link" {...working(busy === '/observe')} onClick={() => void go('/observe', null)}>
+          {t('join.observe')}
+        </button>
+      </div>
+    </>
+  ) : wide ? (
     <>
       <button type="submit" className="byd-primary" disabled={!chosen || lost} {...working(busy === '/online')}>
         {t('join.go')}

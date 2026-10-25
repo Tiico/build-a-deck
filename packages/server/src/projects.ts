@@ -38,6 +38,11 @@ const ZoneDef = z.object({
   // leaves it there, and back in this pile it lies last again. Piles only.
   bottom: z.object({ cardRef: z.string().min(1), face: FaceId }).optional(),
 })
+// Where in its zone a piece of material lies (#1292): the middle of the piece, in the zone's own
+// millimetres. In an area each seat has, it is said from seat A's chair — along the rim from the
+// seat's left, and inwards from the far side — and turned to face every other seat's edge.
+export const MaterialAt = z.object({ x: z.number(), y: z.number() })
+export type MaterialAt = z.infer<typeof MaterialAt>
 // One line of the game's dice (K5, #1136): which kind, how many, and where. Its own schema because
 // the editor's `setDice` holds a list to it as well as the stored document does (#1139).
 export const ProjectDie = z
@@ -47,6 +52,9 @@ export const ProjectDie = z
     perSeat: z.boolean().optional(),
     zone: z.string().min(1).optional(),
     role: z.string().min(1).optional(),
+    // The point the designer dragged the line to (#1292); without one the row lies where the
+    // recipe finds room, as every die written before there were points does.
+    at: MaterialAt.optional(),
   })
   .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a die lies in a zone or in a role, and only one' })
 export type ProjectDie = z.infer<typeof ProjectDie>
@@ -60,7 +68,20 @@ export const ProjectSetup = z.object({
   // What every seat keeps count of (C4): one counter token per entry in the seat's counters zone.
   // `id` is what a rule names it by (#708, B7), so a rule follows the counter when it is renamed.
   // A counter written before it had one is known by its name (`counterId`).
-  counters: z.array(z.object({ id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(), name: z.string().min(1).max(24), start: z.number().int() })).optional(),
+  // Where a counter lies is material like a die's (#1292): `role` is an area each seat has, the
+  // counters zone when it says none, and `at` the point in it; without a point the counters zone
+  // lays its chips along the rim as it always has.
+  counters: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(),
+        name: z.string().min(1).max(24),
+        start: z.number().int(),
+        role: z.string().min(1).optional(),
+        at: MaterialAt.optional(),
+      }),
+    )
+    .optional(),
   // Whether the game goes in turns, and which way round the table (K30). Absent is a game without
   // turns, which is every game written before there were turns.
   turns: z.enum(['clockwise', 'counterclockwise']).optional(),
@@ -202,7 +223,10 @@ export type ProjectSummary = { id: string; name: string; rev: number; tables?: n
 // order — and nothing else needs naming: the user never has to commit.
 // `atSeq` is how far the edit log had come when the version was made (D3), so an actor knows
 // which edits are already in it.
-export type VersionSummary = { rev: number; at: string; label?: string; atSeq?: number }
+// `by` is the account that saved it (#1225), so «Väntar på dig» can say that a co-editor saved a
+// version. A version without it has nobody known: one brought in with an import, one saved without
+// an account, and most of those saved before the field — none is ever guessed at.
+export type VersionSummary = { rev: number; at: string; label?: string; atSeq?: number; by?: string }
 export type RestoredVersion = { rev: number; at: string; label?: string; doc: ProjectDoc }
 
 // A history is one save after another from 1 (B4); what would read otherwise is refused whole.
@@ -250,12 +274,13 @@ export type ProjectStore = {
   // goes through here, so this is where the rule holds rather than at each of the doors.
   // `ceilings.storageBytes` is the owner's ceiling on what its games name (#1197), held as for
   // `create`; a version that names nothing new is never refused.
+  // `by` is the account that saves (#1225), kept with the version and never asked for again.
   // `edits` go into the log in the same step as the version, after the ceiling is asked (#1233):
   // the document a `PUT` restores is in the log exactly when its version is answered, so one
   // refused for the ceiling, or as a conflict, has left no trace. A document that is already the
   // stored one makes no version, but its edits are still logged: they are what the log says now.
-  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits?: readonly AppliedEdit[]): Promise<ProjectRecord | 'conflict' | 'missing'>
-  // The history, newest first.
+  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits?: readonly AppliedEdit[], by?: string): Promise<ProjectRecord | 'conflict' | 'missing'>
+  // The history, newest first. The first version is the one who made the game's (#1225).
   versions(id: string): Promise<VersionSummary[]>
   // The project as it stood at a revision; null when there is no such version.
   at(id: string, rev: number): Promise<ProjectRecord | null>
@@ -281,17 +306,20 @@ export type ProjectStore = {
   acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null>
   // The project an invitation that can still be followed at `now` leads to (#691), without using it.
   inviteTo(tokenHash: string, now: string): Promise<string | null>
+  // The invitations used, or run out unused, before `before` (#1277, G6): a third person's address
+  // kept for nothing. Dela lists only the ones still waiting. How many went.
+  sweepInvites(before: string): Promise<number>
 }
 
 export class MemoryProjectStore implements ProjectStore {
   private readonly docs = new Map<string, ProjectRecord>()
   // The history (B4), by project: one entry per save, appended and never rewritten.
-  private readonly history = new Map<string, { rev: number; at: string; label?: string; atSeq?: number; doc: ProjectDoc }[]>()
+  private readonly history = new Map<string, { rev: number; at: string; label?: string; atSeq?: number; by?: string; doc: ProjectDoc }[]>()
   // The edit log between saves (D3), by project.
   private readonly edits = new Map<string, AppliedEdit[]>()
   // Who else a project is shared with (D3), by project.
   private readonly shared = new Map<string, Map<string, Role>>()
-  private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean }>()
+  private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean; usedAt?: string }>()
   // The writes held to a ceiling on storage, one after another (#1197): weighing asks the asset
   // store, which is a wait, and no other such write may come in between the count and the write.
   private turn: Promise<unknown> = Promise.resolve()
@@ -314,7 +342,7 @@ export class MemoryProjectStore implements ProjectStore {
       () => {
         const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
         this.docs.set(id, rec)
-        this.history.set(id, [{ rev: 1, at: new Date().toISOString(), doc: structuredClone(doc) }])
+        this.history.set(id, [{ rev: 1, at: new Date().toISOString(), ...(owner !== undefined ? { by: owner } : {}), doc: structuredClone(doc) }])
         return structuredClone(rec)
       },
     )
@@ -477,10 +505,17 @@ export class MemoryProjectStore implements ProjectStore {
     const found = this.invites.get(tokenHash)
     if (!found || found.used || found.expiresAt < now) return null
     found.used = true
+    found.usedAt = now
     return { project: found.project, email: found.email, role: found.role }
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = []): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  async sweepInvites(before: string): Promise<number> {
+    let n = 0
+    for (const [hash, i] of this.invites) if ((i.used ? (i.usedAt ?? '') : i.expiresAt) < before) n += Number(this.invites.delete(hash))
+    return n
+  }
+
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = [], by?: string): Promise<ProjectRecord | 'conflict' | 'missing'> {
     return this.storing<ProjectRecord | 'conflict' | 'missing'>(
       this.docs.get(id)?.owner,
       ceilings?.storageBytes,
@@ -502,7 +537,7 @@ export class MemoryProjectStore implements ProjectStore {
         this.logged(id, edits)
         const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
         this.docs.set(id, next)
-        this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), doc: structuredClone(doc) })
+        this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), ...(by !== undefined ? { by } : {}), doc: structuredClone(doc) })
         return structuredClone(next)
       },
     )
@@ -522,7 +557,7 @@ export class MemoryProjectStore implements ProjectStore {
   async versions(id: string): Promise<VersionSummary[]> {
     return [...(this.history.get(id) ?? [])]
       .sort((a, b) => b.rev - a.rev)
-      .map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), ...(v.atSeq !== undefined ? { atSeq: v.atSeq } : {}) }))
+      .map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), ...(v.atSeq !== undefined ? { atSeq: v.atSeq } : {}), ...(v.by !== undefined ? { by: v.by } : {}) }))
   }
 
   async at(id: string, rev: number): Promise<ProjectRecord | null> {

@@ -1,5 +1,8 @@
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { ProjectDoc } from './projects.js'
+import { CHIP_MM, DIE_MM } from './felt-sizes.js'
+
+export { CHIP_MM, DIE_MM }
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // The setup as the editor holds it (B5, K2), and the recipe behind it.
@@ -269,10 +272,8 @@ export function handGeometry(i: number, count: number): Geometry {
       return rect(along, y - 60, SEAT_ALONG, 60)
   }
 }
-// The chip a counter is drawn as, in the felt's own millimetres. The renderer re-exports this as
-// `TOKEN_MM` rather than keeping a second 24 beside it: where a chip lies and how wide a chip is
-// are the same question asked from two rooms (C4).
-export const CHIP_MM = 24
+// The chip a counter is drawn as, and the room a die takes, live in `felt-sizes.ts`: the phone
+// reads them too, and must not carry the project document to do it (#1304).
 // The room between the area in front of a seat and the chips beside it.
 const SEAT_GAP = 10
 // How far apart two of a seat's chips lie along its own rim (#89).
@@ -517,7 +518,6 @@ export function counterSpots(zone: Geometry, counters: number): { x: number; y: 
 // every zone standing in it — a pile with its card back and the band its name and table-mode
 // handle hang in (#881). A zone that holds this one, as the floor holds every zone, stands around
 // it and not in it. Only when no such stretch exists does the row lie across the middle anyway.
-export const DIE_MM = 30
 export function diceSpots(zone: Geometry, dice: number, others: Zone[] = []): { x: number; y: number }[] {
   const pitch = DIE_MM * 1.3
   const perRow = Math.max(1, Math.min(dice, Math.floor(zone.w / pitch)))

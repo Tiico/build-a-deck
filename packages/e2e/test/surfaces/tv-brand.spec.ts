@@ -1,15 +1,15 @@
 import { SMALL_TV, TV } from '../../support/devices.js'
-import { join } from '../../support/api.js'
+import { join, withQuery } from '../../support/api.js'
 import { expect, test } from '../../support/test.js'
 
 // Deckster's hand on the room's television (#1084, beslut B 2026-10-22): the mark and the name on a
-// line of their own at the top of the column, above the game's name. The column stands beside the
-// felt, so the line may cost the card under it its height and never the felt its size; and like
-// every word on the room's screen the name is at K26's 24 px.
+// line of their own above the game's name. Since the stage (#1290) the two stand in the foot under
+// the card, beside the felt and never on it; and like every word on the room's screen the name is
+// at K26's 24 px.
 for (const device of [SMALL_TV, TV]) {
   test(`the room's television wears the hand above the game's name at ${device.viewport.width}`, async ({ table, open }) => {
     const { page } = await open(device, `${table.tvUrl}&lang=sv`)
-    const brand = page.locator('[data-tv] > aside > [data-brand]')
+    const brand = page.locator('[data-tv] > aside .byd-tv-foot [data-brand]')
     await expect(brand).toBeVisible()
     const seen = await page.evaluate(() => {
       const aside = document.querySelector('[data-tv] > aside')!.getBoundingClientRect()
@@ -36,26 +36,18 @@ for (const device of [SMALL_TV, TV]) {
     expect(seen.mark[1]).toBeGreaterThanOrEqual(seen.px)
     expect({ aboveHead: seen.aboveHead, inColumn: seen.inColumn, besideFelt: seen.besideFelt }).toEqual({ aboveHead: true, inColumn: true, besideFelt: true })
 
-    // The line is paid for by the card being looked at, never by «Senast»: the latest lines are as
-    // tall with the line as they were without it. At 1920 the card was at its own height and the
-    // feed took what was over, so the line came out of the feed, and with CI's DejaVu and an
-    // observer's row it showed one line (tv-feed-rows).
-    const feed = () => page.evaluate(async () => {
-      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
-      return { feed: Math.round(document.querySelector('.byd-tv-feed')!.getBoundingClientRect().height), card: Math.round(document.querySelector('.byd-tv-inspect > div')!.getBoundingClientRect().height) }
-    })
-    const withLine = await feed()
-    await page.evaluate(() => document.querySelector('[data-brand]')!.remove())
-    const without = await feed()
-    expect(Math.abs(withLine.feed - without.feed), `«Senast» ${withLine.feed} px with the line, ${without.feed} px without`).toBeLessThanOrEqual(1)
-    expect(withLine.card, 'the card gives the line its height').toBeLessThan(without.card)
+    // The line costs the stage's card nothing it needs: the card still reads from the sofa beside it.
+    if (device === TV) {
+      const card = await page.locator('.byd-tv-stage figure > div').boundingBox()
+      expect(card!.width * 0.048, `the stage's card ${Math.round(card!.width)} px`).toBeGreaterThanOrEqual(24)
+    }
   })
 }
 
 // The observer's screen is not the room's (#573): it goes without the line.
 test('the observer’s screen goes without the hand', async ({ table, request, open }) => {
   const vera = await join(request, table, { name: 'Vera' })
-  const { page } = await open(TV, `${vera.observeUrl}&lang=sv`)
+  const { page } = await open(TV, withQuery(vera.observeUrl, `lang=sv`))
   await expect(page.locator('[data-tv] > aside')).toBeVisible()
   await expect(page.locator('[data-brand]')).toHaveCount(0)
 })

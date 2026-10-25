@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type Applied, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, SEATINGS, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -22,13 +22,16 @@ import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
 import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
-import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
+import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
+import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, splitFragment, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { inviteMail } from './invite-mail.js'
+import { NAME_MAX, nameOf } from './account-name.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
-import { widestBleedMm, type PrintProvider } from '@byd/print'
+import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
+import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, assetHash, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
@@ -37,10 +40,11 @@ import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
-import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
-import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, ownerNameOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
+import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
+import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
+import { TERMS, checkRegister, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -96,24 +100,25 @@ export type ServerOptions = {
   // without accounts nobody bears anything.
   plans?: Plans
   accountPlans?: AccountPlanStore
+  // The terms' versions (#1270, `terms.ts`): the box runs with `TERMS`, and a test with its own.
+  terms?: TermsRegister
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
 
 // The contract when a ceiling is met (#1192): 402, a code and the numbers, and nothing written.
 // `bearer` is `you` when the one asking bears the cost and `owner` when the game's owner does, with
-// `ownerName` beside it (#1198); the owner's address and tier are never said to anyone else. 402 because no other door uses it: 401 and
+// `ownerName` beside it (#1198, the account's own name since #1254); the owner's address and tier are never said to anyone else. 402 because no other door uses it: 401 and
 // 403 are login and role in the clients, 409 a taken seat or a conflict, and 429 rate limiting. The
 // client says it in the reader's words (A4), never as the status.
 function quotaRefused(res: ServerResponse, met: QuotaMet, bearer: Bearer): void {
   json(res, 402, { error: 'quota', quota: { ...met, ...bearer } })
 }
-// The owner as the contract says her to someone else (#1198): by the name her address gives, and
-// never by the address itself. An owner the box has no account for, or whose address has no word
-// that reads as a name, is said without one.
+// The owner as the contract says her to someone else (#1198): by the name she gave her account
+// (#1254), and never by the address nor by the word the address suggests (beslut 2). An owner the
+// box has no account for, or who has given no name, is said without one.
 async function ownerBearer(opts: ServerOptions, owner: string | undefined): Promise<Bearer> {
-  const email = owner === undefined ? undefined : (await opts.auth?.accountById(owner))?.email
-  const ownerName = email === undefined ? null : ownerNameOf(email)
+  const ownerName = owner === undefined ? null : ((await opts.auth?.accountById(owner))?.name ?? null)
   return ownerName === null ? { bearer: 'owner' } : { bearer: 'owner', ownerName }
 }
 // Who bears a game's cost, in the words of the contract: the one asking, or its owner.
@@ -206,7 +211,12 @@ const DeckBody = z.object({
 })
 
 // Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
-const JoinBody = z.object({ name: z.string().trim().min(1).max(64), seat: z.string().min(1).optional() })
+// What a game's table is started with (#1286): how the people at it sit, when the host was asked.
+// The body may be empty, as it was before the question.
+const StartBody = z.object({ seating: z.enum(SEATINGS).optional() })
+
+// The placeholder a masked name says (#1276) is nobody's name, at a seat or watching.
+const JoinBody = z.object({ name: z.string().trim().min(1).max(64).refine((name) => name !== REDACTED, 'the placeholder of a masked name is nobody’s name'), seat: z.string().min(1).optional() })
 const KickBody = z.object({ seat: z.string().min(1) })
 const ClaimBody = z.object({ token: z.string().min(1) })
 
@@ -321,6 +331,8 @@ const HEADERS_TIMEOUT_MS = KEEP_ALIVE_MS + 1_000
 // HTTP for the few things that are not a table (health, creating a session), and one
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
 export function createServer(given: ServerOptions): Server {
+  // A register that cannot say which version is in force stops the start, rather than a request.
+  checkRegister(given.terms ?? TERMS)
   const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter(), passkeyChallenges: given.passkeyChallenges ?? new PasskeyChallenges(), ...(given.ai ? { ai: { limiter: new KeyTryLimiter(), ...given.ai } } : {}) }
   const http = createHttpServer({ keepAliveTimeout: KEEP_ALIVE_MS, headersTimeout: HEADERS_TIMEOUT_MS }, (req, res) => {
     // A closing server lets go of a connection as soon as it goes quiet. Node hangs up the idle
@@ -331,7 +343,9 @@ export function createServer(given: ServerOptions): Server {
     })
     void route(opts, req, res)
   })
-  const wss = new WebSocketServer({ noServer: true })
+  // A client that offers the table's protocol is answered with it (#1278): one that offers protocols
+  // and hears none back is hung up on by the browser. The token beside it is read at the door.
+  const wss = new WebSocketServer({ noServer: true, handleProtocols: (offered) => (offered.has(TABLE_PROTOCOL) ? TABLE_PROTOCOL : false) })
 
   http.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
@@ -350,13 +364,17 @@ export function createServer(given: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const q = url.searchParams
+    // The token rides in the protocol header (#1278); an address with one is a page loaded before
+    // that, which still gets in.
+    const carried = tokenOfProtocols(req.headers['sec-websocket-protocol'])
     const ask: Admission = {
       seat: q.get('seat'),
       role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null,
       name: q.get('name'),
-      token: q.get('token'),
+      token: carried ?? q.get('token'),
       host: q.get('host'),
       owner: q.get('owner') === '1',
+      carried: carried !== null,
     }
     wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, req, ws, sessionId, ask))
   })
@@ -474,7 +492,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       // new — and the project it came from stays out of it.
       const session = await opts.store.loadSession(found.id)
       const named = session?.project && opts.projects ? await opts.projects.load(session.project) : null
-      return json(res, 200, { session: found.id, ...(named ? { name: named.name } : {}) })
+      // How the people at it sit (#1286), which picks the one way in the join page offers.
+      return json(res, 200, { session: found.id, ...(named ? { name: named.name } : {}), ...(session?.seating ? { seating: session.seating } : {}) })
     }
     // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
     const join = /^\/rooms\/([^/]+)\/join$/.exec(url.pathname)
@@ -514,7 +533,42 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (claimed === 'other') return json(res, 409, { error: 'another account has this session' })
       return json(res, 200, { session: claimed.sessionId, seat: claimed.seat, name: claimed.name })
     }
+    // The terms in force (#1270): which version, and whether it changed anything material. Public,
+    // since the terms are read before anyone accepts them; null while there are none.
+    if (req.method === 'GET' && url.pathname === '/terms') return json(res, 200, { current: termsInForce(registerOf(opts), clock(opts)) })
+    // Accepting the terms (#1270): only the version in force, so a tab opened before a change never
+    // accepts what its reader has not read. 409 says which version that is, null when there is none.
+    if (req.method === 'POST' && url.pathname === '/me/terms') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const { version } = TermsBody.parse(JSON.parse(await readBody(req)))
+      const now = clock(opts)
+      const current = termsInForce(registerOf(opts), now)?.version ?? null
+      if (version !== current) return json(res, 409, { error: 'not the terms in force', current })
+      await opts.auth.acceptTerms(account.id, current, now.toISOString())
+      res.writeHead(204)
+      res.end()
+      return
+    }
     if (url.pathname === '/me/ai-key' || url.pathname.startsWith('/me/ai-key/')) return await routeAiKey(opts, req, res, url)
+    // The account's own name (#1254): read with who the account is (`/auth/me`), written here. A name,
+    // or none, is the answer to the welcome step's question, and it is not put again.
+    if (req.method === 'PUT' && url.pathname === '/me/name') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      let raw: unknown
+      try {
+        raw = (JSON.parse(await readBody(req)) as { name?: unknown }).name
+      } catch {
+        return json(res, 400, { error: 'that is not a name' })
+      }
+      const named = nameOf(raw)
+      if (!named.ok) return json(res, 400, { error: `a name is text of at most ${NAME_MAX} characters on one line` })
+      await opts.auth.setName(account.id, named.name)
+      return json(res, 200, { name: named.name })
+    }
     if (req.method === 'GET' && url.pathname === '/me/played') {
       if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
       const account = await accountOf(opts.auth, req)
@@ -689,7 +743,7 @@ const FACE_LINK_SLACK_S = 600
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
-const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites']
+const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites', '/terms']
 // The one API path that is also a page: the invitation link in the mail (D3, #475). A browser
 // following it asks for HTML and gets the app, which accepts the invitation with a POST to the
 // same path; anything else asking gets the API's answer.
@@ -709,7 +763,10 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
   // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
   // hashes of the file being sent, and the edge's by a nonce made for this response (#1043).
-  if (type.startsWith('text/html')) head['content-security-policy'] = policy(await scriptHashesOf(file))
+  if (type.startsWith('text/html')) {
+    head['content-security-policy'] = policy(await scriptHashesOf(file))
+    head['referrer-policy'] = REFERRER_POLICY
+  }
   // The box compresses what it serves (DRIFT §13, #372): the blocking stylesheet uncompressed is
   // the single largest item in the first painting's price. `Vary` goes on everything that *could*
   // have been compressed rather than on what was, because a cache between here and the browser
@@ -753,11 +810,12 @@ async function fileAt(path: string): Promise<string | null> {
 }
 
 // What a connection asks to be (DRIFT §9), from its query string.
-type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean }
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; carried: boolean }
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
 // `host` marks the project owner's own seat or watch (L77): not the table's screen, but hers.
-type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true }
+// `guest` is the name on the admission a token bought, for the connection to be told (#1278).
+type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; guest?: string }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
@@ -770,7 +828,11 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
     if (ask.role === 'observer') {
       const name = ask.name?.trim()
-      return name && name.length <= 64 ? { seat: null, observer: name, host: true } : { refused: 'an observer needs a name of at most 64 characters' }
+      if (!name || name.length > 64) return { refused: 'an observer needs a name of at most 64 characters' }
+      // The owner who watches is said by the name she gave her account (#1254), whatever word the
+      // editor sent; without one, by that word, as before — never by her address.
+      const own = opts.auth ? (await accountOf(opts.auth, req))?.name : null
+      return { seat: null, observer: own ?? name, host: true }
     }
     return ask.seat === null ? { seat: null } : { seat: ask.seat, host: true }
   }
@@ -790,8 +852,8 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
     : null
-  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name } : { refused: 'an observer needs a token' }
-  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
+  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, guest: live.name } : { refused: 'an observer needs a token' }
+  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, guest: live.name } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
 }
 
@@ -901,7 +963,11 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   // Whose ceiling an edit of this editor's meets (#1195): the owner's whoever edits, and only the
   // owner is told it is her own; anyone else is told whose it is, by name (#1198).
   const bears: Bearer = role === 'owner' ? YOU : await ownerBearer(opts, rec.owner)
-  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
+  // Who the others see (#1254): an account is said by the name it gave, and otherwise by its address,
+  // as the header always said it, and the address rides beside it so a face keeps its colour when the
+  // name changes. The page's own word is only for a game from before accounts, where nobody is anyone.
+  const said = account ? { name: account.name ?? account.email, email: account.email } : { name }
+  const editor = { id: randomUUID(), ...said, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
   ws.on('message', (data) => {
@@ -1006,6 +1072,8 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
     return
   }
   const seat = who.seat
+  // Told before the snapshot, so the page has its name by the time it sees the seat it sits down in.
+  if (ask.carried && who.guest !== undefined) send({ t: 'admitted', name: who.guest })
   // The door shuts once this turn's answers have gone out. A seat that asks for its own way out
   // (#31) is emptied as part of that very commit, and is still owed the ack for it; `ws.close`
   // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro
@@ -1193,15 +1261,27 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
 // own requirements, and the rulebook beside them in our A5 (no partner's booklet format is built).
 // A version the physical checks stop at this provider's bleed (E5) has no card files, as its export
 // has none (G5, #1208); the order is still prepared, so what would be sent can be shown.
-async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, provider: PrintProvider, lang: ReturnType<typeof langOf>) {
+//
+// Which provider is the caller's question: one asked for by name, or the one an order to an address
+// would be routed to (F2, #1208), which is how the page asks, so what it shows is what the routing
+// would choose. No provider is a reason, never a quiet choice of another.
+async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, choose: (manifest: PrintManifest) => Route, lang: ReturnType<typeof langOf>) {
+  const deck = await deckOf(opts, rec)
+  const manifest = printManifestOf(deck, setupFromProject(rec), opts.registry)
+  const route = choose(manifest)
+  if (route.kind === 'none') return { refused: route.reason }
+  const provider = route.provider
   const found = checkedCards(rec, opts, provider)
   const errors = found.filter((f) => f.severity === 'error')
   const warnings = found.filter((f) => f.severity === 'warning')
-  const deck = await deckOf(opts, rec)
-  const order = provider.prepare(printManifestOf(deck, setupFromProject(rec), opts.registry))
+  const order = provider.prepare(manifest)
   const files: PrintFileJob[] = errors.length === 0 ? printFileJobsOf(deck, opts.registry, order, clock(opts).getTime()) : []
   const rulebook: PrintFileJob | undefined = rec.rules ? { name: PACKAGE_RULEBOOK, job: await bookletJobOf(opts, rec, rec.rules, lang) } : undefined
-  return { order, files, rulebook, errors, warnings }
+  // What the provider asks of each kind of thing in the order, in the order's own order: the
+  // requirements the files are made after, which the page says in words.
+  const types = [...new Map([...order.cards, ...order.hardware].map((c) => [`${c.type.id}@${c.type.version}`, c.type])).values()]
+  const requirements = types.map((type) => provider.requirements(type))
+  return { provider, manifest, order, requirements, files, rulebook, errors, warnings }
 }
 const PACKAGE_RULEBOOK = 'regelhafte.pdf'
 
@@ -1479,6 +1559,45 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 200, faces)
     return true
   }
+  // «Väntar på dig» (#1225, #1204 beslut B): per game, the players' survey answers and the new
+  // flags — for whoever may read the game's playtest (#524) — and the newest version when someone
+  // else saved it. Its own answer after the list, as the cards are, because it reads every table of
+  // every game; and of each table only its flags and version changes (`readVerbs`), never its moves.
+  if (req.method === 'GET' && url.pathname === '/me/waiting') {
+    if (!account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const out: Waiting = {}
+    // Who saved it, by the name she gave her account (#1254), and nobody's address nor its word.
+    const names = new Map<string, Promise<string | null>>()
+    const calledBy = (id: string): Promise<string | null> => {
+      const known = names.get(id)
+      if (known) return known
+      const asked = opts.auth ? opts.auth.accountById(id).then((a) => a?.name ?? null) : Promise.resolve(null)
+      names.set(id, asked)
+      return asked
+    }
+    for (const p of await projects.list(account.id)) {
+      const newest = (await projects.versions(p.id))[0]
+      if (!newest) continue
+      const about: GameWaiting = { rev: newest.rev }
+      if (canStartTables(p.role ?? 'owner')) {
+        const tables: WaitingTable[] = []
+        for (const { id } of await opts.store.sessionsOf(p.id)) {
+          const session = await opts.store.loadSession(id)
+          if (!session) continue
+          const [lines, surveys] = await Promise.all([opts.store.readVerbs(id, WAITING_VERBS), opts.surveys ? opts.surveys.list(id) : []])
+          tables.push({ version: session.version, lines, surveys })
+        }
+        about.playtest = playtestWaiting(newest.rev, tables)
+      }
+      if (newest.by !== undefined && newest.by !== account.id) about.other = { name: await calledBy(newest.by), at: newest.at }
+      out[p.id] = about
+    }
+    json(res, 200, out)
+    return true
+  }
   // The fan the page leads with (#1204): three of one game's cards, asked for after the list and
   // the first cards, so the first screen never waits for it.
   const fan = /^\/projects\/([^/]+)\/fan$/.exec(url.pathname)
@@ -1681,7 +1800,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    json(res, 200, await projects.versions(gate.rec.id))
+    // Who saved each version (#1225) is an account's number, and the history has no use for it.
+    json(res, 200, (await projects.versions(gate.rec.id)).map(({ by: _by, ...v }) => v))
     return true
   }
   // What every version changed, in one answer (#177). A row in the history says what its save
@@ -1813,7 +1933,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     await projects.invite({ tokenHash: hash(token), project: gate.rec.id, email: body.email, role: body.role, ...(account ? { by: account.id } : {}), expiresAt })
     const where = opts.appOrigin ?? opts.publicOrigin ?? ''
     // In the login mail's bands (#1107, L72), with the foot it had never had (#757).
-    await opts.mailer?.send(inviteMail(body.email, { from: account?.email, game: gate.rec.name, role: body.role, link: `${where}/invites/${token}`, lang, contact: opts.contact }))
+    await opts.mailer?.send(inviteMail(body.email, { from: account?.email, fromName: account?.name, game: gate.rec.name, role: body.role, link: `${where}/invites/${token}`, lang, contact: opts.contact }))
     json(res, 201, { ok: true })
     return true
   }
@@ -1847,7 +1967,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const rows = await projects.members(gate.rec.id)
-    const named = await Promise.all(rows.map(async (m) => ({ email: (await opts.auth?.accountById(m.account))?.email ?? m.account, role: m.role })))
+    // Each by the name they gave their account beside the address (#1254), which Dela has always shown.
+    const named = await Promise.all(
+      rows.map(async (m) => {
+        const who = await opts.auth?.accountById(m.account)
+        return { email: who?.email ?? m.account, ...(who?.name ? { name: who.name } : {}), role: m.role }
+      }),
+    )
     json(res, 200, named)
     return true
   }
@@ -1954,11 +2080,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
     return true
   }
-  // The print package for one provider (#1207, the page is #1208): GET says what the provider would
+  // The print package (#1207, the page and the download are #1208): GET says what the provider would
   // be sent and how far its files have come, and asks for any not yet drawn; `files/<name>` hands
-  // one over once it is. Nothing is held between the calls: both work it out of the document and
-  // the render store, as the export does. The owner's and the co-editors', whose work it is.
-  const packaging = /^\/projects\/([^/]+)\/print-package(?:\/files\/([^/]+))?$/.exec(url.pathname)
+  // one over once it is, and `zip` hands over the whole package once every file is. Nothing is held
+  // between the calls: each works it out of the document and the render store, as the export does.
+  // The owner's and the co-editors', whose work it is.
+  //
+  // The provider is named (`provider=<id>`), or it is the one an order to an address would be routed
+  // to (`to=<country>`, F2), which is how the page asks; then the provider's quote for that address
+  // comes with it, and an address no provider may print for says why (409, «no EU print»).
+  const packaging = /^\/projects\/([^/]+)\/print-package(?:\/files\/([^/]+)|\/(zip))?$/.exec(url.pathname)
   if (packaging && req.method === 'GET') {
     const gate = await allowed(decodeURIComponent(packaging[1] ?? ''), canEdit)
     if (!('rec' in gate)) {
@@ -1969,13 +2100,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 503, { error: 'render queue unavailable' })
       return true
     }
-    const provider = (opts.printProviders ?? []).find((p) => p.id === url.searchParams.get('provider'))
-    if (!provider) {
+    const providers = opts.printProviders ?? []
+    const named = url.searchParams.get('provider')
+    const to = url.searchParams.get('to')
+    const country = to === null ? null : Country.safeParse(to)
+    if (country && !country.success) {
+      json(res, 400, { error: 'to is a country code' })
+      return true
+    }
+    const provider = named === null ? undefined : providers.find((p) => p.id === named)
+    const dest = country?.success ? { country: country.data } : null
+    const choose = provider ? (): Route => ({ kind: 'routed', provider }) : named === null && dest ? (manifest: PrintManifest) => routeOrder(providers, manifest, dest) : null
+    if (!choose) {
       json(res, 404, { error: 'no such print provider' })
       return true
     }
     const rec = gate.rec
-    const pkg = await printPackageOf(opts, rec, provider, langOf(url.searchParams.get('lang')))
+    const lang = langOf(url.searchParams.get('lang'))
+    const pkg = await printPackageOf(opts, rec, choose, lang)
+    if ('refused' in pkg) {
+      json(res, 409, { error: pkg.refused })
+      return true
+    }
     const all = pkg.rulebook ? [...pkg.files, pkg.rulebook] : pkg.files
     if (packaging[2] !== undefined) {
       const name = decodeURIComponent(packaging[2])
@@ -2006,18 +2152,60 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     for (const file of pkg.files) files.push(await stateOf(file))
     const rulebook = pkg.rulebook ? await stateOf(pkg.rulebook) : null
     const states = rulebook ? [...files, rulebook] : files
+    const total = states.length
+    const done = states.filter((f) => f.state === 'done').length
+    const failed = states.filter((f) => f.state === 'failed').map((f) => f.name)
+    const providerFacts = { id: pkg.provider.id, label: pkg.provider.label, manufacturesIn: pkg.provider.manufacturesIn }
+    if (packaging[3] !== undefined) {
+      // The zip waits for every file, as the export does; a file the renderer gave up on is named in
+      // the manifest rather than holding the package back for ever.
+      if (done + failed.length < total) {
+        json(res, 202, { project: rec.id, rev: rec.rev, total, done, failed: failed.length })
+        return true
+      }
+      const contents = new Map<string, Uint8Array>()
+      for (const { name, job } of all) {
+        const bytes = await renders.output(job.hash)
+        if (bytes) contents.set(printPathOf(name), bytes)
+      }
+      const manifest: PrintPackageManifest = {
+        format: PRINT_PACKAGE_FORMAT,
+        formatVersion: PRINT_PACKAGE_FORMAT_VERSION,
+        createdAt: clock(opts).toISOString(),
+        ...(opts.release ? { release: opts.release } : {}),
+        project: { id: rec.id, name: rec.name },
+        rev: rec.rev,
+        provider: providerFacts,
+        requirements: pkg.requirements,
+        order: pkg.order,
+        files: pkg.files.map((f) => printPathOf(f.name)).filter((path) => contents.has(path)),
+        rulebook: pkg.rulebook && contents.has(printPathOf(pkg.rulebook.name)) ? printPathOf(pkg.rulebook.name) : null,
+        errors: pkg.errors,
+        warnings: pkg.warnings,
+        failed,
+        credits: creditsOf(rec),
+      }
+      const zip = packPrintPackage({ manifest, readme: printPackageReadme(lang, manifest), files: contents })
+      res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': printPackageDisposition(rec.name, rec.rev, lang), 'cache-control': 'no-store' })
+      res.end(zip)
+      return true
+    }
     json(res, 200, {
       project: rec.id,
       rev: rec.rev,
-      provider: { id: provider.id, label: provider.label, manufacturesIn: provider.manufacturesIn },
+      provider: providerFacts,
+      requirements: pkg.requirements,
+      // What the provider would answer for one copy sent to the address (F3), made up by a fake and
+      // marked so (`basis`); only when the package was asked for an address.
+      ...(dest && !provider ? { to: dest.country, quote: await pkg.provider.quote(pkg.manifest, dest) } : {}),
       order: pkg.order,
       files,
       rulebook,
       errors: pkg.errors,
       warnings: pkg.warnings,
-      total: states.length,
-      done: states.filter((f) => f.state === 'done').length,
-      failed: states.filter((f) => f.state === 'failed').length,
+      total,
+      done,
+      failed: failed.length,
     })
     return true
   }
@@ -2146,13 +2334,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // it, and a table that has ended has none to show.
     const admits = canStartTables(gate.role)
     const now = clock(opts).getTime()
-    const tables: { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }[] = []
+    const tables: { id: string; version: string; ended: boolean; lastAt: string | null; code?: string; seating?: Seating }[] = []
     for (const summary of summaries) {
       const actor = await opts.host.get(summary.id)
       if (!actor) continue
-      const session = admits && !actor.ended ? await opts.store.loadSession(summary.id) : null
-      const code = session?.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > now ? session.code : undefined
-      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}) })
+      // How it was started to be sat at (#1286) says which view «Öppna bordet» opens.
+      const session = await opts.store.loadSession(summary.id)
+      const code = admits && !actor.ended && session?.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > now ? session.code : undefined
+      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}), ...(session?.seating ? { seating: session.seating } : {}) })
     }
     json(res, 200, tables)
     return true
@@ -2191,16 +2380,22 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const rec = gate.rec
+    const raw = await readBody(req)
+    const { seating } = StartBody.parse(raw.trim() === '' ? {} : JSON.parse(raw))
     const id = randomUUID()
     const room = admission(opts)
     // Borne by the game's owner, whoever pressed (A2: the creator bears the cost of her own
     // testers, #1194). A game from before accounts has no owner, and its table no bearer.
     // And held to the owner's ceilings on tables (#1196): a test leader or a co-editor who presses
     // is told it is the owner's ceiling, never whose or which tier.
-    const record = { id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record }
+    const record = { id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record, ...(seating ? { seating } : {}) }
     if (!(await openTable(opts, res, record, () => bearerOf(opts, account, rec.owner)))) return true
     await opts.host.get(id)
-    json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
+    // The host of a table of computers sits down at its first seat (L77), which every seat is
+    // free to be when it starts; it is said here so that a page without the game's setup at hand,
+    // as Mina spel is, can seat her.
+    const hostSeat = seating === 'computer' ? record.setup.seats[0] : undefined
+    json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey, ...(hostSeat ? { hostSeat } : {}) })
     return true
   }
   // The whole log for the replay corpus (DRIFT §7): version, setup and every line with its
@@ -2482,7 +2677,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     if (opts.authBypass) {
       res.writeHead(200, {
         'content-type': 'application/json',
-        'set-cookie': await createLoginSession(opts, auth, email),
+        'set-cookie': (await createLoginSession(opts, auth, email)).cookie,
       })
       res.end(JSON.stringify({ ok: true, loggedIn: true }))
       return
@@ -2491,7 +2686,11 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     await auth.issueToken(hash(t), email, new Date(Date.now() + TOKEN_TTL_MS).toISOString())
     // The link must come back to this API, where the cookie lives: never the page's origin.
     const base = opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`
-    const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
+    // A fragment on `next` — the claim's, which holds a guest's token (#1278) — becomes the link's
+    // own: it is in the mail, never in the request the link makes, and the browser keeps it through
+    // the redirect below, which names no fragment of its own (RFC 9110 §10.2.2).
+    const [path, fragment] = splitFragment(safeNext(parsed.data.next))
+    const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(path)}${fragment}`
     await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang), opts.contact))
     return json(res, 200, { ok: true })
   }
@@ -2499,9 +2698,14 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const t = url.searchParams.get('token') ?? ''
     const email = t ? await auth.redeemToken(hash(t), now().toISOString()) : null
     if (!email) return json(res, 400, { error: 'the link is spent or too old; ask for a new one' })
+    const { cookie, account } = await createLoginSession(opts, auth, email)
+    // The fragment stays the browser's (#1278): it rides on to the page the redirect lands on.
+    const next = splitFragment(safeNext(url.searchParams.get('next') ?? undefined))[0]
+    // An account that has not been asked what the others should call it is asked first, in a step
+    // of its own, and goes on to where the link was going after it (#1254, variant C).
     res.writeHead(302, {
-      'set-cookie': await createLoginSession(opts, auth, email),
-      location: `${opts.appOrigin ?? ''}${safeNext(url.searchParams.get('next') ?? undefined)}`,
+      'set-cookie': cookie,
+      location: `${opts.appOrigin ?? ''}${account.asked ? next : `/login?step=name&next=${encodeURIComponent(next)}`}`,
     })
     res.end()
     return
@@ -2510,7 +2714,10 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const account = await accountOf(auth, req)
     // Nobody is an answer and not a failure (#744): every guest page asks, a guest is never logged
     // in (G1), and a 401 is written in the browser's console as an error on each of those pages.
-    return json(res, 200, { email: account?.email ?? null })
+    if (!account) return json(res, 200, { email: null })
+    // The account's own name and whether it has been asked for one (#1254), and where it stands
+    // against the terms (#1270): what the welcome step asks from, and what #1272 adds to it.
+    return json(res, 200, { email: account.email, name: account.name ?? null, asked: account.asked === true, terms: await standingOf(opts, auth, account.id) })
   }
   if (url.pathname.startsWith('/auth/passkeys')) return routePasskeys(opts, auth, req, res, url)
   if (req.method === 'POST' && url.pathname === '/auth/logout') {
@@ -2521,6 +2728,12 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     return
   }
   json(res, 404, { error: 'not found' })
+}
+
+const registerOf = (opts: ServerOptions): TermsRegister => opts.terms ?? TERMS
+const TermsBody = z.object({ version: z.string().max(32) })
+async function standingOf(opts: ServerOptions, auth: AuthStore, accountId: string): Promise<TermsStanding> {
+  return termsStanding(registerOf(opts), (await auth.termsAccepted(accountId)).map((a) => a.version), clock(opts))
 }
 
 // Passkeys (#1180): saving one needs the session the link made; logging in with one makes a
@@ -2540,7 +2753,7 @@ async function routePasskeys(opts: ServerOptions, auth: AuthStore, req: Incoming
   if (req.method === 'POST' && url.pathname === '/auth/passkeys/login') {
     const a = await passkeyLogin(c, await bodyOf(req))
     if (!a.login) return answer(a)
-    res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': await createLoginSession(opts, auth, a.login.email) })
+    res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': (await createLoginSession(opts, auth, a.login.email)).cookie })
     res.end(JSON.stringify(a.body))
     return
   }
@@ -2569,13 +2782,13 @@ async function bodyOf(req: IncomingMessage): Promise<unknown> {
   }
 }
 
-async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: string): Promise<string> {
+async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: string): Promise<{ cookie: string; account: Account }> {
   const account: Account = await auth.ensureAccount(email)
   const sid = token()
   const expires = new Date(Date.now() + SESSION_TTL_MS)
   await auth.createSession(hash(sid), account.id, expires.toISOString())
   const secure = (opts.publicOrigin ?? '').startsWith('https://') ? '; Secure' : ''
-  return `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`
+  return { cookie: `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`, account }
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

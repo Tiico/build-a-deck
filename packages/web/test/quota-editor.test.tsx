@@ -6,6 +6,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { plansFromEnv, type Plans } from '../../server/src/quotas.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 // A met ceiling where the press was, in the editor (#1198, variant A): the band under the header for
 // an edit or a save, the line under «Starta nytt bord» in the Bord tab (L31), and the upload's own
@@ -54,9 +55,11 @@ describe('a card over the ceiling, in the band (#1198)', () => {
     expect(said.querySelector('b')?.textContent).toBe('Kortet lades inte till.')
   })
 
-  it('names the owner to a co-editor, and never her address', async () => {
+  it('names the owner to a co-editor by the name she gave her account, and never her address', async () => {
     run = await startServer({ auth: true, authBypass: true, plans: tiers({ cardRowsPerProject: 3 }) })
     await login('ada@example.com')
+    // The name is the account's own (#1254); an owner without one is «spelets ägare».
+    await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
     const id = await made()
     const bo = await login('bo@example.com')
     await run.projects.share(id, bo, 'editor')
@@ -87,6 +90,7 @@ describe('a table over the ceiling, under «Starta nytt bord» (#1198)', () => {
     const id = await made()
     await editor(id, 'Bord')
     fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    await answerStart()
     await waitFor(() => expect(document.querySelector('.byd-tables-failed')).not.toBeNull())
     const line = document.querySelector<HTMLElement>('.byd-tables-failed')!
     expect(line.getAttribute('role')).toBe('alert')
@@ -97,6 +101,7 @@ describe('a table over the ceiling, under «Starta nytt bord» (#1198)', () => {
   it('says to a test leader that the tables are the owner’s, by name', async () => {
     run = await startServer({ auth: true, authBypass: true, plans: tiers({ openTables: 1 }) })
     await login('ada@example.com')
+    await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
     const other = await made({ ...projectDoc(), name: 'Hamnen' })
     expect((await fetch(`${run.http}/projects/${other}/sessions`, { method: 'POST' })).status).toBe(201)
     const id = await made()
@@ -104,6 +109,7 @@ describe('a table over the ceiling, under «Starta nytt bord» (#1198)', () => {
     await run.projects.share(id, bo, 'tester')
     await editor(id, 'Bord')
     fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    await answerStart()
     await waitFor(() => expect(document.querySelector('.byd-tables-failed span')).not.toBeNull())
     expect(document.querySelector('.byd-tables-failed span')?.textContent).toBe('Bordet startades inte. Ada har 1 av 1 bord öppna, och bord i spelet räknas mot Adas konto. Be Ada avsluta ett bord.')
   })

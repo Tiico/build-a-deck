@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { ObjectStore } from '@byd/render'
-import { PHYSICAL_VERBS, type Applied } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied, type Seating } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import { checkedHistory, liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
@@ -14,8 +14,11 @@ import { QuotaReached, growth, startThatFrees, tableGrowth, withFrees, type Limi
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
-import type { Account, AuthStore } from './auth.js'
+import type { Account, AuthStore, TermsAcceptance } from './auth.js'
 import type { PasskeyRecord } from './passkeys.js'
+
+type AccountRow = { id: string; email: string; name: string | null; name_asked: boolean }
+const accountOf = (row: AccountRow): Account => ({ id: String(row.id), email: row.email, name: row.name, asked: row.name_asked })
 
 export class PostgresAuthStore implements AuthStore {
   constructor(private readonly sql: postgres.Sql) {}
@@ -29,32 +32,42 @@ export class PostgresAuthStore implements AuthStore {
     return rows[0]?.email ?? null
   }
   async ensureAccount(email: string): Promise<Account> {
-    const rows = await this.sql<{ id: string }[]>`
-      insert into accounts (email) values (${email}) on conflict (email) do update set email = excluded.email returning id
+    const rows = await this.sql<AccountRow[]>`
+      insert into accounts (email) values (${email}) on conflict (email) do update set email = excluded.email returning id, email, name, name_asked
     `
-    return { id: String(rows[0]?.id), email }
+    const row = rows[0]
+    if (!row) throw new Error('the insert made no account')
+    return accountOf(row)
   }
   async accountById(id: string): Promise<Account | null> {
-    const [row] = await this.sql<{ id: string; email: string }[]>`select id, email from accounts where id = ${id}`
-    return row ? { id: String(row.id), email: row.email } : null
+    const [row] = await this.sql<AccountRow[]>`select id, email, name, name_asked from accounts where id = ${id}`
+    return row ? accountOf(row) : null
   }
   async accountByEmail(email: string): Promise<Account | null> {
-    const [row] = await this.sql<{ id: string; email: string }[]>`select id, email from accounts where email = ${email}`
-    return row ? { id: String(row.id), email: row.email } : null
+    const [row] = await this.sql<AccountRow[]>`select id, email, name, name_asked from accounts where email = ${email}`
+    return row ? accountOf(row) : null
   }
   async listAccounts(): Promise<Account[]> {
-    const rows = await this.sql<{ id: string; email: string }[]>`select id, email from accounts order by id`
-    return rows.map((row) => ({ id: String(row.id), email: row.email }))
+    const rows = await this.sql<AccountRow[]>`select id, email, name, name_asked from accounts order by id`
+    return rows.map(accountOf)
+  }
+  async setName(accountId: string, name: string | null): Promise<void> {
+    await this.sql`update accounts set name = ${name}, name_asked = true where id = ${accountId}`
   }
   async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
     await this.sql`insert into auth_sessions (session_hash, account_id, expires_at) values (${sessionHash}, ${accountId}, ${expiresAt})`
   }
   async sessionAccount(sessionHash: string, now: string): Promise<Account | null> {
-    const rows = await this.sql<{ id: string; email: string }[]>`
-      select a.id, a.email from auth_sessions s join accounts a on a.id = s.account_id where s.session_hash = ${sessionHash} and s.expires_at > ${now}
+    const rows = await this.sql<AccountRow[]>`
+      select a.id, a.email, a.name, a.name_asked from auth_sessions s join accounts a on a.id = s.account_id where s.session_hash = ${sessionHash} and s.expires_at > ${now}
     `
     const row = rows[0]
-    return row ? { id: String(row.id), email: row.email } : null
+    return row ? accountOf(row) : null
+  }
+  async sweepSpent(now: string): Promise<{ loginTokens: number; sessions: number }> {
+    const tokens = await this.sql`delete from login_tokens where used_at is not null or expires_at <= ${now} returning 1`
+    const sessions = await this.sql`delete from auth_sessions where expires_at <= ${now} returning 1`
+    return { loginTokens: tokens.length, sessions: sessions.length }
   }
   async deleteSession(sessionHash: string): Promise<void> {
     await this.sql`delete from auth_sessions where session_hash = ${sessionHash}`
@@ -77,6 +90,13 @@ export class PostgresAuthStore implements AuthStore {
   }
   async removePasskey(accountId: string, id: string): Promise<boolean> {
     return (await this.sql`delete from passkeys where id = ${id} and account_id = ${accountId}`).count > 0
+  }
+  async acceptTerms(accountId: string, version: string, at: string): Promise<void> {
+    await this.sql`insert into terms_acceptances (account_id, version, accepted_at) values (${accountId}, ${version}, ${at}) on conflict (account_id, version) do nothing`
+  }
+  async termsAccepted(accountId: string): Promise<TermsAcceptance[]> {
+    const rows = await this.sql<{ version: string; accepted_at: Date }[]>`select version, accepted_at from terms_acceptances where account_id = ${accountId} order by accepted_at, version`
+    return rows.map((r) => ({ version: r.version, at: r.accepted_at.toISOString() }))
   }
 }
 
@@ -186,9 +206,9 @@ export class PostgresLogStore implements LogStore {
         if (met) throw new QuotaReached(met.measure === 'tablesPer30Days' ? withFrees(met, await startIn(tx, bearer, ceilings.since, startThatFrees(met))) : met)
       }
       await tx`
-        insert into sessions (id, version, setup, deck, project, account_id, code, code_expires_at, host_key_hash)
+        insert into sessions (id, version, setup, deck, project, account_id, code, code_expires_at, host_key_hash, seating)
         values (${record.id}, ${record.version}, ${tx.json(record.setup as never)}, ${record.deck ? tx.json(record.deck as never) : null}, ${record.project ?? null},
-                ${record.accountId ?? null}, ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null})
+                ${record.accountId ?? null}, ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null}, ${record.seating ?? null})
       `
     })
   }
@@ -213,8 +233,8 @@ export class PostgresLogStore implements LogStore {
 
   // Never the deck (#1012): see `SessionInfo`. It is `deckOf`'s, for the one reader that deals.
   async loadSession(id: string): Promise<SessionInfo | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; account_id: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
-      select id, version, setup, project, account_id, code, code_expires_at, host_key_hash from sessions where id = ${id}
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; project: string | null; account_id: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null; seating: Seating | null }[]>`
+      select id, version, setup, project, account_id, code, code_expires_at, host_key_hash, seating from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
@@ -227,6 +247,7 @@ export class PostgresLogStore implements LogStore {
       ...(row.code ? { code: row.code } : {}),
       ...(row.code_expires_at ? { codeExpiresAt: row.code_expires_at.toISOString() } : {}),
       ...(row.host_key_hash ? { hostKeyHash: row.host_key_hash } : {}),
+      ...(row.seating ? { seating: row.seating } : {}),
     }
   }
 
@@ -322,6 +343,17 @@ export class PostgresLogStore implements LogStore {
     return row ? played(row) : null
   }
 
+  async sweepGuests(now: string, pendingMs: number): Promise<number> {
+    const rows = await this.sql`
+      delete from guest_tokens
+      where account_id is null and expires_at <= ${now}
+        and expires_at <= issued_at + ${pendingMs} * interval '1 millisecond'
+        and (revoked_at is null or revoked_at >= expires_at)
+      returning 1
+    `
+    return rows.length
+  }
+
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
     const rows = await this.sql`
       update guest_tokens set revoked_at = ${at}
@@ -379,11 +411,20 @@ export class PostgresLogStore implements LogStore {
 
   // Lines are lifted to today's schema as they are read (DRIFT §7); the rows stay as written.
   async read(sessionId: string): Promise<Applied[]> {
+    return this.lines(sessionId)
+  }
+
+  // Only the lines of these verbs, chosen in the query, so a long log's moves never travel (#1225).
+  async readVerbs(sessionId: string, verbs: readonly Applied['intent']['v'][]): Promise<Applied[]> {
+    return this.lines(sessionId, verbs)
+  }
+
+  private async lines(sessionId: string, verbs?: readonly string[]): Promise<Applied[]> {
     const rows = await this.sql<
       { seq: number; batch: string; at: Date; by_seat: string | null; intent: unknown; outcome: unknown; schema_version: number | null }[]
     >`
       select seq, batch, at, by_seat, intent, outcome, schema_version
-      from events where session_id = ${sessionId} order by seq
+      from events where session_id = ${sessionId} ${verbs ? this.sql`and intent->>'v' = any(${verbs as string[]})` : this.sql``} order by seq
     `
     return rows.map((r) =>
       liftLine({
@@ -495,7 +536,8 @@ export class PostgresProjectStore implements ProjectStore {
       await within(tx, owner, ceilings?.projects)
       await storing(tx, owner, ceilings?.storageBytes, hashes)
       await tx`insert into projects (id, rev, doc, owner) values (${id}, 1, ${tx.json(doc as never)}, ${owner ?? null})`
-      await tx`insert into project_versions (project_id, rev, doc) values (${id}, 1, ${tx.json(doc as never)})`
+      // The first version is the one who made the game's (#1225).
+      await tx`insert into project_versions (project_id, rev, doc, saved_by) values (${id}, 1, ${tx.json(doc as never)}, ${owner ?? null})`
       await naming(tx, id, hashes)
     })
     return { ...doc, id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
@@ -625,9 +667,18 @@ export class PostgresProjectStore implements ProjectStore {
     return row?.project_id ?? null
   }
 
+  async sweepInvites(before: string): Promise<number> {
+    const rows = await this.sql`
+      delete from project_invites
+      where (accepted_at is not null and accepted_at < ${before}) or (accepted_at is null and expires_at < ${before})
+      returning 1
+    `
+    return rows.length
+  }
+
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {
     const [row] = await this.sql<{ project_id: string; email: string; role: string }[]>`
-      update project_invites set accepted_at = now()
+      update project_invites set accepted_at = ${now}
       where token_hash = ${tokenHash} and accepted_at is null and expires_at > ${now}
       returning project_id, email, role
     `
@@ -648,7 +699,7 @@ export class PostgresProjectStore implements ProjectStore {
 
   // One transaction: the edits, the version and what it names are written together after the
   // ceiling is asked, or none of them is (#1233).
-  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = []): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = [], by?: string): Promise<ProjectRecord | 'conflict' | 'missing'> {
     const hashes = assetHashesOf(doc)
     return this.sql.begin(async (tx) => {
       const [row] = await tx<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id} for update`
@@ -665,17 +716,17 @@ export class PostgresProjectStore implements ProjectStore {
       const rev = row.rev + 1
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
       // The history (B4) grows by one; nothing already in it is ever written again.
-      await tx`insert into project_versions (project_id, rev, doc, at_seq) values (${id}, ${rev}, ${tx.json(doc as never)}, ${atSeq ?? null})`
+      await tx`insert into project_versions (project_id, rev, doc, at_seq, saved_by) values (${id}, ${rev}, ${tx.json(doc as never)}, ${atSeq ?? null}, ${by ?? null})`
       await naming(tx, id, hashes)
       return { ...doc, id, rev }
     })
   }
 
   async versions(id: string): Promise<VersionSummary[]> {
-    const rows = await this.sql<{ rev: number; created_at: Date; label: string | null; at_seq: number | null }[]>`
-      select rev, created_at, label, at_seq from project_versions where project_id = ${id} order by rev desc
+    const rows = await this.sql<{ rev: number; created_at: Date; label: string | null; at_seq: number | null; saved_by: string | null }[]>`
+      select rev, created_at, label, at_seq, saved_by from project_versions where project_id = ${id} order by rev desc
     `
-    return rows.map((r) => ({ rev: r.rev, at: r.created_at.toISOString(), ...(r.label ? { label: r.label } : {}), ...(r.at_seq !== null ? { atSeq: r.at_seq } : {}) }))
+    return rows.map((r) => ({ rev: r.rev, at: r.created_at.toISOString(), ...(r.label ? { label: r.label } : {}), ...(r.at_seq !== null ? { atSeq: r.at_seq } : {}), ...(r.saved_by !== null ? { by: r.saved_by } : {}) }))
   }
 
   async at(id: string, rev: number): Promise<ProjectRecord | null> {

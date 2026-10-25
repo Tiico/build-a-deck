@@ -18,6 +18,8 @@ async function fitPage(page: Page): Promise<FitReport[]> {
 }
 
 export type PngOptions = { dpi: number }
+// A picture drawn to be screened (#1271): RGBA bytes row by row, as a canvas reads them.
+export type PicturePixels = { width: number; height: number; data: Uint8ClampedArray }
 // A partner's raster (#1207): the whole page, bleed and all, in exactly these pixels.
 export type RasterOptions = { format: 'png' | 'jpg'; widthPx: number; heightPx: number }
 // A partner asking for a JPEG gets one that keeps what a press can tell apart; the file is the
@@ -117,6 +119,65 @@ export class Renderer {
       await page.setViewportSize({ width: widthPx, height: heightPx })
       const clip = { x: 0, y: 0, width: widthPx, height: heightPx }
       return await capture(page, { ...(opts.format === 'jpg' ? { type: 'jpeg', quality: JPEG_QUALITY } : { type: 'png' }), clip, animations: 'disabled', caret: 'hide' })
+    } finally {
+      await context.close()
+    }
+  }
+
+  // One uploaded picture as pixels, for a classifier (F4, #1271): the page's `img[data-screen]`
+  // decoded by Chromium and drawn on a canvas at most `maxPx` on its longer side. A raster is only
+  // ever made smaller, since pixels it does not have would tell a classifier nothing; an svg has no
+  // pixels of its own and is drawn at `maxPx`, in the shape its own size or its viewBox gives it.
+  // Throws, saying why, for a picture Chromium cannot decode. This draws no card: the one renderer
+  // of cards (E2) is the rest of this class, and a card is never screened (#1268).
+  async renderPicture(compiled: CompiledLike, opts: { maxPx: number }): Promise<PicturePixels> {
+    const context = await this.browser.newContext({ viewport: { width: 800, height: 800 } })
+    try {
+      const page = await context.newPage()
+      await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
+      const drawn = await page.evaluate(async (maxPx) => {
+        const doc = globalThis.document
+        const img = doc.querySelector('img[data-screen]')
+        if (!(img instanceof HTMLImageElement)) return { error: 'the page has no img[data-screen]' }
+        try {
+          await img.decode()
+        } catch {
+          return { error: 'Chromium could not decode it' }
+        }
+        const vector = img.src.startsWith('data:image/svg+xml')
+        let w = img.naturalWidth
+        let h = img.naturalHeight
+        if (vector) {
+          // Chromium sizes an svg without its own size at a rounded 150 px, which bends its shape;
+          // the file's own size, or else its viewBox, is the shape it was drawn in.
+          const text = new TextDecoder().decode(Uint8Array.from(atob(img.src.slice(img.src.indexOf(',') + 1)), (c) => c.charCodeAt(0)))
+          const root = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement
+          const length = (name: string) => {
+            const m = /^\s*([0-9.]+)\s*(px)?\s*$/.exec(root.getAttribute(name) ?? '')
+            return m ? Number(m[1]) : NaN
+          }
+          const [, , vw, vh] = (root.getAttribute('viewBox') ?? '').trim().split(/[\s,]+/).map(Number)
+          if (length('width') > 0 && length('height') > 0) [w, h] = [length('width'), length('height')]
+          else if (vw && vh && vw > 0 && vh > 0) [w, h] = [vw, vh]
+        }
+        if (!(w > 0 && h > 0)) return { error: `it has no size (${w} × ${h})` }
+        const scale = vector ? maxPx / Math.max(w, h) : Math.min(1, maxPx / Math.max(w, h))
+        const width = Math.max(1, Math.round(w * scale))
+        const height = Math.max(1, Math.round(h * scale))
+        const canvas = doc.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return { error: 'there is no 2d canvas' }
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(img, 0, 0, width, height)
+        const data = ctx.getImageData(0, 0, width, height).data
+        let bytes = ''
+        for (let i = 0; i < data.length; i += 0x8000) bytes += String.fromCharCode(...data.subarray(i, i + 0x8000))
+        return { width, height, base64: btoa(bytes) }
+      }, opts.maxPx)
+      if ('error' in drawn) throw new Error(`the picture could not be drawn: ${drawn.error}`)
+      return { width: drawn.width, height: drawn.height, data: new Uint8ClampedArray(Buffer.from(drawn.base64, 'base64')) }
     } finally {
       await context.close()
     }

@@ -7,14 +7,15 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { duplicateProject, gameFan, logout, myCards, myPlayed, myProjects, myUsage, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { duplicateProject, gameFan, logout, myAccount, myCards, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { QuotaReached } from './quota.js'
 import { quotaWords, type QuotaWords } from './quota-words.js'
-import { tvUrl } from '../editor/tableLinks.js'
-import { tableTab } from '../ways.js'
+import { startInTab, tableWay } from '../startWay.js'
+import type { StartAnswer } from '../editor/startAnswer.js'
 import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
+import { guestAddress } from '../guestAddress.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -22,10 +23,11 @@ import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Lang, type T } from '../i18n/index.js'
-import { CheckGlyph, ExitGlyph, ImportGlyph, MoreGlyph, PersonGlyph } from '../glyphs.js'
+import { CheckGlyph, ChevronGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph, PeopleGlyph, PencilGlyph, PersonGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { PasskeyOffer } from './PasskeyOffer.js'
+import { NameOffer } from './NameOffer.js'
 import { CodeRow } from './CodeRow.js'
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { WOOD_EDGE } from '../brand/mark.js'
@@ -35,6 +37,8 @@ import { versionWord } from '../i18n/version.js'
 // frame, so they are fetched when one is opened, with their own sheet, and not carried in the sheet
 // every first painting blocks on (#366, L40). That sheet's alarm in `felt-font.spec.ts` bound when
 // the start page grew its code row (#675); this is the answer the alarm asks for.
+// «Hur sitter ni?» (L77, #1286), loaded with its stylesheet when a table is about to start.
+const StartQuestion = lazy(() => import('../editor/StartQuestion.js').then((m) => ({ default: m.StartQuestion })))
 const ExportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ExportDialog })))
 const RenameDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.RenameDialog })))
 const ImportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ImportDialog })))
@@ -57,6 +61,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const server = params.get('server')
   const http = server ?? location.origin
   const [email, setEmail] = useState<string | null | undefined>(undefined)
+  // Whether the account has been asked what the others should call it (#1254): until it has, the
+  // question is the page's one band.
+  const [asked, setAsked] = useState(true)
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   // The game being exported, and whether a game is being brought in (G5, #529).
   const [exporting, setExporting] = useState<ProjectSummary | null>(null)
@@ -72,6 +79,11 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [cards, setCards] = useState<Record<string, CardFace | null> | null>(null)
   // The cards could not be had (#475): the places stop promising one rather than shimmer for ever.
   const [cardsLost, setCardsLost] = useState(false)
+  // What waits for the account, game by game (#1225): asked for beside the cards and landing after
+  // the list, since it reads every table of every game. Until it lands the hero's two last numbers
+  // hold their places, and «Väntar på dig» is not drawn.
+  const [waiting, setWaiting] = useState<Record<string, GameWaiting> | null>(null)
+  const askWaiting = () => void myWaiting(http).then(setWaiting, () => undefined)
   // The tables that are running, game by game (#724, beslut C + B): asked for every game that has
   // tables and whose role may start one, and asked again whenever a game's count of tables changes,
   // so a table started from here is in the list the moment the server has it.
@@ -134,15 +146,32 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     ;(refocus.to === HEADING ? heading.current : mores.current.get(refocus.to))?.focus()
   }, [refocus])
   const say = useSay()
-  // A table from a game's ⋯, said by its code once the server has it.
-  const start = (p: ProjectSummary) =>
-    void startTable(http, p.id, t).then(
-      (table) => {
-        say?.('polite', t('home.started', { code: table.code }))
-        setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
-      },
-      (err: unknown) => setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t) : err instanceof Error ? err.message : String(err)),
+  // Every start asks how you sit first (#1286), here as in the editor: `startingFor` is the game the
+  // question stands over. The answer starts the table, which keeps it, and opens the screen it gives
+  // the host beside this page; the code is said once the server has it.
+  const [startingFor, setStartingFor] = useState<ProjectSummary | null>(null)
+  const start = (p: ProjectSummary) => setStartingFor(p)
+  const startAs = (p: ProjectSummary, answer: StartAnswer) => {
+    setStartingFor(null)
+    setRefocus({ to: p.id })
+    void startInTab(
+      answer,
+      (seating) =>
+        startTable(http, p.id, t, seating).then(
+          (table) => {
+            say?.('polite', t('home.started', { code: table.code }))
+            setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
+            return table
+          },
+          (err: unknown) => {
+            setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t) : err instanceof Error ? err.message : String(err))
+            return null
+          },
+        ),
+      server,
+      lang,
     )
+  }
   // «＋ Nytt spel» asks what the account holds before the guide opens (#1198): the guide makes the
   // game only in its last step, so a ceiling met there would be met after every step had been walked.
   // A question that gets no answer opens the guide as before, and the server still asks at the end.
@@ -154,7 +183,6 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // «Starta bord» from a game's ⋯ or its hero (#1145, beslut A): asked first while a table of it runs.
   const startFrom = (p: ProjectSummary) => {
     if (runningOf(p).length > 0) return setAnother(p)
-    setRefocus({ to: p.id })
     start(p)
   }
   // The hero's fan (#1204, beslut B): three of its cards, asked for once the list has said which game
@@ -173,14 +201,17 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   }, [leading, http])
   useEffect(() => {
     setOffline(false)
-    void whoAmI(http)
-      .then((e) => {
+    void myAccount(http)
+      .then((me) => {
+        const e = me?.email ?? null
+        setAsked(me?.asked ?? true)
         setEmail(e)
         if (!e) return undefined
         // The cards are asked for beside the list rather than after it: they are a second answer,
         // not a second screen. A card that never arrives takes nothing off the page — the games
         // are the page, and the card is what one of them wears — and its place stops waiting.
         void myCards(http).then(setCards, () => setCardsLost(true))
+        void myWaiting(http).then(setWaiting, () => undefined)
         return Promise.all([myProjects(http).then(setProjects), myPlayed(http).then(setPlayed)])
       })
       .catch(() => setOffline(true))
@@ -204,9 +235,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     const picker = `/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`
     const seat = await returnToTable(http, p.session).catch(() => null)
     if (!seat) return onNavigate(picker)
-    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }), name: seat.name, token: seat.token })
+    // The token in the fragment and her name in no address (#1278), as from the picker.
+    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }) })
     if (server) q.set('server', server.replace(/^http/, 'ws'))
-    onNavigate(`${seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play'}?${q.toString()}`)
+    onNavigate(guestAddress(seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play', q, seat.token))
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
   // The banner is drawn with its text, so it is said once in the page's live region (4.1.3, #555).
@@ -249,7 +281,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           {/* The tables already running come first (#724, beslut B), so a second press to see the
               code again opens the table it was for rather than starting another. */}
           {runningOf(p).map((table) => (
-            <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target={tableTab(table.id, 'tv')} onClick={() => setMenu(null)}>
+            <a key={table.id} {...tableWay(table, server, lang)} onClick={() => setMenu(null)}>
               {t('home.menu.open', { code: table.code })}
             </a>
           ))}
@@ -290,6 +322,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       const [projects, cards] = await Promise.all([myProjects(http), myCards(http)])
                       setProjects(projects)
                       setCards(cards)
+                      askWaiting()
                       // The copy is the game saved last and leads the page (#1204), so the original's
                       // ⋯ is drawn anew in the rows: the focus follows it there.
                       setRefocus({ to: p.id })
@@ -309,6 +342,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 }}
               >
                 {t('home.menu.export')}
+              </button>
+              {/* What would be sent to a printer, on a page of its own (#1208, beslut B). */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenu(null)
+                  onNavigate(`/print-package?${suffix(new URLSearchParams({ project: p.id }))}`)
+                }}
+              >
+                {t('home.menu.print')}
               </button>
             </>
           )}
@@ -337,6 +380,32 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const hero = ordered?.[0]
   const rest = ordered?.slice(1) ?? []
   const heroTable = hero ? runningOf(hero)[0] : undefined
+  const heroWaiting = hero ? waiting?.[hero.id]?.playtest : undefined
+  // «Väntar på dig» (#1225, #1204 beslut B), in the prototype's order: the games with new flags,
+  // the flags raised last first; the surveys the account has left to answer at tables that are over
+  // (#1143); and the games whose newest version someone else saved, the newest first.
+  const flagged = (projects ?? [])
+    .flatMap((p) => {
+      const w = waiting?.[p.id]
+      return w?.playtest && w.playtest.flags > 0 ? [{ game: p, rev: w.rev, ...w.playtest }] : []
+    })
+    .sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
+  const unanswered = (played ?? []).filter((p) => p.ended && !p.surveyed && !p.deleted)
+  const savedByOthers = (projects ?? [])
+    .flatMap((p) => {
+      const w = waiting?.[p.id]
+      return w?.other ? [{ game: p, rev: w.rev, ...w.other }] : []
+    })
+    .sort((a, b) => b.at.localeCompare(a.at))
+  // It stands only once both of its sources have answered: drawn on `waiting` alone, the surveys
+  // left to answer arrived a moment later and the rows jumped down under the reader.
+  const waits = waiting !== null && played !== null && flagged.length + unanswered.length + savedByOthers.length > 0
+  // A row of it is a link, and a plain press goes through the page's own way of leaving.
+  const go = (url: string) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    e.preventDefault()
+    onNavigate(url)
+  }
   return (
     <main className="byd-account byd-account-wide" data-page="home">
       <div className="byd-home">
@@ -408,8 +477,20 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t('home.title')}
             </h1>
           </header>
-          {/* The offer after the link (#1180, beslut A): under the heading, once per browser. */}
-          <PasskeyOffer http={http} />
+          {/* One band at a time (#1254): the name for an account that has not been asked, and the
+              passkey after the link (#1180, beslut A) once it has — under the heading, once per browser. */}
+          {asked ? (
+            <PasskeyOffer http={http} />
+          ) : (
+            <NameOffer
+              http={http}
+              email={email}
+              onAnswered={() => {
+                setAsked(true)
+                heading.current?.focus()
+              }}
+            />
+          )}
           {typeof notice === 'string' && (
             <p className="byd-home-notice" role="alert">
               {notice}
@@ -428,7 +509,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               keep={{
                 label: t('tables.another.open', { table: anotherTable.code }),
                 onChoose: () => {
-                  window.open(tvUrl(anotherTable.id, server, undefined, true, lang), tableTab(anotherTable.id, 'tv'))
+                  const way = tableWay(anotherTable, server, lang)
+                  window.open(way.href, way.target)
                   setAnother(null)
                   setRefocus({ to: another.id })
                 },
@@ -510,21 +592,29 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 <div className="byd-home-hero-text">
                   <h2 id="byd-home-hero" className="byd-home-h2">{t('home.hero.title')}</h2>
                   <strong id={`home-${hero.id}-name`}>{hero.name}</strong>
+                  {/* When the version was saved and the seats it is set for, as the prototype has them (#1225). */}
                   <span id={`home-${hero.id}-line`} className="byd-muted">
-                    {hero.savedAt ? t('home.hero.saved', { rev: hero.rev, when: when(t, lang, hero.savedAt) }) : versionWord(hero.rev, t, 'name')}
+                    {t('home.hero.line', { saved: hero.savedAt ? t('home.hero.saved', { rev: hero.rev, when: when(t, lang, hero.savedAt) }) : versionWord(hero.rev, t, 'name'), players: playersWord(t, hero.players ?? 0) })}
                   </span>
+                  {/* The cards and the tables, and — for whoever may read the playtest (#524) — the
+                      players' survey answers and the flags new on this version (#1225). Those two
+                      hold their places until what is waiting has been read. */}
                   <dl className="byd-home-stats">
                     <div><dt>{t('home.stat.cards')}</dt><dd>{hero.cards ?? 0}</dd></div>
-                    <div><dt>{t('home.stat.players')}</dt><dd>{hero.players ?? 0}</dd></div>
                     <div><dt>{t('home.stat.tables')}</dt><dd>{hero.tables ?? 0}</dd></div>
-                    <div><dt>{t('home.stat.played')}</dt><dd>{hero.lastPlayed ? when(t, lang, hero.lastPlayed) : t('home.stat.never')}</dd></div>
+                    {canStartTables(roleOf(hero)) && (
+                      <>
+                        <div><dt>{t('home.stat.answers')}</dt><dd>{heroWaiting?.answers ?? '–'}</dd></div>
+                        <div data-new-flags={(heroWaiting?.flags ?? 0) > 0 || undefined}><dt>{t('home.stat.flags')}</dt><dd>{heroWaiting?.flags ?? '–'}</dd></div>
+                      </>
+                    )}
                   </dl>
                   <div className="byd-home-hero-actions">
                     <a className="byd-primary" href={editorOf(hero)} onClick={toEditor(hero)}>
                       {t('home.hero.edit')}
                     </a>
                     {heroTable ? (
-                      <a className="byd-secondary" href={tvUrl(heroTable.id, server, undefined, true, lang)} target={tableTab(heroTable.id, 'tv')} aria-label={t('home.running.open.aria', { code: heroTable.code, name: hero.name })}>
+                      <a className="byd-secondary" {...tableWay(heroTable, server, lang)} aria-label={t('home.running.open.aria', { code: heroTable.code, name: hero.name })}>
                         {t('home.menu.open', { code: heroTable.code })}
                       </a>
                     ) : (
@@ -604,11 +694,61 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 >
                   {t('home.running.game')}
                 </a>
-                <a href={tvUrl(table.id, server, undefined, true, lang)} target={tableTab(table.id, 'tv')} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                <a {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
                   {t('home.running.open')}
                 </a>
               </div>
             ))}
+          </section>
+        )}
+        {/* «Väntar på dig» (#1225, #1204 beslut B): what is left for the account to deal with, each a
+            row with its icon, what it is, where it comes from and an arrow, leading to where it is
+            dealt with. Not drawn until what is waiting has been read, nor when nothing is. */}
+        {waits && (
+          <section className="byd-home-waiting" aria-labelledby="byd-home-waiting">
+            <h2 id="byd-home-waiting" className="byd-home-h2">{t('home.waiting.title')}</h2>
+            <div className="byd-home-waiting-list">
+              {flagged.map((f) => {
+                const to = `/editor?${suffix(new URLSearchParams({ project: f.game.id, results: `rev-${f.rev}` }))}`
+                const at = f.at ? when(t, lang, f.at) : ''
+                return (
+                  <a key={`flags-${f.game.id}`} href={to} onClick={go(to)} data-waiting="flags">
+                    <span className="byd-home-waiting-icon"><FlagGlyph /></span>
+                    <span className="byd-home-waiting-text">
+                      <b>{t(f.flags === 1 ? 'home.waiting.flags.one' : 'home.waiting.flags.other', { n: f.flags })}</b>
+                      <small>{f.tables === 1 ? t('home.waiting.flags.table', { game: f.game.name, rev: f.rev, when: at }) : t('home.waiting.flags.tables', { game: f.game.name, rev: f.rev, n: f.tables, when: at })}</small>
+                    </span>
+                    <span className="byd-home-waiting-arrow"><ChevronGlyph to="right" /></span>
+                  </a>
+                )
+              })}
+              {unanswered.map((p) => {
+                const to = `/survey?${suffix(new URLSearchParams({ session: p.session }))}`
+                return (
+                  <a key={`survey-${p.session}`} href={to} onClick={go(to)} data-waiting="survey">
+                    <span className="byd-home-waiting-icon"><PencilGlyph /></span>
+                    <span className="byd-home-waiting-text">
+                      <b>{t('home.played.answer')}</b>
+                      <small>{t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: p.name })}</small>
+                    </span>
+                    <span className="byd-home-waiting-arrow"><ChevronGlyph to="right" /></span>
+                  </a>
+                )
+              })}
+              {savedByOthers.map((v) => {
+                const to = editorOf(v.game)
+                return (
+                  <a key={`version-${v.game.id}`} href={to} onClick={go(to)} data-waiting="version">
+                    <span className="byd-home-waiting-icon"><PeopleGlyph /></span>
+                    <span className="byd-home-waiting-text">
+                      <b>{v.name === null ? t('home.waiting.version.someone', { rev: v.rev }) : t('home.waiting.version', { name: v.name, rev: v.rev })}</b>
+                      <small>{t('home.waiting.version.line', { game: v.game.name, when: when(t, lang, v.at) })}</small>
+                    </span>
+                    <span className="byd-home-waiting-arrow"><ChevronGlyph to="right" /></span>
+                  </a>
+                )
+              })}
+            </div>
           </section>
         )}
         {played && played.length > 0 && (
@@ -656,6 +796,15 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         <AboutLine http={http} />
       </div>
       <Suspense fallback={null}>
+      {startingFor && (
+        <StartQuestion
+          onStart={(answer) => startAs(startingFor, answer)}
+          onCancel={() => {
+            setStartingFor(null)
+            setRefocus({ to: startingFor.id })
+          }}
+        />
+      )}
       {exporting && (
         <ExportDialog
           http={http}
@@ -695,6 +844,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             setProjects(projects)
             setCards(cards)
             setCardsLost(false)
+            askWaiting()
           }}
           nameOf={(id) => listed.current?.find((p) => p.id === id)?.name}
           onOpen={(id) => onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)}
@@ -752,13 +902,13 @@ function CardFaceDrawing({ project, face, assetBase, h }: { project: string; fac
 // What a game is, in a line (#1204): its version, the cards its table deals and the seats it is set for.
 function factsLine(t: T, p: ProjectSummary): string {
   const cards = p.cards ?? 0
-  const players = p.players ?? 0
   return t('home.row.facts', {
     rev: p.rev,
     cards: t(cards === 1 ? 'home.row.cards.one' : 'home.row.cards.other', { n: cards }),
-    players: t(players === 1 ? 'home.row.players.one' : 'home.row.players.other', { n: players }),
+    players: playersWord(t, p.players ?? 0),
   })
 }
+const playersWord = (t: T, n: number): string => t(n === 1 ? 'home.row.players.one' : 'home.row.players.other', { n })
 
 // What a game says about itself before it is opened (G1): how many tables it has, and when one
 // was last played at. A game nobody has sat down to says so plainly.

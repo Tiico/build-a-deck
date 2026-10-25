@@ -1,4 +1,4 @@
-import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
+import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind, type SeatId, type Seating } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
@@ -103,7 +103,8 @@ export class TableEnded extends Error {
   }
 }
 
-export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }
+// `seating` is how its people sit (#1286), when the host was asked as it started.
+export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null; code?: string; seating?: Seating }
 
 // An edit of this editor's own that the actor has not answered yet, under the number it was sent
 // with (#993).
@@ -1495,18 +1496,20 @@ export class ProjectClient {
   // and the host key that opens its screen (DRIFT §9). Unsaved edits are saved first.
   // Unsaved work is saved first, and the table starts on the version that wrote (L5, #764).
   // `saved` says whether a version was written on the way, so the editor can say so (#737).
-  async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string; saved: boolean }> {
+  // The answer to «Hur sitter ni?» goes with it (#1286), for the table to keep; `hostSeat` is the
+  // seat the host of a table of computers sits down at.
+  async startTable(seating?: Seating): Promise<{ id: string; version: string; code: string; hostKey: string; hostSeat?: SeatId; saved: boolean }> {
     const saving = this.dirty
     if (saving) {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before starting a table: ${saved.reason}`)
     }
-    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials({ method: 'POST' }))
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(seating ? { seating } : {}) }))
     // A ceiling met (#1196) is handed on with its numbers, for the editor to say (#1198).
     const quota = await quotaOf(res)
     if (quota) throw new QuotaReached(quota, `could not start a table: the ${quota.bearer === 'owner' ? 'owner’s' : 'account’s'} ceiling on ${quota.measure} is met`)
     if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
-    return { ...((await res.json()) as { id: string; version: string; code: string; hostKey: string }), saved: saving }
+    return { ...((await res.json()) as { id: string; version: string; code: string; hostKey: string; hostSeat?: SeatId }), saved: saving }
   }
 
   // The host's controls (DRIFT §9): a new code, so those who have the old one can no longer

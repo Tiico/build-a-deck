@@ -1,6 +1,6 @@
 import type { ChangedCell } from '@byd/server/proposal'
 import { cellLine } from './proposals.js'
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import { oversetOf, type FitReport, type Motif, type Warning } from '@byd/template'
 import { titleOfRow } from '@byd/server/doc'
@@ -25,6 +25,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { READING_VIEWS, SCREENS, textPxOnCard, type ReadingView } from '../legibility.js'
 import { Help } from './HelpDrawer.js'
 import { FootSaid } from './said.js'
+import { useDoor } from '../doors.js'
 
 export type DeckWallProps = {
   doc: ProjectDoc
@@ -68,9 +69,15 @@ export type DeckWallProps = {
   // game with that template, so each is drawn as the proposal would draw it, and marked «Ändrat» as a
   // changed card is — with old → new under it only where a cell changes too.
   redrawn?: ReadonlySet<string> | undefined
+  // The way to the print package (#1208, beslut B): what would be sent to a printer, with these
+  // checks applied. Only for those who may take the package.
+  printPackage?: { href: string; onGo(from: HTMLElement): void } | undefined
 }
 
-export type WallView = { filter: FilterState; eye: string; scrollTop: number }
+// What the wall is read at (L81): the width it is drawn in, and the eye it is seen with, are two
+// choices and not one, so a reading view can be seen through any eye. `panel` is the side of the
+// wall's panel that stands open, if one does.
+export type WallView = { filter: FilterState; eye: string; size?: Size | undefined; panel?: Panel | null | undefined; scrollTop: number }
 
 // The eyes a card is read with (E5). The simulations are the transforms the check uses, applied
 // to the real cards: colour blindness is not something a sentence can convey.
@@ -81,34 +88,42 @@ const EYES: readonly { key: string; name: Key }[] = [
   { key: 'tritanopia', name: 'wall.eye.tritanopia' },
   { key: 'gray', name: 'wall.eye.gray' },
 ]
-// The reading views among the eyes (#512, beslut A): the wall drawn at the width a play surface
-// holds a card up at to read it (K26), each card saying the smallest text it carries there. The
-// widths are the surfaces' own, read from the one module their measuring tests check them against.
-// Each says, where the crown is narrow, only the surface that holds the card up (#1047): the views
-// are the eyes' longest words, and beside the AI panel «TV:ns «Visa för alla»» broke the row.
-const READS: readonly { key: string; name: Key; short: Key; view: ReadingView }[] = READING_VIEWS.map((view) => ({
-  key: `read.${view.key}`,
-  name: `wall.eye.read.${view.key}` as Key,
-  short: `wall.eye.read.${view.key}.short` as Key,
-  view,
-}))
+// A card at arm's length is the cheapest check of all, and needs no validation at all. It says what
+// the deck looks like across a table, so it names one width rather than stepping through the ladder.
+const ARM_PX = 90
+// The sizes the wall is drawn at (L81): free, on the density's ladder, or one width named for what it
+// is. Arm's length is the deck across a table, and each reading view is the width a play surface
+// holds a card up at to read it (#512, K26), read from the one module their measuring tests check
+// them against. Each has a short word for where the crown is narrow (#1047): the surface's name.
+export type Size = 'free' | 'arm' | `read.${ReadingView['key']}`
+type Named = { key: Size; name: Key; short: Key; px: number; view?: ReadingView }
+const SIZES: readonly Named[] = [
+  { key: 'arm', name: 'wall.size.arm', short: 'wall.size.arm.short', px: ARM_PX },
+  ...READING_VIEWS.map((view) => ({
+    key: `read.${view.key}` as const,
+    name: `wall.eye.read.${view.key}` as Key,
+    short: `wall.eye.read.${view.key}.short` as Key,
+    px: view.width,
+    view,
+  })),
+]
 const MATRICES: Record<string, string> = {
   protanopia: '0.11238 0.88762 0 0 0  0.11238 0.88762 0 0 0  0.00401 -0.00401 1 0 0  0 0 0 1 0',
   deuteranopia: '0.29275 0.70725 0 0 0  0.29275 0.70725 0 0 0  -0.02234 0.02234 1 0 0  0 0 0 1 0',
   tritanopia: '1 0.14461 -0.14461 0 0  0 0.85924 0.14076 0 0  0 0.85924 0.14076 0 0  0 0 0 1 0',
 }
-// A card at arm's length is the cheapest check of all, and needs no validation at all. It is a
-// guide and not a density: it says what the deck looks like across a table, so it names one width
-// rather than stepping through the ladder.
-const ARM_PX = 90
+const sizeOf = (key: Size | undefined) => SIZES.find((s) => s.key === key)
+// The swatch each eye shows of itself, seen through its own filter (L81): the colours a deck most
+// often tells apart by, so the difference is seen before the eye is chosen.
+const SWATCH = ['#e0442e', '#f2a516', '#3f9b4b', '#3c7de0']
 
-// What the crown's boxes are, so that only one of them is ever open.
-type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
+// The two sides of the wall's panel (L81). The grouping is the crown's one drawer.
+export type Panel = 'view' | 'checks'
 
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -133,12 +148,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [smallest, setSmallest] = useState<Record<string, number>>({})
   const { lang } = useLang()
   const [eye, setEye] = useState<string>(view?.eye ?? 'normal')
+  const [size, setSize] = useState<Size>(view?.size ?? 'free')
   const [trim, setTrim] = useState(false)
-  const [arm, setArm] = useState(false)
   // How close the deck is packed is this browser's and not this project's (#128), so it is read
   // from where it was left rather than started afresh on every mount.
   const [step, setStep] = useState(heldDensity)
-  const [box, setBox] = useState<Box | null>(null)
+  const [grouping, setGrouping] = useState(false)
+  const [panel, setPanel] = useState<Panel | null>(view?.panel ?? null)
+  // In a reading view, only the cards whose text falls under its floor (L81). Any other size lets
+  // the deck back.
+  const [underOnly, setUnderOnly] = useState(false)
   const [openGroup, setOpenGroup] = useState<string | null>(null)
   // Which band stands at the top of the view, and the boxes the answer is measured from.
   const [atTop, setAtTop] = useState<string | null>(null)
@@ -171,8 +190,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const told = useRef(onView)
   told.current = onView
   useEffect(() => {
-    told.current?.({ filter, eye, scrollTop: scrolled.current })
-  }, [filter, eye])
+    told.current?.({ filter, eye, size, panel, scrollTop: scrolled.current })
+  }, [filter, eye, size, panel])
   // Back where it was left, and then the chosen card brought into view if it is not in it: a
   // card chosen in Tabell could stand 2 800 px down the wall with nothing on the screen.
   useLayoutEffect(() => {
@@ -219,10 +238,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const letGo = () => {
     jumping.current = null
   }
-  // A drawer hands the focus back to the box it came from when it closes (#133), so each box has
-  // to be findable from the drawer it opened.
-  const eyesBox = useRef<HTMLButtonElement>(null)
-  const guidesBox = useRef<HTMLButtonElement>(null)
+  // A drawer or the panel hands the focus back to the box it came from when it closes (#133), so
+  // each box has to be findable from what it opened.
+  const viewBox = useRef<HTMLButtonElement>(null)
   const groupingBox = useRef<HTMLButtonElement>(null)
   const checksBox = useRef<HTMLButtonElement>(null)
   const onFitted = useCallback((cardRef: string, sizes: { sizePt: number }[]) => {
@@ -252,30 +270,62 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const words = issueWords(t)
   // The cards a remark marks are marked for as long as the report stands open (#477): closed,
   // the frames were yellow on a whole deck with nothing on the screen saying why.
-  const toggle = (which: Box) => {
-    if (box === 'checks') setOpenGroup(null)
-    setBox((now) => (now === which ? null : which))
+  const showPanel = (side: Panel | null) => {
+    if (side !== 'checks') setOpenGroup(null)
+    setPanel(side)
   }
-  const close = () => {
-    if (box === 'checks') setOpenGroup(null)
-    setBox(null)
+  const togglePanel = (side: Panel) => showPanel(panel === side ? null : side)
+  const closePanel = () => {
+    const opener = panel === 'checks' ? checksBox : viewBox
+    showPanel(null)
+    opener.current?.focus()
   }
-  const denser = (by: number) =>
+  const choose = (next: Size) => {
+    setSize(next)
+    setUnderOnly(false)
+  }
+  // A press on the pill is a choice of the free size (L81): the pill is never held by another size,
+  // which #701 had to explain with a sentence on each of its buttons.
+  const denser = (by: number) => {
+    choose('free')
     setStep((now) => {
       const next = Math.min(DENSITY.length - 1, Math.max(0, now + by))
       rememberDensity(next)
       return next
     })
-  const reading = READS.find((r) => r.key === eye)
-  // A reading view draws the card at its own width: it is the size the eye is about, so it wins
-  // over the density and over arm's length alike.
-  const px = reading ? reading.view.width : arm ? ARM_PX : (DENSITY[step] ?? DENSITY[DENSITY_DEFAULT] ?? 150)
-  const eyeNow = reading ?? EYES.find((e) => e.key === eye) ?? { key: 'normal', name: 'wall.eye.normal' as const }
+  }
+  const named = sizeOf(size)
+  const reading = named?.view
+  const free = DENSITY[step] ?? DENSITY[DENSITY_DEFAULT] ?? 150
+  const px = named ? named.px : free
+  const eyeNow = EYES.find((e) => e.key === eye) ?? { key: 'normal', name: 'wall.eye.normal' as const }
+  // What the box says is chosen inside the panel (#128): the size, and the eye and the trim when
+  // they are on. Where the crown is narrow a named size says only the surface (#1047).
+  const extras = [...(eyeNow.key === 'normal' ? [] : [t(eyeNow.name)]), ...(trim ? [t('wall.view.trim')] : [])]
+  const viewSaid = [named ? t(named.name) : t('wall.density.px', { px: Math.round(free) }), ...extras].join(' · ')
+  const viewShort = named ? [t(named.short), ...extras].join(' · ') : undefined
+  // The smallest text of each of the deck's cards in the reading view, as it is shown: rounded, so a
+  // text shown at the floor is never said to be under it (K26).
+  const floor = reading ? SCREENS[reading.screen].floorPx : 0
+  const readPx = (cardRef: string) => {
+    const pt = smallest[cardRef]
+    return reading && pt !== undefined ? Math.round(textPxOnCard(pt, reading.width) * 10) / 10 : undefined
+  }
+  const isUnder = (cardRef: string) => {
+    const shown = readPx(cardRef)
+    return shown !== undefined && shown < floor
+  }
+  const said = (n: number) => n.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const leastPx = (() => {
+    const all = doc.rows.filter((row) => !isGhost(row)).map((row) => readPx(row.id)).filter((n): n is number => n !== undefined)
+    return all.length > 0 ? Math.min(...all) : undefined
+  })()
   // The wall groups by the column the template already groups by (L3): the deck has said once
   // what its groups are, and the home view reads that answer rather than asking a second time.
   const columns = ['id', ...fieldsOf(doc)]
   const column = grouped ? (byColumn ?? groupColumn(doc)) : null
-  const shown = isFiltering(filter) ? filterRows(doc.rows, columns, filter) : doc.rows
+  const searched = isFiltering(filter) ? filterRows(doc.rows, columns, filter) : doc.rows
+  const shown = reading && underOnly ? searched.filter((row) => isUnder(row.id)) : searched
   const shownGhosts = shown.filter(isGhost).length
   // How much of the front there is, which is what the empty wall says is still to be done (#476).
   const frontElements = doc.template.faces['front']?.base.length ?? 0
@@ -315,7 +365,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     const deck = deckRef.current
     if (!deck) return
     scrolled.current = deck.scrollTop
-    told.current?.({ filter, eye, scrollTop: deck.scrollTop })
+    told.current?.({ filter, eye, size, panel, scrollTop: deck.scrollTop })
     // A jump already said where the view is going. Read per frame on the way there, the mark fell
     // back to where the view had been and climbed through every band in between, redrawing the
     // wall at each one — so it holds still until the scroll arrives.
@@ -357,6 +407,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {...roves}
         aria-selected={selectedRow === cardRef && !ghost ? 'true' : 'false'}
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
+        {...(isUnder(cardRef) ? { 'data-under': 'true' } : {})}
         {...(ghost ? { 'data-proposed': '', 'aria-label': t('ai.proposal.ghost.label', { name: titleOfRow({ id: cardRef, fields: row }) || cardRef }) } : {})}
         {...(cells ? { 'data-changed': '', 'aria-label': t('ai.proposal.changed.label', { name: titleOfRow({ id: cardRef, fields: { ...row, ...Object.fromEntries(cells.map((c) => [c.field, c.from ?? ''])) } }) || cardRef, cells: cells.map((c) => cellLine(c, t)).join(', ') }) } : {})}
         {...(redrawnOnly ? { 'data-changed': '', 'aria-label': t('ai.proposal.redrawn.label', { name: titleOfRow({ id: cardRef, fields: row }) || cardRef }) } : {})}
@@ -412,7 +463,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         </div>
         {/* Over the card and outside its paper, which is cut to its corners (#808). */}
         <OversetMarks found={oversetOf(faceTemplate, row, cut[cardRef] ?? [])} scale={px / CARD_PX} />
-        {reading && smallest[cardRef] !== undefined && <ReadOut sizePt={smallest[cardRef]} view={reading.view} lang={lang} t={t} />}
+        {/* Under the floor, the card says so to a screen reader too; the panel says it in words to
+            everyone, and the frame only repeats it (K26, L81). */}
+        {isUnder(cardRef) && <span className="byd-offscreen">{t('wall.read.under', { px: said(readPx(cardRef) ?? 0), floor })}</span>}
         {(ghost || cells || redrawnOnly) && (
           <span className="byd-wall-proposed" aria-hidden="true">
             <span className="byd-ai-spark">✦</span> {t(ghost ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}
@@ -486,65 +539,22 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             onChange={(event) => setFilter({ ...filter, query: event.target.value })}
           />
           <CrownBox
-            name={t('wall.eyes')}
-            state={t(eyeNow.name)}
-            short={reading ? t(reading.short) : undefined}
-            open={box === 'eyes'}
-            onToggle={() => toggle('eyes')}
-            boxRef={eyesBox}
-          />
-          <CrownBox
-            name={t('wall.guides')}
-            count={(trim ? 1 : 0) + (arm ? 1 : 0)}
-            open={box === 'guides'}
-            onToggle={() => toggle('guides')}
-            boxRef={guidesBox}
-          />
-          {/* Density is two presses and no box: it is the one control on this surface that is used
-              over and over while looking at something else, and a box would put a door in front of
-              every step. It is the canvas' zoom pill (#619) with the width between the two presses,
-              where the number used to be said in the foot, half a screen from the control. */}
-          <StepPill
-            label={t('wall.density')}
-            value={t('wall.density.px', { px: Math.round(px) })}
-            said={t('wall.density.said', { px: Math.round(px) })}
-            less={t('wall.density.more')}
-            more={t('wall.density.less')}
-            onStep={denser}
-            held={reading ? t('wall.density.heldByReading') : arm ? t('wall.density.heldByGuide') : undefined}
-          />
-          <CrownBox
             name={t('wall.groupedBy')}
             state={column ?? t('wall.grouping.off')}
             short={column === null ? t('wall.grouping.off.short') : undefined}
-            open={box === 'grouping'}
-            onToggle={() => toggle('grouping')}
+            open={grouping}
+            onToggle={() => setGrouping((now) => !now)}
             boxRef={groupingBox}
           />
-          <CrownBox name={t('wall.checks.title')} count={groups.length} short={t('wall.checks.short')} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
+          {/* How the wall looks and what the check made of it open the same panel beside the wall
+              (L81), so they stand together at the row's end: the two things on this surface that
+              are not about which cards are shown. */}
+          <CrownBox name={t('wall.eyes')} state={viewSaid} short={viewShort} open={panel === 'view'} onToggle={() => togglePanel('view')} boxRef={viewBox} end />
+          <CrownBox name={t('wall.checks.title')} count={groups.length} short={t('wall.checks.short')} open={panel === 'checks'} onToggle={() => togglePanel('checks')} boxRef={checksBox} />
         </Crown>
       </div>
-      {box === 'eyes' && (
-        <CrownDrawer label={t('wall.eyes')} opener={eyesBox} onClose={close}>
-          {[...EYES, ...READS].map((e) => (
-            <button key={e.key} type="button" className="byd-choice" aria-pressed={eye === e.key} onClick={() => setEye(e.key)}>
-              {t(e.name)}
-            </button>
-          ))}
-        </CrownDrawer>
-      )}
-      {box === 'guides' && (
-        <CrownDrawer label={t('wall.guides')} opener={guidesBox} onClose={close}>
-          <label className="byd-crown-tick">
-            <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} /> {t('wall.trim')}
-          </label>
-          <label className="byd-crown-tick">
-            <input type="checkbox" checked={arm} onChange={(e) => setArm(e.target.checked)} /> {t('wall.arm')}
-          </label>
-        </CrownDrawer>
-      )}
-      {box === 'grouping' && (
-        <CrownDrawer label={t('wall.groupedBy')} opener={groupingBox} onClose={close}>
+      {grouping && (
+        <CrownDrawer label={t('wall.groupedBy')} opener={groupingBox} onClose={() => setGrouping(false)}>
           <button
             type="button"
             className="byd-choice"
@@ -573,34 +583,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           ))}
         </CrownDrawer>
       )}
-      {box === 'checks' && (
-        <CrownDrawer label={t('wall.checks.title')} opener={checksBox} onClose={close}>
-          <Checks
-            groups={groups}
-            errors={errors.length}
-            words={words}
-            openGroup={openGroup}
-            onOpenGroup={setOpenGroup}
-            readOnly={readOnly}
-            onOpenFonts={onOpenFonts}
-            found={found}
-            names={(cardRef) => {
-              const row = doc.rows.find((r) => r.id === cardRef)
-              return row ? titleOfRow(row) || cardRef : cardRef
-            }}
-            // A proposed card has no row to open until it is accepted.
-            onOpenRow={onOpenRow && ((cardRef: string) => !proposed?.has(cardRef) && onOpenRow(cardRef))}
-            fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
-            onFix={(code, what) => {
-              onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
-              say?.('polite', t('wall.checks.fix.said', { what }))
-            }}
-            t={t}
-          />
-        </CrownDrawer>
-      )}
       {/* The wall is the only thing on this surface that scrolls. */}
-      <div className="byd-wall-work" data-fold={bands.length === 0 ? 'none' : jumpOpen ? 'open' : 'folded'}>
+      <div className="byd-wall-work" data-fold={bands.length === 0 ? 'none' : jumpOpen ? 'open' : 'folded'} {...(panel ? { 'data-panel': panel } : {})}>
         {/* Folded, the column is a 66 px strip and not an edge: the same groups in the same order,
             the name dropped and the count kept. A tile is a button with a readable name of its
             own, never a bare swatch — and "where am I" survives on three channels, because two
@@ -681,7 +665,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           // corner on a smaller card.
           style={{ ['--byd-wall-card' as string]: `${px}px`, ['--byd-wall-radius' as string]: `${cornerPx(px)}px` }}
           {...(trim ? { 'data-trim': 'true' } : {})}
-          {...(arm ? { 'data-arm': 'true' } : {})}
+          {...(size === 'arm' ? { 'data-arm': 'true' } : {})}
           // A proposal on the wall marks its cards over their top edges and says old → new under
           // them, so the wall leaves room between its cards while one stands on it (#1003).
           {...(proposedKey ? { 'data-proposing': '' } : {})}
@@ -757,6 +741,68 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             ))
           )}
         </div>
+        {panel && (
+          <WallPanel side={panel} onSide={showPanel} onClose={closePanel} checksCount={groups.length} t={t}>
+            {panel === 'view' ? (
+              <ViewTab
+                size={size}
+                onSize={choose}
+                eye={eye}
+                onEye={setEye}
+                trim={trim}
+                onTrim={setTrim}
+                pill={
+                  <StepPill
+                    label={t('wall.density')}
+                    value={t('wall.density.px', { px: Math.round(free) })}
+                    said={t('wall.density.said', { px: Math.round(free) })}
+                    less={t('wall.density.more')}
+                    more={t('wall.density.less')}
+                    onStep={denser}
+                  />
+                }
+                legible={
+                  reading && (
+                    <Legible
+                      floor={floor}
+                      least={leastPx}
+                      under={doc.rows.filter((row) => !isGhost(row) && isUnder(row.id)).map((row) => ({ name: titleOfRow(row) || row.id, px: readPx(row.id) ?? 0 }))}
+                      only={underOnly}
+                      onOnly={setUnderOnly}
+                      said={said}
+                      t={t}
+                    />
+                  )
+                }
+                t={t}
+              />
+            ) : (
+              <Checks
+                groups={groups}
+                errors={errors.length}
+                words={words}
+                openGroup={openGroup}
+                onOpenGroup={setOpenGroup}
+                readOnly={readOnly}
+                onOpenFonts={onOpenFonts}
+                found={found}
+                names={(cardRef) => {
+                  const row = doc.rows.find((r) => r.id === cardRef)
+                  return row ? titleOfRow(row) || cardRef : cardRef
+                }}
+                // A proposed card has no row to open until it is accepted.
+                onOpenRow={onOpenRow && ((cardRef: string) => !proposed?.has(cardRef) && onOpenRow(cardRef))}
+                fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
+                onFix={(code, what) => {
+                  onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
+                  say?.('polite', t('wall.checks.fix.said', { what }))
+                }}
+                t={t}
+                printPackage={printPackage}
+              />
+            )}
+          </WallPanel>
+        )}
       </div>
       {/* What the wall adds up to, under it rather than over it (#130): how many cards, and what
           the physical check made of them. The width is the pill's since #619. */}
@@ -771,13 +817,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {shownGhosts > 0 && <span>{proposedSaid(shownGhosts)}</span>}
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}
-        <span>
-          {doc.rows.length === 0
-            ? null
-            : groups.length === 0
-            ? t('wall.foot.checked')
-            : t(groups.length === 1 ? 'wall.foot.remarks.one' : 'wall.foot.remarks.other', { n: groups.length })}
-        </span>
+        {/* The remarks are a door to the panel's Kontroll (L81): the count is where the eye finds them. */}
+        {doc.rows.length === 0 ? (
+          <span />
+        ) : groups.length === 0 ? (
+          <span>{t('wall.foot.checked')}</span>
+        ) : (
+          <button type="button" className="byd-wall-foot-door" aria-expanded={panel === 'checks'} onClick={() => showPanel('checks')}>
+            {t(groups.length === 1 ? 'wall.foot.remarks.one' : 'wall.foot.remarks.other', { n: groups.length })}
+          </button>
+        )}
         {/* What just happened, after what the wall adds up to (#698, beslut B). */}
         <FootSaid />
       </CrownFoot>
@@ -802,6 +851,7 @@ function Checks({
   names,
   onOpenRow,
   t,
+  printPackage,
 }: {
   groups: ReturnType<typeof groupIssues>
   errors: number
@@ -816,6 +866,7 @@ function Checks({
   names(cardRef: string): string
   onOpenRow: ((cardRef: string) => void) | undefined
   t: ReturnType<typeof useT>
+  printPackage?: DeckWallProps['printPackage']
 }) {
   const { lang } = useLang()
   return (
@@ -893,6 +944,19 @@ function Checks({
           </ul>
         </>
       )}
+      {printPackage && (
+        <a
+          className="byd-wall-print"
+          href={printPackage.href}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+            e.preventDefault()
+            printPackage.onGo(e.currentTarget)
+          }}
+        >
+          {t('wall.checks.print')}
+        </a>
+      )}
     </div>
   )
 }
@@ -926,18 +990,125 @@ function EyeFilters() {
   )
 }
 
-// What a card carries in a reading view (#512): its smallest text in px there, and in words — not
-// by colour alone — when that is under the screen's floor for all text (K26).
-function ReadOut({ sizePt, view, lang, t }: { sizePt: number; view: ReadingView; lang: string; t: T }) {
-  const px = textPxOnCard(sizePt, view.width)
-  const floor = SCREENS[view.screen].floorPx
-  // Rounded as it is shown, so a text shown at the floor is never said to be under it.
-  const shown = Math.round(px * 10) / 10
-  const said = shown.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-  const under = shown < floor
+// The wall's panel (L81): how the wall looks and what the check made of it, beside the wall and never
+// over the deck's top. Two tabs, because the two boxes in the crown open one side each. It closes
+// with its cross, with Escape and with its box again — not with a press on the wall, since what is
+// chosen in it is read on the cards while it stands open.
+function WallPanel({ side, onSide, onClose, checksCount, t, children }: { side: Panel; onSide(side: Panel): void; onClose(): void; checksCount: number; t: T; children: ReactNode }) {
+  const id = useId()
+  useDoor('standing', onClose)
+  const tabs = useRoving({ ids: ['view', 'checks'], selected: side, orientation: 'horizontal', followFocus: true, onActivate: (to) => onSide(to as Panel) })
+  const tab = (which: Panel, label: string) => (
+    <button
+      type="button"
+      role="tab"
+      id={`${id}-${which}`}
+      aria-selected={side === which}
+      aria-controls={`${id}-panel`}
+      {...tabs.itemProps(which)}
+      onClick={() => onSide(which)}
+    >
+      {label}
+    </button>
+  )
   return (
-    <p className="byd-wall-read" data-read {...(under ? { 'data-under': 'true' } : {})}>
-      {under ? t('wall.read.under', { px: said, floor }) : t('wall.read', { px: said })}
-    </p>
+    <aside className="byd-wall-panel" aria-label={t('wall.panel')}>
+      <div className="byd-wall-panel-head">
+        <div role="tablist" aria-label={t('wall.panel')}>
+          {tab('view', t('wall.eyes'))}
+          {tab('checks', t('crown.box.count', { name: t('wall.checks.short'), n: checksCount }))}
+        </div>
+        <button type="button" className="byd-wall-panel-close" aria-label={t('wall.panel.close')} title={t('wall.panel.close')} onClick={onClose}>
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <div className="byd-wall-panel-body" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${side}`}>
+        {children}
+      </div>
+    </aside>
+  )
+}
+
+// The panel's Visning (L81): one size, one eye, one guide, and in a reading view what it says about
+// the deck's text.
+function ViewTab(props: {
+  size: Size
+  onSize(size: Size): void
+  eye: string
+  onEye(eye: string): void
+  trim: boolean
+  onTrim(on: boolean): void
+  pill: ReactNode
+  legible: ReactNode
+  t: T
+}) {
+  const { size, onSize, eye, onEye, trim, onTrim, pill, legible, t } = props
+  const name = useId()
+  const sizeHead = useId()
+  const eyesHead = useId()
+  return (
+    <>
+      <h3 id={sizeHead}>{t('wall.size')}</h3>
+      <div className="byd-wall-sizes" role="radiogroup" aria-labelledby={sizeHead}>
+        <div className="byd-wall-size">
+          <label>
+            <input type="radio" name={name} checked={size === 'free'} onChange={() => onSize('free')} /> {t('wall.size.free')}
+          </label>
+          {pill}
+        </div>
+        {SIZES.map((s) => (
+          <div key={s.key} className="byd-wall-size">
+            <label>
+              <input type="radio" name={name} checked={size === s.key} onChange={() => onSize(s.key)} /> {t(s.name)}{' '}
+              <small>{t('wall.density.px', { px: Math.round(s.px) })}</small>
+            </label>
+          </div>
+        ))}
+      </div>
+      {legible}
+      <h3 id={eyesHead}>{t('wall.eyes.title')}</h3>
+      <div className="byd-wall-eyes" role="group" aria-labelledby={eyesHead}>
+        {EYES.map((e) => (
+          <button key={e.key} type="button" aria-pressed={eye === e.key} onClick={() => onEye(e.key)}>
+            <span className="byd-wall-swatch" data-eye-swatch={e.key} aria-hidden="true">
+              {SWATCH.map((c) => (
+                <i key={c} style={{ background: c }} />
+              ))}
+            </span>
+            {t(e.name)}
+          </button>
+        ))}
+      </div>
+      <h3>{t('wall.guides')}</h3>
+      <label className="byd-crown-tick">
+        <input type="checkbox" checked={trim} onChange={(e) => onTrim(e.target.checked)} /> {t('wall.trim')}
+      </label>
+    </>
+  )
+}
+
+// What a reading view says about the deck (#512, L81): its smallest text and the floor, once, and in
+// words the cards under it — the frame on each card only repeats this (K26).
+function Legible({ floor, least, under, only, onOnly, said, t }: { floor: number; least: number | undefined; under: readonly { name: string; px: number }[]; only: boolean; onOnly(on: boolean): void; said(n: number): string; t: T }) {
+  if (least === undefined) return null
+  return (
+    <div className="byd-wall-legible" data-legible {...(under.length > 0 ? { 'data-under': 'true' } : {})}>
+      <p>
+        {t('wall.legible', { px: said(least), floor })}
+        {under.length === 0 && ` ${t('wall.legible.ok')}`}
+      </p>
+      {under.length > 0 && (
+        <>
+          <ul aria-label={t('wall.legible.list')}>
+            {under.map((card, i) => (
+              <li key={i}>{t('wall.legible.card', { card: card.name, px: said(card.px) })}</li>
+            ))}
+          </ul>
+          <label className="byd-crown-tick">
+            <input type="checkbox" checked={only} onChange={(e) => onOnly(e.target.checked)} /> {t(under.length === 1 ? 'wall.legible.only.one' : 'wall.legible.only.other', { n: under.length })}
+          </label>
+        </>
+      )}
+    </div>
   )
 }

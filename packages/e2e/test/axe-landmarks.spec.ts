@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
-import { join, logIn, makeProject } from '../support/api.js'
+import { join, logIn, makeProject, withQuery } from '../support/api.js'
 import { DESK, TABLETS } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -43,7 +43,7 @@ test.describe('axe finds nothing moderate', () => {
 
   test('on /online', async ({ table, open, request }) => {
     const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
     await expect(page.locator('.byd-online-felt')).toBeVisible()
     expect(await violations(page)).toEqual([])
   })

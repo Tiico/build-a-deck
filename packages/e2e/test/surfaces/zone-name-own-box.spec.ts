@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
 import { spelkortDoc } from '../../../server/scripts/spelkort.js'
-import { join, logIn, makeProjectOf, tableOf, type Table } from '../../support/api.js'
+import { join, logIn, makeProjectOf, tableOf, type Table, withQuery } from '../../support/api.js'
 import { PHONE, type Device } from '../../support/devices.js'
 import { expect, test, type Client, type Fixtures } from '../../support/test.js'
 
@@ -123,7 +123,7 @@ const SURFACES: Surface[] = [
 ]
 
 async function opened(open: Fixtures['open'], surface: Surface, table: Table, request: APIRequestContext): Promise<Client> {
-  const client = await open(surface.device, `${await surface.url(table, request)}&lang=sv`)
+  const client = await open(surface.device, withQuery(await surface.url(table, request), 'lang=sv'))
   // Every card's picture held on its way, as `/faces` answers while the render farm works (#669): a
   // felt whose cards have no picture yet draws the most words, among them the top card's name under
   // the discard pile (#771) — which is the state a zone's name has to stand clear of.

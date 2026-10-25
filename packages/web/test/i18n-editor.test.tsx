@@ -41,16 +41,18 @@ describe('the editor in the reader\'s own language (A4)', () => {
 
     // The wall's crown (#128): a box says its name and what is chosen inside it, in the reader's
     // language, and what it opens is in that language too.
-    expect(screen.getByRole('button', { name: 'View: Normal vision' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Guides (0)' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View: 150 px' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Physical check/ })).toBeTruthy()
+    // What it opens, the wall's panel (L81), is in that language too.
     fireEvent.click(screen.getByRole('button', { name: /^View:/ }))
-    expect(screen.getByRole('group', { name: 'View' })).toBeTruthy()
+    expect(screen.getByRole('complementary', { name: 'The wall’s view and check' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Size' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /^The phone’s reading view/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /^At arm’s length/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Normal vision' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Greyscale' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /^Guides/ }))
-    expect(screen.getByLabelText(/trim and safe margin/i)).toBeTruthy()
-    expect(screen.getByLabelText(/at arm’s length/i)).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: 'Trim and safe margin' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Close the panel' })).toBeTruthy()
     // The deck itself is the designer's: a card keeps its title in either language.
     expect(screen.getByText('Drake')).toBeTruthy()
   })
@@ -126,10 +128,11 @@ describe('the editor in the reader\'s own language (A4)', () => {
     localStorage.clear()
     await openEditor()
     openTab('Theme')
-    // Folded parts, each saying its value in the reader's language (L57).
+    // The parts stand open (L84), and a folded one says its value in the reader's language (L57).
     expect(screen.getByRole('button', { name: /^Fonts/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^Colours and meanings/ }).textContent).toContain('none yet')
-    fireEvent.click(screen.getByRole('button', { name: /^The game’s icons/ }))
+    const colours = screen.getByRole('button', { name: /^Colours and meanings/ })
+    fireEvent.click(colours)
+    expect(colours.textContent).toContain('none yet')
     expect(screen.getByText(/No symbols yet/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /From the library/ }))
     expect(screen.getByRole('heading', { name: 'Symbol library' })).toBeTruthy()
@@ -147,13 +150,12 @@ describe('the editor in the reader\'s own language (A4)', () => {
     await openEditor()
     openTab('Rules')
     expect(screen.getByRole('heading', { name: 'The rulebook' })).toBeTruthy()
-    expect(screen.getByText(/The rules belong to the game/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Start writing the rules' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Start from a template' })).toBeTruthy()
-    // The disposition an empty tab proposes is written in the reader's language too (#131, A4).
-    expect(screen.getByRole('navigation', { name: 'Contents' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'The game ends' })).toBeTruthy()
-    expect(screen.getByText('What do you do first? And then?')).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'The rules belong to the game' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^A blank page/ })).toBeTruthy()
+    // The ways in say what they give in the reader's language too, the template's sections by name
+    // (#131, A4; on the page since #1258).
+    expect(screen.getByRole('button', { name: /^Five sections with questions.*The game ends/ })).toBeTruthy()
+    expect(screen.getByLabelText('Read in a file')).toBeTruthy()
   })
 
   it('says the setup editor and the list of tables in English, and keeps the zone names', async () => {

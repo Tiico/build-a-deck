@@ -1,8 +1,12 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
-import type { RefusalHandle } from '../status/Refusal.js'
+import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
+import { Texture } from '../table/Texture.js'
+import { cardName } from '../table/keyboard.js'
+import { describeActivity, sayable } from '../table/describe.js'
+import { ClockGlyph, CloseGlyph, FlagGlyph } from '../glyphs.js'
 import { FlagSheet } from './SessionSheets.js'
 import './flagflow.css'
 
@@ -17,6 +21,11 @@ import './flagflow.css'
 // the card in it and the note as it was left. A card is whatever a surface draws with its id —
 // the felt's cards, the hands, the zones in front of you — so a face-down pile, which hands out
 // none (K15), cannot be pointed out, exactly as the server would refuse it.
+//
+// Where the screen has a board — `/online` with its felt, the observer at a desk — the flag is not
+// the phone's sheet but a panel docked beside the felt (`docked`, #1255, beställarens val B): the
+// table is not dimmed, and while the panel stands a press on a card points it out, with no mode
+// in between. The phone keeps its sheet.
 const CARDS = '[data-component], [data-hand-card], [data-area-card], [data-mine-card]'
 const idOf = (el: Element): string | null => el.getAttribute('data-component') ?? el.getAttribute('data-hand-card') ?? el.getAttribute('data-area-card') ?? el.getAttribute('data-mine-card')
 
@@ -28,14 +37,43 @@ export type FlagFlowProps = {
   refusal: RefusalHandle
   onClose(): void
   onFlagged(): void
+  docked?: boolean
 }
 
-export function FlagFlow({ client, view, faces, refusal, onClose, onFlagged }: FlagFlowProps) {
+export function FlagFlow({ client, view, faces, refusal, onClose, onFlagged, docked = false }: FlagFlowProps) {
   const [note, setNote] = useState('')
   const [about, setAbout] = useState<VisibleComponentState | null>(null)
   const [pointing, setPointing] = useState(false)
   // The card as the view has it now, so a card that moved while the sheet stood is shown where it is.
   const card = about ? (view.components.find((c) => c.id === about.id) ?? about) : null
+  const flag = (said: string | undefined) => {
+    void refusal.watch(client.send({ v: 'flag', ...(card ? { component: card.id } : {}), ...(said ? { note: said } : {}) })).then((result) => {
+      if (result.ok) onFlagged()
+    })
+  }
+  const close = () => {
+    refusal.clear()
+    onClose()
+  }
+  if (docked)
+    return (
+      <FlagPanel
+        client={client}
+        view={view}
+        faces={faces}
+        refusal={refusal}
+        note={note}
+        onNote={setNote}
+        card={card}
+        onPoint={(id) => {
+          const found = view.components.find((c) => c.id === id)
+          if (found) setAbout(found)
+        }}
+        onDrop={() => setAbout(null)}
+        onFlag={flag}
+        onClose={close}
+      />
+    )
   if (pointing)
     return (
       <PointOut
@@ -58,37 +96,45 @@ export function FlagFlow({ client, view, faces, refusal, onClose, onFlagged }: F
         refusal.clear()
         setPointing(true)
       }}
-      onFlag={(said) => {
-        void refusal.watch(client.send({ v: 'flag', ...(card ? { component: card.id } : {}), ...(said ? { note: said } : {}) })).then((result) => {
-          if (result.ok) onFlagged()
-        })
-      }}
-      onClose={() => {
-        refusal.clear()
-        onClose()
-      }}
+      onFlag={flag}
+      onClose={close}
     />
   )
 }
 
 // The screen while a card is pointed out: a band that says what the next press does and how to
-// get out of it, and every press caught before the surface under it hears it. Caught on the
-// document in the capture phase, so the felt's drag, the strip's hold and the ring are never
-// started; a disclosure (`summary`) still opens, and a tab still turns (#1147), since the card may
-// lie folded away under one or on a tab that is not open.
+// get out of it, and every press caught before the surface under it hears it.
 function PointOut({ onPoint, onCancel }: { onPoint(id: string): void; onCancel(): void }) {
   const t = useT()
   const id = useId()
   const band = useRef<HTMLDivElement>(null)
-  const latest = useRef({ onPoint, onCancel })
-  latest.current = { onPoint, onCancel }
+  useEffect(() => band.current?.focus(), [])
+  usePointOut({ how: 'band', keep: band, onPoint, onEscape: onCancel })
+  return (
+    <div className="byd-flag-point" ref={band} tabIndex={-1} role="status" aria-labelledby={`${id}-ask`}>
+      <span id={`${id}-ask`}>{t('flag.point.ask')}</span>
+      <button type="button" onClick={onCancel}>
+        {t('flag.point.cancel')}
+      </button>
+    </div>
+  )
+}
+
+// Every press outside `keep` caught before the surface under it hears it, and a press on a card
+// pointing it out. Caught on the document in the capture phase, so the felt's drag, the strip's hold
+// and the ring are never started; a disclosure (`summary`) still opens, and a tab still turns
+// (#1147), since the card may lie folded away under one or on a tab that is not open. `how` is what
+// the root says while it lasts: the band rings every card it can point out, the panel the one under
+// the pointer.
+function usePointOut({ how, keep, onPoint, onEscape }: { how: 'band' | 'panel'; keep: RefObject<HTMLElement | null>; onPoint(id: string): void; onEscape(): void }) {
+  const latest = useRef({ onPoint, onEscape })
+  latest.current = { onPoint, onEscape }
   useEffect(() => {
     const root = document.documentElement
-    root.setAttribute('data-flag-pointing', 'true')
-    band.current?.focus()
+    root.setAttribute('data-flag-pointing', how)
     const ours = (target: EventTarget | null): Element | null => {
       if (!(target instanceof Element)) return null
-      if (band.current?.contains(target) || target.closest('summary, [role="tab"]')) return null
+      if (keep.current?.contains(target) || target.closest('summary, [role="tab"]')) return null
       return target
     }
     const still = (e: Event) => {
@@ -110,7 +156,7 @@ function PointOut({ onPoint, onCancel }: { onPoint(id: string): void; onCancel()
       if (e.key === 'Escape') {
         e.stopPropagation()
         e.preventDefault()
-        latest.current.onCancel()
+        latest.current.onEscape()
         return
       }
       if (e.key !== 'Enter' && e.key !== ' ') return
@@ -131,13 +177,124 @@ function PointOut({ onPoint, onCancel }: { onPoint(id: string): void; onCancel()
       document.removeEventListener('click', press, true)
       document.removeEventListener('keydown', key, true)
     }
+  }, [how, keep])
+}
+
+// The panel a screen with a board flags from (#1255): what the flag stamps — the moment, said as
+// the last line of the log, and the card if one is pointed out, large enough to read — and the
+// note under them. It is no modal window: the felt beside it is live for pointing, Tab leaves it
+// for the cards, and Escape, Avbryt and the cross all close it. The focus goes to the note, and
+// back to whatever had it when the panel closes.
+type FlagPanelProps = {
+  client: TableClient
+  view: Snapshot
+  faces: string | undefined
+  refusal: RefusalHandle
+  note: string
+  onNote(note: string): void
+  card: VisibleComponentState | null
+  onPoint(id: string): void
+  onDrop(): void
+  onFlag(note: string | undefined): void
+  onClose(): void
+}
+
+function FlagPanel({ client, view, faces, refusal, note, onNote, card, onPoint, onDrop, onFlag, onClose }: FlagPanelProps) {
+  const t = useT()
+  const id = useId()
+  const box = useRef<HTMLElement>(null)
+  const text = useRef<HTMLTextAreaElement>(null)
+  usePointOut({ how: 'panel', keep: box, onPoint, onEscape: onClose })
+  useEffect(() => {
+    const from = document.activeElement
+    const panel = box.current
+    text.current?.focus()
+    return () => {
+      // Only a focus that went with the panel is given back; one the reader moved on is left.
+      const now = document.activeElement
+      if (now && now !== document.body && !panel?.contains(now)) return
+      if (from instanceof HTMLElement && from.isConnected) from.focus()
+    }
   }, [])
+  // The last thing that happened at the table, which a flag or a line on the notepad is not.
+  const last = sayable(client.activity).reverse().find((l) => l.intent.v !== 'flag' && !l.intent.v.startsWith('note.'))
+  const send = () => onFlag(note.trim() || undefined)
   return (
-    <div className="byd-flag-point" ref={band} tabIndex={-1} role="status" aria-labelledby={`${id}-ask`}>
-      <span id={`${id}-ask`}>{t('flag.point.ask')}</span>
-      <button type="button" onClick={onCancel}>
-        {t('flag.point.cancel')}
-      </button>
-    </div>
+    <aside className="byd-flag-panel" ref={box} role="dialog" aria-labelledby={`${id}-title`}>
+      <header className="byd-flag-panel-head">
+        <FlagGlyph />
+        <h2 id={`${id}-title`}>{t('flag.panel.title')}</h2>
+        <button type="button" className="byd-flag-panel-x" onClick={onClose} aria-label={t('flag.panel.close')} title={t('flag.panel.close')}>
+          <CloseGlyph />
+        </button>
+      </header>
+      <section className="byd-flag-panel-part">
+        <h3>{t('flag.panel.moment')}</h3>
+        <p className="byd-flag-panel-moment">
+          <ClockGlyph />
+          <span>{last ? describeActivity(last, view, t) : t('flag.panel.moment.none')}</span>
+        </p>
+        <small>{t('flag.panel.moment.sub')}</small>
+      </section>
+      <section className="byd-flag-panel-part">
+        <h3>
+          {t('flag.panel.card')} <span>{t('flag.panel.card.optional')}</span>
+        </h3>
+        {card ? (
+          <div className="byd-flag-panel-card">
+            <span className="byd-flag-panel-face">
+              <Texture faces={faces} c={card} />
+            </span>
+            <div>
+              <b>{cardName(card, t)}</b>
+              <small>{t('flag.sheet.card.seen')}</small>
+              <small>{t('flag.panel.card.swap')}</small>
+              <button type="button" className="byd-flag-panel-drop" onClick={onDrop}>
+                {t('flag.panel.card.drop')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="byd-flag-panel-pick">
+            <b>{t('flag.panel.pick')}</b>
+            {t('flag.panel.pick.sub')}
+          </p>
+        )}
+      </section>
+      <section className="byd-flag-panel-part byd-flag-panel-note">
+        <h3>
+          <label htmlFor={`${id}-note`}>{t('flag.panel.note')}</label>
+        </h3>
+        <textarea
+          id={`${id}-note`}
+          ref={text}
+          placeholder={t('flag.sheet.note')}
+          value={note}
+          maxLength={280}
+          onChange={(e) => onNote(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey)) return
+            e.preventDefault()
+            send()
+          }}
+        />
+      </section>
+      <footer className="byd-flag-panel-foot">
+        <small aria-hidden="true">
+          <kbd>{MOD}</kbd>
+          <kbd>↵</kbd> {t('flag.panel.keys')}
+        </small>
+        <button type="button" data-kind="quiet" onClick={onClose}>
+          {t('flag.sheet.cancel')}
+        </button>
+        <button type="button" data-kind="flag" onClick={send} className={refusal.notice ? 'byd-status-refused-control' : undefined} {...refusal.control}>
+          {t('flag.sheet.flag')}
+        </button>
+      </footer>
+      <Refusal handle={refusal} />
+    </aside>
   )
 }
+
+// The key that sends with Enter, as the keyboard in front of the reader names it.
+const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'

@@ -4,7 +4,7 @@ import { DESK } from '../support/devices.js'
 import { renderWorker } from '../support/render.js'
 import { expect, test } from '../support/test.js'
 
-// «Häfte för tryck» from the rulebook tab, through the real renderer (B7, #678). The speltest found
+// «Ladda ner PDF-häfte» (in the «Boken» box since #1258) from the rulebook tab, through the real renderer (B7, #678). The speltest found
 // three faults in the one control: the PDF was answered as image/png and opened as a broken
 // picture, the link stood there before the file did and opened raw JSON, and after a change the
 // link to the old book stayed. The worker runs beside the app as it does on the box, so the link
@@ -30,7 +30,8 @@ test.describe('the booklet for print', () => {
     await page.goto(project.editorUrl)
     await page.getByRole('tab', { name: 'Regler' }).click()
 
-    await page.getByRole('button', { name: 'Häfte för tryck' }).click()
+    await page.getByRole('button', { name: 'Boken' }).click()
+    await page.getByRole('button', { name: 'Ladda ner PDF-häfte' }).click()
     const link = page.getByRole('link', { name: 'Öppna häftet' })
     await expect(link).toBeVisible({ timeout: 120_000 })
 
@@ -46,6 +47,7 @@ test.describe('the booklet for print', () => {
     await page.locator('[data-rulebook]').getByText('Dra ett kort.').click()
     await page.getByLabel('Text under Så spelar ni').fill('Dra två kort.')
     await expect(link).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Häfte för tryck' })).toBeVisible()
+    await page.getByRole('button', { name: 'Boken' }).click()
+    await expect(page.getByRole('button', { name: 'Ladda ner PDF-häfte' })).toBeVisible()
   })
 })

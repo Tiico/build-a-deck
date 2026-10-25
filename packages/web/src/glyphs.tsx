@@ -283,6 +283,15 @@ export function PersonGlyph() {
   )
 }
 
+// A game shared (#1225): a person, and another behind her.
+export function PeopleGlyph() {
+  return (
+    <Glyph name="people">
+      <Line d="M6 3a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 1 0 0-4.5M1.75 13.25c0-2.5 1.9-3.75 4.25-3.75s4.25 1.25 4.25 3.75M10.5 3.2a2.25 2.25 0 0 1 0 4.1M11.75 9.6c1.5.45 2.5 1.6 2.5 3.65" />
+    </Glyph>
+  )
+}
+
 // A file coming in: the arrow lands on the shelf.
 export function ImportGlyph() {
   return (

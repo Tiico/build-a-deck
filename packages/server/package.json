@@ -12,13 +12,15 @@
     "seed": "tsx scripts/seed.ts",
     "seed:project": "tsx scripts/seed-project.ts",
     "plan": "tsx scripts/plan.ts",
-    "usage": "tsx scripts/usage.ts"
+    "usage": "tsx scripts/usage.ts",
+    "screening": "tsx scripts/screening.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",
     "@byd/print": "workspace:*",
     "@byd/protocol": "workspace:*",
     "@byd/render": "workspace:*",
+    "@byd/screening": "workspace:*",
     "@byd/template": "workspace:*",
     "@simplewebauthn/server": "^14.0.3",
     "fflate": "^0.8.3",
@@ -33,6 +35,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./doc": "./src/doc.ts",
-    "./proposal": "./src/proposal.ts"
+    "./account-name": "./src/account-name.ts",
+    "./proposal": "./src/proposal.ts",
+    "./felt-sizes": "./src/felt-sizes.ts"
   }
 }

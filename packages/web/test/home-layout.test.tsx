@@ -16,7 +16,9 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { Survey } from '../src/player/Survey.js'
 import { capture } from '@byd/render'
 import { projectDoc } from './project-doc.js'
-import { admit, createSession, startServer, type Running } from './fixture.js'
+import { TableClient } from '../src/client.js'
+import { admit, asSeat, asTable, createSession, registerRoom, startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -57,6 +59,7 @@ async function started(): Promise<string> {
   const card = document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement
   fireEvent.click(within(card).getByRole('button', { name: 'Fler val för Skogens herrar' }))
   fireEvent.click(within(await screen.findByRole('group', { name: 'Val för Skogens herrar' })).getByRole('button', { name: 'Starta bord' }))
+  await answerStart()
   await within(await screen.findByRole('region', { name: 'Pågår nu' })).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i/ })
   return container.innerHTML
 }
@@ -333,6 +336,78 @@ describe('the tables sat at, at 390 and 1280 px', () => {
       expect(played.left).toBeGreaterThanOrEqual(12)
       expect(played.top).toBeGreaterThanOrEqual(12)
       expect(played.right).toBeGreaterThanOrEqual(12)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// «Väntar på dig» (#1225, #1204 beslut B): in the side column on a desk, between «Pågår nu» and the
+// tables sat at, and first after «Pågår nu» on a phone; each row a whole target that says all of
+// itself inside the window. The hero's four numbers keep theirs inside their tiles. Measured in a
+// wide face too (Verdana or DejaVu), since the Mac's narrow system font hides what the runner's
+// does not.
+describe.each([390, 1024, 1280, 1440])('«Väntar på dig» at %i px (#1225)', (width) => {
+  it('stands where the prototype has it, with every row a whole target and nothing cut', async () => {
+    const json = { 'content-type': 'application/json' }
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email: 'waiting@example.com' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc(), name: 'Sjörövarnas skatt med en lång titel' }) })
+    // A table of the game, flagged; and a table the account sat at, over and not answered.
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const seat = TableClient.connect(await asSeat(run, made.id, 'A', 'Bo'))
+    await seat.ready()
+    await seat.send({ v: 'seat.claim', seat: 'A', name: 'Bo' })
+    await seat.send({ v: 'flag', note: 'Draken är för stark' })
+    seat.close()
+    const sat = await createSession(run, 'satt')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token: await admit(run, sat, 'A', 'Ada') }) })).status).toBe(200)
+    const host = TableClient.connect(await asTable(run, sat))
+    await host.ready()
+    await host.send({ v: 'session.end' })
+    host.close()
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const { container } = render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByRole('region', { name: 'Väntar på dig' })
+    await screen.findByRole('region', { name: 'Pågår nu' })
+    await screen.findByText('Bord du har spelat vid')
+    const page = await browser.newPage({ viewport: { width, height: 900 } })
+    try {
+      await page.setContent(document_(container.innerHTML), { waitUntil: 'load' })
+      const measure = async () =>
+        (await page.evaluate(`(() => {
+          const r = (el) => el.getBoundingClientRect()
+          const rows = [...document.querySelectorAll('.byd-home-waiting-list > a')]
+          return {
+            rows: rows.length,
+            short: rows.filter((a) => r(a).height < 44).length,
+            cut: rows.flatMap((a) => [...a.querySelectorAll('b, small')]).filter((t) => t.scrollWidth > t.clientWidth + 1 || r(t).right > innerWidth).length,
+            stats: [...document.querySelectorAll('.byd-home-stats dd')].filter((d) => d.scrollWidth > d.clientWidth).length,
+            scroll: document.documentElement.scrollWidth - innerWidth,
+            panel: r(document.querySelector('.byd-home-waiting')).toJSON(),
+            main: r(document.querySelector('.byd-home-main')).toJSON(),
+            running: r(document.querySelector('.byd-home-running')).toJSON(),
+            sat: r(document.querySelector('.byd-home-sat')).toJSON(),
+          }
+        })()`)) as { rows: number; short: number; cut: number; stats: number; scroll: number; panel: DOMRect; main: DOMRect; running: DOMRect; sat: DOMRect }
+      for (const face of ['', `* { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }`]) {
+        if (face) await page.addStyleTag({ content: face })
+        const m = await measure()
+        expect(m.rows).toBe(2)
+        expect(m.short).toBe(0)
+        expect(m.cut).toBe(0)
+        expect(m.stats).toBe(0)
+        expect(m.scroll).toBeLessThanOrEqual(0)
+        // After «Pågår nu» and before the tables sat at, in both layouts.
+        expect(m.panel.top).toBeGreaterThan(m.running.bottom)
+        expect(m.sat.top).toBeGreaterThan(m.panel.bottom)
+        if (width > 860) expect(m.panel.left).toBeGreaterThanOrEqual(m.main.right)
+        else expect(m.panel.bottom).toBeLessThan(m.main.top)
+      }
     } finally {
       await page.close()
     }

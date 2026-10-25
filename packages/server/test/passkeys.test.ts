@@ -50,7 +50,7 @@ describe('a passkey saved after the link logs in without a mail', () => {
 
     expect(res.status).toBe(200)
     expect(res.cookie).toMatch(/^byd_session=.+/)
-    expect((await call('GET', '/auth/me', undefined, res.cookie)).json).toEqual({ email: 'ada@example.com' })
+    expect((await call('GET', '/auth/me', undefined, res.cookie)).json).toEqual({ email: 'ada@example.com', name: null, asked: false, terms: { current: null, accepted: null, due: false } })
     expect(run.mail.sent.length).toBe(mails)
   })
 })

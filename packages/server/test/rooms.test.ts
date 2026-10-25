@@ -3,6 +3,7 @@ import { createRoom, start, twoSeatSetup, type Running } from './fixture.js'
 import { WireClient } from './client.js'
 import { template } from './deck.js'
 import { GUEST_PENDING_TTL_MS } from '../src/rooms.js'
+import { REDACTED } from '@byd/protocol'
 
 // Room codes (DRIFT §9): short, without confusable characters, resolving to a session for a
 // few hours after the last connection, and the host's key that opens the table's own view.
@@ -117,6 +118,19 @@ describe('guest tokens', () => {
     await active.close()
     now = new Date(now.getTime() + GUEST_PENDING_TTL_MS + 1)
     expect((await post(run.http, `/rooms/${code}/join`, { name: 'Cid', seat: 'A' })).status).toBe(409)
+  })
+
+  // The placeholder a masked name says (#1276) is nobody's name: not a player's, and not a
+  // watcher's, whose name a flag carries.
+  it('refuses the placeholder of a masked name, at a seat and as a watcher', async () => {
+    const { code } = await createRoom(run.http)
+    for (const name of [REDACTED, ` ${REDACTED} `]) {
+      const seated = await post(run.http, `/rooms/${code}/join`, { name, seat: 'A' })
+      expect(seated.status).toBe(400)
+      expect(await seated.json()).toEqual({ error: expect.stringMatching(/placeholder/) })
+      expect((await post(run.http, `/rooms/${code}/join`, { name })).status).toBe(400)
+    }
+    expect((await post(run.http, `/rooms/${code}/join`, { name: 'Ada', seat: 'A' })).status).toBe(201)
   })
 
   it('a code and a name buy a token for a free seat; unknown codes and seats, and taken seats, refuse', async () => {

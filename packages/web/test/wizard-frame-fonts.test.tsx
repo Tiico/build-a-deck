@@ -113,9 +113,9 @@ describe('the theme a guided start is made in (#633, #420, B3, L27)', () => {
     expect(texts).toEqual({ title: 'Lora', body: 'Merriweather', cost: 'Lora' })
   })
 
-  it('remembers the theme it started from, and is given its meanings and its starter icons as Speltema gives them', async () => {
+  it('is given the theme as the game’s own, its meanings and its starter icons as a copy in Speltema gives them (L84)', async () => {
     const doc = await madeWith('Mörk', 'Retro')
-    expect(doc.theme).toEqual({ from: 'retro' })
+    expect(doc).not.toHaveProperty('theme')
     expect(doc.palette).toEqual({ kostnad: '#8f2d20', vinst: '#7a5c00', försvar: '#155e75', anfall: '#6b2d5c' })
     expect(Object.keys(doc.icons).sort()).toEqual(['dra', 'hjärta', 'kristall', 'mynt', 'svärd', 'sköld'].sort())
     for (const [name, url] of Object.entries(doc.icons)) {
@@ -129,7 +129,7 @@ describe('the theme a guided start is made in (#633, #420, B3, L27)', () => {
   // inte förr (L27).
   it('starts from the first theme when none is pressed, and fetches its families only when the game is made', async () => {
     const doc = await madeWith('Klassisk')
-    expect(doc.theme).toEqual({ from: 'skogssaga' })
+    expect(doc.palette).toEqual({ kostnad: '#8f2d20', vinst: '#2f6136', försvar: '#155e75', anfall: '#a8410c' })
     expect(Object.keys(doc.fonts ?? {}).sort()).toEqual(['Cinzel', 'EB Garamond'])
   })
 

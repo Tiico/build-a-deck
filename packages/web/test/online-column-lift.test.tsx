@@ -9,9 +9,10 @@ import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
 
 // A card in the hand's column, read (K26, #510 beslut B). The column's 112 px card carries its body
 // at 5 px, and the 180 px peek it used to draw on hover at 8.6 (#484 fynd 15). Now hover, keyboard
-// focus or a press lifts it up beside the column the way a card on the felt is lifted (#509): in the
-// window's size, by `liftBox`. A second press — on the card or on the lift — opens the address
-// panel, which a press used to open straight away; Enter still does (K16).
+// focus or a finger's press lifts it up beside the column the way a card on the felt is lifted
+// (#509): in the window's size, by `liftBox`. A finger's second press — on the card or on the lift —
+// opens the address panel, which a press used to open straight away; Enter still does (K16). A
+// mouse's click turns the card instead (#1291, `online-hand-turn.test.tsx`).
 const card = (id: string, title: string): VisibleComponentState =>
   ({ id, type: { id: 'card.standard.63x88', version: 1 }, zone: 'hand:A', x: 0, y: 0, rot: 0, face: 'front', cardRef: title, title, faces: undefined }) as unknown as VisibleComponentState
 
@@ -51,17 +52,6 @@ describe('a card in the column, read with one action (K26, #510)', () => {
     press(el('c1'), 'touch')
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }))
     expect(lifted()).toBeNull()
-  })
-
-  it('a click keeps the card lifted after the mouse has left it, and a second click opens the panel', () => {
-    const { el, onOpen } = column()
-    act(() => void fireEvent.pointerEnter(el('c2'), { pointerType: 'mouse' }))
-    press(el('c2'))
-    act(() => void fireEvent.pointerLeave(el('c2'), { pointerType: 'mouse' }))
-    expect(lifted()?.getAttribute('data-lift')).toBe('c2')
-    expect(onOpen).not.toHaveBeenCalled()
-    press(el('c2'))
-    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'c2' }))
   })
 
   it('a press on the lifted card opens the panel for it', () => {

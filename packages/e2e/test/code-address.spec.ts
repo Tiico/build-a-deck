@@ -16,10 +16,10 @@ const LAPTOP: Device = SMALL_TV
 const SAYS = 'Koden finns inte eller har gått ut. Fråga värden efter den nya.'
 
 /** A table started from a game, so that the game has a name to say (L5). */
-async function namedTable(request: APIRequestContext, name: string): Promise<Table> {
+async function namedTable(request: APIRequestContext, name: string, seating?: 'screen' | 'computer'): Promise<Table> {
   await logIn(request)
   const project = await makeProject(request, { name })
-  return { ...(await startTable(request, project.id)), seats: [] }
+  return { ...(await startTable(request, project.id, seating)), seats: [] }
 }
 
 /** Every page load in the main frame from here on. */
@@ -204,6 +204,19 @@ test.describe('the code is the address (#675)', () => {
     // Below 1024 it is a phone's page again.
     const narrow = await open({ name: 'narrow', viewport: { width: 1000, height: 800 } }, `/${table.code}?lang=sv`)
     await expect(narrow.page.locator('[data-page="join"] form button').first()).toHaveText('Sätt dig')
+  })
+
+  // At a table around a TV a laptop is a hand like a phone (#1286): one «Gå med», and it leads to
+  // the hand, since the table is up on the TV.
+  test('gives a laptop at a table around a TV the hand, from one «Gå med»', async ({ request, open }) => {
+    const table = await namedTable(request, 'Fredagskort', 'screen')
+    const { page } = await open(LAPTOP, `/${table.code}?lang=sv`)
+    await expect(page.getByText('Du får handen. Bordet står på TV:n.')).toBeVisible()
+    await expect(page.locator('[data-page="join"] form .byd-primary, [data-page="join"] form .byd-secondary')).toHaveCount(1)
+    await page.getByLabel('Ditt namn').fill('Kim')
+    await page.getByRole('button', { name: 'Gå med', exact: true }).click()
+    await page.waitForURL('**/play*')
+    await expect(page.locator('[data-page="player"]')).toBeVisible()
   })
 
   test('table mode says the address on its plate, and draws no square', async ({ table, open, baseURL }) => {

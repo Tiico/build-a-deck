@@ -31,6 +31,15 @@
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
 .byd-login-error { color: #ff9a9a; font-size: 13px; margin: 0; }
+/* The welcome step (#1254, variant C): the login card's form, one question with the suggestion
+   filled in, «Fortsätt» across the card and «Hoppa över» as a quiet word under it. */
+.byd-welcome form { gap: 14px; }
+.byd-welcome .byd-login-email { gap: 8px; }
+.byd-welcome-as { margin: 0; color: #9aa3b8; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.byd-welcome-note { margin: 0; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
+.byd-welcome-answers { display: grid; gap: 8px; }
+.byd-login .byd-welcome-skip { justify-self: center; min-height: 44px; padding: 0; border: 0; background: none; color: #9aa3b8; font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.byd-login .byd-welcome-skip:hover { color: #fff; }
 /* The door for whoever came to play (#675, beslut C): a row with the room's code, which stood under
    the login card and now stands on the landing page (#1009). */
 .byd-code-row { width: min(420px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
@@ -48,10 +57,10 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    main column and what is happening — tables running, tables sat at, the code — in a column of its
    own beside them. The main column spans every row of the side column, whose last row takes what
    is left, so the side's parts stand together at the top whatever the main column's height. */
-.byd-home { width: min(1440px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto auto auto auto 1fr; gap: 24px 32px; align-items: start; }
+.byd-home { width: min(1440px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto auto auto auto auto 1fr; gap: 24px 32px; align-items: start; }
 .byd-home > .byd-home-bar, .byd-home > .byd-about { grid-column: 1 / -1; }
 .byd-home-main { grid-column: 1; grid-row: 2 / -1; display: grid; gap: 18px; min-width: 0; }
-.byd-home-running, .byd-home-sat, .byd-home-door { grid-column: 2; min-width: 0; }
+.byd-home-running, .byd-home-waiting, .byd-home-sat, .byd-home-door { grid-column: 2; min-width: 0; }
 .byd-home-door .byd-code-row { width: 100%; }
 /* The bar: the mark, then what is done to the page and the account. min-width: 0 so the account
    line can give way inside it rather than widen the page (#728). */
@@ -65,12 +74,14 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 @media (max-width: 860px) {
   /* One column, with what is running first: it is the thing a phone is most often opened for. */
   .byd-home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 18px; }
-  .byd-home-main, .byd-home-running, .byd-home-sat, .byd-home-door { grid-column: 1; grid-row: auto; }
+  .byd-home-main, .byd-home-running, .byd-home-waiting, .byd-home-sat, .byd-home-door { grid-column: 1; grid-row: auto; }
   .byd-home-running { order: 1; }
-  .byd-home-main { order: 2; }
-  .byd-home-sat { order: 3; }
-  .byd-home-door { order: 4; }
-  .byd-home > .byd-about { order: 5; }
+  /* What waits for the account comes next, before the games, as the prototype has it (#1225). */
+  .byd-home-waiting { order: 2; }
+  .byd-home-main { order: 3; }
+  .byd-home-sat { order: 4; }
+  .byd-home-door { order: 5; }
+  .byd-home > .byd-about { order: 6; }
 }
 @media (max-width: 600px) {
   /* On a phone the bar gives its room to the address (#728), and «＋ Nytt spel» is the dashed row's
@@ -165,7 +176,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-hero > .byd-home-game { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 32px; padding: 28px; border-radius: 22px; background: radial-gradient(90% 120% at 0% 100%, #1d2a24, var(--byd-account-card-bg) 60%); }
 .byd-home-hero .byd-home-open { display: block; padding: 0; }
 .byd-home-fan { position: relative; display: block; padding: 8px 40px 0; }
-.byd-home-fan-back { position: absolute; top: 8px; left: 40px; filter: brightness(0.72); transform-origin: 50% 100%; }
+/* The cards behind are cards of the same game, so they keep the front card's rounded corners. */
+.byd-home-fan-back { position: absolute; top: 8px; left: 40px; border-radius: 4px; overflow: hidden; filter: brightness(0.72); transform-origin: 50% 100%; }
 .byd-home-fan-back[data-back='0'] { transform: rotate(-9deg) translateX(-26px); }
 .byd-home-fan-back[data-back='1'] { transform: rotate(8deg) translateX(26px); filter: brightness(0.84); }
 .byd-home-fan .byd-home-card { position: relative; box-shadow: 0 10px 30px rgb(0 0 0 / 45%); }
@@ -210,6 +222,26 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 /* The way to the game is the row's second action (#1217): outlined, as L13 has every second one. */
 .byd-home-running-row a.byd-home-running-game { background: transparent; box-shadow: inset 0 0 0 1px #7dd3a088; color: #d8ffe8; }
 .byd-home-running-row a.byd-home-running-game:hover { box-shadow: inset 0 0 0 1px #7dd3a0; }
+/* «Väntar på dig» (#1225, #1204 beslut B): one card of rows, each its icon on its own ground, what it
+   is, where it comes from and an arrow — yellow for flags as the flag chip is, green for a survey as
+   the survey's button is, and blue-grey for a version someone else saved. The rows are whole
+   targets, so the focus ring is drawn inside the card that clips them. */
+.byd-home-waiting { display: grid; gap: 8px; }
+.byd-home-waiting > h2 { margin: 0; }
+.byd-home-waiting-list { display: grid; border-radius: 16px; background: var(--byd-account-card-bg); border: 1px solid #262a35; overflow: hidden; }
+.byd-home-waiting-list > a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; box-sizing: border-box; min-height: 56px; padding: 8px 16px; border-top: 1px solid #262a35; color: #fff; text-decoration: none; }
+.byd-home-waiting-list > a:first-child { border-top: 0; }
+.byd-home-waiting-list > a:hover { background: var(--byd-account-card-bg-hover); }
+.byd-home-waiting-list > a:focus-visible { outline-offset: -4px; }
+.byd-home-waiting-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #2e2717; color: #f2c46d; }
+.byd-home-waiting-list > a[data-waiting='survey'] .byd-home-waiting-icon { background: #1b2a22; color: #7dd3a0; }
+.byd-home-waiting-list > a[data-waiting='version'] .byd-home-waiting-icon { background: #1f2433; color: #b9c3dc; }
+.byd-home-waiting-text { display: grid; gap: 2px; min-width: 0; }
+.byd-home-waiting-text b { font-size: 15px; line-height: 1.3; }
+.byd-home-waiting-text small { color: #9aa3b8; font-size: 12px; line-height: 1.35; }
+.byd-home-waiting-arrow { display: inline-flex; color: #9aa3b8; }
+/* The hero's new flags in the flags' own yellow, once there are any (#1225). */
+.byd-home-stats > [data-new-flags] dd { color: #f2c46d; }
 /* The tables sat at, in the side column (#1204): one under another, each a short card of its own. */
 .byd-home-sat { display: grid; gap: 8px; }
 .byd-home-sat > h2 { margin: 0; }
@@ -269,6 +301,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-passkey-failed { color: #ffb4c4; }
 .byd-passkey-offer-answers { display: flex; flex-wrap: wrap; gap: 8px; }
 .byd-passkey-offer-answers > button { min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
+/* The name's band (#1254) asks in the band itself: the field stands before its two answers, on the
+   band's green, in the band's own line colour. */
+.byd-name-offer .byd-passkey-offer-answers { margin: 0; }
+.byd-name-offer input { width: 200px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font: inherit; }
+.byd-name-offer input:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 .byd-passkey-done { display: flex; align-items: center; gap: 10px; margin: 0; }
 .byd-passkey-done > .byd-glyph { color: #7dd3a0; }
 .byd-home-hero .byd-home-more { right: 12px; top: 12px; }

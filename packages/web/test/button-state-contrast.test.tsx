@@ -35,7 +35,7 @@ import { contrastRatio, flatten, parseColor } from '../src/player/contrast.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
-import { chooseTheme } from './choose-theme.js'
+import { openExample } from './open-example.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -255,8 +255,8 @@ async function readView(html: string, width: number): Promise<Pair[]> {
 
 // Every mode the editor can be showing, in the room being walked, named so that a walk which finds
 // nothing fails instead of agreeing with itself.
-const DESK_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, ett tema valt', 'Tabell'] as const
-const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, ett tema valt', 'Tabell'] as const
+const DESK_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
+const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
 
 async function editorViews(width: number): Promise<Record<string, string>> {
   atWidth(width)
@@ -270,7 +270,7 @@ async function editorViews(width: number): Promise<Record<string, string>> {
       const tab = tabs()[i]!
       fireEvent.click(tab)
       out[tab.textContent?.trim() ?? String(i)] = document.querySelector('.byd-editor')!.outerHTML
-      // Speltema folds its parts (L57): every one of them is opened before the tab is read, and
+      // Speltema's parts can be folded (L57, L84): every one of them is opened before the tab is read, and
       // the library that opens from the icons is read as a view of its own.
       if (tab.textContent?.trim() === 'Speltema') {
         for (const head of document.querySelectorAll<HTMLElement>('[data-theme-section] h2 button[aria-expanded="false"]')) fireEvent.click(head)
@@ -278,10 +278,10 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
         out['Speltema, biblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
-        // The chosen tile is drawn on its own ground once it is on (#665), so its words are read
-        // there too.
-        await chooseTheme('Skogssaga')
-        out['Speltema, ett tema valt'] = document.querySelector('.byd-editor')!.outerHTML
+        // The examples are a sheet of their own (L84), and the question a copy asks has buttons of
+        // its own, so both are read open.
+        openExample('Skogssaga')
+        out['Speltema, exemplen öppna'] = document.querySelector('.byd-editor')!.outerHTML
       }
     }
     return out

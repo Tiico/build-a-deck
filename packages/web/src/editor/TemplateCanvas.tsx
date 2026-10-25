@@ -13,7 +13,7 @@ import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, ha
 import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, oversetOf, paintOf, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
-import { Arriving, AssetImage } from './AssetImage.js'
+import { Arriving, Thumb } from './AssetImage.js'
 import { assetRef, drawnImageFieldsOf, holdIcons, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { fieldLabel, fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
@@ -2119,7 +2119,7 @@ const MORE_FONTS = '\u0000more'
 // moved to another type behind the designer's back — and the whole catalog behind «Fler
 // typsnitt…», two clicks away: open the list, take the last entry. The entry opens the catalog
 // and changes nothing, so the list goes on saying what the layer is set in.
-function FamilyPicker({ el, fonts, onPatch, onMoreFonts }: { el: Extract<Element, { kind: 'text' }>; fonts: Pick<ProjectDoc, 'fonts' | 'theme'>; onPatch(patch: Partial<Element>): void; onMoreFonts: (() => void) | undefined }) {
+function FamilyPicker({ el, fonts, onPatch, onMoreFonts }: { el: Extract<Element, { kind: 'text' }>; fonts: ProjectDoc; onPatch(patch: Partial<Element>): void; onMoreFonts: (() => void) | undefined }) {
   const t = useT()
   const { game, kept } = familyChoices(fonts, el.font.family)
   return (
@@ -2179,7 +2179,7 @@ function Properties({
   assetBase: string | undefined
   onAddPicture: ((file: File) => Promise<string>) | undefined
   taken: string[]
-  fonts: Pick<ProjectDoc, 'fonts' | 'theme'>
+  fonts: ProjectDoc
   // Opens the catalog for the chosen layer (#634); absent where nothing can be brought in.
   onMoreFonts?: (() => void) | undefined
   srcOf(name: string): string | undefined
@@ -2494,7 +2494,7 @@ function FixedPicture({ el, pictures, assetBase, onChoose }: { el: Element & { k
   const name = hash === null ? t('canvas.props.picture.none') : (picture?.name ?? t('canvas.props.picture.unnamed'))
   return (
     <div className="byd-props-picture">
-      {hash !== null && assetBase && <AssetImage base={assetBase} hash={hash} alt="" />}
+      {hash !== null && assetBase && <Thumb base={assetBase} hash={hash} alt="" />}
       <span>{name}</span>
       <button type="button" className="byd-secondary" onClick={onChoose}>
         {t('canvas.props.picture.choose')}

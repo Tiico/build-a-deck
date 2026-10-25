@@ -151,3 +151,48 @@ describe('a card shown for everyone is read from the sofa (K26, #508)', () => {
     }
   }, 60_000)
 })
+
+// The room's stage (#1290, beslut A): the card the latest line was about stands in the column the
+// felt gives up, as tall as the column less its line and its foot. At 1920 × 1080 beside a felt
+// that gives the whole 760 px it is read from the sofa — over K26's floor for all text — and at a
+// laptop's 1280 × 800, where the felt gives nothing and the stage is the old 360, it is still a card
+// at the desk's floor, which the 190 px panel it replaced was not.
+describe('the room’s stage is read from the sofa (#1290)', () => {
+  const staged = async (size: { w: number; h: number }, stage: number) => {
+    const scene = sceneOf(feltOf(4))
+    const card = scene.components.find((c) => c.cardRef !== null && c.counter === undefined)!
+    const html = markupOf(
+      <TvChrome view={scene} activity={[]} roomCode="KX7P" host="deckster.se" joinUrl="https://deckster.se/KX7P" title="Visa" version="v3" room stage={stage} inspecting={card}>
+        <TableRenderer view={scene} mode="tv" camera="follow" size={{ w: size.w - stage, h: size.h }} glideMs={0} />
+      </TvChrome>,
+    )
+    return onPage(html, size, (page) =>
+      page.evaluate(() => {
+        const box = (el: Element | null) => {
+          const r = el!.getBoundingClientRect()
+          return { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom }
+        }
+        return { card: box(document.querySelector('.byd-tv-stage [data-inspect]')), column: box(document.querySelector('[data-tv] > aside')), foot: box(document.querySelector('.byd-tv-foot')), caption: box(document.querySelector('.byd-tv-stage figcaption')) }
+      }),
+    )
+  }
+
+  it('draws the card over K26’s floor at 1920 × 1080, whole, with its line and foot under it', async () => {
+    const got = await staged({ w: 1920, h: 1080 }, 760)
+    const body = Number(textPxOnCard(DEFAULT_BODY_PT, got.card.w).toFixed(1))
+    expect({ card: Math.round(got.card.w), reads: body >= SCREENS.tv.floorPx }).toEqual({ card: Math.round(got.card.w), reads: true })
+    expect(Math.round(got.card.h / got.card.w * 63)).toBe(88)
+    expect({ card: inside(got.card, got.column), foot: inside(got.foot, got.column), column: Math.round(got.column.w) }).toEqual({ card: true, foot: true, column: 760 })
+    expect(got.caption.y).toBeGreaterThanOrEqual(got.card.bottom - 0.5)
+    expect(got.foot.y).toBeGreaterThanOrEqual(got.caption.bottom - 0.5)
+  }, 60_000)
+
+  it('keeps a card at the desk’s floor in the old 360 px at 1280 × 800', async () => {
+    const got = await staged({ w: 1280, h: 800 }, 360)
+    expect(textPxOnCard(DEFAULT_BODY_PT, got.card.w)).toBeGreaterThanOrEqual(SCREENS.desk.floorPx)
+    expect({ card: inside(got.card, got.column), foot: inside(got.foot, got.column) }).toEqual({ card: true, foot: true })
+    // The card is bound by the stage's width here, and its line stands right under it, not down by
+    // the foot under the height the card does not use.
+    expect(got.caption.y - got.card.bottom).toBeLessThanOrEqual(16.5)
+  }, 60_000)
+})

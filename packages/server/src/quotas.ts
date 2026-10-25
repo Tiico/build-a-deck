@@ -95,18 +95,10 @@ export function growth(measure: Measure, limit: Limit, used: number, n: number):
 // Who bears a ceiling that was met, in the words of the contract (#1192): `you` when the one asking
 // bears the cost, and `owner` when the game's owner does — named, so that a test leader or a
 // co-editor knows whom to ask (#1198, beställarens beslut 3), and never by address or tier.
+// `ownerName` is the name the owner gave her account (#1254); an owner who has given none is said
+// without one, and the sentence says «the game's owner».
 export type Bearer = { bearer: 'you' } | { bearer: 'owner'; ownerName?: string }
 export const YOU: Bearer = { bearer: 'you' }
-
-// The name an owner is said by to someone else (#1198). An account has no name of its own, only an
-// address, and the address is never said. So the name is the first word of the address before the
-// @ that reads as one — two letters or more, nothing else — with a capital: «nicklas.ockelberg@…» is
-// Nicklas. An address with no such word has no name, and the sentence then says «the game's owner».
-export function ownerNameOf(email: string): string | null {
-  const local = email.split('@')[0] ?? ''
-  const word = local.split(/[._+-]/).find((part) => /^\p{L}{2,}$/u.test(part))
-  return word ? word.charAt(0).toLocaleUpperCase('sv') + word.slice(1).toLocaleLowerCase('sv') : null
-}
 
 // What a store throws when a write it was asked to make within a ceiling would cross it. The store
 // counts and writes in one step (#1192): two requests at the ceiling's last place give exactly one.

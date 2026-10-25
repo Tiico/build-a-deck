@@ -17,7 +17,7 @@ import { QuotaReached, type Bearer, type Limit, type QuotaMet } from './quotas.j
 export type AppliedEdit = { seq: number; at: string; by?: string; from?: string; intent: EditIntent }
 // `account` is whose editor it is, so taking the game back from someone can end what they have open.
 // `gone`: the project itself is no more (#485) — closed the way an unknown project is refused.
-export type Editor = { id: string; name: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void; gone?(): void }
+export type Editor = { id: string; name: string; email?: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void; gone?(): void }
 export type EditorMessage =
   // `saved` is the version `rev` names, sent only when it is not `doc` — when the log has a tail
   // nobody has saved yet (#764). Without it an editor could only take what it is handed for saved.
@@ -37,11 +37,14 @@ export type EditorMessage =
   //
   // `quota` is the ceiling an edit (#1195) or a save (#1197) would have crossed (#1192), on a
   // refusal whose `why` is `quota`: the measure, the ceiling, what is used, and who bears it — `you`
-  // when the editor owns the game, `owner` when its owner does, with `ownerName` when her address
-  // gives one (#1198) and never the address. An addition as `to` and `ask` were:
+  // when the editor owns the game, `owner` when its owner does, with `ownerName` when she has given
+  // her account a name (#1198, #1254) and never the address. An addition as `to` and `ask` were:
   // a page from before it reads the refusal by `why`, as it does any other.
   | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & Bearer }
-export type Presence = { id: string; name: string; role?: Role }
+// `name` is what the others call the editor: the account's own name, or its address when it has
+// given none (#1254). `email` is the account's address, beside it so that a face keeps its colour
+// when the name is changed; it goes only to those who share the game, who see it in Dela already.
+export type Presence = { id: string; name: string; email?: string; role?: Role }
 // The ceiling an owner's games are held to on a card measure (#1195): asked of the owner's tier as
 // the edit is decided, so a tier changed while the game is open holds from the next edit.
 export type CardCeilings = (owner: string, measure: CardMeasure) => Promise<Limit>
@@ -111,7 +114,7 @@ export class ProjectActor {
       seen.add(e.account)
       return true
     })
-    return people.map((e) => ({ id: e.id, name: e.name, ...(e.role ? { role: e.role } : {}) }))
+    return people.map((e) => ({ id: e.id, name: e.name, ...(e.email ? { email: e.email } : {}), ...(e.role ? { role: e.role } : {}) }))
   }
 
   // An editor joins: it is given the document as it stands, and everyone is told who is here.
@@ -180,19 +183,22 @@ export class ProjectActor {
   // for is not made, and says the ceiling it met; the log and what stands are as they were. It is
   // asked for in the save's own turn of the queue, never before it, so a save takes its place behind exactly
   // the edits sent before it, however long the question takes (#994).
+  // The version is the asking editor's account's (#1225), when it has one.
   async save(from?: string, storage?: OwnerCeilings): Promise<Saved> {
-    return this.serial(() => this.makeVersion(from, storage))
+    const by = [...this.editors].find((editor) => editor.id === from)?.account
+    return this.serial(() => this.makeVersion(from, storage, undefined, by))
   }
   // `edit` is one decided and not yet committed (#1233): it is committed with the version, in the
   // same step of the store and after the ceiling is asked, and applied only once both are written.
   // A version refused leaves it in no log and on no screen.
-  private async makeVersion(from?: string, storage?: OwnerCeilings, edit?: { entry: AppliedEdit; next: ProjectDoc }): Promise<Saved> {
+  // `by` is the account the version is saved by (#1225).
+  private async makeVersion(from?: string, storage?: OwnerCeilings, edit?: { entry: AppliedEdit; next: ProjectDoc }, by?: string): Promise<Saved> {
     let result: Awaited<ReturnType<ProjectStore['replace']>>
     try {
       const ceilings = storage ? await storage() : undefined
       result = edit
-        ? await this.store.replace(this.id, this.rev, edit.next, edit.entry.seq, ceilings, [edit.entry])
-        : await this.store.replace(this.id, this.rev, this.current, this.at, ceilings)
+        ? await this.store.replace(this.id, this.rev, edit.next, edit.entry.seq, ceilings, [edit.entry], by)
+        : await this.store.replace(this.id, this.rev, this.current, this.at, ceilings, [], by)
     } catch (e) {
       if (e instanceof QuotaReached) return { ok: false as const, reason: 'quota', quota: e.quota }
       throw e
@@ -221,8 +227,8 @@ export class ProjectActor {
   async put(expectedRev: number, doc: ProjectDoc, by?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
-      if (stamp(doc) === stamp(this.current)) return this.makeVersion(undefined, storage)
-      return this.makeVersion(undefined, storage, await this.decide({ v: 'restore', doc }, by))
+      if (stamp(doc) === stamp(this.current)) return this.makeVersion(undefined, storage, undefined, by)
+      return this.makeVersion(undefined, storage, await this.decide({ v: 'restore', doc }, by), by)
     })
   }
 
@@ -233,7 +239,7 @@ export class ProjectActor {
   }
   private handOver(editor: Editor): void {
     const saved = this.saved === this.current ? {} : { saved: this.saved }
-    editor.send({ v: 'project', doc: this.current, ...saved, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.role ? { role: editor.role } : {}) } })
+    editor.send({ v: 'project', doc: this.current, ...saved, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.email ? { email: editor.email } : {}), ...(editor.role ? { role: editor.role } : {}) } })
   }
 
   private tell(message: EditorMessage): void {

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // What the rules tab does with the height and the width it has (#131). The tab used to put a
 // paragraph in the top left corner of 1440 × 900 and leave the rest dark; it now lays the book's
-// disposition out beside the column the book is found in. Whether a measure is a measure, whether
+// disposition out beside the column the book is found in — and since #1258 an empty tab, which has
+// no contents for a column to hold, lays its three ways in out on the page the book will be. Whether a measure is a measure, whether
 // the pair stays where it is when the window grows, and what scrolls when it does not fit are
 // layout questions, so they are asked of a real engine against the stylesheet the editor ships —
 // the way `editor-viewport` and `editor-tables-layout` ask theirs.
@@ -38,7 +39,7 @@ const SCREENS = [
   { width: 1024, height: 768 },
 ] as const
 
-// The rules tab as markup, in each of its states: the disposition an empty tab proposes, the book
+// The rules tab as markup, in each of its states: the ways in an empty tab offers (#1258), the book
 // that stands there once a way in has been taken, and a file lying in that book as a proposal
 // (#131). The third is the one the decision between prototype 8's A and B turned on: A had two
 // scrolling areas at 1024 and 1280, so the thing that has to be read carefully fell below a fold.
@@ -49,7 +50,11 @@ const SCREENS = [
 type Scrolling = { areas: number; nested: string[] }
 // And since #227 a fourth: the written book read as the players are handed it, which is the same
 // spread with the table's own drawer standing in the reading area against a felt.
-type State = 'empty' | 'written' | 'proposal' | 'table'
+//
+// And since #1258 a fifth, held only to fitting the window: the written book with its «Boken» box
+// open, because the box lies over the spread under the row and is the one thing on the tab that
+// is positioned rather than laid out.
+type State = 'empty' | 'written' | 'proposal' | 'table' | 'menu'
 const STATES: readonly State[] = ['empty', 'written', 'proposal', 'table']
 
 // A file that rewrites one of the template's sections and has nothing to say about the other four,
@@ -71,11 +76,11 @@ async function rules(width: number, state: State): Promise<string> {
     await screen.findByText('Skogens herrar')
     fireEvent.click(document.getElementById(tabId('rules'))!)
     if (state !== 'empty') {
-      fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+      fireEvent.click(screen.getByRole('button', { name: /^Fem avsnitt med frågor/ }))
       await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
     }
     if (state === 'table') {
-      fireEvent.click(screen.getByRole('button', { name: 'Som på bordet' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Förhandsvisa' }))
       // Luckan hämtas med sin egen stilmall sedan #346, så den finns inte i samma bildruta som
       // trycket. Markupen plockas först när den är framme — utan väntan vore det läget bara en
       // tom läsyta, och Chromium hade mätt en bild produkten aldrig visar. Väntan står här och
@@ -83,8 +88,14 @@ async function rules(width: number, state: State): Promise<string> {
       await waitFor(() => expect(document.querySelector('.byd-rules-panel')).not.toBeNull())
     }
     if (state === 'proposal') {
-      fireEvent.change(screen.getByLabelText('Importera över boken'), { target: { files: [new File([OVER], 'regler-v4.md', { type: 'text/markdown' })] } })
+      // The book the template made came out of no file, so the box offers it one (#1258).
+      fireEvent.change(screen.getByLabelText('Ersätt med en fil…'), { target: { files: [new File([OVER], 'regler-v4.md', { type: 'text/markdown' })] } })
       await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
+    }
+    if (state === 'menu') {
+      const book = screen.getByRole('button', { name: 'Boken' })
+      fireEvent.click(book)
+      await waitFor(() => expect(book.getAttribute('aria-expanded')).toBe('true'))
     }
     return document.querySelector('.byd-editor')!.outerHTML
   } finally {
@@ -139,7 +150,7 @@ afterEach(async () => {
 
 describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
   it.each([
-    ['the disposition an empty tab proposes', 'empty'],
+    ['the ways in an empty tab offers', 'empty'],
     ['the book a way in wrote', 'written'],
     ['the file lying in that book as a proposal', 'proposal'],
   ] as const)('gives %s a measure of 68 characters of the book’s own face', async (_what, state) => {
@@ -148,7 +159,7 @@ describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
   }, 90_000)
 
   it('holds the whole tab inside the window, in each of its states, and never scrolls it sideways', async () => {
-    for (const state of STATES) {
+    for (const state of [...STATES, 'menu'] as const) {
       const measured = await measure(screen_, state, (page) =>
         page.evaluate(() => {
           const doc = document.documentElement
@@ -184,22 +195,6 @@ describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
   }, 120_000)
 })
 
-// The claim the whole decision rests on: an empty tab and a written book are one surface and not
-// two. That is not a matter of taste once it is said this way — the column the reader finds her
-// way with stands in the same place, at the same width, before and after a word is written.
-describe('the empty tab and the written book are one surface', () => {
-  it('leaves the column the book is found in exactly where it stood', async () => {
-    const box = (page: Page) =>
-      page.evaluate(() => {
-        const toc = document.querySelector<HTMLElement>('.byd-rules-toc')!.getBoundingClientRect()
-        return { left: Math.round(toc.left), width: Math.round(toc.width) }
-      })
-    const empty = await measure(SCREENS[0], 'empty', box)
-    const written = await measure(SCREENS[0], 'written', box)
-    expect(written).toEqual(empty)
-  }, 120_000)
-})
-
 // The file the import asks for, in both the states that offer it (#131). It used to be a
 // transparent `<input type="file">` stretched over the visible label with `inset: 0` — the
 // familiar styled-picker trick, and a control the eye cannot find sitting exactly where the click
@@ -217,9 +212,9 @@ describe('the empty tab and the written book are one surface', () => {
 // control being unreachable a second way round — and the ring has to be the label's, the input
 // being nowhere the eye can follow it to.
 describe('the file the import asks for', () => {
-  const picker = (page: Page) =>
-    page.evaluate(() => {
-      const input = document.querySelector<HTMLInputElement>('.byd-rules-ways input[type="file"]')
+  const picker = (at: string) => (page: Page) =>
+    page.evaluate((at) => {
+      const input = document.querySelector<HTMLInputElement>(`${at} input[type="file"]`)
       if (!input) return { control: 'no file input at all' }
       const label = input.labels?.[0] ?? null
       const box = label?.getBoundingClientRect()
@@ -228,104 +223,27 @@ describe('the file the import asks for', () => {
       const ring = label === null ? null : getComputedStyle(label)
       return {
         control: label === null ? 'an input bound to no label' : 'a label bound to the input',
-        meets: met === input ? 'the file input' : met === label ? 'the label' : `a ${met?.tagName.toLowerCase() ?? 'nothing'}`,
+        // The label, or what it is drawn with: since #1258 a picker's label carries its name and a
+        // line on what it does in spans of their own, and a point on them is a point on the label.
+        meets: met === input ? 'the file input' : met !== null && label?.contains(met) ? 'the label' : `a ${met?.tagName.toLowerCase() ?? 'nothing'}`,
         focused: document.activeElement === input,
         ring: ring !== null && ring.outlineStyle !== 'none' && parseFloat(ring.outlineWidth) > 0 ? 'drawn on the label' : 'nowhere',
       }
-    })
+    }, at)
   const want = { control: 'a label bound to the input', meets: 'the label', focused: true, ring: 'drawn on the label' }
 
   it('draws the label as the control, in the empty tab', async () => {
-    expect(await measure(SCREENS[1], 'empty', picker)).toEqual(want)
+    expect(await measure(SCREENS[1], 'empty', picker('.byd-rules-ways'))).toEqual(want)
   }, 120_000)
 
-  it('draws the label as the control, in the written book', async () => {
-    expect(await measure(SCREENS[1], 'written', picker)).toEqual(want)
+  // In the written book the file is the «Boken» box's since #1258, so it is read with the box open;
+  // and the row's own picker, «＋ Bild», is the same shape and asked the same.
+  it('draws the label as the control, in the written book’s box', async () => {
+    expect(await measure(SCREENS[1], 'menu', picker('.byd-rules-menu'))).toEqual(want)
   }, 120_000)
-})
 
-// The ＋ between the blocks, which must be one target per gap and not two lying over each other
-// (#216, on #184 — and since the decision of 2026-09-21 there is one ＋ and not one per gap).
-//
-// #184 took the ＋ out of hover and made it something that is always there, which is right: a way
-// in that only exists under a pointer does not exist for a keyboard or a finger. #246 then found
-// them lying over each other: `.byd-rules-add` declares 24 × 24, but `.byd-editor button` sets
-// `min-height: var(--byd-tap)` at (0,1,1) against the rule's own (0,1,0) and wins, so the target
-// is really 44 tall and a block shorter than that had its ＋ standing over its neighbour's.
-//
-// There is one ＋ now, so the pairwise reading that found those four pairs has nothing left to
-// compare — and nought pairs of nought is green whatever the stylesheet says. A guard that cannot
-// fail is worse than no guard, so it is replaced here by the reading the prototype proposed and
-// measured: the ＋'s own rectangle against the click area of the block it stands at. That is the
-// overlap a single ＋ still has, it is what told A and B apart, and it is the one the decision
-// wrote down — a sliver in the margin, and not a target lying across the paragraph.
-//
-// Every place the ＋ can stand is read, and not only the one the markup was captured in: which
-// block it belongs to is React's, but where it lands once it belongs to one is the stylesheet's,
-// and that is what is asked here. No pixel of any text is asserted; what is claimed is that the
-// target is whole, that the sliver stays a sliver, and that neither the ＋ nor the paragraph is
-// covered by the other.
-describe('the one way in between the blocks (#216)', () => {
-  // The ＋ carried to each of the book's blocks in turn, and read against that block's own click
-  // area. Moving the node is what the panel does on a pointer or a focus; the stylesheet answers
-  // the same either way, which is what makes this readable off captured markup.
-  const plusses = (page: Page) =>
-    page.evaluate(() => {
-      const all = [...document.querySelectorAll<HTMLElement>('.byd-rules-add')]
-      const plus = all[0]
-      // Not a reading of nothing: a book with no ＋ at all is the failure this is here to catch,
-      // and it says so rather than returning an empty list that every claim below would pass.
-      if (!plus) throw new Error('the written book draws no ＋ at all')
-      const rect = (el: Element) => {
-        const r = el.getBoundingClientRect()
-        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }
-      }
-      // Whether the point at the middle of a box reaches the thing that drew it, or something
-      // else is lying over it.
-      const reaches = (box: ReturnType<typeof rect>, el: Element) => el.contains(document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2))
-      const read = (where: string, hit: Element | null) => {
-        const box = rect(plus)
-        const over = hit && rect(hit)
-        return {
-          where,
-          // The drawn square is 24; the target is the floor every button in the editor stands on.
-          target: Math.min(box.width, box.height),
-          // How far the target reaches into the block's own click area, which is the reading
-          // that survives there being one ＋: width first, because the margin is what it lives in.
-          into: over === null ? { w: 0, h: 0 } : { w: Math.min(box.right, over.right) - Math.max(box.left, over.left), h: Math.min(box.bottom, over.bottom) - Math.max(box.top, over.top) },
-          pressable: reaches(box, plus),
-          readable: over === null ? true : reaches(over, hit!),
-        }
-      }
-      const stands = [read('at rest', document.querySelector('.byd-rules-block [role="button"]'))]
-      for (const block of document.querySelectorAll<HTMLElement>('.byd-rules-block')) {
-        block.appendChild(plus)
-        // A book is longer than a window, and a point below the fold is nobody's: brought into
-        // view first, so what is read of a block at the foot is the same as of one at the head.
-        block.scrollIntoView({ block: 'center' })
-        stands.push(read(block.dataset.block ?? '?', block.querySelector('[role="button"]')))
-      }
-      return { count: all.length, stands }
-    })
-
-  it('draws one ＋ that stands in the margin of the block it belongs to, and never across it', async () => {
-    const { count, stands } = await measure(SCREENS[1], 'written', plusses)
-    // One in the whole book, and the book has blocks for it to stand at.
-    expect(count).toBe(1)
-    expect(stands.length).toBeGreaterThan(4)
-    for (const stand of stands) {
-      expect(stand.target, `${stand.where}: the target is ${stand.target} px`).toBeGreaterThanOrEqual(44)
-      // The sliver the prototype measured at 6 px, and today's ＋ at fourteen: 44 of target hung
-      // at `right: -34px` against a click area that reaches 4 px past the text. The number is the
-      // stylesheet's arithmetic and not a face's, so it is the same on a Linux runner as here —
-      // but it is a bound and not an equality, because what a block is is the book's business.
-      expect(stand.into.w, `${stand.where}: ${stand.into.w} px of the click area`).toBeLessThanOrEqual(16)
-      expect(stand.pressable, `${stand.where}: the ＋ cannot be pressed in the middle`).toBe(true)
-      expect(stand.readable, `${stand.where}: the ＋ lies over the paragraph`).toBe(true)
-    }
-    // And it does reach in, as it always has: a reading that found nothing to overlap anywhere
-    // would pass a ＋ that had quietly left the book.
-    expect(stands.filter((s) => s.into.w > 0).length).toBeGreaterThan(0)
+  it('draws the label as the control, for the picture the row adds', async () => {
+    expect(await measure(SCREENS[1], 'written', picker('.byd-rules-adding'))).toEqual(want)
   }, 120_000)
 })
 
@@ -397,26 +315,26 @@ describe('the book as at the table (#227)', () => {
   }, 120_000)
 })
 
-// The tools the written book keeps at the end of its header — import and booklet, behind a
-// divider (#298) — cost the book nothing. #227's prototype measured why that has to be said: the
-// book fell from 584 to 447 px in variant B, under its 68 characters, and at 1280 there was
-// exactly no margin. Before and after are read on the same page, in the same face, so what is
-// asked is the arrangement and never a pixel count of the machine's font: the booklet is put back
-// beside the switch, where it stood before, and the divider taken off, and the reading area must
-// not have moved by a pixel between the two.
-describe('the tools the written book keeps at the end of its header (#298)', () => {
-  it.each(SCREENS)('leave the reading area exactly where it stood without them, at $width × $height', async (screen_) => {
+// The row the written book keeps above it — the adding and the «Boken» button since #1258, as the
+// import and the booklet behind a divider were before it (#298) — costs the book nothing. #227's
+// prototype measured why that has to be said: the book fell from 584 to 447 px in variant B, under
+// its 68 characters, and at 1280 there was exactly no margin. And the row wraps where it does not
+// fit, so a row grown by #1258's four ways to add would push the book down a line where the window
+// is narrow. Before and after are read on the same page, in the same face, so what is asked is the
+// arrangement and never a pixel count of the machine's font: the adding and the book's button are
+// taken out of the row, and the reading area must not have moved by a pixel between the two.
+describe('the row the written book keeps above it (#298, #1258)', () => {
+  it.each(SCREENS)('leaves the reading area exactly where it stood without it, at $width × $height', async (screen_) => {
     const both = await measure(screen_, 'written', (page) =>
       page.evaluate(() => {
         const box = () => {
           const r = document.querySelector<HTMLElement>('.byd-rules-reading')!.getBoundingClientRect()
           return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
         }
-        const tools = document.querySelector<HTMLElement>('.byd-rules-tools')!
-        const booklet = tools.querySelector<HTMLElement>('.byd-rules-booklet')!
+        const row = [document.querySelector<HTMLElement>('.byd-rules-adding'), document.querySelector<HTMLElement>('.byd-rules-book')]
+        if (row.some((el) => el === null)) throw new Error('the written book draws no row of tools to take away')
         const after = box()
-        document.querySelector('.byd-rules-modes')!.after(booklet)
-        tools.classList.remove('byd-rules-tools')
+        for (const el of row) el!.remove()
         return { before: box(), after }
       }),
     )

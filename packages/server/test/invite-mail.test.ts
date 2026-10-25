@@ -52,6 +52,25 @@ describe('the invitation mail (#1107)', () => {
     expect(html).not.toContain('<i>Kung</i>')
   })
 
+  // The name the one who invites gave her account (#1254, beslut 3): the name to know her by, and the
+  // address in brackets, which is what the reader can trust; the subject carries the name.
+  it('names who invites by her own name, with her address in brackets, and in the subject', () => {
+    const sv = inviteMail('bo@example.com', { ...asked, fromName: 'Ada Lovelace', lang: 'sv' })
+    expect(sv.subject).toBe('Ada Lovelace bjuder in dig till Skogens herrar')
+    expect(sv.text).toContain('Ada Lovelace (ada@example.com) vill dela spelet Skogens herrar med dig som medredigerare.')
+    expect(sv.html).toContain('Ada Lovelace (ada@example.com) vill dela spelet Skogens herrar med dig som medredigerare.')
+    expect(sv.html).toContain('<title>Ada Lovelace bjuder in dig till Skogens herrar</title>')
+    // The paper's heading stays the invitation's own.
+    expect(sv.html).toContain('Du är inbjuden till Skogens herrar.')
+    const en = inviteMail('bo@example.com', { ...asked, fromName: 'Ada Lovelace', lang: 'en' })
+    expect(en.subject).toBe('Ada Lovelace invites you to Skogens herrar')
+    expect(en.text).toContain('Ada Lovelace (ada@example.com) would like to share the game Skogens herrar with you as a co-editor.')
+    // A name is whatever she typed, so it is text in the HTML as the address is.
+    expect(inviteMail('bo@example.com', { ...asked, fromName: '<b>Ada</b>', lang: 'sv' }).html).toContain('&lt;b&gt;Ada&lt;/b&gt; (ada@example.com)')
+    // Without a name the letter is the one it was: the address alone.
+    expect(inviteMail('bo@example.com', { ...asked, fromName: null, lang: 'sv' }).subject).toBe('Du är inbjuden till Skogens herrar')
+  })
+
   it('says who invites when nobody signed in did', () => {
     expect(inviteMail('bo@example.com', { ...asked, from: undefined, lang: 'sv' }).text).toContain('Någon vill dela spelet')
     expect(inviteMail('bo@example.com', { ...asked, from: undefined, lang: 'en' }).text).toContain('Someone would like to share')

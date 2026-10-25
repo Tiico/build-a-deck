@@ -1,7 +1,9 @@
 // The creator's account (G1, DRIFT §11) from the browser's side: a magic link by mail, a cookie
 // the browser keeps, and the projects that belong to the account. `http` is the server origin;
 // in development it is another port, so credentials are sent explicitly.
+import type { SeatId, Seating } from '@byd/protocol'
 import type { CardFace, CardPeek, Role } from '@byd/server/doc'
+import type { PreparedOrder, PrintRequirements, Quote } from '@byd/print'
 import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
 import { Unauthorized, pageLang, withCredentials } from './session.js'
@@ -42,8 +44,21 @@ export async function gameFan(http: string, project: string): Promise<CardFace[]
   return (await res.json()) as CardFace[]
 }
 
+// What waits for the account, game by game (#1225, #1204 beslut B), for «Väntar på dig» and the
+// hero's two last numbers: asked for after the list, as the cards are, since it reads every table of
+// every game. `playtest` only for a game whose playtest the account may read (#524); `other` when
+// someone else saved its newest version, named as the server names her (#1198) or `null`.
+export type GameWaiting = { rev: number; playtest?: { answers: number; flags: number; tables: number; at: string | null }; other?: { name: string | null; at: string } }
+export async function myWaiting(http: string): Promise<Record<string, GameWaiting>> {
+  const res = await fetch(`${http}/me/waiting`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`could not read what is waiting: ${res.status}`)
+  return (await res.json()) as Record<string, GameWaiting>
+}
+
 // Sharing a game (D3): who it is shared with, an invitation to an address, and taking it back.
-export type Member = { email: string; role: Role }
+// `name` is what the member called her account (#1254), when she gave it one.
+export type Member = { email: string; name?: string; role: Role }
 export async function projectMembers(http: string, project: string, t: T = swedish): Promise<Member[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
@@ -112,8 +127,9 @@ export async function acceptInvite(http: string, token: string, t: T = swedish):
 
 // Starting a table from the home page (G1): the same session the editor starts, so the code and
 // the host key come from the server and nowhere else.
-export async function startTable(http: string, project: string, t: T = swedish): Promise<{ id: string; code: string; hostKey: string }> {
-  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST' }))
+// The answer to «Hur sitter ni?» goes with it (#1286), for the table to keep.
+export async function startTable(http: string, project: string, t: T = swedish, seating?: Seating): Promise<{ id: string; code: string; hostKey: string; hostSeat?: SeatId }> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(seating ? { seating } : {}) }))
   if (res.status === 401) throw new Unauthorized()
   // Every role but a viewer may start one (D3); the page does not offer it to a viewer (#689),
   // so a refusal is an answer that changed under the page, said as what it means.
@@ -123,17 +139,17 @@ export async function startTable(http: string, project: string, t: T = swedish):
   const quota = await quotaOf(res)
   if (quota) throw new QuotaReached(quota, t('error.startTable.failed'))
   if (!res.ok) throw new Said(t('error.startTable.failed'))
-  return (await res.json()) as { id: string; code: string; hostKey: string }
+  return (await res.json()) as { id: string; code: string; hostKey: string; hostSeat?: SeatId }
 }
 
 // The tables of a game that are running and can still be joined (#724): the ones with a room code.
 // Only a role that may start tables is told the code, so only such a role is asked.
-export type RunningTable = { id: string; code: string; lastAt: string | null }
+export type RunningTable = { id: string; code: string; lastAt: string | null; seating?: Seating }
 export async function runningTables(http: string, project: string): Promise<RunningTable[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials())
   if (!res.ok) return []
-  const tables = (await res.json()) as { id: string; ended: boolean; lastAt: string | null; code?: string }[]
-  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, lastAt: x.lastAt }] : []))
+  const tables = (await res.json()) as { id: string; ended: boolean; lastAt: string | null; code?: string; seating?: Seating }[]
+  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, lastAt: x.lastAt, ...(x.seating ? { seating: x.seating } : {}) }] : []))
 }
 
 // Taking a game away (G1): its whole history goes with it, so the page asks first.
@@ -207,6 +223,50 @@ export async function readExport(http: string, project: string): Promise<ExportS
   return { state: 'preparing', total: body.total, done: body.done }
 }
 
+// The print package (#1208): what Testtryckeriet would be sent for the game as it is saved, asked for
+// as the order to an address would be routed (F2), so the page shows what the routing chooses. The
+// same question again says how far the files have come, and asks for any not yet drawn. A finding
+// of the print checks names the card and the side, and the code the editor says in words (E5).
+export type PrintFinding = { code: string; severity: 'error' | 'warning'; element: string; cardRef: string; face: string; values: Record<string, unknown> }
+export type PrintPackage = {
+  project: string
+  rev: number
+  provider: { id: string; label: string; manufacturesIn: string[] }
+  requirements: PrintRequirements[]
+  to?: string
+  quote?: Quote
+  order: PreparedOrder
+  files: { name: string; state: 'done' | 'queued' | 'running' | 'failed' }[]
+  rulebook: { name: string; state: 'done' | 'queued' | 'running' | 'failed' } | null
+  errors: PrintFinding[]
+  warnings: PrintFinding[]
+  total: number
+  done: number
+  failed: number
+}
+export type PrintPackageRead = { state: 'ready'; pkg: PrintPackage } | { state: 'refused'; status: number; reason?: string }
+export async function readPrintPackage(http: string, project: string, to: string): Promise<PrintPackageRead> {
+  const q = new URLSearchParams({ to, ...pageLang() })
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/print-package?${q.toString()}`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    return { state: 'refused', status: res.status, ...(body.error ? { reason: body.error } : {}) }
+  }
+  return { state: 'ready', pkg: (await res.json()) as PrintPackage }
+}
+
+// The package as one zip, once every file of it is drawn: until then how far they have come, as the
+// export says it (G5). Saved under the name the server gives it, which says the version it holds.
+export async function readPrintZip(http: string, project: string, provider: string): Promise<ExportState> {
+  const q = new URLSearchParams({ provider, ...pageLang() })
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/print-package/zip?${q.toString()}`, withCredentials())
+  if (res.status === 200) return { state: 'ready', zip: await res.blob(), name: zipName(res.headers.get('content-disposition'), project) }
+  if (res.status !== 202) return { state: 'refused', status: res.status }
+  const body = (await res.json()) as { total: number; done: number }
+  return { state: 'preparing', total: body.total, done: body.done }
+}
+
 // The file name in a `content-disposition`: `filename*` in UTF-8 when the game's name needs it,
 // the plain `filename` when it does not (RFC 6266), and the game when the header says nothing.
 export function zipName(disposition: string | null, fallback: string): string {
@@ -239,4 +299,62 @@ export async function myUsage(http: string): Promise<Usage | null> {
   const res = await fetch(`${http}/me/usage`, withCredentials()).catch(() => null)
   if (!res?.ok) return null
   return (await res.json().catch(() => null)) as Usage | null
+}
+
+// The account's own name (#1254), here and not in `session.ts`: that module travels with every
+// surface, the phone's included (#760), and only the account's pages, the login card, the editor and
+// the observer's page ever ask what the account is called or draw its face. Here and not in a module
+// of its own, because every chunk a route needs is named in the entry the phone fetches too.
+
+// The suggestion out of the address and the ceiling on the name's length, the server's own.
+export { NAME_MAX, suggestedName } from '@byd/server/account-name'
+
+// Who is signed in, with the name the account goes by to others (#1254) and whether it has been asked
+// for one; null for nobody.
+export type Me = { email: string; name: string | null; asked: boolean }
+export async function myAccount(http: string): Promise<Me | null> {
+  const res = await fetch(`${http}/auth/me`, withCredentials())
+  if (!res.ok) throw new Error(`could not read the account: ${res.status}`)
+  const me = (await res.json()) as { email: string | null; name?: string | null; asked?: boolean }
+  // A server from before the name has asked nobody and has nowhere to keep an answer, so its
+  // accounts are taken as asked rather than sent to a step that could not be saved.
+  return me.email === null ? null : { email: me.email, name: me.name ?? null, asked: me.asked ?? true }
+}
+
+// The account's name (#1254), or none: either is the answer to the question, which is not put again.
+// `false` when the server would not keep it.
+export async function saveName(http: string, name: string | null): Promise<{ name: string | null } | false> {
+  const res = await fetch(`${http}/me/name`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }))
+  if (res.status === 400) return false
+  if (!res.ok) throw new Error(`could not save the name: ${res.status}`)
+  return (await res.json()) as { name: string | null }
+}
+
+// Where a login made on the page goes on to (#1254, variant C): the welcome step first for an account
+// that has not been asked what the others should call it, and `next` after it. The link's own way in
+// is the server's (`/auth/verify`); this is the passkey's and the development login's.
+export async function arrival(http: string, next: string): Promise<string> {
+  const me = await myAccount(http).catch(() => null)
+  if (!me || me.asked) return next
+  // A fragment is never put in a query (#1278): it goes on after the step's own address.
+  const cut = next.indexOf('#')
+  const q = new URLSearchParams({ step: 'name', next: cut < 0 ? next : next.slice(0, cut) })
+  const server = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('server')
+  if (server) q.set('server', server)
+  return `/login?${q.toString()}${cut < 0 ? '' : next.slice(cut)}`
+}
+
+// A person's face where the others see who has a game (D3): a coloured circle with one letter.
+// The colour comes from the address, so it stays the same face when the name is changed (#1254),
+// and the letter from what she is called — her name, or the address when she has given none.
+export function colourOf(seed: string): string {
+  let h = 0
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) % 360
+  return `hsl(${h} 55% 55%)`
+}
+
+// The first letter as a reader sees it, an emoji or a letter with its accent whole.
+export function initialOf(name: string): string {
+  const first = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(name)[Symbol.iterator]().next().value?.segment ?? ''
+  return first.toLocaleUpperCase()
 }

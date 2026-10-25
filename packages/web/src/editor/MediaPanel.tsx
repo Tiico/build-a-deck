@@ -68,6 +68,18 @@ export type MediaPanelProps = {
   saving?: readonly string[] | undefined
 }
 
+// The tile's shape: every tile in the library is 3:2 (editor.css, `.byd-media-tile img`).
+const TILE = 3 / 2
+
+// A crop, which is a share of the file, as a box in shares of the tile the whole file is fitted
+// into (#1257): the file fills the tile's width or its height and is centred along the other.
+function litWindow(crop: AssetCrop, shape: number): { left: string; top: string; width: string; height: string } {
+  const w = shape > TILE ? 1 : shape / TILE
+  const h = shape > TILE ? TILE / shape : 1
+  const pct = (v: number) => `${v * 100}%`
+  return { left: pct((1 - w) / 2 + crop.x * w), top: pct((1 - h) / 2 + crop.y * h), width: pct(crop.w * w), height: pct(crop.h * h) }
+}
+
 // How many cards the question names before it counts the rest: enough to recognise what is
 // about to lose its picture, and few enough that the sentence is still one sentence.
 export const NAMED_CARDS = 5
@@ -177,6 +189,12 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   // has just arrived is asked for again rather than left standing as a failure.
   const [missing, setMissing] = useState<ReadonlySet<string>>(new Set())
   const [tries, setTries] = useState<Readonly<Record<string, number>>>({})
+  // Each picture's width over its height, as the loaded tile itself reports it (#1257). The tile
+  // shows the whole picture, so a crop is lit on the part of the tile the picture is drawn in, and
+  // that part is the picture's shape. The measurement is missing in production (#468); the loaded
+  // picture knows its own size without a canvas, and wins over a measurement, as the file is the
+  // truth.
+  const [shapes, setShapes] = useState<Readonly<Record<string, number>>>({})
   const [uploading, setUploading] = useState(false)
   const arriving = useContext(Arriving)
   const lost = useRef(missing)
@@ -378,6 +396,8 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
             // What is stored, not what is being dragged: the tile says how the picture stands in
             // the game, and the window on its way somewhere is shown where it is being cut.
             const cropped = doc.pictures?.[hash]?.crop
+            const measured = motifs?.[assetUrl(assetBase, hash)]
+            const shape = shapes[hash] ?? (measured && measured.h > 0 ? measured.w / measured.h : undefined)
             return (
               <li key={hash} data-asset={hash} {...(spare ? { 'data-unused': 'true' } : {})} {...(fresh.includes(hash) ? { 'data-new': 'true' } : {})}>
                 <button
@@ -400,6 +420,10 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                       alt={nameOf(hash, cards)}
                       {...(missing.has(hash) ? { 'data-missing': 'true' } : {})}
                       onError={() => setMissing((had) => (had.has(hash) ? had : new Set(had).add(hash)))}
+                      onLoad={(event) => {
+                        const { naturalWidth: w, naturalHeight: h } = event.currentTarget
+                        if (w > 0 && h > 0) setShapes((had) => (had[hash] === w / h ? had : { ...had, [hash]: w / h }))
+                      }}
                     />
                     {/* In words and never only as the browser's broken-picture glyph (L13): early
                         while a file is still on its way, gone once none is. */}
@@ -409,9 +433,9 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                     {/* A cropped picture says so where it is looked over, rather than only where
                         it is opened: what has been done to a picture is half of what a library
                         is for. An uncropped one wears nothing, so the mark means something. */}
-                    {cropped && (
-                      <u data-window style={{ left: `${cropped.x * 100}%`, top: `${cropped.y * 100}%`, width: `${cropped.w * 100}%`, height: `${cropped.h * 100}%` }} />
-                    )}
+                    {/* Until the picture's shape is known the window is not drawn: one laid on a guess
+                        is a window on the wrong part of the picture. */}
+                    {cropped && shape !== undefined && <u data-window style={litWindow(cropped, shape)} />}
                   </span>
                 </button>
                 {/* The name the file came with, written on the tile (#742): it is what a

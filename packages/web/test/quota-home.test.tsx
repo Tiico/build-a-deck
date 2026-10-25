@@ -8,6 +8,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { plansFromEnv, type Plans } from '../../server/src/quotas.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { answerStart } from './start-answer.js'
 
 // A met ceiling where the press was, in Mina spel and the profile (#1198, variant A): the box under
 // the heading for «＋ Nytt spel», «Duplicera» and «Starta bord», the import's own failure line, and
@@ -89,6 +90,8 @@ describe('Mina spel at a ceiling on games (#1198)', () => {
   it('says to a test leader, by the owner’s name, that the owner’s tables are all open', async () => {
     run = await startServer({ auth: true, authBypass: true, plans: tiers({ openTables: 1 }) })
     await login('ada@example.com')
+    // The owner's own name (#1254); without one she is «spelets ägare».
+    await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
     const first = await made('Hamnen')
     const second = await made('Skogens råd')
     expect((await fetch(`${run.http}/projects/${first}/sessions`, { method: 'POST' })).status).toBe(201)
@@ -97,6 +100,7 @@ describe('Mina spel at a ceiling on games (#1198)', () => {
     home()
     await screen.findByText('Skogens råd')
     fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     expect((await notice()).textContent).toBe('Bordet startades inte. Ada har 1 av 1 bord öppna, och bord i spelet räknas mot Adas konto. Be Ada avsluta ett bord.')
     expect(document.body.textContent).not.toContain('ada@example.com')
   })
@@ -130,7 +134,7 @@ describe('the usage on the profile (#1198)', () => {
     await made('Skogens råd')
     open()
     const usage = await screen.findByRole('region', { name: 'Förbrukning' })
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['AI-nyckel', 'Passkeys', 'Förbrukning', 'Språk', 'Konto'])
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Namn', 'AI-nyckel', 'Passkeys', 'Förbrukning', 'Språk', 'Konto'])
     const rows = [...usage.querySelectorAll('dt')].map((dt) => `${dt.textContent} = ${dt.parentElement?.querySelector(':scope > dd > .byd-usage-n')?.textContent ?? ''}`)
     expect(rows).toEqual([
       'Spel = 1 av 3',
@@ -159,6 +163,6 @@ describe('the usage on the profile (#1198)', () => {
     await screen.findByRole('heading', { level: 1, name: 'Profil' })
     await new Promise((r) => setTimeout(r, 50))
     expect(screen.queryByRole('region', { name: 'Förbrukning' })).toBeNull()
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['AI-nyckel', 'Passkeys', 'Språk', 'Konto'])
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Namn', 'AI-nyckel', 'Passkeys', 'Språk', 'Konto'])
   })
 })

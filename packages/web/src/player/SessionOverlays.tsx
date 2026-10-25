@@ -16,6 +16,30 @@ import { ExitGlyph, FlagGlyph, HookGlyph } from '../glyphs.js'
 // than in the stylesheet every phone blocks on (#760, L20, #1142).
 const FlagFlow = lazy(() => import('./FlagFlow.js').then((m) => ({ default: m.FlagFlow })))
 
+// The flag on a screen with a board (#1255, beställarens val B): the same flow, as a panel the
+// screen places beside its felt rather than a sheet over it. A room seen across a room speaks in
+// the table's voice, as the observer's does.
+export function DockedFlag({ client, view, faces, onSheet, onToast }: { client: TableClient; view: Snapshot; faces: string | undefined; onSheet(sheet: Sheet): void; onToast(msg: string): void }) {
+  const t = useT()
+  const flagged = useRefusal('table')
+  return (
+    <Suspense fallback={null}>
+      <FlagFlow
+        docked
+        client={client}
+        view={view}
+        faces={faces}
+        refusal={flagged}
+        onFlagged={() => {
+          onSheet(null)
+          onToast(t('session.flagged'))
+        }}
+        onClose={() => onSheet(null)}
+      />
+    </Suspense>
+  )
+}
+
 // Why the server would not have us (DRIFT §9), in words for the screen.
 export function refusedText(reason: string, t: T): string {
   return t(reason === 'kicked' ? 'session.refused.kicked' : 'session.refused.gone')
@@ -69,9 +93,11 @@ export type SessionOverlaysProps = {
   faces: string | undefined
   // The owner's way to the editor with the seat kept (#1217), offered in the exit sheet.
   stay?: ReactNode
+  // The screen draws the flag itself, docked beside its felt (`DockedFlag`, #1255).
+  flagDocked?: boolean
 }
 
-export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces, stay }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces, stay, flagDocked = false }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -100,7 +126,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
   return (
     <>
       {toast && <div className="byd-toast" role="status">{toast}</div>}
-      {sheet === 'flag' && (
+      {sheet === 'flag' && !flagDocked && (
         <Suspense fallback={null}>
           <FlagFlow
             client={client}

@@ -113,8 +113,10 @@ export async function join(request: APIRequestContext, table: Table, who: { name
   })
   if (res.status() !== 201) throw new Error(`${who.name} was not let in: ${res.status()} ${await res.text()}`)
   const { session, token } = (await res.json()) as { session: string; token: string }
+  // The address the picker sends a phone to (#1278): the table and the seat in the query, the
+  // token in the fragment, which the browser sends nowhere, and her name in no address at all.
   const q = (extra: Record<string, string>) =>
-    new URLSearchParams({ session, name: who.name, token, ...extra }).toString()
+    `${new URLSearchParams({ session, ...extra }).toString()}#${new URLSearchParams({ token }).toString()}`
   return {
     session,
     token,
@@ -124,6 +126,17 @@ export async function join(request: APIRequestContext, table: Table, who: { name
     onlineUrl: `/online?${q(who.seat !== undefined ? { seat: who.seat } : {})}`,
     observeUrl: `/observe?${q({})}`,
   }
+}
+
+/**
+ * An address with more in its query — a language, a code — kept ahead of its fragment, where a
+ * guest's token is (#1278). Appending `&lang=sv` to a guest's address would put it in the token's
+ * fragment, and the page would never read it.
+ */
+export function withQuery(url: string, extra: string): string {
+  const at = url.indexOf('#')
+  const [path, fragment] = at < 0 ? [url, ''] : [url.slice(0, at), url.slice(at)]
+  return `${path}${path.includes('?') ? '&' : '?'}${extra}${fragment}`
 }
 
 /**
@@ -153,8 +166,9 @@ export async function logIn(request: APIRequestContext, email = `e2e-${crypto.ra
  * It answers with the table, so a spec can seat people at it through the host's own connection.
  * The seats are the project's and not the answer's, so a spec that needs them names them itself.
  */
-export async function startTable(request: APIRequestContext, projectId: string): Promise<Omit<Table, 'seats'>> {
-  const res = await request.post(`/projects/${encodeURIComponent(projectId)}/sessions`)
+// `seating` is the host's answer to «Hur sitter ni?» (#1286), which the table keeps.
+export async function startTable(request: APIRequestContext, projectId: string, seating?: 'screen' | 'computer'): Promise<Omit<Table, 'seats'>> {
+  const res = await request.post(`/projects/${encodeURIComponent(projectId)}/sessions`, seating ? { data: { seating } } : {})
   if (!res.ok()) throw new Error(`could not start a table on ${projectId}: ${res.status()} ${await res.text()}`)
   const started = (await res.json()) as { id: string; code: string; hostKey: string }
   const host = encodeURIComponent(started.hostKey)

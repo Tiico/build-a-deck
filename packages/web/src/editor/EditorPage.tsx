@@ -26,10 +26,11 @@ import { QuotaReached } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
-import { SharePanel, colourOf } from './SharePanel.js'
-import { onlineUrl, tvUrl } from './tableLinks.js'
+import { SharePanel } from './SharePanel.js'
+import { tvUrl } from './tableLinks.js'
 import { editorTab, tableTab } from '../ways.js'
-import { rememberStart, type Seating, type StartAnswer } from './startAnswer.js'
+import { type Seating, type StartAnswer } from './startAnswer.js'
+import { startInTab, tableWay, type Started } from '../startWay.js'
 import { Asking, Question } from './Question.js'
 import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import { Arriving } from './AssetImage.js'
@@ -37,7 +38,7 @@ import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
-import { loginUrl, removeProject } from '../account/api.js'
+import { colourOf, initialOf, loginUrl, removeProject } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
@@ -108,7 +109,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // there they stay at the end of the strip, the one thing that does not.
   const headerStands = useHeaderStands()
   const actionsInHeader = room === 'desk' || headerStands
-  const [stage, setStage] = useState<Stage>('wall')
+  // The way in from «Väntar på dig» on Mina spel (#1225): `results=rev-N` opens the Bord tab's
+  // Resultat at that version. Read once, and taken out of the address so the editor's address stays
+  // the game's own (L80) and a reload opens the editor as it always opens.
+  const [results] = useState(() => params.get('results'))
+  useEffect(() => {
+    if (!results) return
+    const rest = new URLSearchParams(location.search)
+    rest.delete('results')
+    history.replaceState(history.state, '', `${location.pathname}?${rest.toString()}${location.hash}`)
+  }, [results])
+  const [stage, setStage] = useState<Stage>(results ? 'tables' : 'wall')
   // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
   // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
   const [askingCode, setAskingCode] = useState(false)
@@ -223,7 +234,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
   // A table picked up after a reload (`running`) has no key in the page; the account is the
   // authority for it instead.
-  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running' | 'already'; saved?: boolean } | null>(null)
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; seating?: Seating; kind: 'new' | 'refreshed' | 'running' | 'already'; saved?: boolean } | null>(null)
   // The table outlives the page (#477). Without this a reload put «Starta bord» back in the header
   // while the table was still running, and the press that followed started a second table with a
   // new code — the guests at the first never saw the update. The newest table that still runs and
@@ -236,7 +247,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       (tables) => {
         const running = tables.find((t) => !t.ended && t.code !== undefined)
         const code = running?.code
-        if (live && running && code) setTable((had) => had ?? { id: running.id, version: running.version, code, kind: 'running' })
+        if (live && running && code) setTable((had) => had ?? { id: running.id, version: running.version, code, ...(running.seating ? { seating: running.seating } : {}), kind: 'running' })
       },
       () => undefined,
     )
@@ -461,6 +472,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     onNavigate(url)
   }
   const goHome = () => goTo(home)
+  // The print package's page (#1208): of the game as it is saved, so unsaved work is asked about
+  // first, as any way out of the editor is; and it leads back here.
+  const printPackage = (() => {
+    const q = new URLSearchParams({ project: projectId ?? '', from: 'editor' })
+    const server = params.get('server')
+    if (server) q.set('server', server)
+    return `/print-package?${q.toString()}`
+  })()
   // The way out is asked about wherever it starts: «Mina spel» in the header, or the profile from
   // the AI panel (#1001). The question stands where it always stands, and staying hands the keys back
   // to whatever was pressed.
@@ -483,14 +502,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     goTo(to)
   }
   // A table that starts saves first, and puts away what stood when it was asked for, as a save does.
-  const startTable = async (): Promise<{ id: string; code: string; hostKey: string } | null> => {
+  const startTable = async (seating: Seating): Promise<Started | null> => {
     const standing = notice
     setUnopened(null)
     try {
-      const { saved, ...started } = await client.startTable()
-      setTable({ ...started, kind: 'new', saved })
+      const { saved, hostSeat, ...started } = await client.startTable(seating)
+      setTable({ ...started, seating, kind: 'new', saved })
       putAway(standing)
-      return started
+      return { ...started, ...(hostSeat ? { hostSeat } : {}) }
     } catch (err) {
       // A met ceiling (#1196) is said as one (#1198), with the tables of this game the reader can open.
       if (err instanceof QuotaReached) {
@@ -500,33 +519,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       return null
     }
   }
-  // The answer to «Hur sitter ni?» (L77). The tab is opened here, in the press, before anything is
-  // awaited: a browser lets a page open a window only in the hand's own gesture, and the table's
-  // address is not known until the start has answered. So the tab opens blank and is sent on.
+  // The answer to «Hur sitter ni?» (L77), from «Starta bord» and from «Nytt bord» alike (#1286): the
+  // table starts with it, and the screen it gives the host opens beside the editor.
   const startAs = async (answer: StartAnswer) => {
     setAskingStart(false)
-    rememberStart(answer)
-    // It keeps its opener (#1217): a tab opened without one is in a group of its own and never
-    // finds the editor's tab by name, so the table's way back would open a second editor.
-    const tab = window.open('', '_blank')
-    if (updating) return tab?.close()
+    if (updating) return
     setUpdating(true)
     try {
-      const started = await startTable()
-      if (!started) return tab?.close()
-      const server = params.get('server')
-      // A new table has every seat free, so the first free seat is the first seat (K12).
-      const seat = client.doc.setup.seats[0]
-      const seated = answer.seating === 'computer' && seat !== undefined
-      const href = seated ? onlineUrl(started.id, server, seat, true, t, lang, { name: answer.name, code: started.code }) : tvUrl(started.id, server, started.hostKey, false, lang)
-      const target = tableTab(started.id, seated ? 'online' : 'tv')
-      // Named for the table and its view now that the table is known, so the next way into the same
-      // view brings this tab out (#1217). Whole, since a blank tab has no address of its own to
-      // read a path against.
-      if (tab && !tab.closed) {
-        tab.name = target
-        tab.location.href = new URL(href, location.href).href
-      } else setUnopened({ seating: answer.seating, href, target })
+      const done = await startInTab(answer, (seating) => startTable(seating), params.get('server'), lang)
+      if (done && !done.opened) setUnopened({ seating: answer.seating, ...done.way })
     } finally {
       setUpdating(false)
     }
@@ -535,6 +536,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // band was about a table that no longer runs: the kicks pointed at seats that were gone, and
   // «Uppdatera bordet» could only be refused. So the band goes, the primary button starts a table
   // again, and what happened is said once, in the channel routine news belongs in.
+  // The band's «öppna bordet» (#1286): a table around a TV opens at its screen, with the host key the
+  // start handed over, as before; a table of computers at the host's own seat, as its row does.
+  const bandWay = (at: NonNullable<typeof table>) =>
+    at.seating === 'computer' ? tableWay(at, params.get('server'), lang) : { href: tvUrl(at.id, params.get('server'), at.hostKey, at.hostKey === undefined, lang), target: tableTab(at.id, 'tv') }
   const tableEnded = () => {
     setTable(null)
     setLost(null)
@@ -550,7 +555,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     if (updating) return
     setUpdating(true)
     try {
-      if (!table) return await startTable()
+      if (!table) return
       setLost(null)
       let delay = 100
       // Only the first call carries the retry: it is what puts the dead renders back in the
@@ -596,7 +601,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const phone = PHONE_READING
   const unreadable = settled && settled.done + settled.failed.length >= settled.total ? Object.values(settled.smallest ?? {}).filter((pt) => pt < minPtIn(phone)).length : 0
   const showOnWall = () => {
-    wallView.current = { filter: wallView.current?.filter ?? noFilter, scrollTop: 0, eye: `read.${phone.key}` }
+    // In the phone's reading view with the panel on Visning (L81), where the cards under its floor
+    // are named; the eye the designer was reading with stays hers.
+    wallView.current = { filter: wallView.current?.filter ?? noFilter, scrollTop: 0, eye: wallView.current?.eye ?? 'normal', size: `read.${phone.key}`, panel: 'view' }
     setWallMount((n) => n + 1)
     setStage('wall')
   }
@@ -629,6 +636,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // One check mended across the whole deck (#233). Every patch carries the same gesture, so
         // the edits land as one version and one step back: a designer who presses this once and
         // changes her mind presses undo once.
+        {...(client.mayEdit ? { printPackage: { href: printPackage, onGo: (from: HTMLElement) => leave(printPackage, from) } } : {})}
         onFixChecks={(fixes) => {
           const gesture = `fix-check-${Date.now()}`
           for (const fix of fixes) client?.patchElement(fix.face, fix.element, fix.patch, undefined, gesture)
@@ -750,7 +758,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
     // «Resultat» is a view of this tab (#1010), switched at the head of its first column.
-    tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />,
+    tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} results={results} />,
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
@@ -841,6 +849,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             onSaid={confirmation.confirm}
             onFailed={say}
             {...(client.mayDelete ? { onRemove: () => setRemoving('asking') } : {})}
+            onPrintPackage={() => leave(printPackage, moreRef.current)}
           />
         )}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
@@ -868,8 +877,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             so it can be spoken to by what it says (#556). */}
         <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.door')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
           {client.here.map((p) => (
-            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
-              {p.name.slice(0, 1).toUpperCase()}
+            // The name's letter and the whole name on the pointer, in the colour of the address, so the
+            // face stays the same when the name changes (#1254).
+            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.email ?? p.name) }}>
+              {initialOf(p.name)}
             </i>
           ))}
           {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}
@@ -892,7 +903,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {/* «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477): the header holds the
                 errand the primary names, and a second table is the rarer, deliberate choice. */}
             {updateButton}
-            {client.mayStartTables && <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => void startTable() : undefined} />}
+            {client.mayStartTables && <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => setAskingStart(true) : undefined} />}
           </>
         )}
       </header>
@@ -970,9 +981,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           ) : preparing ? (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined, lang)} target={tableTab(table.id, 'tv')}>
-              {t('editor.table.open')}
-            </a>
+            <a {...bandWay(table)}>{t('editor.table.open')}</a>
           ) : textures ? (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>
           ) : null}
