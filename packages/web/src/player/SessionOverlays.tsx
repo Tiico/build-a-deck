@@ -1,11 +1,12 @@
 import { Suspense, lazy, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
-import type { TableClient } from '../client.js'
+import type { SendResult, TableClient } from '../client.js'
 import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
-import { EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
+import { EndSheet, ExitSheet, ForgetSheet, ProposeSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
+import { forgetMe } from './forget.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
 import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
@@ -52,7 +53,12 @@ export function refusedText(reason: string, t: T): string {
 
 // Which sheet the seat's screen has raised. `exit` is the way out asking which way out (#31); it
 // is the only one that opens another, and the one it opens is `end`, unchanged.
-export type Sheet = 'flag' | 'exit' | 'end' | 'propose' | null
+// `forget` is the question the way out's «Lämna och ta bort mitt namn…» asks first (#1281).
+export type Sheet = 'flag' | 'exit' | 'end' | 'propose' | 'forget' | null
+
+// A guest's own erasure (#1281), offered where she leaves: the name she sat under, for the question
+// to say, and the server's erasure with her token (`forgetMe`). Absent without a token.
+export type Forget = { name: string; run(): Promise<SendResult> }
 
 // The version the session runs on, from the session record; the survey and the end sheet say it.
 export function useSessionVersion(http: string, sessionId: string | null, when: boolean): string | null {
@@ -95,9 +101,12 @@ export type SessionOverlaysProps = {
   stay?: ReactNode
   // The screen draws the flag itself, docked beside its felt (`DockedFlag`, #1255).
   flagDocked?: boolean
+  // Leaving with the name removed (#1281), and where that leads once it is done.
+  forget?: Forget | undefined
+  onForgotten?: () => void
 }
 
-export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces, stay, flagDocked = false }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces, stay, flagDocked = false, forget, onForgotten }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -105,6 +114,23 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
   const flagged = useRefusal('phone')
   const ended = useRefusal('phone')
   const gone = useRefusal('phone')
+  const forgot = useRefusal('phone')
+  const [forgetting, setForgetting] = useState(false)
+  // Her name first and the seat after (#1281): the erasure is the part that can fail and be asked
+  // again, and a seat given up first would leave her nowhere to ask from. Asked again after a seat
+  // that would not go, the erasure finds nothing left and answers the same.
+  const forgetAndLeave = async () => {
+    if (!forget || forgetting) return
+    setForgetting(true)
+    try {
+      if (!(await forgot.watch(forget.run())).ok) return
+      if (!(await forgot.watch(client.send({ v: 'seat.release', seat }))).ok) return
+      onSheet(null)
+      onForgotten?.()
+    } finally {
+      setForgetting(false)
+    }
+  }
   const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
     if (proposal) void client.send({ v, proposal: proposal.id })
   }
@@ -173,6 +199,27 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
             gone.clear()
             onSheet(null)
           }}
+          {...(forget
+            ? {
+                onForget: () => {
+                  gone.clear()
+                  onSheet('forget')
+                },
+              }
+            : {})}
+        />
+      )}
+      {sheet === 'forget' && forget && (
+        <ForgetSheet
+          name={forget.name}
+          leaving
+          refusal={forgot}
+          busy={forgetting}
+          onYes={() => void forgetAndLeave()}
+          onClose={() => {
+            forgot.clear()
+            onSheet(null)
+          }}
         />
       )}
       {sheet === 'end' && (
@@ -224,7 +271,19 @@ export type SeatSurveyProps = {
 export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved, onward }: SeatSurveyProps) {
   const rulebook = useHasRulebook(http, sessionId, view.ended)
   if (!view.ended) return null
-  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} saved={saved} remember={`${sessionId}:${seat}`} rulebook={rulebook} onward={onward} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })} />
+  return (
+    <Survey
+      who={name}
+      version={version ?? '…'}
+      saveUrl={saveUrl}
+      saved={saved}
+      remember={`${sessionId}:${seat}`}
+      rulebook={rulebook}
+      onward={onward}
+      onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })}
+      {...(token ? { onForget: () => forgetMe(http, sessionId, token) } : {})}
+    />
+  )
 }
 
 // The three buttons every seat has, in one row in `/online`'s head (the phone splits them, #1147:

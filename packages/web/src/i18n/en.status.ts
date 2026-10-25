@@ -175,6 +175,12 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'refusal.peek': 'This screen has no hand.',
   'refusal.unknown': 'The card or the zone is no longer on the table.',
   'refusal.other': 'The table did not take the move. Try again in a moment.',
+  // The guest's own erasure that did not go through (#1281), said as a refusal is.
+  'forget.failed': 'The name could not be removed. Try again.',
+  // A masked seat, comment or note (G6, #1279, #1281), said instead of the placeholder; every route may meet one.
+  'masked.name': 'No name',
+  'masked.comment': 'The comment is removed.',
+  'masked.note': 'The note is removed.',
 
   'texture.lost.one': '{n} card could not be loaded',
   'texture.lost.other': '{n} cards could not be loaded',

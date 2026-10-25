@@ -165,7 +165,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
 - 🔶 GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
   Raderingen i lagret är byggd (#1279): ett inträde, ett bords gäster och ett borttaget spels bord maskas på plats, gästen utan konto gallras tolv månader efter att bordet slutade, liggaren körs om efter en återställning, och operatören raderar med `erase`.
-  Skivorna: personfälten som sluten karta (#1276), rensningen av det som inte längre kan användas (#1277), namn och token ur adressraden (#1278) och raderingen i lagret (#1279) är byggda; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på prototyper.
+  Skivorna: personfälten som sluten karta (#1276), rensningen av det som inte längre kan användas (#1277), namn och token ur adressraden (#1278), raderingen i lagret (#1279) och gästens väg från telefonen med meningen och integritetstexten (#1281, L87) är byggda; kontots väg i Profil (#1280) återstår.
 - 🔶 Villkor med garantiklausul om IP, godkända i ett eget steg efter första inloggningen; korta betavillkor i betan och en releaseversion på ett aktiebolag (F4, reviderad 2026-10-24, #1268).
   Villkorsversionen och godkännandet på servern (#1270) och betavillkoren med sidan, steget, läsläget och grinden (#1272) är byggda.
   Releaseversionen på aktiebolaget återstår.

@@ -22,6 +22,8 @@ afterEach(async () => {
 
 // A table played by Ada and Bo and watched by Cilla: Ada flags a moment, the table ends, Ada and
 // Cilla answer the survey and Bo does not.
+// Ada's token at the latest such table, for the test of her erasing herself (#1281).
+let adaToken = ''
 async function playedAndAnswered(): Promise<string> {
   const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
   const made = (await res.json()) as { id: string; code: string; hostKey: string }
@@ -44,6 +46,7 @@ async function playedAndAnswered(): Promise<string> {
   const answer = (token: string, seat: string | null, fun: number, change: string) =>
     fetch(`${run.http}/sessions/${id}/survey`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, seat, ...(seat === null ? { observer: true } : {}), answers: { fun, clarity: 3, balance: 4, change } }) })
   expect((await answer(ada.token, 'A', 4, 'Kortare runda')).status).toBe(201)
+  adaToken = ada.token
   expect((await answer(cilla.token, null, 5, 'Roligt att titta på')).status).toBe(201)
   return id
 }
@@ -82,6 +85,22 @@ describe('an ended table’s row and the Resultat view (#1010)', () => {
     // The flag, by name, how far into the game, and what was written.
     expect(screen.getByText(/drag 1 av 1/)).toBeTruthy()
     expect(screen.getByText(/«Draken är för stark»/)).toBeTruthy()
+  })
+
+  // A guest who removed her name (#1281, G6) is still one of the people at the table, under the
+  // masked name said in words: never the placeholder, and her comment said to be gone.
+  it('says a guest who removed her name as «Utan namn», and her comment as removed', async () => {
+    const id = await playedAndAnswered()
+    expect((await fetch(`${run.http}/sessions/${id}/erase`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: adaToken }) })).status).toBe(200)
+    const user = await openTables()
+    await user.click(await screen.findByRole('button', { name: 'Avslutade bord · 1' }))
+    await user.click(await screen.findByRole('button', { name: /^Svar och flaggor från/ }))
+    await screen.findByRole('heading', { level: 2, name: 'Version 1' })
+    expect(screen.getByText(/^Svarade inte: /).textContent).toMatch(/Utan namn/)
+    expect(screen.getByText(/flaggade, och kommentaren är borttagen/).closest('p')?.textContent).toMatch(/^Utan namn/)
+    expect(screen.queryByText('Kortare runda')).toBeNull()
+    expect(document.body.textContent).not.toContain('\uE000')
+    expect(document.body.textContent).not.toContain('Draken är för stark')
   })
 
   it('says in each cell of the distribution what its number means, and counts the observer out', async () => {
