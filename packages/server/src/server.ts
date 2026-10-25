@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -29,7 +29,8 @@ import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, r
 import { inviteMail } from './invite-mail.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
-import { widestBleedMm, type PrintProvider } from '@byd/print'
+import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
+import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, assetHash, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
@@ -210,7 +211,8 @@ const DeckBody = z.object({
 })
 
 // Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
-const JoinBody = z.object({ name: z.string().trim().min(1).max(64), seat: z.string().min(1).optional() })
+// The placeholder a masked name says (#1276) is nobody's name, at a seat or watching.
+const JoinBody = z.object({ name: z.string().trim().min(1).max(64).refine((name) => name !== REDACTED, 'the placeholder of a masked name is nobody’s name'), seat: z.string().min(1).optional() })
 const KickBody = z.object({ seat: z.string().min(1) })
 const ClaimBody = z.object({ token: z.string().min(1) })
 
@@ -1229,15 +1231,27 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
 // own requirements, and the rulebook beside them in our A5 (no partner's booklet format is built).
 // A version the physical checks stop at this provider's bleed (E5) has no card files, as its export
 // has none (G5, #1208); the order is still prepared, so what would be sent can be shown.
-async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, provider: PrintProvider, lang: ReturnType<typeof langOf>) {
+//
+// Which provider is the caller's question: one asked for by name, or the one an order to an address
+// would be routed to (F2, #1208), which is how the page asks, so what it shows is what the routing
+// would choose. No provider is a reason, never a quiet choice of another.
+async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, choose: (manifest: PrintManifest) => Route, lang: ReturnType<typeof langOf>) {
+  const deck = await deckOf(opts, rec)
+  const manifest = printManifestOf(deck, setupFromProject(rec), opts.registry)
+  const route = choose(manifest)
+  if (route.kind === 'none') return { refused: route.reason }
+  const provider = route.provider
   const found = checkedCards(rec, opts, provider)
   const errors = found.filter((f) => f.severity === 'error')
   const warnings = found.filter((f) => f.severity === 'warning')
-  const deck = await deckOf(opts, rec)
-  const order = provider.prepare(printManifestOf(deck, setupFromProject(rec), opts.registry))
+  const order = provider.prepare(manifest)
   const files: PrintFileJob[] = errors.length === 0 ? printFileJobsOf(deck, opts.registry, order, clock(opts).getTime()) : []
   const rulebook: PrintFileJob | undefined = rec.rules ? { name: PACKAGE_RULEBOOK, job: await bookletJobOf(opts, rec, rec.rules, lang) } : undefined
-  return { order, files, rulebook, errors, warnings }
+  // What the provider asks of each kind of thing in the order, in the order's own order: the
+  // requirements the files are made after, which the page says in words.
+  const types = [...new Map([...order.cards, ...order.hardware].map((c) => [`${c.type.id}@${c.type.version}`, c.type])).values()]
+  const requirements = types.map((type) => provider.requirements(type))
+  return { provider, manifest, order, requirements, files, rulebook, errors, warnings }
 }
 const PACKAGE_RULEBOOK = 'regelhafte.pdf'
 
@@ -2029,11 +2043,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
     return true
   }
-  // The print package for one provider (#1207, the page is #1208): GET says what the provider would
+  // The print package (#1207, the page and the download are #1208): GET says what the provider would
   // be sent and how far its files have come, and asks for any not yet drawn; `files/<name>` hands
-  // one over once it is. Nothing is held between the calls: both work it out of the document and
-  // the render store, as the export does. The owner's and the co-editors', whose work it is.
-  const packaging = /^\/projects\/([^/]+)\/print-package(?:\/files\/([^/]+))?$/.exec(url.pathname)
+  // one over once it is, and `zip` hands over the whole package once every file is. Nothing is held
+  // between the calls: each works it out of the document and the render store, as the export does.
+  // The owner's and the co-editors', whose work it is.
+  //
+  // The provider is named (`provider=<id>`), or it is the one an order to an address would be routed
+  // to (`to=<country>`, F2), which is how the page asks; then the provider's quote for that address
+  // comes with it, and an address no provider may print for says why (409, «no EU print»).
+  const packaging = /^\/projects\/([^/]+)\/print-package(?:\/files\/([^/]+)|\/(zip))?$/.exec(url.pathname)
   if (packaging && req.method === 'GET') {
     const gate = await allowed(decodeURIComponent(packaging[1] ?? ''), canEdit)
     if (!('rec' in gate)) {
@@ -2044,13 +2063,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 503, { error: 'render queue unavailable' })
       return true
     }
-    const provider = (opts.printProviders ?? []).find((p) => p.id === url.searchParams.get('provider'))
-    if (!provider) {
+    const providers = opts.printProviders ?? []
+    const named = url.searchParams.get('provider')
+    const to = url.searchParams.get('to')
+    const country = to === null ? null : Country.safeParse(to)
+    if (country && !country.success) {
+      json(res, 400, { error: 'to is a country code' })
+      return true
+    }
+    const provider = named === null ? undefined : providers.find((p) => p.id === named)
+    const dest = country?.success ? { country: country.data } : null
+    const choose = provider ? (): Route => ({ kind: 'routed', provider }) : named === null && dest ? (manifest: PrintManifest) => routeOrder(providers, manifest, dest) : null
+    if (!choose) {
       json(res, 404, { error: 'no such print provider' })
       return true
     }
     const rec = gate.rec
-    const pkg = await printPackageOf(opts, rec, provider, langOf(url.searchParams.get('lang')))
+    const lang = langOf(url.searchParams.get('lang'))
+    const pkg = await printPackageOf(opts, rec, choose, lang)
+    if ('refused' in pkg) {
+      json(res, 409, { error: pkg.refused })
+      return true
+    }
     const all = pkg.rulebook ? [...pkg.files, pkg.rulebook] : pkg.files
     if (packaging[2] !== undefined) {
       const name = decodeURIComponent(packaging[2])
@@ -2081,18 +2115,60 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     for (const file of pkg.files) files.push(await stateOf(file))
     const rulebook = pkg.rulebook ? await stateOf(pkg.rulebook) : null
     const states = rulebook ? [...files, rulebook] : files
+    const total = states.length
+    const done = states.filter((f) => f.state === 'done').length
+    const failed = states.filter((f) => f.state === 'failed').map((f) => f.name)
+    const providerFacts = { id: pkg.provider.id, label: pkg.provider.label, manufacturesIn: pkg.provider.manufacturesIn }
+    if (packaging[3] !== undefined) {
+      // The zip waits for every file, as the export does; a file the renderer gave up on is named in
+      // the manifest rather than holding the package back for ever.
+      if (done + failed.length < total) {
+        json(res, 202, { project: rec.id, rev: rec.rev, total, done, failed: failed.length })
+        return true
+      }
+      const contents = new Map<string, Uint8Array>()
+      for (const { name, job } of all) {
+        const bytes = await renders.output(job.hash)
+        if (bytes) contents.set(printPathOf(name), bytes)
+      }
+      const manifest: PrintPackageManifest = {
+        format: PRINT_PACKAGE_FORMAT,
+        formatVersion: PRINT_PACKAGE_FORMAT_VERSION,
+        createdAt: clock(opts).toISOString(),
+        ...(opts.release ? { release: opts.release } : {}),
+        project: { id: rec.id, name: rec.name },
+        rev: rec.rev,
+        provider: providerFacts,
+        requirements: pkg.requirements,
+        order: pkg.order,
+        files: pkg.files.map((f) => printPathOf(f.name)).filter((path) => contents.has(path)),
+        rulebook: pkg.rulebook && contents.has(printPathOf(pkg.rulebook.name)) ? printPathOf(pkg.rulebook.name) : null,
+        errors: pkg.errors,
+        warnings: pkg.warnings,
+        failed,
+        credits: creditsOf(rec),
+      }
+      const zip = packPrintPackage({ manifest, readme: printPackageReadme(lang, manifest), files: contents })
+      res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': printPackageDisposition(rec.name, rec.rev, lang), 'cache-control': 'no-store' })
+      res.end(zip)
+      return true
+    }
     json(res, 200, {
       project: rec.id,
       rev: rec.rev,
-      provider: { id: provider.id, label: provider.label, manufacturesIn: provider.manufacturesIn },
+      provider: providerFacts,
+      requirements: pkg.requirements,
+      // What the provider would answer for one copy sent to the address (F3), made up by a fake and
+      // marked so (`basis`); only when the package was asked for an address.
+      ...(dest && !provider ? { to: dest.country, quote: await pkg.provider.quote(pkg.manifest, dest) } : {}),
       order: pkg.order,
       files,
       rulebook,
       errors: pkg.errors,
       warnings: pkg.warnings,
-      total: states.length,
-      done: states.filter((f) => f.state === 'done').length,
-      failed: states.filter((f) => f.state === 'failed').length,
+      total,
+      done,
+      failed: failed.length,
     })
     return true
   }

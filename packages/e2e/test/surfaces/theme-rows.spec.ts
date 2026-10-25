@@ -20,8 +20,8 @@ const WIDTHS = [
 ] as const
 
 const WORDS = {
-  'sv-SE': { fonts: /^Typsnitt/, open: /sök i google fonts/i, add: /^lägg till oswald$/i, icons: /^Spelets ikoner/ },
-  'en-GB': { fonts: /^Fonts/, open: /search google fonts/i, add: /^add oswald$/i, icons: /^The game’s icons/ },
+  'sv-SE': { open: /sök i google fonts/i, add: /^lägg till oswald$/i },
+  'en-GB': { open: /search google fonts/i, add: /^add oswald$/i },
 } as const
 
 // A dark symbol as the set draws one; the look is not the question, the row around it is.
@@ -51,7 +51,6 @@ for (const [locale, words] of Object.entries(WORDS)) {
             : route.fulfill({ status: 200, contentType: 'font/woff2', body: WOFF2 }),
         )
         await openTheme(page, gameDoc({ name: 'Skogens herrar', cards: 4 }) as unknown as ProjectDoc)
-        await page.getByRole('button', { name: words.fonts }).click()
         await page.getByRole('button', { name: words.open }).click()
         await page.getByRole('searchbox', { name: words.open }).fill('oswald')
         await page.getByRole('button', { name: words.add }).click()
@@ -93,7 +92,6 @@ for (const [locale, words] of Object.entries(WORDS)) {
         doc.icons = { mynt: ICON, sköld: ICON, ö: ICON, 'en-mycket-lång-ikon': ICON }
         doc.credits = { mynt: { licence: 'CC0', by: 'Deckster' } }
         await openTheme(page, doc)
-        await page.getByRole('button', { name: words.icons }).click()
         const rows = await page.locator('.byd-symbols-set li').evaluateAll((lis) =>
           lis.map((li) => {
             const box = li.getBoundingClientRect()

@@ -22,6 +22,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@byd/print": "workspace:*",
     "@byd/render": "workspace:*",
     "@byd/server": "workspace:*",
     "@testing-library/dom": "^10.4.1",

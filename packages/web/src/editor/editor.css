@@ -1289,6 +1289,9 @@
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
 .byd-wall-checks { flex: 1 1 auto; min-width: 0; }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
+/* The way to the print package (#1208), under the checks: what would be sent with them applied. */
+.byd-wall-print { display: inline-flex; align-items: center; min-height: 44px; color: #c3cbdd; text-decoration: underline; text-underline-offset: 3px; }
+.byd-wall-print:hover { color: #fff; }
 .byd-wall-lead { margin: 0 0 8px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
 .byd-wall-checks ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .byd-wall-checks li { border-radius: 10px; overflow: hidden; border-left: 3px solid #f0b64a; background: #1b1f2a; }
@@ -3446,27 +3449,38 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    behind a head that carries its value while closed. One column that scrolls; a sheet — the
    symbol library or the typeface catalog — stands beside it when one is open, never over it, so
    what is taken in can be seen arriving. */
-.byd-theme { height: 100%; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--byd-s4); padding: var(--byd-gutter); }
+.byd-theme { height: 100%; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); gap: var(--byd-s4); padding: var(--byd-gutter); }
 .byd-theme[data-sheet] { grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); }
 .byd-theme-work { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: var(--byd-s2); }
 .byd-theme-sec { border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); }
-/* The ready-made themes (L57, #632): a row of tiles above the parts, and the line that says what
-   the game has made of the one it started from. A tile's sample stands on the theme's own paper,
-   never on the editor's dark ground (L34). */
-.byd-theme-gallery { display: grid; gap: var(--byd-s2); container-type: inline-size; }
-.byd-theme-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--byd-s3); }
-/* Four in a row as long as each tile has the room a tile draws; two by two when the catalog or the
-   library stands beside the gallery and the column is narrower (#741, found in #740) — never three
-   and one, which reads as a theme left over. */
-@container (width < 840px) {
-  .byd-theme-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-/* The tile's form is `theme-tile.css`, shared with the guided start (#633); these are its colours here.
-   A tile is a choice, so it is chosen by its edge and never by a fill (L13, #665): it stands on the
-   editor's own ground, as the guided start's stands on the step's. */
-.byd-theme-tile { border-color: #2f333d; background: transparent; color: #fff; }
-.byd-theme-tile:hover { border-color: #4a5060; }
-.byd-theme-tile[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: 0 0 0 1px var(--byd-editor-primary-mark); }
+/* The game's own theme (L84, #1287): «Titta i exemplen» above the parts, and the game's first card
+   beside them, where a sheet stands when one is open. */
+.byd-theme-top { display: flex; justify-content: flex-end; }
+.byd-theme-examples-open { display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.byd-theme-side { min-height: 0; overflow: auto; display: grid; align-content: start; gap: var(--byd-s2); }
+.byd-theme-live { overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge); }
+/* The examples (L57's ready-made themes, a sheet since L84). A tile's sample stands on the
+   example's own paper, never on the editor's dark ground (L34). A tile is to read here and not a
+   choice, so it has no hover and no pressed edge; the guided start's tile is its own (#633). */
+.byd-theme-examples > header { flex: none; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s4); border-bottom: 1px solid var(--byd-editor-line-soft); }
+.byd-theme-examples > header h2 { margin: 0; font-size: 14px; font-weight: 600; color: #fff; }
+.byd-theme-examples .byd-theme-sheet-done { margin-left: auto; min-height: 32px; border: 1px solid var(--byd-editor-line); border-radius: 8px; padding: 0 var(--byd-s3); background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 12px; cursor: pointer; }
+/* Above `.byd-theme p`'s margin, which would set the lead against the sheet's edge. */
+.byd-theme-examples .byd-theme-examples-lead { flex: none; margin: var(--byd-s3) var(--byd-s4) 0; font-size: 12px; }
+.byd-theme-examples-list { display: grid; gap: var(--byd-s3); margin: 0 0 var(--byd-s3); padding: 0; list-style: none; }
+.byd-theme-examples-list > li { display: grid; gap: var(--byd-s2); }
+.byd-theme-examples .byd-theme-tile { border-color: #2f333d; background: transparent; color: #fff; cursor: default; }
+/* The example's name, not one of `.byd-theme h3`'s quiet capitals. */
+.byd-theme-examples .byd-theme-tile h3 { margin: 0; font-size: 14px; font-weight: 700; text-transform: none; letter-spacing: normal; color: #fff; }
+.byd-theme-copy { justify-self: start; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.byd-theme-question { display: grid; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s3); border-radius: 8px; background: #1b1f2a; font-size: 12px; color: #c3cbdd; }
+.byd-theme-question p { margin: 0; }
+.byd-theme-question ul { display: grid; gap: var(--byd-s1); margin: 0; padding: 0; list-style: none; }
+.byd-theme-question li { display: flex; align-items: center; gap: var(--byd-s2); }
+.byd-theme-question-ink { flex: none; width: 12px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 25%); }
+.byd-theme-question-acts { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
+.byd-theme-question-acts button { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.byd-theme-question-acts button[aria-disabled='true'] { cursor: progress; }
 /* The theme proof (#741, beställarens val A): a crop of the game's first card — its top and the
    first lines of its prose at a size they can be read at — centred in the tile. The crop's size and
    the card's place in it are worked out from the template (`theme-crop.ts`); when the prose has
@@ -3484,12 +3498,6 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-theme-show[aria-busy='true'] { cursor: progress; }
 .byd-theme-tile small { color: #9aa3b8; }
 .byd-theme-tile .byd-theme-tile-families { color: #c3cbdd; }
-.byd-theme .byd-theme-departs { color: #c3cbdd; }
-.byd-theme-departs[data-away] b { color: #f0b64a; font-weight: 600; }
-.byd-theme-reset { min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; text-decoration: underline; cursor: pointer; }
-.byd-theme-reset[aria-disabled='true'] { cursor: progress; }
-.byd-theme-gallery-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--byd-s3); min-height: var(--byd-tap); }
-.byd-theme-gallery-said { color: #9aa3b8; }
 .byd-theme-head { display: flex; align-items: center; gap: var(--byd-s2); padding: 0 var(--byd-s4); }
 .byd-theme-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
 /* The head is the button that folds the part, as Mall's sections are (#478): the name, a chevron
@@ -4503,7 +4511,7 @@ img[data-arriving] { opacity: 0; }
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
   .byd-data-add, .byd-data-bodytools, .byd-kind-switch, .byd-kind-follow, .byd-newfield-kinds,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
-  .byd-theme-tiles, .byd-theme-reset, .byd-theme-show,
+  .byd-theme-show, .byd-theme-copy, .byd-theme-examples-open,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
   .byd-crop-corner, .byd-media-crop-row .byd-secondary,
   .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props > button,

@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 01 — Eget speltema med exempel att utgå ifrån</title>
+<!-- PROTOTYP. Kastas när en variant är vald. Fråga: Speltema används knappt. Fliken ska handla om
+     spelets *eget* tema, med exempel att utgå ifrån, men exemplen ska inte vara valbara direkt i
+     fliken (i dag är L57:s galleri med fyra färdiga teman det första fliken visar, och ett tryck
+     byter tema). Fyra strukturellt olika svar, ?variant=A|B|C|D, och en protorad som växlar mellan
+     ett nytt spel utan tema och ett spel som redan har ett. Ingenting här importeras av appen. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;600;700&family=Lora:wght@400;600&family=Merriweather:wght@400;700&family=Oswald:wght@500&family=Roboto+Condensed:wght@400;700&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+  h3 { margin: 0; font-size: 13px; color: #fff; }
+  .knapp { min-height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0 11px; background: var(--sunk); color: #e6ecfa; font: inherit; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .knapp:hover { border-color: var(--primary-mark); }
+  .knapp.primar { background: var(--primary); border-color: var(--primary); font-weight: 700; color: #fff; }
+  .knapp.liten { min-height: 26px; padding: 0 8px; font-size: 11px; }
+  .lank { border: 0; background: none; color: #8ab8f0; font: inherit; cursor: pointer; padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; }
+  .tyst { color: var(--quiet); }
+  input.namn { background: transparent; border: 1px solid transparent; border-radius: 6px; color: #fff; font: 700 17px system-ui; padding: 4px 6px; margin-left: -6px; min-width: 0; }
+  input.namn:hover, input.namn:focus { border-color: var(--line); outline: none; background: #0f1115; }
+
+  /* ── Kortet ───────────────────────────────────────────────────────────── */
+  .kort { width: 240px; aspect-ratio: 63 / 88; border-radius: 10px; padding: 13px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.45); flex: none; color: #1d1b17; }
+  .kort .topp { display: flex; align-items: center; gap: 6px; }
+  .kort .titel { font-size: 17px; line-height: 1.15; flex: 1; }
+  .kort .bild { flex: 1; border-radius: 6px; background: repeating-linear-gradient(45deg, rgba(0,0,0,.06) 0 6px, rgba(0,0,0,.02) 6px 12px); border: 1px solid rgba(0,0,0,.12); }
+  .kort .text { font-size: 12.5px; line-height: 1.45; min-height: 56px; }
+  .kort.liten { width: 120px; padding: 7px; gap: 5px; border-radius: 7px; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+  .kort.liten .titel { font-size: 9.5px; }
+  .kort.liten .text { font-size: 7px; min-height: 30px; }
+  .sym { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -0.18em; }
+  .sym svg { display: block; width: 100%; height: 100%; }
+
+  /* ── Ytan ─────────────────────────────────────────────────────────────── */
+  .yta { flex: 1 1 auto; min-height: 0; display: flex; position: relative; }
+  .arbete { flex: 1 1 auto; min-width: 0; overflow: auto; padding: var(--s5) var(--gutter) 90px; display: grid; gap: var(--s4); align-content: start; }
+  .sidan { flex: none; width: 320px; border-left: 1px solid var(--line); padding: var(--s5) var(--s4); display: grid; gap: var(--s3); align-content: start; justify-items: center; background: var(--sunk); overflow: auto; }
+  .sidan .h { justify-self: start; }
+  .temahuvud { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+  .temahuvud .tyst { font-size: 12px; }
+  .sektion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); display: grid; gap: var(--s3); }
+  .sektion > header { display: flex; align-items: baseline; gap: var(--s3); }
+  .sektion > header small { color: var(--quiet); }
+  .sektion > header > :last-child:not(h3) { margin-left: auto; }
+
+  .slot { display: grid; grid-template-columns: 80px minmax(0,1fr) auto; gap: var(--s3); align-items: center; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+  .slot:first-of-type { border-top: 0; }
+  .slot .etikett { color: var(--quiet-2); }
+  .slot .prov { font-size: 21px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot .prov small { font: 11px system-ui; color: var(--quiet); margin-left: 8px; }
+
+  .betydelser { list-style: none; margin: 0; padding: 0; display: grid; }
+  .betydelser li { display: grid; grid-template-columns: 30px 100px minmax(0,1fr); gap: var(--s3); align-items: center; padding: 5px 0; border-top: 1px solid var(--line-soft); }
+  .betydelser li:first-child { border-top: 0; }
+  .betydelser b { color: #fff; font-weight: 600; }
+  .papper { display: inline-grid; place-items: center; border-radius: 5px; padding: 3px; }
+  .papper .sym { width: 18px; height: 18px; }
+  .black { display: flex; gap: 4px; flex-wrap: wrap; }
+  .black span { width: 20px; height: 20px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .black span.vald { outline: 2px solid #fff; outline-offset: 1px; }
+
+  .ikoner { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ikoner > span { display: grid; justify-items: center; gap: 3px; width: 64px; padding: 7px 4px; border-radius: 10px; border: 1px solid var(--line); background: #0f1115; font-size: 10.5px; color: #c7cede; }
+  .ikoner > span .sym { width: 22px; height: 22px; }
+  .ikoner > button { width: 64px; border-radius: 10px; border: 1px dashed var(--line); background: none; color: var(--quiet-2); font: inherit; font-size: 11px; cursor: pointer; }
+  .tomt { color: var(--quiet); font-style: italic; padding: 4px 0; }
+
+  /* ── Exempel som ritas som provbitar (aldrig som valbara brickor) ───────── */
+  .ex { border: 1px solid var(--line); border-radius: 10px; background: #12151d; padding: var(--s3); display: grid; gap: var(--s2); }
+  .ex header { display: flex; align-items: baseline; gap: var(--s2); }
+  .ex header b { color: #fff; }
+  .ex header small { color: var(--quiet); }
+  .ex header > :last-child { margin-left: auto; }
+  .ex .fam { font-size: 18px; color: #fff; line-height: 1.2; }
+  .ex .fam + .fam { font-size: 13px; color: #c7cede; }
+
+  /* A: arket med exempel */
+  .ark { position: absolute; inset: 0 0 0 auto; width: 420px; background: var(--chrome); border-left: 1px solid var(--line); box-shadow: -18px 0 40px rgba(0,0,0,.4); display: flex; flex-direction: column; z-index: 5; }
+  .ark > header { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
+  .ark > header > :last-child { margin-left: auto; }
+  .ark .innehall { overflow: auto; padding: var(--s4); display: grid; gap: var(--s3); align-content: start; }
+  .ark .exrad { display: grid; grid-template-columns: 120px minmax(0,1fr); gap: var(--s3); align-items: start; }
+  .diff { list-style: none; margin: 0; padding: var(--s2) var(--s3); border-radius: 8px; background: #1b1f2a; display: grid; gap: 3px; font-size: 12px; }
+  .diff s { color: var(--quiet); }
+  .diff b { color: #fff; font-weight: 600; }
+
+  /* B: idéer per del */
+  .ideer { display: flex; gap: 6px; flex-wrap: wrap; align-items: stretch; padding-top: var(--s2); border-top: 1px dashed var(--line); }
+  .ideer > .h { flex: 1 1 100%; font-size: 10px; letter-spacing: 1.5px; }
+  .ide { border: 1px solid var(--line); border-radius: 9px; background: #12151d; padding: 6px 9px; display: grid; gap: 2px; text-align: left; color: #c7cede; font: inherit; cursor: pointer; min-width: 120px; }
+  .ide:hover { border-color: var(--primary-mark); }
+  .ide small { color: var(--quiet); font-size: 10px; }
+  .ide .f1 { font-size: 16px; color: #fff; }
+  .ide .f2 { font-size: 12px; }
+
+  /* C: startläget */
+  .start { margin: auto; max-width: 860px; display: grid; gap: var(--s4); padding: var(--s5) var(--gutter); }
+  .start h2 { margin: 0; font-size: 20px; color: #fff; }
+  .start p { margin: 0; color: var(--quiet-2); max-width: 62ch; line-height: 1.5; }
+  .vagar { display: grid; grid-template-columns: 200px repeat(4, minmax(0,1fr)); gap: var(--s3); }
+  .vag { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s3); display: grid; gap: var(--s2); justify-items: center; color: #c7cede; font: inherit; cursor: pointer; text-align: center; }
+  .vag:hover { border-color: var(--primary-mark); }
+  .vag b { color: #fff; }
+  .vag small { color: var(--quiet); font-size: 11px; line-height: 1.35; }
+  .vag.tom { border-style: dashed; align-content: center; }
+  .vag.tom .plus { font-size: 30px; color: var(--quiet-2); }
+  .stilark { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .stilark > div { display: grid; grid-template-columns: 150px minmax(0,1fr) auto; gap: var(--s3); align-items: center; padding: 10px var(--s4); border-top: 1px solid var(--line-soft); min-height: 48px; }
+  .stilark > div:first-child { border-top: 0; }
+  .stilark .etikett { color: var(--quiet-2); }
+  .meny { position: relative; }
+  .meny ul { position: absolute; right: 0; top: 36px; list-style: none; margin: 0; padding: 4px; background: #0f1115; border: 1px solid var(--line); border-radius: 8px; width: 240px; z-index: 4; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .meny li button { width: 100%; text-align: left; border: 0; background: none; color: #e6ecfa; font: inherit; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+  .meny li button:hover { background: #1b2437; }
+  .meny li small { display: block; color: var(--quiet); font-size: 11px; }
+
+  /* D: jämför */
+  .jamfor { display: grid; grid-template-columns: minmax(0,1fr) 46px minmax(0,1fr); border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+  .jamfor > .kol-h { padding: var(--s3) var(--s4); background: var(--sunk); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: var(--s2); min-height: 52px; }
+  .jamfor > .kol-h select { min-height: 30px; border: 1px solid var(--line); border-radius: 7px; background: #0f1115; color: #fff; font: inherit; padding: 0 6px; }
+  .jamfor > .cell { padding: 10px var(--s4); border-top: 1px solid var(--line-soft); display: grid; gap: 2px; align-content: center; min-height: 54px; }
+  .jamfor > .cell.mitt { padding: 0; place-items: center; }
+  .jamfor > .cell.ex-sida { background: #12151d; }
+  .jamfor .etikett { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; }
+  .jamfor .lika { color: var(--quiet); font-size: 11px; }
+  .ta { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: #e6ecfa; cursor: pointer; font-size: 15px; }
+  .ta:hover { border-color: var(--primary-mark); background: #1b2437; }
+  .ta:disabled { opacity: .25; cursor: default; }
+
+  .kvitto { position: fixed; left: 50%; transform: translateX(-50%); bottom: 64px; background: #10131a; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; gap: var(--s3); align-items: center; color: #e6ecfa; box-shadow: 0 10px 30px rgba(0,0,0,.5); z-index: 30; }
+
+  /* Prototypens bläddrare: hör inte till förslaget. */
+  .vaxlare { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 6px; background: #ffd98a; color: #1f1b12; border-radius: 999px; padding: 4px; box-shadow: 0 6px 24px rgba(0,0,0,.5); font: 700 12px system-ui; }
+  .vaxlare button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: #1f1b12; color: #ffd98a; cursor: pointer; font-size: 14px; }
+  .vaxlare span { padding: 0 10px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">‹ Mina spel</a>
+    <strong>Drakens skatt</strong>
+    <nav class="tabs" role="tablist">
+      <button role="tab">Kortvägg</button><button role="tab">Mall</button><button role="tab">Tabell</button><button role="tab" aria-selected="true">Speltema</button><button role="tab">Media</button><button role="tab">Regler</button><button role="tab">Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <span class="saved">Sparat</span>
+    <span class="who">NO</span>
+  </header>
+  <div class="protorad">
+    <b>Prototyp</b>
+    <p id="om"></p>
+    <span class="matt">
+      <button id="laget" type="button"></button>
+      <button id="nollstall" type="button">Börja om</button>
+    </span>
+  </div>
+  <main id="yta"></main>
+</div>
+<div class="vaxlare" aria-label="Prototypens varianter"><button id="bak" aria-label="Föregående variant">←</button><span id="etikett"></span><button id="fram" aria-label="Nästa variant">→</button></div>
+
+<script>
+// ── Ikoner, ritade enkelt: det är formen som prövas, inte symbolerna ─────────
+const SVG = {
+  mynt: '<circle cx="12" cy="12" r="8.5" fill="currentColor"/><circle cx="12" cy="12" r="5" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.5"/>',
+  skold: '<path d="M12 2.5 20 6v6c0 5-3.6 8.4-8 9.5C7.6 20.4 4 17 4 12V6z" fill="currentColor"/>',
+  svard: '<path d="M18.5 2.5 21.5 5.5 10 17l-3-3zM6 13l5 5-2 2-1.5-1.5L5 21l-2-2 2.5-2.5L4 15z" fill="currentColor"/>',
+  hjarta: '<path d="M12 20.5S3 15 3 8.8C3 6 5.2 4 7.7 4c1.8 0 3.3 1 4.3 2.4C13 5 14.5 4 16.3 4 18.8 4 21 6 21 8.8 21 15 12 20.5 12 20.5z" fill="currentColor"/>',
+  kristall: '<path d="M12 2 19 9l-7 13L5 9z" fill="currentColor"/><path d="M5 9h14M12 2v20" stroke="#fff" stroke-opacity=".4"/>',
+  dra: '<rect x="6" y="3" width="11" height="15" rx="2" fill="currentColor" opacity=".55"/><rect x="8" y="6" width="11" height="15" rx="2" fill="currentColor"/>',
+}
+const IKONNAMN = { mynt: 'mynt', skold: 'sköld', svard: 'svärd', hjarta: 'hjärta', kristall: 'kristall', dra: 'dra' }
+const sym = (id, colour) => `<span class="sym" style="color:${colour}"><svg viewBox="0 0 24 24">${SVG[id]}</svg></span>`
+
+// ── Exemplen: themes.ts:s fyra, med samma familjer och färger ────────────────
+const STARTER = ['mynt', 'skold', 'svard', 'hjarta', 'kristall', 'dra']
+const EXEMPEL = [
+  { id: 'skogssaga', namn: 'Skogssaga', om: 'Graverad rubrik, klassisk brödtext, jordfärger', rubrik: 'Cinzel', brod: 'EB Garamond', papper: '#f4efe4', farger: { kostnad: '#8f2d20', vinst: '#2f6136', försvar: '#155e75', anfall: '#a8410c' }, ikoner: STARTER },
+  { id: 'ren', namn: 'Ren', om: 'En sans rakt igenom, klara färger', rubrik: 'Inter', brod: 'Inter', papper: '#ffffff', farger: { kostnad: '#8f2d20', vinst: '#2f6136', försvar: '#155e75', anfall: '#6b2d5c' }, ikoner: STARTER },
+  { id: 'retro', namn: 'Retro', om: 'Smal versal rubrik, kondenserad text', rubrik: 'Oswald', brod: 'Roboto Condensed', papper: '#fbf1d6', farger: { kostnad: '#8f2d20', vinst: '#7a5c00', försvar: '#155e75', anfall: '#6b2d5c' }, ikoner: STARTER },
+  { id: 'kronika', namn: 'Krönika', om: 'Bokserif, varm läsbarhet, dämpade färger', rubrik: 'Lora', brod: 'Merriweather', papper: '#f7f2ea', farger: { kostnad: '#6b2d5c', vinst: '#2f6136', försvar: '#155e75', anfall: '#8f2d20' }, ikoner: STARTER },
+]
+const BETYDELSEIKON = { kostnad: 'mynt', vinst: 'kristall', försvar: 'skold', anfall: 'svard' }
+const BLACK = ['#8f2d20', '#a8410c', '#7a5c00', '#2f6136', '#155e75', '#1f3f8f', '#6b2d5c', '#1d1b17']
+
+// Ett nytt spel har ett eget tema från början — det är bara tomt: systemets typsnitt, inga
+// betydelser, inga ikoner. Ett spel som "har ett tema" är ett som redan gjort något av det.
+const TOMT = () => ({ namn: 'Spelets tema', rubrik: null, brod: null, farger: {}, ikoner: [], fran: null })
+const IFYLLT = () => ({ namn: 'Drakens skatt', rubrik: 'Cinzel', brod: 'Lora', farger: { kostnad: '#8f2d20', vinst: '#7a5c00', försvar: '#155e75' }, ikoner: ['mynt', 'skold', 'svard', 'kristall', 'hjarta'], fran: null })
+
+const VARIANTER = {
+  A: { namn: 'Ditt tema, exemplen i ett ark', om: 'Fliken är spelets eget tema, utfällt, med ett levande kort bredvid. Exemplen ligger bakom «Titta i exemplen»: ett ark där de bara går att läsa, och att kopiera ett till spelets tema visar först vad som byts ut.' },
+  B: { namn: 'Idéer per del', om: 'Inga hela exempel alls. Varje del av spelets tema — typsnitt, färger, ikoner — har en rad «Idéer ur exemplen» där exemplens version av just den delen står. Man lånar en del i taget och kan ångra.' },
+  C: { namn: 'Startläge, sedan bara ditt', om: 'Ett spel utan tema möts av ett startläge: börja tomt eller utgå från ett exempel. Valet blir en kopia som heter spelets namn, och därefter visar fliken bara spelets tema som ett stilark. Exemplen nås igen bara via ⋯-menyn.' },
+  D: { namn: 'Jämför med ett exempel', om: 'Spelets tema i vänsterspalten, ett exempel man väljer att jämföra med i högerspalten, rad för rad. «←» tar över en rad. Exemplet är ett referensexemplar, aldrig ett val.' },
+}
+
+// ── Tillstånd ────────────────────────────────────────────────────────────────
+const url = new URL(location.href)
+let variant = VARIANTER[url.searchParams.get('variant')] ? url.searchParams.get('variant') : 'A'
+let lage = url.searchParams.get('lage') === 'tomt' ? 'tomt' : 'ifyllt'
+let tema, ui
+function nollstall() {
+  tema = lage === 'tomt' ? TOMT() : IFYLLT()
+  ui = { ark: false, kopiera: null, startat: lage !== 'tomt', meny: false, jamfor: 'skogssaga', kvitto: null, fore: null }
+}
+nollstall()
+
+const fam = (f) => f ? `'${f}', serif` : 'system-ui, sans-serif'
+const famnamn = (f) => f ?? 'Systemets'
+const ex = (id) => EXEMPEL.find((e) => e.id === id)
+
+function andra(fn, kvitto) {
+  ui.fore = structuredClone(tema)
+  fn(tema)
+  ui.kvitto = kvitto
+  rita()
+  clearTimeout(andra.t)
+  andra.t = setTimeout(() => { ui.kvitto = null; rita() }, 6000)
+}
+
+// ── Gemensamma bitar ────────────────────────────────────────────────────────
+function kort(t, liten = false, papper = '#f6f1e7') {
+  const f = t.farger, c = (b) => f[b] ?? '#1d1b17'
+  return `<div class="kort${liten ? ' liten' : ''}" style="background:${papper}">
+    <div class="topp"><span class="titel" style="font-family:${fam(t.rubrik)};font-weight:600">Drakens skatt</span>${sym('mynt', c('kostnad'))}<b style="font-family:${fam(t.rubrik)};color:${c('kostnad')}">3</b></div>
+    <div class="bild"></div>
+    <div class="text" style="font-family:${fam(t.brod)}">Dra två kort. Har du ${sym('skold', c('försvar'))} får du ${sym('kristall', c('vinst'))} 2. Annars ${sym('svard', c('anfall'))} mot grannen.</div>
+  </div>`
+}
+function typsnitt(t, knapp) {
+  return ['rubrik', 'brod'].map((s) => `<div class="slot"><span class="etikett">${s === 'rubrik' ? 'Rubrik' : 'Brödtext'}</span>
+    <span class="prov" style="font-family:${fam(t[s])}">${s === 'rubrik' ? 'Drakens skatt' : 'Dra två kort och lägg ett.'}<small>${famnamn(t[s])}</small></span>${knapp(s)}</div>`).join('')
+}
+function betydelser(t) {
+  const rader = Object.entries(t.farger)
+  if (!rader.length) return '<p class="tomt">Inga betydelser än. En betydelse ger en symbol en färg, som {mynt|kostnad}.</p>'
+  return `<ul class="betydelser">${rader.map(([b, c]) => `<li><span class="papper" style="background:#f6f1e7">${sym(BETYDELSEIKON[b] ?? 'mynt', c)}</span><b>${b}</b>
+    <span class="black">${BLACK.map((x) => `<span style="background:${x}" class="${x === c ? 'vald' : ''}"></span>`).join('')}</span></li>`).join('')}</ul>`
+}
+function ikoner(t) {
+  return `<div class="ikoner">${t.ikoner.map((i) => `<span>${sym(i, '#d6dcea')}${IKONNAMN[i]}</span>`).join('')}<button type="button">＋ Ur biblioteket</button></div>`
+}
+const byt = () => '<button class="knapp liten" type="button">Byt…</button>'
+const sammanfattning = (t) => `${famnamn(t.rubrik)} · ${famnamn(t.brod)} · ${Object.keys(t.farger).length} betydelser · ${t.ikoner.length} ikoner`
+
+function kopiaAv(e, namn) {
+  return { namn, rubrik: e.rubrik, brod: e.brod, farger: { ...e.farger }, ikoner: [...e.ikoner], fran: e.namn }
+}
+function skillnad(e) {
+  const r = []
+  if (tema.rubrik !== e.rubrik) r.push(`Rubrik <s>${famnamn(tema.rubrik)}</s> → <b>${e.rubrik}</b>`)
+  if (tema.brod !== e.brod) r.push(`Brödtext <s>${famnamn(tema.brod)}</s> → <b>${e.brod}</b>`)
+  for (const [b, c] of Object.entries(e.farger)) if (tema.farger[b] !== c) r.push(`${tema.farger[b] ? 'Ny färg på' : 'Ny betydelse'} <b>${b}</b> ${sym(BETYDELSEIKON[b], c)}`)
+  const nya = e.ikoner.filter((i) => !tema.ikoner.includes(i))
+  if (nya.length) r.push(`${nya.length === 1 ? 'En ikon läggs' : `${nya.length} ikoner läggs`} till: ${nya.map((i) => IKONNAMN[i]).join(', ')}`)
+  return r
+}
+
+// ── A ───────────────────────────────────────────────────────────────────────
+function variantA() {
+  const arket = !ui.ark ? '' : `<aside class="ark" aria-label="Exempel">
+    <header><h3>Exempel att utgå ifrån</h3><button class="knapp" data-g="stang">Klar</button></header>
+    <div class="innehall">
+      <p class="tyst" style="margin:0">Exemplen är inte teman man väljer. Kopiera ett till spelets tema, eller bara titta.</p>
+      ${EXEMPEL.map((e) => `<div class="ex"><header><b>${e.namn}</b><small>${e.om}</small></header>
+        <div class="exrad">${kort(e, true, e.papper)}<div style="display:grid;gap:6px;align-content:start">
+          <span class="fam" style="font-family:${fam(e.rubrik)}">${e.rubrik}</span><span class="fam" style="font-family:${fam(e.brod)}">${e.brod}, brödtext</span>
+          <span>${Object.entries(e.farger).map(([b, c]) => sym(BETYDELSEIKON[b], c)).join(' ')}</span>
+          ${ui.kopiera === e.id ? `<ul class="diff">${skillnad(e).map((x) => `<li>${x}</li>`).join('') || '<li>Spelets tema är redan detta.</li>'}</ul>
+            <span style="display:flex;gap:6px"><button class="knapp primar liten" data-g="kopiera-ja" data-e="${e.id}">Kopiera till spelets tema</button><button class="knapp liten" data-g="kopiera-nej">Avbryt</button></span>`
+            : `<button class="knapp liten" data-g="kopiera" data-e="${e.id}" style="justify-self:start">Kopiera till spelets tema…</button>`}
+        </div></div></div>`).join('')}
+    </div></aside>`
+  return `<div class="yta"><div class="arbete">
+      <div class="temahuvud"><input class="namn" value="${tema.namn}" size="${tema.namn.length + 2}" aria-label="Temats namn"><span class="tyst">${tema.fran ? `kopierat från ${tema.fran}` : 'spelets eget'}</span>
+        <span class="spacer"></span><button class="knapp" data-g="ark">Titta i exemplen</button></div>
+      <section class="sektion"><header><h3>Typsnitt</h3><small>rubrik och brödtext</small></header>${typsnitt(tema, byt)}</section>
+      <section class="sektion"><header><h3>Färger och betydelser</h3><button class="knapp liten">＋ Betydelse</button></header>${betydelser(tema)}</section>
+      <section class="sektion"><header><h3>Spelets ikoner</h3><small>${tema.ikoner.length} st</small></header>${ikoner(tema)}</section>
+    </div>
+    <aside class="sidan"><span class="h">Spelets första kort</span>${kort(tema)}<span class="tyst" style="font-size:11px;text-align:center">Kortet ändras medan du ändrar temat.</span></aside>
+    ${arket}</div>`
+}
+
+// ── B ───────────────────────────────────────────────────────────────────────
+function variantB() {
+  const par = EXEMPEL.filter((e) => e.rubrik !== tema.rubrik || e.brod !== tema.brod)
+  const ideTyp = `<div class="ideer"><span class="h">Idéer ur exemplen</span>${par.map((e) => `<button class="ide" data-g="lana-typ" data-e="${e.id}">
+      <span class="f1" style="font-family:${fam(e.rubrik)}">${e.rubrik}</span><span class="f2" style="font-family:${fam(e.brod)}">${e.brod === e.rubrik ? 'samma i brödtext' : e.brod}</span><small>som i ${e.namn}</small></button>`).join('')}</div>`
+  const ideFarg = `<div class="ideer"><span class="h">Idéer ur exemplen</span>${EXEMPEL.map((e) => `<button class="ide" data-g="lana-farg" data-e="${e.id}">
+      <span>${Object.entries(e.farger).map(([b, c]) => sym(BETYDELSEIKON[b], c)).join(' ')}</span><small>${e.namn}s fyra betydelser</small></button>`).join('')}</div>`
+  const saknas = STARTER.filter((i) => !tema.ikoner.includes(i))
+  const ideIkon = saknas.length ? `<div class="ideer"><span class="h">Idéer ur exemplen</span><button class="ide" data-g="lana-ikon">
+      <span>${saknas.map((i) => sym(i, '#d6dcea')).join(' ')}</span><small>startuppsättningens ${saknas.length} som saknas</small></button></div>` : ''
+  return `<div class="yta"><div class="arbete">
+      <div class="temahuvud"><input class="namn" value="${tema.namn}" size="${tema.namn.length + 2}" aria-label="Temats namn"><span class="tyst">${sammanfattning(tema)}</span></div>
+      <section class="sektion"><header><h3>Typsnitt</h3><small>rubrik och brödtext</small></header>${typsnitt(tema, byt)}${ideTyp}</section>
+      <section class="sektion"><header><h3>Färger och betydelser</h3><button class="knapp liten">＋ Betydelse</button></header>${betydelser(tema)}${ideFarg}</section>
+      <section class="sektion"><header><h3>Spelets ikoner</h3><small>${tema.ikoner.length} st</small></header>${ikoner(tema)}${ideIkon}</section>
+    </div>
+    <aside class="sidan"><span class="h">Spelets första kort</span>${kort(tema)}</aside></div>`
+}
+
+// ── C ───────────────────────────────────────────────────────────────────────
+function variantC() {
+  if (!ui.startat) {
+    return `<div class="yta" style="overflow:auto"><div class="start">
+      <h2>Spelet har inget eget tema än</h2>
+      <p>Ett tema är spelets typsnitt, färger och ikoner, bestämda en gång så att Tabell och Mall kan föreslå ur dem. Börja tomt, eller ta en kopia av ett exempel och gör den till din. Exemplet ändras aldrig, och spelet följer det inte.</p>
+      <div class="vagar">
+        <button class="vag tom" data-g="starta-tomt"><span class="plus">＋</span><b>Börja tomt</b><small>Systemets typsnitt, inga färger, inga ikoner</small></button>
+        ${EXEMPEL.map((e) => `<button class="vag" data-g="starta" data-e="${e.id}">${kort(e, true, e.papper)}<b>Utgå från ${e.namn}</b><small>${e.om}</small></button>`).join('')}
+      </div></div></div>`
+  }
+  const menyn = !ui.meny ? '' : `<ul>
+      <li><button data-g="dup">Byt namn<small>Temat heter som spelet tills du döper det.</small></button></li>
+      <li><button data-g="om-start">Börja om från ett exempel…<small>Ersätter spelets typsnitt, färger och ikoner. Går att ångra.</small></button></li></ul>`
+  return `<div class="yta"><div class="arbete">
+      <div class="temahuvud"><input class="namn" value="${tema.namn}" size="${tema.namn.length + 2}" aria-label="Temats namn"><span class="tyst">${tema.fran ? `utgick från ${tema.fran}` : 'spelets eget'}</span>
+        <span class="spacer"></span><span class="meny"><button class="knapp" data-g="meny" aria-expanded="${ui.meny}">⋯</button>${menyn}</span></div>
+      <div class="stilark">
+        <div><span class="etikett">Rubrik</span><span class="prov" style="font-family:${fam(tema.rubrik)};font-size:22px;color:#fff">Drakens skatt <small class="tyst" style="font:11px system-ui">${famnamn(tema.rubrik)}</small></span>${byt()}</div>
+        <div><span class="etikett">Brödtext</span><span style="font-family:${fam(tema.brod)};font-size:15px;color:#e6ecfa">Dra två kort och lägg ett. <small class="tyst" style="font:11px system-ui">${famnamn(tema.brod)}</small></span>${byt()}</div>
+        ${Object.entries(tema.farger).map(([b, c]) => `<div><span class="etikett">${b}</span><span><span class="papper" style="background:#f6f1e7">${sym(BETYDELSEIKON[b] ?? 'mynt', c)}</span> <code style="color:var(--quiet-2)">${c}</code></span><button class="knapp liten">Ändra</button></div>`).join('')}
+        <div><span class="etikett">Ny betydelse</span><span class="tyst">Ge en symbol en färg, som {mynt|kostnad}</span><button class="knapp liten">＋ Betydelse</button></div>
+        <div><span class="etikett">Ikoner · ${tema.ikoner.length}</span><span>${tema.ikoner.map((i) => sym(i, '#d6dcea')).join(' ') || '<span class="tyst">inga än</span>'}</span><button class="knapp liten">＋ Ur biblioteket</button></div>
+      </div>
+    </div>
+    <aside class="sidan"><span class="h">Spelets första kort</span>${kort(tema)}</aside></div>`
+}
+
+// ── D ───────────────────────────────────────────────────────────────────────
+function variantD() {
+  const e = ex(ui.jamfor)
+  const rad = (etikett, mitt, ditt, deras, lika, g) => `
+    <div class="cell"><span class="etikett">${etikett}</span>${mitt}</div>
+    <div class="cell mitt"><button class="ta" data-g="${g}" ${lika ? 'disabled' : ''} aria-label="Ta ${etikett} från ${e.namn}" title="Ta från ${e.namn}">←</button></div>
+    <div class="cell ex-sida"><span class="etikett">${etikett}</span>${deras}${lika ? '<span class="lika">samma som spelets</span>' : ''}</div>`
+  const betyd = Object.keys({ ...e.farger, ...tema.farger })
+  return `<div class="yta"><div class="arbete">
+      <div class="temahuvud"><input class="namn" value="${tema.namn}" size="${tema.namn.length + 2}" aria-label="Temats namn"><span class="tyst">${sammanfattning(tema)}</span></div>
+      <div class="jamfor">
+        <div class="kol-h"><h3>Spelets tema</h3></div><div class="kol-h" style="padding:0"></div>
+        <div class="kol-h" style="background:#12151d"><span class="tyst">Jämför med</span><select data-g="valj">${EXEMPEL.map((x) => `<option value="${x.id}" ${x.id === e.id ? 'selected' : ''}>${x.namn}</option>`).join('')}</select>
+          <button class="knapp liten" data-g="ta-allt" style="margin-left:auto">Ta allt</button></div>
+        ${rad('Rubrik', `<span style="font-family:${fam(tema.rubrik)};font-size:19px;color:#fff">${famnamn(tema.rubrik)}</span>`, 0, `<span style="font-family:${fam(e.rubrik)};font-size:19px;color:#fff">${e.rubrik}</span>`, tema.rubrik === e.rubrik, 'ta-rubrik')}
+        ${rad('Brödtext', `<span style="font-family:${fam(tema.brod)};font-size:14px">Dra två kort. <small class="tyst">${famnamn(tema.brod)}</small></span>`, 0, `<span style="font-family:${fam(e.brod)};font-size:14px">Dra två kort. <small class="tyst">${e.brod}</small></span>`, tema.brod === e.brod, 'ta-brod')}
+        ${betyd.map((b) => rad(b, tema.farger[b] ? `<span><span class="papper" style="background:#f6f1e7">${sym(BETYDELSEIKON[b], tema.farger[b])}</span></span>` : '<span class="tyst">saknas</span>', 0,
+            e.farger[b] ? `<span><span class="papper" style="background:${e.papper}">${sym(BETYDELSEIKON[b], e.farger[b])}</span></span>` : '<span class="tyst">saknas</span>',
+            !e.farger[b] || tema.farger[b] === e.farger[b], `ta-farg" data-b="${b}`)).join('')}
+        ${rad('Ikoner', `<span>${tema.ikoner.map((i) => sym(i, '#d6dcea')).join(' ') || '<span class="tyst">inga än</span>'}</span>`, 0, `<span>${e.ikoner.map((i) => sym(i, tema.ikoner.includes(i) ? '#5a6275' : '#d6dcea')).join(' ')}</span>`, e.ikoner.every((i) => tema.ikoner.includes(i)), 'ta-ikoner')}
+      </div>
+      <p class="tyst" style="margin:0;font-size:12px">Det du tar blir spelets. Exemplet ändras aldrig, och spelet följer det inte efteråt.</p>
+    </div>
+    <aside class="sidan"><span class="h">Spelets första kort</span>${kort(tema)}<span class="h" style="margin-top:var(--s3)">${e.namn}</span>${kort(e, true, e.papper)}</aside></div>`
+}
+
+// ── Ritning och händelser ───────────────────────────────────────────────────
+const RITA = { A: variantA, B: variantB, C: variantC, D: variantD }
+const keys = Object.keys(VARIANTER)
+function rita() {
+  document.getElementById('yta').innerHTML = RITA[variant]() + (ui.kvitto ? `<div class="kvitto">${ui.kvitto}<button class="lank" data-g="angra">Ångra</button></div>` : '')
+  document.getElementById('etikett').textContent = `${variant} — ${VARIANTER[variant].namn}`
+  document.getElementById('om').innerHTML = `<b>${variant}. ${VARIANTER[variant].namn}.</b> ${VARIANTER[variant].om}`
+  document.getElementById('laget').textContent = lage === 'tomt' ? 'Läge: nytt spel utan tema → visa ett med tema' : 'Läge: spel med eget tema → visa ett nytt utan tema'
+}
+function ga(v) {
+  variant = v
+  url.searchParams.set('variant', v)
+  history.replaceState(null, '', url)
+  rita()
+}
+document.getElementById('bak').onclick = () => ga(keys[(keys.indexOf(variant) + keys.length - 1) % keys.length])
+document.getElementById('fram').onclick = () => ga(keys[(keys.indexOf(variant) + 1) % keys.length])
+document.getElementById('laget').onclick = () => { lage = lage === 'tomt' ? 'ifyllt' : 'tomt'; url.searchParams.set('lage', lage); history.replaceState(null, '', url); nollstall(); rita() }
+document.getElementById('nollstall').onclick = () => { nollstall(); rita() }
+addEventListener('keydown', (ev) => {
+  if (ev.target.closest('input,textarea,select,[contenteditable]')) return
+  if (ev.key === 'ArrowLeft') document.getElementById('bak').click()
+  if (ev.key === 'ArrowRight') document.getElementById('fram').click()
+})
+document.addEventListener('input', (ev) => { if (ev.target.matches('input.namn')) tema.namn = ev.target.value })
+document.addEventListener('change', (ev) => { if (ev.target.dataset.g === 'valj') { ui.jamfor = ev.target.value; rita() } })
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-g]')
+  if (!b || b.tagName === 'SELECT') return
+  const e = ex(b.dataset.e)
+  switch (b.dataset.g) {
+    case 'ark': ui.ark = true; ui.kopiera = null; break
+    case 'stang': ui.ark = false; break
+    case 'kopiera': ui.kopiera = e.id; break
+    case 'kopiera-nej': ui.kopiera = null; break
+    case 'kopiera-ja': ui.kopiera = null; ui.ark = false; return andra((t) => Object.assign(t, kopiaAv(e, t.namn)), `Spelets tema är nu en kopia av ${e.namn}.`)
+    case 'lana-typ': return andra((t) => { t.rubrik = e.rubrik; t.brod = e.brod }, `Typsnitten lånade från ${e.namn}.`)
+    case 'lana-farg': return andra((t) => { t.farger = { ...t.farger, ...e.farger } }, `${e.namn}s färger på spelets betydelser.`)
+    case 'lana-ikon': return andra((t) => { t.ikoner = [...t.ikoner, ...STARTER.filter((i) => !t.ikoner.includes(i))] }, 'Startuppsättningens ikoner tillagda.')
+    case 'starta-tomt': ui.startat = true; tema = { ...TOMT(), namn: 'Drakens skatt' }; break
+    case 'starta': ui.startat = true; tema = kopiaAv(e, 'Drakens skatt'); break
+    case 'meny': ui.meny = !ui.meny; break
+    case 'om-start': ui.meny = false; ui.startat = false; break
+    case 'dup': ui.meny = false; break
+    case 'ta-rubrik': return andra((t) => { t.rubrik = ex(ui.jamfor).rubrik }, `Rubriken tagen från ${ex(ui.jamfor).namn}.`)
+    case 'ta-brod': return andra((t) => { t.brod = ex(ui.jamfor).brod }, `Brödtexten tagen från ${ex(ui.jamfor).namn}.`)
+    case 'ta-farg': return andra((t) => { t.farger = { ...t.farger, [b.dataset.b]: ex(ui.jamfor).farger[b.dataset.b] } }, `${b.dataset.b} tagen från ${ex(ui.jamfor).namn}.`)
+    case 'ta-ikoner': return andra((t) => { t.ikoner = [...t.ikoner, ...ex(ui.jamfor).ikoner.filter((i) => !t.ikoner.includes(i))] }, 'Ikonerna som saknades tillagda.')
+    case 'ta-allt': return andra((t) => Object.assign(t, kopiaAv(ex(ui.jamfor), t.namn)), `Allt taget från ${ex(ui.jamfor).namn}.`)
+    case 'angra': tema = ui.fore; ui.kvitto = null; break
+  }
+  rita()
+})
+rita()
+</script>
+</body>
+</html>

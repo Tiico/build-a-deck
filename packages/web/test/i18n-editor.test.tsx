@@ -128,10 +128,11 @@ describe('the editor in the reader\'s own language (A4)', () => {
     localStorage.clear()
     await openEditor()
     openTab('Theme')
-    // Folded parts, each saying its value in the reader's language (L57).
+    // The parts stand open (L84), and a folded one says its value in the reader's language (L57).
     expect(screen.getByRole('button', { name: /^Fonts/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^Colours and meanings/ }).textContent).toContain('none yet')
-    fireEvent.click(screen.getByRole('button', { name: /^The game’s icons/ }))
+    const colours = screen.getByRole('button', { name: /^Colours and meanings/ })
+    fireEvent.click(colours)
+    expect(colours.textContent).toContain('none yet')
     expect(screen.getByText(/No symbols yet/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /From the library/ }))
     expect(screen.getByRole('heading', { name: 'Symbol library' })).toBeTruthy()

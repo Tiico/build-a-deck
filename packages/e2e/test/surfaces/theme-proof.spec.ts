@@ -6,7 +6,7 @@ import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
 
 // Speltema's «Visa temana i sina typsnitt» (L57, beställarens val C) as the designer reads it
-// (#741, beställarens val A 2026-10-04): each tile draws a crop of the game's first card — the
+// (#741, beställarens val A 2026-10-04) — in the examples' sheet since L84 (#1287): each tile draws a crop of the game's first card — the
 // title band and the first lines of its body text — at a size where the body text can be read,
 // so the body family is half of what is chosen and can be judged too (K26).
 //
@@ -26,12 +26,12 @@ const SHEET = (family: string) => `/* latin */
 `
 const WOFF2 = Buffer.from([119, 79, 70, 50, 0, 1, 0, 0])
 
-// The floor per width (#741): K26's 12 px where the tile has the room, and 10.5 at 1024 where four
-// tiles share the column — 11 until the AI panel's folded tab took 44 px of the editor's width
-// (beställarens beslut 2026-10-18, #1001), measured 10.52 px with it.
+// The floor per width (#741): K26's 12 px where the tile has the room. At 1024 four tiles in a row
+// had less, and the floor was 10.5 (#1001); since L84 a tile stands alone on its row in the
+// examples' sheet, which gives it the room at both widths.
 const WIDTHS = [
   { width: 1280, height: 800, floorPx: 12 },
-  { width: 1024, height: 768, floorPx: 10.5 },
+  { width: 1024, height: 768, floorPx: 12 },
 ] as const
 
 // The sample deck's own template, and a plain one whose prose box stands somewhere else entirely —
@@ -51,20 +51,17 @@ const DECKS = {
 } as const
 const CUT: Record<keyof typeof DECKS, boolean> = { spelkort: false, plain: true, long: true }
 
-async function openTheme(page: Page, doc: ProjectDoc, lang = 'sv', key = false): Promise<void> {
+async function openTheme(page: Page, doc: ProjectDoc, lang = 'sv'): Promise<void> {
   await page.route(GOOGLE, (route) => {
     const url = route.request().url()
     const family = new URL(url).searchParams.get('family')?.split(':')[0] ?? 'Cinzel'
     return url.includes('googleapis.com') ? route.fulfill({ status: 200, contentType: 'text/css', body: SHEET(family) }) : route.fulfill({ status: 200, contentType: 'font/woff2', body: WOFF2 })
   })
   await logIn(page.request)
-  // With a key the AI panel stands open (#1001), and over Speltema it is a sheet that takes none of
-  // the gallery's width.
-  if (key) expect((await page.request.put('/me/ai-key', { data: { provider: 'anthropic', key: 'sk-ant-api03-good-e2eNotARealKey-0123456789abcdefT3m4' } })).status()).toBe(200)
   const project = await makeProjectOf(page.request, doc)
   await page.goto(`${project.editorUrl}&lang=${lang}`)
   await page.locator('#byd-editor-tab-theme').click()
-  if (key) await expect(page.locator('.byd-ai[data-open][data-over]')).toBeVisible()
+  await page.locator('.byd-theme-examples-open').click()
   await expect(page.locator('.byd-theme-tile')).toHaveCount(4)
 }
 
@@ -162,10 +159,9 @@ async function proofs(page: Page) {
 test.describe('the theme proof sets the body text in a size it can be read at (#741)', () => {
   for (const { width, height, floorPx } of WIDTHS) {
     for (const [deck, doc] of Object.entries(DECKS)) {
-      for (const open of [false, true])
-      test(`body text reaches ${floorPx} px on every tile at ${width}, centred on the prose box, with the ${deck} template${open ? ', the AI panel open over it' : ''}`, async ({ page }) => {
+      test(`body text reaches ${floorPx} px on every tile at ${width}, centred on the prose box, with the ${deck} template`, async ({ page }) => {
         await page.setViewportSize({ width, height })
-        await openTheme(page, doc(), 'sv', open)
+        await openTheme(page, doc())
         await showFaces(page)
         const seen = await proofs(page)
         expect(seen).toHaveLength(4)
@@ -179,16 +175,16 @@ test.describe('the theme proof sets the body text in a size it can be read at (#
     }
   }
 
-  // Speltema still fits the desk's window once the faces are shown: the gallery and the three
-  // folded parts, without the tab scrolling.
+  // The page still fits the desk's window once the faces are shown: the examples scroll in their
+  // own sheet (L84) and the parts in their own column, and the window never does.
   for (const deck of ['spelkort', 'plain', 'long'] as const) {
-    test(`Speltema does not scroll at 1280 × 800 once the faces are shown, with the ${deck} template`, async ({ page }) => {
+    test(`the window does not scroll at 1280 × 800 once the faces are shown, with the ${deck} template`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 })
       await openTheme(page, DECKS[deck]())
       await showFaces(page)
-      const work = await page.locator('.byd-theme-work').evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }))
-      expect(work.scroll).toBeLessThanOrEqual(work.client)
       expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight)).toBeLessThanOrEqual(0)
+      const sheet = await page.locator('.byd-theme-examples').evaluate((el) => el.getBoundingClientRect().bottom)
+      expect(sheet).toBeLessThanOrEqual(800)
     })
   }
 })
@@ -233,16 +229,15 @@ test.describe('the theme proof shows no empty paper between the title band and t
   }
 })
 
-// Found during #740: with the typeface catalog open beside it at 1024, four tiles in a row are
-// narrower than what a tile draws, so they spilled over one another and the icons were cut.
-test.describe('the gallery beside the catalog sheet at 1024 × 768 (#741, found in #740)', () => {
+// Found during #740: with the typeface catalog open beside it at 1024, four tiles in a row were
+// narrower than what a tile draws, so they spilled over one another and the icons were cut. Since
+// L84 the tiles stand in a sheet of their own, the narrowest column they have been given.
+test.describe('the examples in their sheet at 1024 × 768 (#741, found in #740; L84)', () => {
   for (const lang of ['sv', 'en'] as const) {
     test(`tiles never overlap and every icon is whole, before and after the faces are shown, in ${lang}`, async ({ page }) => {
       await page.setViewportSize({ width: 1024, height: 768 })
       await openTheme(page, DECKS.spelkort(), lang)
-      await page.locator('[data-theme-section="fonts"] h2 button').click()
-      await page.locator('.byd-fonts-catalog').click()
-      await expect(page.locator('.byd-theme[data-sheet="catalog"]')).toHaveCount(1)
+      await expect(page.locator('.byd-theme[data-sheet="examples"]')).toHaveCount(1)
       const measure = () =>
         page.locator('.byd-theme-tile').evaluateAll((tiles) => {
           const boxes = tiles.map((t) => t.getBoundingClientRect())

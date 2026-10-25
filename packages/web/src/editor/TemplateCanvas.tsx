@@ -2119,7 +2119,7 @@ const MORE_FONTS = '\u0000more'
 // moved to another type behind the designer's back — and the whole catalog behind «Fler
 // typsnitt…», two clicks away: open the list, take the last entry. The entry opens the catalog
 // and changes nothing, so the list goes on saying what the layer is set in.
-function FamilyPicker({ el, fonts, onPatch, onMoreFonts }: { el: Extract<Element, { kind: 'text' }>; fonts: Pick<ProjectDoc, 'fonts' | 'theme'>; onPatch(patch: Partial<Element>): void; onMoreFonts: (() => void) | undefined }) {
+function FamilyPicker({ el, fonts, onPatch, onMoreFonts }: { el: Extract<Element, { kind: 'text' }>; fonts: ProjectDoc; onPatch(patch: Partial<Element>): void; onMoreFonts: (() => void) | undefined }) {
   const t = useT()
   const { game, kept } = familyChoices(fonts, el.font.family)
   return (
@@ -2179,7 +2179,7 @@ function Properties({
   assetBase: string | undefined
   onAddPicture: ((file: File) => Promise<string>) | undefined
   taken: string[]
-  fonts: Pick<ProjectDoc, 'fonts' | 'theme'>
+  fonts: ProjectDoc
   // Opens the catalog for the chosen layer (#634); absent where nothing can be brought in.
   onMoreFonts?: (() => void) | undefined
   srcOf(name: string): string | undefined
