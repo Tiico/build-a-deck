@@ -331,6 +331,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             cards={hand}
             faces={http}
             turned={turned.turned}
+            onTurn={(c) => turned.toggle(c.id)}
             onOpen={(c) => kbd.openHand(c, [])}
             onClose={() => {
               setSpread(false)

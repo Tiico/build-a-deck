@@ -397,6 +397,10 @@ export const svPlay = {
   'player.mine.empty': 'Inget här ännu. Spela ett kort från handen.',
   // Hela bordet, utfällt när det efterfrågas (C4). Raden över handen är högarna; det här är
   // varje zon läsaren ser in i, andra platsers ytor inräknade sedan #414.
+  // Raden under kortet som läses i handen på /online (#1291): vad klicket och draget gör.
+  'online.hand.says.mouse': 'Klick vänder · dra till bordet spelar',
+  'online.hand.says.mouse.turned': 'Klick vänder upp · dra till bordet spelar nedvänt',
+  'online.hand.says.key': 'Mellanslag vänder · Enter öppnar handlingar',
   'online.hand.back': 'Tillbaka till handen',
   'online.last': 'Senast:',
   'online.last.now': 'nyss',

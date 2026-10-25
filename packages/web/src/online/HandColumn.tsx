@@ -3,7 +3,7 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { HandFace, TURNED_GROUND } from '../player/HandFace.js'
 import { Lifted } from '../table/Lifted.js'
-import { liftBox } from '../table/lift.js'
+import { LIFT_GAP, liftBox } from '../table/lift.js'
 import { useSmallestPt } from '../table/smallest.js'
 import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
@@ -23,10 +23,10 @@ export type HandColumnProps = {
   // felt's own card size while it is over the table (#484).
   onCarry?: HandDragOptions['onCarry']
   aim?: { size: { w: number } | null } | undefined
-  // The cards turned over in the hand, played face down, and F on a card turning it (#1133).
+  // The cards turned over in the hand, played face down (#1133); a click, Space or F turns one (#1291).
   turned?: ReadonlySet<string> | undefined
   onTurn?: ((card: VisibleComponentState) => void) | undefined
-  // The address panel, the same one the felt opens (#2, #24): Enter on a card, or a second press.
+  // The address panel, the same one the felt opens (#2, #24): Enter on a card, or a finger's second press.
   onOpen(card: VisibleComponentState): void
 }
 
@@ -57,14 +57,16 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'vertical' })
   // A card read (K26, #510 beslut B): lifted up beside the column the way a card on the felt is
   // lifted (#509), by the mouse resting on it or the keyboard's focus (`pointed`, for as long as it
-  // rests), or by a press (`read`, until Escape, a press elsewhere, or the second press). The second
-  // press on the same card — or a press on the lift — opens the address panel, which the first
-  // press used to open straight away (#484 fynd 10). A focus a press gave is the press's, so it
-  // lifts nothing of its own.
+  // rests), or by a finger's press (`read`, until Escape, a press elsewhere, or the second press).
+  // A finger's second press on the same card — or a press on the lift — opens the address panel,
+  // which the first press used to open straight away (#484 fynd 10). A mouse's click holds nothing
+  // and sends nothing: the mouse has already read the card by resting on it, and the click turns it
+  // over (#1291, beställarens beslut A). A focus a press gave is the press's, so it lifts nothing of
+  // its own.
   const [pointed, setPointed] = useState<Reading | null>(null)
   const [read, setRead] = useState<Reading | null>(null)
   const pressed = useRef<string | null>(null)
-  const readingOf = (c: VisibleComponentState, el: Element): Reading => ({ id: c.id, at: el.getBoundingClientRect() })
+  const readingOf = (c: VisibleComponentState, el: Element, by: Reading['by'] = 'finger'): Reading => ({ id: c.id, at: el.getBoundingClientRect(), by })
   const putDown = () => {
     setPointed(null)
     setRead(null)
@@ -73,7 +75,8 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
     putDown()
     onOpen(c)
   }
-  const tap = (c: VisibleComponentState) => {
+  const tap = (c: VisibleComponentState, by: string) => {
+    if (by === 'mouse') return onTurn?.(c)
     if (read?.id === c.id) return open(c)
     const el = document.querySelector(`[data-hand-card="${CSS.escape(c.id)}"]`)
     if (el) setRead(readingOf(c, el))
@@ -127,18 +130,20 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
                 ref={item.ref}
                 onFocus={(e) => {
                   item.onFocus()
-                  if (pressed.current !== c.id) setPointed(readingOf(c, e.currentTarget))
+                  if (pressed.current !== c.id) setPointed(readingOf(c, e.currentTarget, 'key'))
                   // A card the arrows reach must be a card the eye reaches: L10's rule for a strip
                   // that scrolls, applied to the column that now does.
                   e.currentTarget.scrollIntoView?.({ block: 'nearest' })
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  // Enter is the keyboard's way to play, since it cannot drag (K16); Space is the
+                  // click, and turns the card as the click does (#1291).
+                  if (e.key === 'Enter') {
                     e.preventDefault()
                     onOpen(c)
                     return
                   }
-                  if ((e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                  if ((e.key === ' ' || e.key === 'f' || e.key === 'F') && onTurn && !e.altKey && !e.ctrlKey && !e.metaKey) {
                     e.preventDefault()
                     onTurn(c)
                     return
@@ -151,7 +156,7 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
                   handlers(c).onPointerDown(e)
                 }}
                 onPointerEnter={(e) => {
-                  if (e.pointerType === 'mouse') setPointed(readingOf(c, e.currentTarget))
+                  if (e.pointerType === 'mouse') setPointed(readingOf(c, e.currentTarget, 'mouse'))
                 }}
                 onPointerLeave={() => setPointed((p) => (p?.id === c.id ? null : p))}
                 onBlur={() => {
@@ -170,11 +175,35 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
           these after it the slot shrank to a step, the column re-centred 45 px lower, and the card
           under a pointer that had not moved became its neighbour. */}
       {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} turned={turned?.has(lifted.id) === true} />}
-      {reading && readCard && <Lifted c={readCard} box={liftBox(edges(reading.at), { w: window.innerWidth, h: window.innerHeight }, readingPt)} faces={faces} onAsk={() => open(readCard)} />}
+      {reading && readCard && <Read reading={reading} card={readCard} faces={faces} pt={readingPt} turned={turned?.has(readCard.id) === true} onAsk={() => open(readCard)} />}
       {drag && <DragDoor onCancel={cancel} />}
     </>
   )
 }
 
-type Reading = { id: string; at: DOMRect }
+// A mouse or a keyboard reads a card with nothing on it to say what it answers to, so the lift
+// says it on a line of its own, under the card or over it where the window ends (#1291, prototype A).
+// A finger is not told: its press is the one that reads, and the second one is the one it asks with.
+type Reading = { id: string; at: DOMRect; by: 'mouse' | 'key' | 'finger' }
+const SAYS_PX = 34
+function Read({ reading, card, faces, pt, turned, onAsk }: { reading: Reading; card: VisibleComponentState; faces: string | undefined; pt: number | null | undefined; turned: boolean; onAsk(): void }) {
+  const t = useT()
+  const box = liftBox(edges(reading.at), { w: window.innerWidth, h: window.innerHeight }, pt)
+  const below = box.top + box.h + LIFT_GAP + SAYS_PX <= window.innerHeight
+  const says = reading.by === 'mouse' ? t(turned ? 'online.hand.says.mouse.turned' : 'online.hand.says.mouse') : reading.by === 'key' ? t('online.hand.says.key') : null
+  return (
+    <>
+      <Lifted c={card} box={box} faces={faces} onAsk={onAsk} />
+      {says && (
+        <p
+          className="byd-hand-back"
+          data-lift-says=""
+          style={{ position: 'fixed', zIndex: 36, left: box.left + box.w / 2, top: below ? box.top + box.h + LIFT_GAP : box.top - LIFT_GAP - SAYS_PX }}
+        >
+          {says}
+        </p>
+      )}
+    </>
+  )
+}
 const edges = (r: DOMRect) => ({ left: r.left, right: r.right, top: r.top, bottom: r.bottom })

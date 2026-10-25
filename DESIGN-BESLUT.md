@@ -2940,6 +2940,19 @@ Valet blev den första, eftersom det är det beställaren bad om och eftersom ha
 - Lagt framför sig själv följer en `peek` med, som när man vänder ner ett eget kort där (#483): ägaren vet vilket kort det är, rummet vet att ett kort ligger där. Lagt någon annanstans följer ingen kunskap med (B6).
 - Grindar: `packages/web/test/turned-in-hand.test.ts` (motorn och projektionen), `player-page.test.tsx` och `online-keyboard.test.tsx` (ytorna), och `packages/e2e/test/turned-in-hand.spec.ts`, som läser de råa ramarna.
 
+Reviderat 2026-10-25 (#1291, beställarens beslut A efter prototyp): **i `/online`s hand vänder ett klick kortet, och handen skickar ingenting med musen.**
+Beställaren kallade handen på datorn klumpig: man behöver inte kunna skicka kort direkt från handen, det räcker att kunna vända dem.
+Med musen var klicket det långsamma sättet att spela (klick håller kortet, klick till öppnar adresspanelen, välj zon) bredvid draget, och «Vänd» gick bara att nå som F.
+Tre former prototypades i [`docs/ux-audits/2026-10-25-handen-pa-datorn/`](docs/ux-audits/2026-10-25-handen-pa-datorn/README.md): klick vänder, en vändknapp i kortets hörn, och «Vänd» under det lyfta kortet.
+Valet blev den första, eftersom musen redan läser kortet genom att vila på det och klicket då är ledigt, och eftersom varje kort förblir ett enda mål.
+
+- Med musen i spalten, solfjädern och «Visa alla»: att vila på kortet läser det, klick vänder det, och att dra det till bordet spelar det. Klicket håller inte kortet lyft och öppnar ingen panel.
+- Under det lyfta kortet står en rad om vad klicket och draget gör («Klick vänder · dra till bordet spelar», och «… vänder upp · … spelar nedvänt» för ett vänt kort); för tangentbordets fokus «Mellanslag vänder · Enter öppnar handlingar».
+- Tangentbordet behåller Enter till adresspanelen, eftersom ett tangentbord inte kan dra och panelen är dess enda väg att spela ett handkort (K16). Mellanslag är klicket och vänder, liksom F.
+- Ett finger behåller sitt tryck (#484 fynd 10, #510): ett finger har ingen hovring att läsa med, så trycket läser och öppnar som förut. Beslutet gäller musen.
+- Prototypens avvägning står kvar: ett klick som var tänkt att läsa vänder kortet, vilket är ofarligt eftersom vändningen inte skickar något och ett klick till vänder tillbaka.
+- Grindar: `packages/web/test/online-hand-turn.test.tsx` och `packages/e2e/test/online-hand-read.spec.ts`.
+
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
 QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9; från 2026-10-06 rummets egen adress `/KOD`, se revideringen nedan).
