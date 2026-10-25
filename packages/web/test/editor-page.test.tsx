@@ -61,7 +61,7 @@ describe('EditorPage', () => {
     await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
-    expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&host=[A-Za-z0-9_-]{20,}&mode=tv/)
+    expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&mode=tv(&[^#]*)?#host=[A-Za-z0-9_-]{20,}$/)
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
   })
 
@@ -322,7 +322,7 @@ describe('the cards a phone cannot read, said once the table is up (#523)', () =
     fireEvent.click(screen.getByRole('button', { name: 'Visa på kortväggen' }))
     expect((await screen.findByRole('button', { name: /^Visning/ })).textContent).toContain('Telefonens läsvy')
     // The panel stands open on Visning, where the cards under the phone's floor are named (L81).
-    expect(screen.getByRole('tab', { name: 'Visning' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('complementary', { name: 'Visning' })).toBeTruthy()
     // What the wall's own cards carry there is said once, in the panel.
     await waitFor(() => expect(document.querySelector('[data-legible]')?.textContent).toMatch(/^Minsta text i leken .* px, golvet 12 px\./))
   })
@@ -586,6 +586,9 @@ describe('the order of the layers (#18)', () => {
   })
 })
 
+// The host key rides in the link's fragment, which the browser sends in no request (#1306).
+const hostKeyOf = (href: string): string | null => new URLSearchParams(new URL(href).hash.slice(1)).get('host')
+
 describe('the host\'s controls (DRIFT §9)', () => {
   it('shows the room code with "Ny kod", and each seated guest with a kick that frees the seat', async () => {
     await run.projects.create(run.projectId, projectDoc())
@@ -599,7 +602,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     const sessionId = new URL(link.href).searchParams.get('session') ?? ''
-    registerRoom(sessionId, { code: first, hostKey: new URL(link.href).searchParams.get('host') ?? '' })
+    registerRoom(sessionId, { code: first, hostKey: hostKeyOf(link.href) ?? '' })
 
     const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
     await ada.ready()
@@ -641,7 +644,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     const sessionId = new URL(link.href).searchParams.get('session') ?? ''
-    registerRoom(sessionId, { code: first, hostKey: new URL(link.href).searchParams.get('host') ?? '' })
+    registerRoom(sessionId, { code: first, hostKey: hostKeyOf(link.href) ?? '' })
     const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
@@ -664,7 +667,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     const sessionId = new URL(link.href).searchParams.get('session') ?? ''
-    const old = new URL(link.href).searchParams.get('host') ?? ''
+    const old = hostKeyOf(link.href) ?? ''
 
     fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
     fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })).getByRole('button', { name: 'Byt kod' }))
@@ -674,7 +677,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
       return shown
     })
     const hostKey = await waitFor(() => {
-      const now = new URL((screen.getByRole('link', { name: /öppna bordet/i }) as HTMLAnchorElement).href).searchParams.get('host') ?? ''
+      const now = hostKeyOf((screen.getByRole('link', { name: /öppna bordet/i }) as HTMLAnchorElement).href) ?? ''
       expect(now).not.toBe(old)
       return now
     })

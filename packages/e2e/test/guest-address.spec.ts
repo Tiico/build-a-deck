@@ -73,7 +73,7 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
     const table = await tableOf({ players: 2, counters: [], cards: 6, copies: 1 })
     const phone = await open(PHONE, 'about:blank')
     const { page, wire } = phone
-    const requests = watchRequests(phone.context, page)
+    const requests = watchRequests(phone.context)
 
     const page1 = await page.goto(`/join?code=${table.code}`)
     expect(page1?.headers()['referrer-policy'], 'the page says to send only its origin').toBe('strict-origin')
@@ -120,7 +120,7 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
     const table = await tableOf({ players: 2, counters: [], cards: 6, copies: 1 })
     const phone = await open(PHONE, 'about:blank')
     const { page, wire } = phone
-    const requests = watchRequests(phone.context, page)
+    const requests = watchRequests(phone.context)
 
     await page.goto(`/join?code=${table.code}`)
     await page.getByLabel('Your name').fill(NAME)
@@ -157,7 +157,7 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
     const { session, token } = (await res.json()) as { session: string; token: string }
     const phone = await open(PHONE, 'about:blank')
     const { page } = phone
-    const requests = watchRequests(phone.context, page)
+    const requests = watchRequests(phone.context)
     const old = `/play?${new URLSearchParams({ session, code: table.code, seat: 'A', name: NAME, token }).toString()}`
     const before = await page.evaluate(() => history.length)
     await page.goto(old)

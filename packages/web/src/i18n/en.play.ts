@@ -432,6 +432,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'guest.kept': 'Your name, your moves and your survey answers are saved with the table, not with you as a person.',
 
   'observer.name': 'spectator',
+  'online.designer': 'The designer',
   'observer.banner': 'You are a spectator and see everyone’s cards. Everyone knows you are here.',
   'observer.watching': '{name} is watching and sees every card',
   // The box behind the question mark (L32's addendum, #305).

@@ -364,8 +364,8 @@ export const enEditor = {
   'wall.eye.read.desk.short': 'The table',
   'wall.eye.read.tv.short': 'The TV',
   'wall.read.under': 'Smallest text {px} px · under the {floor} px floor',
-  // The wall's panel (L81): the size, the eyes, the guide and the legibility, and the check beside them.
-  'wall.panel': 'The wall’s view and check',
+  // The wall's panel (L81): the size, the eyes, the guide and the legibility, or the check. It is named
+  // after the box that opened it (#1328).
   'wall.panel.close': 'Close the panel',
   'wall.size': 'Size',
   'wall.size.free': 'Free',
@@ -1807,7 +1807,6 @@ export const enEditor = {
   'zone.hand': 'Hand',
   'zone.new.pile': 'Pile {n}',
   'zone.new.area': 'Area {n}',
-  'tables.designer': 'The designer',
   // The playtest's answers (#1010): the Tables tab's second view, “Results”.
   'results.switch': 'Tables tab view',
   'results.switch.tables': 'Tables',

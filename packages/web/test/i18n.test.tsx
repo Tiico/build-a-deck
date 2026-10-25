@@ -323,6 +323,9 @@ describe('every count in front of a noun has a singular to be chosen', () => {
     'fonts.catalog.search': 'the count is the whole font catalogue, hundreds of families',
     'icons.catalog.search': 'the count is the whole icon catalogue, thousands of icons',
     'home.waiting.flags.tables': 'one table says home.waiting.flags.table',
+    'home.waiting.surveys': 'one survey says home.played.answer',
+    'home.waiting.surveys.line': 'one survey says home.waiting.survey.line',
+    'home.waiting.surveys.some': 'one survey says home.waiting.survey.line',
   }
 
   it('pairs each one', () => {

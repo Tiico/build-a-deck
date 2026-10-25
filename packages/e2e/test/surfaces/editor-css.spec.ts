@@ -63,12 +63,12 @@ const SHELL = `
             </div>
           </nav>
           <div class="byd-wall-deck"><div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div></div>
-          <aside class="byd-wall-panel" aria-label="Väggens visning och kontroll">
+          <aside class="byd-wall-panel" aria-labelledby="wall-panel-head">
             <div class="byd-wall-panel-head">
-              <div role="tablist"><button role="tab" aria-selected="true" data-stop="the panel's open tab">Visning</button><button role="tab" aria-selected="false" tabindex="-1">Kontroll (1)</button></div>
+              <h2 id="wall-panel-head">Visning</h2>
               <button class="byd-wall-panel-close" aria-label="Stäng panelen" data-stop="closing the wall's panel"><span aria-hidden="true">×</span></button>
             </div>
-            <div class="byd-wall-panel-body" role="tabpanel">
+            <div class="byd-wall-panel-body">
               <h3>Storlek</h3>
               <div class="byd-wall-sizes" role="radiogroup">
                 <div class="byd-wall-size"><label><input type="radio" name="size" checked data-stop="a size" /> Fritt</label>
@@ -254,7 +254,6 @@ test.describe('the editor under a keyboard', () => {
       'the checks box',
       'folding the jump column',
       'the band the wall is standing in',
-      "the panel's open tab",
       "closing the wall's panel",
       'a size',
       'packing the wall closer',
