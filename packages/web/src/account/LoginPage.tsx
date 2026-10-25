@@ -33,7 +33,9 @@ export function LoginPage({ onNavigate = go }: LoginPageProps) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const http = params.get('server') ?? location.origin
-  const next = safeNext(params.get('next'))
+  // The page's own fragment belongs to where it goes on to (#1278): a guest's token on the way back
+  // to her claim, which `loginUrl` put there rather than in the query.
+  const next = safeNext(params.get('next')) + location.hash
   const way = useMemo(() => wayIn(next), [next])
   const naming = params.get('step') === 'name'
   // The game an invitation leads to is asked for beside who is here, and the card waits for both:

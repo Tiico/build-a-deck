@@ -334,10 +334,12 @@ export async function saveName(http: string, name: string | null): Promise<{ nam
 export async function arrival(http: string, next: string): Promise<string> {
   const me = await myAccount(http).catch(() => null)
   if (!me || me.asked) return next
-  const q = new URLSearchParams({ step: 'name', next })
+  // A fragment is never put in a query (#1278): it goes on after the step's own address.
+  const cut = next.indexOf('#')
+  const q = new URLSearchParams({ step: 'name', next: cut < 0 ? next : next.slice(0, cut) })
   const server = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('server')
   if (server) q.set('server', server)
-  return `/login?${q.toString()}`
+  return `/login?${q.toString()}${cut < 0 ? '' : next.slice(cut)}`
 }
 
 // A person's face where the others see who has a game (D3): a coloured circle with one letter.

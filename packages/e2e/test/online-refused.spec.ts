@@ -13,10 +13,10 @@ test.describe('a seat refused on /online (#484)', () => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
     const seat = await join(request, table, { name: 'Ada', seat: 'A' })
     const url = new URL(seat.onlineUrl, 'http://x')
-    url.searchParams.set('token', 'not-a-token-any-longer')
+    url.hash = 'token=not-a-token-any-longer'
     url.searchParams.set('code', table.code)
     url.searchParams.set('lang', 'sv')
-    const { page } = await open(SMALL_TV, `${url.pathname}${url.search}`)
+    const { page } = await open(SMALL_TV, `${url.pathname}${url.search}${url.hash}`)
     await expect(page.getByRole('heading', { name: 'Platsen är upptagen' })).toBeVisible()
     const again = page.getByRole('link', { name: 'Välj plats' })
     await expect(again).toBeVisible()

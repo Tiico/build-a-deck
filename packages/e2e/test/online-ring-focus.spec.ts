@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { expect, test } from '../support/test.js'
 
 // The ring on /online is a group named for what it was opened on, and Escape from inside it hands
@@ -10,7 +10,7 @@ test('the ring says what it is about, and Escape gives focus back to the card', 
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, withQuery(seat.onlineUrl, `lang=sv`))
   const card = page.locator('.byd-online-felt .byd-card[data-component]').first()
   await expect(card).toBeVisible()
   const box = (await card.boundingBox())!

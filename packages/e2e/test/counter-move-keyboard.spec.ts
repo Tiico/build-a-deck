@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -13,7 +13,7 @@ test.describe('a counter moved to an area with the keyboard (#1177)', () => {
   test('lies wholly inside the area, centred across it, and not on its corner', async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [{ name: 'Liv', start: 20 }], cards: 4 })
     const seat = await join(request, table, { name: 'Bo', seat: 'A' })
-    const { page } = await open(DESK, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
     const chips = page.locator('.byd-token')
     await expect(chips.first()).toBeVisible()
 

@@ -15,6 +15,7 @@ import { tableTab } from '../ways.js'
 import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
+import { guestAddress } from '../guestAddress.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -216,9 +217,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     const picker = `/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`
     const seat = await returnToTable(http, p.session).catch(() => null)
     if (!seat) return onNavigate(picker)
-    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }), name: seat.name, token: seat.token })
+    // The token in the fragment and her name in no address (#1278), as from the picker.
+    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }) })
     if (server) q.set('server', server.replace(/^http/, 'ws'))
-    onNavigate(`${seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play'}?${q.toString()}`)
+    onNavigate(guestAddress(seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play', q, seat.token))
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
   // The banner is drawn with its text, so it is said once in the page's live region (4.1.3, #555).

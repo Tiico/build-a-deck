@@ -23,7 +23,8 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
-  const next = safeNext(params.get('next'))
+  // The page's own fragment belongs to where it goes on to (#1278), as on the login page.
+  const next = safeNext(params.get('next')) + location.hash
   const [me, setMe] = useState<Me | null | undefined>(undefined)
   const [offline, setOffline] = useState(false)
   const [attempt, setAttempt] = useState(0)

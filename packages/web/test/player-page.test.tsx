@@ -24,11 +24,65 @@ async function open(sessionId: string, seat: string, name: string, props: Player
   const token = await admit(run, sessionId, seat, name)
   // The room code travels with the phone the way the picker sends it (#12, DRIFT §9); it is the
   // only address the way out has to go back to.
-  history.replaceState(null, '', `/play?session=${sessionId}&seat=${seat}&name=${name}&token=${token}&code=${roomOf(sessionId).code}&server=${encodeURIComponent(run.url)}`)
+  // The token in the fragment and the name in no address (#1278): the table says who sits down.
+  history.replaceState(null, '', `/play?session=${sessionId}&seat=${seat}&code=${roomOf(sessionId).code}&server=${encodeURIComponent(run.url)}#token=${token}`)
   render(<PlayerPage {...props} />)
   await screen.findByText(name)
   return token
 }
+
+// What the phone's socket is opened with, read where the address leaves the page (#1278).
+function watchSockets(): { urls: string[]; protocols: (string[] | undefined)[] } {
+  const seen = { urls: [] as string[], protocols: [] as (string[] | undefined)[] }
+  class Watched extends WsClient {
+    constructor(url: string, protocols?: string[]) {
+      super(url, protocols)
+      seen.urls.push(url)
+      seen.protocols.push(protocols)
+    }
+  }
+  setWebSocketImplementation(Watched as unknown as WebSocketCtor)
+  return seen
+}
+
+describe('the guest’s name and token in no address (#1278)', () => {
+  afterEach(() => setWebSocketImplementation(WsClient as unknown as WebSocketCtor))
+
+  it('sits down as the name the token was bought with, and the socket’s address holds neither', async () => {
+    const seen = watchSockets()
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada Lovelace')
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await waitFor(() => expect(table.view?.seats.find((s) => s.id === 'A')?.name).toBe('Ada Lovelace'))
+    expect(seen.urls.length).toBeGreaterThan(0)
+    for (const url of seen.urls) {
+      expect(url).not.toContain(token)
+      expect(url).not.toContain('Ada')
+    }
+    // The phone's own socket — the seat's, not the table screen this test opened — carries it in the header.
+    const phone = seen.urls.findIndex((url) => url.includes('seat=A'))
+    expect(phone).toBeGreaterThanOrEqual(0)
+    expect(seen.protocols[phone]?.some((p) => p.endsWith(token))).toBe(true)
+    expect(location.hash).toBe(`#token=${token}`)
+    table.close()
+  })
+
+  // A link handed out before carried both in its query. It opens the same seat, and the history
+  // entry it leaves is the new form, replaced rather than added to.
+  it('opens an old link with ?name= and ?token= at the same seat, and leaves a history entry without them', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}`)
+    const before = history.length
+    render(<PlayerPage />)
+    await screen.findByText('Ada')
+    expect(location.search).not.toContain(token)
+    expect(new URLSearchParams(location.search).has('name')).toBe(false)
+    expect(location.hash).toBe(`#token=${token}`)
+    expect(history.length).toBe(before)
+  })
+})
 
 // Opens one of the phone's four tabs (#1147). What stands in a closed tab is out of reach of a
 // role query, as it is out of reach of a thumb.
@@ -770,7 +824,10 @@ describe('saving the session to an account (G1)', () => {
     const link = (await screen.findByRole('link', { name: /Spara till ditt konto/ })) as HTMLAnchorElement
     const url = new URL(link.href, 'http://x')
     expect(url.pathname).toBe('/claim')
-    expect(url.searchParams.get('token')).toBe(token)
+    // The token in the claim's fragment, never its query, and the page it goes back to without it (#1278).
+    expect(url.searchParams.has('token')).toBe(false)
+    expect(new URLSearchParams(url.hash.slice(1)).get('token')).toBe(token)
+    expect(url.searchParams.get('next')).not.toContain(token)
     expect(url.searchParams.get('server')).toBe(run.http)
     table.close()
   })

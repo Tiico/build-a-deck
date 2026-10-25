@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { expect, test } from '../support/test.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
 
@@ -51,7 +51,7 @@ for (const surface of ['bordsläget', '/online'] as const) {
     test('förstorar filten och inte sidan', async ({ tableOf, open, request }) => {
       const table = await tableOf({ players: 4, counters: [], cards: 20, copies: 1 })
       const url = surface === 'bordsläget' ? table.tableUrl : (await join(request, table, { name: 'Ada', seat: 'A' })).onlineUrl
-      const { page } = await open({ name: 'tablet', viewport: { width: 1024, height: 768 }, hasTouch: true }, `${url}&lang=sv`)
+      const { page } = await open({ name: 'tablet', viewport: { width: 1024, height: 768 }, hasTouch: true }, withQuery(url, 'lang=sv'))
       await expect(page.locator('.byd-table-frame[data-mode="table"]')).toBeVisible()
       if (surface === '/online') await pastTheWaitingRoom(page)
       expect(await lens(page)).toBe(100)

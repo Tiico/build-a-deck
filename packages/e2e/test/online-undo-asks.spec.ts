@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
@@ -16,7 +16,7 @@ test.describe('Ångra after another seat’s move on /online (#747)', () => {
     const ada = await join(request, table, { name: 'Ada', seat: 'A' })
     // Bo sits at the table, so he is the one who decides.
     await player(table, { name: 'Bo', seat: 'B' })
-    const { page } = await open(DESK, `${ada.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(ada.onlineUrl, `lang=sv`))
     await pastTheWaitingRoom(page)
     await page.locator('.byd-pile[data-zone="draw"] .byd-pile-top').click()
     await page.getByRole('button', { name: 'Dra 1', exact: true }).click()

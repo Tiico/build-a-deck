@@ -9,6 +9,7 @@ import { LoginPage } from '../src/account/LoginPage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { KeychainContext, type Keychain } from '../src/account/passkey.js'
 import { StatusLive } from '../src/status/StatusLive.js'
+import { arrival } from '../src/account/api.js'
 import { SoftPasskey } from '../../../test-support/soft-passkey.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -105,6 +106,25 @@ describe('the welcome step after the first login', () => {
     cleanup()
     const gone = at('/login?next=%2Fprofile', (g) => <LoginPage onNavigate={(u) => g.push(u)} />)
     await waitFor(() => expect(gone).toEqual(['/profile']))
+  })
+
+  // A guest's token rides in the fragment and never in a query (#1278): the step keeps it after its
+  // own address, and hands it on with `next`.
+  it('carries a fragment past the step without ever putting it in a query', async () => {
+    await loggedIn('ada@example.com')
+    const way = await arrival(run.http, '/claim?next=%2Fplay#t=abc123')
+    expect(way.split('#')[0]).not.toContain('abc123')
+    expect(way.endsWith('#t=abc123')).toBe(true)
+    expect(new URL(way, location.origin).searchParams.get('next')).toBe('/claim?next=%2Fplay')
+    history.replaceState(null, '', `/login?step=name&next=${encodeURIComponent('/claim?next=%2Fplay')}&server=${encodeURIComponent(run.http)}#t=abc123`)
+    const gone: string[] = []
+    render(
+      <StatusLive>
+        <WelcomePage onNavigate={(u) => gone.push(u)} />
+      </StatusLive>,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Hoppa över' }))
+    await waitFor(() => expect(gone).toEqual(['/claim?next=%2Fplay#t=abc123']))
   })
 
   it('comes after a login on the card itself, for an account that has not been asked', async () => {

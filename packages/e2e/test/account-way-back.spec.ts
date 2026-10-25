@@ -70,6 +70,9 @@ test('«Open the table» takes the guest to her own seat and hand, not to the pi
   const at = new URL(desk.page.url())
   expect(at.pathname).toBe('/online')
   expect(at.searchParams.get('seat')).toBe('A')
-  expect(at.searchParams.get('name')).toBe('Ada')
+  // Her name in no address and her token in the fragment (#1278).
+  expect(at.searchParams.has('name')).toBe(false)
+  expect(at.searchParams.has('token')).toBe(false)
+  expect(new URLSearchParams(at.hash.slice(1)).get('token')).toBeTruthy()
   await expect(desk.page.getByRole('textbox', { name: /name/i })).toHaveCount(0)
 })
