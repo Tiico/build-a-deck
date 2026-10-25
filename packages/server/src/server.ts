@@ -978,11 +978,23 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   const said = account ? { name: account.name ?? account.email, email: account.email } : { name }
   const editor = { id: randomUUID(), ...said, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
   const leave = actor.subscribe(editor)
-  // Whether this line has seen the account clear of the terms (#1272).
-  let termsCleared = false
+  // Whether the account is clear of the terms on this line (#1272), asked once as the line opens. While
+  // it is not, its messages are handled one after another, since each asks the store first and an
+  // edit must never overtake the save or the edit sent before it (#988, #993); once it is, they go
+  // straight to the actor as they always did, with nothing awaited before it.
+  let termsCleared = (await termsDueFor(opts, req, account)) === null
+  let behind: Promise<void> | null = null
   ws.on('close', leave)
   ws.on('message', (data) => {
-    void (async () => {
+    if (termsCleared && !behind) return void handle(data)
+    const run = (behind ?? Promise.resolve()).then(() => handle(data))
+    behind = run
+    void run.finally(() => {
+      if (behind === run) behind = null
+    })
+  })
+  const handle = async (data: WebSocket.RawData): Promise<void> => {
+    {
       // Which of the editor's requests a refusal answers (#991): an edit and a save can both be on
       // the line at once, and the editor ends only the wait the refusal is about. A request that
       // cannot be read is neither, and its refusal names none. A refused edit is named by the
@@ -1004,13 +1016,15 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
         // dialog rather than taking it off. Asked until the account has accepted, and then no more on
         // this line: a version that comes into force while the editor is open asks at the next one.
         if (msg.t === 'edit') ask = msg.ask
-        const current = termsCleared ? null : await termsDueFor(opts, req, account)
-        if (current) {
-          send({ v: 'refused', why: 'terms', to: msg.t, ...(ask === undefined ? {} : { ask }), current })
-          if (msg.t === 'edit') actor.resync(editor)
-          return
+        if (!termsCleared) {
+          const current = await termsDueFor(opts, req, account)
+          if (current) {
+            send({ v: 'refused', why: 'terms', to: msg.t, ...(ask === undefined ? {} : { ask }), current })
+            if (msg.t === 'edit') actor.resync(editor)
+            return
+          }
+          termsCleared = true
         }
-        termsCleared = true
         if (msg.t === 'save') {
           // Held to the owner's ceiling on storage (#1197), whoever saves: a refusal for it says the
           // ceiling, as an edit refused for a ceiling does (#1192), and no version is made.
@@ -1029,8 +1043,8 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
         else refuse(err instanceof Error ? err.message : String(err))
         actor.resync(editor)
       }
-    })()
-  })
+    }
+  }
 }
 
 // The AI answers in flight on this server (#1001), counted against its ceilings.
