@@ -1,5 +1,6 @@
-import type { BrowserContext, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { PHONE } from '../support/devices.js'
+import { watchRequests, type Seen } from '../support/requests.js'
 import { expect, test } from '../support/test.js'
 
 // A guest's name and token never leave the phone in an address (#1278, DRIFT §9). Before, the seat
@@ -9,31 +10,12 @@ import { expect, test } from '../support/test.js'
 // nowhere, her name is in no address at all, and the page's `Referrer-Policy` sends only the origin.
 //
 // Proved on the network, as hidden information is (CLAUDE.md): every request the phone makes, the
-// table's WebSocket included, is read for its address and its `Referer`, and neither the name nor
-// the token is in any of them. The search is shown to work first, by finding the name in the
-// table's own frames and the token in the answer that bought it.
+// table's WebSocket included, is read for its address and its `Referer` (`support/requests.ts`), and
+// neither the name nor the token is in any of them. The search is shown to work first, by finding
+// the name in the table's own frames and the token in the answer that bought it.
 
 // A name no word of the product's contains, so that finding it means finding her.
 const NAME = 'Vendela Qvist'
-
-type Seen = { url: string; referer: string | undefined }
-
-// Every request the context makes, from before the first page is opened, with the `Referer` the
-// browser actually sent; and every WebSocket the pages open, whose handshake is a request too.
-function watchRequests(context: BrowserContext, page: Page): { seen: Seen[]; settled: () => Promise<void> } {
-  const seen: Seen[] = []
-  const reading: Promise<void>[] = []
-  context.on('request', (request) => {
-    reading.push(
-      request.allHeaders().then(
-        (headers) => void seen.push({ url: request.url(), referer: headers['referer'] }),
-        () => void seen.push({ url: request.url(), referer: request.headers()['referer'] }),
-      ),
-    )
-  })
-  page.on('websocket', (ws) => void seen.push({ url: ws.url(), referer: undefined }))
-  return { seen, settled: () => Promise.all(reading).then(() => undefined) }
-}
 
 // The forms a value takes in an address: as it is, and encoded as a query or a path encodes it.
 const spellings = (value: string): string[] => [...new Set([value, encodeURIComponent(value), value.replace(/ /g, '+'), value.split(' ')[0] ?? value])]
@@ -129,7 +111,7 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
     expect(new URL(page.url()).pathname).toBe('/play')
     expect(new URL(page.url()).hash).toBe(`#token=${token}`)
 
-    await requests.settled()
+    await requests.closeAndRead()
     neverIn(requests.seen, 'her token', token)
     neverIn(requests.seen, 'her name', NAME)
   })
@@ -162,7 +144,7 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
     await saveAndLogIn(page)
     expect(new URL(page.url()).pathname).toBe('/observe')
 
-    await requests.settled()
+    await requests.closeAndRead()
     neverIn(requests.seen, 'her token', token)
     neverIn(requests.seen, 'her name', NAME)
   })
@@ -194,7 +176,7 @@ test.describe('the guest’s name and token in no address (#1278)', () => {
 
     // Nothing but the old address itself carries them: the page's own requests are clean, and its
     // Referer, by the page's policy, is the origin alone.
-    await requests.settled()
+    await requests.closeAndRead()
     const after = requests.seen.filter(({ url }) => !url.endsWith(old))
     expect(after.length).toBeLessThan(requests.seen.length)
     neverIn(after, 'her token', token)
