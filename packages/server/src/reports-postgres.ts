@@ -6,12 +6,12 @@ import { reportId, type Block, type BlockReason, type Report, type ReportOutcome
 // its own (#1279): the operator's script runs in another process, and the app reads the set again.
 export const BLOCKED_CHANNEL = 'byd_blocked'
 
-type ReportRow = { n: string | number; at: Date; what: string; where: string; why: string; name: string; email: string; lang: string; outcome: ReportOutcome | null; decided_at: Date | null }
+type ReportRow = { n: string | number; at: Date; what: string; place: string; why: string; name: string; email: string; lang: string; outcome: ReportOutcome | null; decided_at: Date | null }
 const reportOf = (r: ReportRow): Report => ({
   id: reportId(Number(r.n)),
   at: r.at.toISOString(),
   what: r.what,
-  where: r.where,
+  where: r.place,
   why: r.why,
   name: r.name,
   email: r.email,
@@ -28,7 +28,7 @@ export class PostgresReportStore implements ReportStore {
 
   async add(report: Omit<Report, 'id' | 'decision'>): Promise<Report> {
     const [row] = await this.sql<ReportRow[]>`
-      insert into reports (at, what, "where", why, name, email, lang)
+      insert into reports (at, what, place, why, name, email, lang)
       values (${report.at}, ${report.what}, ${report.where}, ${report.why}, ${report.name}, ${report.email}, ${report.lang})
       returning *
     `

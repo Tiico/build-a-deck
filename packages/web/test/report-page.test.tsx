@@ -32,7 +32,7 @@ describe('the report page (#1274)', () => {
   it('asks what DSA art. 16 asks, says what is missing, and sends the report with a receipt', async () => {
     at('/villkor/anmal', <ReportPage />)
     expect(screen.getByRole('heading', { level: 1, name: 'Anmäl en bild' })).toBeTruthy()
-    for (const name of ['Vilken bild är det?', 'Var finns den?', 'Varför får den inte finnas?', 'Ditt namn', 'Din e-post']) expect(screen.getByLabelText(name)).toBeTruthy()
+    for (const name of ['Vilken bild är det?', 'Var finns den?', 'Varför får den inte finnas?', 'Ditt namn', 'Din e‑post']) expect(screen.getByLabelText(name)).toBeTruthy()
     const send = screen.getByRole('button', { name: 'Skicka anmälan' })
     fireEvent.click(send)
     // Nothing goes until what, where, why and the good faith are there, and the first gap has the focus.
@@ -44,7 +44,7 @@ describe('the report page (#1274)', () => {
     fireEvent.change(screen.getByLabelText('Vilken bild är det?'), { target: { value: 'Bilden på kortet Skogsvaktaren' } })
     fireEvent.change(screen.getByLabelText('Var finns den?'), { target: { value: 'Skogens råd' } })
     fireEvent.change(screen.getByLabelText('Varför får den inte finnas?'), { target: { value: 'Min målning.' } })
-    fireEvent.change(screen.getByLabelText('Din e-post'), { target: { value: 'mira@example.com' } })
+    fireEvent.change(screen.getByLabelText('Din e‑post'), { target: { value: 'mira@example.com' } })
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(send)
     expect(await screen.findByText('Anmälan är skickad')).toBeTruthy()

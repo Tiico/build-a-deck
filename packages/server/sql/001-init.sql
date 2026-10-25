@@ -323,7 +323,7 @@ create table if not exists reports (
   n            bigserial primary key,
   at           timestamptz not null,
   what         text not null,
-  "where"      text not null,
+  place        text not null,
   why          text not null,
   name         text not null,
   email        text not null,
