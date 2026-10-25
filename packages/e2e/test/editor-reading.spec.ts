@@ -31,7 +31,7 @@ const EDITS: Record<string, readonly string[]> = {
   wall: [],
   template: ['.byd-canvas-tools', '.byd-backs', '.byd-drag-handle', '.byd-newfield'],
   table: ['.byd-data-add', '.byd-data-tick', 'td.byd-data-remove button', 'th.byd-data-remove button', '.byd-data-icon', '.byd-data-bulk'],
-  theme: ['.byd-theme-tile', '.byd-theme-reset', '.byd-theme-show', '.byd-theme-library-open', '.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child', '.byd-fonts-upload', '.byd-fonts-catalog'],
+  theme: ['.byd-theme-examples-open', '.byd-theme-copy', '.byd-theme-show', '.byd-theme-library-open', '.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child', '.byd-fonts-upload', '.byd-fonts-catalog'],
   media: ['.byd-media-add', '.byd-media-remove'],
   rules: ['.byd-rules-ways', '.byd-rules-adding', '.byd-rules-menu label', '.byd-rules-block > div[role="button"]'],
   tables: ['.byd-setup-tools', '.byd-setup-x', '.byd-setup-corner', '.byd-zone-action-new'],
@@ -65,7 +65,7 @@ for (const role of ['tester', 'viewer'] as const) {
       for (const tab of TABS) {
         await theirs.locator(`#byd-editor-tab-${tab}`).click()
         const panel = theirs.locator('[role="tabpanel"]:not([hidden])')
-        // Speltema folds its parts (L57); a reader opens them like anyone else, and what is in them
+        // Speltema's parts can be folded (L57, L84); a reader opens any folded one, and what is in them
         // is what is asked about.
         const folded = panel.locator('[data-theme-section] h2 button[aria-expanded="false"]')
         while (tab === 'theme' && (await folded.count()) > 0) await folded.first().click()

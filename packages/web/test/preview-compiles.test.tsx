@@ -93,6 +93,8 @@ describe('a card is not compiled again for a keystroke in the search box', () =>
     localStorage.clear()
     revealThemeSection('icons')
     render(<ThemePanel doc={doc} client={{ mayEdit: true } as unknown as ProjectClient} assetBase="http://api.local" />)
+    // The game's first card beside the parts (L84) is compiled too, and gives way to the library.
+    spy.compiles = 0
     fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
 
     // The control: the spy is real, and the panel did compile each of the three cards to draw it.

@@ -1,18 +1,19 @@
 import type { EditIntent, ProjectCredit, ProjectDoc, ProjectFont } from '@byd/server'
 import type { CatalogFamily } from './font-catalog.js'
-import { LANGS, possessive, translate, type Key, type Lang, type T } from '../i18n/index.js'
+import { LANGS, translate, type Key, type T } from '../i18n/index.js'
 import { proseFieldsOf } from './body.js'
 import { LIBRARY, freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import { assetRefOf } from './assets.js'
 
-// The ready-made themes Speltema opens on (L57, #632): how the card *feels* — a family for the
-// headings and one for the text, the meanings and what they are painted in, and a set of icons
-// to start from. Where things stand is the frame's, and a theme never moves anything (L57).
+// The ready-made themes (L57, #632): how the card *feels* — a family for the headings and one for
+// the text, the meanings and what they are painted in, and a set of icons to start from. Where
+// things stand is the frame's, and a theme never moves anything (L57).
 //
-// A theme is a starting point and not a lock. Choosing one writes its parts into the document as
-// one edit (`setTheme`), and the document remembers only which theme it started from; what the
-// game has made of it since is read off the document itself, which is what lets Speltema say on
-// one line what departs from the theme and take the game back to it.
+// Since L84 (#1287) they are examples to start from and not themes a game has: Speltema is the
+// game's own theme, and the examples stand in a sheet behind «Titta i exemplen». Copying one
+// writes its parts into the document as one edit (`setTheme`), and the copy is the game's own —
+// the document does not remember the example it came from. The guided start takes one the same
+// way.
 //
 // What a theme does *not* carry is the card's paper. The ground a card is printed on lives in the
 // template, as the shape that covers the card, and a dark frame writes light text on it: laying a
@@ -117,9 +118,6 @@ export const THEMES: readonly Theme[] = [
   },
 ]
 
-/** The theme the game started from, or null for a game that never chose one. */
-export const themeOf = (doc: Pick<ProjectDoc, 'theme'>): Theme | null => THEMES.find((th) => th.id === doc.theme?.from) ?? null
-
 /** The families a theme sets text in, once each. */
 export const themeFamilies = (theme: Theme): CatalogFamily[] => (theme.heading.family === theme.body.family ? [theme.heading] : [theme.heading, theme.body])
 
@@ -176,7 +174,6 @@ export const iconsOf = (set: readonly ({ name: string; symbol: GameSymbol } & Ic
 export function themeIntent(doc: ProjectDoc, theme: Theme, fonts: Record<string, ProjectFont>, t: T, icons: Record<string, { url: string; credit?: ProjectCredit }> = {}): EditIntent {
   return {
     v: 'setTheme',
-    theme: { from: theme.id },
     heading: theme.heading.family,
     body: theme.body.family,
     prose: proseFieldsOf(doc),
@@ -186,46 +183,34 @@ export function themeIntent(doc: ProjectDoc, theme: Theme, fonts: Record<string,
   }
 }
 
-// What the game has made of its theme since. Exactly what choosing the theme again would undo, and
-// nothing else: a meaning the game added itself, or an icon, is the game's and not a departure,
-// because «Återställ» would leave it where it is — and a line that names what the way back does
-// not take back is a line that lies about the way back.
-export type Departure = { kind: 'heading' | 'body'; family: string } | { kind: 'colour'; meaning: string } | { kind: 'gone'; id: MeaningId }
+// What copying an example would replace in the game's theme, said before it is done (L84): the
+// families the cards are set in, the meanings it repaints or adds, and the icons it brings. Read
+// off the same parts the edit writes, so the list cannot promise what the copy does not do.
+export type CopyChange =
+  | { kind: 'heading' | 'body'; from: string; to: string }
+  | { kind: 'colour' | 'meaning'; meaning: string; colour: string }
+  | { kind: 'icons'; names: string[] }
 
-export function departures(doc: ProjectDoc): Departure[] {
-  const theme = themeOf(doc)
-  if (!theme) return []
-  const out: Departure[] = []
-  const prose = new Set(proseFieldsOf(doc))
-  const { heading, body } = textFamilies(doc, prose)
+export function copyChanges(doc: ProjectDoc, theme: Theme, t: T): CopyChange[] {
+  const out: CopyChange[] = []
+  const { heading, body } = cardFamilies(doc)
   const offHeading = heading.find((family) => family !== theme.heading.family)
-  if (offHeading !== undefined) out.push({ kind: 'heading', family: offHeading })
+  if (offHeading !== undefined) out.push({ kind: 'heading', from: offHeading, to: theme.heading.family })
   const offBody = body.find((family) => family !== theme.body.family)
-  if (offBody !== undefined) out.push({ kind: 'body', family: offBody })
+  if (offBody !== undefined) out.push({ kind: 'body', from: offBody, to: theme.body.family })
   for (const m of theme.meanings) {
     const name = meaningIn(doc, m.id)
-    if (name === null) out.push({ kind: 'gone', id: m.id })
-    else if (doc.palette?.[name]?.toLowerCase() !== m.colour.toLowerCase()) out.push({ kind: 'colour', meaning: name })
+    if (name === null) out.push({ kind: 'meaning', meaning: t(MEANING[m.id]), colour: m.colour })
+    else if (doc.palette?.[name]?.toLowerCase() !== m.colour.toLowerCase()) out.push({ kind: 'colour', meaning: name, colour: m.colour })
   }
+  const icons = starterIcons(doc, theme, t)
+  if (icons.length > 0) out.push({ kind: 'icons', names: icons.map((i) => i.name) })
   return out
 }
 
-/** A departure as the line says it: «rubrik Lora», «vinsts färg», «utan anfall». */
-export function sayDeparture(d: Departure, lang: Lang): string {
-  switch (d.kind) {
-    case 'heading':
-      return translate(lang, 'theme.departs.heading', { family: d.family })
-    case 'body':
-      return translate(lang, 'theme.departs.body', { family: d.family })
-    case 'colour':
-      return translate(lang, 'theme.departs.colour', { whose: possessive(lang, d.meaning) })
-    case 'gone':
-      return translate(lang, 'theme.departs.gone', { meaning: translate(lang, MEANING[d.id]) })
-  }
-}
-
-// The families the card's headings and its text are set in, each in the order the faces are read.
-function textFamilies(doc: ProjectDoc, prose: ReadonlySet<string>): { heading: string[]; body: string[] } {
+/** The families the card's headings and its text are set in, each in the order the faces are read. */
+export function cardFamilies(doc: ProjectDoc): { heading: string[]; body: string[] } {
+  const prose = new Set(proseFieldsOf(doc))
   const heading: string[] = []
   const body: string[] = []
   const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {

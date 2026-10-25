@@ -80,10 +80,8 @@ for (const [width, height] of WIDTHS) {
     const project = await makeProjectOf(page.request, doc)
     await page.goto(project.editorUrl)
     await page.locator('#byd-editor-tab-theme').click()
-    // Speltema folds its parts (L57): the meanings and the icons are opened, and the library
-    // opens from the icons — beside the parts, which is the narrower room the row has to keep to.
-    await page.getByRole('button', { name: /^Färger och betydelser/ }).click()
-    await page.getByRole('button', { name: /^Spelets ikoner/ }).click()
+    // Speltema's parts stand open (L84), and the library opens from the icons — beside the parts,
+    // which is the narrower room the row has to keep to.
     await page.getByRole('button', { name: /Ur biblioteket/ }).click()
     await page.getByRole('button', { name: /Lägg till sköld/ }).click()
     await expect(page.locator('.byd-symbols-set').getByText('{sköld}')).toBeVisible()
