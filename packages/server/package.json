@@ -12,7 +12,8 @@
     "seed": "tsx scripts/seed.ts",
     "seed:project": "tsx scripts/seed-project.ts",
     "plan": "tsx scripts/plan.ts",
-    "usage": "tsx scripts/usage.ts"
+    "usage": "tsx scripts/usage.ts",
+    "erase": "tsx scripts/erase.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",

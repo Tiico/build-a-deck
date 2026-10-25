@@ -130,6 +130,15 @@ const COLUMNS: Readonly<Record<string, Class>> = {
   'assets.bytes': 'none',
   'assets.created_at': 'none',
   'assets.motif': 'none',
+  // The erasure ledger (#1279, DRIFT §5): what was erased, which and when, and never whose words.
+  'erasures.id': 'none',
+  'erasures.at': 'none',
+  'erasures.kind': 'none',
+  'erasures.reason': 'none',
+  'erasures.session_id': 'pseudonymous',
+  'erasures.seat': 'none',
+  'erasures.issued_at': 'none',
+  'erasures.project_id': 'pseudonymous',
   // The render queue (`packages/render/sql`).
   'render_jobs.hash': 'none',
   'render_jobs.kind': 'none',

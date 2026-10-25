@@ -2,8 +2,9 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { ObjectStore } from '@byd/render'
-import { PHYSICAL_VERBS, type Applied, type Seating } from '@byd/protocol'
+import { PHYSICAL_VERBS, REDACTED, type Applied, type Seating } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
+import { changesAt, maskedIntent, type Erased, type ErasureStore, type LedgerEntry } from './erase.js'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import { checkedHistory, liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
@@ -169,6 +170,11 @@ export class PostgresLogStore implements LogStore {
   // Each account's tier (#1193, A2): the operator's today, Stripe's later.
   accountPlans(): PostgresAccountPlanStore {
     return new PostgresAccountPlanStore(this.sql)
+  }
+
+  // The erasure (#1279, G6): masking in place, the ledger, and the notification that tells the app.
+  erasures(): PostgresErasureStore {
+    return new PostgresErasureStore(this.sql)
   }
 
   // The designer's own AI key (#999): sealed, one per account.
@@ -748,6 +754,103 @@ export class PostgresProjectStore implements ProjectStore {
     `
     if (!row) return 'missing'
     return { rev: row.rev, at: row.created_at.toISOString(), ...(row.label ? { label: row.label } : {}) }
+  }
+}
+
+// The channel an erasure is told on when it commits (#1279): the payload is a table's id, and only
+// an id. Postgres holds a notification back until its transaction commits and drops it if it rolls
+// back, so the app reads a table again exactly when there is a masked log to read.
+export const ERASED_CHANNEL = 'byd_erased'
+
+type LedgerRow = { id: string; at: Date; kind: 'guest' | 'table' | 'game'; reason: LedgerEntry['reason']; session_id: string | null; seat: string | null; issued_at: Date | null; project_id: string | null }
+const ledgerOf = (r: LedgerRow): LedgerEntry => {
+  const base = { id: r.id, at: r.at.toISOString(), reason: r.reason }
+  if (r.kind === 'game') return { ...base, kind: 'game', project: r.project_id ?? '' }
+  if (r.kind === 'table') return { ...base, kind: 'table', session: r.session_id ?? '' }
+  return { ...base, kind: 'guest', session: r.session_id ?? '', seat: r.seat, issuedAt: r.issued_at?.toISOString() ?? '' }
+}
+type SurveyRow = { id: string; session_id: string; version: string; at: Date; who: string; seat: string | null; observer: boolean; answers: SurveyRecord['answers'] }
+type EventRow = { seq: number; batch: string; at: Date; by_seat: string | null; intent: unknown; outcome: unknown; schema_version: number | null }
+
+export class PostgresErasureStore implements ErasureStore {
+  constructor(private readonly sql: postgres.Sql) {}
+
+  // One transaction for the whole request: every table it names, the ledger, and the notifications.
+  // Each table is masked under its writer's lock (`append`), so no line is committed between the
+  // reading and the masking. A row is masked as it was written (DRIFT §7): only `intent` changes,
+  // only in the personal fields, and the row keeps its `schema_version`.
+  async erase(entries: readonly LedgerEntry[]): Promise<Erased> {
+    return this.sql.begin(async (tx) => {
+      const sum: Erased = { sessions: [], lines: 0, guests: 0, surveys: 0 }
+      for (const e of entries) {
+        const sessions = e.kind === 'game' ? (await tx<{ id: string }[]>`select id from sessions where project = ${e.project} order by id`).map((r) => r.id) : [e.session]
+        for (const session of sessions) await this.at(tx, session, e, sum)
+        await tx`
+          insert into erasures (id, at, kind, reason, session_id, seat, issued_at, project_id)
+          values (${e.id}, ${e.at}, ${e.kind}, ${e.reason}, ${e.kind === 'game' ? null : e.session}, ${e.kind === 'guest' ? e.seat : null}, ${e.kind === 'guest' ? e.issuedAt : null}, ${e.kind === 'game' ? e.project : null})
+          on conflict (id) do nothing
+        `
+      }
+      sum.sessions = [...new Set(sum.sessions)]
+      for (const session of sum.sessions) await tx`select pg_notify(${ERASED_CHANNEL}, ${session})`
+      return sum
+    })
+  }
+
+  private async at(tx: postgres.TransactionSql, session: string, e: LedgerEntry, sum: Erased): Promise<void> {
+    await tx`select pg_advisory_xact_lock(hashtext(${session}))`
+    const [exists] = await tx`select 1 from sessions where id = ${session}`
+    if (!exists) return
+    const rows = await tx<EventRow[]>`select seq, batch, at, by_seat, intent, outcome, schema_version from events where session_id = ${session} order by seq`
+    const log = rows.map((r) => liftLine({ ...(r.schema_version === null ? {} : { schemaVersion: r.schema_version }), seq: r.seq, batch: r.batch, at: r.at.toISOString(), by: r.by_seat, intent: r.intent, ...(r.outcome === null ? {} : { outcome: r.outcome }) }))
+    const guests = (await tx<GuestRow[]>`
+      select session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id from guest_tokens where session_id = ${session} order by issued_at, token_hash
+    `).map(played)
+    const answers = await tx<SurveyRow[]>`select id, session_id, version, at, who, seat, observer, answers from surveys where session_id = ${session} order by at, id`
+    const surveys: SurveyRecord[] = answers.map((r) => ({ sessionId: r.session_id, version: r.version, at: r.at.toISOString(), who: r.who, seat: r.seat, observer: r.observer, answers: r.answers }))
+    const changes = changesAt({ log, guests, surveys }, e, e.reason)
+    for (const [i, line] of log.entries()) {
+      if (changes.seqs.includes(line.seq)) await tx`update events set intent = ${tx.json(maskedIntent(line, rows[i]?.intent) as never)} where session_id = ${session} and seq = ${line.seq}`
+    }
+    const hashes = changes.guests.flatMap((i) => guests[i]?.tokenHash ?? [])
+    if (hashes.length > 0) await tx`update guest_tokens set name = ${REDACTED} where session_id = ${session} and token_hash = any(${hashes})`
+    const dropped = changes.drop.flatMap((i) => answers[i]?.id ?? [])
+    if (dropped.length > 0) await tx`delete from surveys where id = any(${dropped})`
+    for (const { index, record } of changes.mask) await tx`update surveys set who = ${record.who}, answers = ${tx.json(record.answers as never)} where id = ${answers[index]?.id ?? null}`
+    if (changes.seqs.length + changes.guests.length + changes.drop.length + changes.mask.length > 0 || e.kind !== 'guest') sum.sessions.push(session)
+    sum.lines += changes.seqs.length
+    sum.guests += changes.guests.length
+    sum.surveys += changes.drop.length + changes.mask.length
+  }
+
+  async ledger(): Promise<LedgerEntry[]> {
+    return (await this.sql<LedgerRow[]>`select id, at, kind, reason, session_id, seat, issued_at, project_id from erasures order by at, id`).map(ledgerOf)
+  }
+
+  async retained(endedBefore: string): Promise<{ kind: 'guest'; session: string; seat: string | null; issuedAt: string }[]> {
+    const rows = await this.sql<{ session_id: string; seat: string | null; issued_at: Date }[]>`
+      select g.session_id, g.seat, g.issued_at from guest_tokens g
+      join lateral (select at, intent->>'v' as v from events e where e.session_id = g.session_id order by seq desc limit 1) last on true
+      where g.account_id is null and left(g.name, 1) <> ${REDACTED} and last.v = 'session.end' and last.at < ${endedBefore}
+      order by g.session_id, g.issued_at
+    `
+    return rows.map((r) => ({ kind: 'guest', session: r.session_id, seat: r.seat, issuedAt: r.issued_at.toISOString() }))
+  }
+
+  async orphans(): Promise<string[]> {
+    const rows = await this.sql<{ project: string }[]>`
+      select distinct s.project from sessions s
+      where s.project is not null
+        and not exists (select 1 from projects p where p.id = s.project)
+        and not exists (select 1 from erasures x where x.kind = 'game' and x.project_id = s.project)
+      order by s.project
+    `
+    return rows.map((r) => r.project)
+  }
+
+  async listen(fn: (sessions: string[]) => void): Promise<() => Promise<void>> {
+    const { unlisten } = await this.sql.listen(ERASED_CHANNEL, (session) => fn([session]))
+    return unlisten
   }
 }
 
