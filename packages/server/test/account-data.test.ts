@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { strFromU8, unzipSync } from 'fflate'
-import { PersonalData } from '../src/account-data.js'
+import { PersonalData, personalDataSchema, personalReadme } from '../src/account-data.js'
 import { BO_NOTE, HER_CHANGE, HER_FLAG, HER_NOTE, NICKLAS, aWorld, accountBackends, as, login, type AccountBackend } from './account-backends.js'
 import { COLUMNS } from './column-map.js'
 
@@ -25,6 +25,44 @@ const IN_THE_EXTRACT: Readonly<Record<string, string | { not: string }>> = {
   ...Object.fromEntries(['at', 'what', 'place', 'why', 'name', 'email'].map((c) => [`reports.${c}`, { not: 'a report is tied to the address its writer gave, not to an account, and is given out through Kontakt' }])),
 }
 const at = (value: unknown, path: string): unknown => path.split('.').reduce<unknown>((v, k) => (v && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined), value)
+
+// LASMIG says what every part of uppgifter.json is (#1350, art. 15): each key at the top of the
+// schema has its own line, in both languages, and every field under it is named in that line's
+// section. The keys are read out of the schema the file is written by, so a part added to the
+// extract without a word about it turns this red, whoever adds it.
+type Node = { properties?: Record<string, Node>; items?: Node; anyOf?: Node[] }
+const fieldsUnder = (node: Node | undefined): string[] => {
+  if (!node) return []
+  const own = Object.entries(node.properties ?? {}).flatMap(([k, v]) => [k, ...fieldsUnder(v)])
+  return [...own, ...fieldsUnder(node.items), ...(node.anyOf ?? []).flatMap(fieldsUnder)]
+}
+describe('LASMIG.md of the extract (#1350)', () => {
+  const schema = personalDataSchema() as Node
+  const top = Object.keys(schema.properties ?? {})
+  const sample = { exportedAt: '2026-10-25T12:00:00.000Z' } as PersonalData
+  const sectionsOf = (readme: string) => {
+    const sections = new Map<string, string>()
+    let key: string | null = null
+    for (const line of readme.split('\n')) {
+      const head = /^- `(\w+)`/.exec(line)
+      if (head) key = head[1]!
+      else if (!line.startsWith('  ')) key = null
+      if (key) sections.set(key, `${sections.get(key) ?? ''}${line}\n`)
+    }
+    return sections
+  }
+  it.each(['sv', 'en'] as const)('explains every part of uppgifter.json and every field in it, in %s', (lang) => {
+    const sections = sectionsOf(personalReadme(lang, sample))
+    expect(top.length).toBeGreaterThan(10)
+    expect(top.filter((k) => !sections.has(k))).toEqual([])
+    for (const k of top) expect([k, [...new Set(fieldsUnder(schema.properties![k]))].filter((f) => !sections.get(k)!.includes(`\`${f}\``))]).toEqual([k, []])
+  })
+  it("is written in the reader's language", () => {
+    expect(personalReadme('sv', sample)).toContain('Filen `uppgifter.json` innehåller')
+    expect(personalReadme('en', sample)).toContain('The file `uppgifter.json` holds')
+    expect(personalReadme('en', sample)).not.toMatch(/\b(och|kortet|bordet|spelet)\b/)
+  })
+})
 
 // «Ladda ner mina uppgifter» (#1280, G6, art. 15 och 20, variant A): the account's own extract, a
 // zip straight from the Konto card, in the form of a game's export (G5): the data as JSON, its JSON
@@ -80,7 +118,7 @@ for (const backend of accountBackends) {
       expect(data.invitesSent).toEqual([expect.objectContaining({ game: 'Skogens råd', email: w.kim.email, role: 'editor' })])
       expect(data.invitesReceived).toEqual([expect.objectContaining({ game: 'Vargtimmen', email: w.nicklas.email })])
       expect(data.tables).toEqual([
-        expect.objectContaining({ session: w.saras.id, game: 'Vargtimmen', kind: 'seat', seat: 'A', name: NICKLAS, ended: true, flags: [expect.objectContaining({ note: HER_FLAG })], notes: [expect.objectContaining({ text: HER_NOTE })], survey: expect.objectContaining({ answers: expect.objectContaining({ change: HER_CHANGE }) }) }),
+        expect.objectContaining({ session: w.saras.id, game: 'Vargtimmen', kind: 'seat', seat: 'A', name: NICKLAS, ended: true, flags: [expect.objectContaining({ note: HER_FLAG, component: w.flagged.inHand, card: { name: 'Drake' } }), expect.objectContaining({ component: w.flagged.faceDown, card: { name: null, why: 'face-down' } })], notes: [expect.objectContaining({ text: HER_NOTE })], survey: expect.objectContaining({ answers: expect.objectContaining({ change: HER_CHANGE }) }) }),
       ])
       // Her own table; the one at Sara's game is borne by Sara.
       expect(data.borne.tables).toBe(1)

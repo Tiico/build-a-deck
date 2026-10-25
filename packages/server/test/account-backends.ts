@@ -169,9 +169,16 @@ export async function aWorld(db: AccountBackend, tag: string) {
   const saras = await table(sara, ids.wolf)
   const token = await run.admit(saras.id, 'A', NICKLAS)
   const phone = await WireClient.connect(run.base, saras.id, 'A', undefined, { token })
-  for (const it of [{ v: 'seat.claim', seat: 'A', name: NICKLAS }, { v: 'flag', note: HER_FLAG }, { v: 'note.add', text: HER_NOTE }, { v: 'session.end' }] as const) expect((await phone.send('A', it)).t).toBe('ack')
+  // She draws a card to her hand and flags it, and flags one she laid face down on the table (#1350).
+  expect((await phone.send('A', { v: 'seat.claim', seat: 'A', name: NICKLAS })).t).toBe('ack')
+  expect((await phone.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })).t).toBe('ack')
+  expect((await phone.send('A', { v: 'draw', from: 'draw', to: 'table', count: 1, face: 'back' })).t).toBe('ack')
+  await phone.waitFor(() => phone.view?.components.some((c) => c.zone === 'table') === true)
+  const inHand = phone.view!.components.find((c) => c.zone === 'hand:A')!.id
+  const faceDown = phone.view!.components.find((c) => c.zone === 'table')!.id
+  for (const it of [{ v: 'flag', note: HER_FLAG, component: inHand }, { v: 'flag', component: faceDown }, { v: 'note.add', text: HER_NOTE }, { v: 'session.end' }] as const) expect((await phone.send('A', it)).t).toBe('ack')
   await phone.close()
   expect((await as(run, null)('POST', `/sessions/${saras.id}/survey`, { token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: HER_CHANGE } })).status).toBe(201)
   expect((await nicklas.call('POST', '/guests/claim', { token })).status).toBe(200)
-  return { id, nicklas, kim, sara, ids, star, saras }
+  return { id, nicklas, kim, sara, ids, star, saras, flagged: { inHand, faceDown } }
 }
