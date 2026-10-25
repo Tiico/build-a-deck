@@ -1,0 +1,214 @@
+<!doctype html>
+<!-- PROTOTYP: tärningsslagets rörelse på filten (K28 säger i dag «tumlar på stället i 0,7 s»).
+     Fyra varianter, växla med ?variant= eller pilarna. Kastas när en variant är vald. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tärningsslaget — prototyp</title>
+<style>
+:root { --die: #f3e9d6; --side: #ddd2bd; --edge: #b9ad97; --ink: #1c1c1c; --seat: #f0b64a; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px 16px 96px; background: #14161c; color: #e6ecfa; font: 14px system-ui, sans-serif; }
+.rubrik { color: #ffd98a; font-size: 13px; line-height: 1.5; max-width: 1000px; margin: 0 0 12px; }
+.rubrik b { color: #ffe9b8; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 0 0 12px; font-size: 13px; color: #c9d6cc; }
+.controls button { font: 600 13px system-ui; padding: 6px 12px; border-radius: 8px; border: 1px solid #f3e9d6aa; background: #232733; color: #f3e9d6; cursor: pointer; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.felt { position: relative; max-width: 1000px; border-radius: 14px; padding: 28px; background: radial-gradient(ellipse at center, #2b6a45 0%, #1f4d33 100%); display: grid; gap: 28px; }
+.row { display: flex; flex-wrap: wrap; gap: 40px; align-items: center; }
+.row h3 { width: 100%; margin: 0 0 -20px; font-size: 12px; font-weight: 600; color: #c9d6cc; }
+.zone { display: flex; gap: 26px; padding: 22px 26px; border: 1px solid #f3e9d6cc; box-shadow: inset 0 0 0 1px #00000073; border-radius: 10px; }
+.die { position: relative; width: var(--px); height: var(--px); cursor: pointer; }
+.die .shadow { position: absolute; left: 8%; right: 8%; bottom: -6%; height: 22%; border-radius: 50%; background: rgba(0,0,0,0.45); filter: blur(3px); transform-origin: 50% 50%; }
+.die .body { position: absolute; inset: 0; transform-origin: 50% 50%; }
+.die svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.die text { fill: var(--ink); font-weight: 700; font-family: system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; font-variant-numeric: tabular-nums; }
+.die .fx { position: absolute; inset: -30%; pointer-events: none; }
+.log { max-width: 1000px; margin-top: 10px; font-size: 13px; color: #c9d6cc; min-height: 20px; }
+.log b { color: #f3e9d6; }
+.note { max-width: 1000px; margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: #1d212b; font-size: 13px; line-height: 1.55; color: #d4dbe9; }
+.note h2 { margin: 0 0 6px; font-size: 14px; color: #ffe9b8; }
+.switcher { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 999px; background: #fff; color: #111; box-shadow: 0 8px 24px rgba(0,0,0,0.5); font: 600 14px system-ui; z-index: 10; }
+.switcher button { width: 36px; height: 36px; border-radius: 50%; border: 0; background: #eee; font-size: 18px; cursor: pointer; }
+.switcher span { padding: 0 12px; min-width: 260px; text-align: center; }
+@media (max-width: 600px) { .switcher span { min-width: 0; } .row { gap: 24px; } }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>Tärningsslaget.</b> Samma tärningar, fyra sätt att slå dem. Klicka på en tärning, eller «Slå zonen» för ett slag med flera (ett kuvert, K3). Värdet är bestämt innan rörelsen börjar och syns först när tärningen ligger still (D4). Tärningen lämnar aldrig sin plats på filten: rörelsen är på stället, som i dag.</div>
+<div class="controls">
+  <button id="all">Slå zonen (2d6)</button>
+  <button id="every">Slå allt</button>
+  <label><input type="checkbox" id="big"> Förstora (som på nära håll)</label>
+  <label><input type="checkbox" id="slow"> Slow motion ×4</label>
+  <label><input type="checkbox" id="sound"> Ljud</label>
+</div>
+<div class="felt">
+  <div class="row" id="singles"><h3>En av varje sort, i filtens storlek</h3></div>
+  <div class="row"><h3>En zon med två d6</h3><div class="zone" id="zone"></div></div>
+</div>
+<div class="log" id="log"></div>
+<div class="note" id="note"></div>
+<div class="switcher"><button id="prev" aria-label="Föregående">‹</button><span id="label"></span><button id="next" aria-label="Nästa">›</button></div>
+<script>
+// ---- silhuetterna, från Die.tsx ----
+const r2 = (n) => Math.round(n * 100) / 100
+const ngon = (k, r, cx = 50, cy = 50) => Array.from({ length: k }, (_, i) => { const a = ((-90 + (360 / k) * i) * Math.PI) / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)] })
+const pts = (ps) => ps.map((p) => `${r2(p[0])},${r2(p[1])}`).join(' ')
+const E = 'stroke="#b9ad97" stroke-width="2" stroke-linejoin="round"'
+function shape(f) {
+  if (f === 4) return { o: `<polygon points="${pts(ngon(3, 50, 50, 58))}" fill="var(--die)" ${E}/>`, top: 66, size: 40 }
+  if (f === 6) return { o: `<rect x="8" y="8" width="84" height="84" rx="12" fill="var(--die)" ${E}/>`, top: 51, size: 56 }
+  if (f === 8) return { o: `<polygon points="${pts(ngon(6, 50))}" fill="var(--side)" ${E}/><polygon points="${pts(ngon(3, 50))}" fill="var(--die)" ${E}/>`, top: 58, size: 40 }
+  if (f === 10) return { o: `<polygon points="50,2 92,46 50,98 8,46" fill="var(--side)" ${E}/><polygon points="50,14 80,48 50,70 20,48" fill="var(--die)" ${E}/>`, top: 47, size: 38 }
+  if (f === 12) return { o: `<polygon points="${pts(ngon(10, 50))}" fill="var(--side)" ${E}/><polygon points="${pts(ngon(5, 34))}" fill="var(--die)" ${E}/>`, top: 53, size: 42 }
+  const rim = ngon(6, 50), face = ngon(3, 40, 50, 56)
+  const lines = rim.map((p, i) => { const to = face[Math.floor(((i + 1) % 6) / 2)]; return `<line x1="${r2(p[0])}" y1="${r2(p[1])}" x2="${r2(to[0])}" y2="${r2(to[1])}" stroke="#b9ad97" stroke-width="1.5"/>` }).join('')
+  return { o: `<polygon points="${pts(rim)}" fill="var(--side)" ${E}/>${lines}<polygon points="${pts(face)}" fill="var(--die)" ${E}/>`, top: 58, size: 42, two: { top: 61.5, size: 32 } }
+}
+function face(f, v) {
+  const s = shape(f), t = String(v)
+  const set = t.length > 1 ? (s.two ?? { top: s.top, size: s.size * 0.85 }) : s
+  return `<svg viewBox="0 0 100 100">${s.o}<text x="50" y="${set.top}" font-size="${set.size}">${t}</text></svg>`
+}
+
+// ---- ljud: syntetiserade knackar, inget att ladda ----
+let ac = null
+function knock(gain = 0.5, pitch = 1) {
+  if (!document.getElementById('sound').checked) return
+  ac ??= new AudioContext()
+  const n = ac.createBuffer(1, ac.sampleRate * 0.05, ac.sampleRate), d = n.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4)
+  const src = ac.createBufferSource(); src.buffer = n
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800 * pitch; bp.Q.value = 1.4
+  const g = ac.createGain(); g.gain.value = gain
+  src.connect(bp).connect(g).connect(ac.destination); src.start()
+}
+
+// ---- tid ----
+const slow = () => (document.getElementById('slow').checked ? 4 : 1)
+const wait = (ms) => new Promise((r) => setTimeout(r, ms * slow()))
+const rnd = (a, b) => a + Math.random() * (b - a)
+const sign = () => (Math.random() < 0.5 ? -1 : 1)
+function anim(el, frames, ms, easing = 'linear') { return el.animate(frames, { duration: ms * slow(), easing, fill: 'forwards' }).finished }
+// Siffror som hoppar i givna intervall och stannar på värdet innan rörelsen gör det.
+async function jump(d, gaps) { for (const g of gaps) { d.show(1 + Math.floor(Math.random() * d.faces)); await wait(g) } }
+
+// ---- varianterna ----
+const V = [
+  { key: 'A', name: 'A — I dag', ms: 700,
+    note: `<h2>A — I dag (K28)</h2>Snurrar ett varv på stället, sväller till 1,15 och tillbaka, siffran hoppar var 70:e ms i 0,6 s. Rörelsen är jämn, och slutet är tyst: siffran bara står där.`,
+    async roll(d, v) {
+      const p = anim(d.body, [{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(200deg) scale(1.15)', offset: 0.45 }, { transform: 'rotate(340deg) scale(0.95)', offset: 0.8 }, { transform: 'rotate(360deg) scale(1)' }], 700, 'cubic-bezier(0.3, 0.7, 0.4, 1)')
+      await jump(d, Array(9).fill(70)); d.show(v); await p
+    } },
+  { key: 'B', name: 'B — Kastet', ms: 950,
+    note: `<h2>B — Kastet</h2>Tärningen lyfts från filten (skuggan sjunker undan och blir mjuk), snurrar i luften åt ett slumpat håll, slår i med en tryckning och studsar två gånger allt lägre. Siffrorna byts bara i luften; värdet landar med första nedslaget, och ett dammmoln i filtens krita markerar var. Med ljud: en knack per studs.`,
+    async roll(d, v) {
+      // Ett helt antal varv, så att tärningen ligger rätt när rörelsen släpps.
+      const turn = sign() * 360, up = 0.42
+      anim(d.shadow, [{ transform: 'scale(1)', opacity: 1, filter: 'blur(3px)' }, { transform: 'scale(0.6) translateY(4%)', opacity: 0.35, filter: 'blur(7px)', offset: 0.22 }, { transform: 'scale(0.6) translateY(4%)', opacity: 0.35, filter: 'blur(7px)', offset: 0.5 }, { transform: 'scale(1)', opacity: 1, filter: 'blur(3px)', offset: 0.58 }, { transform: 'scale(0.85)', opacity: 0.8, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], 950)
+      const p = anim(d.body, [
+        { transform: 'translateY(0) rotate(0) scale(1)', easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)' },
+        { transform: `translateY(${-up * 100}%) rotate(${turn * 0.5}deg) scale(1.28)`, offset: 0.3, easing: 'cubic-bezier(0.6, 0, 0.9, 0.5)' },
+        { transform: `translateY(0) rotate(${turn - sign() * 6}deg) scale(1.06, 0.9)`, offset: 0.56, easing: 'cubic-bezier(0.2, 0.7, 0.4, 1)' },
+        { transform: `translateY(-14%) rotate(${turn}deg) scale(1.04)`, offset: 0.68, easing: 'cubic-bezier(0.6, 0, 0.9, 0.5)' },
+        { transform: `translateY(0) rotate(${turn}deg) scale(1.02, 0.97)`, offset: 0.8, easing: 'ease-out' },
+        { transform: `translateY(-4%) rotate(${turn}deg) scale(1)`, offset: 0.88 },
+        { transform: `translateY(0) rotate(${turn}deg) scale(1)` },
+      ], 950)
+      await jump(d, [60, 60, 70, 80, 95, 110]) // ≈ 0,47 s, i luften
+      d.show(v); knock(0.7, 1)
+      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="56" r="22" fill="none" stroke="#f3e9d6" stroke-width="3"/></svg>`
+      anim(d.fx.firstChild, [{ transform: 'scale(0.7)', opacity: 0.8 }, { transform: 'scale(1.5)', opacity: 0 }], 420, 'ease-out')
+      await wait(115); knock(0.35, 1.15); await wait(110); knock(0.15, 1.3)
+      await p; d.body.getAnimations().forEach((a) => a.cancel()); d.shadow.getAnimations().forEach((a) => a.cancel())
+    } },
+  { key: 'C', name: 'C — Snurret som saktar in', ms: 1100,
+    note: `<h2>C — Snurret som saktar in</h2>Ingen lyftning: tärningen snurrar hårt och bromsar in mot värdet, och siffrorna saktar in i takt med den, som ett lyckohjul (40 ms i början, 220 ms i slutet). Den gungar fram och tillbaka på sin kant innan den lägger sig, och värdet poppar: siffran stöts upp till 1,35 och toppytan blixtrar till i platsens färg. Med ljud: ett tick per siffra och ett tyngre slag sist.`,
+    async roll(d, v) {
+      const turns = sign() * 720
+      const p = anim(d.body, [
+        { transform: 'rotate(0) scale(1)', easing: 'cubic-bezier(0.15, 0.6, 0.25, 1)' },
+        { transform: `rotate(${turns + 10 * Math.sign(turns)}deg) scale(1.08)`, offset: 0.72, easing: 'ease-in-out' },
+        { transform: `rotate(${turns - 7 * Math.sign(turns)}deg) scale(1.02)`, offset: 0.84, easing: 'ease-in-out' },
+        { transform: `rotate(${turns + 3 * Math.sign(turns)}deg) scale(1)`, offset: 0.93, easing: 'ease-out' },
+        { transform: `rotate(${turns}deg) scale(1)` },
+      ], 1100)
+      const gaps = [40, 40, 45, 50, 60, 70, 85, 105, 130, 160]
+      for (const g of gaps) { d.show(1 + Math.floor(Math.random() * d.faces)); knock(0.12, 1.6); await wait(g) }
+      d.show(v); knock(0.6, 0.8)
+      const t = d.body.querySelector('text')
+      t.style.transformBox = 'fill-box'; t.style.transformOrigin = 'center'
+      anim(t, [{ transform: 'scale(1.35)' }, { transform: 'scale(0.94)', offset: 0.6 }, { transform: 'scale(1)' }], 300, 'ease-out')
+      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="52" r="34" fill="var(--seat)"/></svg>`
+      anim(d.fx.firstChild, [{ opacity: 0.55, transform: 'scale(0.9)' }, { opacity: 0, transform: 'scale(1.25)' }], 380, 'ease-out')
+      await p; d.body.getAnimations().forEach((a) => a.cancel())
+    } },
+  { key: 'D', name: 'D — Tärningen välter', ms: 900,
+    note: `<h2>D — Tärningen välter</h2>I stället för att snurra i planet välter tärningen över sina kanter, sett ovanifrån: toppytan viks bort i 3D och en ny sida viks upp, fyra gånger åt slumpade håll, varje vältning långsammare än den förra. Varje ny sida visar en ny siffra, och den sista vältningen landar med en dov duns: skuggan dras ihop och tärningen trycks ned ett ögonblick. Läser mest som en fysisk tärning, men mindre som «något hände» på avstånd.`,
+    async roll(d, v) {
+      d.body.style.transformStyle = 'preserve-3d'
+      const dirs = [['X', 1], ['Y', 1], ['X', -1], ['Y', -1]]
+      const steps = [120, 150, 190, 250]
+      for (let i = 0; i < steps.length; i++) {
+        const [ax, s0] = dirs[Math.floor(Math.random() * 4)], s = s0
+        const last = i === steps.length - 1
+        anim(d.shadow, [{ transform: 'scale(1)' }, { transform: 'scale(1.15, 0.9)', offset: 0.5 }, { transform: 'scale(1)' }], steps[i])
+        await anim(d.body, [{ transform: `perspective(220px) rotate${ax}(0) translateY(0)` }, { transform: `perspective(220px) rotate${ax}(${s * 90}deg) translateY(-8%)` }], steps[i] / 2, 'ease-in')
+        d.show(last ? v : 1 + Math.floor(Math.random() * d.faces))
+        knock(last ? 0.7 : 0.3, last ? 0.7 : 1.1)
+        await anim(d.body, [{ transform: `perspective(220px) rotate${ax}(${-s * 90}deg) translateY(-8%)` }, { transform: `perspective(220px) rotate${ax}(0) translateY(0)` }], steps[i] / 2, 'ease-out')
+      }
+      anim(d.shadow, [{ transform: 'scale(1.2)', opacity: 1 }, { transform: 'scale(0.92)', opacity: 1 }, { transform: 'scale(1)' }], 180, 'ease-out')
+      await anim(d.body, [{ transform: 'scale(1.05, 0.93)' }, { transform: 'scale(1)' }], 160, 'ease-out')
+      d.body.getAnimations().forEach((a) => a.cancel()); d.shadow.getAnimations().forEach((a) => a.cancel())
+    } },
+]
+
+// ---- tärningarna ----
+const dice = []
+function make(faces, parent) {
+  const el = document.createElement('div'); el.className = 'die'
+  el.innerHTML = `<div class="shadow"></div><div class="body"></div><div class="fx"></div>`
+  const d = { faces, value: 1, busy: false, el, body: el.children[1], shadow: el.children[0], fx: el.children[2], show(n) { this.body.innerHTML = face(faces, n) } }
+  d.show(1); el.title = `d${faces}`
+  el.onclick = () => roll([d])
+  parent.appendChild(el); dice.push(d); return d
+}
+const singles = document.getElementById('singles')
+for (const f of [4, 6, 8, 10, 12, 20]) make(f, singles)
+const pair = [make(6, document.getElementById('zone')), make(6, document.getElementById('zone'))]
+
+let variant = V.find((x) => x.key === new URLSearchParams(location.search).get('variant')) ?? V[1]
+async function roll(ds) {
+  ds = ds.filter((d) => !d.busy)
+  if (!ds.length) return
+  const values = ds.map((d) => 1 + Math.floor(Math.random() * d.faces)) // servern avgör, före rörelsen
+  ds.forEach((d) => (d.busy = true))
+  await Promise.all(ds.map((d, i) => wait(i * 60).then(() => variant.roll(d, values[i])).then(() => { d.value = values[i]; d.busy = false })))
+  const kind = ds.every((d) => d.faces === ds[0].faces) ? `${ds.length > 1 ? ds.length : ''}d${ds[0].faces}` : 'tärningarna'
+  document.getElementById('log').innerHTML = `<b>Ada</b> slog ${kind}: ${values.join(' + ')}${ds.length > 1 ? ` = ${values.reduce((a, b) => a + b, 0)}` : ''}`
+}
+document.getElementById('all').onclick = () => roll(pair)
+document.getElementById('every').onclick = () => roll(dice)
+const size = () => document.documentElement.style.setProperty('--px', document.getElementById('big').checked ? '96px' : '34px')
+document.getElementById('big').onchange = size; size()
+
+function render() {
+  document.getElementById('label').textContent = `${variant.name} · ${variant.ms} ms`
+  document.getElementById('note').innerHTML = variant.note
+}
+function go(step) {
+  variant = V[(V.indexOf(variant) + step + V.length) % V.length]
+  const u = new URL(location.href); u.searchParams.set('variant', variant.key); history.replaceState(null, '', u)
+  render()
+}
+document.getElementById('prev').onclick = () => go(-1)
+document.getElementById('next').onclick = () => go(1)
+addEventListener('keydown', (e) => { if (e.target.matches('input, textarea, [contenteditable]')) return; if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1) })
+render()
+</script>
+</body>
+</html>
