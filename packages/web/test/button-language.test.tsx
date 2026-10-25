@@ -279,7 +279,7 @@ async function accountViews(): Promise<Record<string, string>> {
 
   await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com', next: '/' }) })
   // The page as it stands once the name has been answered (#1254): the one-time bands above the games
-  // (L78, L83) answer with a fill of their own, as an offer that is gone after one press.
+  // (L78, L85) answer with a fill of their own, as an offer that is gone after one press.
   await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) })
   await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
   const games = render(<HomePage />)

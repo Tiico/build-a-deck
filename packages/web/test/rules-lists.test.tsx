@@ -6,9 +6,10 @@
 // closed into one line — «- Dra ett kort. - Spela ett kort.» — so the only way to a list was an
 // import from a file. What was decided: the open block chooses its kind — Stycke · Punktlista ·
 // Numrerad lista — on the block being written and nowhere else, and a line that opens with «- » or
-// «1. » becomes a list as well. No new buttons in the margin.
+// «1. » becomes a list as well. No new buttons in the margin. (The row above the book has since
+// gained «＋ Lista» beside «＋ Text», #1258; the kinds stay where this put them.)
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
@@ -113,9 +114,11 @@ describe('the open block chooses its kind: Stycke · Punktlista · Numrerad list
   it('starts a list made of a block just added with one empty point rather than the words «Ny text.»', async () => {
     const user = userEvent.setup()
     await openBook()
-    // The ＋ beside the paragraph, as the book's own tests of it reach it (#216).
-    fireEvent.pointerOver(within(book()).getByText('Varje tur har tre steg.'))
-    fireEvent.click(await within(book()).findByRole('button', { name: 'Lägg till efter texten under En tur' }))
+    // «＋ Text» in the row above the book (#1258), after the paragraph last written in.
+    await user.click(within(book()).getByText('Varje tur har tre steg.'))
+    await user.keyboard('{Escape}')
+    const adding = within(document.querySelector('.byd-rules-bar') as HTMLElement).getByRole('group', { name: 'Lägg till' })
+    await user.click(within(adding).getByRole('button', { name: '＋ Text' }))
     await waitFor(() => expect(field().value).toBe('Ny text.'))
     await user.click(within(kinds()).getByRole('button', { name: 'Punktlista' }))
     expect(points()).toEqual([''])

@@ -176,7 +176,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-hero > .byd-home-game { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 32px; padding: 28px; border-radius: 22px; background: radial-gradient(90% 120% at 0% 100%, #1d2a24, var(--byd-account-card-bg) 60%); }
 .byd-home-hero .byd-home-open { display: block; padding: 0; }
 .byd-home-fan { position: relative; display: block; padding: 8px 40px 0; }
-.byd-home-fan-back { position: absolute; top: 8px; left: 40px; filter: brightness(0.72); transform-origin: 50% 100%; }
+/* The cards behind are cards of the same game, so they keep the front card's rounded corners. */
+.byd-home-fan-back { position: absolute; top: 8px; left: 40px; border-radius: 4px; overflow: hidden; filter: brightness(0.72); transform-origin: 50% 100%; }
 .byd-home-fan-back[data-back='0'] { transform: rotate(-9deg) translateX(-26px); }
 .byd-home-fan-back[data-back='1'] { transform: rotate(8deg) translateX(26px); filter: brightness(0.84); }
 .byd-home-fan .byd-home-card { position: relative; box-shadow: 0 10px 30px rgb(0 0 0 / 45%); }
