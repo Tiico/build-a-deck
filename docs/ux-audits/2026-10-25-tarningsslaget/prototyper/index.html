@@ -1,0 +1,206 @@
+<!doctype html>
+<!-- PROTOTYP: tärningsslagets rörelse på filten (K28 säger i dag «tumlar på stället i 0,7 s»).
+     Fyra varianter, växla med ?variant= eller pilarna. Kastas när en variant är vald. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tärningsslaget — prototyp</title>
+<style>
+:root { --die: #f3e9d6; --side: #ddd2bd; --edge: #b9ad97; --ink: #1c1c1c; --seat: #f0b64a; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px 16px 96px; background: #14161c; color: #e6ecfa; font: 14px system-ui, sans-serif; }
+.rubrik { color: #ffd98a; font-size: 13px; line-height: 1.5; max-width: 1000px; margin: 0 0 12px; }
+.rubrik b { color: #ffe9b8; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 0 0 12px; font-size: 13px; color: #c9d6cc; }
+.controls button { font: 600 13px system-ui; padding: 6px 12px; border-radius: 8px; border: 1px solid #f3e9d6aa; background: #232733; color: #f3e9d6; cursor: pointer; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.felt { position: relative; max-width: 1000px; border-radius: 14px; padding: 28px; background: radial-gradient(ellipse at center, #2b6a45 0%, #1f4d33 100%); display: grid; gap: 28px; }
+.row { display: flex; flex-wrap: wrap; gap: 40px; align-items: center; }
+.row h3 { width: 100%; margin: 0 0 -20px; font-size: 12px; font-weight: 600; color: #c9d6cc; }
+.zone { display: flex; gap: 26px; padding: 22px 26px; border: 1px solid #f3e9d6cc; box-shadow: inset 0 0 0 1px #00000073; border-radius: 10px; }
+.die { position: relative; width: var(--px); height: var(--px); cursor: pointer; }
+.die .shadow { position: absolute; left: 8%; right: 8%; bottom: -6%; height: 22%; border-radius: 50%; background: rgba(0,0,0,0.45); filter: blur(3px); transform-origin: 50% 50%; }
+.die .body { position: absolute; inset: 0; transform-origin: 50% 50%; }
+.die svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.die text { fill: var(--ink); font-weight: 700; font-family: system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; font-variant-numeric: tabular-nums; }
+.die .fx { position: absolute; inset: -30%; pointer-events: none; }
+.log { max-width: 1000px; margin-top: 10px; font-size: 13px; color: #c9d6cc; min-height: 20px; }
+.log b { color: #f3e9d6; }
+.note { max-width: 1000px; margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: #1d212b; font-size: 13px; line-height: 1.55; color: #d4dbe9; }
+.note h2 { margin: 0 0 6px; font-size: 14px; color: #ffe9b8; }
+.switcher { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 999px; background: #fff; color: #111; box-shadow: 0 8px 24px rgba(0,0,0,0.5); font: 600 14px system-ui; z-index: 10; }
+.switcher button { width: 36px; height: 36px; border-radius: 50%; border: 0; background: #eee; font-size: 18px; cursor: pointer; }
+.switcher span { padding: 0 12px; min-width: 260px; text-align: center; }
+@media (max-width: 600px) { .switcher span { min-width: 0; } .row { gap: 24px; } }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>Tärningsslaget.</b> Samma tärningar, fyra sätt att slå dem: dagens och tre snabba (under 0,55 s) med olika sorts kraft — nedslaget, resultatet, farten. Klicka på en tärning, eller «Slå zonen» för ett slag med flera (ett kuvert, K3). Värdet är bestämt innan rörelsen börjar och syns först när tärningen ligger still (D4). Tärningen lämnar aldrig sin plats på filten: rörelsen är på stället, som i dag.</div>
+<div class="controls">
+  <button id="all">Slå zonen (2d6)</button>
+  <button id="every">Slå allt</button>
+  <label><input type="checkbox" id="big"> Förstora (som på nära håll)</label>
+  <label><input type="checkbox" id="slow"> Slow motion ×4</label>
+  <label><input type="checkbox" id="sound"> Ljud</label>
+</div>
+<div class="felt">
+  <div class="row" id="singles"><h3>En av varje sort, i filtens storlek</h3></div>
+  <div class="row"><h3>En zon med två d6</h3><div class="zone" id="zone"></div></div>
+</div>
+<div class="log" id="log"></div>
+<div class="note" id="note"></div>
+<div class="switcher"><button id="prev" aria-label="Föregående">‹</button><span id="label"></span><button id="next" aria-label="Nästa">›</button></div>
+<script>
+// ---- silhuetterna, från Die.tsx ----
+const r2 = (n) => Math.round(n * 100) / 100
+const ngon = (k, r, cx = 50, cy = 50) => Array.from({ length: k }, (_, i) => { const a = ((-90 + (360 / k) * i) * Math.PI) / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)] })
+const pts = (ps) => ps.map((p) => `${r2(p[0])},${r2(p[1])}`).join(' ')
+const E = 'stroke="#b9ad97" stroke-width="2" stroke-linejoin="round"'
+function shape(f) {
+  if (f === 4) return { o: `<polygon points="${pts(ngon(3, 50, 50, 58))}" fill="var(--die)" ${E}/>`, top: 66, size: 40 }
+  if (f === 6) return { o: `<rect x="8" y="8" width="84" height="84" rx="12" fill="var(--die)" ${E}/>`, top: 51, size: 56 }
+  if (f === 8) return { o: `<polygon points="${pts(ngon(6, 50))}" fill="var(--side)" ${E}/><polygon points="${pts(ngon(3, 50))}" fill="var(--die)" ${E}/>`, top: 58, size: 40 }
+  if (f === 10) return { o: `<polygon points="50,2 92,46 50,98 8,46" fill="var(--side)" ${E}/><polygon points="50,14 80,48 50,70 20,48" fill="var(--die)" ${E}/>`, top: 47, size: 38 }
+  if (f === 12) return { o: `<polygon points="${pts(ngon(10, 50))}" fill="var(--side)" ${E}/><polygon points="${pts(ngon(5, 34))}" fill="var(--die)" ${E}/>`, top: 53, size: 42 }
+  const rim = ngon(6, 50), face = ngon(3, 40, 50, 56)
+  const lines = rim.map((p, i) => { const to = face[Math.floor(((i + 1) % 6) / 2)]; return `<line x1="${r2(p[0])}" y1="${r2(p[1])}" x2="${r2(to[0])}" y2="${r2(to[1])}" stroke="#b9ad97" stroke-width="1.5"/>` }).join('')
+  return { o: `<polygon points="${pts(rim)}" fill="var(--side)" ${E}/>${lines}<polygon points="${pts(face)}" fill="var(--die)" ${E}/>`, top: 58, size: 42, two: { top: 61.5, size: 32 } }
+}
+function face(f, v) {
+  const s = shape(f), t = String(v)
+  const set = t.length > 1 ? (s.two ?? { top: s.top, size: s.size * 0.85 }) : s
+  return `<svg viewBox="0 0 100 100">${s.o}<text x="50" y="${set.top}" font-size="${set.size}">${t}</text></svg>`
+}
+
+// ---- ljud: syntetiserade knackar, inget att ladda ----
+let ac = null
+function knock(gain = 0.5, pitch = 1) {
+  if (!document.getElementById('sound').checked) return
+  ac ??= new AudioContext()
+  const n = ac.createBuffer(1, ac.sampleRate * 0.05, ac.sampleRate), d = n.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4)
+  const src = ac.createBufferSource(); src.buffer = n
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800 * pitch; bp.Q.value = 1.4
+  const g = ac.createGain(); g.gain.value = gain
+  src.connect(bp).connect(g).connect(ac.destination); src.start()
+}
+
+// ---- tid ----
+const slow = () => (document.getElementById('slow').checked ? 4 : 1)
+const wait = (ms) => new Promise((r) => setTimeout(r, ms * slow()))
+const rnd = (a, b) => a + Math.random() * (b - a)
+const sign = () => (Math.random() < 0.5 ? -1 : 1)
+function anim(el, frames, ms, easing = 'linear') { return el.animate(frames, { duration: ms * slow(), easing, fill: 'forwards' }).finished }
+// Siffror som hoppar i givna intervall och stannar på värdet innan rörelsen gör det.
+async function jump(d, gaps) { for (const g of gaps) { d.show(1 + Math.floor(Math.random() * d.faces)); await wait(g) } }
+
+// ---- varianterna ----
+const V = [
+  { key: 'A', name: 'A — I dag', ms: 700,
+    note: `<h2>A — I dag (K28)</h2>Snurrar ett varv på stället, sväller till 1,15 och tillbaka, siffran hoppar var 70:e ms i 0,6 s. Rörelsen är jämn, och slutet är tyst: siffran bara står där.`,
+    async roll(d, v) {
+      const p = anim(d.body, [{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(200deg) scale(1.15)', offset: 0.45 }, { transform: 'rotate(340deg) scale(0.95)', offset: 0.8 }, { transform: 'rotate(360deg) scale(1)' }], 700, 'cubic-bezier(0.3, 0.7, 0.4, 1)')
+      await jump(d, Array(9).fill(70)); d.show(v); await p
+    } },
+  { key: 'B', name: 'B — Smällen', ms: 480,
+    note: `<h2>B — Smällen (480 ms)</h2>Tärningen dras ihop ett ögonblick (laddning, 60 ms), skjuter upp till 1,3 med ett och ett halvt varvs snabbsnurr som bromsar hårt, och smäller ned: tryckt platt, en chockvåg i filtens krita och filten runt omkring rycker till ett par pixlar. Siffran byts fyra gånger i snurret och står klar vid smällen. Kraften sitter i kontrasten mellan laddningen och nedslaget.`,
+    async roll(d, v) {
+      const s = sign()
+      anim(d.shadow, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.1)', opacity: 1, offset: 0.12 }, { transform: 'scale(0.55)', opacity: 0.3, offset: 0.55 }, { transform: 'scale(1.3)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], 480)
+      const p = anim(d.body, [
+        { transform: 'rotate(0) scale(1)', easing: 'ease-in' },
+        { transform: `rotate(${-s * 12}deg) scale(0.86)`, offset: 0.12, easing: 'cubic-bezier(0.1, 0.9, 0.3, 1)' },
+        { transform: `rotate(${s * 500}deg) scale(1.3)`, offset: 0.55, easing: 'cubic-bezier(0.7, 0, 1, 0.6)' },
+        { transform: `rotate(${s * 540}deg) scale(1.12, 0.84)`, offset: 0.7, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1.4)' },
+        { transform: `rotate(${s * 540}deg) scale(1)` },
+      ], 480)
+      await wait(60); await jump(d, [65, 65, 65, 70])
+      d.show(v); knock(0.8, 0.7)
+      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="none" stroke="#f3e9d6" stroke-width="4"/></svg>`
+      anim(d.fx.firstChild, [{ transform: 'scale(0.8)', opacity: 0.9, strokeWidth: 4 }, { transform: 'scale(1.7)', opacity: 0 }], 360, 'cubic-bezier(0.1, 0.8, 0.3, 1)')
+      const felt = d.el.closest('.zone') ?? d.el.parentElement
+      felt.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(0,3px)' }, { transform: 'translate(0,-2px)' }, { transform: 'translate(0,1px)' }, { transform: 'none' }], { duration: 140 * slow() })
+      await p; d.body.getAnimations().forEach((a) => a.cancel()); d.shadow.getAnimations().forEach((a) => a.cancel())
+    } },
+  { key: 'C', name: 'C — Utbrottet', ms: 520,
+    note: `<h2>C — Utbrottet (520 ms)</h2>Ett kort ryck på stället i stället för ett varv (skakas i handen, 220 ms, siffrorna flimrar), sedan stannar tärningen tvärt och värdet slås fram: siffran slår upp i 1,6 och sjunker på plats medan gnistor i platsens färg skjuts ut runt tärningen och toppytan blixtrar. Rörelsen är liten; effekten sitter i resultatet, där ögat ska vara.`,
+    async roll(d, v) {
+      const p = anim(d.body, [
+        { transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(-6%,2%) rotate(-14deg)' }, { transform: 'translate(5%,-3%) rotate(11deg)' },
+        { transform: 'translate(-4%,-2%) rotate(-9deg)' }, { transform: 'translate(3%,3%) rotate(7deg)' }, { transform: 'translate(0,0) rotate(0)', offset: 0.42 },
+        { transform: 'scale(1.18)', offset: 0.5, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1.3)' }, { transform: 'scale(1)' },
+      ], 520)
+      for (let i = 0; i < 5; i++) { d.show(1 + Math.floor(Math.random() * d.faces)); knock(0.15, 1.4 + Math.random() * 0.4); await wait(44) }
+      d.show(v); knock(0.7, 0.9)
+      const t = d.body.querySelector('text'); t.style.transformBox = 'fill-box'; t.style.transformOrigin = 'center'
+      anim(t, [{ transform: 'scale(1.6)' }, { transform: 'scale(0.92)', offset: 0.55 }, { transform: 'scale(1)' }], 280, 'ease-out')
+      const sparks = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2 + Math.random() * 0.3; return `<circle cx="50" cy="50" r="2.6" fill="var(--seat)" style="--x:${r2(Math.cos(a) * rnd(30, 44))}px;--y:${r2(Math.sin(a) * rnd(30, 44))}px"/>` }).join('')
+      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle class="flash" cx="50" cy="50" r="30" fill="var(--seat)"/>${sparks}</svg>`
+      anim(d.fx.querySelector('.flash'), [{ opacity: 0.7, transform: 'scale(0.8)' }, { opacity: 0, transform: 'scale(1.3)' }], 300, 'ease-out')
+      d.fx.querySelectorAll('circle:not(.flash)').forEach((c) => { c.style.transformBox = 'fill-box'; anim(c, [{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: 'translate(var(--x), var(--y)) scale(0.3)', opacity: 0 }], rnd(260, 360), 'cubic-bezier(0.1, 0.8, 0.3, 1)') })
+      await p; d.body.getAnimations().forEach((a) => a.cancel())
+    } },
+  { key: 'D', name: 'D — Piskan', ms: 450,
+    note: `<h2>D — Piskan (450 ms)</h2>Två varv på 0,3 s med en hård inbromsning, och efterbilder som släpar efter i snurret (rörelseoskärpa), så att farten syns fast den är kort. Tärningen stannar tvärt med ett litet bakslag och en ring i platsens färg som drar ihop sig om den, som när en snurra fångas. Det snabbaste av alla, och mest «spelautomat».`,
+    async roll(d, v) {
+      const s = sign(), ghosts = 3
+      const frames = (lag) => [{ transform: 'rotate(0) scale(1.15)' }, { transform: `rotate(${s * (720 - lag * 28)}deg) scale(1)` }]
+      d.fx.innerHTML = Array.from({ length: ghosts }, () => `<div style="position:absolute;inset:18.75%;opacity:0">${d.body.innerHTML}</div>`).join('')
+      ;[...d.fx.children].forEach((g, i) => g.animate([{ opacity: 0.35 - i * 0.09 }, { opacity: 0.35 - i * 0.09, offset: 0.55 }, { opacity: 0 }], { duration: 320 * slow(), fill: 'forwards' }) && anim(g, frames(i + 1), 320, 'cubic-bezier(0.05, 0.75, 0.25, 1)'))
+      const p = anim(d.body, [
+        { transform: 'rotate(0) scale(1)', easing: 'ease-out' }, { transform: 'scale(1.15)', offset: 0.08, easing: 'cubic-bezier(0.05, 0.75, 0.25, 1)' },
+        { transform: `rotate(${s * 728}deg) scale(1)`, offset: 0.72, easing: 'ease-in-out' }, { transform: `rotate(${s * 720}deg) scale(1)` },
+      ], 450)
+      await jump(d, [40, 45, 55, 70, 90]); d.show(v); knock(0.7, 1.2)
+      d.fx.insertAdjacentHTML('beforeend', `<svg viewBox="0 0 100 100" style="position:absolute;inset:0"><circle cx="50" cy="50" r="40" fill="none" stroke="var(--seat)" stroke-width="5"/></svg>`)
+      anim(d.fx.lastChild, [{ transform: 'scale(1.5)', opacity: 0 }, { transform: 'scale(1)', opacity: 1, offset: 0.5 }, { transform: 'scale(0.95)', opacity: 0 }], 300, 'ease-out')
+      await p; d.body.getAnimations().forEach((a) => a.cancel())
+    } },
+]
+
+// ---- tärningarna ----
+const dice = []
+function make(faces, parent) {
+  const el = document.createElement('div'); el.className = 'die'
+  el.innerHTML = `<div class="shadow"></div><div class="body"></div><div class="fx"></div>`
+  const d = { faces, value: 1, busy: false, el, body: el.children[1], shadow: el.children[0], fx: el.children[2], show(n) { this.body.innerHTML = face(faces, n) } }
+  d.show(1); el.title = `d${faces}`
+  el.onclick = () => roll([d])
+  parent.appendChild(el); dice.push(d); return d
+}
+const singles = document.getElementById('singles')
+for (const f of [4, 6, 8, 10, 12, 20]) make(f, singles)
+const pair = [make(6, document.getElementById('zone')), make(6, document.getElementById('zone'))]
+
+let variant = V.find((x) => x.key === new URLSearchParams(location.search).get('variant')) ?? V[1]
+async function roll(ds) {
+  ds = ds.filter((d) => !d.busy)
+  if (!ds.length) return
+  const values = ds.map((d) => 1 + Math.floor(Math.random() * d.faces)) // servern avgör, före rörelsen
+  ds.forEach((d) => (d.busy = true))
+  await Promise.all(ds.map((d, i) => wait(i * 60).then(() => variant.roll(d, values[i])).then(() => { d.value = values[i]; d.busy = false })))
+  const kind = ds.every((d) => d.faces === ds[0].faces) ? `${ds.length > 1 ? ds.length : ''}d${ds[0].faces}` : 'tärningarna'
+  document.getElementById('log').innerHTML = `<b>Ada</b> slog ${kind}: ${values.join(' + ')}${ds.length > 1 ? ` = ${values.reduce((a, b) => a + b, 0)}` : ''}`
+}
+document.getElementById('all').onclick = () => roll(pair)
+document.getElementById('every').onclick = () => roll(dice)
+const size = () => document.documentElement.style.setProperty('--px', document.getElementById('big').checked ? '96px' : '34px')
+document.getElementById('big').onchange = size; size()
+
+function render() {
+  document.getElementById('label').textContent = `${variant.name} · ${variant.ms} ms`
+  document.getElementById('note').innerHTML = variant.note
+}
+function go(step) {
+  variant = V[(V.indexOf(variant) + step + V.length) % V.length]
+  const u = new URL(location.href); u.searchParams.set('variant', variant.key); history.replaceState(null, '', u)
+  render()
+}
+document.getElementById('prev').onclick = () => go(-1)
+document.getElementById('next').onclick = () => go(1)
+addEventListener('keydown', (e) => { if (e.target.matches('input, textarea, [contenteditable]')) return; if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1) })
+render()
+</script>
+</body>
+</html>

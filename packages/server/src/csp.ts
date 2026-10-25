@@ -57,6 +57,12 @@ export function pageNonce(): string {
   return randomBytes(16).toString('base64')
 }
 
+// Whose page a request came from, as far as the page says (#1278, DRIFT §14): the origin, and never
+// the path or the query. The address of a phone's page is the table and the seat; what it sends on
+// to the box, the object store or Google's fonts need not name either. `strict-origin` also sends
+// nothing at all from https to http.
+export const REFERRER_POLICY = 'strict-origin'
+
 // For the bytes a creator uploaded, served from this origin when there is no object store
 // (DRIFT §4): an SVG opened on its own address is a document, and nothing in it may run here.
 export const UPLOAD_POLICY = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox"

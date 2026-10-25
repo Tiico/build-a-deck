@@ -471,6 +471,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     onNavigate(url)
   }
   const goHome = () => goTo(home)
+  // The print package's page (#1208): of the game as it is saved, so unsaved work is asked about
+  // first, as any way out of the editor is; and it leads back here.
+  const printPackage = (() => {
+    const q = new URLSearchParams({ project: projectId ?? '', from: 'editor' })
+    const server = params.get('server')
+    if (server) q.set('server', server)
+    return `/print-package?${q.toString()}`
+  })()
   // The way out is asked about wherever it starts: «Mina spel» in the header, or the profile from
   // the AI panel (#1001). The question stands where it always stands, and staying hands the keys back
   // to whatever was pressed.
@@ -641,6 +649,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // One check mended across the whole deck (#233). Every patch carries the same gesture, so
         // the edits land as one version and one step back: a designer who presses this once and
         // changes her mind presses undo once.
+        {...(client.mayEdit ? { printPackage: { href: printPackage, onGo: (from: HTMLElement) => leave(printPackage, from) } } : {})}
         onFixChecks={(fixes) => {
           const gesture = `fix-check-${Date.now()}`
           for (const fix of fixes) client?.patchElement(fix.face, fix.element, fix.patch, undefined, gesture)
@@ -853,6 +862,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             onSaid={confirmation.confirm}
             onFailed={say}
             {...(client.mayDelete ? { onRemove: () => setRemoving('asking') } : {})}
+            onPrintPackage={() => leave(printPackage, moreRef.current)}
           />
         )}
         {/* The revision is also the way into the history (B4): the version is already named here. */}

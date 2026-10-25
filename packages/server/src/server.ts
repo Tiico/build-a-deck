@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, sniffAsset, type Applied, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -23,13 +23,14 @@ import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from
 import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
-import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
+import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, splitFragment, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { inviteMail } from './invite-mail.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
-import { widestBleedMm, type PrintProvider } from '@byd/print'
+import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
+import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, assetHash, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
@@ -38,7 +39,7 @@ import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
-import { UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
+import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, ownerNameOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
@@ -338,7 +339,9 @@ export function createServer(given: ServerOptions): Server {
     })
     void route(opts, req, res)
   })
-  const wss = new WebSocketServer({ noServer: true })
+  // A client that offers the table's protocol is answered with it (#1278): one that offers protocols
+  // and hears none back is hung up on by the browser. The token beside it is read at the door.
+  const wss = new WebSocketServer({ noServer: true, handleProtocols: (offered) => (offered.has(TABLE_PROTOCOL) ? TABLE_PROTOCOL : false) })
 
   http.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
@@ -357,13 +360,17 @@ export function createServer(given: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const q = url.searchParams
+    // The token rides in the protocol header (#1278); an address with one is a page loaded before
+    // that, which still gets in.
+    const carried = tokenOfProtocols(req.headers['sec-websocket-protocol'])
     const ask: Admission = {
       seat: q.get('seat'),
       role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null,
       name: q.get('name'),
-      token: q.get('token'),
+      token: carried ?? q.get('token'),
       host: q.get('host'),
       owner: q.get('owner') === '1',
+      carried: carried !== null,
     }
     wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, req, ws, sessionId, ask))
   })
@@ -734,7 +741,10 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
   // The page's policy goes with the page (#1008, DRIFT §14), its inline scripts allowed by the
   // hashes of the file being sent, and the edge's by a nonce made for this response (#1043).
-  if (type.startsWith('text/html')) head['content-security-policy'] = policy(await scriptHashesOf(file))
+  if (type.startsWith('text/html')) {
+    head['content-security-policy'] = policy(await scriptHashesOf(file))
+    head['referrer-policy'] = REFERRER_POLICY
+  }
   // The box compresses what it serves (DRIFT §13, #372): the blocking stylesheet uncompressed is
   // the single largest item in the first painting's price. `Vary` goes on everything that *could*
   // have been compressed rather than on what was, because a cache between here and the browser
@@ -778,11 +788,12 @@ async function fileAt(path: string): Promise<string | null> {
 }
 
 // What a connection asks to be (DRIFT §9), from its query string.
-type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean }
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; carried: boolean }
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
 // `host` marks the project owner's own seat or watch (L77): not the table's screen, but hers.
-type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true }
+// `guest` is the name on the admission a token bought, for the connection to be told (#1278).
+type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; guest?: string }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
@@ -815,8 +826,8 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
     : null
-  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name } : { refused: 'an observer needs a token' }
-  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
+  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, guest: live.name } : { refused: 'an observer needs a token' }
+  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, guest: live.name } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
 }
 
@@ -1031,6 +1042,8 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
     return
   }
   const seat = who.seat
+  // Told before the snapshot, so the page has its name by the time it sees the seat it sits down in.
+  if (ask.carried && who.guest !== undefined) send({ t: 'admitted', name: who.guest })
   // The door shuts once this turn's answers have gone out. A seat that asks for its own way out
   // (#31) is emptied as part of that very commit, and is still owed the ack for it; `ws.close`
   // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro
@@ -1218,15 +1231,27 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
 // own requirements, and the rulebook beside them in our A5 (no partner's booklet format is built).
 // A version the physical checks stop at this provider's bleed (E5) has no card files, as its export
 // has none (G5, #1208); the order is still prepared, so what would be sent can be shown.
-async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, provider: PrintProvider, lang: ReturnType<typeof langOf>) {
+//
+// Which provider is the caller's question: one asked for by name, or the one an order to an address
+// would be routed to (F2, #1208), which is how the page asks, so what it shows is what the routing
+// would choose. No provider is a reason, never a quiet choice of another.
+async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, choose: (manifest: PrintManifest) => Route, lang: ReturnType<typeof langOf>) {
+  const deck = await deckOf(opts, rec)
+  const manifest = printManifestOf(deck, setupFromProject(rec), opts.registry)
+  const route = choose(manifest)
+  if (route.kind === 'none') return { refused: route.reason }
+  const provider = route.provider
   const found = checkedCards(rec, opts, provider)
   const errors = found.filter((f) => f.severity === 'error')
   const warnings = found.filter((f) => f.severity === 'warning')
-  const deck = await deckOf(opts, rec)
-  const order = provider.prepare(printManifestOf(deck, setupFromProject(rec), opts.registry))
+  const order = provider.prepare(manifest)
   const files: PrintFileJob[] = errors.length === 0 ? printFileJobsOf(deck, opts.registry, order, clock(opts).getTime()) : []
   const rulebook: PrintFileJob | undefined = rec.rules ? { name: PACKAGE_RULEBOOK, job: await bookletJobOf(opts, rec, rec.rules, lang) } : undefined
-  return { order, files, rulebook, errors, warnings }
+  // What the provider asks of each kind of thing in the order, in the order's own order: the
+  // requirements the files are made after, which the page says in words.
+  const types = [...new Map([...order.cards, ...order.hardware].map((c) => [`${c.type.id}@${c.type.version}`, c.type])).values()]
+  const requirements = types.map((type) => provider.requirements(type))
+  return { provider, manifest, order, requirements, files, rulebook, errors, warnings }
 }
 const PACKAGE_RULEBOOK = 'regelhafte.pdf'
 
@@ -2018,11 +2043,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
     return true
   }
-  // The print package for one provider (#1207, the page is #1208): GET says what the provider would
+  // The print package (#1207, the page and the download are #1208): GET says what the provider would
   // be sent and how far its files have come, and asks for any not yet drawn; `files/<name>` hands
-  // one over once it is. Nothing is held between the calls: both work it out of the document and
-  // the render store, as the export does. The owner's and the co-editors', whose work it is.
-  const packaging = /^\/projects\/([^/]+)\/print-package(?:\/files\/([^/]+))?$/.exec(url.pathname)
+  // one over once it is, and `zip` hands over the whole package once every file is. Nothing is held
+  // between the calls: each works it out of the document and the render store, as the export does.
+  // The owner's and the co-editors', whose work it is.
+  //
+  // The provider is named (`provider=<id>`), or it is the one an order to an address would be routed
+  // to (`to=<country>`, F2), which is how the page asks; then the provider's quote for that address
+  // comes with it, and an address no provider may print for says why (409, «no EU print»).
+  const packaging = /^\/projects\/([^/]+)\/print-package(?:\/files\/([^/]+)|\/(zip))?$/.exec(url.pathname)
   if (packaging && req.method === 'GET') {
     const gate = await allowed(decodeURIComponent(packaging[1] ?? ''), canEdit)
     if (!('rec' in gate)) {
@@ -2033,13 +2063,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 503, { error: 'render queue unavailable' })
       return true
     }
-    const provider = (opts.printProviders ?? []).find((p) => p.id === url.searchParams.get('provider'))
-    if (!provider) {
+    const providers = opts.printProviders ?? []
+    const named = url.searchParams.get('provider')
+    const to = url.searchParams.get('to')
+    const country = to === null ? null : Country.safeParse(to)
+    if (country && !country.success) {
+      json(res, 400, { error: 'to is a country code' })
+      return true
+    }
+    const provider = named === null ? undefined : providers.find((p) => p.id === named)
+    const dest = country?.success ? { country: country.data } : null
+    const choose = provider ? (): Route => ({ kind: 'routed', provider }) : named === null && dest ? (manifest: PrintManifest) => routeOrder(providers, manifest, dest) : null
+    if (!choose) {
       json(res, 404, { error: 'no such print provider' })
       return true
     }
     const rec = gate.rec
-    const pkg = await printPackageOf(opts, rec, provider, langOf(url.searchParams.get('lang')))
+    const lang = langOf(url.searchParams.get('lang'))
+    const pkg = await printPackageOf(opts, rec, choose, lang)
+    if ('refused' in pkg) {
+      json(res, 409, { error: pkg.refused })
+      return true
+    }
     const all = pkg.rulebook ? [...pkg.files, pkg.rulebook] : pkg.files
     if (packaging[2] !== undefined) {
       const name = decodeURIComponent(packaging[2])
@@ -2070,18 +2115,60 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     for (const file of pkg.files) files.push(await stateOf(file))
     const rulebook = pkg.rulebook ? await stateOf(pkg.rulebook) : null
     const states = rulebook ? [...files, rulebook] : files
+    const total = states.length
+    const done = states.filter((f) => f.state === 'done').length
+    const failed = states.filter((f) => f.state === 'failed').map((f) => f.name)
+    const providerFacts = { id: pkg.provider.id, label: pkg.provider.label, manufacturesIn: pkg.provider.manufacturesIn }
+    if (packaging[3] !== undefined) {
+      // The zip waits for every file, as the export does; a file the renderer gave up on is named in
+      // the manifest rather than holding the package back for ever.
+      if (done + failed.length < total) {
+        json(res, 202, { project: rec.id, rev: rec.rev, total, done, failed: failed.length })
+        return true
+      }
+      const contents = new Map<string, Uint8Array>()
+      for (const { name, job } of all) {
+        const bytes = await renders.output(job.hash)
+        if (bytes) contents.set(printPathOf(name), bytes)
+      }
+      const manifest: PrintPackageManifest = {
+        format: PRINT_PACKAGE_FORMAT,
+        formatVersion: PRINT_PACKAGE_FORMAT_VERSION,
+        createdAt: clock(opts).toISOString(),
+        ...(opts.release ? { release: opts.release } : {}),
+        project: { id: rec.id, name: rec.name },
+        rev: rec.rev,
+        provider: providerFacts,
+        requirements: pkg.requirements,
+        order: pkg.order,
+        files: pkg.files.map((f) => printPathOf(f.name)).filter((path) => contents.has(path)),
+        rulebook: pkg.rulebook && contents.has(printPathOf(pkg.rulebook.name)) ? printPathOf(pkg.rulebook.name) : null,
+        errors: pkg.errors,
+        warnings: pkg.warnings,
+        failed,
+        credits: creditsOf(rec),
+      }
+      const zip = packPrintPackage({ manifest, readme: printPackageReadme(lang, manifest), files: contents })
+      res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': printPackageDisposition(rec.name, rec.rev, lang), 'cache-control': 'no-store' })
+      res.end(zip)
+      return true
+    }
     json(res, 200, {
       project: rec.id,
       rev: rec.rev,
-      provider: { id: provider.id, label: provider.label, manufacturesIn: provider.manufacturesIn },
+      provider: providerFacts,
+      requirements: pkg.requirements,
+      // What the provider would answer for one copy sent to the address (F3), made up by a fake and
+      // marked so (`basis`); only when the package was asked for an address.
+      ...(dest && !provider ? { to: dest.country, quote: await pkg.provider.quote(pkg.manifest, dest) } : {}),
       order: pkg.order,
       files,
       rulebook,
       errors: pkg.errors,
       warnings: pkg.warnings,
-      total: states.length,
-      done: states.filter((f) => f.state === 'done').length,
-      failed: states.filter((f) => f.state === 'failed').length,
+      total,
+      done,
+      failed: failed.length,
     })
     return true
   }
@@ -2555,7 +2642,11 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     await auth.issueToken(hash(t), email, new Date(Date.now() + TOKEN_TTL_MS).toISOString())
     // The link must come back to this API, where the cookie lives: never the page's origin.
     const base = opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`
-    const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
+    // A fragment on `next` — the claim's, which holds a guest's token (#1278) — becomes the link's
+    // own: it is in the mail, never in the request the link makes, and the browser keeps it through
+    // the redirect below, which names no fragment of its own (RFC 9110 §10.2.2).
+    const [path, fragment] = splitFragment(safeNext(parsed.data.next))
+    const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(path)}${fragment}`
     await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang), opts.contact))
     return json(res, 200, { ok: true })
   }
@@ -2565,7 +2656,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     if (!email) return json(res, 400, { error: 'the link is spent or too old; ask for a new one' })
     res.writeHead(302, {
       'set-cookie': await createLoginSession(opts, auth, email),
-      location: `${opts.appOrigin ?? ''}${safeNext(url.searchParams.get('next') ?? undefined)}`,
+      location: `${opts.appOrigin ?? ''}${splitFragment(safeNext(url.searchParams.get('next') ?? undefined))[0]}`,
     })
     res.end()
     return

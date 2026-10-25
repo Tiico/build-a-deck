@@ -240,10 +240,14 @@ describe('the tables the account sat at (G1)', () => {
     await waitFor(() => expect(gone).toHaveLength(1))
     const to = new URL(gone[0]!, 'http://app.invalid')
     expect(to.pathname).toBe('/play')
-    expect(Object.fromEntries(to.searchParams)).toMatchObject({ session: id, seat: 'A', name: 'Ada', code: roomOf(id).code, server: run.http.replace(/^http/, 'ws') })
+    expect(Object.fromEntries(to.searchParams)).toMatchObject({ session: id, seat: 'A', code: roomOf(id).code, server: run.http.replace(/^http/, 'ws') })
+    // Her name in no address, and the token in the fragment (#1278).
+    expect([...to.searchParams.keys()]).not.toContain('name')
+    expect([...to.searchParams.keys()]).not.toContain('token')
     // A token of its own: the server keeps only a hash, so the seat is handed a new one.
-    expect(to.searchParams.get('token')).toBeTruthy()
-    expect(to.searchParams.get('token')).not.toBe(token)
+    const handed = new URLSearchParams(to.hash.slice(1)).get('token')
+    expect(handed).toBeTruthy()
+    expect(handed).not.toBe(token)
   })
 
   // The survey from Mina spel (#1143, variant B): a table that is over has no way in, so the tile
@@ -908,8 +912,8 @@ describe('the game menu follows the role (D3, #689)', () => {
   }
 
   it.each([
-    ['owner', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…', 'Ta bort spelet']],
-    ['editor', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…']],
+    ['owner', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…', 'Tryckpaketet…', 'Ta bort spelet']],
+    ['editor', ['Starta bord', 'Byt namn…', 'Duplicera', 'Exportera…', 'Tryckpaketet…']],
     ['tester', ['Starta bord']],
     ['viewer', []],
   ] as const)('offers the %s only what the role may do', async (role, offered) => {

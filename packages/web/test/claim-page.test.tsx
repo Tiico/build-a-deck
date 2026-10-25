@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ClaimPage } from '../src/account/ClaimPage.js'
 import { admit, createSession, startServer, type Running } from './fixture.js'
 
@@ -37,11 +37,43 @@ describe('ClaimPage', () => {
     const id = await createSession(run)
     const token = await admit(run, id, 'A', 'Ada')
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    // The token is in the claim's fragment (#1278), and goes back to the phone in its fragment too.
+    const play = `/play?session=${id}&seat=A`
+    history.replaceState(null, '', `/claim?${new URLSearchParams({ next: play, server: run.http }).toString()}#token=${token}`)
+    const gone: string[] = []
+    render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
+    await waitFor(() => expect(gone.at(-1)).toBe(`${play}&saved=1#token=${token}`))
+  })
+
+  // The login card's way back is this very page (#1278). With the token in the fragment, that is
+  // the address the page already stands on, and a browser that is sent there does not load it again:
+  // the page has to ask who is here itself, and claim.
+  it('claims once the card on the page has logged in, without leaving the page', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    const play = `/play?session=${id}&seat=A`
+    history.replaceState(null, '', `/claim?${new URLSearchParams({ next: play, server: run.http }).toString()}#token=${token}`)
+    const here = location.pathname + location.search + location.hash
+    const gone: string[] = []
+    render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
+    fireEvent.change(await screen.findByLabelText('E-post'), { target: { value: 'bo@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka inloggningslänk' }))
+    await waitFor(() => expect(gone.at(-1)).toBe(`${play}&saved=1#token=${token}`))
+    expect(gone).not.toContain(here)
+  })
+
+  // A claim link handed out before #1278 carried the token in its query twice: its own, and the
+  // phone's in `next`. It still claims, and goes back to the phone in the new form.
+  it('still claims from an old link, and goes back with the token in the fragment', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
     const play = `/play?session=${id}&seat=A&name=Ada&token=${token}`
     history.replaceState(null, '', `/claim?${new URLSearchParams({ token, next: play, server: run.http }).toString()}`)
     const gone: string[] = []
     render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
-    await waitFor(() => expect(gone.at(-1)).toBe(`${play}&saved=1`))
+    expect(location.search).not.toContain(token)
+    await waitFor(() => expect(gone.at(-1)).toBe(`/play?session=${id}&seat=A&saved=1#token=${token}`))
   })
 
   it('never goes back to another site', async () => {

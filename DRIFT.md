@@ -372,6 +372,24 @@ Byggt 2026-10-23 (#1194): den råa dörren kräver konto.
 Med konton påslagna, vilket lådan alltid har, svarar den 401 utan inloggat konto och skriver ingenting, och med en kaka bärs bordet av det kontot.
 Webben startar bord genom `POST /projects/:id/sessions`, som redan krävde en roll i spelet; den råa dörren används bara av E2E-sviten och `seed`-skriptet, som loggar in med `AUTH_BYPASS` först.
 
+Byggt 2026-10-25 (#1278): gästens namn och token står i ingen adress.
+Förut var platsen `/play?session=…&seat=…&name=…&token=…`, och claim-länken bar token vidare.
+Hennes namn och hennes bärartoken stod då i historiken, i varje omladdning till lådan och som `Referer` på varje anrop, alltså i proxyns och Cloudflares loggar om de loggar adresser.
+Nu står bordet, platsen och rumskoden i frågan, och token i fragmentet (`#token=…`), som webbläsaren aldrig skickar i ett anrop eller en `Referer`.
+Det gäller `/play`, `/online`, `/observe` och `/claim` (`packages/web/src/guestAddress.ts`).
+Rumskoden står kvar i frågan: den är det adressen är till för (K12).
+Namnet står ingenstans: servern säger anslutningen namnet på inträdet dess token köptes för, i meddelandet `admitted`, och telefonen sätter sig med det.
+Ägarens egen plats och tittarplats från editorn (`owner=1`) har inget inträde och bär fortfarande sitt namn i adressen; det är designerns namn, inte en gästs.
+Bordets WebSocket tar token i `Sec-WebSocket-Protocol` och inte i adressen, eftersom uppgraderingen också är ett anrop som en proxy loggar: klienten erbjuder protokollen `deckster` och `deckster.token.<token>`, och servern svarar med `deckster`.
+En sida som laddades före ändringen ansluter med `?token=` och släpps fortfarande in, men får inte `admitted`, som dess klient inte känner till.
+Inloggningen bär fragmentet vidare: `loginUrl` lägger en `next`s fragment som inloggningssidans eget fragment, sidan lämnar det till kortet, och servern lägger det efter länken i inloggningsmejlet och aldrig i dess fråga.
+Webbläsaren behåller fragmentet genom omdirigeringen från `/auth/verify`, som inte anger något eget (RFC 9110 §10.2.2).
+Token står därmed i mejlet, som förut, men aldrig i ett anrop.
+En gammal länk med `?token=` eller `?name=` fungerar fortfarande: sidan flyttar token till fragmentet, tar bort namnet, gör detsamma med sidan en gammal claim-länk går tillbaka till, och ersätter historikposten med `history.replaceState`, så att den gamla formen inte blir kvar.
+Själva den gamla adressen har redan nått lådan när den öppnas; det går inte att göra ogjort, bara att den inte skickas igen.
+`packages/e2e/test/guest-address.spec.ts` läser varje anrops adress och `Referer` och varje WebSockets adress genom en plats resa (ansluta, sätta sig, ladda om, spela, enkäten, «Spara till ditt konto», logga in) och en observatörs, och hittar varken namnet eller token, sedan den visat att sökningen hittar namnet i bordets egna ramar.
+Värdnyckeln i bordsvyns WebSocket-adress (`?host=`) är inte en gästs och ligger utanför detta; den är ute ur adressraden sedan #758.
+
 Byggt 2026-10-25 (#1277, DESIGN-BESLUT G6): ett inträde som aldrig öppnades rensas av sveparen när dess två minuter gått, med namnet det köptes under; ett öppnat, ett sparkat och ett claimat inträde står kvar, eftersom de är bordets historik, och tas bara av raderingen (#1279).
 
 ## 10. Administration: Tailscale
@@ -538,6 +556,12 @@ Det sviten hittade när policyn slogs på, och vad som gjordes:
 - «Öppna häftet» (#678) frågade om häftet var klart genom att följa omdirigeringen till R2, som svarar utan CORS, så länken kom aldrig på lådan.
   Det var inget policyfel utan ett produktionsfel som syntes först när stacken fick ett objektlager; nu räcker omdirigeringen själv som svar.
 - Två specar hämtade sina egna data-URL:er eller spelade R2 med en påhittad adress; de läser nu sina bytes utan att ansluta, och använder stackens objektlager.
+
+Byggt 2026-10-25 (#1278): varje HTML-svar bär också `Referrer-Policy: strict-origin` (`REFERRER_POLICY` i `csp.ts`), satt på samma ställe som policyn.
+En sida säger då bara sitt origin som `Referer`, aldrig sökvägen eller frågan, till lådan, till objektlagrets signerade länkar och till Googles typsnitt, och ingenting alls från https till http.
+Bordets och platsens id i en telefons adress följer därmed inte med något anrop.
+Som policyn reser huvudet med bygget och vilar inte på proxyn; `packages/server/test/guest-address.test.ts` kräver det på sidorna och E2E-resan i `guest-address.spec.ts` läser det på svaret.
+Lådans middleware får gärna strama åt det (`no-referrer`) men inte lätta på det.
 
 Följdkrav:
 **Lådans egna middleware får inte skicka en andra CSP.**

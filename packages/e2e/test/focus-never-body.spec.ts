@@ -2,7 +2,7 @@ import type { ProjectDoc } from '@byd/server'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
 import type { Page } from '@playwright/test'
-import { join, tableOf as tableFromSetup } from '../support/api.js'
+import { join, tableOf as tableFromSetup, withQuery } from '../support/api.js'
 import { DESK, PHONE, TV } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -22,7 +22,7 @@ const active = (page: Page) =>
 // The phone opens in the browser's language, and Playwright's is English; the words read here are
 // the tool's Swedish ones.
 const inSwedish = async (page: Page) => {
-  await page.goto(`${page.url()}&lang=sv`)
+  await page.goto(withQuery(page.url(), 'lang=sv'))
   return page
 }
 
@@ -103,7 +103,7 @@ for (const route of ['online', 'table'] as const) {
   test(`/${route}: the address panel of an empty pile takes the focus and offers nothing it cannot do`, async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 6 })
     const url = route === 'online' ? (await join(request, table, { name: 'Ada', seat: 'A' })).onlineUrl : table.tableUrl
-    const { page } = await open(DESK, `${url}&lang=sv`)
+    const { page } = await open(DESK, withQuery(url, 'lang=sv'))
     const pile = page.locator('[data-kbd="pile:discard"]')
     await expect(pile).toHaveAttribute('aria-label', /, tom/)
     await pile.focus()

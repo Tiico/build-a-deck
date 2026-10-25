@@ -1,7 +1,7 @@
 import type { ProjectDoc } from '@byd/server'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { join, tableOf } from '../support/api.js'
+import { join, tableOf, withQuery } from '../support/api.js'
 import { SMALL_TV } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -30,7 +30,7 @@ test.describe('väntrummet på /online (L77)', () => {
     const table = await tableOf(request, setupFromProject(doc), deckFromProject(doc))
     const at = async (name: string, seat: string) => {
       const admitted = await join(request, table, { name, seat })
-      return open(SMALL_TV, `${admitted.onlineUrl}&code=${table.code}&lang=sv`, { facesReady: true })
+      return open(SMALL_TV, withQuery(admitted.onlineUrl, `code=${table.code}&lang=sv`), { facesReady: true })
     }
 
     const ada = await at('Ada', 'A')

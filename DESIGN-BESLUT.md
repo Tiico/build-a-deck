@@ -2017,6 +2017,13 @@ Reviderat 2026-10-23 (#1199, beställarens beslut): **i betan, innan någon rikt
 - Formen av avgiften beslutas med abonnemangen (A2).
 - Förhållandet till G5, vars export i dag bär tryck-PDF:er med utfall även på gratisnivån, avgörs i samma beslut; G5 ändras inte av det här.
 
+Byggt 2026-10-24 (#1208, beställarens beslut B efter [prototypen](https://github.com/Tiico/build-a-deck/blob/484cf3f48538f1895ae3041c21061b4aff19e003/docs/ux-audits/2026-10-23-tryckpaketet/README.md)): **tryckpaketet är en egen sida med en följesedel.**
+- `/print-package?project=<id>` nås ur spelets ⋯ i Mina spel och i editorn, «Tryckpaketet…» efter «Exportera…», och ur Fysisk kontroll, «Se tryckpaketet ›». Den visas för ägare och medredigerare, som exporten.
+- Sidan har fem numrerade delar: kniven, där kortet ritas som sin fil med utfall, snitt och skyddsmarginal av den enda renderaren och kniven går att pröva; leken med antal och tryckkontrollen; det som inte trycks; Testtryckeriets krav i ord; och zippens träd. Bredvid står följesedeln med antalen, kontrollen, exempelsvaret och nedladdningen.
+- Testtryckeriet är den enda provider servern registrerar i betan: en fake-provider som låtsas trycka i Sverige, inom EU (F2), och ställer exakt de krav kortets typ ställer, så att editorns kontroll, exporten och paketet mäter samma utfall. Sidan frågar efter paketet som en order till Sverige dirigeras, och svaret är stämplat «Exempel · inget riktigt pris», utan tull.
+- Nedladdningen är en zip med `LASMIG.md`, `manifest.json`, en PDF per kortsida under `tryck/` och regelhäftet. Hittar tryckkontrollen ett fel lämnas kortfilerna ute med exportens regel (G5), och sidan, manifestet och läsmig säger varför.
+- Lådans tryckbild och filer i CMYK finns inte, och sidan säger det. Läget «med partner» (#1209) är inte byggt; följesedeln är formad så att den kan bli kostnadsbeskedet (F3).
+
 ### F2. Adapterlager mot flera partner (fråga 11)
 
 Ett generellt stöd där nya tryckpartner läggs på som adaptrar utan att något annat ändras: en intern `PrintProvider`-abstraktion för komponenttyp till partnerns SKU, tryckunderlagskrav, prissättning, orderläggning och spårning.
@@ -4499,6 +4506,10 @@ Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysi
 Med den mindre toppytan måste «17» ritas en storlek mindre än alla andra tärningars siffror för att rymmas (#1170).
 `die-figure-fit.test.tsx` håller att varje värde ryms på sin toppyta, och att d20:ns tvåsiffriga värden är minst 0,85 av d12:ans höjd.
 Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
+*Reviderat 2026-10-25 (#1288, beställarens beslut D efter [prototyp](https://github.com/Tiico/build-a-deck/blob/c63a310ee7a4a72a7be7446d567fd18a48dd9c93/docs/ux-audits/2026-10-25-tarningsslaget/prototyper/index.html)):* slaget ska gå fort och ändå kännas, så tärningen piskas två varv på 0,45 s med en hård inbromsning och ett litet bakslag, med tre efterbilder av silhuetten som släpar efter i snurret.
+Siffrorna hoppar allt långsammare och står still de sista 0,15 s, och när tärningen stannar drar en ring i platsens färg ihop sig om den.
+Hållet den snurrar åt följer slagets nummer i loggen, så att bordet och TV:n snurrar likadant.
+Ett jämnt varv på 0,7 s, ett kast med studsar, ett snurr som bromsar in i 1,1 s, en vältning i 3D, en smäll med chockvåg och ett utbrott med gnistor prövades; de långa kändes sega och de korta utan kraft i resultatet.
 Med tangentbordet slår Enter eller Space en fokuserad tärning, och M öppnar «Flytta till» med filtens ytor, så att tangentbordet når det pekaren når (K16; beställarens beslut 2026-10-23, #1169).
 Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
 Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
