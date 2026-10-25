@@ -417,6 +417,7 @@ export const enAccount = {
   'profile.account.email': 'Email',
   'profile.account.note': 'You can always sign in with the link mailed to the address, even if you lose a passkey.',
   'profile.account.logout': 'Log out',
+  'welcome.tab': 'Welcome',
   'welcome.title': 'Welcome to Deckster',
   'welcome.as': 'You are signed in as {email}.',
   'welcome.field': 'What should others call you?',

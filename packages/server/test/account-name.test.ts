@@ -72,7 +72,7 @@ describe('the name over the wire (#1254)', () => {
 
   it('lands the first login on the welcome step, with where it was going beside it', async () => {
     const { location, cookie } = await follow('nicklas.ockelberg@example.com')
-    expect(location).toBe(`/welcome?next=${encodeURIComponent('/editor?project=p1')}`)
+    expect(location).toBe(`/login?step=name&next=${encodeURIComponent('/editor?project=p1')}`)
     expect(await (await call('GET', '/auth/me', undefined, cookie)).json()).toEqual({ email: 'nicklas.ockelberg@example.com', name: null, asked: false })
   })
 

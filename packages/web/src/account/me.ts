@@ -31,8 +31,8 @@ export async function saveName(http: string, name: string | null): Promise<{ nam
 export async function arrival(http: string, next: string): Promise<string> {
   const me = await myAccount(http).catch(() => null)
   if (!me || me.asked) return next
-  const q = new URLSearchParams({ next })
+  const q = new URLSearchParams({ step: 'name', next })
   const server = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('server')
   if (server) q.set('server', server)
-  return `/welcome?${q.toString()}`
+  return `/login?${q.toString()}`
 }

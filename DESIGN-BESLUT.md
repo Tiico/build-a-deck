@@ -8469,8 +8469,9 @@ Tre vägar till namnet prövades i [`docs/ux-audits/2026-10-24-visningsnamn/prot
 Agenten rekommenderade B.
 Beställaren valde **C**: alla nya konton har ett namn från start, och frågan ställs en gång.
 
-**Välkomststeget.** Efter länken, och efter en passkey-inloggning, går ett konto som inte har fått frågan till `/welcome?next=…`: «Välkommen till Deckster», adressen det är inloggat som, fältet «Vad ska andra kalla dig?» med förslaget ur adressen ifyllt, «Fortsätt» och «Hoppa över».
+**Välkomststeget.** Efter länken, och efter en passkey-inloggning, går ett konto som inte har fått frågan till `/login?step=name&next=…`, inloggningens eget steg i kortets form: «Välkommen till Deckster», adressen det är inloggat som, fältet «Vad ska andra kalla dig?» med förslaget ur adressen ifyllt, «Fortsätt» och «Hoppa över».
 Sedan går det dit länken var på väg, och steget ersätter sig självt i historiken.
+Steget har ingen egen adress, eftersom varje sökväg är en rad i ingången som telefonen också hämtar (#760), och nästa steg i samma kort (villkoren, #1272) läggs till som ett nytt `step`.
 Länkens väg bestämmer servern (`/auth/verify` skickar dit), och kortets egna inloggningar, passkeyn och utvecklingens genväg, frågar `/auth/me` innan de går vidare.
 
 **«Hoppa över» sparar inget namn, och frågan kommer inte tillbaka**, varken som steg eller som band.

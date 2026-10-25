@@ -4,7 +4,8 @@
 // designer herself, and it is never the address: a name the designer has not given is no name.
 //
 // Pure, so that the welcome step, the band on Mina spel and the profile's card say the same
-// suggestion and hold the same ceiling as the server that keeps it (`@byd/server/doc`).
+// suggestion and hold the same ceiling as the server that keeps it. The pages import it by a path of
+// its own (`@byd/server/account-name`), so that the steps that ask carry nothing of the document.
 
 // At most forty characters (beslut 4), counted as a reader counts them: an emoji is one.
 export const NAME_MAX = 40

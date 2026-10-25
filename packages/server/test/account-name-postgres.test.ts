@@ -39,7 +39,7 @@ describe.skipIf(!url)('the account name in Postgres', () => {
       await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'cy@example.com', next: '/' }) })
       const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
       const followed = await fetch(`${run.http}${link}`, { redirect: 'manual' })
-      expect(followed.headers.get('location')).toBe('/welcome?next=%2F')
+      expect(followed.headers.get('location')).toBe('/login?step=name&next=%2F')
       const cookie = (followed.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
       const put = await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'Cy' }) })
       expect(put.status).toBe(200)

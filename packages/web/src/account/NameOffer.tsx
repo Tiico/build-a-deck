@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { NAME_MAX, suggestedName } from '@byd/server/doc'
+import { NAME_MAX, suggestedName } from '@byd/server/account-name'
 import { useT } from '../i18n/index.js'
 import { useSay } from '../status/StatusLive.js'
 import { PersonGlyph } from '../glyphs.js'

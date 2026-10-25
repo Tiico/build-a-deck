@@ -90,7 +90,6 @@ function fetchPage(path: string): Promise<ComponentType> {
   if (path === '/login') return surface(import('./account/LoginPage.js').then((m) => m.LoginPage), ['account'])
   if (path === '/claim') return surface(import('./account/ClaimPage.js').then((m) => m.ClaimPage), ['account'])
   if (path === '/survey') return surface(import('./account/SurveyPage.js').then((m) => m.SurveyPage), ['account', 'play'])
-  if (path === '/welcome') return surface(import('./account/WelcomePage.js').then((m) => m.WelcomePage), ['account'])
   if (path === '/profile') return surface(import('./account/ProfilePage.js').then((m) => m.ProfilePage), ['account', 'editor'])
   if (path.startsWith('/invites/')) return surface(import('./account/InvitePage.js').then((m) => m.InvitePage), ['account'])
   if (path === '/') return surface(import('./account/HomePage.js').then((m) => m.HomePage), ['account', 'editor'])

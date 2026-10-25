@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { NAME_MAX, suggestedName } from '@byd/server/doc'
+import { NAME_MAX, suggestedName } from '@byd/server/account-name'
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
@@ -10,7 +10,7 @@ import { myAccount, saveName, type Me } from './me.js'
 import { safeNext } from './next.js'
 import './account.css'
 
-// /welcome?next=… — the step after the first link (#1254, beställarens beslut 2026-10-24, variant C),
+// /login?step=name&next=… — the step after the first link (#1254, beställarens beslut 2026-10-24, variant C),
 // and after a passkey login for an account that has not been asked: what should the others call you?
 // The name the address suggests is filled in, and the step is one press either way. «Hoppa över»
 // keeps no name, and the question is never put again; the name can always be changed in Profil.
@@ -38,7 +38,7 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
         if (!live) return
         // Nobody signed in has nobody to name: the login, and back here after it. An account that has
         // answered goes on to where it was going.
-        if (account === null) return onNavigate(loginUrl(`/welcome?${params.toString()}`, server))
+        if (account === null) return onNavigate(loginUrl(next, server))
         if (account.asked) return onNavigate(next)
         setName(suggestedName(account.email) ?? '')
         setMe(account)
@@ -51,7 +51,7 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
     // Asked once per attempt: the step is the answer to who is here when it opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [http, attempt])
-  usePageTitle({ state: offline ? 'offline' : me === undefined ? 'loading' : null })
+  usePageTitle({ state: offline ? 'offline' : me === undefined ? 'loading' : null, part: t('welcome.tab') })
 
   if (offline) return <StatusNotice notice={noticeFor('offline', 'app', t)} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
   if (!me) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />

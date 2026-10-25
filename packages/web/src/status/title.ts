@@ -9,7 +9,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // a place too, and a tab that says nothing is a tab nobody can find their way back to.
 export const APP = 'Deckster'
 
-export const ROUTES = ['home', 'landing', 'login', 'new', 'claim', 'invite', 'profile', 'welcome', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
+export const ROUTES = ['home', 'landing', 'login', 'new', 'claim', 'invite', 'profile', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
 export type Route = (typeof ROUTES)[number]
 
 const PATHS: Record<string, Route> = {
@@ -19,7 +19,6 @@ const PATHS: Record<string, Route> = {
   [GUIDED]: 'new',
   '/claim': 'claim',
   '/profile': 'profile',
-  '/welcome': 'welcome',
   '/editor': 'editor',
   '/table': 'table',
   '/join': 'join',
@@ -60,7 +59,8 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
     case 'landing':
       return [t('title.landing')]
     case 'login':
-      return [t('title.login')]
+      // The welcome step is the login's own (#1254), and names its tab itself.
+      return [ctx.part ?? t('title.login')]
     case 'new':
       return [t('title.new')]
     case 'claim':
@@ -69,8 +69,6 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
       return [t('title.invite')]
     case 'profile':
       return [t('title.profile')]
-    case 'welcome':
-      return [t('title.welcome')]
     case 'editor':
       // The game's own name is the designer's and is never translated (A4); only the word beside
       // it is the tool's. The tab that is open stands in for the word «Editor» (#477): seven tabs of

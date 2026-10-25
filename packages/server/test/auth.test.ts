@@ -27,7 +27,7 @@ async function login(email: string): Promise<string> {
   expect(res.status).toBe(302)
   // The account has not been asked what the others should call it, so the welcome step comes first
   // and then where the link was going (#1254).
-  expect(res.headers.get('location')).toBe(`/welcome?next=${encodeURIComponent('/editor?project=p1')}`)
+  expect(res.headers.get('location')).toBe(`/login?step=name&next=${encodeURIComponent('/editor?project=p1')}`)
   const cookie = res.headers.get('set-cookie') ?? ''
   expect(cookie).toMatch(/byd_session=[^;]+; .*HttpOnly/)
   return cookie.split(';')[0] ?? ''
@@ -95,7 +95,7 @@ describe('logging in with a magic link', () => {
     const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
     const res = await get(link)
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe('http://localhost:5173/welcome?next=%2Fnew')
+    expect(res.headers.get('location')).toBe('http://localhost:5173/login?step=name&next=%2Fnew')
   })
 
   it('never says whether an address exists, and does not mail the same address more than five times an hour', async () => {

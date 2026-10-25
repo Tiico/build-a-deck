@@ -2577,7 +2577,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     // of its own, and goes on to where the link was going after it (#1254, variant C).
     res.writeHead(302, {
       'set-cookie': cookie,
-      location: `${opts.appOrigin ?? ''}${account.asked ? next : `/welcome?next=${encodeURIComponent(next)}`}`,
+      location: `${opts.appOrigin ?? ''}${account.asked ? next : `/login?step=name&next=${encodeURIComponent(next)}`}`,
     })
     res.end()
     return

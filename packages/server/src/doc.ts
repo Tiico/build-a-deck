@@ -10,9 +10,6 @@ export { cellColumn, changeOf, joined, revertOf, type Change, type Reverted, typ
 export * from './setup.js'
 // The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
 export * from './roles.js'
-// The account's own name (#1254): the suggestion out of the address and the ceiling on its length,
-// the same for the pages that ask and the server that keeps it.
-export { NAME_MAX, nameOf, suggestedName } from './account-name.js'
 // What the profile page says about a designer's AI key (#999): the words only, never the vault.
 export type { AiProvider, AiKeyDescription } from './ai-keys.js'
 export type { AiFailure, AiModel } from './ai-providers.js'

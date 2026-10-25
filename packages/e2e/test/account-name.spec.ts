@@ -15,7 +15,7 @@ test('the first login asks what the others should call her, and the editor says 
   await page.getByLabel('E-post').fill(email)
   await page.getByRole('button', { name: 'Skicka inloggningslänk' }).click()
 
-  await expect(page).toHaveURL(/\/welcome\?next=%2F/)
+  await expect(page).toHaveURL(/\/login\?step=name&next=%2F/)
   await expect(page.getByRole('heading', { name: 'Välkommen till Deckster' })).toBeVisible()
   await expect(page.getByText(`Du är inloggad som ${email}.`)).toBeVisible()
   const field = page.getByLabel('Vad ska andra kalla dig?')
@@ -61,7 +61,7 @@ test('«Hoppa över» keeps no name, and the question does not come back', async
   await expect(page.getByRole('heading', { name: 'Mina spel' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Namn' })).toHaveCount(0)
   expect(await (await page.request.get('/auth/me')).json()).toEqual({ email, name: null, asked: true })
-  await page.goto('/welcome?next=%2Fprofile')
+  await page.goto('/login?step=name&next=%2Fprofile')
   await expect(page.getByRole('heading', { level: 1, name: 'Profil' })).toBeVisible()
 })
 

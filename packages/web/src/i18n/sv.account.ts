@@ -474,6 +474,7 @@ export const svAccount = {
   'profile.account.logout': 'Logga ut',
   // Kontots namn (#1254, beslut C): välkomststeget efter den första länken, bandet på Mina spel för
   // ett konto som redan finns, och kortet «Namn» överst i Profil. Orden är prototypens.
+  'welcome.tab': 'Välkommen',
   'welcome.title': 'Välkommen till Deckster',
   'welcome.as': 'Du är inloggad som {email}.',
   'welcome.field': 'Vad ska andra kalla dig?',

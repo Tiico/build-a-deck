@@ -51,7 +51,7 @@ describe('the login card and HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
 
     // A first login is asked what the others should call it first (#1254), and goes on home after.
-    await waitFor(() => expect(gone.at(-1)).toBe(`/welcome?${new URLSearchParams({ next: home, server: run.http }).toString()}`))
+    await waitFor(() => expect(gone.at(-1)).toBe(`/login?${new URLSearchParams({ step: 'name', next: home, server: run.http }).toString()}`))
     expect(screen.queryByText(/Kolla din mejl/)).toBeNull()
     expect(run.mail.sent).toHaveLength(0)
 

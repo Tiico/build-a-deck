@@ -50,7 +50,7 @@ function at(path: string, page: (gone: string[]) => ReactNode): string[] {
   )
   return gone
 }
-const welcome = (next = '/editor?project=p1') => at(`/welcome?next=${encodeURIComponent(next)}`, (gone) => <WelcomePage onNavigate={(u) => gone.push(u)} />)
+const welcome = (next = '/editor?project=p1') => at(`/login?step=name&next=${encodeURIComponent(next)}`, (gone) => <WelcomePage onNavigate={(u) => gone.push(u)} />)
 
 describe('the welcome step after the first login', () => {
   it('asks what the others should call her, with the name her address suggests, and goes on with it', async () => {
@@ -93,7 +93,18 @@ describe('the welcome step after the first login', () => {
 
   it('sends nobody signed in to log in, and back here after', async () => {
     const gone = welcome()
-    await waitFor(() => expect(gone[0]).toMatch(/^\/login\?next=%2Fwelcome%3F/))
+    await waitFor(() => expect(gone[0]).toMatch(/^\/login\?next=%2Feditor%3Fproject%3Dp1/))
+  })
+
+  // The step is the login page's own (`step=name`), not an address of its own: every address is a line
+  // in the entry the phone fetches too (#760).
+  it('is drawn by the login page for whoever is signed in, and the page goes on as before without the step', async () => {
+    await loggedIn('nicklas.ockelberg@example.com')
+    at('/login?step=name&next=%2Fprofile', (g) => <LoginPage onNavigate={(u) => g.push(u)} />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Välkommen till Deckster' })).toBeTruthy()
+    cleanup()
+    const gone = at('/login?next=%2Fprofile', (g) => <LoginPage onNavigate={(u) => g.push(u)} />)
+    await waitFor(() => expect(gone).toEqual(['/profile']))
   })
 
   it('comes after a login on the card itself, for an account that has not been asked', async () => {
@@ -102,7 +113,8 @@ describe('the welcome step after the first login', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skicka inloggningslänk' }))
     await waitFor(() => expect(gone).toHaveLength(1))
     const url = new URL(gone[0]!, location.origin)
-    expect(url.pathname).toBe('/welcome')
+    expect(url.pathname).toBe('/login')
+    expect(url.searchParams.get('step')).toBe('name')
     expect(url.searchParams.get('next')).toBe('/new')
     expect(url.searchParams.get('server')).toBe(run.http)
   })

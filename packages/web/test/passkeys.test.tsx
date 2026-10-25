@@ -134,7 +134,7 @@ describe('«Logga in med passkey» on the login card', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Logga in med passkey' }))
     await waitFor(() => expect(gone).toHaveLength(1))
     const url = new URL(gone[0]!, location.origin)
-    expect([url.pathname, url.searchParams.get('next')]).toEqual(['/welcome', '/new'])
+    expect([url.pathname, url.searchParams.get('step'), url.searchParams.get('next')]).toEqual(['/login', 'name', '/new'])
   })
 
   it('sends the reader to the mail when the passkey is not known here any more', async () => {
