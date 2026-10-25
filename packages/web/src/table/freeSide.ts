@@ -349,6 +349,9 @@ export function placePlates(root: ParentNode, home = false): Record<string, Plat
   const FELT = '.byd-pile, .byd-pile-n, .byd-pile-name, .byd-pile-caption, .byd-zone, .byd-zone > span, .byd-area-count, .byd-hand-fan > i, .byd-hand-count, .byd-token, .byd-token > b, .byd-seat-name'
   // And the television's own chrome where it stands over the felt.
   const CHROME = '.byd-table-restart, .byd-shortcut-open, [data-tv] > aside'
+  // How far the start tile's shadow (`table.css`: `0 6px 16px`) reaches past its box, in screen
+  // pixels: the blur's 16 px, less the 6 px it is moved down by above, plus them below.
+  const TILE_SHADOW = { up: 10, side: 16, down: 22 }
 
   type Box = { l: number; t: number; r: number; b: number }
   type Found = { tag: string; x: number; y: number; w: number; h: number; form: PlateAt['form'] }
@@ -410,6 +413,17 @@ export function placePlates(root: ParentNode, home = false): Record<string, Plat
       const r = shown(el)
       return r ? [toFelt(r)] : []
     })
+    // And the start tile (K25), with its shadow. The tile stands in the band under the piles, but
+    // the pills push it down in pixels toward the seats, and a plate's own place above a seat's
+    // zones is pixels too: at 1280 and 1440 the tile lay over seat A's plate (#1344). Its shadow
+    // falls 6 px down with a 16 px blur and reads as the tile on whatever it lies on, so the box
+    // the plate keeps clear of is the shadow's.
+    for (const el of felt.querySelectorAll('.byd-table-start')) {
+      const r = shown(el)
+      if (!r) continue
+      const b = toFelt(r)
+      fixed.push({ l: b.l - TILE_SHADOW.side / k, t: b.t - TILE_SHADOW.up / k, r: b.r + TILE_SHADOW.side / k, b: b.b + TILE_SHADOW.down / k })
+    }
     // The felt, and of it what its frame shows.
     const frame = felt.closest('.byd-table-frame')
     const fr = frame ? toFelt(frame.getBoundingClientRect()) : null

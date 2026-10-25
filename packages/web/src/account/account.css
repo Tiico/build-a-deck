@@ -63,7 +63,9 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    is left, so the side's parts stand together at the top whatever the main column's height. */
 .byd-home { width: min(1440px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto auto auto auto auto 1fr; gap: 24px 32px; align-items: start; }
 .byd-home > .byd-home-bar, .byd-home > .byd-about { grid-column: 1 / -1; }
-.byd-home-main { grid-column: 1; grid-row: 2 / -1; display: grid; gap: 18px; min-width: 0; }
+/* Its one track is the column's width and never its widest child's: an implicit track takes the
+   hero's and the name band's min-content, and at 320 px they stood 20 px past the page's edge. */
+.byd-home-main { grid-column: 1; grid-row: 2 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; }
 .byd-home-running, .byd-home-waiting, .byd-home-sat, .byd-home-door { grid-column: 2; min-width: 0; }
 .byd-home-door .byd-code-row { width: 100%; }
 /* The bar: the mark, then what is done to the page and the account. min-width: 0 so the account
@@ -124,7 +126,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-who a .byd-glyph { width: 18px; height: 18px; }
 /* The sentence a brand new account reads before it presses anything (UX-16). */
 .byd-home-empty { margin: 0; max-width: 72ch; color: #9aa3b8; font-size: 14px; line-height: 1.6; text-wrap: pretty; }
-.byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+/* A tile is 320 px or the column, whichever is less: at a 320 px window the column is 280. */
+.byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 12px; }
 .byd-home-all { display: grid; gap: 12px; }
 /* Every row of games is one height, and that height is a game's own (#231). It is what gives the
    "Nytt spel" tile its floor: on a shared row the row stretches it against its neighbours, and on
@@ -334,3 +337,14 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-hero .byd-home-more { right: 12px; top: 12px; }
 /* The quiet word in Mina spel's bar (#1272, variant B): the account is waiting on the terms. */
 .byd-terms-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #4a4230; background: #2a2418; color: #ffd98a; font-size: 13px; font-weight: 600; white-space: nowrap; }
+/* A game she worked on that went (#1334, the approved prototype's «Efteråt»): the claimed band's
+   green, an «i» in a grey disc, and a × that closes it for good. The words wrap beside the mark
+   and never under the ×. */
+.byd-home-gone { display: flex; align-items: flex-start; gap: 12px; padding: 12px 8px 12px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; line-height: 1.5; overflow-wrap: anywhere; }
+.byd-home-gone p { flex: 1 1 auto; min-width: 0; margin: 0; padding: 1px 0; }
+.byd-home-gone b { color: #fff; }
+.byd-home-gone-mark { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; margin-top: 2px; border-radius: 50%; background: #9aa3b8; color: #11141b; font-size: 13px; font-weight: 800; font-style: normal; }
+.byd-home-gone-close { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin: -1px 0; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #d8ffe8; cursor: pointer; }
+.byd-home-gone-close:hover { background: #26392e; color: #fff; }
+.byd-home-gone-close .byd-glyph { width: 16px; height: 16px; }
+.byd-home-gone-close:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 0; }

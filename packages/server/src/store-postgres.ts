@@ -6,7 +6,7 @@ import { PHYSICAL_VERBS, REDACTED, type Applied, type Seating } from '@byd/proto
 import { liftLine, type SetupDef } from '@byd/engine'
 import { ACCOUNT_SWEEP_DAYS, NOTHING_ERASED, changesAt, maskedIntent, type Erased, type ErasureStore, type LedgerEntry } from './erase.js'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
-import { checkedHistory, liftDoc, stamp, type Ceilings, type InviteRecord, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
+import { checkedHistory, liftDoc, stamp, type Ceilings, type GoneGame, type GoneWhy, type InviteRecord, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
 import { PostgresAssetStore, assetHashesOf } from './assets.js'
 import { PostgresAiKeyStore } from './ai-keys.js'
@@ -782,10 +782,23 @@ export class PostgresProjectStore implements ProjectStore {
     return liftDoc({ ...row.doc, id, rev, ...(own?.owner ? { owner: own.owner } : {}) })
   }
 
-  // The history goes with the game: `project_versions` cascades on the project row.
-  async remove(id: string): Promise<boolean> {
-    const rows = await this.sql`delete from projects where id = ${id} returning id`
-    return rows.length > 0
+  // The history goes with the game: `project_versions` cascades on the project row. Its members are
+  // told in the same transaction (#1334), so a game never goes without them hearing of it.
+  async remove(id: string, why: GoneWhy = 'removed'): Promise<boolean> {
+    return this.sql.begin(async (tx) => {
+      await toldGone(tx, why, new Date().toISOString(), tx`p.id = ${id}`)
+      const rows = await tx`delete from projects where id = ${id} returning id`
+      return rows.length > 0
+    })
+  }
+
+  async goneFor(account: string): Promise<GoneGame[]> {
+    const rows = await this.sql<{ id: string; name: string; why: GoneWhy; at: Date }[]>`select id, name, why, at from gone_games where account_id::text = ${account} order by at, id`
+    return rows.map((r) => ({ id: r.id, name: r.name, why: r.why, at: r.at.toISOString() }))
+  }
+
+  async dismissGone(account: string, id: string): Promise<boolean> {
+    return (await this.sql`delete from gone_games where id = ${id} and account_id::text = ${account} returning 1`).length > 0
   }
 
   async label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'> {
@@ -795,6 +808,17 @@ export class PostgresProjectStore implements ProjectStore {
     if (!row) return 'missing'
     return { rev: row.rev, at: row.created_at.toISOString(), ...(row.label ? { label: row.label } : {}) }
   }
+}
+
+// Every member of the games `which` picks out, but their owner, told the game went (#1334): by its
+// name, why and when, and never by its owner or its id. Inside the transaction that takes the games.
+async function toldGone(tx: postgres.TransactionSql, why: GoneWhy, at: string, which: postgres.PendingQuery<postgres.Row[]>): Promise<void> {
+  await tx`
+    insert into gone_games (id, account_id, name, why, at)
+    select gen_random_uuid()::text, m.account_id, coalesce(p.doc->>'name', ''), ${why}, ${at}
+    from project_members m join projects p on p.id = m.project_id
+    where ${which} and p.owner is not null and m.account_id::text <> p.owner
+  `
 }
 
 // The channel an erasure is told on when it commits (#1279): the payload is a table's id, and only
@@ -868,6 +892,7 @@ export class PostgresErasureStore implements ErasureStore {
     const claimed = await tx<{ session_id: string; seat: string | null; issued_at: Date }[]>`select session_id, seat, issued_at from guest_tokens where account_id = ${id} order by session_id, issued_at`
     for (const g of claimed) await this.at(tx, g.session_id, { id: e.id, at: e.at, reason: 'request', kind: 'guest', session: g.session_id, seat: g.seat, issuedAt: g.issued_at.toISOString() }, sum)
     await tx`update guest_tokens set account_id = null where account_id = ${id}`
+    await toldGone(tx, 'account', e.at, tx`p.owner = ${id}`)
     await tx`delete from projects where owner = ${id}`
     await tx`update project_versions set saved_by = null where saved_by = ${id}`
     await tx`update project_events set by_account = null where by_account = ${id}`

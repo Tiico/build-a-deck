@@ -141,6 +141,13 @@ export const COLUMNS: Readonly<Record<string, Class>> = {
   'asset_sweeps.hash': 'none',
   'asset_sweeps.kind': 'none',
   'asset_sweeps.due_at': 'none',
+  // A game gone from a member's Mina spel (#1334): its name, why and when, about her, until she
+  // closes the band; never who the owner was.
+  'gone_games.id': 'none',
+  'gone_games.account_id': 'pseudonymous',
+  'gone_games.name': 'personal',
+  'gone_games.why': 'personal',
+  'gone_games.at': 'personal',
   // The render queue (`packages/render/sql`).
   'render_jobs.hash': 'none',
   'render_jobs.kind': 'none',

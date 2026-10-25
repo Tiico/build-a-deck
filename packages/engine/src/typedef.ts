@@ -48,6 +48,10 @@ export const ComponentTypeDef = z.object({
 })
 export type ComponentTypeDef = z.infer<typeof ComponentTypeDef>
 
+// Material (K31, K32): a piece that is rolled or keeps a count, as against a card. It lies on the
+// table and is never held in a hand.
+export const isMaterial = (def: ComponentTypeDef): boolean => def.behaviours.rollable !== false || def.behaviours.counter
+
 export const typeKey = (ref: TypeRef): string => `${ref.id}@${ref.version}`
 
 export class TypeRegistry {

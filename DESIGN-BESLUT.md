@@ -2659,8 +2659,17 @@ Byggt 2026-10-25 (#1280, beställarens beslut A ur [prototypen](https://github.c
   Raden går före bytesen i R2, så att bytes som inte går att radera lämnar raden till nästa varv.
 - Hon landar vid dörren med «Ditt konto är raderat.» och att ett mejl bekräftar det, och mejlet i inloggningsmejlets tre band (L72), utan knapp, säger när, vilka spel som försvann, att bilderna sopas inom 30 dagar och att säkerhetskopiorna sparas i åtta dygn och raderar kontot igen om något återställs.
 - Integritetstexten säger att kontot raderas i Profil och vad ett raderat konto lämnar efter sig; gästens väg är #1281:s.
-- Prototypens band på medredigerarens Mina spel («Skogens råd är borttaget. Ägaren raderade sitt konto.») är inte byggt: ett borttaget spel säger i dag ingenting till sina medlemmar, vem som än tog bort det, och ett sådant besked är en egen yta (#1334).
+- Prototypens band på medredigerarens Mina spel («Skogens råd är borttaget. Ägaren raderade sitt konto.») är byggt i #1334, se nedan.
 Grindarna är `packages/server/test/account-erase.test.ts` (båda lagren, med en sökning i varje personlig och pseudonym kolumn efter hennes id och adress, och sopningen i Postgres), `packages/web/test/profile-account.test.tsx` och `packages/e2e/test/account-delete.spec.ts`.
+
+Byggt 2026-10-25 (#1334, beställarens beslut samma dag, i prototypens form ovan, ytan «Efteråt»): **ett spel som försvinner lämnar ett besked till varje medlem utom ägaren.**
+- Det gäller både när ägaren tar bort spelet («Ägaren tog bort spelet.») och när ägaren raderar sitt konto («Ägaren raderade sitt konto.»), och texten följer orsaken.
+- Beskedet är en rad i `gone_games`: spelets namn, orsaken och datumet, aldrig ägaren och inte spelets id, så att det inte leder tillbaka till henne (G6, «försvinner direkt»).
+  Det skrivs i samma transaktion som tar spelet: `ProjectStore.remove` och kontots radering i liggaren.
+- På Mina spel står ett band per besked under rubriken tills hon stänger det med krysset; då raderas beskedet (`DELETE /me/gone/:id`) och kommer inte tillbaka.
+  Beskedet går också med hennes eget konto.
+- Så länge beskedet finns står det i hennes utdrag, som `goneGames`.
+Grindarna är `packages/server/test/gone-games.test.ts`, `packages/web/test/home-gone.test.tsx` och `packages/e2e/test/gone-band.spec.ts`.
 
 Skivorna (alla öppna 2026-10-24):
 - #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
@@ -4550,6 +4559,15 @@ Priset är erkänt: brickans text är filtskalad och ligger under 24 px på TV:n
 Grindarna: `packages/web/test/start-waits-for-textures.test.tsx` (spaltens rad, den släckta brickan, att den tänds när sista kortet landar, «Starta ändå» vid stillastående kö och distansvyns bricka) och `packages/e2e/test/tv-chrome-floor.spec.ts` (raden vid golvet i den byggda produkten, där sviten inte kör någon renderare).
 Sviter vars fråga är starten och inte renderingen öppnar TV:n med `facesReady`, som svarar att korten är klara.
 
+**Tillägg 2026-10-25 (#1344): platsernas skyltar står fritt från brickan.**
+Pillren under högarna trycker ned brickan i pixlar, mot platserna, och platsens skylt på TV:n (#683) står i pixlar ovanför platsens zoner.
+Vid 1024, 1280 och 1440 låg brickan därför över plats A:s skylt med två till fyra platser, och vid 1440 och 1920 över E:s med fem och sex.
+Brickans plats och form är orörda.
+Det som ändrats är att brickan och dess skugga är en sak till som skylten ska stå fri från när den söker sin plats, i #683:s egen ordning; när spelet startat och brickan gått till hörnet läggs skyltarna ut igen och står på sina egna platser.
+Från 1280 och uppåt hittar varje skylt en fri plats som hel skylt.
+Vid 1024 med två till fyra platser ryms den inte någonstans på filten som den är inpassad, och A står som sin bricka med platsens mark tills spelet startat, vilket är #750:s sista utväg och inte en ny form.
+Grind: `packages/e2e/test/surfaces/start-tile-clear-of-piles.spec.ts`, som mäter ritade pixlar mot varje skylt vid 2–8 platser, 1024–1920, sv och en, och i ett typsnitt lika brett som CI:s.
+
 ### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
 
 E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
@@ -4843,6 +4861,17 @@ Att byta yta i radens väljare tar bort punkten, eftersom en punkt i en yta inte
 
 **Nya typer väntar.**
 Meeple, kub och bricka visades i prototypen för att se att listan rymmer dem, men varje typ är ett eget registerbeslut som tärningen var (B1–B3), och de byggs inte här.
+
+### K32. Material hålls aldrig på handen (beslutat 2026-10-25, #1377)
+
+Beställaren: «Material ska inte gå att ha på handen.»
+En tärning som släpptes över en hands solfjäder hamnade i handen, men ingen skärm ritar en bit i en hand: telefonen ritar handen som en rad kort.
+Tärningen försvann alltså från filten och gick inte att ta ut igen.
+
+**Material är en typ som går att slå eller har en räknare** (`isMaterial` i `packages/engine`), och det läses ur typens deklarerade beteenden som varje annan vägran i motorn.
+Motorn vägrar lägga material i en hand, vilket verb det än kommer med: `move`, `draw`, `deal`, `split` och `version.change`.
+Filten lägger en bit som släpps över en hand på det handen ligger över, oftast filten (`pieceAt`), och tangentbordets «Flytta till» erbjuder ingen hand för en bit.
+Kort hålls som förut.
 
 ## L. Editorn (grillad 2026-09-06)
 

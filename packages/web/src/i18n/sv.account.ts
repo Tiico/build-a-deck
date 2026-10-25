@@ -103,6 +103,11 @@ export const svAccount = {
   'home.remove.keep': 'Avbryt',
   'home.remove.confirm': 'Ta bort',
   'home.removed': '{name} är borttaget.',
+  // A game she worked on that went (#1334): the band's bold lead, then why. Never who the owner was.
+  'home.gone.title': '{name} är borttaget.',
+  'home.gone.removed': 'Ägaren tog bort spelet.',
+  'home.gone.account': 'Ägaren raderade sitt konto.',
+  'home.gone.close': 'Stäng beskedet om {name}',
   'home.menu.more': 'Fler val för {name}',
   'home.menu.label': 'Val för {name}',
   'home.menu.start': 'Starta bord',

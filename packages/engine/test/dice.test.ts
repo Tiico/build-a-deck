@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DICE, activityOf, replay } from '../src/index.js'
+import { DICE, TOKEN_COUNTER, activityOf, replay } from '../src/index.js'
 import { Harness, registry, twoSeatSetup } from './fixture.js'
 
 // A die is a component type of its own (B1, #1136): one per number of sides, d4 to d20, each
@@ -55,5 +55,44 @@ describe('dice (#1136)', () => {
     h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     expect(h.try('A', { v: 'roll', component: h.top('table') }).ok).toBe(false)
     expect(card).toBeTruthy()
+  })
+})
+
+// Material is never held (#1377, K32): a die or a counter lies on the table. Put in a hand, it was
+// drawn by no screen — the phone draws a hand as a row of cards — and nobody could take it out.
+describe('material in a hand (#1377)', () => {
+  const pieces = () => {
+    const setup = withDice(6)
+    setup.components.push({ type: { id: TOKEN_COUNTER.id, version: TOKEN_COUNTER.version }, cardRef: 'counter-0', zone: 'table', face: 'front', x: 90, y: 0, counter: 3 })
+    return setup
+  }
+  const idOf = (h: Harness, type: string) => Object.values(h.state.components).find((c) => c.type.id === type)!.id
+
+  it('refuses to move a die or a counter into a hand, and still moves either across the table', () => {
+    const h = new Harness(1, pieces())
+    for (const type of ['die.d6', TOKEN_COUNTER.id]) {
+      const id = idOf(h, type)
+      const refused = h.try('A', { v: 'move', component: id, to: 'hand:A' })
+      expect(refused).toEqual({ ok: false, reason: expect.stringMatching(/cannot be held in a hand/) })
+      expect(h.try('A', { v: 'move', component: id, to: 'table', x: 200, y: 10 }).ok).toBe(true)
+    }
+  })
+
+  it('refuses to draw, deal or split a die out of a pile into a hand', () => {
+    const h = new Harness(1, pieces())
+    h.do('A', { v: 'move', component: idOf(h, 'die.d6'), to: 'draw', index: 0 })
+    expect(h.try('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 }).ok).toBe(false)
+    expect(h.try('A', { v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 1 }).ok).toBe(false)
+    expect(h.try('A', { v: 'split', pile: 'draw', at: 1, to: 'hand:A' }).ok).toBe(false)
+    // A card is held as before.
+    h.do('A', { v: 'move', component: idOf(h, 'die.d6'), to: 'table', x: 0, y: 0 })
+    expect(h.try('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 }).ok).toBe(true)
+  })
+
+  it('refuses a version that lays a die in a hand', () => {
+    const h = new Harness(1, pieces())
+    const d6 = DICE.find((d) => d.id === 'die.d6')!
+    const refused = h.try(null, { v: 'version.change', to: 'v2', components: [{ type: { id: d6.id, version: d6.version }, cardRef: 'd6-1', zone: 'hand:A', face: 'front', x: 0, y: 0 }] })
+    expect(refused.ok).toBe(false)
   })
 })

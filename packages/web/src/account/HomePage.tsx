@@ -8,7 +8,7 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { duplicateProject, gameFan, logout, myAccount, myCards, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
+import { dismissGone, duplicateProject, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
 import { TermsDue, laterFor, putOff } from './terms-due.js'
 import { TermsOffer } from './TermsOffer.js'
 import { QuotaReached } from './quota.js'
@@ -26,7 +26,7 @@ import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Lang, type T } from '../i18n/index.js'
-import { CheckGlyph, ChevronGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph, PeopleGlyph, PencilGlyph, PersonGlyph } from '../glyphs.js'
+import { CheckGlyph, ChevronGlyph, CloseGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph, PeopleGlyph, PencilGlyph, PersonGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { PasskeyOffer } from './PasskeyOffer.js'
@@ -85,6 +85,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const listed = useRef<ProjectSummary[] | null>(null)
   listed.current = projects
   const [played, setPlayed] = useState<Played[] | null>(null)
+  // The games gone from her Mina spel (#1334): a band each until she closes it.
+  const [gone, setGone] = useState<GoneGame[]>([])
   // What it takes to draw each game's first card (G1, #231). It is asked for apart from the list
   // and lands after it, so the first screen is drawn on the list's own answer and never waits for
   // a single template, font or picture. Until it lands the tile holds the card's place.
@@ -247,6 +249,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         // are the page, and the card is what one of them wears — and its place stops waiting.
         void myCards(http).then(setCards, () => setCardsLost(true))
         void myWaiting(http).then(setWaiting, () => undefined)
+        // A band that cannot be read stands next time; it takes nothing else off the page.
+        void myGone(http).then(setGone, () => undefined)
         return Promise.all([myProjects(http).then(setProjects), myPlayed(http).then(setPlayed)])
       })
       .catch(() => setOffline(true))
@@ -514,6 +518,31 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t('home.title')}
             </h1>
           </header>
+          {/* A game she worked on that went (#1334, the approved prototype's «Efteråt»): which and
+              why, never who, standing until she closes it. Closed, it is gone on the server too. */}
+          {gone.map((g) => (
+            <div key={g.id} className="byd-home-gone" role="group" aria-labelledby={`gone-${g.id}`}>
+              <span className="byd-home-gone-mark" aria-hidden="true">
+                i
+              </span>
+              <p>
+                <b id={`gone-${g.id}`}>{t('home.gone.title', { name: g.name })}</b> {t(g.why === 'account' ? 'home.gone.account' : 'home.gone.removed')}
+              </p>
+              <button
+                type="button"
+                className="byd-home-gone-close"
+                aria-label={t('home.gone.close', { name: g.name })}
+                title={t('home.gone.close', { name: g.name })}
+                onClick={() => {
+                  setGone((all) => all.filter((x) => x.id !== g.id))
+                  heading.current?.focus()
+                  void dismissGone(http, g.id).catch(() => undefined)
+                }}
+              >
+                <CloseGlyph />
+              </button>
+            </div>
+          ))}
           {/* One band at a time (#1254): the terms first for an account that has not accepted them
               (#1272), then the name for an account that has not been asked, and the passkey after the
               link (#1180, beslut A) once it has — under the heading, once per browser. */}

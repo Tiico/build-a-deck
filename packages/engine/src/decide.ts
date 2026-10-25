@@ -6,7 +6,7 @@ import type { IdSource, Rng } from './rng.js'
 import { permutation } from './rng.js'
 import { reach } from './reach.js'
 import { componentOf, must, resolveRef, zoneOf, type Table, type TableState, bottomOf } from './state.js'
-import type { TypeRegistry } from './typedef.js'
+import { isMaterial, type TypeRegistry } from './typedef.js'
 
 // `decide` is the only place randomness enters. It validates an envelope against the
 // current state and produces the `Applied` lines whose outcomes fully determine `apply`.
@@ -78,9 +78,18 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     return without === undefined ? null : `${def(without).id} has no face ${face}`
   }
 
+  // Material is never held (#1377, K32): a piece that rolls or keeps a count lies on the table, and
+  // a hand is a row of cards that no screen draws a die or a chip in. Read off what the type
+  // declares, as every other refusal here is.
+  const held = (to: ZoneId, moving: readonly ComponentId[]): string | null => {
+    if (zoneOf(state, to).kind !== 'hand') return null
+    const piece = moving.find((id) => isMaterial(def(id)))
+    return piece === undefined ? null : `${def(piece).id} cannot be held in a hand`
+  }
+
   switch (it.v) {
     case 'move':
-      return all([comp(it.component), zone(it.to)])
+      return all([comp(it.component), zone(it.to)]) ?? held(it.to, [it.component])
     case 'rotate':
       return comp(it.component)
     case 'flip': {
@@ -116,7 +125,7 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       }
       const taken = reach(state, it.pile, it.which, it.at)
       if (typeof taken === 'string') return taken
-      return landsOn(taken, it.face)
+      return (it.to === undefined ? null : held(it.to, taken)) ?? landsOn(taken, it.face)
     }
     case 'shuffle': {
       const z = zone(it.pile)
@@ -130,7 +139,7 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       if (it.from === it.to) return 'cannot draw from a zone into itself'
       const taken = reach(state, it.from, it.which, it.count)
       if (typeof taken === 'string') return taken
-      return landsOn(taken, it.face)
+      return held(it.to, taken) ?? landsOn(taken, it.face)
     }
     case 'deal': {
       const z = all([zone(it.from), ...it.to.map(zone)])
@@ -138,7 +147,8 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       if (it.to.includes(it.from)) return 'cannot deal from a zone into itself'
       const needed = it.each * it.to.length
       if (needed > zoneOf(state, it.from).order.length) return `zone ${it.from} has fewer than ${needed} components`
-      return landsOn(zoneOf(state, it.from).order.slice(0, needed), it.face)
+      const dealt = zoneOf(state, it.from).order.slice(0, needed)
+      return all(it.to.map((to) => held(to, dealt))) ?? landsOn(dealt, it.face)
     }
     case 'roll': {
       const c = comp(it.component)
@@ -208,6 +218,7 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
         if (!state.zones[spec.zone]) return `unknown zone ${spec.zone}`
         if (!registry.has(spec.type)) return `unknown component type ${spec.type.id}@${spec.type.version}`
         if (!registry.get(spec.type).faces.includes(spec.face)) return `${spec.type.id} has no face ${spec.face}`
+        if (state.zones[spec.zone]?.kind === 'hand' && isMaterial(registry.get(spec.type))) return `${spec.type.id} cannot be held in a hand`
       }
       return null
     }
