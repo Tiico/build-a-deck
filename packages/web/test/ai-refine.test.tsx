@@ -53,7 +53,7 @@ const ask = (question: string) => say(screen.getByRole('textbox', { name: 'Fråg
 const refine = (instruction: string) => say(screen.getByRole('textbox', { name: 'Förfina förslaget eller fråga något nytt' }), instruction)
 const proposals = () => within(panel()).queryAllByRole('group', { name: /^Förslag/ })
 const names = (group: HTMLElement) => [...group.querySelectorAll('.byd-ai-card-name')].map((n) => n.textContent)
-const lastSaid = () => (run.ai!.fake.calls.at(-1)!.body as { messages: { content: string }[] }).messages.at(-1)!.content
+const lastSaid = () => (run.ai!.fake.calls.filter((call) => call.body !== undefined).at(-1)!.body as { messages: { content: string }[] }).messages.at(-1)!.content
 const logged = async () => run.projects.readEdits(run.projectId, 0)
 const rows = async () => (await run.projects.load(run.projectId))?.rows.map((r) => r.id)
 
