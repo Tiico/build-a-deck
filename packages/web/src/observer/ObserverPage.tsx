@@ -16,7 +16,8 @@ import { useRolls } from '../table/Die.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
-import { claimUrl } from '../account/session.js'
+import { claimUrl, withCredentials } from '../account/session.js'
+import { takeGuestToken } from '../guestAddress.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -35,7 +36,8 @@ import { useT } from '../i18n/index.js'
 // Flagging travels in a chunk of its own with its sheet, never in the first frame (#760, L20, #1142).
 const FlagFlow = lazy(() => import('../player/FlagFlow.js').then((m) => ({ default: m.FlagFlow })))
 
-// /observe?session=…&name=Eva&server=ws://…
+// /observe?session=…&code=…&server=ws://…#token=…  — and the owner's own watch from the editor,
+// /observe?session=…&name=Bo&owner=1, which has no token and names itself.
 // The observer (C8): sees every hand and every hidden pile, is announced to everyone, and can
 // flag but never touch. After the session she answers the survey too, marked as an observer.
 export type ObserverPageProps = { timing?: StatusTiming }
@@ -44,13 +46,33 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
-  const name = params.get('name') ?? t('observer.name')
-  const token = params.get('token') ?? undefined
   const owner = params.get('owner') === '1'
+  // A guest's token, from the fragment (#1278); the owner's own watch has none, and keeps its name.
+  const token = useMemo(() => (owner ? undefined : takeGuestToken()), [owner])
+  const given = owner ? params.get('name') : null
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: given ?? t('observer.name'), ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
+  // The owner who watches from the editor is the name she gave her account (#1254), as the table is
+  // told she is. Asked here and not through the account's client, which speaks the account's words,
+  // and the observer's page fetches only its own (#760).
+  const [own, setOwn] = useState<string | null>(null)
+  useEffect(() => {
+    if (!owner) return
+    let live = true
+    void fetch(`${http}/auth/me`, withCredentials())
+      .then((res) => res.json() as Promise<{ name?: string | null }>)
+      .then(
+        (me) => live && setOwn(me.name ?? null),
+        () => undefined,
+      )
+    return () => {
+      live = false
+    }
+  }, [owner, http])
+  // A guest watches as the name on her admission, which the table tells her (#1278).
+  const name = (token === undefined ? (own ?? given) : client?.admitted) ?? t('observer.name')
   const live = useLiveStatus(conn, 'table', timing)
   // What happens at the table, said in the room's live regions as the table screen says it (#485):
   // hers were silent the whole session. She sits at no seat, so nothing is said as «du».

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Applied, Snapshot } from '@byd/protocol'
+import { PERSONAL_FIELDS, type Applied, type PersonalField, type PersonalHolds, type Snapshot } from '@byd/protocol'
 import { TypeRegistry, initialState, project, replay, type SetupDef, STANDARD_TYPES } from '../src/index.js'
 
 // The replay corpus (DRIFT §7): anonymised real logs with what every viewer saw at the end.
@@ -33,7 +33,7 @@ export type CorpusEntry = {
 
 // Numbers what it is given in the order it first sees it: the same thing always gets the same
 // pseudonym, and nothing about the pseudonym says what it stood for.
-const numbered = (prefix: string) => {
+export const numbered = (prefix: string) => {
   const seen = new Map<string, string>()
   return (key: string): string => {
     let name = seen.get(key)
@@ -46,20 +46,30 @@ const numbered = (prefix: string) => {
 }
 
 // The people (DRIFT §7): who sat down, what was flagged, what was written on the notepad (#1131) and
-// who watched. `nameFor` numbers the seats,
-// and is shared with `anonymiseGame` so a name in a rewind's stored table is the same pseudonym.
-export function anonymise(log: readonly Applied[], nameFor: (seat: string) => string = numbered('Spelare ')): Applied[] {
+// who watched — every field the protocol lists as a person's own (`PERSONAL_FIELDS`, #1276), so a
+// field listed there is anonymised here the day it is listed, without this file knowing its verb.
+// What takes its place says what kind of words stood there, and `nameFor` numbers the seats. A
+// rewind's stored table needs nothing: it is zones and components and holds no seat (#1276).
+const PSEUDONYMS: Record<PersonalHolds, (line: Applied, nameFor: (seat: string) => string) => string> = {
+  'seat-name': (line, nameFor) => {
+    const seat = (line.intent as Record<string, unknown>)['seat'] ?? line.by
+    return nameFor(typeof seat === 'string' ? seat : 'table')
+  },
+  'observer-name': () => 'Observatör',
+  comment: () => '(kommentar)',
+  note: () => '(anteckning)',
+}
+
+export function anonymise(log: readonly Applied[], nameFor: (seat: string) => string = numbered('Spelare '), fields: readonly PersonalField[] = PERSONAL_FIELDS): Applied[] {
   return log.map((line) => {
-    const it = line.intent
-    if (it.v === 'seat.claim') return { ...line, intent: { ...it, name: nameFor(it.seat) } }
-    if (it.v === 'flag') {
-      return {
-        ...line,
-        intent: { v: 'flag', ...(it.note !== undefined ? { note: '(kommentar)' } : {}), ...(it.observer !== undefined ? { observer: 'Observatör' } : {}) },
-      }
+    const intent = line.intent as Record<string, unknown>
+    let out: Record<string, unknown> | null = null
+    for (const { v, field, holds } of fields) {
+      if (intent['v'] !== v || typeof intent[field] !== 'string') continue
+      out ??= { ...intent }
+      out[field] = PSEUDONYMS[holds](line, nameFor)
     }
-    if (it.v === 'note.add' || it.v === 'note.edit') return { ...line, intent: { ...it, text: '(anteckning)' } }
-    return line
+    return out ? { ...line, intent: out as Applied['intent'] } : line
   })
 }
 
@@ -70,7 +80,7 @@ export function anonymise(log: readonly Applied[], nameFor: (seat: string) => st
 // actions' own words become `Zon N`, `Genväg N` and `Åtgärd N`. The zones' ids stay, because every
 // intent and the engine itself address them. It walks the whole entry rather than naming its
 // fields, because a rewind's outcome stores the table verbatim and the engine owns that shape.
-export function anonymiseGame(setup: SetupDef, log: readonly Applied[], nameFor: (seat: string) => string = numbered('Spelare ')): { setup: SetupDef; log: Applied[] } {
+export function anonymiseGame(setup: SetupDef, log: readonly Applied[]): { setup: SetupDef; log: Applied[] } {
   const card = numbered('kort-')
   const field = numbered('fält-')
   const values = new Map<string, (v: string) => string>()
@@ -113,8 +123,6 @@ export function anonymiseGame(setup: SetupDef, log: readonly Applied[], nameFor:
       out['id'] = actionId(o['id'])
       out['label'] = actionLabel(o['label'])
     }
-    // A seat with a name, in a rewind's stored table.
-    if (typeof o['id'] === 'string' && typeof o['name'] === 'string' && Object.keys(o).length === 2) out['name'] = nameFor(o['id'])
     return out
   }
   // The setup first, so the pseudonyms follow the order the game itself lists its cards in.
@@ -123,8 +131,7 @@ export function anonymiseGame(setup: SetupDef, log: readonly Applied[], nameFor:
 }
 
 export function record(name: string, version: string, rawSetup: SetupDef, rawLog: readonly Applied[], registry: TypeRegistry): CorpusEntry {
-  const nameFor = numbered('Spelare ')
-  const { setup, log } = anonymiseGame(rawSetup, anonymise(rawLog, nameFor), nameFor)
+  const { setup, log } = anonymiseGame(rawSetup, anonymise(rawLog))
   const initial = initialState(version, setup, registry)
   const state = replay(initial, registry, log)
   const history = { stateAt: (seq: number) => replay(initial, registry, log.filter((l) => l.seq <= seq)), lines: () => log }

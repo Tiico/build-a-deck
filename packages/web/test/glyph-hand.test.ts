@@ -114,11 +114,17 @@ const ALLOWED: Allowed[] = [
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{n}×', why: `how many of an icon a cell holds: ${FIGURE}` },
     { file: `src/i18n/${lang}.play.ts`, char: '−', in: '−1', why: `a step down on a counter: ${FIGURE}` },
     { file: `src/i18n/${lang}.account.ts`, char: '→', in: ' 4 → 5', why: `the landing page's example of a change: ${CHANGE}` },
+    { file: `src/i18n/${lang}.account.ts`, char: '×', in: '{w} × {h} mm', why: `the print package's card and file (#1208): ${SIZE}` },
+    { file: `src/i18n/${lang}.account.ts`, char: '×', in: '{w} × {h} px', why: `a printer's raster (#1208): ${SIZE}` },
+    { file: `src/i18n/${lang}.account.ts`, char: '×', in: '× {n}', why: `a card's copies in the print package, «× 2»: ${FIGURE}` },
+    { file: `src/i18n/${lang}.account.ts`, char: '×', in: '{n} × {kind}', why: `how many dice the printer packs, «2 × sexsidig»: ${FIGURE}` },
   ]),
   ...(
     [
-      ['src/i18n/sv.editor.ts', ['typsnittet i Speltema ›', 'i Tabell ›', '({n}) ›', 'biblioteket ›', '‹ Spelets', 'finns i Speltema ›']],
-      ['src/i18n/en.editor.ts', ['font under Theme ›', 'in Data ›', '({n}) ›', 'library ›', '‹ The game', 'are under Theme ›']],
+      ['src/i18n/sv.editor.ts', ['typsnittet i Speltema ›', 'i Tabell ›', '({n}) ›', 'biblioteket ›', '‹ Spelets', 'finns i Speltema ›', 'tryckpaketet ›']],
+      ['src/i18n/en.editor.ts', ['font under Theme ›', 'in Data ›', '({n}) ›', 'library ›', '‹ The game', 'are under Theme ›', 'print package ›']],
+      ['src/i18n/sv.account.ts', ['i editorn ›']],
+      ['src/i18n/en.account.ts', ['in the editor ›']],
     ] as const
   ).flatMap(([file, names]) => names.map((name) => ({ file, char: [...name].find((c) => ICONS.includes(c))!, in: name, why: NAMED }))),
   // Icons that are not among the twenty the table drew, and so have no drawing in the hand yet.
@@ -134,11 +140,12 @@ const allowed = (hit: Shown, char: string) => ALLOWED.find((a) => a.file === hit
 const DRAWINGS: Record<string, { count: number; why: string }> = {
   'src/brand/mark.ts': { count: 4, why: 'the brand mark, as the files the favicon, the app icons and the share image are made of (A6, #1084)' },
   'src/brand/DecksterMark.tsx': { count: 1, why: 'the brand mark on the page, the fan of cards the product is named by' },
-  'src/table/Die.tsx': { count: 1, why: 'a die on the felt, its kind’s outline seen from above with the side that is up (#1137, K28)' },
+  'src/table/Die.tsx': { count: 3, why: 'a die on the felt, its kind’s outline seen from above with the side that is up (#1137, K28), and while it whips round the after-images of that outline and the ring in the seat’s colour that closes round it (#1288)' },
   'src/editor/DeckWall.tsx': { count: 1, why: 'the colour-vision filters the eyes box looks at cards through; it draws nothing' },
   'src/editor/symbols.ts': { count: 1, why: 'the symbol library: card art, drawn on cards by the card renderer' },
   'src/editor/icon-catalog.ts': { count: 1, why: 'the icon catalogue: card art, drawn on cards by the card renderer' },
   'src/editor/svg-clean.ts': { count: 1, why: 'the words of a refusal, naming the root element a designer’s own SVG lacked' },
+  'src/account/PrintPackagePage.tsx': { count: 1, why: 'the knife: the bleed, the trim and the safe margin drawn over a card in its own millimetres (#1208)' },
   'src/editor/TemplateCanvas.tsx': { count: 2, why: 'a shape’s and a pattern’s picture in the gallery, drawn by the path generator and tile the card is drawn by' },
 }
 

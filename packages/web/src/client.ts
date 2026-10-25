@@ -1,4 +1,4 @@
-import { ServerMessage, type Activity, type Envelope, type Intent, type Presence, type PresenceFrom, type SeatId, type Snapshot } from '@byd/protocol'
+import { ServerMessage, guestProtocols, type Activity, type Envelope, type Intent, type Presence, type PresenceFrom, type SeatId, type Snapshot } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 
 export type ClientStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
@@ -53,13 +53,13 @@ export type WebSocketLike = {
   close(): void
   addEventListener(type: 'open' | 'message' | 'close' | 'error', listener: (ev: { data?: unknown }) => void): void
 }
-export type WebSocketCtor = new (url: string) => WebSocketLike
+export type WebSocketCtor = new (url: string, protocols?: string[]) => WebSocketLike
 
 let implementation: WebSocketCtor | null = null
 export function setWebSocketImplementation(ctor: WebSocketCtor | null): void {
   implementation = ctor
 }
-const makeSocket = (url: string): WebSocketLike => new (implementation ?? (globalThis.WebSocket as unknown as WebSocketCtor))(url)
+const makeSocket = (url: string, protocols?: string[]): WebSocketLike => new (implementation ?? (globalThis.WebSocket as unknown as WebSocketCtor))(url, protocols)
 
 // The whole wire protocol behind a small surface: a view that follows the table,
 // a status, and `send`. Framework-free so that views stay thin.
@@ -84,6 +84,9 @@ export class TableClient {
   hostKey: string | null = null
   // Why the server would not have this connection (DRIFT §9): no reconnecting after that.
   refused: string | null = null
+  // The name the guest's token was bought with, as the table told this connection (#1278); null
+  // for a connection without a token, and until it is told.
+  admitted: string | null = null
   private ws: WebSocketLike
   private readonly readyPromise: Promise<void>
   private resolveReady!: () => void
@@ -277,13 +280,15 @@ export class TableClient {
     if (lobby) q.set('role', 'lobby')
     else if (observer !== undefined) {
       q.set('role', 'observer')
-      q.set('name', observer)
+      // A guest who watches is the name on her admission; only the owner's own watch, which has
+      // none, names itself.
+      if (token === undefined) q.set('name', observer)
     } else if (seat !== null) q.set('seat', seat)
-    if (token !== undefined) q.set('token', token)
     const key = this.hostKey ?? host
     if (key !== undefined) q.set('host', key)
     if (owner) q.set('owner', '1')
-    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`)
+    // The token is never in the address (#1278): it rides in the protocol header.
+    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`, token === undefined ? undefined : guestProtocols(token))
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))
     ws.addEventListener('error', () => undefined) // `close` follows; nothing to do here
@@ -380,6 +385,10 @@ export class TableClient {
         break
       case 'roster':
         this.observers = msg.observers
+        this.notify()
+        break
+      case 'admitted':
+        this.admitted = msg.name
         this.notify()
         break
     }

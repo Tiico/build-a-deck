@@ -17,6 +17,7 @@ import { PlayerSurface, useHandMarks } from '../player/PlayerSurface.js'
 import { useSeatTurned } from '../player/turned.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/session.js'
+import { takeGuestToken } from '../guestAddress.js'
 import { SeatLine } from './SeatLine.js'
 import { LastMove } from './LastMove.js'
 import { NOTES_OPEN_PX, NOTES_RAIL_PX, NotesColumn } from './NotesColumn.js'
@@ -44,7 +45,8 @@ import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useStartFocus } from '../table/StartButton.js'
 import { WaitingRoom } from './WaitingRoom.js'
 
-// /online?session=…&seat=A&name=Ada&server=ws://…
+// /online?session=…&seat=A&code=…&server=ws://…#token=…  — and the owner's own seat from the editor,
+// /online?session=…&seat=A&name=Bo&owner=1, which has no token and names itself.
 // Fully online (C2): both roles in one window. The table, the way round the window and the seat
 // agree on (#76, #77), playable as the table screen is; the seat's own hand beside it or under it,
 // depending on which way the window is; the phone's controls in the corner.
@@ -82,13 +84,16 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const seat = params.get('seat')
-  const name = params.get('name')
-  const token = params.get('token') ?? undefined
   const owner = params.get('owner') === '1'
+  // A guest's token, from the fragment (#1278); the owner's own seat has none, and keeps its name.
+  const token = useMemo(() => (owner ? undefined : takeGuestToken()), [owner])
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
   const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
+  // A guest sits down as the name her token was bought with, which the table tells her (#1278); the
+  // owner's own seat has no token, and its name is in its address.
+  const name = token === undefined ? params.get('name') : (client?.admitted ?? null)
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
@@ -331,6 +336,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             cards={hand}
             faces={http}
             turned={turned.turned}
+            onTurn={(c) => turned.toggle(c.id)}
             onOpen={(c) => kbd.openHand(c, [])}
             onClose={() => {
               setSpread(false)

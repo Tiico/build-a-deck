@@ -62,6 +62,11 @@ create table if not exists accounts (
   email       text not null unique,
   created_at  timestamptz not null default now()
 );
+-- The account's own name (#1254): what the others call the designer, null until she gives one, and
+-- whether she has been asked for it. An account from before the name has not, and is asked once on
+-- Mina spel. Its length is held at the door (40 characters); it goes with the account's row.
+alter table accounts add column if not exists name text;
+alter table accounts add column if not exists name_asked boolean not null default false;
 create table if not exists login_tokens (
   token_hash  text primary key,
   email       text not null,
@@ -280,3 +285,14 @@ begin
       where k ~ '^[0-9a-f]{64}$';
   end if;
 end $$;
+
+-- The terms an account has accepted (#1270, F4, #1268): one row per account and version, with when,
+-- and never written over. Which versions there are, and which is in force, is the register in
+-- `src/terms.ts` and never stored. An account from before the terms has no row, and so has
+-- accepted nothing, which is what it has done.
+create table if not exists terms_acceptances (
+  account_id   bigint not null references accounts(id) on delete cascade,
+  version      text not null,
+  accepted_at  timestamptz not null,
+  primary key (account_id, version)
+);

@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { expect, test } from '../support/test.js'
 
 // Spalten är hopfälld där den kostar (#1131, beställarens beslut 2026-10-22): K9:s golv är 45 px på
@@ -17,7 +17,7 @@ for (const [w, h, open] of [
     const table = await tableOf({ players: 4, counters: [], cards: 8, copies: 1 })
     await (await host(table)).send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
     const ada = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await openAt({ name: 'd', viewport: { width: w, height: h } }, `${ada.onlineUrl}&lang=sv`)
+    const { page } = await openAt({ name: 'd', viewport: { width: w, height: h } }, withQuery(ada.onlineUrl, `lang=sv`))
     const toggle = page.getByRole('complementary', { name: 'Anteckningar' }).getByRole('button', { name: 'Anteckningar' })
     await expect(page.locator('.byd-online-felt .byd-card[data-component]')).toBeVisible()
     if (open !== null) await expect(toggle).toHaveAttribute('aria-expanded', String(open))

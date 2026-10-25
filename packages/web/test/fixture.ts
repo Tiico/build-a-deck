@@ -8,6 +8,7 @@ import { MemoryRenderStore } from '@byd/render/queue'
 import { AiKeyVault, MemoryAiKeyStore } from '../../server/src/ai-keys.js'
 import { providersFromEnv } from '../../server/src/ai-providers.js'
 import type { Plans } from '../../server/src/quotas.js'
+import { printProvidersOf } from '../../server/src/print-providers.js'
 import { fakeAiProvider, type FakeAiProvider } from '../../../test-support/fake-ai-provider.js'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
@@ -284,7 +285,7 @@ let fixtures = 0
 // `appOrigin` is the page the browser stands on, where it is not the server's own: a passkey belongs
 // to the page's site (#1180), and jsdom's page is not the server's. `plans` are the tiers and their
 // ceilings (#1193), held only with accounts on; without them nothing is limited.
-export async function startServer(opts: { auth?: boolean; authBypass?: boolean; ai?: boolean; appOrigin?: string; plans?: Plans } = {}): Promise<Running> {
+export async function startServer(opts: { auth?: boolean; authBypass?: boolean; ai?: boolean; appOrigin?: string; plans?: Plans; print?: boolean } = {}): Promise<Running> {
   const store = new MemoryLogStore()
   // The assets weigh what the games store (#1197), as on the box: the store is handed them.
   const assets = new MemoryAssetStore()
@@ -302,7 +303,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const vault = fake ? new AiKeyVault(new MemoryAiKeyStore(), randomBytes(32)) : null
   const ai = vault ? { vault, providers: providersFromEnv({ AI_ANTHROPIC_URL: `${fakeUrl}/anthropic`, AI_OPENAI_URL: `${fakeUrl}/openai` }) } : null
   const make = () => {
-    const made = createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}) })
+    const made = createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}) })
     // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
     // client in this same process sends its next request on the connection it pooled: on a box
     // where a worker is descheduled for longer than that, the two meet on one socket and the

@@ -17,7 +17,7 @@ import { QuotaReached, type Bearer, type Limit, type QuotaMet } from './quotas.j
 export type AppliedEdit = { seq: number; at: string; by?: string; from?: string; intent: EditIntent }
 // `account` is whose editor it is, so taking the game back from someone can end what they have open.
 // `gone`: the project itself is no more (#485) — closed the way an unknown project is refused.
-export type Editor = { id: string; name: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void; gone?(): void }
+export type Editor = { id: string; name: string; email?: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void; gone?(): void }
 export type EditorMessage =
   // `saved` is the version `rev` names, sent only when it is not `doc` — when the log has a tail
   // nobody has saved yet (#764). Without it an editor could only take what it is handed for saved.
@@ -37,11 +37,14 @@ export type EditorMessage =
   //
   // `quota` is the ceiling an edit (#1195) or a save (#1197) would have crossed (#1192), on a
   // refusal whose `why` is `quota`: the measure, the ceiling, what is used, and who bears it — `you`
-  // when the editor owns the game, `owner` when its owner does, with `ownerName` when her address
-  // gives one (#1198) and never the address. An addition as `to` and `ask` were:
+  // when the editor owns the game, `owner` when its owner does, with `ownerName` when she has given
+  // her account a name (#1198, #1254) and never the address. An addition as `to` and `ask` were:
   // a page from before it reads the refusal by `why`, as it does any other.
   | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & Bearer }
-export type Presence = { id: string; name: string; role?: Role }
+// `name` is what the others call the editor: the account's own name, or its address when it has
+// given none (#1254). `email` is the account's address, beside it so that a face keeps its colour
+// when the name is changed; it goes only to those who share the game, who see it in Dela already.
+export type Presence = { id: string; name: string; email?: string; role?: Role }
 // The ceiling an owner's games are held to on a card measure (#1195): asked of the owner's tier as
 // the edit is decided, so a tier changed while the game is open holds from the next edit.
 export type CardCeilings = (owner: string, measure: CardMeasure) => Promise<Limit>
@@ -111,7 +114,7 @@ export class ProjectActor {
       seen.add(e.account)
       return true
     })
-    return people.map((e) => ({ id: e.id, name: e.name, ...(e.role ? { role: e.role } : {}) }))
+    return people.map((e) => ({ id: e.id, name: e.name, ...(e.email ? { email: e.email } : {}), ...(e.role ? { role: e.role } : {}) }))
   }
 
   // An editor joins: it is given the document as it stands, and everyone is told who is here.
@@ -236,7 +239,7 @@ export class ProjectActor {
   }
   private handOver(editor: Editor): void {
     const saved = this.saved === this.current ? {} : { saved: this.saved }
-    editor.send({ v: 'project', doc: this.current, ...saved, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.role ? { role: editor.role } : {}) } })
+    editor.send({ v: 'project', doc: this.current, ...saved, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.email ? { email: editor.email } : {}), ...(editor.role ? { role: editor.role } : {}) } })
   }
 
   private tell(message: EditorMessage): void {

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { DICE, TypeRegistry, initialState, project, STANDARD_TYPES, type SetupDef } from '@byd/engine'
 import type { Activity, Snapshot } from '@byd/protocol'
-import { rollsAfter } from '../src/table/Die.js'
+import { ROLL_MS, rollsAfter } from '../src/table/Die.js'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { feltLabels } from '../src/table/keyboard.js'
 import { dropIntents } from '../src/table/drop.js'
@@ -85,6 +85,65 @@ describe('a die that was just rolled (#1137, K28)', () => {
     expect(seen.size).toBeGreaterThan(1)
     act(() => vi.advanceTimersByTime(300))
     expect(dieOf(id).querySelector('[data-die-value]')!.textContent).toBe('14')
+  })
+
+  // The whip (#1288, K28 revised): fast but felt. Two turns in 0.45 s with three after-images of the
+  // outline trailing it and a ring in the colour of the seat closing round it as it stops; the
+  // figure slows with the spin and stands still for its last 0.15 s.
+  it('whips round in 0.45 s, its figure standing still on the value for the last 0.15 s', () => {
+    still(false)
+    vi.useFakeTimers()
+    const v = table({ 20: 14 })
+    const id = idOf(v, 20)
+    render(<TableRenderer view={v} mode="tv" scale={1} rolls={[{ component: id, seq: 9, seat: 'A' }]} />)
+    expect(ROLL_MS).toBe(450)
+    act(() => vi.advanceTimersByTime(300))
+    for (let t = 300; t < 450; t += 50) {
+      expect(dieOf(id).querySelector('[data-die-value]')!.textContent).toBe('14')
+      act(() => vi.advanceTimersByTime(50))
+    }
+  })
+
+  it('trails three after-images of its outline, without a figure, and a ring in the colour of the seat that rolled', () => {
+    still(false)
+    const v = table({ 20: 14 })
+    const id = idOf(v, 20)
+    render(<TableRenderer view={v} mode="tv" scale={1} rolls={[{ component: id, seq: 9, seat: 'B' }]} />)
+    const trails = dieOf(id).querySelectorAll('.byd-die-trail')
+    expect(trails).toHaveLength(3)
+    for (const trail of trails) expect(trail.querySelector('text')).toBeNull()
+    expect(dieOf(id).querySelector('.byd-die-catch')).not.toBeNull()
+    expect(dieOf(id).style.getPropertyValue('--seat')).toBe('#3c8ce7')
+  })
+
+  it('spins the way the roll’s place in the log says, so that every screen spins alike', () => {
+    still(false)
+    const v = table()
+    const [odd, even] = [idOf(v, 6), idOf(v, 20)]
+    render(
+      <TableRenderer
+        view={v}
+        mode="tv"
+        scale={1}
+        rolls={[
+          { component: odd, seq: 9, seat: 'A' },
+          { component: even, seq: 10, seat: 'A' },
+        ]}
+      />,
+    )
+    expect(dieOf(odd).style.getPropertyValue('--spin')).toBe('-1')
+    expect(dieOf(even).style.getPropertyValue('--spin')).toBe('1')
+  })
+
+  it('draws no after-images and no closing ring when nothing turns', () => {
+    still(true)
+    const v = table({ 20: 14 })
+    const id = idOf(v, 20)
+    const { rerender } = render(<TableRenderer view={v} mode="tv" scale={1} rolls={[{ component: id, seq: 9, seat: 'B' }]} />)
+    expect(dieOf(id).querySelector('.byd-die-trail, .byd-die-catch')).toBeNull()
+    still(false)
+    rerender(<TableRenderer view={v} mode="tv" scale={1} />)
+    expect(dieOf(id).querySelector('.byd-die-trail, .byd-die-catch')).toBeNull()
   })
 
   it('under prefers-reduced-motion shows the value at once, with a ring in the colour of the seat that rolled', () => {

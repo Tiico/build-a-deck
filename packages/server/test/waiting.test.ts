@@ -19,7 +19,7 @@ import { registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
 //   bord som fortsätter på en äldre version reser inga nya flaggor. Både bord som pågår och bord
 //   som avslutats räknas.
 // - `other`: spelets senaste version, när någon annan än kontot sparade den och det är känt vem
-//   (#1225). Den säger vem med det namn adressen ger (#1198), aldrig adressen.
+//   (#1225). Den säger vem med det namn hon gav sitt konto (#1254), aldrig adressen eller dess ord.
 //
 // Mot minnet och mot Postgres. Postgres-halvan körs bara med DATABASE_URL=postgres://... pnpm test.
 const url = process.env['DATABASE_URL']
@@ -172,6 +172,9 @@ for (const backend of backends) {
       await ada('POST', '/projects', { id: project, ...game() })
       const kim = await shareWith(ada, project, `kim.berg-${games}@example.com`, 'editor')
       const bo = await shareWith(ada, project, `bo-${games}@example.com`, 'viewer')
+      // Namnen är kontots egna (#1254).
+      await ada('PUT', '/me/name', { name: 'Ada' })
+      await as(kim)('PUT', '/me/name', { name: 'Kim' })
       // Ägaren skapade spelet; ingen annan har sparat något.
       expect((await waiting(adaCookie))[project]!.other).toBeUndefined()
       expect((await waiting(kim))[project]).toMatchObject({ rev: 1, other: { name: 'Ada' } })
@@ -192,12 +195,14 @@ for (const backend of backends) {
       expect((await waiting(kim))[project]).toMatchObject({ rev: 3, other: { name: 'Ada' } })
     })
 
-    it('nämner ingen när adressen inte ger ett namn, och inget spel som kontot inte har', async () => {
+    // Adressens ord är bara ett förslag (#1254, beslut 2): ett konto utan namn nämns inte, hur läsbar
+    // adressen än är.
+    it('nämner ingen som inte har gett sitt konto ett namn, och inget spel som kontot inte har', async () => {
       const ownerCookie = await login(`eva-${++games}@example.com`)
       const owner = as(ownerCookie)
       const project = `p-${process.pid}-${games}`
       await owner('POST', '/projects', { id: project, ...game() })
-      const other = await shareWith(owner, project, `x${games}@example.com`, 'editor')
+      const other = await shareWith(owner, project, `kim.berg-${games}@example.com`, 'editor')
       await saveFromEditor(other, project, 'Annat namn')
       expect((await waiting(ownerCookie))[project]).toMatchObject({ other: { name: null } })
       expect((await waiting(await login(`stranger-${games}@example.com`)))[project]).toBeUndefined()

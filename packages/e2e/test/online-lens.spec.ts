@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { expect, test } from '../support/test.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
 
@@ -26,7 +26,7 @@ for (const [players, w, h] of [4, 8].flatMap((n) => windows.map(([w, h]) => [n, 
     const dealer = await host(table)
     await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }, { v: 'draw', from: 'draw', to: 'hand:A', count: 5 }])
     const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await open({ name: 'd', viewport: { width: w, height: h } }, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open({ name: 'd', viewport: { width: w, height: h } }, withQuery(seat.onlineUrl, `lang=sv`))
     await expect(page.locator('.byd-online-felt .byd-card[data-component]')).toBeVisible()
     const rest = await cardPx(page)
     const under = rest < 45
@@ -49,7 +49,7 @@ test('lands a card from the hand where it is let go while the felt is enlarged',
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 3 }])
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, withQuery(seat.onlineUrl, `lang=sv`))
   await expect(page.locator('[data-hand-card]')).toHaveCount(3)
   await page.getByRole('button', { name: 'Zooma in' }).click()
   // Seat D's area at the left rim, as much of it as the enlarged felt shows.
@@ -78,7 +78,7 @@ test('lands a card from the hand where it is let go while the felt is enlarged',
 test('moves an enlarged felt by a drag on the bare felt, and enlarges about the pointer with the wheel', async ({ tableOf, open, request }) => {
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, withQuery(seat.onlineUrl, `lang=sv`))
   await pastTheWaitingRoom(page)
   const wood = page.locator('.byd-online-felt .byd-table-wood')
   const frame = page.locator('.byd-online-felt .byd-table-frame')
@@ -107,7 +107,7 @@ test('moves an enlarged felt by a drag on the bare felt, and enlarges about the 
 test('enlarges about the middle and lets a drag reach every rim of the felt', async ({ tableOf, open, request }) => {
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-  const { page } = await open({ name: 'd', viewport: { width: 1024, height: 600 } }, `${seat.onlineUrl}&lang=sv`)
+  const { page } = await open({ name: 'd', viewport: { width: 1024, height: 600 } }, withQuery(seat.onlineUrl, `lang=sv`))
   await pastTheWaitingRoom(page)
   const wood = page.locator('.byd-online-felt .byd-table-wood')
   const frame = page.locator('.byd-online-felt .byd-table-frame')
@@ -144,7 +144,7 @@ test('enlarges about the middle and lets a drag reach every rim of the felt', as
 test('ends a drag of the enlarged felt that is let go of outside the felt', async ({ tableOf, open, request }) => {
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, withQuery(seat.onlineUrl, `lang=sv`))
   await pastTheWaitingRoom(page)
   const wood = page.locator('.byd-online-felt .byd-table-wood')
   const frame = page.locator('.byd-online-felt .byd-table-frame')
@@ -168,7 +168,7 @@ test('ends a drag of the enlarged felt that is let go of outside the felt', asyn
 test('keeps the keyboard in the corner as its way in becomes the cluster and back', async ({ tableOf, open, request }) => {
   const table = await tableOf({ players: 8, counters: [], cards: 30, copies: 1 })
   const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, `${seat.onlineUrl}&lang=sv`)
+  const { page } = await open({ name: 'd', viewport: { width: 1280, height: 800 } }, withQuery(seat.onlineUrl, `lang=sv`))
   await pastTheWaitingRoom(page)
   const zoomIn = page.getByRole('button', { name: 'Zooma in' })
   await zoomIn.focus()

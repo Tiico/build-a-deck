@@ -87,8 +87,9 @@ describe('two people editing the same project (D3)', () => {
 
     const bo = await Editing.open(run.base, 'p1', 'Bo', await coEditor('p1'))
     await bo.until('project')
-    // Both know who is here.
-    expect((await ada.until('here', (m) => m.here.length === 2)).here.map((p) => p.name)).toEqual(['Ada', 'Bo'])
+    // Both know who is here, by the server's word for each account (#1254): the address, as neither
+    // has given a name, and never the name a page sent for itself.
+    expect((await ada.until('here', (m) => m.here.length === 2)).here.map((p) => p.name)).toEqual(['ada@example.com', 'bo@example.com'])
 
     ada.send({ v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drakhona' })
     const told = await bo.until('edits')
@@ -102,7 +103,7 @@ describe('two people editing the same project (D3)', () => {
 
     ada.close()
     await new Promise((r) => setTimeout(r, 50))
-    expect((await bo.until('here', (m) => m.here.length === 1)).here.map((p) => p.name)).toEqual(['Bo'])
+    expect((await bo.until('here', (m) => m.here.length === 1)).here.map((p) => p.name)).toEqual(['bo@example.com'])
     bo.close()
   })
 

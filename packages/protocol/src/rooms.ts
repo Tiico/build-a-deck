@@ -18,9 +18,9 @@ export function normaliseCode(input: string): string | null {
 // both fail the day a word here is missing.
 export const ROUTE_WORDS: readonly string[] = [
   // The server's (packages/server/src).
-  'assets', 'auth', 'faces', 'guests', 'health', 'invites', 'me', 'projects', 'rooms', 'sessions',
+  'assets', 'auth', 'faces', 'guests', 'health', 'invites', 'me', 'projects', 'rooms', 'sessions', 'terms',
   // The app's pages (`fetchPage` in packages/web/src/App.tsx).
-  'claim', 'editor', 'join', 'login', 'new', 'observe', 'online', 'play', 'profile', 'survey', 'table',
+  'claim', 'editor', 'join', 'login', 'new', 'observe', 'online', 'play', 'print-package', 'profile', 'survey', 'table',
 ]
 
 // Whether a code would read as one of the app's own addresses, in whatever case it is typed.

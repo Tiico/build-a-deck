@@ -41,7 +41,7 @@ describe.skipIf(!url)('passkeys in Postgres', () => {
         const loginOptions = await call('POST', '/auth/passkeys/login/options', {})
         const res = await call('POST', '/auth/passkeys/login', { response: keychain.get(loginOptions.json) })
         expect(res.status).toBe(200)
-        expect((await call('GET', '/auth/me', undefined, res.cookie)).json).toEqual({ email: 'ada@example.com' })
+        expect((await call('GET', '/auth/me', undefined, res.cookie)).json).toEqual({ email: 'ada@example.com', name: null, asked: false, terms: { current: null, accepted: null, due: false } })
       }
       expect((await store.auth().passkey(saved.json.id))?.counter).toBe(2)
 

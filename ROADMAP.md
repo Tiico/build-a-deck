@@ -55,6 +55,7 @@ Bordet och telefonen:
 - ✅ Filtbord i bordsläge och sändningslayout i TV-läge med rumskod och QR (C5, K9).
 - ✅ Telefonens hand som remsa med tryck, dra upp, håll; zongenvägar; spela vänder kortet om målet är publikt (C4, K4, K10, K11).
 - ✅ Telefonen mot TV:n tagen om från grunden: fyra flikar (Handen, Framför mig, Bordet, Mer), handen som rutnät och verben i en rad över flikarna (C4 2026-10-23, #1147).
+- ✅ Rummets TV som scen för det senaste kortet: kortet stort i spalten med sin rad under, ingen logg, koden och namnet i en fot, och scenen så bred som filten kan ge och behålla K9:s kort (K8 2026-10-25, #1290).
 - ✅ Vänd ett kort i handen så spelas det nedvänt, vart det än går (K11 reviderad, #1133).
 - ✅ Anslutning: bordet som platsväljare, "Bara titta", "Spela på den här skärmen" (K12, C8, C2).
 - ✅ Bordet spelas direkt: dra, släpp, håll för en ring med verb; perspektivet projiceras exakt (K14, C1).
@@ -121,6 +122,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Bordets anteckningsblock på `/online` (K29, #1131): en spalt med rader som alla vid bordet skriver, bockar av och tar bort, med skribentens platsfärg; sessionens och inte spelets, så Ångra och tillbakaspolning lämnar det kvar.
 - ✅ Tärningar d4–d20, slagna från bordet och telefonen, i spelets setup med antal per spelare (K28, #1129). Typerna, setupen och aktivitetsraden med värden (#1136), telefonens ark «Tärningar» med flerslag i ett kuvert (#1138), fliken Bord med en rad per tärning (#1139), bordet som ritar och slår dem (#1137), och trycket, där en tärning är en köpt lagervara som partnern packar och som går att välja bort (#1140).
 - ✅ Vägen tillbaka mellan editorn och borden (L80, #1217): varje bordsyta leder ägaren till editorns egen flik, ett bord öppnas i sin egen flik i stället för en ny, ägaren som lämnar `/online` landar i spelet, och Mina spel, `/join` och `/login` har en väg vidare.
+- ✅ Materialets plats (K31, #1292): tärningar och räknare dras i fliken Bords filt dit de ska ligga, och en punkt i en yta vid platserna vänds mot varje plats kant.
 - ❓ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
 
@@ -135,6 +137,7 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 - ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
 - ✅ Symbolerna bär färg: spelet namnger sina betydelser med var sin färg, `{namn|roll}` i korttext och i ikonraden, biblioteket omritat som en form i en färg med hålen skurna så masken kan målas, och paletten dömd med kortkontrollens egna mått för kontrast och färgblindhet (E4, E5).
 - ✅ Speltema (2026-10-02, #612): fliken "Symboler" blev "Speltema", där spelets typsnitt, betydelser med färger och ikoner väljs som ett tema ur ett galleri av färdiga teman, avvikelserna sägs på en rad, klammern i Tabell föreslår ur temat, och den guidade starten väljer ram och tema tillsammans som «Utseende» (L57).
+- ✅ Spelets eget tema (2026-10-25, #1287): Speltema börjar med spelets eget tema, utfällt och med spelets första kort bredvid, och de färdiga temana är exempel i ett ark som kopieras med en fråga om vad som byts ut; spelet minns inte vilket exempel det kom ifrån (L84).
 - ✅ Bildens källa ramas mot ett mått: bildelementet bär hur stor andel av ramen motivet fyller — filen skrivs aldrig om (E1). Kortväggens «Bildernas mått» och kortets egen avvikelse avvecklades när bilden fick bära sin beskärning (#607).
 - ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).
 - ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).
@@ -157,9 +160,13 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - 🔶 Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11). Passkeys är byggda (#1180, L78): bandet på Mina spel efter länken, knappen och förslaget på inloggningskortet och kortet på profilen, med mejlet som återställning; OAuth återstår.
+- ✅ Kontots eget namn: ett välkomststeg efter första inloggningen med förslaget ur adressen, ett band på Mina spel för konton som fanns före det, kortet «Namn» i Profil, och namnet i Dela, i editorns huvud, för ägaren som tittar på vid bordet, i inbjudningsmejlet och i kvotraden med «spelets ägare» som reserv (#1254, L85).
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
-- ⬜ GDPR för gäster: enkätsvar och flaggor från personer utan konto, radering (I).
-- ⬜ Villkor med garantiklausul om IP (F4).
+- ⬜ GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
+  Inget är byggt än.
+  Skivorna: personfälten som sluten karta (#1276), rensning av det som inte längre kan användas (#1277) och namn och token ur adressraden (#1278) pågår; radering i lagret med liggare och operatörsskript (#1279) väntar på #1276; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på #1279 och på prototyper.
+- ⬜ Villkor med garantiklausul om IP, godkända i ett eget steg efter första inloggningen; korta betavillkor i betan och en releaseversion på ett aktiebolag (F4, reviderad 2026-10-24, #1268).
+  Villkorsversion och godkännande på servern (#1270) pågår; texten, sidan och steget (#1272) prototypas efter #1270.
 
 ## Fas 4 — Drift i produktion
 
@@ -181,8 +188,10 @@ Deployen är pull-baserad och timern är på: att tagga är att deploya.
 ## Betan — före tryck
 
 Betan kommer före fas 5, inte efter den: startsidan lovar det som finns, «Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.» (L36 reviderad, #743).
-Den kräver varken villkor eller GDPR för gäster, eftersom betans minsta förtroendeyta är beslutad och byggd (I, #757).
-Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samtycke i inbjudan (I, beslutat 2026-10-18).
+~~Den kräver varken villkor eller GDPR för gäster, eftersom betans minsta förtroendeyta är beslutad och byggd (I, #757).~~
+Reviderat 2026-10-24 av beställaren (F4, #1268): betan kräver korta betavillkor före inbjudningarna, eftersom tryckpaketet lämnar tryckfärdiga filer, betan är öppen för alla och skuggscreeningen behöver stöd i villkoren (#1272).
+GDPR-arbetet för gäster (G6, #1269) krävs inte före inbjudningarna; betans minsta förtroendeyta är beslutad och byggd (I, #757).
+Betan är öppen för alla, utan kvoter, och dess sessioner når korpusen med samtycke i inbjudan (I, beslutat 2026-10-18).
 
 - ✅ Minsta förtroendeyta: kontakt, version, vad en gäst lämnar efter sig, mejlets fot (I, #757); stacken skickar `BYD_CONTACT` till appen sedan 2026-10-18 (#1030), och lådans `.env` behöver raden ifylld.
 - ✅ Säljtexten lovar inte trycket (L36, #743).
@@ -195,6 +204,7 @@ Den är öppen för alla, utan kvoter, och dess sessioner når korpusen med samt
 - ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).
 - ✅ Tjänsten heter Deckster och ligger på deckster.se (A5): namnet är bytt överallt en användare läser det, och produktionen flyttade 2026-10-22 från `deck.ockelberg.com`, som svarar 301 till den nya adressen med sökväg och query kvar (#1080).
 - ✅ Ett märke, handen (A6): tre kort i bärnsten, grönt och papper i fliken, på hemskärmen, på landningssidan och i inloggningskortet, ritade från en enda ritning (#1082), i en delad länk och överst i rummets TV-spalt (#1084).
+- ⬜ Korta betavillkor, och godkännandet i ett eget steg efter första inloggningen, samordnat med välkomststeget för visningsnamnet (F4, #1270, #1272, #1254).
 - ⬜ En release från main med allt ovan, och tre till fem designers inbjudna med samtyckesfrågan.
 
 ## Fas 5 — Tryck
@@ -204,12 +214,13 @@ Beställaren beslutade 2026-10-23 (#1199) att stödet för fler partner och tryc
 
 - ✅ `PrintProvider`-abstraktionen i `packages/print`: komponenttyp till SKU, tryckunderlagskrav, prissättning, orderläggning och spårning, formad efter The Game Crafter och QPMN, med ett förberedelsesteg, regiondirigering för EU-kravet och kraven som data ur `requirements()`, en fake-provider och en kontraktssvit som varje adapter ska klara (F2, TUNN-SKIVA §4, #1206). Ingen serverväg anropar `submit` eller `track` ännu.
 - ✅ Tryckfiler efter partnerns krav: raster i exakta pixelmått och utfall ur `requirements()` i stället för typens fasta 3 mm, från den enda renderaren (E2, F2, #1207). Servern förbereder en providers order och ritar dess filer, och `GET /projects/:id/print-package` lämnar dem med regelhäftet; CMYK är inte byggt och väntar på en riktig partner.
-- ⬜ Tryckpaketet: designern ser vad som skulle skickas till tryckeriet, förklarat, och laddar ner det i betan; prototypas först (F1, #1208).
+- ✅ Tryckpaketet: designern ser vad som skulle skickas till tryckeriet, förklarat, och laddar ner det i betan (F1, #1208, beslut B). En egen sida, `/print-package`, med kniven, leken, lagervarorna, kraven och zippen i fem delar och en följesedel med Testtryckeriets exempelsvar; nås ur spelets ⋯ och ur Fysisk kontroll. Testtryckeriet är den provider servern registrerar, en fake-provider som låtsas trycka i Sverige och ställer typens krav.
 - ⬜ Tryckpaketet kostar att ladda ner när en riktig partner finns, i en form som beslutas med abonnemangen (F1, A2, #1209).
 - ⬜ En verklig POD-partner integrerad; all beställning går via plattformen (F1). Ingen partner är vald: #1199 fann inget tryckeri som både tillverkar i EU och har ett order-API, och EU-kunder går till EU-tryck (F2).
 - 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; partnerns krav i pixlar och utfall är byggda (#1207); kvar är tryckprofil per typ (B2) och CMYK.
 - ⬜ Kassa med kostnadsbesked först i flödet, ingen prisvisning i editorn (F3).
-- ⬜ Automatisk IP-screening med manuell eskalering före tryck (F4).
+- ⬜ Automatisk IP-screening med manuell eskalering före tryck (F4, reviderad 2026-10-24, #1268): klassificerare och bildhash på lådan, i skuggläge vid uppladdning redan i betan, och grind först i kassan.
+  Screeningkontraktet och jobbslaget (#1271) pågår; klassificeraren och bildhashen mätta mot kortkonst (#1273) efter #1271; anmälan och spärr per hash (#1274) och granskningen före tryck (#1275) prototypas först, och #1275 väntar på kassan och en partner.
 - ⬜ Moms, tull och leveransvillkor för EU-kunder: DDP eller DDU, IOSS (I, ekonomi).
 - ⬜ Fontlicensiering för tryck (I).
 - ⬜ En riktig order som landar i brevlådan (H1, TUNN-SKIVA).
@@ -223,7 +234,7 @@ Innan första betalande användaren:
 - ⬜ Återställningsprovet har körts mot en riktig backup (DRIFT §5).
 - ✅ Tillgänglighet i verktyget självt på en grundnivå: tangentbord, kontrast, skärmläsarnamn (I). Granskningen 2026-09-29 (#549) fann 84 fynd, och alla är rättade eller beslutade och byggda (#550–#560, #569, #570, #575, #579–#581).
 - ⬜ Prisnivåernas tak och gratisnivåns gränser beslutade (I, A2).
-- ⬜ Villkor, integritetspolicy och GDPR-rutiner på plats (I).
+- ⬜ Villkor, integritetspolicy och GDPR-rutiner på plats (F4, G6, #1268, #1269): releaseversionen av villkoren skriven på aktiebolaget och läst av en jurist; integritetspolicyn (#1281); biträdesavtal med Cloudflare och Resend, och Resend prövad mot Data Privacy Framework eller standardavtalsklausuler; gallringen och raderingsliggaren i drift (#1279).
 - ⬜ En sista genomgång av mönstret i avsnitt J: att de fyra besluten som skär bort kopplingarna mellan pelarna fortfarande är rätt.
 
 ---
@@ -232,7 +243,7 @@ Innan första betalande användaren:
 
 Från DESIGN-BESLUT I och DRIFT:
 - Moms, tull och leveransvillkor för fysiska varor (fas 5).
-- GDPR för gästdeltagare (fas 3).
+- ~~GDPR för gästdeltagare (fas 3).~~ Besvarad 2026-10-24 (#1269): se G6.
 - Fontlicensiering mot kravet att bevara fontfiler (fas 2 och 5).
 - Prisnivåernas tak (fas 3 och 6).
 - Om release omfattar fler komponenttyper än kort (fas 1).

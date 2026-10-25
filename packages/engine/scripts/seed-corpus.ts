@@ -2,101 +2,15 @@
 // Real logs, exported from a running server, replace these over time.
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { CARD, Harness, SEATS, registry, twoSeatSetup } from '../test/fixture.js'
+import { SEATS, registry } from '../test/fixture.js'
+import { SCRIPTED } from './scripted.js'
 import { record, write } from './corpus.js'
 
 const dir = join(import.meta.dirname, '../../../corpus')
-const first = (ids: readonly string[]): string => {
-  const id = ids[0]
-  if (id === undefined) throw new Error('expected at least one id')
-  return id
-}
-
-function full(): Harness {
-  const h = new Harness(42)
-  h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
-  h.do(null, { v: 'seat.claim', seat: 'B', name: 'Bo' })
-  h.do(null, { v: 'shuffle', pile: 'draw' })
-  h.do(null, { v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 3 })
-  h.do('A', { v: 'move', component: h.top('hand:A'), to: 'table', x: 100, y: 40, rot: 90 })
-  h.do('A', { v: 'flip', component: h.top('table'), face: 'front' })
-  h.do('B', { v: 'peek', components: [h.top('hand:B')] })
-  h.do('B', { v: 'showTo', components: [h.top('hand:B')], seats: ['A'] })
-  h.do('B', { v: 'move', component: h.top('hand:B'), to: 'table', x: -100, y: 0 })
-  h.do(null, { v: 'stack', component: first(h.zone('table')), onto: first(h.zone('table').slice(1)) })
-  h.do(null, { v: 'movePile', pile: first(h.piles()), to: 'table', x: 0, y: 200 })
-  h.batch('A', { v: 'draw', from: first(h.piles()), to: 'hand:A', count: 1 }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
-  h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
-  h.do('B', { v: 'undo.self' })
-  h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
-  h.do('A', { v: 'flag', note: 'Draken är för stark' })
-  h.do(null, { v: 'split', pile: 'draw', at: 1, x: -50, y: -50 })
-  h.do(null, { v: 'split', pile: 'draw', at: 1, to: 'discard' })
-  h.do('A', { v: 'stack', component: h.top('hand:A'), onto: h.top('discard') })
-  const p = h.do('A', { v: 'rewind.propose', toSeq: 6 })
-  h.do('B', { v: 'rewind.confirm', proposal: p.batch })
-  h.do('A', { v: 'seat.release', seat: 'A' })
-  h.do(null, { v: 'setup.reset' })
-  h.do(null, { v: 'shuffle', pile: 'draw' })
-  h.do(null, { v: 'session.end' })
-  return h
-}
-
-function versionChange(): Harness {
-  const h = new Harness(7)
-  h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
-  h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
-  const spec = (cardRef: string) => ({ type: CARD, cardRef, zone: 'draw', face: 'back' })
-  const next = ['dragon', 'dragon', 'wizard', 'phoenix', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre'].map(spec)
-  h.do(null, { v: 'version.change', to: 'v2', components: next })
-  h.do('A', { v: 'draw', from: 'draw', to: 'table', count: 1 })
-  h.do(null, { v: 'flag', observer: 'Eva', note: 'nu' })
-  return h
-}
-
-// The top of a pile as a source (K15): turned face-up for everyone, stacked without an id.
-function pileTop(): Harness {
-  const h = new Harness(11)
-  h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
-  h.do(null, { v: 'shuffle', pile: 'draw' })
-  h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
-  h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
-  h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
-  h.do(null, { v: 'stack', component: { top: 'draw' }, onto: h.top('table') })
-  h.do(null, { v: 'flip', component: { top: first(h.piles()) }, face: 'front' })
-  h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
-  return h
-}
-
-// The table's notepad (#1131): rows written, rewritten, ticked and taken away around play, an undo
-// and a rewind that both leave the notepad as it stands.
-function notepad(): Harness {
-  const h = new Harness(13)
-  h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
-  h.do(null, { v: 'seat.claim', seat: 'B', name: 'Bo' })
-  const score = h.do('A', { v: 'note.add', text: 'Poäng: Ada 0, Bo 0' })
-  h.do(null, { v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 2 })
-  const turn = h.do('B', { v: 'note.add', text: 'Bo har en extra tur' })
-  h.do('A', { v: 'note.edit', note: `n${score.seq}`, text: 'Poäng: Ada 3, Bo 1' })
-  h.do('B', { v: 'move', component: h.top('hand:B'), to: 'table', x: 0, y: 0 })
-  h.do('B', { v: 'note.check', note: `n${turn.seq}`, done: true })
-  h.do('B', { v: 'undo.self' })
-  const p = h.do('A', { v: 'rewind.propose', toSeq: 2 })
-  h.do('B', { v: 'rewind.confirm', proposal: p.batch })
-  h.do(null, { v: 'note.add', text: 'Regelfråga till efteråt' })
-  h.do('A', { v: 'note.remove', note: `n${turn.seq}` })
-  return h
-}
-
 // A recorded entry is never rewritten (DRIFT §7): seeding again writes only the entries not yet there.
-for (const [name, h] of [
-  ['scripted-full-round', full()],
-  ['scripted-version-change', versionChange()],
-  ['scripted-pile-top', pileTop()],
-  ['scripted-notepad', notepad()],
-] as const) {
+for (const [name, script] of SCRIPTED) {
   if (existsSync(join(dir, `${name}.json`))) continue
+  const h = script()
   const file = write(record(name, 'v1', h.initial.setup, h.log, registry), dir)
   console.log(JSON.stringify({ msg: 'seeded', file, lines: h.log.length, viewers: SEATS.length + 1 }))
 }
-void twoSeatSetup

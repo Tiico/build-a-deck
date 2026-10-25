@@ -36,9 +36,11 @@ test('a list written in the editor without an import is read as a list on the ph
   await expect(book.locator('ul > li')).toHaveText(['Dra ett kort.', 'Spela ett kort.'])
   await expect(book.locator('p')).toHaveText(['Varje tur har tre steg.'])
 
-  // The chooser: a block added after the list with ＋, and made a numbered list where it is open.
-  await book.locator('ul').hover()
-  await book.getByRole('button', { name: 'Lägg till efter listan under En tur' }).click()
+  // The chooser: a block added after the list from the row's «＋ Text» (#1258) — the list is opened
+  // and left first, so it is the block the row adds after — and made a numbered list where it is open.
+  await book.locator('ul').click()
+  await page.keyboard.press('Escape')
+  await page.locator('.byd-rules-bar').getByRole('group', { name: 'Lägg till' }).getByRole('button', { name: '＋ Text' }).click()
   await book.getByRole('group', { name: /^Blockets slag/ }).getByRole('button', { name: 'Numrerad lista' }).click()
   await expect(book.getByRole('textbox', { name: /^Punkt 1/ })).toBeFocused()
   await page.keyboard.type('Kasta ned till sju.')

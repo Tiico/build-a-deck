@@ -1,6 +1,6 @@
 import type { Device } from '../support/devices.js'
 import { DESK } from '../support/devices.js'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { standing } from '../support/surface.js'
 import { expect, test } from '../support/test.js'
 
@@ -95,7 +95,7 @@ test.describe('the felt under the distance view’s header (#509)', () => {
     const dealer = await host(table)
     await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
     const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(LAPTOP, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await open(LAPTOP, withQuery(seat.onlineUrl, `lang=sv`))
     const card = page.locator('.byd-online-felt .byd-card[data-component]').first()
     await expect(card).toHaveAttribute('data-face', 'back')
 
@@ -137,7 +137,7 @@ test.describe('a card read at the top of the felt (#509)', () => {
       const dealer = await host(table)
       await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
       const seat = await join(request, table, { name: 'Ada', seat: 'A' })
-      const { page } = await open(LAPTOP, `${where === 'online' ? seat.onlineUrl : table.tableUrl}&lang=sv`)
+      const { page } = await open(LAPTOP, withQuery(where === 'online' ? seat.onlineUrl : table.tableUrl, `lang=sv`))
       const card = page.locator(`${where === 'online' ? '.byd-online-felt ' : ''}.byd-card[data-component]`).first()
       await expect(card).toHaveAttribute('data-face', 'back')
       await card.click()

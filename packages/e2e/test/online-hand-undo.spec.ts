@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test'
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { SMALL_TV } from '../support/devices.js'
 import { expect, test, type Fixtures } from '../support/test.js'
 
@@ -20,7 +20,7 @@ test.describe('a card lifted out of the hand on /online (#484)', () => {
     const seat = await join(fixtures.request, table, { name: 'Ada', seat: 'A' })
     const dealer = await fixtures.host(table)
     await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 3 }])
-    const { page } = await fixtures.open(SMALL_TV, `${seat.onlineUrl}&lang=sv`)
+    const { page } = await fixtures.open(SMALL_TV, withQuery(seat.onlineUrl, `lang=sv`))
     await expect(page.locator('[data-hand-card]')).toHaveCount(3)
     return page
   }

@@ -231,9 +231,12 @@ export type EditIntent =
   // and everything else, a title, a cost, a word the template writes itself, in the heading's.
   // `fonts` are the families as the game will carry them, files and licences and all (#420).
   // `palette` paints the theme's meanings and leaves the game's own; `icons` is the starter set.
+  // `theme` is what the edit wrote before L84: a copy of an example is the game's own and the game
+  // does not remember where it came from, so the editor no longer sends it, and an edit without it
+  // forgets one an older edit wrote. It is still read, so an old log replays as it was written.
   | {
       v: 'setTheme'
-      theme: ProjectTheme
+      theme?: ProjectTheme
       heading: string
       body: string
       prose: string[]
@@ -834,14 +837,15 @@ function themed(doc: ProjectDoc, intent: Extract<EditIntent, { v: 'setTheme' }>)
   const fonts = Object.fromEntries(Object.entries(carried).filter(([family]) => after.has(family) || !before.has(family)))
   const icons = Object.entries(intent.icons ?? {})
   const credits = { ...(doc.credits ?? {}), ...Object.fromEntries(icons.flatMap(([name, icon]) => (icon.credit ? [[name, icon.credit]] : []))) }
+  const { theme: _forgotten, ...rest } = doc
   return {
-    ...doc,
+    ...rest,
     template,
     fonts,
     palette: { ...(doc.palette ?? {}), ...intent.palette },
     icons: { ...doc.icons, ...Object.fromEntries(icons.map(([name, icon]) => [name, icon.url])) },
     ...(Object.keys(credits).length > 0 || doc.credits ? { credits } : {}),
-    theme: intent.theme,
+    ...(intent.theme ? { theme: intent.theme } : {}),
   }
 }
 

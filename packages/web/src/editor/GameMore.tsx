@@ -22,6 +22,8 @@ export type GameMoreProps = {
   onFailed(text: string): void
   // Taking the game away is the owner's alone (D3, #689): without it the choice is not offered.
   onRemove?: () => void
+  // The print package's page (#1208), the same choice as in Mina spel.
+  onPrintPackage?: () => void
 }
 
 // The game's own ⋯ in the editor, beside its name (#542, #529 beslut B): the same menu a game has in
@@ -29,7 +31,7 @@ export type GameMoreProps = {
 // beslut 2026-10-06) — its name, a copy of it, the export and taking it away — so the header does
 // not grow a button for each of them. It is there only for those who may change the game: the owner
 // and the co-editors.
-export function GameMore({ http, game, more: given, onShare, onRename, onSaid, onFailed, onRemove }: GameMoreProps) {
+export function GameMore({ http, game, more: given, onShare, onRename, onSaid, onFailed, onRemove, onPrintPackage }: GameMoreProps) {
   const t = useT()
   const own = useRef<HTMLButtonElement>(null)
   const more = given ?? own
@@ -85,6 +87,11 @@ export function GameMore({ http, game, more: given, onShare, onRename, onSaid, o
           <button type="button" onClick={choose(() => setDialog('export'))}>
             {t('home.menu.export')}
           </button>
+          {onPrintPackage && (
+            <button type="button" onClick={choose(onPrintPackage)}>
+              {t('home.menu.print')}
+            </button>
+          )}
           {onRemove && (
             <button type="button" onClick={choose(onRemove)}>
               {t('home.menu.remove')}

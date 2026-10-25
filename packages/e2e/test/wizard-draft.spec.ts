@@ -88,6 +88,8 @@ test('makes the game with its 5 MB picture on the way back from a login (#686)',
   })
   await page.getByLabel('E-post').fill(`e2e-${crypto.randomUUID()}@example.com`)
   await page.getByRole('button', { name: 'Skicka inloggningslänk' }).click()
+  // A first login is asked what the others should call it (#1254), and the draft waits through it.
+  await page.getByRole('button', { name: 'Hoppa över' }).click()
   await expect(page).toHaveURL(/\/editor\?/)
   expect(sent, 'the picture went up with the game').toContain(BIG.length)
   const games = (await (await page.request.get('/projects')).json()) as unknown[]

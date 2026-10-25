@@ -69,6 +69,9 @@ export type DeckWallProps = {
   // game with that template, so each is drawn as the proposal would draw it, and marked «Ändrat» as a
   // changed card is — with old → new under it only where a cell changes too.
   redrawn?: ReadonlySet<string> | undefined
+  // The way to the print package (#1208, beslut B): what would be sent to a printer, with these
+  // checks applied. Only for those who may take the package.
+  printPackage?: { href: string; onGo(from: HTMLElement): void } | undefined
 }
 
 // What the wall is read at (L81): the width it is drawn in, and the eye it is seen with, are two
@@ -120,7 +123,7 @@ export type Panel = 'view' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -795,6 +798,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                   say?.('polite', t('wall.checks.fix.said', { what }))
                 }}
                 t={t}
+                printPackage={printPackage}
               />
             )}
           </WallPanel>
@@ -847,6 +851,7 @@ function Checks({
   names,
   onOpenRow,
   t,
+  printPackage,
 }: {
   groups: ReturnType<typeof groupIssues>
   errors: number
@@ -861,6 +866,7 @@ function Checks({
   names(cardRef: string): string
   onOpenRow: ((cardRef: string) => void) | undefined
   t: ReturnType<typeof useT>
+  printPackage?: DeckWallProps['printPackage']
 }) {
   const { lang } = useLang()
   return (
@@ -937,6 +943,19 @@ function Checks({
             ))}
           </ul>
         </>
+      )}
+      {printPackage && (
+        <a
+          className="byd-wall-print"
+          href={printPackage.href}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+            e.preventDefault()
+            printPackage.onGo(e.currentTarget)
+          }}
+        >
+          {t('wall.checks.print')}
+        </a>
       )}
     </div>
   )

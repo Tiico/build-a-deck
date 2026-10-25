@@ -120,6 +120,20 @@ test.describe('the card on a game in "Mina spel" (#231, #1204)', () => {
     await expect(hero.locator('.byd-home-fan-back')).toHaveCount(2)
     const front = (await hero.locator('.byd-home-card[role="img"]').boundingBox())!
     expect(front.width / front.height).toBeCloseTo(63 / 88, 2)
+    // The two behind it are cards of the same game, so they have the front card's rounded corners:
+    // each drawing is clipped by a box with the front's radius that is exactly the drawing's size.
+    const corners = (el: Element) => {
+      const preview = el.querySelector('.byd-preview')!
+      let clip = preview.parentElement
+      while (clip && getComputedStyle(clip).overflow === 'visible') clip = clip.parentElement
+      const a = preview.getBoundingClientRect()
+      const b = clip?.getBoundingClientRect()
+      return { radius: clip ? getComputedStyle(clip).borderTopLeftRadius : 'none', fits: !!b && Math.abs(a.width - b.width) < 1.5 && Math.abs(a.height - b.height) < 1.5 }
+    }
+    await expect(hero.locator('.byd-home-fan-back .byd-preview')).toHaveCount(2)
+    const radius = await hero.locator('.byd-home-card[role="img"]').evaluate((el) => getComputedStyle(el).borderTopLeftRadius)
+    expect(radius).not.toBe('0px')
+    for (const back of await hero.locator('.byd-home-fan-back').all()) expect(await back.evaluate(corners)).toEqual({ radius, fits: true })
     // Its two things to do are on it, and not behind its ⋯.
     await expect(hero.getByRole('link', { name: 'Öppna editorn' })).toBeVisible()
     await expect(hero.getByRole('button', { name: 'Starta bord' })).toBeVisible()

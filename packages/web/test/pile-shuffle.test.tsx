@@ -428,7 +428,9 @@ describe('the screens that see the pile play the shuffle (L35)', () => {
     host.close()
   })
 
-  it('a TV that joins after the shuffle is told about it in words and fans nothing', async () => {
+  // The room's television keeps no feed since the stage (#1290), so a shuffle it missed is not
+  // said on it either: the phones have the whole history. What holds is that it fans nothing.
+  it('a TV that joins after the shuffle fans nothing', async () => {
     const id = await createSession(run)
     const host = TableClient.connect(await asTable(run, id))
     await host.ready()
@@ -437,7 +439,7 @@ describe('the screens that see the pile play the shuffle (L35)', () => {
 
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await screen.findByText(/blandade Draghög/)
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')).not.toBeNull())
     expect(document.querySelector('[data-shuffling]')).toBeNull()
     expect(document.querySelectorAll('.byd-pile-fan-card')).toHaveLength(0)
   })

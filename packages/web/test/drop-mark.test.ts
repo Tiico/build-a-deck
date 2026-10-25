@@ -53,7 +53,8 @@ describe('dragmarkeringens token (#291)', () => {
   it('är den enda färg någon mottagande yta målar sin markering i', () => {
     // Varje regel i hela trädet som målar en yta ett drag står över — bildytorna, regelbokens
     // import (#293) och typsnittsknappen (#294). Formen är kontrollens egen: en kant här, en
-    // kontur där. Färgen är allas och ingens.
+    // kontur där. Färgen är allas och ingens. Regelbokens mottagare är sedan #1258 fyra — den tomma
+    // bokens väg in, «＋ Bild», «Boken»-knappen och väljarna i dess låda — och delar en regel.
     const marking = sources
       .filter((path) => path.endsWith('.css'))
       .flatMap((path) => [...rules(path).matchAll(/([^{}]*\[data-over='true'\][^{}]*)\{([^}]*)\}/g)].map((m) => ({ at: at(path), selector: m[1]!.trim(), body: m[2]! })))
@@ -63,7 +64,7 @@ describe('dragmarkeringens token (#291)', () => {
       "dropping.css: .byd-drop[data-over='true']",
       "editor/editor.css: .byd-data-tools label[data-over='true']",
       "editor/editor.css: .byd-fonts-upload[data-over='true']",
-      "editor/editor.css: .byd-rules-ways label[data-over='true']",
+      "editor/editor.css: :is(.byd-rules-ways label, .byd-rules-adding > label, .byd-rules-book > button, .byd-rules-menu label)[data-over='true']",
     ])
     // Och ingen av dem nämner en färg av sitt eget: bara namnen.
     const ownColour = marking.filter((rule) => /#[0-9a-f]{3,8}\b|rgba?\(/i.test(rule.body)).map((rule) => `${rule.at}: ${rule.selector}`)

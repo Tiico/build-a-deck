@@ -1,4 +1,4 @@
-import { join } from '../support/api.js'
+import { join, withQuery } from '../support/api.js'
 import { DESK, PHONE } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -9,11 +9,11 @@ test.describe('the turn passed on between a laptop and a phone (K30)', () => {
   test('Ada has the turn first, «Klar» gives it to Bo, and both screens say so', async ({ tableOf, open, request }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 6, turns: 'clockwise' })
     const ada = await join(request, table, { name: 'Ada', seat: 'A' })
-    const { page } = await open(DESK, `${ada.onlineUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(ada.onlineUrl, `lang=sv`))
     // A seat is taken when its screen sits down, and the first to sit down has the turn.
     const mine = page.locator('[data-seat-name="A"]')
     await expect(mine).toContainText('Din tur')
-    const bo = await open(PHONE, `${(await join(request, table, { name: 'Bo', seat: 'B' })).playUrl}&lang=sv`)
+    const bo = await open(PHONE, withQuery((await join(request, table, { name: 'Bo', seat: 'B' })).playUrl, `lang=sv`))
     await expect(page.locator('[data-turn-band="A"]')).toBeVisible()
     await expect(page).toHaveTitle(/^● Din tur · /)
     await expect(bo.page.getByText('Adas tur')).toBeVisible()

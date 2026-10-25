@@ -454,7 +454,9 @@ describe('the rules button and the way in share the TV head (#30)', () => {
 // that everything else in it starts on — the help's disc 7 px outside it, because its button
 // shrinks to a 22 px ring's footprint while the room draws a 36 px ring, and the shortcuts' 3 px
 // inside it, from the felt's −5 px margin against the room's 8 px of padding (#921). Read against
-// the column's content box, so neither the font nor the column's width moves the answer.
+// the column's content box, so neither the font nor the column's width moves the answer. Since the
+// stage (#1290) the help's disc stands after the code and the square on their line, and the
+// shortcuts' disc keeps the edge.
 describe('the room television’s «?» discs stand on the column’s edge (#921)', () => {
   function Room() {
     const [corner, setCorner] = useState<HTMLElement | null>(null)
@@ -481,13 +483,24 @@ describe('the room television’s «?» discs stand on the column’s edge (#921
           const r = document.querySelector(sel)!.getBoundingClientRect()
           return Math.min(r.width, r.height)
         }
+        // The game's name stands to the right in the stage's foot (#1290), on the column's other edge.
+        const right = aside.getBoundingClientRect().right - parseFloat(style.paddingRight)
         return {
-          left: { heading: at('.byd-tv-head h1'), code: at('.byd-tv-join strong'), help: at('.byd-tv-join .byd-help-ask > span'), shortcuts: at('.byd-tv-corner .byd-shortcut-open > span') },
+          heading: Math.round((right - document.querySelector('.byd-tv-head')!.getBoundingClientRect().right) * 2) / 2,
+          left: { code: at('.byd-tv-join strong'), shortcuts: at('.byd-tv-corner .byd-shortcut-open > span') },
+          // In the stage's foot the help's disc stands on the code's own line, after the square.
+          helpBesideCode: (() => {
+            const code = document.querySelector('.byd-tv-join strong')!.getBoundingClientRect()
+            const ask = document.querySelector('.byd-tv-join .byd-help-ask')!.getBoundingClientRect()
+            return ask.left >= code.right && ask.top < code.bottom && ask.bottom > code.top
+          })(),
           targets: { help: target('.byd-tv-join .byd-help-ask') >= 44, shortcuts: target('.byd-tv-corner .byd-shortcut-open') >= 44 },
         }
       }),
     )
-    expect(seen.left).toEqual({ heading: 0, code: 0, help: 0, shortcuts: 0 })
+    expect(seen.left).toEqual({ code: 0, shortcuts: 0 })
+    expect(seen.heading).toBe(0)
+    expect(seen.helpBesideCode).toBe(true)
     expect(seen.targets).toEqual({ help: true, shortcuts: true })
   }, 60_000)
 })

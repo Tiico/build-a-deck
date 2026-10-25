@@ -198,6 +198,11 @@ Texturhashen bestäms fortfarande av det som ritas: en asset skrivs aldrig om oc
 Varje textur och tryckfil av ett kort med en uppladdad bild, symbol eller ett uppladdat typsnitt fick en ny hash när sidan bytte form, och renderas om en gång efter deployen, vilket beställaren godtog.
 Bord som startades före ändringen har kvar sin lek med data-URL:er och spelar som förut; workern ritar en sida utan hashar precis som den alltid gjort.
 
+Två undantag från «raderas aldrig», beslutade av beställaren 2026-10-24.
+Bilder, typsnitt och renderingar efter ett raderat konto, som inget annat spel eller bord nämner, sopas efter 30 dygn (G6, #1269).
+Olagligt innehåll som spärrats efter en anmälan rensas ur R2 och Postgres; annat spärrat innehåll står kvar som bytes, och servern, renderaren, trycket och exporten behandlar hashen som om den inte fanns (F4, #1268, fråga 12).
+Ingen av dem skriver om en asset, så hashen avgör fortfarande bytesen, och en referens till en hash som inte längre finns blir tom som ovan.
+
 En bilds hash går aldrig till en klient.
 Hashen är en kapabilitet (`GET /assets/<hash>`), och på tråden skulle den visa vilket kort som ligger i någon annans hand lika säkert som texturen; projektionen bär texturernas hashar och inget annat.
 Det visas på råa frames i `packages/server/test/assets.test.ts`.
@@ -218,6 +223,19 @@ Postgres-bilden (`ops/Dockerfile.postgres`) är fortfarande Alpine — lådans d
 `backup`-containern är samma bild över datavolymen: en basbackup per natt, de senaste `BACKUP_KEEP` behålls med sitt WAL.
 `ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tom katalog i backup-bilden, startar Postgres där, räknar, och spelar upp den senaste sessionens logg genom motorn i app-bilden.
 Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är densamma.
+
+### Bevarandetiden och raderingarna (#1269)
+
+Beställarens beslut 2026-10-24 (G6, F4): **backuperna sparas i åtta dygn.**
+Det är dagens ordning: `BACKUP_KEEP=7` behåller sju nattliga basbackuper med WAL efter den äldsta, så det som raderas i databasen ligger kvar i R2 i högst ungefär åtta dygn och försvinner sedan av sig självt.
+Integritetspolicyn säger det, och backuperna används bara för återställning.
+Att höja `BACKUP_KEEP` förlänger alltså en lagringstid som policyn lovar, och är ett ändrat beslut och inte en driftinställning.
+
+En återställning till `LATEST` (RUNBOOK §6) tar med raderingarna, eftersom de ligger i WAL.
+Det enda som kan väcka en raderad eller maskad uppgift är en återställning till en tidigare punkt.
+Därför skrivs varje radering och maskning i en raderingsliggare — vad, vilket id och när, utan personuppgifter — i samma transaktion som raderingen.
+Efter en återställning till en tidigare punkt körs liggaren om innan tjänsten släpps på igen, och RUNBOOK säger det i samma steg som återställningen (#1279).
+Det följer att liggaren inte får gå förlorad med den punkt som återställs: raderingarna efter den punkten måste gå att läsa.
 
 ### Huvudnyckeln för AI-nycklarna (#999)
 
@@ -265,6 +283,12 @@ CI har ingen väg in i huset.
 Migrering är två olika saker:
 Databasschema migreras med vanligt verktyg innan appen startar.
 Händelseschemat migreras aldrig på disk; varje `Applied` bär `schemaVersion` och motorn har upcasters som lyfter gamla rader vid inläsning.
+
+Ett undantag, beslutat av beställaren 2026-10-24 (#1269, F7, G6): **maskningen av personfälten är den enda skrivning som någonsin rör en befintlig rad i loggen.**
+En radering eller en gallring byter `seat.claim.name`, `flag.note`, `flag.observer`, `note.add.text`, `note.edit.text` och platsernas namn i en tillbakaspolnings `outcome.table` mot ett reserverat värde, och rör ingenting annat i raden.
+Maskningen är ingen migrering: raden behåller sin `schemaVersion`, och värdet byts mot ett av samma form, så upcasters och uppspelning läser den som förut.
+Loggen spelar därefter upp identiskt med avseende på spelet (D4), och fältlistan är densamma som korpusens anonymisering läser (#1276).
+Korpusens filer berörs inte: de är redan anonymiserade (#540) och bär inga personuppgifter.
 
 Ingen permanent staging på lådan.
 Grinden är replay-korpusen i CI: anonymiserade riktiga loggar som måste spela upp identiskt.
@@ -353,6 +377,24 @@ Byggt 2026-10-23 (#1194): den råa dörren kräver konto.
 `POST /sessions` gjorde ett bord av vilken uppsättning och lek som helst, utan inloggning, och köade dess texturer i renderworkern: en väg för vem som helst att lägga Chromium-arbete på lådan, och en väg förbi varje tak på bord och renderingar (DESIGN-BESLUT A2).
 Med konton påslagna, vilket lådan alltid har, svarar den 401 utan inloggat konto och skriver ingenting, och med en kaka bärs bordet av det kontot.
 Webben startar bord genom `POST /projects/:id/sessions`, som redan krävde en roll i spelet; den råa dörren används bara av E2E-sviten och `seed`-skriptet, som loggar in med `AUTH_BYPASS` först.
+
+Byggt 2026-10-25 (#1278): gästens namn och token står i ingen adress.
+Förut var platsen `/play?session=…&seat=…&name=…&token=…`, och claim-länken bar token vidare.
+Hennes namn och hennes bärartoken stod då i historiken, i varje omladdning till lådan och som `Referer` på varje anrop, alltså i proxyns och Cloudflares loggar om de loggar adresser.
+Nu står bordet, platsen och rumskoden i frågan, och token i fragmentet (`#token=…`), som webbläsaren aldrig skickar i ett anrop eller en `Referer`.
+Det gäller `/play`, `/online`, `/observe` och `/claim` (`packages/web/src/guestAddress.ts`).
+Rumskoden står kvar i frågan: den är det adressen är till för (K12).
+Namnet står ingenstans: servern säger anslutningen namnet på inträdet dess token köptes för, i meddelandet `admitted`, och telefonen sätter sig med det.
+Ägarens egen plats och tittarplats från editorn (`owner=1`) har inget inträde och bär fortfarande sitt namn i adressen; det är designerns namn, inte en gästs.
+Bordets WebSocket tar token i `Sec-WebSocket-Protocol` och inte i adressen, eftersom uppgraderingen också är ett anrop som en proxy loggar: klienten erbjuder protokollen `deckster` och `deckster.token.<token>`, och servern svarar med `deckster`.
+En sida som laddades före ändringen ansluter med `?token=` och släpps fortfarande in, men får inte `admitted`, som dess klient inte känner till.
+Inloggningen bär fragmentet vidare: `loginUrl` lägger en `next`s fragment som inloggningssidans eget fragment, sidan lämnar det till kortet, och servern lägger det efter länken i inloggningsmejlet och aldrig i dess fråga.
+Webbläsaren behåller fragmentet genom omdirigeringen från `/auth/verify`, som inte anger något eget (RFC 9110 §10.2.2).
+Token står därmed i mejlet, som förut, men aldrig i ett anrop.
+En gammal länk med `?token=` eller `?name=` fungerar fortfarande: sidan flyttar token till fragmentet, tar bort namnet, gör detsamma med sidan en gammal claim-länk går tillbaka till, och ersätter historikposten med `history.replaceState`, så att den gamla formen inte blir kvar.
+Själva den gamla adressen har redan nått lådan när den öppnas; det går inte att göra ogjort, bara att den inte skickas igen.
+`packages/e2e/test/guest-address.spec.ts` läser varje anrops adress och `Referer` och varje WebSockets adress genom en plats resa (ansluta, sätta sig, ladda om, spela, enkäten, «Spara till ditt konto», logga in) och en observatörs, och hittar varken namnet eller token, sedan den visat att sökningen hittar namnet i bordets egna ramar.
+Värdnyckeln i bordsvyns WebSocket-adress (`?host=`) är inte en gästs och ligger utanför detta; den är ute ur adressraden sedan #758.
 
 ## 10. Administration: Tailscale
 
@@ -521,6 +563,12 @@ Det sviten hittade när policyn slogs på, och vad som gjordes:
   Det var inget policyfel utan ett produktionsfel som syntes först när stacken fick ett objektlager; nu räcker omdirigeringen själv som svar.
 - Två specar hämtade sina egna data-URL:er eller spelade R2 med en påhittad adress; de läser nu sina bytes utan att ansluta, och använder stackens objektlager.
 
+Byggt 2026-10-25 (#1278): varje HTML-svar bär också `Referrer-Policy: strict-origin` (`REFERRER_POLICY` i `csp.ts`), satt på samma ställe som policyn.
+En sida säger då bara sitt origin som `Referer`, aldrig sökvägen eller frågan, till lådan, till objektlagrets signerade länkar och till Googles typsnitt, och ingenting alls från https till http.
+Bordets och platsens id i en telefons adress följer därmed inte med något anrop.
+Som policyn reser huvudet med bygget och vilar inte på proxyn; `packages/server/test/guest-address.test.ts` kräver det på sidorna och E2E-resan i `guest-address.spec.ts` läser det på svaret.
+Lådans middleware får gärna strama åt det (`no-referrer`) men inte lätta på det.
+
 Följdkrav:
 **Lådans egna middleware får inte skicka en andra CSP.**
 Två policyer gäller båda samtidigt, så en till kan bara strama åt, och en som inte känner till hasharna stänger av skalet.
@@ -566,11 +614,14 @@ Deploy är pull-baserad (§7): `ops/deploy.sh` via en systemd-timer hämtar tagg
 CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgres och Chromium på varje pull request, med replay-korpusen i `corpus/` som grind, och bygger bilderna till GHCR när en `v*`-tagg pushas.
 Trunken har ingen CI framför sig; `.githooks/pre-push` kör samma grindar lokalt innan något når `main`.
 Korpusen anonymiserar både människorna och spelet (#540, beställarens beslut 2026-09-28), eftersom repot är publikt och en riktig logg bär designerns opublicerade spel.
-Människorna: gästernas namn blir `Spelare N`, och flaggornas text och observatörerna tas bort.
+Människorna: gästernas namn blir `Spelare N`, flaggornas kommentarer `(kommentar)`, observatörernas namn `Observatör` och anteckningsblockets rader `(anteckning)`.
+Vilka fält det är står på ett ställe sedan 2026-10-25 (#1276): `PERSONAL_FIELDS` i `packages/protocol`, som `anonymise` går igenom i stället för att räkna upp verben, så att ett personfält som läggs till i protokollet anonymiseras samma dag som det listas.
+Ett test i protokollet går igenom varje fält i varje intent och utfall som kan bära text och faller för ett som varken är listat där eller uttryckligen sagt inte vara en persons (`IMPERSONAL_FIELDS`), och ett test i servern gör detsamma för varje kolumn i de två schemana.
+`redactLine` och `redactLog` i motorn maskar samma fält till ett reserverat värde, `REDACTED`, utan att spelet ändras; det är den maskning som G6 (F7, väg A) tillåter som §7:s enda undantag, och att skriva den i lagret är #1279.
 Spelet: kortens id blir `kort-N` i den ordning de först förekommer, kortens kolumner blir `fält-N` och deras innehåll `värde-N` (kolumn för kolumn, så att en fråga till korten hittar samma kort), och zonernas, genvägarnas och åtgärdernas text blir `Zon N`, `Genväg N` och `Åtgärd N`.
 Zonernas id står kvar, eftersom intents och motorn pekar på dem och editorn ger dem generiska namn.
 Tidsstämplarna står kvar som de loggades.
-Anonymiseringen går igenom hela posten, också en tillbakaspolnings lagrade bord.
+Spelets anonymisering går igenom hela posten, också en tillbakaspolnings lagrade bord; det bordet är zoner och komponenter och bär inga platser och inga namn, vilket motorns `redact.test.ts` håller.
 `pnpm --filter @byd/engine corpus <namn> <https://…/sessions/:id/export>` lägger till en riktig logg, med ägarens kaka i `BYD_COOKIE`, och tar bara bord ur spel som kontot äger tills villkoren säger något annat.
 Exporten och enkätsvaren (`GET /sessions/:id/surveys`) lämnas bara till ett konto som projektet låter öppna sina bord som värd, eftersom loggen bär varje hand, gästernas namn och flaggornas text; skriptet tar kontots kaka i `BYD_COOKIE`.
 Undantaget med samtycke, och hur det blir en behörighet på lådan, står i §7 (#1011).

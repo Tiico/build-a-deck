@@ -14,8 +14,11 @@ import { QuotaReached, growth, startThatFrees, tableGrowth, withFrees, type Limi
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
-import type { Account, AuthStore } from './auth.js'
+import type { Account, AuthStore, TermsAcceptance } from './auth.js'
 import type { PasskeyRecord } from './passkeys.js'
+
+type AccountRow = { id: string; email: string; name: string | null; name_asked: boolean }
+const accountOf = (row: AccountRow): Account => ({ id: String(row.id), email: row.email, name: row.name, asked: row.name_asked })
 
 export class PostgresAuthStore implements AuthStore {
   constructor(private readonly sql: postgres.Sql) {}
@@ -29,32 +32,37 @@ export class PostgresAuthStore implements AuthStore {
     return rows[0]?.email ?? null
   }
   async ensureAccount(email: string): Promise<Account> {
-    const rows = await this.sql<{ id: string }[]>`
-      insert into accounts (email) values (${email}) on conflict (email) do update set email = excluded.email returning id
+    const rows = await this.sql<AccountRow[]>`
+      insert into accounts (email) values (${email}) on conflict (email) do update set email = excluded.email returning id, email, name, name_asked
     `
-    return { id: String(rows[0]?.id), email }
+    const row = rows[0]
+    if (!row) throw new Error('the insert made no account')
+    return accountOf(row)
   }
   async accountById(id: string): Promise<Account | null> {
-    const [row] = await this.sql<{ id: string; email: string }[]>`select id, email from accounts where id = ${id}`
-    return row ? { id: String(row.id), email: row.email } : null
+    const [row] = await this.sql<AccountRow[]>`select id, email, name, name_asked from accounts where id = ${id}`
+    return row ? accountOf(row) : null
   }
   async accountByEmail(email: string): Promise<Account | null> {
-    const [row] = await this.sql<{ id: string; email: string }[]>`select id, email from accounts where email = ${email}`
-    return row ? { id: String(row.id), email: row.email } : null
+    const [row] = await this.sql<AccountRow[]>`select id, email, name, name_asked from accounts where email = ${email}`
+    return row ? accountOf(row) : null
   }
   async listAccounts(): Promise<Account[]> {
-    const rows = await this.sql<{ id: string; email: string }[]>`select id, email from accounts order by id`
-    return rows.map((row) => ({ id: String(row.id), email: row.email }))
+    const rows = await this.sql<AccountRow[]>`select id, email, name, name_asked from accounts order by id`
+    return rows.map(accountOf)
+  }
+  async setName(accountId: string, name: string | null): Promise<void> {
+    await this.sql`update accounts set name = ${name}, name_asked = true where id = ${accountId}`
   }
   async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
     await this.sql`insert into auth_sessions (session_hash, account_id, expires_at) values (${sessionHash}, ${accountId}, ${expiresAt})`
   }
   async sessionAccount(sessionHash: string, now: string): Promise<Account | null> {
-    const rows = await this.sql<{ id: string; email: string }[]>`
-      select a.id, a.email from auth_sessions s join accounts a on a.id = s.account_id where s.session_hash = ${sessionHash} and s.expires_at > ${now}
+    const rows = await this.sql<AccountRow[]>`
+      select a.id, a.email, a.name, a.name_asked from auth_sessions s join accounts a on a.id = s.account_id where s.session_hash = ${sessionHash} and s.expires_at > ${now}
     `
     const row = rows[0]
-    return row ? { id: String(row.id), email: row.email } : null
+    return row ? accountOf(row) : null
   }
   async deleteSession(sessionHash: string): Promise<void> {
     await this.sql`delete from auth_sessions where session_hash = ${sessionHash}`
@@ -77,6 +85,13 @@ export class PostgresAuthStore implements AuthStore {
   }
   async removePasskey(accountId: string, id: string): Promise<boolean> {
     return (await this.sql`delete from passkeys where id = ${id} and account_id = ${accountId}`).count > 0
+  }
+  async acceptTerms(accountId: string, version: string, at: string): Promise<void> {
+    await this.sql`insert into terms_acceptances (account_id, version, accepted_at) values (${accountId}, ${version}, ${at}) on conflict (account_id, version) do nothing`
+  }
+  async termsAccepted(accountId: string): Promise<TermsAcceptance[]> {
+    const rows = await this.sql<{ version: string; accepted_at: Date }[]>`select version, accepted_at from terms_acceptances where account_id = ${accountId} order by accepted_at, version`
+    return rows.map((r) => ({ version: r.version, at: r.accepted_at.toISOString() }))
   }
 }
 

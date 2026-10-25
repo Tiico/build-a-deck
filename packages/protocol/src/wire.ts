@@ -58,5 +58,25 @@ export const ServerMessage = z.discriminatedUnion('t', [
   // Who is watching (C8): sent to everyone on connect and whenever it changes. Observers are
   // never invisible.
   z.object({ t: z.literal('roster'), observers: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) })) }),
+  // Who this connection was let in as (#1278): the name on the admission its token was bought with,
+  // to that connection only. The page's address no longer carries the name, so this is where the
+  // phone learns what to sit down as. Sent only to a client that brought its token in the protocol
+  // header (`guestProtocols`), since one that put it in the address predates this message.
+  z.object({ t: z.literal('admitted'), name: z.string().min(1) }),
 ])
 export type ServerMessage = z.infer<typeof ServerMessage>
+
+// A guest's token never travels in an address (#1278, DRIFT §9): the upgrade is a request, and a
+// proxy that logs requests logs their query. `Sec-WebSocket-Protocol` is the one header a page may
+// set on a WebSocket, so the token rides there, as a second protocol beside the table's own, which
+// the server answers with. A token is base64url, which a protocol name may hold as it is.
+export const TABLE_PROTOCOL = 'deckster'
+const TOKEN_PROTOCOL = `${TABLE_PROTOCOL}.token.`
+export const guestProtocols = (token: string): string[] => [TABLE_PROTOCOL, `${TOKEN_PROTOCOL}${token}`]
+export function tokenOfProtocols(header: string | undefined): string | null {
+  for (const offered of (header ?? '').split(',')) {
+    const name = offered.trim()
+    if (name.startsWith(TOKEN_PROTOCOL) && name.length > TOKEN_PROTOCOL.length) return name.slice(TOKEN_PROTOCOL.length)
+  }
+  return null
+}
