@@ -363,29 +363,40 @@
 .byd-editor-readonly small { display: block; color: #e0cfa3; font-size: 12px; }
 .byd-editor-reading-said { margin-left: auto; color: #ffd98a; font-weight: 700; font-size: 12px; white-space: nowrap; }
 /* The people in the header (D3): who is here, and the door to who has the game at all. How many
-   are here must not change how wide the header is — someone arriving would otherwise push the
-   row, and at 1024 there is nothing to push into. So the faces overlap and the button is capped:
-   it is the same size alone as in a crowd. */
-.byd-editor-here { display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; overflow: hidden; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 12px 4px 4px; background: transparent; cursor: pointer; }
-.byd-editor-here i + i { margin-left: -8px; }
-/* At most three faces, so a crowd never widens the row; the count says the rest. */
-.byd-editor-here i:nth-of-type(n + 4) { display: none; }
-/* The door says what it is (#727, beslut A): «Dela» beside the faces, so an invitation can be found
+   are here must not change how wide anything in the header is — someone arriving pushed the row,
+   and every tab slid 60–90 px under the pointer at 1280 and 1440 (#1250). So the door is the
+   designer's own face and «Dela» whoever is here (L63, variant B), and the others hang from the
+   header's lower edge under it: a stack that takes no width from the row and no height from the
+   work. The stack is the door's, so the door lets it be drawn outside itself. */
+.byd-editor-here { position: relative; display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 12px 4px 4px; background: transparent; cursor: pointer; }
+/* The door says what it is (#727, beslut A): «Dela» beside the face, so an invitation can be found
    without knowing that one's own initial is a button. Between 1024 and 1279 the header has no room
    for the word with a wider font than the Mac's (the game's name was cut on CI's Linux), so there
    the door is one face as before, and «Dela spelet…» in the game's ⋯ is the way in words. */
 .byd-editor-here-word { margin-left: 4px; color: #e6ecfa; font: 700 13px system-ui; white-space: nowrap; }
 /* At the width the desk begins the row has no air to give (UX-KONTROLLER: 1024), so here the
-   button is exactly one target wide whoever is here: the faces overlap under it and the count
-   goes, because pressing it opens the list that says all of it anyway. A width and not a ceiling
-   (#1250): the ceiling held only where it met every button's floor. */
+   button is exactly one target wide: the face, and pressing it opens the list that says the rest.
+   A width and not a ceiling (#1250): the ceiling held only where it met every button's floor. */
 @media (min-width: 1024px) and (max-width: 1279px) {
   .byd-editor > header > .byd-editor-here { width: var(--byd-tap); margin-left: 0; padding: 0; }
-  .byd-editor > header > .byd-editor-here b, .byd-editor > header > .byd-editor-here .byd-editor-here-word { display: none; }
+  .byd-editor > header > .byd-editor-here .byd-editor-here-word { display: none; }
 }
 .byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
 .byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
-.byd-editor-here b { color: #9aa3b8; font: 600 11px system-ui; }
+/* The others: the stack's middle on the header's lower edge, each face overlapping the one before
+   it by its ring and no more, so every letter is read whole. The door stands in the middle of the
+   header's 56 px, so its own middle is 28 px above that edge whatever height the door has. It
+   reaches 9 px into whatever stands under the header, inside that strip's own air, and is drawn
+   over it (beslut 2026-10-24). Under «Dela» from 1280, under the face below it. */
+.byd-editor-here-others { position: absolute; z-index: 3; top: calc(50% + 18px); right: 10px; display: flex; }
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-editor > header > .byd-editor-here .byd-editor-here-others { right: auto; left: 50%; transform: translateX(-50%); }
+}
+.byd-editor-here .byd-editor-here-others i { width: 20px; height: 20px; font-size: 10px; box-shadow: 0 0 0 2px var(--byd-editor-chrome-bg); }
+.byd-editor-here .byd-editor-here-others i + i { margin-left: -4px; }
+/* From four others the last says how many more there are: a count and not a person, so it wears
+   no person's colour. */
+.byd-editor-here .byd-editor-here-others .byd-editor-here-more { --who: #3b4358; color: #e6ecfa; letter-spacing: -0.02em; }
 /* Who has the game: the list hangs from the people it is about. */
 .byd-share { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-share header { display: flex; align-items: center; gap: 10px; }
