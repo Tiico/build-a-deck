@@ -18,6 +18,7 @@ const waiting: TableConnection = {
   room: null,
   hostKey: null,
   refused: null,
+  admitted: null,
   trouble: null,
   schedule: { nextRetryAt: null, made: 0, of: 0 },
   unansweredSince: null,

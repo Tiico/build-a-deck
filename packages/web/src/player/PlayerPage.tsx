@@ -7,6 +7,7 @@ import { useSeatTurned } from './turned.js'
 import { SeatSurvey, refusedText, useSessionVersion } from './SessionOverlays.js'
 import { useSitDown } from './useSitDown.js'
 import { claimUrl } from '../account/session.js'
+import { takeGuestToken } from '../guestAddress.js'
 import { useT } from '../i18n/index.js'
 import './player.css'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
@@ -23,22 +24,25 @@ import { useActivityLive } from '../table/useActivityLive.js'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlayerPrototype.js')) : null
 
-// /play?session=…&seat=A&name=Ada&token=…&server=ws://…
+// /play?session=…&seat=A&code=…&server=ws://…#token=…
 // The `player` role: one seat, its hand and private zones, and the zone shortcuts to play to.
-// The token was bought with the room code on the join page (DRIFT §9).
+// The token was bought with the room code on the join page (DRIFT §9), and is kept in the fragment,
+// which the browser sends nowhere (#1278); the name to sit down as is the one the table says it was
+// bought with.
 // `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
 export type PlayerPageProps = { timing?: StatusTiming; onLeave?(url: string): void }
 
 export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: PlayerPageProps = {}) {
   const t = useT()
+  // The token first: an old link's query is cleaned before anything else reads it.
+  const token = useMemo(() => takeGuestToken(), [])
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const seat = params.get('seat')
-  const name = params.get('name')
-  const token = params.get('token') ?? undefined
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, refused } = conn
+  const name = conn.admitted
   const live = useLiveStatus(conn, 'phone', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   const roomOpen = useRoomOpen(url.replace(/^ws/, 'http'), params.get('code'), refused === 'kicked')
@@ -78,11 +82,11 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   })
   useActivityLive(activity, view, seat)
 
-  // Sit down on first contact, and only on first contact: claim the seat with the name from the
-  // link, if it is still free.
+  // Sit down on first contact, and only on first contact: claim the seat with the name the token
+  // was bought with, if it is still free.
   useSitDown(client, view, seat, name)
 
-  if (watching) return <StatusNotice notice={watchingNotice(t)} surface="page" links={{ ...links, observe: `/observe${location.search}` }} />
+  if (watching) return <StatusNotice notice={watchingNotice(t)} surface="page" links={{ ...links, observe: `/observe${location.search}${location.hash}` }} />
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9). The door is shut, so it is the `forbidden` state — said
   // in the model's form, with the server's own reason for the sentence.

@@ -2,15 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoginCard } from './LoginCard.js'
 import { claimGuest, whoAmI } from './session.js'
 import { safeNext } from './next.js'
+import { landingWith, takeGuestToken } from '../guestAddress.js'
 import { useT } from '../i18n/index.js'
 import { noticeFor } from '../status/notice.js'
 import { AccountStatus, spent, waiting } from './AccountStatus.js'
 import './account.css'
 
-// /claim?token=…&next=…&server=…  — where the phone's "Spara till ditt konto" leads (G1). Without
+// /claim?next=…&server=…#token=…  — where the phone's "Spara till ditt konto" leads (G1). Without
 // a login it is the login card with this page as the way back; with one the admission behind the
 // token becomes the account's, and the guest goes back to `next` — the phone's thanks, which then
-// say it is saved (#690). A link without one lands on the start page, which says so.
+// say it is saved (#690). A link without one lands on the start page, which says so. The token is in
+// the fragment (#1278) and goes back to `next` there, through the login too: the card's way back is
+// this page with its fragment, and the sign-in mail keeps a fragment out of its query.
 export type ClaimPageProps = { onNavigate?(url: string): void }
 
 // One function for the life of the module, because it is a dependency of the effect that makes the
@@ -20,8 +23,9 @@ const go = (url: string): void => location.replace(url)
 
 export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
   const t = useT()
+  // The token first: an old link's query is cleaned before anything else reads it.
+  const token = useMemo(() => takeGuestToken() ?? null, [])
   const params = useMemo(() => new URLSearchParams(location.search), [])
-  const token = params.get('token')
   const server = params.get('server')
   const next = params.get('next')
   const http = server ?? location.origin
@@ -47,7 +51,7 @@ export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
     void claimGuest(http, token).then((r) => {
       if (!live) return
       if (r.ok) {
-        if (next !== null && safeNext(next) === next) return onNavigate(`${next}${next.includes('?') ? '&' : '?'}saved=1`)
+        if (next !== null && safeNext(next) === next) return onNavigate(landingWith(next, { saved: '1' }, location.hash))
         const q = new URLSearchParams({ claimed: r.session })
         if (server) q.set('server', server)
         onNavigate(`/?${q.toString()}`)
@@ -73,7 +77,7 @@ export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
   if (email === null) {
     return (
       <main className="byd-account" data-page="claim">
-        <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} lead={t('claim.lead')} help={t('claim.help')} />
+        <LoginCard http={http} next={location.pathname + location.search + location.hash} onNavigate={onNavigate} lead={t('claim.lead')} help={t('claim.help')} />
       </main>
     )
   }

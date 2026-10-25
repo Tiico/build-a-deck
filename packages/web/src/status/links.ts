@@ -11,7 +11,8 @@ export function statusLinks(opts: { server?: string | null; code?: string | null
   const q = new URLSearchParams()
   if (server) q.set('server', server)
   const suffix = q.size > 0 ? `?${q.toString()}` : ''
-  const links: StatusLinks = { home: `/${suffix}`, login: loginUrl(location.pathname + location.search, server) }
+  // The login comes back with the page's fragment too: on a guest's page it is her token (#1278).
+  const links: StatusLinks = { home: `/${suffix}`, login: loginUrl(location.pathname + location.search + location.hash, server) }
   // The way back to the seat picker is the room code (DRIFT §9), not the session: the code is
   // what buys a token, and a picker that cannot admit anyone is not a way out.
   if (opts.code) {

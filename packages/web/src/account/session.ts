@@ -4,6 +4,8 @@
 // has a sentence of the reader's to say, so the account catalogue's messages stay with the pages
 // that do (#760).
 
+import { guestAddress } from '../guestAddress.js'
+
 export class Unauthorized extends Error {
   constructor() {
     super('not logged in')
@@ -53,16 +55,19 @@ export async function claimGuest(http: string, token: string): Promise<{ ok: tru
 
 // The phone's way to save a session (G1): the claim page, which asks for a login first when
 // there is none. The phone names its server as a WebSocket origin; the account pages speak HTTP.
-// `next` is the page the guest came from, which the claim goes back to once it is made (#690).
+// `next` is the page the guest came from, which the claim goes back to once it is made (#690). The
+// token is in the claim's fragment, never its query (#1278), and goes back to `next` with it.
 export function claimUrl(token: string, server: string | null, next: string = location.pathname + location.search): string {
-  const claim = new URLSearchParams({ token, next })
+  const claim = new URLSearchParams({ next })
   if (server) claim.set('server', server.replace(/^ws/, 'http'))
-  return `/claim?${claim.toString()}`
+  return guestAddress('/claim', claim, token)
 }
 
-// Where to log in from a page, and come back to it after.
+// Where to log in from a page, and come back to it after. A fragment on `next` — a guest's token
+// (#1278) — is the login page's own fragment, never part of its query, and the login hands it on.
 export function loginUrl(next: string, server: string | null): string {
-  const q = new URLSearchParams({ next })
+  const at = next.indexOf('#')
+  const q = new URLSearchParams({ next: at < 0 ? next : next.slice(0, at) })
   if (server) q.set('server', server)
-  return `/login?${q.toString()}`
+  return `/login?${q.toString()}${at < 0 ? '' : next.slice(at)}`
 }
