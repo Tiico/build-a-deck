@@ -30,6 +30,9 @@ export type AssetStore = {
   // What type each of these is, for the ones the store has (#1271): which of a game's assets are
   // pictures to screen and which are typefaces. Asked without reading a byte.
   contentTypes(hashes: readonly string[]): Promise<Record<string, string>>
+  // Every picture the store has, svg included and typefaces not, by hash (#1273): what the screening
+  // of the pictures uploaded before it was at the upload is queued for, once. Read without a byte.
+  pictures(): Promise<string[]>
   // A URL a browser may fetch the asset from directly for `ttlSeconds`; null when the bytes
   // have to come through the server.
   link(hash: string, ttlSeconds: number): Promise<string | null>
@@ -85,6 +88,10 @@ export class MemoryAssetStore implements AssetStore {
       if (type !== undefined) out[hash] = type
     }
     return out
+  }
+
+  async pictures(): Promise<string[]> {
+    return [...this.types].filter(([, type]) => type.startsWith('image/')).map(([hash]) => hash).sort()
   }
 
   async setMotif(hash: string, motif: Motif): Promise<boolean> {
@@ -158,6 +165,11 @@ export class PostgresAssetStore implements AssetStore {
     if (hashes.length === 0) return {}
     const rows = await this.sql<{ hash: string; content_type: string }[]>`select hash, content_type from assets where hash in ${this.sql(hashes as string[])}`
     return Object.fromEntries(rows.map((r) => [r.hash, r.content_type]))
+  }
+
+  async pictures(): Promise<string[]> {
+    const rows = await this.sql<{ hash: string }[]>`select hash from assets where content_type like 'image/%' order by hash`
+    return rows.map((r) => r.hash)
   }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {

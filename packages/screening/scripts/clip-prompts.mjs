@@ -7,7 +7,9 @@
 // installed, with the prompts edited below:
 //   npm i @huggingface/transformers@3.8.1
 //   node <repo>/packages/screening/scripts/clip-prompts.mjs > <repo>/packages/screening/src/clip-prompts.json
+import { Buffer } from 'node:buffer'
 import { createRequire } from 'node:module'
+import process from 'node:process'
 
 const PROMPTS = {
   // What a picture is when it is not the category: many kinds of picture, card art among them, so

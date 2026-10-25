@@ -15,6 +15,7 @@ import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore
 import { MemoryAccountPlanStore, plansAtStart, type AccountPlanStore } from './account-plans.js'
 import { plansFromEnv, plansLine } from './quotas.js'
 import { printProvidersOf } from './print-providers.js'
+import { CURRENT_CLASSIFIER } from '@byd/screening'
 import { inviteKeepFrom, sweepSpent } from './sweep.js'
 
 // The tiers stop the start when they cannot be read (#1192): an error must never quietly become
@@ -152,7 +153,10 @@ await sweep()
 // Testtryckeriet stands where a print partner will (F1, F2, #1208): the print package is prepared
 // by it, so what the designer sees and downloads is what a partner would be sent.
 const printProviders = printProvidersOf(STANDARD_TYPES)
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans })
+// Screening in shadow mode (F4, beslut 10; #1273): every new picture is queued for the render
+// worker's classifier, where there is a worker to drain the queue. Nothing waits for it or sees it.
+const screening = databaseUrl ? { screening: { classifier: CURRENT_CLASSIFIER } } : {}
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, ...screening })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

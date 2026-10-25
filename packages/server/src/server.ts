@@ -38,6 +38,7 @@ import { TEXTURE_DPI } from './actor.js'
 import { AI_PROVIDERS, KeyTryLimiter, type AiKeyDescription, type AiKeyVault } from './ai-keys.js'
 import { AiProviderError, type AiProviders } from './ai-providers.js'
 import type { Corpus } from './corpus.js'
+import { screenOnUpload, type ScreeningOnUpload } from './screening.js'
 import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps } from './ai-ask.js'
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
@@ -102,6 +103,11 @@ export type ServerOptions = {
   accountPlans?: AccountPlanStore
   // The terms' versions (#1270, `terms.ts`): the box runs with `TERMS`, and a test with its own.
   terms?: TermsRegister
+  // Screening in shadow mode (F4, beslut 10; #1273): every new picture uploaded is queued to be
+  // screened by this classifier, in the background, and nothing waits for it or is told of it. The
+  // box screens with `CURRENT_CLASSIFIER`; without it nothing is queued, as in a test about
+  // something else, or a server whose renders go nowhere.
+  screening?: ScreeningOnUpload
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -1368,6 +1374,9 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       }
     }
     const hash = await assets.put(bytes, format.type)
+    // Queued after the answer is decided and never waited for (#1273): an upload is never slower
+    // for being screened, and a queue that is down or slow stops nothing.
+    if (opts.screening && opts.renders) screenOnUpload(opts.renders, opts.screening, hash, format.type, clock(opts).getTime())
     json(res, 201, { hash })
     return true
   }
