@@ -218,7 +218,7 @@ test.describe('platsens skylt på rummets TV står fritt och säger bokstav, nam
     const table = await dealt(request, host, player, 8)
     const page = await television(open, CELLS[1].device, table)
     await settled(page)
-    const at = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-seat-plate]')].map((p) => [p.dataset['seatPlate'], p.dataset['plateAt']])))
+    const at = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-seat-plate]')].map((p) => [p.dataset['seatPlate'] ?? '?', p.dataset['plateAt'] ?? ''])))
     const fresh = await at()
     expect(Object.values(fresh).filter((t) => t?.startsWith('badge'))).toEqual([])
     await page.locator('[data-table]').hover()
