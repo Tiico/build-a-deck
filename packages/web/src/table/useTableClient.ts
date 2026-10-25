@@ -15,8 +15,6 @@ export type TableConnection = {
   hostKey: string | null
   // Why the server would not have this connection (DRIFT §9): not admitted, or kicked.
   refused: string | null
-  // The name the guest's token was bought with (#1278), once the table has said it.
-  admitted: string | null
   // Why the client has stopped trying, and when it will try next (#7). A status alone cannot
   // tell a view whether anything is still going to happen.
   trouble: ClientTrouble | null
@@ -38,7 +36,6 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   const [room, setRoom] = useState<{ code: string; expiresAt: string } | null>(null)
   const [hostKey, setHostKey] = useState<string | null>(null)
   const [refused, setRefused] = useState<string | null>(null)
-  const [admitted, setAdmitted] = useState<string | null>(null)
   const [trouble, setTrouble] = useState<ClientTrouble | null>(null)
   const [schedule, setSchedule] = useState<RetrySchedule>(NO_RETRY)
   const [unansweredSince, setUnansweredSince] = useState<number | null>(null)
@@ -58,7 +55,6 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
       setRoom(c.room)
       setHostKey(c.hostKey)
       setRefused(c.refused)
-      setAdmitted(c.admitted)
       setTrouble(c.trouble)
       setUnansweredSince(c.unansweredSince)
       // A fresh object each time on purpose: the schedule changes without the status changing,
@@ -83,5 +79,5 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   }, [key])
 
   const retry = useCallback(() => client?.retry(), [client])
-  return { client, view, status, activity, observers, room, hostKey, refused, admitted, trouble, unansweredSince, schedule, retry }
+  return { client, view, status, activity, observers, room, hostKey, refused, trouble, unansweredSince, schedule, retry }
 }

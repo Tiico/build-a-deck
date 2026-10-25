@@ -63,11 +63,9 @@ export function claimUrl(token: string, server: string | null, next: string = lo
   return guestAddress('/claim', claim, token)
 }
 
-// Where to log in from a page, and come back to it after. A fragment on `next` — a guest's token
-// (#1278) — is the login page's own fragment, never part of its query, and the login hands it on.
+// Where to log in from a page, and come back to it after.
 export function loginUrl(next: string, server: string | null): string {
-  const at = next.indexOf('#')
-  const q = new URLSearchParams({ next: at < 0 ? next : next.slice(0, at) })
+  const q = new URLSearchParams({ next })
   if (server) q.set('server', server)
-  return `/login?${q.toString()}${at < 0 ? '' : next.slice(at)}`
+  return `/login?${q.toString()}`
 }

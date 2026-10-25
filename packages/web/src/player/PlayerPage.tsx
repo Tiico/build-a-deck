@@ -42,7 +42,8 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, refused } = conn
-  const name = conn.admitted
+  // Told just before the snapshot, which is what renders the page again (#1278).
+  const name = client?.admitted ?? null
   const live = useLiveStatus(conn, 'phone', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   const roomOpen = useRoomOpen(url.replace(/^ws/, 'http'), params.get('code'), refused === 'kicked')

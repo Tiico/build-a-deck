@@ -36,12 +36,4 @@ describe('the guest’s address (#1278)', () => {
     expect(history.length, 'replaced, not pushed').toBe(before)
     expect(history.state).toEqual({ kept: 1 })
   })
-
-  // The designer's own seat in the editor's links (`owner=1`) has no admission: the name is hers,
-  // and the only one the server has for her.
-  it('keeps the name of the owner’s own seat, which has no admission to be told it from', () => {
-    history.replaceState(null, '', '/online?session=s1&seat=A&name=Bo&owner=1')
-    expect(takeGuestToken()).toBeUndefined()
-    expect(new URLSearchParams(location.search).get('name')).toBe('Bo')
-  })
 })

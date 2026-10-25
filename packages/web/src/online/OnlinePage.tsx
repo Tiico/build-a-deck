@@ -81,19 +81,19 @@ const UPRIGHT_BOARD_FLOOR = 960
 
 export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: OnlinePageProps = {}) {
   const t = useT()
-  // The token first (#1278): an old link's query is cleaned before anything else reads it.
-  const token = useMemo(() => takeGuestToken(), [])
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const seat = params.get('seat')
   const owner = params.get('owner') === '1'
+  // A guest's token, from the fragment (#1278); the owner's own seat has none, and keeps its name.
+  const token = useMemo(() => (owner ? undefined : takeGuestToken()), [owner])
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
   const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
   // A guest sits down as the name her token was bought with, which the table tells her (#1278); the
   // owner's own seat has no token, and its name is in its address.
-  const name = token === undefined ? params.get('name') : conn.admitted
+  const name = token === undefined ? params.get('name') : (client?.admitted ?? null)
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })

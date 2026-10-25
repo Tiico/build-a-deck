@@ -44,18 +44,18 @@ export type ObserverPageProps = { timing?: StatusTiming }
 
 export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}) {
   const t = useT()
-  // The token first (#1278): an old link's query is cleaned before anything else reads it.
-  const token = useMemo(() => takeGuestToken(), [])
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const owner = params.get('owner') === '1'
-  const given = params.get('name')
+  // A guest's token, from the fragment (#1278); the owner's own watch has none, and keeps its name.
+  const token = useMemo(() => (owner ? undefined : takeGuestToken()), [owner])
+  const given = owner ? params.get('name') : null
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: given ?? t('observer.name'), ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
   // A guest watches as the name on her admission, which the table tells her (#1278).
-  const name = (token === undefined ? given : conn.admitted) ?? t('observer.name')
+  const name = (token === undefined ? given : client?.admitted) ?? t('observer.name')
   const live = useLiveStatus(conn, 'table', timing)
   // What happens at the table, said in the room's live regions as the table screen says it (#485):
   // hers were silent the whole session. She sits at no seat, so nothing is said as «du».
