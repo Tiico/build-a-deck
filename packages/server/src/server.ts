@@ -638,6 +638,22 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       res.end(zip)
       return
     }
+    // The games gone from her Mina spel (#1334): each a band there until she closes it, and closing
+    // it is the notice gone.
+    if (url.pathname === '/me/gone' || url.pathname.startsWith('/me/gone/')) {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      if (req.method === 'GET' && url.pathname === '/me/gone') return json(res, 200, opts.projects ? await opts.projects.goneFor(account.id) : [])
+      const one = /^\/me\/gone\/([^/]+)$/.exec(url.pathname)
+      if (req.method === 'DELETE' && one) {
+        if (!(await opts.projects?.dismissGone(account.id, decodeURIComponent(one[1] ?? '')))) return json(res, 404, { error: 'no such notice' })
+        res.writeHead(204)
+        res.end()
+        return
+      }
+      return json(res, 405, { error: 'method not allowed' })
+    }
     // What «Radera kontot…» asks about (#1280, variant A): each game that goes with the account, who
     // else loses it and whether a table at it is playing, the games it leaves, and how many tables
     // it claimed. The question names every game, so it is asked of the server and not guessed.
