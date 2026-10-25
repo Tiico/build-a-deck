@@ -249,7 +249,7 @@ const HAND = `<svg class="hand" viewBox="0 0 32 32" aria-hidden="true"><rect x="
 // ── Varianterna ──────────────────────────────────────────────────────────────────────────────────
 const V = {
   A: { namn: 'A · En sida, ett mejl · rekommenderas, med C:s ruta i editorn',
-    not: '<b>Anmälan</b> är en egen sida, /villkor/anmal, i villkorssidans form: fem fält och god tro i den ordning DSA art. 16 räknar dem, och «Var» tar rumskod, länk eller spelets namn. <b>Kvittot</b> är ett mejl i L72:s band som upprepar anmälan. <b>Designern</b> får ett mejl med skälen och <b>invänder genom att svara</b> på det; i editorn är cellen tom med ordet «Spärrad». <span class="plus">+ minst ny yta, en enda väg in, ingen ny tabell för invändningar; operatören läser allt i sin inkorg</span> <span class="minus">− en rumskod gäller i tre timmar, så en sen anmälan säger ofta bara spelets namn; invändningen lever i en mejltråd</span>' },
+    not: '<b>Anmälan</b> är en egen sida, /villkor/anmal, i villkorssidans form: fem fält och god tro i den ordning DSA art. 16 räknar dem, och «Var» tar rumskod, länk eller spelets namn. <b>Kvittot</b> är ett mejl i L72:s band som upprepar anmälan. <b>Designern</b> får ett mejl med skälen och <b>invänder genom att svara</b> på det; i editorn är «Spärrad» i cellen en knapp som öppnar C:s remsa med skälen och «Byt bilden», men utan invändningsfält. <span class="plus">+ minst ny yta, en enda väg in, ingen ny tabell för invändningar; operatören läser allt i sin inkorg</span> <span class="minus">− en rumskod gäller i tre timmar, så en sen anmälan säger ofta bara spelets namn; invändningen lever i en mejltråd</span>' },
   B: { namn: 'B · Fyra steg, ett ärende',
     not: '<b>Anmälan</b> är en guide i fyra steg: vad gäller det (valet styr frågorna: «mitt verk» frågar efter originalet, «rör barn» gör namn och adress frivilliga), var, varför och vem. Adressen <b>bekräftas med en länk</b> innan anmälan räknas. <b>Kvittot</b> har ett ärendenummer och «Följ anmälan». <b>Designern</b> får ett band i editorn och en <b>egen sida per spärr</b> med beslutet och ett invändningsfält. <span class="plus">+ varje anmälan är komplett och adressen är prövad; båda parter ser var ärendet står</span> <span class="minus">− mest att bygga: guide, ärenden, statussida, spärrsida; länken stoppar den som inte vill lämna en adress</span>' },
   C: { namn: 'C · Från kortet',
@@ -272,7 +272,7 @@ const LAGEN = {
   kvitto: { A: [['skarm', 'Skärmen'], ['mejl', 'Kvittomejlet']], B: [['bekraftmejl', 'Bekräftelsemejlet'], ['mejl', 'Kvittomejlet'], ['status', 'Följ anmälan']], C: [['skarm', 'Skärmen'], ['mejl', 'Kvittomejlet']] },
   operator: null,
   agare: { A: [['olaga', 'Intrång (bytes kvar)'], ['olagligt', 'Olagligt (rensat)']], B: [['olaga', 'Intrång (bytes kvar)'], ['olagligt', 'Olagligt (rensat)']], C: [['olaga', 'Intrång (bytes kvar)'], ['olagligt', 'Olagligt (rensat)']] },
-  editor: { A: [['sparrad', 'Spärrad']], B: [['sparrad', 'Bandet'], ['sidan', 'Spärrsidan'], ['skickad', 'Invändningen skickad']], C: [['sparrad', 'Spärrad'], ['remsa', 'Remsan'], ['invand', 'Invänd'], ['skickad', 'Skickad']] },
+  editor: { A: [['sparrad', 'Spärrad'], ['remsa', 'Remsan']], B: [['sparrad', 'Bandet'], ['sidan', 'Spärrsidan'], ['skickad', 'Invändningen skickad']], C: [['sparrad', 'Spärrad'], ['remsa', 'Remsan'], ['invand', 'Invänd'], ['skickad', 'Skickad']] },
   bordet: null,
   export: null,
   historik: null,
@@ -566,11 +566,13 @@ function agare(w) {
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 const RADER = [['c12', 'Gläntan', '#6a7fa8', false], ['c14', 'Skogsvaktaren', '#3f8f5f', true], ['c15', 'Vaktens stig', '#3f8f5f', true], ['c16', 'Stormen', '#b8461f', false]]
 function sparrCell(rid) {
-  if (v === 'C') return `<button class="sparr-tom ny" data-do="c-remsa" aria-expanded="${lage !== 'sparrad' && rid === 'c14'}">${lage === 'skickad' ? 'Invänt' : 'Spärrad'}</button>`
+  if (v !== 'B') return `<button class="sparr-tom ny" data-do="c-remsa" aria-expanded="${lage !== 'sparrad' && rid === 'c14'}">${lage === 'skickad' ? 'Invänt' : 'Spärrad'}</button>`
   return `<span class="sparr-tom ny" title="Bilden är spärrad efter en anmälan">Spärrad</span>`
 }
 function remsaC() {
-  if (v !== 'C' || lage === 'sparrad') return ''
+  if (v === 'B' || lage === 'sparrad') return ''
+  if (v === 'A') return `<div class="t-fraga" data-ton="neutral" role="group" aria-label="Spärrad bild"><p>Bilden är spärrad efter en anmälan<small>Den som äger rätten till målningen anmälde den, och en människa beslutade 26 oktober. Den står på 12 kort och syns inte i spelet, på borden, i trycket eller i exporten. Vill du invända, svara på mejlet från 26 oktober.</small></p>
+    <button data-do="nop" class="med">${g('swap')} Byt bilden</button><button data-do="c-stang">Stäng</button></div>`
   if (lage === 'remsa') return `<div class="t-fraga" data-ton="neutral" role="group" aria-label="Spärrad bild"><p>Bilden är spärrad efter en anmälan<small>Den som äger rätten till målningen anmälde den. Beslutet fattades av en människa 26 oktober. Den står på 12 kort och syns inte i spelet, på borden, i trycket eller i exporten.</small></p>
     <button data-do="nop" class="med">${g('swap')} Byt bilden</button><button data-do="c-invand">Invänd…</button><button data-do="c-stang">Stäng</button></div>`
   if (lage === 'invand') return `<div class="t-fraga" data-ton="neutral" role="group" aria-label="Invänd"><p>Varför ska bilden få finnas?<small>Skriv till exempel att du har licens, och var den finns. En människa som inte fattade beslutet prövar det inom två arbetsdagar.</small></p>
