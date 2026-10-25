@@ -110,10 +110,7 @@
 .byd-print-stock { display: grid; gap: 10px; }
 .byd-print-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font-size: 15px; }
 .byd-print-item b { color: #fff; }
-.byd-print-die { --byd-die: #f3efe6; display: block; width: 44px; height: 44px; margin: 4px; }
-.byd-print-die svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.byd-print-die text { fill: #3a2a1a; font-weight: 800; font-family: system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; }
-.byd-print-die .byd-die-ring { display: none; }
+.byd-print-die { display: grid; place-items: center; width: 44px; height: 44px; margin: 4px; border-radius: 10px; background: #f3efe6; color: #3a2a1a; font-size: 30px; }
 .byd-print-counter { display: grid; place-items: center; width: 36px; height: 36px; margin: 8px; border-radius: 50%; box-sizing: border-box; border: 2px dashed #6f7a90; background: #2c3242; color: var(--byd-print-soft); font-size: 14px; font-weight: 800; }
 
 /* 4 · The requirements. */

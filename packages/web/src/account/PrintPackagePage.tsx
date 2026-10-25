@@ -10,15 +10,13 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { previewIcons, mediaInGame } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
 import { previewMotifs } from '../editor/motifs.js'
-import { CARD_PX } from '../editor/corner.js'
 import type { ProjectDoc } from '../editor/types.js'
-import { DieFace } from '../table/Die.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useSay } from '../status/StatusLive.js'
 import { useLang, useT, type Key } from '../i18n/index.js'
-import { ArrowGlyph, CheckGlyph, ImportGlyph } from '../glyphs.js'
+import { ArrowGlyph, CheckGlyph, DieGlyph, ImportGlyph } from '../glyphs.js'
 import './account.css'
 import './print-package.css'
 
@@ -42,6 +40,10 @@ const TO = 'SE'
 const POLL_MS = 700
 // How wide a card in the deck is drawn, in CSS pixels; the column is reserved from the same number.
 export const PRINT_CARD_W = 104
+// A card's own width in CSS pixels at a zoom of one, as `CardPreview` lays it out. Said here rather
+// than taken from the editor's module, so the page does not split the editor's code into a chunk
+// of its own that every other route would name (the phone's scripts are held to an alarm, #760).
+const CARD_PX = (CARD_STANDARD_63x88.physical.widthMm / 25.4) * 96
 // How many findings the deck lists before it says how many more there are.
 const FINDINGS_SHOWN = 3
 
@@ -531,8 +533,10 @@ function Stock({ doc, pkg }: { doc: Doc; pkg: PrintPackage }) {
     const size = DICE.find((d) => d.id === typeId)?.physical.widthMm
     return (
       <div key={typeId} className="byd-print-item">
+        {/* The tool's own die, the one the editor's dice are chosen under; the felt's drawing of each
+            kind lives with the table and would be split out of it for this one picture. */}
         <span className="byd-print-die" aria-hidden="true">
-          <DieFace faces={faces} value={faces} still />
+          <DieGlyph />
         </span>
         <div>
           <b>{t('print.stock.die', { n: count, kind: t(`print.stock.die.${faces}` as Key) })}</b> {size !== undefined && t('print.stock.die.size', { faces, mm: size })}
