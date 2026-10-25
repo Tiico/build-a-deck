@@ -8,8 +8,9 @@ import { createHash, createHmac } from 'node:crypto'
 export type ObjectStore = {
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>
   get(key: string): Promise<Uint8Array | null>
-  // Takes an object away; a key that holds nothing is no error. The one deletion there is: a
-  // deleted account's pictures and renderings that nothing else names, 30 days on (#1280, G6).
+  // Takes an object away; a key that holds nothing is no error. A deleted account's pictures and
+  // renderings that nothing else names, 30 days on (#1280, G6), and a picture purged after a report
+  // with the textures and print files drawn from a picture that was blocked (#1274, DRIFT §4).
   delete(key: string): Promise<void>
   // A URL a browser may fetch the object from directly for `ttlSeconds`; null when the bytes
   // have to come through the server instead. With `disposition` the store answers with that

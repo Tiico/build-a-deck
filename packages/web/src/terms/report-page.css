@@ -1,0 +1,30 @@
+/* /villkor/anmal (#1274, variant A): the report form in the terms page's column and colours, as the
+   prototype draws it. The page's own chrome and type are terms-page.css's. */
+.byd-report-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: #9aa3b8 !important; font-size: 14px; }
+.byd-report-back .byd-glyph { width: 14px; height: 14px; }
+.byd-report-form { display: grid; gap: 18px; }
+.byd-report-field { display: grid; gap: 6px; align-content: start; }
+.byd-report-field > label { color: #fff; font-size: 15px; font-weight: 650; }
+.byd-report-field small { color: #9aa3b8; font-size: 13px; line-height: 1.45; }
+.byd-report-field input:not([type='checkbox']), .byd-report-field textarea { box-sizing: border-box; width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid #6f7a90; border-radius: 10px; background: #14161c; color: #fff; font: inherit; font-size: 15px; }
+.byd-report-field textarea { resize: vertical; }
+.byd-report-field input::placeholder, .byd-report-field textarea::placeholder { color: #8a93a8; }
+.byd-report-field :focus-visible, .byd-report-send:focus-visible, .byd-report-back:focus-visible, .byd-report-home:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-report-field [aria-invalid='true'] { border-color: #f0b64a; box-shadow: inset 0 -2px 0 #f0b64a; }
+.byd-report-error { color: #ffd98a; font-size: 13px; }
+.byd-report-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.byd-report-field > label.byd-report-tick { font-weight: 400; }
+.byd-report-tick { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid #262a35; border-radius: 12px; background: #171a23; color: #dfe4ef; font-size: 15px; line-height: 1.5; cursor: pointer; }
+.byd-report-tick input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: #7dd3a0; }
+.byd-report-tick input[aria-invalid='true'] { outline: 2px solid #f0b64a; outline-offset: 2px; }
+.byd-report-note { margin: 0; padding: 10px 14px; border-radius: 10px; background: #1f2937; color: #c3cbdd; font-size: 14px; line-height: 1.5; }
+.byd-report-send { min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #7dd3a0; color: #0b2a18; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.byd-report-send:disabled { opacity: 0.6; cursor: default; }
+.byd-report-sent { display: grid; gap: 8px; padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; line-height: 1.5; font-size: 15px; }
+.byd-report-sent strong { color: #fff; font-size: 18px; }
+.byd-report-sent p { margin: 0; }
+.byd-report-home { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; color: #d8ffe8 !important; font-weight: 650; }
+
+@media (max-width: 600px) {
+  .byd-report-two { grid-template-columns: 1fr; }
+}

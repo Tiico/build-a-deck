@@ -175,5 +175,24 @@ export const COLUMNS: Readonly<Record<string, Class>> = {
   'screening_references.quality': 'none',
   'screening_references.source': 'none',
   'screening_references.added_at': 'none',
+  // Reports (#1274): what somebody reported, in their own words, with the name and the address they
+  // gave, both of which may be empty. Their words may name a person as well as a picture.
+  'reports.n': 'none',
+  'reports.at': 'personal',
+  'reports.what': 'personal',
+  'reports.place': 'personal',
+  'reports.why': 'personal',
+  'reports.name': 'personal',
+  'reports.email': 'personal',
+  'reports.lang': 'none',
+  'reports.outcome': 'none',
+  'reports.decided_at': 'none',
+  // Blocks (#1274): a picture by its hash, why and since when, and the report it came from. A hash says
+  // nothing about who uploaded the picture.
+  'asset_blocks.hash': 'none',
+  'asset_blocks.at': 'none',
+  'asset_blocks.reason': 'none',
+  'asset_blocks.report': 'none',
+  'asset_blocks.purged': 'none',
 }
 

@@ -138,6 +138,18 @@ export class PostgresRenderStore implements RenderStore {
     return this.objects ? this.objects.get(outputKey(hash)) : null
   }
 
+  async forgetPagesNaming(asset: string): Promise<string[]> {
+    const like = `%asset:${asset}%`
+    const gone = await this.sql.begin(async (tx) => {
+      const rows = await tx<{ hash: string }[]>`delete from render_jobs where compiled->>'html' like ${like} or compiled->>'css' like ${like} returning hash`
+      const hashes = rows.map((r) => r.hash)
+      if (hashes.length > 0) await tx`delete from render_outputs where hash in ${tx(hashes)}`
+      return hashes
+    })
+    if (this.objects) for (const hash of gone) await this.objects.delete?.(outputKey(hash))
+    return gone.sort()
+  }
+
   async fitOf(hash: string): Promise<Fit | null> {
     const [row] = await this.sql<{ smallest_pt: number | null }[]>`select smallest_pt from render_outputs where hash = ${hash}`
     return row ? { smallestPt: row.smallest_pt === null ? null : Number(row.smallest_pt) } : null
@@ -230,7 +242,12 @@ const screeningOfRow = (row: ScreeningRow): ScreeningResult => ({
 // object store, and under `assets/<hash>` in it with one. The app's store and the render worker
 // both read through this, so the two cannot disagree about where a picture is.
 export async function assetFromPostgres(sql: postgres.Sql, objects: ObjectStore | undefined, hash: string): Promise<AssetBytes | null> {
-  const [row] = await sql<{ content_type: string; bytes: Uint8Array | null }[]>`select content_type, bytes from assets where hash = ${hash}`
+  // A picture blocked after a report (#1274) is not there for the worker either, whichever process
+  // blocked it: a page queued before the block that still names it fails rather than draws it.
+  const [row] = await sql<{ content_type: string; bytes: Uint8Array | null }[]>`
+    select content_type, bytes from assets a where hash = ${hash}
+      and not exists (select 1 from asset_blocks b where b.hash = a.hash)
+  `
   if (!row) return null
   if (row.bytes) return { bytes: new Uint8Array(row.bytes), contentType: row.content_type }
   const bytes = objects ? await objects.get(assetKey(hash)) : null

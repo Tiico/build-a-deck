@@ -297,3 +297,45 @@ Provet i `packages/server/test/erase.test.ts` gör samma sak i Postgres: en kopi
 | Allt är nere och ingen vet | Lådan kan inte berätta att den är nere (DRIFT §8). Signalen är en användare som hör av sig. |
 
 En buggrapport behöver bara ett sessions-id och ett seq-nummer: `replay` till den punkten ger exakt det tillstånd användaren såg.
+
+## 8. Anmälan och spärr
+
+En anmälan kommer från `/villkor/anmal` (DESIGN-BESLUT F4 beslut 12, #1274).
+Anmälaren får ett kvitto om hen lämnade en adress, och ett textmejl går till `BYD_CONTACT` med anmälans nummer.
+Allt nedan körs över Tailscale med lådans egna inställningar, som `plan` och `erase` (DRIFT §10, §12):
+`DATABASE_URL`, `RESEND_API_KEY`, `MAIL_FROM`, `PUBLIC_ORIGIN`, `BYD_CONTACT` och R2-variablerna.
+
+**Svarstid.** En anmälan prövas inom två arbetsdagar, och en invändning likaså.
+Det är löftet i villkorens avsnitt 11, i kvittot och i ägarens mejl.
+
+**Vem som beslutar.** Operatören, och i betan finns en.
+En invändning kommer som ett svar på ägarens mejl, och operatören prövar beslutet igen; det finns inget löfte om att någon annan gör det.
+
+**Gången.**
+
+1. `pnpm --filter @byd/server report show A-0001` visar anmälan som den skrevs.
+2. Hitta bilden. `report pictures <spel>` skriver varje bild ett spel använder, med hash och vilka kort.
+   Spelets id hittas ur namnet i Postgres: `select id, doc->>'name' from projects where doc->>'name' ilike '%skogens%'`.
+   En rumskod gäller i tre timmar och hjälper bara medan bordet står.
+   Öppna bilden på `/assets/<hash>` för att se den.
+3. Håller anmälan: `report block <hash> <rights|illegal|terms> --report A-0001`.
+   Bilden spärras i varje spel som använder den, det som ritats av den tas ur renderkön, varje ägare får ett mejl med skälen och hur hen invänder, och lådans laddade bord delar ut leken igen med bilden tom.
+   `rights` är någon annans rätt, `illegal` är olagligt, och `terms` är det villkoren aldrig tillåter (avsnitt 7).
+4. Är innehållet olagligt: `report purge <hash>` efter spärren.
+   Bytesen tas ur R2 och Postgres för gott, och spärren står kvar så att samma bild aldrig laddas upp igen.
+5. `report decide A-0001 <held|rejected>` mejlar beslutet till anmälaren (DSA art. 16.5), också när anmälan inte höll.
+6. Håller en invändning: `report unblock <hash>`, och svara ägaren.
+   En rensad bild kan inte släppas, eftersom bytesen inte finns.
+
+**Text.** Formuläret tar bara emot bilder i betan.
+En anmälan av en text, ett kortnamn eller en regel kommer via Kontakt; operatören hör av sig till ägaren och tar vid behov bort spelet eller maskar bordet (`erase`, G6).
+Ingen spärr av text finns.
+
+**Polisen.** Misstanke om brott som hotar någons liv eller säkerhet anmäls till polisen utan dröjsmål (DSA art. 18), och sexuellt innehåll som rör barn anmäls alltid.
+Spärra och rensa först, och spara anmälans nummer och bildens hash till polisanmälan; bytesen behövs inte och ska inte laddas ner.
+
+**Upprepade intrång.** Den som gör intrång upprepade gånger får sitt konto stängt (villkoren, avsnitt 11).
+`report list` och `report show` visar vad som anmälts och beslutats.
+
+**Det som inte går att ta tillbaka.** En signerad R2-länk som redan lämnats ut lever sin timme ut, och en webbläsare kan ha bilden i sin cache.
+En spärr stänger varje ny väg till bilden; en rensning tar bort bytesen bakom länken.

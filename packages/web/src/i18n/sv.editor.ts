@@ -1874,6 +1874,17 @@ export const svEditor = {
   'upload.notThisKind': 'filen är inte {formats}',
   'upload.tooBig': 'filen är för stor (max 8 MB)',
   'upload.failed': 'tjänsten tog inte emot filen',
+  // En bild spärrad efter en anmälan (#1274): rutan i Tabell, remsan med skälen och ett försök att ladda upp den igen.
+  'picture.blocked': 'Spärrad',
+  'picture.blocked.label': 'Bilden är spärrad. Visa varför',
+  'picture.blocked.title': 'Bilden är spärrad efter en anmälan',
+  'picture.blocked.rights': 'Den som äger rätten till bilden anmälde den, och en människa beslutade {date}.',
+  'picture.blocked.illegal': 'En människa beslutade {date} att bilden är olaglig.',
+  'picture.blocked.terms': 'En människa beslutade {date} att bilden inte får finnas i Deckster.',
+  'picture.blocked.what': 'Den syns inte i spelet, på borden, i trycket eller i exporten. Vill du invända, svara på mejlet du fick.',
+  'picture.blocked.swap': 'Byt bilden',
+  'picture.blocked.close': 'Stäng',
+  'upload.blocked': 'bilden är spärrad efter en anmälan',
   // En uppladdning som föll bort (#344, L37). Rättelsen är tyst i historiken — den lägger inget
   // steg, för ett steg som gick att ångra hade lagt tillbaka byte som inte finns — så beskedet
   // måste vara desto tydligare där handlingen gjordes: dokumentet ändrades bakom formgivaren,

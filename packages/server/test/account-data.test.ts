@@ -20,6 +20,9 @@ const IN_THE_EXTRACT: Readonly<Record<string, string | { not: string }>> = {
   'events.intent': 'tables.0.flags.0.note',
   'surveys.who': 'tables.0.name',
   'surveys.answers': 'tables.0.survey.answers',
+  // A report (#1274) is anyone's, account or not, and tied to the address its writer gave, never to
+  // an account: it is given out through Kontakt when its writer asks (RUNBOOK §8).
+  ...Object.fromEntries(['at', 'what', 'place', 'why', 'name', 'email'].map((c) => [`reports.${c}`, { not: 'a report is tied to the address its writer gave, not to an account, and is given out through Kontakt' }])),
 }
 const at = (value: unknown, path: string): unknown => path.split('.').reduce<unknown>((v, k) => (v && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined), value)
 

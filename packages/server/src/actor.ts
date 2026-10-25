@@ -21,6 +21,7 @@ import {
 } from '@byd/engine'
 import type { RenderStore } from '@byd/render/queue'
 import { queueFaces, type Deck } from './faces.js'
+import { withoutBlocked } from './reports.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
@@ -62,6 +63,8 @@ export class TableActor {
     // (#1197), its textures and «Uppdatera»'s alike. A table from before accounts has none, and
     // its pages are counted on nobody.
     private readonly bearer: string | undefined,
+    // What is blocked (#1274): every reference to a blocked hash in the deck is drawn empty.
+    private readonly blocked: () => ReadonlySet<string> = none,
   ) {
     this.deps = {
       ...sources,
@@ -73,7 +76,7 @@ export class TableActor {
     for (const line of log) tellAfter(this.names, line)
   }
 
-  static async load(id: string, registry: TypeRegistry, store: LogStore, sources?: Sources, renders?: RenderStore): Promise<TableActor | null> {
+  static async load(id: string, registry: TypeRegistry, store: LogStore, sources?: Sources, renders?: RenderStore, blocked: () => ReadonlySet<string> = none): Promise<TableActor | null> {
     const record = await store.loadSession(id)
     if (!record) return null
     const initial = initialState(record.version, record.setup, registry)
@@ -82,20 +85,23 @@ export class TableActor {
     let cards: DeckFacts | undefined
     // The deck of the version the log says the table plays (C7, #677): a refreshed table's, not
     // the one it started with, over the cards that version deals — the replayed setup, not the start record's.
-    const deck = await store.deckOf(id, state.version)
-    if (deck) {
+    const stored = await store.deckOf(id, state.version)
+    if (stored) {
+      // A picture blocked since the table was dealt its deck is drawn empty (#1274), and its faces get
+      // new hashes, so no texture of the picture is asked for again.
+      const deck = withoutBlocked(stored, blocked())
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
       const compiled = await queueFaces(deck, state.setup, registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, record.accountId) ?? Promise.resolve())
       cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
     }
-    return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders, record.accountId)
+    return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders, record.accountId, blocked)
   }
 
   // A newer deck (C7): recompute texture hashes and queue what is not rendered yet. Views
   // pick the new hashes up with the next projection.
   async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
     const renders = this.renders
-    const compiled = await queueFaces(deck, setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
+    const compiled = await queueFaces(withoutBlocked(deck, this.blocked()), setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
     this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
   }
 
@@ -281,6 +287,28 @@ export class TableActor {
     return run
   }
 
+  // The deck read again after a block or an unblock (#1274): the faces of the version the table plays
+  // are compiled with every blocked reference empty, and a connection whose view changed is patched,
+  // as after any line. The log is not touched, and a table whose deck names nothing that changed
+  // compiles the same faces and sends nothing. Queued like an envelope.
+  redeal(): Promise<void> {
+    const run = this.queue.then(async () => {
+      const stored = await this.store.deckOf(this.id, this.state.version)
+      if (!stored) return
+      const renders = this.renders
+      const compiled = await queueFaces(withoutBlocked(stored, this.blocked()), this.state.setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
+      this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
+      for (const [sub, previous] of this.subscribers) {
+        const next = this.viewFor(sub)
+        const patch = diff(previous, next)
+        this.subscribers.set(sub, next)
+        if (patch.ops.length > 0) sub.send({ t: 'patch', patch })
+      }
+    })
+    this.queue = run.catch(() => undefined)
+    return run
+  }
+
   // Tells every connection to go away, e.g. on drain.
   farewell(reason: string): void {
     for (const sub of this.subscribers.keys()) sub.send({ t: 'bye', reason })
@@ -318,6 +346,9 @@ export class TableActor {
   }
 }
 
+const nothing: ReadonlySet<string> = new Set()
+const none = (): ReadonlySet<string> => nothing
+
 export function defaultSources(): Sources {
   return { rng: cryptoRng(), ids: uuidIds(), now: () => new Date().toISOString() }
 }
@@ -333,12 +364,13 @@ export class TableHost {
     private readonly store: LogStore,
     private readonly makeSources: () => Sources = defaultSources,
     private readonly renders?: RenderStore,
+    private readonly blocked: () => ReadonlySet<string> = none,
   ) {}
 
   get(id: string): Promise<TableActor | null> {
     let pending = this.actors.get(id)
     if (!pending) {
-      pending = TableActor.load(id, this.registry, this.store, this.makeSources(), this.renders).then((actor) => {
+      pending = TableActor.load(id, this.registry, this.store, this.makeSources(), this.renders, this.blocked).then((actor) => {
         if (!actor) this.actors.delete(id)
         return actor
       })
@@ -354,6 +386,12 @@ export class TableHost {
       const actor = await this.actors.get(id)
       await actor?.reread()
     }
+  }
+
+  // Every loaded table deals its deck again after a block or an unblock (#1274). One that is not loaded
+  // reads the blocks when it is loaded.
+  async redeal(): Promise<void> {
+    for (const actor of await this.loaded()) await actor.redeal()
   }
 
   async evictIdle(olderThanMs: number): Promise<string[]> {

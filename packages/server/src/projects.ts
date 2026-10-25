@@ -262,6 +262,9 @@ export type ProjectStore = {
   // Which of these hashes some version of some game the account owns names already (#1197): what
   // costs it nothing again.
   borne(owner: string, hashes: readonly string[]): Promise<Set<string>>
+  // Every game some version of which names this asset (#1274): whose owners a block is told to. In
+  // id order, with the owner where the game has one.
+  using(hash: string): Promise<{ id: string; owner?: string }[]>
   // The games an account owns, by id and in id order (#1195): the ones its cards per game are
   // counted over. Never the ones shared with it, nor a game that belongs to nobody.
   ownedIds(owner: string): Promise<string[]>
@@ -417,6 +420,14 @@ export class MemoryProjectStore implements ProjectStore {
   async stored(owner: string): Promise<number> {
     const mine = [...this.named(owner)]
     return weight(mine, await this.weigh(mine))
+  }
+
+  async using(hash: string): Promise<{ id: string; owner?: string }[]> {
+    const out: { id: string; owner?: string }[] = []
+    for (const [id, rec] of [...this.docs].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+      if ((this.history.get(id) ?? []).some((v) => assetHashesOf(v.doc).includes(hash))) out.push({ id, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) })
+    }
+    return out
   }
 
   async borne(owner: string, hashes: readonly string[]): Promise<Set<string>> {

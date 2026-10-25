@@ -666,6 +666,8 @@ export const svPlay = {
   // Raden där en gäst ansluter och där hon sparar (#757, #1272): villkoren och integriteten.
   'trust.terms': 'Villkor',
   'trust.privacy': 'Integritet',
+  // En anmälan av en bild (#1274): gästen är den som ser bilderna vid bordet.
+  'trust.report': 'Anmäl',
 
   // Handen vid en dator: raden under kortet som läses (#1291) och vad någon annan senast gjorde
   // (#484 fynd 12), i spelets del sedan `/play` ritar dem i ett brett fönster (#1310).

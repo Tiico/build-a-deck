@@ -1692,6 +1692,16 @@ export const enEditor = {
   'upload.notThisKind': 'the file is not {formats}',
   'upload.tooBig': 'the file is too large (8 MB at most)',
   'upload.failed': 'the service did not take the file',
+  'picture.blocked': 'Blocked',
+  'picture.blocked.label': 'The picture is blocked. Show why',
+  'picture.blocked.title': 'The picture is blocked after a report',
+  'picture.blocked.rights': 'Whoever holds the rights to the picture reported it, and a person decided on {date}.',
+  'picture.blocked.illegal': 'A person decided on {date} that the picture is illegal.',
+  'picture.blocked.terms': 'A person decided on {date} that the picture may not be in Deckster.',
+  'picture.blocked.what': 'It is not shown in the game, at the tables, in print or in the export. To object, reply to the mail you got.',
+  'picture.blocked.swap': 'Replace the picture',
+  'picture.blocked.close': 'Close',
+  'upload.blocked': 'the picture is blocked after a report',
   // An upload that fell away (#344, L37). The correction is silent in the history, so the
   // notice has to be all the clearer where the doing was done: it names which of what she did
   // went away again, and why it did, after the colon.

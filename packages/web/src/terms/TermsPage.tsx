@@ -3,7 +3,7 @@ import { DecksterMark } from '../brand/DecksterMark.js'
 import { ArrowGlyph, ChevronGlyph } from '../glyphs.js'
 import { useLang, useT } from '../i18n/index.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { Inline } from './Inline.js'
+import { Inline, type Part as LinkPart } from './Inline.js'
 import { textOf, type Document } from './beta.js'
 import './terms-page.css'
 
@@ -53,7 +53,8 @@ export function TermsPage() {
   }, [])
   usePageTitle({ state: null })
   const home = server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
-  const href = (part: 'villkor' | 'integritet') => `#${part}`
+  // The report page is a page of its own (#1274); the two halves are this page's.
+  const href = (part: LinkPart) => (part === 'anmal' ? `/villkor/anmal${server ? `?${new URLSearchParams({ server }).toString()}` : ''}` : `#${part}`)
   return (
     <main className="byd-terms-page" data-page="terms">
       <div className="byd-terms-bar">
@@ -99,7 +100,7 @@ export function TermsPage() {
 
 // One half of the page: its heading and its sections, numbered as the text numbers them. «Visa all
 // text» opens or closes them all at once; each can still be opened and closed on its own after it.
-function Part({ id, doc, all, href, full }: { id: string; doc: Document; all: boolean | null; href(part: 'villkor' | 'integritet'): string; full: string }) {
+function Part({ id, doc, all, href, full }: { id: string; doc: Document; all: boolean | null; href(part: LinkPart): string; full: string }) {
   return (
     <section className="byd-terms-part" aria-labelledby={id} lang="sv">
       <h2 id={id}>{doc.title}</h2>
@@ -121,7 +122,7 @@ function Part({ id, doc, all, href, full }: { id: string; doc: Document; all: bo
   )
 }
 
-function Head({ n, section, href }: { n: number; section: Document['sections'][number]; href(part: 'villkor' | 'integritet'): string }) {
+function Head({ n, section, href }: { n: number; section: Document['sections'][number]; href(part: LinkPart): string }) {
   return (
     <>
       <span className="byd-terms-nr">{n}</span>
@@ -133,7 +134,7 @@ function Head({ n, section, href }: { n: number; section: Document['sections'][n
   )
 }
 
-function Row({ open, n, section, href, full }: { open: boolean; n: number; section: Document['sections'][number]; href(part: 'villkor' | 'integritet'): string; full: string }) {
+function Row({ open, n, section, href, full }: { open: boolean; n: number; section: Document['sections'][number]; href(part: LinkPart): string; full: string }) {
   return (
     <details className="byd-terms-row" open={open}>
       <summary>

@@ -1,3 +1,4 @@
+import { WithheldPictures } from './withheld.js'
 import { useContext, useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { WHOLE_PICTURE, assetAccept, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
@@ -197,6 +198,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   const [shapes, setShapes] = useState<Readonly<Record<string, number>>>({})
   const [uploading, setUploading] = useState(false)
   const arriving = useContext(Arriving)
+  const withheld = useContext(WithheldPictures)
   const lost = useRef(missing)
   lost.current = missing
   const came = (hash: string) => {
@@ -429,7 +431,8 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                         while a file is still on its way, gone once none is. */}
                     {/* Its bytes on their way from anywhere — this panel, a card cell — are early
                         too (#907), and the tile waits for them rather than asking. */}
-                    {(arriving.has(hash) || missing.has(hash)) && <span className="byd-media-tile-missing">{t(uploading || arriving.has(hash) ? 'media.tile.uploading' : 'media.missing')}</span>}
+                    {/* A picture blocked after a report (#1274) is named so, never as one on its way. */}
+                    {withheld.has(hash) ? <span className="byd-media-tile-missing">{t('picture.blocked')}</span> : (arriving.has(hash) || missing.has(hash)) && <span className="byd-media-tile-missing">{t(uploading || arriving.has(hash) ? 'media.tile.uploading' : 'media.missing')}</span>}
                     {/* A cropped picture says so where it is looked over, rather than only where
                         it is opened: what has been done to a picture is half of what a library
                         is for. An uncropped one wears nothing, so the mark means something. */}

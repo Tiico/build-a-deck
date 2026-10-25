@@ -84,7 +84,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, sa
               {/* The row's first two (#757, #1272), where she saves what she left. */}
               {!saved && saveUrl && (
                 <p className="byd-trust">
-                  <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
+                  <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a> · <a href="/villkor/anmal">{t('trust.report')}</a>
                 </p>
               )}
               {onForget && (

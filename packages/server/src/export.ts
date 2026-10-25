@@ -59,6 +59,9 @@ export const ProjectExport = z.object({
   // Assets a version points at that the server did not have when it exported: the game is the
   // designer's all the same, and what was missing is said rather than left out in silence.
   absent: z.array(Hash).default([]),
+  // Pictures blocked after a report (#1274): not in the zip, and not to be brought back with it. A
+  // version that names one draws it empty, as it does on the box.
+  blocked: z.array(z.object({ hash: Hash, since: z.string() })).optional(),
   print: z.object({
     rev: z.number().int().positive(),
     // One entry per card, with the file of each of its faces under `tryck/`.
@@ -137,7 +140,7 @@ It needs nothing but this folder to be read.
 
 - \`spel.json\` — the game. \`versions\` holds every saved version of the document, oldest first, each complete; \`current.rev\` is the latest. \`assets\` says which file is which picture or typeface, and \`print\` which PDF is which card's which face.
 - \`schema.json\` — the JSON Schema of \`spel.json\`.
-- \`assets/\` — every picture and typeface the game uses. A file is named by the SHA-256 of its bytes, and the document refers to it as \`asset:<that hash>\`.${m.absent.length > 0 ? `\n  ${m.absent.length} the game points at were not on the server when it was exported; they are listed in \`absent\`.` : ''}
+- \`assets/\` — every picture and typeface the game uses. A file is named by the SHA-256 of its bytes, and the document refers to it as \`asset:<that hash>\`.${m.absent.length > 0 ? `\n  ${m.absent.length} the game points at were not on the server when it was exported; they are listed in \`absent\`.` : ''}${(m.blocked?.length ?? 0) > 0 ? `\n  ${m.blocked?.length} the game points at ${m.blocked?.length === 1 ? 'is' : 'are'} blocked after a report and not included; ${m.blocked?.length === 1 ? 'it is' : 'they are'} listed in \`blocked\`, and the cards that used ${m.blocked?.length === 1 ? 'it' : 'them'} stand without.` : ''}
 - \`tryck/\` — print-ready PDFs of version ${m.print.rev}, with bleed: one per face of each card, and the rulebook as a booklet.${m.print.errors.length > 0 ? `\n  They are left out: the print checks stopped this version (${m.print.errors.length} findings, listed in \`print.errors\`).` : ''}
 
 Format \`${m.format}\`, version ${m.formatVersion}.
@@ -149,7 +152,7 @@ Det behöver ingenting utöver den här mappen för att läsas.
 
 - \`spel.json\` — spelet. \`versions\` håller varje sparad version av dokumentet, äldst först och var och en hel; \`current.rev\` är den senaste. \`assets\` säger vilken fil som är vilken bild eller vilket typsnitt, och \`print\` vilken PDF som är vilket korts vilken sida.
 - \`schema.json\` — JSON Schema för \`spel.json\`.
-- \`assets/\` — varje bild och typsnitt spelet använder. En fil heter efter SHA-256 av sina byte, och dokumentet pekar på den som \`asset:<den hashen>\`.${m.absent.length > 0 ? `\n  ${m.absent.length} som spelet pekar på fanns inte på servern när det exporterades; de står i \`absent\`.` : ''}
+- \`assets/\` — varje bild och typsnitt spelet använder. En fil heter efter SHA-256 av sina byte, och dokumentet pekar på den som \`asset:<den hashen>\`.${m.absent.length > 0 ? `\n  ${m.absent.length} som spelet pekar på fanns inte på servern när det exporterades; de står i \`absent\`.` : ''}${(m.blocked?.length ?? 0) > 0 ? `\n  ${m.blocked?.length} som spelet pekar på ${m.blocked?.length === 1 ? 'är spärrad' : 'är spärrade'} efter en anmälan och följer inte med; de står i \`blocked\`, och korten som använde dem står kvar utan.` : ''}
 - \`tryck/\` — tryckfärdiga PDF:er av version ${m.print.rev}, med utfall: en per sida av varje kort, och regelhäftet som häfte.${m.print.errors.length > 0 ? `\n  De är utelämnade: tryckkontrollen stoppade den här versionen (${m.print.errors.length} fynd, listade i \`print.errors\`).` : ''}
 
 Formatet \`${m.format}\`, version ${m.formatVersion}.
@@ -250,7 +253,7 @@ export function readExport(zip: Uint8Array): ReadExport {
   }
   if (problems.length > 0) return { ok: false, problems }
   // What the export said was already missing is not asked for again; anything else must be here.
-  const listed = new Set([...manifest.assets.map((a) => a.hash), ...manifest.absent])
+  const listed = new Set([...manifest.assets.map((a) => a.hash), ...manifest.absent, ...(manifest.blocked ?? []).map((b) => b.hash)])
   const unlisted = [...new Set(manifest.versions.flatMap((v) => assetHashesOf(v.doc)))].filter((h) => !listed.has(h)).sort()
   return { ok: true, manifest, current: last.doc, assets, unlisted }
 }

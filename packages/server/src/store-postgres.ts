@@ -10,6 +10,7 @@ import { checkedHistory, liftDoc, stamp, type Ceilings, type InviteRecord, type 
 import { peekCard } from './names.js'
 import { PostgresAssetStore, assetHashesOf } from './assets.js'
 import { PostgresAiKeyStore } from './ai-keys.js'
+import { PostgresReportStore } from './reports-postgres.js'
 import { PostgresAccountPlanStore } from './account-plans.js'
 import { QuotaReached, growth, startThatFrees, tableGrowth, withFrees, type Limit, type TableCeilings, type TableUse } from './quotas.js'
 import type { AppliedEdit } from './project-actor.js'
@@ -186,6 +187,11 @@ export class PostgresLogStore implements LogStore {
   // The erasure (#1279, G6): masking in place, the ledger, and the notification that tells the app.
   erasures(): PostgresErasureStore {
     return new PostgresErasureStore(this.sql)
+  }
+
+  // Reports and blocks (#1274): what was reported, and which pictures are treated as not there.
+  reports(): PostgresReportStore {
+    return new PostgresReportStore(this.sql)
   }
 
   // The designer's own AI key (#999): sealed, one per account.
@@ -590,6 +596,13 @@ export class PostgresProjectStore implements ProjectStore {
 
   stored(owner: string): Promise<number> {
     return storedIn(this.sql, owner)
+  }
+
+  async using(hash: string): Promise<{ id: string; owner?: string }[]> {
+    const rows = await this.sql<{ id: string; owner: string | null }[]>`
+      select p.id, p.owner from project_assets pa join projects p on p.id = pa.project_id where pa.hash = ${hash} order by p.id collate "C"
+    `
+    return rows.map((r) => ({ id: r.id, ...(r.owner !== null ? { owner: String(r.owner) } : {}) }))
   }
 
   async borne(owner: string, hashes: readonly string[]): Promise<Set<string>> {

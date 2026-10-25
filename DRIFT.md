@@ -227,6 +227,9 @@ En hash som nämns igen är inte längre kontots och lämnas för gott.
 Raden går före bytesen, i en transaktion per hash, så att ett R2 som inte svarar lämnar raden till nästa varv.
 S3-protokollet har fått sitt femte anrop för det, en `DELETE`.
 I minnet sopas ingenting, eftersom ingenting där lever i 30 dygn.
+Spärren är byggd 2026-10-25 (#1274, DESIGN-BESLUT F4): en spärrad hash står i `asset_blocks`, och appen och renderworkern behandlar den som en som aldrig laddats upp.
+Det som ritats av bilden tas ur renderkön och ur R2 (`renders/<hash>`) när spärren skrivs, och en rensning tar `assets/<hash>` ur R2 och raden ur `assets`; spärren står kvar efter en rensning, så att samma bytes aldrig laddas upp igen.
+En signerad länk som redan lämnats ut lever sin timme ut.
 
 En bilds hash går aldrig till en klient.
 Hashen är en kapabilitet (`GET /assets/<hash>`), och på tråden skulle den visa vilket kort som ligger i någon annans hand lika säkert som texturen; projektionen bär texturernas hashar och inget annat.
@@ -459,6 +462,7 @@ Byggt 2026-10-25 (#1277, DESIGN-BESLUT G6): ett inträde som aldrig öppnades re
 
 Lådan och administratörens enheter i samma privata nät.
 SSH och Postgres nås på privat IP utan öppna portar.
+Operatörens skript körs därifrån mot lådans databas och aldrig genom HTTP: `plan` och `usage` (§12), `erase` (G6), `screening` och `report` för anmälningarna (#1274, RUNBOOK §8).
 
 ## 11. Identitet: eget bibliotek, magic link och passkeys, inga lösenord
 
@@ -512,6 +516,11 @@ Sedan #1273 köar en uppladdning sin bild själv, och `screening run --alla` kö
 Rapporten säger också andelen som når tröskeln per kategori och vilka bilder som ligger nära något på referenslistan.
 Referenslistan är PDQ-hashar i tabellen `screening_references`, aldrig i repot: `screening reference add <asset> <källa>` listar en bild på lådan med dess screenings hash, till exempel det som tagits ned, `screening reference import <fil> <källa>` läser hashar ur en fil med ett JSON-objekt per rad (`{"bits": "<64 hex>", "quality": …, "source": …}`), och `screening reference list` skriver listan.
 Ingen bild hämtas till listan, och ingen kommersiell kortkonst ligger där innan en källa uttryckligen tillåter det.
+
+Anmälningarna och spärrarna (F4 beslut 12, #1274) har ett skript av samma slag, med lådans egna inställningar för mejlen, länkarna och R2:
+`pnpm --filter @byd/server report list`, `report show <A-0001>` och `report pictures <spel>` läser; `report block <hash> <rights|illegal|terms> [--report <A-0001>]` spärrar en bild i varje spel som använder den och mejlar varje ägare skälen; `report purge <hash>` rensar en spärrad bilds bytes; `report unblock <hash>` släpper en bild igen; och `report decide <A-0001> <held|rejected>` mejlar beslutet till anmälaren.
+Appen hör när en spärr går igenom genom en notifiering i Postgres, som efter en radering (#1279), och varje laddat bord delar ut leken igen.
+Gången, svarstiden och när polisen kontaktas står i RUNBOOK §8.
 
 E-post: Resend, Postmark eller motsvarande — en bostads-IP är i praktiken svartlistad.
 POD-partnerns API.

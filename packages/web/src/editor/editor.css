@@ -2404,6 +2404,14 @@ button.byd-picture-tile:hover, .byd-data button.byd-picture-tile:hover, .byd-dat
    row is `auto`, and a square picture was laid out 64 wide and 64 tall in a tile 44 tall, then
    clipped — not the window on the picture the tile promises. */
 .byd-picture-tile img { display: block; width: 100%; height: 100%; }
+/* A picture blocked after a report (#1274): the word on a hatched amber ground, so the tile never
+   reads as a picture that failed to load. */
+.byd-picture-tile[data-withheld], .byd-data .byd-picture-tile[data-withheld], .byd-data-bulk .byd-picture-tile[data-withheld] { border: 1px solid #7a6a3c; background: repeating-linear-gradient(135deg, #2a2417 0 6px, #231e14 6px 12px); }
+.byd-picture-withheld { color: #ffd98a; font-size: 11px; font-weight: 700; }
+/* Where a thumbnail stands, the word fills its box on the same hatched ground. */
+span.byd-picture-withheld[role='img'] { display: grid; place-items: center; box-sizing: border-box; width: 100%; height: 100%; border: 1px solid #7a6a3c; border-radius: 4px; background: repeating-linear-gradient(135deg, #2a2417 0 6px, #231e14 6px 12px); }
+.byd-picture-tile[data-withheld] span.byd-picture-withheld[role='img'] { border: 0; }
+button.byd-picture-tile[aria-expanded='true'] { box-shadow: 0 0 0 2px #9cc6ff; }
 /* Every thumbnail of one of the game's pictures shows the whole picture (#1257, prototyped in
    docs/ux-audits/2026-10-24-hela-bilden, variant D). They were `cover` in a 3:2 box, and a square
    coin lost a third of its height in Tabell, Media and the library alike: what was on a card could
@@ -2707,6 +2715,13 @@ button.byd-picture-tile:hover, .byd-data button.byd-picture-tile:hover, .byd-dat
 }
 .byd-data-bulk[role='alertdialog'] { background: var(--byd-editor-bulk-ask-bg); color: var(--byd-editor-bulk-ask-ink); border-color: var(--byd-editor-bulk-danger-bg); }
 .byd-data-bulk p { margin: 0; font-weight: 700; }
+/* Why a picture is blocked (#1274): the strip in the foot, said in full and never as a question. */
+.byd-data-bulk[data-withheld] p { flex: 1 1 240px; line-height: 1.4; }
+.byd-data-bulk[data-withheld] button { display: inline-flex; align-items: center; gap: var(--byd-s2); }
+/* In the foot it is a whole row of its own, over the count, since what it says is two sentences. */
+.byd-crown-foot:has(> .byd-data-bulk[data-withheld]) { flex-wrap: wrap; }
+.byd-crown-foot .byd-data-bulk[data-withheld] { order: -1; flex: 1 1 100%; flex-wrap: wrap; padding: var(--byd-s2) var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: var(--byd-editor-bulk-bg); }
+.byd-data-bulk[data-withheld] small { display: block; font-size: 12px; font-weight: 400; color: var(--byd-editor-bulk-quiet); }
 .byd-data-bulk label { display: flex; align-items: center; gap: 6px; color: var(--byd-editor-bulk-quiet); }
 .byd-data-bulk select, .byd-data-bulk input {
   padding: 4px 8px;

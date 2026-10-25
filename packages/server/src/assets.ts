@@ -36,6 +36,9 @@ export type AssetStore = {
   // A URL a browser may fetch the asset from directly for `ttlSeconds`; null when the bytes
   // have to come through the server.
   link(hash: string, ttlSeconds: number): Promise<string | null>
+  // Takes the bytes out of the object store and the row out of the table (#1274): only for a picture
+  // that was blocked because it was illegal (F4 beslut 12, DRIFT §4). False when there was nothing.
+  purge?(hash: string): Promise<boolean>
 }
 
 export { ASSET_PREFIX, assetKey }
@@ -63,6 +66,11 @@ export const MotifBody = z
   .refine((m) => m.trim.left + m.trim.right < m.w && m.trim.top + m.trim.bottom < m.h, 'the border leaves no picture')
 
 export { assetHashesOf } from './asset-refs.js'
+
+const deleteObject = async (objects: ObjectStore, hash: string): Promise<void> => {
+  if (!objects.delete) throw new Error('this object store cannot delete, so the bytes cannot be purged')
+  await objects.delete(assetKey(hash))
+}
 
 export const isAssetRef = (value: unknown): value is string => typeof value === 'string' && value.startsWith(ASSET_PREFIX) && /^[0-9a-f]{64}$/.test(value.slice(ASSET_PREFIX.length))
 
@@ -129,6 +137,14 @@ export class MemoryAssetStore implements AssetStore {
   async link(hash: string, ttlSeconds: number): Promise<string | null> {
     return this.types.has(hash) ? this.objects.link(assetKey(hash), ttlSeconds) : null
   }
+  async purge(hash: string): Promise<boolean> {
+    if (!this.types.has(hash)) return false
+    await deleteObject(this.objects, hash)
+    this.types.delete(hash)
+    this.lengths.delete(hash)
+    this.drawn.delete(hash)
+    return true
+  }
 }
 
 // With an object store the bytes go there and Postgres keeps only that they exist; without one
@@ -184,6 +200,15 @@ export class PostgresAssetStore implements AssetStore {
   // The render worker reads through the same function (#1028), so the two agree on where it is.
   get(hash: string): Promise<{ bytes: Uint8Array; contentType: string } | null> {
     return assetFromPostgres(this.sql, this.objects, hash)
+  }
+  async purge(hash: string): Promise<boolean> {
+    const [row] = await this.sql<{ bytes: Uint8Array | null }[]>`select bytes from assets where hash = ${hash}`
+    if (!row) return false
+    // The bucket first: a row left behind by a delete that failed is found by the next purge, while
+    // bytes left behind a row that is gone would be found by nothing.
+    if (row.bytes === null && this.objects) await deleteObject(this.objects, hash)
+    await this.sql`delete from assets where hash = ${hash}`
+    return true
   }
   async link(hash: string, ttlSeconds: number): Promise<string | null> {
     if (!this.objects) return null

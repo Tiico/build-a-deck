@@ -128,7 +128,7 @@ describe('removing my name and my answers under the thanks (#1281)', () => {
     await thanked(id)
     const thanks = document.querySelector('.byd-survey-thanks')!
     const controls = [...thanks.querySelectorAll('a, button')].map((c) => c.textContent)
-    expect(controls).toEqual(['Spara till ditt konto', 'Villkor', 'Integritet', 'Ta bort mitt namn och mina svar…'])
+    expect(controls).toEqual(['Spara till ditt konto', 'Villkor', 'Integritet', 'Anmäl', 'Ta bort mitt namn och mina svar…'])
     expect(thanks.textContent).toContain('Med ditt namn kvar vet designern vem som gjorde och sa vad.')
     expect((thanks.querySelector('button[data-kind="forget"]') as HTMLElement).textContent).toBe('Ta bort mitt namn och mina svar…')
   })

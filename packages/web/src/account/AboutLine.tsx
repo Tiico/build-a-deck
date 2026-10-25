@@ -26,11 +26,15 @@ export function AboutLine({ http }: { http: string }) {
   const href = about.contact ? (/^https?:\/\//.test(about.contact) ? about.contact : `mailto:${about.contact}`) : null
   const server = new URLSearchParams(location.search).get('server')
   const terms = `/villkor${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`
+  const report = `/villkor/anmal${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`
   return (
     <p className="byd-muted byd-about" data-about>
       <a href={terms}>{t('about.terms')}</a>
       {' · '}
       <a href={`${terms}#integritet`}>{t('about.privacy')}</a>
+      {' · '}
+      {/* A report of a picture (#1274): always there, like the terms, since it is the app's own page. */}
+      <a href={report}>{t('about.report')}</a>
       {href && (
         <>
           {' · '}

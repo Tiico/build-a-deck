@@ -30,6 +30,10 @@ export async function objectStore(dir: string): Promise<{ endpoint: string; env:
       writeFileSync(at(key), o.bytes)
       writeFileSync(`${at(key)}.type`, o.type)
     },
+    remove: (key: string) => {
+      rmSync(at(key), { force: true })
+      rmSync(`${at(key)}.type`, { force: true })
+    },
     get: (key: string): { bytes: Buffer; type: string } | undefined => {
       try {
         return { bytes: readFileSync(at(key)), type: readFileSync(`${at(key)}.type`, 'utf8') }

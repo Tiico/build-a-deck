@@ -34,6 +34,7 @@ import { startInTab, tableWay, type Started } from '../startWay.js'
 import { Asking, Question } from './Question.js'
 import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import { Arriving } from './AssetImage.js'
+import { WithheldPictures, drawnEmpty, type Withheld } from './withheld.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
@@ -101,6 +102,20 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   useEffect(() => {
     if (projectId) window.name = editorTab(projectId)
   }, [projectId])
+  // Which of the game's pictures are blocked after a report (#1274): asked once the game is open, and
+  // nothing until it answers, since the service draws a blocked picture empty whatever the editor knows.
+  const [withheld, setWithheld] = useState<Withheld>(() => new Map())
+  useEffect(() => {
+    if (!client) return
+    let live = true
+    void client.blocked().then((found) => live && setWithheld(found))
+    return () => {
+      live = false
+    }
+  }, [client])
+  // Held by identity, so the surfaces that read it are not drawn again for a set that did not change.
+  const arriving = client?.assetsArriving
+  const empty = useMemo(() => drawnEmpty(arriving ?? new Set(), withheld), [arriving, withheld])
   // Whether the designer has an AI key (#1001), asked beside the project so the panel is decided
   // before the work is drawn and nothing moves over once it is.
   const [aiKey, setAiKey] = useAiKey(http, projectId !== null)
@@ -1128,7 +1143,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           question stands: it stood over «Ja, ta bort» once, and the question is the present. */}
       <SaidProvider text={questions === 0 ? confirmation.text : null}>
       {/* Which pictures every surface is to wait for before asking for them (#907). */}
-      <Arriving.Provider value={client.assetsArriving}>
+      {/* And which are blocked (#1274): drawn empty as an early one is, and named where they stood. */}
+      <WithheldPictures.Provider value={withheld}>
+      <Arriving.Provider value={empty}>
       <main>
         {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
@@ -1170,6 +1187,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         )}
       </main>
       </Arriving.Provider>
+      </WithheldPictures.Provider>
       </SaidProvider>
       </MarkedProvider>
       {stages && (

@@ -430,7 +430,7 @@ function TrustWay() {
   const t = useT()
   return (
     <p className="byd-join-trust">
-      <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
+      <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a> · <a href="/villkor/anmal">{t('trust.report')}</a>
     </p>
   )
 }

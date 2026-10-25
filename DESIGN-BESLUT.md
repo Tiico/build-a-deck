@@ -2255,6 +2255,27 @@ Ett test ritar en bild genom workern, listar den, och hittar den igen i mindre �
 Ingen kommersiell kortkonst är hämtad till listan: ingen källa som har prövats säger uttryckligen att det är tillåtet, och Scryfalls villkor gör det inte.
 En ny bild köar ett `screen`-jobb när `POST /assets` har tagit emot den, utan att uppladdningen väntar: ett köande som vägrar eller aldrig svarar ändrar ingenting i svaret, och samma bytes två gånger är ett jobb.
 Ett typsnitt köas inte, och servern köar bara när den har en Postgres-kö som en worker tömmer.
+
+Byggt 2026-10-25 (#1274, beställarens beslut 2026-10-25 på frågorna i issuet, L88): anmälan och spärren per hash.
+En anmälan görs på `/villkor/anmal`, och `POST /reports` är öppen för alla, eftersom den som sett en bild vid ett bord inte behöver ha konto.
+Den tar vad, var, varför, namn, adress och god tro (DSA art. 16), numreras `A-0001` och framåt i tabellen `reports`, och svarar 400 med vilka fält som saknas.
+Namn och adress får lämnas tomma, eftersom en anmälan av sexuellt innehåll som rör barn inte behöver dem; utan adress går inget kvitto och inget beslut.
+Kvittot går i L72:s band med anmälan upprepad, och ett textmejl går till `BYD_CONTACT` när kontakten är en adress.
+I betan tar formuläret bara emot bilder (beslut 5): en text anmäls via Kontakt, och ingen textspärr finns.
+Ingen bekräftelselänk och ingen gräns per adress (beslut 6).
+En spärr är en rad i `asset_blocks`: hashen, när, skälet (`rights`, `illegal` eller `terms`), anmälan och om bytesen rensats.
+Operatören skriver den med `report block` över Tailscale (DRIFT §10, §12), och den gäller hashen i varje spel som använder bilden (beslut 4).
+Appen läser spärrarna en gång när den startar och igen när Postgres säger att en spärr eller en hävning gått igenom, och håller dem som en mängd i minnet.
+Asset-lagret appen och workern får (`blocking`) behandlar en spärrad hash som en som aldrig laddats upp: `/assets/<hash>`, `/assets/<hash>/bytes` och mätningarna svarar som för ingenting, resolvarna tömmer referensen så att ett nytt bord, ett tryck, ett regelhäfte och exporten ritar den tom, och en uppladdning av samma bytes svarar 451.
+Renderworkern i sin egen process läser inte en spärrad hash heller, och `report block` tar varje jobb och varje utdata vars sida nämner hashen ur renderkön och ur R2, så att det som redan ritats av bilden inte lämnas ut under sin gamla hash.
+Ett bord som står laddat delar ut leken igen med referensen tom (`TableHost.redeal`): korten får nya texturhashar, varje anslutning patchas som efter en rad, och loggen rörs inte.
+Ett bord som laddas senare tömmer referensen när det laddas.
+Historiken står kvar och ritar bilden tom, och en återställd version tar inte tillbaka den.
+Exporten lämnar bilden utanför zippen och säger det i `spel.json` under `blocked`, med hash och sedan när, och i LASMIG.md.
+Varje ägare vars spel använder bilden får ett mejl med bilden, skälet, hur beslutet fattades, vad det betyder och att hen invänder genom att svara (DSA art. 17); löftet om att någon annan prövar invändningen finns inte (beslut 3).
+`report decide` mejlar beslutet till anmälaren, `report purge` tar bytesen ur R2 och Postgres när innehållet är olagligt och låter spärren stå så att samma bild aldrig laddas upp igen, och `report unblock` släpper en bild vars invändning höll.
+Ägaren och medredigerarna frågar `GET /projects/:id/blocked`; en testledare, en betraktare och en gäst får aldrig veta något, och på tråden till en gäst finns varken ordet eller hashen, prövat på råa frames i `packages/server/test/reports.test.ts`.
+Bord från före #1028 bär sina bilder som data-URL:er och nämner ingen hash; en spärr når dem inte.
 `screening run --alla` köar de bilder som fanns före, en gång (fråga 10), och `screening report` säger nu andelen per kategori och vilka bilder som ligger nära något på referenslistan.
 Ingenting visas för designern och ingenting stoppas.
 Under arbetet visade det sig att varje svg-screening föll på lådan: `renderPicture` namngav hjälpare inne i sidan, och tsx slår in dem i en `__name` som sidan inte har; nu bärs funktionen in som `fitInDocument`, och ett test kör renderaren under tsx.
@@ -8889,3 +8910,36 @@ Varianterna A (bara under tacket, «Borttagen gäst») och B (en rad i Mer hela 
 A lämnade den som går före slutet med bara Kontakt, och B gjorde att spela vidare utan namn till ett nytt läge för varje yta.
 
 Grindarna är `packages/server/test/erase.test.ts` för dörren mot minnet och Postgres, `packages/web/test/guest-forget.test.tsx` för arket, frågan och tacket, `masked-names.test.ts` för att ingen skärm vid bordet får platshållaren, och `packages/e2e/test/guest-forget.spec.ts` för resan från telefonen med beviset på nätverkstrafiken.
+
+### L88. Anmälan är en sida och ett mejl, och en spärrad bild säger «Spärrad» i Tabell (prototypat och beslutat 2026-10-25, #1274)
+
+F4 krävde en dokumenterad anmälningsprocess, och #1268 fråga 12 att en borttagning är en spärr per hash.
+Ingen väg fanns: villkorens avsnitt 11 sa «skriv till {contact}», och en bild som tagits bort hade bara varit tom utan förklaring.
+
+Tre former prövades i [`docs/ux-audits/2026-10-25-anmalan/prototyper/index.html`](docs/ux-audits/2026-10-25-anmalan/prototyper/index.html) vid dator, 375 och 320 (merge-commit 18dbf9e3).
+A var en sida och ett mejl: fem fält och god tro i DSA art. 16:s ordning, kvittot som ett mejl, och invändningen som ett svar på ägarens mejl.
+B var fyra steg och ett ärende: en guide där valet styr frågorna, en bekräftelselänk, en statussida och en spärrsida med ett invändningsfält.
+C var anmälan från kortet: «Anmäl bilden…» på det lyfta kortet, och L9:s remsa i Tabell med skälen och ett invändningsfält.
+Agenten rekommenderade A med C:s remsa i Tabell och invändningen som ett svar på mejlet, och beställaren valde det.
+
+- **Anmälan är `/villkor/anmal`.** «Anmäl» står på #757:s rad efter «Villkor · Integritet», och avsnitt 11 länkar till sidan.
+  Sidan har villkorssidans spalt och färger: vilken bild, var den finns, varför den inte får finnas, namn, e-post och rutan för god tro, med raden om att sexuellt innehåll som rör barn inte kräver namn eller adress.
+  «Var» tar rumskod, länk eller spelets namn, eftersom en rumskod bara gäller i tre timmar.
+  Det som saknas sägs under fältet när man trycker «Skicka anmälan», och det första får fokus.
+  När den är skickad säger sidan anmälans nummer och vart kvittot gick.
+- **Kvittot är ett mejl i L72:s band** med anmälan upprepad som en lista på papperet.
+- **I Tabell är en spärrad bild ordet «Spärrad» på en randig bärnstensgrund,** aldrig en tom ruta som ser ut som en bild som inte laddade.
+  Rutan öppnar remsan i Tabells fot, där en rads × frågar (L58): vem som anmälde och när en människa beslutade, att bilden inte syns någonstans, och att man invänder genom att svara på mejlet.
+  Remsan har «Byt bilden», som öppnar biblioteket för kortet, och «Stäng», och öppnar på «Byt bilden».
+  Media säger «Spärrad» på bildens ruta.
+- **Svarstiden är två arbetsdagar** för en anmälan och en invändning, och operatören prövar invändningen själv (RUNBOOK §8).
+
+Motivering:
+Anmälningarna blir få och läses alla av en människa med ett skript, och en sida med fem fält uppfyller art. 16 med en tabell och ett mejl.
+En guide, ärenden, en statussida och en spärrsida hade varit fyra ytor för ett fåtal fall.
+Vägen från kortet hade gett en plats som överlever rumskoden, men lagt ett tredje val på det lyfta kortet, som redan är prövat och fullt.
+Ett mejl räcker för art. 17, och art. 20:s klagomålssystem gäller bara onlineplattformar; men en tom cell utan förklaring läses som ett fel, och därför säger rutan varför där designern ser den.
+
+Följdkrav:
+Ordet «spärrad» och hashen går bara till ägaren och medredigerarna; för alla andra är en spärrad bild en som inte finns, och det prövas på råa frames.
+Remsan och rutan läser `GET /projects/:id/blocked`, och utan svar ritas bilden tom ändå.

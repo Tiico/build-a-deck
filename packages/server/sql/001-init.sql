@@ -342,3 +342,31 @@ create table if not exists asset_sweeps (
   due_at  timestamptz not null,
   primary key (hash, kind)
 );
+
+-- Reports (#1274, F4 beslut 12, DSA art. 16): what someone reported on `/villkor/anmal`, as they
+-- wrote it, numbered in the order they came, and the operator's decision once it is made. Name and
+-- address may be empty: a report of sexual content involving children needs neither.
+create table if not exists reports (
+  n            bigserial primary key,
+  at           timestamptz not null,
+  what         text not null,
+  place        text not null,
+  why          text not null,
+  name         text not null,
+  email        text not null,
+  lang         text not null,
+  outcome      text check (outcome in ('held', 'rejected')),
+  decided_at   timestamptz
+);
+
+-- Blocks (#1274): a picture that must not be shown, by the hash of its bytes, in every game that uses
+-- it. A blocked hash is treated as if it were not there (DRIFT §4); its row in `assets` and its bytes
+-- stay, unless `purged` says they were taken out because the content was illegal. No foreign keys: a
+-- block outlives the bytes it names, so the same bytes can never be uploaded again.
+create table if not exists asset_blocks (
+  hash        text primary key,
+  at          timestamptz not null,
+  reason      text not null check (reason in ('rights', 'illegal', 'terms')),
+  report      text,
+  purged      boolean not null default false
+);

@@ -540,6 +540,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
 
   'trust.terms': 'Terms',
   'trust.privacy': 'Privacy',
+  'trust.report': 'Report',
   'online.hand.says.mouse': 'Click turns it over · drag it to the table to play',
   'online.hand.says.mouse.turned': 'Click turns it up · drag it to the table to play it face down',
   'online.hand.says.key': 'Space turns it over · Enter opens actions',

@@ -1,6 +1,8 @@
 import { useState, type KeyboardEvent } from 'react'
+import { useT } from '../i18n/index.js'
 import { AssetImage } from './AssetImage.js'
 import { DropSays, dropSurface } from './dropping.js'
+import { useWithheld } from './withheld.js'
 
 // Bildrutan (L75): the one way a card's picture is shown and changed in Tabell. The cell and the
 // marked cards' field used to build the same thing by hand twice — a thumbnail, a drop surface,
@@ -19,6 +21,11 @@ import { DropSays, dropSurface } from './dropping.js'
 // another target.
 //
 // A reader's table (#489) draws the picture and nothing that can change it: no button, no drop.
+//
+// A picture blocked after a report (#1274, beslut 1) is drawn as the word «Spärrad» on a hatched
+// ground, never as an empty tile that reads as a picture that failed to load; and a press asks the
+// table to say why (`onWithheld`) rather than opening the library, where the reasons and «Byt bilden»
+// stand together.
 export type PictureSlotProps = {
   // What the group is called: «Bild för knight».
   label: string
@@ -44,12 +51,20 @@ export type PictureSlotProps = {
   tabIndex?: number | undefined
   // Which card the slot belongs to, for the surfaces that find a cell by its card.
   cellRef?: string | undefined
+  // A press on a blocked picture (#1274): where the table says why. Without it a press opens the
+  // library as for any picture.
+  onWithheld?: (() => void) | undefined
+  // Whether the table is saying why right now, for the tile to say it is open.
+  explaining?: boolean | undefined
 }
 
-export function PictureSlot({ label, choose, replace, alt, base, value, kept, onChoose, onPick, onFiles, onClear, reading = false, tabIndex, cellRef }: PictureSlotProps) {
+export function PictureSlot({ label, choose, replace, alt, base, value, kept, onChoose, onPick, onFiles, onClear, reading = false, tabIndex, cellRef, onWithheld, explaining = false }: PictureSlotProps) {
+  const t = useT()
   const [over, setOver] = useState(false)
   const has = value !== null
-  const inner = has ? <AssetImage base={base} hash={value} alt={alt} /> : kept !== undefined ? <s className="byd-data-kept">{kept}</s> : <span aria-hidden="true">+</span>
+  const withheld = useWithheld(value) !== undefined
+  const inner = withheld ? <span className="byd-picture-withheld">{t('picture.blocked')}</span> : has ? <AssetImage base={base} hash={value} alt={alt} /> : kept !== undefined ? <s className="byd-data-kept">{kept}</s> : <span aria-hidden="true">+</span>
+  const asks = withheld && onWithheld !== undefined
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!has || (event.key !== 'Backspace' && event.key !== 'Delete')) return
     event.preventDefault()
@@ -63,7 +78,7 @@ export function PictureSlot({ label, choose, replace, alt, base, value, kept, on
       {...(reading ? { className: 'byd-picture-slot' } : dropSurface({ className: 'byd-picture-slot', over, onOver: setOver, onFiles, onLibrary: onPick }))}
     >
       {reading ? (
-        <span className="byd-picture-tile" {...(has ? { 'data-has': 'true' } : {})}>
+        <span className="byd-picture-tile" {...(has ? { 'data-has': 'true' } : {})} {...(withheld ? { 'data-withheld': 'true' } : {})}>
           {inner}
         </span>
       ) : (
@@ -71,10 +86,11 @@ export function PictureSlot({ label, choose, replace, alt, base, value, kept, on
           type="button"
           className="byd-picture-tile"
           {...(has ? { 'data-has': 'true' } : {})}
-          aria-label={has ? replace : choose}
-          aria-haspopup="dialog"
+          {...(withheld ? { 'data-withheld': 'true' } : {})}
+          aria-label={asks ? t('picture.blocked.label') : has ? replace : choose}
+          {...(asks ? { 'aria-expanded': explaining } : { 'aria-haspopup': 'dialog' as const })}
           {...(tabIndex !== undefined ? { tabIndex } : {})}
-          onClick={onChoose}
+          onClick={asks ? onWithheld : onChoose}
           onKeyDown={onKeyDown}
         >
           {inner}
