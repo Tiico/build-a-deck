@@ -1,4 +1,4 @@
-import { logIn, makeProject, startTable } from '../support/api.js'
+import { logIn, makeProject, startTable, withQuery } from '../support/api.js'
 import { gameDoc } from '../support/game.js'
 import { PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
@@ -13,7 +13,7 @@ test('a table updated to a version with rules hands out the book and names the v
   const project = await makeProject(request, { name: 'Skogens herrar', players: 2 })
   const table = await startTable(request, project.id)
   const seats = gameDoc({ players: 2 }).setup.seats
-  const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+  const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
   // The phone in a hand (C4): a computer's window draws the desk since #1310, with the book in its head.
   const ada = await player({ ...table, seats }, { name: 'Ada', seat: seats[0]!, device: PHONE })
   // And a computer at the same table, whose desk carries the book in its head (#1310).

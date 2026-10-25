@@ -1,3 +1,4 @@
+import { withQuery } from '../../support/api.js'
 import { SMALL_TV, TV } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -14,7 +15,7 @@ const BOX = 'deck.ockelberg.com'
 
 for (const device of [SMALL_TV, TV]) {
   test(`the address fits its column at ${device.viewport.width}, a seventh wider too`, async ({ table, open }) => {
-    const { page } = await open(device, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(device, withQuery(table.tvUrl, 'lang=sv'))
     const address = page.locator('.byd-tv-address')
     await expect(address).toBeVisible()
     await address.evaluate((el, box) => (el.textContent = box), BOX)

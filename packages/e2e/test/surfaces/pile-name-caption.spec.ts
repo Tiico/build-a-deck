@@ -225,7 +225,7 @@ for (const device of [SMALL_TV, TV]) {
       test(`names the discard pile's top card under the pile while its picture is ${state}, and never the face-down draw pile's`, async ({ browser, baseURL, request }) => {
         const { table, titles } = await tableWithNames(request)
         await deal(baseURL!, table)
-        const { page, wire } = await screen(browser, baseURL, device, `${table.tvUrl}&lang=sv`, state)
+        const { page, wire } = await screen(browser, baseURL, device, withQuery(table.tvUrl, 'lang=sv'), state)
         // The room reads its television from three metres, so the floor is K26's 24 px.
         expectReadable(await read(page, 'discard'), LONG, 24)
 
@@ -249,7 +249,7 @@ for (const device of [SMALL_TV, TV]) {
     test('draws no caption once the picture is there', async ({ browser, baseURL, request }) => {
       const { table } = await tableWithNames(request)
       await deal(baseURL!, table)
-      const { page } = await screen(browser, baseURL, device, `${table.tvUrl}&lang=sv`, 'ready')
+      const { page } = await screen(browser, baseURL, device, withQuery(table.tvUrl, 'lang=sv'), 'ready')
       for (const zone of ['discard', 'draw']) expect((await read(page, zone)).shown, zone).toBe(false)
       await page.context().close()
     })
@@ -320,7 +320,7 @@ test.describe("table mode: the table's own screen at 1280 × 800 (#789)", () => 
     test(`names the discard pile's top card on a plate by its handle while its picture is ${state}`, async ({ browser, baseURL, request }) => {
       const { table } = await tableWithNames(request)
       await deal(baseURL!, table)
-      const { page } = await screen(browser, baseURL, SMALL_TV, `${table.tableUrl}&lang=sv`, state)
+      const { page } = await screen(browser, baseURL, SMALL_TV, withQuery(table.tableUrl, 'lang=sv'), state)
       await expect(page.locator('.byd-table-frame')).toHaveAttribute('data-mode', 'table')
       const now = await read(page, 'discard')
       expectReadable(now, LONG, 12)
@@ -335,7 +335,7 @@ test.describe("table mode: the table's own screen at 1280 × 800 (#789)", () => 
 test("table mode: a felt too narrow for the piles' names keeps the name on the card (#789)", async ({ browser, baseURL, request }) => {
   const { table } = await tableWithNames(request)
   await deal(baseURL!, table)
-  const { page } = await screen(browser, baseURL, PHONE, `${table.tableUrl}&lang=sv`, 'pending')
+  const { page } = await screen(browser, baseURL, PHONE, withQuery(table.tableUrl, 'lang=sv'), 'pending')
   await expect(page.locator('.byd-table-frame')).toHaveAttribute('data-mode', 'table')
   // Non-vacuity: this felt is one that has hidden the piles' names.
   await expect(page.locator('.byd-pile[data-zone="discard"] .byd-pile-name')).toBeHidden()

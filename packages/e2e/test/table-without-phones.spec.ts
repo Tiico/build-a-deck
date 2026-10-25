@@ -75,7 +75,7 @@ const covers = (page: Page, selector: string) =>
 test.describe('bordsläget utan telefoner (#682)', () => {
   test('ett släpp på en tom plats sägs vid kortet, bordets ångra tar tillbaka draget och avsluta stänger bordet', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 4, counters: [], cards: 12, copies: 1 })
-    const { page } = await open(LAPTOP, `${table.tableUrl}&lang=sv`)
+    const { page } = await open(LAPTOP, withQuery(table.tableUrl, 'lang=sv'))
     const deck = page.locator('.byd-pile[data-zone="draw"]')
     await expect(deck).toHaveAttribute('data-count', '12')
 
@@ -133,7 +133,7 @@ test.describe('bordsläget utan telefoner (#682)', () => {
     const doc = gameDoc({ players: 4, cards: 12, copies: 1 })
     const shuffled = { ...doc, setup: { ...doc.setup, zones: doc.setup.zones.map((z) => (z.id === doc.setup.deckZone ? { ...z, actions: [{ id: 'start', label: 'Blanda leken', when: 'start' as const, steps: [{ v: 'shuffle' as const }] }] } : z)) } }
     const table = await tableFromSetup(request, setupFromProject(shuffled), deckFromProject(shuffled))
-    const { page } = await open({ name: 'laptop-1024', viewport: { width: 1024, height: 768 } }, `${table.tableUrl}&lang=sv`, { facesReady: true })
+    const { page } = await open({ name: 'laptop-1024', viewport: { width: 1024, height: 768 } }, withQuery(table.tableUrl, 'lang=sv'), { facesReady: true })
     await page.locator('[data-table-start]').click()
     await expect(page.getByRole('button', { name: 'Starta om' })).toBeVisible()
     const more = page.getByRole('button', { name: 'Mer' })

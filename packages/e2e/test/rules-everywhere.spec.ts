@@ -30,7 +30,7 @@ test('the observer opens the rulebook from her own screen (#709)', async ({ requ
 
 test('the room’s television sets the book’s title in the book’s own type (#709)', async ({ request, open }) => {
   const table = await tableWithRules(request, { players: 2 })
-  const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+  const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
   await page.getByRole('button', { name: 'Regler', exact: true }).click()
   await expect(page.locator('.byd-rules-panel').getByRole('heading', { name: 'Så spelar ni' })).toBeVisible()
   expect(await titleOf(page)).toEqual(BOOK_TITLE)

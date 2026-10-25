@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -11,7 +12,7 @@ test.describe('the top of a pile let go inside an area (#680)', () => {
 
   test('lands in that area, and says so on the card', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
-    const { page } = await open(DESK, `${table.tableUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(table.tableUrl, 'lang=sv'))
     const top = page.locator('.byd-pile[data-zone="draw"] .byd-pile-top')
     const area = page.locator('[data-area="mine:A"]')
     await expect(top).toBeVisible()
